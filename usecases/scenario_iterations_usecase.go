@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/adhocore/gronx"
 	"github.com/cockroachdb/errors"
@@ -57,12 +58,13 @@ type IterationUsecaseRepository interface {
 }
 
 type ScenarioIterationUsecase struct {
-	repository                IterationUsecaseRepository
-	enforceSecurity           security.EnforceSecurityScenario
-	scenarioFetcher           scenarios.ScenarioFetcher
-	validateScenarioIteration scenarios.ValidateScenarioIteration
-	executorFactory           executor_factory.ExecutorFactory
-	transactionFactory        executor_factory.TransactionFactory
+	repository                    IterationUsecaseRepository
+	sanctionCheckConfigRepository SanctionCheckConfigRepository
+	enforceSecurity               security.EnforceSecurityScenario
+	scenarioFetcher               scenarios.ScenarioFetcher
+	validateScenarioIteration     scenarios.ValidateScenarioIteration
+	executorFactory               executor_factory.ExecutorFactory
+	transactionFactory            executor_factory.TransactionFactory
 }
 
 func (usecase *ScenarioIterationUsecase) ListScenarioIterations(
@@ -91,6 +93,18 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
+
+	scc, err := usecase.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
+		usecase.executorFactory.NewExecutor(), si.Id)
+
+	switch {
+	case err == nil:
+		si.SanctionCheckConfig = &scc
+	case !errors.Is(err, models.NotFoundError):
+		return models.ScenarioIteration{}, errors.Wrap(err,
+			"could not retrieve sanction check config from scenario iteration")
+	}
+
 	if err := usecase.enforceSecurity.ReadScenarioIteration(si); err != nil {
 		return models.ScenarioIteration{}, err
 	}
@@ -148,29 +162,65 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context,
 	organizationId string, scenarioIteration models.UpdateScenarioIterationInput,
 ) (iteration models.ScenarioIteration, err error) {
-	exec := usecase.executorFactory.NewExecutor()
-	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, scenarioIteration.Id)
+	updatedScenarioIteration, err := executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Transaction) (models.ScenarioIteration, error) {
+			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, scenarioIteration.Id)
+			if err != nil {
+				return iteration, err
+			}
+			if err := usecase.enforceSecurity.UpdateScenario(scenarioAndIteration.Scenario); err != nil {
+				return iteration, err
+			}
+
+			body := scenarioIteration.Body
+			if body.Schedule != nil && *body.Schedule != "" {
+				gron := gronx.New()
+				ok := gron.IsValid(*body.Schedule)
+				if !ok {
+					return iteration, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
+				}
+			}
+			if scenarioAndIteration.Iteration.Version != nil {
+				return iteration, errors.Wrap(
+					models.ErrScenarioIterationNotDraft,
+					fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id),
+				)
+			}
+
+			updatedScenarioIteration, err := usecase.repository.UpdateScenarioIteration(ctx, tx, scenarioIteration)
+
+			if body.SanctionCheckConfig != nil {
+				scCfg := body.SanctionCheckConfig
+
+				if scCfg.Outcome.ForceOutcome != nil &&
+					!slices.Contains(models.ValidForcedOutcome, *scCfg.Outcome.ForceOutcome) {
+					return iteration, errors.Wrap(models.BadParameterError,
+						"sanction check config: invalid forced outcome")
+				}
+				if scCfg.Outcome.ScoreModifier != nil &&
+					(*scCfg.Outcome.ScoreModifier < 0 || *scCfg.Outcome.ScoreModifier > 100) {
+					return iteration, errors.Wrap(models.BadParameterError,
+						"sanction check config: score modifier out of bounds")
+				}
+
+				scc, err := usecase.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(ctx, tx,
+					scenarioAndIteration.Iteration.Id, *body.SanctionCheckConfig)
+				if err != nil {
+					return iteration, err
+				}
+
+				updatedScenarioIteration.SanctionCheckConfig = &scc
+			}
+
+			return updatedScenarioIteration, err
+		})
 	if err != nil {
-		return iteration, err
+		return models.ScenarioIteration{}, err
 	}
-	if err := usecase.enforceSecurity.UpdateScenario(scenarioAndIteration.Scenario); err != nil {
-		return iteration, err
-	}
-	body := scenarioIteration.Body
-	if body.Schedule != nil && *body.Schedule != "" {
-		gron := gronx.New()
-		ok := gron.IsValid(*body.Schedule)
-		if !ok {
-			return iteration, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
-		}
-	}
-	if scenarioAndIteration.Iteration.Version != nil {
-		return iteration, errors.Wrap(
-			models.ErrScenarioIterationNotDraft,
-			fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id),
-		)
-	}
-	return usecase.repository.UpdateScenarioIteration(ctx, exec, scenarioIteration)
+
+	return updatedScenarioIteration, nil
 }
 
 func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
@@ -190,6 +240,17 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 			if err != nil {
 				return models.ScenarioIteration{}, err
 			}
+
+			var sanctionCheckConfig *models.SanctionCheckConfig
+
+			switch scc, err := usecase.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, tx, si.Id); {
+			case err == nil:
+				sanctionCheckConfig = &scc
+			case !errors.Is(err, models.NotFoundError):
+				return models.ScenarioIteration{}, errors.Wrap(err,
+					"could not retrieve sanction check config while creating draft")
+			}
+
 			iterations, err := usecase.repository.ListScenarioIterations(
 				ctx,
 				tx,
@@ -251,7 +312,27 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 					return models.ScenarioIteration{}, err
 				}
 			}
-			return usecase.repository.CreateScenarioIterationAndRules(ctx, tx, organizationId, createScenarioIterationInput)
+
+			newScenarioIteration, err := usecase.repository.CreateScenarioIterationAndRules(
+				ctx, tx, organizationId, createScenarioIterationInput)
+
+			if sanctionCheckConfig != nil {
+				newSanctionCheckConfig := models.UpdateSanctionCheckConfigInput{
+					Enabled: &sanctionCheckConfig.Enabled,
+					Outcome: models.UpdateSanctionCheckOutcomeInput{
+						ForceOutcome:  &sanctionCheckConfig.Outcome.ForceOutcome,
+						ScoreModifier: &sanctionCheckConfig.Outcome.ScoreModifier,
+					},
+				}
+
+				if _, err := usecase.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(
+					ctx, tx, scenarioIterationId, newSanctionCheckConfig); err != nil {
+					return models.ScenarioIteration{}, errors.Wrap(err,
+						"could not duplicate sanction check config for new iteration")
+				}
+			}
+
+			return newScenarioIteration, err
 		})
 	if err != nil {
 		return models.ScenarioIteration{}, err

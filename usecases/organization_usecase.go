@@ -81,6 +81,14 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 		}
 	}
 
+	if organization.SanctionCheckConfig.MatchThreshold != nil {
+		if *organization.SanctionCheckConfig.MatchThreshold < 0 ||
+			*organization.SanctionCheckConfig.MatchThreshold > 100 {
+			return models.Organization{}, errors.Wrapf(models.BadParameterError,
+				"threshold should be between 0 and 100")
+		}
+	}
+
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.Organization, error) {

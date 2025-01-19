@@ -20,15 +20,16 @@ type evalScenarioRepository interface {
 		scenarioIterationId string) (models.ScenarioIteration, error)
 }
 type PhantomDecisionUsecase struct {
-	enforceSecurity            security.EnforceSecurityPhantomDecision
-	executorFactory            executor_factory.ExecutorFactory
-	ingestedDataReadRepository repositories.IngestedDataReadRepository
-	repository                 repositories.DecisionPhantomUsecaseRepository
-	testrunRepository          repositories.ScenarioTestRunRepository
-	scenarioRepository         repositories.ScenarioUsecaseRepository
-	evaluateAstExpression      ast_eval.EvaluateAstExpression
-	snoozesReader              evaluate_scenario.SnoozesForDecisionReader
-	evalScenarioRepository     evalScenarioRepository
+	enforceSecurity                   security.EnforceSecurityPhantomDecision
+	executorFactory                   executor_factory.ExecutorFactory
+	ingestedDataReadRepository        repositories.IngestedDataReadRepository
+	repository                        repositories.DecisionPhantomUsecaseRepository
+	testrunRepository                 repositories.ScenarioTestRunRepository
+	scenarioRepository                repositories.ScenarioUsecaseRepository
+	evaluateAstExpression             ast_eval.EvaluateAstExpression
+	snoozesReader                     evaluate_scenario.SnoozesForDecisionReader
+	evalScenarioRepository            evalScenarioRepository
+	evalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
 }
 
 func NewPhantomDecisionUseCase(enforceSecurity security.EnforceSecurityPhantomDecision,
@@ -38,17 +39,19 @@ func NewPhantomDecisionUseCase(enforceSecurity security.EnforceSecurityPhantomDe
 	testrunRepository repositories.ScenarioTestRunRepository,
 	scenarioRepository repositories.ScenarioUsecaseRepository,
 	evalScenarioRepository evalScenarioRepository,
+	evalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository,
 ) PhantomDecisionUsecase {
 	return PhantomDecisionUsecase{
-		enforceSecurity:            enforceSecurity,
-		executorFactory:            executorFactory,
-		ingestedDataReadRepository: ingestedDataReadRepository,
-		repository:                 repository,
-		scenarioRepository:         scenarioRepository,
-		evaluateAstExpression:      evaluateAstExpression,
-		testrunRepository:          testrunRepository,
-		snoozesReader:              snoozesReader,
-		evalScenarioRepository:     evalScenarioRepository,
+		enforceSecurity:                   enforceSecurity,
+		executorFactory:                   executorFactory,
+		ingestedDataReadRepository:        ingestedDataReadRepository,
+		repository:                        repository,
+		scenarioRepository:                scenarioRepository,
+		evaluateAstExpression:             evaluateAstExpression,
+		testrunRepository:                 testrunRepository,
+		snoozesReader:                     snoozesReader,
+		evalScenarioRepository:            evalScenarioRepository,
+		evalSanctionCheckConfigRepository: evalSanctionCheckConfigRepository,
 	}
 }
 
@@ -66,14 +69,15 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 		return models.PhantomDecision{}, err
 	}
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
-		EvalScenarioRepository:        usecase.evalScenarioRepository,
-		EvalTestRunScenarioRepository: usecase.repository,
-		ScenarioTestRunRepository:     usecase.testrunRepository,
-		ExecutorFactory:               usecase.executorFactory,
-		IngestedDataReadRepository:    usecase.ingestedDataReadRepository,
-		EvaluateAstExpression:         usecase.evaluateAstExpression,
-		ScenarioRepository:            usecase.scenarioRepository,
-		SnoozeReader:                  usecase.snoozesReader,
+		EvalScenarioRepository:            usecase.evalScenarioRepository,
+		EvalSanctionCheckConfigRepository: usecase.evalSanctionCheckConfigRepository,
+		EvalTestRunScenarioRepository:     usecase.repository,
+		ScenarioTestRunRepository:         usecase.testrunRepository,
+		ExecutorFactory:                   usecase.executorFactory,
+		IngestedDataReadRepository:        usecase.ingestedDataReadRepository,
+		EvaluateAstExpression:             usecase.evaluateAstExpression,
+		ScenarioRepository:                usecase.scenarioRepository,
+		SnoozeReader:                      usecase.snoozesReader,
 	}
 
 	// TODO remove

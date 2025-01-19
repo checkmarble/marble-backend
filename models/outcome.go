@@ -8,9 +8,14 @@ const (
 	BlockAndReview
 	Decline
 	UnknownOutcome
+
+	UnsetForcedOutcome = -1
 )
 
-var ValidOutcomes = []Outcome{Approve, Review, BlockAndReview, Decline}
+var (
+	ValidOutcomes      = []Outcome{Approve, Review, BlockAndReview, Decline}
+	ValidForcedOutcome = []Outcome{Review, BlockAndReview, Decline, UnsetForcedOutcome}
+)
 
 // Provide a string value for each outcome
 func (o Outcome) String() string {
@@ -27,6 +32,27 @@ func (o Outcome) String() string {
 	return "unknown"
 }
 
+func (o *Outcome) MaybeString() *string {
+	if o == nil {
+		return nil
+	}
+
+	value := "unknown"
+
+	switch *o {
+	case Approve:
+		value = "approve"
+	case Review:
+		value = "review"
+	case BlockAndReview:
+		value = "block_and_review"
+	case Decline:
+		value = "decline"
+	}
+
+	return &value
+}
+
 // Provide an Outcome from a string value
 func OutcomeFrom(s string) Outcome {
 	switch s {
@@ -40,4 +66,12 @@ func OutcomeFrom(s string) Outcome {
 		return Decline
 	}
 	return UnknownOutcome
+}
+
+func ForcedOutcomeFrom(s string) Outcome {
+	if s == "none" {
+		return UnsetForcedOutcome
+	}
+
+	return OutcomeFrom(s)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 // Read DTO
@@ -24,13 +25,20 @@ type ScenarioIterationDto struct {
 }
 
 type ScenarioIterationBodyDto struct {
-	TriggerConditionAstExpression *NodeDto  `json:"trigger_condition_ast_expression"`
-	Rules                         []RuleDto `json:"rules"`
-	ScoreReviewThreshold          *int      `json:"score_review_threshold"`
-	ScoreBlockAndReviewThreshold  *int      `json:"score_block_and_review_threshold"`
-	ScoreRejectThreshold_deprec   *int      `json:"score_reject_threshold"` //nolint:tagliatelle
-	ScoreDeclineThreshold         *int      `json:"score_decline_threshold"`
-	Schedule                      string    `json:"schedule"`
+	TriggerConditionAstExpression *NodeDto             `json:"trigger_condition_ast_expression"`
+	Rules                         []RuleDto            `json:"rules"`
+	SanctionCheckConfig           *SanctionCheckConfig `json:"sanction_check_config,omitempty"`
+	ScoreReviewThreshold          *int                 `json:"score_review_threshold"`
+	ScoreBlockAndReviewThreshold  *int                 `json:"score_block_and_review_threshold"`
+	ScoreRejectThreshold_deprec   *int                 `json:"score_reject_threshold"` //nolint:tagliatelle
+	ScoreDeclineThreshold         *int                 `json:"score_decline_threshold"`
+	Schedule                      string               `json:"schedule"`
+}
+
+type SanctionCheckConfig struct {
+	Enabled       *bool   `json:"enabled"`
+	ForceOutcome  *string `json:"force_outcome,omitempty"`
+	ScoreModifier *int    `json:"score_modifier,omitempty"`
 }
 
 func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIterationWithBodyDto, error) {
@@ -41,6 +49,7 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		ScoreDeclineThreshold:        si.ScoreDeclineThreshold,
 		Schedule:                     si.Schedule,
 		Rules:                        make([]RuleDto, len(si.Rules)),
+		SanctionCheckConfig:          nil,
 	}
 	for i, rule := range si.Rules {
 		apiRule, err := AdaptRuleDto(rule)
@@ -49,6 +58,18 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 				fmt.Errorf("could not create new api scenario iteration rule: %w", err)
 		}
 		body.Rules[i] = apiRule
+	}
+	if si.SanctionCheckConfig != nil {
+		body.SanctionCheckConfig = &SanctionCheckConfig{
+			Enabled:       &si.SanctionCheckConfig.Enabled,
+			ForceOutcome:  nil,
+			ScoreModifier: &si.SanctionCheckConfig.Outcome.ScoreModifier,
+		}
+
+		if si.SanctionCheckConfig.Outcome.ForceOutcome != models.Approve {
+			outcome := si.SanctionCheckConfig.Outcome.ForceOutcome.String()
+			body.SanctionCheckConfig.ForceOutcome = &outcome
+		}
 	}
 
 	if si.TriggerConditionAstExpression != nil {
@@ -75,12 +96,13 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 // Update iteration DTO
 type UpdateScenarioIterationBody struct {
 	Body struct {
-		TriggerConditionAstExpression *NodeDto `json:"trigger_condition_ast_expression"`
-		ScoreReviewThreshold          *int     `json:"score_review_threshold,omitempty"`
-		ScoreBlockAndReviewThreshold  *int     `json:"score_block_and_review_threshold,omitempty"`
-		ScoreRejectThreshold_deprec   *int     `json:"score_reject_threshold,omitempty"` //nolint:tagliatelle
-		ScoreDeclineThreshold         *int     `json:"score_decline_threshold,omitempty"`
-		Schedule                      *string  `json:"schedule"`
+		TriggerConditionAstExpression *NodeDto             `json:"trigger_condition_ast_expression"`
+		SanctionCheckConfig           *SanctionCheckConfig `json:"sanction_check_config"`
+		ScoreReviewThreshold          *int                 `json:"score_review_threshold,omitempty"`
+		ScoreBlockAndReviewThreshold  *int                 `json:"score_block_and_review_threshold,omitempty"`
+		ScoreRejectThreshold_deprec   *int                 `json:"score_reject_threshold,omitempty"` //nolint:tagliatelle
+		ScoreDeclineThreshold         *int                 `json:"score_decline_threshold,omitempty"`
+		Schedule                      *string              `json:"schedule"`
 	} `json:"body,omitempty"`
 }
 
@@ -88,11 +110,31 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 	updateScenarioIterationInput := models.UpdateScenarioIterationInput{
 		Id: iterationId,
 		Body: models.UpdateScenarioIterationBody{
+			SanctionCheckConfig:          nil,
 			ScoreReviewThreshold:         input.Body.ScoreReviewThreshold,
 			ScoreBlockAndReviewThreshold: input.Body.ScoreBlockAndReviewThreshold,
 			ScoreDeclineThreshold:        input.Body.ScoreDeclineThreshold,
 			Schedule:                     input.Body.Schedule,
 		},
+	}
+
+	if input.Body.SanctionCheckConfig != nil {
+		updateScenarioIterationInput.Body.SanctionCheckConfig = &models.UpdateSanctionCheckConfigInput{
+			Enabled: input.Body.SanctionCheckConfig.Enabled,
+			Outcome: models.UpdateSanctionCheckOutcomeInput{
+				ForceOutcome:  nil,
+				ScoreModifier: nil,
+			},
+		}
+
+		if input.Body.SanctionCheckConfig.ForceOutcome != nil {
+			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ForceOutcome = utils.Ptr(models.ForcedOutcomeFrom(
+				*input.Body.SanctionCheckConfig.ForceOutcome))
+		}
+		if input.Body.SanctionCheckConfig.ScoreModifier != nil {
+			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ScoreModifier =
+				input.Body.SanctionCheckConfig.ScoreModifier
+		}
 	}
 
 	if input.Body.ScoreDeclineThreshold == nil {
@@ -119,6 +161,7 @@ type CreateScenarioIterationBody struct {
 	Body       *struct {
 		TriggerConditionAstExpression *NodeDto              `json:"trigger_condition_ast_expression"`
 		Rules                         []CreateRuleInputBody `json:"rules"`
+		SanctionCheckConfig           *SanctionCheckConfig  `json:"sanction_check_config,omitempty"`
 		ScoreReviewThreshold          *int                  `json:"score_review_threshold,omitempty"`
 		ScoreBlockAndReviewThreshold  *int                  `json:"score_block_and_review_threshold,omitempty"`
 		ScoreRejectThreshold_deprec   *int                  `json:"score_reject_threshold,omitempty"` //nolint:tagliatelle
