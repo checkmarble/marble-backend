@@ -128,7 +128,7 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 		}
 
 		if input.Body.SanctionCheckConfig.ForceOutcome != nil {
-			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ForceOutcome = utils.Ptr(models.OutcomeFrom(
+			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ForceOutcome = utils.Ptr(models.ForcedOutcomeFrom(
 				*input.Body.SanctionCheckConfig.ForceOutcome))
 		}
 		if input.Body.SanctionCheckConfig.ScoreModifier != nil {

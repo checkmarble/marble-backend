@@ -8,12 +8,15 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 func (repo *MarbleDbRepository) GetSanctionCheckConfig(ctx context.Context, exec Executor,
 	scenarioIterationId string,
 ) (models.SanctionCheckConfig, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.SanctionCheckConfig{}, err
+	}
+
 	sql := NewQueryBuilder().
 		Select("*").From(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
 		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationId})
@@ -22,38 +25,45 @@ func (repo *MarbleDbRepository) GetSanctionCheckConfig(ctx context.Context, exec
 }
 
 func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, exec Executor,
-	scenarioIterationId string, sanctionCheckConfig models.UpdateSanctionCheckConfigInput,
+	scenarioIterationId string, cfg models.UpdateSanctionCheckConfigInput,
 ) (models.SanctionCheckConfig, error) {
-	var outcome *string
-
-	if sanctionCheckConfig.Outcome.ForceOutcome != nil &&
-		*sanctionCheckConfig.Outcome.ForceOutcome != models.Approve {
-		outcome = utils.Ptr(sanctionCheckConfig.Outcome.ForceOutcome.String())
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.SanctionCheckConfig{}, err
 	}
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
 		Columns("scenario_iteration_id", "enabled", "forced_outcome", "score_modifier").
-		Values(scenarioIterationId, sanctionCheckConfig.Enabled,
-			outcome,
-			sanctionCheckConfig.Outcome.ScoreModifier).
-		Suffix("ON CONFLICT (scenario_iteration_id) DO UPDATE SET")
+		Values(scenarioIterationId, cfg.Enabled,
+			cfg.Outcome.ForceOutcome.MaybeString(),
+			cfg.Outcome.ScoreModifier)
 
 	updateFields := make([]string, 0, 4)
 
-	if sanctionCheckConfig.Enabled != nil {
+	if cfg.Enabled != nil {
 		updateFields = append(updateFields, "enabled = EXCLUDED.enabled")
 	}
-	if sanctionCheckConfig.Outcome.ForceOutcome != nil {
-		updateFields = append(updateFields, "forced_outcome = EXCLUDED.forced_outcome")
+	if cfg.Outcome.ForceOutcome != nil {
+		switch *cfg.Outcome.ForceOutcome {
+		case models.UnsetForcedOutcome:
+			updateFields = append(updateFields, "forced_outcome = NULL")
+		default:
+			updateFields = append(updateFields, "forced_outcome = EXCLUDED.forced_outcome")
+		}
 	}
-	if sanctionCheckConfig.Outcome.ScoreModifier != nil {
+	if cfg.Outcome.ScoreModifier != nil {
 		updateFields = append(updateFields, "score_modifier = EXCLUDED.score_modifier")
 	}
+	if len(updateFields) > 0 {
+		updateFields = append(updateFields, "updated_at = NOW()")
+	}
 
-	updateFields = append(updateFields, "updated_at = NOW()")
-
-	sql = sql.Suffix(strings.Join(updateFields, ","))
+	switch len(updateFields) {
+	case 0:
+		sql = sql.Suffix("ON CONFLICT (scenario_iteration_id) DO NOTHING")
+	default:
+		sql = sql.Suffix(fmt.Sprintf("ON CONFLICT (scenario_iteration_id) DO UPDATE SET %s", strings.Join(updateFields, ",")))
+	}
 
 	sql = sql.Suffix(fmt.Sprintf("RETURNING %s",
 		strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
