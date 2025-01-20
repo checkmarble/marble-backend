@@ -93,6 +93,11 @@ type DecisionRule struct {
 	RuleEvaluation *ast.NodeEvaluationDto `json:"rule_evaluation,omitempty"`
 }
 
+type DecisionSanctionCheck struct {
+	Partial bool `json:"partial"`
+	Matches int  `json:"matches"`
+}
+
 type ErrorDto struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -128,7 +133,8 @@ type Decision struct {
 
 type DecisionWithRules struct {
 	Decision
-	Rules []DecisionRule `json:"rules"`
+	Rules         []DecisionRule         `json:"rules"`
+	SanctionCheck *DecisionSanctionCheck `json:"sanction_check,omitempty"`
 }
 
 func NewDecisionDto(decision models.Decision, marbleAppHost string) Decision {
@@ -188,6 +194,13 @@ func NewDecisionWithRuleDto(decision models.DecisionWithRuleExecutions, marbleAp
 
 	for i, ruleExecution := range decision.RuleExecutions {
 		decisionDto.Rules[i] = NewDecisionRuleDto(ruleExecution, withRuleExecution)
+	}
+
+	if decision.SanctionCheckExecution != nil {
+		decisionDto.SanctionCheck = &DecisionSanctionCheck{
+			Partial: decision.SanctionCheckExecution.Partial,
+			Matches: decision.SanctionCheckExecution.Matches,
+		}
 	}
 
 	return decisionDto
