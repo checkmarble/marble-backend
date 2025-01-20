@@ -49,7 +49,8 @@ type DecisionCore struct {
 
 type DecisionWithRuleExecutions struct {
 	Decision
-	RuleExecutions []RuleExecution
+	RuleExecutions         []RuleExecution
+	SanctionCheckExecution *SanctionCheckExecution
 }
 
 type DecisionsByVersionByOutcome struct {
@@ -65,18 +66,19 @@ type DecisionWithRank struct {
 }
 
 type ScenarioExecution struct {
-	ScenarioId          string
-	ScenarioIterationId string
-	ScenarioName        string
-	ScenarioDescription string
-	ScenarioVersion     int
-	PivotId             *string
-	PivotValue          *string
-	RuleExecutions      []RuleExecution
-	Score               int
-	Outcome             Outcome
-	OrganizationId      string
-	TestRunId           string
+	ScenarioId             string
+	ScenarioIterationId    string
+	ScenarioName           string
+	ScenarioDescription    string
+	ScenarioVersion        int
+	PivotId                *string
+	PivotValue             *string
+	RuleExecutions         []RuleExecution
+	SanctionCheckExecution *SanctionCheckExecution
+	Score                  int
+	Outcome                Outcome
+	OrganizationId         string
+	TestRunId              string
 }
 
 type RuleExecutionStat struct {
@@ -95,6 +97,11 @@ type RuleExecution struct {
 	Result              bool
 	ResultScoreModifier int
 	Rule                Rule
+}
+
+type SanctionCheckExecution struct {
+	Partial bool
+	Matches int
 }
 
 func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject ClientObject, scheduledExecutionId *string) DecisionWithRuleExecutions {
@@ -122,7 +129,8 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 			ScheduledExecutionId: scheduledExecutionId,
 			Score:                scenarioExecution.Score,
 		},
-		RuleExecutions: scenarioExecution.RuleExecutions,
+		RuleExecutions:         scenarioExecution.RuleExecutions,
+		SanctionCheckExecution: scenarioExecution.SanctionCheckExecution,
 	}
 }
 
