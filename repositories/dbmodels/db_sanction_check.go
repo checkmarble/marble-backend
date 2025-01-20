@@ -35,7 +35,9 @@ func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheckExecution, err
 		Datasets:       dto.SearchDatasets,
 	}
 
-	var query models.OpenSanctionsQuery
+	query := models.OpenSanctionsQuery{
+		OrgConfig: cfg,
+	}
 
 	err := json.NewDecoder(bytes.NewReader(dto.SearchInput)).Decode(&query)
 	if err != nil {
@@ -44,9 +46,9 @@ func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheckExecution, err
 	}
 
 	return models.SanctionCheckExecution{
-		Query:     query,
-		OrgConfig: cfg,
-		Count:     0,
-		Partial:   dto.IsPartial,
+		Id:      dto.Id,
+		Query:   query,
+		Count:   0,
+		Partial: dto.IsPartial,
 	}, nil
 }
