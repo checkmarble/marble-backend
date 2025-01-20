@@ -10,12 +10,12 @@ import (
 )
 
 type SanctionCheckProvider interface {
-	Search(context.Context, models.OrganizationOpenSanctionsConfig, models.SanctionCheckConfig,
+	Search(context.Context, models.SanctionCheckConfig,
 		models.OpenSanctionsQuery) (models.SanctionCheckExecution, error)
 }
 
 type SanctionCheckRepository interface {
-	InsertResults(context.Context, repositories.Executor, models.SanctionCheckExecution) (models.SanctionCheckExecution, error)
+	InsertResults(context.Context, repositories.Executor, models.DecisionWithRuleExecutions) (models.SanctionCheckExecution, error)
 }
 
 type SanctionCheckUsecase struct {
@@ -35,7 +35,9 @@ func (uc SanctionCheckUsecase) Execute(ctx context.Context, orgId string, cfg mo
 			errors.Wrap(err, "could not retrieve organization")
 	}
 
-	matches, err := uc.openSanctionsProvider.Search(ctx, org.OpenSanctionsConfig, cfg, query)
+	query.OrgConfig = org.OpenSanctionsConfig
+
+	matches, err := uc.openSanctionsProvider.Search(ctx, cfg, query)
 	if err != nil {
 		return models.SanctionCheckExecution{}, err
 	}
@@ -45,7 +47,7 @@ func (uc SanctionCheckUsecase) Execute(ctx context.Context, orgId string, cfg mo
 
 func (uc SanctionCheckUsecase) InsertResults(ctx context.Context,
 	exec repositories.Executor,
-	result models.SanctionCheckExecution,
+	decision models.DecisionWithRuleExecutions,
 ) (models.SanctionCheckExecution, error) {
-	return uc.repository.InsertResults(ctx, exec, result)
+	return uc.repository.InsertResults(ctx, exec, decision)
 }

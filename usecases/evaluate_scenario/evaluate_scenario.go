@@ -133,10 +133,12 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 	var sanctionCheckExecution *models.SanctionCheckExecution
 
 	if iteration.SanctionCheckConfig != nil {
-		query := models.OpenSanctionsQuery{Queries: models.OpenSanctionCheckFilter{
-			// TODO: take this from the context and the scenario configuration
-			"name": []string{"obama"},
-		}}
+		query := models.OpenSanctionsQuery{
+			Queries: models.OpenSanctionCheckFilter{
+				// TODO: take this from the context and the scenario configuration
+				"name": []string{"obama"},
+			},
+		}
 
 		result, err := repositories.EvalSanctionCheckUsecase.Execute(ctx,
 			params.Scenario.OrganizationId, *iteration.SanctionCheckConfig, query)
