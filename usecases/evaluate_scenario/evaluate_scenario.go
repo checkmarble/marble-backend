@@ -130,6 +130,7 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 
 	// Compute outcome from score
 	var outcome models.Outcome
+	var sanctionCheckExecution *models.SanctionCheckExecution
 
 	if iteration.SanctionCheckConfig != nil {
 		query := models.OpenSanctionsQuery{Queries: models.OpenSanctionCheckFilter{
@@ -141,6 +142,11 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 			params.Scenario.OrganizationId, *iteration.SanctionCheckConfig, query)
 		if err != nil {
 			return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
+		}
+
+		sanctionCheckExecution = &models.SanctionCheckExecution{
+			Partial: result.Partial,
+			Matches: len(result.Matches),
 		}
 
 		if result.Count > 0 {
@@ -172,15 +178,16 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 
 	// Build ScenarioExecution as result
 	se := models.ScenarioExecution{
-		ScenarioId:          params.Scenario.Id,
-		ScenarioIterationId: iteration.Id,
-		ScenarioName:        params.Scenario.Name,
-		ScenarioDescription: params.Scenario.Description,
-		ScenarioVersion:     *iteration.Version,
-		RuleExecutions:      ruleExecutions,
-		Score:               score,
-		Outcome:             outcome,
-		OrganizationId:      params.Scenario.OrganizationId,
+		ScenarioId:             params.Scenario.Id,
+		ScenarioIterationId:    iteration.Id,
+		ScenarioName:           params.Scenario.Name,
+		ScenarioDescription:    params.Scenario.Description,
+		ScenarioVersion:        *iteration.Version,
+		RuleExecutions:         ruleExecutions,
+		SanctionCheckExecution: sanctionCheckExecution,
+		Score:                  score,
+		Outcome:                outcome,
+		OrganizationId:         params.Scenario.OrganizationId,
 	}
 	if params.Pivot != nil {
 		se.PivotId = &params.Pivot.Id
