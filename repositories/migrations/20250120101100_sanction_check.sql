@@ -5,12 +5,13 @@ create table sanction_checks (
     id uuid default uuid_generate_v4(),
     decision_id uuid not null,
 
-    status text check (status in ('confirmed_hit', 'in_review', 'error')),
+    status text check (status in ('confirmed_hit', 'in_review', 'error')) default 'in_review',
     search_input jsonb,
     search_datasets text[],
-    search_threshold float,
+    search_threshold integer,
     is_manual bool default false,
     requested_by uuid null,
+    is_partial bool default false,
 
     is_archived bool default false,
     created_at timestamp with time zone default now(),
@@ -32,7 +33,7 @@ create table sanction_check_matches (
     sanction_check_id uuid not null,
 
     opensanction_entity_id text not null,
-    status text check (status in ('pending', 'confirmed_hit', 'no_hit')),
+    status text check (status in ('pending', 'confirmed_hit', 'no_hit')) default 'pending',
     query_ids text[],
     payload jsonb,
     reviewed_by uuid,
