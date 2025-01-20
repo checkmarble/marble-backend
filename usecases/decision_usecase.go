@@ -446,6 +446,14 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
+		if decision.SanctionCheckExecution != nil {
+			if _, err := usecase.sanctionCheckUsecase.repository.InsertResults(ctx, tx,
+				*decision.SanctionCheckExecution); err != nil {
+				return models.DecisionWithRuleExecutions{},
+					errors.Wrap(err, "could not store sanction check execution")
+			}
+		}
+
 		if params.WithDecisionWebhooks {
 			webhookEventId := uuid.NewString()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
