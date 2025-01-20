@@ -32,21 +32,22 @@ type openSanctionsRequestQuery struct {
 func (repo OpenSanctionsRepository) Search(ctx context.Context,
 	orgCfg models.OrganizationOpenSanctionsConfig, cfg models.SanctionCheckConfig,
 	query models.OpenSanctionsQuery,
-) (models.SanctionCheckResult, error) {
+) (models.SanctionCheckExecution, error) {
 	req, err := repo.searchRequest(ctx, orgCfg, query)
 	if err != nil {
-		return models.SanctionCheckResult{}, err
+		return models.SanctionCheckExecution{}, err
 	}
 
 	utils.LoggerFromContext(ctx).Debug("SANCTION CHECK: sending request...")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return models.SanctionCheckResult{}, errors.Wrap(err, "could not perform sanction check")
+		return models.SanctionCheckExecution{},
+			errors.Wrap(err, "could not perform sanction check")
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return models.SanctionCheckResult{}, fmt.Errorf(
+		return models.SanctionCheckExecution{}, fmt.Errorf(
 			"sanction check API returned status %d", resp.StatusCode)
 	}
 
@@ -55,7 +56,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context,
 	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&matches); err != nil {
-		return models.SanctionCheckResult{}, errors.Wrap(err,
+		return models.SanctionCheckExecution{}, errors.Wrap(err,
 			"could not parse sanction check response")
 	}
 
