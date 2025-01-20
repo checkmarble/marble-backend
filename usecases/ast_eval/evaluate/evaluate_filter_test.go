@@ -23,7 +23,7 @@ var dataModel = models.DataModel{
 		},
 	},
 }
-var filter = FilterEvaluator{DataModel: dataModel}
+var filterWithBool = FilterEvaluator{DataModel: dataModel}
 
 func TestFilter(t *testing.T) {
 	arguments := ast.Arguments{
@@ -38,12 +38,12 @@ func TestFilter(t *testing.T) {
 		TableName: "table1",
 		FieldName: "field1",
 		Operator:  ast.FILTER_EQUAL,
-		Value:     1,
+		Value:     true,
 	}
 
-	result, errs := filter.Evaluate(context.TODO(), arguments)
+	result, errs := filterWithBool.Evaluate(context.TODO(), arguments)
 	assert.Empty(t, errs)
-	assert.ObjectsAreEqualValues(expectedResult, result)
+	assert.EqualValues(t, expectedResult, result)
 }
 
 func TestFilter_tableName_not_string(t *testing.T) {
@@ -55,7 +55,7 @@ func TestFilter_tableName_not_string(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(context.TODO(), arguments)
+	_, errs := filterWithBool.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -68,7 +68,7 @@ func TestFilter_fieldName_not_string(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(context.TODO(), arguments)
+	_, errs := filterWithBool.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -81,7 +81,7 @@ func TestFilter_field_unknown(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(context.TODO(), arguments)
+	_, errs := filterWithBool.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -94,7 +94,7 @@ func TestFilter_operator_invalid(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(context.TODO(), arguments)
+	_, errs := filterWithBool.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -107,7 +107,7 @@ func TestFilter_operator_unknown(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(context.TODO(), arguments)
+	_, errs := filterWithBool.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -120,7 +120,7 @@ func TestFilter_fieldType_incompatible(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(context.TODO(), arguments)
+	_, errs := filterWithBool.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -133,7 +133,7 @@ func TestFilter_value_incompatible(t *testing.T) {
 			"value":     "incompatible_value",
 		},
 	}
-	_, errs := filter.Evaluate(context.TODO(), arguments)
+	_, errs := filterWithBool.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -171,7 +171,7 @@ func TestFilter_value_float(t *testing.T) {
 	result, errs := filterWithInt.Evaluate(context.TODO(), arguments)
 	assert.Empty(t, errs)
 
-	assert.ObjectsAreEqualValues(expectedResult, result)
+	assert.EqualValues(t, expectedResult, result)
 }
 
 var dataModelWithString = models.DataModel{
@@ -208,7 +208,7 @@ func TestFilter_is_in_list(t *testing.T) {
 	result, errs := filterWithString.Evaluate(context.TODO(), arguments)
 	assert.Empty(t, errs)
 
-	assert.ObjectsAreEqualValues(expectedResult, result)
+	assert.EqualValues(t, expectedResult, result)
 }
 
 func TestFilter_is_not_in_list(t *testing.T) {
@@ -224,13 +224,13 @@ func TestFilter_is_not_in_list(t *testing.T) {
 	expectedResult := ast.Filter{
 		TableName: "table1",
 		FieldName: "field1",
-		// Operator:  ast.FILTER_IS_NOT_IN_LIST,
-		Value: []string{"a", "b"},
+		Operator:  ast.FILTER_IS_NOT_IN_LIST,
+		Value:     []string{"a", "b"},
 	}
 	result, errs := filterWithString.Evaluate(context.TODO(), arguments)
 	assert.Empty(t, errs)
 
-	assert.ObjectsAreEqualValues(expectedResult, result)
+	assert.EqualValues(t, expectedResult, result)
 }
 
 func TestFilter_is_in_list_invalid_value_type(t *testing.T) {
@@ -258,5 +258,119 @@ func TestFilter_is_in_list_invalid_field_type(t *testing.T) {
 	}
 
 	_, errs := filterWithInt.Evaluate(context.TODO(), arguments)
+	assert.NotEmpty(t, errs)
+}
+
+func TestFilter_is_empty(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"tableName": "table1",
+			"fieldName": "field1",
+			"operator":  "IsEmpty",
+		},
+	}
+
+	expectedResult := ast.Filter{
+		TableName: "table1",
+		FieldName: "field1",
+		Operator:  ast.FILTER_IS_EMPTY,
+		Value:     nil,
+	}
+	result, errs := filterWithString.Evaluate(context.TODO(), arguments)
+	assert.Empty(t, errs)
+
+	assert.EqualValues(t, expectedResult, result)
+}
+
+func TestFilter_is_not_empty(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"tableName": "table1",
+			"fieldName": "field1",
+			"operator":  "IsNotEmpty",
+		},
+	}
+
+	expectedResult := ast.Filter{
+		TableName: "table1",
+		FieldName: "field1",
+		Operator:  ast.FILTER_IS_NOT_EMPTY,
+		Value:     nil,
+	}
+	result, errs := filterWithString.Evaluate(context.TODO(), arguments)
+	assert.Empty(t, errs)
+
+	assert.EqualValues(t, expectedResult, result)
+}
+
+func TestFilter_starts_with(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"tableName": "table1",
+			"fieldName": "field1",
+			"operator":  "StringStartsWith",
+			"value":     "some_value",
+		},
+	}
+
+	expectedResult := ast.Filter{
+		TableName: "table1",
+		FieldName: "field1",
+		Operator:  ast.FILTER_STARTS_WITH,
+		Value:     "some_value",
+	}
+	result, errs := filterWithString.Evaluate(context.TODO(), arguments)
+	assert.Empty(t, errs)
+
+	assert.EqualValues(t, expectedResult, result)
+}
+
+func TestFilter_starts_with_wrong_value_type(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"tableName": "table1",
+			"fieldName": "field1",
+			"operator":  "StringStartsWith",
+			"value":     1,
+		},
+	}
+
+	_, errs := filterWithString.Evaluate(context.TODO(), arguments)
+	assert.NotEmpty(t, errs)
+}
+
+func TestFilter_ends_with(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"tableName": "table1",
+			"fieldName": "field1",
+			"operator":  "StringEndsWith",
+			"value":     "some_value",
+		},
+	}
+
+	expectedResult := ast.Filter{
+		TableName: "table1",
+		FieldName: "field1",
+		Operator:  ast.FILTER_ENDS_WITH,
+		Value:     "some_value",
+	}
+	result, errs := filterWithString.Evaluate(context.TODO(), arguments)
+	assert.Empty(t, errs)
+
+	assert.EqualValues(t, expectedResult, result)
+}
+
+func TestFilter_ends_with_wrong_value_type(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"tableName": "table1",
+			"fieldName": "field1",
+			"operator":  "StringEndsWith",
+			"value":     1,
+		},
+	}
+
+	_, errs := filterWithString.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }

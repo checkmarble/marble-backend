@@ -33,7 +33,7 @@ type IngestedDataReadRepository interface {
 		fieldName string,
 		fieldType models.DataType,
 		aggregator ast.Aggregator,
-		filters []ast.Filter,
+		filters []models.FilterWithType,
 	) (any, error)
 }
 
@@ -314,7 +314,7 @@ func createQueryAggregated(
 	fieldName string,
 	fieldType models.DataType,
 	aggregator ast.Aggregator,
-	filters []ast.Filter,
+	filters []models.FilterWithType,
 ) (squirrel.SelectBuilder, error) {
 	var selectExpression string
 	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
@@ -339,7 +339,8 @@ func createQueryAggregated(
 
 	var err error
 	for _, filter := range filters {
-		query, err = addConditionForOperator(query, qualifiedTableName, filter.FieldName, filter.Operator, filter.Value)
+		query, err = addConditionForOperator(query, qualifiedTableName,
+			filter.Filter.FieldName, filter.FieldType, filter.Filter.Operator, filter.Filter.Value)
 		if err != nil {
 			return squirrel.SelectBuilder{}, err
 		}
@@ -354,7 +355,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(
 	fieldName string,
 	fieldType models.DataType,
 	aggregator ast.Aggregator,
-	filters []ast.Filter,
+	filters []models.FilterWithType,
 ) (any, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
@@ -377,7 +378,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(
 	return result, nil
 }
 
-func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fieldName string,
+func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fieldName string, fieldType models.DataType,
 	operator ast.FilterOperator, value any,
 ) (squirrel.SelectBuilder, error) {
 	switch operator {
@@ -393,6 +394,30 @@ func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fie
 		return query.Where(squirrel.Lt{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
 	case ast.FILTER_LESSER_OR_EQUAL:
 		return query.Where(squirrel.LtOrEq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+	case ast.FILTER_IS_EMPTY:
+		orCondition := squirrel.Or{
+			squirrel.Eq{fmt.Sprintf("%s.%s", tableName, fieldName): nil},
+		}
+		if fieldType == models.String {
+			orCondition = append(orCondition, squirrel.Eq{
+				fmt.Sprintf("%s.%s", tableName, fieldName): "",
+			})
+		}
+		return query.Where(orCondition), nil
+	case ast.FILTER_IS_NOT_EMPTY:
+		andCondition := squirrel.And{
+			squirrel.NotEq{fmt.Sprintf("%s.%s", tableName, fieldName): nil},
+		}
+		if fieldType == models.String {
+			andCondition = append(andCondition,
+				squirrel.NotEq{fmt.Sprintf("%s.%s", tableName, fieldName): ""},
+			)
+		}
+		return query.Where(andCondition), nil
+	case ast.FILTER_STARTS_WITH:
+		return query.Where(squirrel.Like{fmt.Sprintf("%s.%s", tableName, fieldName): fmt.Sprintf("%s%%", value)}), nil
+	case ast.FILTER_ENDS_WITH:
+		return query.Where(squirrel.Like{fmt.Sprintf("%s.%s", tableName, fieldName): fmt.Sprintf("%%%s", value)}), nil
 	default:
 		return query, fmt.Errorf("unknown operator %s: %w", operator, models.BadParameterError)
 	}

@@ -73,6 +73,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	}
 
 	// Filters validation
+	var filtersWithType []models.FilterWithType
 	if len(filters) > 0 {
 		for _, filter := range filters {
 			if filter.TableName != tableName {
@@ -82,14 +83,28 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 					ast.NewNamedArgumentError("filters"),
 				))
 			}
-			// At the first nil filter value found, stop and just return the default value for the aggregator
-			if filter.Value == nil {
+
+			// At the first nil filter value found if we're not on an unary operator, stop and just return the default value for the aggregator
+			if filter.Value == nil && !filter.Operator.IsUnary() {
 				return a.defaultValueForAggregator(aggregator)
 			}
+
+			filterFieldType, err := getFieldType(a.DataModel, filter.TableName, filter.FieldName)
+			if err != nil {
+				return MakeEvaluateError(errors.Join(
+					errors.Wrap(err, fmt.Sprintf("field type for %s.%s not found in data model in Evaluate aggregator", filter.TableName, filter.FieldName)),
+					ast.NewNamedArgumentError("fieldName"),
+				))
+			}
+
+			filtersWithType = append(filtersWithType, models.FilterWithType{
+				Filter:    filter,
+				FieldType: filterFieldType,
+			})
 		}
 	}
 
-	result, err := a.runQueryInRepository(ctx, tableName, fieldName, fieldType, aggregator, filters)
+	result, err := a.runQueryInRepository(ctx, tableName, fieldName, fieldType, aggregator, filtersWithType)
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err, "Error running aggregation query in repository"))
 	}
@@ -107,7 +122,7 @@ func (a AggregatorEvaluator) runQueryInRepository(
 	fieldName string,
 	fieldType models.DataType,
 	aggregator ast.Aggregator,
-	filters []ast.Filter,
+	filters []models.FilterWithType,
 ) (any, error) {
 	if a.ReturnFakeValue {
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)
@@ -117,7 +132,8 @@ func (a AggregatorEvaluator) runQueryInRepository(
 	if err != nil {
 		return nil, err
 	}
-	return a.IngestedDataReadRepository.QueryAggregatedValue(ctx, db, tableName, fieldName, fieldType, aggregator, filters)
+	return a.IngestedDataReadRepository.QueryAggregatedValue(ctx, db, tableName,
+		fieldName, fieldType, aggregator, filters)
 }
 
 func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator) (any, []error) {
