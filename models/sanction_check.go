@@ -6,13 +6,13 @@ type OpenSanctionsQuery struct {
 	Queries OpenSanctionCheckFilter `json:"queries"`
 }
 
-type SanctionCheckResult struct {
+type SanctionCheckExecution struct {
 	Partial bool
 	Count   int
-	Matches []SanctionCheckResultMatch
+	Matches []SanctionCheckExecutionMatch
 }
 
-type SanctionCheckResultMatch struct {
+type SanctionCheckExecutionMatch struct {
 	Id       string
 	Schema   string
 	Datasets []string
