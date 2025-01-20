@@ -23,10 +23,10 @@ type HTTPOpenSanctionsResult struct {
 	} `json:"responses"`
 }
 
-func AdaptOpenSanctionsResult(result HTTPOpenSanctionsResult) (models.SanctionCheckResult, error) {
+func AdaptOpenSanctionsResult(result HTTPOpenSanctionsResult) (models.SanctionCheckExecution, error) {
 	// TODO: Replace with actual processing of responses
 	partial := false
-	matches := make(map[string]models.SanctionCheckResultMatch)
+	matches := make(map[string]models.SanctionCheckExecutionMatch)
 
 	for _, resp := range result.Responses {
 		if resp.Total.Value > len(resp.Results) {
@@ -35,7 +35,7 @@ func AdaptOpenSanctionsResult(result HTTPOpenSanctionsResult) (models.SanctionCh
 
 		for _, match := range resp.Results {
 			if _, ok := matches[match.Id]; !ok {
-				entity := models.SanctionCheckResultMatch{
+				entity := models.SanctionCheckExecutionMatch{
 					Id:       match.Id,
 					Schema:   match.Schema,
 					Datasets: match.Datasets,
@@ -47,7 +47,7 @@ func AdaptOpenSanctionsResult(result HTTPOpenSanctionsResult) (models.SanctionCh
 		}
 	}
 
-	output := models.SanctionCheckResult{
+	output := models.SanctionCheckExecution{
 		Partial: partial,
 		Count:   len(matches),
 		Matches: slices.Collect(maps.Values(matches)),
