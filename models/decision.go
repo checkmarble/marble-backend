@@ -99,11 +99,6 @@ type RuleExecution struct {
 	Rule                Rule
 }
 
-type SanctionCheckExecution struct {
-	Partial bool
-	Matches int
-}
-
 func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject ClientObject, scheduledExecutionId *string) DecisionWithRuleExecutions {
 	var reviewStatus *string
 	if scenarioExecution.Outcome == BlockAndReview {

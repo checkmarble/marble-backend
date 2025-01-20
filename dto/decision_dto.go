@@ -95,7 +95,7 @@ type DecisionRule struct {
 
 type DecisionSanctionCheck struct {
 	Partial bool `json:"partial"`
-	Matches int  `json:"matches"`
+	Count   int  `json:"count"`
 }
 
 type ErrorDto struct {
@@ -199,7 +199,7 @@ func NewDecisionWithRuleDto(decision models.DecisionWithRuleExecutions, marbleAp
 	if decision.SanctionCheckExecution != nil {
 		decisionDto.SanctionCheck = &DecisionSanctionCheck{
 			Partial: decision.SanctionCheckExecution.Partial,
-			Matches: decision.SanctionCheckExecution.Matches,
+			Count:   decision.SanctionCheckExecution.Count,
 		}
 	}
 

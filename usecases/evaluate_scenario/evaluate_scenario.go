@@ -34,7 +34,7 @@ type ScenarioEvaluationParameters struct {
 
 type EvalSanctionCheckUsecase interface {
 	Execute(context.Context, string, models.SanctionCheckConfig,
-		models.OpenSanctionsQuery) (models.SanctionCheckResult, error)
+		models.OpenSanctionsQuery) (models.SanctionCheckExecution, error)
 }
 
 type SnoozesForDecisionReader interface {
@@ -144,10 +144,7 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 			return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
 		}
 
-		sanctionCheckExecution = &models.SanctionCheckExecution{
-			Partial: result.Partial,
-			Matches: len(result.Matches),
-		}
+		sanctionCheckExecution = &result
 
 		if result.Count > 0 {
 			switch {
