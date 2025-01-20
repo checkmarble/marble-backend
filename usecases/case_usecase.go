@@ -112,6 +112,7 @@ func (usecase *CaseUseCase) ListCases(
 				EndDate:        filters.EndDate,
 				Statuses:       statuses,
 				OrganizationId: organizationId,
+				Name:           filters.Name,
 			}
 			if len(filters.InboxIds) > 0 {
 				repoFilters.InboxIds = filters.InboxIds
