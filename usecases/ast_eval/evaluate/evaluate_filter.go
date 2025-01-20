@@ -25,8 +25,8 @@ var validTypeForFilterOperators = map[ast.FilterOperator][]models.DataType{
 	ast.FILTER_LESSER_OR_EQUAL:  {models.Int, models.Float, models.String, models.Timestamp},
 	ast.FILTER_IS_IN_LIST:       {models.String},
 	ast.FILTER_IS_NOT_IN_LIST:   {models.String},
-	ast.FILTER_IS_EMPTY:         {models.Int, models.Float, models.String, models.Timestamp},
-	ast.FILTER_IS_NOT_EMPTY:     {models.Int, models.Float, models.String, models.Timestamp},
+	ast.FILTER_IS_EMPTY:         {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
+	ast.FILTER_IS_NOT_EMPTY:     {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
 	ast.FILTER_STARTS_WITH:      {models.String},
 	ast.FILTER_ENDS_WITH:        {models.String},
 }
