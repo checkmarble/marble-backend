@@ -30,10 +30,10 @@ type openSanctionsRequestQuery struct {
 }
 
 func (repo OpenSanctionsRepository) Search(ctx context.Context,
-	orgCfg models.OrganizationOpenSanctionsConfig, cfg models.SanctionCheckConfig,
+	cfg models.SanctionCheckConfig,
 	query models.OpenSanctionsQuery,
 ) (models.SanctionCheckExecution, error) {
-	req, err := repo.searchRequest(ctx, orgCfg, query)
+	req, err := repo.searchRequest(ctx, query)
 	if err != nil {
 		return models.SanctionCheckExecution{}, err
 	}
@@ -60,11 +60,11 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context,
 			"could not parse sanction check response")
 	}
 
-	return httpmodels.AdaptOpenSanctionsResult(matches)
+	return httpmodels.AdaptOpenSanctionsResult(query, matches)
 }
 
 func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
-	orgCfg models.OrganizationOpenSanctionsConfig, query models.OpenSanctionsQuery,
+	query models.OpenSanctionsQuery,
 ) (*http.Request, error) {
 	q := openSanctionsRequest{
 		Queries: make(map[string]openSanctionsRequestQuery, len(query.Queries)),
@@ -85,7 +85,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 
 	requestUrl := fmt.Sprintf("%s/match/sanctions", repo.opensanctions.Host())
 
-	if qs := repo.buildQueryString(orgCfg); len(qs) > 0 {
+	if qs := repo.buildQueryString(query.OrgConfig); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
 	}
 
