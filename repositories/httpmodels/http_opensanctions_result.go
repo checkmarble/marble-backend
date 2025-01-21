@@ -47,9 +47,8 @@ func AdaptOpenSanctionsResult(query models.OpenSanctionsQuery, result HTTPOpenSa
 
 			if _, ok := matches[parsed.Id]; !ok {
 				entity := models.SanctionCheckExecutionMatch{
-					Raw:      match,
+					Payload:  match,
 					EntityId: parsed.Id,
-					Schema:   parsed.Schema,
 					Datasets: parsed.Datasets,
 				}
 

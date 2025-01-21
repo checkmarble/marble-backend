@@ -3,8 +3,9 @@ package models
 type OpenSanctionCheckFilter map[string][]string
 
 type OpenSanctionsQuery struct {
-	Queries   OpenSanctionCheckFilter         `json:"queries"`
-	OrgConfig OrganizationOpenSanctionsConfig `json:"-"`
+	Queries      OpenSanctionCheckFilter         `json:"-"`
+	QueryPayload []byte                          `json:"queries"` //nolint:tagliatelle
+	OrgConfig    OrganizationOpenSanctionsConfig `json:"-"`
 }
 
 type SanctionCheckExecution struct {
@@ -17,10 +18,9 @@ type SanctionCheckExecution struct {
 }
 
 type SanctionCheckExecutionMatch struct {
-	Raw []byte
+	Payload []byte
 
 	Id       string
-	Schema   string
 	EntityId string
 	QueryIds []string
 	Datasets []string
