@@ -6,6 +6,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/pkg/errors"
 )
 
@@ -14,15 +15,61 @@ type SanctionCheckProvider interface {
 		models.OpenSanctionsQuery) (models.SanctionCheckExecution, error)
 }
 
+type SanctionCheckDecisionRepository interface {
+	DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error)
+}
+
 type SanctionCheckRepository interface {
-	InsertResults(context.Context, repositories.Executor, models.DecisionWithRuleExecutions) (models.SanctionCheckExecution, error)
+	ListSanctionChecksForDecision(context.Context, repositories.Executor, string) ([]models.SanctionCheckExecution, error)
+	ListSanctionCheckMatches(ctx context.Context, exec repositories.Executor, sanctionCheckId string) (
+		[]models.SanctionCheckExecutionMatch, error)
+	InsertSanctionCheck(context.Context, repositories.Executor,
+		models.DecisionWithRuleExecutions) (models.SanctionCheckExecution, error)
 }
 
 type SanctionCheckUsecase struct {
+	enforceSecurityDecision security.EnforceSecurityDecision
+
 	organizationRepository repositories.OrganizationRepository
+	decisionRepository     SanctionCheckDecisionRepository
 	openSanctionsProvider  SanctionCheckProvider
 	repository             SanctionCheckRepository
 	executorFactory        executor_factory.ExecutorFactory
+}
+
+func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionId string) ([]models.SanctionCheckExecution, error) {
+	decision, err := uc.decisionRepository.DecisionsById(ctx,
+		uc.executorFactory.NewExecutor(), []string{decisionId})
+	if err != nil {
+		return nil, err
+	}
+	if len(decision) == 0 {
+		return nil, errors.Wrap(models.NotFoundError, "requested decision does not exist")
+	}
+
+	if err := uc.enforceSecurityDecision.ReadDecision(decision[0]); err != nil {
+		return nil, err
+	}
+
+	sanctionChecks, err := uc.repository.ListSanctionChecksForDecision(ctx,
+		uc.executorFactory.NewExecutor(), decision[0].DecisionId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve sanction check")
+	}
+
+	// TODO: anything supports nested queries?
+	for idx, sc := range sanctionChecks {
+		matches, err := uc.repository.ListSanctionCheckMatches(ctx,
+			uc.executorFactory.NewExecutor(), sc.Id)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not retrieve sanction check matches")
+		}
+
+		sanctionChecks[idx].Count = len(matches)
+		sanctionChecks[idx].Matches = matches
+	}
+
+	return sanctionChecks, nil
 }
 
 func (uc SanctionCheckUsecase) Execute(ctx context.Context, orgId string, cfg models.SanctionCheckConfig,
@@ -49,5 +96,5 @@ func (uc SanctionCheckUsecase) InsertResults(ctx context.Context,
 	exec repositories.Executor,
 	decision models.DecisionWithRuleExecutions,
 ) (models.SanctionCheckExecution, error) {
-	return uc.repository.InsertResults(ctx, exec, decision)
+	return uc.repository.InsertSanctionCheck(ctx, exec, decision)
 }
