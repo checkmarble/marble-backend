@@ -5,12 +5,43 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (*MarbleDbRepository) InsertResults(ctx context.Context, exec Executor,
+func (*MarbleDbRepository) ListSanctionChecksForDecision(ctx context.Context, exec Executor,
+	decisionId string,
+) ([]models.SanctionCheckExecution, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectSanctionChecksColumn...).
+		From(dbmodels.TABLE_SANCTION_CHECKS).
+		Where(squirrel.Eq{"decision_id": decisionId})
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
+}
+
+func (*MarbleDbRepository) ListSanctionCheckMatches(ctx context.Context, exec Executor,
+	sanctionCheckId string,
+) ([]models.SanctionCheckExecutionMatch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectSanctionCheckMatchesColumn...).
+		From(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
+		Where(squirrel.Eq{"sanction_check_id": sanctionCheckId})
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
+}
+
+func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executor,
 	decision models.DecisionWithRuleExecutions,
 ) (models.SanctionCheckExecution, error) {
 	utils.LoggerFromContext(ctx).Debug("SANCTION CHECK: inserting matches in database")
@@ -18,6 +49,7 @@ func (*MarbleDbRepository) InsertResults(ctx context.Context, exec Executor,
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return *decision.SanctionCheckExecution, err
 	}
+
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECKS).Columns(
 		"decision_id",
@@ -47,7 +79,7 @@ func (*MarbleDbRepository) InsertResults(ctx context.Context, exec Executor,
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionCheckMatchesColumn, ",")))
 
 	for _, match := range decision.SanctionCheckExecution.Matches {
-		matchSql = matchSql.Values(result.Id, match.EntityId, match.QueryIds, match.Raw)
+		matchSql = matchSql.Values(result.Id, match.EntityId, match.QueryIds, match.Payload)
 	}
 
 	matches, err := SqlToListOfModels(ctx, exec, matchSql, dbmodels.AdaptSanctionCheckMatch)
