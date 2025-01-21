@@ -20,7 +20,7 @@ type DBSanctionCheck struct {
 	Status          string    `db:"status"`
 	SearchInput     []byte    `db:"search_input"`
 	SearchDatasets  []string  `db:"search_datasets"`
-	SearchThreshold int       `db:"search_threshold"`
+	SearchThreshold *int      `db:"search_threshold"`
 	IsManual        bool      `db:"is_manual"`
 	IsPartial       bool      `db:"is_partial"`
 	RequestedBy     *string   `db:"requested_by"`
@@ -31,7 +31,7 @@ type DBSanctionCheck struct {
 
 func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheckExecution, error) {
 	cfg := models.OrganizationOpenSanctionsConfig{
-		MatchThreshold: &dto.SearchThreshold,
+		MatchThreshold: dto.SearchThreshold,
 		Datasets:       dto.SearchDatasets,
 	}
 
