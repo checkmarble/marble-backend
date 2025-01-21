@@ -119,10 +119,12 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 
 func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecase {
 	return SanctionCheckUsecase{
-		organizationRepository: usecases.Repositories.OrganizationRepository,
-		openSanctionsProvider:  usecases.Repositories.OpenSanctionsRepository,
-		repository:             &usecases.Repositories.MarbleDbRepository,
-		executorFactory:        usecases.NewExecutorFactory(),
+		enforceSecurityDecision: usecases.NewEnforceDecisionSecurity(),
+		organizationRepository:  usecases.Repositories.OrganizationRepository,
+		decisionRepository:      &usecases.Repositories.MarbleDbRepository,
+		openSanctionsProvider:   usecases.Repositories.OpenSanctionsRepository,
+		repository:              &usecases.Repositories.MarbleDbRepository,
+		executorFactory:         usecases.NewExecutorFactory(),
 	}
 }
 
