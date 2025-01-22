@@ -24,6 +24,11 @@ type DBSanctionCheckMatch struct {
 	UpdatedAt            time.Time       `db:"updated_at"`
 }
 
+type DBSanctionCheckMatchWithComments struct {
+	DBSanctionCheckMatch
+	CommentCount int `db:"comment_count"`
+}
+
 func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckMatch, error) {
 	match := models.SanctionCheckMatch{
 		Id:              dto.Id,
@@ -34,6 +39,17 @@ func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckMatc
 		QueryIds:        dto.QueryIds,
 		Payload:         dto.Payload,
 	}
+
+	return match, nil
+}
+
+func AdaptSanctionCheckMatchWithComment(dto DBSanctionCheckMatchWithComments) (models.SanctionCheckMatch, error) {
+	match, err := AdaptSanctionCheckMatch(dto.DBSanctionCheckMatch)
+	if err != nil {
+		return match, err
+	}
+
+	match.CommentCount = dto.CommentCount
 
 	return match, nil
 }

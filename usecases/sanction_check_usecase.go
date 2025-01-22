@@ -31,6 +31,10 @@ type SanctionCheckRepository interface {
 	GetSanctionCheckMatch(ctx context.Context, exec repositories.Executor, matchId string) (models.SanctionCheckMatch, error)
 	UpdateSanctionCheckMatchStatus(ctx context.Context, exec repositories.Executor,
 		match models.SanctionCheckMatch, update models.SanctionCheckMatchUpdate) (models.SanctionCheckMatch, error)
+	AddSanctionCheckMatchComment(ctx context.Context, exec repositories.Executor,
+		comment models.SanctionCheckMatchComment) (models.SanctionCheckMatchComment, error)
+	ListSanctionCheckMatchComments(ctx context.Context, exec repositories.Executor, matchId string) (
+		[]models.SanctionCheckMatchComment, error)
 }
 
 type SanctionCheckUsecase struct {
@@ -109,8 +113,6 @@ func (uc SanctionCheckUsecase) InsertResults(ctx context.Context,
 func (uc SanctionCheckUsecase) UpdateMatchStatus(ctx context.Context, matchId string,
 	update models.SanctionCheckMatchUpdate,
 ) (models.SanctionCheckMatch, error) {
-	// TODO: get user ID?
-
 	match, err := uc.repository.GetSanctionCheckMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
 	if err != nil {
 		return models.SanctionCheckMatch{}, err
@@ -148,4 +150,47 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(ctx context.Context, matchId st
 	// TODO: should we also have some form of automatic cascade between matches? Such as "if we have a confirmed hit, all other matches are no hit"?
 
 	return uc.repository.UpdateSanctionCheckMatchStatus(ctx, uc.executorFactory.NewExecutor(), match, update)
+}
+
+func (uc SanctionCheckUsecase) MatchAddComment(ctx context.Context, matchId string,
+	comment models.SanctionCheckMatchComment,
+) (models.SanctionCheckMatchComment, error) {
+	match, err := uc.repository.GetSanctionCheckMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
+	if err != nil {
+		return models.SanctionCheckMatchComment{}, err
+	}
+
+	sanctionCheck, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), match.SanctionCheckId)
+	if err != nil {
+		return models.SanctionCheckMatchComment{}, err
+	}
+
+	decision, err := uc.decisionRepository.DecisionsById(ctx, uc.executorFactory.NewExecutor(), []string{sanctionCheck.DecisionId})
+	if err != nil {
+		return models.SanctionCheckMatchComment{}, err
+	}
+	if len(decision) == 0 {
+		return models.SanctionCheckMatchComment{},
+			errors.Wrap(models.NotFoundError, "could not find the decision linked to the sanction check")
+	}
+	if decision[0].Case == nil {
+		return models.SanctionCheckMatchComment{},
+			errors.Wrap(models.NotFoundError, "this sanction check is not linked to a case")
+	}
+
+	inboxes := []string{decision[0].Case.InboxId}
+
+	if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxes); err != nil {
+		return models.SanctionCheckMatchComment{}, err
+	}
+
+	creds, ok := utils.CredentialsFromCtx(ctx)
+	if !ok {
+		return models.SanctionCheckMatchComment{},
+			errors.Wrap(models.UnAuthorizedError, "could not get principal ID from credentials")
+	}
+
+	comment.CommenterId = creds.ActorIdentity.UserId
+
+	return uc.repository.AddSanctionCheckMatchComment(ctx, uc.executorFactory.NewExecutor(), comment)
 }
