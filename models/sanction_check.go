@@ -3,21 +3,20 @@ package models
 type OpenSanctionCheckFilter map[string][]string
 
 type OpenSanctionsQuery struct {
-	Queries      OpenSanctionCheckFilter         `json:"-"`
-	QueryPayload []byte                          `json:"queries"` //nolint:tagliatelle
-	OrgConfig    OrganizationOpenSanctionsConfig `json:"-"`
+	Queries   OpenSanctionCheckFilter         `json:"queries"`
+	OrgConfig OrganizationOpenSanctionsConfig `json:"-"`
 }
 
-type SanctionCheckExecution struct {
+type SanctionCheck struct {
 	Query OpenSanctionsQuery
 
 	Id      string
 	Partial bool
 	Count   int
-	Matches []SanctionCheckExecutionMatch
+	Matches []SanctionCheckMatch
 }
 
-type SanctionCheckExecutionMatch struct {
+type SanctionCheckMatch struct {
 	Payload []byte
 
 	Id       string

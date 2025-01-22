@@ -13,7 +13,7 @@ import (
 
 func (*MarbleDbRepository) ListSanctionChecksForDecision(ctx context.Context, exec Executor,
 	decisionId string,
-) ([]models.SanctionCheckExecution, error) {
+) ([]models.SanctionCheck, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func (*MarbleDbRepository) ListSanctionChecksForDecision(ctx context.Context, ex
 
 func (*MarbleDbRepository) ListSanctionCheckMatches(ctx context.Context, exec Executor,
 	sanctionCheckId string,
-) ([]models.SanctionCheckExecutionMatch, error) {
+) ([]models.SanctionCheckMatch, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (*MarbleDbRepository) ListSanctionCheckMatches(ctx context.Context, exec Ex
 
 func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executor,
 	decision models.DecisionWithRuleExecutions,
-) (models.SanctionCheckExecution, error) {
+) (models.SanctionCheck, error) {
 	utils.LoggerFromContext(ctx).Debug("SANCTION CHECK: inserting matches in database")
 
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -67,7 +67,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executo
 
 	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
 	if err != nil {
-		return models.SanctionCheckExecution{}, err
+		return models.SanctionCheck{}, err
 	}
 
 	if len(decision.SanctionCheckExecution.Matches) == 0 {
@@ -84,7 +84,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executo
 
 	matches, err := SqlToListOfModels(ctx, exec, matchSql, dbmodels.AdaptSanctionCheckMatch)
 	if err != nil {
-		return models.SanctionCheckExecution{}, err
+		return models.SanctionCheck{}, err
 	}
 
 	result.Matches = matches

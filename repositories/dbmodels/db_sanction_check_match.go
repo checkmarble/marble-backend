@@ -24,8 +24,8 @@ type DBSanctionCheckMatch struct {
 	UpdatedAt            time.Time       `db:"updated_at"`
 }
 
-func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckExecutionMatch, error) {
-	match := models.SanctionCheckExecutionMatch{
+func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckMatch, error) {
+	match := models.SanctionCheckMatch{
 		Id:       dto.Id,
 		EntityId: dto.OpenSanctionEntityId,
 		QueryIds: dto.QueryIds,
