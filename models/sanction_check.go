@@ -8,19 +8,27 @@ type OpenSanctionsQuery struct {
 }
 
 type SanctionCheck struct {
-	Query OpenSanctionsQuery
-
-	Id      string
-	Partial bool
-	Count   int
-	Matches []SanctionCheckMatch
+	Id          string
+	DecisionId  string
+	Query       OpenSanctionsQuery
+	Partial     bool
+	Count       int
+	Status      string
+	IsManual    bool
+	RequestedBy *string
+	Matches     []SanctionCheckMatch
 }
 
 type SanctionCheckMatch struct {
-	Payload []byte
+	Id              string
+	SanctionCheckId string
+	EntityId        string
+	Status          string
+	QueryIds        []string
+	Datasets        []string
+	Payload         []byte
+}
 
-	Id       string
-	EntityId string
-	QueryIds []string
-	Datasets []string
+type SanctionCheckMatchUpdate struct {
+	Status string
 }
