@@ -61,6 +61,26 @@ func handleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) func(c *gin.Cont
 
 func handleCreateSanctionCheckMatchComment(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		c.Status(http.StatusTeapot)
+		ctx := c.Request.Context()
+		matchId := c.Param("id")
+
+		var payload dto.SanctionCheckMatchCommentDto
+
+		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+
+		comment, err := uc.MatchAddComment(ctx, matchId, models.SanctionCheckMatchComment{
+			MatchId: matchId,
+			Comment: payload.Comment,
+		})
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusCreated, dto.AdaptSanctionCheckMatchCommentDto(comment))
 	}
 }
