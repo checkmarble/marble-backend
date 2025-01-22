@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/gin-gonic/gin"
@@ -29,5 +30,37 @@ func handleListSanctionChecks(uc usecases.Usecases) func(c *gin.Context) {
 		sanctionCheckJson := pure_utils.Map(sanctionChecks, dto.AdaptSanctionCheckDto)
 
 		c.JSON(http.StatusOK, sanctionCheckJson)
+	}
+}
+
+func handleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		matchId := c.Param("id")
+
+		var update dto.SanctionCheckMatchUpdateDto
+
+		if presentError(ctx, c, c.ShouldBindJSON(&update)) ||
+			presentError(ctx, c, update.Validate()) {
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+
+		match, err := uc.UpdateMatchStatus(ctx, matchId, models.SanctionCheckMatchUpdate{
+			Status: update.Status,
+		})
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptSanctionCheckMatchDto(match))
+	}
+}
+
+func handleCreateSanctionCheckMatchComment(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		c.Status(http.StatusTeapot)
 	}
 }
