@@ -27,7 +27,7 @@ type HTTPOpenSanctionResultResult struct {
 	} `json:"properties"`
 }
 
-func AdaptOpenSanctionsResult(query models.OpenSanctionsQuery, result HTTPOpenSanctionsResult) (models.SanctionCheck, error) {
+func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsResult) (models.SanctionCheck, error) {
 	// TODO: Replace with actual processing of responses
 	partial := false
 	matches := make(map[string]models.SanctionCheckMatch)
@@ -49,7 +49,6 @@ func AdaptOpenSanctionsResult(query models.OpenSanctionsQuery, result HTTPOpenSa
 				entity := models.SanctionCheckMatch{
 					Payload:  match,
 					EntityId: parsed.Id,
-					Datasets: parsed.Datasets,
 				}
 
 				matchToQueryId[parsed.Id] = append(matchToQueryId[parsed.Id], queryId)
