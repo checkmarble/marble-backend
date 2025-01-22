@@ -159,5 +159,15 @@ func (*MarbleDbRepository) AddSanctionCheckMatchComment(ctx context.Context,
 func (*MarbleDbRepository) ListSanctionCheckMatchComments(ctx context.Context,
 	exec Executor, matchId string,
 ) ([]models.SanctionCheckMatchComment, error) {
-	return nil, nil
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectSanctionCheckMatchCommentsColumn...).
+		From(dbmodels.TABLE_SANCTION_CHECK_MATCH_COMMENTS).
+		Where(squirrel.Eq{"sanction_check_match_id": matchId}).
+		OrderBy("created_at ASC")
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatchComment)
 }
