@@ -32,22 +32,22 @@ type openSanctionsRequestQuery struct {
 func (repo OpenSanctionsRepository) Search(ctx context.Context,
 	cfg models.SanctionCheckConfig,
 	query models.OpenSanctionsQuery,
-) (models.SanctionCheckExecution, error) {
-	req, queryPayload, err := repo.searchRequest(ctx, query)
+) (models.SanctionCheck, error) {
+	req, _, err := repo.searchRequest(ctx, query)
 	if err != nil {
-		return models.SanctionCheckExecution{}, err
+		return models.SanctionCheck{}, err
 	}
 
 	utils.LoggerFromContext(ctx).Debug("SANCTION CHECK: sending request...")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return models.SanctionCheckExecution{},
+		return models.SanctionCheck{},
 			errors.Wrap(err, "could not perform sanction check")
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return models.SanctionCheckExecution{}, fmt.Errorf(
+		return models.SanctionCheck{}, fmt.Errorf(
 			"sanction check API returned status %d", resp.StatusCode)
 	}
 
@@ -56,17 +56,9 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context,
 	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&matches); err != nil {
-		return models.SanctionCheckExecution{}, errors.Wrap(err,
+		return models.SanctionCheck{}, errors.Wrap(err,
 			"could not parse sanction check response")
 	}
-
-	var payload bytes.Buffer
-
-	if err := json.NewEncoder(&payload).Encode(queryPayload); err != nil {
-		return models.SanctionCheckExecution{}, errors.Wrap(err, "could not encode query")
-	}
-
-	query.QueryPayload = payload.Bytes()
 
 	return httpmodels.AdaptOpenSanctionsResult(query, matches)
 }
