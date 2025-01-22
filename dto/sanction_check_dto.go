@@ -15,22 +15,34 @@ var (
 )
 
 type SanctionCheckDto struct {
-	Id          string                    `json:"id"`
-	Datasets    []string                  `json:"datasets"`
-	Request     models.OpenSanctionsQuery `json:"request"`
-	Status      string                    `json:"status"`
-	Partial     bool                      `json:"partial"`
-	Count       int                       `json:"count"`
-	IsManual    bool                      `json:"is_manual"`
-	RequestedBy *string                   `json:"requested_by,omitempty"`
-	Matches     []SanctionCheckMatchDto   `json:"matches"`
+	Id          string                  `json:"id"`
+	Datasets    []string                `json:"datasets"`
+	Status      string                  `json:"status"`
+	Request     SanctionCheckRequestDto `json:"request"`
+	Partial     bool                    `json:"partial"`
+	Count       int                     `json:"count"`
+	IsManual    bool                    `json:"is_manual"`
+	RequestedBy *string                 `json:"requested_by,omitempty"`
+	Matches     []SanctionCheckMatchDto `json:"matches"`
+}
+
+type SanctionCheckRequestDto struct {
+	Datasets  []string        `json:"datasets,omitempty"`
+	Limit     *int            `json:"limit,omitempty"`
+	Threshold *int            `json:"threshold,omitempty"`
+	Query     json.RawMessage `json:"query"`
 }
 
 func AdaptSanctionCheckDto(m models.SanctionCheck) SanctionCheckDto {
 	sanctionCheck := SanctionCheckDto{
-		Id:          m.Id,
-		Datasets:    make([]string, 0),
-		Request:     m.Query,
+		Id:       m.Id,
+		Datasets: make([]string, 0),
+		Request: SanctionCheckRequestDto{
+			Datasets:  m.OrgConfig.Datasets,
+			Limit:     m.OrgConfig.MatchLimit,
+			Threshold: m.OrgConfig.MatchThreshold,
+			Query:     m.Query,
+		},
 		Status:      m.Status,
 		Partial:     m.Partial,
 		Count:       m.Count,
@@ -39,8 +51,8 @@ func AdaptSanctionCheckDto(m models.SanctionCheck) SanctionCheckDto {
 		Matches:     make([]SanctionCheckMatchDto, 0),
 	}
 
-	if len(m.Query.OrgConfig.Datasets) > 0 {
-		sanctionCheck.Datasets = m.Query.OrgConfig.Datasets
+	if len(m.OrgConfig.Datasets) > 0 {
+		sanctionCheck.Datasets = m.OrgConfig.Datasets
 	}
 	if len(m.Matches) > 0 {
 		sanctionCheck.Matches = pure_utils.Map(m.Matches, AdaptSanctionCheckMatchDto)
@@ -50,22 +62,24 @@ func AdaptSanctionCheckDto(m models.SanctionCheck) SanctionCheckDto {
 }
 
 type SanctionCheckMatchDto struct {
-	Id       string          `json:"id"`
-	EntityId string          `json:"entity_id"`
-	QueryIds []string        `json:"query_ids"`
-	Status   string          `json:"status"`
-	Datasets []string        `json:"datasets"`
-	Payload  json.RawMessage `json:"payload"`
+	Id         string          `json:"id"`
+	EntityId   string          `json:"entity_id"`
+	QueryIds   []string        `json:"query_ids"`
+	Status     string          `json:"status"`
+	ReviewedBy *string         `json:"reviewer_id,omitempty"` //nolint:tagliatelle
+	Datasets   []string        `json:"datasets"`
+	Payload    json.RawMessage `json:"payload"`
 }
 
 func AdaptSanctionCheckMatchDto(m models.SanctionCheckMatch) SanctionCheckMatchDto {
 	match := SanctionCheckMatchDto{
-		Id:       m.Id,
-		EntityId: m.EntityId,
-		Status:   m.Status,
-		QueryIds: m.QueryIds,
-		Datasets: make([]string, 0),
-		Payload:  m.Payload,
+		Id:         m.Id,
+		EntityId:   m.EntityId,
+		Status:     m.Status,
+		ReviewedBy: m.ReviewedBy,
+		QueryIds:   m.QueryIds,
+		Datasets:   make([]string, 0),
+		Payload:    m.Payload,
 	}
 
 	return match
