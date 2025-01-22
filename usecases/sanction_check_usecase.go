@@ -12,7 +12,7 @@ import (
 
 type SanctionCheckProvider interface {
 	Search(context.Context, models.SanctionCheckConfig,
-		models.OpenSanctionsQuery) (models.SanctionCheckExecution, error)
+		models.OpenSanctionsQuery) (models.SanctionCheck, error)
 }
 
 type SanctionCheckDecisionRepository interface {
@@ -20,11 +20,11 @@ type SanctionCheckDecisionRepository interface {
 }
 
 type SanctionCheckRepository interface {
-	ListSanctionChecksForDecision(context.Context, repositories.Executor, string) ([]models.SanctionCheckExecution, error)
+	ListSanctionChecksForDecision(context.Context, repositories.Executor, string) ([]models.SanctionCheck, error)
 	ListSanctionCheckMatches(ctx context.Context, exec repositories.Executor, sanctionCheckId string) (
-		[]models.SanctionCheckExecutionMatch, error)
+		[]models.SanctionCheckMatch, error)
 	InsertSanctionCheck(context.Context, repositories.Executor,
-		models.DecisionWithRuleExecutions) (models.SanctionCheckExecution, error)
+		models.DecisionWithRuleExecutions) (models.SanctionCheck, error)
 }
 
 type SanctionCheckUsecase struct {
@@ -37,7 +37,7 @@ type SanctionCheckUsecase struct {
 	executorFactory        executor_factory.ExecutorFactory
 }
 
-func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionId string) ([]models.SanctionCheckExecution, error) {
+func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionId string) ([]models.SanctionCheck, error) {
 	decision, err := uc.decisionRepository.DecisionsById(ctx,
 		uc.executorFactory.NewExecutor(), []string{decisionId})
 	if err != nil {
@@ -74,11 +74,11 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 
 func (uc SanctionCheckUsecase) Execute(ctx context.Context, orgId string, cfg models.SanctionCheckConfig,
 	query models.OpenSanctionsQuery,
-) (models.SanctionCheckExecution, error) {
+) (models.SanctionCheck, error) {
 	org, err := uc.organizationRepository.GetOrganizationById(ctx,
 		uc.executorFactory.NewExecutor(), orgId)
 	if err != nil {
-		return models.SanctionCheckExecution{},
+		return models.SanctionCheck{},
 			errors.Wrap(err, "could not retrieve organization")
 	}
 
@@ -86,7 +86,7 @@ func (uc SanctionCheckUsecase) Execute(ctx context.Context, orgId string, cfg mo
 
 	matches, err := uc.openSanctionsProvider.Search(ctx, cfg, query)
 	if err != nil {
-		return models.SanctionCheckExecution{}, err
+		return models.SanctionCheck{}, err
 	}
 
 	return matches, err
@@ -95,6 +95,6 @@ func (uc SanctionCheckUsecase) Execute(ctx context.Context, orgId string, cfg mo
 func (uc SanctionCheckUsecase) InsertResults(ctx context.Context,
 	exec repositories.Executor,
 	decision models.DecisionWithRuleExecutions,
-) (models.SanctionCheckExecution, error) {
+) (models.SanctionCheck, error) {
 	return uc.repository.InsertSanctionCheck(ctx, exec, decision)
 }
