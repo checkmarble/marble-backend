@@ -34,7 +34,7 @@ type ScenarioEvaluationParameters struct {
 
 type EvalSanctionCheckUsecase interface {
 	Execute(context.Context, string, models.SanctionCheckConfig,
-		models.OpenSanctionsQuery) (models.SanctionCheckExecution, error)
+		models.OpenSanctionsQuery) (models.SanctionCheck, error)
 }
 
 type SnoozesForDecisionReader interface {
@@ -130,7 +130,7 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 
 	// Compute outcome from score
 	var outcome models.Outcome
-	var sanctionCheckExecution *models.SanctionCheckExecution
+	var sanctionCheckExecution *models.SanctionCheck
 
 	if iteration.SanctionCheckConfig != nil {
 		query := models.OpenSanctionsQuery{

@@ -50,7 +50,7 @@ type DecisionCore struct {
 type DecisionWithRuleExecutions struct {
 	Decision
 	RuleExecutions         []RuleExecution
-	SanctionCheckExecution *SanctionCheckExecution
+	SanctionCheckExecution *SanctionCheck
 }
 
 type DecisionsByVersionByOutcome struct {
@@ -74,7 +74,7 @@ type ScenarioExecution struct {
 	PivotId                *string
 	PivotValue             *string
 	RuleExecutions         []RuleExecution
-	SanctionCheckExecution *SanctionCheckExecution
+	SanctionCheckExecution *SanctionCheck
 	Score                  int
 	Outcome                Outcome
 	OrganizationId         string
