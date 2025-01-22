@@ -35,9 +35,18 @@ type SanctionCheckMatch struct {
 	QueryIds        []string
 	Payload         []byte
 	ReviewedBy      *string
+	CommentCount    int
 }
 
 type SanctionCheckMatchUpdate struct {
 	ReviewerId UserId
 	Status     string
+}
+
+type SanctionCheckMatchComment struct {
+	Id          string
+	MatchId     string
+	CommenterId UserId
+	Comment     string
+	CreatedAt   time.Time
 }
