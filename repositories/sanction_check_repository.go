@@ -26,6 +26,19 @@ func (*MarbleDbRepository) ListSanctionChecksForDecision(ctx context.Context, ex
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
 }
 
+func (*MarbleDbRepository) GetSanctionCheck(ctx context.Context, exec Executor, id string) (models.SanctionCheck, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.SanctionCheck{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectSanctionChecksColumn...).
+		From(dbmodels.TABLE_SANCTION_CHECKS).
+		Where(squirrel.Eq{"id": id})
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
+}
+
 func (*MarbleDbRepository) ListSanctionCheckMatches(ctx context.Context, exec Executor,
 	sanctionCheckId string,
 ) ([]models.SanctionCheckMatch, error) {
@@ -39,6 +52,37 @@ func (*MarbleDbRepository) ListSanctionCheckMatches(ctx context.Context, exec Ex
 		Where(squirrel.Eq{"sanction_check_id": sanctionCheckId})
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
+}
+
+func (*MarbleDbRepository) GetSanctionCheckMatch(ctx context.Context, exec Executor,
+	matchId string,
+) (models.SanctionCheckMatch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.SanctionCheckMatch{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectSanctionCheckMatchesColumn...).
+		From(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
+		Where(squirrel.Eq{"id": matchId})
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
+}
+
+func (*MarbleDbRepository) UpdateSanctionCheckMatchStatus(ctx context.Context, exec Executor,
+	match models.SanctionCheckMatch, status string,
+) (models.SanctionCheckMatch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.SanctionCheckMatch{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
+		Set("status", status).
+		Where(squirrel.Eq{"id": match.Id}).
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionCheckMatchesColumn, ",")))
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
 }
 
 func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executor,
