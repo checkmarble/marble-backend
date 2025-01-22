@@ -3,6 +3,7 @@ package dto
 import (
 	"encoding/json"
 	"slices"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -62,24 +63,26 @@ func AdaptSanctionCheckDto(m models.SanctionCheck) SanctionCheckDto {
 }
 
 type SanctionCheckMatchDto struct {
-	Id         string          `json:"id"`
-	EntityId   string          `json:"entity_id"`
-	QueryIds   []string        `json:"query_ids"`
-	Status     string          `json:"status"`
-	ReviewedBy *string         `json:"reviewer_id,omitempty"` //nolint:tagliatelle
-	Datasets   []string        `json:"datasets"`
-	Payload    json.RawMessage `json:"payload"`
+	Id           string          `json:"id"`
+	EntityId     string          `json:"entity_id"`
+	QueryIds     []string        `json:"query_ids"`
+	Status       string          `json:"status"`
+	ReviewedBy   *string         `json:"reviewer_id,omitempty"` //nolint:tagliatelle
+	Datasets     []string        `json:"datasets"`
+	Payload      json.RawMessage `json:"payload"`
+	CommentCount int             `json:"comment_count"`
 }
 
 func AdaptSanctionCheckMatchDto(m models.SanctionCheckMatch) SanctionCheckMatchDto {
 	match := SanctionCheckMatchDto{
-		Id:         m.Id,
-		EntityId:   m.EntityId,
-		Status:     m.Status,
-		ReviewedBy: m.ReviewedBy,
-		QueryIds:   m.QueryIds,
-		Datasets:   make([]string, 0),
-		Payload:    m.Payload,
+		Id:           m.Id,
+		EntityId:     m.EntityId,
+		Status:       m.Status,
+		ReviewedBy:   m.ReviewedBy,
+		QueryIds:     m.QueryIds,
+		Datasets:     make([]string, 0),
+		Payload:      m.Payload,
+		CommentCount: m.CommentCount,
 	}
 
 	return match
@@ -96,4 +99,22 @@ func (dto SanctionCheckMatchUpdateDto) Validate() error {
 	}
 
 	return nil
+}
+
+type SanctionCheckMatchCommentDto struct {
+	Id        string    `json:"id"`
+	AuthorId  string    `json:"author_id"`
+	Comment   string    `json:"comment"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func AdaptSanctionCheckMatchCommentDto(m models.SanctionCheckMatchComment) SanctionCheckMatchCommentDto {
+	match := SanctionCheckMatchCommentDto{
+		Id:        m.Id,
+		AuthorId:  string(m.CommenterId),
+		Comment:   m.Comment,
+		CreatedAt: m.CreatedAt,
+	}
+
+	return match
 }
