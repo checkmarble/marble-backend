@@ -6,10 +6,17 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
 )
+
+type SanctionCheckEnforceSecurityDecision interface {
+	ReadDecision(models.Decision) error
+}
+
+type SanctionCheckEnforceSecurityCase interface {
+	ReadOrUpdateCase(models.Case, []string) error
+}
 
 type SanctionCheckProvider interface {
 	Search(context.Context, models.SanctionCheckConfig,
@@ -18,6 +25,10 @@ type SanctionCheckProvider interface {
 
 type SanctionCheckDecisionRepository interface {
 	DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error)
+}
+
+type SanctionCheckOrganizationRepository interface {
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
 }
 
 type SanctionCheckRepository interface {
@@ -38,10 +49,10 @@ type SanctionCheckRepository interface {
 }
 
 type SanctionCheckUsecase struct {
-	enforceSecurityDecision security.EnforceSecurityDecision
-	enforceSecurityCase     security.EnforceSecurityCase
+	enforceSecurityDecision SanctionCheckEnforceSecurityDecision
+	enforceSecurityCase     SanctionCheckEnforceSecurityCase
 
-	organizationRepository repositories.OrganizationRepository
+	organizationRepository SanctionCheckOrganizationRepository
 	decisionRepository     SanctionCheckDecisionRepository
 	openSanctionsProvider  SanctionCheckProvider
 	repository             SanctionCheckRepository
