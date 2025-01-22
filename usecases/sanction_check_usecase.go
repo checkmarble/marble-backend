@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
 )
 
@@ -29,7 +30,7 @@ type SanctionCheckRepository interface {
 		[]models.SanctionCheckMatch, error)
 	GetSanctionCheckMatch(ctx context.Context, exec repositories.Executor, matchId string) (models.SanctionCheckMatch, error)
 	UpdateSanctionCheckMatchStatus(ctx context.Context, exec repositories.Executor,
-		match models.SanctionCheckMatch, status string) (models.SanctionCheckMatch, error)
+		match models.SanctionCheckMatch, update models.SanctionCheckMatchUpdate) (models.SanctionCheckMatch, error)
 }
 
 type SanctionCheckUsecase struct {
@@ -108,6 +109,8 @@ func (uc SanctionCheckUsecase) InsertResults(ctx context.Context,
 func (uc SanctionCheckUsecase) UpdateMatchStatus(ctx context.Context, matchId string,
 	update models.SanctionCheckMatchUpdate,
 ) (models.SanctionCheckMatch, error) {
+	// TODO: get user ID?
+
 	match, err := uc.repository.GetSanctionCheckMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
 	if err != nil {
 		return models.SanctionCheckMatch{}, err
@@ -135,7 +138,14 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(ctx context.Context, matchId st
 		return models.SanctionCheckMatch{}, err
 	}
 
+	creds, ok := utils.CredentialsFromCtx(ctx)
+	if !ok {
+		return models.SanctionCheckMatch{}, errors.Wrap(err, "could not retrieve user identity")
+	}
+
+	update.ReviewerId = creds.ActorIdentity.UserId
+
 	// TODO: should we also have some form of automatic cascade between matches? Such as "if we have a confirmed hit, all other matches are no hit"?
 
-	return uc.repository.UpdateSanctionCheckMatchStatus(ctx, uc.executorFactory.NewExecutor(), match, update.Status)
+	return uc.repository.UpdateSanctionCheckMatchStatus(ctx, uc.executorFactory.NewExecutor(), match, update)
 }

@@ -30,6 +30,7 @@ func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckMatc
 		SanctionCheckId: dto.SanctionCheckId,
 		EntityId:        dto.OpenSanctionEntityId,
 		Status:          dto.Status,
+		ReviewedBy:      dto.ReviewedBy,
 		QueryIds:        dto.QueryIds,
 		Payload:         dto.Payload,
 	}

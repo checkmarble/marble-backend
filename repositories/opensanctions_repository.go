@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -33,7 +34,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context,
 	cfg models.SanctionCheckConfig,
 	query models.OpenSanctionsQuery,
 ) (models.SanctionCheck, error) {
-	req, _, err := repo.searchRequest(ctx, query)
+	req, rawQuery, err := repo.searchRequest(ctx, query)
 	if err != nil {
 		return models.SanctionCheck{}, err
 	}
@@ -60,12 +61,12 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context,
 			"could not parse sanction check response")
 	}
 
-	return httpmodels.AdaptOpenSanctionsResult(query, matches)
+	return httpmodels.AdaptOpenSanctionsResult(rawQuery, matches)
 }
 
 func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 	query models.OpenSanctionsQuery,
-) (*http.Request, openSanctionsRequest, error) {
+) (*http.Request, []byte, error) {
 	q := openSanctionsRequest{
 		Queries: make(map[string]openSanctionsRequestQuery, len(query.Queries)),
 	}
@@ -77,10 +78,10 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 		}
 	}
 
-	var body bytes.Buffer
+	var body, rawQuery bytes.Buffer
 
-	if err := json.NewEncoder(&body).Encode(q); err != nil {
-		return nil, openSanctionsRequest{}, errors.Wrap(err,
+	if err := json.NewEncoder(io.MultiWriter(&body, &rawQuery)).Encode(q); err != nil {
+		return nil, nil, errors.Wrap(err,
 			"could not parse OpenSanctions response")
 	}
 
@@ -92,7 +93,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestUrl, &body)
 
-	return req, q, err
+	return req, rawQuery.Bytes(), err
 }
 
 func (repo OpenSanctionsRepository) buildQueryString(orgCfg models.OrganizationOpenSanctionsConfig) url.Values {
