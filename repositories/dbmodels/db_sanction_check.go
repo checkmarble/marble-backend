@@ -38,8 +38,12 @@ func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheck, error) {
 	}
 
 	return models.SanctionCheck{
-		Id:      dto.Id,
-		Query:   query,
-		Partial: dto.IsPartial,
+		Id:          dto.Id,
+		DecisionId:  dto.DecisionId,
+		Query:       query,
+		Partial:     dto.IsPartial,
+		Status:      dto.Status,
+		IsManual:    dto.IsManual,
+		RequestedBy: dto.RequestedBy,
 	}, nil
 }
