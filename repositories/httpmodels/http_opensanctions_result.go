@@ -27,10 +27,10 @@ type HTTPOpenSanctionResultResult struct {
 	} `json:"properties"`
 }
 
-func AdaptOpenSanctionsResult(query models.OpenSanctionsQuery, result HTTPOpenSanctionsResult) (models.SanctionCheckExecution, error) {
+func AdaptOpenSanctionsResult(query models.OpenSanctionsQuery, result HTTPOpenSanctionsResult) (models.SanctionCheck, error) {
 	// TODO: Replace with actual processing of responses
 	partial := false
-	matches := make(map[string]models.SanctionCheckExecutionMatch)
+	matches := make(map[string]models.SanctionCheckMatch)
 	matchToQueryId := make(map[string][]string)
 
 	for queryId, resp := range result.Responses {
@@ -42,11 +42,11 @@ func AdaptOpenSanctionsResult(query models.OpenSanctionsQuery, result HTTPOpenSa
 			var parsed HTTPOpenSanctionResultResult
 
 			if err := json.NewDecoder(bytes.NewReader(match)).Decode(&parsed); err != nil {
-				return models.SanctionCheckExecution{}, err
+				return models.SanctionCheck{}, err
 			}
 
 			if _, ok := matches[parsed.Id]; !ok {
-				entity := models.SanctionCheckExecutionMatch{
+				entity := models.SanctionCheckMatch{
 					Payload:  match,
 					EntityId: parsed.Id,
 					Datasets: parsed.Datasets,
@@ -68,7 +68,7 @@ func AdaptOpenSanctionsResult(query models.OpenSanctionsQuery, result HTTPOpenSa
 		}
 	}
 
-	output := models.SanctionCheckExecution{
+	output := models.SanctionCheck{
 		Query:   query,
 		Partial: partial,
 		Count:   len(matches),
