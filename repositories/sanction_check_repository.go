@@ -47,11 +47,15 @@ func (*MarbleDbRepository) ListSanctionCheckMatches(ctx context.Context, exec Ex
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.SelectSanctionCheckMatchesColumn...).
-		From(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
-		Where(squirrel.Eq{"sanction_check_id": sanctionCheckId})
+		Select(columnsNames("matches", dbmodels.SelectSanctionCheckMatchesColumn)...).
+		Column("count(comments.id) AS comment_count").
+		From(dbmodels.TABLE_SANCTION_CHECK_MATCHES + " matches").
+		LeftJoin(dbmodels.TABLE_SANCTION_CHECK_MATCH_COMMENTS +
+			" comments ON matches.id = comments.sanction_check_match_id").
+		Where(squirrel.Eq{"sanction_check_id": sanctionCheckId}).
+		GroupBy("matches.id")
 
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatchWithComment)
 }
 
 func (*MarbleDbRepository) GetSanctionCheckMatch(ctx context.Context, exec Executor,
@@ -134,4 +138,26 @@ func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executo
 	result.Matches = matches
 
 	return result, nil
+}
+
+func (*MarbleDbRepository) AddSanctionCheckMatchComment(ctx context.Context,
+	exec Executor, comment models.SanctionCheckMatchComment,
+) (models.SanctionCheckMatchComment, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.SanctionCheckMatchComment{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Insert(dbmodels.TABLE_SANCTION_CHECK_MATCH_COMMENTS).
+		Columns("sanction_check_match_id", "commented_by", "comment").
+		Values(comment.MatchId, comment.CommenterId, comment.Comment).
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionCheckMatchCommentsColumn, ",")))
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatchComment)
+}
+
+func (*MarbleDbRepository) ListSanctionCheckMatchComments(ctx context.Context,
+	exec Executor, matchId string,
+) ([]models.SanctionCheckMatchComment, error) {
+	return nil, nil
 }

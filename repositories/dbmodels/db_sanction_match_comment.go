@@ -3,6 +3,7 @@ package dbmodels
 import (
 	"time"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -16,4 +17,14 @@ type DBSanctionCheckMatchComment struct {
 	CommentedBy          string    `db:"commented_by"`
 	Comment              string    `db:"comment"`
 	CreatedAt            time.Time `db:"created_at"`
+}
+
+func AdaptSanctionCheckMatchComment(dto DBSanctionCheckMatchComment) (models.SanctionCheckMatchComment, error) {
+	return models.SanctionCheckMatchComment{
+		Id:          dto.Id,
+		MatchId:     dto.SanctionCheckMatchId,
+		CommenterId: models.UserId(dto.CommentedBy),
+		Comment:     dto.Comment,
+		CreatedAt:   dto.CreatedAt,
+	}, nil
 }
