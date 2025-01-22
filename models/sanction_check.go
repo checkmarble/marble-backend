@@ -1,22 +1,30 @@
 package models
 
+import (
+	"encoding/json"
+	"time"
+)
+
 type OpenSanctionCheckFilter map[string][]string
 
 type OpenSanctionsQuery struct {
-	Queries   OpenSanctionCheckFilter         `json:"queries"`
-	OrgConfig OrganizationOpenSanctionsConfig `json:"-"`
+	Queries   OpenSanctionCheckFilter
+	OrgConfig OrganizationOpenSanctionsConfig
 }
 
 type SanctionCheck struct {
 	Id          string
 	DecisionId  string
-	Query       OpenSanctionsQuery
-	Partial     bool
-	Count       int
 	Status      string
+	Query       json.RawMessage
+	OrgConfig   OrganizationOpenSanctionsConfig
 	IsManual    bool
 	RequestedBy *string
+	Partial     bool
+	Count       int
 	Matches     []SanctionCheckMatch
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type SanctionCheckMatch struct {
@@ -25,10 +33,11 @@ type SanctionCheckMatch struct {
 	EntityId        string
 	Status          string
 	QueryIds        []string
-	Datasets        []string
 	Payload         []byte
+	ReviewedBy      *string
 }
 
 type SanctionCheckMatchUpdate struct {
-	Status string
+	ReviewerId UserId
+	Status     string
 }
