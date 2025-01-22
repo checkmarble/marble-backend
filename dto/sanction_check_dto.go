@@ -8,21 +8,21 @@ import (
 )
 
 type SanctionCheckDto struct {
-	Id       string                  `json:"id"`
-	Partial  bool                    `json:"partial"`
-	Datasets []string                `json:"datasets"`
-	Count    int                     `json:"count"`
-	Request  json.RawMessage         `json:"request"`
-	Matches  []SanctionCheckMatchDto `json:"matches"`
+	Id       string                    `json:"id"`
+	Partial  bool                      `json:"partial"`
+	Datasets []string                  `json:"datasets"`
+	Count    int                       `json:"count"`
+	Request  models.OpenSanctionsQuery `json:"request"`
+	Matches  []SanctionCheckMatchDto   `json:"matches"`
 }
 
-func AdaptSanctionCheckDto(m models.SanctionCheckExecution) SanctionCheckDto {
+func AdaptSanctionCheckDto(m models.SanctionCheck) SanctionCheckDto {
 	sanctionCheck := SanctionCheckDto{
 		Id:       m.Id,
 		Partial:  m.Partial,
 		Count:    m.Count,
 		Datasets: make([]string, 0),
-		Request:  m.Query.QueryPayload,
+		Request:  m.Query,
 		Matches:  make([]SanctionCheckMatchDto, 0),
 	}
 
@@ -44,7 +44,7 @@ type SanctionCheckMatchDto struct {
 	Payload  json.RawMessage `json:"payload"`
 }
 
-func AdaptSanctionCheckMatchDto(m models.SanctionCheckExecutionMatch) SanctionCheckMatchDto {
+func AdaptSanctionCheckMatchDto(m models.SanctionCheckMatch) SanctionCheckMatchDto {
 	match := SanctionCheckMatchDto{
 		Id:       m.Id,
 		EntityId: m.EntityId,
