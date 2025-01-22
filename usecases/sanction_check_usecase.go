@@ -21,14 +21,20 @@ type SanctionCheckDecisionRepository interface {
 
 type SanctionCheckRepository interface {
 	ListSanctionChecksForDecision(context.Context, repositories.Executor, string) ([]models.SanctionCheck, error)
-	ListSanctionCheckMatches(ctx context.Context, exec repositories.Executor, sanctionCheckId string) (
-		[]models.SanctionCheckMatch, error)
+	GetSanctionCheck(context.Context, repositories.Executor, string) (models.SanctionCheck, error)
 	InsertSanctionCheck(context.Context, repositories.Executor,
 		models.DecisionWithRuleExecutions) (models.SanctionCheck, error)
+
+	ListSanctionCheckMatches(ctx context.Context, exec repositories.Executor, sanctionCheckId string) (
+		[]models.SanctionCheckMatch, error)
+	GetSanctionCheckMatch(ctx context.Context, exec repositories.Executor, matchId string) (models.SanctionCheckMatch, error)
+	UpdateSanctionCheckMatchStatus(ctx context.Context, exec repositories.Executor,
+		match models.SanctionCheckMatch, status string) (models.SanctionCheckMatch, error)
 }
 
 type SanctionCheckUsecase struct {
 	enforceSecurityDecision security.EnforceSecurityDecision
+	enforceSecurityCase     security.EnforceSecurityCase
 
 	organizationRepository repositories.OrganizationRepository
 	decisionRepository     SanctionCheckDecisionRepository
@@ -97,4 +103,39 @@ func (uc SanctionCheckUsecase) InsertResults(ctx context.Context,
 	decision models.DecisionWithRuleExecutions,
 ) (models.SanctionCheck, error) {
 	return uc.repository.InsertSanctionCheck(ctx, exec, decision)
+}
+
+func (uc SanctionCheckUsecase) UpdateMatchStatus(ctx context.Context, matchId string,
+	update models.SanctionCheckMatchUpdate,
+) (models.SanctionCheckMatch, error) {
+	match, err := uc.repository.GetSanctionCheckMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
+	if err != nil {
+		return models.SanctionCheckMatch{}, err
+	}
+
+	sanctionCheck, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), match.SanctionCheckId)
+	if err != nil {
+		return models.SanctionCheckMatch{}, err
+	}
+
+	decision, err := uc.decisionRepository.DecisionsById(ctx, uc.executorFactory.NewExecutor(), []string{sanctionCheck.DecisionId})
+	if err != nil {
+		return models.SanctionCheckMatch{}, err
+	}
+	if len(decision) == 0 {
+		return models.SanctionCheckMatch{}, errors.Wrap(models.NotFoundError, "requested decision does not exist")
+	}
+	if decision[0].Case == nil {
+		return models.SanctionCheckMatch{}, errors.Wrap(err, "decision is not linked to a case")
+	}
+
+	inboxes := []string{decision[0].Case.InboxId}
+
+	if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxes); err != nil {
+		return models.SanctionCheckMatch{}, err
+	}
+
+	// TODO: should we also have some form of automatic cascade between matches? Such as "if we have a confirmed hit, all other matches are no hit"?
+
+	return uc.repository.UpdateSanctionCheckMatchStatus(ctx, uc.executorFactory.NewExecutor(), match, update.Status)
 }

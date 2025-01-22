@@ -77,6 +77,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.DELETE("/scenario-iteration-rules/:rule_id", tom, handleDeleteRule(uc))
 
 	router.GET("/sanction-checks", tom, handleListSanctionChecks(uc))
+	router.PATCH("/sanction-checks/matches/:id", tom, handleUpdateSanctionCheckMatchStatus(uc))
+	router.POST("/sanction-checks/matches/:id/comment", tom,
+		handleCreateSanctionCheckMatchComment(uc))
 
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))

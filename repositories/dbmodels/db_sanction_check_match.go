@@ -26,10 +26,12 @@ type DBSanctionCheckMatch struct {
 
 func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckMatch, error) {
 	match := models.SanctionCheckMatch{
-		Id:       dto.Id,
-		EntityId: dto.OpenSanctionEntityId,
-		QueryIds: dto.QueryIds,
-		Payload:  dto.Payload,
+		Id:              dto.Id,
+		SanctionCheckId: dto.SanctionCheckId,
+		EntityId:        dto.OpenSanctionEntityId,
+		Status:          dto.Status,
+		QueryIds:        dto.QueryIds,
+		Payload:         dto.Payload,
 	}
 
 	return match, nil
