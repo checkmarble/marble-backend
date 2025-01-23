@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -38,18 +39,28 @@ func handleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) func(c *gin.Cont
 		ctx := c.Request.Context()
 		matchId := c.Param("id")
 
-		var update dto.SanctionCheckMatchUpdateDto
+		var payload dto.SanctionCheckMatchUpdateDto
 
-		if presentError(ctx, c, c.ShouldBindJSON(&update)) ||
-			presentError(ctx, c, update.Validate()) {
+		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
+			return
+		}
+
+		creds, ok := utils.CredentialsFromCtx(ctx)
+
+		if !ok {
+			presentError(ctx, c, models.ErrUnknownUser)
+			return
+		}
+
+		update, err := dto.AdaptSanctionCheckMatchUpdateInputDto(matchId, creds.ActorIdentity.UserId, payload)
+
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
 
-		match, err := uc.UpdateMatchStatus(ctx, matchId, models.SanctionCheckMatchUpdate{
-			Status: update.Status,
-		})
+		match, err := uc.UpdateMatchStatus(ctx, update)
 
 		if presentError(ctx, c, err) {
 			return
@@ -87,12 +98,21 @@ func handleCreateSanctionCheckMatchComment(uc usecases.Usecases) func(c *gin.Con
 			return
 		}
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		creds, ok := utils.CredentialsFromCtx(ctx)
 
-		comment, err := uc.MatchAddComment(ctx, matchId, models.SanctionCheckMatchComment{
-			MatchId: matchId,
-			Comment: payload.Comment,
-		})
+		if !ok {
+			presentError(ctx, c, models.ErrUnknownUser)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		comment, err := dto.AdaptSanctionCheckMatchCommentInputDto(matchId, creds.ActorIdentity.UserId, payload)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		comment, err = uc.MatchAddComment(ctx, matchId, comment)
 
 		if presentError(ctx, c, err) {
 			return

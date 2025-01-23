@@ -123,6 +123,7 @@ func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecas
 		enforceSecurityCase:     usecases.NewEnforceCaseSecurity(),
 		organizationRepository:  usecases.Repositories.OrganizationRepository,
 		decisionRepository:      &usecases.Repositories.MarbleDbRepository,
+		inboxRepository:         &usecases.Repositories.MarbleDbRepository,
 		openSanctionsProvider:   usecases.Repositories.OpenSanctionsRepository,
 		repository:              &usecases.Repositories.MarbleDbRepository,
 		executorFactory:         usecases.NewExecutorFactory(),
