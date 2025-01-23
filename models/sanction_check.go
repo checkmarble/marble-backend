@@ -39,6 +39,7 @@ type SanctionCheckMatch struct {
 }
 
 type SanctionCheckMatchUpdate struct {
+	MatchId    string
 	ReviewerId UserId
 	Status     string
 }
