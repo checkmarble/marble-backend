@@ -42,10 +42,10 @@ func (dt *OpenSanctionTime) UnmarshalJSON(b []byte) error {
 
 func AdaptOpenSanctionDataset(dataset HTTPOpenSanctionRemoteDataset) models.OpenSanctionsUpstreamDataset {
 	return models.OpenSanctionsUpstreamDataset{
-		Name:      dataset.Name,
-		Version:   dataset.Version,
-		UpdatedAt: time.Time(dataset.UpdatedAt),
-		Schedule:  dataset.Coverage.Schedule,
+		Name:       dataset.Name,
+		Version:    dataset.Version,
+		LastExport: time.Time(dataset.UpdatedAt),
+		Schedule:   dataset.Coverage.Schedule,
 	}
 }
 
@@ -76,8 +76,8 @@ func AdaptOpenSanctionsLocalDataset(datasets HTTPOpenSanctionsLocalDatasets) (mo
 	}
 
 	return models.OpenSanctionsDataset{
-		Version:   *version,
-		UpdatedAt: lastUpdatedAt,
+		Version:    *version,
+		LastExport: lastUpdatedAt,
 	}, nil
 }
 
