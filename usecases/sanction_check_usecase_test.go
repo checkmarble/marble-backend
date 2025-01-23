@@ -34,8 +34,8 @@ func TestGetSanctionCheckOnDecision(t *testing.T) {
 	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBSanctionCheck]()
 	mockScMatch, mockScMatchRow := utils.FakeStruct[dbmodels.DBSanctionCheckMatchWithComments]()
 
-	exec.Mock.ExpectQuery(`SELECT .* FROM sanction_checks WHERE decision_id = \$1`).
-		WithArgs("decisionid").
+	exec.Mock.ExpectQuery(`SELECT .* FROM sanction_checks WHERE decision_id = \$1 AND is_archived = \$2`).
+		WithArgs("decisionid", false).
 		WillReturnRows(
 			pgxmock.NewRows(dbmodels.SelectSanctionChecksColumn).
 				AddRow(mockScRow...),
