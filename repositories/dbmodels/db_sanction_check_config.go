@@ -1,6 +1,7 @@
 package dbmodels
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -13,6 +14,7 @@ type DBSanctionCheckConfigs struct {
 	Id                  string    `db:"id"`
 	ScenarioIterationId string    `db:"scenario_iteration_id"`
 	Enabled             bool      `db:"enabled"`
+	TriggerRule         []byte    `db:"trigger_rule"`
 	ForcedOutcome       *string   `db:"forced_outcome"`
 	ScoreModifier       int       `db:"score_modifier"`
 	UpdatedAt           time.Time `db:"updated_at"`
@@ -21,6 +23,12 @@ type DBSanctionCheckConfigs struct {
 var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
 
 func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckConfig, error) {
+	triggerRuleAst, err := AdaptSerializedAstExpression(db.TriggerRule)
+	if err != nil {
+		return models.SanctionCheckConfig{}, fmt.Errorf(
+			"unable to unmarshal formula ast expression: %w", err)
+	}
+
 	var forcedOutcome models.Outcome
 
 	if db.ForcedOutcome != nil {
@@ -28,7 +36,8 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 	}
 
 	scc := models.SanctionCheckConfig{
-		Enabled: db.Enabled,
+		Enabled:     db.Enabled,
+		TriggerRule: triggerRuleAst,
 		Outcome: models.SanctionCheckOutcome{
 			ForceOutcome:  forcedOutcome,
 			ScoreModifier: db.ScoreModifier,

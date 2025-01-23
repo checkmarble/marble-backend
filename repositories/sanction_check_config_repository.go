@@ -8,6 +8,8 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 )
 
 func (repo *MarbleDbRepository) GetSanctionCheckConfig(ctx context.Context, exec Executor,
@@ -31,17 +33,35 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 		return models.SanctionCheckConfig{}, err
 	}
 
+	var triggerRule *[]byte
+	if cfg.TriggerRule != nil {
+		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.TriggerRule)
+		if err != nil {
+			return models.SanctionCheckConfig{}, errors.Wrap(err,
+				"could not serialize sanction check trigger rule")
+		}
+
+		triggerRule = astJson
+	}
+
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
-		Columns("scenario_iteration_id", "enabled", "forced_outcome", "score_modifier").
-		Values(scenarioIterationId, cfg.Enabled,
+		Columns("scenario_iteration_id", "enabled", "forced_outcome", "score_modifier", "trigger_rule").
+		Values(
+			scenarioIterationId,
+			utils.Or(cfg.Enabled, true),
 			cfg.Outcome.ForceOutcome.MaybeString(),
-			cfg.Outcome.ScoreModifier)
+			utils.Or(cfg.Outcome.ScoreModifier, 0),
+			utils.Or(triggerRule, []byte(``)),
+		)
 
 	updateFields := make([]string, 0, 4)
 
 	if cfg.Enabled != nil {
 		updateFields = append(updateFields, "enabled = EXCLUDED.enabled")
+	}
+	if cfg.TriggerRule != nil {
+		updateFields = append(updateFields, "trigger_rule = EXCLUDED.trigger_rule")
 	}
 	if cfg.Outcome.ForceOutcome != nil {
 		switch *cfg.Outcome.ForceOutcome {
@@ -67,6 +87,8 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 
 	sql = sql.Suffix(fmt.Sprintf("RETURNING %s",
 		strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
+
+	fmt.Println(sql.ToSql())
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
 }
