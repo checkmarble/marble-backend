@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
@@ -87,7 +88,7 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context, c
 	}
 
 	dataset.Upstream = upstream
-	if err := dataset.CheckIsUpToDate(); err != nil {
+	if err := dataset.CheckIsUpToDate(time.Now); err != nil {
 		return models.OpenSanctionsDataset{}, nil
 	}
 
