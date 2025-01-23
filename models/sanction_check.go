@@ -8,13 +8,13 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-var OPEN_SACTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
+var OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
 
 type OpenSanctionsUpstreamDataset struct {
-	Version   string    `json:"version"`
-	Name      string    `json:"name"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Schedule  string    `json:"-"`
+	Version    string    `json:"version"`
+	Name       string    `json:"name"`
+	LastExport time.Time `json:"last_export"`
+	Schedule   string    `json:"-"`
 }
 
 type OpenSanctionCheckFilter map[string][]string
@@ -25,11 +25,33 @@ type OpenSanctionsDataset struct {
 	UpToDate bool                         `json:"up_to_date"`
 
 	// TODO: this is not the date at which the data was pulled, it is when the data was published
-	UpdatedAt time.Time `json:"-"`
+	LastExport time.Time `json:"-"`
 }
 
 type TimeProvider func() time.Time
 
+// CheckIsUpToDate marks a dataset as outdated if it was not updated in a
+// reasonable window of time after the upstream dataset was.
+//
+// Considering that for an upstream update time of T, the duration for which
+// we consider the dataset as "up to date" is:
+//
+//   - Grace Period = Time until the next scheduled update + Leeway
+//
+// For example, with a leeway of 1 hour, if a dataset is set to be pulled every
+// two hours, and the upstream dataset is updated at 7am, we will consider the
+// dataset as outdated if it is not updated at 9am.
+//
+//   - Outdated if (now() > Local Dataset Export Date + Grace Period)
+//
+// Since the upstream dataset is continuously updated, this rule alone is not
+// enough, so we also consider a dataset as oudated if the upstream export date
+// is after that of the local dataset + the update formula above.
+//
+//   - Outdated if (Local Dataset Export Date + Grace Period < Upstream Dataset Export Date)
+//
+// The local dataset is always considered up to date if its version matches
+// that of its upstream counterpart.
 func (dataset *OpenSanctionsDataset) CheckIsUpToDate(tp TimeProvider) error {
 	if dataset.Upstream.Version == dataset.Version {
 		(*dataset).UpToDate = true
@@ -41,16 +63,16 @@ func (dataset *OpenSanctionsDataset) CheckIsUpToDate(tp TimeProvider) error {
 	}
 
 	// TODO: this check is not very relevant, since we do not have the date the data was pulled.
-	tickAfterLastUpdate, _ := gronx.NextTickAfter(dataset.Upstream.Schedule, dataset.UpdatedAt, false)
+	tickAfterLastUpdate, _ := gronx.NextTickAfter(dataset.Upstream.Schedule, dataset.LastExport, false)
 
-	if tickAfterLastUpdate.Add(OPEN_SACTIONS_OUTDATED_DATASET_LEEWAY).Before(dataset.Upstream.UpdatedAt) {
+	if tickAfterLastUpdate.Add(OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY).Before(dataset.Upstream.LastExport) {
 		(*dataset).UpToDate = false
 		return nil
 	}
 
-	tickAfterLastChange, _ := gronx.NextTickAfter(dataset.Upstream.Schedule, dataset.Upstream.UpdatedAt, false)
+	tickAfterLastChange, _ := gronx.NextTickAfter(dataset.Upstream.Schedule, dataset.Upstream.LastExport, false)
 
-	if tp().After(tickAfterLastChange.Add(OPEN_SACTIONS_OUTDATED_DATASET_LEEWAY)) {
+	if tp().After(tickAfterLastChange.Add(OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY)) {
 		(*dataset).UpToDate = false
 		return nil
 	}
