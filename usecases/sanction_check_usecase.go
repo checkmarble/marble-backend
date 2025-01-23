@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -19,6 +20,7 @@ type SanctionCheckEnforceSecurityCase interface {
 }
 
 type SanctionCheckProvider interface {
+	GetLatestLocalDataset(context.Context, http.Client) (models.OpenSanctionsDataset, error)
 	Search(context.Context, models.SanctionCheckConfig,
 		models.OpenSanctionsQuery) (models.SanctionCheck, error)
 }
@@ -63,6 +65,10 @@ type SanctionCheckUsecase struct {
 	openSanctionsProvider  SanctionCheckProvider
 	repository             SanctionCheckRepository
 	executorFactory        executor_factory.ExecutorFactory
+}
+
+func (uc SanctionCheckUsecase) CheckDataset(ctx context.Context) (models.OpenSanctionsDataset, error) {
+	return uc.openSanctionsProvider.GetLatestLocalDataset(ctx, *http.DefaultClient)
 }
 
 func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionId string) ([]models.SanctionCheck, error) {
