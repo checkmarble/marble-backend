@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
 )
 
@@ -29,6 +29,11 @@ type SanctionCheckDecisionRepository interface {
 
 type SanctionCheckOrganizationRepository interface {
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
+}
+
+type SanctionCheckInboxRepository interface {
+	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
+		inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
 }
 
 type SanctionCheckRepository interface {
@@ -54,6 +59,7 @@ type SanctionCheckUsecase struct {
 
 	organizationRepository SanctionCheckOrganizationRepository
 	decisionRepository     SanctionCheckDecisionRepository
+	inboxRepository        SanctionCheckInboxRepository
 	openSanctionsProvider  SanctionCheckProvider
 	repository             SanctionCheckRepository
 	executorFactory        executor_factory.ExecutorFactory
@@ -121,20 +127,13 @@ func (uc SanctionCheckUsecase) InsertResults(ctx context.Context,
 	return uc.repository.InsertSanctionCheck(ctx, exec, decision)
 }
 
-func (uc SanctionCheckUsecase) UpdateMatchStatus(ctx context.Context, matchId string,
+func (uc SanctionCheckUsecase) UpdateMatchStatus(ctx context.Context,
 	update models.SanctionCheckMatchUpdate,
 ) (models.SanctionCheckMatch, error) {
-	match, err := uc.enforceCanReadOrUpdateMatchCase(ctx, matchId)
+	match, err := uc.enforceCanReadOrUpdateMatchCase(ctx, update.MatchId)
 	if err != nil {
 		return models.SanctionCheckMatch{}, err
 	}
-
-	creds, ok := utils.CredentialsFromCtx(ctx)
-	if !ok {
-		return models.SanctionCheckMatch{}, errors.Wrap(models.UnAuthorizedError, "could not retrieve user identity")
-	}
-
-	update.ReviewerId = creds.ActorIdentity.UserId
 
 	// TODO: should we also have some form of automatic cascade between matches? Such as "if we have a confirmed hit, all other matches are no hit"?
 
@@ -155,14 +154,6 @@ func (uc SanctionCheckUsecase) MatchAddComment(ctx context.Context, matchId stri
 	if _, err := uc.enforceCanReadOrUpdateMatchCase(ctx, matchId); err != nil {
 		return models.SanctionCheckMatchComment{}, err
 	}
-
-	creds, ok := utils.CredentialsFromCtx(ctx)
-	if !ok {
-		return models.SanctionCheckMatchComment{},
-			errors.Wrap(models.UnAuthorizedError, "could not get principal ID from credentials")
-	}
-
-	comment.CommenterId = creds.ActorIdentity.UserId
 
 	return uc.repository.AddSanctionCheckMatchComment(ctx, uc.executorFactory.NewExecutor(), comment)
 }
@@ -191,9 +182,17 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateMatchCase(ctx context.Conte
 			"this sanction check is not linked to a case")
 	}
 
-	inboxes := []string{decision[0].Case.InboxId}
+	inboxes, err := uc.inboxRepository.ListInboxes(ctx, uc.executorFactory.NewExecutor(), decision[0].OrganizationId, nil, false)
+	if err != nil {
+		return models.SanctionCheckMatch{}, errors.Wrap(err,
+			"could not retrieve organization inboxes")
+	}
 
-	if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxes); err != nil {
+	inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) string {
+		return inbox.Id
+	})
+
+	if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxIds); err != nil {
 		return models.SanctionCheckMatch{}, err
 	}
 
