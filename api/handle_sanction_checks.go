@@ -11,6 +11,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func handleSanctionCheckDataset(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+
+		dataset, err := uc.CheckDataset(ctx)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dataset)
+	}
+}
+
 func handleListSanctionChecks(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
