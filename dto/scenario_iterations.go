@@ -36,9 +36,10 @@ type ScenarioIterationBodyDto struct {
 }
 
 type SanctionCheckConfig struct {
-	Enabled       *bool   `json:"enabled"`
-	ForceOutcome  *string `json:"force_outcome,omitempty"`
-	ScoreModifier *int    `json:"score_modifier,omitempty"`
+	Enabled       *bool    `json:"enabled"`
+	ForceOutcome  *string  `json:"force_outcome,omitempty"`
+	ScoreModifier *int     `json:"score_modifier,omitempty"`
+	TriggerRule   *NodeDto `json:"trigger_rule"`
 }
 
 func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIterationWithBodyDto, error) {
@@ -60,10 +61,17 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		body.Rules[i] = apiRule
 	}
 	if si.SanctionCheckConfig != nil {
+		nodeDto, err := AdaptNodeDto(*si.SanctionCheckConfig.TriggerRule)
+		if err != nil {
+			return ScenarioIterationWithBodyDto{},
+				errors.Wrap(err, "could not parse the sanction check trigger rule")
+		}
+
 		body.SanctionCheckConfig = &SanctionCheckConfig{
 			Enabled:       &si.SanctionCheckConfig.Enabled,
 			ForceOutcome:  nil,
 			ScoreModifier: &si.SanctionCheckConfig.Outcome.ScoreModifier,
+			TriggerRule:   &nodeDto,
 		}
 
 		if si.SanctionCheckConfig.Outcome.ForceOutcome != models.Approve {
@@ -120,13 +128,25 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 
 	if input.Body.SanctionCheckConfig != nil {
 		updateScenarioIterationInput.Body.SanctionCheckConfig = &models.UpdateSanctionCheckConfigInput{
-			Enabled: input.Body.SanctionCheckConfig.Enabled,
+			Enabled:     input.Body.SanctionCheckConfig.Enabled,
+			TriggerRule: nil,
 			Outcome: models.UpdateSanctionCheckOutcomeInput{
 				ForceOutcome:  nil,
 				ScoreModifier: nil,
 			},
 		}
 
+		if input.Body.SanctionCheckConfig.TriggerRule != nil {
+			astNode, err := AdaptASTNode(*input.Body.SanctionCheckConfig.TriggerRule)
+			if err != nil {
+				return models.UpdateScenarioIterationInput{}, errors.Wrap(
+					models.BadParameterError,
+					"invalid trigger",
+				)
+			}
+
+			updateScenarioIterationInput.Body.SanctionCheckConfig.TriggerRule = &astNode
+		}
 		if input.Body.SanctionCheckConfig.ForceOutcome != nil {
 			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ForceOutcome = utils.Ptr(models.ForcedOutcomeFrom(
 				*input.Body.SanctionCheckConfig.ForceOutcome))
