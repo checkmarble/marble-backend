@@ -21,7 +21,7 @@ func (*MarbleDbRepository) ListSanctionChecksForDecision(ctx context.Context, ex
 	sql := NewQueryBuilder().
 		Select(dbmodels.SelectSanctionChecksColumn...).
 		From(dbmodels.TABLE_SANCTION_CHECKS).
-		Where(squirrel.Eq{"decision_id": decisionId})
+		Where(squirrel.Eq{"decision_id": decisionId, "is_archived": false})
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
 }
