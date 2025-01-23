@@ -33,16 +33,17 @@ func TestDatasetOutdatedDetector(t *testing.T) {
 		{"0 */2 * * *", "v2", hr(-6), "v1", hr(-7), false},
 		{"0 */12 * * *", "v2", hr(-6), "v1", hr(-7), true},
 		{"0 */12 * * *", "v2", hr(-6), "v1", hr(-20), false},
+		{"0 */12 * * *", "v2", hr(0), "v1", hr(-25), false},
 	}
 
 	for _, tt := range tts {
 		dataset := models.OpenSanctionsDataset{
-			Version:   tt.localVersion,
-			UpdatedAt: tt.updatedAt,
+			Version:    tt.localVersion,
+			LastExport: tt.updatedAt,
 			Upstream: models.OpenSanctionsUpstreamDataset{
-				Version:   tt.upstreamVersion,
-				Schedule:  tt.schedule,
-				UpdatedAt: tt.lastChange,
+				Version:    tt.upstreamVersion,
+				Schedule:   tt.schedule,
+				LastExport: tt.lastChange,
 			},
 		}
 
