@@ -92,13 +92,19 @@ type SanctionCheckMatchUpdateDto struct {
 	Status string `json:"status"`
 }
 
-func (dto SanctionCheckMatchUpdateDto) Validate() error {
+func AdaptSanctionCheckMatchUpdateInputDto(matchId string, reviewerId models.UserId,
+	dto SanctionCheckMatchUpdateDto,
+) (models.SanctionCheckMatchUpdate, error) {
 	if !slices.Contains(ValidSanctionCheckMatchStatuses, dto.Status) {
-		return errors.Wrap(models.BadParameterError,
-			"invalid status for sanction check match")
+		return models.SanctionCheckMatchUpdate{},
+			errors.Wrap(models.BadParameterError, "invalid status for sanction check match")
 	}
 
-	return nil
+	return models.SanctionCheckMatchUpdate{
+		MatchId:    matchId,
+		ReviewerId: reviewerId,
+		Status:     dto.Status,
+	}, nil
 }
 
 type SanctionCheckMatchCommentDto struct {
@@ -106,6 +112,18 @@ type SanctionCheckMatchCommentDto struct {
 	AuthorId  string    `json:"author_id"`
 	Comment   string    `json:"comment"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+func AdaptSanctionCheckMatchCommentInputDto(matchId string, commenterId models.UserId,
+	m SanctionCheckMatchCommentDto,
+) (models.SanctionCheckMatchComment, error) {
+	match := models.SanctionCheckMatchComment{
+		MatchId:     matchId,
+		CommenterId: commenterId,
+		Comment:     m.Comment,
+	}
+
+	return match, nil
 }
 
 func AdaptSanctionCheckMatchCommentDto(m models.SanctionCheckMatchComment) SanctionCheckMatchCommentDto {
