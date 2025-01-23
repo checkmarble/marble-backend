@@ -17,6 +17,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const OPEN_SANCTIONS_DATASET_URL = "https://data.opensanctions.org/datasets/latest/default/index.json"
+
 type OpenSanctionsRepository struct {
 	opensanctions infra.OpenSanctions
 }
@@ -28,6 +30,68 @@ type openSanctionsRequest struct {
 type openSanctionsRequestQuery struct {
 	Schema     string                         `json:"schema"`
 	Properties models.OpenSanctionCheckFilter `json:"properties"`
+}
+
+func (repo OpenSanctionsRepository) GetLatestUpstreamDataset(ctx context.Context,
+	client http.Client,
+) (models.OpenSanctionsUpstreamDataset, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, OPEN_SANCTIONS_DATASET_URL, nil)
+	if err != nil {
+		return models.OpenSanctionsUpstreamDataset{}, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return models.OpenSanctionsUpstreamDataset{}, err
+	}
+
+	defer resp.Body.Close()
+
+	var dataset httpmodels.HTTPOpenSanctionRemoteDataset
+
+	if err := json.NewDecoder(resp.Body).Decode(&dataset); err != nil {
+		return models.OpenSanctionsUpstreamDataset{}, err
+	}
+
+	return httpmodels.AdaptOpenSanctionDataset(dataset), err
+}
+
+func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context, client http.Client) (models.OpenSanctionsDataset, error) {
+	upstream, err := repo.GetLatestUpstreamDataset(ctx, client)
+	if err != nil {
+		return models.OpenSanctionsDataset{}, errors.Wrap(err, "could not retrieve upstream dataset")
+	}
+
+	u := fmt.Sprintf("%s/catalog", repo.opensanctions.Host())
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return models.OpenSanctionsDataset{}, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return models.OpenSanctionsDataset{}, err
+	}
+
+	defer resp.Body.Close()
+
+	var localDataset httpmodels.HTTPOpenSanctionsLocalDatasets
+
+	if err := json.NewDecoder(resp.Body).Decode(&localDataset); err != nil {
+		return models.OpenSanctionsDataset{}, err
+	}
+
+	dataset, err := httpmodels.AdaptOpenSanctionsLocalDataset(localDataset)
+	if err != nil {
+		return models.OpenSanctionsDataset{}, errors.Wrap(err, "could not retrieve local dataset")
+	}
+
+	dataset.Upstream = upstream
+	if err := dataset.CheckIsUpToDate(); err != nil {
+		return models.OpenSanctionsDataset{}, nil
+	}
+
+	return dataset, nil
 }
 
 func (repo OpenSanctionsRepository) Search(ctx context.Context,
