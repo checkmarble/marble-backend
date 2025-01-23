@@ -18,10 +18,12 @@ func TestDatasetOutdatedDetector(t *testing.T) {
 		expected        bool
 	}
 
-	now := time.Date(2025, 1, 23, 11, 0, 0, 0, time.UTC)
+	now := func() time.Time {
+		return time.Date(2025, 1, 23, 11, 0, 0, 0, time.UTC)
+	}
 
 	hr := func(offset int) time.Time {
-		return now.Add(time.Duration(offset) * time.Hour)
+		return now().Add(time.Duration(offset) * time.Hour)
 	}
 
 	tts := []spec{
@@ -44,7 +46,7 @@ func TestDatasetOutdatedDetector(t *testing.T) {
 			},
 		}
 
-		assert.NoError(t, dataset.CheckIsUpToDate())
+		assert.NoError(t, dataset.CheckIsUpToDate(now))
 		assert.Equal(t, tt.expected, dataset.UpToDate)
 	}
 }
