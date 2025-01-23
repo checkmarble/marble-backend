@@ -55,8 +55,9 @@ type UpdateScenarioIterationBody struct {
 }
 
 type SanctionCheckConfig struct {
-	Enabled bool
-	Outcome SanctionCheckOutcome
+	Enabled     bool
+	TriggerRule *ast.Node
+	Outcome     SanctionCheckOutcome
 }
 
 type SanctionCheckOutcome struct {
@@ -65,8 +66,9 @@ type SanctionCheckOutcome struct {
 }
 
 type UpdateSanctionCheckConfigInput struct {
-	Enabled *bool
-	Outcome UpdateSanctionCheckOutcomeInput
+	Enabled     *bool
+	TriggerRule *ast.Node
+	Outcome     UpdateSanctionCheckOutcomeInput
 }
 
 type UpdateSanctionCheckOutcomeInput struct {
