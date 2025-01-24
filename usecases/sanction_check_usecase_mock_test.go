@@ -37,9 +37,21 @@ func (sanctionCheckRepositoryMock) GetOrganizationById(ctx context.Context,
 func (sanctionCheckRepositoryMock) DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error) {
 	decisions := []models.Decision{
 		{
-			DecisionId: "decisionid",
+			OrganizationId: "orgid",
+			DecisionId:     "decisionid",
+			Case:           &models.Case{},
 		},
 	}
 
 	return decisions, nil
+}
+
+func (sanctionCheckRepositoryMock) ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
+	inboxIds []string, withCaseCount bool,
+) ([]models.Inbox, error) {
+	inboxes := []models.Inbox{
+		{Id: "inboxid"},
+	}
+
+	return inboxes, nil
 }
