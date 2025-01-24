@@ -14,6 +14,22 @@ func FakeStruct[T any]() (T, []any) {
 	return object, StructToMockRow(object)
 }
 
+func FakeStructs[T any](n int) ([]T, [][]any) {
+	objects := make([]T, n)
+	rows := make([][]any, n)
+
+	for idx := range n {
+		var object T
+
+		_ = faker.FakeData(&object)
+
+		objects[idx] = object
+		rows[idx] = StructToMockRow(object)
+	}
+
+	return objects, rows
+}
+
 func FakeStructRow[T any]() []any {
 	_, row := FakeStruct[T]()
 
