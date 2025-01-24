@@ -107,5 +107,5 @@ func TestListSanctionCheckOnMatchComments(t *testing.T) {
 	assert.Equal(t, mockComments[0].Comment, comms[0].Comment)
 	assert.Equal(t, mockComments[0].CommentedBy, string(comms[0].CommenterId))
 	assert.Equal(t, mockComments[0].CreatedAt, comms[0].CreatedAt)
-	assert.Equal(t, mockComments[0].SanctionCheckMatchId, string(comms[0].MatchId))
+	assert.Equal(t, mockComments[0].SanctionCheckMatchId, comms[0].MatchId)
 }
