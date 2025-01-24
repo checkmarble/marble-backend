@@ -169,5 +169,7 @@ func (*MarbleDbRepository) ListSanctionCheckMatchComments(ctx context.Context,
 		Where(squirrel.Eq{"sanction_check_match_id": matchId}).
 		OrderBy("created_at ASC")
 
+	fmt.Println(sql.ToSql())
+
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatchComment)
 }
