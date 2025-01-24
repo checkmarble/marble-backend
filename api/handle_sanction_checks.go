@@ -98,7 +98,7 @@ func handleListSanctionCheckMatchComments(uc usecases.Usecases) func(c *gin.Cont
 			return
 		}
 
-		c.JSON(http.StatusCreated, pure_utils.Map(comments, dto.AdaptSanctionCheckMatchCommentDto))
+		c.JSON(http.StatusOK, pure_utils.Map(comments, dto.AdaptSanctionCheckMatchCommentDto))
 	}
 }
 

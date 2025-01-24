@@ -199,11 +199,6 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 					return iteration, errors.Wrap(models.BadParameterError,
 						"sanction check config: invalid forced outcome")
 				}
-				if scCfg.Outcome.ScoreModifier != nil &&
-					(*scCfg.Outcome.ScoreModifier < 0 || *scCfg.Outcome.ScoreModifier > 100) {
-					return iteration, errors.Wrap(models.BadParameterError,
-						"sanction check config: score modifier out of bounds")
-				}
 
 				scc, err := usecase.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(ctx, tx,
 					scenarioAndIteration.Iteration.Id, *body.SanctionCheckConfig)
