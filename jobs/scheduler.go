@@ -9,7 +9,7 @@ import (
 )
 
 // Deprecated and to be moved into the river task scheduler
-func RunScheduler(ctx context.Context, usecases usecases.Usecases) {
+func RunScheduler(ctx context.Context, usecases usecases.Usecaser) {
 	taskr := tasker.New(tasker.Option{
 		Verbose: true,
 		Tz:      "Europe/Paris",

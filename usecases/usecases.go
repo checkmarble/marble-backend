@@ -26,6 +26,34 @@ type Usecases struct {
 	license                     models.LicenseValidation
 }
 
+func (uc *Usecases) GetRepositories() *repositories.Repositories {
+	return &uc.Repositories
+}
+
+func (uc *Usecases) GetBatchIngestionMaxSize() int {
+	return uc.batchIngestionMaxSize
+}
+
+func (uc *Usecases) GetIngestionBucketUrl() string {
+	return uc.ingestionBucketUrl
+}
+
+func (uc *Usecases) GetCaseManagerBucketUrl() string {
+	return uc.caseManagerBucketUrl
+}
+
+func (uc *Usecases) GetFailedWebhookRetryPageSize() int {
+	return uc.failedWebhooksRetryPageSize
+}
+
+func (uc *Usecases) GetHasConvoyServerSetup() bool {
+	return uc.hasConvoyServerSetup
+}
+
+func (uc *Usecases) GetLicense() *models.LicenseValidation {
+	return &uc.license
+}
+
 type Option func(*options)
 
 func WithIngestionBucketUrl(bucket string) Option {

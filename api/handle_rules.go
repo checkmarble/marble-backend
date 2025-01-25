@@ -11,7 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func handleListRules(uc usecases.Usecases) func(c *gin.Context) {
+func handleListRules(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		iterationID := c.Query("scenarioIterationId")
@@ -34,7 +34,7 @@ func handleListRules(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCreateRule(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateRule(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -70,7 +70,7 @@ func handleCreateRule(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetRule(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetRule(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		ruleID := c.Param("rule_id")
@@ -92,7 +92,7 @@ func handleGetRule(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpdateRule(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateRule(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		ruleID := c.Param("rule_id")
@@ -125,7 +125,7 @@ func handleUpdateRule(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleDeleteRule(uc usecases.Usecases) func(c *gin.Context) {
+func handleDeleteRule(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		ruleID := c.Param("rule_id")

@@ -9,13 +9,13 @@ import (
 
 const csvIngestionTimeout = 1 * time.Hour
 
-func IngestDataFromCsv(ctx context.Context, uc usecases.Usecases) {
+func IngestDataFromCsv(ctx context.Context, uc usecases.Usecaser) {
 	executeWithMonitoring(
 		ctx,
 		uc,
 		"batch-ingestion",
 		func(
-			ctx context.Context, usecases usecases.Usecases,
+			ctx context.Context, usecases usecases.Usecaser,
 		) error {
 			usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
 			usecase := usecasesWithCreds.NewIngestionUseCase()

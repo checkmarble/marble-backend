@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleListWebhooks(uc usecases.Usecases) func(c *gin.Context) {
+func handleListWebhooks(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
@@ -36,7 +36,7 @@ func handleListWebhooks(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleRegisterWebhook(uc usecases.Usecases) func(c *gin.Context) {
+func handleRegisterWebhook(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
@@ -71,7 +71,7 @@ func handleRegisterWebhook(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetWebhook(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetWebhook(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		webhookId := c.Param("webhook_id")
@@ -96,7 +96,7 @@ func handleGetWebhook(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleDeleteWebhook(uc usecases.Usecases) func(c *gin.Context) {
+func handleDeleteWebhook(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		webhookId := c.Param("webhook_id")
@@ -121,7 +121,7 @@ func handleDeleteWebhook(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpdateWebhook(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateWebhook(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		webhookId := c.Param("webhook_id")

@@ -11,7 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 )
 
-func handleListLicenses(uc usecases.Usecases) func(c *gin.Context) {
+func handleListLicenses(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		usecase := usecasesWithCreds(ctx, uc).NewLicenseUsecase()
@@ -26,7 +26,7 @@ func handleListLicenses(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCreateLicense(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateLicense(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var data dto.CreateLicenseBody
@@ -47,7 +47,7 @@ func handleCreateLicense(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetLicenseById(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetLicenseById(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		licenseId := c.Param("license_id")
@@ -63,7 +63,7 @@ func handleGetLicenseById(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpdateLicense(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateLicense(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		id := c.Param("license_id")
@@ -85,7 +85,7 @@ func handleUpdateLicense(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleValidateLicense(uc usecases.Usecases) func(c *gin.Context) {
+func handleValidateLicense(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		licenseKey := c.Param("license_key")
@@ -99,7 +99,7 @@ func handleValidateLicense(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleIsSSOEnabled(uc usecases.Usecases) func(c *gin.Context) {
+func handleIsSSOEnabled(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		usecase := uc.NewLicenseUsecase()
 		c.JSON(http.StatusOK, gin.H{

@@ -25,9 +25,9 @@ func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUs
 		transactionFactory:  usecases.NewTransactionFactory(),
 		executorFactory:     usecases.NewExecutorFactory(),
 		enforceSecurity:     usecases.NewEnforceTestRunScenarioSecurity(),
-		repository:          &usecases.Repositories.MarbleDbRepository,
+		repository:          &usecases.GetRepositories().MarbleDbRepository,
 		clientDbIndexEditor: usecases.NewClientDbIndexEditor(),
-		scenarioRepository:  &usecases.Repositories.MarbleDbRepository,
+		scenarioRepository:  &usecases.GetRepositories().MarbleDbRepository,
 	}
 }
 

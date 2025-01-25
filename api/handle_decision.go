@@ -19,7 +19,7 @@ var decisionPaginationDefaults = models.PaginationDefaults{
 	Order:  models.SortingOrderDesc,
 }
 
-func handleGetDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+func handleGetDecision(uc usecases.Usecaser, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		decisionID := c.Param("decision_id")
@@ -34,7 +34,7 @@ func handleGetDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.C
 }
 
 // Endpoint used by the public API, that does not return the output decision ranks
-func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+func handleListDecisions(uc usecases.Usecaser, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -67,7 +67,7 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 }
 
 // Endpoint used by the internal API to serve the app, that returns the output decision ranks
-func handleListDecisionsInternal(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+func handleListDecisionsInternal(uc usecases.Usecaser, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -99,7 +99,7 @@ func handleListDecisionsInternal(uc usecases.Usecases, marbleAppHost string) fun
 	}
 }
 
-func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+func handlePostDecision(uc usecases.Usecaser, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -155,7 +155,7 @@ func returnExpectedDecisionError(c *gin.Context, err error) bool {
 	return false
 }
 
-func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+func handlePostAllDecisions(uc usecases.Usecaser, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)

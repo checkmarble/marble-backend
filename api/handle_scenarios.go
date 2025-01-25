@@ -15,7 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func listScenarios(uc usecases.Usecases) func(c *gin.Context) {
+func listScenarios(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -38,7 +38,7 @@ func listScenarios(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func createScenario(uc usecases.Usecases) func(c *gin.Context) {
+func createScenario(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -69,7 +69,7 @@ func createScenario(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func getScenario(uc usecases.Usecases) func(c *gin.Context) {
+func getScenario(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		id := c.Param("scenario_id")
@@ -90,7 +90,7 @@ func getScenario(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func updateScenario(uc usecases.Usecases) func(c *gin.Context) {
+func updateScenario(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var input dto.UpdateScenarioBody
@@ -123,7 +123,7 @@ type PostScenarioAstValidationInputBody struct {
 	ExpectedReturnType string      `json:"expected_return_type"`
 }
 
-func validateScenarioAst(uc usecases.Usecases) func(c *gin.Context) {
+func validateScenarioAst(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var input PostScenarioAstValidationInputBody

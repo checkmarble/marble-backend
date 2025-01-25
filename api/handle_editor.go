@@ -10,7 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 )
 
-func handleGetEditorIdentifiers(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetEditorIdentifiers(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		scenarioID := c.Param("scenario_id")
@@ -38,7 +38,7 @@ func handleGetEditorIdentifiers(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetEditorOperators(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetEditorOperators(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		usecase := usecasesWithCreds(ctx, uc).AstExpressionUsecase()

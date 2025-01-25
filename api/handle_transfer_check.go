@@ -14,7 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func handleCreateTransfer(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateTransfer(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		usecase := usecasesWithCreds(ctx, uc).NewTransferCheckUsecase()
@@ -46,7 +46,7 @@ func handleCreateTransfer(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpdateTransfer(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateTransfer(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		id := c.Param("transfer_id")
@@ -78,7 +78,7 @@ type TransferFilters struct {
 	TransferId string `form:"transfer_id" binding:"required"`
 }
 
-func handleQueryTransfers(uc usecases.Usecases) func(c *gin.Context) {
+func handleQueryTransfers(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var filters TransferFilters
@@ -109,7 +109,7 @@ func handleQueryTransfers(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetTransfer(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetTransfer(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		id := c.Param("transfer_id")
@@ -129,7 +129,7 @@ func handleGetTransfer(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleScoreTransfer(uc usecases.Usecases) func(c *gin.Context) {
+func handleScoreTransfer(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		id := c.Param("transfer_id")

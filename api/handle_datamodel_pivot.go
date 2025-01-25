@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleCreateDataModelPivot(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateDataModelPivot(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
@@ -38,7 +38,7 @@ func handleCreateDataModelPivot(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleListDataModelPivots(uc usecases.Usecases) func(c *gin.Context) {
+func handleListDataModelPivots(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)

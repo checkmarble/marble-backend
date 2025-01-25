@@ -13,7 +13,7 @@ import (
 	"github.com/guregu/null/v5"
 )
 
-func handleGetTransferAlertSender(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetTransferAlertSender(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		alertId := c.Param("alert_id")
@@ -28,7 +28,7 @@ func handleGetTransferAlertSender(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetTransferAlertBeneficiary(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetTransferAlertBeneficiary(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		alertId := c.Param("alert_id")
@@ -43,7 +43,7 @@ func handleGetTransferAlertBeneficiary(uc usecases.Usecases) func(c *gin.Context
 	}
 }
 
-func handleListTransferAlertsSender(uc usecases.Usecases) func(c *gin.Context) {
+func handleListTransferAlertsSender(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, _ := utils.CredentialsFromCtx(ctx)
@@ -76,7 +76,7 @@ func handleListTransferAlertsSender(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleListTransferAlertsBeneficiary(uc usecases.Usecases) func(c *gin.Context) {
+func handleListTransferAlertsBeneficiary(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, _ := utils.CredentialsFromCtx(ctx)
@@ -109,7 +109,7 @@ func handleListTransferAlertsBeneficiary(uc usecases.Usecases) func(c *gin.Conte
 	}
 }
 
-func handleCreateTransferAlert(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateTransferAlert(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var data dto.TransferAlertCreateBody
@@ -143,7 +143,7 @@ func handleCreateTransferAlert(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpdateTransferAlertSender(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateTransferAlertSender(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		alertId := c.Param("alert_id")
@@ -170,7 +170,7 @@ func handleUpdateTransferAlertSender(uc usecases.Usecases) func(c *gin.Context) 
 	}
 }
 
-func handleUpdateTransferAlertBeneficiary(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateTransferAlertBeneficiary(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		alertId := c.Param("alert_id")

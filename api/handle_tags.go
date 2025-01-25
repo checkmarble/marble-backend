@@ -15,7 +15,7 @@ type InboxIdUriInput struct {
 	InboxId string `uri:"inbox_id" binding:"required,uuid"`
 }
 
-func handleListTags(uc usecases.Usecases) func(c *gin.Context) {
+func handleListTags(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -41,7 +41,7 @@ func handleListTags(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostTag(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostTag(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -72,7 +72,7 @@ type TagUriInput struct {
 	TagId string `uri:"tag_id" binding:"required,uuid"`
 }
 
-func handleGetTag(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetTag(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var tagInput TagUriInput
@@ -91,7 +91,7 @@ func handleGetTag(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePatchTag(uc usecases.Usecases) func(c *gin.Context) {
+func handlePatchTag(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var tagInput TagUriInput
@@ -120,7 +120,7 @@ func handlePatchTag(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleDeleteTag(uc usecases.Usecases) func(c *gin.Context) {
+func handleDeleteTag(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)

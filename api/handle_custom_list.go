@@ -17,7 +17,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func handleGetAllCustomLists(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetAllCustomLists(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -36,7 +36,7 @@ func handleGetAllCustomLists(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostCustomList(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostCustomList(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -65,7 +65,7 @@ func handlePostCustomList(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetCustomListWithValues(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetCustomListWithValues(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		customListID := c.Param("list_id")
@@ -89,7 +89,7 @@ func handleGetCustomListWithValues(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePatchCustomList(uc usecases.Usecases) func(c *gin.Context) {
+func handlePatchCustomList(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		logger := utils.LoggerFromContext(ctx)
@@ -124,7 +124,7 @@ func handlePatchCustomList(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleDeleteCustomList(uc usecases.Usecases) func(c *gin.Context) {
+func handleDeleteCustomList(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		logger := utils.LoggerFromContext(ctx)
@@ -145,7 +145,7 @@ func handleDeleteCustomList(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetCsvCustomListValues(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		logger := utils.LoggerFromContext(ctx)
@@ -176,7 +176,7 @@ func handleGetCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostCustomListValue(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		logger := utils.LoggerFromContext(ctx)
@@ -209,7 +209,7 @@ func handlePostCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostCsvCustomListValues(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -235,7 +235,7 @@ func handlePostCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleDeleteCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
+func handleDeleteCustomListValue(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		logger := utils.LoggerFromContext(ctx)

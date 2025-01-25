@@ -11,7 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 )
 
-func handleListPartners(uc usecases.Usecases) func(c *gin.Context) {
+func handleListPartners(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -27,7 +27,7 @@ func handleListPartners(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCreatePartner(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreatePartner(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var data dto.PartnerCreateBody
@@ -47,7 +47,7 @@ func handleCreatePartner(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetPartner(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetPartner(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		id := c.Param("partner_id")
@@ -63,7 +63,7 @@ func handleGetPartner(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpdatePartner(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdatePartner(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		id := c.Param("partner_id")

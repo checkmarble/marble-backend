@@ -21,7 +21,7 @@ func timeoutMiddleware(duration time.Duration) gin.HandlerFunc {
 	)
 }
 
-func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Authentication, tokenHandler TokenHandler) {
+func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecaser, auth Authentication, tokenHandler TokenHandler) {
 	tom := timeoutMiddleware(conf.DefaultTimeout)
 
 	r.GET("/liveness", tom, handleLivenessProbe(uc))
@@ -138,7 +138,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.GET("/organizations/:organization_id", tom, handleGetOrganization(uc))
 	router.PATCH("/organizations/:organization_id", tom, handlePatchOrganization(uc))
 	router.DELETE("/organizations/:organization_id", tom, handleDeleteOrganization(uc))
-	router.GET("/organizations/:organization_id/feature_access", tom, handleGetOrganizationFeatureAccess(uc))
+	router.GET("/organizations/:organization_id/feature_access", tom,
+		handleGetOrganizationFeatureAccess(uc))
 	router.PATCH("/organizations/:organization_id/feature_access", tom,
 		handlePatchOrganizationFeatureAccess(uc))
 

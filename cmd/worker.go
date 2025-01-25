@@ -152,7 +152,7 @@ func RunTaskQueue() error {
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 	)
-	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
+	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, &uc)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
 	river.AddWorker(workers, adminUc.NewNewAsyncScheduledExecWorker())
 
@@ -181,7 +181,7 @@ func RunTaskQueue() error {
 	// Start the cron jobs using the old entrypoint.
 	// This will progressively be replaced by the new task queue system.
 	// We do not wait for it, the state of the job is handled by the task queue workers.
-	go jobs.RunScheduler(ctx, uc)
+	go jobs.RunScheduler(ctx, &uc)
 
 	// Teardown sequence
 	sigintOrTerm := make(chan os.Signal, 1)

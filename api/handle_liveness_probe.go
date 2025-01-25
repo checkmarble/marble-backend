@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleLivenessProbe(uc usecases.Usecases) func(c *gin.Context) {
+func handleLivenessProbe(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		usecase := uc.NewLivenessUsecase()

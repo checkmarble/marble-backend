@@ -16,7 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
+func handleIngestion(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -44,7 +44,7 @@ func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleIngestionMultiple(uc usecases.Usecases) func(c *gin.Context) {
+func handleIngestionMultiple(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -72,7 +72,7 @@ func handleIngestionMultiple(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostCsvIngestion(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostCsvIngestion(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -109,7 +109,7 @@ func handlePostCsvIngestion(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleListUploadLogs(uc usecases.Usecases) func(c *gin.Context) {
+func handleListUploadLogs(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)

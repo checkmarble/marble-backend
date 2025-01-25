@@ -14,7 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func handleListUsers(uc usecases.Usecases) func(c *gin.Context) {
+func handleListUsers(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -44,7 +44,7 @@ func handleListUsers(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostUser(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostUser(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var data dto.CreateUser
@@ -66,7 +66,7 @@ func handlePostUser(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetUser(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetUser(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		userID := c.Param("user_id")
@@ -82,7 +82,7 @@ func handleGetUser(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePatchUser(uc usecases.Usecases) func(c *gin.Context) {
+func handlePatchUser(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		userId := c.Param("user_id")
@@ -110,7 +110,7 @@ func handlePatchUser(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleDeleteUser(uc usecases.Usecases) func(c *gin.Context) {
+func handleDeleteUser(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)

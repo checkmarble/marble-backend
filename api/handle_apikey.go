@@ -12,7 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func handleListApiKeys(uc usecases.Usecases) func(c *gin.Context) {
+func handleListApiKeys(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -32,7 +32,7 @@ func handleListApiKeys(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostApiKey(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostApiKey(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -62,7 +62,7 @@ type ApiKeyUriInput struct {
 	ApiKeyId string `uri:"api_key_id" binding:"required,uuid"`
 }
 
-func handleRevokeApiKey(uc usecases.Usecases) func(c *gin.Context) {
+func handleRevokeApiKey(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var apiKeyUriInput ApiKeyUriInput

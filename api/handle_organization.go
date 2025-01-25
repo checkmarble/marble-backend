@@ -11,7 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 )
 
-func handleGetOrganizations(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetOrganizations(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -27,7 +27,7 @@ func handleGetOrganizations(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostOrganization(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostOrganization(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var data dto.CreateOrganizationBodyDto
@@ -47,7 +47,7 @@ func handlePostOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetOrganization(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetOrganization(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID := c.Param("organization_id")
@@ -64,7 +64,7 @@ func handleGetOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
+func handlePatchOrganization(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID := c.Param("organization_id")
@@ -94,7 +94,7 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleDeleteOrganization(uc usecases.Usecases) func(c *gin.Context) {
+func handleDeleteOrganization(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID := c.Param("organization_id")
@@ -108,7 +108,7 @@ func handleDeleteOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetOrganizationFeatureAccess(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID := c.Param("organization_id")
@@ -124,7 +124,7 @@ func handleGetOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Contex
 	}
 }
 
-func handlePatchOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Context) {
+func handlePatchOrganizationFeatureAccess(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID := c.Param("organization_id")

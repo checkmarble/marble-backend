@@ -103,6 +103,6 @@ func RunBatchIngestion() error {
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 	)
 
-	jobs.IngestDataFromCsv(ctx, uc)
+	jobs.IngestDataFromCsv(ctx, &uc)
 	return nil
 }

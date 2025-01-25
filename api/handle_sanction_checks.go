@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleSanctionCheckDataset(uc usecases.Usecases) func(c *gin.Context) {
+func handleSanctionCheckDataset(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
@@ -26,7 +26,7 @@ func handleSanctionCheckDataset(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleListSanctionChecks(uc usecases.Usecases) func(c *gin.Context) {
+func handleListSanctionChecks(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		decisionId := c.Query("decision_id")
@@ -49,7 +49,7 @@ func handleListSanctionChecks(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateSanctionCheckMatchStatus(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		matchId := c.Param("id")
@@ -85,7 +85,7 @@ func handleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) func(c *gin.Cont
 	}
 }
 
-func handleListSanctionCheckMatchComments(uc usecases.Usecases) func(c *gin.Context) {
+func handleListSanctionCheckMatchComments(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		matchId := c.Param("id")
@@ -102,7 +102,7 @@ func handleListSanctionCheckMatchComments(uc usecases.Usecases) func(c *gin.Cont
 	}
 }
 
-func handleCreateSanctionCheckMatchComment(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateSanctionCheckMatchComment(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		matchId := c.Param("id")

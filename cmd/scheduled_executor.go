@@ -116,6 +116,6 @@ func RunScheduledExecuter() error {
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 	)
 
-	jobs.ExecuteAllScheduledScenarios(ctx, uc)
+	jobs.ExecuteAllScheduledScenarios(ctx, &uc)
 	return nil
 }

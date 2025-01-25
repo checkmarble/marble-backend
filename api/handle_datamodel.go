@@ -13,7 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func handleGetDataModel(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetDataModel(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
@@ -32,7 +32,7 @@ func handleGetDataModel(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateTable(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
@@ -57,7 +57,7 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateDataModelTable(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var input dto.UpdateTableInput
@@ -76,7 +76,7 @@ func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateField(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var input dto.CreateFieldInput
@@ -107,7 +107,7 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateDataModelField(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var input dto.UpdateFieldInput
@@ -130,7 +130,7 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateLink(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
@@ -162,7 +162,7 @@ func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleDeleteDataModel(uc usecases.Usecases) func(c *gin.Context) {
+func handleDeleteDataModel(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
@@ -179,7 +179,7 @@ func handleDeleteDataModel(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetOpenAPI(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)

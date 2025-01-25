@@ -41,7 +41,7 @@ const (
 )
 
 var (
-	testUsecases   usecases.Usecases
+	testUsecases   usecases.Usecaser
 	tokenGenerator *token.Generator
 	riverClient    *river.Client[pgx.Tx]
 	port           string
@@ -150,11 +150,11 @@ func TestMain(m *testing.M) {
 		repositories.WithRiverClient(riverClient),
 	)
 
-	testUsecases = usecases.NewUsecases(repos,
+	testUsecases = utils.Ptr(usecases.NewUsecases(repos,
 		usecases.WithLicense(models.NewFullLicense()),
 		usecases.WithIngestionBucketUrl("file://./tempFiles?create_dir=true"),
 		usecases.WithCaseManagerBucketUrl("file://./tempFiles?create_dir=true"),
-	)
+	))
 
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())

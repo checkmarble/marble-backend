@@ -16,7 +16,7 @@ type GetInboxIdUriInput struct {
 	InboxId string `uri:"inbox_id" binding:"required,uuid"`
 }
 
-func handleGetInboxById(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetInboxById(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var getInboxInput GetInboxIdUriInput
@@ -37,7 +37,7 @@ func handleGetInboxById(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleListInboxes(uc usecases.Usecases) func(c *gin.Context) {
+func handleListInboxes(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -67,7 +67,7 @@ type CreateInboxInput struct {
 	Name string `json:"name" binding:"required"`
 }
 
-func handlePostInbox(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostInbox(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -95,7 +95,7 @@ func handlePostInbox(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
+func handlePatchInbox(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var getInboxInput GetInboxIdUriInput
@@ -122,7 +122,7 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleDeleteInbox(uc usecases.Usecases) func(c *gin.Context) {
+func handleDeleteInbox(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var getInboxInput GetInboxIdUriInput
@@ -145,7 +145,7 @@ type GetInboxUserInput struct {
 	Id string `uri:"inbox_user_id" binding:"required,uuid"`
 }
 
-func handleGetInboxUserById(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetInboxUserById(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var getInboxUserInput GetInboxUserInput
@@ -164,7 +164,7 @@ func handleGetInboxUserById(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleListAllInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
+func handleListAllInboxUsers(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
@@ -177,7 +177,7 @@ func handleListAllInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleListInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
+func handleListInboxUsers(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var listInboxUserInput GetInboxIdUriInput
@@ -206,7 +206,7 @@ type CreateInboxUserInput struct {
 	}
 }
 
-func handlePostInboxUser(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostInboxUser(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var input CreateInboxUserInput
@@ -234,7 +234,7 @@ func handlePostInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePatchInboxUser(uc usecases.Usecases) func(c *gin.Context) {
+func handlePatchInboxUser(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var getInboxUserInput GetInboxUserInput
@@ -261,7 +261,7 @@ func handlePatchInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleDeleteInboxUser(uc usecases.Usecases) func(c *gin.Context) {
+func handleDeleteInboxUser(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var getInboxUserInput GetInboxUserInput

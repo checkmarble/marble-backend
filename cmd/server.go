@@ -174,7 +174,7 @@ func RunServer() error {
 	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
 
 	router := api.InitRouterMiddlewares(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
-	server := api.NewServer(router, apiConfig, uc, deps.Authentication, deps.TokenHandler)
+	server := api.NewServer(router, apiConfig, &uc, deps.Authentication, deps.TokenHandler)
 
 	notify, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

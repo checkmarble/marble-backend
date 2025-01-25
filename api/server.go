@@ -37,7 +37,7 @@ func applyOptions(opts []Option) *options {
 func NewServer(
 	router *gin.Engine,
 	conf Configuration,
-	uc usecases.Usecases,
+	uc usecases.Usecaser,
 	auth Authentication,
 	tokenHandler TokenHandler,
 	opts ...Option,

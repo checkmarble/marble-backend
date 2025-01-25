@@ -20,7 +20,7 @@ var casesPaginationDefaults = models.PaginationDefaults{
 	Order:  models.SortingOrderDesc,
 }
 
-func handleListCases(uc usecases.Usecases) func(c *gin.Context) {
+func handleListCases(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -56,7 +56,7 @@ type CaseInput struct {
 	Id string `uri:"case_id" binding:"required,uuid"`
 }
 
-func handleGetCase(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetCase(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var caseInput CaseInput
@@ -74,7 +74,7 @@ func handleGetCase(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostCase(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
@@ -116,7 +116,7 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
+func handlePatchCase(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
@@ -155,7 +155,7 @@ func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostCaseDecisions(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
@@ -187,7 +187,7 @@ func handlePostCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostCaseComment(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
@@ -224,7 +224,7 @@ func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostCaseTags(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
@@ -263,7 +263,7 @@ type FileForm struct {
 	Files []multipart.FileHeader `form:"file[]" binding:"required"`
 }
 
-func handlePostCaseFile(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostCaseFile(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var caseInput CaseInput
@@ -295,7 +295,7 @@ type CaseFileInput struct {
 	Id string `uri:"case_file_id" binding:"required,uuid"`
 }
 
-func handleDownloadCaseFile(uc usecases.Usecases) func(c *gin.Context) {
+func handleDownloadCaseFile(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var caseFileInput CaseFileInput
@@ -314,7 +314,7 @@ func handleDownloadCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
+func handleReviewCaseDecisions(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)

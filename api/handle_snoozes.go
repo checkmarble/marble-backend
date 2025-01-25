@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func handleSnoozesOfDecision(uc usecases.Usecases) func(c *gin.Context) {
+func handleSnoozesOfDecision(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		_, err := utils.OrganizationIdFromRequest(c.Request)
@@ -37,7 +37,7 @@ func handleSnoozesOfDecision(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
+func handleSnoozeDecision(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -77,7 +77,7 @@ func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleSnoozesOfScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
+func handleSnoozesOfScenarioIteration(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		_, err := utils.OrganizationIdFromRequest(c.Request)
@@ -103,7 +103,7 @@ func handleSnoozesOfScenarioIteration(uc usecases.Usecases) func(c *gin.Context)
 	}
 }
 
-func handleGetSnoozesById(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetSnoozesById(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		ruleSnoozeId := c.Param("rule_snooze_id")

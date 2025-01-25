@@ -14,7 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
+func handleListScenarioPublications(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -40,7 +40,7 @@ func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCreateScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateScenarioPublication(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -66,7 +66,7 @@ func handleCreateScenarioPublication(uc usecases.Usecases) func(c *gin.Context) 
 	}
 }
 
-func handleGetScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetScenarioPublication(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		scenarioPublicationID := c.Param("publication_id")
@@ -80,7 +80,7 @@ func handleGetScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetPublicationPreparationStatus(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetPublicationPreparationStatus(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -108,7 +108,7 @@ func handleGetPublicationPreparationStatus(uc usecases.Usecases) func(c *gin.Con
 	}
 }
 
-func handleStartPublicationPreparation(uc usecases.Usecases) func(c *gin.Context) {
+func handleStartPublicationPreparation(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)

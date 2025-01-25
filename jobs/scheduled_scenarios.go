@@ -13,13 +13,13 @@ import (
 
 const batchScenarioExecutionTimeout = 3 * time.Hour
 
-func ExecuteAllScheduledScenarios(ctx context.Context, uc usecases.Usecases) {
+func ExecuteAllScheduledScenarios(ctx context.Context, uc usecases.Usecaser) {
 	executeWithMonitoring(
 		ctx,
 		uc,
 		"scheduled-execution",
 		func(
-			ctx context.Context, usecases usecases.Usecases,
+			ctx context.Context, usecases usecases.Usecaser,
 		) error {
 			usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
 			runScheduledExecution := usecasesWithCreds.NewRunScheduledExecution()
@@ -43,9 +43,9 @@ func ExecuteAllScheduledScenarios(ctx context.Context, uc usecases.Usecases) {
 	)
 }
 
-func scheduledScenarios(ctx context.Context, usecases usecases.Usecases) error {
+func scheduledScenarios(ctx context.Context, usecases usecases.Usecaser) error {
 	logger := utils.LoggerFromContext(ctx)
-	scenarios, err := usecases.Repositories.MarbleDbRepository.ListAllScenarios(
+	scenarios, err := usecases.GetRepositories().MarbleDbRepository.ListAllScenarios(
 		ctx,
 		usecases.NewExecutorFactory().NewExecutor(),
 		models.ListAllScenariosFilters{Live: true},

@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleCreateScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateScenarioTestRun(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -37,7 +37,7 @@ func handleCreateScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleListScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
+func handleListScenarioTestRun(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		scenarioID := c.Query("scenario_id")
@@ -51,7 +51,7 @@ func handleListScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetScenarioTestRun(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		testRunId := c.Param("test_run_id")
@@ -66,7 +66,7 @@ func handleGetScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCancelScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
+func handleCancelScenarioTestRun(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		testRunId := c.Param("test_run_id")
@@ -81,7 +81,7 @@ func handleCancelScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleDecisionsDataByOutcomeAndScore(uc usecases.Usecases) func(c *gin.Context) {
+func handleDecisionsDataByOutcomeAndScore(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		testrunId := c.Param("test_run_id")
@@ -98,7 +98,7 @@ func handleDecisionsDataByOutcomeAndScore(uc usecases.Usecases) func(c *gin.Cont
 	}
 }
 
-func handleListRulesExecution(uc usecases.Usecases) func(c *gin.Context) {
+func handleListRulesExecution(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		testrunId := c.Param("test_run_id")

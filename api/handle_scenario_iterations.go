@@ -15,7 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
+func handleListScenarioIterations(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		scenarioId := c.Query("scenario_id")
@@ -48,7 +48,7 @@ func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCreateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateScenarioIteration(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -82,7 +82,7 @@ func handleCreateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCreateDraftFromIteration(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateDraftFromIteration(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -107,7 +107,7 @@ func handleCreateDraftFromIteration(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetScenarioIteration(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		iterationID := c.Param("iteration_id")
@@ -126,7 +126,7 @@ func handleGetScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpdateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateScenarioIteration(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -169,7 +169,7 @@ type PostScenarioValidationInputBody struct {
 	RuleId        *string      `json:"rule_id"`
 }
 
-func handleValidateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
+func handleValidateScenarioIteration(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var input PostScenarioValidationInputBody
@@ -205,7 +205,7 @@ func handleValidateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) 
 	}
 }
 
-func handleCommitScenarioIterationVersion(uc usecases.Usecases) func(c *gin.Context) {
+func handleCommitScenarioIterationVersion(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		scenarioIterationID := c.Param("iteration_id")

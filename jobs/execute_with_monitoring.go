@@ -12,9 +12,9 @@ import (
 
 func executeWithMonitoring(
 	ctx context.Context,
-	uc usecases.Usecases,
+	uc usecases.Usecaser,
 	jobName string,
-	fn func(context.Context, usecases.Usecases) error,
+	fn func(context.Context, usecases.Usecaser) error,
 ) {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start job %s", jobName))

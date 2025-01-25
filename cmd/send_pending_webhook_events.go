@@ -93,6 +93,6 @@ func RunSendPendingWebhookEvents() error {
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 	)
 
-	jobs.SendPendingWebhookEvents(ctx, uc)
+	jobs.SendPendingWebhookEvents(ctx, &uc)
 	return nil
 }

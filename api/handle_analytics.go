@@ -11,7 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func handleListAnalytics(uc usecases.Usecases) func(c *gin.Context) {
+func handleListAnalytics(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
