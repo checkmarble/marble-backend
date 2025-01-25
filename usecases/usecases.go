@@ -1,6 +1,8 @@
 package usecases
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -11,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
@@ -24,6 +27,18 @@ type Usecases struct {
 	failedWebhooksRetryPageSize int
 	hasConvoyServerSetup        bool
 	license                     models.LicenseValidation
+}
+
+func (uc *Usecases) WithCreds(ctx context.Context) UsecaserWithCreds {
+	creds, found := utils.CredentialsFromCtx(ctx)
+	if !found {
+		panic("no credentials in context")
+	}
+
+	return &UsecasesWithCreds{
+		Usecaser:    uc,
+		Credentials: creds,
+	}
 }
 
 func (uc *Usecases) GetRepositories() *repositories.Repositories {

@@ -117,7 +117,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecase {
+func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecaser {
 	return SanctionCheckUsecase{
 		enforceSecurityDecision: usecases.NewEnforceDecisionSecurity(),
 		enforceSecurityCase:     usecases.NewEnforceCaseSecurity(),

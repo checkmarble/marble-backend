@@ -14,7 +14,7 @@ import (
 func handleSanctionCheckDataset(uc usecases.Usecaser) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		uc := uc.WithCreds(ctx).NewSanctionCheckUsecase()
 
 		dataset, err := uc.CheckDataset(ctx)
 
@@ -36,7 +36,7 @@ func handleListSanctionChecks(uc usecases.Usecaser) func(c *gin.Context) {
 			return
 		}
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		uc := uc.WithCreds(ctx).NewSanctionCheckUsecase()
 		sanctionChecks, err := uc.ListSanctionChecks(ctx, decisionId)
 
 		if presentError(ctx, c, err) {

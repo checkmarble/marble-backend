@@ -106,7 +106,7 @@ type DecisionUsecase struct {
 	dataModelRepository           repositories.DataModelRepository
 	repository                    DecisionUsecaseRepository
 	sanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
-	sanctionCheckUsecase          SanctionCheckUsecase
+	sanctionCheckUsecase          SanctionCheckUsecaser
 	scenarioTestRunRepository     repositories.ScenarioTestRunRepository
 	evaluateAstExpression         ast_eval.EvaluateAstExpression
 	decisionWorkflows             decisionWorkflowsUsecase
@@ -447,8 +447,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 
 		if decision.SanctionCheckExecution != nil {
-			if _, err := usecase.sanctionCheckUsecase.repository.InsertSanctionCheck(ctx, tx,
-				decision); err != nil {
+			if _, err := usecase.sanctionCheckUsecase.InsertResults(ctx, tx, decision); err != nil {
 				return models.DecisionWithRuleExecutions{},
 					errors.Wrap(err, "could not store sanction check execution")
 			}

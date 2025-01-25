@@ -55,6 +55,19 @@ type SanctionCheckRepository interface {
 		[]models.SanctionCheckMatchComment, error)
 }
 
+type SanctionCheckUsecaser interface {
+	CheckDataset(ctx context.Context) (models.OpenSanctionsDataset, error)
+	ListSanctionChecks(ctx context.Context, decisionId string) ([]models.SanctionCheck, error)
+	Execute(ctx context.Context, orgId string, cfg models.SanctionCheckConfig,
+		query models.OpenSanctionsQuery) (models.SanctionCheck, error)
+	InsertResults(ctx context.Context, exec repositories.Executor,
+		decision models.DecisionWithRuleExecutions) (models.SanctionCheck, error)
+	UpdateMatchStatus(ctx context.Context, update models.SanctionCheckMatchUpdate) (models.SanctionCheckMatch, error)
+	MatchListComments(ctx context.Context, matchId string) ([]models.SanctionCheckMatchComment, error)
+	MatchAddComment(ctx context.Context, matchId string, comment models.SanctionCheckMatchComment) (
+		models.SanctionCheckMatchComment, error)
+}
+
 type SanctionCheckUsecase struct {
 	enforceSecurityDecision SanctionCheckEnforceSecurityDecision
 	enforceSecurityCase     SanctionCheckEnforceSecurityCase

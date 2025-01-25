@@ -1,8 +1,15 @@
 package utils
 
 import (
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/gin-gonic/gin"
 	"github.com/go-faker/faker/v4"
 )
 
@@ -63,4 +70,27 @@ func StructToMockRow[T any](object T) []any {
 	}
 
 	return slice
+}
+
+func HandlerTester(req *http.Request, handler func(c *gin.Context)) *httptest.ResponseRecorder {
+	ctx := context.TODO()
+	ctx = context.WithValue(ctx, ContextKeyCredentials, models.Credentials{})
+
+	w := httptest.NewRecorder()
+	ginCtx, _ := gin.CreateTestContext(w)
+	ginCtx.Request = req.WithContext(ctx)
+
+	handler(ginCtx)
+
+	ginCtx.Writer.WriteHeaderNow()
+
+	return w
+}
+
+func JsonTestUnmarshal[T any](r io.Reader) (T, error) {
+	var value T
+
+	err := json.NewDecoder(r).Decode(&value)
+
+	return value, err
 }

@@ -1,6 +1,8 @@
 package usecases
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
@@ -16,6 +18,8 @@ import (
 )
 
 type Usecaser interface {
+	WithCreds(context.Context) UsecaserWithCreds
+
 	AstEvaluationEnvironmentFactory(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment
 	GetBatchIngestionMaxSize() int
 	GetCaseManagerBucketUrl() string
@@ -71,7 +75,7 @@ type UsecaserWithCreds interface {
 	NewRuleSnoozeUsecase() RuleSnoozeUsecase
 	NewRuleUsecase() RuleUsecase
 	NewRunScheduledExecution() scheduled_execution.RunScheduledExecution
-	NewSanctionCheckUsecase() SanctionCheckUsecase
+	NewSanctionCheckUsecase() SanctionCheckUsecaser
 	NewScenarioIterationUsecase() ScenarioIterationUsecase
 	NewScenarioPublicationUsecase() ScenarioPublicationUsecase
 	NewScenarioTestRunUseCase() ScenarioTestRunUsecase
@@ -84,4 +88,19 @@ type UsecaserWithCreds interface {
 	NewUserUseCase() UserUseCase
 	NewWebhookEventsUsecase() WebhookEventsUsecase
 	NewWebhooksUsecase() WebhooksUsecase
+}
+
+type MockUsecase struct {
+	Usecaser
+	withCreds UsecaserWithCreds
+}
+
+func NewMockUsecase(uc UsecaserWithCreds) MockUsecase {
+	return MockUsecase{
+		withCreds: uc,
+	}
+}
+
+func (uc MockUsecase) WithCreds(context.Context) UsecaserWithCreds {
+	return uc.withCreds
 }
