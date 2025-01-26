@@ -1,21 +1,29 @@
 package infra
 
+import "net/http"
+
 const (
 	OPEN_SANCTIONS_API_HOST = "https://api.opensanctions.org"
 )
 
 type OpenSanctions struct {
-	host string
+	client *http.Client
+	host   string
 	// TODO: this is only for SaaS OpenSanctions API, we may need to abstract
 	// over authentication to at least offer Basic and Bearer for self-hosted.
 	apiKey string
 }
 
-func InitializeOpenSanctions(host, apiKey string) OpenSanctions {
+func InitializeOpenSanctions(client *http.Client, host, apiKey string) OpenSanctions {
 	return OpenSanctions{
+		client: client,
 		host:   host,
 		apiKey: apiKey,
 	}
+}
+
+func (os OpenSanctions) Client() *http.Client {
+	return os.client
 }
 
 func (os OpenSanctions) IsSelfHosted() bool {

@@ -1,0 +1,20 @@
+{
+    "responses": {
+        "test": {
+            "status": 200,
+            "results": [
+                {
+                    "id": "UNIQUEID",
+                    "schema": "Person",
+                    "properties": {
+                        "name": ["Bob", "Joe"]
+                    }
+                }
+            ],
+            "total": {
+                "value": 10
+            }
+        }
+    },
+    "limit": 1
+}

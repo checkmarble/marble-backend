@@ -100,7 +100,6 @@ type HTTPOpenSanctionResultResult struct {
 }
 
 func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsResult) (models.SanctionCheck, error) {
-	// TODO: Replace with actual processing of responses
 	partial := false
 	matches := make(map[string]models.SanctionCheckMatch)
 	matchToQueryId := make(map[string][]string)
