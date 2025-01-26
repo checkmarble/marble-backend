@@ -128,60 +128,28 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 			"error during concurrent rule evaluation")
 	}
 
-	// Compute outcome from score
 	var outcome models.Outcome
-	var sanctionCheckExecution *models.SanctionCheck
 
-	if iteration.SanctionCheckConfig != nil && iteration.SanctionCheckConfig.Enabled {
-		triggerEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
-			ctx,
-			*iteration.SanctionCheckConfig.TriggerRule,
-			params.Scenario.OrganizationId,
-			dataAccessor.ClientObject,
-			params.DataModel,
-		)
-		if err != nil {
-			return models.ScenarioExecution{}, errors.Wrap(err,
-				"could not execute sanction check trigger rule")
-		}
-		if _, ok := triggerEvaluation.ReturnValue.(bool); !ok {
-			return models.ScenarioExecution{}, errors.New(
-				"sanction check trigger rule did not evaluate to a boolean")
-		}
+	sanctionCheckExecution, santionCheckPerformed, err :=
+		evaluateSanctionCheck(ctx, repositories, iteration, params, dataAccessor)
+	if err != nil {
+		// TODO: what happens if we cannot perform the sanction check?
+		return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
+	}
 
-		if triggerEvaluation.ReturnValue == true {
-			query := models.OpenSanctionsQuery{
-				Queries: models.OpenSanctionCheckFilter{
-					// TODO: take this from the context and the scenario configuration
-					"name": []string{"obama"},
-				},
+	if santionCheckPerformed {
+		// TODO: probably not this, we want to force reviewing if more than one result, or in all cases.
+		if sanctionCheckExecution.Count > 0 {
+			switch {
+			case iteration.SanctionCheckConfig.Outcome.ForceOutcome != models.UnsetForcedOutcome:
+				outcome = iteration.SanctionCheckConfig.Outcome.ForceOutcome
+			case iteration.SanctionCheckConfig.Outcome.ScoreModifier != 0:
+				score += iteration.SanctionCheckConfig.Outcome.ScoreModifier
 			}
-
-			result, err := repositories.EvalSanctionCheckUsecase.Execute(ctx,
-				params.Scenario.OrganizationId, *iteration.SanctionCheckConfig, query)
-			if err != nil {
-				return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
-			}
-
-			sanctionCheckExecution = &result
-
-			if result.Count > 0 {
-				switch {
-				case iteration.SanctionCheckConfig.Outcome.ForceOutcome != models.Approve:
-					outcome = iteration.SanctionCheckConfig.Outcome.ForceOutcome
-					logger.Debug("SANCTION CHECK: forcing outcome", "outcome", outcome)
-				case iteration.SanctionCheckConfig.Outcome.ScoreModifier != 0:
-					score += iteration.SanctionCheckConfig.Outcome.ScoreModifier
-					logger.Debug("SANCTION CHECK: score modifier", "modifier",
-						iteration.SanctionCheckConfig.Outcome.ScoreModifier)
-				}
-			}
-
-			logger.Debug("SANCTION CHECK: found", "matches", result.Count, "partial", result.Partial)
 		}
 	}
 
-	if outcome == models.Approve {
+	if !santionCheckPerformed || iteration.SanctionCheckConfig.Outcome.ForceOutcome == models.UnsetForcedOutcome {
 		if score >= *iteration.ScoreDeclineThreshold {
 			outcome = models.Decline
 		} else if score >= *iteration.ScoreBlockAndReviewThreshold {

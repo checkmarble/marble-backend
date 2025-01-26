@@ -29,7 +29,7 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 			"unable to unmarshal formula ast expression: %w", err)
 	}
 
-	var forcedOutcome models.Outcome
+	var forcedOutcome models.Outcome = models.UnsetForcedOutcome
 
 	if db.ForcedOutcome != nil {
 		forcedOutcome = models.OutcomeFrom(*db.ForcedOutcome)
