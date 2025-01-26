@@ -33,15 +33,13 @@ type openSanctionsRequestQuery struct {
 	Properties models.OpenSanctionCheckFilter `json:"properties"`
 }
 
-func (repo OpenSanctionsRepository) GetLatestUpstreamDataset(ctx context.Context,
-	client http.Client,
-) (models.OpenSanctionsUpstreamDataset, error) {
+func (repo OpenSanctionsRepository) GetLatestUpstreamDataset(ctx context.Context) (models.OpenSanctionsUpstreamDataset, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, OPEN_SANCTIONS_DATASET_URL, nil)
 	if err != nil {
 		return models.OpenSanctionsUpstreamDataset{}, err
 	}
 
-	resp, err := client.Do(req)
+	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
 		return models.OpenSanctionsUpstreamDataset{}, err
 	}
@@ -57,8 +55,8 @@ func (repo OpenSanctionsRepository) GetLatestUpstreamDataset(ctx context.Context
 	return httpmodels.AdaptOpenSanctionDataset(dataset), err
 }
 
-func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context, client http.Client) (models.OpenSanctionsDataset, error) {
-	upstream, err := repo.GetLatestUpstreamDataset(ctx, client)
+func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (models.OpenSanctionsDataset, error) {
+	upstream, err := repo.GetLatestUpstreamDataset(ctx)
 	if err != nil {
 		return models.OpenSanctionsDataset{}, errors.Wrap(err, "could not retrieve upstream dataset")
 	}
@@ -69,7 +67,7 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context, c
 		return models.OpenSanctionsDataset{}, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
 		return models.OpenSanctionsDataset{}, err
 	}
@@ -106,7 +104,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context,
 
 	utils.LoggerFromContext(ctx).Debug("SANCTION CHECK: sending request...")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
 		return models.SanctionCheck{},
 			errors.Wrap(err, "could not perform sanction check")
