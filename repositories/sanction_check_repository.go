@@ -11,11 +11,11 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (*MarbleDbRepository) ListSanctionChecksForDecision(ctx context.Context, exec Executor,
+func (*MarbleDbRepository) GetActiveSanctionCheckForDecision(ctx context.Context, exec Executor,
 	decisionId string,
-) ([]models.SanctionCheck, error) {
+) (models.SanctionCheck, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
+		return models.SanctionCheck{}, err
 	}
 
 	sql := NewQueryBuilder().
@@ -23,7 +23,7 @@ func (*MarbleDbRepository) ListSanctionChecksForDecision(ctx context.Context, ex
 		From(dbmodels.TABLE_SANCTION_CHECKS).
 		Where(squirrel.Eq{"decision_id": decisionId, "is_archived": false})
 
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
 }
 
 func (*MarbleDbRepository) GetSanctionCheck(ctx context.Context, exec Executor, id string) (models.SanctionCheck, error) {

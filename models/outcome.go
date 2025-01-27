@@ -48,6 +48,8 @@ func (o *Outcome) MaybeString() *string {
 		value = "block_and_review"
 	case Decline:
 		value = "decline"
+	case UnsetForcedOutcome:
+		return nil
 	}
 
 	return &value

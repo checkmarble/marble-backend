@@ -38,7 +38,7 @@ type SanctionCheckInboxRepository interface {
 }
 
 type SanctionCheckRepository interface {
-	ListSanctionChecksForDecision(context.Context, repositories.Executor, string) ([]models.SanctionCheck, error)
+	GetActiveSanctionCheckForDecision(context.Context, repositories.Executor, string) (models.SanctionCheck, error)
 	GetSanctionCheck(context.Context, repositories.Executor, string) (models.SanctionCheck, error)
 	InsertSanctionCheck(context.Context, repositories.Executor,
 		models.DecisionWithRuleExecutions) (models.SanctionCheck, error)
@@ -70,39 +70,35 @@ func (uc SanctionCheckUsecase) CheckDataset(ctx context.Context) (models.OpenSan
 	return uc.openSanctionsProvider.GetLatestLocalDataset(ctx)
 }
 
-func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionId string) ([]models.SanctionCheck, error) {
+func (uc SanctionCheckUsecase) GetSanctionCheck(ctx context.Context, decisionId string) (models.SanctionCheck, error) {
 	decision, err := uc.decisionRepository.DecisionsById(ctx,
 		uc.executorFactory.NewExecutor(), []string{decisionId})
 	if err != nil {
-		return nil, err
+		return models.SanctionCheck{}, err
 	}
 	if len(decision) == 0 {
-		return nil, errors.Wrap(models.NotFoundError, "requested decision does not exist")
+		return models.SanctionCheck{}, errors.Wrap(models.NotFoundError, "requested decision does not exist")
 	}
 
 	if err := uc.enforceSecurityDecision.ReadDecision(decision[0]); err != nil {
-		return nil, err
+		return models.SanctionCheck{}, err
 	}
 
-	sanctionChecks, err := uc.repository.ListSanctionChecksForDecision(ctx,
+	sanctionCheck, err := uc.repository.GetActiveSanctionCheckForDecision(ctx,
 		uc.executorFactory.NewExecutor(), decision[0].DecisionId)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve sanction check")
+		return models.SanctionCheck{}, errors.Wrap(err, "could not retrieve sanction check")
 	}
 
-	// TODO: anything supports nested queries?
-	for idx, sc := range sanctionChecks {
-		matches, err := uc.repository.ListSanctionCheckMatches(ctx,
-			uc.executorFactory.NewExecutor(), sc.Id)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not retrieve sanction check matches")
-		}
-
-		sanctionChecks[idx].Count = len(matches)
-		sanctionChecks[idx].Matches = matches
+	if sanctionCheck.Matches, err = uc.repository.ListSanctionCheckMatches(ctx,
+		uc.executorFactory.NewExecutor(), sanctionCheck.Id); err != nil {
+		return models.SanctionCheck{}, errors.Wrap(err,
+			"could not retrieve sanction check matches")
 	}
 
-	return sanctionChecks, nil
+	sanctionCheck.Count = len(sanctionCheck.Matches)
+
+	return sanctionCheck, nil
 }
 
 func (uc SanctionCheckUsecase) Execute(ctx context.Context, orgId string, cfg models.SanctionCheckConfig,
