@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func buildUsecase() (SanctionCheckUsecase, executor_factory.ExecutorFactoryStub) {
+func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.ExecutorFactoryStub) {
 	enforceSecurity := sanctionCheckEnforcerMock{}
 	mock := sanctionCheckRepositoryMock{}
 	exec := executor_factory.NewExecutorFactoryStub()
@@ -31,7 +31,7 @@ func buildUsecase() (SanctionCheckUsecase, executor_factory.ExecutorFactoryStub)
 }
 
 func TestGetSanctionCheckOnDecision(t *testing.T) {
-	uc, exec := buildUsecase()
+	uc, exec := buildSanctionCheckUsecaseMock()
 	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBSanctionCheck]()
 	mockScMatch, mockScMatchRow := utils.FakeStruct[dbmodels.DBSanctionCheckMatchWithComments]()
 
@@ -61,19 +61,18 @@ func TestGetSanctionCheckOnDecision(t *testing.T) {
 				AddRow(utils.FakeStructRow[dbmodels.DBSanctionCheckMatchWithComments]()...),
 		)
 
-	scs, err := uc.ListSanctionChecks(context.TODO(), "decisionid")
+	sc, err := uc.GetSanctionCheck(context.TODO(), "decisionid")
 
 	assert.NoError(t, exec.Mock.ExpectationsWereMet())
 	assert.NoError(t, err)
-	assert.Len(t, scs, 1)
-	assert.Equal(t, mockSc.Status, scs[0].Status)
-	assert.Len(t, scs[0].Matches, 3)
-	assert.Equal(t, mockScMatch.Status, scs[0].Matches[0].Status)
-	assert.Equal(t, mockScMatch.CommentCount, scs[0].Matches[0].CommentCount)
+	assert.Equal(t, mockSc.Status, sc.Status)
+	assert.Len(t, sc.Matches, 3)
+	assert.Equal(t, mockScMatch.Status, sc.Matches[0].Status)
+	assert.Equal(t, mockScMatch.CommentCount, sc.Matches[0].CommentCount)
 }
 
 func TestListSanctionCheckOnMatchComments(t *testing.T) {
-	uc, exec := buildUsecase()
+	uc, exec := buildSanctionCheckUsecaseMock()
 	mockMatch, mockMatchRow := utils.FakeStruct[dbmodels.DBSanctionCheckMatch]()
 	_, mockCheckRow := utils.FakeStruct[dbmodels.DBSanctionCheck]()
 	mockComments, mockCommentsRows := utils.FakeStructs[dbmodels.DBSanctionCheckMatchComment](4)

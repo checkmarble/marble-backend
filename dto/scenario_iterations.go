@@ -75,8 +75,8 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		}
 
 		if si.SanctionCheckConfig.Outcome.ForceOutcome != models.Approve {
-			outcome := si.SanctionCheckConfig.Outcome.ForceOutcome.String()
-			body.SanctionCheckConfig.ForceOutcome = &outcome
+			body.SanctionCheckConfig.ForceOutcome =
+				si.SanctionCheckConfig.Outcome.ForceOutcome.MaybeString()
 		}
 	}
 
