@@ -37,15 +37,13 @@ func handleListSanctionChecks(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
-		sanctionChecks, err := uc.ListSanctionChecks(ctx, decisionId)
+		sanctionCheck, err := uc.GetSanctionCheck(ctx, decisionId)
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		sanctionCheckJson := pure_utils.Map(sanctionChecks, dto.AdaptSanctionCheckDto)
-
-		c.JSON(http.StatusOK, sanctionCheckJson)
+		c.JSON(http.StatusOK, dto.AdaptSanctionCheckDto(sanctionCheck))
 	}
 }
 
