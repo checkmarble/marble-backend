@@ -42,7 +42,7 @@ func AdaptSanctionCheckDto(m models.SanctionCheck) SanctionCheckDto {
 			Threshold: m.OrgConfig.MatchThreshold,
 			Query:     m.Query,
 		},
-		Status:      m.Status,
+		Status:      m.Status.String(),
 		Partial:     m.Partial,
 		Count:       m.Count,
 		IsManual:    m.IsManual,
@@ -51,6 +51,17 @@ func AdaptSanctionCheckDto(m models.SanctionCheck) SanctionCheckDto {
 	}
 
 	return sanctionCheck
+}
+
+// TODO: accept query.
+type SanctionCheckRefineDto struct {
+	DecisionId string `json:"decision_id"`
+}
+
+func AdaptSanctionCheckRefineDto(dto SanctionCheckRefineDto) models.SanctionCheckRefineRequest {
+	return models.SanctionCheckRefineRequest{
+		DecisionId: dto.DecisionId,
+	}
 }
 
 type SanctionCheckMatchDto struct {

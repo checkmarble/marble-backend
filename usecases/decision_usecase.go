@@ -448,7 +448,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 		if decision.SanctionCheckExecution != nil {
 			if _, err := usecase.sanctionCheckUsecase.repository.InsertSanctionCheck(ctx, tx,
-				decision); err != nil {
+				decision.DecisionId, *decision.SanctionCheckExecution); err != nil {
 				return models.DecisionWithRuleExecutions{},
 					errors.Wrap(err, "could not store sanction check execution")
 			}
