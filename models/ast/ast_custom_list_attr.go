@@ -12,6 +12,7 @@ var AttributeFuncCustomListAccess = struct {
 		NamedArguments: []string{
 			"customListId",
 		},
+		Cost: 30,
 	},
 	ArgumentCustomListId: "customListId",
 }
