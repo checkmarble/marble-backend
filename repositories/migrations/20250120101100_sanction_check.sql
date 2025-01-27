@@ -5,7 +5,7 @@ create table sanction_checks (
     id uuid default uuid_generate_v4(),
     decision_id uuid not null,
 
-    status text check (status in ('confirmed_hit', 'in_review', 'error')) default 'in_review',
+    status text check (status in ('confirmed_hit', 'no_hit', 'in_review', 'error')) default 'in_review',
     search_input jsonb,
     search_datasets text[],
     search_threshold integer,
