@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -65,7 +66,7 @@ func TestGetSanctionCheckOnDecision(t *testing.T) {
 
 	assert.NoError(t, exec.Mock.ExpectationsWereMet())
 	assert.NoError(t, err)
-	assert.Equal(t, mockSc.Status, sc.Status)
+	assert.Equal(t, models.SanctionCheckStatusFrom(mockSc.Status), sc.Status)
 	assert.Len(t, sc.Matches, 3)
 	assert.Equal(t, mockScMatch.Status, sc.Matches[0].Status)
 	assert.Equal(t, mockScMatch.CommentCount, sc.Matches[0].CommentCount)

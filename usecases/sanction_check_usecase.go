@@ -222,9 +222,7 @@ func (uc SanctionCheckUsecase) enforceCanRefineSanctionCheck(ctx context.Context
 		return models.Decision{}, models.SanctionCheck{}, errors.Wrap(models.NotFoundError,
 			"this sanction check is not linked to a case")
 	}
-	if (decision[0].Case.Status != models.CaseOpen && decision[0].Case.Status !=
-		models.CaseInvestigating) || (sanctionCheck.Status != models.SanctionStatusInReview &&
-		sanctionCheck.Status != models.SanctionStatusError) {
+	if decision[0].Case.Status.IsFinalized() || sanctionCheck.Status.IsFinalized() {
 		return models.Decision{}, models.SanctionCheck{},
 			errors.Wrap(models.NotFoundError, "this sanction is not pending review")
 	}
