@@ -153,6 +153,8 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 		}
 	}
 
+	// We only go through the nominal score classifier if the sanction check was not executed or if it was, but
+	// there was not forced outcome configured on it.
 	if !santionCheckPerformed || iteration.SanctionCheckConfig.Outcome.ForceOutcome == models.UnsetForcedOutcome {
 		if score >= *iteration.ScoreDeclineThreshold {
 			outcome = models.Decline
