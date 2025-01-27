@@ -88,7 +88,5 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 	sql = sql.Suffix(fmt.Sprintf("RETURNING %s",
 		strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
 
-	fmt.Println(sql.ToSql())
-
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
 }
