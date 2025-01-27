@@ -9,6 +9,7 @@ type SanctionCheckStatus int
 
 const (
 	SanctionStatusConfirmedHit SanctionCheckStatus = iota
+	SanctionStatusNoHit
 	SanctionStatusInReview
 	SanctionStatusError
 	SanctionStatusUnknown
@@ -18,6 +19,8 @@ func SanctionCheckStatusFrom(s string) SanctionCheckStatus {
 	switch s {
 	case "confirmed_hit":
 		return SanctionStatusConfirmedHit
+	case "no_hit":
+		return SanctionStatusNoHit
 	case "in_review":
 		return SanctionStatusInReview
 	case "error":
@@ -31,6 +34,8 @@ func (scs SanctionCheckStatus) String() string {
 	switch scs {
 	case SanctionStatusConfirmedHit:
 		return "confirmed_hit"
+	case SanctionStatusNoHit:
+		return "no_hit"
 	case SanctionStatusInReview:
 		return "in_review"
 	case SanctionStatusError:
@@ -38,6 +43,10 @@ func (scs SanctionCheckStatus) String() string {
 	}
 
 	return "unknown"
+}
+
+func (scs SanctionCheckStatus) IsFinalized() bool {
+	return scs == SanctionStatusConfirmedHit || scs == SanctionStatusNoHit
 }
 
 type SanctionCheck struct {
