@@ -70,6 +70,12 @@ func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser 
 			"only marble admins can create marble admins")
 	}
 
+	// Fail early if current user is not an ADMIN and they try to change a user's role.
+	if updateUser.Role != nil && e.Credentials.Role != models.ADMIN &&
+		e.Credentials.Role != models.MARBLE_ADMIN {
+		return errors.Wrap(models.UnAuthorizedError, "only admins can change a user's role")
+	}
+
 	if updateUser.Role != nil &&
 		*updateUser.Role == models.TRANSFER_CHECK_USER {
 		return errors.Wrap(
@@ -77,10 +83,11 @@ func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser 
 			"cannot update an existing user to TRANSFER_CHECK_USER")
 	}
 
-	// Only org admins and marble admins can create org admins
+	// An admin cannot strip their own ADMIN role.
 	if updateUser.Role != nil &&
-		*updateUser.Role != models.ADMIN &&
-		e.Credentials.Role == models.ADMIN {
+		e.Credentials.Role == models.ADMIN &&
+		e.Credentials.ActorIdentity.UserId == targetUser.UserId &&
+		*updateUser.Role != models.ADMIN {
 		return errors.Wrap(models.BadParameterError, "Cannot remove yourself as an admin")
 	}
 
