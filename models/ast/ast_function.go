@@ -177,6 +177,7 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_PAYLOAD: {
 		DebugName: "FUNC_PAYLOAD",
 		AstName:   "Payload",
+		Cost:      30,
 	},
 	FUNC_DB_ACCESS:          AttributeFuncDbAccess.FuncAttributes,
 	FUNC_CUSTOM_LIST_ACCESS: AttributeFuncCustomListAccess.FuncAttributes,
@@ -289,6 +290,7 @@ var AttributeFuncDbAccess = struct {
 		NamedArguments: []string{
 			"tableName", "fieldName", "path",
 		},
+		Cost: 30,
 	},
 	ArgumentTableName: "tableName",
 	ArgumentFieldName: "fieldName",
