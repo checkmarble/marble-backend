@@ -39,7 +39,7 @@ func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheck, error) {
 		Query:       dto.SearchInput,
 		OrgConfig:   cfg,
 		Partial:     dto.IsPartial,
-		Status:      dto.Status,
+		Status:      models.SanctionCheckStatusFrom(dto.Status),
 		IsManual:    dto.IsManual,
 		RequestedBy: dto.RequestedBy,
 	}, nil

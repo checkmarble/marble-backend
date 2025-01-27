@@ -22,7 +22,7 @@ func handleSanctionCheckDataset(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusOK, dataset)
+		c.JSON(http.StatusOK, dto.AdaptSanctionCheckDataset(dataset))
 	}
 }
 
@@ -132,5 +132,26 @@ func handleCreateSanctionCheckMatchComment(uc usecases.Usecases) func(c *gin.Con
 		}
 
 		c.JSON(http.StatusCreated, dto.AdaptSanctionCheckMatchCommentDto(comment))
+	}
+}
+
+func handleRefineSanctionCheck(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var payload dto.SanctionCheckRefineDto
+
+		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		sanctionCheck, err := uc.Refine(ctx, dto.AdaptSanctionCheckRefineDto(payload))
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptSanctionCheckDto(sanctionCheck))
 	}
 }
