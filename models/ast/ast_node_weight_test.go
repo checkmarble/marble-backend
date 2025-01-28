@@ -11,13 +11,13 @@ func TestNodeWeights(t *testing.T) {
 		n Node
 		c int
 	}{
-		{Node{Function: FUNC_AND, Children: []Node{{Function: FUNC_DB_ACCESS}, {Function: FUNC_PAYLOAD}}}, 60},
+		{Node{Function: FUNC_AND, Children: []Node{{Function: FUNC_DB_ACCESS}, {Function: FUNC_PAYLOAD}}}, 30},
 		{Node{Function: FUNC_AND, Children: []Node{{Function: FUNC_DB_ACCESS}, {
 			Function: FUNC_ADD, Children: []Node{{
 				Function: FUNC_AGGREGATOR,
 				Children: []Node{{Function: FUNC_CUSTOM_LIST_ACCESS}, {Function: FUNC_PAYLOAD}},
 			}},
-		}}}, 140},
+		}}}, 110},
 	}
 
 	for _, tt := range tts {
