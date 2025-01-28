@@ -109,16 +109,12 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Con
 			"default_scenario_timezone",
 			*updateOrganization.DefaultScenarioTimezone)
 	}
-	if updateOrganization.SanctionCheckConfig.Datasets != nil {
-		updateRequest = updateRequest.Set("sanctioncheck_datasets",
-			updateOrganization.SanctionCheckConfig.Datasets)
-	}
 	if updateOrganization.SanctionCheckConfig.MatchThreshold != nil {
-		updateRequest = updateRequest.Set("sanctioncheck_threshold",
+		updateRequest = updateRequest.Set("sanctions_threshold",
 			*updateOrganization.SanctionCheckConfig.MatchThreshold)
 	}
 	if updateOrganization.SanctionCheckConfig.MatchLimit != nil {
-		updateRequest = updateRequest.Set("sanctioncheck_limit",
+		updateRequest = updateRequest.Set("sanctions_limit",
 			*updateOrganization.SanctionCheckConfig.MatchLimit)
 	}
 

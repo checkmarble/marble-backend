@@ -28,6 +28,7 @@ func evaluateSanctionCheck(ctx context.Context, repositories ScenarioEvaluationR
 
 		if triggerEvaluation.ReturnValue == true {
 			query := models.OpenSanctionsQuery{
+				Config: *iteration.SanctionCheckConfig,
 				Queries: models.OpenSanctionCheckFilter{
 					// TODO: take this from the context and the scenario configuration
 					"name": []string{"obama"},

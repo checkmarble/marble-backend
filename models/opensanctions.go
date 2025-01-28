@@ -11,6 +11,7 @@ const OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
 
 type OpenSanctionsQuery struct {
 	Queries   OpenSanctionCheckFilter
+	Config    SanctionCheckConfig
 	OrgConfig OrganizationOpenSanctionsConfig
 }
 

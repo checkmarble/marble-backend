@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
 )
 
@@ -121,10 +122,13 @@ func (uc SanctionCheckUsecase) Execute(ctx context.Context, orgId string, cfg mo
 		return models.SanctionCheck{}, err
 	}
 
+	matches.Datasets = cfg.Datasets
+	matches.OrgConfig = org.OpenSanctionsConfig
+
 	return matches, err
 }
 
-func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.SanctionCheckRefineRequest) (models.SanctionCheck, error) {
+func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.SanctionCheckRefineRequest, requestedBy models.UserId) (models.SanctionCheck, error) {
 	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.DecisionId)
 	if err != nil {
 		return models.SanctionCheck{}, err
@@ -138,6 +142,7 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 
 	query := models.OpenSanctionsQuery{
 		OrgConfig: sc.OrgConfig,
+		Config:    cfg,
 		Queries: models.OpenSanctionCheckFilter{
 			"name": []string{"macron"},
 		},
@@ -147,6 +152,9 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 	if err != nil {
 		return models.SanctionCheck{}, err
 	}
+
+	sanctionCheck.IsManual = true
+	sanctionCheck.RequestedBy = utils.Ptr(string(requestedBy))
 
 	sanctionCheck, err = executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,

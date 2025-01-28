@@ -120,12 +120,16 @@ func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executo
 		"search_datasets",
 		"search_threshold",
 		"is_partial",
+		"is_manual",
+		"requested_by",
 	).Values(
 		decisionId,
 		sanctionCheck.Query,
-		sanctionCheck.OrgConfig.Datasets,
+		sanctionCheck.Datasets,
 		sanctionCheck.OrgConfig.MatchThreshold,
 		sanctionCheck.Partial,
+		sanctionCheck.IsManual,
+		sanctionCheck.RequestedBy,
 	).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionChecksColumn, ",")))
 
 	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
