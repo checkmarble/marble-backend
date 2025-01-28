@@ -14,6 +14,7 @@ type DBSanctionCheckConfigs struct {
 	Id                  string    `db:"id"`
 	ScenarioIterationId string    `db:"scenario_iteration_id"`
 	Enabled             bool      `db:"enabled"`
+	Datasets            []string  `db:"datasets"`
 	TriggerRule         []byte    `db:"trigger_rule"`
 	ForcedOutcome       *string   `db:"forced_outcome"`
 	ScoreModifier       int       `db:"score_modifier"`
@@ -37,6 +38,7 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 
 	scc := models.SanctionCheckConfig{
 		Enabled:     db.Enabled,
+		Datasets:    db.Datasets,
 		TriggerRule: triggerRuleAst,
 		Outcome: models.SanctionCheckOutcome{
 			ForceOutcome:  forcedOutcome,

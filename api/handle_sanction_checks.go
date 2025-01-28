@@ -145,8 +145,15 @@ func handleRefineSanctionCheck(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
+		creds, ok := utils.CredentialsFromCtx(ctx)
+
+		if !ok {
+			presentError(ctx, c, models.ErrUnknownUser)
+			return
+		}
+
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
-		sanctionCheck, err := uc.Refine(ctx, dto.AdaptSanctionCheckRefineDto(payload))
+		sanctionCheck, err := uc.Refine(ctx, dto.AdaptSanctionCheckRefineDto(payload), creds.ActorIdentity.UserId)
 
 		if presentError(ctx, c, err) {
 			return
