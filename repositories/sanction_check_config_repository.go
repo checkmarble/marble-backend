@@ -46,10 +46,11 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
-		Columns("scenario_iteration_id", "enabled", "forced_outcome", "score_modifier", "trigger_rule").
+		Columns("scenario_iteration_id", "enabled", "datasets", "forced_outcome", "score_modifier", "trigger_rule").
 		Values(
 			scenarioIterationId,
 			utils.Or(cfg.Enabled, true),
+			cfg.Datasets,
 			cfg.Outcome.ForceOutcome.MaybeString(),
 			utils.Or(cfg.Outcome.ScoreModifier, 0),
 			utils.Or(triggerRule, []byte(``)),
@@ -59,6 +60,9 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 
 	if cfg.Enabled != nil {
 		updateFields = append(updateFields, "enabled = EXCLUDED.enabled")
+	}
+	if cfg.Datasets != nil {
+		updateFields = append(updateFields, "datasets = EXCLUDED.datasets")
 	}
 	if cfg.TriggerRule != nil {
 		updateFields = append(updateFields, "trigger_rule = EXCLUDED.trigger_rule")

@@ -150,7 +150,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 
 	requestUrl := fmt.Sprintf("%s/match/sanctions", repo.opensanctions.Host())
 
-	if qs := repo.buildQueryString(query.OrgConfig); len(qs) > 0 {
+	if qs := repo.buildQueryString(query.Config, query.OrgConfig); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
 	}
 
@@ -159,15 +159,15 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 	return req, rawQuery.Bytes(), err
 }
 
-func (repo OpenSanctionsRepository) buildQueryString(orgCfg models.OrganizationOpenSanctionsConfig) url.Values {
+func (repo OpenSanctionsRepository) buildQueryString(cfg models.SanctionCheckConfig, orgCfg models.OrganizationOpenSanctionsConfig) url.Values {
 	qs := url.Values{}
 
 	if len(repo.opensanctions.ApiKey()) > 0 {
 		qs.Set("api_key", repo.opensanctions.ApiKey())
 	}
 
-	if len(orgCfg.Datasets) > 0 {
-		qs["include_dataset"] = orgCfg.Datasets
+	if len(cfg.Datasets) > 0 {
+		qs["include_dataset"] = cfg.Datasets
 	}
 	if orgCfg.MatchLimit != nil {
 		qs.Set("limit", fmt.Sprintf("%d", *orgCfg.MatchLimit))
