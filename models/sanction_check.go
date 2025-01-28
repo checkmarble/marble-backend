@@ -53,6 +53,7 @@ type SanctionCheck struct {
 	Id          string
 	DecisionId  string
 	Status      SanctionCheckStatus
+	Datasets    []string
 	Query       json.RawMessage
 	OrgConfig   OrganizationOpenSanctionsConfig
 	IsManual    bool

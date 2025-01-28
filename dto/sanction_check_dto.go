@@ -37,7 +37,7 @@ func AdaptSanctionCheckDto(m models.SanctionCheck) SanctionCheckDto {
 	sanctionCheck := SanctionCheckDto{
 		Id: m.Id,
 		Request: SanctionCheckRequestDto{
-			Datasets:  m.OrgConfig.Datasets,
+			Datasets:  m.Datasets,
 			Limit:     m.OrgConfig.MatchLimit,
 			Threshold: m.OrgConfig.MatchThreshold,
 			Query:     m.Query,

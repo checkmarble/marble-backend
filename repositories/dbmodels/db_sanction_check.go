@@ -30,12 +30,12 @@ type DBSanctionCheck struct {
 func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheck, error) {
 	cfg := models.OrganizationOpenSanctionsConfig{
 		MatchThreshold: dto.SearchThreshold,
-		Datasets:       dto.SearchDatasets,
 	}
 
 	return models.SanctionCheck{
 		Id:          dto.Id,
 		DecisionId:  dto.DecisionId,
+		Datasets:    dto.SearchDatasets,
 		Query:       dto.SearchInput,
 		OrgConfig:   cfg,
 		Partial:     dto.IsPartial,

@@ -26,7 +26,6 @@ type Organization struct {
 
 // TODO: Add other organization-level configuration options
 type OrganizationOpenSanctionsConfig struct {
-	Datasets       []string
 	MatchThreshold *int
 	MatchLimit     *int
 }
