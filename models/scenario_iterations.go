@@ -56,6 +56,7 @@ type UpdateScenarioIterationBody struct {
 
 type SanctionCheckConfig struct {
 	Enabled     bool
+	Datasets    []string
 	TriggerRule *ast.Node
 	Outcome     SanctionCheckOutcome
 }
@@ -67,6 +68,7 @@ type SanctionCheckOutcome struct {
 
 type UpdateSanctionCheckConfigInput struct {
 	Enabled     *bool
+	Datasets    []string
 	TriggerRule *ast.Node
 	Outcome     UpdateSanctionCheckOutcomeInput
 }

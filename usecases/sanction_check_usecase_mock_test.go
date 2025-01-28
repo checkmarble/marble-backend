@@ -27,7 +27,6 @@ func (sanctionCheckRepositoryMock) GetOrganizationById(ctx context.Context,
 		Id:   "orgid",
 		Name: "ACME Inc.",
 		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{
-			Datasets:       []string{"ds1", "ds2"},
 			MatchThreshold: utils.Ptr(42),
 			MatchLimit:     utils.Ptr(10),
 		},
