@@ -27,11 +27,21 @@ func evaluateSanctionCheck(ctx context.Context, repositories ScenarioEvaluationR
 		}
 
 		if triggerEvaluation.ReturnValue == true {
+			nameFilterAny, err := repositories.EvaluateAstExpression.EvaluateAstExpression(ctx,
+				iteration.SanctionCheckConfig.Query.Name, iteration.OrganizationId,
+				dataAccessor.ClientObject, dataAccessor.DataModel)
+			if err != nil {
+				return nil, true, err
+			}
+			nameFilter, ok := nameFilterAny.ReturnValue.(string)
+			if !ok {
+				return nil, true, errors.New("name filter name query did not return a string")
+			}
+
 			query := models.OpenSanctionsQuery{
 				Config: *iteration.SanctionCheckConfig,
 				Queries: models.OpenSanctionCheckFilter{
-					// TODO: take this from the context and the scenario configuration
-					"name": []string{"obama"},
+					"name": []string{nameFilter},
 				},
 			}
 
