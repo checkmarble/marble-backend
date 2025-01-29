@@ -20,14 +20,14 @@ type RuleUsecaseRepository interface {
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
 	RulesExecutionStats(
 		ctx context.Context,
-		exec repositories.Executor,
+		exec repositories.Transaction,
 		organizationId string,
 		iterationId string,
 		begin, end time.Time,
 	) ([]models.RuleExecutionStat, error)
 	PhanomRulesExecutionStats(
 		ctx context.Context,
-		exec repositories.Executor,
+		exec repositories.Transaction,
 		organizationId string,
 		iterationId string,
 		begin, end time.Time,
@@ -64,33 +64,38 @@ func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) (
 }
 
 func (usecase *RuleUsecase) ListRuleExecution(ctx context.Context, testrunId string) ([]models.RuleExecutionStat, error) {
-	exec := usecase.executorFactory.NewExecutor()
-	testrun, err := usecase.scenarioTestRunRepository.GetTestRunByID(ctx, exec, testrunId)
-	if err != nil {
-		return nil, err
-	}
-	rules, err := usecase.repository.PhanomRulesExecutionStats(
-		ctx,
-		exec,
-		testrun.OrganizationId,
-		testrun.ScenarioIterationId,
-		testrun.CreatedAt,
-		testrun.ExpiresAt)
-	if err != nil {
-		return nil, err
-	}
-	liveRules, err := usecase.repository.RulesExecutionStats(
-		ctx,
-		exec,
-		testrun.OrganizationId,
-		testrun.ScenarioLiveIterationId,
-		testrun.CreatedAt,
-		testrun.ExpiresAt)
-	if err != nil {
-		return nil, err
-	}
-	result := append(rules, liveRules...)
-	return result, nil
+	var result []models.RuleExecutionStat
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		testrun, err := usecase.scenarioTestRunRepository.GetTestRunByID(ctx, tx, testrunId)
+		if err != nil {
+			return err
+		}
+		rules, err := usecase.repository.PhanomRulesExecutionStats(
+			ctx,
+			tx,
+			testrun.OrganizationId,
+			testrun.ScenarioIterationId,
+			testrun.CreatedAt,
+			testrun.ExpiresAt)
+		if err != nil {
+			return err
+		}
+		result = append(result, rules...)
+
+		liveRules, err := usecase.repository.RulesExecutionStats(
+			ctx,
+			tx,
+			testrun.OrganizationId,
+			testrun.ScenarioLiveIterationId,
+			testrun.CreatedAt,
+			testrun.ExpiresAt)
+		if err != nil {
+			return err
+		}
+		result = append(result, liveRules...)
+		return nil
+	})
+	return result, err
 }
 
 func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.CreateRuleInput) (models.Rule, error) {
