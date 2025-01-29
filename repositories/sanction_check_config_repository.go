@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
@@ -44,9 +45,19 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 		triggerRule = astJson
 	}
 
+	var query dbmodels.DBSanctionCheckConfigQueryInput
+
+	if cfg.Query != nil {
+		ser, err := dto.AdaptNodeDto(cfg.Query.Name)
+		if err != nil {
+			return models.SanctionCheckConfig{}, err
+		}
+		query.Name = ser
+	}
+
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
-		Columns("scenario_iteration_id", "enabled", "datasets", "forced_outcome", "score_modifier", "trigger_rule").
+		Columns("scenario_iteration_id", "enabled", "datasets", "forced_outcome", "score_modifier", "trigger_rule", "query").
 		Values(
 			scenarioIterationId,
 			utils.Or(cfg.Enabled, true),
@@ -54,6 +65,7 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 			cfg.Outcome.ForceOutcome.MaybeString(),
 			utils.Or(cfg.Outcome.ScoreModifier, 0),
 			utils.Or(triggerRule, []byte(``)),
+			query,
 		)
 
 	updateFields := make([]string, 0, 4)
@@ -66,6 +78,9 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 	}
 	if cfg.TriggerRule != nil {
 		updateFields = append(updateFields, "trigger_rule = EXCLUDED.trigger_rule")
+	}
+	if cfg.Query != nil {
+		updateFields = append(updateFields, "query = EXCLUDED.query")
 	}
 	if cfg.Outcome.ForceOutcome != nil {
 		switch *cfg.Outcome.ForceOutcome {

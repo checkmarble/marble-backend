@@ -47,6 +47,7 @@ const (
 	FUNC_STRING_ENDS_WITH
 	FUNC_IS_MULTIPLE_OF
 	FUNC_STRING_TEMPLATE
+	FUNC_STRING_CONCAT
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
@@ -225,6 +226,10 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_STRING_TEMPLATE: {
 		DebugName: "FUNC_STRING_TEMPLATE",
 		AstName:   "StringTemplate",
+	},
+	FUNC_STRING_CONCAT: {
+		DebugName: "FUNC_STRING_CONCAT",
+		AstName:   "StringConcat",
 	},
 	FUNC_FILTER: FuncFilterAttributes,
 }
