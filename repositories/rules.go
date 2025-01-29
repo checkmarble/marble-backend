@@ -48,9 +48,11 @@ func (repo *MarbleDbRepository) ListRulesByIterationId(ctx context.Context, exec
 	)
 }
 
+// This method expects to be run in a transaction, because we set some local settings
+// that should not be changed for the whole connection.
 func (repo *MarbleDbRepository) RulesExecutionStats(
 	ctx context.Context,
-	exec Executor,
+	exec Transaction,
 	organizationId string,
 	iterationId string,
 	begin, end time.Time,
@@ -58,6 +60,17 @@ func (repo *MarbleDbRepository) RulesExecutionStats(
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
+
+	// The following settings are set because in some cases at least, the query planner
+	// has ended up choosing a query plan involving a hash join with a full table scan on decision_rules
+	_, err := exec.Exec(ctx,
+		`SET local join_collapse_limit = 1;
+		SET local enable_hashjoin = off;
+		SET local enable_mergejoin = off;`)
+	if err != nil {
+		return nil, err
+	}
+
 	query := NewQueryBuilder().
 		Select("scir.stable_rule_id, scir.name, dr.outcome, scit.version, COUNT(*) as total").
 		From("decisions as d").
@@ -80,9 +93,11 @@ func (repo *MarbleDbRepository) RulesExecutionStats(
 	)
 }
 
+// This method expects to be run in a transaction, because we set some local settings
+// that should not be changed for the whole connection.
 func (repo *MarbleDbRepository) PhanomRulesExecutionStats(
 	ctx context.Context,
-	exec Executor,
+	exec Transaction,
 	organizationId string,
 	iterationId string,
 	begin, end time.Time,
@@ -90,6 +105,17 @@ func (repo *MarbleDbRepository) PhanomRulesExecutionStats(
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
+
+	// The following settings are set because in some cases at least, the query planner
+	// has ended up choosing a query plan involving a hash join with a full table scan on decision_rules
+	_, err := exec.Exec(ctx,
+		`SET local join_collapse_limit = 1;
+		SET local enable_hashjoin = off;
+		SET local enable_mergejoin = off;`)
+	if err != nil {
+		return nil, err
+	}
+
 	query := NewQueryBuilder().
 		Select("scir.stable_rule_id, scir.name, dr.outcome, scit.version, COUNT(*) as total").
 		From("phantom_decisions as d").
