@@ -36,11 +36,42 @@ type ScenarioIterationBodyDto struct {
 }
 
 type SanctionCheckConfig struct {
-	Enabled       *bool    `json:"enabled"`
-	Datasets      []string `json:"datasets,omitempty"`
-	ForceOutcome  *string  `json:"force_outcome,omitempty"`
-	ScoreModifier *int     `json:"score_modifier,omitempty"`
-	TriggerRule   *NodeDto `json:"trigger_rule"`
+	Enabled       *bool                     `json:"enabled"`
+	Datasets      []string                  `json:"datasets,omitempty"`
+	ForceOutcome  *string                   `json:"force_outcome,omitempty"`
+	ScoreModifier *int                      `json:"score_modifier,omitempty"`
+	TriggerRule   *NodeDto                  `json:"trigger_rule"`
+	Query         *SanctionCheckConfigQuery `json:"query"`
+}
+
+type SanctionCheckConfigQuery struct {
+	Name NodeDto `json:"name"`
+}
+
+func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (SanctionCheckConfigQuery, error) {
+	nameAst, err := AdaptNodeDto(model.Name)
+	if err != nil {
+		return SanctionCheckConfigQuery{}, err
+	}
+
+	dto := SanctionCheckConfigQuery{
+		Name: nameAst,
+	}
+
+	return dto, nil
+}
+
+func AdaptSanctionCheckConfigQueryDto(dto SanctionCheckConfigQuery) (models.SanctionCheckConfigQuery, error) {
+	nameAst, err := AdaptASTNode(dto.Name)
+	if err != nil {
+		return models.SanctionCheckConfigQuery{}, err
+	}
+
+	model := models.SanctionCheckConfigQuery{
+		Name: nameAst,
+	}
+
+	return model, nil
 }
 
 func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIterationWithBodyDto, error) {
@@ -67,6 +98,11 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 			return ScenarioIterationWithBodyDto{},
 				errors.Wrap(err, "could not parse the sanction check trigger rule")
 		}
+		queryDto, err := AdaptSanctionCheckConfigQuery(si.SanctionCheckConfig.Query)
+		if err != nil {
+			return ScenarioIterationWithBodyDto{},
+				errors.Wrap(err, "could not parse the sanction check trigger rule")
+		}
 
 		body.SanctionCheckConfig = &SanctionCheckConfig{
 			Enabled:       &si.SanctionCheckConfig.Enabled,
@@ -74,6 +110,7 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 			ForceOutcome:  nil,
 			ScoreModifier: &si.SanctionCheckConfig.Outcome.ScoreModifier,
 			TriggerRule:   &nodeDto,
+			Query:         &queryDto,
 		}
 
 		if si.SanctionCheckConfig.Outcome.ForceOutcome != models.Approve {
@@ -149,6 +186,17 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 			}
 
 			updateScenarioIterationInput.Body.SanctionCheckConfig.TriggerRule = &astNode
+		}
+		if input.Body.SanctionCheckConfig.Query != nil {
+			query, err := AdaptSanctionCheckConfigQueryDto(*input.Body.SanctionCheckConfig.Query)
+			if err != nil {
+				return models.UpdateScenarioIterationInput{}, errors.Wrap(
+					models.BadParameterError,
+					"invalid trigger",
+				)
+			}
+
+			updateScenarioIterationInput.Body.SanctionCheckConfig.Query = &query
 		}
 		if input.Body.SanctionCheckConfig.ForceOutcome != nil {
 			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ForceOutcome = utils.Ptr(models.ForcedOutcomeFrom(

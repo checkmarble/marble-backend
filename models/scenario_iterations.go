@@ -58,6 +58,7 @@ type SanctionCheckConfig struct {
 	Enabled     bool
 	Datasets    []string
 	TriggerRule *ast.Node
+	Query       SanctionCheckConfigQuery
 	Outcome     SanctionCheckOutcome
 }
 
@@ -70,7 +71,12 @@ type UpdateSanctionCheckConfigInput struct {
 	Enabled     *bool
 	Datasets    []string
 	TriggerRule *ast.Node
+	Query       *SanctionCheckConfigQuery
 	Outcome     UpdateSanctionCheckOutcomeInput
+}
+
+type SanctionCheckConfigQuery struct {
+	Name ast.Node
 }
 
 type UpdateSanctionCheckOutcomeInput struct {

@@ -194,6 +194,12 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 			if body.SanctionCheckConfig != nil {
 				scCfg := body.SanctionCheckConfig
 
+				if scCfg.Query != nil {
+					if scCfg.Query.Name.Function != ast.FUNC_STRING_CONCAT {
+						return iteration, errors.New("query name filter must be a StringConcat")
+					}
+				}
+
 				if scCfg.Outcome.ForceOutcome != nil &&
 					!slices.Contains(models.ValidForcedOutcome, *scCfg.Outcome.ForceOutcome) {
 					return iteration, errors.Wrap(models.BadParameterError,
