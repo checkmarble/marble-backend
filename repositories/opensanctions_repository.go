@@ -102,7 +102,8 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context,
 		return models.SanctionCheck{}, err
 	}
 
-	utils.LoggerFromContext(ctx).Debug("SANCTION CHECK: sending request...")
+	utils.LoggerFromContext(ctx).InfoContext(ctx, "sending sanction check query")
+	startedAt := time.Now()
 
 	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
@@ -124,7 +125,15 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context,
 			"could not parse sanction check response")
 	}
 
-	return httpmodels.AdaptOpenSanctionsResult(rawQuery, matches)
+	sanctionCheck, err := httpmodels.AdaptOpenSanctionsResult(rawQuery, matches)
+	if err != nil {
+		return sanctionCheck, err
+	}
+
+	utils.LoggerFromContext(ctx).InfoContext(ctx, "got successful sanction check response",
+		"duration", time.Since(startedAt).Milliseconds(), "matches", len(sanctionCheck.Matches), "partial", sanctionCheck.Partial)
+
+	return sanctionCheck, err
 }
 
 func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,

@@ -208,6 +208,41 @@ func (uc SanctionCheckUsecase) MatchAddComment(ctx context.Context, matchId stri
 	return uc.repository.AddSanctionCheckMatchComment(ctx, uc.executorFactory.NewExecutor(), comment)
 }
 
+func (uc SanctionCheckUsecase) enforceCanUpdateCase(ctx context.Context, decisionId string) (models.Decision, error) {
+	decision, err := uc.decisionRepository.DecisionsById(ctx, uc.executorFactory.NewExecutor(), []string{decisionId})
+	if err != nil {
+		return models.Decision{}, err
+	}
+	if len(decision) == 0 {
+		return models.Decision{}, errors.Wrap(models.NotFoundError,
+			"could not find the decision linked to the sanction check")
+	}
+	if decision[0].Case == nil {
+		return decision[0], errors.Wrap(models.NotFoundError,
+			"this sanction check is not linked to a case")
+	}
+	if decision[0].Case.Status.IsFinalized() {
+		return decision[0],
+			errors.Wrap(models.NotFoundError, "this sanction is not pending review")
+	}
+
+	inboxes, err := uc.inboxRepository.ListInboxes(ctx, uc.executorFactory.NewExecutor(), decision[0].OrganizationId, nil, false)
+	if err != nil {
+		return models.Decision{}, errors.Wrap(err,
+			"could not retrieve organization inboxes")
+	}
+
+	inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) string {
+		return inbox.Id
+	})
+
+	if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxIds); err != nil {
+		return decision[0], err
+	}
+
+	return decision[0], nil
+}
+
 func (uc SanctionCheckUsecase) enforceCanRefineSanctionCheck(ctx context.Context,
 	decisionId string,
 ) (models.Decision, models.SanctionCheck, error) {
@@ -218,38 +253,17 @@ func (uc SanctionCheckUsecase) enforceCanRefineSanctionCheck(ctx context.Context
 			errors.Wrap(err, "sanction check does not exist")
 	}
 
-	decision, err := uc.decisionRepository.DecisionsById(ctx, uc.executorFactory.NewExecutor(), []string{sanctionCheck.DecisionId})
-	if err != nil {
-		return models.Decision{}, models.SanctionCheck{}, err
-	}
-	if len(decision) == 0 {
-		return models.Decision{}, models.SanctionCheck{}, errors.Wrap(models.NotFoundError,
-			"could not find the decision linked to the sanction check")
-	}
-	if decision[0].Case == nil {
-		return models.Decision{}, models.SanctionCheck{}, errors.Wrap(models.NotFoundError,
-			"this sanction check is not linked to a case")
-	}
-	if decision[0].Case.Status.IsFinalized() || sanctionCheck.Status.IsFinalized() {
-		return models.Decision{}, models.SanctionCheck{},
+	if sanctionCheck.Status.IsFinalized() {
+		return models.Decision{}, sanctionCheck,
 			errors.Wrap(models.NotFoundError, "this sanction is not pending review")
 	}
 
-	inboxes, err := uc.inboxRepository.ListInboxes(ctx, uc.executorFactory.NewExecutor(), decision[0].OrganizationId, nil, false)
+	decision, err := uc.enforceCanUpdateCase(ctx, sanctionCheck.DecisionId)
 	if err != nil {
-		return models.Decision{}, models.SanctionCheck{}, errors.Wrap(err,
-			"could not retrieve organization inboxes")
-	}
-
-	inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) string {
-		return inbox.Id
-	})
-
-	if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxIds); err != nil {
 		return models.Decision{}, models.SanctionCheck{}, err
 	}
 
-	return decision[0], sanctionCheck, nil
+	return decision, sanctionCheck, nil
 }
 
 func (uc SanctionCheckUsecase) enforceCanReadOrUpdateMatchCase(ctx context.Context, matchId string) (models.SanctionCheckMatch, error) {
@@ -260,34 +274,15 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateMatchCase(ctx context.Conte
 
 	sanctionCheck, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), match.SanctionCheckId)
 	if err != nil {
-		return models.SanctionCheckMatch{}, err
+		return match, err
 	}
 
-	decision, err := uc.decisionRepository.DecisionsById(ctx, uc.executorFactory.NewExecutor(), []string{sanctionCheck.DecisionId})
-	if err != nil {
-		return models.SanctionCheckMatch{}, err
-	}
-	if len(decision) == 0 {
-		return models.SanctionCheckMatch{}, errors.Wrap(models.NotFoundError,
-			"could not find the decision linked to the sanction check")
-	}
-	if decision[0].Case == nil {
-		return models.SanctionCheckMatch{}, errors.Wrap(models.NotFoundError,
-			"this sanction check is not linked to a case")
+	if sanctionCheck.Status.IsFinalized() {
+		return match, errors.Wrap(models.NotFoundError, "this sanction is not pending review")
 	}
 
-	inboxes, err := uc.inboxRepository.ListInboxes(ctx, uc.executorFactory.NewExecutor(), decision[0].OrganizationId, nil, false)
-	if err != nil {
-		return models.SanctionCheckMatch{}, errors.Wrap(err,
-			"could not retrieve organization inboxes")
-	}
-
-	inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) string {
-		return inbox.Id
-	})
-
-	if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxIds); err != nil {
-		return models.SanctionCheckMatch{}, err
+	if _, err = uc.enforceCanUpdateCase(ctx, sanctionCheck.DecisionId); err != nil {
+		return match, err
 	}
 
 	return match, nil
