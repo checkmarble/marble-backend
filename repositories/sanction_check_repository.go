@@ -8,7 +8,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 func (*MarbleDbRepository) GetActiveSanctionCheckForDecision(ctx context.Context, exec Executor,
@@ -107,8 +106,6 @@ func (*MarbleDbRepository) UpdateSanctionCheckMatchStatus(ctx context.Context, e
 func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executor, decisionId string,
 	sanctionCheck models.SanctionCheck,
 ) (models.SanctionCheck, error) {
-	utils.LoggerFromContext(ctx).Debug("SANCTION CHECK: inserting matches in database")
-
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return sanctionCheck, err
 	}
