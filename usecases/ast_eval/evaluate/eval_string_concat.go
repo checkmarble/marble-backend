@@ -43,5 +43,9 @@ func (f StringConcat) Evaluate(ctx context.Context, arguments ast.Arguments) (an
 		}
 	}
 
+	if sb.Len() == 0 {
+		return MakeEvaluateError(errors.New("all values were null"))
+	}
+
 	return sb.String(), nil
 }
