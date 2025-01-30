@@ -68,7 +68,7 @@ func TestGetSanctionCheckOnDecision(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, models.SanctionCheckStatusFrom(mockSc.Status), sc.Status)
 	assert.Len(t, sc.Matches, 3)
-	assert.Equal(t, mockScMatch.Status, sc.Matches[0].Status)
+	assert.Equal(t, models.SanctionCheckMatchStatusFrom(mockScMatch.Status), sc.Matches[0].Status)
 	assert.Equal(t, mockScMatch.CommentCount, sc.Matches[0].CommentCount)
 }
 
