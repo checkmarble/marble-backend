@@ -79,7 +79,7 @@ func AdaptSanctionCheckMatchDto(m models.SanctionCheckMatch) SanctionCheckMatchD
 	match := SanctionCheckMatchDto{
 		Id:           m.Id,
 		EntityId:     m.EntityId,
-		Status:       m.Status,
+		Status:       m.Status.String(),
 		ReviewedBy:   m.ReviewedBy,
 		QueryIds:     m.QueryIds,
 		Datasets:     make([]string, 0),
@@ -105,7 +105,7 @@ func AdaptSanctionCheckMatchUpdateInputDto(matchId string, reviewerId models.Use
 	return models.SanctionCheckMatchUpdate{
 		MatchId:    matchId,
 		ReviewerId: reviewerId,
-		Status:     dto.Status,
+		Status:     models.SanctionCheckMatchStatusFrom(dto.Status),
 	}, nil
 }
 
