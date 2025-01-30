@@ -22,6 +22,7 @@ func TestStringConcat(t *testing.T) {
 		{[]any{42, "abc", 12}, "42 abc 12", true, nil, false},
 		{[]any{42, "abc", 12}, "42-abc-12", true, utils.Ptr("-"), false},
 		{[]any{42, "abc", true}, "42 abc 12", true, nil, true},
+		{[]any{"hello", nil, "world"}, "hello world", true, nil, false},
 	}
 
 	eval := StringConcat{}
