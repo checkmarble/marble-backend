@@ -135,7 +135,8 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 	var outcome models.Outcome
 
 	sanctionCheckExecution, santionCheckPerformed, err :=
-		evaluateSanctionCheck(ctx, repositories, iteration, params, dataAccessor)
+		evaluateSanctionCheck(ctx, repositories.EvaluateAstExpression,
+			repositories.EvalSanctionCheckUsecase, iteration, params, dataAccessor)
 	if err != nil {
 		// TODO: what happens if we cannot perform the sanction check?
 		return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")

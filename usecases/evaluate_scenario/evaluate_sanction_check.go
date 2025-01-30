@@ -4,14 +4,16 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/cockroachdb/errors"
 )
 
-func evaluateSanctionCheck(ctx context.Context, repositories ScenarioEvaluationRepositories,
+func evaluateSanctionCheck(ctx context.Context,
+	evaluator ast_eval.EvaluateAstExpression, executor EvalSanctionCheckUsecase,
 	iteration models.ScenarioIteration, params ScenarioEvaluationParameters, dataAccessor DataAccessor,
 ) (sanctionCheck *models.SanctionCheckWithMatches, performed bool, sanctionCheckErr error) {
 	if iteration.SanctionCheckConfig != nil && iteration.SanctionCheckConfig.Enabled {
-		triggerEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
+		triggerEvaluation, err := evaluator.EvaluateAstExpression(
 			ctx,
 			*iteration.SanctionCheckConfig.TriggerRule,
 			params.Scenario.OrganizationId,
@@ -27,7 +29,7 @@ func evaluateSanctionCheck(ctx context.Context, repositories ScenarioEvaluationR
 		}
 
 		if triggerEvaluation.ReturnValue == true {
-			nameFilterAny, err := repositories.EvaluateAstExpression.EvaluateAstExpression(ctx,
+			nameFilterAny, err := evaluator.EvaluateAstExpression(ctx,
 				iteration.SanctionCheckConfig.Query.Name, iteration.OrganizationId,
 				dataAccessor.ClientObject, dataAccessor.DataModel)
 			if err != nil {
@@ -45,7 +47,7 @@ func evaluateSanctionCheck(ctx context.Context, repositories ScenarioEvaluationR
 				},
 			}
 
-			result, err := repositories.EvalSanctionCheckUsecase.Execute(ctx,
+			result, err := executor.Execute(ctx,
 				params.Scenario.OrganizationId, *iteration.SanctionCheckConfig, query)
 			if err != nil {
 				sanctionCheckErr = errors.Wrap(err, "could not perform sanction check")
