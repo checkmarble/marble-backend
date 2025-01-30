@@ -30,7 +30,7 @@ func AdaptNodeEvaluationDto(evaluation NodeEvaluation) NodeEvaluationDto {
 		Errors:        pure_utils.Map(evaluation.Errors, AdaptEvaluationErrorDto),
 		Children:      pure_utils.Map(evaluation.Children, AdaptNodeEvaluationDto),
 		NamedChildren: pure_utils.MapValues(evaluation.NamedChildren, AdaptNodeEvaluationDto),
-		Skipped:       evaluation.Skipped,
+		Skipped:       evaluation.EvaluationPlan.Skipped,
 	}
 }
 
