@@ -37,10 +37,16 @@ type decisionValidationDto struct {
 	Errors []ScenarioValidationErrorDto `json:"errors"`
 }
 
+type sanctionCheckConfigValidationDto struct {
+	Trigger    triggerValidationDto `json:"trigger"`
+	NameFilter ruleValidationDto    `json:"name_filter"`
+}
+
 type ScenarioValidationDto struct {
-	Trigger  triggerValidationDto  `json:"trigger"`
-	Rules    rulesValidationDto    `json:"rules"`
-	Decision decisionValidationDto `json:"decision"`
+	Trigger             triggerValidationDto             `json:"trigger"`
+	Rules               rulesValidationDto               `json:"rules"`
+	SanctionCheckConfig sanctionCheckConfigValidationDto `json:"sanction_check_config"`
+	Decision            decisionValidationDto            `json:"decision"`
 }
 
 func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationDto {
@@ -57,6 +63,16 @@ func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationD
 					RuleEvaluation: ast.AdaptNodeEvaluationDto(ruleValidation.RuleEvaluation),
 				}
 			}),
+		},
+		SanctionCheckConfig: sanctionCheckConfigValidationDto{
+			Trigger: triggerValidationDto{
+				Errors:            pure_utils.Map(s.SanctionCheck.TriggerRule.Errors, AdaptScenarioValidationErrorDto),
+				TriggerEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.TriggerRule.TriggerEvaluation),
+			},
+			NameFilter: ruleValidationDto{
+				Errors:         pure_utils.Map(s.SanctionCheck.NameFilter.Errors, AdaptScenarioValidationErrorDto),
+				RuleEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.NameFilter.RuleEvaluation),
+			},
 		},
 		Decision: decisionValidationDto{
 			Errors: pure_utils.Map(s.Decision.Errors, AdaptScenarioValidationErrorDto),

@@ -14,6 +14,7 @@ const (
 	RuleFormulaRequired
 	// Ast output
 	FormulaMustReturnBoolean
+	FormulaMustReturnString
 	// Decision
 	ScoreThresholdMissing
 	ScoreThresholdsMismatch
@@ -32,6 +33,8 @@ func (e ScenarioValidationErrorCode) String() string {
 		return "RULE_FORMULA_REQUIRED"
 	case FormulaMustReturnBoolean:
 		return "FORMULA_MUST_RETURN_BOOLEAN"
+	case FormulaMustReturnString:
+		return "FORMULA_MUST_RETURN_STRING"
 	case ScoreThresholdMissing:
 		return "SCORE_THRESHOLD_MISSING"
 	case ScoreThresholdsMismatch:
@@ -71,11 +74,17 @@ type decisionValidation struct {
 	Errors []ScenarioValidationError
 }
 
+type sanctionCheckConfigValidation struct {
+	TriggerRule triggerValidation
+	NameFilter  RuleValidation
+}
+
 type ScenarioValidation struct {
-	Errors   []ScenarioValidationError
-	Trigger  triggerValidation
-	Rules    rulesValidation
-	Decision decisionValidation
+	Errors        []ScenarioValidationError
+	Trigger       triggerValidation
+	Rules         rulesValidation
+	SanctionCheck sanctionCheckConfigValidation
+	Decision      decisionValidation
 }
 
 func NewScenarioValidation() ScenarioValidation {
@@ -87,6 +96,11 @@ func NewScenarioValidation() ScenarioValidation {
 		Rules: rulesValidation{
 			Errors: make([]ScenarioValidationError, 0),
 			Rules:  make(map[string]RuleValidation),
+		},
+		SanctionCheck: sanctionCheckConfigValidation{
+			TriggerRule: triggerValidation{
+				Errors: make([]ScenarioValidationError, 0),
+			},
 		},
 		Decision: decisionValidation{
 			Errors: make([]ScenarioValidationError, 0),
