@@ -12,6 +12,7 @@ const (
 	SanctionStatusNoHit
 	SanctionStatusInReview
 	SanctionStatusError
+	SanctionStatusTooManyHits
 	SanctionStatusUnknown
 )
 
@@ -25,6 +26,8 @@ func SanctionCheckStatusFrom(s string) SanctionCheckStatus {
 		return SanctionStatusInReview
 	case "error":
 		return SanctionStatusError
+	case "too_many_hits":
+		return SanctionStatusTooManyHits
 	}
 
 	return SanctionStatusUnknown
@@ -40,13 +43,51 @@ func (scs SanctionCheckStatus) String() string {
 		return "in_review"
 	case SanctionStatusError:
 		return "error"
+	case SanctionStatusTooManyHits:
+		return "too_many_hits"
 	}
 
 	return "unknown"
 }
 
-func (scs SanctionCheckStatus) IsFinalized() bool {
-	return scs == SanctionStatusConfirmedHit || scs == SanctionStatusNoHit
+type SanctionCheckMatchStatus int
+
+const (
+	SanctionMatchStatusConfirmedHit SanctionCheckMatchStatus = iota
+	SanctionMatchStatusNoHit
+	SanctionMatchStatusPending
+	SanctionMatchStatusSkipped
+	SanctionMatchStatusUnknown
+)
+
+func SanctionCheckMatchStatusFrom(s string) SanctionCheckMatchStatus {
+	switch s {
+	case "confirmed_hit":
+		return SanctionMatchStatusConfirmedHit
+	case "no_hit":
+		return SanctionMatchStatusNoHit
+	case "pending":
+		return SanctionMatchStatusPending
+	case "skipped":
+		return SanctionMatchStatusSkipped
+	}
+
+	return SanctionMatchStatusUnknown
+}
+
+func (scs SanctionCheckMatchStatus) String() string {
+	switch scs {
+	case SanctionMatchStatusConfirmedHit:
+		return "confirmed_hit"
+	case SanctionMatchStatusNoHit:
+		return "no_hit"
+	case SanctionMatchStatusPending:
+		return "pending"
+	case SanctionMatchStatusSkipped:
+		return "skipped"
+	}
+
+	return "unknown"
 }
 
 type SanctionCheck struct {
@@ -65,11 +106,15 @@ type SanctionCheck struct {
 	UpdatedAt   time.Time
 }
 
+func (sc SanctionCheck) IsReviewable() bool {
+	return sc.Status == SanctionStatusInReview
+}
+
 type SanctionCheckMatch struct {
 	Id              string
 	SanctionCheckId string
 	EntityId        string
-	Status          string
+	Status          SanctionCheckMatchStatus
 	QueryIds        []string
 	Payload         []byte
 	ReviewedBy      *string
@@ -79,7 +124,7 @@ type SanctionCheckMatch struct {
 type SanctionCheckMatchUpdate struct {
 	MatchId    string
 	ReviewerId UserId
-	Status     string
+	Status     SanctionCheckMatchStatus
 }
 
 type SanctionCheckRefineRequest struct {

@@ -53,8 +53,20 @@ func (*MarbleDbRepository) ArchiveSanctionCheck(ctx context.Context, exec Execut
 	return ExecBuilder(ctx, exec, sql)
 }
 
-func (*MarbleDbRepository) ListSanctionCheckMatches(ctx context.Context, exec Executor,
+func (*MarbleDbRepository) UpdateSanctionCheckStatus(ctx context.Context, exec Executor, id string,
+	status models.SanctionCheckStatus,
+) (models.SanctionCheck, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.SanctionCheck{}, err
+	}
+	return models.SanctionCheck{}, nil
+}
+
+func (*MarbleDbRepository) ListSanctionCheckMatches(
+	ctx context.Context,
+	exec Executor,
 	sanctionCheckId string,
+	forUpdate ...bool,
 ) ([]models.SanctionCheckMatch, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -68,6 +80,10 @@ func (*MarbleDbRepository) ListSanctionCheckMatches(ctx context.Context, exec Ex
 			" comments ON matches.id = comments.sanction_check_match_id").
 		Where(squirrel.Eq{"sanction_check_id": sanctionCheckId}).
 		GroupBy("matches.id")
+
+	if len(forUpdate) > 0 && forUpdate[0] {
+		sql = sql.Suffix("FOR UPDATE")
+	}
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatchWithComment)
 }
@@ -87,8 +103,11 @@ func (*MarbleDbRepository) GetSanctionCheckMatch(ctx context.Context, exec Execu
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
 }
 
-func (*MarbleDbRepository) UpdateSanctionCheckMatchStatus(ctx context.Context, exec Executor,
-	match models.SanctionCheckMatch, update models.SanctionCheckMatchUpdate,
+func (*MarbleDbRepository) UpdateSanctionCheckMatchStatus(
+	ctx context.Context,
+	exec Executor,
+	match models.SanctionCheckMatch,
+	update models.SanctionCheckMatchUpdate,
 ) (models.SanctionCheckMatch, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.SanctionCheckMatch{}, err
