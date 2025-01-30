@@ -56,7 +56,7 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 	scc := models.SanctionCheckConfig{
 		Enabled:     db.Enabled,
 		Datasets:    db.Datasets,
-		TriggerRule: triggerRuleAst,
+		TriggerRule: *triggerRuleAst,
 		Query:       query,
 		Outcome: models.SanctionCheckOutcome{
 			ForceOutcome:  forcedOutcome,
