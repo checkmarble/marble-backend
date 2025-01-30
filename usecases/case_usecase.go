@@ -50,6 +50,10 @@ type CaseUseCaseRepository interface {
 	GetCasesFileByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseFile, error)
 }
 
+type CaseUsecaseSanctionCheckRepository interface {
+	GetActiveSanctionCheckForDecision(context.Context, repositories.Executor, string) (models.SanctionCheck, error)
+}
+
 type webhookEventsUsecase interface {
 	CreateWebhookEvent(
 		ctx context.Context,
@@ -60,15 +64,16 @@ type webhookEventsUsecase interface {
 }
 
 type CaseUseCase struct {
-	enforceSecurity      security.EnforceSecurityCase
-	repository           CaseUseCaseRepository
-	decisionRepository   repositories.DecisionRepository
-	inboxReader          inboxes.InboxReader
-	blobRepository       repositories.BlobRepository
-	caseManagerBucketUrl string
-	transactionFactory   executor_factory.TransactionFactory
-	executorFactory      executor_factory.ExecutorFactory
-	webhookEventsUsecase webhookEventsUsecase
+	enforceSecurity         security.EnforceSecurityCase
+	repository              CaseUseCaseRepository
+	decisionRepository      repositories.DecisionRepository
+	inboxReader             inboxes.InboxReader
+	blobRepository          repositories.BlobRepository
+	caseManagerBucketUrl    string
+	transactionFactory      executor_factory.TransactionFactory
+	executorFactory         executor_factory.ExecutorFactory
+	webhookEventsUsecase    webhookEventsUsecase
+	sanctionCheckRepository CaseUsecaseSanctionCheckRepository
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -1005,6 +1010,17 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	}
 	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
 		return models.Case{}, err
+	}
+
+	if input.ReviewStatus == models.ReviewStatusApprove {
+		sanctionCheck, err := usecase.sanctionCheckRepository.GetActiveSanctionCheckForDecision(ctx, exec, decisions[0].DecisionId)
+		if err != nil {
+			return models.Case{}, errors.Wrap(err, "could not retrieve sanction check")
+		}
+		if sanctionCheck.Status != models.SanctionStatusNoHit {
+			return models.Case{}, errors.Wrap(models.BadParameterError,
+				"cannot approve a decision with possible sanction hits")
+		}
 	}
 
 	webhookEventId := uuid.NewString()
