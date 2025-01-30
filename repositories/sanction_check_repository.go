@@ -59,7 +59,16 @@ func (*MarbleDbRepository) UpdateSanctionCheckStatus(ctx context.Context, exec E
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.SanctionCheck{}, err
 	}
-	return models.SanctionCheck{}, nil
+
+	return SqlToModel(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Update(dbmodels.TABLE_SANCTION_CHECKS).
+			Set("status", status.String()).
+			Where(squirrel.Eq{"id": id}).
+			Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionChecksColumn, ","))),
+		dbmodels.AdaptSanctionCheck)
 }
 
 func (*MarbleDbRepository) ListSanctionCheckMatches(
