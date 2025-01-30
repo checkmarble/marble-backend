@@ -93,7 +93,7 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		body.Rules[i] = apiRule
 	}
 	if si.SanctionCheckConfig != nil {
-		nodeDto, err := AdaptNodeDto(*si.SanctionCheckConfig.TriggerRule)
+		nodeDto, err := AdaptNodeDto(si.SanctionCheckConfig.TriggerRule)
 		if err != nil {
 			return ScenarioIterationWithBodyDto{},
 				errors.Wrap(err, "could not parse the sanction check trigger rule")
