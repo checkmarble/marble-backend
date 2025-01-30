@@ -15,7 +15,7 @@ func evaluateSanctionCheck(ctx context.Context,
 	if iteration.SanctionCheckConfig != nil && iteration.SanctionCheckConfig.Enabled {
 		triggerEvaluation, err := evaluator.EvaluateAstExpression(
 			ctx,
-			*iteration.SanctionCheckConfig.TriggerRule,
+			iteration.SanctionCheckConfig.TriggerRule,
 			params.Scenario.OrganizationId,
 			dataAccessor.ClientObject,
 			params.DataModel,
