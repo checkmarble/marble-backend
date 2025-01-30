@@ -122,6 +122,7 @@ func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecas
 	return SanctionCheckUsecase{
 		enforceSecurityDecision:       usecases.NewEnforceDecisionSecurity(),
 		enforceSecurityCase:           usecases.NewEnforceCaseSecurity(),
+		caseRepository:                &usecases.Repositories.MarbleDbRepository,
 		organizationRepository:        usecases.Repositories.OrganizationRepository,
 		decisionRepository:            &usecases.Repositories.MarbleDbRepository,
 		inboxReader:                   utils.Ptr(usecases.NewInboxReader()),
