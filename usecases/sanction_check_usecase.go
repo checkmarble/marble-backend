@@ -33,9 +33,13 @@ type SanctionCheckOrganizationRepository interface {
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
 }
 
-type SanctionCheckInboxRepository interface {
-	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
-		inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
+type SanctionCheckInboxReader interface {
+	ListInboxes(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		withCaseCount bool,
+	) ([]models.Inbox, error)
 }
 
 type SanctionCheckRepository interface {
@@ -44,8 +48,10 @@ type SanctionCheckRepository interface {
 	ArchiveSanctionCheck(context.Context, repositories.Executor, string) error
 	InsertSanctionCheck(context.Context, repositories.Executor, string,
 		models.SanctionCheck) (models.SanctionCheck, error)
+	UpdateSanctionCheckStatus(ctx context.Context, exec repositories.Executor, id string,
+		status models.SanctionCheckStatus) (models.SanctionCheck, error)
 
-	ListSanctionCheckMatches(ctx context.Context, exec repositories.Executor, sanctionCheckId string) (
+	ListSanctionCheckMatches(ctx context.Context, exec repositories.Executor, sanctionCheckId string, forUpdate ...bool) (
 		[]models.SanctionCheckMatch, error)
 	GetSanctionCheckMatch(ctx context.Context, exec repositories.Executor, matchId string) (models.SanctionCheckMatch, error)
 	UpdateSanctionCheckMatchStatus(ctx context.Context, exec repositories.Executor,
@@ -62,7 +68,7 @@ type SanctionCheckUsecase struct {
 
 	organizationRepository        SanctionCheckOrganizationRepository
 	decisionRepository            SanctionCheckDecisionRepository
-	inboxRepository               SanctionCheckInboxRepository
+	inboxReader                   SanctionCheckInboxReader
 	openSanctionsProvider         SanctionCheckProvider
 	sanctionCheckConfigRepository SanctionCheckConfigRepository
 	repository                    SanctionCheckRepository
@@ -177,21 +183,79 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 	return sanctionCheck, nil
 }
 
-func (uc SanctionCheckUsecase) UpdateMatchStatus(ctx context.Context,
+func (uc SanctionCheckUsecase) UpdateMatchStatus(
+	ctx context.Context,
 	update models.SanctionCheckMatchUpdate,
 ) (models.SanctionCheckMatch, error) {
-	match, err := uc.enforceCanReadOrUpdateMatchCase(ctx, update.MatchId)
+	sanctionCheck, match, err := uc.enforceCanReadOrUpdateSanctionCheck(ctx, update.MatchId)
 	if err != nil {
 		return models.SanctionCheckMatch{}, err
 	}
 
-	// TODO: should we also have some form of automatic cascade between matches? Such as "if we have a confirmed hit, all other matches are no hit"?
+	if update.Status != models.SanctionMatchStatusConfirmedHit &&
+		update.Status != models.SanctionMatchStatusNoHit {
+		return match, errors.Wrap(models.BadParameterError,
+			"invalid status received for sanction check match, should be 'confirmed_hit' or 'no_hit'")
+	}
 
-	return uc.repository.UpdateSanctionCheckMatchStatus(ctx, uc.executorFactory.NewExecutor(), match, update)
+	if !sanctionCheck.IsReviewable() {
+		return match, errors.Wrap(models.BadParameterError, "this sanction is not pending review")
+	}
+
+	if match.Status != models.SanctionMatchStatusPending {
+		return match, errors.Wrap(models.BadParameterError, "this match is not pending review")
+	}
+
+	var updatedMatch models.SanctionCheckMatch
+	err = uc.transactionFactory.Transaction(
+		ctx,
+		func(tx repositories.Transaction) error {
+			allMatches, err := uc.repository.ListSanctionCheckMatches(ctx, tx, sanctionCheck.Id, true)
+			if err != nil {
+				return err
+			}
+			pendingMatchesExcludingThis := utils.Filter(allMatches, func(m models.SanctionCheckMatch) bool {
+				return m.Id != match.Id && m.Status == models.SanctionMatchStatusPending
+			})
+
+			updatedMatch, err = uc.repository.UpdateSanctionCheckMatchStatus(ctx, tx, match, update)
+			if err != nil {
+				return err
+			}
+
+			// If the match is confirmed, all other pending matches should be set to "skipped" and the sanction check to "confirmed_hit"
+			if update.Status == models.SanctionMatchStatusConfirmedHit {
+				for _, m := range pendingMatchesExcludingThis {
+					_, err = uc.repository.UpdateSanctionCheckMatchStatus(ctx, tx, m, models.SanctionCheckMatchUpdate{
+						MatchId:    m.Id,
+						Status:     models.SanctionMatchStatusNoHit,
+						ReviewerId: update.ReviewerId,
+					})
+					if err != nil {
+						return err
+					}
+					// TODO: create a case event here
+				}
+			}
+
+			// else, if it is the last match pending and it is not a hit, the sanction check should be set to "no_hit"
+			if update.Status == models.SanctionMatchStatusNoHit && len(pendingMatchesExcludingThis) == 0 {
+				_, err = uc.repository.UpdateSanctionCheckStatus(ctx, tx,
+					sanctionCheck.Id, models.SanctionStatusNoHit)
+				if err != nil {
+					return err
+				}
+				// TODO: create a case event here
+			}
+			return nil
+		},
+	)
+
+	return updatedMatch, err
 }
 
 func (uc SanctionCheckUsecase) MatchListComments(ctx context.Context, matchId string) ([]models.SanctionCheckMatchComment, error) {
-	if _, err := uc.enforceCanReadOrUpdateMatchCase(ctx, matchId); err != nil {
+	if _, _, err := uc.enforceCanReadOrUpdateSanctionCheck(ctx, matchId); err != nil {
 		return nil, err
 	}
 
@@ -201,15 +265,18 @@ func (uc SanctionCheckUsecase) MatchListComments(ctx context.Context, matchId st
 func (uc SanctionCheckUsecase) MatchAddComment(ctx context.Context, matchId string,
 	comment models.SanctionCheckMatchComment,
 ) (models.SanctionCheckMatchComment, error) {
-	if _, err := uc.enforceCanReadOrUpdateMatchCase(ctx, matchId); err != nil {
+	if _, _, err := uc.enforceCanReadOrUpdateSanctionCheck(ctx, matchId); err != nil {
 		return models.SanctionCheckMatchComment{}, err
 	}
 
 	return uc.repository.AddSanctionCheckMatchComment(ctx, uc.executorFactory.NewExecutor(), comment)
 }
 
-func (uc SanctionCheckUsecase) enforceCanUpdateCase(ctx context.Context, decisionId string) (models.Decision, error) {
-	decision, err := uc.decisionRepository.DecisionsById(ctx, uc.executorFactory.NewExecutor(), []string{decisionId})
+// Helper functions for enforcing permissions on sanction check actions go below
+
+func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decisionId string) (models.Decision, error) {
+	exec := uc.executorFactory.NewExecutor()
+	decision, err := uc.decisionRepository.DecisionsById(ctx, exec, []string{decisionId})
 	if err != nil {
 		return models.Decision{}, err
 	}
@@ -221,12 +288,8 @@ func (uc SanctionCheckUsecase) enforceCanUpdateCase(ctx context.Context, decisio
 		return decision[0], errors.Wrap(models.NotFoundError,
 			"this sanction check is not linked to a case")
 	}
-	if decision[0].Case.Status.IsFinalized() {
-		return decision[0],
-			errors.Wrap(models.NotFoundError, "this sanction is not pending review")
-	}
 
-	inboxes, err := uc.inboxRepository.ListInboxes(ctx, uc.executorFactory.NewExecutor(), decision[0].OrganizationId, nil, false)
+	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, decision[0].OrganizationId, false)
 	if err != nil {
 		return models.Decision{}, errors.Wrap(err,
 			"could not retrieve organization inboxes")
@@ -253,12 +316,12 @@ func (uc SanctionCheckUsecase) enforceCanRefineSanctionCheck(ctx context.Context
 			errors.Wrap(err, "sanction check does not exist")
 	}
 
-	if sanctionCheck.Status.IsFinalized() {
+	if !sanctionCheck.IsReviewable() {
 		return models.Decision{}, sanctionCheck,
 			errors.Wrap(models.NotFoundError, "this sanction is not pending review")
 	}
 
-	decision, err := uc.enforceCanUpdateCase(ctx, sanctionCheck.DecisionId)
+	decision, err := uc.enforceCanReadOrUpdateCase(ctx, sanctionCheck.DecisionId)
 	if err != nil {
 		return models.Decision{}, models.SanctionCheck{}, err
 	}
@@ -266,24 +329,23 @@ func (uc SanctionCheckUsecase) enforceCanRefineSanctionCheck(ctx context.Context
 	return decision, sanctionCheck, nil
 }
 
-func (uc SanctionCheckUsecase) enforceCanReadOrUpdateMatchCase(ctx context.Context, matchId string) (models.SanctionCheckMatch, error) {
+func (uc SanctionCheckUsecase) enforceCanReadOrUpdateSanctionCheck(
+	ctx context.Context,
+	matchId string,
+) (models.SanctionCheck, models.SanctionCheckMatch, error) {
 	match, err := uc.repository.GetSanctionCheckMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
 	if err != nil {
-		return models.SanctionCheckMatch{}, err
+		return models.SanctionCheck{}, models.SanctionCheckMatch{}, err
 	}
 
 	sanctionCheck, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), match.SanctionCheckId)
 	if err != nil {
-		return match, err
+		return sanctionCheck, match, err
 	}
 
-	if sanctionCheck.Status.IsFinalized() {
-		return match, errors.Wrap(models.NotFoundError, "this sanction is not pending review")
+	if _, err = uc.enforceCanReadOrUpdateCase(ctx, sanctionCheck.DecisionId); err != nil {
+		return sanctionCheck, match, err
 	}
 
-	if _, err = uc.enforceCanUpdateCase(ctx, sanctionCheck.DecisionId); err != nil {
-		return match, err
-	}
-
-	return match, nil
+	return sanctionCheck, match, nil
 }
