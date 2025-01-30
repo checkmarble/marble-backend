@@ -29,6 +29,8 @@ func (f StringConcat) Evaluate(ctx context.Context, arguments ast.Arguments) (an
 
 	for idx, arg := range arguments.Args {
 		switch arg.(type) {
+		case nil:
+			continue
 		case string, int, float64:
 		default:
 			return nil, []error{errors.New("argument is not supported for StringConcat")}
