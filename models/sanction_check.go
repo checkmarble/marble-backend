@@ -98,6 +98,7 @@ type SanctionCheck struct {
 	Query       json.RawMessage
 	OrgConfig   OrganizationOpenSanctionsConfig
 	IsManual    bool
+	IsArchived  bool
 	RequestedBy *string
 	Partial     bool
 	Count       int
