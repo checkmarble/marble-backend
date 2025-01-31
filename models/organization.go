@@ -20,6 +20,14 @@ type Organization struct {
 	// to a separate DB.
 	// TODO: clean this up when it's no longuer used.
 	UseMarbleDbSchemaAsDefault bool
+
+	OpenSanctionsConfig OrganizationOpenSanctionsConfig
+}
+
+// TODO: Add other organization-level configuration options
+type OrganizationOpenSanctionsConfig struct {
+	MatchThreshold *int
+	MatchLimit     *int
 }
 
 type CreateOrganizationInput struct {
@@ -29,6 +37,7 @@ type CreateOrganizationInput struct {
 type UpdateOrganizationInput struct {
 	Id                      string
 	DefaultScenarioTimezone *string
+	SanctionCheckConfig     OrganizationOpenSanctionsConfig
 }
 
 type SeedOrgConfiguration struct {

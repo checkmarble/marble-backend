@@ -121,6 +121,37 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 			result.Rules.Rules[rule.Id] = ruleValidation
 		}
 	}
+
+	// Validate sanction check trigger and rule
+	if iteration.SanctionCheckConfig != nil {
+		ruleValidation := models.NewRuleValidation()
+
+		triggerRuleEvaluation, _ := ast_eval.EvaluateAst(ctx, dryRunEnvironment,
+			iteration.SanctionCheckConfig.TriggerRule)
+		if _, ok := triggerRuleEvaluation.ReturnValue.(bool); !ok {
+			result.SanctionCheck.TriggerRule.Errors = append(ruleValidation.Errors, models.ScenarioValidationError{
+				Error: errors.Wrap(models.BadParameterError,
+					"sanction check trigger formula does not return a boolean"),
+				Code: models.FormulaMustReturnBoolean,
+			})
+		}
+
+		queryValidation := models.NewRuleValidation()
+		queryValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, dryRunEnvironment,
+			iteration.SanctionCheckConfig.Query.Name)
+
+		if _, ok := queryValidation.RuleEvaluation.ReturnValue.(bool); !ok {
+			queryValidation.Errors = append(
+				queryValidation.Errors, models.ScenarioValidationError{
+					Error: errors.Wrap(models.BadParameterError,
+						"sanction check name filter does not return a string"),
+					Code: models.FormulaMustReturnString,
+				})
+		}
+
+		result.SanctionCheck.NameFilter = queryValidation
+	}
+
 	return result
 }
 

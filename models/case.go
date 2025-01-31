@@ -29,6 +29,10 @@ func (c Case) GetMetadata() CaseMetadata {
 	}
 }
 
+func (c CaseStatus) IsFinalized() bool {
+	return c == CaseDiscarded || c == CaseResolved
+}
+
 type CaseMetadata struct {
 	Id             string
 	CreatedAt      time.Time

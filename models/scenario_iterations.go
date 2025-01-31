@@ -15,6 +15,7 @@ type ScenarioIteration struct {
 	UpdatedAt                     time.Time
 	TriggerConditionAstExpression *ast.Node
 	Rules                         []Rule
+	SanctionCheckConfig           *SanctionCheckConfig
 	ScoreReviewThreshold          *int
 	ScoreBlockAndReviewThreshold  *int
 	ScoreDeclineThreshold         *int
@@ -46,8 +47,39 @@ type UpdateScenarioIterationInput struct {
 
 type UpdateScenarioIterationBody struct {
 	TriggerConditionAstExpression *ast.Node
+	SanctionCheckConfig           *UpdateSanctionCheckConfigInput
 	ScoreReviewThreshold          *int
 	ScoreBlockAndReviewThreshold  *int
 	ScoreDeclineThreshold         *int
 	Schedule                      *string
+}
+
+type SanctionCheckConfig struct {
+	Enabled     bool
+	Datasets    []string
+	TriggerRule ast.Node
+	Query       SanctionCheckConfigQuery
+	Outcome     SanctionCheckOutcome
+}
+
+type SanctionCheckOutcome struct {
+	ForceOutcome  Outcome
+	ScoreModifier int
+}
+
+type UpdateSanctionCheckConfigInput struct {
+	Enabled     *bool
+	Datasets    []string
+	TriggerRule *ast.Node
+	Query       *SanctionCheckConfigQuery
+	Outcome     UpdateSanctionCheckOutcomeInput
+}
+
+type SanctionCheckConfigQuery struct {
+	Name ast.Node
+}
+
+type UpdateSanctionCheckOutcomeInput struct {
+	ForceOutcome  *Outcome
+	ScoreModifier *int
 }

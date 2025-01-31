@@ -17,6 +17,7 @@ type options struct {
 	clientDbConfig                map[string]infra.ClientDbConfig
 	convoyClientProvider          ConvoyClientProvider
 	convoyRateLimit               int
+	openSanctions                 infra.OpenSanctions
 	riverClient                   *river.Client[pgx.Tx]
 	tp                            trace.TracerProvider
 }
@@ -47,6 +48,12 @@ func WithConvoyClientProvider(convoyResources ConvoyClientProvider, convoyRateLi
 	return func(o *options) {
 		o.convoyClientProvider = convoyResources
 		o.convoyRateLimit = convoyRateLimit
+	}
+}
+
+func WithOpenSanctions(openSanctionsConfig infra.OpenSanctions) Option {
+	return func(o *options) {
+		o.openSanctions = openSanctionsConfig
 	}
 }
 
@@ -84,6 +91,7 @@ type Repositories struct {
 	CustomListRepository              CustomListRepository
 	UploadLogRepository               UploadLogRepository
 	MarbleAnalyticsRepository         MarbleAnalyticsRepository
+	OpenSanctionsRepository           OpenSanctionsRepository
 	TransferCheckEnrichmentRepository *TransferCheckEnrichmentRepository
 	TaskQueueRepository               TaskQueueRepository
 	ScenarioTestrunRepository         ScenarioTestRunRepository
@@ -130,6 +138,9 @@ func NewRepositories(
 		BlobRepository:                blobRepository,
 		MarbleAnalyticsRepository: MarbleAnalyticsRepository{
 			metabase: options.metabase,
+		},
+		OpenSanctionsRepository: OpenSanctionsRepository{
+			opensanctions: options.openSanctions,
 		},
 		TransferCheckEnrichmentRepository: NewTransferCheckEnrichmentRepository(
 			blobRepository,

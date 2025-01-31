@@ -7,6 +7,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 // Read DTO
@@ -24,13 +25,53 @@ type ScenarioIterationDto struct {
 }
 
 type ScenarioIterationBodyDto struct {
-	TriggerConditionAstExpression *NodeDto  `json:"trigger_condition_ast_expression"`
-	Rules                         []RuleDto `json:"rules"`
-	ScoreReviewThreshold          *int      `json:"score_review_threshold"`
-	ScoreBlockAndReviewThreshold  *int      `json:"score_block_and_review_threshold"`
-	ScoreRejectThreshold_deprec   *int      `json:"score_reject_threshold"` //nolint:tagliatelle
-	ScoreDeclineThreshold         *int      `json:"score_decline_threshold"`
-	Schedule                      string    `json:"schedule"`
+	TriggerConditionAstExpression *NodeDto             `json:"trigger_condition_ast_expression"`
+	Rules                         []RuleDto            `json:"rules"`
+	SanctionCheckConfig           *SanctionCheckConfig `json:"sanction_check_config,omitempty"`
+	ScoreReviewThreshold          *int                 `json:"score_review_threshold"`
+	ScoreBlockAndReviewThreshold  *int                 `json:"score_block_and_review_threshold"`
+	ScoreRejectThreshold_deprec   *int                 `json:"score_reject_threshold"` //nolint:tagliatelle
+	ScoreDeclineThreshold         *int                 `json:"score_decline_threshold"`
+	Schedule                      string               `json:"schedule"`
+}
+
+type SanctionCheckConfig struct {
+	Enabled       *bool                     `json:"enabled"`
+	Datasets      []string                  `json:"datasets,omitempty"`
+	ForceOutcome  *string                   `json:"force_outcome,omitempty"`
+	ScoreModifier *int                      `json:"score_modifier,omitempty"`
+	TriggerRule   *NodeDto                  `json:"trigger_rule"`
+	Query         *SanctionCheckConfigQuery `json:"query"`
+}
+
+type SanctionCheckConfigQuery struct {
+	Name NodeDto `json:"name"`
+}
+
+func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (SanctionCheckConfigQuery, error) {
+	nameAst, err := AdaptNodeDto(model.Name)
+	if err != nil {
+		return SanctionCheckConfigQuery{}, err
+	}
+
+	dto := SanctionCheckConfigQuery{
+		Name: nameAst,
+	}
+
+	return dto, nil
+}
+
+func AdaptSanctionCheckConfigQueryDto(dto SanctionCheckConfigQuery) (models.SanctionCheckConfigQuery, error) {
+	nameAst, err := AdaptASTNode(dto.Name)
+	if err != nil {
+		return models.SanctionCheckConfigQuery{}, err
+	}
+
+	model := models.SanctionCheckConfigQuery{
+		Name: nameAst,
+	}
+
+	return model, nil
 }
 
 func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIterationWithBodyDto, error) {
@@ -41,6 +82,7 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		ScoreDeclineThreshold:        si.ScoreDeclineThreshold,
 		Schedule:                     si.Schedule,
 		Rules:                        make([]RuleDto, len(si.Rules)),
+		SanctionCheckConfig:          nil,
 	}
 	for i, rule := range si.Rules {
 		apiRule, err := AdaptRuleDto(rule)
@@ -49,6 +91,32 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 				fmt.Errorf("could not create new api scenario iteration rule: %w", err)
 		}
 		body.Rules[i] = apiRule
+	}
+	if si.SanctionCheckConfig != nil {
+		nodeDto, err := AdaptNodeDto(si.SanctionCheckConfig.TriggerRule)
+		if err != nil {
+			return ScenarioIterationWithBodyDto{},
+				errors.Wrap(err, "could not parse the sanction check trigger rule")
+		}
+		queryDto, err := AdaptSanctionCheckConfigQuery(si.SanctionCheckConfig.Query)
+		if err != nil {
+			return ScenarioIterationWithBodyDto{},
+				errors.Wrap(err, "could not parse the sanction check trigger rule")
+		}
+
+		body.SanctionCheckConfig = &SanctionCheckConfig{
+			Enabled:       &si.SanctionCheckConfig.Enabled,
+			Datasets:      si.SanctionCheckConfig.Datasets,
+			ForceOutcome:  nil,
+			ScoreModifier: &si.SanctionCheckConfig.Outcome.ScoreModifier,
+			TriggerRule:   &nodeDto,
+			Query:         &queryDto,
+		}
+
+		if si.SanctionCheckConfig.Outcome.ForceOutcome != models.Approve {
+			body.SanctionCheckConfig.ForceOutcome =
+				si.SanctionCheckConfig.Outcome.ForceOutcome.MaybeString()
+		}
 	}
 
 	if si.TriggerConditionAstExpression != nil {
@@ -75,12 +143,13 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 // Update iteration DTO
 type UpdateScenarioIterationBody struct {
 	Body struct {
-		TriggerConditionAstExpression *NodeDto `json:"trigger_condition_ast_expression"`
-		ScoreReviewThreshold          *int     `json:"score_review_threshold,omitempty"`
-		ScoreBlockAndReviewThreshold  *int     `json:"score_block_and_review_threshold,omitempty"`
-		ScoreRejectThreshold_deprec   *int     `json:"score_reject_threshold,omitempty"` //nolint:tagliatelle
-		ScoreDeclineThreshold         *int     `json:"score_decline_threshold,omitempty"`
-		Schedule                      *string  `json:"schedule"`
+		TriggerConditionAstExpression *NodeDto             `json:"trigger_condition_ast_expression"`
+		SanctionCheckConfig           *SanctionCheckConfig `json:"sanction_check_config"`
+		ScoreReviewThreshold          *int                 `json:"score_review_threshold,omitempty"`
+		ScoreBlockAndReviewThreshold  *int                 `json:"score_block_and_review_threshold,omitempty"`
+		ScoreRejectThreshold_deprec   *int                 `json:"score_reject_threshold,omitempty"` //nolint:tagliatelle
+		ScoreDeclineThreshold         *int                 `json:"score_decline_threshold,omitempty"`
+		Schedule                      *string              `json:"schedule"`
 	} `json:"body,omitempty"`
 }
 
@@ -88,11 +157,55 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 	updateScenarioIterationInput := models.UpdateScenarioIterationInput{
 		Id: iterationId,
 		Body: models.UpdateScenarioIterationBody{
+			SanctionCheckConfig:          nil,
 			ScoreReviewThreshold:         input.Body.ScoreReviewThreshold,
 			ScoreBlockAndReviewThreshold: input.Body.ScoreBlockAndReviewThreshold,
 			ScoreDeclineThreshold:        input.Body.ScoreDeclineThreshold,
 			Schedule:                     input.Body.Schedule,
 		},
+	}
+
+	if input.Body.SanctionCheckConfig != nil {
+		updateScenarioIterationInput.Body.SanctionCheckConfig = &models.UpdateSanctionCheckConfigInput{
+			Enabled:     input.Body.SanctionCheckConfig.Enabled,
+			Datasets:    input.Body.SanctionCheckConfig.Datasets,
+			TriggerRule: nil,
+			Outcome: models.UpdateSanctionCheckOutcomeInput{
+				ForceOutcome:  nil,
+				ScoreModifier: nil,
+			},
+		}
+
+		if input.Body.SanctionCheckConfig.TriggerRule != nil {
+			astNode, err := AdaptASTNode(*input.Body.SanctionCheckConfig.TriggerRule)
+			if err != nil {
+				return models.UpdateScenarioIterationInput{}, errors.Wrap(
+					models.BadParameterError,
+					"invalid trigger",
+				)
+			}
+
+			updateScenarioIterationInput.Body.SanctionCheckConfig.TriggerRule = &astNode
+		}
+		if input.Body.SanctionCheckConfig.Query != nil {
+			query, err := AdaptSanctionCheckConfigQueryDto(*input.Body.SanctionCheckConfig.Query)
+			if err != nil {
+				return models.UpdateScenarioIterationInput{}, errors.Wrap(
+					models.BadParameterError,
+					"invalid trigger",
+				)
+			}
+
+			updateScenarioIterationInput.Body.SanctionCheckConfig.Query = &query
+		}
+		if input.Body.SanctionCheckConfig.ForceOutcome != nil {
+			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ForceOutcome = utils.Ptr(models.ForcedOutcomeFrom(
+				*input.Body.SanctionCheckConfig.ForceOutcome))
+		}
+		if input.Body.SanctionCheckConfig.ScoreModifier != nil {
+			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ScoreModifier =
+				input.Body.SanctionCheckConfig.ScoreModifier
+		}
 	}
 
 	if input.Body.ScoreDeclineThreshold == nil {
@@ -119,6 +232,7 @@ type CreateScenarioIterationBody struct {
 	Body       *struct {
 		TriggerConditionAstExpression *NodeDto              `json:"trigger_condition_ast_expression"`
 		Rules                         []CreateRuleInputBody `json:"rules"`
+		SanctionCheckConfig           *SanctionCheckConfig  `json:"sanction_check_config,omitempty"`
 		ScoreReviewThreshold          *int                  `json:"score_review_threshold,omitempty"`
 		ScoreBlockAndReviewThreshold  *int                  `json:"score_block_and_review_threshold,omitempty"`
 		ScoreRejectThreshold_deprec   *int                  `json:"score_reject_threshold,omitempty"` //nolint:tagliatelle

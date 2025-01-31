@@ -103,6 +103,7 @@ type AsyncDecisionWorker struct {
 	snoozesReader                  snoozesForDecisionReader
 	phantomDecision                decision_phantom.PhantomDecisionUsecase
 	scenarioFetcher                scenarios.ScenarioFetcher
+	sanctionCheckConfigRepository  repositories.EvalSanctionCheckConfigRepository
 }
 
 func NewAsyncDecisionWorker(
@@ -118,6 +119,7 @@ func NewAsyncDecisionWorker(
 	webhookEventsSender webhookEventsUsecase,
 	snoozesReader snoozesForDecisionReader,
 	scenarioFetcher scenarios.ScenarioFetcher,
+	sanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository,
 	phantom decision_phantom.PhantomDecisionUsecase,
 ) AsyncDecisionWorker {
 	return AsyncDecisionWorker{
@@ -133,6 +135,7 @@ func NewAsyncDecisionWorker(
 		webhookEventsSender:            webhookEventsSender,
 		snoozesReader:                  snoozesReader,
 		scenarioFetcher:                scenarioFetcher,
+		sanctionCheckConfigRepository:  sanctionCheckConfigRepository,
 		phantomDecision:                phantom,
 	}
 }
@@ -286,11 +289,12 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	}
 
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
-		EvalScenarioRepository:     w.repository,
-		ExecutorFactory:            w.executorFactory,
-		IngestedDataReadRepository: w.ingestedDataReadRepository,
-		EvaluateAstExpression:      w.evaluateAstExpression,
-		SnoozeReader:               w.snoozesReader,
+		EvalScenarioRepository:            w.repository,
+		EvalSanctionCheckConfigRepository: w.sanctionCheckConfigRepository,
+		ExecutorFactory:                   w.executorFactory,
+		IngestedDataReadRepository:        w.ingestedDataReadRepository,
+		EvaluateAstExpression:             w.evaluateAstExpression,
+		SnoozeReader:                      w.snoozesReader,
 	}
 
 	scenarioExecution, err := evaluate_scenario.EvalScenario(

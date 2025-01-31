@@ -30,6 +30,7 @@ const (
 	CaseRuleSnoozeCreated CaseEventType = "rule_snooze_created"
 	CaseStatusUpdated     CaseEventType = "status_updated"
 	CaseTagsUpdated       CaseEventType = "tags_updated"
+	SanctionCheckReviewed CaseEventType = "sanction_check_reviewed"
 	DecisionAdded         CaseEventType = "decision_added"
 	DecisionReviewed      CaseEventType = "decision_reviewed"
 )

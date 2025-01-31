@@ -98,19 +98,21 @@ type snoozesForDecisionReader interface {
 }
 
 type DecisionUsecase struct {
-	enforceSecurity            security.EnforceSecurityDecision
-	enforceSecurityScenario    security.EnforceSecurityScenario
-	transactionFactory         executor_factory.TransactionFactory
-	executorFactory            executor_factory.ExecutorFactory
-	ingestedDataReadRepository repositories.IngestedDataReadRepository
-	dataModelRepository        repositories.DataModelRepository
-	repository                 DecisionUsecaseRepository
-	scenarioTestRunRepository  repositories.ScenarioTestRunRepository
-	evaluateAstExpression      ast_eval.EvaluateAstExpression
-	decisionWorkflows          decisionWorkflowsUsecase
-	webhookEventsSender        webhookEventsUsecase
-	phantomUseCase             decision_phantom.PhantomDecisionUsecase
-	snoozesReader              snoozesForDecisionReader
+	enforceSecurity               security.EnforceSecurityDecision
+	enforceSecurityScenario       security.EnforceSecurityScenario
+	transactionFactory            executor_factory.TransactionFactory
+	executorFactory               executor_factory.ExecutorFactory
+	ingestedDataReadRepository    repositories.IngestedDataReadRepository
+	dataModelRepository           repositories.DataModelRepository
+	repository                    DecisionUsecaseRepository
+	sanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
+	sanctionCheckUsecase          SanctionCheckUsecase
+	scenarioTestRunRepository     repositories.ScenarioTestRunRepository
+	evaluateAstExpression         ast_eval.EvaluateAstExpression
+	decisionWorkflows             decisionWorkflowsUsecase
+	webhookEventsSender           webhookEventsUsecase
+	phantomUseCase                decision_phantom.PhantomDecisionUsecase
+	snoozesReader                 snoozesForDecisionReader
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
@@ -400,11 +402,13 @@ func (usecase *DecisionUsecase) CreateDecision(
 	}
 
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
-		EvalScenarioRepository:     usecase.repository,
-		ExecutorFactory:            usecase.executorFactory,
-		IngestedDataReadRepository: usecase.ingestedDataReadRepository,
-		EvaluateAstExpression:      usecase.evaluateAstExpression,
-		SnoozeReader:               usecase.snoozesReader,
+		EvalScenarioRepository:            usecase.repository,
+		EvalSanctionCheckConfigRepository: usecase.sanctionCheckConfigRepository,
+		EvalSanctionCheckUsecase:          usecase.sanctionCheckUsecase,
+		ExecutorFactory:                   usecase.executorFactory,
+		IngestedDataReadRepository:        usecase.ingestedDataReadRepository,
+		EvaluateAstExpression:             usecase.evaluateAstExpression,
+		SnoozeReader:                      usecase.snoozesReader,
 	}
 
 	scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories)
@@ -440,6 +444,14 @@ func (usecase *DecisionUsecase) CreateDecision(
 		); err != nil {
 			return models.DecisionWithRuleExecutions{},
 				fmt.Errorf("error storing decision: %w", err)
+		}
+
+		if decision.SanctionCheckExecution != nil {
+			if _, err := usecase.sanctionCheckUsecase.repository.InsertSanctionCheck(ctx, tx,
+				decision.DecisionId, *decision.SanctionCheckExecution); err != nil {
+				return models.DecisionWithRuleExecutions{},
+					errors.Wrap(err, "could not store sanction check execution")
+			}
 		}
 
 		if params.WithDecisionWebhooks {
@@ -553,11 +565,12 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	}
 
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
-		EvalScenarioRepository:     usecase.repository,
-		ExecutorFactory:            usecase.executorFactory,
-		IngestedDataReadRepository: usecase.ingestedDataReadRepository,
-		EvaluateAstExpression:      usecase.evaluateAstExpression,
-		SnoozeReader:               usecase.snoozesReader,
+		EvalScenarioRepository:            usecase.repository,
+		EvalSanctionCheckConfigRepository: usecase.sanctionCheckConfigRepository,
+		ExecutorFactory:                   usecase.executorFactory,
+		IngestedDataReadRepository:        usecase.ingestedDataReadRepository,
+		EvaluateAstExpression:             usecase.evaluateAstExpression,
+		SnoozeReader:                      usecase.snoozesReader,
 	}
 
 	type decisionAndScenario struct {

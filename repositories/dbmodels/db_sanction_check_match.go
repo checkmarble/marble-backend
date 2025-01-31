@@ -1,0 +1,55 @@
+package dbmodels
+
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
+)
+
+const TABLE_SANCTION_CHECK_MATCHES = "sanction_check_matches"
+
+var SelectSanctionCheckMatchesColumn = utils.ColumnList[DBSanctionCheckMatch]()
+
+type DBSanctionCheckMatch struct {
+	Id                   string          `db:"id"`
+	SanctionCheckId      string          `db:"sanction_check_id"`
+	OpenSanctionEntityId string          `db:"opensanction_entity_id"`
+	Status               string          `db:"status"`
+	QueryIds             []string        `db:"query_ids"`
+	Payload              json.RawMessage `db:"payload"`
+	ReviewedBy           *string         `db:"reviewed_by"`
+	CreatedAt            time.Time       `db:"created_at"`
+	UpdatedAt            time.Time       `db:"updated_at"`
+}
+
+type DBSanctionCheckMatchWithComments struct {
+	DBSanctionCheckMatch
+	CommentCount int `db:"comment_count"`
+}
+
+func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckMatch, error) {
+	match := models.SanctionCheckMatch{
+		Id:              dto.Id,
+		SanctionCheckId: dto.SanctionCheckId,
+		EntityId:        dto.OpenSanctionEntityId,
+		Status:          models.SanctionCheckMatchStatusFrom(dto.Status),
+		ReviewedBy:      dto.ReviewedBy,
+		QueryIds:        dto.QueryIds,
+		Payload:         dto.Payload,
+	}
+
+	return match, nil
+}
+
+func AdaptSanctionCheckMatchWithComment(dto DBSanctionCheckMatchWithComments) (models.SanctionCheckMatch, error) {
+	match, err := AdaptSanctionCheckMatch(dto.DBSanctionCheckMatch)
+	if err != nil {
+		return match, err
+	}
+
+	match.CommentCount = dto.CommentCount
+
+	return match, nil
+}
