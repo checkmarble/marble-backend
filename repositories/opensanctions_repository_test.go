@@ -14,20 +14,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getMockedOpenSanctionsRepository(host, apiKey string) OpenSanctionsRepository {
+func getMockedOpenSanctionsRepository(host, authMethod, apiKey string) OpenSanctionsRepository {
 	client := &http.Client{Transport: &http.Transport{}}
 
 	gock.InterceptClient(client)
 
 	return OpenSanctionsRepository{
-		opensanctions: infra.InitializeOpenSanctions(client, host, apiKey),
+		opensanctions: infra.InitializeOpenSanctions(client, host, authMethod, apiKey),
 	}
 }
 
 func TestOpenSanctionsSelfHostedApi(t *testing.T) {
 	defer gock.Off()
 
-	repo := getMockedOpenSanctionsRepository("https://yente.local", "")
+	repo := getMockedOpenSanctionsRepository("https://yente.local", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Queries: models.OpenSanctionCheckFilter{
@@ -49,7 +49,7 @@ func TestOpenSanctionsSelfHostedApi(t *testing.T) {
 func TestOpenSanctionsSelfHostedAndApiKey(t *testing.T) {
 	defer gock.Off()
 
-	repo := getMockedOpenSanctionsRepository("https://yente.local", "abcdef")
+	repo := getMockedOpenSanctionsRepository("https://yente.local", "", "abcdef")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Queries: models.OpenSanctionCheckFilter{
@@ -72,7 +72,7 @@ func TestOpenSanctionsSelfHostedAndApiKey(t *testing.T) {
 func TestOpenSanctionsSaaSAndApiKey(t *testing.T) {
 	defer gock.Off()
 
-	repo := getMockedOpenSanctionsRepository("", "abcdef")
+	repo := getMockedOpenSanctionsRepository("", "", "abcdef")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Queries: models.OpenSanctionCheckFilter{
@@ -92,10 +92,56 @@ func TestOpenSanctionsSaaSAndApiKey(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestOpenSanctionsSelfHostedAndBearerToken(t *testing.T) {
+	defer gock.Off()
+
+	repo := getMockedOpenSanctionsRepository("https://yente.local", "bearer", "abcdef")
+	cfg := models.SanctionCheckConfig{}
+	query := models.OpenSanctionsQuery{
+		Queries: models.OpenSanctionCheckFilter{
+			"name": []string{"bob"},
+		},
+		OrgConfig: models.OrganizationOpenSanctionsConfig{},
+	}
+
+	gock.New("https://yente.local").
+		Post("/match/sanctions").
+		MatchHeader("authorization", "Bearer abcdef").
+		Reply(http.StatusBadRequest)
+
+	_, err := repo.Search(context.TODO(), cfg, query)
+
+	assert.False(t, gock.HasUnmatchedRequest())
+	assert.Error(t, err)
+}
+
+func TestOpenSanctionsSelfHostedAndBasicAuth(t *testing.T) {
+	defer gock.Off()
+
+	repo := getMockedOpenSanctionsRepository("https://yente.local", "basic", "abcdef:helloworld")
+	cfg := models.SanctionCheckConfig{}
+	query := models.OpenSanctionsQuery{
+		Queries: models.OpenSanctionCheckFilter{
+			"name": []string{"bob"},
+		},
+		OrgConfig: models.OrganizationOpenSanctionsConfig{},
+	}
+
+	gock.New("https://yente.local").
+		Post("/match/sanctions").
+		MatchHeader("authorization", "Basic YWJjZGVmOmhlbGxvd29ybGQ=").
+		Reply(http.StatusBadRequest)
+
+	_, err := repo.Search(context.TODO(), cfg, query)
+
+	assert.False(t, gock.HasUnmatchedRequest())
+	assert.Error(t, err)
+}
+
 func TestOpenSanctionsError(t *testing.T) {
 	defer gock.Off()
 
-	repo := getMockedOpenSanctionsRepository("", "")
+	repo := getMockedOpenSanctionsRepository("", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Queries: models.OpenSanctionCheckFilter{
@@ -117,7 +163,7 @@ func TestOpenSanctionsError(t *testing.T) {
 func TestOpenSanctionsSuccessfulPartialResponse(t *testing.T) {
 	defer gock.Off()
 
-	repo := getMockedOpenSanctionsRepository("", "")
+	repo := getMockedOpenSanctionsRepository("", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Queries: models.OpenSanctionCheckFilter{
@@ -145,7 +191,7 @@ func TestOpenSanctionsSuccessfulPartialResponse(t *testing.T) {
 func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 	defer gock.Off()
 
-	repo := getMockedOpenSanctionsRepository("", "")
+	repo := getMockedOpenSanctionsRepository("", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Queries: models.OpenSanctionCheckFilter{

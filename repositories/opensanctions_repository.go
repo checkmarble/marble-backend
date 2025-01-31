@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -165,14 +166,26 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestUrl, &body)
 
+	if repo.opensanctions.IsSelfHosted() {
+		switch repo.opensanctions.AuthMethod() {
+		case infra.OPEN_SANCTIONS_AUTH_BEARER:
+			req.Header.Set("authorization", "Bearer "+repo.opensanctions.Credentials())
+		case infra.OPEN_SANCTIONS_AUTH_BASIC:
+			u, p, _ := strings.Cut(repo.opensanctions.Credentials(), ":")
+
+			req.SetBasicAuth(u, p)
+		}
+	}
+
 	return req, rawQuery.Bytes(), err
 }
 
 func (repo OpenSanctionsRepository) buildQueryString(cfg models.SanctionCheckConfig, orgCfg models.OrganizationOpenSanctionsConfig) url.Values {
 	qs := url.Values{}
 
-	if len(repo.opensanctions.ApiKey()) > 0 {
-		qs.Set("api_key", repo.opensanctions.ApiKey())
+	if repo.opensanctions.AuthMethod() == infra.OPEN_SANCTIONS_AUTH_SAAS &&
+		len(repo.opensanctions.Credentials()) > 0 {
+		qs.Set("api_key", repo.opensanctions.Credentials())
 	}
 
 	if len(cfg.Datasets) > 0 {
