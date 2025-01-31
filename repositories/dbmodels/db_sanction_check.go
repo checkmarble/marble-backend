@@ -10,22 +10,29 @@ import (
 
 const TABLE_SANCTION_CHECKS = "sanction_checks"
 
-var SelectSanctionChecksColumn = utils.ColumnList[DBSanctionCheck]()
+var (
+	SelectSanctionChecksColumn            = utils.ColumnList[DBSanctionCheck]()
+	SelectSanctionChecksWithMatchesColumn = utils.ColumnList[DBSanctionCheckWithMatches]()
+)
 
 type DBSanctionCheck struct {
-	Id              string                 `db:"id"`
-	DecisionId      string                 `db:"decision_id"`
-	Status          string                 `db:"status"`
-	SearchInput     json.RawMessage        `db:"search_input"`
-	SearchDatasets  []string               `db:"search_datasets"`
-	SearchThreshold *int                   `db:"search_threshold"`
-	IsManual        bool                   `db:"is_manual"`
-	RequestedBy     *string                `db:"requested_by"`
-	IsPartial       bool                   `db:"is_partial"`
-	IsArchived      bool                   `db:"is_archived"`
-	CreatedAt       time.Time              `db:"created_at"`
-	UpdatedAt       time.Time              `db:"updated_at"`
-	Matches         []DBSanctionCheckMatch `db:"matches"`
+	Id              string          `db:"id"`
+	DecisionId      string          `db:"decision_id"`
+	Status          string          `db:"status"`
+	SearchInput     json.RawMessage `db:"search_input"`
+	SearchDatasets  []string        `db:"search_datasets"`
+	SearchThreshold *int            `db:"search_threshold"`
+	IsManual        bool            `db:"is_manual"`
+	RequestedBy     *string         `db:"requested_by"`
+	IsPartial       bool            `db:"is_partial"`
+	IsArchived      bool            `db:"is_archived"`
+	CreatedAt       time.Time       `db:"created_at"`
+	UpdatedAt       time.Time       `db:"updated_at"`
+}
+
+type DBSanctionCheckWithMatches struct {
+	DBSanctionCheck
+	Matches []DBSanctionCheckMatch `db:"matches"`
 }
 
 func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheck, error) {
@@ -49,7 +56,7 @@ func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheck, error) {
 	}, nil
 }
 
-func AdaptSanctionCheckWithMatches(dto DBSanctionCheck) (models.SanctionCheckWithMatches, error) {
+func AdaptSanctionCheckWithMatches(dto DBSanctionCheckWithMatches) (models.SanctionCheckWithMatches, error) {
 	cfg := models.OrganizationOpenSanctionsConfig{
 		MatchThreshold: dto.SearchThreshold,
 	}

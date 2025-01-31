@@ -68,9 +68,10 @@ func selectSanctionChecksWithMatches() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(columnsNames("sc", dbmodels.SelectSanctionChecksColumn)...).
 		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) AS matches",
-			columnsNames("scm", dbmodels.SelectSanctionCheckMatchesColumn))).
+			strings.Join(columnsNames("scm", dbmodels.SelectSanctionCheckMatchesColumn), ","))).
 		From(dbmodels.TABLE_SANCTION_CHECKS + " AS sc").
-		LeftJoin(dbmodels.TABLE_SANCTION_CHECK_MATCHES + " AS scm ON sc.id = scm.sanction_check_id")
+		LeftJoin(dbmodels.TABLE_SANCTION_CHECK_MATCHES + " AS scm ON sc.id = scm.sanction_check_id").
+		GroupBy("sc.id")
 }
 
 func (*MarbleDbRepository) ArchiveSanctionCheck(ctx context.Context, exec Executor, decisionId string) error {
@@ -191,13 +192,15 @@ func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executo
 		sanctionCheck.RequestedBy,
 	).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionChecksColumn, ",")))
 
-	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckWithMatches)
+	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
 	}
 
+	withMatches := models.SanctionCheckWithMatches{SanctionCheck: result}
+
 	if len(sanctionCheck.Matches) == 0 {
-		return result, nil
+		return withMatches, nil
 	}
 
 	matchSql := NewQueryBuilder().Insert(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
@@ -213,9 +216,9 @@ func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executo
 		return models.SanctionCheckWithMatches{}, err
 	}
 
-	result.Matches = matches
+	withMatches.Matches = matches
 
-	return result, nil
+	return withMatches, nil
 }
 
 func (*MarbleDbRepository) AddSanctionCheckMatchComment(ctx context.Context,
