@@ -34,20 +34,21 @@ func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.Exe
 
 func TestListSanctionChecksOnDecision(t *testing.T) {
 	uc, exec := buildSanctionCheckUsecaseMock()
-	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBSanctionCheck](
+	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBSanctionCheckWithMatches](
 		ops.WithRandomMapAndSliceMinSize(1))
 
 	exec.Mock.ExpectQuery(`
-		SELECT sc.id, sc.decision_id, sc.status, sc.search_input, sc.search_datasets, sc.search_threshold, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.created_at, sc.updated_at, sc.matches,
-			ARRAY_AGG\(ROW\(\[scm.id scm.sanction_check_id scm.opensanction_entity_id scm.status scm.query_ids scm.payload scm.reviewed_by scm.created_at scm.updated_at\]\)\) AS matches
+		SELECT
+			sc.id, sc.decision_id, sc.status, sc.search_input, sc.search_datasets, sc.search_threshold, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.created_at, sc.updated_at,
+			ARRAY_AGG\(ROW\(scm.id,scm.sanction_check_id,scm.opensanction_entity_id,scm.status,scm.query_ids,scm.payload,scm.reviewed_by,scm.created_at,scm.updated_at\)\) AS matches
 		FROM sanction_checks AS sc
 		LEFT JOIN sanction_check_matches AS scm ON sc.id = scm.sanction_check_id
-		WHERE sc.decision_id = \$1
-			AND sc.is_archived = \$2
+		WHERE sc.decision_id = \$1 AND sc.is_archived = \$2
+		GROUP BY sc.id
 	`).
 		WithArgs("decisionid", false).
 		WillReturnRows(
-			pgxmock.NewRows(dbmodels.SelectSanctionChecksColumn).
+			pgxmock.NewRows(dbmodels.SelectSanctionChecksWithMatchesColumn).
 				AddRow(mockScRow...),
 		)
 
