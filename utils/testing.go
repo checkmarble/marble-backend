@@ -4,9 +4,10 @@ import (
 	"reflect"
 
 	"github.com/go-faker/faker/v4"
+	"github.com/go-faker/faker/v4/pkg/options"
 )
 
-func FakeStruct[T any]() (T, []any) {
+func FakeStruct[T any](opt ...options.OptionFunc) (T, []any) {
 	var object T
 
 	_ = faker.FakeData(&object)
@@ -14,7 +15,7 @@ func FakeStruct[T any]() (T, []any) {
 	return object, StructToMockRow(object)
 }
 
-func FakeStructs[T any](n int) ([]T, [][]any) {
+func FakeStructs[T any](n int, opt ...options.OptionFunc) ([]T, [][]any) {
 	objects := make([]T, n)
 	rows := make([][]any, n)
 
