@@ -9,7 +9,7 @@ import (
 
 func evaluateSanctionCheck(ctx context.Context, repositories ScenarioEvaluationRepositories,
 	iteration models.ScenarioIteration, params ScenarioEvaluationParameters, dataAccessor DataAccessor,
-) (sanctionCheck *models.SanctionCheck, performed bool, sanctionCheckErr error) {
+) (sanctionCheck *models.SanctionCheckWithMatches, performed bool, sanctionCheckErr error) {
 	if iteration.SanctionCheckConfig != nil && iteration.SanctionCheckConfig.Enabled {
 		triggerEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
 			ctx,
