@@ -144,10 +144,10 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 		Queries: make(map[string]openSanctionsRequestQuery, len(query.Queries)),
 	}
 
-	for key, value := range query.Queries {
+	for _, subquery := range query.Queries {
 		q.Queries[uuid.NewString()] = openSanctionsRequestQuery{
-			Schema:     "Thing",
-			Properties: map[string][]string{key: value},
+			Schema:     subquery.Type,
+			Properties: subquery.Filters,
 		}
 	}
 

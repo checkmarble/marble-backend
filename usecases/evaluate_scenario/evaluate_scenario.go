@@ -15,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -37,6 +38,10 @@ type EvalSanctionCheckUsecase interface {
 		models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
 }
 
+type EvalNameRecognitionRepository interface {
+	Detect(context.Context, string) ([]httpmodels.HTTPNameRecognitionResponse, error)
+}
+
 type SnoozesForDecisionReader interface {
 	ListActiveRuleSnoozesForDecision(
 		ctx context.Context,
@@ -50,6 +55,7 @@ type ScenarioEvaluationRepositories struct {
 	EvalScenarioRepository            repositories.EvalScenarioRepository
 	EvalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
 	EvalSanctionCheckUsecase          EvalSanctionCheckUsecase
+	EvalNameRecognitionRepository     EvalNameRecognitionRepository
 	EvalTestRunScenarioRepository     repositories.EvalTestRunScenarioRepository
 	ScenarioTestRunRepository         repositories.ScenarioTestRunRepository
 	ScenarioRepository                repositories.ScenarioUsecaseRepository
@@ -130,9 +136,9 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 
 	var outcome models.Outcome
 
-	sanctionCheckExecution, santionCheckPerformed, err :=
-		evaluateSanctionCheck(ctx, repositories.EvaluateAstExpression,
-			repositories.EvalSanctionCheckUsecase, iteration, params, dataAccessor)
+	sanctionCheckExecution, santionCheckPerformed, err := evaluateSanctionCheck(ctx,
+		repositories.EvaluateAstExpression,
+		repositories.EvalSanctionCheckUsecase, repositories.EvalNameRecognitionRepository, iteration, params, dataAccessor)
 	if err != nil {
 		// TODO: what happens if we cannot perform the sanction check?
 		return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")

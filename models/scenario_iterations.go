@@ -76,7 +76,8 @@ type UpdateSanctionCheckConfigInput struct {
 }
 
 type SanctionCheckConfigQuery struct {
-	Name ast.Node
+	Name  ast.Node
+	Label *ast.Node
 }
 
 type UpdateSanctionCheckOutcomeInput struct {

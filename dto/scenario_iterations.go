@@ -7,6 +7,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -45,7 +46,8 @@ type SanctionCheckConfig struct {
 }
 
 type SanctionCheckConfigQuery struct {
-	Name NodeDto `json:"name"`
+	Name  NodeDto   `json:"name"`
+	Label *ast.Node `json:"label"`
 }
 
 func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (SanctionCheckConfigQuery, error) {
@@ -55,7 +57,8 @@ func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (Sanct
 	}
 
 	dto := SanctionCheckConfigQuery{
-		Name: nameAst,
+		Name:  nameAst,
+		Label: model.Label,
 	}
 
 	return dto, nil

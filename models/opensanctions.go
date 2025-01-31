@@ -10,9 +10,14 @@ import (
 const OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
 
 type OpenSanctionsQuery struct {
-	Queries   OpenSanctionCheckFilter
+	Queries   []OpenSanctionCheckQuery
 	Config    SanctionCheckConfig
 	OrgConfig OrganizationOpenSanctionsConfig
+}
+
+type OpenSanctionCheckQuery struct {
+	Type    string
+	Filters OpenSanctionCheckFilter
 }
 
 type OpenSanctionCheckFilter map[string][]string

@@ -30,8 +30,13 @@ func TestOpenSanctionsSelfHostedApi(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -52,8 +57,12 @@ func TestOpenSanctionsSelfHostedAndApiKey(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "", "abcdef")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionCheckQuery{
+			{
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -75,8 +84,13 @@ func TestOpenSanctionsSaaSAndApiKey(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("", "", "abcdef")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -98,8 +112,12 @@ func TestOpenSanctionsSelfHostedAndBearerToken(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "bearer", "abcdef")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionCheckQuery{
+			{
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -121,8 +139,12 @@ func TestOpenSanctionsSelfHostedAndBasicAuth(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "basic", "abcdef:helloworld")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionCheckQuery{
+			{
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -144,8 +166,13 @@ func TestOpenSanctionsError(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -166,8 +193,13 @@ func TestOpenSanctionsSuccessfulPartialResponse(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -194,8 +226,13 @@ func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}

@@ -103,6 +103,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		repository:                    &usecases.Repositories.MarbleDbRepository,
 		sanctionCheckConfigRepository: &usecases.Repositories.MarbleDbRepository,
 		sanctionCheckUsecase:          usecases.NewSanctionCheckUsecase(),
+		nameRecognitionRepository:     usecases.Repositories.NameRecognitionRepository,
 		evaluateAstExpression:         usecases.NewEvaluateAstExpression(),
 		decisionWorkflows:             usecases.NewDecisionWorkflows(),
 		webhookEventsSender:           usecases.NewWebhookEventsUsecase(),

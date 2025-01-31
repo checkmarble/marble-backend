@@ -106,6 +106,7 @@ type DecisionUsecase struct {
 	dataModelRepository           repositories.DataModelRepository
 	repository                    DecisionUsecaseRepository
 	sanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
+	nameRecognitionRepository     NameRecognitionRepository
 	sanctionCheckUsecase          SanctionCheckUsecase
 	scenarioTestRunRepository     repositories.ScenarioTestRunRepository
 	evaluateAstExpression         ast_eval.EvaluateAstExpression
@@ -405,6 +406,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		EvalScenarioRepository:            usecase.repository,
 		EvalSanctionCheckConfigRepository: usecase.sanctionCheckConfigRepository,
 		EvalSanctionCheckUsecase:          usecase.sanctionCheckUsecase,
+		EvalNameRecognitionRepository:     usecase.nameRecognitionRepository,
 		ExecutorFactory:                   usecase.executorFactory,
 		IngestedDataReadRepository:        usecase.ingestedDataReadRepository,
 		EvaluateAstExpression:             usecase.evaluateAstExpression,
