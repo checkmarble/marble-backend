@@ -103,7 +103,7 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 		return nil, errors.Wrap(models.NotFoundError, "requested decision does not exist")
 	}
 
-	if err := uc.enforceSecurityDecision.ReadDecision(decisions[0]); err != nil {
+	if _, err = uc.enforceCanReadOrUpdateCase(ctx, decisions[0].DecisionId); err != nil {
 		return nil, err
 	}
 
