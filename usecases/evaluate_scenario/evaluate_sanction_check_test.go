@@ -17,13 +17,13 @@ type mockSanctionCheckExecutor struct {
 
 func (m mockSanctionCheckExecutor) Execute(ctx context.Context, orgId string,
 	cfg models.SanctionCheckConfig, query models.OpenSanctionsQuery,
-) (models.SanctionCheck, error) {
+) (models.SanctionCheckWithMatches, error) {
 	// We are not mocking returned data here, only that the function was called
 	// with the appropriate arguments, so we always expect this to be called.
 	m.On("Execute", context.TODO(), orgId, cfg, query)
 	m.Called(ctx, orgId, cfg, query)
 
-	return models.SanctionCheck{}, nil
+	return models.SanctionCheckWithMatches{}, nil
 }
 
 func getSanctionCheckEvaluatorAndExecutor() (ast_eval.EvaluateAstExpression, mockSanctionCheckExecutor) {
