@@ -43,7 +43,7 @@ func TestSanctionCheckSkippedWhenDisabled(t *testing.T) {
 
 	iteration := models.ScenarioIteration{}
 
-	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
+	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, nil, iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	assert.False(t, performed)
@@ -60,7 +60,7 @@ func TestSanctionCheckSkippedWhenTriggerRuleFalse(t *testing.T) {
 		},
 	}
 
-	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
+	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, nil, iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	assert.False(t, performed)
@@ -80,7 +80,7 @@ func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
 		},
 	}
 
-	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
+	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, nil, iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	assert.True(t, performed)
@@ -102,12 +102,17 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 
 	expectedQuery := models.OpenSanctionsQuery{
 		Config: *iteration.SanctionCheckConfig,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"constant string"},
+		Queries: []models.OpenSanctionCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"constant string"},
+				},
+			},
 		},
 	}
 
-	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
+	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, nil, iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "",
@@ -139,12 +144,17 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 
 	expectedQuery := models.OpenSanctionsQuery{
 		Config: *iteration.SanctionCheckConfig,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"hello world"},
+		Queries: []models.OpenSanctionCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"hello world"},
+				},
+			},
 		},
 	}
 
-	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
+	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, nil, iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "",

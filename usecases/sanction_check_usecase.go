@@ -6,6 +6,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
@@ -48,6 +49,15 @@ type SanctionCheckInboxReader interface {
 		organizationId string,
 		withCaseCount bool,
 	) ([]models.Inbox, error)
+}
+
+type SanctionCheckInboxRepository interface {
+	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
+		inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
+}
+
+type NameRecognitionRepository interface {
+	Detect(context.Context, string) ([]httpmodels.HTTPNameRecognitionResponse, error)
 }
 
 type SanctionCheckRepository interface {
@@ -150,8 +160,13 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 	query := models.OpenSanctionsQuery{
 		OrgConfig: sc.OrgConfig,
 		Config:    cfg,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"macron"},
+		Queries: []models.OpenSanctionCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"macron"},
+				},
+			},
 		},
 	}
 
