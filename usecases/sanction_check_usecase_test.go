@@ -32,7 +32,7 @@ func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.Exe
 	return uc, exec
 }
 
-func TestGetSanctionCheckOnDecision(t *testing.T) {
+func TestListSanctionChecksOnDecision(t *testing.T) {
 	uc, exec := buildSanctionCheckUsecaseMock()
 	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBSanctionCheck](
 		ops.WithRandomMapAndSliceMinSize(1))
