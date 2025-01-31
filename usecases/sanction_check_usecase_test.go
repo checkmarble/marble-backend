@@ -4,10 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	ops "github.com/go-faker/faker/v4/pkg/options"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,31 +34,31 @@ func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.Exe
 
 func TestGetSanctionCheckOnDecision(t *testing.T) {
 	uc, exec := buildSanctionCheckUsecaseMock()
-	_, mockScRow := utils.FakeStruct[dbmodels.DBSanctionCheck]()
+	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBSanctionCheck](
+		ops.WithRandomMapAndSliceMinSize(1))
 
 	exec.Mock.ExpectQuery(`
 		SELECT sc.id, sc.decision_id, sc.status, sc.search_input, sc.search_datasets, sc.search_threshold, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.created_at, sc.updated_at, sc.matches,
-			ARRAY_AGG(ROW([scm.id scm.sanction_check_id scm.opensanction_entity_id scm.status scm.query_ids scm.payload scm.reviewed_by scm.created_at scm.updated_at])) AS matches
+			ARRAY_AGG\(ROW\(\[scm.id scm.sanction_check_id scm.opensanction_entity_id scm.status scm.query_ids scm.payload scm.reviewed_by scm.created_at scm.updated_at\]\)\) AS matches
 		FROM sanction_checks AS sc
 		LEFT JOIN sanction_check_matches AS scm ON sc.id = scm.sanction_check_id
-		WHERE sc.decision_id = $1
-			AND sc.is_archived = $2
+		WHERE sc.decision_id = \$1
+			AND sc.is_archived = \$2
 	`).
-		WithArgs("decisionId", false).
+		WithArgs("decisionid", false).
 		WillReturnRows(
 			pgxmock.NewRows(dbmodels.SelectSanctionChecksColumn).
 				AddRow(mockScRow...),
 		)
 
-	scs, err := uc.ListSanctionChecks(context.TODO(), "decisionId")
+	scs, err := uc.ListSanctionChecks(context.TODO(), "decisionid")
 
 	assert.NoError(t, exec.Mock.ExpectationsWereMet())
 	assert.NoError(t, err)
 	assert.Len(t, scs, 1)
-	// assert.Equal(t, models.SanctionCheckStatusFrom(mockSc.Status), sc.Status)
-	// assert.Len(t, sc.Matches, 3)
-	// assert.Equal(t, models.SanctionCheckMatchStatusFrom(mockScMatch.Status), sc.Matches[0].Status)
-	// assert.Equal(t, mockScMatch.CommentCount, sc.Matches[0].CommentCount)
+	assert.Equal(t, models.SanctionCheckStatusFrom(mockSc.Status), scs[0].Status)
+	assert.NotEmpty(t, scs[0].Matches)
+	assert.Equal(t, models.SanctionCheckMatchStatusFrom(scs[0].Matches[0].Status.String()), models.SanctionMatchStatusUnknown)
 }
 
 func TestListSanctionCheckOnMatchComments(t *testing.T) {
