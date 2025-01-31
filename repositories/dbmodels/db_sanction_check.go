@@ -33,17 +33,38 @@ func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheck, error) {
 		MatchThreshold: dto.SearchThreshold,
 	}
 
+	return models.SanctionCheck{
+		Id:          dto.Id,
+		DecisionId:  dto.DecisionId,
+		Datasets:    dto.SearchDatasets,
+		Query:       dto.SearchInput,
+		OrgConfig:   cfg,
+		Partial:     dto.IsPartial,
+		Status:      models.SanctionCheckStatusFrom(dto.Status),
+		IsManual:    dto.IsManual,
+		IsArchived:  dto.IsArchived,
+		RequestedBy: dto.RequestedBy,
+		CreatedAt:   dto.CreatedAt,
+		UpdatedAt:   dto.UpdatedAt,
+	}, nil
+}
+
+func AdaptSanctionCheckWithMatches(dto DBSanctionCheck) (models.SanctionCheckWithMatches, error) {
+	cfg := models.OrganizationOpenSanctionsConfig{
+		MatchThreshold: dto.SearchThreshold,
+	}
+
 	matches := make([]models.SanctionCheckMatch, 0, len(dto.Matches))
 	for _, match := range dto.Matches {
 		m, err := AdaptSanctionCheckMatch(match)
 		if err != nil {
-			return models.SanctionCheck{}, err
+			return models.SanctionCheckWithMatches{}, err
 		}
 
 		matches = append(matches, m)
 	}
 
-	return models.SanctionCheck{
+	return models.SanctionCheckWithMatches{
 		Id:          dto.Id,
 		DecisionId:  dto.DecisionId,
 		Datasets:    dto.SearchDatasets,
