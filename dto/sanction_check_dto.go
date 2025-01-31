@@ -33,7 +33,7 @@ type SanctionCheckRequestDto struct {
 	Query     json.RawMessage `json:"query"`
 }
 
-func AdaptSanctionCheckDto(m models.SanctionCheck) SanctionCheckDto {
+func AdaptSanctionCheckDto(m models.SanctionCheckWithMatches) SanctionCheckDto {
 	sanctionCheck := SanctionCheckDto{
 		Id: m.Id,
 		Request: SanctionCheckRequestDto{

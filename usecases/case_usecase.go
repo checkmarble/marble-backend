@@ -51,7 +51,8 @@ type CaseUseCaseRepository interface {
 }
 
 type CaseUsecaseSanctionCheckRepository interface {
-	GetActiveSanctionCheckForDecision(context.Context, repositories.Executor, string) (*models.SanctionCheck, error)
+	GetActiveSanctionCheckForDecision(context.Context, repositories.Executor, string) (
+		*models.SanctionCheckWithMatches, error)
 }
 
 type webhookEventsUsecase interface {
