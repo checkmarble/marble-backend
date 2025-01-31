@@ -68,10 +68,13 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 		ingestedDataReadRepository: repositories.IngestedDataReadRepository,
 	}
 
+	cache := ast_eval.NewEvaluationCache()
+
 	// Evaluate the trigger
 
 	errEval := evalScenarioTrigger(
 		ctx,
+		cache,
 		repositories,
 		*iteration.TriggerConditionAstExpression,
 		dataAccessor.organizationId,
@@ -111,6 +114,7 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 	// Evaluate all rules
 	score, ruleExecutions, errEval := evalAllScenarioRules(
 		ctx,
+		cache,
 		repositories,
 		iteration.Rules,
 		dataAccessor,
@@ -287,6 +291,7 @@ func EvalScenario(
 
 func evalScenarioRule(
 	ctx context.Context,
+	cache *ast_eval.EvaluationCache,
 	repositories ScenarioEvaluationRepositories,
 	rule models.Rule,
 	dataAccessor DataAccessor,
@@ -321,11 +326,22 @@ func evalScenarioRule(
 	// Evaluate single rule
 	ruleEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
 		ctx,
+		cache,
 		*rule.FormulaAstExpression,
 		dataAccessor.organizationId,
 		dataAccessor.ClientObject,
 		dataModel,
 	)
+
+	ruleStats := ast.BuildEvaluationStats(ruleEvaluation, false)
+	functionStats := ruleStats.FunctionStats()
+
+	logger.InfoContext(ctx, fmt.Sprintf("rule evaluated in %dms",
+		ruleStats.Took.Milliseconds()), "duration",
+		ruleStats.Took.Milliseconds(), "nodes", ruleStats.Nodes, "skipped", ruleStats.SkippedCount,
+		"cached", ruleStats.CachedCount)
+
+	logger.DebugContext(ctx, "rule nodes breakdown", "functions", functionStats)
 
 	isAuthorizedError := ast.IsAuthorizedError(err)
 	if err != nil && !isAuthorizedError {
@@ -375,6 +391,7 @@ func evalScenarioRule(
 
 func evalScenarioTrigger(
 	ctx context.Context,
+	cache *ast_eval.EvaluationCache,
 	repositories ScenarioEvaluationRepositories,
 	triggerAstExpression ast.Node,
 	organizationId string,
@@ -387,6 +404,7 @@ func evalScenarioTrigger(
 
 	triggerEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
 		ctx,
+		cache,
 		triggerAstExpression,
 		organizationId,
 		payload,
@@ -422,6 +440,7 @@ func evalScenarioTrigger(
 
 func evalAllScenarioRules(
 	ctx context.Context,
+	cache *ast_eval.EvaluationCache,
 	repositories ScenarioEvaluationRepositories,
 	rules []models.Rule,
 	dataAccessor DataAccessor,
@@ -448,7 +467,8 @@ func evalAllScenarioRules(
 			}
 
 			// Eval each rule
-			scoreModifier, ruleExecution, err := evalScenarioRule(ctx, repositories, rule, dataAccessor, dataModel, snoozes)
+			scoreModifier, ruleExecution, err := evalScenarioRule(ctx, cache,
+				repositories, rule, dataAccessor, dataModel, snoozes)
 			if err != nil {
 				return err // First err will cancel the ctx
 			}
@@ -521,6 +541,7 @@ func EvalCaseName(
 
 	caseNameEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
 		ctx,
+		nil,
 		*scenario.DecisionToCaseNameTemplate,
 		params.Scenario.OrganizationId,
 		params.ClientObject,

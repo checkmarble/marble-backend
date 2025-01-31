@@ -15,6 +15,7 @@ type EvaluateAstExpression struct {
 
 func (evaluator *EvaluateAstExpression) EvaluateAstExpression(
 	ctx context.Context,
+	cache *EvaluationCache,
 	ruleAstExpression ast.Node,
 	organizationId string,
 	payload models.ClientObject,
@@ -27,7 +28,7 @@ func (evaluator *EvaluateAstExpression) EvaluateAstExpression(
 		DatabaseAccessReturnFakeValue: false,
 	})
 
-	evaluation, ok := EvaluateAst(ctx, environment, ruleAstExpression)
+	evaluation, ok := EvaluateAst(ctx, cache, environment, ruleAstExpression)
 	if !ok {
 		return evaluation, errors.Join(evaluation.FlattenErrors()...)
 	}
