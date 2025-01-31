@@ -110,20 +110,9 @@ type SanctionCheck struct {
 }
 
 type SanctionCheckWithMatches struct {
-	Id          string
-	DecisionId  string
-	Status      SanctionCheckStatus
-	Datasets    []string
-	Query       json.RawMessage
-	OrgConfig   OrganizationOpenSanctionsConfig
-	IsManual    bool
-	IsArchived  bool
-	RequestedBy *string
-	Partial     bool
-	Count       int
-	Matches     []SanctionCheckMatch
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	SanctionCheck
+	Matches []SanctionCheckMatch
+	Count   int
 }
 
 type SanctionCheckMatch struct {
