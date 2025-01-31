@@ -64,9 +64,11 @@ func RunServer() error {
 		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
 		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
 	}
+
 	openSanctionsConfig := infra.InitializeOpenSanctions(
 		http.DefaultClient,
 		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
+		utils.GetEnv("OPENSANCTIONS_AUTH_METHOD", ""),
 		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
 	)
 
