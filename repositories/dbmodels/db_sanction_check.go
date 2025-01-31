@@ -65,19 +65,21 @@ func AdaptSanctionCheckWithMatches(dto DBSanctionCheck) (models.SanctionCheckWit
 	}
 
 	return models.SanctionCheckWithMatches{
-		Id:          dto.Id,
-		DecisionId:  dto.DecisionId,
-		Datasets:    dto.SearchDatasets,
-		Query:       dto.SearchInput,
-		OrgConfig:   cfg,
-		Partial:     dto.IsPartial,
-		Status:      models.SanctionCheckStatusFrom(dto.Status),
-		IsManual:    dto.IsManual,
-		IsArchived:  dto.IsArchived,
-		RequestedBy: dto.RequestedBy,
-		CreatedAt:   dto.CreatedAt,
-		UpdatedAt:   dto.UpdatedAt,
-		Matches:     matches,
-		Count:       len(matches),
+		SanctionCheck: models.SanctionCheck{
+			Id:          dto.Id,
+			DecisionId:  dto.DecisionId,
+			Datasets:    dto.SearchDatasets,
+			Query:       dto.SearchInput,
+			OrgConfig:   cfg,
+			Partial:     dto.IsPartial,
+			Status:      models.SanctionCheckStatusFrom(dto.Status),
+			IsManual:    dto.IsManual,
+			IsArchived:  dto.IsArchived,
+			RequestedBy: dto.RequestedBy,
+			CreatedAt:   dto.CreatedAt,
+			UpdatedAt:   dto.UpdatedAt,
+		},
+		Matches: matches,
+		Count:   len(matches),
 	}, nil
 }
