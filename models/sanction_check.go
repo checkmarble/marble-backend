@@ -50,6 +50,10 @@ func (scs SanctionCheckStatus) String() string {
 	return "unknown"
 }
 
+func (scs SanctionCheckStatus) IsReviewable() bool {
+	return scs == SanctionStatusInReview
+}
+
 type SanctionCheckMatchStatus int
 
 const (
@@ -101,14 +105,25 @@ type SanctionCheck struct {
 	IsArchived  bool
 	RequestedBy *string
 	Partial     bool
-	Count       int
-	Matches     []SanctionCheckMatch
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
-func (sc SanctionCheck) IsReviewable() bool {
-	return sc.Status == SanctionStatusInReview
+type SanctionCheckWithMatches struct {
+	Id          string
+	DecisionId  string
+	Status      SanctionCheckStatus
+	Datasets    []string
+	Query       json.RawMessage
+	OrgConfig   OrganizationOpenSanctionsConfig
+	IsManual    bool
+	IsArchived  bool
+	RequestedBy *string
+	Partial     bool
+	Count       int
+	Matches     []SanctionCheckMatch
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type SanctionCheckMatch struct {

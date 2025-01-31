@@ -34,7 +34,7 @@ type ScenarioEvaluationParameters struct {
 
 type EvalSanctionCheckUsecase interface {
 	Execute(context.Context, string, models.SanctionCheckConfig,
-		models.OpenSanctionsQuery) (models.SanctionCheck, error)
+		models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
 }
 
 type SnoozesForDecisionReader interface {

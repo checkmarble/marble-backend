@@ -96,10 +96,10 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (
 func (repo OpenSanctionsRepository) Search(ctx context.Context,
 	cfg models.SanctionCheckConfig,
 	query models.OpenSanctionsQuery,
-) (models.SanctionCheck, error) {
+) (models.SanctionCheckWithMatches, error) {
 	req, rawQuery, err := repo.searchRequest(ctx, query)
 	if err != nil {
-		return models.SanctionCheck{}, err
+		return models.SanctionCheckWithMatches{}, err
 	}
 
 	utils.LoggerFromContext(ctx).InfoContext(ctx, "sending sanction check query")
@@ -107,12 +107,12 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context,
 
 	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
-		return models.SanctionCheck{},
+		return models.SanctionCheckWithMatches{},
 			errors.Wrap(err, "could not perform sanction check")
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return models.SanctionCheck{}, fmt.Errorf(
+		return models.SanctionCheckWithMatches{}, fmt.Errorf(
 			"sanction check API returned status %d", resp.StatusCode)
 	}
 
@@ -121,7 +121,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context,
 	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&matches); err != nil {
-		return models.SanctionCheck{}, errors.Wrap(err,
+		return models.SanctionCheckWithMatches{}, errors.Wrap(err,
 			"could not parse sanction check response")
 	}
 
