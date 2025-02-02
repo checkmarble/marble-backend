@@ -32,9 +32,12 @@ func (s *ScenarioFetcherRepositoryMock) GetScenarioIteration(ctx context.Context
 
 func (s *ScenarioFetcherRepositoryMock) GetSanctionCheckConfig(ctx context.Context,
 	exec repositories.Executor, scenarioIterationId string,
-) (models.SanctionCheckConfig, error) {
+) (*models.SanctionCheckConfig, error) {
 	args := s.Called(exec, scenarioIterationId)
-	return args.Get(0).(models.SanctionCheckConfig), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.SanctionCheckConfig), args.Error(1)
 }
 
 func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
@@ -52,8 +55,40 @@ func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 	repo := new(ScenarioFetcherRepositoryMock)
 	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
 	repo.On("GetScenarioById", mt, scenario.Id).Return(scenario, nil)
-	repo.On("GetSanctionCheckConfig", mt, scenarioIteration.Id).Return(
-		models.SanctionCheckConfig{}, models.NotFoundError)
+	repo.On("GetSanctionCheckConfig", mt, scenarioIteration.Id).Return(nil, nil)
+
+	fetcher := ScenarioFetcher{
+		Repository: repo,
+	}
+
+	result, err := fetcher.FetchScenarioAndIteration(context.TODO(), mt, scenarioIteration.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, models.ScenarioAndIteration{
+		Scenario:  scenario,
+		Iteration: scenarioIteration,
+	}, result)
+
+	mt.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
+func TestScenarioFetcher_FetchScenarioAndIteration_withSanctionCheck(t *testing.T) {
+	scenario := models.Scenario{
+		Id: "scenario_id",
+	}
+
+	scenarioIteration := models.ScenarioIteration{
+		Id:                  "scenario_iteration_id",
+		ScenarioId:          "scenario_id",
+		SanctionCheckConfig: &models.SanctionCheckConfig{},
+	}
+
+	mt := new(mocks.Executor)
+
+	repo := new(ScenarioFetcherRepositoryMock)
+	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
+	repo.On("GetScenarioById", mt, scenario.Id).Return(scenario, nil)
+	repo.On("GetSanctionCheckConfig", mt, scenarioIteration.Id).Return(&models.SanctionCheckConfig{}, nil)
 
 	fetcher := ScenarioFetcher{
 		Repository: repo,
@@ -103,8 +138,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioById_error(t *test
 	repo := new(ScenarioFetcherRepositoryMock)
 	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
 	repo.On("GetScenarioById", mt, scenario.Id).Return(scenario, assert.AnError)
-	repo.On("GetSanctionCheckConfig", mt, scenarioIteration.Id).Return(
-		models.SanctionCheckConfig{}, models.NotFoundError)
+	repo.On("GetSanctionCheckConfig", mt, scenarioIteration.Id).Return(nil, nil)
 
 	fetcher := ScenarioFetcher{
 		Repository: repo,

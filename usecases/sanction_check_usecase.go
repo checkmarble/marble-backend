@@ -21,8 +21,7 @@ type SanctionCheckEnforceSecurityCase interface {
 
 type SanctionCheckProvider interface {
 	GetLatestLocalDataset(context.Context) (models.OpenSanctionsDataset, error)
-	Search(context.Context, models.SanctionCheckConfig,
-		models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
+	Search(context.Context, models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
 }
 
 type SanctionCheckDecisionRepository interface {
@@ -110,7 +109,9 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 	return uc.repository.GetSanctionChecksForDecision(ctx, exec, decisions[0].DecisionId)
 }
 
-func (uc SanctionCheckUsecase) Execute(ctx context.Context, orgId string, cfg models.SanctionCheckConfig,
+func (uc SanctionCheckUsecase) Execute(
+	ctx context.Context,
+	orgId string,
 	query models.OpenSanctionsQuery,
 ) (models.SanctionCheckWithMatches, error) {
 	org, err := uc.organizationRepository.GetOrganizationById(ctx,
@@ -122,12 +123,12 @@ func (uc SanctionCheckUsecase) Execute(ctx context.Context, orgId string, cfg mo
 
 	query.OrgConfig = org.OpenSanctionsConfig
 
-	matches, err := uc.openSanctionsProvider.Search(ctx, cfg, query)
+	matches, err := uc.openSanctionsProvider.Search(ctx, query)
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
 	}
 
-	matches.Datasets = cfg.Datasets
+	matches.Datasets = query.Config.Datasets
 	matches.OrgConfig = org.OpenSanctionsConfig
 
 	return matches, err
@@ -141,7 +142,7 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 		return models.SanctionCheckWithMatches{}, err
 	}
 
-	cfg, err := uc.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
+	scc, err := uc.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
 		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId)
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
@@ -149,13 +150,13 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 
 	query := models.OpenSanctionsQuery{
 		OrgConfig: sc.OrgConfig,
-		Config:    cfg,
+		Config:    *scc,
 		Queries: models.OpenSanctionCheckFilter{
 			"name": []string{"macron"},
 		},
 	}
 
-	sanctionCheck, err := uc.Execute(ctx, decision.OrganizationId, cfg, query)
+	sanctionCheck, err := uc.Execute(ctx, decision.OrganizationId, query)
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
 	}

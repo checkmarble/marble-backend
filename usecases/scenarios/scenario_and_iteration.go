@@ -2,7 +2,6 @@ package scenarios
 
 import (
 	"context"
-	"errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -13,7 +12,7 @@ type ScenarioFetcherRepository interface {
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
-	GetSanctionCheckConfig(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.SanctionCheckConfig, error)
+	GetSanctionCheckConfig(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (*models.SanctionCheckConfig, error)
 }
 
 type ScenarioFetcher struct {
@@ -29,12 +28,10 @@ func (fetcher ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context,
 	}
 
 	sanctionCheckConfig, err := fetcher.Repository.GetSanctionCheckConfig(ctx, exec, iterationId)
-	switch {
-	case err == nil:
-		result.Iteration.SanctionCheckConfig = &sanctionCheckConfig
-	case !errors.Is(err, models.NotFoundError):
+	if err != nil {
 		return models.ScenarioAndIteration{}, err
 	}
+	result.Iteration.SanctionCheckConfig = sanctionCheckConfig
 
 	result.Scenario, err = fetcher.Repository.GetScenarioById(ctx, exec, result.Iteration.ScenarioId)
 	if err != nil {

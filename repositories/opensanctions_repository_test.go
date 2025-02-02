@@ -30,6 +30,7 @@ func TestOpenSanctionsSelfHostedApi(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
+		Config: cfg,
 		Queries: models.OpenSanctionCheckFilter{
 			"name": []string{"bob"},
 		},
@@ -40,7 +41,7 @@ func TestOpenSanctionsSelfHostedApi(t *testing.T) {
 		Post("/match/sanctions").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), cfg, query)
+	_, err := repo.Search(context.TODO(), query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -52,6 +53,7 @@ func TestOpenSanctionsSelfHostedAndApiKey(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "", "abcdef")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
+		Config: cfg,
 		Queries: models.OpenSanctionCheckFilter{
 			"name": []string{"bob"},
 		},
@@ -63,7 +65,7 @@ func TestOpenSanctionsSelfHostedAndApiKey(t *testing.T) {
 		MatchParam("api_key", "abcdef").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), cfg, query)
+	_, err := repo.Search(context.TODO(), query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -75,6 +77,7 @@ func TestOpenSanctionsSaaSAndApiKey(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("", "", "abcdef")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
+		Config: cfg,
 		Queries: models.OpenSanctionCheckFilter{
 			"name": []string{"bob"},
 		},
@@ -86,7 +89,7 @@ func TestOpenSanctionsSaaSAndApiKey(t *testing.T) {
 		MatchParam("api_key", "abcdef").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), cfg, query)
+	_, err := repo.Search(context.TODO(), query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -98,6 +101,7 @@ func TestOpenSanctionsSelfHostedAndBearerToken(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "bearer", "abcdef")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
+		Config: cfg,
 		Queries: models.OpenSanctionCheckFilter{
 			"name": []string{"bob"},
 		},
@@ -109,7 +113,7 @@ func TestOpenSanctionsSelfHostedAndBearerToken(t *testing.T) {
 		MatchHeader("authorization", "Bearer abcdef").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), cfg, query)
+	_, err := repo.Search(context.TODO(), query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -121,6 +125,7 @@ func TestOpenSanctionsSelfHostedAndBasicAuth(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "basic", "abcdef:helloworld")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
+		Config: cfg,
 		Queries: models.OpenSanctionCheckFilter{
 			"name": []string{"bob"},
 		},
@@ -132,7 +137,7 @@ func TestOpenSanctionsSelfHostedAndBasicAuth(t *testing.T) {
 		MatchHeader("authorization", "Basic YWJjZGVmOmhlbGxvd29ybGQ=").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), cfg, query)
+	_, err := repo.Search(context.TODO(), query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -144,6 +149,7 @@ func TestOpenSanctionsError(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
+		Config: cfg,
 		Queries: models.OpenSanctionCheckFilter{
 			"name": []string{"bob"},
 		},
@@ -154,7 +160,7 @@ func TestOpenSanctionsError(t *testing.T) {
 		Post("/match/sanctions").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), cfg, query)
+	_, err := repo.Search(context.TODO(), query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -166,6 +172,7 @@ func TestOpenSanctionsSuccessfulPartialResponse(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
+		Config: cfg,
 		Queries: models.OpenSanctionCheckFilter{
 			"name": []string{"bob"},
 		},
@@ -179,7 +186,7 @@ func TestOpenSanctionsSuccessfulPartialResponse(t *testing.T) {
 		Reply(http.StatusOK).
 		BodyString(string(body))
 
-	matches, err := repo.Search(context.TODO(), cfg, query)
+	matches, err := repo.Search(context.TODO(), query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.NoError(t, err)
@@ -194,6 +201,7 @@ func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("", "", "")
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
+		Config: cfg,
 		Queries: models.OpenSanctionCheckFilter{
 			"name": []string{"bob"},
 		},
@@ -207,7 +215,7 @@ func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 		Reply(http.StatusOK).
 		BodyString(string(body))
 
-	matches, err := repo.Search(context.TODO(), cfg, query)
+	matches, err := repo.Search(context.TODO(), query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.NoError(t, err)

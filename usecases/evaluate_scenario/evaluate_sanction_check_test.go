@@ -15,13 +15,15 @@ type mockSanctionCheckExecutor struct {
 	*mock.Mock
 }
 
-func (m mockSanctionCheckExecutor) Execute(ctx context.Context, orgId string,
-	cfg models.SanctionCheckConfig, query models.OpenSanctionsQuery,
+func (m mockSanctionCheckExecutor) Execute(
+	ctx context.Context,
+	orgId string,
+	query models.OpenSanctionsQuery,
 ) (models.SanctionCheckWithMatches, error) {
 	// We are not mocking returned data here, only that the function was called
 	// with the appropriate arguments, so we always expect this to be called.
-	m.On("Execute", context.TODO(), orgId, cfg, query)
-	m.Called(ctx, orgId, cfg, query)
+	m.On("Execute", context.TODO(), orgId, query)
+	m.Called(ctx, orgId, query)
 
 	return models.SanctionCheckWithMatches{}, nil
 }
@@ -110,8 +112,7 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
-	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "",
-		*iteration.SanctionCheckConfig, expectedQuery)
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
 	assert.True(t, performed)
 	assert.NoError(t, err)
@@ -147,8 +148,7 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
-	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "",
-		*iteration.SanctionCheckConfig, expectedQuery)
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
 	assert.True(t, performed)
 	assert.NoError(t, err)
