@@ -108,6 +108,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		phantomUseCase:            usecases.NewPhantomDecisionUseCase(),
 		scenarioTestRunRepository: &usecases.Repositories.MarbleDbRepository,
 		scenarioEvaluator:         usecases.NewScenarioEvaluator(),
+		featureAccessReader:       usecases.NewFeatureAccessReader(),
 	}
 }
 
