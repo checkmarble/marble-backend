@@ -96,14 +96,11 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 
 	scc, err := usecase.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
 		usecase.executorFactory.NewExecutor(), si.Id)
-
-	switch {
-	case err == nil:
-		si.SanctionCheckConfig = &scc
-	case !errors.Is(err, models.NotFoundError):
+	if err != nil {
 		return models.ScenarioIteration{}, errors.Wrap(err,
-			"could not retrieve sanction check config from scenario iteration")
+			"could not retrieve sanction check config while getting scenario iteration")
 	}
+	si.SanctionCheckConfig = scc
 
 	if err := usecase.enforceSecurity.ReadScenarioIteration(si); err != nil {
 		return models.ScenarioIteration{}, err
@@ -242,12 +239,8 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 				return models.ScenarioIteration{}, err
 			}
 
-			var sanctionCheckConfig *models.SanctionCheckConfig
-
-			switch scc, err := usecase.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, tx, si.Id); {
-			case err == nil:
-				sanctionCheckConfig = &scc
-			case !errors.Is(err, models.NotFoundError):
+			sanctionCheckConfig, err := usecase.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, tx, si.Id)
+			if err != nil {
 				return models.ScenarioIteration{}, errors.Wrap(err,
 					"could not retrieve sanction check config while creating draft")
 			}

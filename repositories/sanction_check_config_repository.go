@@ -13,18 +13,21 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func (repo *MarbleDbRepository) GetSanctionCheckConfig(ctx context.Context, exec Executor,
+func (repo *MarbleDbRepository) GetSanctionCheckConfig(
+	ctx context.Context,
+	exec Executor,
 	scenarioIterationId string,
-) (models.SanctionCheckConfig, error) {
+) (*models.SanctionCheckConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckConfig{}, err
+		return nil, err
 	}
 
 	sql := NewQueryBuilder().
-		Select("*").From(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
+		Select(dbmodels.SanctionCheckConfigColumnList...).
+		From(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
 		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationId})
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
+	return SqlToOptionalModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
 }
 
 func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, exec Executor,

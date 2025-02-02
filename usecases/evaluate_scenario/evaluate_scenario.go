@@ -33,8 +33,7 @@ type ScenarioEvaluationParameters struct {
 }
 
 type EvalSanctionCheckUsecase interface {
-	Execute(context.Context, string, models.SanctionCheckConfig,
-		models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
+	Execute(context.Context, string, models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
 }
 
 type SnoozesForDecisionReader interface {
@@ -134,9 +133,8 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 
 	var outcome models.Outcome
 
-	sanctionCheckExecution, santionCheckPerformed, err :=
-		evaluateSanctionCheck(ctx, repositories.EvaluateAstExpression,
-			repositories.EvalSanctionCheckUsecase, iteration, params, dataAccessor)
+	sanctionCheckExecution, santionCheckPerformed, err := evaluateSanctionCheck(ctx, repositories.EvaluateAstExpression,
+		repositories.EvalSanctionCheckUsecase, iteration, params, dataAccessor)
 	if err != nil {
 		// TODO: what happens if we cannot perform the sanction check?
 		return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
@@ -253,14 +251,11 @@ func EvalTestRunScenario(ctx context.Context,
 	}
 
 	scc, err := repositories.EvalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, testRunIteration.Id)
-
-	switch {
-	case err == nil:
-		testRunIteration.SanctionCheckConfig = &scc
-	case !errors.Is(err, models.NotFoundError):
+	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting sanction check config from scenario iteration")
 	}
+	testRunIteration.SanctionCheckConfig = scc
 
 	se, err = processScenarioIteration(ctx, params, testRunIteration, repositories, start, logger, exec)
 	if err != nil {
@@ -323,14 +318,11 @@ func EvalScenario(
 	}
 
 	scc, err := repositories.EvalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, versionToRun.Id)
-
-	switch {
-	case err == nil:
-		versionToRun.SanctionCheckConfig = &scc
-	case !errors.Is(err, models.NotFoundError):
+	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting sanction check config from scenario iteration")
 	}
+	versionToRun.SanctionCheckConfig = scc
 
 	se, errSe := processScenarioIteration(ctx, params, versionToRun, repositories, start, logger, exec)
 	if errSe != nil {
