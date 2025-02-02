@@ -76,6 +76,13 @@ type DecisionUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 }
 
+type decisionUsecaseFeatureAccessReader interface {
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId string,
+	) (models.OrganizationFeatureAccess, error)
+}
+
 type decisionWorkflowsUsecase interface {
 	AutomaticDecisionToCase(
 		ctx context.Context,
@@ -113,6 +120,7 @@ type DecisionUsecase struct {
 	webhookEventsSender           webhookEventsUsecase
 	phantomUseCase                decision_phantom.PhantomDecisionUsecase
 	snoozesReader                 snoozesForDecisionReader
+	featureAccessReader           decisionUsecaseFeatureAccessReader
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {

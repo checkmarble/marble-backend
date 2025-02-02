@@ -12,6 +12,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+type OrganizationUsecaseFeatureAccessReader interface {
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId string,
+	) (models.OrganizationFeatureAccess, error)
+}
+
 type OrganizationUseCase struct {
 	enforceSecurity              security.EnforceSecurityOrganization
 	transactionFactory           executor_factory.TransactionFactory
@@ -21,7 +28,7 @@ type OrganizationUseCase struct {
 	organizationCreator          organization.OrganizationCreator
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
 	executorFactory              executor_factory.ExecutorFactory
-	license                      models.LicenseValidation
+	featureAccessReader          OrganizationUsecaseFeatureAccessReader
 }
 
 func NewOrganizationUseCase(
@@ -33,7 +40,7 @@ func NewOrganizationUseCase(
 	organizationCreator organization.OrganizationCreator,
 	organizationSchemaRepository repositories.OrganizationSchemaRepository,
 	executorFactory executor_factory.ExecutorFactory,
-	license models.LicenseValidation,
+	featureAccessReader OrganizationUsecaseFeatureAccessReader,
 ) OrganizationUseCase {
 	return OrganizationUseCase{
 		enforceSecurity:              enforceSecurity,
@@ -44,7 +51,7 @@ func NewOrganizationUseCase(
 		organizationCreator:          organizationCreator,
 		organizationSchemaRepository: organizationSchemaRepository,
 		executorFactory:              executorFactory,
-		license:                      license,
+		featureAccessReader:          featureAccessReader,
 	}
 }
 
@@ -146,18 +153,7 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 func (usecase *OrganizationUseCase) GetOrganizationFeatureAccess(ctx context.Context,
 	organizationId string,
 ) (models.OrganizationFeatureAccess, error) {
-	if err := usecase.enforceSecurity.ReadOrganization(organizationId); err != nil {
-		return models.OrganizationFeatureAccess{}, err
-	}
-
-	dbStoredFeatureAccess, err := usecase.organizationRepository.GetOrganizationFeatureAccess(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId)
-	if err != nil {
-		return models.OrganizationFeatureAccess{}, err
-	}
-
-	return dbStoredFeatureAccess.MergeWithLicenseEntitlement(
-		&usecase.license.LicenseEntitlements), nil
+	return usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId)
 }
 
 func (usecase *OrganizationUseCase) UpdateOrganizationFeatureAccess(
