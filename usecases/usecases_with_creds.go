@@ -4,6 +4,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
+	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
@@ -115,6 +116,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
 			&usecases.Repositories.MarbleDbRepository),
 		scenarioTestRunRepository: &usecases.Repositories.MarbleDbRepository,
+		featureAccessReader:       usecases.NewFeatureAccessReader(),
 	}
 }
 
@@ -226,7 +228,7 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 		usecases.NewOrganizationCreator(),
 		usecases.Repositories.OrganizationSchemaRepository,
 		usecases.NewExecutorFactory(),
-		usecases.Usecases.license,
+		usecases.NewFeatureAccessReader(),
 	)
 }
 
@@ -511,4 +513,13 @@ func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataRea
 		dataModelRepository:        usecases.Repositories.DataModelRepository,
 		executorFactory:            usecases.NewExecutorFactory(),
 	}
+}
+
+func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.FeatureAccessReader {
+	return feature_access.NewFeatureAccessReader(
+		usecases.NewEnforceOrganizationSecurity(),
+		usecases.Repositories.OrganizationRepository,
+		usecases.NewExecutorFactory(),
+		usecases.Usecases.license,
+	)
 }
