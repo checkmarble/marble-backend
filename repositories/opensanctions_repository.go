@@ -94,10 +94,7 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (
 	return dataset, nil
 }
 
-func (repo OpenSanctionsRepository) Search(ctx context.Context,
-	cfg models.SanctionCheckConfig,
-	query models.OpenSanctionsQuery,
-) (models.SanctionCheckWithMatches, error) {
+func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error) {
 	req, rawQuery, err := repo.searchRequest(ctx, query)
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
