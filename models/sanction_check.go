@@ -143,3 +143,19 @@ type SanctionCheckMatchComment struct {
 	Comment     string
 	CreatedAt   time.Time
 }
+
+type SanctionCheckFile struct {
+	Id            string
+	MatchId       string
+	BucketName    string
+	FileReference string
+	FileName      string
+	CreatedAt     time.Time
+}
+
+type SanctionCheckFileInput struct {
+	MatchId       string
+	BucketName    string
+	FileReference string
+	FileName      string
+}
