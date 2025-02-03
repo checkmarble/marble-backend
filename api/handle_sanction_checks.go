@@ -115,6 +115,30 @@ func handleUploadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Contex
 	}
 }
 
+func handleListSanctionCheckMatchFiles(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		matchId := c.Param("id")
+
+		creds, ok := utils.CredentialsFromCtx(ctx)
+
+		if !ok {
+			presentError(ctx, c, models.ErrUnknownUser)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+
+		files, err := uc.ListFiles(ctx, creds, matchId)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(files, dto.AdaptSanctionCheckFileDto))
+	}
+}
+
 func handleDownloadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
