@@ -104,6 +104,11 @@ type snoozesForDecisionReader interface {
 	) ([]models.RuleSnooze, error)
 }
 
+type ScenarioEvaluator interface {
+	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters,
+		repositories evaluate_scenario.ScenarioEvaluationRepositories) (se models.ScenarioExecution, err error)
+}
+
 type DecisionUsecase struct {
 	enforceSecurity               security.EnforceSecurityDecision
 	enforceSecurityScenario       security.EnforceSecurityScenario
@@ -121,6 +126,7 @@ type DecisionUsecase struct {
 	phantomUseCase                decision_phantom.PhantomDecisionUsecase
 	snoozesReader                 snoozesForDecisionReader
 	featureAccessReader           decisionUsecaseFeatureAccessReader
+	scenarioEvaluator             ScenarioEvaluator
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
@@ -420,7 +426,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		FeatureAccessReader:               usecase.featureAccessReader,
 	}
 
-	scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories)
+	scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters, evaluationRepositories)
 	if err != nil {
 		return models.DecisionWithRuleExecutions{},
 			fmt.Errorf("error evaluating scenario: %w", err)
@@ -605,7 +611,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			trace.WithAttributes(attribute.String("scenario_id", scenario.Id)),
 		)
 		defer span.End()
-		scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories)
+		scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx,
+			evaluationParameters, evaluationRepositories)
 		if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
 			nbSkipped++
 			continue

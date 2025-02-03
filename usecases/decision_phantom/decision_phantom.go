@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
@@ -19,6 +20,23 @@ type evalScenarioRepository interface {
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor,
 		scenarioIterationId string) (models.ScenarioIteration, error)
 }
+
+type EvaluateAstExpression interface {
+	EvaluateAstExpression(
+		ctx context.Context,
+		cache *ast_eval.EvaluationCache,
+		ruleAstExpression ast.Node,
+		organizationId string,
+		payload models.ClientObject,
+		dataModel models.DataModel,
+	) (ast.NodeEvaluation, error)
+}
+
+type TestRunEvaluator interface {
+	EvalTestRunScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters,
+		repositories evaluate_scenario.ScenarioEvaluationRepositories) (se models.ScenarioExecution, err error)
+}
+
 type PhantomDecisionUsecase struct {
 	enforceSecurity                   security.EnforceSecurityPhantomDecision
 	executorFactory                   executor_factory.ExecutorFactory
@@ -26,20 +44,24 @@ type PhantomDecisionUsecase struct {
 	repository                        repositories.DecisionPhantomUsecaseRepository
 	testrunRepository                 repositories.ScenarioTestRunRepository
 	scenarioRepository                repositories.ScenarioUsecaseRepository
-	evaluateAstExpression             ast_eval.EvaluateAstExpression
+	evaluateAstExpression             EvaluateAstExpression
 	snoozesReader                     evaluate_scenario.SnoozesForDecisionReader
 	evalScenarioRepository            evalScenarioRepository
 	evalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
+	scenarioEvaluator                 TestRunEvaluator
 }
 
 func NewPhantomDecisionUseCase(enforceSecurity security.EnforceSecurityPhantomDecision,
-	executorFactory executor_factory.ExecutorFactory, ingestedDataReadRepository repositories.IngestedDataReadRepository,
-	repository repositories.DecisionPhantomUsecaseRepository, evaluateAstExpression ast_eval.EvaluateAstExpression,
+	executorFactory executor_factory.ExecutorFactory,
+	ingestedDataReadRepository repositories.IngestedDataReadRepository,
+	repository repositories.DecisionPhantomUsecaseRepository,
+	evaluateAstExpression EvaluateAstExpression,
 	snoozesReader evaluate_scenario.SnoozesForDecisionReader,
 	testrunRepository repositories.ScenarioTestRunRepository,
 	scenarioRepository repositories.ScenarioUsecaseRepository,
 	evalScenarioRepository evalScenarioRepository,
 	evalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository,
+	scenarioEvaluator TestRunEvaluator,
 ) PhantomDecisionUsecase {
 	return PhantomDecisionUsecase{
 		enforceSecurity:                   enforceSecurity,
@@ -52,6 +74,7 @@ func NewPhantomDecisionUseCase(enforceSecurity security.EnforceSecurityPhantomDe
 		snoozesReader:                     snoozesReader,
 		evalScenarioRepository:            evalScenarioRepository,
 		evalSanctionCheckConfigRepository: evalSanctionCheckConfigRepository,
+		scenarioEvaluator:                 scenarioEvaluator,
 	}
 }
 
@@ -82,7 +105,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 
 	// TODO remove
 	ctx = context.WithoutCancel(ctx)
-	testRunScenarioExecution, err := evaluate_scenario.EvalTestRunScenario(ctx,
+	testRunScenarioExecution, err := usecase.scenarioEvaluator.EvalTestRunScenario(ctx,
 		evaluationParameters, evaluationRepositories)
 	if err != nil {
 		return models.PhantomDecision{},
