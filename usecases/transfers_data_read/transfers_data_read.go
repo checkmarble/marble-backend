@@ -61,7 +61,7 @@ func (usecase TransferDataReader) QueryTransferDataFromMapping(
 	}
 
 	objectId := models.ObjectIdWithPartnerIdPrefix(transferMapping.PartnerId, transferMapping.ClientTransferId)
-	objects, err := usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, objectId)
+	objects, err := usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, objectId, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while querying ingested objects in TransferDataReader.GetTransferById")
 	}

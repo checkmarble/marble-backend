@@ -480,3 +480,11 @@ func (usecases UsecasesWithCreds) NewNewAsyncScheduledExecWorker() *scheduled_ex
 	)
 	return &w
 }
+
+func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataReaderUsecase {
+	return IngestedDataReaderUsecase{
+		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+		dataModelRepository:        usecases.Repositories.DataModelRepository,
+		executorFactory:            usecases.NewExecutorFactory(),
+	}
+}

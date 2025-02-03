@@ -197,3 +197,29 @@ func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, openapi)
 	}
 }
+
+func handleGetDataModelObject(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		tableName := c.Param("tableName")
+		objectID := c.Param("objectID")
+
+		usecase := usecasesWithCreds(ctx, uc).NewIngestedDataReaderUsecase()
+		object, err := usecase.GetIngestedObject(ctx, organizationID, tableName, objectID)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		if len(object) == 0 {
+			c.JSON(http.StatusNotFound, nil)
+			return
+		}
+
+		c.JSON(http.StatusOK, object[0])
+	}
+}

@@ -25,6 +25,7 @@ type IngestedDataReadRepository interface {
 		exec Executor,
 		table models.Table,
 		objectId string,
+		columnsToAdd []string,
 	) ([]map[string]any, error)
 	QueryAggregatedValue(
 		ctx context.Context,
@@ -236,12 +237,16 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 	exec Executor,
 	table models.Table,
 	objectId string,
+	columnsToAdd []string,
 ) ([]map[string]any, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	columnNames := models.ColumnNames(table)
+	if len(columnsToAdd) > 0 {
+		columnNames = append(columnNames, columnsToAdd...)
+	}
 
 	qualifiedTableName := tableNameWithSchema(exec, table.Name)
 	objectsAsMap, err := queryWithDynamicColumnList(

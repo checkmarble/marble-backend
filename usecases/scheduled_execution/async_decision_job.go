@@ -267,7 +267,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	if err != nil {
 		return false, nil, err
 	}
-	objectMap, err := w.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, args.ObjectId)
+	objectMap, err := w.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, args.ObjectId, nil)
 	if err != nil {
 		return false, nil, errors.Wrap(err, "error while querying ingested objects in AsyncDecisionWorker.createSingleDecisionForObjectId")
 	} else if len(objectMap) == 0 {
