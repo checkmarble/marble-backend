@@ -2,12 +2,16 @@ package usecases
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"mime/multipart"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -71,6 +75,8 @@ type SanctionCheckRepository interface {
 		comment models.SanctionCheckMatchComment) (models.SanctionCheckMatchComment, error)
 	ListSanctionCheckMatchComments(ctx context.Context, exec repositories.Executor, matchId string) (
 		[]models.SanctionCheckMatchComment, error)
+	CreateSanctionCheckFile(ctx context.Context, exec repositories.Executor,
+		input models.SanctionCheckFileInput) (models.SanctionCheckFile, error)
 }
 
 type SanctionCheckUsecase struct {
@@ -83,6 +89,8 @@ type SanctionCheckUsecase struct {
 	inboxReader                   SanctionCheckInboxReader
 	openSanctionsProvider         SanctionCheckProvider
 	sanctionCheckConfigRepository SanctionCheckConfigRepository
+	blobBucketUrl                 string
+	blobRepository                repositories.BlobRepository
 	repository                    SanctionCheckRepository
 	executorFactory               executor_factory.ExecutorFactory
 	transactionFactory            executor_factory.TransactionFactory
@@ -294,6 +302,105 @@ func (uc SanctionCheckUsecase) MatchAddComment(ctx context.Context, matchId stri
 	}
 
 	return uc.repository.AddSanctionCheckMatchComment(ctx, uc.executorFactory.NewExecutor(), comment)
+}
+
+func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Credentials,
+	matchId string, files []multipart.FileHeader,
+) ([]models.SanctionCheckFile, error) {
+	match, err := uc.enforceCanReadOrUpdateSanctionCheckMatch(ctx, matchId)
+	if err != nil {
+		return nil, err
+	}
+
+	type uploadedFileMetadata struct {
+		fileReference string
+		fileName      string
+	}
+
+	metadata := make([]uploadedFileMetadata, 0, len(files))
+
+	for _, fileHeader := range files {
+		newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId,
+			match.decision.Case.Id, uuid.NewString())
+		err = writeSanctionCheckFileToBlobStorage(ctx, uc.blobRepository, uc.blobBucketUrl, fileHeader, newFileReference)
+		if err != nil {
+			break
+		}
+
+		metadata = append(metadata, uploadedFileMetadata{
+			fileReference: newFileReference,
+			fileName:      fileHeader.Filename,
+		})
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+
+	if err != nil {
+		for _, uploadedFile := range metadata {
+			if deleteErr := uc.blobRepository.DeleteFile(ctx, uc.blobBucketUrl,
+				uploadedFile.fileReference); deleteErr != nil {
+				logger.WarnContext(ctx, fmt.Sprintf("failed to clean up blob %s after case file creation failed", uploadedFile.fileReference),
+					"bucket", uc.blobBucketUrl,
+					"file_reference", uploadedFile.fileReference,
+					"error", deleteErr)
+			}
+		}
+
+		return nil, err
+	}
+
+	uploadedFiles := make([]models.SanctionCheckFile, len(metadata))
+
+	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		for idx, uploadedFile := range metadata {
+			file, err := uc.repository.CreateSanctionCheckFile(
+				ctx,
+				tx,
+				models.SanctionCheckFileInput{
+					BucketName:    uc.blobBucketUrl,
+					MatchId:       matchId,
+					FileName:      uploadedFile.fileName,
+					FileReference: uploadedFile.fileReference,
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			uploadedFiles[idx] = file
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return uploadedFiles, nil
+}
+
+func writeSanctionCheckFileToBlobStorage(ctx context.Context,
+	blobRepository repositories.BlobRepository, bucketUrl string,
+	fileHeader multipart.FileHeader, newFileReference string,
+) error {
+	writer, err := blobRepository.OpenStream(ctx, bucketUrl, newFileReference, fileHeader.Filename)
+	if err != nil {
+		return err
+	}
+	defer writer.Close() // We should still call Close when we are finished writing to check the error if any - this is a no-op if Close has already been called
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		return errors.Wrap(models.BadParameterError, err.Error())
+	}
+	if _, err := io.Copy(writer, file); err != nil {
+		return err
+	}
+	if err := writer.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Helper functions for enforcing permissions on sanction check actions go below

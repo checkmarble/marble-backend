@@ -138,3 +138,17 @@ func AdaptSanctionCheckMatchCommentDto(m models.SanctionCheckMatchComment) Sanct
 
 	return match
 }
+
+type SanctionCheckFileDto struct {
+	Id        string    `json:"id"`
+	Filename  string    `json:"filename"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func AdaptSanctionCheckFileDto(m models.SanctionCheckFile) SanctionCheckFileDto {
+	return SanctionCheckFileDto{
+		Id:        m.Id,
+		Filename:  m.FileName,
+		CreatedAt: m.CreatedAt,
+	}
+}
