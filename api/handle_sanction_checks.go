@@ -115,6 +115,31 @@ func handleUploadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Contex
 	}
 }
 
+func handleDownloadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		matchId := c.Param("id")
+		fileId := c.Param("fileId")
+
+		creds, ok := utils.CredentialsFromCtx(ctx)
+
+		if !ok {
+			presentError(ctx, c, models.ErrUnknownUser)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+
+		url, err := uc.GetFileDownloadUrl(ctx, creds, matchId, fileId)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"url": url})
+	}
+}
+
 func handleListSanctionCheckMatchComments(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
