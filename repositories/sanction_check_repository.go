@@ -252,3 +252,33 @@ func (*MarbleDbRepository) ListSanctionCheckMatchComments(ctx context.Context,
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatchComment)
 }
+
+func (repo *MarbleDbRepository) CreateSanctionCheckFile(ctx context.Context, exec Executor,
+	input models.SanctionCheckFileInput,
+) (models.SanctionCheckFile, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.SanctionCheckFile{}, err
+	}
+
+	file, err := SqlToModel(
+		ctx,
+		exec,
+		NewQueryBuilder().Insert(dbmodels.TABLE_SANCTION_CHECK_FILES).
+			Columns(
+				"bucket_name",
+				"match_id",
+				"file_name",
+				"file_reference",
+			).
+			Values(
+				input.BucketName,
+				input.MatchId,
+				input.FileName,
+				input.FileReference,
+			).
+			Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionCheckFileColumn, ","))),
+		dbmodels.AdaptSanctionCheckFile,
+	)
+
+	return file, err
+}
