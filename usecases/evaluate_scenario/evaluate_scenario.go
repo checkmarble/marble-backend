@@ -63,20 +63,6 @@ type EvaluateAstExpression interface {
 	) (ast.NodeEvaluation, error)
 }
 
-type ScenarioEvaluationRepositories struct {
-	EvalScenarioRepository            repositories.EvalScenarioRepository
-	EvalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
-	EvalSanctionCheckUsecase          EvalSanctionCheckUsecase
-	EvalTestRunScenarioRepository     repositories.EvalTestRunScenarioRepository
-	ScenarioTestRunRepository         repositories.ScenarioTestRunRepository
-	ScenarioRepository                repositories.ScenarioUsecaseRepository
-	ExecutorFactory                   executor_factory.ExecutorFactory
-	IngestedDataReadRepository        repositories.IngestedDataReadRepository
-	EvaluateAstExpression             EvaluateAstExpression
-	SnoozeReader                      SnoozesForDecisionReader
-	FeatureAccessReader               ScenarioEvaluatorFeatureAccessReader
-}
-
 type ScenarioEvaluator struct {
 	evalScenarioRepository            repositories.EvalScenarioRepository
 	evalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
@@ -91,12 +77,36 @@ type ScenarioEvaluator struct {
 	featureAccessReader               ScenarioEvaluatorFeatureAccessReader
 }
 
-func NewScenarioEvaluator() ScenarioEvaluator {
-	return ScenarioEvaluator{}
+func NewScenarioEvaluator(
+	evalScenarioRepository repositories.EvalScenarioRepository,
+	evalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository,
+	evalSanctionCheckUsecase EvalSanctionCheckUsecase,
+	evalTestRunScenarioRepository repositories.EvalTestRunScenarioRepository,
+	scenarioTestRunRepository repositories.ScenarioTestRunRepository,
+	scenarioRepository repositories.ScenarioUsecaseRepository,
+	executorFactory executor_factory.ExecutorFactory,
+	ingestedDataReadRepository repositories.IngestedDataReadRepository,
+	evaluateAstExpression EvaluateAstExpression,
+	snoozeReader SnoozesForDecisionReader,
+	featureAccessReader ScenarioEvaluatorFeatureAccessReader,
+) ScenarioEvaluator {
+	return ScenarioEvaluator{
+		evalScenarioRepository:            evalScenarioRepository,
+		evalSanctionCheckConfigRepository: evalSanctionCheckConfigRepository,
+		evalSanctionCheckUsecase:          evalSanctionCheckUsecase,
+		evalTestRunScenarioRepository:     evalTestRunScenarioRepository,
+		scenarioTestRunRepository:         scenarioTestRunRepository,
+		scenarioRepository:                scenarioRepository,
+		executorFactory:                   executorFactory,
+		ingestedDataReadRepository:        ingestedDataReadRepository,
+		evaluateAstExpression:             evaluateAstExpression,
+		snoozeReader:                      snoozeReader,
+		featureAccessReader:               featureAccessReader,
+	}
 }
 
 func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params ScenarioEvaluationParameters,
-	iteration models.ScenarioIteration, repositories ScenarioEvaluationRepositories, start time.Time,
+	iteration models.ScenarioIteration, start time.Time,
 	logger *slog.Logger, exec repositories.Executor,
 ) (models.ScenarioExecution, error) {
 	// Check the scenario & trigger_object's types
@@ -106,9 +116,9 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 	dataAccessor := DataAccessor{
 		DataModel:                  params.DataModel,
 		ClientObject:               params.ClientObject,
-		executorFactory:            repositories.ExecutorFactory,
+		executorFactory:            e.executorFactory,
 		organizationId:             params.Scenario.OrganizationId,
-		ingestedDataReadRepository: repositories.IngestedDataReadRepository,
+		ingestedDataReadRepository: e.ingestedDataReadRepository,
 	}
 
 	cache := ast_eval.NewEvaluationCache()
@@ -118,7 +128,6 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 	errEval := e.evalScenarioTrigger(
 		ctx,
 		cache,
-		repositories,
 		*iteration.TriggerConditionAstExpression,
 		dataAccessor.organizationId,
 		dataAccessor.ClientObject,
@@ -147,7 +156,7 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 				snoozeGroupIds = append(snoozeGroupIds, *rule.SnoozeGroupId)
 			}
 		}
-		snoozes, errSnooze = repositories.SnoozeReader.ListActiveRuleSnoozesForDecision(ctx, exec, snoozeGroupIds, *pivotValue)
+		snoozes, errSnooze = e.snoozeReader.ListActiveRuleSnoozesForDecision(ctx, exec, snoozeGroupIds, *pivotValue)
 	}
 	if errSnooze != nil {
 		return models.ScenarioExecution{}, errors.Wrap(
@@ -158,7 +167,6 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 	score, ruleExecutions, errEval := e.evalAllScenarioRules(
 		ctx,
 		cache,
-		repositories,
 		iteration.Rules,
 		dataAccessor,
 		params.DataModel,
@@ -170,8 +178,8 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 
 	var outcome models.Outcome
 
-	sanctionCheckExecution, santionCheckPerformed, err := evaluateSanctionCheck(ctx, repositories.EvaluateAstExpression,
-		repositories.EvalSanctionCheckUsecase, iteration, params, dataAccessor)
+	sanctionCheckExecution, santionCheckPerformed, err :=
+		e.evaluateSanctionCheck(ctx, iteration, params, dataAccessor)
 	if err != nil {
 		// TODO: what happens if we cannot perform the sanction check?
 		return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
@@ -228,9 +236,9 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 	return se, nil
 }
 
-func (e ScenarioEvaluator) EvalTestRunScenario(ctx context.Context,
+func (e ScenarioEvaluator) EvalTestRunScenario(
+	ctx context.Context,
 	params ScenarioEvaluationParameters,
-	repositories ScenarioEvaluationRepositories,
 ) (se models.ScenarioExecution, err error) {
 	logger := utils.LoggerFromContext(ctx)
 	start := time.Now()
@@ -248,7 +256,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(ctx context.Context,
 		}
 	}()
 	logger.InfoContext(ctx, "Evaluating scenario test run", "scenarioId", params.Scenario.Id)
-	exec := repositories.ExecutorFactory.NewExecutor()
+	exec := e.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.EvalTestRunScenario",
 		trace.WithAttributes(
@@ -259,14 +267,14 @@ func (e ScenarioEvaluator) EvalTestRunScenario(ctx context.Context,
 		),
 	)
 	defer span.End()
-	testrun, err := repositories.ScenarioTestRunRepository.GetTestRunByLiveVersionID(ctx, exec, *params.Scenario.LiveVersionID)
+	testrun, err := e.scenarioTestRunRepository.GetTestRunByLiveVersionID(ctx, exec, *params.Scenario.LiveVersionID)
 	if err != nil {
 		return models.ScenarioExecution{}, err
 	}
 	if testrun == nil || testrun.Status != models.Up {
 		return models.ScenarioExecution{}, nil
 	}
-	scenario, err := repositories.ScenarioRepository.GetScenarioByLiveScenarioIterationId(ctx, exec, testrun.ScenarioLiveIterationId)
+	scenario, err := e.scenarioRepository.GetScenarioByLiveScenarioIterationId(ctx, exec, testrun.ScenarioLiveIterationId)
 	if err != nil {
 		return models.ScenarioExecution{}, err
 	}
@@ -274,7 +282,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(ctx context.Context,
 		logger.ErrorContext(ctx, "the live version iteration associated to the current testrun does not match with the actual live scenario iteration")
 		return models.ScenarioExecution{}, nil
 	}
-	testRunIterationId, err := repositories.EvalTestRunScenarioRepository.GetTestRunIterationIdByScenarioId(ctx, exec, params.Scenario.Id)
+	testRunIterationId, err := e.evalTestRunScenarioRepository.GetTestRunIterationIdByScenarioId(ctx, exec, params.Scenario.Id)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting testrun scenario iteration in EvalTestRunScenario")
@@ -282,19 +290,19 @@ func (e ScenarioEvaluator) EvalTestRunScenario(ctx context.Context,
 	if testRunIterationId == nil {
 		return models.ScenarioExecution{}, nil
 	}
-	testRunIteration, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, exec, *testRunIterationId)
+	testRunIteration, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, *testRunIterationId)
 	if err != nil {
 		return models.ScenarioExecution{}, err
 	}
 
-	scc, err := repositories.EvalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, testRunIteration.Id)
+	scc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, testRunIteration.Id)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting sanction check config from scenario iteration")
 	}
 	testRunIteration.SanctionCheckConfig = scc
 
-	se, err = e.processScenarioIteration(ctx, params, testRunIteration, repositories, start, logger, exec)
+	se, err = e.processScenarioIteration(ctx, params, testRunIteration, start, logger, exec)
 	if err != nil {
 		return models.ScenarioExecution{}, err
 	}
@@ -305,7 +313,6 @@ func (e ScenarioEvaluator) EvalTestRunScenario(ctx context.Context,
 func (e ScenarioEvaluator) EvalScenario(
 	ctx context.Context,
 	params ScenarioEvaluationParameters,
-	repositories ScenarioEvaluationRepositories,
 ) (se models.ScenarioExecution, err error) {
 	logger := utils.LoggerFromContext(ctx)
 	start := time.Now()
@@ -324,7 +331,7 @@ func (e ScenarioEvaluator) EvalScenario(
 	}()
 
 	logger.InfoContext(ctx, "Evaluating scenario", "scenarioId", params.Scenario.Id)
-	exec := repositories.ExecutorFactory.NewExecutor()
+	exec := e.executorFactory.NewExecutor()
 
 	// If the scenario has no live version, don't try to Eval() it, return early
 	var targetVersionId string
@@ -348,20 +355,20 @@ func (e ScenarioEvaluator) EvalScenario(
 	)
 	defer span.End()
 
-	versionToRun, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, exec, targetVersionId)
+	versionToRun, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, targetVersionId)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting scenario iteration in EvalScenario")
 	}
 
-	scc, err := repositories.EvalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, versionToRun.Id)
+	scc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, versionToRun.Id)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting sanction check config from scenario iteration")
 	}
 	versionToRun.SanctionCheckConfig = scc
 	if scc != nil {
-		featureAccess, err := repositories.FeatureAccessReader.GetOrganizationFeatureAccess(ctx, params.Scenario.OrganizationId)
+		featureAccess, err := e.featureAccessReader.GetOrganizationFeatureAccess(ctx, params.Scenario.OrganizationId)
 		if err != nil {
 			return models.ScenarioExecution{}, err
 		}
@@ -371,7 +378,7 @@ func (e ScenarioEvaluator) EvalScenario(
 		}
 	}
 
-	se, errSe := e.processScenarioIteration(ctx, params, versionToRun, repositories, start, logger, exec)
+	se, errSe := e.processScenarioIteration(ctx, params, versionToRun, start, logger, exec)
 	if errSe != nil {
 		return models.ScenarioExecution{}, errors.Wrap(errSe,
 			"error processing scenario iteration in EvalTestRunScenario")
@@ -382,7 +389,6 @@ func (e ScenarioEvaluator) EvalScenario(
 func (e ScenarioEvaluator) evalScenarioRule(
 	ctx context.Context,
 	cache *ast_eval.EvaluationCache,
-	repositories ScenarioEvaluationRepositories,
 	rule models.Rule,
 	dataAccessor DataAccessor,
 	dataModel models.DataModel,
@@ -414,7 +420,7 @@ func (e ScenarioEvaluator) evalScenarioRule(
 	}
 
 	// Evaluate single rule
-	ruleEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
+	ruleEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		cache,
 		*rule.FormulaAstExpression,
@@ -482,7 +488,6 @@ func (e ScenarioEvaluator) evalScenarioRule(
 func (e ScenarioEvaluator) evalScenarioTrigger(
 	ctx context.Context,
 	cache *ast_eval.EvaluationCache,
-	repositories ScenarioEvaluationRepositories,
 	triggerAstExpression ast.Node,
 	organizationId string,
 	payload models.ClientObject,
@@ -492,7 +497,7 @@ func (e ScenarioEvaluator) evalScenarioTrigger(
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioTrigger")
 	defer span.End()
 
-	triggerEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
+	triggerEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		cache,
 		triggerAstExpression,
@@ -531,7 +536,6 @@ func (e ScenarioEvaluator) evalScenarioTrigger(
 func (e ScenarioEvaluator) evalAllScenarioRules(
 	ctx context.Context,
 	cache *ast_eval.EvaluationCache,
-	repositories ScenarioEvaluationRepositories,
 	rules []models.Rule,
 	dataAccessor DataAccessor,
 	dataModel models.DataModel,
@@ -557,8 +561,7 @@ func (e ScenarioEvaluator) evalAllScenarioRules(
 			}
 
 			// Eval each rule
-			scoreModifier, ruleExecution, err := e.evalScenarioRule(ctx, cache,
-				repositories, rule, dataAccessor, dataModel, snoozes)
+			scoreModifier, ruleExecution, err := e.evalScenarioRule(ctx, cache, rule, dataAccessor, dataModel, snoozes)
 			if err != nil {
 				return err // First err will cancel the ctx
 			}
@@ -620,7 +623,6 @@ func getPivotValue(ctx context.Context, pivot models.Pivot, dataAccessor DataAcc
 func (e ScenarioEvaluator) EvalCaseName(
 	ctx context.Context,
 	params ScenarioEvaluationParameters,
-	repositories ScenarioEvaluationRepositories,
 	scenario models.Scenario,
 ) (string, error) {
 	if scenario.DecisionToCaseNameTemplate == nil {
@@ -628,7 +630,7 @@ func (e ScenarioEvaluator) EvalCaseName(
 			params.ClientObject.Data["object_id"]), nil
 	}
 
-	caseNameEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
+	caseNameEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		nil,
 		*scenario.DecisionToCaseNameTemplate,

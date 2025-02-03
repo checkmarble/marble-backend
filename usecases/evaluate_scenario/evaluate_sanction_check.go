@@ -7,10 +7,8 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func evaluateSanctionCheck(
+func (e ScenarioEvaluator) evaluateSanctionCheck(
 	ctx context.Context,
-	evaluator EvaluateAstExpression,
-	executor EvalSanctionCheckUsecase,
 	iteration models.ScenarioIteration,
 	params ScenarioEvaluationParameters,
 	dataAccessor DataAccessor,
@@ -24,7 +22,7 @@ func evaluateSanctionCheck(
 		return
 	}
 
-	triggerEvaluation, err := evaluator.EvaluateAstExpression(
+	triggerEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		nil,
 		iteration.SanctionCheckConfig.TriggerRule,
@@ -44,7 +42,7 @@ func evaluateSanctionCheck(
 	}
 
 	// Then, actually perform the sanction check
-	nameFilterAny, err := evaluator.EvaluateAstExpression(
+	nameFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		nil,
 		iteration.SanctionCheckConfig.Query.Name,
@@ -66,7 +64,7 @@ func evaluateSanctionCheck(
 		},
 	}
 
-	result, err := executor.Execute(ctx, params.Scenario.OrganizationId, query)
+	result, err := e.evalSanctionCheckUsecase.Execute(ctx, params.Scenario.OrganizationId, query)
 	if err != nil {
 		sanctionCheckErr = errors.Wrap(err, "could not perform sanction check")
 		return

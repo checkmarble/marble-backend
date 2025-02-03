@@ -28,24 +28,28 @@ func (m mockSanctionCheckExecutor) Execute(
 	return models.SanctionCheckWithMatches{}, nil
 }
 
-func getSanctionCheckEvaluatorAndExecutor() (ast_eval.EvaluateAstExpression, mockSanctionCheckExecutor) {
+func getSanctionCheckEvaluator() (ScenarioEvaluator, mockSanctionCheckExecutor) {
 	evaluator := ast_eval.EvaluateAstExpression{
 		AstEvaluationEnvironmentFactory: func(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
 			return ast_eval.NewAstEvaluationEnvironment()
 		},
 	}
 
-	return evaluator, mockSanctionCheckExecutor{
+	exec := mockSanctionCheckExecutor{
 		Mock: &mock.Mock{},
 	}
+	return ScenarioEvaluator{
+		evaluateAstExpression:    evaluator,
+		evalSanctionCheckUsecase: exec,
+	}, exec
 }
 
 func TestSanctionCheckSkippedWhenDisabled(t *testing.T) {
-	eval, exec := getSanctionCheckEvaluatorAndExecutor()
+	eval, _ := getSanctionCheckEvaluator()
 
 	iteration := models.ScenarioIteration{}
 
-	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
+	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	assert.False(t, performed)
@@ -53,7 +57,7 @@ func TestSanctionCheckSkippedWhenDisabled(t *testing.T) {
 }
 
 func TestSanctionCheckSkippedWhenTriggerRuleFalse(t *testing.T) {
-	eval, exec := getSanctionCheckEvaluatorAndExecutor()
+	eval, _ := getSanctionCheckEvaluator()
 
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfig: &models.SanctionCheckConfig{
@@ -61,7 +65,7 @@ func TestSanctionCheckSkippedWhenTriggerRuleFalse(t *testing.T) {
 		},
 	}
 
-	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
+	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	assert.False(t, performed)
@@ -69,7 +73,7 @@ func TestSanctionCheckSkippedWhenTriggerRuleFalse(t *testing.T) {
 }
 
 func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
-	eval, exec := getSanctionCheckEvaluatorAndExecutor()
+	eval, _ := getSanctionCheckEvaluator()
 
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfig: &models.SanctionCheckConfig{
@@ -80,7 +84,7 @@ func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
 		},
 	}
 
-	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
+	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	assert.True(t, performed)
@@ -88,7 +92,7 @@ func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
 }
 
 func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
-	eval, exec := getSanctionCheckEvaluatorAndExecutor()
+	eval, exec := getSanctionCheckEvaluator()
 
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfig: &models.SanctionCheckConfig{
@@ -106,7 +110,7 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 		},
 	}
 
-	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
+	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
@@ -116,7 +120,7 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 }
 
 func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
-	eval, exec := getSanctionCheckEvaluatorAndExecutor()
+	eval, exec := getSanctionCheckEvaluator()
 
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfig: &models.SanctionCheckConfig{
@@ -141,7 +145,7 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 		},
 	}
 
-	_, performed, err := evaluateSanctionCheck(context.TODO(), eval, exec, iteration,
+	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
