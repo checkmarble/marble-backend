@@ -21,7 +21,7 @@ func evaluateSanctionCheck(
 	sanctionCheckErr error,
 ) {
 	// First, check if the sanction check should be performed
-	if iteration.SanctionCheckConfig == nil || !iteration.SanctionCheckConfig.Enabled {
+	if iteration.SanctionCheckConfig == nil {
 		return
 	}
 
