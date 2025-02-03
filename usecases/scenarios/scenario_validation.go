@@ -126,7 +126,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 	if iteration.SanctionCheckConfig != nil {
 		ruleValidation := models.NewRuleValidation()
 
-		triggerRuleEvaluation, _ := ast_eval.EvaluateAst(ctx, dryRunEnvironment,
+		triggerRuleEvaluation, _ := ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
 			iteration.SanctionCheckConfig.TriggerRule)
 		if _, ok := triggerRuleEvaluation.ReturnValue.(bool); !ok {
 			result.SanctionCheck.TriggerRule.Errors = append(ruleValidation.Errors, models.ScenarioValidationError{
@@ -137,7 +137,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 		}
 
 		queryValidation := models.NewRuleValidation()
-		queryValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, dryRunEnvironment,
+		queryValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
 			iteration.SanctionCheckConfig.Query.Name)
 
 		if _, ok := queryValidation.RuleEvaluation.ReturnValue.(bool); !ok {
