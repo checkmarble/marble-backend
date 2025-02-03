@@ -15,7 +15,6 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -76,57 +75,39 @@ type DecisionUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 }
 
-type decisionUsecaseFeatureAccessReader interface {
-	GetOrganizationFeatureAccess(
-		ctx context.Context,
-		organizationId string,
-	) (models.OrganizationFeatureAccess, error)
-}
-
 type decisionWorkflowsUsecase interface {
 	AutomaticDecisionToCase(
 		ctx context.Context,
 		tx repositories.Transaction,
 		scenario models.Scenario,
 		decision models.DecisionWithRuleExecutions,
-		repositories evaluate_scenario.ScenarioEvaluationRepositories,
 		params evaluate_scenario.ScenarioEvaluationParameters,
 		webhookEventId string,
 	) (bool, error)
 }
 
-type snoozesForDecisionReader interface {
-	ListActiveRuleSnoozesForDecision(
-		ctx context.Context,
-		exec repositories.Executor,
-		snoozeGroupIds []string,
-		pivotValue string,
-	) ([]models.RuleSnooze, error)
+type ScenarioEvaluator interface {
+	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (se models.ScenarioExecution, err error)
 }
 
-type ScenarioEvaluator interface {
-	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters,
-		repositories evaluate_scenario.ScenarioEvaluationRepositories) (se models.ScenarioExecution, err error)
+type decisionUsecaseSanctionCheckWriter interface {
+	InsertSanctionCheck(context.Context, repositories.Executor, string,
+		models.SanctionCheckWithMatches) (models.SanctionCheckWithMatches, error)
 }
 
 type DecisionUsecase struct {
-	enforceSecurity               security.EnforceSecurityDecision
-	enforceSecurityScenario       security.EnforceSecurityScenario
-	transactionFactory            executor_factory.TransactionFactory
-	executorFactory               executor_factory.ExecutorFactory
-	ingestedDataReadRepository    repositories.IngestedDataReadRepository
-	dataModelRepository           repositories.DataModelRepository
-	repository                    DecisionUsecaseRepository
-	sanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
-	sanctionCheckUsecase          SanctionCheckUsecase
-	scenarioTestRunRepository     repositories.ScenarioTestRunRepository
-	evaluateAstExpression         ast_eval.EvaluateAstExpression
-	decisionWorkflows             decisionWorkflowsUsecase
-	webhookEventsSender           webhookEventsUsecase
-	phantomUseCase                decision_phantom.PhantomDecisionUsecase
-	snoozesReader                 snoozesForDecisionReader
-	featureAccessReader           decisionUsecaseFeatureAccessReader
-	scenarioEvaluator             ScenarioEvaluator
+	enforceSecurity           security.EnforceSecurityDecision
+	enforceSecurityScenario   security.EnforceSecurityScenario
+	transactionFactory        executor_factory.TransactionFactory
+	executorFactory           executor_factory.ExecutorFactory
+	dataModelRepository       repositories.DataModelRepository
+	repository                DecisionUsecaseRepository
+	sanctionCheckRepository   decisionUsecaseSanctionCheckWriter
+	scenarioTestRunRepository repositories.ScenarioTestRunRepository
+	decisionWorkflows         decisionWorkflowsUsecase
+	webhookEventsSender       webhookEventsUsecase
+	phantomUseCase            decision_phantom.PhantomDecisionUsecase
+	scenarioEvaluator         ScenarioEvaluator
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
@@ -415,18 +396,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		Pivot:        pivot,
 	}
 
-	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
-		EvalScenarioRepository:            usecase.repository,
-		EvalSanctionCheckConfigRepository: usecase.sanctionCheckConfigRepository,
-		EvalSanctionCheckUsecase:          usecase.sanctionCheckUsecase,
-		ExecutorFactory:                   usecase.executorFactory,
-		IngestedDataReadRepository:        usecase.ingestedDataReadRepository,
-		EvaluateAstExpression:             usecase.evaluateAstExpression,
-		SnoozeReader:                      usecase.snoozesReader,
-		FeatureAccessReader:               usecase.featureAccessReader,
-	}
-
-	scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters, evaluationRepositories)
+	scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
 		return models.DecisionWithRuleExecutions{},
 			fmt.Errorf("error evaluating scenario: %w", err)
@@ -462,7 +432,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 
 		if decision.SanctionCheckExecution != nil {
-			if _, err := usecase.sanctionCheckUsecase.repository.InsertSanctionCheck(ctx, tx,
+			if _, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
 				decision.DecisionId, *decision.SanctionCheckExecution); err != nil {
 				return models.DecisionWithRuleExecutions{},
 					errors.Wrap(err, "could not store sanction check execution")
@@ -488,7 +458,6 @@ func (usecase *DecisionUsecase) CreateDecision(
 			tx,
 			scenario,
 			decision,
-			evaluationRepositories,
 			evaluationParameters,
 			caseWebhookEventId)
 		if err != nil {
@@ -579,17 +548,6 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		}
 	}
 
-	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
-		EvalScenarioRepository:            usecase.repository,
-		EvalSanctionCheckConfigRepository: usecase.sanctionCheckConfigRepository,
-		EvalSanctionCheckUsecase:          usecase.sanctionCheckUsecase,
-		ExecutorFactory:                   usecase.executorFactory,
-		IngestedDataReadRepository:        usecase.ingestedDataReadRepository,
-		EvaluateAstExpression:             usecase.evaluateAstExpression,
-		SnoozeReader:                      usecase.snoozesReader,
-		FeatureAccessReader:               usecase.featureAccessReader,
-	}
-
 	type decisionAndScenario struct {
 		decision models.DecisionWithRuleExecutions
 		scenario models.Scenario
@@ -611,8 +569,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			trace.WithAttributes(attribute.String("scenario_id", scenario.Id)),
 		)
 		defer span.End()
-		scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx,
-			evaluationParameters, evaluationRepositories)
+		scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 		if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
 			nbSkipped++
 			continue
@@ -645,6 +602,14 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}
 
+			if item.decision.SanctionCheckExecution != nil {
+				_, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
+					item.decision.DecisionId, *item.decision.SanctionCheckExecution)
+				if err != nil {
+					return nil, errors.Wrap(err, "could not store sanction check execution")
+				}
+			}
+
 			webhookEventId := uuid.NewString()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
@@ -665,8 +630,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				Pivot:        pivot,
 			}
 			webhookEventCreated, err := usecase.decisionWorkflows.AutomaticDecisionToCase(
-				ctx, tx, item.scenario, item.decision, evaluationRepositories,
-				evaluationParameters, caseWebhookEventId)
+				ctx, tx, item.scenario, item.decision, evaluationParameters, caseWebhookEventId)
 			if err != nil {
 				return nil, err
 			}

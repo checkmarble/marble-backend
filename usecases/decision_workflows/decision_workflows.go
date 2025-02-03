@@ -51,7 +51,7 @@ type webhookEventCreator interface {
 
 type CaseNameEvaluator interface {
 	EvalCaseName(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters,
-		repositories evaluate_scenario.ScenarioEvaluationRepositories, scenario models.Scenario) (string, error)
+		scenario models.Scenario) (string, error)
 }
 
 type DecisionsWorkflows struct {
@@ -80,7 +80,6 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	tx repositories.Transaction,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
-	repositories evaluate_scenario.ScenarioEvaluationRepositories,
 	params evaluate_scenario.ScenarioEvaluationParameters,
 	webhookEventId string,
 ) (addedToCase bool, err error) {
@@ -92,7 +91,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	}
 
 	if scenario.DecisionToCaseWorkflowType == models.WorkflowCreateCase {
-		caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, params, repositories, scenario)
+		caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, params, scenario)
 		if err != nil {
 			return false, errors.Wrap(err, "error creating case for decision")
 		}
@@ -121,7 +120,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		}
 
 		if !added {
-			caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, params, repositories, scenario)
+			caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, params, scenario)
 			if err != nil {
 				return false, errors.Wrap(err, "error creating case for decision")
 			}
