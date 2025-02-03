@@ -55,8 +55,6 @@ type UpdateScenarioIterationBody struct {
 }
 
 type SanctionCheckConfig struct {
-	// TODO: Do we really need the "enabled" field ?
-	Enabled     bool
 	Datasets    []string
 	TriggerRule ast.Node
 	Query       SanctionCheckConfigQuery
@@ -69,7 +67,6 @@ type SanctionCheckOutcome struct {
 }
 
 type UpdateSanctionCheckConfigInput struct {
-	Enabled     *bool
 	Datasets    []string
 	TriggerRule *ast.Node
 	Query       *SanctionCheckConfigQuery

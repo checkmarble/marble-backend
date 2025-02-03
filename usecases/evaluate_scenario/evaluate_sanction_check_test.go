@@ -57,7 +57,6 @@ func TestSanctionCheckSkippedWhenTriggerRuleFalse(t *testing.T) {
 
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfig: &models.SanctionCheckConfig{
-			Enabled:     true,
 			TriggerRule: ast.Node{Constant: false},
 		},
 	}
@@ -74,7 +73,6 @@ func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
 
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfig: &models.SanctionCheckConfig{
-			Enabled:     true,
 			TriggerRule: ast.Node{Constant: true},
 			Query: models.SanctionCheckConfigQuery{
 				Name: ast.Node{Constant: 12},
@@ -94,7 +92,6 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfig: &models.SanctionCheckConfig{
-			Enabled:     true,
 			TriggerRule: ast.Node{Constant: true},
 			Query: models.SanctionCheckConfigQuery{
 				Name: ast.Node{Constant: "constant string"},
@@ -123,7 +120,6 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfig: &models.SanctionCheckConfig{
-			Enabled:     true,
 			TriggerRule: ast.Node{Constant: true},
 			Query: models.SanctionCheckConfigQuery{
 				Name: ast.Node{
