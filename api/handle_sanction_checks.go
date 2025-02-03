@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -80,6 +81,37 @@ func handleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) func(c *gin.Cont
 		}
 
 		c.JSON(http.StatusOK, dto.AdaptSanctionCheckMatchDto(match))
+	}
+}
+
+func handleUploadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		matchId := c.Param("id")
+
+		var form FileForm
+
+		if err := c.ShouldBind(&form); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		creds, ok := utils.CredentialsFromCtx(ctx)
+
+		if !ok {
+			presentError(ctx, c, models.ErrUnknownUser)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+
+		files, err := uc.CreateFiles(ctx, creds, matchId, form.Files)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusCreated, pure_utils.Map(files, dto.AdaptSanctionCheckFileDto))
 	}
 }
 
