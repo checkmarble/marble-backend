@@ -98,6 +98,11 @@ type EvalSanctionCheckUsecase interface {
 	Execute(context.Context, string, models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
 }
 
+type ScenarioEvaluator interface {
+	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters,
+		repositories evaluate_scenario.ScenarioEvaluationRepositories) (se models.ScenarioExecution, err error)
+}
+
 type AsyncDecisionWorker struct {
 	river.WorkerDefaults[models.AsyncDecisionArgs]
 
@@ -117,6 +122,7 @@ type AsyncDecisionWorker struct {
 	phantomDecision                decision_phantom.PhantomDecisionUsecase
 	featureAccessReader            AsyncDecisionWorkerFeatureAccessReader
 	sanctionCheckUsecase           EvalSanctionCheckUsecase
+	scenarioEvaluator              ScenarioEvaluator
 }
 
 func NewAsyncDecisionWorker(
@@ -136,6 +142,7 @@ func NewAsyncDecisionWorker(
 	phantom decision_phantom.PhantomDecisionUsecase,
 	featureAccessReader AsyncDecisionWorkerFeatureAccessReader,
 	sanctionCheckUsecase EvalSanctionCheckUsecase,
+	scenarioEvaluator ScenarioEvaluator,
 ) AsyncDecisionWorker {
 	return AsyncDecisionWorker{
 		repository:                     repository,
@@ -154,6 +161,7 @@ func NewAsyncDecisionWorker(
 		phantomDecision:                phantom,
 		featureAccessReader:            featureAccessReader,
 		sanctionCheckUsecase:           sanctionCheckUsecase,
+		scenarioEvaluator:              scenarioEvaluator,
 	}
 }
 
@@ -316,7 +324,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		FeatureAccessReader:               w.featureAccessReader,
 	}
 
-	scenarioExecution, err := evaluate_scenario.EvalScenario(
+	scenarioExecution, err := w.scenarioEvaluator.EvalScenario(
 		ctx,
 		evaluationParameters,
 		evaluationRepositories,

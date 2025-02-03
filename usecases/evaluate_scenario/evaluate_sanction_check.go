@@ -4,13 +4,12 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/cockroachdb/errors"
 )
 
 func evaluateSanctionCheck(
 	ctx context.Context,
-	evaluator ast_eval.EvaluateAstExpression,
+	evaluator EvaluateAstExpression,
 	executor EvalSanctionCheckUsecase,
 	iteration models.ScenarioIteration,
 	params ScenarioEvaluationParameters,
