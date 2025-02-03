@@ -4,6 +4,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
+	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
@@ -108,16 +109,31 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		decisionWorkflows:             usecases.NewDecisionWorkflows(),
 		webhookEventsSender:           usecases.NewWebhookEventsUsecase(),
 		snoozesReader:                 &usecases.Repositories.MarbleDbRepository,
-		phantomUseCase: decision_phantom.NewPhantomDecisionUseCase(
-			usecases.NewEnforcePhantomDecisionSecurity(), usecases.NewExecutorFactory(),
-			usecases.Repositories.IngestedDataReadRepository,
-			&usecases.Repositories.MarbleDbRepository, usecases.NewEvaluateAstExpression(),
-			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
-			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
-			&usecases.Repositories.MarbleDbRepository),
-		scenarioTestRunRepository: &usecases.Repositories.MarbleDbRepository,
-		featureAccessReader:       usecases.NewFeatureAccessReader(),
+		phantomUseCase:                usecases.NewPhantomDecisionUseCase(),
+		scenarioTestRunRepository:     &usecases.Repositories.MarbleDbRepository,
+		featureAccessReader:           usecases.NewFeatureAccessReader(),
+		scenarioEvaluator:             usecases.NewScenarioEvaluator(),
 	}
+}
+
+func (usecases *UsecasesWithCreds) NewPhantomDecisionUseCase() decision_phantom.PhantomDecisionUsecase {
+	return decision_phantom.NewPhantomDecisionUseCase(
+		usecases.NewEnforcePhantomDecisionSecurity(),
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.IngestedDataReadRepository,
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewEvaluateAstExpression(),
+		&usecases.Repositories.MarbleDbRepository,
+		&usecases.Repositories.MarbleDbRepository,
+		&usecases.Repositories.MarbleDbRepository,
+		&usecases.Repositories.MarbleDbRepository,
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewScenarioEvaluator(),
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewScenarioEvaluator() evaluate_scenario.ScenarioEvaluator {
+	return evaluate_scenario.NewScenarioEvaluator()
 }
 
 func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecase {
@@ -141,6 +157,7 @@ func (usecases *UsecasesWithCreds) NewDecisionWorkflows() decision_workflows.Dec
 		usecases.NewCaseUseCase(),
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewWebhookEventsUsecase(),
+		usecases.NewScenarioEvaluator(),
 	)
 }
 
@@ -479,15 +496,10 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *scheduled_execution.
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewScenarioFetcher(),
 		&usecases.Repositories.MarbleDbRepository,
-		decision_phantom.NewPhantomDecisionUseCase(
-			usecases.NewEnforcePhantomDecisionSecurity(), usecases.NewExecutorFactory(),
-			usecases.Repositories.IngestedDataReadRepository,
-			&usecases.Repositories.MarbleDbRepository, usecases.NewEvaluateAstExpression(),
-			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
-			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
-			&usecases.Repositories.MarbleDbRepository),
+		usecases.NewPhantomDecisionUseCase(),
 		usecases.NewFeatureAccessReader(),
 		usecases.NewSanctionCheckUsecase(),
+		usecases.NewScenarioEvaluator(),
 	)
 	return &w
 }

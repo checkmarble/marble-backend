@@ -49,21 +49,29 @@ type webhookEventCreator interface {
 	) error
 }
 
+type CaseNameEvaluator interface {
+	EvalCaseName(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters,
+		repositories evaluate_scenario.ScenarioEvaluationRepositories, scenario models.Scenario) (string, error)
+}
+
 type DecisionsWorkflows struct {
 	caseEditor          caseEditor
 	repository          caseAndDecisionRepository
 	webhookEventCreator webhookEventCreator
+	caseNameEvaluator   CaseNameEvaluator
 }
 
 func NewDecisionWorkflows(
 	caseEditor caseEditor,
 	repository caseAndDecisionRepository,
 	webhookEventCreator webhookEventCreator,
+	caseNameEvaluator CaseNameEvaluator,
 ) DecisionsWorkflows {
 	return DecisionsWorkflows{
 		caseEditor:          caseEditor,
 		repository:          repository,
 		webhookEventCreator: webhookEventCreator,
+		caseNameEvaluator:   caseNameEvaluator,
 	}
 }
 
@@ -84,7 +92,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	}
 
 	if scenario.DecisionToCaseWorkflowType == models.WorkflowCreateCase {
-		caseName, err := evaluate_scenario.EvalCaseName(ctx, params, repositories, scenario, decision)
+		caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, params, repositories, scenario)
 		if err != nil {
 			return false, errors.Wrap(err, "error creating case for decision")
 		}
@@ -113,7 +121,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		}
 
 		if !added {
-			caseName, err := evaluate_scenario.EvalCaseName(ctx, params, repositories, scenario, decision)
+			caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, params, repositories, scenario)
 			if err != nil {
 				return false, errors.Wrap(err, "error creating case for decision")
 			}
