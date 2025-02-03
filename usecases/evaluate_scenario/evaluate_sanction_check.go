@@ -15,6 +15,7 @@ func evaluateSanctionCheck(ctx context.Context,
 	if iteration.SanctionCheckConfig != nil && iteration.SanctionCheckConfig.Enabled {
 		triggerEvaluation, err := evaluator.EvaluateAstExpression(
 			ctx,
+			nil,
 			iteration.SanctionCheckConfig.TriggerRule,
 			params.Scenario.OrganizationId,
 			dataAccessor.ClientObject,
@@ -29,7 +30,7 @@ func evaluateSanctionCheck(ctx context.Context,
 		}
 
 		if triggerEvaluation.ReturnValue == true {
-			nameFilterAny, err := evaluator.EvaluateAstExpression(ctx,
+			nameFilterAny, err := evaluator.EvaluateAstExpression(ctx, nil,
 				iteration.SanctionCheckConfig.Query.Name, iteration.OrganizationId,
 				dataAccessor.ClientObject, dataAccessor.DataModel)
 			if err != nil {
