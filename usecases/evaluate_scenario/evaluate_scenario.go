@@ -45,7 +45,16 @@ type SnoozesForDecisionReader interface {
 	) ([]models.RuleSnooze, error)
 }
 
+type ScenarioEvaluatorFeatureAccessReader interface {
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId string,
+	) (models.OrganizationFeatureAccess, error)
+}
+
 type ScenarioEvaluationRepositories struct {
+	// TODO: I'll do it in a future PR to make review easier, but dependency injection has gotten out of hand
+	// on this file => it should be a struct lik the other usecases
 	EvalScenarioRepository            repositories.EvalScenarioRepository
 	EvalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
 	EvalSanctionCheckUsecase          EvalSanctionCheckUsecase
@@ -56,6 +65,7 @@ type ScenarioEvaluationRepositories struct {
 	IngestedDataReadRepository        repositories.IngestedDataReadRepository
 	EvaluateAstExpression             ast_eval.EvaluateAstExpression
 	SnoozeReader                      SnoozesForDecisionReader
+	FeatureAccessReader               ScenarioEvaluatorFeatureAccessReader
 }
 
 func processScenarioIteration(ctx context.Context, params ScenarioEvaluationParameters,
@@ -323,6 +333,16 @@ func EvalScenario(
 			"error getting sanction check config from scenario iteration")
 	}
 	versionToRun.SanctionCheckConfig = scc
+	if scc != nil {
+		featureAccess, err := repositories.FeatureAccessReader.GetOrganizationFeatureAccess(ctx, params.Scenario.OrganizationId)
+		if err != nil {
+			return models.ScenarioExecution{}, err
+		}
+		if !featureAccess.Sanctions.IsAllowed() {
+			return models.ScenarioExecution{}, errors.Wrapf(models.ForbiddenError,
+				"Sanction check feature access is missing: status is %s", featureAccess.Sanctions)
+		}
+	}
 
 	se, errSe := processScenarioIteration(ctx, params, versionToRun, repositories, start, logger, exec)
 	if errSe != nil {
