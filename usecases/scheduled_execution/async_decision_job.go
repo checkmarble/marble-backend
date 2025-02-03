@@ -11,7 +11,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -30,19 +29,9 @@ type decisionWorkflowsUsecase interface {
 		tx repositories.Transaction,
 		scenario models.Scenario,
 		decision models.DecisionWithRuleExecutions,
-		repositories evaluate_scenario.ScenarioEvaluationRepositories,
 		params evaluate_scenario.ScenarioEvaluationParameters,
 		webhookEventId string,
 	) (bool, error)
-}
-
-type snoozesForDecisionReader interface {
-	ListActiveRuleSnoozesForDecision(
-		ctx context.Context,
-		exec repositories.Executor,
-		snoozeGroupIds []string,
-		pivotValue string,
-	) ([]models.RuleSnooze, error)
 }
 
 type webhookEventsUsecase interface {
@@ -87,81 +76,63 @@ type asyncDecisionWorkerRepository interface {
 	) (executed bool, err error)
 }
 
-type AsyncDecisionWorkerFeatureAccessReader interface {
-	GetOrganizationFeatureAccess(
-		ctx context.Context,
-		organizationId string,
-	) (models.OrganizationFeatureAccess, error)
-}
-
 type EvalSanctionCheckUsecase interface {
 	Execute(context.Context, string, models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
 }
 
 type ScenarioEvaluator interface {
-	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters,
-		repositories evaluate_scenario.ScenarioEvaluationRepositories) (se models.ScenarioExecution, err error)
+	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (se models.ScenarioExecution, err error)
+}
+
+type decisionWorkerSanctionCheckWriter interface {
+	InsertSanctionCheck(context.Context, repositories.Executor, string,
+		models.SanctionCheckWithMatches) (models.SanctionCheckWithMatches, error)
 }
 
 type AsyncDecisionWorker struct {
 	river.WorkerDefaults[models.AsyncDecisionArgs]
 
-	repository                     asyncDecisionWorkerRepository
-	executorFactory                executor_factory.ExecutorFactory
-	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
-	dataModelRepository            repositories.DataModelRepository
-	ingestedDataReadRepository     repositories.IngestedDataReadRepository
-	evaluateAstExpression          ast_eval.EvaluateAstExpression
-	decisionRepository             repositories.DecisionRepository
-	transactionFactory             executor_factory.TransactionFactory
-	decisionWorkflows              decisionWorkflowsUsecase
-	webhookEventsSender            webhookEventsUsecase
-	snoozesReader                  snoozesForDecisionReader
-	scenarioFetcher                scenarios.ScenarioFetcher
-	sanctionCheckConfigRepository  repositories.EvalSanctionCheckConfigRepository
-	phantomDecision                decision_phantom.PhantomDecisionUsecase
-	featureAccessReader            AsyncDecisionWorkerFeatureAccessReader
-	sanctionCheckUsecase           EvalSanctionCheckUsecase
-	scenarioEvaluator              ScenarioEvaluator
+	repository                 asyncDecisionWorkerRepository
+	executorFactory            executor_factory.ExecutorFactory
+	dataModelRepository        repositories.DataModelRepository
+	ingestedDataReadRepository repositories.IngestedDataReadRepository
+	decisionRepository         repositories.DecisionRepository
+	transactionFactory         executor_factory.TransactionFactory
+	decisionWorkflows          decisionWorkflowsUsecase
+	webhookEventsSender        webhookEventsUsecase
+	scenarioFetcher            scenarios.ScenarioFetcher
+	phantomDecision            decision_phantom.PhantomDecisionUsecase
+	scenarioEvaluator          ScenarioEvaluator
+	sanctionCheckRepository    decisionWorkerSanctionCheckWriter
 }
 
 func NewAsyncDecisionWorker(
 	repository asyncDecisionWorkerRepository,
 	executorFactory executor_factory.ExecutorFactory,
-	scenarioPublicationsRepository repositories.ScenarioPublicationRepository,
 	dataModelRepository repositories.DataModelRepository,
 	ingestedDataReadRepository repositories.IngestedDataReadRepository,
-	evaluateAstExpression ast_eval.EvaluateAstExpression,
 	decisionRepository repositories.DecisionRepository,
 	transactionFactory executor_factory.TransactionFactory,
 	decisionWorkflows decisionWorkflowsUsecase,
 	webhookEventsSender webhookEventsUsecase,
-	snoozesReader snoozesForDecisionReader,
 	scenarioFetcher scenarios.ScenarioFetcher,
-	sanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository,
 	phantom decision_phantom.PhantomDecisionUsecase,
-	featureAccessReader AsyncDecisionWorkerFeatureAccessReader,
-	sanctionCheckUsecase EvalSanctionCheckUsecase,
 	scenarioEvaluator ScenarioEvaluator,
+	sanctionCheckRepository decisionWorkerSanctionCheckWriter,
 ) AsyncDecisionWorker {
 	return AsyncDecisionWorker{
-		repository:                     repository,
-		executorFactory:                executorFactory,
-		scenarioPublicationsRepository: scenarioPublicationsRepository,
-		dataModelRepository:            dataModelRepository,
-		ingestedDataReadRepository:     ingestedDataReadRepository,
-		evaluateAstExpression:          evaluateAstExpression,
-		decisionRepository:             decisionRepository,
-		transactionFactory:             transactionFactory,
-		decisionWorkflows:              decisionWorkflows,
-		webhookEventsSender:            webhookEventsSender,
-		snoozesReader:                  snoozesReader,
-		scenarioFetcher:                scenarioFetcher,
-		sanctionCheckConfigRepository:  sanctionCheckConfigRepository,
-		phantomDecision:                phantom,
-		featureAccessReader:            featureAccessReader,
-		sanctionCheckUsecase:           sanctionCheckUsecase,
-		scenarioEvaluator:              scenarioEvaluator,
+		repository:                 repository,
+		executorFactory:            executorFactory,
+		dataModelRepository:        dataModelRepository,
+		ingestedDataReadRepository: ingestedDataReadRepository,
+		decisionRepository:         decisionRepository,
+		transactionFactory:         transactionFactory,
+		decisionWorkflows:          decisionWorkflows,
+		webhookEventsSender:        webhookEventsSender,
+		scenarioFetcher:            scenarioFetcher,
+		phantomDecision:            phantom,
+		scenarioEvaluator:          scenarioEvaluator,
+		sanctionCheckRepository:    sanctionCheckRepository,
 	}
 }
 
@@ -313,22 +284,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		Pivot:             pivot,
 	}
 
-	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
-		EvalScenarioRepository:            w.repository,
-		EvalSanctionCheckConfigRepository: w.sanctionCheckConfigRepository,
-		EvalSanctionCheckUsecase:          w.sanctionCheckUsecase,
-		ExecutorFactory:                   w.executorFactory,
-		IngestedDataReadRepository:        w.ingestedDataReadRepository,
-		EvaluateAstExpression:             w.evaluateAstExpression,
-		SnoozeReader:                      w.snoozesReader,
-		FeatureAccessReader:               w.featureAccessReader,
-	}
-
-	scenarioExecution, err := w.scenarioEvaluator.EvalScenario(
-		ctx,
-		evaluationParameters,
-		evaluationRepositories,
-	)
+	scenarioExecution, err := w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 
 	if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
 		logger.InfoContext(ctx, "Trigger condition and trigger object mismatch",
@@ -362,6 +318,14 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		return false, nil, errors.Wrapf(err, "error storing decision in AsyncDecisionWorker %s", scenario.Id)
 	}
 
+	if decision.SanctionCheckExecution != nil {
+		_, err := w.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
+			decision.DecisionId, *decision.SanctionCheckExecution)
+		if err != nil {
+			return false, nil, errors.Wrap(err, "could not store sanction check execution")
+		}
+	}
+
 	webhookEventId := uuid.NewString()
 	err = w.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 		Id:             webhookEventId,
@@ -375,7 +339,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 
 	caseWebhookEventId := uuid.NewString()
 	webhookEventCreated, err := w.decisionWorkflows.AutomaticDecisionToCase(ctx, tx, scenario,
-		decision, evaluationRepositories, evaluationParameters, caseWebhookEventId)
+		decision, evaluationParameters, caseWebhookEventId)
 	if err != nil {
 		return false, nil, err
 	}
