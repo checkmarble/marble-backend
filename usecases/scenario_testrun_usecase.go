@@ -11,24 +11,22 @@ import (
 	"github.com/pkg/errors"
 )
 
-type ScenarioTestRunUsecase struct {
-	transactionFactory  executor_factory.TransactionFactory
-	executorFactory     executor_factory.ExecutorFactory
-	enforceSecurity     security.EnforceSecurityTestRun
-	repository          repositories.ScenarioTestRunRepository
-	scenarioRepository  repositories.ScenarioUsecaseRepository
-	clientDbIndexEditor clientDbIndexEditor
+type TestRunUsecaseFeatureAccessReader interface {
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId string,
+	) (models.OrganizationFeatureAccess, error)
 }
 
-func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUsecase {
-	return ScenarioTestRunUsecase{
-		transactionFactory:  usecases.NewTransactionFactory(),
-		executorFactory:     usecases.NewExecutorFactory(),
-		enforceSecurity:     usecases.NewEnforceTestRunScenarioSecurity(),
-		repository:          &usecases.Repositories.MarbleDbRepository,
-		clientDbIndexEditor: usecases.NewClientDbIndexEditor(),
-		scenarioRepository:  &usecases.Repositories.MarbleDbRepository,
-	}
+type ScenarioTestRunUsecase struct {
+	transactionFactory            executor_factory.TransactionFactory
+	executorFactory               executor_factory.ExecutorFactory
+	enforceSecurity               security.EnforceSecurityTestRun
+	repository                    repositories.ScenarioTestRunRepository
+	scenarioRepository            repositories.ScenarioUsecaseRepository
+	clientDbIndexEditor           clientDbIndexEditor
+	featureAccessReader           TestRunUsecaseFeatureAccessReader
+	sanctionCheckConfigRepository SanctionCheckConfigRepository
 }
 
 func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
@@ -52,6 +50,21 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 	// the live version must not be the one on which we want to start a testrun
 	if *scenario.LiveVersionID == input.PhantomIterationId {
 		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
+	}
+
+	scc, err := usecase.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, input.PhantomIterationId)
+	if err != nil {
+		return models.ScenarioTestRun{}, err
+	}
+	if scc != nil {
+		featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId)
+		if err != nil {
+			return models.ScenarioTestRun{}, err
+		}
+		if !featureAccess.Sanctions.IsAllowed() {
+			return models.ScenarioTestRun{}, errors.Wrapf(models.ForbiddenError,
+				"Sanction check feature access is missing: status is %s", featureAccess.Sanctions)
+		}
 	}
 
 	// we should not have any existing testrun for this scenario

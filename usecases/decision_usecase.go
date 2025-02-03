@@ -417,6 +417,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		IngestedDataReadRepository:        usecase.ingestedDataReadRepository,
 		EvaluateAstExpression:             usecase.evaluateAstExpression,
 		SnoozeReader:                      usecase.snoozesReader,
+		FeatureAccessReader:               usecase.featureAccessReader,
 	}
 
 	scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories)
@@ -575,10 +576,12 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
 		EvalScenarioRepository:            usecase.repository,
 		EvalSanctionCheckConfigRepository: usecase.sanctionCheckConfigRepository,
+		EvalSanctionCheckUsecase:          usecase.sanctionCheckUsecase,
 		ExecutorFactory:                   usecase.executorFactory,
 		IngestedDataReadRepository:        usecase.ingestedDataReadRepository,
 		EvaluateAstExpression:             usecase.evaluateAstExpression,
 		SnoozeReader:                      usecase.snoozesReader,
+		FeatureAccessReader:               usecase.featureAccessReader,
 	}
 
 	type decisionAndScenario struct {

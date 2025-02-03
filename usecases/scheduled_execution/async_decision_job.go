@@ -87,6 +87,17 @@ type asyncDecisionWorkerRepository interface {
 	) (executed bool, err error)
 }
 
+type AsyncDecisionWorkerFeatureAccessReader interface {
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId string,
+	) (models.OrganizationFeatureAccess, error)
+}
+
+type EvalSanctionCheckUsecase interface {
+	Execute(context.Context, string, models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
+}
+
 type AsyncDecisionWorker struct {
 	river.WorkerDefaults[models.AsyncDecisionArgs]
 
@@ -101,9 +112,11 @@ type AsyncDecisionWorker struct {
 	decisionWorkflows              decisionWorkflowsUsecase
 	webhookEventsSender            webhookEventsUsecase
 	snoozesReader                  snoozesForDecisionReader
-	phantomDecision                decision_phantom.PhantomDecisionUsecase
 	scenarioFetcher                scenarios.ScenarioFetcher
 	sanctionCheckConfigRepository  repositories.EvalSanctionCheckConfigRepository
+	phantomDecision                decision_phantom.PhantomDecisionUsecase
+	featureAccessReader            AsyncDecisionWorkerFeatureAccessReader
+	sanctionCheckUsecase           EvalSanctionCheckUsecase
 }
 
 func NewAsyncDecisionWorker(
@@ -121,6 +134,8 @@ func NewAsyncDecisionWorker(
 	scenarioFetcher scenarios.ScenarioFetcher,
 	sanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository,
 	phantom decision_phantom.PhantomDecisionUsecase,
+	featureAccessReader AsyncDecisionWorkerFeatureAccessReader,
+	sanctionCheckUsecase EvalSanctionCheckUsecase,
 ) AsyncDecisionWorker {
 	return AsyncDecisionWorker{
 		repository:                     repository,
@@ -137,6 +152,8 @@ func NewAsyncDecisionWorker(
 		scenarioFetcher:                scenarioFetcher,
 		sanctionCheckConfigRepository:  sanctionCheckConfigRepository,
 		phantomDecision:                phantom,
+		featureAccessReader:            featureAccessReader,
+		sanctionCheckUsecase:           sanctionCheckUsecase,
 	}
 }
 
@@ -291,10 +308,12 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
 		EvalScenarioRepository:            w.repository,
 		EvalSanctionCheckConfigRepository: w.sanctionCheckConfigRepository,
+		EvalSanctionCheckUsecase:          w.sanctionCheckUsecase,
 		ExecutorFactory:                   w.executorFactory,
 		IngestedDataReadRepository:        w.ingestedDataReadRepository,
 		EvaluateAstExpression:             w.evaluateAstExpression,
 		SnoozeReader:                      w.snoozesReader,
+		FeatureAccessReader:               w.featureAccessReader,
 	}
 
 	scenarioExecution, err := evaluate_scenario.EvalScenario(

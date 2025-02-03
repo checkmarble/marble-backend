@@ -45,6 +45,13 @@ type clientDbIndexEditor interface {
 	DeleteUniqueIndex(ctx context.Context, organizationId string, index models.UnicityIndex) error
 }
 
+type PublicationUsecaseFeatureAccessReader interface {
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId string,
+	) (models.OrganizationFeatureAccess, error)
+}
+
 type ScenarioPublicationUsecase struct {
 	transactionFactory             executor_factory.TransactionFactory
 	executorFactory                executor_factory.ExecutorFactory
@@ -53,6 +60,29 @@ type ScenarioPublicationUsecase struct {
 	scenarioFetcher                ScenarioFetcher
 	scenarioPublisher              ScenarioPublisher
 	clientDbIndexEditor            clientDbIndexEditor
+	featureAccessReader            PublicationUsecaseFeatureAccessReader
+}
+
+func NewScenarioPublicationUsecase(
+	transactionFactory executor_factory.TransactionFactory,
+	executorFactory executor_factory.ExecutorFactory,
+	scenarioPublicationsRepository repositories.ScenarioPublicationRepository,
+	enforceSecurity security.EnforceSecurityScenario,
+	scenarioFetcher ScenarioFetcher,
+	scenarioPublisher ScenarioPublisher,
+	clientDbIndexEditor clientDbIndexEditor,
+	featureAccessReader PublicationUsecaseFeatureAccessReader,
+) *ScenarioPublicationUsecase {
+	return &ScenarioPublicationUsecase{
+		transactionFactory:             transactionFactory,
+		executorFactory:                executorFactory,
+		scenarioPublicationsRepository: scenarioPublicationsRepository,
+		enforceSecurity:                enforceSecurity,
+		scenarioFetcher:                scenarioFetcher,
+		scenarioPublisher:              scenarioPublisher,
+		clientDbIndexEditor:            clientDbIndexEditor,
+		featureAccessReader:            featureAccessReader,
+	}
 }
 
 func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(
@@ -114,6 +144,16 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, input.ScenarioIterationId)
 			if err != nil {
 				return nil, err
+			}
+			if scenarioAndIteration.Iteration.SanctionCheckConfig != nil {
+				featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId)
+				if err != nil {
+					return nil, err
+				}
+				if !featureAccess.Sanctions.IsAllowed() {
+					return nil, errors.Wrapf(models.ForbiddenError,
+						"Sanction check feature access is missing: status is %s", featureAccess.Sanctions)
+				}
 			}
 
 			if err := usecase.enforceSecurity.PublishScenario(scenarioAndIteration.Scenario); err != nil {
