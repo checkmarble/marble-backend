@@ -36,7 +36,6 @@ type ScenarioIterationBodyDto struct {
 }
 
 type SanctionCheckConfig struct {
-	Enabled       *bool                     `json:"enabled"`
 	Datasets      []string                  `json:"datasets,omitempty"`
 	ForceOutcome  *string                   `json:"force_outcome,omitempty"`
 	ScoreModifier *int                      `json:"score_modifier,omitempty"`
@@ -105,7 +104,6 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		}
 
 		body.SanctionCheckConfig = &SanctionCheckConfig{
-			Enabled:       &si.SanctionCheckConfig.Enabled,
 			Datasets:      si.SanctionCheckConfig.Datasets,
 			ForceOutcome:  nil,
 			ScoreModifier: &si.SanctionCheckConfig.Outcome.ScoreModifier,
@@ -167,7 +165,6 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 
 	if input.Body.SanctionCheckConfig != nil {
 		updateScenarioIterationInput.Body.SanctionCheckConfig = &models.UpdateSanctionCheckConfigInput{
-			Enabled:     input.Body.SanctionCheckConfig.Enabled,
 			Datasets:    input.Body.SanctionCheckConfig.Datasets,
 			TriggerRule: nil,
 			Outcome: models.UpdateSanctionCheckOutcomeInput{
