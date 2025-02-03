@@ -78,6 +78,7 @@ type SanctionCheckRepository interface {
 	CreateSanctionCheckFile(ctx context.Context, exec repositories.Executor,
 		input models.SanctionCheckFileInput) (models.SanctionCheckFile, error)
 	GetSanctionCheckFile(ctx context.Context, exec repositories.Executor, matchId, fileId string) (models.SanctionCheckFile, error)
+	ListSanctionCheckFiles(ctx context.Context, exec repositories.Executor, matchId string) ([]models.SanctionCheckFile, error)
 }
 
 type SanctionCheckUsecase struct {
@@ -378,6 +379,20 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 	}
 
 	return uploadedFiles, nil
+}
+
+func (uc SanctionCheckUsecase) ListFiles(ctx context.Context, creds models.Credentials, matchId string) ([]models.SanctionCheckFile, error) {
+	match, err := uc.enforceCanReadOrUpdateSanctionCheckMatch(ctx, matchId)
+	if err != nil {
+		return nil, err
+	}
+
+	files, err := uc.repository.ListSanctionCheckFiles(ctx, uc.executorFactory.NewExecutor(), match.match.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return files, nil
 }
 
 func (uc SanctionCheckUsecase) GetFileDownloadUrl(ctx context.Context, creds models.Credentials, matchId, fileId string) (string, error) {

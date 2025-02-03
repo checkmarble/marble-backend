@@ -283,6 +283,23 @@ func (repo *MarbleDbRepository) CreateSanctionCheckFile(ctx context.Context, exe
 	return file, err
 }
 
+func (repo *MarbleDbRepository) ListSanctionCheckFiles(ctx context.Context, exec Executor, matchId string) ([]models.SanctionCheckFile, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	files, err := SqlToListOfModels(
+		ctx,
+		exec,
+		NewQueryBuilder().Select(dbmodels.SelectSanctionCheckFileColumn...).
+			From(dbmodels.TABLE_SANCTION_CHECK_FILES).
+			Where(squirrel.Eq{"match_id": matchId}),
+		dbmodels.AdaptSanctionCheckFile,
+	)
+
+	return files, err
+}
+
 func (repo *MarbleDbRepository) GetSanctionCheckFile(ctx context.Context, exec Executor, matchId, fileId string) (models.SanctionCheckFile, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.SanctionCheckFile{}, err
