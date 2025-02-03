@@ -13,7 +13,7 @@ type EvaluateAstExpression struct {
 	AstEvaluationEnvironmentFactory AstEvaluationEnvironmentFactory
 }
 
-func (evaluator *EvaluateAstExpression) EvaluateAstExpression(
+func (evaluator EvaluateAstExpression) EvaluateAstExpression(
 	ctx context.Context,
 	cache *EvaluationCache,
 	ruleAstExpression ast.Node,
