@@ -36,3 +36,7 @@ func FeatureAccessFrom(s string) FeatureAccess {
 	}
 	return UnknownFeatureAccess
 }
+
+func (f FeatureAccess) IsAllowed() bool {
+	return f == Allowed || f == Test
+}
