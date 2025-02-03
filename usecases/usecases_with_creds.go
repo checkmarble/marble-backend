@@ -147,6 +147,8 @@ func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecas
 		openSanctionsProvider:         usecases.Repositories.OpenSanctionsRepository,
 		sanctionCheckConfigRepository: &usecases.Repositories.MarbleDbRepository,
 		repository:                    &usecases.Repositories.MarbleDbRepository,
+		blobRepository:                usecases.Repositories.BlobRepository,
+		blobBucketUrl:                 usecases.caseManagerBucketUrl,
 		executorFactory:               usecases.NewExecutorFactory(),
 		transactionFactory:            usecases.NewTransactionFactory(),
 	}
