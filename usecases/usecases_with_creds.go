@@ -196,16 +196,17 @@ func (usecases *UsecasesWithCreds) NewCustomListUseCase() CustomListUseCase {
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPublicationUsecase {
-	return ScenarioPublicationUsecase{
-		transactionFactory:             usecases.NewTransactionFactory(),
-		executorFactory:                usecases.NewExecutorFactory(),
-		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
-		enforceSecurity:                usecases.NewEnforceScenarioSecurity(),
-		scenarioFetcher:                usecases.NewScenarioFetcher(),
-		scenarioPublisher:              usecases.NewScenarioPublisher(),
-		clientDbIndexEditor:            usecases.NewClientDbIndexEditor(),
-	}
+func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() *ScenarioPublicationUsecase {
+	return NewScenarioPublicationUsecase(
+		usecases.NewTransactionFactory(),
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.ScenarioPublicationRepository,
+		usecases.NewEnforceScenarioSecurity(),
+		usecases.NewScenarioFetcher(),
+		usecases.NewScenarioPublisher(),
+		usecases.NewClientDbIndexEditor(),
+		usecases.NewFeatureAccessReader(),
+	)
 }
 
 func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() clientDbIndexEditor {
@@ -485,6 +486,8 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *scheduled_execution.
 			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
 			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
 			&usecases.Repositories.MarbleDbRepository),
+		usecases.NewFeatureAccessReader(),
+		usecases.NewSanctionCheckUsecase(),
 	)
 	return &w
 }
@@ -514,4 +517,17 @@ func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.Featur
 		usecases.NewExecutorFactory(),
 		usecases.Usecases.license,
 	)
+}
+
+func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUsecase {
+	return ScenarioTestRunUsecase{
+		transactionFactory:            usecases.NewTransactionFactory(),
+		executorFactory:               usecases.NewExecutorFactory(),
+		enforceSecurity:               usecases.NewEnforceTestRunScenarioSecurity(),
+		repository:                    &usecases.Repositories.MarbleDbRepository,
+		clientDbIndexEditor:           usecases.NewClientDbIndexEditor(),
+		scenarioRepository:            &usecases.Repositories.MarbleDbRepository,
+		featureAccessReader:           usecases.NewFeatureAccessReader(),
+		sanctionCheckConfigRepository: &usecases.Repositories.MarbleDbRepository,
+	}
 }

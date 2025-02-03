@@ -27,6 +27,7 @@ type ScenarioPublicationUsecaseTestSuite struct {
 	transaction                    *mocks.Transaction
 	transactionFactory             *mocks.TransactionFactory
 	clientDbIndexEditor            *mocks.ClientDbIndexEditor
+	featureAccessReader            *mocks.FeatureAccessReader
 
 	organizationId                string
 	scenarioId                    string
@@ -54,6 +55,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) SetupTest() {
 	suite.transaction = new(mocks.Transaction)
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.clientDbIndexEditor = new(mocks.ClientDbIndexEditor)
+	suite.featureAccessReader = new(mocks.FeatureAccessReader)
 
 	suite.organizationId = "organizationId"
 	suite.scenarioId = "scenarioId"
@@ -144,15 +146,16 @@ func (suite *ScenarioPublicationUsecaseTestSuite) SetupTest() {
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) makeUsecase() *ScenarioPublicationUsecase {
-	return &ScenarioPublicationUsecase{
-		enforceSecurity:                suite.enforceSecurity,
-		executorFactory:                suite.executorFactory,
-		scenarioFetcher:                suite.scenarioFetcher,
-		scenarioPublicationsRepository: suite.scenarioPublicationsRepository,
-		scenarioPublisher:              suite.scenarioPublisher,
-		transactionFactory:             suite.transactionFactory,
-		clientDbIndexEditor:            suite.clientDbIndexEditor,
-	}
+	return NewScenarioPublicationUsecase(
+		suite.transactionFactory,
+		suite.executorFactory,
+		suite.scenarioPublicationsRepository,
+		suite.enforceSecurity,
+		suite.scenarioFetcher,
+		suite.scenarioPublisher,
+		suite.clientDbIndexEditor,
+		suite.featureAccessReader,
+	)
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) AssertExpectations() {
