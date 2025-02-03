@@ -8,9 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/riverqueue/river"
@@ -28,47 +26,17 @@ const (
 type AsyncScheduledExecWorker struct {
 	river.WorkerDefaults[models.ScheduledExecStatusSyncArgs]
 
-	repository                     asyncDecisionWorkerRepository
-	executorFactory                executor_factory.ExecutorFactory
-	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
-	dataModelRepository            repositories.DataModelRepository
-	ingestedDataReadRepository     repositories.IngestedDataReadRepository
-	evaluateAstExpression          ast_eval.EvaluateAstExpression
-	decisionRepository             repositories.DecisionRepository
-	decisionWorkflows              decisionWorkflowsUsecase
-	webhookEventsSender            webhookEventsUsecase
-	snoozesReader                  snoozesForDecisionReader
-	scenarioFetcher                scenarios.ScenarioFetcher
-	sanctionCheckConfigRepository  repositories.EvalSanctionCheckConfigRepository
+	repository      asyncDecisionWorkerRepository
+	executorFactory executor_factory.ExecutorFactory
 }
 
 func NewAsyncScheduledExecWorker(
 	repository asyncDecisionWorkerRepository,
 	executorFactory executor_factory.ExecutorFactory,
-	scenarioPublicationsRepository repositories.ScenarioPublicationRepository,
-	dataModelRepository repositories.DataModelRepository,
-	ingestedDataReadRepository repositories.IngestedDataReadRepository,
-	evaluateAstExpression ast_eval.EvaluateAstExpression,
-	decisionRepository repositories.DecisionRepository,
-	decisionWorkflows decisionWorkflowsUsecase,
-	webhookEventsSender webhookEventsUsecase,
-	snoozesReader snoozesForDecisionReader,
-	scenarioFetcher scenarios.ScenarioFetcher,
-	sanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository,
 ) AsyncScheduledExecWorker {
 	return AsyncScheduledExecWorker{
-		repository:                     repository,
-		executorFactory:                executorFactory,
-		scenarioPublicationsRepository: scenarioPublicationsRepository,
-		dataModelRepository:            dataModelRepository,
-		ingestedDataReadRepository:     ingestedDataReadRepository,
-		evaluateAstExpression:          evaluateAstExpression,
-		decisionRepository:             decisionRepository,
-		decisionWorkflows:              decisionWorkflows,
-		webhookEventsSender:            webhookEventsSender,
-		snoozesReader:                  snoozesReader,
-		scenarioFetcher:                scenarioFetcher,
-		sanctionCheckConfigRepository:  sanctionCheckConfigRepository,
+		repository:      repository,
+		executorFactory: executorFactory,
 	}
 }
 

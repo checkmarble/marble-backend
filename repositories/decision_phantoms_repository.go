@@ -15,19 +15,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type DecisionPhantomUsecaseRepository interface {
-	StorePhantomDecision(
-		ctx context.Context,
-		exec Executor,
-		decision models.PhantomDecision,
-		organizationId string,
-		testRunId string,
-		newPhantomDecisionId string,
-		scenarioVersion int) error
-
-	GetTestRunIterationIdByScenarioId(ctx context.Context, exec Executor, scenarioID string) (*string, error)
-}
-
 func (repo *MarbleDbRepository) StorePhantomDecision(
 	ctx context.Context,
 	exec Executor,
