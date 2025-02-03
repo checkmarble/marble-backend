@@ -157,7 +157,7 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 
 	elapsed := time.Since(start)
 	logger.InfoContext(ctx, fmt.Sprintf("Evaluated scenario in %dms",
-		elapsed.Milliseconds()), "score", score, "outcome", outcome)
+		elapsed.Milliseconds()), "score", score, "outcome", outcome, "duration", elapsed.Milliseconds())
 
 	return se, nil
 }
