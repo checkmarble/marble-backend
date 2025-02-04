@@ -10,7 +10,7 @@ import (
 func FakeStruct[T any](opt ...options.OptionFunc) (T, []any) {
 	var object T
 
-	_ = faker.FakeData(&object)
+	_ = faker.FakeData(&object, opt...)
 
 	return object, StructToMockRow(object)
 }
@@ -49,6 +49,10 @@ func StructToMockRow[T any](object T) []any {
 
 	for i := 0; i < f.NumField(); i++ {
 		sf := f.Field(i)
+
+		if t.Field(i).Tag.Get("db") == "-" {
+			continue
+		}
 
 		switch sf.Kind() {
 		case reflect.Struct:
