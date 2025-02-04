@@ -51,6 +51,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.POST("/ingestion/:object_type/multiple", tom, handleIngestionMultiple(uc))
 	router.POST("/ingestion/:object_type/batch", timeoutMiddleware(conf.BatchTimeout), handlePostCsvIngestion(uc))
 	router.GET("/ingestion/:object_type/upload-logs", tom, handleListUploadLogs(uc))
+	router.GET("/ingestion/:object_type/:object_id", tom, handleGetIngestedObject(uc))
 
 	router.GET("/scenarios", tom, listScenarios(uc))
 	router.POST("/scenarios", tom, createScenario(uc))
@@ -175,7 +176,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.GET("/data-model/openapi", tom, handleGetOpenAPI(uc))
 	router.POST("/data-model/pivots", tom, handleCreateDataModelPivot(uc))
 	router.GET("/data-model/pivots", tom, handleListDataModelPivots(uc))
-	router.GET("/data-model/data/:tableName/:objectID", tom, handleGetDataModelObject(uc))
 
 	router.POST("/transfers", tom, handleCreateTransfer(uc))
 	router.GET("/transfers", tom, handleQueryTransfers(uc))

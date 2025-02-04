@@ -267,7 +267,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	if err != nil {
 		return false, nil, err
 	}
-	objectMap, err := w.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, args.ObjectId, nil)
+	objectMap, err := w.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, args.ObjectId)
 	if err != nil {
 		return false, nil, errors.Wrap(err, "error while querying ingested objects in AsyncDecisionWorker.createSingleDecisionForObjectId")
 	} else if len(objectMap) == 0 {
@@ -275,7 +275,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		return false, nil, nil
 	}
 
-	object := models.ClientObject{TableName: table.Name, Data: objectMap[0]}
+	object := models.ClientObject{TableName: table.Name, Data: objectMap[0].Data}
 
 	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
 		Scenario:          scenario,

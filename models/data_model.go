@@ -252,3 +252,8 @@ type DataModelLinkCreateInput struct {
 	ChildTableID   string
 	ChildFieldID   string
 }
+
+type DataModelObject struct {
+	Data     map[string]any
+	Metadata map[string]any
+}

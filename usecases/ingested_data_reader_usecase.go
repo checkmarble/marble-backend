@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 )
@@ -14,8 +15,8 @@ type IngestedDataReaderUsecase struct {
 }
 
 func (usecase *IngestedDataReaderUsecase) GetIngestedObject(ctx context.Context,
-	organizationId string, tableName string, objectId string,
-) ([]map[string]any, error) {
+	organizationId string, objectType string, objectId string,
+) ([]models.DataModelObject, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, true)
@@ -23,11 +24,12 @@ func (usecase *IngestedDataReaderUsecase) GetIngestedObject(ctx context.Context,
 		return nil, err
 	}
 
-	table := dataModel.Tables[tableName]
+	table := dataModel.Tables[objectType]
 
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return nil, err
 	}
-	return usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, objectId, []string{"valid_from"})
+
+	return usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, objectId)
 }

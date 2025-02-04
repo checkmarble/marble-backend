@@ -128,3 +128,31 @@ func handleListUploadLogs(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, pure_utils.Map(uploadLogs, dto.AdaptUploadLogDto))
 	}
 }
+
+func handleGetIngestedObject(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		objectType := c.Param("object_type")
+		objectId := c.Param("object_id")
+
+		usecase := usecasesWithCreds(ctx, uc).NewIngestedDataReaderUsecase()
+		objects, err := usecase.GetIngestedObject(ctx, organizationID, objectType, objectId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		fmt.Printf("len: %d\n", len(objects))
+
+		if len(objects) == 0 {
+			c.JSON(http.StatusNotFound, nil)
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.DataModelObject{Data: objects[0].Data, Metadata: objects[0].Metadata})
+	}
+}
