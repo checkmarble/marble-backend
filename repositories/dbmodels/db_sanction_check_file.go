@@ -8,12 +8,12 @@ import (
 )
 
 type DBSanctionCheckFile struct {
-	Id            string    `db:"id"`
-	MatchId       string    `db:"match_id"`
-	BucketName    string    `db:"bucket_name"`
-	FileReference string    `db:"file_reference"`
-	FileName      string    `db:"file_name"`
-	CreatedAt     time.Time `db:"created_at"`
+	Id              string    `db:"id"`
+	SanctionCheckId string    `db:"sanction_check_id"`
+	BucketName      string    `db:"bucket_name"`
+	FileReference   string    `db:"file_reference"`
+	FileName        string    `db:"file_name"`
+	CreatedAt       time.Time `db:"created_at"`
 }
 
 const TABLE_SANCTION_CHECK_FILES = "sanction_check_files"
@@ -22,11 +22,11 @@ var SelectSanctionCheckFileColumn = utils.ColumnList[DBSanctionCheckFile]()
 
 func AdaptSanctionCheckFile(db DBSanctionCheckFile) (models.SanctionCheckFile, error) {
 	return models.SanctionCheckFile{
-		Id:            db.Id,
-		MatchId:       db.MatchId,
-		CreatedAt:     db.CreatedAt,
-		BucketName:    db.BucketName,
-		FileName:      db.FileName,
-		FileReference: db.FileReference,
+		Id:              db.Id,
+		SanctionCheckId: db.SanctionCheckId,
+		CreatedAt:       db.CreatedAt,
+		BucketName:      db.BucketName,
+		FileName:        db.FileName,
+		FileReference:   db.FileReference,
 	}, nil
 }
