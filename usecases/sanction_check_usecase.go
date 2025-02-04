@@ -308,11 +308,22 @@ func (uc SanctionCheckUsecase) MatchAddComment(ctx context.Context, matchId stri
 }
 
 func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Credentials,
-	matchId string, files []multipart.FileHeader,
+	sanctionCheckId string, files []multipart.FileHeader,
 ) ([]models.SanctionCheckFile, error) {
-	match, err := uc.enforceCanReadOrUpdateSanctionCheckMatch(ctx, matchId)
+	sc, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), sanctionCheckId)
 	if err != nil {
 		return nil, err
+	}
+
+	match, err := uc.enforceCanReadOrUpdateCase(ctx, sc.DecisionId)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, fileHeader := range files {
+		if err := validateFileType(fileHeader); err != nil {
+			return nil, err
+		}
 	}
 
 	for _, fileHeader := range files {
@@ -329,8 +340,7 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 	metadata := make([]uploadedFileMetadata, 0, len(files))
 
 	for _, fileHeader := range files {
-		newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId,
-			match.decision.Case.Id, uuid.NewString())
+		newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, sc.Id, uuid.NewString())
 		err = writeSanctionCheckFileToBlobStorage(ctx, uc.blobRepository, uc.blobBucketUrl, fileHeader, newFileReference)
 		if err != nil {
 			break
@@ -366,10 +376,10 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 				ctx,
 				tx,
 				models.SanctionCheckFileInput{
-					BucketName:    uc.blobBucketUrl,
-					MatchId:       matchId,
-					FileName:      uploadedFile.fileName,
-					FileReference: uploadedFile.fileReference,
+					BucketName:      uc.blobBucketUrl,
+					SanctionCheckId: sanctionCheckId,
+					FileName:        uploadedFile.fileName,
+					FileReference:   uploadedFile.fileReference,
 				},
 			)
 			if err != nil {
@@ -379,7 +389,7 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 			uploadedFiles[idx] = file
 		}
 
-		if err := uc.caseRepository.CreateCaseContributor(ctx, tx, match.decision.Case.Id,
+		if err := uc.caseRepository.CreateCaseContributor(ctx, tx, match.Case.Id,
 			string(creds.ActorIdentity.UserId)); err != nil {
 			return errors.Wrap(err, "could not create case contributor for sanction check file upload")
 		}
@@ -393,13 +403,17 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 	return uploadedFiles, nil
 }
 
-func (uc SanctionCheckUsecase) ListFiles(ctx context.Context, creds models.Credentials, matchId string) ([]models.SanctionCheckFile, error) {
-	match, err := uc.enforceCanReadOrUpdateSanctionCheckMatch(ctx, matchId)
+func (uc SanctionCheckUsecase) ListFiles(ctx context.Context, sanctionCheckId string) ([]models.SanctionCheckFile, error) {
+	sc, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), sanctionCheckId)
 	if err != nil {
 		return nil, err
 	}
 
-	files, err := uc.repository.ListSanctionCheckFiles(ctx, uc.executorFactory.NewExecutor(), match.match.Id)
+	if _, err := uc.enforceCanReadOrUpdateCase(ctx, sc.DecisionId); err != nil {
+		return nil, err
+	}
+
+	files, err := uc.repository.ListSanctionCheckFiles(ctx, uc.executorFactory.NewExecutor(), sc.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -407,13 +421,17 @@ func (uc SanctionCheckUsecase) ListFiles(ctx context.Context, creds models.Crede
 	return files, nil
 }
 
-func (uc SanctionCheckUsecase) GetFileDownloadUrl(ctx context.Context, creds models.Credentials, matchId, fileId string) (string, error) {
-	match, err := uc.enforceCanReadOrUpdateSanctionCheckMatch(ctx, matchId)
+func (uc SanctionCheckUsecase) GetFileDownloadUrl(ctx context.Context, sanctionCheckId, fileId string) (string, error) {
+	sc, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), sanctionCheckId)
 	if err != nil {
 		return "", err
 	}
 
-	file, err := uc.repository.GetSanctionCheckFile(ctx, uc.executorFactory.NewExecutor(), match.match.Id, fileId)
+	if _, err := uc.enforceCanReadOrUpdateCase(ctx, sc.DecisionId); err != nil {
+		return "", err
+	}
+
+	file, err := uc.repository.GetSanctionCheckFile(ctx, uc.executorFactory.NewExecutor(), sc.Id, fileId)
 	if err != nil {
 		return "", err
 	}

@@ -46,7 +46,7 @@ func (*MarbleDbRepository) GetSanctionCheck(ctx context.Context, exec Executor, 
 	}
 
 	sql := selectSanctionChecksWithMatches().
-		Where(squirrel.Eq{"id": id})
+		Where(squirrel.Eq{"sc.id": id})
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckWithMatches)
 }
@@ -266,13 +266,13 @@ func (repo *MarbleDbRepository) CreateSanctionCheckFile(ctx context.Context, exe
 		NewQueryBuilder().Insert(dbmodels.TABLE_SANCTION_CHECK_FILES).
 			Columns(
 				"bucket_name",
-				"match_id",
+				"sanction_check_id",
 				"file_name",
 				"file_reference",
 			).
 			Values(
 				input.BucketName,
-				input.MatchId,
+				input.SanctionCheckId,
 				input.FileName,
 				input.FileReference,
 			).
@@ -283,7 +283,9 @@ func (repo *MarbleDbRepository) CreateSanctionCheckFile(ctx context.Context, exe
 	return file, err
 }
 
-func (repo *MarbleDbRepository) ListSanctionCheckFiles(ctx context.Context, exec Executor, matchId string) ([]models.SanctionCheckFile, error) {
+func (repo *MarbleDbRepository) ListSanctionCheckFiles(ctx context.Context, exec Executor,
+	sanctionCheckId string,
+) ([]models.SanctionCheckFile, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -293,14 +295,16 @@ func (repo *MarbleDbRepository) ListSanctionCheckFiles(ctx context.Context, exec
 		exec,
 		NewQueryBuilder().Select(dbmodels.SelectSanctionCheckFileColumn...).
 			From(dbmodels.TABLE_SANCTION_CHECK_FILES).
-			Where(squirrel.Eq{"match_id": matchId}),
+			Where(squirrel.Eq{"sanction_check_id": sanctionCheckId}),
 		dbmodels.AdaptSanctionCheckFile,
 	)
 
 	return files, err
 }
 
-func (repo *MarbleDbRepository) GetSanctionCheckFile(ctx context.Context, exec Executor, matchId, fileId string) (models.SanctionCheckFile, error) {
+func (repo *MarbleDbRepository) GetSanctionCheckFile(ctx context.Context, exec Executor,
+	sanctionCheckId, fileId string,
+) (models.SanctionCheckFile, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.SanctionCheckFile{}, err
 	}
@@ -310,7 +314,7 @@ func (repo *MarbleDbRepository) GetSanctionCheckFile(ctx context.Context, exec E
 		exec,
 		NewQueryBuilder().Select(dbmodels.SelectSanctionCheckFileColumn...).
 			From(dbmodels.TABLE_SANCTION_CHECK_FILES).
-			Where(squirrel.Eq{"match_id": matchId, "id": fileId}),
+			Where(squirrel.Eq{"sanction_check_id": sanctionCheckId, "id": fileId}),
 		dbmodels.AdaptSanctionCheckFile,
 	)
 
