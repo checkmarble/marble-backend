@@ -80,6 +80,8 @@ type SanctionCheckRepository interface {
 		input models.SanctionCheckFileInput) (models.SanctionCheckFile, error)
 	GetSanctionCheckFile(ctx context.Context, exec repositories.Executor, matchId, fileId string) (models.SanctionCheckFile, error)
 	ListSanctionCheckFiles(ctx context.Context, exec repositories.Executor, matchId string) ([]models.SanctionCheckFile, error)
+	CopySanctionCheckFiles(ctx context.Context, exec repositories.Executor,
+		sanctionCheckId, newSanctionCheckId string) error
 }
 
 type SanctionCheckUsecase struct {
@@ -178,6 +180,11 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 	sanctionCheck, err = executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.SanctionCheckWithMatches, error) {
+		oldSanctionCheck, err := uc.repository.GetActiveSanctionCheckForDecision(ctx, tx, decision.DecisionId)
+		if err != nil {
+			return models.SanctionCheckWithMatches{}, err
+		}
+
 		if err := uc.repository.ArchiveSanctionCheck(ctx, tx, decision.DecisionId); err != nil {
 			return models.SanctionCheckWithMatches{}, err
 		}
@@ -185,6 +192,11 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 		if sanctionCheck, err = uc.repository.InsertSanctionCheck(ctx, tx,
 			decision.DecisionId, sanctionCheck); err != nil {
 			return models.SanctionCheckWithMatches{}, err
+		}
+
+		if err := uc.repository.CopySanctionCheckFiles(ctx, tx, oldSanctionCheck.Id, sanctionCheck.Id); err != nil {
+			return sanctionCheck, errors.Wrap(err,
+				"could not copy sanction check uploaded files for refinement")
 		}
 
 		return sanctionCheck, err
@@ -320,6 +332,16 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 		return nil, err
 	}
 
+	if sc.IsArchived {
+		latestSanctionCheck, err := uc.repository.GetActiveSanctionCheckForDecision(ctx,
+			uc.executorFactory.NewExecutor(), sc.DecisionId)
+		if err != nil {
+			return nil, err
+		}
+
+		sc = *latestSanctionCheck
+	}
+
 	for _, fileHeader := range files {
 		if err := validateFileType(fileHeader); err != nil {
 			return nil, err
@@ -377,7 +399,7 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 				tx,
 				models.SanctionCheckFileInput{
 					BucketName:      uc.blobBucketUrl,
-					SanctionCheckId: sanctionCheckId,
+					SanctionCheckId: sc.Id,
 					FileName:        uploadedFile.fileName,
 					FileReference:   uploadedFile.fileReference,
 				},
