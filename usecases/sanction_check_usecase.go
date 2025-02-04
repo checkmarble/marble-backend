@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-set/v2"
 	"github.com/pkg/errors"
 )
 
@@ -72,6 +73,8 @@ type SanctionCheckRepository interface {
 	GetSanctionCheckMatch(ctx context.Context, exec repositories.Executor, matchId string) (models.SanctionCheckMatch, error)
 	UpdateSanctionCheckMatchStatus(ctx context.Context, exec repositories.Executor,
 		match models.SanctionCheckMatch, update models.SanctionCheckMatchUpdate) (models.SanctionCheckMatch, error)
+	ListSanctionCheckCommentsByIds(ctx context.Context, exec repositories.Executor, ids []string) (
+		[]models.SanctionCheckMatchComment, error)
 	AddSanctionCheckMatchComment(ctx context.Context, exec repositories.Executor,
 		comment models.SanctionCheckMatchComment) (models.SanctionCheckMatchComment, error)
 	ListSanctionCheckMatchComments(ctx context.Context, exec repositories.Executor, matchId string) (
@@ -119,7 +122,35 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 		return nil, err
 	}
 
-	return uc.repository.GetSanctionChecksForDecision(ctx, exec, decisions[0].DecisionId)
+	scs, err := uc.repository.GetSanctionChecksForDecision(ctx, exec, decisions[0].DecisionId)
+	if err != nil {
+		return nil, err
+	}
+
+	matchIds := set.New[string](0)
+	matchIdToMatch := make(map[string]*models.SanctionCheckMatch)
+
+	for sidx, sc := range scs {
+		for midx, match := range sc.Matches {
+			matchIds.Insert(match.Id)
+			matchIdToMatch[match.Id] = &scs[sidx].Matches[midx]
+		}
+	}
+
+	comments, err := uc.repository.ListSanctionCheckCommentsByIds(ctx,
+		uc.executorFactory.NewExecutor(), matchIds.Slice())
+	if err != nil {
+		return nil, err
+	}
+
+	for _, comment := range comments {
+		if _, ok := matchIdToMatch[comment.MatchId]; ok {
+			matchIdToMatch[comment.MatchId].Comments =
+				append(matchIdToMatch[comment.MatchId].Comments, comment)
+		}
+	}
+
+	return scs, nil
 }
 
 func (uc SanctionCheckUsecase) Execute(
