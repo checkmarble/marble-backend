@@ -87,7 +87,7 @@ func handleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) func(c *gin.Cont
 func handleUploadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		matchId := c.Param("id")
+		matchId := c.Param("sanctionCheckId")
 
 		var form FileForm
 
@@ -118,18 +118,11 @@ func handleUploadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Contex
 func handleListSanctionCheckMatchFiles(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		matchId := c.Param("id")
-
-		creds, ok := utils.CredentialsFromCtx(ctx)
-
-		if !ok {
-			presentError(ctx, c, models.ErrUnknownUser)
-			return
-		}
+		sanctionCheckId := c.Param("sanctionCheckId")
 
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
 
-		files, err := uc.ListFiles(ctx, creds, matchId)
+		files, err := uc.ListFiles(ctx, sanctionCheckId)
 
 		if presentError(ctx, c, err) {
 			return
@@ -142,19 +135,12 @@ func handleListSanctionCheckMatchFiles(uc usecases.Usecases) func(c *gin.Context
 func handleDownloadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		matchId := c.Param("id")
+		sanctionCheckId := c.Param("sanctionCheckId")
 		fileId := c.Param("fileId")
-
-		creds, ok := utils.CredentialsFromCtx(ctx)
-
-		if !ok {
-			presentError(ctx, c, models.ErrUnknownUser)
-			return
-		}
 
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
 
-		url, err := uc.GetFileDownloadUrl(ctx, creds, matchId, fileId)
+		url, err := uc.GetFileDownloadUrl(ctx, sanctionCheckId, fileId)
 
 		if presentError(ctx, c, err) {
 			return
