@@ -320,3 +320,24 @@ func (repo *MarbleDbRepository) GetSanctionCheckFile(ctx context.Context, exec E
 
 	return file, err
 }
+
+func (repo *MarbleDbRepository) CopySanctionCheckFiles(ctx context.Context, exec Executor, sanctionCheckId, newSanctionCheckId string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Insert(dbmodels.TABLE_SANCTION_CHECK_FILES).
+		Columns("bucket_name", "file_reference", "file_name", "sanction_check_id").
+		Select(squirrel.
+			Select("bucket_name", "file_reference", "file_name").
+			Column("?", newSanctionCheckId).
+			From(dbmodels.TABLE_SANCTION_CHECK_FILES).
+			Where(squirrel.Eq{"sanction_check_id": sanctionCheckId}))
+
+	if err := ExecBuilder(ctx, exec, sql); err != nil {
+		return err
+	}
+
+	return nil
+}
