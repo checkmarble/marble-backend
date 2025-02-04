@@ -24,6 +24,9 @@ type Usecases struct {
 	caseManagerBucketUrl        string
 	failedWebhooksRetryPageSize int
 	hasConvoyServerSetup        bool
+	hasMetabaseSetup            bool
+	hasOpensanctionsSetup       bool
+	hasTestMode                 bool
 	license                     models.LicenseValidation
 }
 
@@ -73,6 +76,28 @@ func WithConvoyServer(url string) Option {
 	}
 }
 
+func WithMetabase(url string) Option {
+	return func(o *options) {
+		if url != "" {
+			o.hasMetabaseSetup = true
+		}
+	}
+}
+
+func WithOpensanctions(isSet bool) Option {
+	return func(o *options) {
+		if isSet {
+			o.hasOpensanctionsSetup = true
+		}
+	}
+}
+
+func WithTestMode(activated bool) Option {
+	return func(o *options) {
+		o.hasTestMode = true
+	}
+}
+
 type options struct {
 	apiVersion                  string
 	batchIngestionMaxSize       int
@@ -81,6 +106,9 @@ type options struct {
 	failedWebhooksRetryPageSize int
 	license                     models.LicenseValidation
 	hasConvoyServerSetup        bool
+	hasMetabaseSetup            bool
+	hasOpensanctionsSetup       bool
+	hasTestMode                 bool
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -95,6 +123,10 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		caseManagerBucketUrl:        o.caseManagerBucketUrl,
 		failedWebhooksRetryPageSize: o.failedWebhooksRetryPageSize,
 		license:                     o.license,
+		hasConvoyServerSetup:        o.hasConvoyServerSetup,
+		hasMetabaseSetup:            o.hasMetabaseSetup,
+		hasOpensanctionsSetup:       o.hasOpensanctionsSetup,
+		hasTestMode:                 o.hasTestMode,
 	}
 }
 

@@ -18,10 +18,12 @@ type FeatureAccessReaderOrgRepository interface {
 }
 
 type FeatureAccessReader struct {
-	enforceSecurity security.EnforceSecurityOrganization
-	orgRepo         FeatureAccessReaderOrgRepository
-	executorFactory executor_factory.ExecutorFactory
-	license         models.LicenseValidation
+	enforceSecurity       security.EnforceSecurityOrganization
+	orgRepo               FeatureAccessReaderOrgRepository
+	executorFactory       executor_factory.ExecutorFactory
+	license               models.LicenseValidation
+	featuresConfiguration models.FeaturesConfiguration
+	hasTestMode           bool
 }
 
 func NewFeatureAccessReader(
@@ -29,12 +31,22 @@ func NewFeatureAccessReader(
 	orgRepo FeatureAccessReaderOrgRepository,
 	executorFactory executor_factory.ExecutorFactory,
 	license models.LicenseValidation,
+	hasConvoyServerSetup bool,
+	hasMetabaseSetup bool,
+	hasOpensanctionsSetup bool,
+	hasTestMode bool,
 ) FeatureAccessReader {
 	return FeatureAccessReader{
 		enforceSecurity: enforceSecurity,
 		orgRepo:         orgRepo,
 		executorFactory: executorFactory,
 		license:         license,
+		featuresConfiguration: models.FeaturesConfiguration{
+			Webhooks:  hasConvoyServerSetup,
+			Sanctions: hasOpensanctionsSetup,
+			Analytics: hasMetabaseSetup,
+		},
+		hasTestMode: hasTestMode,
 	}
 }
 
@@ -52,6 +64,6 @@ func (f FeatureAccessReader) GetOrganizationFeatureAccess(
 		return models.OrganizationFeatureAccess{}, err
 	}
 
-	return dbStoredFeatureAccess.MergeWithLicenseEntitlement(
-		&f.license.LicenseEntitlements), nil
+	return dbStoredFeatureAccess.MergeWithLicenseEntitlement(f.license.LicenseEntitlements,
+		f.featuresConfiguration, f.hasTestMode), nil
 }
