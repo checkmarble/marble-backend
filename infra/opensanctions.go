@@ -80,6 +80,10 @@ func (os OpenSanctions) Host() string {
 	return OPEN_SANCTIONS_API_HOST
 }
 
+func (os OpenSanctions) IsSet() bool {
+	return os.IsSelfHosted() || os.Credentials() != ""
+}
+
 func (os OpenSanctions) AuthMethod() OpenSanctionsAuthMethod {
 	return os.authMethod
 }

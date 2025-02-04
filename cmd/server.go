@@ -94,6 +94,7 @@ func RunServer(apiVersion string) error {
 		loggingFormat                    string
 		sentryDsn                        string
 		transferCheckEnrichmentBucketUrl string
+		firebaseEmulatorHost             string
 	}{
 		batchIngestionMaxSize:            utils.GetEnv("BATCH_INGESTION_MAX_SIZE", 0),
 		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
@@ -103,6 +104,7 @@ func RunServer(apiVersion string) error {
 		loggingFormat:                    utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:                        utils.GetEnv("SENTRY_DSN", ""),
 		transferCheckEnrichmentBucketUrl: utils.GetEnv("TRANSFER_CHECK_ENRICHMENT_BUCKET_URL", ""), // required for transfercheck
+		firebaseEmulatorHost:             utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
 	}
 
 	logger := utils.NewLogger(serverConfig.loggingFormat)
@@ -156,6 +158,9 @@ func RunServer(apiVersion string) error {
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
+		usecases.WithMetabase(metabaseConfig.SiteUrl),
+		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
+		usecases.WithTestMode(serverConfig.firebaseEmulatorHost != ""),
 	)
 
 	////////////////////////////////////////////////////////////
