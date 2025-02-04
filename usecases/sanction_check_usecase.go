@@ -42,6 +42,7 @@ type SanctionCheckCaseRepository interface {
 		exec repositories.Executor,
 		createCaseEventAttributes models.CreateCaseEventAttributes,
 	) error
+	CreateCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) error
 }
 
 type SanctionCheckInboxReader interface {
@@ -314,6 +315,12 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 		return nil, err
 	}
 
+	for _, fileHeader := range files {
+		if err := validateFileType(fileHeader); err != nil {
+			return nil, err
+		}
+	}
+
 	type uploadedFileMetadata struct {
 		fileReference string
 		fileName      string
@@ -370,6 +377,11 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 			}
 
 			uploadedFiles[idx] = file
+		}
+
+		if err := uc.caseRepository.CreateCaseContributor(ctx, tx, match.decision.Case.Id,
+			string(creds.ActorIdentity.UserId)); err != nil {
+			return errors.Wrap(err, "could not create case contributor for sanction check file upload")
 		}
 
 		return nil
