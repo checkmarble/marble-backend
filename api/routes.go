@@ -80,13 +80,13 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.GET("/sanction-checks/dataset", tom, handleSanctionCheckDataset(uc))
 	router.GET("/sanction-checks", tom, handleListSanctionChecks(uc))
 	router.POST("/sanction-checks/refine", tom, handleRefineSanctionCheck(uc))
-	router.PATCH("/sanction-checks/matches/:id", tom, handleUpdateSanctionCheckMatchStatus(uc))
-	router.POST("/sanction-checks/matches/:id/file", tom,
+	router.POST("/sanction-checks/:sanctionCheckId/file", tom,
 		handleUploadSanctionCheckMatchFile(uc))
-	router.GET("/sanction-checks/matches/:id/file", tom,
+	router.GET("/sanction-checks/:sanctionCheckId/file", tom,
 		handleListSanctionCheckMatchFiles(uc))
-	router.GET("/sanction-checks/matches/:id/file/:fileId", tom,
+	router.GET("/sanction-checks/:sanctionCheckId/file/:fileId", tom,
 		handleDownloadSanctionCheckMatchFile(uc))
+	router.PATCH("/sanction-checks/matches/:id", tom, handleUpdateSanctionCheckMatchStatus(uc))
 	router.POST("/sanction-checks/matches/:id/comments", tom,
 		handleCreateSanctionCheckMatchComment(uc))
 	router.GET("/sanction-checks/matches/:id/comments", tom,

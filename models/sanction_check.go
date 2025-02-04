@@ -145,17 +145,17 @@ type SanctionCheckMatchComment struct {
 }
 
 type SanctionCheckFile struct {
-	Id            string
-	MatchId       string
-	BucketName    string
-	FileReference string
-	FileName      string
-	CreatedAt     time.Time
+	Id              string
+	SanctionCheckId string
+	BucketName      string
+	FileReference   string
+	FileName        string
+	CreatedAt       time.Time
 }
 
 type SanctionCheckFileInput struct {
-	MatchId       string
-	BucketName    string
-	FileReference string
-	FileName      string
+	SanctionCheckId string
+	BucketName      string
+	FileReference   string
+	FileName        string
 }
