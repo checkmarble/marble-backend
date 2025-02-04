@@ -129,7 +129,7 @@ func (*MarbleDbRepository) ListSanctionCheckMatches(
 		sql = sql.Suffix("FOR UPDATE")
 	}
 
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatchWithComment)
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
 }
 
 func (*MarbleDbRepository) GetSanctionCheckMatch(ctx context.Context, exec Executor,
@@ -219,6 +219,15 @@ func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executo
 	withMatches.Matches = matches
 
 	return withMatches, nil
+}
+
+func (*MarbleDbRepository) ListSanctionCheckCommentsByIds(ctx context.Context, exec Executor, ids []string) ([]models.SanctionCheckMatchComment, error) {
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectSanctionCheckMatchCommentsColumn...).
+		From(dbmodels.TABLE_SANCTION_CHECK_MATCH_COMMENTS).
+		Where("sanction_check_match_id = ANY(?)", ids)
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatchComment)
 }
 
 func (*MarbleDbRepository) AddSanctionCheckMatchComment(ctx context.Context,

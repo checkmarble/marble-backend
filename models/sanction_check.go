@@ -123,7 +123,7 @@ type SanctionCheckMatch struct {
 	QueryIds        []string
 	Payload         []byte
 	ReviewedBy      *string
-	CommentCount    int
+	Comments        []SanctionCheckMatchComment
 }
 
 type SanctionCheckMatchUpdate struct {

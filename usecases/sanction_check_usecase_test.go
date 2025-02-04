@@ -35,7 +35,16 @@ func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.Exe
 func TestListSanctionChecksOnDecision(t *testing.T) {
 	uc, exec := buildSanctionCheckUsecaseMock()
 	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBSanctionCheckWithMatches](
-		ops.WithRandomMapAndSliceMinSize(1))
+		ops.WithRandomMapAndSliceMinSize(1), ops.WithRandomMapAndSliceMaxSize(1))
+
+	mockComment, mockCommentRows := utils.FakeStruct[dbmodels.DBSanctionCheckMatchComment](
+		ops.WithCustomFieldProvider("SanctionCheckMatchId", func() (interface{}, error) {
+			return mockSc.Matches[0].Id, nil
+		}),
+	)
+
+	mockSc.Id = mockComment.SanctionCheckMatchId
+	mockScRow[0] = mockComment.SanctionCheckMatchId
 
 	exec.Mock.ExpectQuery(`
 		SELECT
@@ -52,6 +61,13 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 				AddRow(mockScRow...),
 		)
 
+	exec.Mock.ExpectQuery(`SELECT .* FROM sanction_check_match_comments WHERE sanction_check_match_id = ANY\(\$1\)`).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "sanction_check_match_id", "commented_by", "comment", "created_at"}).
+				AddRow(mockCommentRows...),
+		)
+
 	scs, err := uc.ListSanctionChecks(context.TODO(), "decisionid")
 
 	assert.NoError(t, exec.Mock.ExpectationsWereMet())
@@ -60,19 +76,27 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 	assert.Equal(t, models.SanctionCheckStatusFrom(mockSc.Status), scs[0].Status)
 	assert.NotEmpty(t, scs[0].Matches)
 	assert.Equal(t, models.SanctionCheckMatchStatusFrom(scs[0].Matches[0].Status.String()), models.SanctionMatchStatusUnknown)
+	assert.Len(t, scs[0].Matches[0].Comments, 1)
+	assert.Equal(t, scs[0].Matches[0].Comments[0].Comment, mockComment.Comment)
 }
 
 func TestListSanctionCheckOnMatchComments(t *testing.T) {
 	uc, exec := buildSanctionCheckUsecaseMock()
 	mockMatch, mockMatchRow := utils.FakeStruct[dbmodels.DBSanctionCheckMatch]()
 	_, mockCheckRow := utils.FakeStruct[dbmodels.DBSanctionCheck]()
-	mockComments, mockCommentsRows := utils.FakeStructs[dbmodels.DBSanctionCheckMatchComment](4)
+
+	mockComments, mockCommentsRows := utils.FakeStructs[dbmodels.DBSanctionCheckMatchComment](
+		4,
+		ops.WithCustomFieldProvider("SanctionCheckMatchId", func() (interface{}, error) {
+			return mockMatch.Id, nil
+		}),
+	)
 
 	exec.Mock.ExpectQuery(`SELECT .* FROM sanction_check_matches WHERE id = \$1`).
 		WithArgs("matchid").
 		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionCheckMatchesColumn).AddRow(mockMatchRow...))
 
-	exec.Mock.ExpectQuery(`SELECT .* FROM sanction_checks WHERE id = \$1 `).
+	exec.Mock.ExpectQuery(`SELECT .* FROM sanction_checks WHERE id = \$1`).
 		WithArgs(mockMatch.SanctionCheckId).
 		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionChecksColumn).AddRow(mockCheckRow...))
 

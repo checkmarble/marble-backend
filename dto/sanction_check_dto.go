@@ -65,26 +65,26 @@ func AdaptSanctionCheckRefineDto(dto SanctionCheckRefineDto) models.SanctionChec
 }
 
 type SanctionCheckMatchDto struct {
-	Id           string          `json:"id"`
-	EntityId     string          `json:"entity_id"`
-	QueryIds     []string        `json:"query_ids"`
-	Status       string          `json:"status"`
-	ReviewedBy   *string         `json:"reviewer_id,omitempty"` //nolint:tagliatelle
-	Datasets     []string        `json:"datasets"`
-	Payload      json.RawMessage `json:"payload"`
-	CommentCount int             `json:"comment_count"`
+	Id         string                         `json:"id"`
+	EntityId   string                         `json:"entity_id"`
+	QueryIds   []string                       `json:"query_ids"`
+	Status     string                         `json:"status"`
+	ReviewedBy *string                        `json:"reviewer_id,omitempty"` //nolint:tagliatelle
+	Datasets   []string                       `json:"datasets"`
+	Payload    json.RawMessage                `json:"payload"`
+	Comments   []SanctionCheckMatchCommentDto `json:"comments"`
 }
 
 func AdaptSanctionCheckMatchDto(m models.SanctionCheckMatch) SanctionCheckMatchDto {
 	match := SanctionCheckMatchDto{
-		Id:           m.Id,
-		EntityId:     m.EntityId,
-		Status:       m.Status.String(),
-		ReviewedBy:   m.ReviewedBy,
-		QueryIds:     m.QueryIds,
-		Datasets:     make([]string, 0),
-		Payload:      m.Payload,
-		CommentCount: m.CommentCount,
+		Id:         m.Id,
+		EntityId:   m.EntityId,
+		Status:     m.Status.String(),
+		ReviewedBy: m.ReviewedBy,
+		QueryIds:   m.QueryIds,
+		Datasets:   make([]string, 0),
+		Payload:    m.Payload,
+		Comments:   pure_utils.Map(m.Comments, AdaptSanctionCheckMatchCommentDto),
 	}
 
 	return match
