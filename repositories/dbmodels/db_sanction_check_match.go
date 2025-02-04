@@ -22,11 +22,8 @@ type DBSanctionCheckMatch struct {
 	ReviewedBy           *string         `db:"reviewed_by"`
 	CreatedAt            time.Time       `db:"created_at"`
 	UpdatedAt            time.Time       `db:"updated_at"`
-}
 
-type DBSanctionCheckMatchWithComments struct {
-	DBSanctionCheckMatch
-	CommentCount int `db:"comment_count"`
+	Comments []DBSanctionCheckMatchComment `db:"-"`
 }
 
 func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckMatch, error) {
@@ -39,17 +36,6 @@ func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckMatc
 		QueryIds:        dto.QueryIds,
 		Payload:         dto.Payload,
 	}
-
-	return match, nil
-}
-
-func AdaptSanctionCheckMatchWithComment(dto DBSanctionCheckMatchWithComments) (models.SanctionCheckMatch, error) {
-	match, err := AdaptSanctionCheckMatch(dto.DBSanctionCheckMatch)
-	if err != nil {
-		return match, err
-	}
-
-	match.CommentCount = dto.CommentCount
 
 	return match, nil
 }
