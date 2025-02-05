@@ -22,7 +22,7 @@ func FakeStructs[T any](n int, opt ...options.OptionFunc) ([]T, [][]any) {
 	for idx := range n {
 		var object T
 
-		_ = faker.FakeData(&object)
+		_ = faker.FakeData(&object, opt...)
 
 		objects[idx] = object
 		rows[idx] = StructToMockRow(object)
