@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"math/rand"
-	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -15,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
-	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
@@ -32,19 +30,19 @@ import (
 )
 
 const (
-	testDbLifetime      = 120 // seconds
-	testUser            = "postgres"
-	testPassword        = "pwd"
-	testDbName          = "marble"
-	privatePortRangeMin = 49152
-	marbleAdminEmail    = "test@admin.com"
+	testDbLifetime   = 120 // seconds
+	testUser         = "postgres"
+	testPassword     = "pwd"
+	testDbName       = "marble"
+	marbleAdminEmail = "test@admin.com"
 )
 
 var (
 	testUsecases   usecases.Usecases
 	tokenGenerator *token.Generator
 	riverClient    *river.Client[pgx.Tx]
-	port           string
+
+	testServer *httptest.Server
 )
 
 func TestMain(m *testing.M) {
@@ -164,13 +162,10 @@ func TestMain(m *testing.M) {
 		log.Fatalln("Could not start river client:", err)
 	}
 
-	// select a random port
-	port = fmt.Sprintf("%d", rand.Int31n(1000)+privatePortRangeMin)
 	apiConfig := api.Configuration{
 		Env:                 "development",
 		AppName:             "marble-backend",
 		MarbleAppHost:       "http://localhost:3000",
-		Port:                port,
 		RequestLoggingLevel: "all",
 		TokenLifetimeMinute: 60,
 		SegmentWriteKey:     "",
@@ -201,14 +196,10 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	go func() {
-		logger.InfoContext(ctx, "starting server", slog.String("port", apiConfig.Port))
-		err := server.ListenAndServe()
-		if !errors.Is(err, http.ErrServerClosed) {
-			utils.LogAndReportSentryError(ctx, errors.Wrap(err, "Error while serving the app"))
-		}
-		logger.InfoContext(ctx, "server returned")
-	}()
+	testServer = httptest.NewServer(server.Handler)
+	defer testServer.Close()
+
+	logger.InfoContext(ctx, "started server", slog.String("url", testServer.URL))
 
 	// Run tests
 	code := m.Run()
