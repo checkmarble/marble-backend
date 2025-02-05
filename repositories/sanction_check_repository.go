@@ -157,8 +157,12 @@ func (*MarbleDbRepository) UpdateSanctionCheckMatchStatus(
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
 }
 
-func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executor, decisionId string,
+func (*MarbleDbRepository) InsertSanctionCheck(
+	ctx context.Context,
+	exec Executor,
+	decisionId string,
 	sanctionCheck models.SanctionCheckWithMatches,
+	storeMatches bool,
 ) (models.SanctionCheckWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return sanctionCheck, err
@@ -170,17 +174,23 @@ func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executo
 		"search_input",
 		"search_datasets",
 		"search_threshold",
+		"match_limit",
 		"is_partial",
 		"is_manual",
+		"initial_has_matches",
 		"requested_by",
+		"status",
 	).Values(
 		decisionId,
-		sanctionCheck.Query,
+		sanctionCheck.SearchInput,
 		sanctionCheck.Datasets,
 		sanctionCheck.OrgConfig.MatchThreshold,
+		sanctionCheck.OrgConfig.MatchLimit,
 		sanctionCheck.Partial,
 		sanctionCheck.IsManual,
+		len(sanctionCheck.Matches) > 0,
 		sanctionCheck.RequestedBy,
+		sanctionCheck.InitialStatusFromMatches(),
 	).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionChecksColumn, ",")))
 
 	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
@@ -189,8 +199,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(ctx context.Context, exec Executo
 	}
 
 	withMatches := models.SanctionCheckWithMatches{SanctionCheck: result}
-
-	if len(sanctionCheck.Matches) == 0 {
+	if !storeMatches || len(sanctionCheck.Matches) == 0 {
 		return withMatches, nil
 	}
 

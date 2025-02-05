@@ -66,8 +66,8 @@ func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsRes
 
 	output := models.SanctionCheckWithMatches{
 		SanctionCheck: models.SanctionCheck{
-			Query:   query,
-			Partial: partial,
+			SearchInput: query,
+			Partial:     partial,
 		},
 		Count:   len(matches),
 		Matches: slices.Collect(maps.Values(matches)),

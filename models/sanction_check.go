@@ -95,24 +95,37 @@ func (scs SanctionCheckMatchStatus) String() string {
 }
 
 type SanctionCheck struct {
-	Id          string
-	DecisionId  string
-	Status      SanctionCheckStatus
-	Datasets    []string
-	Query       json.RawMessage
-	OrgConfig   OrganizationOpenSanctionsConfig
-	IsManual    bool
-	IsArchived  bool
-	RequestedBy *string
-	Partial     bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	Id                string
+	DecisionId        string
+	Status            SanctionCheckStatus
+	Datasets          []string
+	SearchInput       json.RawMessage
+	OrgConfig         OrganizationOpenSanctionsConfig
+	IsManual          bool
+	IsArchived        bool
+	InitialHasMatches bool
+	RequestedBy       *string
+	Partial           bool
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type SanctionCheckWithMatches struct {
 	SanctionCheck
 	Matches []SanctionCheckMatch
 	Count   int
+}
+
+func (s SanctionCheckWithMatches) InitialStatusFromMatches() SanctionCheckStatus {
+	if len(s.Matches) == 0 {
+		return SanctionStatusNoHit
+	}
+
+	if s.Partial {
+		return SanctionStatusTooManyHits
+	}
+
+	return SanctionStatusInReview
 }
 
 type SanctionCheckMatch struct {

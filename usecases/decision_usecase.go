@@ -98,8 +98,13 @@ type ScenarioEvaluator interface {
 }
 
 type decisionUsecaseSanctionCheckWriter interface {
-	InsertSanctionCheck(context.Context, repositories.Executor, string,
-		models.SanctionCheckWithMatches) (models.SanctionCheckWithMatches, error)
+	InsertSanctionCheck(
+		ctx context.Context,
+		exec repositories.Executor,
+		decisionId string,
+		sc models.SanctionCheckWithMatches,
+		storeMatches bool,
+	) (models.SanctionCheckWithMatches, error)
 }
 
 type DecisionUsecase struct {
@@ -441,7 +446,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 		if decision.SanctionCheckExecution != nil {
 			if _, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
-				decision.DecisionId, *decision.SanctionCheckExecution); err != nil {
+				decision.DecisionId, *decision.SanctionCheckExecution, true); err != nil {
 				return models.DecisionWithRuleExecutions{},
 					errors.Wrap(err, "could not store sanction check execution")
 			}
@@ -617,7 +622,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 			if item.decision.SanctionCheckExecution != nil {
 				_, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
-					item.decision.DecisionId, *item.decision.SanctionCheckExecution)
+					item.decision.DecisionId, *item.decision.SanctionCheckExecution, true)
 				if err != nil {
 					return nil, errors.Wrap(err, "could not store sanction check execution")
 				}
