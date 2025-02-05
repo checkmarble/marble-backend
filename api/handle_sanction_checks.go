@@ -150,23 +150,6 @@ func handleDownloadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Cont
 	}
 }
 
-func handleListSanctionCheckMatchComments(uc usecases.Usecases) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		matchId := c.Param("id")
-
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
-
-		comments, err := uc.MatchListComments(ctx, matchId)
-
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		c.JSON(http.StatusOK, pure_utils.Map(comments, dto.AdaptSanctionCheckMatchCommentDto))
-	}
-}
-
 func handleCreateSanctionCheckMatchComment(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
