@@ -98,7 +98,7 @@ func handleDecisionsDataByOutcomeAndScore(uc usecases.Usecases) func(c *gin.Cont
 	}
 }
 
-func handleListRulesExecution(uc usecases.Usecases) func(c *gin.Context) {
+func handleTestRunStatsByRulesExecution(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		testrunId := c.Param("test_run_id")
@@ -107,7 +107,7 @@ func handleListRulesExecution(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
-		rules, err := usecase.ListRuleExecution(ctx, testrunId)
+		rules, err := usecase.TestRunStatsByRuleExecution(ctx, testrunId)
 		if presentError(ctx, c, err) {
 			return
 		}

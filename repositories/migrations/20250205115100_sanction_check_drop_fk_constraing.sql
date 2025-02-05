@@ -7,11 +7,31 @@ ALTER TABLE sanction_checks
 ADD COLUMN initial_has_matches bool NOT NULL DEFAULT false,
 ADD COLUMN match_limit int NOT NULL DEFAULT 0,
 ALTER COLUMN search_threshold
-SET NOT NULL DEFAULT 0;
+SET DEFAULT 0,
+ALTER COLUMN search_threshold
+SET NOT NULL;
+
+UPDATE organizations
+SET
+    sanctions_threshold = 70
+WHERE
+    sanctions_threshold IS NULL;
+
+UPDATE organizations
+SET
+    sanctions_limit = 30
+WHERE
+    sanctions_limit IS NULL;
 
 ALTER TABLE organizations
-ALTER COLUMN sanctions_threshold NOT NULL DEFAULT 70,
-ALTER COLUMN sanctions_limit NOT NULL DEFAULT 30;
+ALTER COLUMN sanctions_threshold
+SET NOT NULL,
+ALTER COLUMN sanctions_threshold
+SET DEFAULT 70,
+ALTER COLUMN sanctions_limit
+SET NOT NULL,
+ALTER COLUMN sanctions_limit
+SET DEFAULT 30;
 
 -- +goose StatementEnd
 -- +goose Down
