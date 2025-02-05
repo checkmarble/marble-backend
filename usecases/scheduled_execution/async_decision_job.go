@@ -275,7 +275,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		return false, nil, nil
 	}
 
-	object := models.ClientObject{TableName: table.Name, Data: objectMap[0]}
+	object := models.ClientObject{TableName: table.Name, Data: objectMap[0].Data}
 
 	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
 		Scenario:          scenario,

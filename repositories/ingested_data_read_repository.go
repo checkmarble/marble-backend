@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
@@ -25,7 +26,7 @@ type IngestedDataReadRepository interface {
 		exec Executor,
 		table models.Table,
 		objectId string,
-	) ([]map[string]any, error)
+	) ([]models.DataModelObject, error)
 	QueryAggregatedValue(
 		ctx context.Context,
 		exec Executor,
@@ -236,7 +237,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 	exec Executor,
 	table models.Table,
 	objectId string,
-) ([]map[string]any, error) {
+) ([]models.DataModelObject, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -248,7 +249,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 		ctx,
 		exec,
 		qualifiedTableName,
-		columnNames,
+		append(columnNames, "valid_from"),
 		[]models.Filter{{
 			LeftSql:    fmt.Sprintf("%s.object_id", qualifiedTableName),
 			Operator:   ast.FUNC_EQUAL,
@@ -259,7 +260,20 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 		return nil, err
 	}
 
-	return objectsAsMap, nil
+	ingestedObjects := make([]models.DataModelObject, len(objectsAsMap))
+	for i, object := range objectsAsMap {
+		ingestedObject := models.DataModelObject{Data: map[string]any{}, Metadata: map[string]any{}}
+		for fieldName, fieldValue := range object {
+			if slices.Contains(columnNames, fieldName) {
+				ingestedObject.Data[fieldName] = fieldValue
+			} else {
+				ingestedObject.Metadata[fieldName] = fieldValue
+			}
+		}
+		ingestedObjects[i] = ingestedObject
+	}
+
+	return ingestedObjects, nil
 }
 
 func queryWithDynamicColumnList(

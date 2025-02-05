@@ -116,3 +116,8 @@ type CreateFieldInput struct {
 	IsEnum      bool   `json:"is_enum"`
 	IsUnique    bool   `json:"is_unique"`
 }
+
+type DataModelObject struct {
+	Data     map[string]any `json:"data"`
+	Metadata map[string]any `json:"metadata"`
+}

@@ -70,7 +70,7 @@ func (usecase TransferDataReader) QueryTransferDataFromMapping(
 		return make([]models.TransferData, 0), nil
 	}
 
-	readPartnerId, transferData := presentTransferData(ctx, objects[0])
+	readPartnerId, transferData := presentTransferData(ctx, objects[0].Data)
 	if err := usecase.enforceSecurity.ReadTransferData(ctx, readPartnerId); err != nil {
 		return nil, err
 	}
