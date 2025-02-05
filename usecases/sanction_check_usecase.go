@@ -163,7 +163,7 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 		OrgConfig: sc.OrgConfig,
 		Config:    *scc,
 		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"macron"},
+			"name": []string{refine.SearchTerm},
 		},
 	}
 
