@@ -82,6 +82,43 @@ func handleCreateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleConfigureSanctionCheck(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		iterationId := c.Param("iteration_id")
+		ctx := c.Request.Context()
+
+		var input dto.SanctionCheckConfig
+
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		config, err := dto.AdaptSanctionCheckConfigInputDto(input)
+
+		if presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+
+		scc, err := uc.ConfigureSanctionCheck(ctx, iterationId, config)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		output, err := dto.AdaptSanctionCheckConfig(scc)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, output)
+	}
+}
+
 func handleCreateDraftFromIteration(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
