@@ -33,3 +33,12 @@ func (r *SanctionCheckConfigRepository) UpdateSanctionCheckConfig(
 	args := r.Called(ctx, exec, scenarioIterationId, sanctionCheckConfig)
 	return args.Get(0).(models.SanctionCheckConfig), args.Error(1)
 }
+
+func (r *SanctionCheckConfigRepository) DeleteSanctionCheckConfig(
+	ctx context.Context,
+	exec repositories.Executor,
+	scenarioIterationId string,
+) error {
+	args := r.Called(ctx, exec, scenarioIterationId)
+	return args.Error(0)
+}
