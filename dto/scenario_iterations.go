@@ -213,7 +213,6 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 	updateScenarioIterationInput := models.UpdateScenarioIterationInput{
 		Id: iterationId,
 		Body: models.UpdateScenarioIterationBody{
-			SanctionCheckConfig:          nil,
 			ScoreReviewThreshold:         input.Body.ScoreReviewThreshold,
 			ScoreBlockAndReviewThreshold: input.Body.ScoreBlockAndReviewThreshold,
 			ScoreDeclineThreshold:        input.Body.ScoreDeclineThreshold,
