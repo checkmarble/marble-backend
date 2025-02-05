@@ -85,8 +85,13 @@ type ScenarioEvaluator interface {
 }
 
 type decisionWorkerSanctionCheckWriter interface {
-	InsertSanctionCheck(context.Context, repositories.Executor, string,
-		models.SanctionCheckWithMatches) (models.SanctionCheckWithMatches, error)
+	InsertSanctionCheck(
+		ctx context.Context,
+		exec repositories.Executor,
+		decisionid string,
+		sc models.SanctionCheckWithMatches,
+		storeMatches bool,
+	) (models.SanctionCheckWithMatches, error)
 }
 
 type AsyncDecisionWorker struct {
@@ -320,7 +325,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 
 	if decision.SanctionCheckExecution != nil {
 		_, err := w.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
-			decision.DecisionId, *decision.SanctionCheckExecution)
+			decision.DecisionId, *decision.SanctionCheckExecution, true)
 		if err != nil {
 			return false, nil, errors.Wrap(err, "could not store sanction check execution")
 		}

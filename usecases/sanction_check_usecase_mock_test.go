@@ -5,7 +5,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 type sanctionCheckEnforcerMock struct{}
@@ -27,8 +26,8 @@ func (sanctionCheckRepositoryMock) GetOrganizationById(ctx context.Context,
 		Id:   "orgid",
 		Name: "ACME Inc.",
 		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{
-			MatchThreshold: utils.Ptr(42),
-			MatchLimit:     utils.Ptr(10),
+			MatchThreshold: 42,
+			MatchLimit:     10,
 		},
 	}, nil
 }

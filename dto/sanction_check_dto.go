@@ -27,20 +27,20 @@ type SanctionCheckDto struct {
 }
 
 type SanctionCheckRequestDto struct {
-	Datasets  []string        `json:"datasets,omitempty"`
-	Limit     *int            `json:"limit,omitempty"`
-	Threshold *int            `json:"threshold,omitempty"`
-	Query     json.RawMessage `json:"query"`
+	Datasets    []string        `json:"datasets,omitempty"`
+	Limit       int             `json:"limit,omitempty"`
+	Threshold   int             `json:"threshold,omitempty"`
+	SearchInput json.RawMessage `json:"search_input"`
 }
 
 func AdaptSanctionCheckDto(m models.SanctionCheckWithMatches) SanctionCheckDto {
 	sanctionCheck := SanctionCheckDto{
 		Id: m.Id,
 		Request: SanctionCheckRequestDto{
-			Datasets:  m.Datasets,
-			Limit:     m.OrgConfig.MatchLimit,
-			Threshold: m.OrgConfig.MatchThreshold,
-			Query:     m.Query,
+			Datasets:    m.Datasets,
+			Limit:       m.OrgConfig.MatchLimit,
+			Threshold:   m.OrgConfig.MatchThreshold,
+			SearchInput: m.SearchInput,
 		},
 		Status:      m.Status.String(),
 		Partial:     m.Partial,
