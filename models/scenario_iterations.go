@@ -47,7 +47,6 @@ type UpdateScenarioIterationInput struct {
 
 type UpdateScenarioIterationBody struct {
 	TriggerConditionAstExpression *ast.Node
-	SanctionCheckConfig           *UpdateSanctionCheckConfigInput
 	ScoreReviewThreshold          *int
 	ScoreBlockAndReviewThreshold  *int
 	ScoreDeclineThreshold         *int
