@@ -26,6 +26,11 @@ type Organization struct {
 
 // TODO: Add other organization-level configuration options
 type OrganizationOpenSanctionsConfig struct {
+	MatchThreshold int
+	MatchLimit     int
+}
+
+type OrganizationOpenSanctionsConfigUpdateInput struct {
 	MatchThreshold *int
 	MatchLimit     *int
 }
@@ -37,7 +42,7 @@ type CreateOrganizationInput struct {
 type UpdateOrganizationInput struct {
 	Id                      string
 	DefaultScenarioTimezone *string
-	SanctionCheckConfig     OrganizationOpenSanctionsConfig
+	SanctionCheckConfig     OrganizationOpenSanctionsConfigUpdateInput
 }
 
 type SeedOrgConfiguration struct {

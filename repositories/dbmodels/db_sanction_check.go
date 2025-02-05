@@ -16,18 +16,20 @@ var (
 )
 
 type DBSanctionCheck struct {
-	Id              string          `db:"id"`
-	DecisionId      string          `db:"decision_id"`
-	Status          string          `db:"status"`
-	SearchInput     json.RawMessage `db:"search_input"`
-	SearchDatasets  []string        `db:"search_datasets"`
-	SearchThreshold *int            `db:"search_threshold"`
-	IsManual        bool            `db:"is_manual"`
-	RequestedBy     *string         `db:"requested_by"`
-	IsPartial       bool            `db:"is_partial"`
-	IsArchived      bool            `db:"is_archived"`
-	CreatedAt       time.Time       `db:"created_at"`
-	UpdatedAt       time.Time       `db:"updated_at"`
+	Id                string          `db:"id"`
+	DecisionId        string          `db:"decision_id"`
+	Status            string          `db:"status"`
+	SearchInput       json.RawMessage `db:"search_input"`
+	SearchDatasets    []string        `db:"search_datasets"`
+	SearchThreshold   int             `db:"search_threshold"`
+	MatchLimit        int             `db:"match_limit"`
+	IsManual          bool            `db:"is_manual"`
+	RequestedBy       *string         `db:"requested_by"`
+	IsPartial         bool            `db:"is_partial"`
+	IsArchived        bool            `db:"is_archived"`
+	InitialHasMatches bool            `db:"initial_has_matches"`
+	CreatedAt         time.Time       `db:"created_at"`
+	UpdatedAt         time.Time       `db:"updated_at"`
 }
 
 type DBSanctionCheckWithMatches struct {
@@ -38,13 +40,14 @@ type DBSanctionCheckWithMatches struct {
 func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheck, error) {
 	cfg := models.OrganizationOpenSanctionsConfig{
 		MatchThreshold: dto.SearchThreshold,
+		MatchLimit:     dto.MatchLimit,
 	}
 
 	return models.SanctionCheck{
 		Id:          dto.Id,
 		DecisionId:  dto.DecisionId,
 		Datasets:    dto.SearchDatasets,
-		Query:       dto.SearchInput,
+		SearchInput: dto.SearchInput,
 		OrgConfig:   cfg,
 		Partial:     dto.IsPartial,
 		Status:      models.SanctionCheckStatusFrom(dto.Status),
@@ -57,10 +60,6 @@ func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheck, error) {
 }
 
 func AdaptSanctionCheckWithMatches(dto DBSanctionCheckWithMatches) (models.SanctionCheckWithMatches, error) {
-	cfg := models.OrganizationOpenSanctionsConfig{
-		MatchThreshold: dto.SearchThreshold,
-	}
-
 	matches := make([]models.SanctionCheckMatch, 0, len(dto.Matches))
 	for _, match := range dto.Matches {
 		m, err := AdaptSanctionCheckMatch(match)
@@ -71,22 +70,10 @@ func AdaptSanctionCheckWithMatches(dto DBSanctionCheckWithMatches) (models.Sanct
 		matches = append(matches, m)
 	}
 
+	sc, _ := AdaptSanctionCheck(dto.DBSanctionCheck)
 	return models.SanctionCheckWithMatches{
-		SanctionCheck: models.SanctionCheck{
-			Id:          dto.Id,
-			DecisionId:  dto.DecisionId,
-			Datasets:    dto.SearchDatasets,
-			Query:       dto.SearchInput,
-			OrgConfig:   cfg,
-			Partial:     dto.IsPartial,
-			Status:      models.SanctionCheckStatusFrom(dto.Status),
-			IsManual:    dto.IsManual,
-			IsArchived:  dto.IsArchived,
-			RequestedBy: dto.RequestedBy,
-			CreatedAt:   dto.CreatedAt,
-			UpdatedAt:   dto.UpdatedAt,
-		},
-		Matches: matches,
-		Count:   len(matches),
+		SanctionCheck: sc,
+		Matches:       matches,
+		Count:         len(matches),
 	}, nil
 }

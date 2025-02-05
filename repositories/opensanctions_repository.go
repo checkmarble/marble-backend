@@ -195,12 +195,9 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg models.SanctionCheckCon
 	if len(cfg.Datasets) > 0 {
 		qs["include_dataset"] = cfg.Datasets
 	}
-	if orgCfg.MatchLimit != nil {
-		qs.Set("limit", fmt.Sprintf("%d", *orgCfg.MatchLimit))
-	}
-	if orgCfg.MatchThreshold != nil {
-		qs.Set("threshold", fmt.Sprintf("%.1f", float64(*orgCfg.MatchThreshold)/100))
-	}
+
+	qs.Set("threshold", fmt.Sprintf("%.1f", float64(orgCfg.MatchThreshold)/100))
+	qs.Set("limit", fmt.Sprintf("%d", orgCfg.MatchLimit))
 
 	return qs
 }
