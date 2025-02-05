@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type ScenarioIteration struct {
@@ -63,9 +64,33 @@ type SanctionCheckConfig struct {
 	Outcome     SanctionCheckOutcome
 }
 
+func (scc SanctionCheckConfig) Equal(other SanctionCheckConfig) bool {
+	if !pure_utils.SlicesEqual(scc.Datasets, other.Datasets) {
+		return false
+	}
+
+	if scc.TriggerRule.Hash() != other.TriggerRule.Hash() {
+		return false
+	}
+
+	if !scc.Query.equal(other.Query) {
+		return false
+	}
+
+	if !scc.Outcome.equal(other.Outcome) {
+		return false
+	}
+
+	return true
+}
+
 type SanctionCheckOutcome struct {
 	ForceOutcome  Outcome
 	ScoreModifier int
+}
+
+func (sco SanctionCheckOutcome) equal(other SanctionCheckOutcome) bool {
+	return sco.ForceOutcome == other.ForceOutcome && sco.ScoreModifier == other.ScoreModifier
 }
 
 type UpdateSanctionCheckConfigInput struct {
@@ -80,6 +105,10 @@ type UpdateSanctionCheckConfigInput struct {
 
 type SanctionCheckConfigQuery struct {
 	Name ast.Node
+}
+
+func (sccq SanctionCheckConfigQuery) equal(other SanctionCheckConfigQuery) bool {
+	return sccq.Name.Hash() == other.Name.Hash()
 }
 
 type UpdateSanctionCheckOutcomeInput struct {

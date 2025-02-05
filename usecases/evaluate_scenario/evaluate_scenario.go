@@ -25,11 +25,12 @@ import (
 const MAX_CONCURRENT_RULE_EXECUTIONS = 5
 
 type ScenarioEvaluationParameters struct {
-	Scenario          models.Scenario
-	TargetIterationId *string
-	ClientObject      models.ClientObject
-	DataModel         models.DataModel
-	Pivot             *models.Pivot
+	Scenario            models.Scenario
+	TargetIterationId   *string
+	ClientObject        models.ClientObject
+	DataModel           models.DataModel
+	Pivot               *models.Pivot
+	CachedSanctionCheck *models.SanctionCheckWithMatches
 }
 
 type EvalSanctionCheckUsecase interface {
@@ -295,16 +296,33 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		return models.ScenarioExecution{}, err
 	}
 
+	// if the live iteration and the test run iteration both have a sanction check config and they're the same, we just reuse
+	// the cached sanction check execution to avoid another (possibly paid) call to the sanction check service.
+	var copiedSanctionCheck *models.SanctionCheckWithMatches
 	scc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, testRunIteration.Id)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting sanction check config from scenario iteration")
+	}
+	if scc != nil {
+		liveVersionScc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(
+			ctx, exec, *params.Scenario.LiveVersionID)
+		if err != nil {
+			return models.ScenarioExecution{}, err
+		}
+		if liveVersionScc != nil && liveVersionScc.Equal(*scc) {
+			copiedSanctionCheck = params.CachedSanctionCheck
+			scc = nil
+		}
 	}
 	testRunIteration.SanctionCheckConfig = scc
 
 	se, err = e.processScenarioIteration(ctx, params, testRunIteration, start, logger, exec)
 	if err != nil {
 		return models.ScenarioExecution{}, err
+	}
+	if copiedSanctionCheck != nil {
+		se.SanctionCheckExecution = copiedSanctionCheck
 	}
 	se.TestRunId = testrun.Id
 	return se, nil

@@ -491,6 +491,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 	for _, webhookEventId := range sendWebhookEventId {
 		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
+
+	// TODO: this logic is NOT applied on the POST /decisions/all endpoint, even though it should
 	go func() {
 		phantomInput := models.CreatePhantomDecisionInput{
 			OrganizationId:     input.OrganizationId,
@@ -498,6 +500,9 @@ func (usecase *DecisionUsecase) CreateDecision(
 			ClientObject:       evaluationParameters.ClientObject,
 			Pivot:              evaluationParameters.Pivot,
 			TriggerObjectTable: input.TriggerObjectTable,
+		}
+		if decision.SanctionCheckExecution != nil {
+			evaluationParameters.CachedSanctionCheck = decision.SanctionCheckExecution
 		}
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), PHANTOM_DECISION_TIMEOUT)
 		defer cancel()
