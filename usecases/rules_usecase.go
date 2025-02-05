@@ -32,6 +32,14 @@ type RuleUsecaseRepository interface {
 		iterationId string,
 		begin, end time.Time,
 	) ([]models.RuleExecutionStat, error)
+	SanctionCheckExecutionStats(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		iterationId string,
+		begin, end time.Time,
+		base string, // "decisions" or "phantom_decisions"
+	) ([]models.RuleExecutionStat, error)
 	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
 	DeleteRule(ctx context.Context, exec repositories.Executor, ruleID string) error
 	CreateRules(ctx context.Context, exec repositories.Executor, rules []models.CreateRuleInput) ([]models.Rule, error)
@@ -63,7 +71,8 @@ func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) (
 		})
 }
 
-func (usecase *RuleUsecase) ListRuleExecution(ctx context.Context, testrunId string) ([]models.RuleExecutionStat, error) {
+// TODO: definitely not in the right place...
+func (usecase *RuleUsecase) TestRunStatsByRuleExecution(ctx context.Context, testrunId string) ([]models.RuleExecutionStat, error) {
 	var result []models.RuleExecutionStat
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		testrun, err := usecase.scenarioTestRunRepository.GetTestRunByID(ctx, tx, testrunId)
@@ -93,6 +102,32 @@ func (usecase *RuleUsecase) ListRuleExecution(ctx context.Context, testrunId str
 			return err
 		}
 		result = append(result, liveRules...)
+
+		sanctionChecksTestRun, err := usecase.repository.SanctionCheckExecutionStats(
+			ctx,
+			tx,
+			testrun.OrganizationId,
+			testrun.ScenarioIterationId,
+			testrun.CreatedAt,
+			testrun.ExpiresAt,
+			"phantom_decisions")
+		if err != nil {
+			return err
+		}
+		result = append(result, sanctionChecksTestRun...)
+
+		sanctionChecksLive, err := usecase.repository.SanctionCheckExecutionStats(
+			ctx,
+			tx,
+			testrun.OrganizationId,
+			testrun.ScenarioLiveIterationId,
+			testrun.CreatedAt,
+			testrun.ExpiresAt,
+			"decisions")
+		if err != nil {
+			return err
+		}
+		result = append(result, sanctionChecksLive...)
 		return nil
 	})
 	return result, err

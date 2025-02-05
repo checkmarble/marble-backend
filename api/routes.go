@@ -105,7 +105,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 		handleDecisionsDataByOutcomeAndScore(uc))
 	router.GET("/scenario-testruns/:test_run_id/data_by_rule_execution",
 		timeoutMiddleware(conf.BatchTimeout),
-		handleListRulesExecution(uc))
+		handleTestRunStatsByRulesExecution(uc))
 	router.GET("/scenario-testruns/:test_run_id", tom, handleGetScenarioTestRun(uc))
 	router.POST("/scenario-testruns/:test_run_id/cancel", tom, handleCancelScenarioTestRun(uc))
 
