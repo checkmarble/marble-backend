@@ -78,7 +78,7 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
 			Id:                      organizationID,
 			DefaultScenarioTimezone: data.DefaultScenarioTimezone,
-			SanctionCheckConfig: models.OrganizationOpenSanctionsConfig{
+			SanctionCheckConfig: models.OrganizationOpenSanctionsConfigUpdateInput{
 				MatchThreshold: data.SanctionsThreshold,
 				MatchLimit:     data.SanctionsLimit,
 			},

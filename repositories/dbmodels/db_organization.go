@@ -12,8 +12,8 @@ type DBOrganizationResult struct {
 	TransferCheckScenarioId    *string `db:"transfer_check_scenario_id"`
 	UseMarbleDbSchemaAsDefault bool    `db:"use_marble_db_schema_as_default"`
 	DefaultScenarioTimezone    *string `db:"default_scenario_timezone"`
-	SanctionCheckThreshold     *int    `db:"sanctions_threshold"`
-	SanctionCheckLimit         *int    `db:"sanctions_limit"`
+	SanctionCheckThreshold     int     `db:"sanctions_threshold"`
+	SanctionCheckLimit         int     `db:"sanctions_limit"`
 }
 
 const TABLE_ORGANIZATION = "organizations"

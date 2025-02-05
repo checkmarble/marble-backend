@@ -68,8 +68,13 @@ type SanctionCheckRepository interface {
 	GetSanctionCheck(context.Context, repositories.Executor, string) (models.SanctionCheckWithMatches, error)
 	GetSanctionCheckWithoutMatches(context.Context, repositories.Executor, string) (models.SanctionCheck, error)
 	ArchiveSanctionCheck(context.Context, repositories.Executor, string) error
-	InsertSanctionCheck(context.Context, repositories.Executor, string,
-		models.SanctionCheckWithMatches) (models.SanctionCheckWithMatches, error)
+	InsertSanctionCheck(
+		ctx context.Context,
+		exec repositories.Executor,
+		decisionid string,
+		sc models.SanctionCheckWithMatches,
+		storeMatches bool,
+	) (models.SanctionCheckWithMatches, error)
 	UpdateSanctionCheckStatus(ctx context.Context, exec repositories.Executor, id string,
 		status models.SanctionCheckStatus) error
 
@@ -226,7 +231,7 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 		}
 
 		if sanctionCheck, err = uc.repository.InsertSanctionCheck(ctx, tx,
-			decision.DecisionId, sanctionCheck); err != nil {
+			decision.DecisionId, sanctionCheck, true); err != nil {
 			return models.SanctionCheckWithMatches{}, err
 		}
 

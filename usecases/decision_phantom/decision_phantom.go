@@ -25,6 +25,7 @@ type PhantomDecisionUsecaseSanctionCheckRepository interface {
 		exec repositories.Executor,
 		phantomDecisionId string,
 		sanctionCheck models.SanctionCheckWithMatches,
+		storeMatches bool,
 	) (models.SanctionCheckWithMatches, error)
 }
 
@@ -118,13 +119,14 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 			}
 
 			if phantomDecision.SanctionCheckExecution != nil {
-				// Clear matches to avoid storing them in the decision, we don't need them in the case of a phantom decision
-				phantomDecision.SanctionCheckExecution.Matches = nil
+				// We don't need to store the matches in the case of a phantom decision
+				// because we are only interested in statistics on the sanction check status
 				_, err := usecase.externalRepository.InsertSanctionCheck(
 					ctx,
 					tx,
 					phantomDecision.PhantomDecisionId,
-					*phantomDecision.SanctionCheckExecution)
+					*phantomDecision.SanctionCheckExecution,
+					false)
 				if err != nil {
 					return errors.Wrap(err, "could not store sanction check execution")
 				}
