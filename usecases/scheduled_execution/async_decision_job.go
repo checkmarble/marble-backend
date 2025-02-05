@@ -353,12 +353,8 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		return false, nil, err
 	}
 	go func() {
-		evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
-			Scenario:     scenario,
-			ClientObject: object,
-			DataModel:    dataModel,
-			Pivot:        pivot,
-		}
+		evaluationParameters.TargetIterationId = nil
+		evaluationParameters.CachedSanctionCheck = scenarioExecution.SanctionCheckExecution
 		phantomInput := models.CreatePhantomDecisionInput{
 			OrganizationId: scenario.OrganizationId,
 			Scenario:       scenario,
