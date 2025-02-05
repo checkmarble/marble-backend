@@ -116,6 +116,8 @@ func (usecases *UsecasesWithCreds) NewPhantomDecisionUseCase() decision_phantom.
 	return decision_phantom.NewPhantomDecisionUseCase(
 		usecases.NewEnforcePhantomDecisionSecurity(),
 		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		&usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewScenarioEvaluator(),
 	)
