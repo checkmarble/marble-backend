@@ -43,6 +43,65 @@ type SanctionCheckConfig struct {
 	Query         *SanctionCheckConfigQuery `json:"query"`
 }
 
+func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckConfig, error) {
+	nodeDto, err := AdaptNodeDto(model.TriggerRule)
+	if err != nil {
+		return SanctionCheckConfig{}, nil
+	}
+
+	query, err := AdaptSanctionCheckConfigQuery(model.Query)
+	if err != nil {
+		return SanctionCheckConfig{}, err
+	}
+
+	config := SanctionCheckConfig{
+		Datasets:      model.Datasets,
+		ForceOutcome:  model.Outcome.ForceOutcome.MaybeString(),
+		ScoreModifier: &model.Outcome.ScoreModifier,
+		TriggerRule:   &nodeDto,
+		Query:         &query,
+	}
+
+	return config, nil
+}
+
+func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSanctionCheckConfigInput, error) {
+	config := models.UpdateSanctionCheckConfigInput{
+		Datasets: dto.Datasets,
+		Outcome: models.UpdateSanctionCheckOutcomeInput{
+			ScoreModifier: dto.ScoreModifier,
+		},
+	}
+
+	if dto.TriggerRule != nil {
+		astRule, err := AdaptASTNode(*dto.TriggerRule)
+		if err != nil {
+			return models.UpdateSanctionCheckConfigInput{}, errors.Wrap(
+				models.BadParameterError,
+				"invalid trigger",
+			)
+		}
+		config.TriggerRule = &astRule
+	}
+
+	if dto.Query != nil {
+		query, err := AdaptSanctionCheckConfigQueryDto(*dto.Query)
+		if err != nil {
+			return models.UpdateSanctionCheckConfigInput{}, errors.Wrap(
+				models.BadParameterError,
+				"invalid query",
+			)
+		}
+
+		config.Query = &query
+	}
+	if dto.ForceOutcome != nil {
+		config.Outcome.ForceOutcome = utils.Ptr(models.ForcedOutcomeFrom(*dto.ForceOutcome))
+	}
+
+	return config, nil
+}
+
 type SanctionCheckConfigQuery struct {
 	Name NodeDto `json:"name"`
 }
@@ -141,13 +200,12 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 // Update iteration DTO
 type UpdateScenarioIterationBody struct {
 	Body struct {
-		TriggerConditionAstExpression *NodeDto             `json:"trigger_condition_ast_expression"`
-		SanctionCheckConfig           *SanctionCheckConfig `json:"sanction_check_config"`
-		ScoreReviewThreshold          *int                 `json:"score_review_threshold,omitempty"`
-		ScoreBlockAndReviewThreshold  *int                 `json:"score_block_and_review_threshold,omitempty"`
-		ScoreRejectThreshold_deprec   *int                 `json:"score_reject_threshold,omitempty"` //nolint:tagliatelle
-		ScoreDeclineThreshold         *int                 `json:"score_decline_threshold,omitempty"`
-		Schedule                      *string              `json:"schedule"`
+		TriggerConditionAstExpression *NodeDto `json:"trigger_condition_ast_expression"`
+		ScoreReviewThreshold          *int     `json:"score_review_threshold,omitempty"`
+		ScoreBlockAndReviewThreshold  *int     `json:"score_block_and_review_threshold,omitempty"`
+		ScoreRejectThreshold_deprec   *int     `json:"score_reject_threshold,omitempty"` //nolint:tagliatelle
+		ScoreDeclineThreshold         *int     `json:"score_decline_threshold,omitempty"`
+		Schedule                      *string  `json:"schedule"`
 	} `json:"body,omitempty"`
 }
 
@@ -161,48 +219,6 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 			ScoreDeclineThreshold:        input.Body.ScoreDeclineThreshold,
 			Schedule:                     input.Body.Schedule,
 		},
-	}
-
-	if input.Body.SanctionCheckConfig != nil {
-		updateScenarioIterationInput.Body.SanctionCheckConfig = &models.UpdateSanctionCheckConfigInput{
-			Datasets:    input.Body.SanctionCheckConfig.Datasets,
-			TriggerRule: nil,
-			Outcome: models.UpdateSanctionCheckOutcomeInput{
-				ForceOutcome:  nil,
-				ScoreModifier: nil,
-			},
-		}
-
-		if input.Body.SanctionCheckConfig.TriggerRule != nil {
-			astNode, err := AdaptASTNode(*input.Body.SanctionCheckConfig.TriggerRule)
-			if err != nil {
-				return models.UpdateScenarioIterationInput{}, errors.Wrap(
-					models.BadParameterError,
-					"invalid trigger",
-				)
-			}
-
-			updateScenarioIterationInput.Body.SanctionCheckConfig.TriggerRule = &astNode
-		}
-		if input.Body.SanctionCheckConfig.Query != nil {
-			query, err := AdaptSanctionCheckConfigQueryDto(*input.Body.SanctionCheckConfig.Query)
-			if err != nil {
-				return models.UpdateScenarioIterationInput{}, errors.Wrap(
-					models.BadParameterError,
-					"invalid trigger",
-				)
-			}
-
-			updateScenarioIterationInput.Body.SanctionCheckConfig.Query = &query
-		}
-		if input.Body.SanctionCheckConfig.ForceOutcome != nil {
-			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ForceOutcome = utils.Ptr(models.ForcedOutcomeFrom(
-				*input.Body.SanctionCheckConfig.ForceOutcome))
-		}
-		if input.Body.SanctionCheckConfig.ScoreModifier != nil {
-			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ScoreModifier =
-				input.Body.SanctionCheckConfig.ScoreModifier
-		}
 	}
 
 	if input.Body.ScoreDeclineThreshold == nil {
@@ -229,7 +245,6 @@ type CreateScenarioIterationBody struct {
 	Body       *struct {
 		TriggerConditionAstExpression *NodeDto              `json:"trigger_condition_ast_expression"`
 		Rules                         []CreateRuleInputBody `json:"rules"`
-		SanctionCheckConfig           *SanctionCheckConfig  `json:"sanction_check_config,omitempty"`
 		ScoreReviewThreshold          *int                  `json:"score_review_threshold,omitempty"`
 		ScoreBlockAndReviewThreshold  *int                  `json:"score_block_and_review_threshold,omitempty"`
 		ScoreRejectThreshold_deprec   *int                  `json:"score_reject_threshold,omitempty"` //nolint:tagliatelle
