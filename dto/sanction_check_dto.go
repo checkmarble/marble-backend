@@ -53,16 +53,16 @@ func AdaptSanctionCheckDto(m models.SanctionCheckWithMatches) SanctionCheckDto {
 	return sanctionCheck
 }
 
-// TODO: accept query.
 type SanctionCheckRefineDto struct {
-	DecisionId string `json:"decision_id"`
-	Term       string `json:"term"`
+	DecisionId string         `json:"decision_id"`
+	Query      RefineQueryDto `json:"query"`
 }
 
 func AdaptSanctionCheckRefineDto(dto SanctionCheckRefineDto) models.SanctionCheckRefineRequest {
 	return models.SanctionCheckRefineRequest{
 		DecisionId: dto.DecisionId,
-		SearchTerm: dto.Term,
+		Type:       dto.Query.Type(),
+		Query:      AdaptRefineQueryDto(dto.Query),
 	}
 }
 
