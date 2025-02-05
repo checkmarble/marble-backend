@@ -77,8 +77,6 @@ type SanctionCheckRepository interface {
 		[]models.SanctionCheckMatchComment, error)
 	AddSanctionCheckMatchComment(ctx context.Context, exec repositories.Executor,
 		comment models.SanctionCheckMatchComment) (models.SanctionCheckMatchComment, error)
-	ListSanctionCheckMatchComments(ctx context.Context, exec repositories.Executor, matchId string) (
-		[]models.SanctionCheckMatchComment, error)
 	CreateSanctionCheckFile(ctx context.Context, exec repositories.Executor,
 		input models.SanctionCheckFileInput) (models.SanctionCheckFile, error)
 	GetSanctionCheckFile(ctx context.Context, exec repositories.Executor, matchId, fileId string) (models.SanctionCheckFile, error)
@@ -330,14 +328,6 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 	)
 
 	return updatedMatch, err
-}
-
-func (uc SanctionCheckUsecase) MatchListComments(ctx context.Context, matchId string) ([]models.SanctionCheckMatchComment, error) {
-	if _, err := uc.enforceCanReadOrUpdateSanctionCheckMatch(ctx, matchId); err != nil {
-		return nil, err
-	}
-
-	return uc.repository.ListSanctionCheckMatchComments(ctx, uc.executorFactory.NewExecutor(), matchId)
 }
 
 func (uc SanctionCheckUsecase) MatchAddComment(ctx context.Context, matchId string,
