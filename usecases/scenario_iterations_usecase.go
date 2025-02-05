@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/adhocore/gronx"
 	"github.com/cockroachdb/errors"
@@ -186,33 +185,7 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 				)
 			}
 
-			updatedScenarioIteration, err := usecase.repository.UpdateScenarioIteration(ctx, tx, scenarioIteration)
-
-			if body.SanctionCheckConfig != nil {
-				scCfg := body.SanctionCheckConfig
-
-				if scCfg.Query != nil {
-					if scCfg.Query.Name.Function != ast.FUNC_STRING_CONCAT {
-						return iteration, errors.New("query name filter must be a StringConcat")
-					}
-				}
-
-				if scCfg.Outcome.ForceOutcome != nil &&
-					!slices.Contains(models.ValidForcedOutcome, *scCfg.Outcome.ForceOutcome) {
-					return iteration, errors.Wrap(models.BadParameterError,
-						"sanction check config: invalid forced outcome")
-				}
-
-				scc, err := usecase.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(ctx, tx,
-					scenarioAndIteration.Iteration.Id, *body.SanctionCheckConfig)
-				if err != nil {
-					return iteration, err
-				}
-
-				updatedScenarioIteration.SanctionCheckConfig = &scc
-			}
-
-			return updatedScenarioIteration, err
+			return usecase.repository.UpdateScenarioIteration(ctx, tx, scenarioIteration)
 		})
 	if err != nil {
 		return models.ScenarioIteration{}, err
