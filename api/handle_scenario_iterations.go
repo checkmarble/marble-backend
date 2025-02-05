@@ -119,6 +119,20 @@ func handleConfigureSanctionCheck(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleDeleteSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		iterationId := c.Param("iteration_id")
+		ctx := c.Request.Context()
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+
+		if presentError(ctx, c, uc.DeleteSanctionCheckConfig(ctx, iterationId)) {
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
 func handleCreateDraftFromIteration(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

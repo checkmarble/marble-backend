@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-set/v2"
@@ -93,6 +94,7 @@ type SanctionCheckUsecase struct {
 	organizationRepository        SanctionCheckOrganizationRepository
 	decisionRepository            SanctionCheckDecisionRepository
 	inboxReader                   SanctionCheckInboxReader
+	scenarioFetcher               scenarios.ScenarioFetcher
 	openSanctionsProvider         SanctionCheckProvider
 	sanctionCheckConfigRepository SanctionCheckConfigRepository
 	blobBucketUrl                 string

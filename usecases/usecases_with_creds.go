@@ -144,6 +144,7 @@ func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecas
 		organizationRepository:        usecases.Repositories.OrganizationRepository,
 		decisionRepository:            &usecases.Repositories.MarbleDbRepository,
 		inboxReader:                   utils.Ptr(usecases.NewInboxReader()),
+		scenarioFetcher:               usecases.NewScenarioFetcher(),
 		openSanctionsProvider:         usecases.Repositories.OpenSanctionsRepository,
 		sanctionCheckConfigRepository: &usecases.Repositories.MarbleDbRepository,
 		repository:                    &usecases.Repositories.MarbleDbRepository,
