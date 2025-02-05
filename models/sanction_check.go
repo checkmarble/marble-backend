@@ -134,6 +134,7 @@ type SanctionCheckMatchUpdate struct {
 
 type SanctionCheckRefineRequest struct {
 	DecisionId string
+	SearchTerm string
 }
 
 type SanctionCheckMatchComment struct {
