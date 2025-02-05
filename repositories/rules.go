@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 
 	"github.com/Masterminds/squirrel"
@@ -136,6 +137,75 @@ func (repo *MarbleDbRepository) PhanomRulesExecutionStats(
 		query,
 		dbmodels.AdaptRuleExecutionStat,
 	)
+}
+
+func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+	iterationId string,
+	begin, end time.Time,
+	base string, // "decisions" or "phantom_decisions"
+) ([]models.RuleExecutionStat, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	var baseTable string
+	switch base {
+	case "decisions":
+		baseTable = "decisions"
+	case "phantom_decisions":
+		baseTable = "phantom_decisions"
+	default:
+		return nil, errors.Newf("invalid base table in SanctionCheckExecutionStats: %s", base)
+	}
+
+	sqlVersion := "SELECT version FROM scenario_iterations WHERE id = $1"
+	var version string
+	err := exec.QueryRow(ctx, sqlVersion, iterationId).Scan(&version)
+	if err != nil {
+		return nil, err
+	}
+	sqlName := "SELECT name FROM sanction_check_configs WHERE scenario_iteration_id = $1"
+	var name string
+	err = exec.QueryRow(ctx, sqlName, iterationId).Scan(&name)
+	if err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("IF(sc.initial_has_matches, 'hit', 'no_hit') AS outcome, COUNT(*) as total").
+		From(fmt.Sprintf("%s as d", baseTable)).
+		Join("sanction_checks as sc ON sc.decision_id = d.id").
+		Where(squirrel.GtOrEq{"d.created_at": begin}).
+		Where(squirrel.LtOrEq{"d.created_at": end}).
+		Where(squirrel.Eq{"d.org_id": organizationId}).
+		GroupBy("outcome")
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []models.RuleExecutionStat
+	for rows.Next() {
+		var stat models.RuleExecutionStat
+		err = rows.Scan(&stat.Outcome, &stat.Total)
+		if err != nil {
+			return nil, err
+		}
+		stat.Name = name
+		stat.Version = version
+		stats = append(stats, stat)
+	}
+
+	return stats, rows.Err()
 }
 
 func (repo *MarbleDbRepository) UpdateRule(ctx context.Context, exec Executor, rule models.UpdateRuleInput) error {
