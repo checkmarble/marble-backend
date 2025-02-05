@@ -146,8 +146,6 @@ func handleGetIngestedObject(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		fmt.Printf("len: %d\n", len(objects))
-
 		if len(objects) == 0 {
 			c.JSON(http.StatusNotFound, nil)
 			return

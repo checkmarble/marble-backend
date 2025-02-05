@@ -249,7 +249,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 		ctx,
 		exec,
 		qualifiedTableName,
-		columnNames,
+		append(columnNames, "valid_from"),
 		[]models.Filter{{
 			LeftSql:    fmt.Sprintf("%s.object_id", qualifiedTableName),
 			Operator:   ast.FUNC_EQUAL,
@@ -260,8 +260,8 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 		return nil, err
 	}
 
-	var ingestedObjects []models.DataModelObject
-	for _, object := range objectsAsMap {
+	ingestedObjects := make([]models.DataModelObject, len(objectsAsMap))
+	for i, object := range objectsAsMap {
 		ingestedObject := models.DataModelObject{Data: map[string]any{}, Metadata: map[string]any{}}
 		for fieldName, fieldValue := range object {
 			if slices.Contains(columnNames, fieldName) {
@@ -270,7 +270,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 				ingestedObject.Metadata[fieldName] = fieldValue
 			}
 		}
-		ingestedObjects = append(ingestedObjects, ingestedObject)
+		ingestedObjects[i] = ingestedObject
 	}
 
 	return ingestedObjects, nil
