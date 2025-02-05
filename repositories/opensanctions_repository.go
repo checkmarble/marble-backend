@@ -94,10 +94,10 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (
 	return dataset, nil
 }
 
-func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error) {
+func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.OpenSanctionsQuery) (models.SanctionRawSearchResponseWithMatches, error) {
 	req, rawQuery, err := repo.searchRequest(ctx, query)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.SanctionRawSearchResponseWithMatches{}, err
 	}
 
 	utils.LoggerFromContext(ctx).InfoContext(ctx, "sending sanction check query")
@@ -105,12 +105,12 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 
 	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
-		return models.SanctionCheckWithMatches{},
+		return models.SanctionRawSearchResponseWithMatches{},
 			errors.Wrap(err, "could not perform sanction check")
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return models.SanctionCheckWithMatches{}, fmt.Errorf(
+		return models.SanctionRawSearchResponseWithMatches{}, fmt.Errorf(
 			"sanction check API returned status %d", resp.StatusCode)
 	}
 
@@ -119,7 +119,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&matches); err != nil {
-		return models.SanctionCheckWithMatches{}, errors.Wrap(err,
+		return models.SanctionRawSearchResponseWithMatches{}, errors.Wrap(err,
 			"could not parse sanction check response")
 	}
 
@@ -128,8 +128,11 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 		return sanctionCheck, err
 	}
 
-	utils.LoggerFromContext(ctx).InfoContext(ctx, "got successful sanction check response",
-		"duration", time.Since(startedAt).Milliseconds(), "matches", len(sanctionCheck.Matches), "partial", sanctionCheck.Partial)
+	utils.LoggerFromContext(ctx).
+		InfoContext(ctx, "got successful sanction check response",
+			"duration", time.Since(startedAt).Milliseconds(),
+			"matches", len(sanctionCheck.Matches),
+			"partial", sanctionCheck.Partial)
 
 	return sanctionCheck, err
 }

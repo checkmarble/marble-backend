@@ -116,6 +116,33 @@ type SanctionCheckWithMatches struct {
 	Count   int
 }
 
+type SanctionRawSearchResponseWithMatches struct {
+	SearchInput       json.RawMessage
+	InitialHasMatches bool
+	Partial           bool
+
+	Matches []SanctionCheckMatch
+	Count   int
+}
+
+func (s SanctionRawSearchResponseWithMatches) AdaptSanctionCheckFromSearchResponse(query OpenSanctionsQuery) SanctionCheckWithMatches {
+	sanctionCheck := SanctionCheckWithMatches{
+		SanctionCheck: SanctionCheck{
+			Datasets:          query.Config.Datasets,
+			OrgConfig:         query.OrgConfig,
+			SearchInput:       s.SearchInput,
+			Partial:           s.Partial,
+			InitialHasMatches: s.InitialHasMatches,
+			CreatedAt:         time.Now(),
+			UpdatedAt:         time.Now(),
+		},
+		Matches: s.Matches,
+		Count:   s.Count,
+	}
+	sanctionCheck.Status = sanctionCheck.InitialStatusFromMatches()
+	return sanctionCheck
+}
+
 func (s SanctionCheckWithMatches) InitialStatusFromMatches() SanctionCheckStatus {
 	if len(s.Matches) == 0 {
 		return SanctionStatusNoHit

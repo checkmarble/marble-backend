@@ -76,10 +76,6 @@ type asyncDecisionWorkerRepository interface {
 	) (executed bool, err error)
 }
 
-type EvalSanctionCheckUsecase interface {
-	Execute(context.Context, string, models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
-}
-
 type ScenarioEvaluator interface {
 	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (se models.ScenarioExecution, err error)
 }

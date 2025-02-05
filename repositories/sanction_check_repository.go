@@ -188,9 +188,9 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		sanctionCheck.OrgConfig.MatchLimit,
 		sanctionCheck.Partial,
 		sanctionCheck.IsManual,
-		len(sanctionCheck.Matches) > 0,
+		sanctionCheck.InitialHasMatches,
 		sanctionCheck.RequestedBy,
-		sanctionCheck.InitialStatusFromMatches(),
+		sanctionCheck.Status.String(),
 	).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionChecksColumn, ",")))
 
 	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheck)

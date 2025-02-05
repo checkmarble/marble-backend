@@ -31,7 +31,7 @@ type SanctionCheckEnforceSecurityCase interface {
 
 type SanctionCheckProvider interface {
 	GetLatestLocalDataset(context.Context) (models.OpenSanctionsDataset, error)
-	Search(context.Context, models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
+	Search(context.Context, models.OpenSanctionsQuery) (models.SanctionRawSearchResponseWithMatches, error)
 }
 
 type SanctionCheckDecisionRepository interface {
@@ -182,16 +182,13 @@ func (uc SanctionCheckUsecase) Execute(
 		return models.SanctionCheckWithMatches{}, err
 	}
 
-	matches.Datasets = query.Config.Datasets
-	matches.OrgConfig = org.OpenSanctionsConfig
-
-	return matches, err
+	return matches.AdaptSanctionCheckFromSearchResponse(query), nil
 }
 
 func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.SanctionCheckRefineRequest,
 	requestedBy models.UserId,
 ) (models.SanctionCheckWithMatches, error) {
-	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.DecisionId)
+	decision, _, err := uc.enforceCanRefineSanctionCheck(ctx, refine.DecisionId)
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
 	}
@@ -204,7 +201,6 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 
 	query := models.OpenSanctionsQuery{
 		IsRefinement: true,
-		OrgConfig:    sc.OrgConfig,
 		Config:       *scc,
 		Type:         refine.Type,
 		Queries:      refine.Query,
