@@ -9,7 +9,7 @@ import (
 )
 
 func TestApiEndToEnd(t *testing.T) {
-	e := httpexpect.Default(t, fmt.Sprintf("http://localhost:%s", port))
+	e := httpexpect.Default(t, testServer.URL)
 
 	e.GET("/liveness").Expect().Status(http.StatusOK)
 
