@@ -24,7 +24,7 @@ func (r *SanctionCheckConfigRepository) GetSanctionCheckConfig(
 	return args.Get(0).(*models.SanctionCheckConfig), args.Error(1)
 }
 
-func (r *SanctionCheckConfigRepository) UpdateSanctionCheckConfig(
+func (r *SanctionCheckConfigRepository) UpsertSanctionCheckConfig(
 	ctx context.Context,
 	exec repositories.Executor,
 	scenarioIterationId string,

@@ -297,7 +297,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 					},
 				}
 
-				if _, err := usecase.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(
+				if _, err := usecase.sanctionCheckConfigRepository.UpsertSanctionCheckConfig(
 					ctx, tx, newScenarioIteration.Id, newSanctionCheckConfig); err != nil {
 					return models.ScenarioIteration{}, errors.Wrap(err,
 						"could not duplicate sanction check config for new iteration")
