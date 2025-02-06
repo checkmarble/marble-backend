@@ -68,7 +68,7 @@ type SanctionCheckRepository interface {
 	UpdateSanctionCheckStatus(ctx context.Context, exec repositories.Executor, id string,
 		status models.SanctionCheckStatus) error
 
-	ListSanctionCheckMatches(ctx context.Context, exec repositories.Executor, sanctionCheckId string, forUpdate ...bool) (
+	ListSanctionCheckMatches(ctx context.Context, exec repositories.Executor, sanctionCheckId string) (
 		[]models.SanctionCheckMatch, error)
 	GetSanctionCheckMatch(ctx context.Context, exec repositories.Executor, matchId string) (models.SanctionCheckMatch, error)
 	UpdateSanctionCheckMatchStatus(ctx context.Context, exec repositories.Executor,
@@ -264,7 +264,7 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 	err = uc.transactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Transaction) error {
-			allMatches, err := uc.repository.ListSanctionCheckMatches(ctx, tx, data.sanction.Id, true)
+			allMatches, err := uc.repository.ListSanctionCheckMatches(ctx, tx, data.sanction.Id)
 			if err != nil {
 				return err
 			}
