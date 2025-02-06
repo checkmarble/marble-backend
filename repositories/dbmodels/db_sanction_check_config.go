@@ -14,14 +14,17 @@ import (
 const TABLE_SANCTION_CHECK_CONFIGS = "sanction_check_configs"
 
 type DBSanctionCheckConfigs struct {
-	Id                  string                     `db:"id"`
-	ScenarioIterationId string                     `db:"scenario_iteration_id"`
-	Datasets            []string                   `db:"datasets"`
-	TriggerRule         []byte                     `db:"trigger_rule"`
-	Query               DBSanctionCheckConfigQuery `db:"query"`
-	ForcedOutcome       *string                    `db:"forced_outcome"`
-	ScoreModifier       int                        `db:"score_modifier"`
-	UpdatedAt           time.Time                  `db:"updated_at"`
+	Id                  string                      `db:"id"`
+	ScenarioIterationId string                      `db:"scenario_iteration_id"`
+	Name                string                      `db:"name"`
+	Description         string                      `db:"description"`
+	RuleGroup           string                      `db:"rule_group"`
+	Datasets            []string                    `db:"datasets"`
+	TriggerRule         []byte                      `db:"trigger_rule"`
+	Query               *DBSanctionCheckConfigQuery `db:"query"`
+	ForcedOutcome       *string                     `db:"forced_outcome"`
+	ScoreModifier       int                         `db:"score_modifier"`
+	UpdatedAt           time.Time                   `db:"updated_at"`
 }
 
 type DBSanctionCheckConfigQuery struct {
@@ -35,31 +38,38 @@ type DBSanctionCheckConfigQueryInput struct {
 var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
 
 func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckConfig, error) {
-	triggerRuleAst, err := AdaptSerializedAstExpression(db.TriggerRule)
-	if err != nil {
-		return models.SanctionCheckConfig{}, fmt.Errorf(
-			"unable to unmarshal formula ast expression: %w", err)
-	}
-
-	query, err := AdaptSanctionCheckConfigQuery(db.Query)
-	if err != nil {
-		return models.SanctionCheckConfig{}, errors.Wrap(err, "unable to unmarshal query formula")
-	}
-
-	var forcedOutcome models.Outcome = models.UnsetForcedOutcome
-
-	if db.ForcedOutcome != nil {
-		forcedOutcome = models.OutcomeFrom(*db.ForcedOutcome)
-	}
-
 	scc := models.SanctionCheckConfig{
+		Name:        db.Name,
+		Description: db.Description,
+		RuleGroup:   &db.RuleGroup,
 		Datasets:    db.Datasets,
-		TriggerRule: *triggerRuleAst,
-		Query:       query,
 		Outcome: models.SanctionCheckOutcome{
-			ForceOutcome:  forcedOutcome,
+			ForceOutcome:  models.UnsetForcedOutcome,
 			ScoreModifier: db.ScoreModifier,
 		},
+	}
+
+	if db.TriggerRule != nil {
+		triggerRuleAst, err := AdaptSerializedAstExpression(db.TriggerRule)
+		if err != nil {
+			return models.SanctionCheckConfig{}, fmt.Errorf(
+				"unable to unmarshal formula ast expression: %w", err)
+		}
+
+		scc.TriggerRule = triggerRuleAst
+	}
+
+	if db.Query != nil {
+		query, err := AdaptSanctionCheckConfigQuery(*db.Query)
+		if err != nil {
+			return models.SanctionCheckConfig{}, errors.Wrap(err, "unable to unmarshal query formula")
+		}
+
+		scc.Query = &query
+	}
+
+	if db.ForcedOutcome != nil {
+		scc.Outcome.ForceOutcome = models.OutcomeFrom(*db.ForcedOutcome)
 	}
 
 	return scc, nil

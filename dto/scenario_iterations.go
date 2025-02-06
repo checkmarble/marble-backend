@@ -52,30 +52,38 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		}
 		body.Rules[i] = apiRule
 	}
+
 	if si.SanctionCheckConfig != nil {
-		nodeDto, err := AdaptNodeDto(si.SanctionCheckConfig.TriggerRule)
-		if err != nil {
-			return ScenarioIterationWithBodyDto{},
-				errors.Wrap(err, "could not parse the sanction check trigger rule")
-		}
-		queryDto, err := AdaptSanctionCheckConfigQuery(si.SanctionCheckConfig.Query)
+		scc, err := AdaptSanctionCheckConfig(*si.SanctionCheckConfig)
 		if err != nil {
 			return ScenarioIterationWithBodyDto{},
 				errors.Wrap(err, "could not parse the sanction check trigger rule")
 		}
 
-		body.SanctionCheckConfig = &SanctionCheckConfig{
-			Datasets:      si.SanctionCheckConfig.Datasets,
-			ForceOutcome:  nil,
-			ScoreModifier: &si.SanctionCheckConfig.Outcome.ScoreModifier,
-			TriggerRule:   &nodeDto,
-			Query:         &queryDto,
-		}
+		body.SanctionCheckConfig = &scc
+		// nodeDto, err := AdaptNodeDto(si.SanctionCheckConfig.TriggerRule)
+		// if err != nil {
+		// 	return ScenarioIterationWithBodyDto{},
+		// 		errors.Wrap(err, "could not parse the sanction check trigger rule")
+		// }
+		// queryDto, err := AdaptSanctionCheckConfigQuery(si.SanctionCheckConfig.Query)
+		// if err != nil {
+		// 	return ScenarioIterationWithBodyDto{},
+		// 		errors.Wrap(err, "could not parse the sanction check trigger rule")
+		// }
 
-		if si.SanctionCheckConfig.Outcome.ForceOutcome != models.UnsetForcedOutcome {
-			body.SanctionCheckConfig.ForceOutcome =
-				si.SanctionCheckConfig.Outcome.ForceOutcome.MaybeString()
-		}
+		// body.SanctionCheckConfig = &SanctionCheckConfig{
+		// 	Datasets:      si.SanctionCheckConfig.Datasets,
+		// 	ForceOutcome:  nil,
+		// 	ScoreModifier: &si.SanctionCheckConfig.Outcome.ScoreModifier,
+		// 	TriggerRule:   &nodeDto,
+		// 	Query:         &queryDto,
+		// }
+
+		// if si.SanctionCheckConfig.Outcome.ForceOutcome != models.UnsetForcedOutcome {
+		// 	body.SanctionCheckConfig.ForceOutcome =
+		// 		si.SanctionCheckConfig.Outcome.ForceOutcome.MaybeString()
+		// }
 	}
 
 	if si.TriggerConditionAstExpression != nil {

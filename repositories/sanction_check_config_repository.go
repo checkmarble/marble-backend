@@ -48,30 +48,46 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 		triggerRule = astJson
 	}
 
-	var query dbmodels.DBSanctionCheckConfigQueryInput
+	var query *dbmodels.DBSanctionCheckConfigQueryInput
 
 	if cfg.Query != nil {
 		ser, err := dto.AdaptNodeDto(cfg.Query.Name)
 		if err != nil {
 			return models.SanctionCheckConfig{}, err
 		}
-		query.Name = ser
+
+		query = &dbmodels.DBSanctionCheckConfigQueryInput{
+			Name: ser,
+		}
 	}
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
-		Columns("scenario_iteration_id", "datasets", "forced_outcome", "score_modifier", "trigger_rule", "query").
+		Columns("scenario_iteration_id", "name", "description", "rule_group", "datasets",
+			"forced_outcome", "score_modifier", "trigger_rule", "query").
 		Values(
 			scenarioIterationId,
+			cfg.Name,
+			utils.Or(cfg.Description, ""),
+			utils.Or(cfg.RuleGroup, ""),
 			cfg.Datasets,
 			cfg.Outcome.ForceOutcome.MaybeString(),
 			utils.Or(cfg.Outcome.ScoreModifier, 0),
-			utils.Or(triggerRule, []byte(``)),
+			triggerRule,
 			query,
 		)
 
 	updateFields := make([]string, 0, 4)
 
+	if cfg.Name != nil {
+		updateFields = append(updateFields, "name = EXCLUDED.name")
+	}
+	if cfg.Description != nil {
+		updateFields = append(updateFields, "description = EXCLUDED.description")
+	}
+	if cfg.RuleGroup != nil {
+		updateFields = append(updateFields, "rule_group = EXCLUDED.rule_group")
+	}
 	if cfg.Datasets != nil {
 		updateFields = append(updateFields, "datasets = EXCLUDED.datasets")
 	}

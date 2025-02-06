@@ -54,9 +54,12 @@ type UpdateScenarioIterationBody struct {
 }
 
 type SanctionCheckConfig struct {
+	Name        string
+	Description string
+	RuleGroup   *string
 	Datasets    []string
-	TriggerRule ast.Node
-	Query       SanctionCheckConfigQuery
+	TriggerRule *ast.Node
+	Query       *SanctionCheckConfigQuery
 	Outcome     SanctionCheckOutcome
 }
 
@@ -66,6 +69,9 @@ type SanctionCheckOutcome struct {
 }
 
 type UpdateSanctionCheckConfigInput struct {
+	Name        *string
+	Description *string
+	RuleGroup   *string
 	Datasets    []string
 	TriggerRule *ast.Node
 	Query       *SanctionCheckConfigQuery
