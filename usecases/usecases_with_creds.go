@@ -138,6 +138,7 @@ func (usecases *UsecasesWithCreds) NewScenarioEvaluator() evaluate_scenario.Scen
 
 func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecase {
 	return SanctionCheckUsecase{
+		enforceSecurityScenario:       usecases.NewEnforceScenarioSecurity(),
 		enforceSecurityDecision:       usecases.NewEnforceDecisionSecurity(),
 		enforceSecurityCase:           usecases.NewEnforceCaseSecurity(),
 		caseRepository:                &usecases.Repositories.MarbleDbRepository,
