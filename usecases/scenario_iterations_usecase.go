@@ -285,8 +285,12 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 
 			if sanctionCheckConfig != nil {
 				newSanctionCheckConfig := models.UpdateSanctionCheckConfigInput{
+					Name:        &sanctionCheckConfig.Name,
+					Description: &sanctionCheckConfig.Description,
+					RuleGroup:   sanctionCheckConfig.RuleGroup,
 					Datasets:    sanctionCheckConfig.Datasets,
 					TriggerRule: sanctionCheckConfig.TriggerRule,
+					Query:       sanctionCheckConfig.Query,
 					Outcome: models.UpdateSanctionCheckOutcomeInput{
 						ForceOutcome:  &sanctionCheckConfig.Outcome.ForceOutcome,
 						ScoreModifier: &sanctionCheckConfig.Outcome.ScoreModifier,
@@ -294,7 +298,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 				}
 
 				if _, err := usecase.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(
-					ctx, tx, scenarioIterationId, newSanctionCheckConfig); err != nil {
+					ctx, tx, newScenarioIteration.Id, newSanctionCheckConfig); err != nil {
 					return models.ScenarioIteration{}, errors.Wrap(err,
 						"could not duplicate sanction check config for new iteration")
 				}
