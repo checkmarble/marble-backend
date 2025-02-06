@@ -110,7 +110,6 @@ func (*MarbleDbRepository) ListSanctionCheckMatches(
 	ctx context.Context,
 	exec Executor,
 	sanctionCheckId string,
-	forUpdate ...bool,
 ) ([]models.SanctionCheckMatch, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -124,10 +123,6 @@ func (*MarbleDbRepository) ListSanctionCheckMatches(
 			" comments ON matches.id = comments.sanction_check_match_id").
 		Where(squirrel.Eq{"sanction_check_id": sanctionCheckId}).
 		GroupBy("matches.id")
-
-	if len(forUpdate) > 0 && forUpdate[0] {
-		sql = sql.Suffix("FOR UPDATE")
-	}
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
 }
