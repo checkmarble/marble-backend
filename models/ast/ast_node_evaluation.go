@@ -98,7 +98,7 @@ type EvaluationStats struct {
 	Children     []EvaluationStats
 }
 
-func BuildEvaluationStats(root NodeEvaluation, parentCached bool) EvaluationStats {
+func BuildEvaluationStats(root NodeEvaluation) EvaluationStats {
 	stats := EvaluationStats{
 		Function: root.Function,
 		Took:     root.EvaluationPlan.Took,
@@ -111,20 +111,20 @@ func BuildEvaluationStats(root NodeEvaluation, parentCached bool) EvaluationStat
 		stats.Skipped = true
 		stats.SkippedCount = 1
 	}
-	if parentCached || root.EvaluationPlan.Cached {
-		stats.Cached = true
+	if root.EvaluationPlan.Cached {
+		stats.Skipped = true
 		stats.CachedCount = 1
 	}
 
 	for idx, child := range root.Children {
-		stats.Children[idx] = BuildEvaluationStats(child, stats.Cached)
+		stats.Children[idx] = BuildEvaluationStats(child)
 
 		stats.Nodes += stats.Children[idx].Nodes
 		stats.SkippedCount += stats.Children[idx].SkippedCount
 		stats.CachedCount += stats.Children[idx].CachedCount
 	}
 	for _, child := range root.NamedChildren {
-		namedChildrenStats := BuildEvaluationStats(child, stats.Cached)
+		namedChildrenStats := BuildEvaluationStats(child)
 
 		stats.Nodes += namedChildrenStats.Nodes
 		stats.SkippedCount += namedChildrenStats.SkippedCount
