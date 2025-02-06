@@ -30,7 +30,7 @@ func (repo *MarbleDbRepository) GetSanctionCheckConfig(
 	return SqlToOptionalModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
 }
 
-func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, exec Executor,
+func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, exec Executor,
 	scenarioIterationId string, cfg models.UpdateSanctionCheckConfigInput,
 ) (models.SanctionCheckConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
