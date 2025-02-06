@@ -117,12 +117,8 @@ func (*MarbleDbRepository) ListSanctionCheckMatches(
 
 	sql := NewQueryBuilder().
 		Select(columnsNames("matches", dbmodels.SelectSanctionCheckMatchesColumn)...).
-		Column("count(comments.id) AS comment_count").
 		From(dbmodels.TABLE_SANCTION_CHECK_MATCHES + " matches").
-		LeftJoin(dbmodels.TABLE_SANCTION_CHECK_MATCH_COMMENTS +
-			" comments ON matches.id = comments.sanction_check_match_id").
-		Where(squirrel.Eq{"sanction_check_id": sanctionCheckId}).
-		GroupBy("matches.id")
+		Where(squirrel.Eq{"sanction_check_id": sanctionCheckId})
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
 }
