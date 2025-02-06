@@ -59,16 +59,14 @@ func (wn WeightedNodes) Reorder(results []ast.NodeEvaluation) []ast.NodeEvaluati
 	for idx := range wn.original {
 		output[idx] = ast.NodeEvaluation{
 			Index:       idx,
+			Skipped:     true,
 			ReturnValue: nil,
-			EvaluationPlan: ast.NodeEvaluationPlan{
-				Skipped: true,
-			},
 		}
 	}
 
 	for _, result := range results {
 		output[result.Index] = result
-		output[result.Index].EvaluationPlan.Skipped = false
+		output[result.Index].Skipped = false
 	}
 
 	return output

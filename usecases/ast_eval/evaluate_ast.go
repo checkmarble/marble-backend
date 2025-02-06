@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -26,8 +25,6 @@ func NewEvaluationCache() *EvaluationCache {
 func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 	environment AstEvaluationEnvironment, node ast.Node,
 ) (ast.NodeEvaluation, bool) {
-	start := time.Now()
-
 	// Early exit for constant, because it should have no children.
 	if node.Function == ast.FUNC_CONSTANT {
 		return ast.NodeEvaluation{
@@ -49,11 +46,6 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 		if cached, ok := cache.Cache.Load(hash); ok {
 			response := cached.(nodeEvaluationResponse)
 			response.eval.Index = node.Index
-
-			response.eval.EvaluationPlan = ast.NodeEvaluationPlan{
-				Took:   0,
-				Cached: true,
-			}
 
 			return response.eval, response.ok
 		}
@@ -80,14 +72,12 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 	}
 
 	cachedExecutor := new(singleflight.Group)
-	notCached := false
 
 	if cache != nil {
 		cachedExecutor = cache.Executor
 	}
 
 	eval, _, _ := cachedExecutor.Do(fmt.Sprintf("%d", hash), func() (any, error) {
-		notCached = true
 		weightedNodes := NewWeightedNodes(environment, node, node.Children)
 
 		// eval each child
@@ -147,14 +137,6 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 
 	evaluation := eval.(nodeEvaluationResponse)
 	evaluation.eval.Index = node.Index
-
-	evaluation.eval.EvaluationPlan = ast.NodeEvaluationPlan{
-		Took: time.Since(start),
-	}
-
-	if !notCached {
-		evaluation.eval.SetCached()
-	}
 
 	return evaluation.eval, evaluation.ok
 }
