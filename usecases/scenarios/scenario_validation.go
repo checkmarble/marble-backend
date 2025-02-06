@@ -124,29 +124,46 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 
 	// Validate sanction check trigger and rule
 	if iteration.SanctionCheckConfig != nil {
-		ruleValidation := models.NewRuleValidation()
-
-		triggerRuleEvaluation, _ := ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-			iteration.SanctionCheckConfig.TriggerRule)
-		if _, ok := triggerRuleEvaluation.ReturnValue.(bool); !ok {
-			result.SanctionCheck.TriggerRule.Errors = append(ruleValidation.Errors, models.ScenarioValidationError{
-				Error: errors.Wrap(models.BadParameterError,
-					"sanction check trigger formula does not return a boolean"),
-				Code: models.FormulaMustReturnBoolean,
-			})
+		if iteration.SanctionCheckConfig.TriggerRule == nil {
+			result.SanctionCheck.TriggerRule.Errors = append(
+				result.SanctionCheck.TriggerRule.Errors, models.ScenarioValidationError{
+					Error: errors.Wrap(models.BadParameterError,
+						"sanction check does not have a trigger condition"),
+					Code: models.TriggerConditionRequired,
+				})
+		} else {
+			triggerRuleEvaluation, _ := ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
+				*iteration.SanctionCheckConfig.TriggerRule)
+			if _, ok := triggerRuleEvaluation.ReturnValue.(bool); !ok {
+				result.SanctionCheck.TriggerRule.Errors = append(
+					result.SanctionCheck.TriggerRule.Errors, models.ScenarioValidationError{
+						Error: errors.Wrap(models.BadParameterError,
+							"sanction check trigger formula does not return a boolean"),
+						Code: models.FormulaMustReturnBoolean,
+					})
+			}
 		}
 
 		queryValidation := models.NewRuleValidation()
-		queryValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-			iteration.SanctionCheckConfig.Query.Name)
 
-		if _, ok := queryValidation.RuleEvaluation.ReturnValue.(bool); !ok {
-			queryValidation.Errors = append(
-				queryValidation.Errors, models.ScenarioValidationError{
-					Error: errors.Wrap(models.BadParameterError,
-						"sanction check name filter does not return a string"),
-					Code: models.FormulaMustReturnString,
-				})
+		if iteration.SanctionCheckConfig.Query == nil {
+			queryValidation.Errors = append(queryValidation.Errors, models.ScenarioValidationError{
+				Error: errors.Wrap(models.BadParameterError,
+					"sanction check does not have a query formula"),
+				Code: models.RuleFormulaRequired,
+			})
+		} else {
+			queryValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
+				iteration.SanctionCheckConfig.Query.Name)
+
+			if _, ok := queryValidation.RuleEvaluation.ReturnValue.(string); !ok {
+				queryValidation.Errors = append(
+					queryValidation.Errors, models.ScenarioValidationError{
+						Error: errors.Wrap(models.BadParameterError,
+							"sanction check name filter does not return a string"),
+						Code: models.FormulaMustReturnString,
+					})
+			}
 		}
 
 		result.SanctionCheck.NameFilter = queryValidation
