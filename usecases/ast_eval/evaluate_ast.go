@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/mohae/deepcopy"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -39,23 +40,23 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 	}
 
 	type nodeEvaluationResponse struct {
-		eval ast.NodeEvaluation
-		ok   bool
+		Eval ast.NodeEvaluation
+		Ok   bool
 	}
 
 	hash := node.Hash()
 
 	if cache != nil {
 		if cached, ok := cache.Cache.Load(hash); ok {
-			response := cached.(nodeEvaluationResponse)
-			response.eval.Index = node.Index
+			response := deepcopy.Copy(cached).(nodeEvaluationResponse)
+			response.Eval.Index = node.Index
 
-			response.eval.EvaluationPlan = ast.NodeEvaluationPlan{
+			response.Eval.EvaluationPlan = ast.NodeEvaluationPlan{
 				Took:   0,
 				Cached: true,
 			}
 
-			return response.eval, response.ok
+			return response.Eval, response.Ok
 		}
 	}
 
@@ -80,14 +81,14 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 	}
 
 	cachedExecutor := new(singleflight.Group)
-	notCached := false
+	evaluated := false
 
 	if cache != nil {
 		cachedExecutor = cache.Executor
 	}
 
 	eval, _, _ := cachedExecutor.Do(fmt.Sprintf("%d", hash), func() (any, error) {
-		notCached = true
+		evaluated = true
 		weightedNodes := NewWeightedNodes(environment, node, node.Children)
 
 		// eval each child
@@ -139,22 +140,23 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 		evaluationResponse := nodeEvaluationResponse{evaluation, ok}
 
 		if cache != nil {
-			cache.Cache.Store(hash, evaluationResponse)
+			cache.Cache.Store(hash, deepcopy.Copy(evaluationResponse))
 		}
 
 		return evaluationResponse, nil
 	})
 
 	evaluation := eval.(nodeEvaluationResponse)
-	evaluation.eval.Index = node.Index
+	evaluation.Eval.Index = node.Index
 
-	evaluation.eval.EvaluationPlan = ast.NodeEvaluationPlan{
+	evaluation.Eval.EvaluationPlan = ast.NodeEvaluationPlan{
 		Took: time.Since(start),
 	}
 
-	if !notCached {
-		evaluation.eval.SetCached()
+	if !evaluated {
+		evaluation.Eval = deepcopy.Copy(evaluation.Eval).(ast.NodeEvaluation)
+		evaluation.Eval.SetCached()
 	}
 
-	return evaluation.eval, evaluation.ok
+	return evaluation.Eval, evaluation.Ok
 }

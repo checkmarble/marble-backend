@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
@@ -271,6 +272,7 @@ type countingNode struct {
 }
 
 func (n *countingNode) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
+	time.Sleep(time.Second)
 	n.hits.Add(1)
 
 	return evaluate.MakeEvaluateResult(true)
@@ -311,7 +313,10 @@ func TestCachedEvaluation(t *testing.T) {
 				}).
 				AddChild(ast.Node{Constant: true})
 
-			_, _ = EvaluateAst(context.TODO(), cache, environment, root)
+			result, _ := EvaluateAst(context.TODO(), cache, environment, root)
+
+			ast.BuildEvaluationStats(result, false)
+			ast.AdaptNodeEvaluationDto(result)
 		}()
 	}
 
