@@ -13,18 +13,33 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleSanctionCheckDataset(uc usecases.Usecases) func(c *gin.Context) {
+func handleSanctionCheckDatasetFreshness(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
 
-		dataset, err := uc.CheckDataset(ctx)
+		dataset, err := uc.CheckDatasetFreshness(ctx)
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
 		c.JSON(http.StatusOK, dto.AdaptSanctionCheckDataset(dataset))
+	}
+}
+
+func handleSanctionCheckDatasetCatalog(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+
+		datasets, err := uc.GetDatasetCatalog(ctx)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(datasets, dto.AdaptOpenSanctionsDatalogDataset))
 	}
 }
 

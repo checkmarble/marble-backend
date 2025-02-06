@@ -13,6 +13,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -34,15 +35,39 @@ type openSanctionsRequestQuery struct {
 	Properties models.OpenSanctionCheckFilter `json:"properties"`
 }
 
-func (repo OpenSanctionsRepository) GetLatestUpstreamDataset(ctx context.Context) (models.OpenSanctionsUpstreamDataset, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, OPEN_SANCTIONS_DATASET_URL, nil)
+func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) ([]models.OpenSanctionsCatalogDataset, error) {
+	catalogUrl := fmt.Sprintf("%s/catalog", repo.opensanctions.Host())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
 	if err != nil {
-		return models.OpenSanctionsUpstreamDataset{}, err
+		return nil, err
 	}
 
 	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
-		return models.OpenSanctionsUpstreamDataset{}, err
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	var catalog httpmodels.HTTPOpenSanctionCatalogResponse
+
+	if err := json.NewDecoder(resp.Body).Decode(&catalog); err != nil {
+		return nil, err
+	}
+
+	return pure_utils.Map(catalog.Datasets, httpmodels.AdaptOpenSanctionCatalogDataset), err
+}
+
+func (repo OpenSanctionsRepository) GetLatestUpstreamDatasetFreshness(ctx context.Context) (models.OpenSanctionsUpstreamDatasetFreshness, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, OPEN_SANCTIONS_DATASET_URL, nil)
+	if err != nil {
+		return models.OpenSanctionsUpstreamDatasetFreshness{}, err
+	}
+
+	resp, err := repo.opensanctions.Client().Do(req)
+	if err != nil {
+		return models.OpenSanctionsUpstreamDatasetFreshness{}, err
 	}
 
 	defer resp.Body.Close()
@@ -50,27 +75,28 @@ func (repo OpenSanctionsRepository) GetLatestUpstreamDataset(ctx context.Context
 	var dataset httpmodels.HTTPOpenSanctionRemoteDataset
 
 	if err := json.NewDecoder(resp.Body).Decode(&dataset); err != nil {
-		return models.OpenSanctionsUpstreamDataset{}, err
+		return models.OpenSanctionsUpstreamDatasetFreshness{}, err
 	}
 
-	return httpmodels.AdaptOpenSanctionDataset(dataset), err
+	return httpmodels.AdaptOpenSanctionDatasetFreshness(dataset), err
 }
 
-func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (models.OpenSanctionsDataset, error) {
-	upstream, err := repo.GetLatestUpstreamDataset(ctx)
+func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (models.OpenSanctionsDatasetFreshness, error) {
+	upstream, err := repo.GetLatestUpstreamDatasetFreshness(ctx)
 	if err != nil {
-		return models.OpenSanctionsDataset{}, errors.Wrap(err, "could not retrieve upstream dataset")
+		return models.OpenSanctionsDatasetFreshness{},
+			errors.Wrap(err, "could not retrieve upstream dataset")
 	}
 
 	u := fmt.Sprintf("%s/catalog", repo.opensanctions.Host())
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return models.OpenSanctionsDataset{}, err
+		return models.OpenSanctionsDatasetFreshness{}, err
 	}
 
 	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
-		return models.OpenSanctionsDataset{}, err
+		return models.OpenSanctionsDatasetFreshness{}, err
 	}
 
 	defer resp.Body.Close()
@@ -78,17 +104,18 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (
 	var localDataset httpmodels.HTTPOpenSanctionsLocalDatasets
 
 	if err := json.NewDecoder(resp.Body).Decode(&localDataset); err != nil {
-		return models.OpenSanctionsDataset{}, err
+		return models.OpenSanctionsDatasetFreshness{}, err
 	}
 
-	dataset, err := httpmodels.AdaptOpenSanctionsLocalDataset(localDataset)
+	dataset, err := httpmodels.AdaptOpenSanctionsLocalDatasetFreshness(localDataset)
 	if err != nil {
-		return models.OpenSanctionsDataset{}, errors.Wrap(err, "could not retrieve local dataset")
+		return models.OpenSanctionsDatasetFreshness{},
+			errors.Wrap(err, "could not retrieve local dataset")
 	}
 
 	dataset.Upstream = upstream
 	if err := dataset.CheckIsUpToDate(time.Now); err != nil {
-		return models.OpenSanctionsDataset{}, nil
+		return models.OpenSanctionsDatasetFreshness{}, nil
 	}
 
 	return dataset, nil

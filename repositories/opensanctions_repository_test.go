@@ -259,10 +259,10 @@ func TestDatasetOutdatedDetector(t *testing.T) {
 	}
 
 	for _, tt := range tts {
-		dataset := models.OpenSanctionsDataset{
+		dataset := models.OpenSanctionsDatasetFreshness{
 			Version:    tt.localVersion,
 			LastExport: tt.updatedAt,
-			Upstream: models.OpenSanctionsUpstreamDataset{
+			Upstream: models.OpenSanctionsUpstreamDatasetFreshness{
 				Version:    tt.upstreamVersion,
 				Schedule:   tt.schedule,
 				LastExport: tt.lastChange,
