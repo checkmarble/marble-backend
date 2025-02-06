@@ -4,11 +4,10 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/errors"
-	"github.com/mitchellh/hashstructure/v2"
 )
 
 type Node struct {
-	Index int `hash:"ignore"`
+	Index int
 
 	// A node is a constant xOR a function
 	Function Function
@@ -51,12 +50,6 @@ func (node Node) ReadConstantNamedChildString(name string) (string, error) {
 		return "", errors.New(fmt.Sprintf("\"%s\" constant is not a string: takes value %v", name, child.Constant))
 	}
 	return value, nil
-}
-
-func (node Node) Hash() uint64 {
-	hash, _ := hashstructure.Hash(node, hashstructure.FormatV2, nil)
-
-	return hash
 }
 
 // Cost calculates the weights of an AST subtree to reorder, when the parent is commutative,

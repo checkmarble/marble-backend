@@ -89,7 +89,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 			Code: models.TriggerConditionRequired,
 		})
 	} else {
-		result.Trigger.TriggerEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, *trigger)
+		result.Trigger.TriggerEvaluation, _ = ast_eval.EvaluateAst(ctx, dryRunEnvironment, *trigger)
 		if _, ok := result.Trigger.TriggerEvaluation.ReturnValue.(bool); !ok {
 			result.Trigger.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
 				Error: errors.Wrap(models.BadParameterError,
@@ -110,7 +110,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 			})
 			result.Rules.Rules[rule.Id] = ruleValidation
 		} else {
-			ruleValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, *formula)
+			ruleValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, dryRunEnvironment, *formula)
 			if _, ok := ruleValidation.RuleEvaluation.ReturnValue.(bool); !ok {
 				ruleValidation.Errors = append(ruleValidation.Errors, models.ScenarioValidationError{
 					Error: errors.Wrap(models.BadParameterError,
@@ -149,7 +149,7 @@ func (self *ValidateScenarioAstImpl) Validate(ctx context.Context,
 			"unknown specified type '%s'", expectedReturnTypeStr)
 	}
 
-	astEvaluation, _ := ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, *astNode)
+	astEvaluation, _ := ast_eval.EvaluateAst(ctx, dryRunEnvironment, *astNode)
 	astEvaluationReturnType := reflect.TypeOf(astEvaluation.ReturnValue)
 
 	if len(astEvaluation.FlattenErrors()) == 0 && astEvaluationReturnType != expectedReturnType {
