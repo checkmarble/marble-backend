@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -38,6 +39,7 @@ type RuleUsecaseRepository interface {
 		organizationId string,
 		iterationId string,
 		begin, end time.Time,
+		fakeStableRuleId string,
 		base string, // "decisions" or "phantom_decisions"
 	) ([]models.RuleExecutionStat, error)
 	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
@@ -103,6 +105,7 @@ func (usecase *RuleUsecase) TestRunStatsByRuleExecution(ctx context.Context, tes
 		}
 		result = append(result, liveRules...)
 
+		fakeStableRuleId := uuid.New().String()
 		sanctionChecksTestRun, err := usecase.repository.SanctionCheckExecutionStats(
 			ctx,
 			tx,
@@ -110,6 +113,7 @@ func (usecase *RuleUsecase) TestRunStatsByRuleExecution(ctx context.Context, tes
 			testrun.ScenarioIterationId,
 			testrun.CreatedAt,
 			testrun.ExpiresAt,
+			fakeStableRuleId,
 			"phantom_decisions")
 		if err != nil {
 			return err
@@ -123,6 +127,7 @@ func (usecase *RuleUsecase) TestRunStatsByRuleExecution(ctx context.Context, tes
 			testrun.ScenarioLiveIterationId,
 			testrun.CreatedAt,
 			testrun.ExpiresAt,
+			fakeStableRuleId,
 			"decisions")
 		if err != nil {
 			return err

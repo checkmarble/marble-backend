@@ -145,6 +145,7 @@ func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
 	organizationId string,
 	iterationId string,
 	begin, end time.Time,
+	fakeStableRuleId string,
 	base string, // "decisions" or "phantom_decisions"
 ) ([]models.RuleExecutionStat, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -175,13 +176,13 @@ func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
 	}
 
 	query := NewQueryBuilder().
-		Select("IF(sc.initial_has_matches, 'hit', 'no_hit') AS outcome, COUNT(*) as total").
+		Select("CASE WHEN sc.initial_has_matches THEN 'hit' ELSE 'no_hit' END AS outcome, COUNT(*) as total").
 		From(fmt.Sprintf("%s as d", baseTable)).
 		Join("sanction_checks as sc ON sc.decision_id = d.id").
 		Where(squirrel.GtOrEq{"d.created_at": begin}).
 		Where(squirrel.LtOrEq{"d.created_at": end}).
 		Where(squirrel.Eq{"d.org_id": organizationId}).
-		GroupBy("outcome")
+		GroupBy("1")
 
 	sql, args, err := query.ToSql()
 	if err != nil {
@@ -202,6 +203,7 @@ func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
 		}
 		stat.Name = name
 		stat.Version = version
+		stat.StableRuleId = &fakeStableRuleId
 		stats = append(stats, stat)
 	}
 
