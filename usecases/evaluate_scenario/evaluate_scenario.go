@@ -333,13 +333,11 @@ func evalScenarioRule(
 		dataModel,
 	)
 
-	ruleStats := ast.BuildEvaluationStats(ruleEvaluation)
-	functionStats := ruleStats.FunctionStats()
+	statNodes, statsSkipped, statsCached := ruleEvaluation.Stats(0, 0, 0)
 
 	logger.DebugContext(ctx, fmt.Sprintf("rule evaluated in %dms",
-		ruleStats.Took.Milliseconds()), "duration",
-		ruleStats.Took.Milliseconds(), "nodes", ruleStats.Nodes, "skipped", ruleStats.SkippedCount,
-		"cached", ruleStats.CachedCount, "nodes", functionStats)
+		ruleEvaluation.EvaluationPlan.Took.Milliseconds()), "duration",
+		ruleEvaluation.EvaluationPlan.Took.Milliseconds(), "nodes", statNodes, "skipped", statsSkipped, "cached", statsCached)
 
 	isAuthorizedError := ast.IsAuthorizedError(err)
 	if err != nil && !isAuthorizedError {
