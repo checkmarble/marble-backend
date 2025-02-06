@@ -79,7 +79,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.PATCH("/scenario-iteration-rules/:rule_id", tom, handleUpdateRule(uc))
 	router.DELETE("/scenario-iteration-rules/:rule_id", tom, handleDeleteRule(uc))
 
-	router.GET("/sanction-checks/dataset", tom, handleSanctionCheckDataset(uc))
+	router.GET("/sanction-checks/freshness", tom, handleSanctionCheckDatasetFreshness(uc))
+	router.GET("/sanction-checks/datasets", tom, handleSanctionCheckDatasetCatalog(uc))
 	router.GET("/sanction-checks", tom, handleListSanctionChecks(uc))
 	router.POST("/sanction-checks/refine", tom, handleRefineSanctionCheck(uc))
 	router.POST("/sanction-checks/search", tom, handleSearchSanctionCheck(uc))

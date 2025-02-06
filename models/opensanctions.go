@@ -9,6 +9,11 @@ import (
 
 const OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
 
+type OpenSanctionsCatalogDataset struct {
+	Name  string
+	Title string
+}
+
 type OpenSanctionsQuery struct {
 	IsRefinement bool
 	Type         string
@@ -19,15 +24,15 @@ type OpenSanctionsQuery struct {
 
 type OpenSanctionCheckFilter map[string][]string
 
-type OpenSanctionsUpstreamDataset struct {
+type OpenSanctionsUpstreamDatasetFreshness struct {
 	Version    string
 	Name       string
 	LastExport time.Time
 	Schedule   string
 }
 
-type OpenSanctionsDataset struct {
-	Upstream OpenSanctionsUpstreamDataset
+type OpenSanctionsDatasetFreshness struct {
+	Upstream OpenSanctionsUpstreamDatasetFreshness
 	Version  string
 	UpToDate bool
 
@@ -59,7 +64,7 @@ type TimeProvider func() time.Time
 //
 // The local dataset is always considered up to date if its version matches
 // that of its upstream counterpart.
-func (dataset *OpenSanctionsDataset) CheckIsUpToDate(tp TimeProvider) error {
+func (dataset *OpenSanctionsDatasetFreshness) CheckIsUpToDate(tp TimeProvider) error {
 	if dataset.Upstream.Version == dataset.Version {
 		(*dataset).UpToDate = true
 		return nil
