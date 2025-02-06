@@ -207,10 +207,8 @@ func TestAggregatesOrderedLast(t *testing.T) {
 	evaluation, ok := EvaluateAst(context.TODO(), nil, environment, root)
 
 	assert.True(t, ok)
-	assert.Equal(t, ast.NodeEvaluation{Index: 0, EvaluationPlan: ast.NodeEvaluationPlan{
-		Skipped: true,
-	}, ReturnValue: nil}, evaluation.Children[0])
-	assert.Equal(t, false, evaluation.Children[1].EvaluationPlan.Skipped)
+	assert.Equal(t, ast.NodeEvaluation{Index: 0, Skipped: true, ReturnValue: nil}, evaluation.Children[0])
+	assert.Equal(t, false, evaluation.Children[1].Skipped)
 	assert.Equal(t, true, evaluation.Children[1].ReturnValue)
 	assert.Equal(t, true, evaluation.ReturnValue)
 }
