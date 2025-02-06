@@ -17,6 +17,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+type SanctionCheckEnforceSecurityScenario interface {
+	UpdateScenario(models.Scenario) error
+}
+
 type SanctionCheckEnforceSecurityDecision interface {
 	ReadDecision(models.Decision) error
 }
@@ -87,6 +91,7 @@ type SanctionCheckRepository interface {
 }
 
 type SanctionCheckUsecase struct {
+	enforceSecurityScenario SanctionCheckEnforceSecurityScenario
 	enforceSecurityDecision SanctionCheckEnforceSecurityDecision
 	enforceSecurityCase     SanctionCheckEnforceSecurityCase
 
