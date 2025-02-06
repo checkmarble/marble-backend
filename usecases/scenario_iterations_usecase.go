@@ -286,7 +286,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 			if sanctionCheckConfig != nil {
 				newSanctionCheckConfig := models.UpdateSanctionCheckConfigInput{
 					Datasets:    sanctionCheckConfig.Datasets,
-					TriggerRule: &sanctionCheckConfig.TriggerRule,
+					TriggerRule: sanctionCheckConfig.TriggerRule,
 					Outcome: models.UpdateSanctionCheckOutcomeInput{
 						ForceOutcome:  &sanctionCheckConfig.Outcome.ForceOutcome,
 						ScoreModifier: &sanctionCheckConfig.Outcome.ScoreModifier,

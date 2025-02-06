@@ -25,7 +25,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	triggerEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		nil,
-		iteration.SanctionCheckConfig.TriggerRule,
+		*iteration.SanctionCheckConfig.TriggerRule,
 		params.Scenario.OrganizationId,
 		dataAccessor.ClientObject,
 		params.DataModel,
