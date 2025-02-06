@@ -296,8 +296,8 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		return models.ScenarioExecution{}, err
 	}
 
-	// if the live iteration and the test run iteration both have a sanction check config and they're the same, we just reuse
-	// the cached sanction check execution to avoid another (possibly paid) call to the sanction check service.
+	// If the live version had a sanction check executed, and if it has the same configuration (except for the trigger rule),
+	// we just reuse the cached sanction check execution to avoid another (possibly paid) call to the sanction check service.
 	var copiedSanctionCheck *models.SanctionCheckWithMatches
 	scc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, testRunIteration.Id)
 	if err != nil {
@@ -310,7 +310,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		if err != nil {
 			return models.ScenarioExecution{}, err
 		}
-		if liveVersionScc != nil && liveVersionScc.Equal(*scc) {
+		if params.CachedSanctionCheck != nil && liveVersionScc.HasSameQuery(*scc) {
 			copiedSanctionCheck = params.CachedSanctionCheck
 			scc = nil
 		}
