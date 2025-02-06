@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -210,5 +211,30 @@ func handleRefineSanctionCheck(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, dto.AdaptSanctionCheckDto(sanctionCheck))
+	}
+}
+
+func handleSearchSanctionCheck(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var payload dto.SanctionCheckRefineDto
+
+		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		sanctionCheck, err := uc.Search(ctx, dto.AdaptSanctionCheckRefineDto(payload))
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(dto.AdaptSanctionCheckDto(sanctionCheck).Matches, func(
+			match dto.SanctionCheckMatchDto,
+		) json.RawMessage {
+			return match.Payload
+		}))
 	}
 }

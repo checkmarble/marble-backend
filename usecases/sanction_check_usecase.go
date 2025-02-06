@@ -239,6 +239,34 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 	return sanctionCheck, nil
 }
 
+func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.SanctionCheckRefineRequest) (models.SanctionCheckWithMatches, error) {
+	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.DecisionId)
+	if err != nil {
+		return models.SanctionCheckWithMatches{}, err
+	}
+
+	scc, err := uc.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
+		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId)
+	if err != nil {
+		return models.SanctionCheckWithMatches{}, err
+	}
+
+	query := models.OpenSanctionsQuery{
+		IsRefinement: true,
+		OrgConfig:    sc.OrgConfig,
+		Config:       *scc,
+		Type:         refine.Type,
+		Queries:      refine.Query,
+	}
+
+	sanctionCheck, err := uc.Execute(ctx, decision.OrganizationId, query)
+	if err != nil {
+		return models.SanctionCheckWithMatches{}, err
+	}
+
+	return sanctionCheck, nil
+}
+
 func (uc SanctionCheckUsecase) UpdateMatchStatus(
 	ctx context.Context,
 	update models.SanctionCheckMatchUpdate,
