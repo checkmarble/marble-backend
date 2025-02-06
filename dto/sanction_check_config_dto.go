@@ -7,6 +7,9 @@ import (
 )
 
 type SanctionCheckConfig struct {
+	Name          *string                   `json:"name"`
+	Description   *string                   `json:"description"`
+	RuleGroup     *string                   `json:"rule_group,omitempty"`
 	Datasets      []string                  `json:"datasets,omitempty"`
 	ForceOutcome  *string                   `json:"force_outcome,omitempty"`
 	ScoreModifier *int                      `json:"score_modifier,omitempty"`
@@ -15,22 +18,31 @@ type SanctionCheckConfig struct {
 }
 
 func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckConfig, error) {
-	nodeDto, err := AdaptNodeDto(model.TriggerRule)
-	if err != nil {
-		return SanctionCheckConfig{}, nil
-	}
-
-	query, err := AdaptSanctionCheckConfigQuery(model.Query)
-	if err != nil {
-		return SanctionCheckConfig{}, err
-	}
-
 	config := SanctionCheckConfig{
+		Name:          &model.Name,
+		Description:   &model.Description,
+		RuleGroup:     model.RuleGroup,
 		Datasets:      model.Datasets,
 		ForceOutcome:  model.Outcome.ForceOutcome.MaybeString(),
 		ScoreModifier: &model.Outcome.ScoreModifier,
-		TriggerRule:   &nodeDto,
-		Query:         &query,
+	}
+
+	if model.TriggerRule != nil {
+		nodeDto, err := AdaptNodeDto(*model.TriggerRule)
+		if err != nil {
+			return SanctionCheckConfig{}, nil
+		}
+
+		config.TriggerRule = &nodeDto
+	}
+
+	if model.Query != nil {
+		query, err := AdaptSanctionCheckConfigQuery(*model.Query)
+		if err != nil {
+			return SanctionCheckConfig{}, err
+		}
+
+		config.Query = &query
 	}
 
 	return config, nil
@@ -38,7 +50,10 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 
 func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSanctionCheckConfigInput, error) {
 	config := models.UpdateSanctionCheckConfigInput{
-		Datasets: dto.Datasets,
+		Name:        dto.Name,
+		Description: dto.Description,
+		RuleGroup:   dto.RuleGroup,
+		Datasets:    dto.Datasets,
 		Outcome: models.UpdateSanctionCheckOutcomeInput{
 			ScoreModifier: dto.ScoreModifier,
 		},
