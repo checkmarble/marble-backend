@@ -64,12 +64,8 @@ type SanctionCheckConfig struct {
 	Outcome     SanctionCheckOutcome
 }
 
-func (scc SanctionCheckConfig) Equal(other SanctionCheckConfig) bool {
+func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
 	if !pure_utils.SlicesEqual(scc.Datasets, other.Datasets) {
-		return false
-	}
-
-	if scc.TriggerRule.Hash() != other.TriggerRule.Hash() {
 		return false
 	}
 
