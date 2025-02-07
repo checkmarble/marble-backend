@@ -117,8 +117,8 @@ func (*MarbleDbRepository) ListSanctionCheckMatches(
 	}
 
 	sql := NewQueryBuilder().
-		Select(columnsNames("matches", dbmodels.SelectSanctionCheckMatchesColumn)...).
-		From(dbmodels.TABLE_SANCTION_CHECK_MATCHES + " matches").
+		Select(dbmodels.SelectSanctionCheckMatchesColumn...).
+		From(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
 		Where(squirrel.Eq{"sanction_check_id": sanctionCheckId})
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
