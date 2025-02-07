@@ -33,13 +33,13 @@ func handleSanctionCheckDatasetCatalog(uc usecases.Usecases) func(c *gin.Context
 		ctx := c.Request.Context()
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
 
-		datasets, err := uc.GetDatasetCatalog(ctx)
+		catalog, err := uc.GetDatasetCatalog(ctx)
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(datasets, dto.AdaptOpenSanctionsDatalogDataset))
+		c.JSON(http.StatusOK, dto.AdaptOpenSanctionsCatalog(catalog))
 	}
 }
 

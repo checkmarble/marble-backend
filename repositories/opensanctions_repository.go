@@ -13,7 +13,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -35,17 +34,17 @@ type openSanctionsRequestQuery struct {
 	Properties models.OpenSanctionCheckFilter `json:"properties"`
 }
 
-func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) ([]models.OpenSanctionsCatalogDataset, error) {
+func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
 	catalogUrl := fmt.Sprintf("%s/catalog", repo.opensanctions.Host())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
 	if err != nil {
-		return nil, err
+		return models.OpenSanctionsCatalog{}, err
 	}
 
 	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
-		return nil, err
+		return models.OpenSanctionsCatalog{}, err
 	}
 
 	defer resp.Body.Close()
@@ -53,10 +52,10 @@ func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) ([]models.Op
 	var catalog httpmodels.HTTPOpenSanctionCatalogResponse
 
 	if err := json.NewDecoder(resp.Body).Decode(&catalog); err != nil {
-		return nil, err
+		return models.OpenSanctionsCatalog{}, err
 	}
 
-	return pure_utils.Map(catalog.Datasets, httpmodels.AdaptOpenSanctionCatalogDataset), err
+	return httpmodels.AdaptOpenSanctionCatalog(catalog.Datasets), err
 }
 
 func (repo OpenSanctionsRepository) GetLatestUpstreamDatasetFreshness(ctx context.Context) (models.OpenSanctionsUpstreamDatasetFreshness, error) {

@@ -30,7 +30,7 @@ type SanctionCheckEnforceSecurityCase interface {
 }
 
 type SanctionCheckProvider interface {
-	GetCatalog(ctx context.Context) ([]models.OpenSanctionsCatalogDataset, error)
+	GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error)
 	GetLatestLocalDataset(context.Context) (models.OpenSanctionsDatasetFreshness, error)
 	Search(context.Context, models.OpenSanctionsQuery) (models.SanctionRawSearchResponseWithMatches, error)
 }
@@ -119,7 +119,7 @@ func (uc SanctionCheckUsecase) CheckDatasetFreshness(ctx context.Context) (model
 	return uc.openSanctionsProvider.GetLatestLocalDataset(ctx)
 }
 
-func (uc SanctionCheckUsecase) GetDatasetCatalog(ctx context.Context) ([]models.OpenSanctionsCatalogDataset, error) {
+func (uc SanctionCheckUsecase) GetDatasetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
 	return uc.openSanctionsProvider.GetCatalog(ctx)
 }
 

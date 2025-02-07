@@ -9,6 +9,16 @@ import (
 
 const OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
 
+type OpenSanctionsCatalog struct {
+	Sections []OpenSanctionsCatalogSection
+}
+
+type OpenSanctionsCatalogSection struct {
+	Name     string
+	Title    string
+	Datasets []OpenSanctionsCatalogDataset
+}
+
 type OpenSanctionsCatalogDataset struct {
 	Name  string
 	Title string
