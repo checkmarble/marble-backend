@@ -175,6 +175,8 @@ func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
 		return nil, err
 	}
 
+	// gathers statistics based on the initial sanction check match for each decision (is_manual = false) and
+	// based on the initial status (has matches to review or none)
 	query := NewQueryBuilder().
 		Select("CASE WHEN sc.initial_has_matches THEN 'hit' ELSE 'no_hit' END AS outcome, COUNT(*) as total").
 		From(fmt.Sprintf("%s as d", baseTable)).
@@ -182,6 +184,7 @@ func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
 		Where(squirrel.GtOrEq{"d.created_at": begin}).
 		Where(squirrel.LtOrEq{"d.created_at": end}).
 		Where(squirrel.Eq{"d.org_id": organizationId}).
+		Where("sc.is_manual = false").
 		GroupBy("1")
 
 	sql, args, err := query.ToSql()
