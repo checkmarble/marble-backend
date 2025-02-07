@@ -130,6 +130,7 @@ type SanctionCheckMatchUpdate struct {
 	MatchId    string
 	ReviewerId UserId
 	Status     SanctionCheckMatchStatus
+	Comment    *SanctionCheckMatchComment
 }
 
 type SanctionCheckRefineRequest struct {

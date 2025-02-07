@@ -90,8 +90,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.GET("/sanction-checks/:sanctionCheckId/files/:fileId", tom,
 		handleDownloadSanctionCheckMatchFile(uc))
 	router.PATCH("/sanction-checks/matches/:id", tom, handleUpdateSanctionCheckMatchStatus(uc))
-	router.POST("/sanction-checks/matches/:id/comments", tom,
-		handleCreateSanctionCheckMatchComment(uc))
 
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))

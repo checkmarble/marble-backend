@@ -151,6 +151,7 @@ func handleDownloadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Cont
 	}
 }
 
+//nolint:unused
 func handleCreateSanctionCheckMatchComment(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

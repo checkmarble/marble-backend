@@ -312,6 +312,16 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 				return err
 			}
 
+			if update.Comment != nil {
+				comment, err := uc.MatchAddComment(ctx, data.match.Id, *update.Comment)
+				if err != nil {
+					return errors.Wrap(err, "could not add comment while updating match status")
+				}
+
+				// For now, there can be only one comment, added while reviewing, so we can directly add it.
+				updatedMatch.Comments = []models.SanctionCheckMatchComment{comment}
+			}
+
 			// If the match is confirmed, all other pending matches should be set to "skipped" and the sanction check to "confirmed_hit"
 			if update.Status == models.SanctionMatchStatusConfirmedHit {
 				for _, m := range pendingMatchesExcludingThis {
