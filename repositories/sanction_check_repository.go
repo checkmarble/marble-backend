@@ -173,7 +173,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		"decision_id",
 		"search_input",
 		"search_datasets",
-		"search_threshold",
+		"match_threshold",
 		"match_limit",
 		"is_partial",
 		"is_manual",
