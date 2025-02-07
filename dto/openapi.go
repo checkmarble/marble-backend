@@ -22,7 +22,7 @@ type Property struct {
 	Description *string             `json:"description,omitempty"`
 	Type        *string             `json:"type,omitempty"`
 	Format      *string             `json:"format,omitempty"`
-	Enum        []string            `json:"enum"`
+	Enum        []string            `json:"enum,omitempty"`
 	OneOf       []map[string]string `json:"oneOf,omitempty"`
 	Ref         *string             `json:"$ref,omitempty"`
 	Items       *Schema             `json:"items,omitempty"`
