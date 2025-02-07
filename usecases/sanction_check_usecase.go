@@ -335,17 +335,23 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 						return err
 					}
 
-					err = uc.caseRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-						CaseId:       data.decision.Case.Id,
-						UserId:       string(update.ReviewerId),
-						EventType:    models.SanctionCheckReviewed,
-						ResourceId:   &data.decision.DecisionId,
-						ResourceType: utils.Ptr(models.DecisionResourceType),
-						NewValue:     utils.Ptr(models.SanctionMatchStatusConfirmedHit.String()),
-					})
-					if err != nil {
-						return err
-					}
+				}
+
+				err = uc.repository.UpdateSanctionCheckStatus(ctx, tx, data.sanction.Id, models.SanctionStatusConfirmedHit)
+				if err != nil {
+					return err
+				}
+
+				err = uc.caseRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+					CaseId:       data.decision.Case.Id,
+					UserId:       string(update.ReviewerId),
+					EventType:    models.SanctionCheckReviewed,
+					ResourceId:   &data.decision.DecisionId,
+					ResourceType: utils.Ptr(models.DecisionResourceType),
+					NewValue:     utils.Ptr(models.SanctionMatchStatusConfirmedHit.String()),
+				})
+				if err != nil {
+					return err
 				}
 			}
 
