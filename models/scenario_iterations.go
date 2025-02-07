@@ -65,7 +65,7 @@ type SanctionCheckConfig struct {
 }
 
 func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
-	if !pure_utils.SlicesEqual(scc.Datasets, other.Datasets) {
+	if !pure_utils.ContainsSameElements(scc.Datasets, other.Datasets) {
 		return false
 	}
 
@@ -103,7 +103,13 @@ type SanctionCheckConfigQuery struct {
 	Name ast.Node
 }
 
-func (sccq SanctionCheckConfigQuery) equal(other SanctionCheckConfigQuery) bool {
+func (sccq *SanctionCheckConfigQuery) equal(other *SanctionCheckConfigQuery) bool {
+	if sccq == nil && other == nil {
+		return true
+	}
+	if sccq != nil && other == nil || sccq == nil && other != nil {
+		return false
+	}
 	return sccq.Name.Hash() == other.Name.Hash()
 }
 
