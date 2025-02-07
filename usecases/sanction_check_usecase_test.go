@@ -24,12 +24,11 @@ func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.Exe
 		enforceSecurityDecision: enforceSecurity,
 		enforceSecurityCase:     enforceSecurity,
 		organizationRepository:  mock,
-		decisionRepository:      mock,
+		externalRepository:      mock,
 		inboxReader:             mock,
 		repository:              &repositories.MarbleDbRepository{},
 		executorFactory:         exec,
 		transactionFactory:      txFac,
-		caseRepository:          mock,
 	}
 
 	return uc, exec
