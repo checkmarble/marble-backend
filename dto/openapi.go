@@ -9,8 +9,14 @@ import (
 )
 
 type Info struct {
-	Title   string `json:"title"`
-	Version string `json:"version"`
+	Title   string         `json:"title"`
+	Version string         `json:"version"`
+	License OpenapiLicense `json:"license"`
+}
+
+type OpenapiLicense struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 type Response struct {
@@ -343,7 +349,13 @@ func errorSchema() ComponentsSchema {
 func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 	ref := Reference{
 		OpenAPI: "3.0.3",
-		Info:    Info{},
+		Info: Info{
+			Title: "Marble API",
+			License: OpenapiLicense{
+				Name: "Elastic 2.0",
+				URL:  "https://github.com/checkmarble/marble-backend?tab=License-1-ov-file#readme",
+			},
+		},
 		Tags: []Tag{
 			{
 				Name:        "Ingestion",
