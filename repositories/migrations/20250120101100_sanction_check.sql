@@ -56,10 +56,10 @@ create index idx_sanction_check_match_comments_sanction_check_match_id on sancti
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
-drop table sanction_checks;
+drop table sanction_check_match_comments;
 
 drop table sanction_check_matches;
 
-drop table sanction_check_match_comments;
+drop table sanction_checks;
 
 -- +goose StatementEnd

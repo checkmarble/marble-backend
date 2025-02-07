@@ -11,7 +11,7 @@ drop not null;
 
 -- +goose StatementEnd
 -- +goose Down
-alter table sancion_checks_configs
+alter table sanction_check_configs
 drop column name,
 drop column description,
 drop column rule_group,
