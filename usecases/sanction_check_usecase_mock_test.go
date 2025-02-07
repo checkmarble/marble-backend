@@ -32,6 +32,18 @@ func (sanctionCheckRepositoryMock) GetOrganizationById(ctx context.Context,
 	}, nil
 }
 
+func (sanctionCheckRepositoryMock) CreateCaseEvent(
+	ctx context.Context,
+	exec repositories.Executor,
+	createCaseEventAttributes models.CreateCaseEventAttributes,
+) error {
+	return nil
+}
+
+func (sanctionCheckRepositoryMock) CreateCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) error {
+	return nil
+}
+
 func (sanctionCheckRepositoryMock) DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error) {
 	decisions := []models.Decision{
 		{

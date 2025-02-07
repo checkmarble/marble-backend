@@ -328,7 +328,7 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 				for _, m := range pendingMatchesExcludingThis {
 					_, err = uc.repository.UpdateSanctionCheckMatchStatus(ctx, tx, m, models.SanctionCheckMatchUpdate{
 						MatchId:    m.Id,
-						Status:     models.SanctionMatchStatusNoHit,
+						Status:     models.SanctionMatchStatusSkipped,
 						ReviewerId: update.ReviewerId,
 					})
 					if err != nil {

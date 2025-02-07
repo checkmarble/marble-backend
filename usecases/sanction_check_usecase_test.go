@@ -18,6 +18,7 @@ func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.Exe
 	enforceSecurity := sanctionCheckEnforcerMock{}
 	mock := sanctionCheckRepositoryMock{}
 	exec := executor_factory.NewExecutorFactoryStub()
+	txFac := executor_factory.NewTransactionFactoryStub(exec)
 
 	uc := SanctionCheckUsecase{
 		enforceSecurityDecision: enforceSecurity,
@@ -27,6 +28,8 @@ func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.Exe
 		inboxReader:             mock,
 		repository:              &repositories.MarbleDbRepository{},
 		executorFactory:         exec,
+		transactionFactory:      txFac,
+		caseRepository:          mock,
 	}
 
 	return uc, exec
@@ -76,4 +79,81 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 	assert.Equal(t, models.SanctionCheckMatchStatusFrom(scs[0].Matches[0].Status.String()), models.SanctionMatchStatusUnknown)
 	assert.Len(t, scs[0].Matches[0].Comments, 4)
 	assert.Equal(t, scs[0].Matches[0].Comments[0].Comment, mockComments[0].Comment)
+}
+
+func TestUpdateMatchStatus(t *testing.T) {
+	uc, exec := buildSanctionCheckUsecaseMock()
+
+	_, mockScmRow := utils.FakeStruct[dbmodels.DBSanctionCheckMatch](ops.WithCustomFieldProvider(
+		"SanctionCheckId", func() (interface{}, error) {
+			return "sanction_check_id", nil
+		}),
+		ops.WithCustomFieldProvider(
+			"Id", func() (interface{}, error) {
+				return "matchid", nil
+			}),
+		ops.WithCustomFieldProvider("Status", func() (interface{}, error) {
+			return "pending", nil
+		}))
+	// _, _ = utils.FakeStruct[dbmodels.DBSanctionCheckMatch](ops.WithCustomFieldProvider(
+	// 	"SanctionCheckId", func() (interface{}, error) {
+	// 		return "sanction_check_id", nil
+	// 	}),
+	// 	ops.WithCustomFieldProvider(
+	// 		"Id", func() (interface{}, error) {
+	// 			return "otherMatchId", nil
+	// 		}),
+	// 	ops.WithCustomFieldProvider("Status", func() (interface{}, error) {
+	// 		return "pending", nil
+	// 	}))
+	_, mockScRow := utils.FakeStruct[dbmodels.DBSanctionCheck](ops.WithCustomFieldProvider(
+		"Id", func() (interface{}, error) {
+			return "sanction_check_id", nil
+		}),
+		ops.WithCustomFieldProvider("Status", func() (interface{}, error) {
+			return "in_review", nil
+		}))
+
+	exec.Mock.
+		ExpectQuery(`SELECT id, sanction_check_id, opensanction_entity_id, status, query_ids, payload, reviewed_by, created_at, updated_at FROM sanction_check_matches WHERE id = \$1`).
+		WithArgs("matchid").
+		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionCheckMatchesColumn).
+			AddRow(mockScmRow...),
+		)
+	exec.Mock.
+		ExpectQuery(`SELECT id, decision_id, status, search_input, search_datasets, match_threshold, match_limit, is_manual, requested_by, is_partial, is_archived, initial_has_matches, created_at, updated_at FROM sanction_checks WHERE id = \$1`).
+		WithArgs("sanction_check_id").
+		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionChecksColumn).
+			AddRow(mockScRow...),
+		)
+	exec.Mock.ExpectQuery(`SELECT id, sanction_check_id, opensanction_entity_id, status, query_ids, payload, reviewed_by, created_at, updated_at FROM sanction_check_matches WHERE sanction_check_id = \$1`).
+		WithArgs("sanction_check_id").
+		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionCheckMatchesColumn).
+			AddRow(mockScmRow...),
+		// Note for the future reader: I can't easily test the case where other rows are returned and an update is called on them too,
+		// because pgxmock expects to match only one expected query for a given sql string. See also the commented block below.
+		// AddRow(mockOtherScmRow...).
+		// AddRow(mockOtherScmRow...),
+		)
+	exec.Mock.ExpectQuery(`UPDATE sanction_check_matches SET reviewed_by = \$1, status = \$2, updated_at = \$3 WHERE id = \$4 RETURNING id,sanction_check_id,opensanction_entity_id,status,query_ids,payload,reviewed_by,created_at,updated_at`).
+		WithArgs(models.UserId(""), models.SanctionMatchStatusConfirmedHit, "NOW()", "matchid").
+		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionCheckMatchesColumn).
+			AddRow(mockScmRow...),
+		)
+	// See note above
+	// exec.Mock.ExpectQuery(`UPDATE sanction_check_matches SET reviewed_by = \$1, status = \$2 WHERE id = \$3 RETURNING id,sanction_check_id,opensanction_entity_id,status,query_ids,payload,reviewed_by,created_at,updated_at`).
+	// 	WithArgs(models.UserId(""), models.SanctionMatchStatusConfirmedHit, "matchid").
+	// 	WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionCheckMatchesColumn).
+	// 		AddRow(mockScmRow...),
+	// 	)
+	exec.Mock.ExpectExec(`UPDATE sanction_checks SET status = \$1, updated_at = \$2 WHERE id = \$3`).
+		WithArgs(models.SanctionStatusConfirmedHit.String(), "NOW()", "sanction_check_id").
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	_, err := uc.UpdateMatchStatus(context.TODO(), models.SanctionCheckMatchUpdate{
+		MatchId: "matchid",
+		Status:  models.SanctionMatchStatusConfirmedHit,
+	})
+	assert.NoError(t, err)
+	assert.NoError(t, exec.Mock.ExpectationsWereMet())
 }
