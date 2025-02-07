@@ -34,23 +34,6 @@ type SanctionCheckProvider interface {
 	Search(context.Context, models.OpenSanctionsQuery) (models.SanctionRawSearchResponseWithMatches, error)
 }
 
-type SanctionCheckDecisionRepository interface {
-	DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error)
-}
-
-type SanctionCheckOrganizationRepository interface {
-	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
-}
-
-type SanctionCheckCaseRepository interface {
-	CreateCaseEvent(
-		ctx context.Context,
-		exec repositories.Executor,
-		createCaseEventAttributes models.CreateCaseEventAttributes,
-	) error
-	CreateCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) error
-}
-
 type SanctionCheckInboxReader interface {
 	ListInboxes(
 		ctx context.Context,
@@ -95,23 +78,38 @@ type SanctionCheckRepository interface {
 		sanctionCheckId, newSanctionCheckId string) error
 }
 
+type SanctionsCheckUsecaseExternalRepository interface {
+	CreateCaseEvent(
+		ctx context.Context,
+		exec repositories.Executor,
+		createCaseEventAttributes models.CreateCaseEventAttributes,
+	) error
+	CreateCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) error
+	DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error)
+}
+
+type SanctionCheckOrganizationRepository interface {
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
+}
+
 type SanctionCheckUsecase struct {
 	enforceSecurityScenario SanctionCheckEnforceSecurityScenario
 	enforceSecurityDecision SanctionCheckEnforceSecurityDecision
 	enforceSecurityCase     SanctionCheckEnforceSecurityCase
 
-	caseRepository                SanctionCheckCaseRepository
 	organizationRepository        SanctionCheckOrganizationRepository
-	decisionRepository            SanctionCheckDecisionRepository
-	inboxReader                   SanctionCheckInboxReader
-	scenarioFetcher               scenarios.ScenarioFetcher
-	openSanctionsProvider         SanctionCheckProvider
+	externalRepository            SanctionsCheckUsecaseExternalRepository
 	sanctionCheckConfigRepository SanctionCheckConfigRepository
-	blobBucketUrl                 string
-	blobRepository                repositories.BlobRepository
 	repository                    SanctionCheckRepository
-	executorFactory               executor_factory.ExecutorFactory
-	transactionFactory            executor_factory.TransactionFactory
+
+	inboxReader           SanctionCheckInboxReader
+	scenarioFetcher       scenarios.ScenarioFetcher
+	openSanctionsProvider SanctionCheckProvider
+	blobBucketUrl         string
+	blobRepository        repositories.BlobRepository
+
+	executorFactory    executor_factory.ExecutorFactory
+	transactionFactory executor_factory.TransactionFactory
 }
 
 func (uc SanctionCheckUsecase) CheckDataset(ctx context.Context) (models.OpenSanctionsDataset, error) {
@@ -120,7 +118,7 @@ func (uc SanctionCheckUsecase) CheckDataset(ctx context.Context) (models.OpenSan
 
 func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionId string) ([]models.SanctionCheckWithMatches, error) {
 	exec := uc.executorFactory.NewExecutor()
-	decisions, err := uc.decisionRepository.DecisionsById(ctx, exec, []string{decisionId})
+	decisions, err := uc.externalRepository.DecisionsById(ctx, exec, []string{decisionId})
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +340,7 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 					return err
 				}
 
-				err = uc.caseRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+				err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 					CaseId:       data.decision.Case.Id,
 					UserId:       string(update.ReviewerId),
 					EventType:    models.SanctionCheckReviewed,
@@ -363,7 +361,7 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 					return err
 				}
 
-				err = uc.caseRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+				err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 					CaseId:       data.decision.Case.Id,
 					UserId:       string(update.ReviewerId),
 					EventType:    models.SanctionCheckReviewed,
@@ -484,7 +482,7 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 			uploadedFiles[idx] = file
 		}
 
-		if err := uc.caseRepository.CreateCaseContributor(ctx, tx, match.Case.Id,
+		if err := uc.externalRepository.CreateCaseContributor(ctx, tx, match.Case.Id,
 			string(creds.ActorIdentity.UserId)); err != nil {
 			return errors.Wrap(err, "could not create case contributor for sanction check file upload")
 		}
@@ -562,7 +560,7 @@ func writeSanctionCheckFileToBlobStorage(ctx context.Context,
 
 func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decisionId string) (models.Decision, error) {
 	exec := uc.executorFactory.NewExecutor()
-	decision, err := uc.decisionRepository.DecisionsById(ctx, exec, []string{decisionId})
+	decision, err := uc.externalRepository.DecisionsById(ctx, exec, []string{decisionId})
 	if err != nil {
 		return models.Decision{}, err
 	}
