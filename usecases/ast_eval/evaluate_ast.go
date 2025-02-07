@@ -8,7 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/mohae/deepcopy"
+	"github.com/mitchellh/copystructure"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -48,15 +48,17 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 
 	if cache != nil {
 		if cached, ok := cache.Cache.Load(hash); ok {
-			response := deepcopy.Copy(cached).(nodeEvaluationResponse)
-			response.Eval.Index = node.Index
+			if response, err := copystructure.Copy(cached); err == nil {
+				response := response.(nodeEvaluationResponse)
+				response.Eval.Index = node.Index
 
-			response.Eval.EvaluationPlan = ast.NodeEvaluationPlan{
-				Took:   0,
-				Cached: true,
+				response.Eval.EvaluationPlan = ast.NodeEvaluationPlan{
+					Took:   0,
+					Cached: true,
+				}
+
+				return response.Eval, response.Ok
 			}
-
-			return response.Eval, response.Ok
 		}
 	}
 
@@ -140,7 +142,7 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 		evaluationResponse := nodeEvaluationResponse{evaluation, ok}
 
 		if cache != nil {
-			cache.Cache.Store(hash, deepcopy.Copy(evaluationResponse))
+			cache.Cache.Store(hash, evaluationResponse)
 		}
 
 		return evaluationResponse, nil
@@ -154,7 +156,14 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 	}
 
 	if !evaluated {
-		evaluation.Eval = deepcopy.Copy(evaluation.Eval).(ast.NodeEvaluation)
+		result, err := copystructure.Copy(evaluation.Eval)
+		if err != nil {
+			evaluation.Eval.Errors = append(evaluation.Eval.Errors, err)
+
+			return evaluation.Eval, false
+		}
+
+		evaluation.Eval = result.(ast.NodeEvaluation)
 		evaluation.Eval.SetCached()
 	}
 
