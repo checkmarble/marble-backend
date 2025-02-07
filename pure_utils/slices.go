@@ -1,19 +1,9 @@
 package pure_utils
 
-import "sort"
+import (
+	"github.com/hashicorp/go-set/v2"
+)
 
-func SlicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	sortedA := append([]string(nil), a...)
-	sortedB := append([]string(nil), b...)
-	sort.Strings(sortedA)
-	sort.Strings(sortedB)
-	for i, dataset := range sortedA {
-		if dataset != sortedB[i] {
-			return false
-		}
-	}
-	return true
+func ContainsSameElements[T comparable](a, b []T) bool {
+	return set.From(a).Equal(set.From(b))
 }
