@@ -102,6 +102,7 @@ func (*MarbleDbRepository) UpdateSanctionCheckStatus(ctx context.Context, exec E
 		NewQueryBuilder().
 			Update(dbmodels.TABLE_SANCTION_CHECKS).
 			Set("status", status.String()).
+			Set("updated_at", "NOW()").
 			Where(squirrel.Eq{"id": id}),
 	)
 }
@@ -150,7 +151,11 @@ func (*MarbleDbRepository) UpdateSanctionCheckMatchStatus(
 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
-		SetMap(map[string]any{"status": update.Status, "reviewed_by": update.ReviewerId}).
+		SetMap(map[string]any{
+			"status":      update.Status,
+			"reviewed_by": update.ReviewerId,
+			"updated_at":  "NOW()",
+		}).
 		Where(squirrel.Eq{"id": match.Id}).
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionCheckMatchesColumn, ",")))
 
