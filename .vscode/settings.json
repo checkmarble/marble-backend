@@ -24,5 +24,7 @@
       "github.copilot.enable": {
             "*": true,
             "env": false,
-      }
+      },
+      "Prettier-SQL.expressionWidth": 80,
+      "Prettier-SQL.SQLFlavourOverride": "postgresql",
 }
