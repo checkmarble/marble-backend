@@ -78,6 +78,8 @@ type SanctionCheckRepository interface {
 	ListSanctionCheckFiles(ctx context.Context, exec repositories.Executor, matchId string) ([]models.SanctionCheckFile, error)
 	CopySanctionCheckFiles(ctx context.Context, exec repositories.Executor,
 		sanctionCheckId, newSanctionCheckId string) error
+	AddSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
+		orgId, objectId string, entityId string, reviewerId models.UserId) error
 	IsSanctionCheckMatchWhitelisted(ctx context.Context, exec repositories.Executor,
 		orgId, objectId string, entityId []string) ([]models.SanctionCheckWhitelist, error)
 }
@@ -432,6 +434,15 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 					return err
 				}
 			}
+
+			if update.Status == models.SanctionMatchStatusNoHit && update.Whitelist && data.match.ObjectId != nil {
+				if err := uc.repository.AddSanctionCheckMatchWhitelist(ctx, tx,
+					data.decision.OrganizationId, *data.match.ObjectId,
+					data.match.EntityId, update.ReviewerId); err != nil {
+					return errors.Wrap(err, "could not whitelist match")
+				}
+			}
+
 			return nil
 		},
 	)

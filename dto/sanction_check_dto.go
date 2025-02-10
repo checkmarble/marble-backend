@@ -93,8 +93,9 @@ func AdaptSanctionCheckMatchDto(m models.SanctionCheckMatch) SanctionCheckMatchD
 }
 
 type SanctionCheckMatchUpdateDto struct {
-	Status  string  `json:"status"`
-	Comment *string `json:"comment,omitempty"`
+	Status    string  `json:"status"`
+	Comment   *string `json:"comment,omitempty"`
+	Whitelist bool    `json:"whitelist"`
 }
 
 func AdaptSanctionCheckMatchUpdateInputDto(matchId string, reviewerId models.UserId,
@@ -109,6 +110,7 @@ func AdaptSanctionCheckMatchUpdateInputDto(matchId string, reviewerId models.Use
 		MatchId:    matchId,
 		ReviewerId: reviewerId,
 		Status:     models.SanctionCheckMatchStatusFrom(dto.Status),
+		Whitelist:  dto.Whitelist,
 	}
 
 	if dto.Comment != nil {
