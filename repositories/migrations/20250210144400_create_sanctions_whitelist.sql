@@ -8,6 +8,9 @@ alter table sanction_check_configs
 alter table sanction_checks
     add column whitelisted_entities text[] not null default '{}';
 
+alter table sanction_check_matches
+    add column object_id text;
+
 create table sanction_check_whitelists (
     id uuid default uuid_generate_v4(),
     org_id uuid not null,
@@ -21,7 +24,7 @@ create table sanction_check_whitelists (
     constraint fk_user foreign key (whitelisted_by) references users (id)
 );
 
-create index idx_sanction_check_whitelist on sanction_check_whitelists (org_id, object_id, entity_id);
+create unique index idx_sanction_check_whitelist on sanction_check_whitelists (org_id, object_id, entity_id);
 
 -- +goose StatementEnd
 
@@ -33,6 +36,9 @@ alter table sanction_check_configs
 
 alter table sanction_checks
     drop column whitelisted_entities;
+
+alter table sanction_check_matches
+    drop column object_id;
 
 drop table sanction_check_whitelists;
 

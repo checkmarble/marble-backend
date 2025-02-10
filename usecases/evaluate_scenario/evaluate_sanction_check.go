@@ -90,6 +90,10 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 			return
 		}
 
+		for idx := range result.Matches {
+			result.Matches[idx].ObjectId = &whitelistField
+		}
+
 		result, err = e.evalSanctionCheckUsecase.FilterOutWhitelistedMatches(ctx,
 			params.Scenario.OrganizationId, result, whitelistField)
 		if err != nil {

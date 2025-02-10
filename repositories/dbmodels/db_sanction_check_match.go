@@ -18,6 +18,7 @@ type DBSanctionCheckMatch struct {
 	OpenSanctionEntityId string          `db:"opensanction_entity_id"`
 	Status               string          `db:"status"`
 	QueryIds             []string        `db:"query_ids"`
+	ObjectId             *string         `db:"object_id"`
 	Payload              json.RawMessage `db:"payload"`
 	ReviewedBy           *string         `db:"reviewed_by"`
 	CreatedAt            time.Time       `db:"created_at"`
@@ -34,6 +35,7 @@ func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckMatc
 		Status:          models.SanctionCheckMatchStatusFrom(dto.Status),
 		ReviewedBy:      dto.ReviewedBy,
 		QueryIds:        dto.QueryIds,
+		ObjectId:        dto.ObjectId,
 		Payload:         dto.Payload,
 	}
 

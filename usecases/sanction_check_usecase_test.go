@@ -50,7 +50,7 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 	exec.Mock.ExpectQuery(`
 		SELECT
 			sc.id, sc.decision_id, sc.status, sc.search_input, sc.search_datasets, sc.match_threshold, sc.match_limit, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.initial_has_matches, sc.whitelisted_entities, sc.created_at, sc.updated_at,
-			ARRAY_AGG\(ROW\(scm.id,scm.sanction_check_id,scm.opensanction_entity_id,scm.status,scm.query_ids,scm.payload,scm.reviewed_by,scm.created_at,scm.updated_at\)\) FILTER \(WHERE scm.id IS NOT NULL\) AS matches
+			ARRAY_AGG\(ROW\(scm.id,scm.sanction_check_id,scm.opensanction_entity_id,scm.status,scm.query_ids,scm.object_id,scm.payload,scm.reviewed_by,scm.created_at,scm.updated_at\)\) FILTER \(WHERE scm.id IS NOT NULL\) AS matches
 		FROM sanction_checks AS sc
 		LEFT JOIN sanction_check_matches AS scm ON sc.id = scm.sanction_check_id
 		WHERE sc.decision_id = \$1 AND sc.is_archived = \$2
@@ -120,7 +120,7 @@ func TestUpdateMatchStatus(t *testing.T) {
 		}))
 
 	exec.Mock.
-		ExpectQuery(`SELECT id, sanction_check_id, opensanction_entity_id, status, query_ids, payload, reviewed_by, created_at, updated_at FROM sanction_check_matches WHERE id = \$1`).
+		ExpectQuery(`SELECT id, sanction_check_id, opensanction_entity_id, status, query_ids, object_id, payload, reviewed_by, created_at, updated_at FROM sanction_check_matches WHERE id = \$1`).
 		WithArgs("matchid").
 		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionCheckMatchesColumn).
 			AddRow(mockScmRow...),
@@ -131,20 +131,20 @@ func TestUpdateMatchStatus(t *testing.T) {
 		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionChecksColumn).
 			AddRow(mockScRow...),
 		)
-	exec.Mock.ExpectQuery(`SELECT id, sanction_check_id, opensanction_entity_id, status, query_ids, payload, reviewed_by, created_at, updated_at FROM sanction_check_matches WHERE sanction_check_id = \$1`).
+	exec.Mock.ExpectQuery(`SELECT id, sanction_check_id, opensanction_entity_id, status, query_ids, object_id, payload, reviewed_by, created_at, updated_at FROM sanction_check_matches WHERE sanction_check_id = \$1`).
 		WithArgs("sanction_check_id").
 		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionCheckMatchesColumn).
 			AddRow(mockScmRow...).
 			AddRows(mockOtherScmRows...),
 		)
-	exec.Mock.ExpectQuery(`UPDATE sanction_check_matches SET reviewed_by = \$1, status = \$2, updated_at = \$3 WHERE id = \$4 RETURNING id,sanction_check_id,opensanction_entity_id,status,query_ids,payload,reviewed_by,created_at,updated_at`).
+	exec.Mock.ExpectQuery(`UPDATE sanction_check_matches SET reviewed_by = \$1, status = \$2, updated_at = \$3 WHERE id = \$4 RETURNING id,sanction_check_id,opensanction_entity_id,status,query_ids,object_id,payload,reviewed_by,created_at,updated_at`).
 		WithArgs(models.UserId(""), models.SanctionMatchStatusConfirmedHit, "NOW()", "matchid").
 		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionCheckMatchesColumn).
 			AddRow(mockScmRow...),
 		)
 
 	for i := range 3 {
-		exec.Mock.ExpectQuery(`UPDATE sanction_check_matches SET reviewed_by = \$1, status = \$2, updated_at = \$3 WHERE id = \$4 RETURNING id,sanction_check_id,opensanction_entity_id,status,query_ids,payload,reviewed_by,created_at,updated_at`).
+		exec.Mock.ExpectQuery(`UPDATE sanction_check_matches SET reviewed_by = \$1, status = \$2, updated_at = \$3 WHERE id = \$4 RETURNING id,sanction_check_id,opensanction_entity_id,status,query_ids,object_id,payload,reviewed_by,created_at,updated_at`).
 			WithArgs(models.UserId(""), models.SanctionMatchStatusSkipped, "NOW()", mockOtherScms[i].Id).
 			WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionCheckMatchesColumn).
 				AddRow(mockOtherScmRows[i]...),

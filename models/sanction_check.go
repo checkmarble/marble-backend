@@ -165,6 +165,7 @@ type SanctionCheckMatch struct {
 	EntityId        string
 	Status          SanctionCheckMatchStatus
 	QueryIds        []string
+	ObjectId        *string
 	Payload         []byte
 	ReviewedBy      *string
 	Comments        []SanctionCheckMatchComment
@@ -175,6 +176,7 @@ type SanctionCheckMatchUpdate struct {
 	ReviewerId UserId
 	Status     SanctionCheckMatchStatus
 	Comment    *SanctionCheckMatchComment
+	Whitelist  bool
 }
 
 type SanctionCheckRefineRequest struct {
