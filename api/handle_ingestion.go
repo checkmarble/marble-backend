@@ -62,7 +62,14 @@ func handleIngestionPartialUpsert(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody, payload_parser.WithAllowPatch())
-		if presentError(ctx, c, err) {
+		var validationError models.IngestionValidationErrorsSingle
+		if errors.As(err, &validationError) {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: "Input validation error",
+				Details: validationError,
+			})
+			return
+		} else if presentError(ctx, c, err) {
 			return
 		}
 		if nb == 0 {

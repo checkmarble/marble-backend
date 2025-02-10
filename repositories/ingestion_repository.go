@@ -141,8 +141,12 @@ func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(
 		for i, columnName := range columnNames {
 			objectAsMap[columnName] = values[i]
 		}
+		id, ok := objectAsMap["id"].([16]byte)
+		if !ok {
+			return nil, fmt.Errorf("error while converting ID to UUID")
+		}
 		output = append(output, ingestedObject{
-			id:        objectAsMap["id"].(string),
+			id:        uuid.UUID(id).String(),
 			objectId:  objectAsMap["object_id"].(string),
 			updatedAt: objectAsMap["updated_at"].(time.Time),
 			data:      objectAsMap,

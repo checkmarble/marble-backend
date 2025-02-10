@@ -1,8 +1,11 @@
 package dto
 
+import "encoding/json"
+
 type APIErrorResponse struct {
-	Message   string    `json:"message"`
-	ErrorCode ErrorCode `json:"error_code"`
+	Message   string         `json:"message"`
+	Details   json.Marshaler `json:"details,omitempty"`
+	ErrorCode ErrorCode      `json:"error_code"`
 }
 
 type ErrorCode string
