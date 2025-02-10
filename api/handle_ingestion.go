@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -33,6 +34,34 @@ func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody)
+		if presentError(ctx, c, err) {
+			return
+		}
+		if nb == 0 {
+			c.Status(http.StatusOK)
+			return
+		}
+		c.Status(http.StatusCreated)
+	}
+}
+
+func handleIngestionPartialUpsert(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		objectType := c.Param("object_type")
+		objectBody, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
+		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody, payload_parser.WithAllowPatch())
 		if presentError(ctx, c, err) {
 			return
 		}
