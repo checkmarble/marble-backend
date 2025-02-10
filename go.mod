@@ -24,6 +24,7 @@ require (
 	github.com/guregu/null/v5 v5.0.0
 	github.com/h2non/gock v1.2.0
 	github.com/hashicorp/go-set/v2 v2.1.0
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/mitchellh/hashstructure/v2 v2.0.2

@@ -17,9 +17,15 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 )
 
-const OPEN_SANCTIONS_DATASET_URL = "https://data.opensanctions.org/datasets/latest/default/index.json"
+const (
+	OPEN_SANCTIONS_DATASET_URL       = "https://data.opensanctions.org/datasets/latest/default/index.json"
+	OPEN_SANCTIONS_CATALOG_CACHE_KEY = "catalog"
+)
+
+var OPEN_SANCTIONS_DATASET_CACHE = expirable.NewLRU[string, models.OpenSanctionsCatalog](1, nil, time.Hour)
 
 type OpenSanctionsRepository struct {
 	opensanctions infra.OpenSanctions
@@ -35,6 +41,10 @@ type openSanctionsRequestQuery struct {
 }
 
 func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
+	if cached, ok := OPEN_SANCTIONS_DATASET_CACHE.Get(OPEN_SANCTIONS_CATALOG_CACHE_KEY); ok {
+		return cached, nil
+	}
+
 	catalogUrl := fmt.Sprintf("%s/catalog", repo.opensanctions.Host())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
@@ -55,7 +65,11 @@ func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) (models.Open
 		return models.OpenSanctionsCatalog{}, err
 	}
 
-	return httpmodels.AdaptOpenSanctionCatalog(catalog.Datasets), err
+	catalogModel := httpmodels.AdaptOpenSanctionCatalog(catalog.Datasets)
+
+	OPEN_SANCTIONS_DATASET_CACHE.Add(OPEN_SANCTIONS_CATALOG_CACHE_KEY, catalogModel)
+
+	return catalogModel, err
 }
 
 func (repo OpenSanctionsRepository) GetLatestUpstreamDatasetFreshness(ctx context.Context) (models.OpenSanctionsUpstreamDatasetFreshness, error) {
