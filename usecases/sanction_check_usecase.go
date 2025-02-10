@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -77,6 +78,8 @@ type SanctionCheckRepository interface {
 	ListSanctionCheckFiles(ctx context.Context, exec repositories.Executor, matchId string) ([]models.SanctionCheckFile, error)
 	CopySanctionCheckFiles(ctx context.Context, exec repositories.Executor,
 		sanctionCheckId, newSanctionCheckId string) error
+	IsSanctionCheckMatchWhitelisted(ctx context.Context, exec repositories.Executor,
+		orgId, objectId string, entityId []string) ([]models.SanctionCheckWhitelist, error)
 }
 
 type SanctionsCheckUsecaseExternalRepository interface {
@@ -278,6 +281,51 @@ func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.Sanctio
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
 	}
+
+	return sanctionCheck, nil
+}
+
+func (uc SanctionCheckUsecase) FilterOutWhitelistedMatches(ctx context.Context, orgId string,
+	sanctionCheck models.SanctionCheckWithMatches, objectId string,
+) (models.SanctionCheckWithMatches, error) {
+	matchesSet := set.From(pure_utils.Map(sanctionCheck.Matches, func(m models.SanctionCheckMatch) string {
+		return m.EntityId
+	}))
+
+	whitelists, err := uc.repository.IsSanctionCheckMatchWhitelisted(ctx,
+		uc.executorFactory.NewExecutor(), orgId, objectId, matchesSet.Slice())
+	if err != nil {
+		return sanctionCheck, err
+	}
+
+	matchesAfterWhitelisting := make([]models.SanctionCheckMatch, 0, len(sanctionCheck.Matches))
+
+	for _, match := range sanctionCheck.Matches {
+		isWhitelisted := slices.ContainsFunc(whitelists, func(w models.SanctionCheckWhitelist) bool {
+			return match.EntityId == w.EntityId
+		})
+
+		if isWhitelisted {
+			continue
+		}
+
+		matchesAfterWhitelisting = append(matchesAfterWhitelisting, match)
+	}
+
+	if len(whitelists) > 0 {
+		utils.LoggerFromContext(ctx).InfoContext(ctx,
+			"filtered out sanction check matches that were whitelisted", "before",
+			len(sanctionCheck.Matches), "whitelisted", len(whitelists), "after", len(matchesAfterWhitelisting))
+
+		whitelisted := pure_utils.Map(whitelists, func(w models.SanctionCheckWhitelist) string {
+			return w.EntityId
+		})
+
+		sanctionCheck.WhitelistedEntities = whitelisted
+	}
+
+	sanctionCheck.Matches = matchesAfterWhitelisting
+	sanctionCheck.Count = len(sanctionCheck.Matches)
 
 	return sanctionCheck, nil
 }

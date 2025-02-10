@@ -49,7 +49,7 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 
 	exec.Mock.ExpectQuery(`
 		SELECT
-			sc.id, sc.decision_id, sc.status, sc.search_input, sc.search_datasets, sc.match_threshold, sc.match_limit, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.initial_has_matches, sc.created_at, sc.updated_at,
+			sc.id, sc.decision_id, sc.status, sc.search_input, sc.search_datasets, sc.match_threshold, sc.match_limit, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.initial_has_matches, sc.whitelisted_entities, sc.created_at, sc.updated_at,
 			ARRAY_AGG\(ROW\(scm.id,scm.sanction_check_id,scm.opensanction_entity_id,scm.status,scm.query_ids,scm.payload,scm.reviewed_by,scm.created_at,scm.updated_at\)\) FILTER \(WHERE scm.id IS NOT NULL\) AS matches
 		FROM sanction_checks AS sc
 		LEFT JOIN sanction_check_matches AS scm ON sc.id = scm.sanction_check_id
@@ -126,7 +126,7 @@ func TestUpdateMatchStatus(t *testing.T) {
 			AddRow(mockScmRow...),
 		)
 	exec.Mock.
-		ExpectQuery(`SELECT id, decision_id, status, search_input, search_datasets, match_threshold, match_limit, is_manual, requested_by, is_partial, is_archived, initial_has_matches, created_at, updated_at FROM sanction_checks WHERE id = \$1`).
+		ExpectQuery(`SELECT id, decision_id, status, search_input, search_datasets, match_threshold, match_limit, is_manual, requested_by, is_partial, is_archived, initial_has_matches, whitelisted_entities, created_at, updated_at FROM sanction_checks WHERE id = \$1`).
 		WithArgs("sanction_check_id").
 		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionChecksColumn).
 			AddRow(mockScRow...),
