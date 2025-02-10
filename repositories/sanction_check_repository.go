@@ -183,6 +183,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		"is_partial",
 		"is_manual",
 		"initial_has_matches",
+		"whitelisted_entities",
 		"requested_by",
 		"status",
 	).Values(
@@ -194,6 +195,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		sanctionCheck.Partial,
 		sanctionCheck.IsManual,
 		sanctionCheck.InitialHasMatches,
+		sanctionCheck.WhitelistedEntities,
 		sanctionCheck.RequestedBy,
 		sanctionCheck.Status.String(),
 	).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionChecksColumn, ",")))
@@ -338,4 +340,25 @@ func (repo *MarbleDbRepository) CopySanctionCheckFiles(ctx context.Context, exec
 	}
 
 	return nil
+}
+
+func (repo *MarbleDbRepository) IsSanctionCheckMatchWhitelisted(ctx context.Context, exec Executor,
+	orgId, objectId string, entityIds []string,
+) ([]models.SanctionCheckWhitelist, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SanctionCheckWhitelistColumnList...).
+		From(dbmodels.TABLE_SANCTION_CHECK_WHITELISTS).
+		Where(squirrel.And{
+			squirrel.Eq{
+				"org_id":    orgId,
+				"object_id": objectId,
+			},
+			squirrel.Expr("entity_id = ANY(?)", entityIds),
+		})
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckWhitelist)
 }

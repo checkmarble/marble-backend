@@ -55,13 +55,14 @@ type UpdateScenarioIterationBody struct {
 }
 
 type SanctionCheckConfig struct {
-	Name        string
-	Description string
-	RuleGroup   *string
-	Datasets    []string
-	TriggerRule *ast.Node
-	Query       *SanctionCheckConfigQuery
-	Outcome     SanctionCheckOutcome
+	Name           string
+	Description    string
+	RuleGroup      *string
+	Datasets       []string
+	TriggerRule    *ast.Node
+	Query          *SanctionCheckConfigQuery
+	Outcome        SanctionCheckOutcome
+	WhitelistField *ast.Node
 }
 
 func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {

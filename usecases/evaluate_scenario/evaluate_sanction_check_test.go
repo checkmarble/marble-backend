@@ -28,6 +28,20 @@ func (m mockSanctionCheckExecutor) Execute(
 	return models.SanctionCheckWithMatches{}, nil
 }
 
+func (m mockSanctionCheckExecutor) FilterOutWhitelistedMatches(
+	ctx context.Context,
+	orgId string,
+	sanctionCheck models.SanctionCheckWithMatches,
+	objectId string,
+) (models.SanctionCheckWithMatches, error) {
+	// We are not mocking returned data here, only that the function was called
+	// with the appropriate arguments, so we always expect this to be called.
+	m.On("FilterOutWhitelistedMatches", context.TODO(), orgId, sanctionCheck, objectId)
+	m.Called(ctx, orgId, sanctionCheck, objectId)
+
+	return sanctionCheck, nil
+}
+
 func getSanctionCheckEvaluator() (ScenarioEvaluator, mockSanctionCheckExecutor) {
 	evaluator := ast_eval.EvaluateAstExpression{
 		AstEvaluationEnvironmentFactory: func(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
