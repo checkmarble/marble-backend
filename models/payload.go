@@ -35,10 +35,18 @@ func (err IngestionValidationErrorsSingle) Error() string {
 	return string(encoded)
 }
 
+func (err IngestionValidationErrorsSingle) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]string(err))
+}
+
 // expects format {"object_id": {"field_name": "error message"}, ...}
 type IngestionValidationErrorsMultiple map[string]map[string]string
 
 func (err IngestionValidationErrorsMultiple) Error() string {
 	encoded, _ := json.Marshal(err)
 	return string(encoded)
+}
+
+func (err IngestionValidationErrorsMultiple) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]map[string]string(err))
 }
