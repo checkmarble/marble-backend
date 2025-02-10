@@ -13,7 +13,8 @@ import (
 type fieldParser map[models.DataType]func(result gjson.Result) (any, error)
 
 type Parser struct {
-	parsers fieldParser
+	parsers    fieldParser
+	allowPatch bool
 }
 
 var (
@@ -27,14 +28,15 @@ var (
 	errIsInvalidDataType  = fmt.Errorf("invalid type")
 )
 
-func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, map[string]string, error) {
+func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, models.IngestionValidationErrorsSingle, error) {
 	if !gjson.ValidBytes(json) {
 		return models.ClientObject{}, nil, errIsInvalidJSON
 	}
 
-	errors := make(map[string]string)
+	errors := make(models.IngestionValidationErrorsSingle)
 	out := make(map[string]any)
 	result := gjson.ParseBytes(json)
+	missingFields := make([]models.MissingField, 0, len(table.Fields))
 
 	// Check fields that are always mandatory, regardless of the table definition
 	for _, name := range []string{"object_id", "updated_at"} {
@@ -49,7 +51,19 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 
 	for name, field := range table.Fields {
 		value := result.Get(name)
-		if !value.Exists() || value.Type == gjson.Null {
+		if !value.Exists() {
+			if p.allowPatch {
+				missingFields = append(missingFields, models.MissingField{
+					Field:          field,
+					ErrorIfMissing: errIsNotNullable.Error(),
+				})
+			} else if !field.Nullable {
+				errors[name] = errIsNotNullable.Error()
+			}
+			continue
+		}
+
+		if value.Type == gjson.Null {
 			if !field.Nullable {
 				errors[name] = errIsNotNullable.Error()
 			}
@@ -72,12 +86,25 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 		return models.ClientObject{}, errors, nil
 	}
 	return models.ClientObject{
-		TableName: table.Name,
-		Data:      out,
+		TableName:             table.Name,
+		Data:                  out,
+		MissingFieldsToLookup: missingFields,
 	}, nil, nil
 }
 
-func NewParser() *Parser {
+type parserOpts struct {
+	allowPatch bool
+}
+
+type ParserOpt func(*parserOpts)
+
+func WithAllowPatch() ParserOpt {
+	return func(o *parserOpts) {
+		o.allowPatch = true
+	}
+}
+
+func NewParser(opts ...ParserOpt) *Parser {
 	parsers := fieldParser{
 		models.Timestamp: func(result gjson.Result) (any, error) {
 			if t, err := time.Parse(time.RFC3339, result.String()); err == nil {
@@ -116,7 +143,13 @@ func NewParser() *Parser {
 		},
 	}
 
+	options := parserOpts{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	return &Parser{
-		parsers: parsers,
+		parsers:    parsers,
+		allowPatch: options.allowPatch,
 	}
 }

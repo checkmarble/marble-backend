@@ -2,11 +2,12 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 )
@@ -29,15 +30,18 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 
 	mostRecentObjectIds, mostRecentPayloads := repo.mostRecentPayloadsByObjectId(payloads)
 
-	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, tx, mostRecentObjectIds, table.Name)
+	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, tx, mostRecentObjectIds, table)
 	if err != nil {
 		return 0, err
 	}
 
-	payloadsToInsert, obsoleteIngestedObjectIds := repo.comparePayloadsToIngestedObjects(
+	payloadsToInsert, obsoleteIngestedObjectIds, validationErrors := repo.comparePayloadsToIngestedObjects(
 		mostRecentPayloads,
 		previouslyIngestedObjects,
 	)
+	if len(validationErrors) > 0 {
+		return 0, errors.Join(models.BadParameterError, validationErrors)
+	}
 
 	if len(obsoleteIngestedObjectIds) > 0 {
 		err := repo.batchUpdateValidUntilOnObsoleteObjects(
@@ -94,54 +98,110 @@ func (repo *IngestionRepositoryImpl) mostRecentPayloadsByObjectId(payloads []mod
 	return mostRecentObjectIds, mostRecentPayloads
 }
 
-type DBObject struct {
-	Id        string    `db:"id"`
-	ObjectId  string    `db:"object_id"`
-	UpdatedAt time.Time `db:"updated_at"`
-}
-type IngestedObject struct {
-	Id        string
-	ObjectId  string
-	UpdatedAt time.Time
+type ingestedObject struct {
+	id        string
+	objectId  string
+	updatedAt time.Time
+	data      map[string]any
 }
 
-func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(ctx context.Context,
-	exec Executor, objectIds []string, tableName string,
-) ([]IngestedObject, error) {
-	query := NewQueryBuilder().
-		Select("id, object_id, updated_at").
-		From(tableNameWithSchema(exec, tableName)).
-		Where(squirrel.Eq{"object_id": objectIds}).
-		Where(squirrel.Eq{"valid_until": "Infinity"})
+func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(
+	ctx context.Context,
+	tx Transaction,
+	objectIds []string,
+	table models.Table,
+) ([]ingestedObject, error) {
+	columnNames := models.ColumnNames(table)
+	columnNames = append(columnNames, "id")
+	qualifiedTableName := tableNameWithSchema(tx, table.Name)
 
-	return SqlToListOfModels(ctx, exec, query, func(db DBObject) (IngestedObject, error) { return IngestedObject(db), nil })
+	q := NewQueryBuilder().
+		Select(columnNames...).
+		From(qualifiedTableName).
+		Where(rowIsValid(qualifiedTableName)).
+		Where(squirrel.Eq{"object_id": objectIds})
+
+	sql, args, err := q.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("error while building SQL query: %w", err)
+	}
+	rows, err := tx.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("error while querying DB: %w", err)
+	}
+	defer rows.Close()
+	output := make([]ingestedObject, 0, len(objectIds))
+	for rows.Next() {
+		values, err := rows.Values()
+		if err != nil {
+			return nil, fmt.Errorf("error while fetching rows: %w", err)
+		}
+
+		objectAsMap := make(map[string]any)
+		for i, columnName := range columnNames {
+			objectAsMap[columnName] = values[i]
+		}
+		output = append(output, ingestedObject{
+			id:        objectAsMap["id"].(string),
+			objectId:  objectAsMap["object_id"].(string),
+			updatedAt: objectAsMap["updated_at"].(time.Time),
+			data:      objectAsMap,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error while iterating over rows: %w", err)
+	}
+
+	return output, nil
 }
 
+// Takes a list of payloads and a list of previously ingested objects. The payloads may optionally include
+// a list of fields that should be checked for existence in the ingested objects.
+// - a list of complete payloads that should be inserted, obtained by merging the payloads with the missing fields from the previously ingested objects
+// - a list of IDs of objects that should be marked as obsolete
+// - a map of validation errors for each payload (if any required missing fields are also missing in the ingested objects)
 func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(
-	payloads []models.ClientObject, previouslyIngestedObjects []IngestedObject,
-) ([]models.ClientObject, []string) {
-	previouslyIngestedMap := make(map[string]IngestedObject)
+	payloads []models.ClientObject,
+	previouslyIngestedObjects []ingestedObject,
+) ([]models.ClientObject, []string, models.IngestionValidationErrorsMultiple) {
+	previouslyIngestedMap := make(map[string]ingestedObject)
 	for _, obj := range previouslyIngestedObjects {
-		previouslyIngestedMap[obj.ObjectId] = obj
+		previouslyIngestedMap[obj.objectId] = obj
 	}
 
 	payloadsToInsert := make([]models.ClientObject, 0, len(payloads))
 	obsoleteIngestedObjectIds := make([]string, 0, len(previouslyIngestedMap))
+	validationErrors := make(models.IngestionValidationErrorsMultiple, len(payloads))
 
 	for _, payload := range payloads {
 		objectId, updatedAt := objectIdAndUpdatedAtFromPayload(payload)
 
 		existingObject, exists := previouslyIngestedMap[objectId]
+		for _, field := range payload.MissingFieldsToLookup {
+			foundInPreviousVersion := exists && existingObject.data[field.Field.Name] != nil
+			if !field.Field.Nullable && !foundInPreviousVersion {
+				// add to the returned errors if the field that was missing in the payload is required and
+				// is also missing in the previously ingested version
+				if validationErrors[objectId] == nil {
+					validationErrors[objectId] = make(map[string]string, len(payload.MissingFieldsToLookup))
+				}
+				validationErrors[objectId][field.Field.Name] = field.ErrorIfMissing
+			}
+			// In any case, add the field to the payload
+			payload.Data[field.Field.Name] = existingObject.data[field.Field.Name]
+		}
+
 		if !exists {
 			payloadsToInsert = append(payloadsToInsert, payload)
-		} else if updatedAt.After(existingObject.UpdatedAt) ||
-			updatedAt.Equal(existingObject.UpdatedAt) {
+		} else if updatedAt.After(existingObject.updatedAt) ||
+			updatedAt.Equal(existingObject.updatedAt) {
 			payloadsToInsert = append(payloadsToInsert, payload)
-			obsoleteIngestedObjectIds = append(obsoleteIngestedObjectIds, existingObject.Id)
+			obsoleteIngestedObjectIds = append(obsoleteIngestedObjectIds, existingObject.id)
 		}
 	}
 
-	return payloadsToInsert, obsoleteIngestedObjectIds
+	return payloadsToInsert, obsoleteIngestedObjectIds, validationErrors
 }
 
 func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx context.Context,
