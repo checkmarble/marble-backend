@@ -67,7 +67,9 @@ func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) (models.Open
 
 	catalogModel := httpmodels.AdaptOpenSanctionCatalog(catalog.Datasets)
 
-	OPEN_SANCTIONS_DATASET_CACHE.Add(OPEN_SANCTIONS_CATALOG_CACHE_KEY, catalogModel)
+	if len(catalogModel.Sections) > 0 {
+		OPEN_SANCTIONS_DATASET_CACHE.Add(OPEN_SANCTIONS_CATALOG_CACHE_KEY, catalogModel)
+	}
 
 	return catalogModel, err
 }
