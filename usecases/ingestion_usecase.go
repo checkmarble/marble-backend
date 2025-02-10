@@ -49,6 +49,7 @@ func (usecase *IngestionUseCase) IngestObject(
 	organizationId string,
 	objectType string,
 	objectBody json.RawMessage,
+	parserOpts ...payload_parser.ParserOpt,
 ) (int, error) {
 	logger := utils.LoggerFromContext(ctx)
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
@@ -78,7 +79,7 @@ func (usecase *IngestionUseCase) IngestObject(
 		)
 	}
 
-	parser := payload_parser.NewParser()
+	parser := payload_parser.NewParser(parserOpts...)
 	payload, validationErrors, err := parser.ParsePayload(table, objectBody)
 	if err != nil {
 		return 0, errors.Wrapf(
