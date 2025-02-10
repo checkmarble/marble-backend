@@ -37,6 +37,10 @@ func ScenarioValidationToError(validation models.ScenarioValidation) error {
 
 	errs = append(errs, pure_utils.Map(validation.Decision.Errors, toError)...)
 
+	errs = append(errs, pure_utils.Map(validation.SanctionCheck.TriggerRule.Errors, toError)...)
+	errs = append(errs, validation.SanctionCheck.TriggerRule.TriggerEvaluation.FlattenErrors()...)
+	errs = append(errs, validation.SanctionCheck.NameFilter.RuleEvaluation.FlattenErrors()...)
+
 	return errors.Join(errs...)
 }
 
