@@ -8,6 +8,7 @@ import (
 	"github.com/biter777/countries"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/hashicorp/go-set/v2"
 )
 
 var (
@@ -31,16 +32,30 @@ type HTTPOpenSanctionCatalogResponse struct {
 }
 
 type HTTPOpenSanctionCatalogDataset struct {
-	Name     string   `json:"name"`
-	Title    string   `json:"title"`
-	Children []string `json:"children"`
+	Name         string   `json:"name"`
+	Title        string   `json:"title"`
+	Load         bool     `json:"load"`
+	IndexVersion *string  `json:"index_version"`
+	Children     []string `json:"children"`
 }
 
 func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.OpenSanctionsCatalog {
 	sections := make(map[string]*models.OpenSanctionsCatalogSection, len(OPEN_SANCTIONS_CONTINENT_CODES))
+	datasetMap := make(map[string]*HTTPOpenSanctionCatalogDataset, len(datasets))
+	loadedDatasets := set.New[string](len(datasets))
 
 	for _, dataset := range datasets {
-		if len(dataset.Children) > 0 {
+		datasetMap[dataset.Name] = &dataset
+	}
+
+	for _, dataset := range datasets {
+		if dataset.Load && dataset.IndexVersion != nil {
+			findLoadedDatasets(loadedDatasets, datasetMap, &dataset)
+		}
+	}
+
+	for _, dataset := range datasets {
+		if len(dataset.Children) > 0 || !loadedDatasets.Contains(dataset.Name) {
 			continue
 		}
 
@@ -52,6 +67,14 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.
 				Title:    regionName,
 				Datasets: make([]models.OpenSanctionsCatalogDataset, 0),
 			}
+		}
+
+		if slices.ContainsFunc(sections[regionCode].Datasets, func(
+			ds models.OpenSanctionsCatalogDataset,
+		) bool {
+			return ds.Name == dataset.Name
+		}) {
+			continue
 		}
 
 		sections[regionCode].Datasets = append(sections[regionCode].Datasets, models.OpenSanctionsCatalogDataset{
@@ -66,6 +89,16 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.
 
 	return models.OpenSanctionsCatalog{
 		Sections: slices.Collect(maps.Values(pure_utils.MapValues(sections, f))),
+	}
+}
+
+func findLoadedDatasets(loaded *set.Set[string], datasets map[string]*HTTPOpenSanctionCatalogDataset, current *HTTPOpenSanctionCatalogDataset) {
+	loaded.Insert(current.Name)
+
+	for _, child := range current.Children {
+		if childDataset, ok := datasets[child]; ok {
+			findLoadedDatasets(loaded, datasets, childDataset)
+		}
 	}
 }
 
