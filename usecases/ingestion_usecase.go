@@ -90,7 +90,7 @@ func (usecase *IngestionUseCase) IngestObject(
 	if len(validationErrors) > 0 {
 		encoded, _ := json.Marshal(validationErrors)
 		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on IngestObject: %s", string(encoded)))
-		return 0, errors.Wrap(models.BadParameterError, string(encoded))
+		return 0, validationErrors
 	}
 
 	var nb int
@@ -99,6 +99,13 @@ func (usecase *IngestionUseCase) IngestObject(
 		return err
 	})
 	if err != nil {
+		var validationErrors models.IngestionValidationErrorsMultiple
+		if errors.As(err, &validationErrors) {
+			// if err is not nil, the call to the repository may return a models.IngestionValidationErrorsMultiple
+			// instance error, in which case it should have just one entry (with the input object_id as key)
+			return 0, models.IngestionValidationErrorsSingle(
+				validationErrors[payload.Data["object_id"].(string)])
+		}
 		return 0, err
 	}
 
