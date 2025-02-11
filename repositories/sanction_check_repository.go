@@ -215,7 +215,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionCheckMatchesColumn, ",")))
 
 	for _, match := range sanctionCheck.Matches {
-		matchSql = matchSql.Values(result.Id, match.EntityId, match.QueryIds, match.Payload, match.ObjectId)
+		matchSql = matchSql.Values(result.Id, match.EntityId, match.QueryIds, match.Payload, match.UniqueCounterpartyIdentifier)
 	}
 
 	matches, err := SqlToListOfModels(ctx, exec, matchSql, dbmodels.AdaptSanctionCheckMatch)
@@ -353,7 +353,7 @@ func (repo *MarbleDbRepository) AddSanctionCheckMatchWhitelist(ctx context.Conte
 		Insert(dbmodels.TABLE_SANCTION_CHECK_WHITELISTS).
 		Columns("org_id", "object_id", "entity_id", "whitelisted_by").
 		Values(orgId, objectId, entityId, reviewerId).
-		Suffix("ON CONFLICT (org_id, object_id, entity_id) DO NOTHING")
+		Suffix("ON CONFLICT (org_id, counterparty_id, entity_id) DO NOTHING")
 
 	return ExecBuilder(ctx, exec, sql)
 }
@@ -370,8 +370,8 @@ func (repo *MarbleDbRepository) IsSanctionCheckMatchWhitelisted(ctx context.Cont
 		From(dbmodels.TABLE_SANCTION_CHECK_WHITELISTS).
 		Where(squirrel.And{
 			squirrel.Eq{
-				"org_id":    orgId,
-				"object_id": objectId,
+				"org_id":          orgId,
+				"counterparty_id": objectId,
 			},
 			squirrel.Expr("entity_id = ANY(?)", entityIds),
 		})

@@ -435,9 +435,10 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 				}
 			}
 
-			if update.Status == models.SanctionMatchStatusNoHit && update.Whitelist && data.match.ObjectId != nil {
+			if update.Status == models.SanctionMatchStatusNoHit && update.Whitelist &&
+				data.match.UniqueCounterpartyIdentifier != nil {
 				if err := uc.repository.AddSanctionCheckMatchWhitelist(ctx, tx,
-					data.decision.OrganizationId, *data.match.ObjectId,
+					data.decision.OrganizationId, *data.match.UniqueCounterpartyIdentifier,
 					data.match.EntityId, update.ReviewerId); err != nil {
 					return errors.Wrap(err, "could not whitelist match")
 				}

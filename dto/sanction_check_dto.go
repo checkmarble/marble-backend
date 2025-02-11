@@ -67,28 +67,28 @@ func AdaptSanctionCheckRefineDto(dto SanctionCheckRefineDto) models.SanctionChec
 }
 
 type SanctionCheckMatchDto struct {
-	Id         string                         `json:"id"`
-	EntityId   string                         `json:"entity_id"`
-	QueryIds   []string                       `json:"query_ids"`
-	Status     string                         `json:"status"`
-	ReviewedBy *string                        `json:"reviewer_id,omitempty"` //nolint:tagliatelle
-	Datasets   []string                       `json:"datasets"`
-	ObjectId   *string                        `json:"object_id"`
-	Payload    json.RawMessage                `json:"payload"`
-	Comments   []SanctionCheckMatchCommentDto `json:"comments"`
+	Id                           string                         `json:"id"`
+	EntityId                     string                         `json:"entity_id"`
+	QueryIds                     []string                       `json:"query_ids"`
+	Status                       string                         `json:"status"`
+	ReviewedBy                   *string                        `json:"reviewer_id,omitempty"` //nolint:tagliatelle
+	Datasets                     []string                       `json:"datasets"`
+	UniqueCounterpartyIdentifier *string                        `json:"unique_counterparty_identifier"`
+	Payload                      json.RawMessage                `json:"payload"`
+	Comments                     []SanctionCheckMatchCommentDto `json:"comments"`
 }
 
 func AdaptSanctionCheckMatchDto(m models.SanctionCheckMatch) SanctionCheckMatchDto {
 	match := SanctionCheckMatchDto{
-		Id:         m.Id,
-		EntityId:   m.EntityId,
-		Status:     m.Status.String(),
-		ReviewedBy: m.ReviewedBy,
-		QueryIds:   m.QueryIds,
-		Datasets:   make([]string, 0),
-		Payload:    m.Payload,
-		ObjectId:   m.ObjectId,
-		Comments:   pure_utils.Map(m.Comments, AdaptSanctionCheckMatchCommentDto),
+		Id:                           m.Id,
+		EntityId:                     m.EntityId,
+		Status:                       m.Status.String(),
+		ReviewedBy:                   m.ReviewedBy,
+		QueryIds:                     m.QueryIds,
+		Datasets:                     make([]string, 0),
+		Payload:                      m.Payload,
+		UniqueCounterpartyIdentifier: m.UniqueCounterpartyIdentifier,
+		Comments:                     pure_utils.Map(m.Comments, AdaptSanctionCheckMatchCommentDto),
 	}
 
 	return match
