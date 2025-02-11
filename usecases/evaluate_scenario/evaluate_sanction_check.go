@@ -2,8 +2,10 @@ package evaluate_scenario
 
 import (
 	"context"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/cockroachdb/errors"
 )
 
@@ -85,19 +87,23 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		}
 
 		whitelistField, err := whitelistFieldResult.GetStringReturnValue()
-		if err != nil {
+		if err != nil && !errors.Is(err, ast.ErrNullFieldRead) {
 			sanctionCheckErr = errors.Wrap(err, "could not parse object field for white list check as string")
 			return
 		}
 
-		for idx := range result.Matches {
-			result.Matches[idx].ObjectId = &whitelistField
-		}
+		trimmedWhitelistField := strings.TrimSpace(whitelistField)
 
-		result, err = e.evalSanctionCheckUsecase.FilterOutWhitelistedMatches(ctx,
-			params.Scenario.OrganizationId, result, whitelistField)
-		if err != nil {
-			return
+		if trimmedWhitelistField != "" {
+			for idx := range result.Matches {
+				result.Matches[idx].UniqueCounterpartyIdentifier = &trimmedWhitelistField
+			}
+
+			result, err = e.evalSanctionCheckUsecase.FilterOutWhitelistedMatches(ctx,
+				params.Scenario.OrganizationId, result, trimmedWhitelistField)
+			if err != nil {
+				return
+			}
 		}
 	}
 

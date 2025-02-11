@@ -18,7 +18,7 @@ type DBSanctionCheckMatch struct {
 	OpenSanctionEntityId string          `db:"opensanction_entity_id"`
 	Status               string          `db:"status"`
 	QueryIds             []string        `db:"query_ids"`
-	ObjectId             *string         `db:"object_id"`
+	CounterpartyId       *string         `db:"counterparty_id"`
 	Payload              json.RawMessage `db:"payload"`
 	ReviewedBy           *string         `db:"reviewed_by"`
 	CreatedAt            time.Time       `db:"created_at"`
@@ -29,14 +29,14 @@ type DBSanctionCheckMatch struct {
 
 func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckMatch, error) {
 	match := models.SanctionCheckMatch{
-		Id:              dto.Id,
-		SanctionCheckId: dto.SanctionCheckId,
-		EntityId:        dto.OpenSanctionEntityId,
-		Status:          models.SanctionCheckMatchStatusFrom(dto.Status),
-		ReviewedBy:      dto.ReviewedBy,
-		QueryIds:        dto.QueryIds,
-		ObjectId:        dto.ObjectId,
-		Payload:         dto.Payload,
+		Id:                           dto.Id,
+		SanctionCheckId:              dto.SanctionCheckId,
+		EntityId:                     dto.OpenSanctionEntityId,
+		Status:                       models.SanctionCheckMatchStatusFrom(dto.Status),
+		ReviewedBy:                   dto.ReviewedBy,
+		QueryIds:                     dto.QueryIds,
+		UniqueCounterpartyIdentifier: dto.CounterpartyId,
+		Payload:                      dto.Payload,
 	}
 
 	return match, nil

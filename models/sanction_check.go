@@ -159,16 +159,16 @@ func (s SanctionCheckWithMatches) InitialStatusFromMatches() SanctionCheckStatus
 }
 
 type SanctionCheckMatch struct {
-	Id              string
-	IsMatch         bool
-	SanctionCheckId string
-	EntityId        string
-	Status          SanctionCheckMatchStatus
-	QueryIds        []string
-	ObjectId        *string
-	Payload         []byte
-	ReviewedBy      *string
-	Comments        []SanctionCheckMatchComment
+	Id                           string
+	IsMatch                      bool
+	SanctionCheckId              string
+	EntityId                     string
+	Status                       SanctionCheckMatchStatus
+	QueryIds                     []string
+	UniqueCounterpartyIdentifier *string
+	Payload                      []byte
+	ReviewedBy                   *string
+	Comments                     []SanctionCheckMatchComment
 }
 
 type SanctionCheckMatchUpdate struct {

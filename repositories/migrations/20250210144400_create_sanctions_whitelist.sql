@@ -14,7 +14,7 @@ alter table sanction_check_matches
 create table sanction_check_whitelists (
     id uuid default uuid_generate_v4(),
     org_id uuid not null,
-    object_id text not null,
+    counterparty_id text not null,
     entity_id text not null,
     whitelisted_by uuid not null,
     created_at timestamp with time zone default now(),
@@ -24,7 +24,7 @@ create table sanction_check_whitelists (
     constraint fk_user foreign key (whitelisted_by) references users (id)
 );
 
-create unique index idx_sanction_check_whitelist on sanction_check_whitelists (org_id, object_id, entity_id);
+create unique index idx_sanction_check_whitelist on sanction_check_whitelists (org_id, counterparty_id, entity_id);
 
 -- +goose StatementEnd
 
