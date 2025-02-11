@@ -29,11 +29,13 @@ type DBSanctionCheckConfigs struct {
 }
 
 type DBSanctionCheckConfigQuery struct {
-	Name json.RawMessage `json:"name"`
+	Name  json.RawMessage `json:"name"`
+	Label json.RawMessage `json:"label"`
 }
 
 type DBSanctionCheckConfigQueryInput struct {
-	Name dto.NodeDto `json:"name"`
+	Name  dto.NodeDto `json:"name"`
+	Label dto.NodeDto `json:"label"`
 }
 
 var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
@@ -91,9 +93,14 @@ func AdaptSanctionCheckConfigQuery(db DBSanctionCheckConfigQuery) (models.Sancti
 	if err != nil {
 		return models.SanctionCheckConfigQuery{}, err
 	}
+	labelAst, err := AdaptSerializedAstExpression(db.Label)
+	if err != nil {
+		return models.SanctionCheckConfigQuery{}, err
+	}
 
 	model := models.SanctionCheckConfigQuery{
-		Name: *nameAst,
+		Name:  *nameAst,
+		Label: labelAst,
 	}
 
 	return model, nil

@@ -15,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -38,6 +39,10 @@ type EvalSanctionCheckUsecase interface {
 	FilterOutWhitelistedMatches(context.Context, string, models.SanctionCheckWithMatches,
 		string) (models.SanctionCheckWithMatches, error)
 	CountWhitelistsForCounterpartyId(context.Context, string, string) (int, error)
+}
+
+type EvalNameRecognitionRepository interface {
+	PerformNameRecognition(context.Context, string) ([]httpmodels.HTTPNameRecognitionMatch, error)
 }
 
 type SnoozesForDecisionReader interface {
@@ -79,6 +84,7 @@ type ScenarioEvaluator struct {
 	evaluateAstExpression             EvaluateAstExpression
 	snoozeReader                      SnoozesForDecisionReader
 	featureAccessReader               ScenarioEvaluatorFeatureAccessReader
+	nameRecognizer                    EvalNameRecognitionRepository
 }
 
 func NewScenarioEvaluator(
@@ -93,6 +99,7 @@ func NewScenarioEvaluator(
 	evaluateAstExpression EvaluateAstExpression,
 	snoozeReader SnoozesForDecisionReader,
 	featureAccessReader ScenarioEvaluatorFeatureAccessReader,
+	nameRecognitionRepository repositories.NameRecognitionRepository,
 ) ScenarioEvaluator {
 	return ScenarioEvaluator{
 		evalScenarioRepository:            evalScenarioRepository,
@@ -106,6 +113,7 @@ func NewScenarioEvaluator(
 		evaluateAstExpression:             evaluateAstExpression,
 		snoozeReader:                      snoozeReader,
 		featureAccessReader:               featureAccessReader,
+		nameRecognizer:                    nameRecognitionRepository,
 	}
 }
 

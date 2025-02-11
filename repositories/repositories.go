@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/infra"
@@ -92,6 +93,7 @@ type Repositories struct {
 	UploadLogRepository               UploadLogRepository
 	MarbleAnalyticsRepository         MarbleAnalyticsRepository
 	OpenSanctionsRepository           OpenSanctionsRepository
+	NameRecognitionRepository         NameRecognitionRepository
 	TransferCheckEnrichmentRepository *TransferCheckEnrichmentRepository
 	TaskQueueRepository               TaskQueueRepository
 	ScenarioTestrunRepository         ScenarioTestRunRepository
@@ -141,6 +143,10 @@ func NewRepositories(
 		},
 		OpenSanctionsRepository: OpenSanctionsRepository{
 			opensanctions: options.openSanctions,
+		},
+		NameRecognitionRepository: NameRecognitionRepository{
+			NameRecognitionProvider: options.openSanctions.NameRecognition(),
+			Client:                  http.DefaultClient,
 		},
 		TransferCheckEnrichmentRepository: NewTransferCheckEnrichmentRepository(
 			blobRepository,

@@ -186,17 +186,10 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 		Queries: make(map[string]openSanctionsRequestQuery, len(query.Queries)),
 	}
 
-	if !query.IsRefinement {
-		for key, value := range query.Queries {
-			q.Queries[uuid.NewString()] = openSanctionsRequestQuery{
-				Schema:     "Thing",
-				Properties: map[string][]string{key: value},
-			}
-		}
-	} else {
+	for _, subquery := range query.Queries {
 		q.Queries[uuid.NewString()] = openSanctionsRequestQuery{
-			Schema:     query.Type,
-			Properties: query.Queries,
+			Schema:     "Thing",
+			Properties: subquery.Filters,
 		}
 	}
 
