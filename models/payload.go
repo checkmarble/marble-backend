@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"reflect"
 )
 
 type DbFieldReadParams struct {
@@ -39,6 +40,14 @@ func (err IngestionValidationErrorsSingle) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]string(err))
 }
 
+func (err IngestionValidationErrorsSingle) Is(target error) bool {
+	if target == BadParameterError {
+		return true
+	}
+	t, ok := target.(IngestionValidationErrorsSingle)
+	return ok && reflect.DeepEqual(err, t)
+}
+
 // expects format {"object_id": {"field_name": "error message"}, ...}
 type IngestionValidationErrorsMultiple map[string]map[string]string
 
@@ -49,4 +58,19 @@ func (err IngestionValidationErrorsMultiple) Error() string {
 
 func (err IngestionValidationErrorsMultiple) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]map[string]string(err))
+}
+
+func (err IngestionValidationErrorsMultiple) Is(target error) bool {
+	if target == BadParameterError {
+		return true
+	}
+	t, ok := target.(IngestionValidationErrorsMultiple)
+	return ok && reflect.DeepEqual(err, t)
+}
+
+func (err IngestionValidationErrorsMultiple) GetSomeItem() (string, map[string]string) {
+	for k, v := range err {
+		return k, v
+	}
+	return "", nil
 }

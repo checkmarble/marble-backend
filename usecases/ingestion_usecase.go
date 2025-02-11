@@ -88,8 +88,6 @@ func (usecase *IngestionUseCase) IngestObject(
 		)
 	}
 	if len(validationErrors) > 0 {
-		encoded, _ := json.Marshal(validationErrors)
-		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on IngestObject: %s", string(encoded)))
 		return 0, validationErrors
 	}
 
@@ -123,6 +121,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 	organizationId string,
 	objectType string,
 	objectBody json.RawMessage,
+	parserOpts ...payload_parser.ParserOpt,
 ) (int, error) {
 	logger := utils.LoggerFromContext(ctx)
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
@@ -162,8 +161,9 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	clientObjects := make([]models.ClientObject, 0, len(rawMessages))
 	objectIds := make(map[string]struct{}, len(rawMessages))
-	parser := payload_parser.NewParser()
-	for i, rawMsg := range rawMessages {
+	parser := payload_parser.NewParser(parserOpts...)
+	validationErrorsGroup := make(models.IngestionValidationErrorsMultiple)
+	for _, rawMsg := range rawMessages {
 		payload, validationErrors, err := parser.ParsePayload(table, rawMsg)
 		if err != nil {
 			return 0, errors.Wrapf(
@@ -172,15 +172,20 @@ func (usecase *IngestionUseCase) IngestObjects(
 			)
 		}
 		if len(validationErrors) > 0 {
-			encoded, _ := json.Marshal(validationErrors)
-			logger.InfoContext(ctx, fmt.Sprintf("Validation errors on IngestObjects: %s at index %d", string(encoded), i))
-			return 0, errors.Wrap(models.BadParameterError, string(encoded))
+			objectId, errMap := validationErrors.GetSomeItem()
+			validationErrorsGroup[objectId] = errMap
+			continue
 		}
-		if _, ok := objectIds[payload.Data["object_id"].(string)]; ok {
-			return 0, errors.Wrap(models.BadParameterError, "duplicate object_id in the batch")
+		objectId := payload.Data["object_id"].(string)
+		if _, ok := objectIds[objectId]; ok {
+			return 0, errors.Wrapf(models.BadParameterError,
+				"duplicate object_id %s in the batch", objectId)
 		}
-		objectIds[payload.Data["object_id"].(string)] = struct{}{}
+		objectIds[objectId] = struct{}{}
 		clientObjects = append(clientObjects, payload)
+	}
+	if len(validationErrorsGroup) > 0 {
+		return 0, validationErrorsGroup
 	}
 
 	var nb int

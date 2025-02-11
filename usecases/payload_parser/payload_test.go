@@ -42,7 +42,7 @@ func TestParser_ParsePayload(t *testing.T) {
 		name       string
 		table      models.Table
 		input      []byte
-		wantErrors map[string]string
+		wantErrors models.IngestionValidationErrorsMultiple
 		want       models.ClientObject
 		err        error
 	}{
@@ -75,7 +75,7 @@ func TestParser_ParsePayload(t *testing.T) {
 			name:  "empty json",
 			table: table,
 			input: []byte(`{}`),
-			wantErrors: map[string]string{
+			wantErrors: models.IngestionValidationErrorsMultiple{"": map[string]string{
 				"string":     errIsNotNullable.Error(),
 				"integer":    errIsNotNullable.Error(),
 				"float":      errIsNotNullable.Error(),
@@ -83,7 +83,7 @@ func TestParser_ParsePayload(t *testing.T) {
 				"boolean":    errIsNotNullable.Error(),
 				"object_id":  errIsNotNullable.Error(),
 				"updated_at": errIsNotNullable.Error(),
-			},
+			}},
 		},
 		{
 			name:  "bad json",
@@ -100,7 +100,7 @@ func TestParser_ParsePayload(t *testing.T) {
 				"timestamp": "not a timestamp",
 				"boolean": "true"
 			}`),
-			wantErrors: map[string]string{
+			wantErrors: models.IngestionValidationErrorsMultiple{"": map[string]string{
 				"string":     errIsInvalidString.Error(),
 				"integer":    "is not a valid integer: expected an integer, got \"string\"",
 				"float":      "is not a valid float: expected a float, got \"string\"",
@@ -108,7 +108,7 @@ func TestParser_ParsePayload(t *testing.T) {
 				"boolean":    "is not a valid boolean: expected a boolean, got \"true\"",
 				"object_id":  errIsNotNullable.Error(),
 				"updated_at": errIsNotNullable.Error(),
-			},
+			}},
 		},
 		{
 			name: "invalid data type",
@@ -143,13 +143,42 @@ func TestParser_ParsePayload(t *testing.T) {
 					"nullable": nil,
 				},
 			},
-			wantErrors: map[string]string{
-				"object_id":  errIsNotNullable.Error(),
-				"updated_at": errIsNotNullable.Error(),
-			},
+			wantErrors: models.IngestionValidationErrorsMultiple{"": map[string]string{
+				"object_id": errIsNotNullable.Error(),
+			}},
 		},
 		{
 			name: "nullable fields with object_id and updated_at",
+			table: models.Table{
+				Name: "transactions",
+				Fields: map[string]models.Field{
+					"nullable": {
+						DataType: models.String,
+						Nullable: true,
+					},
+					"object_id": {
+						DataType: models.String,
+						Nullable: false,
+					},
+					"updated_at": {
+						DataType: models.Timestamp,
+						Nullable: false,
+					},
+				},
+			},
+			input: []byte(`{"object_id": "id", "updated_at": "2023-10-19T00:00:00+03:00", "nullable": null}`),
+			want: models.ClientObject{
+				TableName: "transactions",
+				Data: map[string]any{
+					"nullable":  nil,
+					"object_id": "id",
+					// input is in UTC+3, but the output is in UTC
+					"updated_at": time.Date(2023, time.October, 18, 21, 0, 0, 0, time.UTC),
+				},
+			},
+		},
+		{
+			name: "nullable missing field with object_id and updated_at",
 			table: models.Table{
 				Name: "transactions",
 				Fields: map[string]models.Field{
@@ -171,7 +200,6 @@ func TestParser_ParsePayload(t *testing.T) {
 			want: models.ClientObject{
 				TableName: "transactions",
 				Data: map[string]any{
-					"nullable":  nil,
 					"object_id": "id",
 					// input is in UTC+3, but the output is in UTC
 					"updated_at": time.Date(2023, time.October, 18, 21, 0, 0, 0, time.UTC),
