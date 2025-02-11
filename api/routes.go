@@ -50,6 +50,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.POST("/ingestion/:object_type", tom, handleIngestion(uc))
 	router.PATCH("/ingestion/:object_type", tom, handleIngestionPartialUpsert(uc))
 	router.POST("/ingestion/:object_type/multiple", tom, handleIngestionMultiple(uc))
+	router.PATCH("/ingestion/:object_type/multiple", tom,
+		handleIngestionMultiplePartialUpsert(uc))
 	router.POST("/ingestion/:object_type/batch", timeoutMiddleware(conf.BatchTimeout), handlePostCsvIngestion(uc))
 	router.GET("/ingestion/:object_type/upload-logs", tom, handleListUploadLogs(uc))
 	router.GET("/ingestion/:object_type/:object_id", tom, handleGetIngestedObject(uc))
