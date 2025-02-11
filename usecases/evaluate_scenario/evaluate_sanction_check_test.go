@@ -42,6 +42,19 @@ func (m mockSanctionCheckExecutor) FilterOutWhitelistedMatches(
 	return sanctionCheck, nil
 }
 
+func (m mockSanctionCheckExecutor) CountWhitelistsForCounterpartyId(
+	ctx context.Context,
+	orgId string,
+	counterpartyId string,
+) (int, error) {
+	// We are not mocking returned data here, only that the function was called
+	// with the appropriate arguments, so we always expect this to be called.
+	m.On("CountWhistelistsForCounterparty", context.TODO(), orgId, counterpartyId)
+	m.Called(ctx, orgId, counterpartyId)
+
+	return 0, nil
+}
+
 func getSanctionCheckEvaluator() (ScenarioEvaluator, mockSanctionCheckExecutor) {
 	evaluator := ast_eval.EvaluateAstExpression{
 		AstEvaluationEnvironmentFactory: func(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {

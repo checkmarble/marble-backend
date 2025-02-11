@@ -37,6 +37,7 @@ type EvalSanctionCheckUsecase interface {
 	Execute(context.Context, string, models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
 	FilterOutWhitelistedMatches(context.Context, string, models.SanctionCheckWithMatches,
 		string) (models.SanctionCheckWithMatches, error)
+	CountWhitelistsForCounterpartyId(context.Context, string, string) (int, error)
 }
 
 type SnoozesForDecisionReader interface {

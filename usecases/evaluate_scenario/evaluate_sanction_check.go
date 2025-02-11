@@ -59,17 +59,13 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		return nil, true, errors.New("name filter name query did not return a string")
 	}
 
+	var uniqueCounterpartyIdentifier *string
+
 	query := models.OpenSanctionsQuery{
 		Config: *iteration.SanctionCheckConfig,
 		Queries: models.OpenSanctionCheckFilter{
 			"name": []string{nameFilter},
 		},
-	}
-
-	result, err := e.evalSanctionCheckUsecase.Execute(ctx, params.Scenario.OrganizationId, query)
-	if err != nil {
-		sanctionCheckErr = errors.Wrap(err, "could not perform sanction check")
-		return
 	}
 
 	if iteration.SanctionCheckConfig.WhitelistField != nil {
@@ -92,18 +88,35 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 			return
 		}
 
-		trimmedWhitelistField := strings.TrimSpace(whitelistField)
+		if trimmed := strings.TrimSpace(whitelistField); trimmed != "" {
+			uniqueCounterpartyIdentifier = &whitelistField
 
-		if trimmedWhitelistField != "" {
-			for idx := range result.Matches {
-				result.Matches[idx].UniqueCounterpartyIdentifier = &trimmedWhitelistField
-			}
-
-			result, err = e.evalSanctionCheckUsecase.FilterOutWhitelistedMatches(ctx,
-				params.Scenario.OrganizationId, result, trimmedWhitelistField)
+			whitelistCount, err := e.evalSanctionCheckUsecase.CountWhitelistsForCounterpartyId(
+				ctx, iteration.OrganizationId, *uniqueCounterpartyIdentifier)
 			if err != nil {
+				sanctionCheckErr = errors.Wrap(err, "could not retrieve whitelist count")
 				return
 			}
+
+			query.LimitIncrease = whitelistCount
+		}
+	}
+
+	result, err := e.evalSanctionCheckUsecase.Execute(ctx, params.Scenario.OrganizationId, query)
+	if err != nil {
+		sanctionCheckErr = errors.Wrap(err, "could not perform sanction check")
+		return
+	}
+
+	if uniqueCounterpartyIdentifier != nil {
+		for idx := range result.Matches {
+			result.Matches[idx].UniqueCounterpartyIdentifier = uniqueCounterpartyIdentifier
+		}
+
+		result, err = e.evalSanctionCheckUsecase.FilterOutWhitelistedMatches(ctx,
+			params.Scenario.OrganizationId, result, *uniqueCounterpartyIdentifier)
+		if err != nil {
+			return
 		}
 	}
 
