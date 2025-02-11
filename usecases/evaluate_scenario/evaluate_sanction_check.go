@@ -168,18 +168,39 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(ctx context.Context, queri
 		return queries, errors.New("could not perform name recognition on label")
 	}
 
+	var personQuery *models.OpenSanctionsCheckQuery = nil
+	var companyQuery *models.OpenSanctionsCheckQuery = nil
+
 	for _, match := range matches {
 		switch match.Type {
 		case "Person":
-			queries[0].Filters["name"] = append(queries[0].Filters["name"], match.Text)
+			if personQuery == nil {
+				personQuery = &models.OpenSanctionsCheckQuery{
+					Type:    "Person",
+					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
+				}
+				continue
+			}
+
+			personQuery.Filters["name"] = append(personQuery.Filters["name"], match.Text)
 		case "Company":
-			queries = append(queries, models.OpenSanctionsCheckQuery{
-				Type: "Company",
-				Filters: models.OpenSanctionCheckFilter{
-					"name": []string{match.Text},
-				},
-			})
+			if companyQuery == nil {
+				companyQuery = &models.OpenSanctionsCheckQuery{
+					Type:    "Organization",
+					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
+				}
+				continue
+			}
+
+			companyQuery.Filters["name"] = append(companyQuery.Filters["name"], match.Text)
 		}
+	}
+
+	if personQuery != nil {
+		queries = append(queries, *personQuery)
+	}
+	if companyQuery != nil {
+		queries = append(queries, *companyQuery)
 	}
 
 	return queries, nil

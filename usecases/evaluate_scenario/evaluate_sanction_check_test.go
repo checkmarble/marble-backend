@@ -205,6 +205,7 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 	names := []httpmodels.HTTPNameRecognitionMatch{
 		{Type: "Person", Text: "joe finnigan"},
 		{Type: "Company", Text: "acme inc."},
+		{Type: "Person", Text: "bill bob"},
 	}
 
 	eval, exec := getSanctionCheckEvaluator()
@@ -228,11 +229,17 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 			{
 				Type: "Thing",
 				Filters: models.OpenSanctionCheckFilter{
-					"name": []string{"joe finnigan", "bob gross"},
+					"name": []string{"bob gross"},
 				},
 			},
 			{
-				Type: "Company",
+				Type: "Person",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"joe finnigan", "bill bob"},
+				},
+			},
+			{
+				Type: "Organization",
 				Filters: models.OpenSanctionCheckFilter{
 					"name": []string{"acme inc."},
 				},

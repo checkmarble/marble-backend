@@ -188,7 +188,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 
 	for _, subquery := range query.Queries {
 		q.Queries[uuid.NewString()] = openSanctionsRequestQuery{
-			Schema:     "Thing",
+			Schema:     subquery.Type,
 			Properties: subquery.Filters,
 		}
 	}
