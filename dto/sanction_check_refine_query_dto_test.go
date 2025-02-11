@@ -14,12 +14,12 @@ func TestBuildRefineQuery(t *testing.T) {
 		output      models.OpenSanctionCheckFilter
 	}{
 		{
-			`{"person":{"name":"bob","id_number":"123"}}`,
+			`{"Person":{"name":"bob","idNumber":"123"}}`,
 			"Person",
 			models.OpenSanctionCheckFilter{"name": []string{"bob"}, "idNumber": []string{"123"}},
 		},
 		{
-			`{"organization":{"name":"acme","registration_number":"123","country":"uk"}}`,
+			`{"organization":{"name":"acme","registrationNumber":"123","country":"uk"}}`,
 			"Organization",
 			models.OpenSanctionCheckFilter{
 				"name":               []string{"acme"},
@@ -27,12 +27,12 @@ func TestBuildRefineQuery(t *testing.T) {
 			},
 		},
 		{
-			`{"vehicle":{"registration_number":"987"}}`,
+			`{"Vehicle":{"registrationNumber":"987"}}`,
 			"Vehicle",
 			models.OpenSanctionCheckFilter{"registrationNumber": []string{"987"}},
 		},
 		{
-			`{"thing":{"name":"bob"}}`,
+			`{"Thing":{"name":"bob"}}`,
 			"Thing",
 			models.OpenSanctionCheckFilter{"name": []string{"bob"}},
 		},
