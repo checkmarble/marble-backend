@@ -34,7 +34,14 @@ func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody)
-		if presentError(ctx, c, err) {
+		var validationError models.IngestionValidationErrorsSingle
+		if errors.As(err, &validationError) {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: "Input validation error",
+				Details: validationError,
+			})
+			return
+		} else if presentError(ctx, c, err) {
 			return
 		}
 		if nb == 0 {
@@ -97,7 +104,49 @@ func handleIngestionMultiple(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody)
+		var validationError models.IngestionValidationErrorsMultiple
+		if errors.As(err, &validationError) {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: "Input validation error",
+				Details: validationError,
+			})
+			return
+		} else if presentError(ctx, c, err) {
+			return
+		}
+		if nb == 0 {
+			c.Status(http.StatusOK)
+			return
+		}
+		c.Status(http.StatusCreated)
+	}
+}
+
+func handleIngestionMultiplePartialUpsert(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(ctx, c, err) {
+			return
+		}
+
+		objectType := c.Param("object_type")
+		objectBody, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
+		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody, payload_parser.WithAllowPatch())
+		var validationError models.IngestionValidationErrorsMultiple
+		if errors.As(err, &validationError) {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: "Input validation error",
+				Details: validationError,
+			})
+			return
+		} else if presentError(ctx, c, err) {
 			return
 		}
 		if nb == 0 {

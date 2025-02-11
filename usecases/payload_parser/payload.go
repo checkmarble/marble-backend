@@ -25,29 +25,33 @@ var (
 	errIsInvalidFloat     = fmt.Errorf("is not a valid float")
 	errIsInvalidBoolean   = fmt.Errorf("is not a valid boolean")
 	errIsInvalidString    = fmt.Errorf("is not a valid string")
-	errIsInvalidDataType  = fmt.Errorf("invalid type")
+	errIsInvalidDataType  = fmt.Errorf("invalid type used in parser")
 )
 
-func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, models.IngestionValidationErrorsSingle, error) {
+func addError(errorsContainer models.IngestionValidationErrorsMultiple, objectId string, name string, err error) {
+	if _, ok := errorsContainer[objectId]; !ok {
+		errorsContainer[objectId] = make(map[string]string)
+	}
+	errorsContainer[objectId][name] = err.Error()
+}
+
+func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, models.IngestionValidationErrorsMultiple, error) {
 	if !gjson.ValidBytes(json) {
 		return models.ClientObject{}, nil, errIsInvalidJSON
 	}
 
-	errors := make(models.IngestionValidationErrorsSingle)
+	allErrors := make(models.IngestionValidationErrorsMultiple)
 	out := make(map[string]any)
 	result := gjson.ParseBytes(json)
 	missingFields := make([]models.MissingField, 0, len(table.Fields))
 
-	// Check fields that are always mandatory, regardless of the table definition
-	for _, name := range []string{"object_id", "updated_at"} {
-		value := result.Get(name)
-		if !value.Exists() || value.Type == gjson.Null {
-			errors[name] = errIsNotNullable.Error()
-		}
-		if name == "object_id" && result.String() == "" {
-			errors[name] = errIsNotNullable.Error()
-		}
+	objectId := ""
+	objectIdRes := result.Get("object_id")
+	if !objectIdRes.Exists() || objectIdRes.Type == gjson.Null || objectIdRes.String() == "" {
+		objectId = ""
+		addError(allErrors, objectId, "object_id", errIsNotNullable)
 	}
+	objectId = objectIdRes.String()
 
 	for name, field := range table.Fields {
 		value := result.Get(name)
@@ -58,14 +62,14 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 					ErrorIfMissing: errIsNotNullable.Error(),
 				})
 			} else if !field.Nullable {
-				errors[name] = errIsNotNullable.Error()
+				addError(allErrors, objectId, name, errIsNotNullable)
 			}
 			continue
 		}
 
 		if value.Type == gjson.Null {
 			if !field.Nullable {
-				errors[name] = errIsNotNullable.Error()
+				addError(allErrors, objectId, name, errIsNotNullable)
 			}
 			out[name] = nil
 			continue
@@ -77,13 +81,13 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 				errIsInvalidDataType, field.DataType.String())
 		}
 		if val, err := parseField(value); err != nil {
-			errors[name] = err.Error()
+			addError(allErrors, objectId, name, err)
 		} else {
 			out[name] = val
 		}
 	}
-	if len(errors) > 0 {
-		return models.ClientObject{}, errors, nil
+	if len(allErrors) > 0 {
+		return models.ClientObject{}, allErrors, nil
 	}
 	return models.ClientObject{
 		TableName:             table.Name,
