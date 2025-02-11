@@ -2,6 +2,7 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
@@ -112,7 +113,8 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 }
 
 type SanctionCheckConfigQuery struct {
-	Name NodeDto `json:"name"`
+	Name  NodeDto   `json:"name"`
+	Label *ast.Node `json:"label"`
 }
 
 func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (SanctionCheckConfigQuery, error) {
@@ -122,7 +124,8 @@ func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (Sanct
 	}
 
 	dto := SanctionCheckConfigQuery{
-		Name: nameAst,
+		Name:  nameAst,
+		Label: model.Label,
 	}
 
 	return dto, nil

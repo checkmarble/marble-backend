@@ -31,8 +31,13 @@ func TestOpenSanctionsSelfHostedApi(t *testing.T) {
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -54,8 +59,13 @@ func TestOpenSanctionsSelfHostedAndApiKey(t *testing.T) {
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -78,8 +88,13 @@ func TestOpenSanctionsSaaSAndApiKey(t *testing.T) {
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -102,8 +117,13 @@ func TestOpenSanctionsSelfHostedAndBearerToken(t *testing.T) {
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -126,8 +146,13 @@ func TestOpenSanctionsSelfHostedAndBasicAuth(t *testing.T) {
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -150,8 +175,13 @@ func TestOpenSanctionsError(t *testing.T) {
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -173,8 +203,13 @@ func TestOpenSanctionsSuccessfulPartialResponse(t *testing.T) {
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
@@ -202,8 +237,13 @@ func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 	cfg := models.SanctionCheckConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{"bob"},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
 		},
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}

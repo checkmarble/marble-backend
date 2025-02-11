@@ -43,29 +43,32 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		return
 	}
 
-	// Then, actually perform the sanction check
-	nameFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(
-		ctx,
-		nil,
-		iteration.SanctionCheckConfig.Query.Name,
-		iteration.OrganizationId,
-		dataAccessor.ClientObject,
-		dataAccessor.DataModel)
-	if err != nil {
-		return nil, true, err
+	mainQuery := models.OpenSanctionsCheckQuery{
+		Type: "Thing",
+		Filters: models.OpenSanctionCheckFilter{
+			"name": {},
+		},
 	}
-	nameFilter, ok := nameFilterAny.ReturnValue.(string)
-	if !ok {
-		return nil, true, errors.New("name filter name query did not return a string")
+
+	queries := []models.OpenSanctionsCheckQuery{mainQuery}
+
+	if e.nameRecognizer != nil && iteration.SanctionCheckConfig.Query.Label != nil {
+		queries, err = e.evaluateSanctionCheckLabel(ctx, queries, iteration, dataAccessor)
+		if err != nil {
+			return nil, true, err
+		}
+	}
+
+	// Then, actually perform the sanction check
+	if err := e.evaluateSanctionCheckName(ctx, &mainQuery, iteration, dataAccessor); err != nil {
+		return nil, true, err
 	}
 
 	var uniqueCounterpartyIdentifier *string
 
 	query := models.OpenSanctionsQuery{
-		Config: *iteration.SanctionCheckConfig,
-		Queries: models.OpenSanctionCheckFilter{
-			"name": []string{nameFilter},
-		},
+		Config:  *iteration.SanctionCheckConfig,
+		Queries: queries,
 	}
 
 	if iteration.SanctionCheckConfig.CounterpartyIdExpression != nil {
@@ -123,4 +126,61 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	sanctionCheck = &result
 	performed = true
 	return
+}
+
+func (e ScenarioEvaluator) evaluateSanctionCheckName(ctx context.Context, query *models.OpenSanctionsCheckQuery,
+	iteration models.ScenarioIteration, dataAccessor DataAccessor,
+) error {
+	nameFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
+		iteration.SanctionCheckConfig.Query.Name, iteration.OrganizationId,
+		dataAccessor.ClientObject, dataAccessor.DataModel)
+	if err != nil {
+		return err
+	}
+
+	nameFilter, ok := nameFilterAny.ReturnValue.(string)
+	if !ok {
+		return errors.New("name filter name query did not return a string")
+	}
+
+	query.Filters["name"] = append(query.Filters["name"], nameFilter)
+
+	return nil
+}
+
+func (e ScenarioEvaluator) evaluateSanctionCheckLabel(ctx context.Context, queries []models.OpenSanctionsCheckQuery,
+	iteration models.ScenarioIteration, dataAccessor DataAccessor,
+) ([]models.OpenSanctionsCheckQuery, error) {
+	labelFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
+		*iteration.SanctionCheckConfig.Query.Label, iteration.OrganizationId,
+		dataAccessor.ClientObject, dataAccessor.DataModel)
+	if err != nil {
+		return queries, err
+	}
+
+	labelFilter, ok := labelFilterAny.ReturnValue.(string)
+	if !ok {
+		return queries, errors.New("label filter name query did not return a string")
+	}
+
+	matches, err := e.nameRecognizer.PerformNameRecognition(ctx, labelFilter)
+	if err != nil {
+		return queries, errors.New("could not perform name recognition on label")
+	}
+
+	for _, match := range matches {
+		switch match.Type {
+		case "Person":
+			queries[0].Filters["name"] = append(queries[0].Filters["name"], match.Text)
+		case "Company":
+			queries = append(queries, models.OpenSanctionsCheckQuery{
+				Type: "Company",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{match.Text},
+				},
+			})
+		}
+	}
+
+	return queries, nil
 }

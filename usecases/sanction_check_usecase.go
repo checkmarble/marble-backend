@@ -218,8 +218,12 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 	query := models.OpenSanctionsQuery{
 		IsRefinement: true,
 		Config:       *scc,
-		Type:         refine.Type,
-		Queries:      refine.Query,
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type:    refine.Type,
+				Filters: refine.Query,
+			},
+		},
 	}
 
 	sanctionCheck, err := uc.Execute(ctx, decision.OrganizationId, query)
@@ -277,8 +281,12 @@ func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.Sanctio
 		IsRefinement: true,
 		OrgConfig:    sc.OrgConfig,
 		Config:       *scc,
-		Type:         refine.Type,
-		Queries:      refine.Query,
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type:    refine.Type,
+				Filters: refine.Query,
+			},
+		},
 	}
 
 	sanctionCheck, err := uc.Execute(ctx, decision.OrganizationId, query)

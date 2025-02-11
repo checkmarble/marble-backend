@@ -72,6 +72,10 @@ func RunServer() error {
 		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
 	)
 
+	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
+		openSanctionsConfig.WithNameRecognition(apiUrl)
+	}
+
 	seedOrgConfig := models.SeedOrgConfiguration{
 		CreateGlobalAdminEmail: utils.GetEnv("CREATE_GLOBAL_ADMIN_EMAIL", ""),
 		CreateOrgName:          utils.GetEnv("CREATE_ORG_NAME", ""),
