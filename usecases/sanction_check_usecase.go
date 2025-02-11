@@ -82,6 +82,8 @@ type SanctionCheckRepository interface {
 		orgId, objectId string, entityId string, reviewerId models.UserId) error
 	IsSanctionCheckMatchWhitelisted(ctx context.Context, exec repositories.Executor,
 		orgId, objectId string, entityId []string) ([]models.SanctionCheckWhitelist, error)
+	CountWhitelistsForCounterpartyId(ctx context.Context, exec repositories.Executor,
+		orgId, counterpartyId string) (int, error)
 }
 
 type SanctionsCheckUsecaseExternalRepository interface {
@@ -330,6 +332,10 @@ func (uc SanctionCheckUsecase) FilterOutWhitelistedMatches(ctx context.Context, 
 	sanctionCheck.Count = len(sanctionCheck.Matches)
 
 	return sanctionCheck, nil
+}
+
+func (uc SanctionCheckUsecase) CountWhitelistsForCounterpartyId(ctx context.Context, orgId, counterpartyId string) (int, error) {
+	return uc.repository.CountWhitelistsForCounterpartyId(ctx, uc.executorFactory.NewExecutor(), orgId, counterpartyId)
 }
 
 func (uc SanctionCheckUsecase) UpdateMatchStatus(

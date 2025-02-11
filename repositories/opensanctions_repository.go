@@ -209,7 +209,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 
 	requestUrl := fmt.Sprintf("%s/match/sanctions", repo.opensanctions.Host())
 
-	if qs := repo.buildQueryString(query.Config, query.OrgConfig); len(qs) > 0 {
+	if qs := repo.buildQueryString(query.Config, query); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
 	}
 
@@ -229,7 +229,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 	return req, rawQuery.Bytes(), err
 }
 
-func (repo OpenSanctionsRepository) buildQueryString(cfg models.SanctionCheckConfig, orgCfg models.OrganizationOpenSanctionsConfig) url.Values {
+func (repo OpenSanctionsRepository) buildQueryString(cfg models.SanctionCheckConfig, query models.OpenSanctionsQuery) url.Values {
 	qs := url.Values{}
 
 	if repo.opensanctions.AuthMethod() == infra.OPEN_SANCTIONS_AUTH_SAAS &&
@@ -243,10 +243,10 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg models.SanctionCheckCon
 
 	// Unless determined otherwise, we do not need those results that are *not*
 	// matches. They could still be filtered further down the chain, but we do not need them returned.
-	qs.Set("threshold", fmt.Sprintf("%.1f", float64(orgCfg.MatchThreshold)/100))
-	qs.Set("cutoff", fmt.Sprintf("%.1f", float64(orgCfg.MatchThreshold)/100))
+	qs.Set("threshold", fmt.Sprintf("%.1f", float64(query.OrgConfig.MatchThreshold)/100))
+	qs.Set("cutoff", fmt.Sprintf("%.1f", float64(query.OrgConfig.MatchThreshold)/100))
 
-	qs.Set("limit", fmt.Sprintf("%d", orgCfg.MatchLimit))
+	qs.Set("limit", fmt.Sprintf("%d", query.OrgConfig.MatchLimit+query.LimitIncrease))
 
 	return qs
 }
