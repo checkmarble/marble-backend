@@ -73,6 +73,7 @@ type SanctionCheckMatchDto struct {
 	Status     string                         `json:"status"`
 	ReviewedBy *string                        `json:"reviewer_id,omitempty"` //nolint:tagliatelle
 	Datasets   []string                       `json:"datasets"`
+	ObjectId   *string                        `json:"object_id"`
 	Payload    json.RawMessage                `json:"payload"`
 	Comments   []SanctionCheckMatchCommentDto `json:"comments"`
 }
@@ -86,6 +87,7 @@ func AdaptSanctionCheckMatchDto(m models.SanctionCheckMatch) SanctionCheckMatchD
 		QueryIds:   m.QueryIds,
 		Datasets:   make([]string, 0),
 		Payload:    m.Payload,
+		ObjectId:   m.ObjectId,
 		Comments:   pure_utils.Map(m.Comments, AdaptSanctionCheckMatchCommentDto),
 	}
 
