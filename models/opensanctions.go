@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/adhocore/gronx"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 )
 
@@ -38,6 +39,27 @@ type OpenSanctionsCheckQuery struct {
 }
 
 type OpenSanctionCheckFilter map[string][]string
+
+var OPEN_SANCTIONS_ABSTRACT_TYPES_MAPPING = map[string][]string{
+	"Vehicle": {"Airplane", "Vessel"},
+}
+
+func AdaptRefineRequestToMatchable(refine SanctionCheckRefineRequest) []OpenSanctionsCheckQuery {
+	switch mappings, abstract := OPEN_SANCTIONS_ABSTRACT_TYPES_MAPPING[refine.Type]; abstract {
+	case true:
+		return pure_utils.Map(mappings, func(m string) OpenSanctionsCheckQuery {
+			return OpenSanctionsCheckQuery{Type: m, Filters: refine.Query}
+		})
+
+	default:
+		return []OpenSanctionsCheckQuery{
+			{
+				Type:    refine.Type,
+				Filters: refine.Query,
+			},
+		}
+	}
+}
 
 type OpenSanctionsUpstreamDatasetFreshness struct {
 	Version    string

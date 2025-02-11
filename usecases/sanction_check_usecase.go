@@ -204,7 +204,7 @@ func (uc SanctionCheckUsecase) Execute(
 func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.SanctionCheckRefineRequest,
 	requestedBy models.UserId,
 ) (models.SanctionCheckWithMatches, error) {
-	decision, _, err := uc.enforceCanRefineSanctionCheck(ctx, refine.DecisionId)
+	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.DecisionId)
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
 	}
@@ -217,13 +217,9 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 
 	query := models.OpenSanctionsQuery{
 		IsRefinement: true,
+		OrgConfig:    sc.OrgConfig,
 		Config:       *scc,
-		Queries: []models.OpenSanctionsCheckQuery{
-			{
-				Type:    refine.Type,
-				Filters: refine.Query,
-			},
-		},
+		Queries:      models.AdaptRefineRequestToMatchable(refine),
 	}
 
 	sanctionCheck, err := uc.Execute(ctx, decision.OrganizationId, query)
@@ -281,12 +277,7 @@ func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.Sanctio
 		IsRefinement: true,
 		OrgConfig:    sc.OrgConfig,
 		Config:       *scc,
-		Queries: []models.OpenSanctionsCheckQuery{
-			{
-				Type:    refine.Type,
-				Filters: refine.Query,
-			},
-		},
+		Queries:      models.AdaptRefineRequestToMatchable(refine),
 	}
 
 	sanctionCheck, err := uc.Execute(ctx, decision.OrganizationId, query)
