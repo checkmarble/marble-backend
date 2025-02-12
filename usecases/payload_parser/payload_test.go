@@ -1,6 +1,7 @@
 package payload_parser
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -224,19 +225,24 @@ func TestParser_ParsePayload(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewParser()
 
-			out, errors, err := p.ParsePayload(tt.table, tt.input)
-			if err != nil {
+			out, err := p.ParsePayload(tt.table, tt.input)
+			var validationErrors models.IngestionValidationErrors
+			var otherErr error
+			if !errors.As(err, &validationErrors) {
+				otherErr = err
+			}
+			if otherErr != nil {
 				assert.Error(t, tt.err)
-				assert.ErrorIs(t, err, tt.err, "error is the expected error")
+				assert.ErrorIs(t, otherErr, tt.err, "error is the expected error")
 			}
 			if tt.err != nil {
-				assert.ErrorIs(t, err, tt.err, "expected this specific error")
+				assert.ErrorIs(t, otherErr, tt.err, "expected this specific error")
 			} else if len(tt.wantErrors) > 0 {
-				assert.NoError(t, err, "expected no global error")
-				assert.Equal(t, tt.wantErrors, errors, "expected those validation errors")
+				assert.NoError(t, otherErr, "expected no global error")
+				assert.Equal(t, tt.wantErrors, validationErrors, "expected those validation errors")
 			} else if len(tt.want.Data) > 0 {
-				assert.NoError(t, err, "excepted no global error")
-				assert.Empty(t, errors, "expected no validation errors")
+				assert.NoError(t, otherErr, "excepted no global error")
+				assert.Empty(t, validationErrors, "expected no validation errors")
 				assert.Equal(t, tt.want.Data, out.Data, "expected this client object")
 			} else {
 				t.Error("test case is not well defined")

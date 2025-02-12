@@ -709,16 +709,9 @@ func (usecase DecisionUsecase) validatePayload(
 	}
 
 	parser := payload_parser.NewParser()
-	payload, validationErrors, err := parser.ParsePayload(table, rawPayload)
+	payload, err = parser.ParsePayload(table, rawPayload)
 	if err != nil {
-		err = errors.Wrap(
-			models.BadParameterError,
-			fmt.Sprintf("Error while validating payload in validatePayload: %v", err),
-		)
-		return
-	}
-	if len(validationErrors) > 0 {
-		err = errors.Wrap(validationErrors, "validation errors on decision usecase validate payload")
+		err = errors.Wrap(err, "error parsing payload in decision usecase validate payload")
 		return
 	}
 

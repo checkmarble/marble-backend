@@ -591,12 +591,10 @@ func createAndTestDecision(
 	expectedScore int,
 ) models.DecisionWithRuleExecutions {
 	parser := payload_parser.NewParser()
-	transactionPayload, validationErrors, err :=
-		parser.ParsePayload(table, transactionPayloadJson)
+	transactionPayload, err := parser.ParsePayload(table, transactionPayloadJson)
 	if err != nil {
 		assert.FailNow(t, "Could not parse payload", err)
 	}
-	assert.Empty(t, validationErrors, "Expected no validation errors, got %v", validationErrors)
 
 	decision, err := decisionUsecase.CreateDecision(
 		ctx,
