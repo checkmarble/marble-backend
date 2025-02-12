@@ -99,10 +99,9 @@ func handleIngestionPartialUpsert(uc usecases.Usecases) func(c *gin.Context) {
 func presentIngestionValidationErrorMultiple(c *gin.Context, err error) bool {
 	var validationError models.IngestionValidationErrors
 	if errors.As(err, &validationError) {
-		_, objectErr := validationError.GetSomeItem()
 		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
 			Message:   "Input validation error",
-			Details:   objectErr,
+			Details:   validationError,
 			ErrorCode: dto.SchemaMismatchError,
 		})
 		return true
