@@ -36,9 +36,9 @@ func addError(errorsContainer models.IngestionValidationErrors, objectId string,
 	errorsContainer[objectId][name] = err.Error()
 }
 
-func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, models.IngestionValidationErrors, error) {
+func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, error) {
 	if !gjson.ValidBytes(json) {
-		return models.ClientObject{}, nil, errors.Join(models.BadParameterError, errIsInvalidJSON)
+		return models.ClientObject{}, errors.Join(models.BadParameterError, errIsInvalidJSON)
 	}
 
 	allErrors := make(models.IngestionValidationErrors)
@@ -78,7 +78,7 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 
 		parseField, ok := p.parsers[field.DataType]
 		if !ok {
-			return models.ClientObject{}, nil, fmt.Errorf("%w: %s",
+			return models.ClientObject{}, fmt.Errorf("%w: %s",
 				errIsInvalidDataType, field.DataType.String())
 		}
 		if val, err := parseField(value); err != nil {
@@ -88,13 +88,13 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 		}
 	}
 	if len(allErrors) > 0 {
-		return models.ClientObject{}, allErrors, nil
+		return models.ClientObject{}, allErrors
 	}
 	return models.ClientObject{
 		TableName:             table.Name,
 		Data:                  out,
 		MissingFieldsToLookup: missingFields,
-	}, nil, nil
+	}, nil
 }
 
 type parserOpts struct {
