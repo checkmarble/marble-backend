@@ -35,7 +35,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 		return 0, err
 	}
 
-	payloadsToInsert, obsoleteIngestedObjectIds, validationErrors := repo.comparePayloadsToIngestedObjects(
+	payloadsToInsert, obsoleteIngestedObjectIds, validationErrors := compareAndMergePayloadsWithIngestedObjects(
 		mostRecentPayloads,
 		previouslyIngestedObjects,
 	)
@@ -165,10 +165,10 @@ func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(
 // - a list of complete payloads that should be inserted, obtained by merging the payloads with the missing fields from the previously ingested objects
 // - a list of IDs of objects that should be marked as obsolete
 // - a map of validation errors for each payload (if any required missing fields are also missing in the ingested objects)
-func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(
+func compareAndMergePayloadsWithIngestedObjects(
 	payloads []models.ClientObject,
 	previouslyIngestedObjects []ingestedObject,
-) ([]models.ClientObject, []string, models.IngestionValidationErrorsMultiple) {
+) ([]models.ClientObject, []string, models.IngestionValidationErrors) {
 	previouslyIngestedMap := make(map[string]ingestedObject)
 	for _, obj := range previouslyIngestedObjects {
 		previouslyIngestedMap[obj.objectId] = obj
@@ -176,7 +176,7 @@ func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(
 
 	payloadsToInsert := make([]models.ClientObject, 0, len(payloads))
 	obsoleteIngestedObjectIds := make([]string, 0, len(previouslyIngestedMap))
-	validationErrors := make(models.IngestionValidationErrorsMultiple, len(payloads))
+	validationErrors := make(models.IngestionValidationErrors, len(payloads))
 
 	for _, payload := range payloads {
 		objectId, updatedAt := objectIdAndUpdatedAtFromPayload(payload)

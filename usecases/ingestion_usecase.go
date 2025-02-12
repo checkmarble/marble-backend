@@ -97,12 +97,13 @@ func (usecase *IngestionUseCase) IngestObject(
 		return err
 	})
 	if err != nil {
-		var validationErrors models.IngestionValidationErrorsMultiple
+		var validationErrors models.IngestionValidationErrors
 		if errors.As(err, &validationErrors) {
 			// if err is not nil, the call to the repository may return a models.IngestionValidationErrorsMultiple
 			// instance error, in which case it should have just one entry (with the input object_id as key)
-			return 0, models.IngestionValidationErrorsSingle(
-				validationErrors[payload.Data["object_id"].(string)])
+			// return 0, models.IngestionValidationErrorsSingle(
+			// 	validationErrors[payload.Data["object_id"].(string)])
+			return 0, validationErrors
 		}
 		return 0, err
 	}
@@ -162,7 +163,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 	clientObjects := make([]models.ClientObject, 0, len(rawMessages))
 	objectIds := make(map[string]struct{}, len(rawMessages))
 	parser := payload_parser.NewParser(parserOpts...)
-	validationErrorsGroup := make(models.IngestionValidationErrorsMultiple)
+	validationErrorsGroup := make(models.IngestionValidationErrors)
 	for _, rawMsg := range rawMessages {
 		payload, validationErrors, err := parser.ParsePayload(table, rawMsg)
 		if err != nil {
