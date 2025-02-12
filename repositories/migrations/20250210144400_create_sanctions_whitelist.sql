@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 
 alter table sanction_check_configs
-    add column whitelist_field_ast
+    add column counterparty_id_expression
     jsonb;
 
 alter table sanction_checks
@@ -32,7 +32,7 @@ create unique index idx_sanction_check_whitelist on sanction_check_whitelists (o
 -- +goose StatementBegin
 
 alter table sanction_check_configs
-    drop column whitelist_field_ast;
+    drop column counterparty_id_expression;
 
 alter table sanction_checks
     drop column whitelisted_entities;

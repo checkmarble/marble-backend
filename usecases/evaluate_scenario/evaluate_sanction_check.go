@@ -68,11 +68,11 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		},
 	}
 
-	if iteration.SanctionCheckConfig.WhitelistField != nil {
-		whitelistFieldResult, err := e.evaluateAstExpression.EvaluateAstExpression(
+	if iteration.SanctionCheckConfig.CounterpartyIdExpression != nil {
+		counterpartyIdResult, err := e.evaluateAstExpression.EvaluateAstExpression(
 			ctx,
 			nil,
-			*iteration.SanctionCheckConfig.WhitelistField,
+			*iteration.SanctionCheckConfig.CounterpartyIdExpression,
 			params.Scenario.OrganizationId,
 			dataAccessor.ClientObject,
 			params.DataModel,
@@ -82,14 +82,14 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 			return
 		}
 
-		whitelistField, err := whitelistFieldResult.GetStringReturnValue()
+		counterpartyId, err := counterpartyIdResult.GetStringReturnValue()
 		if err != nil && !errors.Is(err, ast.ErrNullFieldRead) {
 			sanctionCheckErr = errors.Wrap(err, "could not parse object field for white list check as string")
 			return
 		}
 
-		if trimmed := strings.TrimSpace(whitelistField); trimmed != "" {
-			uniqueCounterpartyIdentifier = &whitelistField
+		if trimmed := strings.TrimSpace(counterpartyId); trimmed != "" {
+			uniqueCounterpartyIdentifier = &counterpartyId
 
 			whitelistCount, err := e.evalSanctionCheckUsecase.CountWhitelistsForCounterpartyId(
 				ctx, iteration.OrganizationId, *uniqueCounterpartyIdentifier)
