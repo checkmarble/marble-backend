@@ -14,18 +14,18 @@ import (
 const TABLE_SANCTION_CHECK_CONFIGS = "sanction_check_configs"
 
 type DBSanctionCheckConfigs struct {
-	Id                    string                      `db:"id"`
-	ScenarioIterationId   string                      `db:"scenario_iteration_id"`
-	Name                  string                      `db:"name"`
-	Description           string                      `db:"description"`
-	RuleGroup             string                      `db:"rule_group"`
-	Datasets              []string                    `db:"datasets"`
-	TriggerRule           []byte                      `db:"trigger_rule"`
-	Query                 *DBSanctionCheckConfigQuery `db:"query"`
-	ForcedOutcome         *string                     `db:"forced_outcome"`
-	ScoreModifier         int                         `db:"score_modifier"`
-	WhitelistAttributeAst []byte                      `db:"whitelist_field_ast"`
-	UpdatedAt             time.Time                   `db:"updated_at"`
+	Id                  string                      `db:"id"`
+	ScenarioIterationId string                      `db:"scenario_iteration_id"`
+	Name                string                      `db:"name"`
+	Description         string                      `db:"description"`
+	RuleGroup           string                      `db:"rule_group"`
+	Datasets            []string                    `db:"datasets"`
+	TriggerRule         []byte                      `db:"trigger_rule"`
+	Query               *DBSanctionCheckConfigQuery `db:"query"`
+	ForcedOutcome       *string                     `db:"forced_outcome"`
+	ScoreModifier       int                         `db:"score_modifier"`
+	CounterpartyIdExpr  []byte                      `db:"counterparty_id_expression"`
+	UpdatedAt           time.Time                   `db:"updated_at"`
 }
 
 type DBSanctionCheckConfigQuery struct {
@@ -69,14 +69,14 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 		scc.Query = &query
 	}
 
-	if db.WhitelistAttributeAst != nil {
-		field, err := AdaptSerializedAstExpression(db.WhitelistAttributeAst)
+	if db.CounterpartyIdExpr != nil {
+		field, err := AdaptSerializedAstExpression(db.CounterpartyIdExpr)
 		if err != nil {
 			return models.SanctionCheckConfig{}, errors.Wrap(err,
 				"could not unmarshal whitelist field expression")
 		}
 
-		scc.WhitelistField = field
+		scc.CounterpartyIdExpression = field
 	}
 
 	if db.ForcedOutcome != nil {

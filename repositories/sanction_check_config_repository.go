@@ -61,10 +61,21 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 		}
 	}
 
+	var counterpartyIdExpr *[]byte
+
+	if cfg.Query != nil {
+		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.CounterpartyIdExpression)
+		if err != nil {
+			return models.SanctionCheckConfig{}, err
+		}
+
+		counterpartyIdExpr = astJson
+	}
+
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
 		Columns("scenario_iteration_id", "name", "description", "rule_group", "datasets",
-			"forced_outcome", "score_modifier", "trigger_rule", "query").
+			"forced_outcome", "score_modifier", "trigger_rule", "query", "counterparty_id_expression").
 		Values(
 			scenarioIterationId,
 			cfg.Name,
@@ -75,6 +86,7 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 			utils.Or(cfg.Outcome.ScoreModifier, 0),
 			triggerRule,
 			query,
+			counterpartyIdExpr,
 		)
 
 	updateFields := make([]string, 0, 4)
@@ -96,6 +108,9 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 	}
 	if cfg.Query != nil {
 		updateFields = append(updateFields, "query = EXCLUDED.query")
+	}
+	if cfg.CounterpartyIdExpression != nil {
+		updateFields = append(updateFields, "counterparty_id_expression = EXCLUDED.counterparty_id_expression")
 	}
 	if cfg.Outcome.ForceOutcome != nil {
 		switch *cfg.Outcome.ForceOutcome {

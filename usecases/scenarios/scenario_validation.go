@@ -40,6 +40,7 @@ func ScenarioValidationToError(validation models.ScenarioValidation) error {
 	errs = append(errs, pure_utils.Map(validation.SanctionCheck.TriggerRule.Errors, toError)...)
 	errs = append(errs, validation.SanctionCheck.TriggerRule.TriggerEvaluation.FlattenErrors()...)
 	errs = append(errs, validation.SanctionCheck.NameFilter.RuleEvaluation.FlattenErrors()...)
+	errs = append(errs, validation.SanctionCheck.CounterpartyIdExpression.RuleEvaluation.FlattenErrors()...)
 
 	return errors.Join(errs...)
 }
@@ -170,7 +171,24 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 			}
 		}
 
+		counterpartyIdValidation := models.NewRuleValidation()
+
+		if iteration.SanctionCheckConfig.CounterpartyIdExpression != nil {
+			counterpartyIdValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
+				*iteration.SanctionCheckConfig.CounterpartyIdExpression)
+
+			if _, ok := counterpartyIdValidation.RuleEvaluation.ReturnValue.(string); !ok {
+				counterpartyIdValidation.Errors = append(
+					counterpartyIdValidation.Errors, models.ScenarioValidationError{
+						Error: errors.Wrap(models.BadParameterError,
+							"sanction check counterparty ID expression does not return a string"),
+						Code: models.FormulaMustReturnString,
+					})
+			}
+		}
+
 		result.SanctionCheck.NameFilter = queryValidation
+		result.SanctionCheck.CounterpartyIdExpression = counterpartyIdValidation
 	}
 
 	return result
