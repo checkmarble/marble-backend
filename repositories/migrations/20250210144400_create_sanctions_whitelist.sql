@@ -9,7 +9,7 @@ alter table sanction_checks
     add column whitelisted_entities text[] not null default '{}';
 
 alter table sanction_check_matches
-    add column object_id text;
+    add column counterparty_id text;
 
 create table sanction_check_whitelists (
     id uuid default uuid_generate_v4(),
@@ -38,7 +38,7 @@ alter table sanction_checks
     drop column whitelisted_entities;
 
 alter table sanction_check_matches
-    drop column object_id;
+    drop column counterparty_id;
 
 drop table sanction_check_whitelists;
 

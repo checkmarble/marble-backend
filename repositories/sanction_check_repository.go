@@ -173,6 +173,12 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		return sanctionCheck, err
 	}
 
+	whitelistedEntities := make([]string, 0)
+
+	if sanctionCheck.WhitelistedEntities != nil {
+		whitelistedEntities = sanctionCheck.WhitelistedEntities
+	}
+
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECKS).Columns(
 		"decision_id",
@@ -195,7 +201,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		sanctionCheck.Partial,
 		sanctionCheck.IsManual,
 		sanctionCheck.InitialHasMatches,
-		sanctionCheck.WhitelistedEntities,
+		whitelistedEntities,
 		sanctionCheck.RequestedBy,
 		sanctionCheck.Status.String(),
 	).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionChecksColumn, ",")))

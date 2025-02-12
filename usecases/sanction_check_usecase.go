@@ -79,9 +79,9 @@ type SanctionCheckRepository interface {
 	CopySanctionCheckFiles(ctx context.Context, exec repositories.Executor,
 		sanctionCheckId, newSanctionCheckId string) error
 	AddSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
-		orgId, objectId string, entityId string, reviewerId models.UserId) error
+		orgId, counterpartyId string, entityId string, reviewerId models.UserId) error
 	IsSanctionCheckMatchWhitelisted(ctx context.Context, exec repositories.Executor,
-		orgId, objectId string, entityId []string) ([]models.SanctionCheckWhitelist, error)
+		orgId, counterpartyId string, entityId []string) ([]models.SanctionCheckWhitelist, error)
 	CountWhitelistsForCounterpartyId(ctx context.Context, exec repositories.Executor,
 		orgId, counterpartyId string) (int, error)
 }
@@ -290,14 +290,14 @@ func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.Sanctio
 }
 
 func (uc SanctionCheckUsecase) FilterOutWhitelistedMatches(ctx context.Context, orgId string,
-	sanctionCheck models.SanctionCheckWithMatches, objectId string,
+	sanctionCheck models.SanctionCheckWithMatches, counterpartyId string,
 ) (models.SanctionCheckWithMatches, error) {
 	matchesSet := set.From(pure_utils.Map(sanctionCheck.Matches, func(m models.SanctionCheckMatch) string {
 		return m.EntityId
 	}))
 
 	whitelists, err := uc.repository.IsSanctionCheckMatchWhitelisted(ctx,
-		uc.executorFactory.NewExecutor(), orgId, objectId, matchesSet.Slice())
+		uc.executorFactory.NewExecutor(), orgId, counterpartyId, matchesSet.Slice())
 	if err != nil {
 		return sanctionCheck, err
 	}
