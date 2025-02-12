@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -77,6 +78,12 @@ type SanctionCheckRepository interface {
 	ListSanctionCheckFiles(ctx context.Context, exec repositories.Executor, matchId string) ([]models.SanctionCheckFile, error)
 	CopySanctionCheckFiles(ctx context.Context, exec repositories.Executor,
 		sanctionCheckId, newSanctionCheckId string) error
+	AddSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
+		orgId, counterpartyId string, entityId string, reviewerId models.UserId) error
+	IsSanctionCheckMatchWhitelisted(ctx context.Context, exec repositories.Executor,
+		orgId, counterpartyId string, entityId []string) ([]models.SanctionCheckWhitelist, error)
+	CountWhitelistsForCounterpartyId(ctx context.Context, exec repositories.Executor,
+		orgId, counterpartyId string) (int, error)
 }
 
 type SanctionsCheckUsecaseExternalRepository interface {
@@ -131,8 +138,14 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 		return nil, errors.Wrap(models.NotFoundError, "requested decision does not exist")
 	}
 
-	if _, err = uc.enforceCanReadOrUpdateCase(ctx, decisions[0].DecisionId); err != nil {
-		return nil, err
+	if decisions[0].Case == nil {
+		if err := uc.enforceSecurityDecision.ReadDecision(decisions[0]); err != nil {
+			return nil, err
+		}
+	} else {
+		if _, err = uc.enforceCanReadOrUpdateCase(ctx, decisions[0].DecisionId); err != nil {
+			return nil, err
+		}
 	}
 
 	scs, err := uc.repository.GetSanctionChecksForDecision(ctx, exec, decisions[0].DecisionId)
@@ -205,8 +218,12 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 	query := models.OpenSanctionsQuery{
 		IsRefinement: true,
 		Config:       *scc,
-		Type:         refine.Type,
-		Queries:      refine.Query,
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type:    refine.Type,
+				Filters: refine.Query,
+			},
+		},
 	}
 
 	sanctionCheck, err := uc.Execute(ctx, decision.OrganizationId, query)
@@ -264,8 +281,12 @@ func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.Sanctio
 		IsRefinement: true,
 		OrgConfig:    sc.OrgConfig,
 		Config:       *scc,
-		Type:         refine.Type,
-		Queries:      refine.Query,
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type:    refine.Type,
+				Filters: refine.Query,
+			},
+		},
 	}
 
 	sanctionCheck, err := uc.Execute(ctx, decision.OrganizationId, query)
@@ -274,6 +295,55 @@ func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.Sanctio
 	}
 
 	return sanctionCheck, nil
+}
+
+func (uc SanctionCheckUsecase) FilterOutWhitelistedMatches(ctx context.Context, orgId string,
+	sanctionCheck models.SanctionCheckWithMatches, counterpartyId string,
+) (models.SanctionCheckWithMatches, error) {
+	matchesSet := set.From(pure_utils.Map(sanctionCheck.Matches, func(m models.SanctionCheckMatch) string {
+		return m.EntityId
+	}))
+
+	whitelists, err := uc.repository.IsSanctionCheckMatchWhitelisted(ctx,
+		uc.executorFactory.NewExecutor(), orgId, counterpartyId, matchesSet.Slice())
+	if err != nil {
+		return sanctionCheck, err
+	}
+
+	matchesAfterWhitelisting := make([]models.SanctionCheckMatch, 0, len(sanctionCheck.Matches))
+
+	for _, match := range sanctionCheck.Matches {
+		isWhitelisted := slices.ContainsFunc(whitelists, func(w models.SanctionCheckWhitelist) bool {
+			return match.EntityId == w.EntityId
+		})
+
+		if isWhitelisted {
+			continue
+		}
+
+		matchesAfterWhitelisting = append(matchesAfterWhitelisting, match)
+	}
+
+	if len(whitelists) > 0 {
+		utils.LoggerFromContext(ctx).InfoContext(ctx,
+			"filtered out sanction check matches that were whitelisted", "before",
+			len(sanctionCheck.Matches), "whitelisted", len(whitelists), "after", len(matchesAfterWhitelisting))
+
+		whitelisted := pure_utils.Map(whitelists, func(w models.SanctionCheckWhitelist) string {
+			return w.EntityId
+		})
+
+		sanctionCheck.WhitelistedEntities = whitelisted
+	}
+
+	sanctionCheck.Matches = matchesAfterWhitelisting
+	sanctionCheck.Count = len(sanctionCheck.Matches)
+
+	return sanctionCheck, nil
+}
+
+func (uc SanctionCheckUsecase) CountWhitelistsForCounterpartyId(ctx context.Context, orgId, counterpartyId string) (int, error) {
+	return uc.repository.CountWhitelistsForCounterpartyId(ctx, uc.executorFactory.NewExecutor(), orgId, counterpartyId)
 }
 
 func (uc SanctionCheckUsecase) UpdateMatchStatus(
@@ -378,6 +448,16 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 					return err
 				}
 			}
+
+			if update.Status == models.SanctionMatchStatusNoHit && update.Whitelist &&
+				data.match.UniqueCounterpartyIdentifier != nil {
+				if err := uc.repository.AddSanctionCheckMatchWhitelist(ctx, tx,
+					data.decision.OrganizationId, *data.match.UniqueCounterpartyIdentifier,
+					data.match.EntityId, update.ReviewerId); err != nil {
+					return errors.Wrap(err, "could not whitelist match")
+				}
+			}
+
 			return nil
 		},
 	)

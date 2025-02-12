@@ -19,6 +19,12 @@ type OpenSanctions struct {
 	host        string
 	authMethod  OpenSanctionsAuthMethod
 	credentials string
+
+	nameRecognition *NameRecognitionProvider
+}
+
+type NameRecognitionProvider struct {
+	ApiUrl string
 }
 
 func InitializeOpenSanctions(client *http.Client, host, authMethod, creds string) OpenSanctions {
@@ -35,6 +41,14 @@ func InitializeOpenSanctions(client *http.Client, host, authMethod, creds string
 		case "basic":
 			os.authMethod = OPEN_SANCTIONS_AUTH_BASIC
 		}
+	}
+
+	return os
+}
+
+func (os *OpenSanctions) WithNameRecognition(apiUrl string) *OpenSanctions {
+	os.nameRecognition = &NameRecognitionProvider{
+		ApiUrl: apiUrl,
 	}
 
 	return os
@@ -62,4 +76,8 @@ func (os OpenSanctions) AuthMethod() OpenSanctionsAuthMethod {
 
 func (os OpenSanctions) Credentials() string {
 	return os.credentials
+}
+
+func (os OpenSanctions) NameRecognition() *NameRecognitionProvider {
+	return os.nameRecognition
 }

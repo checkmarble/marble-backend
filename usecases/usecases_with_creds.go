@@ -136,6 +136,7 @@ func (usecases *UsecasesWithCreds) NewScenarioEvaluator() evaluate_scenario.Scen
 		usecases.NewEvaluateAstExpression(),
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewFeatureAccessReader(),
+		usecases.Repositories.NameRecognitionRepository,
 	)
 }
 

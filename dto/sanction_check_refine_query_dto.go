@@ -5,10 +5,10 @@ import (
 )
 
 type RefineQueryDto struct {
-	Thing        *RefineQueryBase         `json:"thing,omitempty" binding:"excluded_with_all=Person Organization Vehicle"`
-	Person       *RefineQueryPerson       `json:"person,omitempty" binding:"excluded_with_all=Thing Organization Vehicle"`
-	Organization *RefineQueryOrganization `json:"organization,omitempty" binding:"excluded_with_all=Person Thing Vehicle"`
-	Vehicle      *RefineQueryVehicle      `json:"vehicle,omitempty" binding:"excluded_with_all=Thing Person Organization"`
+	Thing        *RefineQueryBase         `json:"Thing,omitempty" binding:"excluded_with_all=Person Organization Vehicle"` //nolint:tagliatelle
+	Person       *RefineQueryPerson       `json:"Person,omitempty" binding:"excluded_with_all=Thing Organization Vehicle"` //nolint:tagliatelle
+	Organization *RefineQueryOrganization `json:"Organization,omitempty" binding:"excluded_with_all=Person Thing Vehicle"` //nolint:tagliatelle
+	Vehicle      *RefineQueryVehicle      `json:"Vehicle,omitempty" binding:"excluded_with_all=Thing Person Organization"` //nolint:tagliatelle
 }
 
 func (dto RefineQueryDto) Type() string {
@@ -31,9 +31,9 @@ type RefineQueryBase struct {
 type RefineQueryPerson struct {
 	RefineQueryBase
 
-	BirthDate   string `json:"birth_date"`
+	BirthDate   string `json:"birthDate"` //nolint:tagliatelle
 	Nationality string `json:"nationality"`
-	IdNumber    string `json:"id_number"`
+	IdNumber    string `json:"idNumber"` //nolint:tagliatelle
 	Address     string `json:"address"`
 }
 
@@ -41,14 +41,14 @@ type RefineQueryOrganization struct {
 	RefineQueryBase
 
 	Country            string `json:"country"`
-	RegistrationNumber string `json:"registration_number"`
+	RegistrationNumber string `json:"registrationNumber"` //nolint:tagliatelle
 	Address            string `json:"address"`
 }
 
 type RefineQueryVehicle struct {
 	RefineQueryBase
 
-	RegistrationNumber string `json:"registration_number"`
+	RegistrationNumber string `json:"registrationNumber"` //nolint:tagliatelle
 }
 
 func AdaptRefineQueryDto(dto RefineQueryDto) models.OpenSanctionCheckFilter {

@@ -24,15 +24,18 @@ type DBSanctionCheckConfigs struct {
 	Query               *DBSanctionCheckConfigQuery `db:"query"`
 	ForcedOutcome       *string                     `db:"forced_outcome"`
 	ScoreModifier       int                         `db:"score_modifier"`
+	CounterpartyIdExpr  []byte                      `db:"counterparty_id_expression"`
 	UpdatedAt           time.Time                   `db:"updated_at"`
 }
 
 type DBSanctionCheckConfigQuery struct {
-	Name json.RawMessage `json:"name"`
+	Name  json.RawMessage `json:"name"`
+	Label json.RawMessage `json:"label"`
 }
 
 type DBSanctionCheckConfigQueryInput struct {
-	Name dto.NodeDto `json:"name"`
+	Name  dto.NodeDto `json:"name"`
+	Label dto.NodeDto `json:"label"`
 }
 
 var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
@@ -68,6 +71,16 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 		scc.Query = &query
 	}
 
+	if db.CounterpartyIdExpr != nil {
+		field, err := AdaptSerializedAstExpression(db.CounterpartyIdExpr)
+		if err != nil {
+			return models.SanctionCheckConfig{}, errors.Wrap(err,
+				"could not unmarshal whitelist field expression")
+		}
+
+		scc.CounterpartyIdExpression = field
+	}
+
 	if db.ForcedOutcome != nil {
 		scc.Outcome.ForceOutcome = models.OutcomeFrom(*db.ForcedOutcome)
 	}
@@ -80,9 +93,14 @@ func AdaptSanctionCheckConfigQuery(db DBSanctionCheckConfigQuery) (models.Sancti
 	if err != nil {
 		return models.SanctionCheckConfigQuery{}, err
 	}
+	labelAst, err := AdaptSerializedAstExpression(db.Label)
+	if err != nil {
+		return models.SanctionCheckConfigQuery{}, err
+	}
 
 	model := models.SanctionCheckConfigQuery{
-		Name: *nameAst,
+		Name:  *nameAst,
+		Label: labelAst,
 	}
 
 	return model, nil

@@ -25,11 +25,16 @@ type OpenSanctionsCatalogDataset struct {
 }
 
 type OpenSanctionsQuery struct {
-	IsRefinement bool
-	Type         string
-	Queries      OpenSanctionCheckFilter
-	Config       SanctionCheckConfig
-	OrgConfig    OrganizationOpenSanctionsConfig
+	IsRefinement  bool
+	LimitIncrease int
+	Queries       []OpenSanctionsCheckQuery
+	Config        SanctionCheckConfig
+	OrgConfig     OrganizationOpenSanctionsConfig
+}
+
+type OpenSanctionsCheckQuery struct {
+	Type    string
+	Filters OpenSanctionCheckFilter
 }
 
 type OpenSanctionCheckFilter map[string][]string

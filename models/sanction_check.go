@@ -95,19 +95,20 @@ func (scs SanctionCheckMatchStatus) String() string {
 }
 
 type SanctionCheck struct {
-	Id                string
-	DecisionId        string
-	Status            SanctionCheckStatus
-	Datasets          []string
-	SearchInput       json.RawMessage
-	OrgConfig         OrganizationOpenSanctionsConfig
-	IsManual          bool
-	IsArchived        bool
-	InitialHasMatches bool
-	RequestedBy       *string
-	Partial           bool
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	Id                  string
+	DecisionId          string
+	Status              SanctionCheckStatus
+	Datasets            []string
+	SearchInput         json.RawMessage
+	OrgConfig           OrganizationOpenSanctionsConfig
+	IsManual            bool
+	IsArchived          bool
+	InitialHasMatches   bool
+	RequestedBy         *string
+	Partial             bool
+	WhitelistedEntities []string
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 type SanctionCheckWithMatches struct {
@@ -117,9 +118,10 @@ type SanctionCheckWithMatches struct {
 }
 
 type SanctionRawSearchResponseWithMatches struct {
-	SearchInput       json.RawMessage
-	InitialHasMatches bool
-	Partial           bool
+	SearchInput         json.RawMessage
+	InitialHasMatches   bool
+	WhitelistedEntities []string
+	Partial             bool
 
 	Matches []SanctionCheckMatch
 	Count   int
@@ -128,13 +130,14 @@ type SanctionRawSearchResponseWithMatches struct {
 func (s SanctionRawSearchResponseWithMatches) AdaptSanctionCheckFromSearchResponse(query OpenSanctionsQuery) SanctionCheckWithMatches {
 	sanctionCheck := SanctionCheckWithMatches{
 		SanctionCheck: SanctionCheck{
-			Datasets:          query.Config.Datasets,
-			OrgConfig:         query.OrgConfig,
-			SearchInput:       s.SearchInput,
-			Partial:           s.Partial,
-			InitialHasMatches: s.InitialHasMatches,
-			CreatedAt:         time.Now(),
-			UpdatedAt:         time.Now(),
+			Datasets:            query.Config.Datasets,
+			OrgConfig:           query.OrgConfig,
+			SearchInput:         s.SearchInput,
+			Partial:             s.Partial,
+			InitialHasMatches:   s.InitialHasMatches,
+			WhitelistedEntities: s.WhitelistedEntities,
+			CreatedAt:           time.Now(),
+			UpdatedAt:           time.Now(),
 		},
 		Matches: s.Matches,
 		Count:   s.Count,
@@ -156,14 +159,16 @@ func (s SanctionCheckWithMatches) InitialStatusFromMatches() SanctionCheckStatus
 }
 
 type SanctionCheckMatch struct {
-	Id              string
-	SanctionCheckId string
-	EntityId        string
-	Status          SanctionCheckMatchStatus
-	QueryIds        []string
-	Payload         []byte
-	ReviewedBy      *string
-	Comments        []SanctionCheckMatchComment
+	Id                           string
+	IsMatch                      bool
+	SanctionCheckId              string
+	EntityId                     string
+	Status                       SanctionCheckMatchStatus
+	QueryIds                     []string
+	UniqueCounterpartyIdentifier *string
+	Payload                      []byte
+	ReviewedBy                   *string
+	Comments                     []SanctionCheckMatchComment
 }
 
 type SanctionCheckMatchUpdate struct {
@@ -171,6 +176,7 @@ type SanctionCheckMatchUpdate struct {
 	ReviewerId UserId
 	Status     SanctionCheckMatchStatus
 	Comment    *SanctionCheckMatchComment
+	Whitelist  bool
 }
 
 type SanctionCheckRefineRequest struct {
@@ -201,4 +207,13 @@ type SanctionCheckFileInput struct {
 	BucketName      string
 	FileReference   string
 	FileName        string
+}
+
+type SanctionCheckWhitelist struct {
+	Id             string
+	OrgId          string
+	CounterpartyId string
+	EntityId       string
+	WhitelistedBy  string
+	CreatedAt      time.Time
 }

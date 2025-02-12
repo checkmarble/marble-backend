@@ -38,8 +38,9 @@ type decisionValidationDto struct {
 }
 
 type sanctionCheckConfigValidationDto struct {
-	Trigger    triggerValidationDto `json:"trigger"`
-	NameFilter ruleValidationDto    `json:"name_filter"`
+	Trigger                  triggerValidationDto `json:"trigger"`
+	NameFilter               ruleValidationDto    `json:"name_filter"`
+	CounterpartyIdExpression ruleValidationDto    `json:"counterparty_id_expression"`
 }
 
 type ScenarioValidationDto struct {
@@ -72,6 +73,10 @@ func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationD
 			NameFilter: ruleValidationDto{
 				Errors:         pure_utils.Map(s.SanctionCheck.NameFilter.Errors, AdaptScenarioValidationErrorDto),
 				RuleEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.NameFilter.RuleEvaluation),
+			},
+			CounterpartyIdExpression: ruleValidationDto{
+				Errors:         pure_utils.Map(s.SanctionCheck.CounterpartyIdExpression.Errors, AdaptScenarioValidationErrorDto),
+				RuleEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.CounterpartyIdExpression.RuleEvaluation),
 			},
 		},
 		Decision: decisionValidationDto{

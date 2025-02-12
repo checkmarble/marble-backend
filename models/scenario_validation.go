@@ -75,8 +75,9 @@ type decisionValidation struct {
 }
 
 type sanctionCheckConfigValidation struct {
-	TriggerRule triggerValidation
-	NameFilter  RuleValidation
+	TriggerRule              triggerValidation
+	NameFilter               RuleValidation
+	CounterpartyIdExpression RuleValidation
 }
 
 type ScenarioValidation struct {
