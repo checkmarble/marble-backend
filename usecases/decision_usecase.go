@@ -678,7 +678,6 @@ func (usecase DecisionUsecase) validatePayload(
 	clientObject *models.ClientObject,
 	rawPayload json.RawMessage,
 ) (payload models.ClientObject, dataModel models.DataModel, err error) {
-	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
 
 	if clientObject == nil && len(rawPayload) == 0 {
@@ -719,9 +718,8 @@ func (usecase DecisionUsecase) validatePayload(
 		return
 	}
 	if len(validationErrors) > 0 {
-		encoded, _ := json.Marshal(validationErrors)
-		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on POST all decisions: %s", string(encoded)))
-		err = errors.Wrap(models.BadParameterError, string(encoded))
+		err = errors.Wrap(validationErrors, "validation errors on decision usecase validate payload")
+		return
 	}
 
 	return

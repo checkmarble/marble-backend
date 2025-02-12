@@ -1,6 +1,7 @@
 package payload_parser
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -28,19 +29,19 @@ var (
 	errIsInvalidDataType  = fmt.Errorf("invalid type used in parser")
 )
 
-func addError(errorsContainer models.IngestionValidationErrorsMultiple, objectId string, name string, err error) {
+func addError(errorsContainer models.IngestionValidationErrors, objectId string, name string, err error) {
 	if _, ok := errorsContainer[objectId]; !ok {
 		errorsContainer[objectId] = make(map[string]string)
 	}
 	errorsContainer[objectId][name] = err.Error()
 }
 
-func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, models.IngestionValidationErrorsMultiple, error) {
+func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, models.IngestionValidationErrors, error) {
 	if !gjson.ValidBytes(json) {
-		return models.ClientObject{}, nil, errIsInvalidJSON
+		return models.ClientObject{}, nil, errors.Join(models.BadParameterError, errIsInvalidJSON)
 	}
 
-	allErrors := make(models.IngestionValidationErrorsMultiple)
+	allErrors := make(models.IngestionValidationErrors)
 	out := make(map[string]any)
 	result := gjson.ParseBytes(json)
 	missingFields := make([]models.MissingField, 0, len(table.Fields))

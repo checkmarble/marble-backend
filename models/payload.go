@@ -29,46 +29,46 @@ type ClientObject struct {
 }
 
 // expects format {"field_name": "error message", ...}
-type IngestionValidationErrorsSingle map[string]string
+type ingestionValidationErrorsSingle map[string]string
 
-func (err IngestionValidationErrorsSingle) Error() string {
+func (err ingestionValidationErrorsSingle) Error() string {
 	encoded, _ := json.Marshal(err)
 	return string(encoded)
 }
 
-func (err IngestionValidationErrorsSingle) MarshalJSON() ([]byte, error) {
+func (err ingestionValidationErrorsSingle) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]string(err))
 }
 
-func (err IngestionValidationErrorsSingle) Is(target error) bool {
+func (err ingestionValidationErrorsSingle) Is(target error) bool {
 	if target == BadParameterError {
 		return true
 	}
-	t, ok := target.(IngestionValidationErrorsSingle)
+	t, ok := target.(ingestionValidationErrorsSingle)
 	return ok && reflect.DeepEqual(err, t)
 }
 
 // expects format {"object_id": {"field_name": "error message"}, ...}
-type IngestionValidationErrorsMultiple map[string]map[string]string
+type IngestionValidationErrors map[string]ingestionValidationErrorsSingle
 
-func (err IngestionValidationErrorsMultiple) Error() string {
+func (err IngestionValidationErrors) Error() string {
 	encoded, _ := json.Marshal(err)
 	return string(encoded)
 }
 
-func (err IngestionValidationErrorsMultiple) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]map[string]string(err))
+func (err IngestionValidationErrors) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]ingestionValidationErrorsSingle(err))
 }
 
-func (err IngestionValidationErrorsMultiple) Is(target error) bool {
+func (err IngestionValidationErrors) Is(target error) bool {
 	if target == BadParameterError {
 		return true
 	}
-	t, ok := target.(IngestionValidationErrorsMultiple)
+	t, ok := target.(IngestionValidationErrors)
 	return ok && reflect.DeepEqual(err, t)
 }
 
-func (err IngestionValidationErrorsMultiple) GetSomeItem() (string, map[string]string) {
+func (err IngestionValidationErrors) GetSomeItem() (string, ingestionValidationErrorsSingle) {
 	for k, v := range err {
 		return k, v
 	}
