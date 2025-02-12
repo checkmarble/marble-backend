@@ -1,6 +1,7 @@
 package payload_parser
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -28,35 +29,35 @@ var (
 	errIsInvalidDataType  = fmt.Errorf("invalid type used in parser")
 )
 
-func addError(errorsContainer models.IngestionValidationErrorsMultiple, objectId string, name string, err error) {
+func addError(errorsContainer models.IngestionValidationErrors, objectId string, name string, err error) {
 	if _, ok := errorsContainer[objectId]; !ok {
 		errorsContainer[objectId] = make(map[string]string)
 	}
 	errorsContainer[objectId][name] = err.Error()
 }
 
-func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, models.IngestionValidationErrorsMultiple, error) {
+func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, error) {
 	if !gjson.ValidBytes(json) {
-		return models.ClientObject{}, nil, errIsInvalidJSON
+		return models.ClientObject{}, errors.Join(models.BadParameterError, errIsInvalidJSON)
 	}
 
-	allErrors := make(models.IngestionValidationErrorsMultiple)
+	allErrors := make(models.IngestionValidationErrors)
 	out := make(map[string]any)
 	result := gjson.ParseBytes(json)
 	missingFields := make([]models.MissingField, 0, len(table.Fields))
 
-	objectId := ""
+	// different treatment for object_id, because its value should not be an empty string and is required to construct the validation errors below
 	objectIdRes := result.Get("object_id")
+	objectId := objectIdRes.String()
 	if !objectIdRes.Exists() || objectIdRes.Type == gjson.Null || objectIdRes.String() == "" {
-		objectId = ""
 		addError(allErrors, objectId, "object_id", errIsNotNullable)
 	}
-	objectId = objectIdRes.String()
 
 	for name, field := range table.Fields {
 		value := result.Get(name)
 		if !value.Exists() {
-			if p.allowPatch {
+			// specific case for updated_at which is always required, because it is necessary for proper ingestion at the repository level
+			if p.allowPatch && name != "updated_at" {
 				missingFields = append(missingFields, models.MissingField{
 					Field:          field,
 					ErrorIfMissing: errIsNotNullable.Error(),
@@ -77,7 +78,7 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 
 		parseField, ok := p.parsers[field.DataType]
 		if !ok {
-			return models.ClientObject{}, nil, fmt.Errorf("%w: %s",
+			return models.ClientObject{}, fmt.Errorf("%w: %s",
 				errIsInvalidDataType, field.DataType.String())
 		}
 		if val, err := parseField(value); err != nil {
@@ -87,13 +88,13 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 		}
 	}
 	if len(allErrors) > 0 {
-		return models.ClientObject{}, allErrors, nil
+		return models.ClientObject{}, allErrors
 	}
 	return models.ClientObject{
 		TableName:             table.Name,
 		Data:                  out,
 		MissingFieldsToLookup: missingFields,
-	}, nil, nil
+	}, nil
 }
 
 type parserOpts struct {

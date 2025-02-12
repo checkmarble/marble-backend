@@ -1,6 +1,7 @@
 package payload_parser
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -42,7 +43,7 @@ func TestParser_ParsePayload(t *testing.T) {
 		name       string
 		table      models.Table
 		input      []byte
-		wantErrors models.IngestionValidationErrorsMultiple
+		wantErrors models.IngestionValidationErrors
 		want       models.ClientObject
 		err        error
 	}{
@@ -75,7 +76,7 @@ func TestParser_ParsePayload(t *testing.T) {
 			name:  "empty json",
 			table: table,
 			input: []byte(`{}`),
-			wantErrors: models.IngestionValidationErrorsMultiple{"": map[string]string{
+			wantErrors: models.IngestionValidationErrors{"": models.IngestionValidationErrorsSingle{
 				"string":     errIsNotNullable.Error(),
 				"integer":    errIsNotNullable.Error(),
 				"float":      errIsNotNullable.Error(),
@@ -83,6 +84,18 @@ func TestParser_ParsePayload(t *testing.T) {
 				"boolean":    errIsNotNullable.Error(),
 				"object_id":  errIsNotNullable.Error(),
 				"updated_at": errIsNotNullable.Error(),
+			}},
+		},
+		{
+			name:  "missing fields other than object_id and updated_at",
+			table: table,
+			input: []byte(`{"object_id": "1", "updated_at": "2023-10-19 17:33:22"}`),
+			wantErrors: models.IngestionValidationErrors{"1": models.IngestionValidationErrorsSingle{
+				"string":    errIsNotNullable.Error(),
+				"integer":   errIsNotNullable.Error(),
+				"float":     errIsNotNullable.Error(),
+				"timestamp": errIsNotNullable.Error(),
+				"boolean":   errIsNotNullable.Error(),
 			}},
 		},
 		{
@@ -100,7 +113,7 @@ func TestParser_ParsePayload(t *testing.T) {
 				"timestamp": "not a timestamp",
 				"boolean": "true"
 			}`),
-			wantErrors: models.IngestionValidationErrorsMultiple{"": map[string]string{
+			wantErrors: models.IngestionValidationErrors{"": models.IngestionValidationErrorsSingle{
 				"string":     errIsInvalidString.Error(),
 				"integer":    "is not a valid integer: expected an integer, got \"string\"",
 				"float":      "is not a valid float: expected a float, got \"string\"",
@@ -143,7 +156,7 @@ func TestParser_ParsePayload(t *testing.T) {
 					"nullable": nil,
 				},
 			},
-			wantErrors: models.IngestionValidationErrorsMultiple{"": map[string]string{
+			wantErrors: models.IngestionValidationErrors{"": models.IngestionValidationErrorsSingle{
 				"object_id": errIsNotNullable.Error(),
 			}},
 		},
@@ -212,19 +225,24 @@ func TestParser_ParsePayload(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewParser()
 
-			out, errors, err := p.ParsePayload(tt.table, tt.input)
-			if err != nil {
+			out, err := p.ParsePayload(tt.table, tt.input)
+			var validationErrors models.IngestionValidationErrors
+			var otherErr error
+			if !errors.As(err, &validationErrors) {
+				otherErr = err
+			}
+			if otherErr != nil {
 				assert.Error(t, tt.err)
-				assert.ErrorIs(t, err, tt.err, "error is the expected error")
+				assert.ErrorIs(t, otherErr, tt.err, "error is the expected error")
 			}
 			if tt.err != nil {
-				assert.ErrorIs(t, err, tt.err, "expected this specific error")
+				assert.ErrorIs(t, otherErr, tt.err, "expected this specific error")
 			} else if len(tt.wantErrors) > 0 {
-				assert.NoError(t, err, "expected no global error")
-				assert.Equal(t, tt.wantErrors, errors, "expected those validation errors")
+				assert.NoError(t, otherErr, "expected no global error")
+				assert.Equal(t, tt.wantErrors, validationErrors, "expected those validation errors")
 			} else if len(tt.want.Data) > 0 {
-				assert.NoError(t, err, "excepted no global error")
-				assert.Empty(t, errors, "expected no validation errors")
+				assert.NoError(t, otherErr, "excepted no global error")
+				assert.Empty(t, validationErrors, "expected no validation errors")
 				assert.Equal(t, tt.want.Data, out.Data, "expected this client object")
 			} else {
 				t.Error("test case is not well defined")

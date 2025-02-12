@@ -23,6 +23,10 @@ const (
 	// decision related
 	TriggerConditionNotMatched ErrorCode = "trigger_condition_not_matched"
 
+	// ingestion related
+	SchemaMismatchError ErrorCode = "data_does_not_match_schema"
+	InvalidJSON         ErrorCode = "invalid_json"
+
 	// general
 	UnknownUser ErrorCode = "unknown_user"
 )
