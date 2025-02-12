@@ -29,27 +29,27 @@ type ClientObject struct {
 }
 
 // expects format {"field_name": "error message", ...}
-type ingestionValidationErrorsSingle map[string]string
+type IngestionValidationErrorsSingle map[string]string
 
-func (err ingestionValidationErrorsSingle) Error() string {
+func (err IngestionValidationErrorsSingle) Error() string {
 	encoded, _ := json.Marshal(err)
 	return string(encoded)
 }
 
-func (err ingestionValidationErrorsSingle) MarshalJSON() ([]byte, error) {
+func (err IngestionValidationErrorsSingle) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]string(err))
 }
 
-func (err ingestionValidationErrorsSingle) Is(target error) bool {
+func (err IngestionValidationErrorsSingle) Is(target error) bool {
 	if target == BadParameterError {
 		return true
 	}
-	t, ok := target.(ingestionValidationErrorsSingle)
+	t, ok := target.(IngestionValidationErrorsSingle)
 	return ok && reflect.DeepEqual(err, t)
 }
 
 // expects format {"object_id": {"field_name": "error message"}, ...}
-type IngestionValidationErrors map[string]ingestionValidationErrorsSingle
+type IngestionValidationErrors map[string]IngestionValidationErrorsSingle
 
 func (err IngestionValidationErrors) Error() string {
 	encoded, _ := json.Marshal(err)
@@ -57,7 +57,7 @@ func (err IngestionValidationErrors) Error() string {
 }
 
 func (err IngestionValidationErrors) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]ingestionValidationErrorsSingle(err))
+	return json.Marshal(map[string]IngestionValidationErrorsSingle(err))
 }
 
 func (err IngestionValidationErrors) Is(target error) bool {
@@ -68,7 +68,7 @@ func (err IngestionValidationErrors) Is(target error) bool {
 	return ok && reflect.DeepEqual(err, t)
 }
 
-func (err IngestionValidationErrors) GetSomeItem() (string, ingestionValidationErrorsSingle) {
+func (err IngestionValidationErrors) GetSomeItem() (string, IngestionValidationErrorsSingle) {
 	for k, v := range err {
 		return k, v
 	}

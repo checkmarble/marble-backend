@@ -46,18 +46,18 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 	result := gjson.ParseBytes(json)
 	missingFields := make([]models.MissingField, 0, len(table.Fields))
 
-	objectId := ""
+	// different treatment for object_id, because its value should not be an empty string and is required to construct the validation errors below
 	objectIdRes := result.Get("object_id")
+	objectId := objectIdRes.String()
 	if !objectIdRes.Exists() || objectIdRes.Type == gjson.Null || objectIdRes.String() == "" {
-		objectId = ""
 		addError(allErrors, objectId, "object_id", errIsNotNullable)
 	}
-	objectId = objectIdRes.String()
 
 	for name, field := range table.Fields {
 		value := result.Get(name)
 		if !value.Exists() {
-			if p.allowPatch {
+			// specific case for updated_at which is always required, because it is necessary for proper ingestion at the repository level
+			if p.allowPatch && name != "updated_at" {
 				missingFields = append(missingFields, models.MissingField{
 					Field:          field,
 					ErrorIfMissing: errIsNotNullable.Error(),

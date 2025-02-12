@@ -75,7 +75,7 @@ func TestParser_ParsePayload(t *testing.T) {
 			name:  "empty json",
 			table: table,
 			input: []byte(`{}`),
-			wantErrors: models.IngestionValidationErrors{"": map[string]string{
+			wantErrors: models.IngestionValidationErrors{"": models.IngestionValidationErrorsSingle{
 				"string":     errIsNotNullable.Error(),
 				"integer":    errIsNotNullable.Error(),
 				"float":      errIsNotNullable.Error(),
@@ -83,6 +83,18 @@ func TestParser_ParsePayload(t *testing.T) {
 				"boolean":    errIsNotNullable.Error(),
 				"object_id":  errIsNotNullable.Error(),
 				"updated_at": errIsNotNullable.Error(),
+			}},
+		},
+		{
+			name:  "missing fields other than object_id and updated_at",
+			table: table,
+			input: []byte(`{"object_id": "1", "updated_at": "2023-10-19 17:33:22"}`),
+			wantErrors: models.IngestionValidationErrors{"1": models.IngestionValidationErrorsSingle{
+				"string":    errIsNotNullable.Error(),
+				"integer":   errIsNotNullable.Error(),
+				"float":     errIsNotNullable.Error(),
+				"timestamp": errIsNotNullable.Error(),
+				"boolean":   errIsNotNullable.Error(),
 			}},
 		},
 		{
@@ -100,7 +112,7 @@ func TestParser_ParsePayload(t *testing.T) {
 				"timestamp": "not a timestamp",
 				"boolean": "true"
 			}`),
-			wantErrors: models.IngestionValidationErrors{"": map[string]string{
+			wantErrors: models.IngestionValidationErrors{"": models.IngestionValidationErrorsSingle{
 				"string":     errIsInvalidString.Error(),
 				"integer":    "is not a valid integer: expected an integer, got \"string\"",
 				"float":      "is not a valid float: expected a float, got \"string\"",
@@ -143,7 +155,7 @@ func TestParser_ParsePayload(t *testing.T) {
 					"nullable": nil,
 				},
 			},
-			wantErrors: models.IngestionValidationErrors{"": map[string]string{
+			wantErrors: models.IngestionValidationErrors{"": models.IngestionValidationErrorsSingle{
 				"object_id": errIsNotNullable.Error(),
 			}},
 		},
