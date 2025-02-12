@@ -43,25 +43,18 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		return
 	}
 
-	mainQuery := models.OpenSanctionsCheckQuery{
-		Type: "Thing",
-		Filters: models.OpenSanctionCheckFilter{
-			"name": {},
-		},
-	}
+	queries := []models.OpenSanctionsCheckQuery{}
 
-	queries := []models.OpenSanctionsCheckQuery{mainQuery}
+	queries, err = e.evaluateSanctionCheckName(ctx, queries, iteration, dataAccessor)
+	if err != nil {
+		return nil, true, err
+	}
 
 	if e.nameRecognizer != nil && iteration.SanctionCheckConfig.Query.Label != nil {
 		queries, err = e.evaluateSanctionCheckLabel(ctx, queries, iteration, dataAccessor)
 		if err != nil {
 			return nil, true, err
 		}
-	}
-
-	// Then, actually perform the sanction check
-	if err := e.evaluateSanctionCheckName(ctx, &mainQuery, iteration, dataAccessor); err != nil {
-		return nil, true, err
 	}
 
 	var uniqueCounterpartyIdentifier *string
@@ -128,24 +121,29 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	return
 }
 
-func (e ScenarioEvaluator) evaluateSanctionCheckName(ctx context.Context, query *models.OpenSanctionsCheckQuery,
+func (e ScenarioEvaluator) evaluateSanctionCheckName(ctx context.Context, queries []models.OpenSanctionsCheckQuery,
 	iteration models.ScenarioIteration, dataAccessor DataAccessor,
-) error {
+) ([]models.OpenSanctionsCheckQuery, error) {
 	nameFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
 		iteration.SanctionCheckConfig.Query.Name, iteration.OrganizationId,
 		dataAccessor.ClientObject, dataAccessor.DataModel)
 	if err != nil {
-		return err
+		return queries, err
 	}
 
 	nameFilter, ok := nameFilterAny.ReturnValue.(string)
 	if !ok {
-		return errors.New("name filter name query did not return a string")
+		return queries, errors.New("name filter name query did not return a string")
 	}
 
-	query.Filters["name"] = append(query.Filters["name"], nameFilter)
+	queries = append(queries, models.OpenSanctionsCheckQuery{
+		Type: "Thing",
+		Filters: models.OpenSanctionCheckFilter{
+			"name": []string{nameFilter},
+		},
+	})
 
-	return nil
+	return queries, nil
 }
 
 func (e ScenarioEvaluator) evaluateSanctionCheckLabel(ctx context.Context, queries []models.OpenSanctionsCheckQuery,
