@@ -157,6 +157,7 @@ func (s SanctionCheckWithMatches) InitialStatusFromMatches() SanctionCheckStatus
 
 type SanctionCheckMatch struct {
 	Id              string
+	IsMatch         bool
 	SanctionCheckId string
 	EntityId        string
 	Status          SanctionCheckMatchStatus

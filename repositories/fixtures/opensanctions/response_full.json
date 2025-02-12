@@ -8,14 +8,16 @@
                     "schema": "Person",
                     "properties": {
                         "name": ["Bob", "Joe"]
-                    }
+                    },
+                    "match": true
                 },
                 {
                     "id": "UNIQUEID2",
                     "schema": "Business",
                     "properties": {
                         "name": ["ACME Inc."]
-                    }
+                    },
+                    "match": true
                 }
             ],
             "total": {

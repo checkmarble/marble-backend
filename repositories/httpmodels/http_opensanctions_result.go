@@ -20,6 +20,7 @@ type HTTPOpenSanctionsResult struct {
 
 type HTTPOpenSanctionResultResult struct {
 	Id         string   `json:"id"`
+	Match      bool     `json:"match"`
 	Schema     string   `json:"schema"`
 	Datasets   []string `json:"datasets"`
 	Properties struct {
@@ -33,9 +34,7 @@ func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsRes
 	matchToQueryId := make(map[string][]string)
 
 	for queryId, resp := range result.Responses {
-		if resp.Total.Value > len(resp.Results) {
-			partial = true
-		}
+		matchCount := 0
 
 		for _, match := range resp.Results {
 			var parsed HTTPOpenSanctionResultResult
@@ -44,8 +43,15 @@ func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsRes
 				return models.SanctionRawSearchResponseWithMatches{}, err
 			}
 
+			if !parsed.Match {
+				continue
+			}
+
+			matchCount += 1
+
 			if _, ok := matches[parsed.Id]; !ok {
 				entity := models.SanctionCheckMatch{
+					IsMatch:  parsed.Match,
 					Payload:  match,
 					EntityId: parsed.Id,
 				}
@@ -54,6 +60,11 @@ func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsRes
 			}
 
 			matchToQueryId[parsed.Id] = append(matchToQueryId[parsed.Id], queryId)
+		}
+
+		// resp.Total.Value returns the total number of actual matches, regardless of what is returned.
+		if resp.Total.Value > matchCount {
+			partial = true
 		}
 
 		for entityId, queryIds := range matchToQueryId {
