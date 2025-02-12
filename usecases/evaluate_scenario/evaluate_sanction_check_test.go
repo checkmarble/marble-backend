@@ -32,12 +32,12 @@ func (m mockSanctionCheckExecutor) FilterOutWhitelistedMatches(
 	ctx context.Context,
 	orgId string,
 	sanctionCheck models.SanctionCheckWithMatches,
-	objectId string,
+	counterpartyId string,
 ) (models.SanctionCheckWithMatches, error) {
 	// We are not mocking returned data here, only that the function was called
 	// with the appropriate arguments, so we always expect this to be called.
-	m.On("FilterOutWhitelistedMatches", context.TODO(), orgId, sanctionCheck, objectId)
-	m.Called(ctx, orgId, sanctionCheck, objectId)
+	m.On("FilterOutWhitelistedMatches", context.TODO(), orgId, sanctionCheck, counterpartyId)
+	m.Called(ctx, orgId, sanctionCheck, counterpartyId)
 
 	return sanctionCheck, nil
 }
