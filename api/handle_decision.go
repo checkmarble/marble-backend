@@ -130,7 +130,7 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 			},
 		)
 
-		if returnExpectedDecisionError(c, err) || presentError(ctx, c, err) {
+		if presentIngestionValidationError(c, err) || returnExpectedDecisionError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppHost, false))
@@ -178,7 +178,7 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *
 				TriggerObjectTable: requestData.ObjectType,
 			},
 		)
-		if presentError(ctx, c, err) {
+		if presentIngestionValidationError(c, err) || returnExpectedDecisionError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, dto.AdaptDecisionsWithMetadataDto(decisions, marbleAppHost, nbSkipped, false))

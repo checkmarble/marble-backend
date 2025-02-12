@@ -678,7 +678,6 @@ func (usecase DecisionUsecase) validatePayload(
 	clientObject *models.ClientObject,
 	rawPayload json.RawMessage,
 ) (payload models.ClientObject, dataModel models.DataModel, err error) {
-	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
 
 	if clientObject == nil && len(rawPayload) == 0 {
@@ -710,18 +709,10 @@ func (usecase DecisionUsecase) validatePayload(
 	}
 
 	parser := payload_parser.NewParser()
-	payload, validationErrors, err := parser.ParsePayload(table, rawPayload)
+	payload, err = parser.ParsePayload(table, rawPayload)
 	if err != nil {
-		err = errors.Wrap(
-			models.BadParameterError,
-			fmt.Sprintf("Error while validating payload in validatePayload: %v", err),
-		)
+		err = errors.Wrap(err, "error parsing payload in decision usecase validate payload")
 		return
-	}
-	if len(validationErrors) > 0 {
-		encoded, _ := json.Marshal(validationErrors)
-		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on POST all decisions: %s", string(encoded)))
-		err = errors.Wrap(models.BadParameterError, string(encoded))
 	}
 
 	return

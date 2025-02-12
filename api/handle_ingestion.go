@@ -34,11 +34,13 @@ func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody)
-		var validationError models.IngestionValidationErrorsSingle
+		var validationError models.IngestionValidationErrors
 		if errors.As(err, &validationError) {
+			_, objectErr := validationError.GetSomeItem()
 			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
-				Message: "Input validation error",
-				Details: validationError,
+				Message:   "Input validation error",
+				Details:   objectErr,
+				ErrorCode: dto.SchemaMismatchError,
 			})
 			return
 		} else if presentError(ctx, c, err) {
@@ -50,6 +52,20 @@ func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		}
 		c.Status(http.StatusCreated)
 	}
+}
+
+func presentIngestionValidationError(c *gin.Context, err error) bool {
+	var validationError models.IngestionValidationErrors
+	if errors.As(err, &validationError) {
+		_, objectErr := validationError.GetSomeItem()
+		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+			Message:   "Input validation error",
+			Details:   objectErr,
+			ErrorCode: dto.SchemaMismatchError,
+		})
+		return true
+	}
+	return false
 }
 
 func handleIngestionPartialUpsert(uc usecases.Usecases) func(c *gin.Context) {
@@ -69,14 +85,7 @@ func handleIngestionPartialUpsert(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody, payload_parser.WithAllowPatch())
-		var validationError models.IngestionValidationErrorsSingle
-		if errors.As(err, &validationError) {
-			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
-				Message: "Input validation error",
-				Details: validationError,
-			})
-			return
-		} else if presentError(ctx, c, err) {
+		if presentIngestionValidationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 		if nb == 0 {
@@ -85,6 +94,19 @@ func handleIngestionPartialUpsert(uc usecases.Usecases) func(c *gin.Context) {
 		}
 		c.Status(http.StatusCreated)
 	}
+}
+
+func presentIngestionValidationErrorMultiple(c *gin.Context, err error) bool {
+	var validationError models.IngestionValidationErrors
+	if errors.As(err, &validationError) {
+		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+			Message:   "Input validation error",
+			Details:   validationError,
+			ErrorCode: dto.SchemaMismatchError,
+		})
+		return true
+	}
+	return false
 }
 
 func handleIngestionMultiple(uc usecases.Usecases) func(c *gin.Context) {
@@ -104,14 +126,7 @@ func handleIngestionMultiple(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody)
-		var validationError models.IngestionValidationErrorsMultiple
-		if errors.As(err, &validationError) {
-			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
-				Message: "Input validation error",
-				Details: validationError,
-			})
-			return
-		} else if presentError(ctx, c, err) {
+		if presentIngestionValidationErrorMultiple(c, err) || presentError(ctx, c, err) {
 			return
 		}
 		if nb == 0 {
@@ -139,14 +154,7 @@ func handleIngestionMultiplePartialUpsert(uc usecases.Usecases) func(c *gin.Cont
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody, payload_parser.WithAllowPatch())
-		var validationError models.IngestionValidationErrorsMultiple
-		if errors.As(err, &validationError) {
-			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
-				Message: "Input validation error",
-				Details: validationError,
-			})
-			return
-		} else if presentError(ctx, c, err) {
+		if presentIngestionValidationErrorMultiple(c, err) || presentError(ctx, c, err) {
 			return
 		}
 		if nb == 0 {

@@ -49,26 +49,26 @@ func (err IngestionValidationErrorsSingle) Is(target error) bool {
 }
 
 // expects format {"object_id": {"field_name": "error message"}, ...}
-type IngestionValidationErrorsMultiple map[string]map[string]string
+type IngestionValidationErrors map[string]IngestionValidationErrorsSingle
 
-func (err IngestionValidationErrorsMultiple) Error() string {
+func (err IngestionValidationErrors) Error() string {
 	encoded, _ := json.Marshal(err)
 	return string(encoded)
 }
 
-func (err IngestionValidationErrorsMultiple) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]map[string]string(err))
+func (err IngestionValidationErrors) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]IngestionValidationErrorsSingle(err))
 }
 
-func (err IngestionValidationErrorsMultiple) Is(target error) bool {
+func (err IngestionValidationErrors) Is(target error) bool {
 	if target == BadParameterError {
 		return true
 	}
-	t, ok := target.(IngestionValidationErrorsMultiple)
+	t, ok := target.(IngestionValidationErrors)
 	return ok && reflect.DeepEqual(err, t)
 }
 
-func (err IngestionValidationErrorsMultiple) GetSomeItem() (string, map[string]string) {
+func (err IngestionValidationErrors) GetSomeItem() (string, IngestionValidationErrorsSingle) {
 	for k, v := range err {
 		return k, v
 	}
