@@ -59,11 +59,19 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 		query = &dbmodels.DBSanctionCheckConfigQueryInput{
 			Name: ser,
 		}
+
+		if cfg.Query.Label != nil {
+			ser, err := dto.AdaptNodeDto(*cfg.Query.Label)
+			if err != nil {
+				return models.SanctionCheckConfig{}, err
+			}
+			query.Label = ser
+		}
 	}
 
 	var counterpartyIdExpr *[]byte
 
-	if cfg.Query != nil {
+	if cfg.CounterpartyIdExpression != nil {
 		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.CounterpartyIdExpression)
 		if err != nil {
 			return models.SanctionCheckConfig{}, err

@@ -285,12 +285,13 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 
 			if sanctionCheckConfig != nil {
 				newSanctionCheckConfig := models.UpdateSanctionCheckConfigInput{
-					Name:        &sanctionCheckConfig.Name,
-					Description: &sanctionCheckConfig.Description,
-					RuleGroup:   sanctionCheckConfig.RuleGroup,
-					Datasets:    sanctionCheckConfig.Datasets,
-					TriggerRule: sanctionCheckConfig.TriggerRule,
-					Query:       sanctionCheckConfig.Query,
+					Name:                     &sanctionCheckConfig.Name,
+					Description:              &sanctionCheckConfig.Description,
+					RuleGroup:                sanctionCheckConfig.RuleGroup,
+					Datasets:                 sanctionCheckConfig.Datasets,
+					TriggerRule:              sanctionCheckConfig.TriggerRule,
+					CounterpartyIdExpression: sanctionCheckConfig.CounterpartyIdExpression,
+					Query:                    sanctionCheckConfig.Query,
 					Outcome: models.UpdateSanctionCheckOutcomeInput{
 						ForceOutcome:  &sanctionCheckConfig.Outcome.ForceOutcome,
 						ScoreModifier: &sanctionCheckConfig.Outcome.ScoreModifier,

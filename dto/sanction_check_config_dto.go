@@ -113,8 +113,8 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 }
 
 type SanctionCheckConfigQuery struct {
-	Name  NodeDto   `json:"name"`
-	Label *ast.Node `json:"label"`
+	Name  NodeDto  `json:"name"`
+	Label *NodeDto `json:"label"`
 }
 
 func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (SanctionCheckConfigQuery, error) {
@@ -124,8 +124,19 @@ func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (Sanct
 	}
 
 	dto := SanctionCheckConfigQuery{
-		Name:  nameAst,
-		Label: model.Label,
+		Name: nameAst,
+		Label: &NodeDto{
+			Name: "Undefined",
+		},
+	}
+
+	if model.Label != nil && model.Label.Function != ast.FUNC_UNDEFINED {
+		labelAst, err := AdaptNodeDto(*model.Label)
+		if err != nil {
+			return SanctionCheckConfigQuery{}, err
+		}
+
+		dto.Label = &labelAst
 	}
 
 	return dto, nil
@@ -139,6 +150,14 @@ func AdaptSanctionCheckConfigQueryDto(dto SanctionCheckConfigQuery) (models.Sanc
 
 	model := models.SanctionCheckConfigQuery{
 		Name: nameAst,
+	}
+
+	if dto.Label != nil && dto.Label.Name != ast.FUNC_UNDEFINED.DebugString() {
+		labelAst, err := AdaptASTNode(*dto.Label)
+		if err != nil {
+			return models.SanctionCheckConfigQuery{}, err
+		}
+		model.Label = &labelAst
 	}
 
 	return model, nil
