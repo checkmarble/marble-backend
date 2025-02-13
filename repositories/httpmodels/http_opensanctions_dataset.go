@@ -91,6 +91,12 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.
 		return *section
 	}
 	sortF := func(lhs, rhs models.OpenSanctionsCatalogSection) int {
+		if lhs.Name == "other" || rhs.Name == "un" {
+			return 1
+		}
+		if rhs.Name == "other" || lhs.Name == "un" {
+			return -1
+		}
 		return strings.Compare(lhs.Title, rhs.Title)
 	}
 
