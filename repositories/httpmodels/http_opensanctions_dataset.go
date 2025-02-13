@@ -44,6 +44,10 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.
 	datasetMap := make(map[string]*HTTPOpenSanctionCatalogDataset, len(datasets))
 	loadedDatasets := set.New[string](len(datasets))
 
+	slices.SortFunc(datasets, func(lhs, rhs HTTPOpenSanctionCatalogDataset) int {
+		return strings.Compare(lhs.Title, rhs.Title)
+	})
+
 	for _, dataset := range datasets {
 		datasetMap[dataset.Name] = &dataset
 	}
@@ -86,9 +90,12 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.
 	f := func(section *models.OpenSanctionsCatalogSection) models.OpenSanctionsCatalogSection {
 		return *section
 	}
+	sortF := func(lhs, rhs models.OpenSanctionsCatalogSection) int {
+		return strings.Compare(lhs.Title, rhs.Title)
+	}
 
 	return models.OpenSanctionsCatalog{
-		Sections: slices.Collect(maps.Values(pure_utils.MapValues(sections, f))),
+		Sections: slices.SortedFunc(maps.Values(pure_utils.MapValues(sections, f)), sortF),
 	}
 }
 
