@@ -75,7 +75,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	// Filters validation
 	var filtersWithType []models.FilterWithType
 	if len(filters) > 0 {
-		var errs []error
+		errs := make([]error, 0, len(filters))
 		for idx, filter := range filters {
 			if filter.TableName != tableName {
 				errs = append(errs, errors.Join(
