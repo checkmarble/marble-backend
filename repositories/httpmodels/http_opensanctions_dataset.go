@@ -25,6 +25,9 @@ var (
 		"United Nations": "un",
 		"Other":          "other",
 	}
+	OPEN_SANCTIONS_WHITELISTED_COLLECTIONS = []string{
+		"sanctions",
+	}
 )
 
 type HTTPOpenSanctionCatalogResponse struct {
@@ -43,18 +46,23 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.
 	sections := make(map[string]*models.OpenSanctionsCatalogSection, len(OPEN_SANCTIONS_CONTINENT_CODES))
 	datasetMap := make(map[string]*HTTPOpenSanctionCatalogDataset, len(datasets))
 	loadedDatasets := set.New[string](len(datasets))
+	whitelist := set.New[string](len(datasets))
 
 	slices.SortFunc(datasets, func(lhs, rhs HTTPOpenSanctionCatalogDataset) int {
 		return strings.Compare(lhs.Title, rhs.Title)
 	})
 
 	for _, dataset := range datasets {
+		if slices.Contains(OPEN_SANCTIONS_WHITELISTED_COLLECTIONS, dataset.Name) {
+			whitelist.InsertSlice(dataset.Children)
+		}
+
 		datasetMap[dataset.Name] = &dataset
 	}
 
 	for _, dataset := range datasets {
 		if dataset.Load && dataset.IndexVersion != nil {
-			findLoadedDatasets(loadedDatasets, datasetMap, &dataset)
+			findLoadedDatasets(loadedDatasets, whitelist, datasetMap, &dataset)
 		}
 	}
 
@@ -105,12 +113,16 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.
 	}
 }
 
-func findLoadedDatasets(loaded *set.Set[string], datasets map[string]*HTTPOpenSanctionCatalogDataset, current *HTTPOpenSanctionCatalogDataset) {
-	loaded.Insert(current.Name)
+func findLoadedDatasets(loaded *set.Set[string], whitelist *set.Set[string],
+	datasets map[string]*HTTPOpenSanctionCatalogDataset, current *HTTPOpenSanctionCatalogDataset,
+) {
+	if whitelist.Contains(current.Name) {
+		loaded.Insert(current.Name)
+	}
 
 	for _, child := range current.Children {
 		if childDataset, ok := datasets[child]; ok {
-			findLoadedDatasets(loaded, datasets, childDataset)
+			findLoadedDatasets(loaded, whitelist, datasets, childDataset)
 		}
 	}
 }
