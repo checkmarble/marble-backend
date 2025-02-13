@@ -30,6 +30,7 @@ type Property struct {
 	Format      *string             `json:"format,omitempty"`
 	Enum        []string            `json:"enum,omitempty"`
 	OneOf       []map[string]string `json:"oneOf,omitempty"`
+	AnyOf       []map[string]string `json:"anyOf,omitempty"`
 	Ref         *string             `json:"$ref,omitempty"`
 	Items       *Schema             `json:"items,omitempty"`
 }
@@ -144,6 +145,27 @@ func decisionInputSchema(triggerObjects []map[string]string) ComponentsSchema {
 	}
 }
 
+func decisionAllInputSchema(triggerObjects []map[string]string) ComponentsSchema {
+	return ComponentsSchema{
+		Required: []string{
+			"trigger_object",
+			"object_type",
+		},
+		Type: "object",
+		Properties: map[string]Property{
+			"trigger_object": {
+				Description: utils.Ptr("The object used to take a decision."),
+				Type:        utils.Ptr("object"),
+				OneOf:       triggerObjects,
+			},
+			"object_type": {
+				Description: utils.Ptr("The object type used to take a decision."),
+				Type:        utils.Ptr("string"),
+			},
+		},
+	}
+}
+
 func multipleDecisionSchema() ComponentsSchema {
 	return ComponentsSchema{
 		Required: []string{"decisions", "metadata"},
@@ -198,6 +220,30 @@ func countMetadataSchema() ComponentsSchema {
 			},
 		},
 		Required: []string{"total", "approve", "review", "block_and_review", "decline", "skipped"},
+	}
+}
+
+func errorDtoSchema() ComponentsSchema {
+	return ComponentsSchema{
+		Type:     "object",
+		Required: []string{"message", "error_code"},
+		Properties: map[string]Property{
+			"message": {
+				Type: utils.Ptr("string"),
+			},
+			"error_code": {
+				Type: utils.Ptr("string"),
+			},
+			"details": {
+				AnyOf: []map[string]string{
+					{"type": "object"},
+					{"type": "array"},
+					{"type": "string"},
+					{"type": "number"},
+					{"type": "boolean"},
+				},
+			},
+		},
 	}
 }
 
@@ -419,6 +465,13 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 					},
 					"400": {
 						Description: "One at least of the objects does not match the data model",
+						Content: &Content{
+							ApplicationJSON: ApplicationJSON{
+								Schema: Schema{
+									Ref: "#/components/schemas/ErrorDto",
+								},
+							},
+						},
 					},
 					"500": {
 						Description: "An error happened while ingesting data",
@@ -460,6 +513,13 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 					},
 					"400": {
 						Description: "The array of objects is too long, or one at least of the objects does not match the data model",
+						Content: &Content{
+							ApplicationJSON: ApplicationJSON{
+								Schema: Schema{
+									Ref: "#/components/schemas/ErrorDto",
+								},
+							},
+						},
 					},
 					"500": {
 						Description: "An error happened while ingesting data",
@@ -482,7 +542,9 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 	ref.Components.Schemas["Scenario"] = scenarioSchema()
 	ref.Components.Schemas["PivotValues"] = pivotValuesSchema()
 	ref.Components.Schemas["DecisionInput"] = decisionInputSchema(triggerObjects)
+	ref.Components.Schemas["DecisionAllInput"] = decisionAllInputSchema(triggerObjects)
 	ref.Components.Schemas["Decision"] = decisionSchema(triggerObjects)
+	ref.Components.Schemas["ErrorDto"] = errorDtoSchema()
 	ref.Components.Schemas["MultipleDecisions"] = multipleDecisionSchema()
 	ref.Components.Schemas["MultipleDecisionMetadata"] = multipleDecisionMetadataSchema()
 	ref.Components.Schemas["Count"] = countMetadataSchema()
@@ -527,6 +589,13 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 				},
 				"400": {
 					Description: "The object does not match the data model, or the trigger condition of the scenario evaluated to 'false'",
+					Content: &Content{
+						ApplicationJSON: ApplicationJSON{
+							Schema: Schema{
+								Ref: "#/components/schemas/ErrorDto",
+							},
+						},
+					},
 				},
 				"500": {
 					Description: "An error happened while taking a decision",
@@ -548,7 +617,7 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 				Content: Content{
 					ApplicationJSON: ApplicationJSON{
 						Schema: Schema{
-							Ref: "#/components/schemas/DecisionInput",
+							Ref: "#/components/schemas/DecisionAllInput",
 						},
 					},
 				},
@@ -561,6 +630,16 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 						ApplicationJSON: ApplicationJSON{
 							Schema: Schema{
 								Ref: "#/components/schemas/MultipleDecisions",
+							},
+						},
+					},
+				},
+				"400": {
+					Description: "The object does not match the data model, or the trigger condition of the scenario evaluated to 'false'",
+					Content: &Content{
+						ApplicationJSON: ApplicationJSON{
+							Schema: Schema{
+								Ref: "#/components/schemas/ErrorDto",
 							},
 						},
 					},
