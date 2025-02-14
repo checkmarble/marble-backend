@@ -225,6 +225,7 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() *ScenarioPubl
 		usecases.NewTransactionFactory(),
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.ScenarioPublicationRepository,
+		usecases.Repositories.TaskQueueRepository,
 		usecases.NewEnforceScenarioSecurity(),
 		usecases.NewScenarioFetcher(),
 		usecases.NewScenarioPublisher(),
@@ -511,6 +512,30 @@ func (usecases UsecasesWithCreds) NewNewAsyncScheduledExecWorker() *scheduled_ex
 	w := scheduled_execution.NewAsyncScheduledExecWorker(
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
+	)
+	return &w
+}
+
+func (usecases UsecasesWithCreds) NewIndexCreationWorker() *scheduled_execution.IndexCreationWorker {
+	w := scheduled_execution.NewIndexCreationWorker(
+		usecases.NewExecutorFactory(),
+		&usecases.Repositories.ClientDbRepository,
+	)
+	return &w
+}
+
+func (usecases UsecasesWithCreds) NewIndexCreationStatusWorker() *scheduled_execution.IndexCreationStatusWorker {
+	w := scheduled_execution.NewIndexCreationStatusWorker(
+		usecases.NewExecutorFactory(),
+		&usecases.Repositories.ClientDbRepository,
+	)
+	return &w
+}
+
+func (usecases UsecasesWithCreds) NewIndexCleanupWorker() *scheduled_execution.IndexCleanupWorker {
+	w := scheduled_execution.NewIndexCleanupWorker(
+		usecases.NewExecutorFactory(),
+		&usecases.Repositories.ClientDbRepository,
 	)
 	return &w
 }
