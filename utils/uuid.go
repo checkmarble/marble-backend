@@ -14,3 +14,7 @@ func ValidateUuid(uuidParam string) error {
 	}
 	return err
 }
+
+func ByteUuid(str string) [16]byte {
+	return [16]byte(uuid.MustParse(str))
+}
