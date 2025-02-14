@@ -154,6 +154,10 @@ func (repo *ClientDbRepository) CreateIndexesAsync(
 		return err
 	}
 
+	for idx, index := range indexes {
+		indexes[idx].IndexName = indexToIndexName(index.Indexed, index.TableName)
+	}
+
 	go asynchronouslyCreateIndexes(ctx, exec, indexes)
 
 	return nil
@@ -213,13 +217,12 @@ func asynchronouslyCreateIndexes(
 func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteIndex) error {
 	logger := utils.LoggerFromContext(ctx)
 	qualifiedTableName := tableNameWithSchema(exec, index.TableName)
-	indexName := indexToIndexName(index.Indexed, index.TableName)
 	indexedColumns := index.Indexed
 	includedColumns := index.Included
 
 	sql := fmt.Sprintf(
 		"CREATE INDEX CONCURRENTLY %s ON %s USING btree (%s)",
-		indexName,
+		pgx.Identifier.Sanitize([]string{index.IndexName}),
 		qualifiedTableName,
 		strings.Join(pure_utils.Map(indexedColumns, withDesc), ","),
 	)
@@ -243,7 +246,7 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 	}
 	logger.InfoContext(ctx, fmt.Sprintf(
 		"Index %s created in schema %s with DDL \"%s\"",
-		indexName,
+		index.IndexName,
 		exec.DatabaseSchema().Schema,
 		sql,
 	))
@@ -260,7 +263,8 @@ func indexToIndexName(fields []string, table string) string {
 	out := fmt.Sprintf("idx_%s_%s", table, indexedNames)
 	randomId := uuid.NewString()
 	length := min(len(out), 53)
-	return pgx.Identifier.Sanitize([]string{out[:length] + "_" + randomId})
+
+	return out[:length] + "_" + randomId
 }
 
 func toUniqIndexName(fields []string, table string) string {

@@ -40,6 +40,12 @@ type TaskQueueRepository interface {
 		organizationId string,
 		scheduledExecutionId string,
 	) error
+	EnqueueCreateIndexTask(
+		ctx context.Context,
+		tx Transaction,
+		organizationId string,
+		indices []models.ConcreteIndex,
+	) error
 }
 
 type riverRepository struct {
@@ -140,5 +146,28 @@ func (r riverRepository) EnqueueScheduledExecStatusTask(
 	}
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued scheduled execution status update task", "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueCreateIndexTask(
+	ctx context.Context,
+	tx Transaction,
+	organizationId string,
+	indices []models.ConcreteIndex,
+) error {
+	_, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.IndexCreationArgs{
+			OrgId:   organizationId,
+			Indices: indices,
+		},
+		&river.InsertOpts{
+			Queue: organizationId,
+		})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

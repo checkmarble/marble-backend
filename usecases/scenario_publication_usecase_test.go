@@ -150,6 +150,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) makeUsecase() *ScenarioPublica
 		suite.transactionFactory,
 		suite.executorFactory,
 		suite.scenarioPublicationsRepository,
+		nil,
 		suite.enforceSecurity,
 		suite.scenarioFetcher,
 		suite.scenarioPublisher,
