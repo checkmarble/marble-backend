@@ -3,17 +3,21 @@ package cmd
 import (
 	"context"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/jobs"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/cockroachdb/errors"
@@ -138,6 +142,10 @@ func RunTaskQueue(apiVersion string) error {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
 	}
+
+	periodics := pure_utils.Map(slices.Collect(maps.Keys(queues)),
+		scheduled_execution.NewIndexCleanupPeriodicJob)
+
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
 		FetchPollInterval: 100 * time.Millisecond,
 		Queues:            queues,
@@ -150,7 +158,8 @@ func RunTaskQueue(apiVersion string) error {
 			jobs.NewLoggerMiddleware(logger),
 			jobs.NewRecoveredMiddleware(),
 		},
-		Workers: workers,
+		Workers:      workers,
+		PeriodicJobs: periodics,
 	},
 	)
 	if err != nil {
@@ -167,6 +176,9 @@ func RunTaskQueue(apiVersion string) error {
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
 	river.AddWorker(workers, adminUc.NewNewAsyncScheduledExecWorker())
+	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
+	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
+	river.AddWorker(workers, adminUc.NewIndexCleanupWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)

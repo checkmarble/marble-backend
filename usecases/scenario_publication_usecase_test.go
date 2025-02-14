@@ -28,6 +28,7 @@ type ScenarioPublicationUsecaseTestSuite struct {
 	transactionFactory             *mocks.TransactionFactory
 	clientDbIndexEditor            *mocks.ClientDbIndexEditor
 	featureAccessReader            *mocks.FeatureAccessReader
+	taskQueueRepository            *mocks.TaskQueueRepository
 
 	organizationId                string
 	scenarioId                    string
@@ -56,6 +57,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) SetupTest() {
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.clientDbIndexEditor = new(mocks.ClientDbIndexEditor)
 	suite.featureAccessReader = new(mocks.FeatureAccessReader)
+	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
 
 	suite.organizationId = "organizationId"
 	suite.scenarioId = "scenarioId"
@@ -150,6 +152,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) makeUsecase() *ScenarioPublica
 		suite.transactionFactory,
 		suite.executorFactory,
 		suite.scenarioPublicationsRepository,
+		suite.taskQueueRepository,
 		suite.enforceSecurity,
 		suite.scenarioFetcher,
 		suite.scenarioPublisher,
@@ -471,12 +474,13 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 		suite.iterationId).Return([]models.ConcreteIndex{
 		{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
 	}, 0, nil)
-	suite.clientDbIndexEditor.On("CreateIndexesAsync",
+
+	suite.taskQueueRepository.On(
+		"EnqueueCreateIndexTask",
 		suite.ctx,
 		suite.organizationId,
-		[]models.ConcreteIndex{
-			{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
-		}).Return(nil)
+		[]models.ConcreteIndex{{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}}},
+	).Return(nil)
 
 	err := suite.makeUsecase().StartPublicationPreparation(suite.ctx, suite.organizationId, suite.iterationId)
 
