@@ -84,3 +84,15 @@ func MapValuesWhile[Key comparable, T any, U any](src map[Key]T, f func(T) (U, b
 	}
 	return result
 }
+
+func MapKeyValue[KL, KR comparable, VL, VR any](in map[KL]VL, f func(k KL, v VL) (KR, VR)) map[KR]VR {
+	out := make(map[KR]VR, len(in))
+
+	for k, v := range in {
+		kr, vr := f(k, v)
+
+		out[kr] = vr
+	}
+
+	return out
+}
