@@ -44,13 +44,17 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 
 		var filters dto.DecisionFilters
 		if err := c.ShouldBind(&filters); err != nil {
-			c.Status(http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: err.Error(),
+			})
 			return
 		}
 
 		var paginationAndSortingDto dto.PaginationAndSorting
 		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
-			c.Status(http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: err.Error(),
+			})
 			return
 		}
 		paginationAndSorting := models.WithPaginationDefaults(
@@ -77,13 +81,17 @@ func handleListDecisionsInternal(uc usecases.Usecases, marbleAppHost string) fun
 
 		var filters dto.DecisionFilters
 		if err := c.ShouldBind(&filters); err != nil {
-			c.Status(http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: err.Error(),
+			})
 			return
 		}
 
 		var paginationAndSortingDto dto.PaginationAndSorting
 		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
-			c.Status(http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: err.Error(),
+			})
 			return
 		}
 		paginationAndSorting := models.WithPaginationDefaults(
@@ -109,7 +117,9 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 
 		var requestData dto.CreateDecisionWithScenarioBody
 		if err := c.ShouldBindJSON(&requestData); err != nil {
-			c.Status(http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: err.Error(),
+			})
 			return
 		}
 
@@ -130,7 +140,7 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 			},
 		)
 
-		if returnExpectedDecisionError(c, err) || presentError(ctx, c, err) {
+		if presentIngestionValidationError(c, err) || returnExpectedDecisionError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppHost, false))
@@ -165,7 +175,9 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *
 
 		var requestData dto.CreateDecisionBody
 		if err := c.ShouldBindJSON(&requestData); err != nil {
-			c.Status(http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: err.Error(),
+			})
 			return
 		}
 
@@ -178,7 +190,7 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *
 				TriggerObjectTable: requestData.ObjectType,
 			},
 		)
-		if presentError(ctx, c, err) {
+		if presentIngestionValidationError(c, err) || returnExpectedDecisionError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, dto.AdaptDecisionsWithMetadataDto(decisions, marbleAppHost, nbSkipped, false))
