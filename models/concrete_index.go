@@ -17,6 +17,7 @@ type UnicityIndex struct {
 
 type ConcreteIndex struct {
 	TableName string
+	IndexName string
 	Indexed   []string
 	Included  []string
 }

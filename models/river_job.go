@@ -16,3 +16,23 @@ type ScheduledExecStatusSyncArgs struct {
 }
 
 func (ScheduledExecStatusSyncArgs) Kind() string { return "scheduled_execution_status_sync" }
+
+type IndexCreationArgs struct {
+	OrgId   string          `json:"org_id"`
+	Indices []ConcreteIndex `json:"indices"`
+}
+
+func (IndexCreationArgs) Kind() string { return "index_creation" }
+
+type IndexCreationStatusArgs struct {
+	OrgId   string          `json:"org_id"`
+	Indices []ConcreteIndex `json:"indices"`
+}
+
+func (IndexCreationStatusArgs) Kind() string { return "index_creation_status" }
+
+type IndexCleanupArgs struct {
+	OrgId string `json:"org_id"`
+}
+
+func (IndexCleanupArgs) Kind() string { return "index_cleanup" }

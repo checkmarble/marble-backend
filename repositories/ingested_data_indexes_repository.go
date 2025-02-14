@@ -154,6 +154,10 @@ func (repo *ClientDbRepository) CreateIndexesAsync(
 		return err
 	}
 
+	for idx, index := range indexes {
+		indexes[idx].IndexName = indexToIndexName(index.Indexed, index.TableName)
+	}
+
 	go asynchronouslyCreateIndexes(ctx, exec, indexes)
 
 	return nil
@@ -213,13 +217,12 @@ func asynchronouslyCreateIndexes(
 func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteIndex) error {
 	logger := utils.LoggerFromContext(ctx)
 	qualifiedTableName := tableNameWithSchema(exec, index.TableName)
-	indexName := indexToIndexName(index.Indexed, index.TableName)
 	indexedColumns := index.Indexed
 	includedColumns := index.Included
 
 	sql := fmt.Sprintf(
 		"CREATE INDEX CONCURRENTLY %s ON %s USING btree (%s)",
-		indexName,
+		pgx.Identifier.Sanitize([]string{index.IndexName}),
 		qualifiedTableName,
 		strings.Join(pure_utils.Map(indexedColumns, withDesc), ","),
 	)
@@ -243,7 +246,7 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 	}
 	logger.InfoContext(ctx, fmt.Sprintf(
 		"Index %s created in schema %s with DDL \"%s\"",
-		indexName,
+		index.IndexName,
 		exec.DatabaseSchema().Schema,
 		sql,
 	))
@@ -260,7 +263,8 @@ func indexToIndexName(fields []string, table string) string {
 	out := fmt.Sprintf("idx_%s_%s", table, indexedNames)
 	randomId := uuid.NewString()
 	length := min(len(out), 53)
-	return pgx.Identifier.Sanitize([]string{out[:length] + "_" + randomId})
+
+	return out[:length] + "_" + randomId
 }
 
 func toUniqIndexName(fields []string, table string) string {
@@ -364,4 +368,45 @@ func (repo *ClientDbRepository) DeleteUniqueIndex(ctx context.Context, exec Exec
 	indexName := toUniqIndexName(index.Fields, index.TableName)
 	_, err := exec.Exec(ctx, dropIdxSqlQuery(indexName, exec))
 	return err
+}
+
+func (repo *ClientDbRepository) ListIndicesPendingCreation(ctx context.Context, exec Executor) ([]string, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := `
+		select
+			coalesce(
+					pgai.indexrelname,
+					split_part(trim(split_part(query, 'concurrently', 2)), ' ', 1)
+			) as index,
+			pgi.phase,
+			case
+			when pgi.blocks_total > 0 then round(pgi.blocks_done / pgi.blocks_total::numeric * 100, 2)
+			else 100
+			end AS "% done"
+		from pg_stat_activity pga
+		left join pg_stat_progress_create_index pgi on pga.pid = pgi.pid
+		left join pg_class pgc on pgc.oid = pgi.relid
+		left join pg_stat_all_indexes pgai on pgai.relname = pgc.relname and pgai.indexrelid = pgi.index_relid
+		where
+			pga.query ilike 'create index concurrently %' and
+			pga.leader_pid is null;
+	`
+
+	rows, err := exec.Query(ctx, sql)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while querying DB to read indexes")
+	}
+
+	indices, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
+		var indexName string
+
+		err := row.Scan(&indexName, nil, nil)
+
+		return indexName, err
+	})
+
+	return indices, err
 }

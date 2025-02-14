@@ -60,6 +60,7 @@ type ScenarioPublicationUsecase struct {
 	transactionFactory             executor_factory.TransactionFactory
 	executorFactory                executor_factory.ExecutorFactory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
+	taskQueueRepository            repositories.TaskQueueRepository
 	enforceSecurity                security.EnforceSecurityScenario
 	scenarioFetcher                ScenarioFetcher
 	scenarioPublisher              ScenarioPublisher
@@ -72,6 +73,7 @@ func NewScenarioPublicationUsecase(
 	transactionFactory executor_factory.TransactionFactory,
 	executorFactory executor_factory.ExecutorFactory,
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository,
+	taskQueueRepository repositories.TaskQueueRepository,
 	enforceSecurity security.EnforceSecurityScenario,
 	scenarioFetcher ScenarioFetcher,
 	scenarioPublisher ScenarioPublisher,
@@ -83,6 +85,7 @@ func NewScenarioPublicationUsecase(
 		transactionFactory:             transactionFactory,
 		executorFactory:                executorFactory,
 		scenarioPublicationsRepository: scenarioPublicationsRepository,
+		taskQueueRepository:            taskQueueRepository,
 		enforceSecurity:                enforceSecurity,
 		scenarioFetcher:                scenarioFetcher,
 		scenarioPublisher:              scenarioPublisher,
@@ -226,5 +229,10 @@ func (usecase *ScenarioPublicationUsecase) StartPublicationPreparation(
 		return models.ErrDataPreparationServiceUnavailable
 	}
 
-	return usecase.clientDbIndexEditor.CreateIndexesAsync(ctx, organizationId, indexesToCreate)
+	if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx,
+		organizationId, indexesToCreate); err != nil {
+		return err
+	}
+
+	return err
 }
