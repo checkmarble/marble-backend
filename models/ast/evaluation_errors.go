@@ -20,6 +20,7 @@ var (
 	ErrArgumentInvalidType               = errors.New("argument has an invalid type")
 	ErrListNotFound                      = errors.New("list not found")
 	ErrDatabaseAccessNotFound            = errors.New("database access not found")
+	ErrFilterTableNotMatch               = errors.New("filters must be applied on the same table")
 
 	// Runtime execution related errors
 	ErrRuntimeExpression    = errors.New("expression runtime error")

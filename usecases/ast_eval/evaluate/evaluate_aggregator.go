@@ -75,12 +75,12 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	// Filters validation
 	var filtersWithType []models.FilterWithType
 	if len(filters) > 0 {
-		for _, filter := range filters {
+		errs := make([]error, 0, len(filters))
+		for idx, filter := range filters {
 			if filter.TableName != tableName {
-				return MakeEvaluateError(errors.Join(
-					errors.Wrap(ast.ErrRuntimeExpression,
-						"filters must be applied on the same table"),
-					ast.NewNamedArgumentError("filters"),
+				errs = append(errs, errors.Join(
+					ast.ErrFilterTableNotMatch,
+					ast.NewNamedArgumentError(fmt.Sprintf("filters.%d.tableName", idx)),
 				))
 			}
 
@@ -91,9 +91,9 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 
 			filterFieldType, err := getFieldType(a.DataModel, filter.TableName, filter.FieldName)
 			if err != nil {
-				return MakeEvaluateError(errors.Join(
+				errs = append(errs, errors.Join(
 					errors.Wrap(err, fmt.Sprintf("field type for %s.%s not found in data model in Evaluate aggregator", filter.TableName, filter.FieldName)),
-					ast.NewNamedArgumentError("fieldName"),
+					ast.NewNamedArgumentError(fmt.Sprintf("filters.%d.fieldName", idx)),
 				))
 			}
 
@@ -101,6 +101,10 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 				Filter:    filter,
 				FieldType: filterFieldType,
 			})
+		}
+
+		if len(errs) > 0 {
+			return nil, errs
 		}
 	}
 

@@ -34,6 +34,7 @@ var evaluationErrorDtoMap = []errorAndCode{
 	{ErrArgumentInvalidType, "ARGUMENT_INVALID_TYPE"},
 	{ErrListNotFound, "LIST_NOT_FOUND"},
 	{ErrDatabaseAccessNotFound, "DATABASE_ACCESS_NOT_FOUND"},
+	{ErrFilterTableNotMatch, "FILTERS_TABLE_NOT_MATCH"},
 
 	// Runtime execution related errors
 	{ErrNullFieldRead, "NULL_FIELD_READ"},
