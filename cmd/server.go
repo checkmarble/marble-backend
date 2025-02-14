@@ -14,6 +14,8 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
 	"github.com/cockroachdb/errors"
 	"github.com/getsentry/sentry-go"
@@ -135,6 +137,12 @@ func RunServer() error {
 		return err
 	}
 
+	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
+	}
+
 	repositories := repositories.NewRepositories(
 		pool,
 		gcpConfig.GoogleApplicationCredentials,
@@ -147,6 +155,7 @@ func RunServer() error {
 		repositories.WithOpenSanctions(openSanctionsConfig),
 		repositories.WithClientDbConfig(clientDbConfig),
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
+		repositories.WithRiverClient(riverClient),
 	)
 
 	uc := usecases.NewUsecases(repositories,

@@ -89,3 +89,11 @@ func (m *IngestedDataIndexesRepository) DeleteUniqueIndex(
 	args := m.Called(ctx, exec, index)
 	return args.Error(0)
 }
+
+func (m *IngestedDataIndexesRepository) ListIndicesPendingCreation(
+	ctx context.Context,
+	exec repositories.Executor,
+) ([]string, error) {
+	args := m.Called(ctx, exec)
+	return args.Get(0).([]string), args.Error(1)
+}
