@@ -43,6 +43,10 @@ paths:
           description: The object was successfully ingested.
         400:
           description: The provided object is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDto'
         500:
           description: An error happened while ingesting the object.
   /ingestion/{object_type}/multiple:
@@ -74,6 +78,10 @@ paths:
           description: The object was successfully ingested.
         400:
           description: One of the provided object is invalid (with respect to the data model), or too many objects have been sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDto'
         500:
           description: An error happened while ingesting the object.
   /decisions:
@@ -98,6 +106,10 @@ paths:
                 $ref: "#/components/schemas/decision"
         400:
           description: The input is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDto'
         500:
           description: An error happened while taking a decision.
     get:
@@ -179,6 +191,10 @@ paths:
                           $ref: "#/components/schemas/decision"
         400:
           description: The input is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDto'
         500:
           description: An error happened while taking a decision.
   /decisions/all:
@@ -213,6 +229,10 @@ paths:
                         $ref: "#/components/schemas/decisions_count_metadata"
         400:
           description: The input is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDto'
         500:
           description: An error happened while creating the decisions
   /decisions/{decision_id}:
@@ -239,6 +259,10 @@ paths:
                 $ref: "#/components/schemas/decision"
         400:
           description: The input is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDto'
         500:
           description: An error happened while taking a decision.
   /scheduled-executions:
@@ -270,6 +294,12 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/scheduled_execution"
+        400:
+          description: The input is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDto'
         401:
           description: Unauthorized
         500:
@@ -551,6 +581,15 @@ components:
           type: integer
         message:
           type: string
+        details: {}
+    ErrorDto:
+      type: object
+      properties:
+        error_code:
+          type: integer
+        message:
+          type: string
+        details: {}
     pagination:
       type: object
       required:

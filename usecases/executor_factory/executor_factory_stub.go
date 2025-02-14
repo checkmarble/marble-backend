@@ -57,16 +57,21 @@ func (stub TransactionFactoryStub) Transaction(ctx context.Context, fn func(tx r
 	return err
 }
 
-func (stub TransactionFactoryStub) TransactionInOrgSchema(ctx context.Context,
-	organizationId string, f func(tx repositories.Transaction) error,
+func (stub TransactionFactoryStub) TransactionInOrgSchema(
+	ctx context.Context,
+	organizationId string,
+	f func(tx repositories.Transaction) error,
 ) error {
-	return nil
+	exec := stub.Mock.withClientSchema()
+	err := f(exec)
+	return err
 }
 
 // helper type to inject to the tx factory stub
 
 type dbExecFactoryStub struct {
-	exec pgxmock.PgxPoolIface
+	exec       pgxmock.PgxPoolIface
+	schemaType models.DatabaseSchemaType
 }
 
 func NewDbExecFactoryStub(exec pgxmock.PgxPoolIface) dbExecFactoryStub {
@@ -75,8 +80,16 @@ func NewDbExecFactoryStub(exec pgxmock.PgxPoolIface) dbExecFactoryStub {
 	}
 }
 
+func (exec dbExecFactoryStub) withClientSchema() dbExecFactoryStub {
+	exec.schemaType = models.DATABASE_SCHEMA_TYPE_CLIENT
+	return exec
+}
+
 func (exec dbExecFactoryStub) DatabaseSchema() models.DatabaseSchema {
-	return models.DatabaseSchema{}
+	return models.DatabaseSchema{
+		SchemaType: exec.schemaType,
+		Schema:     "test",
+	}
 }
 
 func (stub dbExecFactoryStub) RawTx() pgx.Tx {

@@ -1,8 +1,11 @@
 package dto
 
+import "encoding/json"
+
 type APIErrorResponse struct {
-	Message   string    `json:"message"`
-	ErrorCode ErrorCode `json:"error_code"`
+	Message   string         `json:"message"`
+	Details   json.Marshaler `json:"details,omitempty"`
+	ErrorCode ErrorCode      `json:"error_code"`
 }
 
 type ErrorCode string
@@ -19,6 +22,10 @@ const (
 
 	// decision related
 	TriggerConditionNotMatched ErrorCode = "trigger_condition_not_matched"
+
+	// ingestion related
+	SchemaMismatchError ErrorCode = "data_does_not_match_schema"
+	InvalidJSON         ErrorCode = "invalid_json"
 
 	// general
 	UnknownUser ErrorCode = "unknown_user"
