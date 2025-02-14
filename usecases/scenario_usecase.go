@@ -149,7 +149,7 @@ func validateScenarioUpdate(scenario models.Scenario, input models.UpdateScenari
 }
 
 func (usecase *ScenarioUsecase) ValidateScenarioAst(ctx context.Context,
-	scenarioId string, astNode *ast.Node, expectedReturnType string,
+	scenarioId string, astNode *ast.Node, expectedReturnType ...string,
 ) (validation ast.NodeEvaluation, err error) {
 	scenario, err := usecase.scenarioFetcher.FetchScenario(ctx,
 		usecase.executorFactory.NewExecutor(), scenarioId)
@@ -161,7 +161,7 @@ func (usecase *ScenarioUsecase) ValidateScenarioAst(ctx context.Context,
 		return validation, err
 	}
 
-	validation, err = usecase.validateScenarioAst.Validate(ctx, scenario, astNode, expectedReturnType)
+	validation, err = usecase.validateScenarioAst.Validate(ctx, scenario, astNode, expectedReturnType...)
 
 	return validation, err
 }
