@@ -152,12 +152,16 @@ func AdaptSanctionCheckConfigQueryDto(dto SanctionCheckConfigQuery) (models.Sanc
 		Name: nameAst,
 	}
 
-	if dto.Label != nil && dto.Label.Name != ast.FUNC_UNDEFINED.DebugString() {
-		labelAst, err := AdaptASTNode(*dto.Label)
-		if err != nil {
-			return models.SanctionCheckConfigQuery{}, err
+	if dto.Label != nil {
+		model.Label = &ast.Node{Function: ast.FUNC_UNDEFINED}
+
+		if dto.Label.Name != ast.FuncAstNameMap[ast.FUNC_UNDEFINED] {
+			labelAst, err := AdaptASTNode(*dto.Label)
+			if err != nil {
+				return models.SanctionCheckConfigQuery{}, err
+			}
+			model.Label = &labelAst
 		}
-		model.Label = &labelAst
 	}
 
 	return model, nil
