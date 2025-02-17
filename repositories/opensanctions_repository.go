@@ -41,24 +41,40 @@ type openSanctionsRequestQuery struct {
 }
 
 func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, error) {
-	if !repo.opensanctions.IsConfigured() {
-		return false, fmt.Errorf("OpenSanctions configuration is missing")
+	if ok, err := repo.opensanctions.IsConfigured(); !ok {
+		return false, models.MissingRequirementError{
+			Requirement: models.REQUIREMENT_OPEN_SANCTIONS,
+			Reason:      models.REQUIREMENT_REASON_MISSING_CONFIGURATION,
+			Err:         err,
+		}
 	}
 
 	catalogUrl := fmt.Sprintf("%s/healthz", repo.opensanctions.Host())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
 	if err != nil {
-		return false, err
+		return false, models.MissingRequirementError{
+			Requirement: models.REQUIREMENT_OPEN_SANCTIONS,
+			Reason:      models.REQUIREMENT_REASON_INVALID_CONFIGURATION,
+			Err:         err,
+		}
 	}
 
 	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
-		return false, err
+		return false, models.MissingRequirementError{
+			Requirement: models.REQUIREMENT_OPEN_SANCTIONS,
+			Reason:      models.REQUIREMENT_REASON_HEALTHCHECK_FAILED,
+			Err:         err,
+		}
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("OpenSanctions API returned %d", resp.StatusCode)
+		return false, models.MissingRequirementError{
+			Requirement: models.REQUIREMENT_OPEN_SANCTIONS,
+			Reason:      models.REQUIREMENT_REASON_HEALTHCHECK_FAILED,
+			Err:         fmt.Errorf("healthcheck returned status code %d", resp.StatusCode),
+		}
 	}
 
 	return true, nil

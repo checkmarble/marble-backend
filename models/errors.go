@@ -69,3 +69,32 @@ type FieldValidationError map[string]string
 func (e FieldValidationError) Error() string {
 	return fmt.Sprintf("%v", map[string]string(e))
 }
+
+type (
+	RequirementError       string
+	RequirementErrorReason string
+)
+
+const (
+	REQUIREMENT_OPEN_SANCTIONS RequirementError = "open_sanctions"
+
+	REQUIREMENT_REASON_MISSING_CONFIGURATION = "missing_configuration"
+	REQUIREMENT_REASON_INVALID_CONFIGURATION = "invalid_configuration"
+	REQUIREMENT_REASON_HEALTHCHECK_FAILED    = "healthcheck_failed"
+)
+
+type MissingRequirementError struct {
+	Requirement RequirementError
+	Reason      RequirementErrorReason
+	Err         error
+}
+
+func (err MissingRequirementError) Error() string {
+	return string(err.Requirement)
+}
+
+func (e MissingRequirementError) Is(target error) bool {
+	var req MissingRequirementError
+
+	return errors.As(target, &req)
+}
