@@ -198,21 +198,15 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 		return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
 	}
 
-	if santionCheckPerformed {
-		// TODO: probably not this, we want to force reviewing if more than one result, or in all cases.
-		if sanctionCheckExecution.Count > 0 {
-			switch {
-			case iteration.SanctionCheckConfig.Outcome.ForceOutcome != models.UnsetForcedOutcome:
-				outcome = iteration.SanctionCheckConfig.Outcome.ForceOutcome
-			case iteration.SanctionCheckConfig.Outcome.ScoreModifier != 0:
-				score += iteration.SanctionCheckConfig.Outcome.ScoreModifier
-			}
+	if santionCheckPerformed && sanctionCheckExecution.Count > 0 {
+		if iteration.SanctionCheckConfig.ForcedOutcome != models.UnsetForcedOutcome {
+			outcome = iteration.SanctionCheckConfig.ForcedOutcome
 		}
 	}
 
 	// We only go through the nominal score classifier if the sanction check was not executed or if it was, but
 	// there was not forced outcome configured on it.
-	if !santionCheckPerformed || iteration.SanctionCheckConfig.Outcome.ForceOutcome == models.UnsetForcedOutcome {
+	if !santionCheckPerformed || iteration.SanctionCheckConfig.ForcedOutcome == models.UnsetForcedOutcome {
 		if score >= *iteration.ScoreDeclineThreshold {
 			outcome = models.Decline
 		} else if score >= *iteration.ScoreBlockAndReviewThreshold {

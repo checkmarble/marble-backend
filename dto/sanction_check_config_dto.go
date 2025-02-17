@@ -12,8 +12,7 @@ type SanctionCheckConfig struct {
 	Description              *string                   `json:"description"`
 	RuleGroup                *string                   `json:"rule_group,omitempty"`
 	Datasets                 []string                  `json:"datasets,omitempty"`
-	ForceOutcome             *string                   `json:"force_outcome,omitempty"`
-	ScoreModifier            *int                      `json:"score_modifier,omitempty"`
+	ForcedOutcome            *string                   `json:"forced_outcome,omitempty"`
 	TriggerRule              *NodeDto                  `json:"trigger_rule"`
 	Query                    *SanctionCheckConfigQuery `json:"query"`
 	CounterpartyIdExpression *NodeDto                  `json:"counterparty_id_expression"`
@@ -25,8 +24,7 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 		Description:   &model.Description,
 		RuleGroup:     model.RuleGroup,
 		Datasets:      model.Datasets,
-		ForceOutcome:  model.Outcome.ForceOutcome.MaybeString(),
-		ScoreModifier: &model.Outcome.ScoreModifier,
+		ForcedOutcome: model.ForcedOutcome.MaybeString(),
 	}
 
 	if model.TriggerRule != nil {
@@ -65,9 +63,9 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 		Description: dto.Description,
 		RuleGroup:   dto.RuleGroup,
 		Datasets:    dto.Datasets,
-		Outcome: models.UpdateSanctionCheckOutcomeInput{
-			ScoreModifier: dto.ScoreModifier,
-		},
+	}
+	if dto.ForcedOutcome != nil {
+		config.ForcedOutcome = utils.Ptr(models.ForcedOutcomeFrom(*dto.ForcedOutcome))
 	}
 
 	if dto.TriggerRule != nil {
@@ -103,10 +101,6 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 		}
 
 		config.CounterpartyIdExpression = &counterpartyIdExpr
-	}
-
-	if dto.ForceOutcome != nil {
-		config.Outcome.ForceOutcome = utils.Ptr(models.ForcedOutcomeFrom(*dto.ForceOutcome))
 	}
 
 	return config, nil
