@@ -73,26 +73,30 @@ func objectIdAndUpdatedAtFromPayload(payload models.ClientObject) (string, time.
 	return objectId, updatedAt
 }
 
+// Keep only the most recent (as per updated_at) payload for each object_id. In case of equal values seen, the first one wins.
 func (repo *IngestionRepositoryImpl) mostRecentPayloadsByObjectId(payloads []models.ClientObject) ([]string, []models.ClientObject) {
-	recentMap := make(map[string]models.ClientObject)
-	for _, payload := range payloads {
+	idxToKeep := make(map[string]int, len(payloads))
+	for i, payload := range payloads {
 		objectId, updatedAt := objectIdAndUpdatedAtFromPayload(payload)
 
-		if seen, ok := recentMap[objectId]; ok {
-			_, seenUpdatedAt := objectIdAndUpdatedAtFromPayload(seen)
-			if updatedAt.After(seenUpdatedAt) {
-				recentMap[objectId] = payload
-			}
+		previousIdForThisObject, ok := idxToKeep[objectId]
+		if !ok {
+			idxToKeep[objectId] = i
 		} else {
-			recentMap[objectId] = payload
+			previousUpdatedAt := payloads[previousIdForThisObject].Data["updated_at"].(time.Time)
+			if updatedAt.After(previousUpdatedAt) {
+				idxToKeep[objectId] = i
+			}
 		}
+
 	}
 
-	mostRecentPayloads := make([]models.ClientObject, 0, len(recentMap))
-	mostRecentObjectIds := make([]string, 0, len(recentMap))
-	for key, obj := range recentMap {
-		mostRecentObjectIds = append(mostRecentObjectIds, key)
-		mostRecentPayloads = append(mostRecentPayloads, obj)
+	mostRecentPayloads := make([]models.ClientObject, len(idxToKeep))
+	mostRecentObjectIds := make([]string, len(idxToKeep))
+	for _, idx := range idxToKeep {
+		mostRecentPayloads[idx] = payloads[idx]
+		objectId, _ := objectIdAndUpdatedAtFromPayload(payloads[idx])
+		mostRecentObjectIds[idx] = objectId
 	}
 
 	return mostRecentObjectIds, mostRecentPayloads
