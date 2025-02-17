@@ -58,6 +58,16 @@ func (os OpenSanctions) Client() *http.Client {
 	return os.client
 }
 
+func (os OpenSanctions) IsConfigured() bool {
+	if !os.IsSelfHosted() && len(os.credentials) > 0 {
+		return true
+	}
+	if os.IsSelfHosted() && len(os.host) > 0 {
+		return true
+	}
+	return false
+}
+
 func (os OpenSanctions) IsSelfHosted() bool {
 	return len(os.host) > 0
 }

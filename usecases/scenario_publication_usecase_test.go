@@ -155,6 +155,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) makeUsecase() *ScenarioPublica
 		suite.scenarioPublisher,
 		suite.clientDbIndexEditor,
 		suite.featureAccessReader,
+		nil,
 	)
 }
 
