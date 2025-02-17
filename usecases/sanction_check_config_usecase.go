@@ -46,8 +46,8 @@ func (uc SanctionCheckUsecase) ConfigureSanctionCheck(ctx context.Context,
 		}
 	}
 
-	if scCfg.Outcome.ForceOutcome != nil &&
-		!slices.Contains(models.ValidForcedOutcome, *scCfg.Outcome.ForceOutcome) {
+	if scCfg.ForcedOutcome != nil &&
+		!slices.Contains(models.ValidForcedOutcome, *scCfg.ForcedOutcome) {
 		return models.SanctionCheckConfig{}, errors.Wrap(models.BadParameterError,
 			"sanction check config: invalid forced outcome")
 	}

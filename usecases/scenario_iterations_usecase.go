@@ -292,10 +292,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 					TriggerRule:              sanctionCheckConfig.TriggerRule,
 					CounterpartyIdExpression: sanctionCheckConfig.CounterpartyIdExpression,
 					Query:                    sanctionCheckConfig.Query,
-					Outcome: models.UpdateSanctionCheckOutcomeInput{
-						ForceOutcome:  &sanctionCheckConfig.Outcome.ForceOutcome,
-						ScoreModifier: &sanctionCheckConfig.Outcome.ScoreModifier,
-					},
+					ForcedOutcome:            &sanctionCheckConfig.ForcedOutcome,
 				}
 
 				if _, err := usecase.sanctionCheckConfigRepository.UpsertSanctionCheckConfig(

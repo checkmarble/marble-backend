@@ -23,7 +23,6 @@ type DBSanctionCheckConfigs struct {
 	TriggerRule         []byte                      `db:"trigger_rule"`
 	Query               *DBSanctionCheckConfigQuery `db:"query"`
 	ForcedOutcome       *string                     `db:"forced_outcome"`
-	ScoreModifier       int                         `db:"score_modifier"`
 	CounterpartyIdExpr  []byte                      `db:"counterparty_id_expression"`
 	UpdatedAt           time.Time                   `db:"updated_at"`
 }
@@ -42,14 +41,14 @@ var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
 
 func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckConfig, error) {
 	scc := models.SanctionCheckConfig{
-		Name:        db.Name,
-		Description: db.Description,
-		RuleGroup:   &db.RuleGroup,
-		Datasets:    db.Datasets,
-		Outcome: models.SanctionCheckOutcome{
-			ForceOutcome:  models.UnsetForcedOutcome,
-			ScoreModifier: db.ScoreModifier,
-		},
+		Name:          db.Name,
+		Description:   db.Description,
+		RuleGroup:     &db.RuleGroup,
+		Datasets:      db.Datasets,
+		ForcedOutcome: models.UnsetForcedOutcome,
+	}
+	if db.ForcedOutcome != nil {
+		scc.ForcedOutcome = models.OutcomeFrom(*db.ForcedOutcome)
 	}
 
 	if db.TriggerRule != nil {
@@ -79,10 +78,6 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 		}
 
 		scc.CounterpartyIdExpression = field
-	}
-
-	if db.ForcedOutcome != nil {
-		scc.Outcome.ForceOutcome = models.OutcomeFrom(*db.ForcedOutcome)
 	}
 
 	return scc, nil
