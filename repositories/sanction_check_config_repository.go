@@ -83,15 +83,23 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
-		Columns("scenario_iteration_id", "name", "description", "rule_group", "datasets",
-			"forced_outcome", "trigger_rule", "query", "counterparty_id_expression").
+		Columns(
+			"scenario_iteration_id",
+			"name",
+			"description",
+			"rule_group",
+			"datasets",
+			"forced_outcome",
+			"trigger_rule",
+			"query",
+			"counterparty_id_expression").
 		Values(
 			scenarioIterationId,
 			cfg.Name,
 			utils.Or(cfg.Description, ""),
 			utils.Or(cfg.RuleGroup, ""),
 			cfg.Datasets,
-			cfg.ForcedOutcome.MaybeString(),
+			cfg.ForcedOutcome.String(),
 			triggerRule,
 			query,
 			counterpartyIdExpr,
