@@ -42,6 +42,7 @@ type EvalSanctionCheckUsecase interface {
 }
 
 type EvalNameRecognitionRepository interface {
+	IsConfigured() bool
 	PerformNameRecognition(context.Context, string) ([]httpmodels.HTTPNameRecognitionMatch, error)
 }
 
