@@ -16,14 +16,19 @@ var (
 )
 
 type SanctionCheckDto struct {
-	Id          string                  `json:"id"`
-	Status      string                  `json:"status"`
-	Request     SanctionCheckRequestDto `json:"request"`
-	Partial     bool                    `json:"partial"`
-	Count       int                     `json:"count"`
-	IsManual    bool                    `json:"is_manual"`
-	RequestedBy *string                 `json:"requested_by,omitempty"`
-	Matches     []SanctionCheckMatchDto `json:"matches"`
+	Id          string                    `json:"id"`
+	Config      SanctionCheckConfigRefDto `json:"config"`
+	Status      string                    `json:"status"`
+	Request     SanctionCheckRequestDto   `json:"request"`
+	Partial     bool                      `json:"partial"`
+	Count       int                       `json:"count"`
+	IsManual    bool                      `json:"is_manual"`
+	RequestedBy *string                   `json:"requested_by,omitempty"`
+	Matches     []SanctionCheckMatchDto   `json:"matches"`
+}
+
+type SanctionCheckConfigRefDto struct {
+	Name string `json:"name"`
 }
 
 type SanctionCheckRequestDto struct {
@@ -36,6 +41,9 @@ type SanctionCheckRequestDto struct {
 func AdaptSanctionCheckDto(m models.SanctionCheckWithMatches) SanctionCheckDto {
 	sanctionCheck := SanctionCheckDto{
 		Id: m.Id,
+		Config: SanctionCheckConfigRefDto{
+			Name: m.Config.Name,
+		},
 		Request: SanctionCheckRequestDto{
 			Datasets:    m.Datasets,
 			Limit:       m.OrgConfig.MatchLimit,
