@@ -28,5 +28,20 @@ const (
 	InvalidJSON         ErrorCode = "invalid_json"
 
 	// general
-	UnknownUser ErrorCode = "unknown_user"
+	UnknownUser        ErrorCode = "unknown_user"
+	MissingRequirement ErrorCode = "missing_requirement"
 )
+
+type RequirementErrorDto struct {
+	Requirement string `json:"requirement"`
+	Reason      string `json:"reason"`
+	Error       string `json:"error"`
+}
+
+func (err RequirementErrorDto) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]string{
+		"requirement": err.Requirement,
+		"reason":      err.Reason,
+		"error":       err.Error,
+	})
+}
