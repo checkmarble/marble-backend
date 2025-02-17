@@ -52,7 +52,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		}
 	}
 
-	if e.nameRecognizer != nil && iteration.SanctionCheckConfig.Query.Label != nil {
+	if iteration.SanctionCheckConfig.Query.Label != nil {
 		queries, err = e.evaluateSanctionCheckLabel(ctx, queries, iteration, dataAccessor)
 		if err != nil {
 			return nil, true, err
@@ -161,6 +161,23 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(ctx context.Context, queri
 	labelFilter, ok := labelFilterAny.ReturnValue.(string)
 	if !ok {
 		return queries, errors.New("label filter name query did not return a string")
+	}
+
+	if e.nameRecognizer == nil || !e.nameRecognizer.IsConfigured() {
+		switch len(queries) {
+		case 0:
+			queries = append(queries, models.OpenSanctionsCheckQuery{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{labelFilter},
+				},
+			})
+
+		default:
+			queries[0].Filters["name"] = append(queries[0].Filters["name"], labelFilter)
+		}
+
+		return queries, nil
 	}
 
 	matches, err := e.nameRecognizer.PerformNameRecognition(ctx, labelFilter)

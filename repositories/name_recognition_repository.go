@@ -26,6 +26,10 @@ type NameRecognitionMatch struct {
 	Text string `json:"text"`
 }
 
+func (repo NameRecognitionRepository) IsConfigured() bool {
+	return repo.NameRecognitionProvider != nil && repo.NameRecognitionProvider.ApiUrl != ""
+}
+
 func (repo NameRecognitionRepository) PerformNameRecognition(ctx context.Context, input string) ([]httpmodels.HTTPNameRecognitionMatch, error) {
 	if repo.NameRecognitionProvider == nil {
 		return []httpmodels.HTTPNameRecognitionMatch{}, nil
