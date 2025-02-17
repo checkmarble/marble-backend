@@ -8,13 +8,11 @@ const (
 	BlockAndReview
 	Decline
 	UnknownOutcome
-
-	UnsetForcedOutcome = -1
 )
 
 var (
 	ValidOutcomes      = []Outcome{Approve, Review, BlockAndReview, Decline}
-	ValidForcedOutcome = []Outcome{Review, BlockAndReview, Decline, UnsetForcedOutcome}
+	ValidForcedOutcome = []Outcome{Review, BlockAndReview, Decline}
 )
 
 // Provide a string value for each outcome
@@ -48,8 +46,6 @@ func (o *Outcome) MaybeString() *string {
 		value = "block_and_review"
 	case Decline:
 		value = "decline"
-	case UnsetForcedOutcome:
-		return nil
 	}
 
 	return &value
@@ -68,12 +64,4 @@ func OutcomeFrom(s string) Outcome {
 		return Decline
 	}
 	return UnknownOutcome
-}
-
-func ForcedOutcomeFrom(s string) Outcome {
-	if s == "none" {
-		return UnsetForcedOutcome
-	}
-
-	return OutcomeFrom(s)
 }
