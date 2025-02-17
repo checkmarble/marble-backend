@@ -40,6 +40,30 @@ type openSanctionsRequestQuery struct {
 	Properties models.OpenSanctionCheckFilter `json:"properties"`
 }
 
+func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, error) {
+	if !repo.opensanctions.IsConfigured() {
+		return false, fmt.Errorf("OpenSanctions configuration is missing")
+	}
+
+	catalogUrl := fmt.Sprintf("%s/healthz", repo.opensanctions.Host())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
+	if err != nil {
+		return false, err
+	}
+
+	resp, err := repo.opensanctions.Client().Do(req)
+	if err != nil {
+		return false, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("OpenSanctions API returned %d", resp.StatusCode)
+	}
+
+	return true, nil
+}
+
 func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
 	if cached, ok := OPEN_SANCTIONS_DATASET_CACHE.Get(OPEN_SANCTIONS_CATALOG_CACHE_KEY); ok {
 		return cached, nil

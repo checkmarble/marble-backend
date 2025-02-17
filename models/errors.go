@@ -22,6 +22,9 @@ var (
 
 	// ConflictError is rendered with the http status code 409
 	ConflictError = errors.New("duplicate value")
+
+	// MissingRequirement means this features required infrastructure or configuration that was not provided
+	MissingRequirement = errors.New("missing requirement")
 )
 
 // Authentication related errors

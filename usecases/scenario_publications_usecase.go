@@ -52,6 +52,10 @@ type PublicationUsecaseFeatureAccessReader interface {
 	) (models.OrganizationFeatureAccess, error)
 }
 
+type SanctionCheckRequirementChecker interface {
+	IsConfigured(context.Context) (bool, error)
+}
+
 type ScenarioPublicationUsecase struct {
 	transactionFactory             executor_factory.TransactionFactory
 	executorFactory                executor_factory.ExecutorFactory
@@ -61,6 +65,7 @@ type ScenarioPublicationUsecase struct {
 	scenarioPublisher              ScenarioPublisher
 	clientDbIndexEditor            clientDbIndexEditor
 	featureAccessReader            PublicationUsecaseFeatureAccessReader
+	sanctionCheckRequirements      SanctionCheckRequirementChecker
 }
 
 func NewScenarioPublicationUsecase(
@@ -72,6 +77,7 @@ func NewScenarioPublicationUsecase(
 	scenarioPublisher ScenarioPublisher,
 	clientDbIndexEditor clientDbIndexEditor,
 	featureAccessReader PublicationUsecaseFeatureAccessReader,
+	sanctionCheckRequirements SanctionCheckRequirementChecker,
 ) *ScenarioPublicationUsecase {
 	return &ScenarioPublicationUsecase{
 		transactionFactory:             transactionFactory,
@@ -82,6 +88,7 @@ func NewScenarioPublicationUsecase(
 		scenarioPublisher:              scenarioPublisher,
 		clientDbIndexEditor:            clientDbIndexEditor,
 		featureAccessReader:            featureAccessReader,
+		sanctionCheckRequirements:      sanctionCheckRequirements,
 	}
 }
 
@@ -153,6 +160,11 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 				if !featureAccess.Sanctions.IsAllowed() {
 					return nil, errors.Wrapf(models.ForbiddenError,
 						"Sanction check feature access is missing: status is %s", featureAccess.Sanctions)
+				}
+
+				if isConfigured, err := usecase.sanctionCheckRequirements.IsConfigured(ctx); !isConfigured {
+					return nil, errors.Join(models.MissingRequirement,
+						errors.Wrap(err, "OpenSanctions API is not configured or not working"))
 				}
 			}
 

@@ -230,6 +230,7 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() *ScenarioPubl
 		usecases.NewScenarioPublisher(),
 		usecases.NewClientDbIndexEditor(),
 		usecases.NewFeatureAccessReader(),
+		usecases.Repositories.OpenSanctionsRepository,
 	)
 }
 
