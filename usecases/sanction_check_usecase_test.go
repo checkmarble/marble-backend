@@ -22,14 +22,15 @@ func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.Exe
 	txFac := executor_factory.NewTransactionFactoryStub(exec)
 
 	uc := SanctionCheckUsecase{
-		enforceSecurityDecision: enforceSecurity,
-		enforceSecurityCase:     enforceSecurity,
-		organizationRepository:  mock,
-		externalRepository:      mock,
-		inboxReader:             mock,
-		repository:              &repositories.MarbleDbRepository{},
-		executorFactory:         exec,
-		transactionFactory:      txFac,
+		enforceSecurityDecision:       enforceSecurity,
+		enforceSecurityCase:           enforceSecurity,
+		organizationRepository:        mock,
+		externalRepository:            mock,
+		inboxReader:                   mock,
+		repository:                    &repositories.MarbleDbRepository{},
+		sanctionCheckConfigRepository: &repositories.MarbleDbRepository{},
+		executorFactory:               exec,
+		transactionFactory:            txFac,
 	}
 
 	return uc, exec
@@ -37,6 +38,22 @@ func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.Exe
 
 func TestListSanctionChecksOnDecision(t *testing.T) {
 	uc, exec := buildSanctionCheckUsecaseMock()
+
+	sccRow, mockSccRow := utils.FakeStruct[dbmodels.DBSanctionCheckConfigs](
+		ops.WithCustomFieldProvider("TriggerRule", func() (interface{}, error) {
+			return []byte(`{}`), nil
+		}),
+		ops.WithCustomFieldProvider("Query", func() (interface{}, error) {
+			return &dbmodels.DBSanctionCheckConfigQuery{
+				Name:  []byte(`{}`),
+				Label: []byte(`{}`),
+			}, nil
+		}),
+		ops.WithCustomFieldProvider("CounterpartyIdExpr", func() (interface{}, error) {
+			return []byte(`{}`), nil
+		}),
+	)
+
 	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBSanctionCheckWithMatches](
 		ops.WithRandomMapAndSliceMinSize(1), ops.WithRandomMapAndSliceMaxSize(1))
 
@@ -62,6 +79,14 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 				AddRow(mockScRow...),
 		)
 
+	exec.Mock.
+		ExpectQuery(`SELECT id, .+ FROM sanction_check_configs WHERE scenario_iteration_id = \$1`).
+		WithArgs("").
+		WillReturnRows(
+			pgxmock.NewRows(dbmodels.SanctionCheckConfigColumnList).
+				AddRow(mockSccRow...),
+		)
+
 	exec.Mock.ExpectQuery(`SELECT .* FROM sanction_check_match_comments WHERE sanction_check_match_id = ANY\(\$1\)`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
@@ -79,6 +104,7 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 	assert.Equal(t, models.SanctionCheckMatchStatusFrom(scs[0].Matches[0].Status.String()), models.SanctionMatchStatusUnknown)
 	assert.Len(t, scs[0].Matches[0].Comments, 4)
 	assert.Equal(t, scs[0].Matches[0].Comments[0].Comment, mockComments[0].Comment)
+	assert.Equal(t, scs[0].Config.Name, sccRow.Name)
 }
 
 func TestUpdateMatchStatus(t *testing.T) {
