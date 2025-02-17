@@ -400,6 +400,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	uc := suite.makeUsecase()
 
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
+
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
 		mock.MatchedBy(matchExec), suite.organizationId, false).
 		Return(suite.dataModel, nil)
