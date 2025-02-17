@@ -12,7 +12,6 @@ const (
 	SanctionStatusNoHit
 	SanctionStatusInReview
 	SanctionStatusError
-	SanctionStatusTooManyHits
 	SanctionStatusUnknown
 )
 
@@ -26,8 +25,6 @@ func SanctionCheckStatusFrom(s string) SanctionCheckStatus {
 		return SanctionStatusInReview
 	case "error":
 		return SanctionStatusError
-	case "too_many_hits":
-		return SanctionStatusTooManyHits
 	}
 
 	return SanctionStatusUnknown
@@ -43,8 +40,6 @@ func (scs SanctionCheckStatus) String() string {
 		return "in_review"
 	case SanctionStatusError:
 		return "error"
-	case SanctionStatusTooManyHits:
-		return "too_many_hits"
 	}
 
 	return "unknown"
@@ -149,10 +144,6 @@ func (s SanctionRawSearchResponseWithMatches) AdaptSanctionCheckFromSearchRespon
 func (s SanctionCheckWithMatches) InitialStatusFromMatches() SanctionCheckStatus {
 	if len(s.Matches) == 0 {
 		return SanctionStatusNoHit
-	}
-
-	if s.Partial {
-		return SanctionStatusTooManyHits
 	}
 
 	return SanctionStatusInReview
