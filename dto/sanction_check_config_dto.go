@@ -113,21 +113,27 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 }
 
 type SanctionCheckConfigQuery struct {
-	Name  NodeDto  `json:"name"`
+	Name  *NodeDto `json:"name"`
 	Label *NodeDto `json:"label"`
 }
 
 func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (SanctionCheckConfigQuery, error) {
-	nameAst, err := AdaptNodeDto(model.Name)
-	if err != nil {
-		return SanctionCheckConfigQuery{}, err
-	}
-
 	dto := SanctionCheckConfigQuery{
-		Name: nameAst,
+		Name: &NodeDto{
+			Name: "Undefined",
+		},
 		Label: &NodeDto{
 			Name: "Undefined",
 		},
+	}
+
+	if model.Name != nil {
+		nameAst, err := AdaptNodeDto(*model.Name)
+		if err != nil {
+			return SanctionCheckConfigQuery{}, err
+		}
+
+		dto.Name = &nameAst
 	}
 
 	if model.Label != nil && model.Label.Function != ast.FUNC_UNDEFINED {
@@ -143,13 +149,18 @@ func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (Sanct
 }
 
 func AdaptSanctionCheckConfigQueryDto(dto SanctionCheckConfigQuery) (models.SanctionCheckConfigQuery, error) {
-	nameAst, err := AdaptASTNode(dto.Name)
-	if err != nil {
-		return models.SanctionCheckConfigQuery{}, err
+	model := models.SanctionCheckConfigQuery{
+		Name:  &ast.Node{Function: ast.FUNC_UNDEFINED},
+		Label: &ast.Node{Function: ast.FUNC_UNDEFINED},
 	}
 
-	model := models.SanctionCheckConfigQuery{
-		Name: nameAst,
+	if dto.Name != nil {
+		nameAst, err := AdaptASTNode(*dto.Name)
+		if err != nil {
+			return models.SanctionCheckConfigQuery{}, err
+		}
+
+		model.Name = &nameAst
 	}
 
 	if dto.Label != nil {

@@ -51,13 +51,14 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 	var query *dbmodels.DBSanctionCheckConfigQueryInput
 
 	if cfg.Query != nil {
-		ser, err := dto.AdaptNodeDto(cfg.Query.Name)
-		if err != nil {
-			return models.SanctionCheckConfig{}, err
-		}
+		query = &dbmodels.DBSanctionCheckConfigQueryInput{}
 
-		query = &dbmodels.DBSanctionCheckConfigQueryInput{
-			Name: ser,
+		if cfg.Query.Name != nil {
+			ser, err := dto.AdaptNodeDto(*cfg.Query.Name)
+			if err != nil {
+				return models.SanctionCheckConfig{}, err
+			}
+			query.Name = &ser
 		}
 
 		if cfg.Query.Label != nil {
@@ -65,7 +66,7 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 			if err != nil {
 				return models.SanctionCheckConfig{}, err
 			}
-			query.Label = ser
+			query.Label = &ser
 		}
 	}
 

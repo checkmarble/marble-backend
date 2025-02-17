@@ -116,7 +116,7 @@ func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
 		SanctionCheckConfig: &models.SanctionCheckConfig{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
-				Name: ast.Node{Constant: 12},
+				Name: &ast.Node{Constant: 12},
 			},
 		},
 	}
@@ -135,7 +135,7 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 		SanctionCheckConfig: &models.SanctionCheckConfig{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
-				Name: ast.Node{Constant: "constant string"},
+				Name: &ast.Node{Constant: "constant string"},
 			},
 		},
 	}
@@ -168,7 +168,7 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 		SanctionCheckConfig: &models.SanctionCheckConfig{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
-				Name: ast.Node{
+				Name: &ast.Node{
 					Function:      ast.FUNC_STRING_CONCAT,
 					NamedChildren: map[string]ast.Node{"with_separator": {Constant: true}},
 					Children: []ast.Node{
@@ -217,7 +217,7 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 		SanctionCheckConfig: &models.SanctionCheckConfig{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
-				Name:  ast.Node{Constant: "bob gross"},
+				Name:  &ast.Node{Constant: "bob gross"},
 				Label: &ast.Node{Constant: "dinner with joe finnigan"},
 			},
 		},

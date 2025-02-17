@@ -34,8 +34,8 @@ type DBSanctionCheckConfigQuery struct {
 }
 
 type DBSanctionCheckConfigQueryInput struct {
-	Name  dto.NodeDto `json:"name"`
-	Label dto.NodeDto `json:"label"`
+	Name  *dto.NodeDto `json:"name"`
+	Label *dto.NodeDto `json:"label"`
 }
 
 var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
@@ -89,18 +89,22 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 }
 
 func AdaptSanctionCheckConfigQuery(db DBSanctionCheckConfigQuery) (models.SanctionCheckConfigQuery, error) {
-	nameAst, err := AdaptSerializedAstExpression(db.Name)
-	if err != nil {
-		return models.SanctionCheckConfigQuery{}, err
-	}
-	labelAst, err := AdaptSerializedAstExpression(db.Label)
-	if err != nil {
-		return models.SanctionCheckConfigQuery{}, err
+	model := models.SanctionCheckConfigQuery{}
+
+	if db.Name != nil {
+		nameAst, err := AdaptSerializedAstExpression(db.Name)
+		if err != nil {
+			return models.SanctionCheckConfigQuery{}, err
+		}
+		model.Name = nameAst
 	}
 
-	model := models.SanctionCheckConfigQuery{
-		Name:  *nameAst,
-		Label: labelAst,
+	if db.Label != nil {
+		labelAst, err := AdaptSerializedAstExpression(db.Label)
+		if err != nil {
+			return models.SanctionCheckConfigQuery{}, err
+		}
+		model.Label = labelAst
 	}
 
 	return model, nil

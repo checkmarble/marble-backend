@@ -39,7 +39,9 @@ type decisionValidationDto struct {
 
 type sanctionCheckConfigValidationDto struct {
 	Trigger                  triggerValidationDto `json:"trigger"`
-	NameFilter               ruleValidationDto    `json:"name_filter"`
+	Query                    ruleValidationDto    `json:"query"`
+	QueryName                ruleValidationDto    `json:"query_name"`
+	QueryLabel               ruleValidationDto    `json:"query_label"`
 	CounterpartyIdExpression ruleValidationDto    `json:"counterparty_id_expression"`
 }
 
@@ -70,9 +72,17 @@ func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationD
 				Errors:            pure_utils.Map(s.SanctionCheck.TriggerRule.Errors, AdaptScenarioValidationErrorDto),
 				TriggerEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.TriggerRule.TriggerEvaluation),
 			},
-			NameFilter: ruleValidationDto{
-				Errors:         pure_utils.Map(s.SanctionCheck.NameFilter.Errors, AdaptScenarioValidationErrorDto),
-				RuleEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.NameFilter.RuleEvaluation),
+			Query: ruleValidationDto{
+				Errors:         pure_utils.Map(s.SanctionCheck.Query.Errors, AdaptScenarioValidationErrorDto),
+				RuleEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.Query.RuleEvaluation),
+			},
+			QueryName: ruleValidationDto{
+				Errors:         pure_utils.Map(s.SanctionCheck.QueryName.Errors, AdaptScenarioValidationErrorDto),
+				RuleEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.QueryName.RuleEvaluation),
+			},
+			QueryLabel: ruleValidationDto{
+				Errors:         pure_utils.Map(s.SanctionCheck.QueryLabel.Errors, AdaptScenarioValidationErrorDto),
+				RuleEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.QueryLabel.RuleEvaluation),
 			},
 			CounterpartyIdExpression: ruleValidationDto{
 				Errors:         pure_utils.Map(s.SanctionCheck.CounterpartyIdExpression.Errors, AdaptScenarioValidationErrorDto),

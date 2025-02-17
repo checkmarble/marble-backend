@@ -45,9 +45,11 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 
 	queries := []models.OpenSanctionsCheckQuery{}
 
-	queries, err = e.evaluateSanctionCheckName(ctx, queries, iteration, dataAccessor)
-	if err != nil {
-		return nil, true, err
+	if iteration.SanctionCheckConfig.Query.Name != nil {
+		queries, err = e.evaluateSanctionCheckName(ctx, queries, iteration, dataAccessor)
+		if err != nil {
+			return nil, true, err
+		}
 	}
 
 	if e.nameRecognizer != nil && iteration.SanctionCheckConfig.Query.Label != nil {
@@ -125,7 +127,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheckName(ctx context.Context, querie
 	iteration models.ScenarioIteration, dataAccessor DataAccessor,
 ) ([]models.OpenSanctionsCheckQuery, error) {
 	nameFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-		iteration.SanctionCheckConfig.Query.Name, iteration.OrganizationId,
+		*iteration.SanctionCheckConfig.Query.Name, iteration.OrganizationId,
 		dataAccessor.ClientObject, dataAccessor.DataModel)
 	if err != nil {
 		return queries, err
