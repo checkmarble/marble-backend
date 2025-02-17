@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/Masterminds/squirrel"
 )
@@ -168,10 +169,14 @@ func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
 	if err != nil {
 		return nil, err
 	}
-	sqlName := "SELECT name FROM sanction_check_configs WHERE scenario_iteration_id = $1"
+
+	sanctionCheckRuleName := "SELECT name FROM sanction_check_configs WHERE scenario_iteration_id = $1"
 	var name string
-	err = exec.QueryRow(ctx, sqlName, iterationId).Scan(&name)
-	if err != nil {
+	err = exec.QueryRow(ctx, sanctionCheckRuleName, iterationId).Scan(&name)
+	// All iterations don't have a sanction check config enabled. If there is none, just early exit
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 
