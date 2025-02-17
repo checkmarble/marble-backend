@@ -30,27 +30,6 @@ func (o Outcome) String() string {
 	return "unknown"
 }
 
-func (o *Outcome) MaybeString() *string {
-	if o == nil {
-		return nil
-	}
-
-	value := "unknown"
-
-	switch *o {
-	case Approve:
-		value = "approve"
-	case Review:
-		value = "review"
-	case BlockAndReview:
-		value = "block_and_review"
-	case Decline:
-		value = "decline"
-	}
-
-	return &value
-}
-
 // Provide an Outcome from a string value
 func OutcomeFrom(s string) Outcome {
 	switch s {

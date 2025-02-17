@@ -24,7 +24,7 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 		Description:   &model.Description,
 		RuleGroup:     model.RuleGroup,
 		Datasets:      model.Datasets,
-		ForcedOutcome: model.ForcedOutcome.MaybeString(),
+		ForcedOutcome: utils.Ptr(model.ForcedOutcome.String()),
 	}
 
 	if model.TriggerRule != nil {
