@@ -163,8 +163,7 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 				}
 
 				if isConfigured, err := usecase.sanctionCheckRequirements.IsConfigured(ctx); !isConfigured {
-					return nil, errors.Join(models.MissingRequirement,
-						errors.Wrap(err, "OpenSanctions API is not configured or not working"))
+					return nil, err
 				}
 			}
 
