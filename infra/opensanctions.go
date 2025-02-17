@@ -1,6 +1,9 @@
 package infra
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+)
 
 const (
 	OPEN_SANCTIONS_API_HOST = "https://api.opensanctions.org"
@@ -58,14 +61,11 @@ func (os OpenSanctions) Client() *http.Client {
 	return os.client
 }
 
-func (os OpenSanctions) IsConfigured() bool {
-	if !os.IsSelfHosted() && len(os.credentials) > 0 {
-		return true
+func (os OpenSanctions) IsConfigured() (bool, error) {
+	if !os.IsSelfHosted() && len(os.credentials) == 0 {
+		return false, fmt.Errorf("missing API key for SaaS Open Sanctions configuration")
 	}
-	if os.IsSelfHosted() && len(os.host) > 0 {
-		return true
-	}
-	return false
+	return true, nil
 }
 
 func (os OpenSanctions) IsSelfHosted() bool {

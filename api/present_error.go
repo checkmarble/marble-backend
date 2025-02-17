@@ -42,6 +42,24 @@ func presentError(ctx context.Context, c *gin.Context, err error) bool {
 	case errors.Is(err, models.ConflictError):
 		logger.InfoContext(ctx, fmt.Sprintf("ConflictError: %v", err))
 		c.JSON(http.StatusConflict, errorResponse)
+	case errors.Is(err, models.MissingRequirementError{}):
+		var req models.MissingRequirementError
+
+		if errors.As(err, &req) {
+			logger.InfoContext(ctx, fmt.Sprintf("MissingRequirementError: %v", err))
+
+			errorResponse = dto.APIErrorResponse{
+				ErrorCode: dto.MissingRequirement,
+				Message:   "A required configuration was missing or invalid",
+				Details: dto.RequirementErrorDto{
+					Requirement: string(req.Requirement),
+					Reason:      string(req.Reason),
+					Error:       req.Err.Error(),
+				},
+			}
+
+			c.JSON(http.StatusInternalServerError, errorResponse)
+		}
 
 	case errors.Is(err, context.DeadlineExceeded):
 		logger.WarnContext(ctx, fmt.Sprintf("Deadline exceeded: %v", err))
