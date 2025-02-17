@@ -65,7 +65,7 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 		Datasets:    dto.Datasets,
 	}
 	if dto.ForcedOutcome != nil {
-		config.ForcedOutcome = utils.Ptr(models.ForcedOutcomeFrom(*dto.ForcedOutcome))
+		config.ForcedOutcome = utils.Ptr(models.OutcomeFrom(*dto.ForcedOutcome))
 	}
 
 	if dto.TriggerRule != nil {

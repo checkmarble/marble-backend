@@ -121,12 +121,7 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 		updateFields = append(updateFields, "counterparty_id_expression = EXCLUDED.counterparty_id_expression")
 	}
 	if cfg.ForcedOutcome != nil {
-		switch *cfg.ForcedOutcome {
-		case models.UnsetForcedOutcome:
-			updateFields = append(updateFields, "forced_outcome = NULL")
-		default:
-			updateFields = append(updateFields, "forced_outcome = EXCLUDED.forced_outcome")
-		}
+		updateFields = append(updateFields, "forced_outcome = EXCLUDED.forced_outcome")
 	}
 	if len(updateFields) > 0 {
 		updateFields = append(updateFields, "updated_at = NOW()")

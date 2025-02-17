@@ -199,14 +199,12 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 	}
 
 	if santionCheckPerformed && sanctionCheckExecution.Count > 0 {
-		if iteration.SanctionCheckConfig.ForcedOutcome != models.UnsetForcedOutcome {
-			outcome = iteration.SanctionCheckConfig.ForcedOutcome
-		}
+		outcome = iteration.SanctionCheckConfig.ForcedOutcome
 	}
 
 	// We only go through the nominal score classifier if the sanction check was not executed or if it was, but
 	// there was not forced outcome configured on it.
-	if !santionCheckPerformed || iteration.SanctionCheckConfig.ForcedOutcome == models.UnsetForcedOutcome {
+	if !santionCheckPerformed {
 		if score >= *iteration.ScoreDeclineThreshold {
 			outcome = models.Decline
 		} else if score >= *iteration.ScoreBlockAndReviewThreshold {
