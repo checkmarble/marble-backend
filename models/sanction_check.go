@@ -93,6 +93,7 @@ type SanctionCheck struct {
 	Id                  string
 	DecisionId          string
 	Status              SanctionCheckStatus
+	Config              SanctionCheckConfigRef
 	Datasets            []string
 	SearchInput         json.RawMessage
 	OrgConfig           OrganizationOpenSanctionsConfig
@@ -106,6 +107,9 @@ type SanctionCheck struct {
 	UpdatedAt           time.Time
 }
 
+type SanctionCheckConfigRef struct {
+	Name string
+}
 type SanctionCheckWithMatches struct {
 	SanctionCheck
 	Matches []SanctionCheckMatch
