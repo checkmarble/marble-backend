@@ -103,6 +103,7 @@ type SanctionCheck struct {
 	RequestedBy         *string
 	Partial             bool
 	WhitelistedEntities []string
+	ErrorCodes          []string
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
@@ -121,6 +122,7 @@ type SanctionRawSearchResponseWithMatches struct {
 	InitialHasMatches   bool
 	WhitelistedEntities []string
 	Partial             bool
+	ErrorCodes          []string
 
 	Matches []SanctionCheckMatch
 	Count   int
@@ -135,6 +137,7 @@ func (s SanctionRawSearchResponseWithMatches) AdaptSanctionCheckFromSearchRespon
 			Partial:             s.Partial,
 			InitialHasMatches:   s.InitialHasMatches,
 			WhitelistedEntities: s.WhitelistedEntities,
+			ErrorCodes:          s.ErrorCodes,
 			CreatedAt:           time.Now(),
 			UpdatedAt:           time.Now(),
 		},

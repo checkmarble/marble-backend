@@ -29,6 +29,7 @@ type DBSanctionCheck struct {
 	IsArchived          bool            `db:"is_archived"`
 	InitialHasMatches   bool            `db:"initial_has_matches"`
 	WhitelistedEntities []string        `db:"whitelisted_entities"`
+	ErrorCodes          []string        `db:"error_codes"`
 	CreatedAt           time.Time       `db:"created_at"`
 	UpdatedAt           time.Time       `db:"updated_at"`
 }
@@ -57,6 +58,7 @@ func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheck, error) {
 		InitialHasMatches:   dto.InitialHasMatches,
 		WhitelistedEntities: dto.WhitelistedEntities,
 		RequestedBy:         dto.RequestedBy,
+		ErrorCodes:          dto.ErrorCodes,
 		CreatedAt:           dto.CreatedAt,
 		UpdatedAt:           dto.UpdatedAt,
 	}, nil
