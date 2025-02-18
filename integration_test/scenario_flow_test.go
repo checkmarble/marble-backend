@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
+	"github.com/riverqueue/river"
 	"github.com/segmentio/analytics-go/v3"
 	"github.com/stretchr/testify/assert"
 
@@ -100,6 +101,9 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 	fmt.Println("Created organization", organizationId)
 
 	testAdminUsecase = generateUsecaseWithCredForMarbleAdmin(testUsecases)
+
+	err = riverClient.Queues().Add(organizationId, river.QueueConfig{MaxWorkers: 3})
+	assert.NoError(t, err)
 
 	// Check that there are no users on the organization yet
 	users, err := userUsecase.ListUsers(ctx, &organizationId)
@@ -355,7 +359,7 @@ func setupScenarioAndPublish(
 	if err != nil {
 		assert.FailNow(t, "Could not start publication preparation", err)
 	}
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(
 		ctx,
 		organizationId,
