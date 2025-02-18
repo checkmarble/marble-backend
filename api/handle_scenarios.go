@@ -143,7 +143,7 @@ func validateScenarioAst(uc usecases.Usecases) func(c *gin.Context) {
 
 		expectedReturnType := make([]string, 0, 1)
 		if input.ExpectedReturnType != "" {
-			expectedReturnType[0] = input.ExpectedReturnType
+			expectedReturnType = append(expectedReturnType, input.ExpectedReturnType)
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioUsecase()
