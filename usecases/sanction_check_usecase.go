@@ -153,10 +153,20 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 		return nil, err
 	}
 
+	scc, err := uc.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
+		uc.executorFactory.NewExecutor(), decisions[0].ScenarioIterationId)
+	if err != nil {
+		return nil, err
+	}
+
 	matchIds := set.New[string](0)
 	matchIdToMatch := make(map[string]*models.SanctionCheckMatch)
 
 	for sidx, sc := range scs {
+		scs[sidx].Config = models.SanctionCheckConfigRef{
+			Name: scc.Name,
+		}
+
 		for midx, match := range sc.Matches {
 			matchIds.Insert(match.Id)
 			matchIdToMatch[match.Id] = &scs[sidx].Matches[midx]

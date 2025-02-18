@@ -61,7 +61,7 @@ type SanctionCheckConfig struct {
 	Datasets                 []string
 	TriggerRule              *ast.Node
 	Query                    *SanctionCheckConfigQuery
-	Outcome                  SanctionCheckOutcome
+	ForcedOutcome            Outcome
 	CounterpartyIdExpression *ast.Node
 }
 
@@ -74,7 +74,7 @@ func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
 		return false
 	}
 
-	if !scc.Outcome.equal(other.Outcome) {
+	if scc.ForcedOutcome != other.ForcedOutcome {
 		return false
 	}
 
@@ -86,10 +86,6 @@ type SanctionCheckOutcome struct {
 	ScoreModifier int
 }
 
-func (sco SanctionCheckOutcome) equal(other SanctionCheckOutcome) bool {
-	return sco.ForceOutcome == other.ForceOutcome && sco.ScoreModifier == other.ScoreModifier
-}
-
 type UpdateSanctionCheckConfigInput struct {
 	Name                     *string
 	Description              *string
@@ -98,11 +94,11 @@ type UpdateSanctionCheckConfigInput struct {
 	TriggerRule              *ast.Node
 	Query                    *SanctionCheckConfigQuery
 	CounterpartyIdExpression *ast.Node
-	Outcome                  UpdateSanctionCheckOutcomeInput
+	ForcedOutcome            *Outcome
 }
 
 type SanctionCheckConfigQuery struct {
-	Name  ast.Node
+	Name  *ast.Node
 	Label *ast.Node
 }
 
@@ -114,9 +110,4 @@ func (sccq *SanctionCheckConfigQuery) equal(other *SanctionCheckConfigQuery) boo
 		return false
 	}
 	return sccq.Name.Hash() == other.Name.Hash()
-}
-
-type UpdateSanctionCheckOutcomeInput struct {
-	ForceOutcome  *Outcome
-	ScoreModifier *int
 }

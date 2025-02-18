@@ -45,12 +45,14 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 
 	queries := []models.OpenSanctionsCheckQuery{}
 
-	queries, err = e.evaluateSanctionCheckName(ctx, queries, iteration, dataAccessor)
-	if err != nil {
-		return nil, true, err
+	if iteration.SanctionCheckConfig.Query.Name != nil {
+		queries, err = e.evaluateSanctionCheckName(ctx, queries, iteration, dataAccessor)
+		if err != nil {
+			return nil, true, err
+		}
 	}
 
-	if e.nameRecognizer != nil && iteration.SanctionCheckConfig.Query.Label != nil {
+	if iteration.SanctionCheckConfig.Query.Label != nil {
 		queries, err = e.evaluateSanctionCheckLabel(ctx, queries, iteration, dataAccessor)
 		if err != nil {
 			return nil, true, err
@@ -125,7 +127,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheckName(ctx context.Context, querie
 	iteration models.ScenarioIteration, dataAccessor DataAccessor,
 ) ([]models.OpenSanctionsCheckQuery, error) {
 	nameFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-		iteration.SanctionCheckConfig.Query.Name, iteration.OrganizationId,
+		*iteration.SanctionCheckConfig.Query.Name, iteration.OrganizationId,
 		dataAccessor.ClientObject, dataAccessor.DataModel)
 	if err != nil {
 		return queries, err
@@ -159,6 +161,23 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(ctx context.Context, queri
 	labelFilter, ok := labelFilterAny.ReturnValue.(string)
 	if !ok {
 		return queries, errors.New("label filter name query did not return a string")
+	}
+
+	if e.nameRecognizer == nil || !e.nameRecognizer.IsConfigured() {
+		switch len(queries) {
+		case 0:
+			queries = append(queries, models.OpenSanctionsCheckQuery{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{labelFilter},
+				},
+			})
+
+		default:
+			queries[0].Filters["name"] = append(queries[0].Filters["name"], labelFilter)
+		}
+
+		return queries, nil
 	}
 
 	matches, err := e.nameRecognizer.PerformNameRecognition(ctx, labelFilter)

@@ -51,13 +51,14 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 	var query *dbmodels.DBSanctionCheckConfigQueryInput
 
 	if cfg.Query != nil {
-		ser, err := dto.AdaptNodeDto(cfg.Query.Name)
-		if err != nil {
-			return models.SanctionCheckConfig{}, err
-		}
+		query = &dbmodels.DBSanctionCheckConfigQueryInput{}
 
-		query = &dbmodels.DBSanctionCheckConfigQueryInput{
-			Name: ser,
+		if cfg.Query.Name != nil {
+			ser, err := dto.AdaptNodeDto(*cfg.Query.Name)
+			if err != nil {
+				return models.SanctionCheckConfig{}, err
+			}
+			query.Name = &ser
 		}
 
 		if cfg.Query.Label != nil {
@@ -65,7 +66,7 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 			if err != nil {
 				return models.SanctionCheckConfig{}, err
 			}
-			query.Label = ser
+			query.Label = &ser
 		}
 	}
 
@@ -82,16 +83,23 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
-		Columns("scenario_iteration_id", "name", "description", "rule_group", "datasets",
-			"forced_outcome", "score_modifier", "trigger_rule", "query", "counterparty_id_expression").
+		Columns(
+			"scenario_iteration_id",
+			"name",
+			"description",
+			"rule_group",
+			"datasets",
+			"forced_outcome",
+			"trigger_rule",
+			"query",
+			"counterparty_id_expression").
 		Values(
 			scenarioIterationId,
 			cfg.Name,
 			utils.Or(cfg.Description, ""),
 			utils.Or(cfg.RuleGroup, ""),
 			cfg.Datasets,
-			cfg.Outcome.ForceOutcome.MaybeString(),
-			utils.Or(cfg.Outcome.ScoreModifier, 0),
+			cfg.ForcedOutcome.String(),
 			triggerRule,
 			query,
 			counterpartyIdExpr,
@@ -120,16 +128,8 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 	if cfg.CounterpartyIdExpression != nil {
 		updateFields = append(updateFields, "counterparty_id_expression = EXCLUDED.counterparty_id_expression")
 	}
-	if cfg.Outcome.ForceOutcome != nil {
-		switch *cfg.Outcome.ForceOutcome {
-		case models.UnsetForcedOutcome:
-			updateFields = append(updateFields, "forced_outcome = NULL")
-		default:
-			updateFields = append(updateFields, "forced_outcome = EXCLUDED.forced_outcome")
-		}
-	}
-	if cfg.Outcome.ScoreModifier != nil {
-		updateFields = append(updateFields, "score_modifier = EXCLUDED.score_modifier")
+	if cfg.ForcedOutcome != nil {
+		updateFields = append(updateFields, "forced_outcome = EXCLUDED.forced_outcome")
 	}
 	if len(updateFields) > 0 {
 		updateFields = append(updateFields, "updated_at = NOW()")

@@ -39,7 +39,7 @@ func ScenarioValidationToError(validation models.ScenarioValidation) error {
 
 	errs = append(errs, pure_utils.Map(validation.SanctionCheck.TriggerRule.Errors, toError)...)
 	errs = append(errs, validation.SanctionCheck.TriggerRule.TriggerEvaluation.FlattenErrors()...)
-	errs = append(errs, validation.SanctionCheck.NameFilter.RuleEvaluation.FlattenErrors()...)
+	errs = append(errs, validation.SanctionCheck.Query.RuleEvaluation.FlattenErrors()...)
 	errs = append(errs, validation.SanctionCheck.CounterpartyIdExpression.RuleEvaluation.FlattenErrors()...)
 
 	return errors.Join(errs...)
@@ -158,16 +158,56 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 				Code: models.RuleFormulaRequired,
 			})
 		} else {
-			queryValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-				iteration.SanctionCheckConfig.Query.Name)
+			isSpecified := func(a *ast.Node) bool {
+				return a != nil && a.Function != ast.FUNC_UNDEFINED
+			}
 
-			if _, ok := queryValidation.RuleEvaluation.ReturnValue.(string); !ok {
-				queryValidation.Errors = append(
-					queryValidation.Errors, models.ScenarioValidationError{
-						Error: errors.Wrap(models.BadParameterError,
-							"sanction check name filter does not return a string"),
-						Code: models.FormulaMustReturnString,
-					})
+			isNameProvided, isLabelProvided := false, false
+
+			if isSpecified(iteration.SanctionCheckConfig.Query.Name) {
+				queryNameValidation := models.NewRuleValidation()
+				isNameProvided = true
+
+				queryNameValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
+					*iteration.SanctionCheckConfig.Query.Name)
+
+				if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(string); !ok {
+					queryNameValidation.Errors = append(
+						queryNameValidation.Errors, models.ScenarioValidationError{
+							Error: errors.Wrap(models.BadParameterError,
+								"sanction check namefilter does not return a string"),
+							Code: models.FormulaMustReturnString,
+						})
+				}
+
+				result.SanctionCheck.QueryName = queryNameValidation
+			}
+
+			if isSpecified(iteration.SanctionCheckConfig.Query.Label) {
+				queryLabelValidation := models.NewRuleValidation()
+				isLabelProvided = true
+
+				queryLabelValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
+					*iteration.SanctionCheckConfig.Query.Label)
+
+				if _, ok := queryLabelValidation.RuleEvaluation.ReturnValue.(string); !ok {
+					queryLabelValidation.Errors = append(
+						queryLabelValidation.Errors, models.ScenarioValidationError{
+							Error: errors.Wrap(models.BadParameterError,
+								"sanction check label filter does not return a string"),
+							Code: models.FormulaMustReturnString,
+						})
+				}
+
+				result.SanctionCheck.QueryLabel = queryLabelValidation
+			}
+
+			if !isNameProvided && !isLabelProvided {
+				queryValidation.Errors = append(queryValidation.Errors, models.ScenarioValidationError{
+					Error: errors.Wrap(models.BadParameterError,
+						"at least one of name or label filter must be provided"),
+					Code: models.RuleFormulaRequired,
+				})
 			}
 		}
 
@@ -187,7 +227,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 			}
 		}
 
-		result.SanctionCheck.NameFilter = queryValidation
+		result.SanctionCheck.Query = queryValidation
 		result.SanctionCheck.CounterpartyIdExpression = counterpartyIdValidation
 	}
 

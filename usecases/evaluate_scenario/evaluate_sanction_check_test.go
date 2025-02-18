@@ -16,6 +16,12 @@ type mockSanctionCheckExecutor struct {
 	*mock.Mock
 }
 
+func (m mockSanctionCheckExecutor) IsConfigured() bool {
+	args := m.Called()
+
+	return args.Bool(0)
+}
+
 func (m mockSanctionCheckExecutor) Execute(
 	ctx context.Context,
 	orgId string,
@@ -116,7 +122,7 @@ func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
 		SanctionCheckConfig: &models.SanctionCheckConfig{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
-				Name: ast.Node{Constant: 12},
+				Name: &ast.Node{Constant: 12},
 			},
 		},
 	}
@@ -135,7 +141,7 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 		SanctionCheckConfig: &models.SanctionCheckConfig{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
-				Name: ast.Node{Constant: "constant string"},
+				Name: &ast.Node{Constant: "constant string"},
 			},
 		},
 	}
@@ -168,7 +174,7 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 		SanctionCheckConfig: &models.SanctionCheckConfig{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
-				Name: ast.Node{
+				Name: &ast.Node{
 					Function:      ast.FUNC_STRING_CONCAT,
 					NamedChildren: map[string]ast.Node{"with_separator": {Constant: true}},
 					Children: []ast.Node{
@@ -209,6 +215,7 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 	}
 
 	eval, exec := getSanctionCheckEvaluator()
+	exec.Mock.On("IsConfigured").Return(true)
 	exec.Mock.
 		On("PerformNameRecognition", mock.Anything, "dinner with joe finnigan").
 		Return(names, nil)
@@ -217,7 +224,7 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 		SanctionCheckConfig: &models.SanctionCheckConfig{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
-				Name:  ast.Node{Constant: "bob gross"},
+				Name:  &ast.Node{Constant: "bob gross"},
 				Label: &ast.Node{Constant: "dinner with joe finnigan"},
 			},
 		},
@@ -242,6 +249,41 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 				Type: "Organization",
 				Filters: models.OpenSanctionCheckFilter{
 					"name": []string{"acme inc."},
+				},
+			},
+		},
+	}
+
+	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+		ScenarioEvaluationParameters{}, DataAccessor{})
+
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+
+	assert.True(t, performed)
+	assert.NoError(t, err)
+}
+
+func TestSanctionCheckCalledWithNameRecognitionDisabled(t *testing.T) {
+	eval, exec := getSanctionCheckEvaluator()
+	exec.Mock.On("IsConfigured").Return(false)
+
+	iteration := models.ScenarioIteration{
+		SanctionCheckConfig: &models.SanctionCheckConfig{
+			TriggerRule: &ast.Node{Constant: true},
+			Query: &models.SanctionCheckConfigQuery{
+				Name:  &ast.Node{Constant: "bob gross"},
+				Label: &ast.Node{Constant: "dinner with joe finnigan"},
+			},
+		},
+	}
+
+	expectedQuery := models.OpenSanctionsQuery{
+		Config: *iteration.SanctionCheckConfig,
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob gross", "dinner with joe finnigan"},
 				},
 			},
 		},

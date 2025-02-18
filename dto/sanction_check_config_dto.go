@@ -12,8 +12,7 @@ type SanctionCheckConfig struct {
 	Description              *string                   `json:"description"`
 	RuleGroup                *string                   `json:"rule_group,omitempty"`
 	Datasets                 []string                  `json:"datasets,omitempty"`
-	ForceOutcome             *string                   `json:"force_outcome,omitempty"`
-	ScoreModifier            *int                      `json:"score_modifier,omitempty"`
+	ForcedOutcome            *string                   `json:"forced_outcome,omitempty"`
 	TriggerRule              *NodeDto                  `json:"trigger_rule"`
 	Query                    *SanctionCheckConfigQuery `json:"query"`
 	CounterpartyIdExpression *NodeDto                  `json:"counterparty_id_expression"`
@@ -25,8 +24,7 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 		Description:   &model.Description,
 		RuleGroup:     model.RuleGroup,
 		Datasets:      model.Datasets,
-		ForceOutcome:  model.Outcome.ForceOutcome.MaybeString(),
-		ScoreModifier: &model.Outcome.ScoreModifier,
+		ForcedOutcome: utils.Ptr(model.ForcedOutcome.String()),
 	}
 
 	if model.TriggerRule != nil {
@@ -65,9 +63,9 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 		Description: dto.Description,
 		RuleGroup:   dto.RuleGroup,
 		Datasets:    dto.Datasets,
-		Outcome: models.UpdateSanctionCheckOutcomeInput{
-			ScoreModifier: dto.ScoreModifier,
-		},
+	}
+	if dto.ForcedOutcome != nil {
+		config.ForcedOutcome = utils.Ptr(models.OutcomeFrom(*dto.ForcedOutcome))
 	}
 
 	if dto.TriggerRule != nil {
@@ -105,29 +103,31 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 		config.CounterpartyIdExpression = &counterpartyIdExpr
 	}
 
-	if dto.ForceOutcome != nil {
-		config.Outcome.ForceOutcome = utils.Ptr(models.ForcedOutcomeFrom(*dto.ForceOutcome))
-	}
-
 	return config, nil
 }
 
 type SanctionCheckConfigQuery struct {
-	Name  NodeDto  `json:"name"`
+	Name  *NodeDto `json:"name"`
 	Label *NodeDto `json:"label"`
 }
 
 func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (SanctionCheckConfigQuery, error) {
-	nameAst, err := AdaptNodeDto(model.Name)
-	if err != nil {
-		return SanctionCheckConfigQuery{}, err
-	}
-
 	dto := SanctionCheckConfigQuery{
-		Name: nameAst,
+		Name: &NodeDto{
+			Name: "Undefined",
+		},
 		Label: &NodeDto{
 			Name: "Undefined",
 		},
+	}
+
+	if model.Name != nil {
+		nameAst, err := AdaptNodeDto(*model.Name)
+		if err != nil {
+			return SanctionCheckConfigQuery{}, err
+		}
+
+		dto.Name = &nameAst
 	}
 
 	if model.Label != nil && model.Label.Function != ast.FUNC_UNDEFINED {
@@ -143,13 +143,18 @@ func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (Sanct
 }
 
 func AdaptSanctionCheckConfigQueryDto(dto SanctionCheckConfigQuery) (models.SanctionCheckConfigQuery, error) {
-	nameAst, err := AdaptASTNode(dto.Name)
-	if err != nil {
-		return models.SanctionCheckConfigQuery{}, err
+	model := models.SanctionCheckConfigQuery{
+		Name:  &ast.Node{Function: ast.FUNC_UNDEFINED},
+		Label: &ast.Node{Function: ast.FUNC_UNDEFINED},
 	}
 
-	model := models.SanctionCheckConfigQuery{
-		Name: nameAst,
+	if dto.Name != nil {
+		nameAst, err := AdaptASTNode(*dto.Name)
+		if err != nil {
+			return models.SanctionCheckConfigQuery{}, err
+		}
+
+		model.Name = &nameAst
 	}
 
 	if dto.Label != nil {

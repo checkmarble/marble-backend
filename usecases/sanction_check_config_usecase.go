@@ -39,14 +39,15 @@ func (uc SanctionCheckUsecase) ConfigureSanctionCheck(ctx context.Context,
 	}
 
 	if scCfg.Query != nil {
-		if scCfg.Query.Name.Function != ast.FUNC_STRING_CONCAT {
+		if scCfg.Query.Name != nil && scCfg.Query.Name.Function != ast.FUNC_UNDEFINED &&
+			scCfg.Query.Name.Function != ast.FUNC_STRING_CONCAT {
 			return models.SanctionCheckConfig{}, errors.New(
 				"query name filter must be a StringConcat")
 		}
 	}
 
-	if scCfg.Outcome.ForceOutcome != nil &&
-		!slices.Contains(models.ValidForcedOutcome, *scCfg.Outcome.ForceOutcome) {
+	if scCfg.ForcedOutcome != nil &&
+		!slices.Contains(models.ValidForcedOutcome, *scCfg.ForcedOutcome) {
 		return models.SanctionCheckConfig{}, errors.Wrap(models.BadParameterError,
 			"sanction check config: invalid forced outcome")
 	}
