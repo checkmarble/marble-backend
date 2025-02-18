@@ -8,14 +8,15 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/hashicorp/go-set/v2"
 	"github.com/riverqueue/river"
 )
 
-const INDEX_CLEANUP_WORKER_INTERVAL = time.Hour
+const INDEX_CLEANUP_WORKER_INTERVAL = 10 * time.Second
 
 func NewIndexCleanupPeriodicJob(orgId string) *river.PeriodicJob {
 	return river.NewPeriodicJob(
-		river.PeriodicInterval(10*time.Second),
+		river.PeriodicInterval(INDEX_CLEANUP_WORKER_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.IndexCleanupArgs{
 					OrgId: orgId,
@@ -45,7 +46,37 @@ func NewIndexCleanupWorker(
 }
 
 func (w *IndexCleanupWorker) Work(ctx context.Context, job *river.Job[models.IndexCleanupArgs]) error {
-	utils.LoggerFromContext(ctx).DebugContext(ctx, "index cleanup", "org", job.Args.OrgId)
+	logger := utils.LoggerFromContext(ctx)
+
+	db, err := w.executorFactory.NewClientDbExecutor(ctx, job.Args.OrgId)
+	if err != nil {
+		return err
+	}
+
+	invalidIndices, err := w.indexEditor.ListInvalidIndices(ctx, db)
+	if err != nil {
+		return err
+	}
+	indicesPendingCreation, err := w.indexEditor.ListIndicesPendingCreation(ctx, db)
+	if err != nil {
+		return err
+	}
+
+	deletedIndices := make([]string, 0, len(invalidIndices))
+
+	for _, index := range set.From(invalidIndices).Difference(set.From(indicesPendingCreation)).Slice() {
+		logger.DebugContext(ctx, "deleting invalid index", "org", job.Args.OrgId, "index", index)
+
+		if err = w.indexEditor.DeleteInvalidIndex(ctx, db, index); err != nil {
+			return err
+		}
+
+		deletedIndices = append(deletedIndices, index)
+	}
+
+	if len(deletedIndices) > 0 {
+		logger.DebugContext(ctx, "deleted invalid indices", "count", len(deletedIndices), "indices", deletedIndices)
+	}
 
 	return nil
 }
