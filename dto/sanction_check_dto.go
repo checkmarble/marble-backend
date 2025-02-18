@@ -25,6 +25,7 @@ type SanctionCheckDto struct {
 	IsManual    bool                      `json:"is_manual"`
 	RequestedBy *string                   `json:"requested_by,omitempty"`
 	Matches     []SanctionCheckMatchDto   `json:"matches"`
+	ErrorCodes  []string                  `json:"error_codes,omitempty"`
 }
 
 type SanctionCheckConfigRefDto struct {
@@ -56,6 +57,7 @@ func AdaptSanctionCheckDto(m models.SanctionCheckWithMatches) SanctionCheckDto {
 		IsManual:    m.IsManual,
 		RequestedBy: m.RequestedBy,
 		Matches:     pure_utils.Map(m.Matches, AdaptSanctionCheckMatchDto),
+		ErrorCodes:  m.ErrorCodes,
 	}
 
 	return sanctionCheck

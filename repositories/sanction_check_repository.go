@@ -192,6 +192,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		"whitelisted_entities",
 		"requested_by",
 		"status",
+		"error_codes",
 	).Values(
 		decisionId,
 		sanctionCheck.SearchInput,
@@ -204,6 +205,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		whitelistedEntities,
 		sanctionCheck.RequestedBy,
 		sanctionCheck.Status.String(),
+		sanctionCheck.ErrorCodes,
 	).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionChecksColumn, ",")))
 
 	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheck)

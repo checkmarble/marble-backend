@@ -9,6 +9,10 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+const (
+	ErrSanctionCheckAllFieldsNull = "all_fields_null"
+)
+
 func (e ScenarioEvaluator) evaluateSanctionCheck(
 	ctx context.Context,
 	iteration models.ScenarioIteration,
@@ -44,19 +48,42 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	}
 
 	queries := []models.OpenSanctionsCheckQuery{}
+	nullFieldRead := 0
 
 	if iteration.SanctionCheckConfig.Query.Name != nil {
 		queries, err = e.evaluateSanctionCheckName(ctx, queries, iteration, dataAccessor)
 		if err != nil {
-			return nil, true, err
+			switch {
+			case errors.Is(err, ast.ErrNullFieldRead):
+				nullFieldRead += 1
+			default:
+				return nil, true, err
+			}
 		}
 	}
 
 	if iteration.SanctionCheckConfig.Query.Label != nil {
 		queries, err = e.evaluateSanctionCheckLabel(ctx, queries, iteration, dataAccessor)
 		if err != nil {
-			return nil, true, err
+			switch {
+			case errors.Is(err, ast.ErrNullFieldRead):
+				nullFieldRead += 1
+			default:
+				return nil, true, err
+			}
 		}
+	}
+
+	if nullFieldRead >= 2 {
+		sanctionCheck = &models.SanctionCheckWithMatches{
+			SanctionCheck: models.SanctionCheck{
+				Status:     models.SanctionStatusError,
+				ErrorCodes: []string{ErrSanctionCheckAllFieldsNull},
+			},
+		}
+
+		performed = false
+		return
 	}
 
 	var uniqueCounterpartyIdentifier *string
@@ -156,6 +183,9 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(ctx context.Context, queri
 		dataAccessor.ClientObject, dataAccessor.DataModel)
 	if err != nil {
 		return queries, err
+	}
+	if labelFilterAny.ReturnValue == nil {
+		return queries, ast.ErrNullFieldRead
 	}
 
 	labelFilter, ok := labelFilterAny.ReturnValue.(string)
