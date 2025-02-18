@@ -81,6 +81,11 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 		counterpartyIdExpr = astJson
 	}
 
+	forcedOutcome := models.BlockAndReview
+	if cfg.ForcedOutcome != nil {
+		forcedOutcome = *cfg.ForcedOutcome
+	}
+
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
 		Columns(
@@ -99,7 +104,7 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 			utils.Or(cfg.Description, ""),
 			utils.Or(cfg.RuleGroup, ""),
 			cfg.Datasets,
-			cfg.ForcedOutcome.String(),
+			forcedOutcome.String(),
 			triggerRule,
 			query,
 			counterpartyIdExpr,
