@@ -141,13 +141,13 @@ func validateScenarioAst(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		expectedReturnType := "bool"
+		expectedReturnType := make([]string, 0, 1)
 		if input.ExpectedReturnType != "" {
-			expectedReturnType = input.ExpectedReturnType
+			expectedReturnType[0] = input.ExpectedReturnType
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioUsecase()
-		astValidation, err := usecase.ValidateScenarioAst(ctx, scenarioId, &astNode, expectedReturnType)
+		astValidation, err := usecase.ValidateScenarioAst(ctx, scenarioId, &astNode, expectedReturnType...)
 
 		if presentError(ctx, c, err) {
 			return
