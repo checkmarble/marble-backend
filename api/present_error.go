@@ -58,7 +58,7 @@ func presentError(ctx context.Context, c *gin.Context, err error) bool {
 				},
 			}
 
-			c.JSON(http.StatusInternalServerError, errorResponse)
+			c.JSON(http.StatusNotImplemented, errorResponse)
 		}
 
 	case errors.Is(err, context.DeadlineExceeded):
