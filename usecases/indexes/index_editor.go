@@ -27,6 +27,8 @@ type IngestedDataIndexesRepository interface {
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
 	DeleteUniqueIndex(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
 	ListIndicesPendingCreation(ctx context.Context, exec repositories.Executor) ([]string, error)
+	ListInvalidIndices(ctx context.Context, exec repositories.Executor) ([]string, error)
+	DeleteInvalidIndex(ctx context.Context, exec repositories.Executor, indexName string) error
 }
 
 type ScenarioFetcher interface {

@@ -390,12 +390,14 @@ func (repo *ClientDbRepository) ListIndicesPendingCreation(ctx context.Context, 
 		left join pg_stat_progress_create_index pgi on pga.pid = pgi.pid
 		left join pg_class pgc on pgc.oid = pgi.relid
 		left join pg_stat_all_indexes pgai on pgai.relname = pgc.relname and pgai.indexrelid = pgi.index_relid
+		left join pg_namespace pgn on pgn.oid  = pgc.relnamespace
 		where
-			pga.query ilike 'create index concurrently %' and
+			pgn.nspname = $1 and
+			(pga.query ilike 'create index concurrently %' or pga.query ilike 'create unique index concurrently %') and
 			pga.leader_pid is null;
 	`
 
-	rows, err := exec.Query(ctx, sql)
+	rows, err := exec.Query(ctx, sql, exec.DatabaseSchema().Schema)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while querying DB to read indexes")
 	}
@@ -409,4 +411,51 @@ func (repo *ClientDbRepository) ListIndicesPendingCreation(ctx context.Context, 
 	})
 
 	return indices, err
+}
+
+func (editor *ClientDbRepository) ListInvalidIndices(ctx context.Context, exec Executor) ([]string, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := `
+		select relname
+		from pg_index pgi
+		left join pg_class pgc on pgc.oid = pgi.indexrelid
+		left join pg_namespace pgn on pgn.oid = pgc.relnamespace
+		where
+			pgn.nspname = $1 and
+			pgi.indisvalid = false;
+	`
+
+	rows, err := exec.Query(ctx, sql, exec.DatabaseSchema().Schema)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while querying DB to read indexes")
+	}
+
+	indices, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
+		var indexName string
+
+		err := row.Scan(&indexName)
+
+		return indexName, err
+	})
+
+	return indices, err
+}
+
+func (editor *ClientDbRepository) DeleteInvalidIndex(ctx context.Context, exec Executor, indexName string) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := fmt.Sprintf(`drop index concurrently %s`,
+		pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, indexName}))
+
+	_, err := exec.Exec(ctx, sql)
+	if err != nil {
+		return errors.Wrap(err, "error while deleting invalid index")
+	}
+
+	return nil
 }
