@@ -49,6 +49,37 @@ paths:
                 $ref: '#/components/schemas/ErrorDto'
         500:
           description: An error happened while ingesting the object.
+    patch:
+      summary: Ingest a new object, and allow a partial payload (only the fields to update)
+      tags:
+        - Ingestion
+      security:
+        - ApiKeyAuth: []
+      description: Ingest (upsert) a new version of an object from the data model
+      parameters:
+        - in: path
+          name: object_type
+          schema:
+            type: string
+            example: transactions
+          required: true
+          description: name of the object type used for ingestion.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/data_model_object"
+      responses:
+        200:
+          description: The object was successfully ingested.
+        400:
+          description: The provided object is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDto'
+        500:
+          description: An error happened while ingesting the object.
   /ingestion/{object_type}/multiple:
     post:
       summary: Ingest new objects by batch
@@ -56,7 +87,41 @@ paths:
         - Ingestion
       security:
         - ApiKeyAuth: []
-      description: Ingest a new object from the data model
+      description: Ingest an array of objects from the data model
+      parameters:
+        - in: path
+          name: object_type
+          schema:
+            type: string
+            example: transactions
+          required: true
+          description: name of the object type used for ingestion.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/data_model_object"
+              maxItems: 100
+      responses:
+        200:
+          description: The object was successfully ingested.
+        400:
+          description: One of the provided object is invalid (with respect to the data model), or too many objects have been sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDto'
+        500:
+          description: An error happened while ingesting the object.
+    patch:
+      summary: Ingest new objects by batch, and allow a partial payload (only the fields to update)
+      tags:
+        - Ingestion
+      security:
+        - ApiKeyAuth: []
+      description: Ingest (upsert) an array of new versions of objects from the data model
       parameters:
         - in: path
           name: object_type
