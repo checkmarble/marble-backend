@@ -157,6 +157,8 @@ func TestMain(m *testing.M) {
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
 	river.AddWorker(workers, adminUc.NewNewAsyncScheduledExecWorker())
+	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
+	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		log.Fatalln("Could not start river client:", err)
