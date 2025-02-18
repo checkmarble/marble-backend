@@ -97,3 +97,20 @@ func (m *IngestedDataIndexesRepository) ListIndicesPendingCreation(
 	args := m.Called(ctx, exec)
 	return args.Get(0).([]string), args.Error(1)
 }
+
+func (m *IngestedDataIndexesRepository) ListInvalidIndices(
+	ctx context.Context,
+	exec repositories.Executor,
+) ([]string, error) {
+	args := m.Called(ctx, exec)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *IngestedDataIndexesRepository) DeleteInvalidIndex(
+	ctx context.Context,
+	exec repositories.Executor,
+	indexName string,
+) error {
+	args := m.Called(ctx, exec)
+	return args.Error(0)
+}

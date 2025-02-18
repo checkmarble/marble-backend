@@ -86,7 +86,6 @@ func (w *IndexCreationStatusWorker) Work(ctx context.Context, job *river.Job[mod
 
 	pending, err := w.indexEditor.ListIndicesPendingCreation(ctx, db)
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 
