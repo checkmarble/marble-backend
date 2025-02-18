@@ -64,7 +64,8 @@ type MethodObject struct {
 }
 
 type PathObject struct {
-	Post MethodObject `json:"post"`
+	Post  *MethodObject `json:"post"`
+	Patch *MethodObject `json:"patch,omitempty"`
 }
 
 type ComponentsSchema struct {
@@ -436,96 +437,111 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 			Type:       "object",
 			Properties: properties,
 		}
+		ref.Components.Schemas[fmt.Sprintf("%s-partial", table.Name)] = ComponentsSchema{
+			Required:   []string{"object_id", "updated_at"},
+			Type:       "object",
+			Properties: properties,
+		}
 
-		object := PathObject{
-			Post: MethodObject{
-				Security: []map[string][]string{
-					{
-						"api_key": []string{},
+		methodObj := MethodObject{
+			Security: []map[string][]string{
+				{
+					"api_key": []string{},
+				},
+			},
+			Tags:        []string{"Ingestion"},
+			Description: table.Description,
+			RequestBody: RequestBody{
+				Content: Content{
+					ApplicationJSON: ApplicationJSON{
+						Schema: Schema{
+							Ref: fmt.Sprintf("#/components/schemas/%s", table.Name),
+						},
 					},
 				},
-				Tags:        []string{"Ingestion"},
-				Description: table.Description,
-				RequestBody: RequestBody{
-					Content: Content{
+				Required: true,
+			},
+			Responses: map[string]Response{
+				"200": {
+					Description: "Data was successfully treated but no new object version was created",
+				},
+				"201": {
+					Description: "Data was successfully ingested",
+				},
+				"400": {
+					Description: "One at least of the objects does not match the data model",
+					Content: &Content{
 						ApplicationJSON: ApplicationJSON{
 							Schema: Schema{
-								Ref: fmt.Sprintf("#/components/schemas/%s", table.Name),
+								Ref: "#/components/schemas/ErrorDto",
 							},
 						},
 					},
-					Required: true,
 				},
-				Responses: map[string]Response{
-					"200": {
-						Description: "Data was successfully treated but no new object version was created",
-					},
-					"201": {
-						Description: "Data was successfully ingested",
-					},
-					"400": {
-						Description: "One at least of the objects does not match the data model",
-						Content: &Content{
-							ApplicationJSON: ApplicationJSON{
-								Schema: Schema{
-									Ref: "#/components/schemas/ErrorDto",
-								},
-							},
-						},
-					},
-					"500": {
-						Description: "An error happened while ingesting data",
-					},
+				"500": {
+					Description: "An error happened while ingesting data",
 				},
 			},
 		}
+		methodObjPatch := methodObj
+		methodObjPatch.RequestBody.Content.ApplicationJSON.Schema.Ref =
+			fmt.Sprintf("#/components/schemas/%s-partial", table.Name)
+		object := PathObject{
+			Post:  &methodObj,
+			Patch: &methodObjPatch,
+		}
 		ref.Paths[fmt.Sprintf("/ingestion/%s", table.Name)] = object
 
-		object = PathObject{
-			Post: MethodObject{
-				Security: []map[string][]string{
-					{
-						"api_key": []string{},
-					},
-				},
-				Tags:        []string{"Ingestion"},
-				Description: table.Description,
-				RequestBody: RequestBody{
-					Content: Content{
-						ApplicationJSON: ApplicationJSON{
-							Schema: Schema{
-								Type: "array",
-								Items: &Schema{
-									Ref: fmt.Sprintf("#/components/schemas/%s", table.Name),
-								},
-								MaxItems: 100,
-							},
-						},
-					},
-					Required: true,
-				},
-				Responses: map[string]Response{
-					"200": {
-						Description: "Data was successfully treated but no new object version was created",
-					},
-					"201": {
-						Description: "Data was successfully ingested",
-					},
-					"400": {
-						Description: "The array of objects is too long, or one at least of the objects does not match the data model",
-						Content: &Content{
-							ApplicationJSON: ApplicationJSON{
-								Schema: Schema{
-									Ref: "#/components/schemas/ErrorDto",
-								},
-							},
-						},
-					},
-					"500": {
-						Description: "An error happened while ingesting data",
-					},
+		methodObj = MethodObject{
+			Security: []map[string][]string{
+				{
+					"api_key": []string{},
 				},
 			},
+			Tags:        []string{"Ingestion"},
+			Description: table.Description,
+			RequestBody: RequestBody{
+				Content: Content{
+					ApplicationJSON: ApplicationJSON{
+						Schema: Schema{
+							Type: "array",
+							Items: &Schema{
+								Ref: fmt.Sprintf("#/components/schemas/%s", table.Name),
+							},
+							MaxItems: 100,
+						},
+					},
+				},
+				Required: true,
+			},
+			Responses: map[string]Response{
+				"200": {
+					Description: "Data was successfully treated but no new object version was created",
+				},
+				"201": {
+					Description: "Data was successfully ingested",
+				},
+				"400": {
+					Description: "The array of objects is too long, or one at least of the objects does not match the data model",
+					Content: &Content{
+						ApplicationJSON: ApplicationJSON{
+							Schema: Schema{
+								Ref: "#/components/schemas/ErrorDto",
+							},
+						},
+					},
+				},
+				"500": {
+					Description: "An error happened while ingesting data",
+				},
+			},
+		}
+		methodObjPatch = methodObj
+		methodObjPatch.RequestBody.Content.ApplicationJSON.Schema.Ref =
+			fmt.Sprintf("#/components/schemas/%s-partial", table.Name)
+		object = PathObject{
+			Post:  &methodObj,
+			Patch: &methodObjPatch,
 		}
 		ref.Paths[fmt.Sprintf("/ingestion/%s/multiple", table.Name)] = object
 	}
@@ -558,7 +574,7 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 	}
 
 	ref.Paths["/decisions"] = PathObject{
-		Post: MethodObject{
+		Post: &MethodObject{
 			Security: []map[string][]string{
 				{
 					"api_key": []string{},
@@ -605,7 +621,7 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 	}
 
 	ref.Paths["/decisions/all"] = PathObject{
-		Post: MethodObject{
+		Post: &MethodObject{
 			Security: []map[string][]string{
 				{
 					"api_key": []string{},

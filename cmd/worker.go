@@ -46,6 +46,16 @@ func RunTaskQueue() error {
 		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
 		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
 	}
+	openSanctionsConfig := infra.InitializeOpenSanctions(
+		http.DefaultClient,
+		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
+		utils.GetEnv("OPENSANCTIONS_AUTH_METHOD", ""),
+		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
+	)
+	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
+		openSanctionsConfig.WithNameRecognition(apiUrl)
+	}
+
 	licenseConfig := models.LicenseConfiguration{
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
@@ -117,6 +127,7 @@ func RunTaskQueue() error {
 		),
 		repositories.WithClientDbConfig(clientDbConfig),
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
+		repositories.WithOpenSanctions(openSanctionsConfig),
 	)
 
 	// Start the task queue workers
