@@ -2,7 +2,6 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
@@ -107,18 +106,14 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 }
 
 type SanctionCheckConfigQuery struct {
-	Name  *NodeDto `json:"name"`
-	Label *NodeDto `json:"label"`
+	Name  *NodeDto `json:"name,omitempty"`
+	Label *NodeDto `json:"label,omitempty"`
 }
 
 func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (SanctionCheckConfigQuery, error) {
 	dto := SanctionCheckConfigQuery{
-		Name: &NodeDto{
-			Name: "Undefined",
-		},
-		Label: &NodeDto{
-			Name: "Undefined",
-		},
+		Name:  nil,
+		Label: nil,
 	}
 
 	if model.Name != nil {
@@ -130,7 +125,7 @@ func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (Sanct
 		dto.Name = &nameAst
 	}
 
-	if model.Label != nil && model.Label.Function != ast.FUNC_UNDEFINED {
+	if model.Label != nil {
 		labelAst, err := AdaptNodeDto(*model.Label)
 		if err != nil {
 			return SanctionCheckConfigQuery{}, err
@@ -144,8 +139,8 @@ func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (Sanct
 
 func AdaptSanctionCheckConfigQueryDto(dto SanctionCheckConfigQuery) (models.SanctionCheckConfigQuery, error) {
 	model := models.SanctionCheckConfigQuery{
-		Name:  &ast.Node{Function: ast.FUNC_UNDEFINED},
-		Label: &ast.Node{Function: ast.FUNC_UNDEFINED},
+		Name:  nil,
+		Label: nil,
 	}
 
 	if dto.Name != nil {
@@ -158,15 +153,12 @@ func AdaptSanctionCheckConfigQueryDto(dto SanctionCheckConfigQuery) (models.Sanc
 	}
 
 	if dto.Label != nil {
-		model.Label = &ast.Node{Function: ast.FUNC_UNDEFINED}
-
-		if dto.Label.Name != ast.FuncAstNameMap[ast.FUNC_UNDEFINED] {
-			labelAst, err := AdaptASTNode(*dto.Label)
-			if err != nil {
-				return models.SanctionCheckConfigQuery{}, err
-			}
-			model.Label = &labelAst
+		labelAst, err := AdaptASTNode(*dto.Label)
+		if err != nil {
+			return models.SanctionCheckConfigQuery{}, err
 		}
+
+		model.Label = &labelAst
 	}
 
 	return model, nil

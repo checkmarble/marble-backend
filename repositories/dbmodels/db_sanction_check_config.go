@@ -33,8 +33,8 @@ type DBSanctionCheckConfigQuery struct {
 }
 
 type DBSanctionCheckConfigQueryInput struct {
-	Name  *dto.NodeDto `json:"name"`
-	Label *dto.NodeDto `json:"label"`
+	Name  *dto.NodeDto `json:"name,omitempty"`
+	Label *dto.NodeDto `json:"label,omitempty"`
 }
 
 var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()

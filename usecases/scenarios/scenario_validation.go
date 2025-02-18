@@ -159,7 +159,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 			})
 		} else {
 			isSpecified := func(a *ast.Node) bool {
-				return a != nil && a.Function != ast.FUNC_UNDEFINED
+				return a != nil
 			}
 
 			isNameProvided, isLabelProvided := false, false
