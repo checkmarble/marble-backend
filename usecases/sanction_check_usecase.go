@@ -48,7 +48,7 @@ type SanctionCheckInboxReader interface {
 type SanctionCheckRepository interface {
 	GetActiveSanctionCheckForDecision(context.Context, repositories.Executor, string) (
 		*models.SanctionCheckWithMatches, error)
-	GetSanctionChecksForDecision(ctx context.Context, exec repositories.Executor, decisionId string) (
+	GetSanctionChecksForDecision(ctx context.Context, exec repositories.Executor, decisionId string, initialOnly bool) (
 		[]models.SanctionCheckWithMatches, error)
 	GetSanctionCheck(context.Context, repositories.Executor, string) (models.SanctionCheckWithMatches, error)
 	GetSanctionCheckWithoutMatches(context.Context, repositories.Executor, string) (models.SanctionCheck, error)
@@ -128,7 +128,9 @@ func (uc SanctionCheckUsecase) GetDatasetCatalog(ctx context.Context) (models.Op
 	return uc.openSanctionsProvider.GetCatalog(ctx)
 }
 
-func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionId string) ([]models.SanctionCheckWithMatches, error) {
+func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionId string,
+	initialOnly bool,
+) ([]models.SanctionCheckWithMatches, error) {
 	exec := uc.executorFactory.NewExecutor()
 	decisions, err := uc.externalRepository.DecisionsById(ctx, exec, []string{decisionId})
 	if err != nil {
@@ -148,7 +150,7 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 		}
 	}
 
-	scs, err := uc.repository.GetSanctionChecksForDecision(ctx, exec, decisions[0].DecisionId)
+	scs, err := uc.repository.GetSanctionChecksForDecision(ctx, exec, decisions[0].DecisionId, initialOnly)
 	if err != nil {
 		return nil, err
 	}

@@ -29,13 +29,22 @@ func (*MarbleDbRepository) GetSanctionChecksForDecision(
 	ctx context.Context,
 	exec Executor,
 	decisionId string,
+	initialOnly bool,
 ) ([]models.SanctionCheckWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
+	filters := squirrel.Eq{"sc.decision_id": decisionId}
+
+	if initialOnly {
+		filters["sc.is_manual"] = false
+	} else {
+		filters["sc.is_archived"] = false
+	}
+
 	sql := selectSanctionChecksWithMatches().
-		Where(squirrel.Eq{"sc.decision_id": decisionId, "sc.is_archived": false})
+		Where(filters)
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckWithMatches)
 }

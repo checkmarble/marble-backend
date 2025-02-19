@@ -47,6 +47,7 @@ func handleListSanctionChecks(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		decisionId := c.Query("decision_id")
+		initialOnly := c.Query("initial_only") == "1"
 
 		if decisionId == "" {
 			c.Status(http.StatusBadRequest)
@@ -54,7 +55,7 @@ func handleListSanctionChecks(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
-		sanctionChecks, err := uc.ListSanctionChecks(ctx, decisionId)
+		sanctionChecks, err := uc.ListSanctionChecks(ctx, decisionId, initialOnly)
 
 		if presentError(ctx, c, err) {
 			return

@@ -94,7 +94,7 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 				AddRows(mockCommentsRows...),
 		)
 
-	scs, err := uc.ListSanctionChecks(context.TODO(), "decisionid")
+	scs, err := uc.ListSanctionChecks(context.TODO(), "decisionid", false)
 
 	assert.NoError(t, exec.Mock.ExpectationsWereMet())
 	assert.NoError(t, err)
