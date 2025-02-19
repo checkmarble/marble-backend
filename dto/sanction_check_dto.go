@@ -19,7 +19,7 @@ type SanctionCheckDto struct {
 	Id          string                    `json:"id"`
 	Config      SanctionCheckConfigRefDto `json:"config"`
 	Status      string                    `json:"status"`
-	Request     SanctionCheckRequestDto   `json:"request"`
+	Request     *SanctionCheckRequestDto  `json:"request"`
 	Partial     bool                      `json:"partial"`
 	Count       int                       `json:"count"`
 	IsManual    bool                      `json:"is_manual"`
@@ -45,12 +45,6 @@ func AdaptSanctionCheckDto(m models.SanctionCheckWithMatches) SanctionCheckDto {
 		Config: SanctionCheckConfigRefDto{
 			Name: m.Config.Name,
 		},
-		Request: SanctionCheckRequestDto{
-			Datasets:    m.Datasets,
-			Limit:       m.OrgConfig.MatchLimit,
-			Threshold:   m.OrgConfig.MatchThreshold,
-			SearchInput: m.SearchInput,
-		},
 		Status:      m.Status.String(),
 		Partial:     m.Partial,
 		Count:       m.Count,
@@ -58,6 +52,14 @@ func AdaptSanctionCheckDto(m models.SanctionCheckWithMatches) SanctionCheckDto {
 		RequestedBy: m.RequestedBy,
 		Matches:     pure_utils.Map(m.Matches, AdaptSanctionCheckMatchDto),
 		ErrorCodes:  m.ErrorCodes,
+	}
+	if m.SearchInput != nil {
+		sanctionCheck.Request = &SanctionCheckRequestDto{
+			Datasets:    m.Datasets,
+			Limit:       m.OrgConfig.MatchLimit,
+			Threshold:   m.OrgConfig.MatchThreshold,
+			SearchInput: m.SearchInput,
+		}
 	}
 
 	return sanctionCheck
