@@ -11,19 +11,20 @@ import (
 
 func TestStringConcat(t *testing.T) {
 	tts := []struct {
+		name          string
 		in            []any
 		out           string
 		withSeparator bool
 		separator     *string
 		error         bool
 	}{
-		{[]any{"abc", "def"}, "abcdef", false, nil, false},
-		{[]any{42, "abc", 12}, "42abc12", false, nil, false},
-		{[]any{42, "abc", 12}, "42 abc 12", true, nil, false},
-		{[]any{42, "abc", 12}, "42-abc-12", true, utils.Ptr("-"), false},
-		{[]any{42, "abc", true}, "42 abc 12", true, nil, true},
-		{[]any{"hello", nil, "world"}, "hello world", true, nil, false},
-		{[]any{nil, nil, nil}, "", true, nil, true},
+		{"nominal", []any{"abc", "def"}, "abcdef", false, nil, false},
+		{"mixed types", []any{42, "abc", 12}, "42abc12", false, nil, false},
+		{"mixed types and separator", []any{42, "abc", 12}, "42 abc 12", true, nil, false},
+		{"mixed types custom separator", []any{42, "abc", 12}, "42-abc-12", true, utils.Ptr("-"), false},
+		{"boolean input returns error", []any{42, "abc", true}, "", true, nil, true},
+		{"with nil", []any{"hello", nil, "world"}, "hello world", true, nil, false},
+		{"only nil", []any{nil, nil, nil}, "", true, nil, false},
 	}
 
 	eval := StringConcat{}
@@ -42,12 +43,13 @@ func TestStringConcat(t *testing.T) {
 			Args: tt.in, NamedArgs: namedArgs,
 		})
 
+		asserts := assert.New(t)
 		switch tt.error {
 		case true:
-			assert.NotEmpty(t, err)
+			asserts.NotEmpty(err, tt.name, "expected ast eval errors")
 		default:
-			assert.Empty(t, err)
-			assert.Equal(t, tt.out, result)
+			asserts.Empty(err, tt.name, "unexpected ast eval errors")
+			asserts.Equal(tt.out, result, tt.name, "incorrect result")
 		}
 	}
 }
