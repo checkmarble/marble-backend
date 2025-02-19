@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/mitchellh/copystructure"
 )
 
 type Info struct {
@@ -36,7 +37,7 @@ type Property struct {
 }
 
 type Schema struct {
-	Ref      string  `json:"$ref"`
+	Ref      string  `json:"$ref,omitempty"`
 	Type     string  `json:"type,omitempty"`
 	Items    *Schema `json:"items,omitempty"`
 	MaxItems int     `json:"maxItems,omitempty"`
@@ -492,7 +493,7 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 		}
 		ref.Paths[fmt.Sprintf("/ingestion/%s", table.Name)] = object
 
-		methodObj = MethodObject{
+		methodObjMultiple := MethodObject{
 			Security: []map[string][]string{
 				{
 					"api_key": []string{},
@@ -536,13 +537,16 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 				},
 			},
 		}
-		methodObjPatch = methodObj
-		methodObjPatch.RequestBody.Content.ApplicationJSON.Schema.Ref =
+		methodObjPatchMultipleAny, _ := copystructure.Copy(methodObjMultiple)
+		methodObjPatchMultiple := methodObjPatchMultipleAny.(MethodObject)
+		methodObjPatchMultiple.RequestBody.Content.ApplicationJSON.Schema.Items.Ref =
 			fmt.Sprintf("#/components/schemas/%s-partial", table.Name)
+
 		object = PathObject{
-			Post:  &methodObj,
-			Patch: &methodObjPatch,
+			Post:  &methodObjMultiple,
+			Patch: &methodObjPatchMultiple,
 		}
+
 		ref.Paths[fmt.Sprintf("/ingestion/%s/multiple", table.Name)] = object
 	}
 
