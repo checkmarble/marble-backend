@@ -65,6 +65,11 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 		return err
 	}
 
+	// It's possible that a scenario has no rules, just a sanction check config
+	if len(decision.RuleExecutions) == 0 {
+		return nil
+	}
+
 	ctx, span = tracer.Start(
 		ctx,
 		"DecisionPhantomRepository.StorePhantomDecision.store_phantom__decision_rules",
