@@ -18,7 +18,40 @@ services:
       interval: 2s
       timeout: 1s
       retries: 5
+  elasticsearch:
+    container_name: es
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
+    ports:
+      - "9200:9200"
+    environment:
+      - node.name=es
+      - cluster.name=marble-es
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es:/usr/share/elasticsearch/data
+  yente:
+    container_name: yente
+    image: ghcr.io/opensanctions/yente:4.2.1
+    depends_on:
+      - elasticsearch
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./contrib/yente-datasets.yml:/app/manifests/default.yml
+    environment:
+      YENTE_INDEX_TYPE: elasticsearch
+      YENTE_INDEX_URL: "http://es:9200"
+      YENTE_UPDATE_TOKEN: ""
 
 volumes:
   postgres-db:
+    driver: local
+  es:
     driver: local

@@ -37,7 +37,7 @@ npm install -g firebase-tools
 firebase --version
 ```
 
-Then copy the `./firebase-local-data.example` folder to `./firebase-local-data`. This folder will be used to store the local data of the Firebase emulator. It is ignored by git.
+Then copy the `./contrib/firebase-local-data.example` folder to `./firebase-local-data`. This folder will be used to store the local data of the Firebase emulator. It is ignored by git.
 
 Then start it using (replace `GOOGLE_CLOUD_PROJECT` with the value from your `.env` file):
 
@@ -105,7 +105,7 @@ The easiest way of doings this is by installing the goose cli with brew (`brew i
 - Add user, change options...
 - Exit the emulator
 
-> NB: The data will be saved in the `./firebase-local-data` folder. If you want to share the data, you can copy it to `./firebase-local-data.example` and commit it.
+> NB: The data will be saved in the `./firebase-local-data` folder. If you want to share the data, you can copy it to `./contrib/firebase-local-data.example` and commit it.
 
 ### How to reset the DB ?
 
