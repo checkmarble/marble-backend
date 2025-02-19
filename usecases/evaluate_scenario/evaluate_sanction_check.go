@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ErrSanctionCheckAllFieldsNull = "all_fields_null"
+	ErrSanctionCheckAllFieldsNullOrEmpty = "all_fields_null_or_empty"
 )
 
 func (e ScenarioEvaluator) evaluateSanctionCheck(
@@ -48,37 +48,35 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	}
 
 	queries := []models.OpenSanctionsCheckQuery{}
-	nullFieldRead := 0
+	emptyFieldRead := 0
+	nbEvaluatedFields := 0
+	emptyInput := false
 
 	if iteration.SanctionCheckConfig.Query.Name != nil {
-		queries, err = e.evaluateSanctionCheckName(ctx, queries, iteration, dataAccessor)
+		nbEvaluatedFields += 1
+		queries, emptyInput, err = e.evaluateSanctionCheckName(ctx, queries, iteration, dataAccessor)
 		if err != nil {
-			switch {
-			case errors.Is(err, ast.ErrNullFieldRead):
-				nullFieldRead += 1
-			default:
-				return nil, true, err
-			}
+			return nil, true, errors.Wrap(err, "could not evaluate sanction check name")
+		} else if emptyInput {
+			emptyFieldRead += 1
 		}
 	}
 
 	if iteration.SanctionCheckConfig.Query.Label != nil {
-		queries, err = e.evaluateSanctionCheckLabel(ctx, queries, iteration, dataAccessor)
+		nbEvaluatedFields += 1
+		queries, emptyInput, err = e.evaluateSanctionCheckLabel(ctx, queries, iteration, dataAccessor)
 		if err != nil {
-			switch {
-			case errors.Is(err, ast.ErrNullFieldRead):
-				nullFieldRead += 1
-			default:
-				return nil, true, err
-			}
+			return nil, true, errors.Wrap(err, "could not evaluate sanction check label")
+		} else if emptyInput {
+			emptyFieldRead += 1
 		}
 	}
 
-	if nullFieldRead >= 2 {
+	if emptyFieldRead == nbEvaluatedFields {
 		sanctionCheck = &models.SanctionCheckWithMatches{
 			SanctionCheck: models.SanctionCheck{
 				Status:     models.SanctionStatusError,
-				ErrorCodes: []string{ErrSanctionCheckAllFieldsNull},
+				ErrorCodes: []string{ErrSanctionCheckAllFieldsNullOrEmpty},
 			},
 		}
 
@@ -150,53 +148,74 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	return
 }
 
-func (e ScenarioEvaluator) evaluateSanctionCheckName(ctx context.Context, queries []models.OpenSanctionsCheckQuery,
-	iteration models.ScenarioIteration, dataAccessor DataAccessor,
-) ([]models.OpenSanctionsCheckQuery, error) {
+func (e ScenarioEvaluator) evaluateSanctionCheckName(
+	ctx context.Context,
+	queries []models.OpenSanctionsCheckQuery,
+	iteration models.ScenarioIteration,
+	dataAccessor DataAccessor,
+) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, err error) {
+	queriesOut = queries
 	nameFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
 		*iteration.SanctionCheckConfig.Query.Name, iteration.OrganizationId,
 		dataAccessor.ClientObject, dataAccessor.DataModel)
 	if err != nil {
-		return queries, err
+		return
+	}
+	if nameFilterAny.ReturnValue == nil {
+		emptyInput = true
+		return
 	}
 
 	nameFilter, ok := nameFilterAny.ReturnValue.(string)
 	if !ok {
-		return queries, errors.New("name filter name query did not return a string")
+		return nil, false, errors.New("name filter name query did not return a string")
+	}
+	if nameFilter == "" {
+		emptyInput = true
+		return
 	}
 
-	queries = append(queries, models.OpenSanctionsCheckQuery{
+	queriesOut = append(queriesOut, models.OpenSanctionsCheckQuery{
 		Type: "Thing",
 		Filters: models.OpenSanctionCheckFilter{
 			"name": []string{nameFilter},
 		},
 	})
 
-	return queries, nil
+	return queriesOut, false, nil
 }
 
-func (e ScenarioEvaluator) evaluateSanctionCheckLabel(ctx context.Context, queries []models.OpenSanctionsCheckQuery,
-	iteration models.ScenarioIteration, dataAccessor DataAccessor,
-) ([]models.OpenSanctionsCheckQuery, error) {
+func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
+	ctx context.Context,
+	queries []models.OpenSanctionsCheckQuery,
+	iteration models.ScenarioIteration,
+	dataAccessor DataAccessor,
+) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, err error) {
+	queriesOut = queries
 	labelFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
 		*iteration.SanctionCheckConfig.Query.Label, iteration.OrganizationId,
 		dataAccessor.ClientObject, dataAccessor.DataModel)
 	if err != nil {
-		return queries, err
+		return
 	}
 	if labelFilterAny.ReturnValue == nil {
-		return queries, ast.ErrNullFieldRead
+		emptyInput = true
+		return
 	}
 
 	labelFilter, ok := labelFilterAny.ReturnValue.(string)
 	if !ok {
-		return queries, errors.New("label filter name query did not return a string")
+		return nil, false, errors.New("label filter name query did not return a string")
+	}
+	if labelFilter == "" {
+		emptyInput = true
+		return
 	}
 
 	if e.nameRecognizer == nil || !e.nameRecognizer.IsConfigured() {
-		switch len(queries) {
+		switch len(queriesOut) {
 		case 0:
-			queries = append(queries, models.OpenSanctionsCheckQuery{
+			queriesOut = append(queriesOut, models.OpenSanctionsCheckQuery{
 				Type: "Thing",
 				Filters: models.OpenSanctionCheckFilter{
 					"name": []string{labelFilter},
@@ -204,15 +223,15 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(ctx context.Context, queri
 			})
 
 		default:
-			queries[0].Filters["name"] = append(queries[0].Filters["name"], labelFilter)
+			queriesOut[0].Filters["name"] = append(queriesOut[0].Filters["name"], labelFilter)
 		}
 
-		return queries, nil
+		return queriesOut, false, nil
 	}
 
 	matches, err := e.nameRecognizer.PerformNameRecognition(ctx, labelFilter)
 	if err != nil {
-		return queries, errors.New("could not perform name recognition on label")
+		return queriesOut, false, errors.New("could not perform name recognition on label")
 	}
 
 	var personQuery *models.OpenSanctionsCheckQuery = nil
@@ -244,11 +263,11 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(ctx context.Context, queri
 	}
 
 	if personQuery != nil {
-		queries = append(queries, *personQuery)
+		queriesOut = append(queriesOut, *personQuery)
 	}
 	if companyQuery != nil {
-		queries = append(queries, *companyQuery)
+		queriesOut = append(queriesOut, *companyQuery)
 	}
 
-	return queries, nil
+	return queriesOut, false, nil
 }

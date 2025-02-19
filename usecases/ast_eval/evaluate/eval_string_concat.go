@@ -43,9 +43,5 @@ func (f StringConcat) Evaluate(ctx context.Context, arguments ast.Arguments) (an
 		}
 	}
 
-	if sb.Len() == 0 {
-		return MakeEvaluateError(ast.ErrNullFieldRead)
-	}
-
 	return sb.String(), nil
 }
