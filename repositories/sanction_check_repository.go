@@ -67,7 +67,7 @@ func (*MarbleDbRepository) GetSanctionCheckWithoutMatches(ctx context.Context, e
 func selectSanctionChecksWithMatches() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(columnsNames("sc", dbmodels.SelectSanctionChecksColumn)...).
-		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) FILTER (WHERE scm.id IS NOT NULL) AS matches",
+		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s) ORDER BY array_position(array['confirmed_hit', 'pending', 'no_hit', 'skipped'], scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL) AS matches",
 			strings.Join(columnsNames("scm", dbmodels.SelectSanctionCheckMatchesColumn), ","))).
 		From(dbmodels.TABLE_SANCTION_CHECKS + " AS sc").
 		LeftJoin(dbmodels.TABLE_SANCTION_CHECK_MATCHES + " AS scm ON sc.id = scm.sanction_check_id").
