@@ -419,6 +419,7 @@ func (e ScenarioEvaluator) evalScenarioRule(
 	dataModel models.DataModel,
 	snoozes []models.RuleSnooze,
 ) (int, models.RuleExecution, error) {
+	ruleExecution := models.RuleExecution{}
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioRule",
 		trace.WithAttributes(
@@ -433,7 +434,7 @@ func (e ScenarioEvaluator) evalScenarioRule(
 	// return early if ctx is done
 	select {
 	case <-ctx.Done():
-		return 0, models.RuleExecution{}, errors.Wrap(ctx.Err(),
+		return 0, ruleExecution, errors.Wrap(ctx.Err(),
 			fmt.Sprintf("context cancelled when evaluating rule %s (%s)", rule.Name, rule.Id))
 	default:
 	}
@@ -447,6 +448,7 @@ func (e ScenarioEvaluator) evalScenarioRule(
 	// Evaluate single rule
 	returnValue := false
 	hasError := false
+	execErr := ast.NoError
 	ruleEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		cache,
@@ -456,24 +458,30 @@ func (e ScenarioEvaluator) evalScenarioRule(
 		dataModel,
 	)
 	switch {
+	// special errors are handled first
 	case ast.IsAuthorizedError(err):
+		execErr = ast.AdaptExecutionError(err)
 		returnValue = false
 		hasError = true
 	case err != nil:
-		return 0, models.RuleExecution{}, errors.Wrap(err,
-			fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
+		return 0, ruleExecution, errors.Wrapf(err, "error while evaluating rule %s (%s)", rule.Name, rule.Id)
+	case ruleEvaluation.ReturnValue == nil:
+		execErr = ast.NullFieldRead
+		hasError = true
+		returnValue = false
 	default:
 		var ok bool
 		returnValue, ok = ruleEvaluation.ReturnValue.(bool)
-		if ruleEvaluation.ReturnValue == nil || !ok {
-			return 0, models.RuleExecution{}, errors.Wrap(
-				errors.Join(ast.ErrRuntimeExpression, err),
-				fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
+		if !ok {
+			return 0, ruleExecution, errors.Wrapf(
+				ast.ErrRuntimeExpression,
+				"Unexpected error while evaluating rule %s (%s): rule returned a type %T",
+				rule.Name, rule.Id, ruleEvaluation.ReturnValue)
 		}
 	}
 
 	ruleEvaluationDto := ast.AdaptNodeEvaluationDto(ruleEvaluation)
-	ruleExecution := models.RuleExecution{
+	ruleExecution = models.RuleExecution{
 		Outcome:    "no_hit",
 		Rule:       rule,
 		Evaluation: &ruleEvaluationDto,
@@ -481,8 +489,8 @@ func (e ScenarioEvaluator) evalScenarioRule(
 	}
 	if hasError {
 		ruleExecution.Outcome = "error"
-		ruleExecution.Error = err
-		logger.InfoContext(ctx, fmt.Sprintf("%v", ruleExecution.Error),
+		ruleExecution.ExecutionError = execErr
+		logger.InfoContext(ctx, ruleExecution.ExecutionError.String(),
 			slog.String("ruleName", rule.Name),
 			slog.String("ruleId", rule.Id),
 		)
@@ -647,11 +655,11 @@ func (e ScenarioEvaluator) EvalCaseName(
 	ctx context.Context,
 	params ScenarioEvaluationParameters,
 	scenario models.Scenario,
-) (out *string, err error) {
-	defaultCaseName := fmt.Sprintf("Case for %s: %s", scenario.TriggerObjectType, params.ClientObject.Data["object_id"])
+) (out string, err error) {
+	out = fmt.Sprintf("Case for %s: %s", scenario.TriggerObjectType, params.ClientObject.Data["object_id"])
 
 	if scenario.DecisionToCaseNameTemplate == nil {
-		return &defaultCaseName, nil
+		return
 	}
 
 	caseNameEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
@@ -664,21 +672,20 @@ func (e ScenarioEvaluator) EvalCaseName(
 	)
 	switch {
 	case ast.IsAuthorizedError(err):
-		break
+		return
 	case err != nil:
-		return nil, errors.Wrap(err,
-			"Unexpected error evaluating case name in EvalCaseName")
+		return "", errors.Wrap(err, "Unexpected error evaluating case name in EvalCaseName")
 	case caseNameEvaluation.ReturnValue == nil:
-		return &defaultCaseName, nil
+		return
 	}
 
 	returnValue, ok := caseNameEvaluation.ReturnValue.(string)
 	if !ok {
-		return nil, errors.Wrap(err, "case name query did not return a string")
+		return "", errors.Wrap(err, "case name query did not return a string")
 	}
 	if returnValue == "" {
-		return &defaultCaseName, nil
+		return
 	}
 
-	return &returnValue, nil
+	return returnValue, nil
 }

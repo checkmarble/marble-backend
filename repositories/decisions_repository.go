@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
@@ -610,7 +609,7 @@ func (repo *MarbleDbRepository) StoreDecision(
 				newDecisionId,
 				ruleExecution.ResultScoreModifier,
 				ruleExecution.Result,
-				ast.AdaptExecutionError(ruleExecution.Error),
+				ruleExecution.ExecutionError,
 				ruleExecution.Rule.Id,
 				serializedRuleEvaluation,
 				ruleExecution.Outcome,
