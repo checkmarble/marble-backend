@@ -14,12 +14,19 @@ type DBScenarioTestRun struct {
 	CreatedAt               time.Time `db:"created_at"`
 	ExpiresAt               time.Time `db:"expires_at"`
 	Status                  string    `db:"status"`
+	Summarized              bool      `db:"summarized"`
 }
 
 type DBScenarioTestRunWitInfo struct {
 	DBScenarioTestRun
 	OrgId      string `db:"org_id"`
 	ScenarioId string `db:"scenario_id"`
+}
+
+type DBScenarioTestRunWithSummary struct {
+	DBScenarioTestRun
+
+	Summary []DbScenarioTestRunSummary `db:"summaries"`
 }
 
 const TABLE_SCENARIO_TESTRUN = "scenario_test_run"
@@ -34,6 +41,7 @@ func AdaptScenarioTestrun(db DBScenarioTestRun) (models.ScenarioTestRun, error) 
 		CreatedAt:               db.CreatedAt,
 		ExpiresAt:               db.ExpiresAt,
 		Status:                  models.ScenarioTestStatusFrom(db.Status),
+		Summarized:              db.Summarized,
 	}, nil
 }
 
@@ -47,5 +55,28 @@ func AdaptScenarioTestrunWithInfo(db DBScenarioTestRunWitInfo) (models.ScenarioT
 		OrganizationId:          db.OrgId,
 		ScenarioId:              db.ScenarioId,
 		Status:                  models.ScenarioTestStatusFrom(db.Status),
+		Summarized:              db.Summarized,
+	}, nil
+}
+
+func AdaptScenarioTestrunWithSummary(db DBScenarioTestRunWithSummary) (models.ScenarioTestRunWithSummary, error) {
+	summaries := make([]models.ScenarioTestRunSummary, len(db.Summary))
+
+	for idx, s := range db.Summary {
+		summary, err := AdaptScenarioTestRunSummary(s)
+		if err != nil {
+			return models.ScenarioTestRunWithSummary{}, nil
+		}
+		summaries[idx] = summary
+	}
+
+	testRun, err := AdaptScenarioTestrun(db.DBScenarioTestRun)
+	if err != nil {
+		return models.ScenarioTestRunWithSummary{}, err
+	}
+
+	return models.ScenarioTestRunWithSummary{
+		ScenarioTestRun: testRun,
+		Summary:         summaries,
 	}, nil
 }

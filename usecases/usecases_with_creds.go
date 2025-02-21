@@ -540,6 +540,15 @@ func (usecases UsecasesWithCreds) NewIndexCleanupWorker() *scheduled_execution.I
 	return &w
 }
 
+func (usecases UsecasesWithCreds) NewTestRunSummaryWorker() *scheduled_execution.TestRunSummaryWorker {
+	w := scheduled_execution.NewTestRunSummaryWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		&usecases.Repositories.MarbleDbRepository,
+	)
+	return &w
+}
+
 func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataReaderUsecase {
 	return IngestedDataReaderUsecase{
 		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
