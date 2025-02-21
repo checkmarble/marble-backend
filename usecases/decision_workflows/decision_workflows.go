@@ -51,7 +51,7 @@ type webhookEventCreator interface {
 
 type CaseNameEvaluator interface {
 	EvalCaseName(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters,
-		scenario models.Scenario) (*string, error)
+		scenario models.Scenario) (string, error)
 }
 
 type DecisionsWorkflows struct {
@@ -161,20 +161,12 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 func automaticCreateCaseAttributes(
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
-	name *string,
+	name string,
 ) models.CreateCaseAttributes {
-	// TODO: check this logic
-	var nameWithDefault string
-	if name == nil {
-		nameWithDefault = "default case name"
-	} else {
-		nameWithDefault = *name
-	}
-
 	return models.CreateCaseAttributes{
 		DecisionIds:    []string{decision.DecisionId},
 		InboxId:        *scenario.DecisionToCaseInboxId,
-		Name:           nameWithDefault,
+		Name:           name,
 		OrganizationId: scenario.OrganizationId,
 	}
 }

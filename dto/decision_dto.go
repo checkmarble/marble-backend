@@ -214,7 +214,7 @@ func NewDecisionRuleDto(rule models.RuleExecution, withRuleExecution bool) Decis
 		ScoreModifier: rule.ResultScoreModifier,
 		Result:        rule.Result,
 		RuleId:        rule.Rule.Id,
-		Error:         ErrorDtoFromError(rule.Error),
+		Error:         ErrorDtoFromError(rule.ExecutionError),
 	}
 	if withRuleExecution {
 		out.RuleEvaluation = rule.Evaluation
@@ -222,14 +222,10 @@ func NewDecisionRuleDto(rule models.RuleExecution, withRuleExecution bool) Decis
 	return out
 }
 
-func ErrorDtoFromError(err error) *ErrorDto {
-	if err == nil {
-		return nil
-	}
-
+func ErrorDtoFromError(execErr ast.ExecutionError) *ErrorDto {
 	return &ErrorDto{
-		Code:    int(ast.AdaptExecutionError(err)),
-		Message: err.Error(),
+		Code:    int(execErr),
+		Message: execErr.String(),
 	}
 }
 
