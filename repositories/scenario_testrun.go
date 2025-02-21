@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -144,7 +146,7 @@ func (repo *MarbleDbRepository) ListTestRunsByScenarioID(ctx context.Context,
 		return nil, err
 	}
 	query := NewQueryBuilder().
-		Select("tr.id, tr.scenario_iteration_id, tr.live_scenario_iteration_id, tr.created_at, tr.expires_at, tr.status, scit.org_id, scit.scenario_id").
+		Select("tr.id, tr.scenario_iteration_id, tr.live_scenario_iteration_id, tr.created_at, tr.expires_at, tr.status, tr.summarized, scit.org_id, scit.scenario_id").
 		From(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr").
 		Join(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS scit ON scit.id = tr.scenario_iteration_id").
 		Join(dbmodels.TABLE_SCENARIOS + " AS sc ON sc.id = scit.scenario_id").
@@ -169,6 +171,7 @@ func (repo *MarbleDbRepository) GetTestRunByID(ctx context.Context, exec Executo
 			tr.created_at,
 			tr.expires_at,
 			tr.status,
+			tr.summarized,
 			scit.org_id,
 			scit.scenario_id`).
 		From(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr").
@@ -181,4 +184,64 @@ func (repo *MarbleDbRepository) GetTestRunByID(ctx context.Context, exec Executo
 		query,
 		dbmodels.AdaptScenarioTestrunWithInfo,
 	)
+}
+
+func (repo *MarbleDbRepository) GetRecentTestRunForOrg(ctx context.Context, exec Executor,
+	orgId string,
+) ([]models.ScenarioTestRunWithSummary, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(columnsNames("str", dbmodels.SelectScenarioTestRunColumns)...).
+		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) filter (where strs.id is not null) AS summaries",
+			strings.Join(columnsNames("strs", dbmodels.SelectScenarioTestRunSummariesColumns), ","))).
+		From(dbmodels.TABLE_SCENARIO_TESTRUN + " as str").
+		Join(dbmodels.TABLE_SCENARIO_ITERATIONS + " as si on si.id = str.scenario_iteration_id").
+		LeftJoin("scenario_test_run_summaries as strs on strs.test_run_id = str.id").
+		Where(squirrel.Eq{"si.org_id": orgId, "str.summarized": false}).
+		Where(squirrel.Or{
+			squirrel.Eq{"strs.watermark": nil},
+			squirrel.And{
+				squirrel.Expr("strs.watermark < str.expires_at"),
+				squirrel.Expr("strs.watermark < now()"),
+			},
+		}).
+		GroupBy("str.id")
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScenarioTestrunWithSummary)
+}
+
+func (repo *MarbleDbRepository) SaveTestRunSummary(ctx context.Context, exec Executor,
+	testRunId string, stat models.RuleExecutionStat, newWatermark time.Time,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Insert(dbmodels.TABLE_SCENARIO_TESTRUN_SUMMARIES+" as orig").
+		Columns("test_run_id", "version", "rule_stable_id", "rule_name", "watermark", "outcome", "total").
+		Values(testRunId, stat.Version, stat.StableRuleId, stat.Name, newWatermark, stat.Outcome, stat.Total).
+		Suffix(`
+			on conflict (test_run_id, version, rule_stable_id, outcome) do update
+			set
+				watermark = now(),
+				total = orig.total + EXCLUDED.total
+		`)
+
+	return ExecBuilder(ctx, exec, sql)
+}
+
+func (repo *MarbleDbRepository) SetTestRunAsSummarized(ctx context.Context, exec Executor, testRunId string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCENARIO_TESTRUN).
+		Set("summarized", true)
+
+	return ExecBuilder(ctx, exec, sql)
 }
