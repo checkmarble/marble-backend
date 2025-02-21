@@ -46,6 +46,9 @@ type RuleUsecaseRepository interface {
 	DeleteRule(ctx context.Context, exec repositories.Executor, ruleID string) error
 	CreateRules(ctx context.Context, exec repositories.Executor, rules []models.CreateRuleInput) ([]models.Rule, error)
 	CreateRule(ctx context.Context, exec repositories.Executor, rule models.CreateRuleInput) (models.Rule, error)
+	GetSummarizedRuleExecutionStatForTestRun(ctx context.Context,
+		exec repositories.Executor, testRunId string,
+	) ([]models.RuleExecutionStat, error)
 }
 
 type RuleUsecase struct {
@@ -81,29 +84,13 @@ func (usecase *RuleUsecase) TestRunStatsByRuleExecution(ctx context.Context, tes
 		if err != nil {
 			return err
 		}
-		rules, err := usecase.repository.PhanomRulesExecutionStats(
-			ctx,
-			tx,
-			testrun.OrganizationId,
-			testrun.ScenarioIterationId,
-			testrun.CreatedAt,
-			testrun.ExpiresAt)
-		if err != nil {
-			return err
-		}
-		result = append(result, rules...)
 
-		liveRules, err := usecase.repository.RulesExecutionStats(
-			ctx,
-			tx,
-			testrun.OrganizationId,
-			testrun.ScenarioLiveIterationId,
-			testrun.CreatedAt,
-			testrun.ExpiresAt)
+		stats, err := usecase.repository.GetSummarizedRuleExecutionStatForTestRun(ctx, tx, testrun.Id)
 		if err != nil {
 			return err
 		}
-		result = append(result, liveRules...)
+
+		result = append(result, stats...)
 
 		fakeStableRuleId := uuid.New().String()
 		sanctionChecksTestRun, err := usecase.repository.SanctionCheckExecutionStats(

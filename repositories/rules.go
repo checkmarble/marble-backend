@@ -314,3 +314,18 @@ func (repo *MarbleDbRepository) CreateRule(ctx context.Context, exec Executor, r
 	}
 	return rules[0], nil
 }
+
+func (repo *MarbleDbRepository) GetSummarizedRuleExecutionStatForTestRun(ctx context.Context,
+	exec Executor, testRunId string,
+) ([]models.RuleExecutionStat, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectScenarioTestRunSummariesColumns...).
+		From(dbmodels.TABLE_SCENARIO_TESTRUN_SUMMARIES).
+		Where(squirrel.Eq{"test_run_id": testRunId})
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptToRuleExecutionStats)
+}

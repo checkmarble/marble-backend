@@ -143,8 +143,12 @@ func RunTaskQueue(apiVersion string) error {
 		return err
 	}
 
-	periodics := pure_utils.Map(slices.Collect(maps.Keys(queues)),
-		scheduled_execution.NewIndexCleanupPeriodicJob)
+	periodics := pure_utils.FlatMap(slices.Collect(maps.Keys(queues)), func(q string) []*river.PeriodicJob {
+		return []*river.PeriodicJob{
+			scheduled_execution.NewIndexCleanupPeriodicJob(q),
+			scheduled_execution.NewTestRunSummaryPeriodicJob(q),
+		}
+	})
 
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
 		FetchPollInterval: 100 * time.Millisecond,
@@ -179,6 +183,7 @@ func RunTaskQueue(apiVersion string) error {
 	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
 	river.AddWorker(workers, adminUc.NewIndexCleanupWorker())
+	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)

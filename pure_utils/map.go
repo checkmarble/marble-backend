@@ -1,5 +1,7 @@
 package pure_utils
 
+import "slices"
+
 // Amazingly, the Go standard library to not provide the function 'map'
 // The rational of why the Go team rejects it is explained in this wonderfull stack overflow answer.
 // https://stackoverflow.com/questions/71624828/is-there-a-way-to-map-an-array-of-objects-in-golang
@@ -11,6 +13,15 @@ func Map[T, U any](src []T, f func(T) U) []U {
 		us[i] = f(src[i])
 	}
 	return us
+}
+
+// Map returns a new slice with the same length as src, but with values transformed by f
+func FlatMap[T, U any](src []T, f func(T) []U) []U {
+	us := make([]U, 0, len(src))
+	for _, item := range src {
+		us = append(us, f(item)...)
+	}
+	return slices.Clip(us)
 }
 
 // MapErr returns a new slice with the same length as src, but with values transformed by f
