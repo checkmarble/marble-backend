@@ -91,7 +91,7 @@ type RuleExecutionStat struct {
 
 type RuleExecution struct {
 	DecisionId          string
-	Error               error
+	ExecutionError      ast.ExecutionError
 	Evaluation          *ast.NodeEvaluationDto
 	Outcome             string // enum: hit, no_hit, snoozed, error
 	Result              bool
