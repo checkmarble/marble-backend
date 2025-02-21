@@ -445,6 +445,8 @@ func (e ScenarioEvaluator) evalScenarioRule(
 	}
 
 	// Evaluate single rule
+	returnValue := false
+	hasError := false
 	ruleEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		cache,
@@ -453,27 +455,17 @@ func (e ScenarioEvaluator) evalScenarioRule(
 		dataAccessor.ClientObject,
 		dataModel,
 	)
-
-	ruleStats := ast.BuildEvaluationStats(ruleEvaluation, false)
-	functionStats := ruleStats.FunctionStats()
-
-	logger.InfoContext(ctx, fmt.Sprintf("rule evaluated in %dms",
-		ruleStats.Took.Milliseconds()), "duration",
-		ruleStats.Took.Milliseconds(), "nodes", ruleStats.Nodes, "skipped", ruleStats.SkippedCount,
-		"cached", ruleStats.CachedCount)
-
-	logger.DebugContext(ctx, "rule nodes breakdown", "functions", functionStats)
-
-	isAuthorizedError := ast.IsAuthorizedError(err)
-	if err != nil && !isAuthorizedError {
+	switch {
+	case ast.IsAuthorizedError(err):
+		returnValue = false
+		hasError = true
+	case err != nil:
 		return 0, models.RuleExecution{}, errors.Wrap(err,
 			fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
-	}
-
-	var returnValue bool
-	if err == nil {
-		returnValue, err = ruleEvaluation.GetBoolReturnValue()
-		if err != nil && !ast.IsAuthorizedError(err) {
+	default:
+		var ok bool
+		returnValue, ok = ruleEvaluation.ReturnValue.(bool)
+		if ruleEvaluation.ReturnValue == nil || !ok {
 			return 0, models.RuleExecution{}, errors.Wrap(
 				errors.Join(ast.ErrRuntimeExpression, err),
 				fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
@@ -487,17 +479,16 @@ func (e ScenarioEvaluator) evalScenarioRule(
 		Evaluation: &ruleEvaluationDto,
 		Result:     returnValue,
 	}
-
-	if err != nil {
+	if hasError {
 		ruleExecution.Outcome = "error"
 		ruleExecution.Error = err
-		logger.InfoContext(ctx, fmt.Sprintf("%v", ruleExecution.Error), //"Rule had an error",
+		logger.InfoContext(ctx, fmt.Sprintf("%v", ruleExecution.Error),
 			slog.String("ruleName", rule.Name),
 			slog.String("ruleId", rule.Id),
 		)
 	}
 
-	// Increment scenario score when rule is true
+	// Increment scenario score when rule result is true
 	if ruleExecution.Result {
 		ruleExecution.Outcome = "hit"
 		ruleExecution.ResultScoreModifier = rule.ScoreModifier
@@ -507,6 +498,17 @@ func (e ScenarioEvaluator) evalScenarioRule(
 			slog.Bool("result", ruleExecution.Result),
 		)
 	}
+
+	ruleStats := ast.BuildEvaluationStats(ruleEvaluation, false)
+	functionStats := ruleStats.FunctionStats()
+
+	logger.InfoContext(ctx, fmt.Sprintf("rule evaluated in %dms",
+		ruleStats.Took.Milliseconds()), "duration",
+		ruleStats.Took.Milliseconds(), "nodes", ruleStats.Nodes, "skipped", ruleStats.SkippedCount,
+		"cached", ruleStats.CachedCount)
+
+	logger.DebugContext(ctx, "rule nodes breakdown", "functions", functionStats)
+
 	return ruleExecution.ResultScoreModifier, ruleExecution, nil
 }
 
@@ -530,27 +532,23 @@ func (e ScenarioEvaluator) evalScenarioTrigger(
 		payload,
 		dataModel,
 	)
-
-	isAuthorizedError := ast.IsAuthorizedError(err)
-
-	if err != nil && !isAuthorizedError {
+	switch {
+	case ast.IsAuthorizedError(err):
+		return errors.Wrap(models.ErrScenarioTriggerConditionAndTriggerObjectMismatch,
+			"scenario trigger object does not match payload in EvalScenario")
+	case err != nil:
 		return errors.Wrap(err,
 			"Unexpected error evaluating trigger condition in EvalScenario")
+	default:
 	}
 
-	var returnValue bool
-	var isAuthorizedTypeError bool
-	if err == nil {
-		returnValue, err = triggerEvaluation.GetBoolReturnValue()
-		isAuthorizedTypeError = ast.IsAuthorizedError(err)
-		if err != nil && !isAuthorizedTypeError {
-			return errors.Wrap(
-				errors.Join(ast.ErrRuntimeExpression, err),
-				"Unexpected error evaluating trigger condition in EvalScenario")
-		}
+	boolReturnValue, ok := triggerEvaluation.ReturnValue.(bool)
+	if triggerEvaluation.ReturnValue == nil || !ok {
+		return errors.New(
+			fmt.Sprintf("root ast expression does not return a boolean, '%T' instead", triggerEvaluation.ReturnValue))
 	}
 
-	if !returnValue || isAuthorizedError || isAuthorizedTypeError {
+	if !boolReturnValue {
 		return errors.Wrap(
 			models.ErrScenarioTriggerConditionAndTriggerObjectMismatch,
 			"scenario trigger object does not match payload in EvalScenario")
@@ -649,10 +647,11 @@ func (e ScenarioEvaluator) EvalCaseName(
 	ctx context.Context,
 	params ScenarioEvaluationParameters,
 	scenario models.Scenario,
-) (string, error) {
+) (out *string, err error) {
+	defaultCaseName := fmt.Sprintf("Case for %s: %s", scenario.TriggerObjectType, params.ClientObject.Data["object_id"])
+
 	if scenario.DecisionToCaseNameTemplate == nil {
-		return fmt.Sprintf("Case for %s: %s", scenario.TriggerObjectType,
-			params.ClientObject.Data["object_id"]), nil
+		return &defaultCaseName, nil
 	}
 
 	caseNameEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
@@ -663,19 +662,23 @@ func (e ScenarioEvaluator) EvalCaseName(
 		params.ClientObject,
 		params.DataModel,
 	)
-
-	isAuthorizedError := ast.IsAuthorizedError(err)
-	if err != nil && !isAuthorizedError {
-		return "", errors.Wrap(err,
+	switch {
+	case ast.IsAuthorizedError(err):
+		break
+	case err != nil:
+		return nil, errors.Wrap(err,
 			"Unexpected error evaluating case name in EvalCaseName")
+	case caseNameEvaluation.ReturnValue == nil:
+		return &defaultCaseName, nil
 	}
 
-	returnValue, err := caseNameEvaluation.GetStringReturnValue()
-	if err != nil && !isAuthorizedError {
-		return "", errors.Wrap(
-			errors.Join(ast.ErrRuntimeExpression, err),
-			"Unexpected error evaluating case name in EvalCaseName")
+	returnValue, ok := caseNameEvaluation.ReturnValue.(string)
+	if !ok {
+		return nil, errors.Wrap(err, "case name query did not return a string")
+	}
+	if returnValue == "" {
+		return &defaultCaseName, nil
 	}
 
-	return returnValue, nil
+	return &returnValue, nil
 }

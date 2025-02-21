@@ -30,6 +30,7 @@ var (
 	ErrPayloadFieldNotFound = errors.Wrap(ErrRuntimeExpression, "Payload field not found")
 )
 
+// keep only div by zero ?
 var ExecutionAuthorizedErrors = []error{
 	ErrNullFieldRead,
 	ErrNoRowsRead,
