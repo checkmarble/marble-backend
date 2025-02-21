@@ -49,6 +49,12 @@ type ScenarioTestRun struct {
 	CreatedAt               time.Time
 	ExpiresAt               time.Time
 	Status                  TestrunStatus
+	Summarized              bool
+}
+
+type ScenarioTestRunWithSummary struct {
+	ScenarioTestRun
+	Summary []ScenarioTestRunSummary
 }
 
 type ScenarioTestRunInput struct {
