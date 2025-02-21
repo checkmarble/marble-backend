@@ -493,8 +493,8 @@ func createDecisions(
 		"Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
 	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveNoNameDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, ast.ErrNullFieldRead,
-			"Expected error to be \"%s\", got \"%s\"", ast.ErrNullFieldRead, ruleExecution.Error)
+		assert.Equal(t, ast.NullFieldRead, ruleExecution.ExecutionError,
+			"Expected error to be \"%s\", got \"%s\"", ast.NullFieldRead, ruleExecution.ExecutionError)
 	}
 
 	// Create a decision [APPROVE] without a record in db (no row read)
@@ -510,8 +510,8 @@ func createDecisions(
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveNoRecordDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveNoRecordDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, ast.ErrNullFieldRead,
-			"Expected error to be \"%s\", got \"%s\"", ast.ErrNullFieldRead, ruleExecution.Error)
+		assert.Equal(t, ast.NullFieldRead, ruleExecution.ExecutionError,
+			"Expected error to be \"%s\", got \"%s\"", ast.NullFieldRead, ruleExecution.ExecutionError)
 	}
 
 	// Create a decision [APPROVE] without a field in payload (null field read)
@@ -526,7 +526,8 @@ func createDecisions(
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveMissingFieldInPayloadDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveMissingFieldInPayloadDecision.RuleExecutions, "Check on account name")
-		assert.Nil(t, ruleExecution.Error, "Expected error to be nil, got \"%s\"", ruleExecution.Error)
+		assert.Equal(t, ast.NoError, ruleExecution.ExecutionError,
+			"Expected error to be nil, got \"%s\"", ruleExecution.ExecutionError)
 	}
 
 	// Create a decision [DECLINE] with a division by zero
@@ -542,8 +543,8 @@ func createDecisions(
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveDivisionByZeroDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveDivisionByZeroDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, ast.ErrDivisionByZero,
-			"Expected error to be \"%s\", got \"%s\"", ast.ErrDivisionByZero, ruleExecution.Error)
+		assert.Equal(t, ast.DivisionByZero, ruleExecution.ExecutionError,
+			"Expected error to be \"%s\", got \"%s\"", ast.ErrDivisionByZero, ruleExecution.ExecutionError)
 	}
 
 	// find the rule with higest score

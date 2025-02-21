@@ -39,7 +39,7 @@ func AdaptRuleExecution(db DbDecisionRule) (models.RuleExecution, error) {
 	}
 	return models.RuleExecution{
 		DecisionId:          db.DecisionId,
-		Error:               ast.AdaptErrorCodeAsError(db.ErrorCode),
+		ExecutionError:      db.ErrorCode,
 		Evaluation:          evaluation,
 		Outcome:             outcome,
 		Result:              db.Result,
