@@ -611,6 +611,7 @@ func createAndTestDecision(
 		},
 	)
 	if err != nil {
+		fmt.Println(err)
 		assert.FailNow(t, "Could not create decision", err)
 	}
 	assert.Equal(t, expectedScore, decision.Score, "The score should match the expected value")

@@ -1,10 +1,7 @@
 package ast
 
 import (
-	"fmt"
 	"time"
-
-	"github.com/cockroachdb/errors"
 )
 
 type NodeEvaluation struct {
@@ -46,31 +43,6 @@ func (root NodeEvaluation) FlattenErrors() []error {
 	}
 
 	return errs
-}
-
-func (root NodeEvaluation) GetBoolReturnValue() (bool, error) {
-	if root.ReturnValue == nil {
-		return false, ErrNullFieldRead
-	}
-
-	if returnValue, ok := root.ReturnValue.(bool); ok {
-		return returnValue, nil
-	}
-
-	return false, errors.New(
-		fmt.Sprintf("root ast expression does not return a boolean, '%T' instead", root.ReturnValue))
-}
-
-func (root NodeEvaluation) GetStringReturnValue() (string, error) {
-	if root.ReturnValue == nil {
-		return "", ErrNullFieldRead
-	}
-
-	if returnValue, ok := root.ReturnValue.(string); ok {
-		return returnValue, nil
-	}
-
-	return "", errors.New(fmt.Sprintf("ast expression expected to return a string, got '%T' instead", root.ReturnValue))
 }
 
 func (root *NodeEvaluation) SetCached() {
