@@ -94,7 +94,8 @@ type decisionWorkflowsUsecase interface {
 }
 
 type ScenarioEvaluator interface {
-	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (se models.ScenarioExecution, err error)
+	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (
+		triggerPassed bool, se models.ScenarioExecution, err error)
 }
 
 type decisionUsecaseSanctionCheckWriter interface {
@@ -360,7 +361,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 	ctx context.Context,
 	input models.CreateDecisionInput,
 	params models.CreateDecisionParams,
-) (models.DecisionWithRuleExecutions, error) {
+) (bool, models.DecisionWithRuleExecutions, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
@@ -370,18 +371,18 @@ func (usecase *DecisionUsecase) CreateDecision(
 	defer span.End()
 
 	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
-		return models.DecisionWithRuleExecutions{}, err
+		return false, models.DecisionWithRuleExecutions{}, err
 	}
 	scenario, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
 	if errors.Is(err, models.NotFoundError) {
-		return models.DecisionWithRuleExecutions{}, errors.Wrap(err, "scenario not found")
+		return false, models.DecisionWithRuleExecutions{}, errors.Wrap(err, "scenario not found")
 	} else if err != nil {
-		return models.DecisionWithRuleExecutions{},
+		return false, models.DecisionWithRuleExecutions{},
 			errors.Wrap(err, "error getting scenario")
 	}
 	if params.WithScenarioPermissionCheck {
 		if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
-			return models.DecisionWithRuleExecutions{}, err
+			return false, models.DecisionWithRuleExecutions{}, err
 		}
 	}
 
@@ -393,12 +394,12 @@ func (usecase *DecisionUsecase) CreateDecision(
 		input.PayloadRaw,
 	)
 	if err != nil {
-		return models.DecisionWithRuleExecutions{}, err
+		return false, models.DecisionWithRuleExecutions{}, err
 	}
 
 	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, input.OrganizationId, nil)
 	if err != nil {
-		return models.DecisionWithRuleExecutions{}, err
+		return false, models.DecisionWithRuleExecutions{}, err
 	}
 	pivot := models.FindPivot(pivotsMeta, input.TriggerObjectTable, dataModel)
 
@@ -409,10 +410,14 @@ func (usecase *DecisionUsecase) CreateDecision(
 		Pivot:        pivot,
 	}
 
-	scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+	triggerPassed, scenarioExecution, err :=
+		usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
-		return models.DecisionWithRuleExecutions{},
+		return false, models.DecisionWithRuleExecutions{},
 			fmt.Errorf("error evaluating scenario: %w", err)
+	}
+	if !triggerPassed {
+		return false, models.DecisionWithRuleExecutions{}, nil
 	}
 
 	decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
@@ -490,7 +495,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		return decision, nil
 	})
 	if err != nil {
-		return models.DecisionWithRuleExecutions{}, err
+		return false, models.DecisionWithRuleExecutions{}, err
 	}
 
 	for _, webhookEventId := range sendWebhookEventId {
@@ -512,14 +517,14 @@ func (usecase *DecisionUsecase) CreateDecision(
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), PHANTOM_DECISION_TIMEOUT)
 		defer cancel()
 		logger := utils.LoggerFromContext(ctx).With("phantom_decisions_with_scenario_id", phantomInput.Scenario.Id)
-		_, errPhantom := usecase.phantomUseCase.CreatePhantomDecision(ctx, phantomInput, evaluationParameters)
+		_, _, errPhantom := usecase.phantomUseCase.CreatePhantomDecision(ctx, phantomInput, evaluationParameters)
 		if errPhantom != nil {
 			logger.ErrorContext(ctx, fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s",
 				phantomInput.Scenario.Id, errPhantom.Error()))
 		}
 	}()
 
-	return newDecision, nil
+	return true, newDecision, nil
 }
 
 func (usecase *DecisionUsecase) CreateAllDecisions(
@@ -587,12 +592,12 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			trace.WithAttributes(attribute.String("scenario_id", scenario.Id)),
 		)
 		defer span.End()
-		scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
-		if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
-			nbSkipped++
-			continue
-		} else if err != nil {
+		triggerPassed, scenarioExecution, err :=
+			usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+		if err != nil {
 			return nil, 0, errors.Wrap(err, "error evaluating scenario in CreateAllDecisions")
+		} else if !triggerPassed {
+			nbSkipped++
 		}
 
 		decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
