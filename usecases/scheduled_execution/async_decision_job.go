@@ -77,7 +77,8 @@ type asyncDecisionWorkerRepository interface {
 }
 
 type ScenarioEvaluator interface {
-	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (se models.ScenarioExecution, err error)
+	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (
+		triggerPassed bool, se models.ScenarioExecution, err error)
 }
 
 type decisionWorkerSanctionCheckWriter interface {
@@ -285,9 +286,12 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		Pivot:             pivot,
 	}
 
-	scenarioExecution, err := w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
-
-	if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
+	triggerPassed, scenarioExecution, err :=
+		w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+	if err != nil {
+		return false, nil, errors.Wrapf(err, "error evaluating scenario in AsyncDecisionWorker %s", scenario.Id)
+	}
+	if !triggerPassed {
 		logger.InfoContext(ctx, "Trigger condition and trigger object mismatch",
 			"scenario_id", scenario.Id,
 			"trigger_object_type", scenario.TriggerObjectType,
@@ -301,8 +305,6 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 			return false, nil, err
 		}
 		return false, nil, nil
-	} else if err != nil {
-		return false, nil, errors.Wrapf(err, "error evaluating scenario in AsyncDecisionWorker %s", scenario.Id)
 	}
 
 	decision := models.AdaptScenarExecToDecision(scenarioExecution, object, &args.ScheduledExecutionId)
@@ -365,7 +367,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		logger := utils.LoggerFromContext(ctx).With("phantom_decisions_with_scenario_id", phantomInput.Scenario.Id)
-		_, errPhantom := w.phantomDecision.CreatePhantomDecision(ctx, phantomInput, evaluationParameters)
+		_, _, errPhantom := w.phantomDecision.CreatePhantomDecision(ctx, phantomInput, evaluationParameters)
 		if errPhantom != nil {
 			logger.ErrorContext(ctx, fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s",
 				phantomInput.Scenario.Id, errPhantom.Error()))
