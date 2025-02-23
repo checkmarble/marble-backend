@@ -1,10 +1,8 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
-	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -125,7 +123,7 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 
 		// make a decision
 		decisionUsecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decision, err := decisionUsecase.CreateDecision(
+		triggerPassed, decision, err := decisionUsecase.CreateDecision(
 			ctx,
 			models.CreateDecisionInput{
 				OrganizationId:     organizationId,
@@ -139,30 +137,18 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 				WithRuleExecutionDetails:    true,
 			},
 		)
-
-		if presentIngestionValidationError(c, err) || returnExpectedDecisionError(c, err) || presentError(ctx, c, err) {
+		if presentIngestionValidationError(c, err) || presentError(ctx, c, err) {
+			return
+		}
+		if !triggerPassed {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message:   "The payload object you sent does not match the trigger condition of the scenario.",
+				ErrorCode: dto.TriggerConditionNotMatched,
+			})
 			return
 		}
 		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppHost, false))
 	}
-}
-
-func returnExpectedDecisionError(c *gin.Context, err error) bool {
-	if err == nil {
-		return false
-	}
-	ctx := c.Request.Context()
-	logger := utils.LoggerFromContext(ctx)
-	logger.InfoContext(ctx, fmt.Sprintf("error: %v", err))
-
-	if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
-		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
-			Message:   "The payload object you sent does not match the trigger condition of the scenario.",
-			ErrorCode: dto.TriggerConditionNotMatched,
-		})
-		return true
-	}
-	return false
 }
 
 func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
@@ -190,7 +176,7 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *
 				TriggerObjectTable: requestData.ObjectType,
 			},
 		)
-		if presentIngestionValidationError(c, err) || returnExpectedDecisionError(c, err) || presentError(ctx, c, err) {
+		if presentIngestionValidationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, dto.AdaptDecisionsWithMetadataDto(decisions, marbleAppHost, nbSkipped, false))

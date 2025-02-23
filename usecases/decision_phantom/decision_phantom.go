@@ -16,7 +16,8 @@ import (
 )
 
 type TestRunEvaluator interface {
-	EvalTestRunScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (se models.ScenarioExecution, err error)
+	EvalTestRunScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (
+		triggerPassed bool, se models.ScenarioExecution, err error)
 }
 
 type PhantomDecisionUsecaseSanctionCheckRepository interface {
@@ -72,7 +73,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 	ctx context.Context,
 	input models.CreatePhantomDecisionInput,
 	evaluationParameters evaluate_scenario.ScenarioEvaluationParameters,
-) (models.PhantomDecision, error) {
+) (bool, models.PhantomDecision, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
 		ctx,
@@ -81,16 +82,20 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 	defer span.End()
 
 	if err := usecase.enforceSecurity.CreatePhantomDecision(input.OrganizationId); err != nil {
-		return models.PhantomDecision{}, err
+		return false, models.PhantomDecision{}, err
 	}
 
-	testRunScenarioExecution, err := usecase.scenarioEvaluator.EvalTestRunScenario(ctx, evaluationParameters)
+	triggerPassed, testRunScenarioExecution, err :=
+		usecase.scenarioEvaluator.EvalTestRunScenario(ctx, evaluationParameters)
 	if err != nil {
-		return models.PhantomDecision{},
+		return false, models.PhantomDecision{},
 			fmt.Errorf("error evaluating scenario: %w", err)
 	}
+	if !triggerPassed {
+		return false, models.PhantomDecision{}, nil
+	}
 	if testRunScenarioExecution.ScenarioId == "" {
-		return models.PhantomDecision{}, nil
+		return false, models.PhantomDecision{}, nil
 	}
 
 	phantomDecision := models.AdaptScenarExecToPhantomDecision(testRunScenarioExecution)
@@ -136,8 +141,8 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 		},
 	)
 	if err != nil {
-		return models.PhantomDecision{}, err
+		return false, models.PhantomDecision{}, err
 	}
 
-	return phantomDecision, nil
+	return true, phantomDecision, nil
 }

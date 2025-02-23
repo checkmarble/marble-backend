@@ -118,13 +118,17 @@ func NewScenarioEvaluator(
 	}
 }
 
-func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params ScenarioEvaluationParameters,
-	iteration models.ScenarioIteration, start time.Time,
-	logger *slog.Logger, exec repositories.Executor,
-) (models.ScenarioExecution, error) {
+func (e ScenarioEvaluator) processScenarioIteration(
+	ctx context.Context,
+	params ScenarioEvaluationParameters,
+	iteration models.ScenarioIteration,
+	start time.Time,
+	logger *slog.Logger,
+	exec repositories.Executor,
+) (bool, models.ScenarioExecution, error) {
 	// Check the scenario & trigger_object's types
 	if params.Scenario.TriggerObjectType != params.ClientObject.TableName {
-		return models.ScenarioExecution{}, models.ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
+		return false, models.ScenarioExecution{}, models.ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
 	}
 	dataAccessor := DataAccessor{
 		DataModel:                  params.DataModel,
@@ -139,7 +143,7 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 	// Evaluate the trigger
 
 	if iteration.TriggerConditionAstExpression != nil {
-		errEval := e.evalScenarioTrigger(
+		ok, err := e.evalScenarioTrigger(
 			ctx,
 			cache,
 			*iteration.TriggerConditionAstExpression,
@@ -147,8 +151,12 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 			dataAccessor.ClientObject,
 			params.DataModel,
 		)
-		if errEval != nil {
-			return models.ScenarioExecution{}, errEval
+		if err != nil {
+			return false, models.ScenarioExecution{}, errors.Wrap(err,
+				"error evaluating trigger condition in EvalScenario")
+		}
+		if !ok {
+			return false, models.ScenarioExecution{}, nil
 		}
 	}
 
@@ -157,7 +165,7 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 	if params.Pivot != nil {
 		pivotValue, errPv = getPivotValue(ctx, *params.Pivot, dataAccessor)
 		if errPv != nil {
-			return models.ScenarioExecution{}, errors.Wrap(
+			return false, models.ScenarioExecution{}, errors.Wrap(
 				errPv,
 				"error getting pivot value in EvalScenario")
 		}
@@ -175,7 +183,7 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 		snoozes, errSnooze = e.snoozeReader.ListActiveRuleSnoozesForDecision(ctx, exec, snoozeGroupIds, *pivotValue)
 	}
 	if errSnooze != nil {
-		return models.ScenarioExecution{}, errors.Wrap(
+		return false, models.ScenarioExecution{}, errors.Wrap(
 			errSnooze,
 			"error when listing active rule snozze")
 	}
@@ -188,7 +196,7 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 		params.DataModel,
 		snoozes)
 	if errEval != nil {
-		return models.ScenarioExecution{}, errors.Wrap(errEval,
+		return false, models.ScenarioExecution{}, errors.Wrap(errEval,
 			"error during concurrent rule evaluation")
 	}
 
@@ -197,8 +205,8 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 	sanctionCheckExecution, santionCheckPerformed, err :=
 		e.evaluateSanctionCheck(ctx, iteration, params, dataAccessor)
 	if err != nil {
-		// TODO: what happens if we cannot perform the sanction check?
-		return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
+		return false, models.ScenarioExecution{},
+			errors.Wrap(err, "could not perform sanction check")
 	}
 
 	if santionCheckPerformed && sanctionCheckExecution.Count > 0 {
@@ -241,13 +249,13 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 	logger.InfoContext(ctx, fmt.Sprintf("Evaluated scenario in %dms",
 		elapsed.Milliseconds()), "score", score, "outcome", outcome, "duration", elapsed.Milliseconds())
 
-	return se, nil
+	return true, se, nil
 }
 
 func (e ScenarioEvaluator) EvalTestRunScenario(
 	ctx context.Context,
 	params ScenarioEvaluationParameters,
-) (se models.ScenarioExecution, err error) {
+) (triggerPassed bool, se models.ScenarioExecution, err error) {
 	logger := utils.LoggerFromContext(ctx)
 	start := time.Now()
 	///////////////////////////////
@@ -277,30 +285,30 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	defer span.End()
 	testrun, err := e.scenarioTestRunRepository.GetTestRunByLiveVersionID(ctx, exec, *params.Scenario.LiveVersionID)
 	if err != nil {
-		return models.ScenarioExecution{}, err
+		return false, se, err
 	}
 	if testrun == nil || testrun.Status != models.Up {
-		return models.ScenarioExecution{}, nil
+		return false, se, nil
 	}
 	scenario, err := e.scenarioRepository.GetScenarioByLiveScenarioIterationId(ctx, exec, testrun.ScenarioLiveIterationId)
 	if err != nil {
-		return models.ScenarioExecution{}, err
+		return false, se, err
 	}
 	if scenario.Id == "" {
 		logger.ErrorContext(ctx, "the live version iteration associated to the current testrun does not match with the actual live scenario iteration")
-		return models.ScenarioExecution{}, nil
+		return false, se, nil
 	}
 	testRunIterationId, err := e.evalTestRunScenarioRepository.GetTestRunIterationIdByScenarioId(ctx, exec, params.Scenario.Id)
 	if err != nil {
-		return models.ScenarioExecution{}, errors.Wrap(err,
+		return false, se, errors.Wrap(err,
 			"error getting testrun scenario iteration in EvalTestRunScenario")
 	}
 	if testRunIterationId == nil {
-		return models.ScenarioExecution{}, nil
+		return false, se, nil
 	}
 	testRunIteration, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, *testRunIterationId)
 	if err != nil {
-		return models.ScenarioExecution{}, err
+		return false, se, err
 	}
 
 	// If the live version had a sanction check executed, and if it has the same configuration (except for the trigger rule),
@@ -308,14 +316,14 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	var copiedSanctionCheck *models.SanctionCheckWithMatches
 	scc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, testRunIteration.Id)
 	if err != nil {
-		return models.ScenarioExecution{}, errors.Wrap(err,
+		return false, se, errors.Wrap(err,
 			"error getting sanction check config from scenario iteration")
 	}
 	if scc != nil {
 		liveVersionScc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(
 			ctx, exec, *params.Scenario.LiveVersionID)
 		if err != nil {
-			return models.ScenarioExecution{}, err
+			return false, se, err
 		}
 		if params.CachedSanctionCheck != nil && liveVersionScc.HasSameQuery(*scc) {
 			copiedSanctionCheck = params.CachedSanctionCheck
@@ -324,21 +332,21 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	}
 	testRunIteration.SanctionCheckConfig = scc
 
-	se, err = e.processScenarioIteration(ctx, params, testRunIteration, start, logger, exec)
+	triggerPassed, se, err = e.processScenarioIteration(ctx, params, testRunIteration, start, logger, exec)
 	if err != nil {
-		return models.ScenarioExecution{}, err
+		return false, se, err
 	}
 	if copiedSanctionCheck != nil {
 		se.SanctionCheckExecution = copiedSanctionCheck
 	}
 	se.TestRunId = testrun.Id
-	return se, nil
+	return triggerPassed, se, nil
 }
 
 func (e ScenarioEvaluator) EvalScenario(
 	ctx context.Context,
 	params ScenarioEvaluationParameters,
-) (se models.ScenarioExecution, err error) {
+) (triggerPassed bool, se models.ScenarioExecution, err error) {
 	logger := utils.LoggerFromContext(ctx)
 	start := time.Now()
 	///////////////////////////////
@@ -365,7 +373,7 @@ func (e ScenarioEvaluator) EvalScenario(
 	} else if params.Scenario.LiveVersionID != nil {
 		targetVersionId = *params.Scenario.LiveVersionID
 	} else {
-		return models.ScenarioExecution{}, errors.Wrap(models.ErrScenarioHasNoLiveVersion,
+		return false, models.ScenarioExecution{}, errors.Wrap(models.ErrScenarioHasNoLiveVersion,
 			"scenario has no live version in EvalScenario")
 	}
 
@@ -382,33 +390,33 @@ func (e ScenarioEvaluator) EvalScenario(
 
 	versionToRun, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, targetVersionId)
 	if err != nil {
-		return models.ScenarioExecution{}, errors.Wrap(err,
+		return false, models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting scenario iteration in EvalScenario")
 	}
 
 	scc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, versionToRun.Id)
 	if err != nil {
-		return models.ScenarioExecution{}, errors.Wrap(err,
+		return false, models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting sanction check config from scenario iteration")
 	}
 	versionToRun.SanctionCheckConfig = scc
 	if scc != nil {
 		featureAccess, err := e.featureAccessReader.GetOrganizationFeatureAccess(ctx, params.Scenario.OrganizationId)
 		if err != nil {
-			return models.ScenarioExecution{}, err
+			return false, models.ScenarioExecution{}, err
 		}
 		if !featureAccess.Sanctions.IsAllowed() {
-			return models.ScenarioExecution{}, errors.Wrapf(models.ForbiddenError,
+			return false, models.ScenarioExecution{}, errors.Wrapf(models.ForbiddenError,
 				"Sanction check feature access is missing: status is %s", featureAccess.Sanctions)
 		}
 	}
 
-	se, errSe := e.processScenarioIteration(ctx, params, versionToRun, start, logger, exec)
+	triggerPassed, se, errSe := e.processScenarioIteration(ctx, params, versionToRun, start, logger, exec)
 	if errSe != nil {
-		return models.ScenarioExecution{}, errors.Wrap(errSe,
+		return false, models.ScenarioExecution{}, errors.Wrap(errSe,
 			"error processing scenario iteration in EvalTestRunScenario")
 	}
-	return se, nil
+	return triggerPassed, se, nil
 }
 
 func (e ScenarioEvaluator) evalScenarioRule(
@@ -527,7 +535,7 @@ func (e ScenarioEvaluator) evalScenarioTrigger(
 	organizationId string,
 	payload models.ClientObject,
 	dataModel models.DataModel,
-) error {
+) (bool, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioTrigger")
 	defer span.End()
@@ -542,26 +550,19 @@ func (e ScenarioEvaluator) evalScenarioTrigger(
 	)
 	switch {
 	case ast.IsAuthorizedError(err):
-		return errors.Wrap(models.ErrScenarioTriggerConditionAndTriggerObjectMismatch,
-			"scenario trigger object does not match payload in EvalScenario")
+		return false, nil
 	case err != nil:
-		return errors.Wrap(err,
+		return false, errors.Wrap(err,
 			"Unexpected error evaluating trigger condition in EvalScenario")
-	default:
+	case triggerEvaluation.ReturnValue == nil:
+		return false, nil
 	}
 
 	boolReturnValue, ok := triggerEvaluation.ReturnValue.(bool)
-	if triggerEvaluation.ReturnValue == nil || !ok {
-		return errors.New(
-			fmt.Sprintf("root ast expression does not return a boolean, '%T' instead", triggerEvaluation.ReturnValue))
+	if !ok {
+		return false, errors.Newf("root ast expression in trigger condition does not return a boolean, '%T' instead", triggerEvaluation.ReturnValue)
 	}
-
-	if !boolReturnValue {
-		return errors.Wrap(
-			models.ErrScenarioTriggerConditionAndTriggerObjectMismatch,
-			"scenario trigger object does not match payload in EvalScenario")
-	}
-	return nil
+	return boolReturnValue, nil
 }
 
 func (e ScenarioEvaluator) evalAllScenarioRules(

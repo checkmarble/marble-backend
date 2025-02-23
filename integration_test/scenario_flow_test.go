@@ -597,7 +597,7 @@ func createAndTestDecision(
 		assert.FailNow(t, "Could not parse payload", err)
 	}
 
-	decision, err := decisionUsecase.CreateDecision(
+	_, decision, err := decisionUsecase.CreateDecision(
 		ctx,
 		models.CreateDecisionInput{
 			ScenarioId:         scenarioId,
