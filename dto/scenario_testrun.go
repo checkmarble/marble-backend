@@ -37,7 +37,19 @@ type CreateScenarioTestRunBody struct {
 	EndDate         time.Time `json:"end_date"`
 }
 
-func AdaptCreateScenarioTestRunBody(dto CreateScenarioTestRunBody) (models.ScenarioTestRunInput, error) {
+func AdaptCreateScenarioTestRunBody(dto CreateScenarioTestRunBody, tzName *string) (models.ScenarioTestRunInput, error) {
+	tz := time.UTC
+
+	if tzName != nil {
+		orgTz, err := time.LoadLocation(*tzName)
+		if err == nil {
+			tz = orgTz
+		}
+	}
+
+	// Adapt the browser-locale-dependent timestamp sent by the frontend to the end of day relative to the organization's timezone.
+	dto.EndDate = time.Date(dto.EndDate.Year(), dto.EndDate.Month(), dto.EndDate.Day(), 23, 59, 59, 999999999, tz)
+
 	return models.ScenarioTestRunInput{
 		ScenarioId:         dto.ScenarioId,
 		EndDate:            dto.EndDate,
