@@ -6,6 +6,7 @@ const (
 	Restricted FeatureAccess = iota
 	Allowed
 	Test
+	MissingConfiguration
 	UnknownFeatureAccess
 )
 
@@ -20,6 +21,8 @@ func (f FeatureAccess) String() string {
 		return "restricted"
 	case Test:
 		return "test"
+	case MissingConfiguration:
+		return "missing_configuration"
 	}
 	return "unknown"
 }
@@ -33,6 +36,8 @@ func FeatureAccessFrom(s string) FeatureAccess {
 		return Restricted
 	case "test":
 		return Test
+	case "missing_configuration":
+		return MissingConfiguration
 	}
 	return UnknownFeatureAccess
 }
