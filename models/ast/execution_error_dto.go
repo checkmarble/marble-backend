@@ -1,8 +1,6 @@
 package ast
 
 import (
-	"fmt"
-
 	"github.com/cockroachdb/errors"
 )
 
@@ -13,12 +11,14 @@ import (
 type ExecutionError int
 
 const (
-	NoError              ExecutionError = 0
-	DivisionByZero       ExecutionError = 100
-	NullFieldRead        ExecutionError = 200
+	NoError        ExecutionError = 0
+	DivisionByZero ExecutionError = 100
+	NullFieldRead  ExecutionError = 200
+	Unknown        ExecutionError = -1
+
+	// legacy fields, rule executions are no longer created with those but old rules may still have them
 	NoRowsRead           ExecutionError = 201
 	PayloadFieldNotFound ExecutionError = 202
-	Unknown              ExecutionError = -1
 )
 
 func (r ExecutionError) String() string {
@@ -41,32 +41,22 @@ func AdaptExecutionError(err error) ExecutionError {
 	switch {
 	case err == nil:
 		return NoError
-	case errors.Is(err, ErrNullFieldRead):
-		return NullFieldRead
-	case errors.Is(err, ErrNoRowsRead):
-		return NoRowsRead
 	case errors.Is(err, ErrDivisionByZero):
 		return DivisionByZero
-	case errors.Is(err, ErrPayloadFieldNotFound):
-		return PayloadFieldNotFound
 	default:
 		return Unknown
 	}
 }
 
-func AdaptErrorCodeAsError(errCode ExecutionError) error {
-	switch errCode {
-	case NoError:
-		return nil
-	case NullFieldRead:
-		return ErrNullFieldRead
-	case NoRowsRead:
-		return ErrNoRowsRead
-	case DivisionByZero:
-		return ErrDivisionByZero
-	case PayloadFieldNotFound:
-		return ErrPayloadFieldNotFound
-	default:
-		return fmt.Errorf("unknown error code")
+var ExecutionAuthorizedErrors = []error{
+	ErrDivisionByZero,
+}
+
+func IsAuthorizedError(err error) bool {
+	for _, authorizedError := range ExecutionAuthorizedErrors {
+		if errors.Is(err, authorizedError) {
+			return true
+		}
 	}
+	return false
 }
