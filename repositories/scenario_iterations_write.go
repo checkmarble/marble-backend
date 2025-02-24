@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 
@@ -131,13 +132,17 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exe
 		countUpdate++
 	}
 	if scenarioIteration.Body.TriggerConditionAstExpression != nil {
-		triggerCondition, err := dbmodels.SerializeFormulaAstExpression(
-			scenarioIteration.Body.TriggerConditionAstExpression)
-		if err != nil {
-			return models.ScenarioIteration{}, fmt.Errorf(
-				"unable to marshal trigger condition ast expression: %w", err)
+		if scenarioIteration.Body.TriggerConditionAstExpression.Function != ast.FUNC_UNDEFINED {
+			triggerCondition, err := dbmodels.SerializeFormulaAstExpression(
+				scenarioIteration.Body.TriggerConditionAstExpression)
+			if err != nil {
+				return models.ScenarioIteration{}, fmt.Errorf(
+					"unable to marshal trigger condition ast expression: %w", err)
+			}
+			sql = sql.Set("trigger_condition_ast_expression", triggerCondition)
+		} else {
+			sql = sql.Set("trigger_condition_ast_expression", nil)
 		}
-		sql = sql.Set("trigger_condition_ast_expression", triggerCondition)
 		countUpdate++
 	}
 	if countUpdate == 0 {
