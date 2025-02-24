@@ -23,26 +23,6 @@ var (
 	ErrFilterTableNotMatch               = errors.New("filters must be applied on the same table")
 
 	// Runtime execution related errors
-	ErrRuntimeExpression    = errors.New("expression runtime error")
-	ErrNullFieldRead        = errors.Wrap(ErrRuntimeExpression, "Null field read")
-	ErrNoRowsRead           = errors.Wrap(ErrRuntimeExpression, "No rows read")
-	ErrDivisionByZero       = errors.Wrap(ErrRuntimeExpression, "Division by zero")
-	ErrPayloadFieldNotFound = errors.Wrap(ErrRuntimeExpression, "Payload field not found")
+	ErrRuntimeExpression = errors.New("expression runtime error")
+	ErrDivisionByZero    = errors.Wrap(ErrRuntimeExpression, "Division by zero")
 )
-
-// keep only div by zero ?
-var ExecutionAuthorizedErrors = []error{
-	ErrNullFieldRead,
-	ErrNoRowsRead,
-	ErrDivisionByZero,
-	ErrPayloadFieldNotFound,
-}
-
-func IsAuthorizedError(err error) bool {
-	for _, authorizedError := range ExecutionAuthorizedErrors {
-		if errors.Is(err, authorizedError) {
-			return true
-		}
-	}
-	return false
-}
