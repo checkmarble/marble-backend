@@ -219,6 +219,56 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 	return sanctionCheck, err
 }
 
+func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match models.SanctionCheckMatch) ([]byte, error) {
+	requestUrl := fmt.Sprintf("%s/entities/%s", repo.opensanctions.Host(), match.EntityId)
+
+	if qs := repo.buildQueryString(nil, nil); len(qs) > 0 {
+		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
+	}
+
+	req, err := http.NewRequest(http.MethodGet, requestUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	repo.authenticateRequest(req)
+
+	resp, err := repo.opensanctions.Client().Do(req)
+	if err != nil {
+		return nil,
+			errors.Wrap(err, "could not enrich sanction check match")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf(
+			"sanction check API returned status %d on enrichment", resp.StatusCode)
+	}
+
+	defer resp.Body.Close()
+
+	var newMatch json.RawMessage
+
+	if err := json.NewDecoder(resp.Body).Decode(&newMatch); err != nil {
+		return nil, errors.Wrap(err,
+			"could not parse sanction check response")
+	}
+
+	return newMatch, nil
+}
+
+func (repo OpenSanctionsRepository) authenticateRequest(req *http.Request) {
+	if repo.opensanctions.IsSelfHosted() {
+		switch repo.opensanctions.AuthMethod() {
+		case infra.OPEN_SANCTIONS_AUTH_BEARER:
+			req.Header.Set("authorization", "Bearer "+repo.opensanctions.Credentials())
+		case infra.OPEN_SANCTIONS_AUTH_BASIC:
+			u, p, _ := strings.Cut(repo.opensanctions.Credentials(), ":")
+
+			req.SetBasicAuth(u, p)
+		}
+	}
+}
+
 func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 	query models.OpenSanctionsQuery,
 ) (*http.Request, []byte, error) {
@@ -242,27 +292,18 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 
 	requestUrl := fmt.Sprintf("%s/match/sanctions", repo.opensanctions.Host())
 
-	if qs := repo.buildQueryString(query.Config, query); len(qs) > 0 {
+	if qs := repo.buildQueryString(&query.Config, &query); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestUrl, &body)
 
-	if repo.opensanctions.IsSelfHosted() {
-		switch repo.opensanctions.AuthMethod() {
-		case infra.OPEN_SANCTIONS_AUTH_BEARER:
-			req.Header.Set("authorization", "Bearer "+repo.opensanctions.Credentials())
-		case infra.OPEN_SANCTIONS_AUTH_BASIC:
-			u, p, _ := strings.Cut(repo.opensanctions.Credentials(), ":")
-
-			req.SetBasicAuth(u, p)
-		}
-	}
+	repo.authenticateRequest(req)
 
 	return req, rawQuery.Bytes(), err
 }
 
-func (repo OpenSanctionsRepository) buildQueryString(cfg models.SanctionCheckConfig, query models.OpenSanctionsQuery) url.Values {
+func (repo OpenSanctionsRepository) buildQueryString(cfg *models.SanctionCheckConfig, query *models.OpenSanctionsQuery) url.Values {
 	qs := url.Values{}
 
 	if repo.opensanctions.AuthMethod() == infra.OPEN_SANCTIONS_AUTH_SAAS &&
@@ -270,16 +311,18 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg models.SanctionCheckCon
 		qs.Set("api_key", repo.opensanctions.Credentials())
 	}
 
-	if len(cfg.Datasets) > 0 {
+	if cfg != nil && len(cfg.Datasets) > 0 {
 		qs["include_dataset"] = cfg.Datasets
 	}
 
-	// Unless determined otherwise, we do not need those results that are *not*
-	// matches. They could still be filtered further down the chain, but we do not need them returned.
-	qs.Set("threshold", fmt.Sprintf("%.1f", float64(query.OrgConfig.MatchThreshold)/100))
-	qs.Set("cutoff", fmt.Sprintf("%.1f", float64(query.OrgConfig.MatchThreshold)/100))
+	if query != nil {
+		// Unless determined otherwise, we do not need those results that are *not*
+		// matches. They could still be filtered further down the chain, but we do not need them returned.
+		qs.Set("threshold", fmt.Sprintf("%.1f", float64(query.OrgConfig.MatchThreshold)/100))
+		qs.Set("cutoff", fmt.Sprintf("%.1f", float64(query.OrgConfig.MatchThreshold)/100))
 
-	qs.Set("limit", fmt.Sprintf("%d", query.OrgConfig.MatchLimit+query.LimitIncrease))
+		qs.Set("limit", fmt.Sprintf("%d", query.OrgConfig.MatchLimit+query.LimitIncrease))
+	}
 
 	return qs
 }
