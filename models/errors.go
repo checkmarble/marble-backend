@@ -49,11 +49,11 @@ var (
 		"data preparation service is unavailable: an index is being created in the client db schema")
 
 	// execution
-	ErrScenarioHasNoLiveVersion                         = errors.Wrap(BadParameterError, "scenario has no live version")
-	ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch   = errors.Wrap(BadParameterError, "scenario's trigger_type and provided trigger_object type are different")
-	ErrScenarioTriggerConditionAndTriggerObjectMismatch = errors.Wrap(BadParameterError, "trigger_object does not match the scenario's trigger conditions")
-	ErrInvalidAST                                       = errors.Wrap(BadParameterError, "invalid AST")
-	ErrPanicInScenarioEvalution                         = errors.New("panic during scenario evaluation")
+	ErrScenarioHasNoLiveVersion                       = errors.Wrap(BadParameterError, "scenario has no live version")
+	ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch = errors.Wrap(BadParameterError,
+		"scenario's trigger_type and provided trigger_object type are different")
+	ErrInvalidAST               = errors.Wrap(BadParameterError, "invalid AST")
+	ErrPanicInScenarioEvalution = errors.New("panic during scenario evaluation")
 
 	ErrTestRunAlreadyExist      = errors.Wrap(ConflictError, "there is an already existing testrun for this scenario")
 	ErrNoTestRunFound           = errors.Wrap(NotFoundError, "there is no testrun for this scenario")
