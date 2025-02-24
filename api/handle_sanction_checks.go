@@ -255,3 +255,19 @@ func handleSearchSanctionCheck(uc usecases.Usecases) func(c *gin.Context) {
 		}))
 	}
 }
+
+func handleEnrichSanctionCheckMatch(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		matchId := c.Param("id")
+
+		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		newMatch, err := uc.EnrichMatch(ctx, matchId)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptSanctionCheckMatchDto(newMatch))
+	}
+}
