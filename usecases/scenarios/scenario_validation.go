@@ -87,13 +87,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 
 	// validate trigger
 	trigger := iteration.TriggerConditionAstExpression
-	if trigger == nil {
-		result.Trigger.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
-			Error: errors.Wrap(models.BadParameterError,
-				"scenario iteration has no trigger condition ast expression"),
-			Code: models.TriggerConditionRequired,
-		})
-	} else {
+	if trigger != nil {
 		result.Trigger.TriggerEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, *trigger)
 		if _, ok := result.Trigger.TriggerEvaluation.ReturnValue.(bool); !ok {
 			result.Trigger.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{

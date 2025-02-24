@@ -138,17 +138,20 @@ func (e ScenarioEvaluator) processScenarioIteration(ctx context.Context, params 
 
 	// Evaluate the trigger
 
-	errEval := e.evalScenarioTrigger(
-		ctx,
-		cache,
-		*iteration.TriggerConditionAstExpression,
-		dataAccessor.organizationId,
-		dataAccessor.ClientObject,
-		params.DataModel,
-	)
-	if errEval != nil {
-		return models.ScenarioExecution{}, errEval
+	if iteration.TriggerConditionAstExpression != nil {
+		errEval := e.evalScenarioTrigger(
+			ctx,
+			cache,
+			*iteration.TriggerConditionAstExpression,
+			dataAccessor.organizationId,
+			dataAccessor.ClientObject,
+			params.DataModel,
+		)
+		if errEval != nil {
+			return models.ScenarioExecution{}, errEval
+		}
 	}
+
 	var pivotValue *string
 	var errPv error
 	if params.Pivot != nil {
