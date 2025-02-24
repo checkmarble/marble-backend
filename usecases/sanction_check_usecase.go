@@ -34,6 +34,7 @@ type SanctionCheckProvider interface {
 	GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error)
 	GetLatestLocalDataset(context.Context) (models.OpenSanctionsDatasetFreshness, error)
 	Search(context.Context, models.OpenSanctionsQuery) (models.SanctionRawSearchResponseWithMatches, error)
+	EnrichMatch(ctx context.Context, match models.SanctionCheckMatch) ([]byte, error)
 }
 
 type SanctionCheckInboxReader interface {
@@ -84,6 +85,8 @@ type SanctionCheckRepository interface {
 		orgId, counterpartyId string, entityId []string) ([]models.SanctionCheckWhitelist, error)
 	CountWhitelistsForCounterpartyId(ctx context.Context, exec repositories.Executor,
 		orgId, counterpartyId string) (int, error)
+	UpdateSanctionCheckMatchPayload(ctx context.Context, exec repositories.Executor,
+		match models.SanctionCheckMatch, newPayload []byte) (models.SanctionCheckMatch, error)
 }
 
 type SanctionsCheckUsecaseExternalRepository interface {
@@ -476,6 +479,30 @@ func (uc SanctionCheckUsecase) MatchAddComment(ctx context.Context, matchId stri
 	}
 
 	return uc.repository.AddSanctionCheckMatchComment(ctx, uc.executorFactory.NewExecutor(), comment)
+}
+
+func (uc SanctionCheckUsecase) EnrichMatch(ctx context.Context, matchId string) (models.SanctionCheckMatch, error) {
+	if _, err := uc.enforceCanReadOrUpdateSanctionCheckMatch(ctx, matchId); err != nil {
+		return models.SanctionCheckMatch{}, err
+	}
+
+	match, err := uc.repository.GetSanctionCheckMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
+	if err != nil {
+		return models.SanctionCheckMatch{}, err
+	}
+
+	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, match)
+	if err != nil {
+		return models.SanctionCheckMatch{}, err
+	}
+
+	newMatch, err := uc.repository.UpdateSanctionCheckMatchPayload(ctx,
+		uc.executorFactory.NewExecutor(), match, newPayload)
+	if err != nil {
+		return models.SanctionCheckMatch{}, err
+	}
+
+	return newMatch, nil
 }
 
 func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Credentials,
