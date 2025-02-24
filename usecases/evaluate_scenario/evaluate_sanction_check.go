@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/cockroachdb/errors"
 )
 
@@ -105,9 +104,9 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 			return
 		}
 
-		counterpartyId, err := counterpartyIdResult.GetStringReturnValue()
-		if err != nil && !errors.Is(err, ast.ErrNullFieldRead) {
-			sanctionCheckErr = errors.Wrap(err, "could not parse object field for white list check as string")
+		counterpartyId, ok := counterpartyIdResult.ReturnValue.(string)
+		if counterpartyIdResult.ReturnValue == nil || !ok {
+			sanctionCheckErr = errors.Wrapf(err, "could not parse object field for white list check as string, read %v", counterpartyIdResult.ReturnValue)
 			return
 		}
 

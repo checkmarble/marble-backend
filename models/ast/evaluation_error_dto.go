@@ -37,10 +37,7 @@ var evaluationErrorDtoMap = []errorAndCode{
 	{ErrFilterTableNotMatch, "FILTERS_TABLE_NOT_MATCH"},
 
 	// Runtime execution related errors
-	{ErrNullFieldRead, "NULL_FIELD_READ"},
-	{ErrNoRowsRead, "NO_ROWS_READ"},
 	{ErrDivisionByZero, "DIVISION_BY_ZERO"},
-	{ErrPayloadFieldNotFound, "PAYLOAD_FIELD_NOT_FOUND"},
 	{ErrRuntimeExpression, "RUNTIME_EXPRESSION_ERROR"}, // must be last, as it is the most generic error (and above runtime errors are wrapped in it)
 }
 

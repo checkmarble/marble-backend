@@ -51,7 +51,7 @@ func (tx TransactionTest) Exec(ctx context.Context, query string, args ...interf
 func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 	path := []string{utils.DummyTableNameSecond}
 
-	query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{
+	nullFilter, query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{
 		TriggerTableName: utils.DummyTableNameFirst,
 		Path:             path,
 		FieldName:        utils.DummyFieldNameForInt,
@@ -61,6 +61,7 @@ func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 			Data:      map[string]any{utils.DummyFieldNameId: utils.DummyFieldNameId},
 		},
 	})
+	assert.False(t, nullFilter)
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
@@ -77,7 +78,7 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 		utils.DummyTableNameThird,
 	}
 
-	query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{
+	nullFilter, query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{
 		TriggerTableName: utils.DummyTableNameFirst,
 		Path:             path,
 		FieldName:        utils.DummyFieldNameForInt,
@@ -87,6 +88,7 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 			Data:      map[string]any{utils.DummyFieldNameId: utils.DummyFieldNameId},
 		},
 	})
+	assert.False(t, nullFilter)
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)

@@ -5,7 +5,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -95,7 +94,7 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 				newPhantomDecisionId,
 				ruleExecution.ResultScoreModifier,
 				ruleExecution.Result,
-				ast.AdaptExecutionError(ruleExecution.Error),
+				ruleExecution.ExecutionError,
 				ruleExecution.Rule.Id,
 				ruleExecution.Outcome,
 			)
