@@ -633,9 +633,7 @@ func getPivotValue(ctx context.Context, pivot models.Pivot, dataAccessor DataAcc
 		usefulLinks := pivot.PathLinks[:len(pivot.PathLinks)-1]
 		var err error
 		val, err = dataAccessor.GetDbField(ctx, pivot.BaseTable, usefulLinks, lastLink.ChildFieldName)
-		if errors.Is(err, ast.ErrNullFieldRead) || errors.Is(err, ast.ErrNoRowsRead) {
-			return nil, nil
-		} else if err != nil {
+		if err != nil {
 			return nil, errors.Wrap(err, "error getting pivot value")
 		}
 	}

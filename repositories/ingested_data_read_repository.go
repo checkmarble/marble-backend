@@ -49,10 +49,19 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec
 	if len(readParams.Path) == 0 {
 		return nil, fmt.Errorf("path is empty: %w", models.BadParameterError)
 	}
-	row, err := repo.queryDbForField(ctx, exec, readParams)
+	nullFilter, query, err := createQueryDbForField(exec, readParams)
 	if err != nil {
-		return nil, fmt.Errorf("error while building query for DB field: %w", err)
+		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
+	if nullFilter {
+		return nil, nil
+	}
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("error while building SQL query: %w", err)
+	}
+	row := exec.QueryRow(ctx, sql, args...)
 
 	var output any
 	err = row.Scan(&output)
@@ -64,42 +73,31 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec
 	return output, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (pgx.Row, error) {
-	query, err := createQueryDbForField(exec, readParams)
-	if err != nil {
-		return nil, fmt.Errorf("error while building SQL query: %w", err)
-	}
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("error while building SQL query: %w", err)
-	}
-
-	row := exec.QueryRow(ctx, sql, args...)
-	return row, nil
-}
-
-func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (squirrel.SelectBuilder, error) {
+func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (nullFilter bool, b squirrel.SelectBuilder, err error) {
 	triggerTable, ok := readParams.DataModel.Tables[readParams.TriggerTableName]
 	if !ok {
-		return squirrel.SelectBuilder{}, fmt.Errorf("table %s not found in data model", readParams.TriggerTableName)
+		return false, b, fmt.Errorf("table %s not found in data model", readParams.TriggerTableName)
 	}
 	link, ok := triggerTable.LinksToSingle[readParams.Path[0]]
 	if !ok {
-		return squirrel.SelectBuilder{}, fmt.Errorf("no link with name %s: %w",
+		return false, b, fmt.Errorf("no link with name %s: %w",
 			readParams.Path[0], models.NotFoundError)
 	}
 
-	firstTableLinkValue, err := getParentTableJoinField(readParams.ClientObject, link.ChildFieldName)
-	if err != nil {
-		return squirrel.SelectBuilder{}, fmt.Errorf(
-			"error while getting first path table unique id from payload: %w", err)
+	// First get the value of the foreign key in the payload, following the path. If it is null, then the query should return a null value.
+	parentFieldItf := readParams.ClientObject.Data[link.ChildFieldName]
+	if parentFieldItf == nil {
+		return true, b, nil
+	}
+	firstTableLinkValue, ok := parentFieldItf.(string)
+	if !ok {
+		return false, b, fmt.Errorf("%s in payload is not a string", link.ChildFieldName)
 	}
 
 	// "first table" is the first table reached starting from the trigger table and following the path
 	firstTable, ok := readParams.DataModel.Tables[link.ParentTableName]
 	if !ok {
-		return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w",
+		return false, b, fmt.Errorf("no table with name %s: %w",
 			link.ParentTableName, models.NotFoundError)
 	}
 
@@ -120,22 +118,8 @@ func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (
 		Where(squirrel.Eq{fmt.Sprintf("%s.%s", firstTableAlias, link.ParentFieldName): firstTableLinkValue}).
 		Where(rowIsValid(firstTableAlias))
 
-	return addJoinsOnIntermediateTables(exec, query, readParams, firstTable)
-}
-
-func getParentTableJoinField(payload models.ClientObject, fieldName string) (string, error) {
-	parentFieldItf := payload.Data[fieldName]
-	if parentFieldItf == nil {
-		return "", errors.Wrap(
-			ast.ErrNullFieldRead,
-			fmt.Sprintf("%s in payload is null", fieldName))
-	}
-	parentField, ok := parentFieldItf.(string)
-	if !ok {
-		return "", fmt.Errorf("%s in payload is not a string", fieldName)
-	}
-
-	return parentField, nil
+	b, err = addJoinsOnIntermediateTables(exec, query, readParams, firstTable)
+	return false, b, err
 }
 
 func addJoinsOnIntermediateTables(
