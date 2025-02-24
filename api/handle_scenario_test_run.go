@@ -23,8 +23,15 @@ func handleCreateScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 			c.Status(http.StatusBadRequest)
 			return
 		}
+
+		orgUsecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
+		org, err := orgUsecase.GetOrganization(c.Request.Context(), organizationId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioTestRunUseCase()
-		input, err := dto.AdaptCreateScenarioTestRunBody(data)
+		input, err := dto.AdaptCreateScenarioTestRunBody(data, org.DefaultScenarioTimezone)
 		if presentError(ctx, c, err) {
 			return
 		}
