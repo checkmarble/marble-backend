@@ -22,6 +22,10 @@ func NewIndexCleanupPeriodicJob(orgId string) *river.PeriodicJob {
 					OrgId: orgId,
 				}, &river.InsertOpts{
 					Queue: orgId,
+					UniqueOpts: river.UniqueOpts{
+						ByQueue:  true,
+						ByPeriod: INDEX_CLEANUP_WORKER_INTERVAL,
+					},
 				}
 		},
 		&river.PeriodicJobOpts{RunOnStart: true},
