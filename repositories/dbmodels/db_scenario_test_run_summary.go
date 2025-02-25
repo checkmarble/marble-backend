@@ -10,8 +10,8 @@ import (
 
 type DbScenarioTestRunSummary struct {
 	Id           string    `db:"id"`
-	RuleName     string    `db:"rule_name"`
-	RuleStableId string    `db:"rule_stable_id"`
+	RuleName     *string   `db:"rule_name"`
+	RuleStableId *string   `db:"rule_stable_id"`
 	TestRunId    string    `db:"test_run_id"`
 	Version      int       `db:"version"`
 	Watermark    time.Time `db:"watermark"`
@@ -39,9 +39,18 @@ func AdaptScenarioTestRunSummary(db DbScenarioTestRunSummary) (models.ScenarioTe
 func AdaptToRuleExecutionStats(db DbScenarioTestRunSummary) (models.RuleExecutionStat, error) {
 	return models.RuleExecutionStat{
 		Version:      fmt.Sprintf("%d", db.Version),
-		StableRuleId: &db.RuleStableId,
-		Name:         db.RuleName,
+		StableRuleId: db.RuleStableId,
+		Name:         utils.Or(db.RuleName, ""),
 		Outcome:      db.Outcome,
 		Total:        db.Total,
+	}, nil
+}
+
+func AdaptToDecisionStats(db DbScenarioTestRunSummary) (models.DecisionsByVersionByOutcome, error) {
+	return models.DecisionsByVersionByOutcome{
+		Version: fmt.Sprintf("%d", db.Version),
+		Outcome: db.Outcome,
+		Count:   db.Total,
+		Score:   0,
 	}, nil
 }
