@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -17,7 +18,7 @@ import (
 )
 
 // Deprecated
-func RunScheduledExecuter() error {
+func RunScheduledExecuter(apiVersion string) error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
 		EnableTracing: utils.GetEnv("ENABLE_GCP_TRACING", false),
@@ -68,7 +69,7 @@ func RunScheduledExecuter() error {
 		Enabled:         gcpConfig.EnableTracing,
 		ProjectID:       gcpConfig.ProjectId,
 	}
-	telemetryRessources, err := infra.InitTelemetry(tracingConfig)
+	telemetryRessources, err := infra.InitTelemetry(tracingConfig, apiVersion)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -115,6 +116,8 @@ func RunScheduledExecuter() error {
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 	)
+
+	logger.InfoContext(ctx, "starting scheduled executor", slog.String("version", apiVersion))
 
 	jobs.ExecuteAllScheduledScenarios(ctx, uc)
 	return nil

@@ -31,7 +31,7 @@ func NoopTelemetry() TelemetryRessources {
 	}
 }
 
-func InitTelemetry(configuration TelemetryConfiguration) (TelemetryRessources, error) {
+func InitTelemetry(configuration TelemetryConfiguration, apiVersion string) (TelemetryRessources, error) {
 	if !configuration.Enabled {
 		return NoopTelemetry(), nil
 	}
@@ -49,6 +49,7 @@ func InitTelemetry(configuration TelemetryConfiguration) (TelemetryRessources, e
 		resource.WithTelemetrySDK(),
 		resource.WithAttributes(
 			semconv.ServiceNameKey.String(configuration.ApplicationName),
+			semconv.ServiceVersion(apiVersion),
 		),
 	)
 	if err != nil {

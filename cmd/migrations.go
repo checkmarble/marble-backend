@@ -3,13 +3,14 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func RunMigrations() error {
+func RunMigrations(apiVersion string) error {
 	pgConfig := infra.PgConfig{
 		ConnectionString: utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:         "marble",
@@ -22,6 +23,8 @@ func RunMigrations() error {
 
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
+
+	logger.InfoContext(ctx, "starting migrator", slog.String("version", apiVersion))
 
 	migrater := repositories.NewMigrater(pgConfig)
 	if err := migrater.Run(ctx); err != nil {

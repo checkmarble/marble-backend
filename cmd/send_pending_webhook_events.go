@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -14,7 +15,7 @@ import (
 )
 
 // Deprecated
-func RunSendPendingWebhookEvents() error {
+func RunSendPendingWebhookEvents(apiVersion string) error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
 		EnableTracing: utils.GetEnv("ENABLE_GCP_TRACING", false),
@@ -66,7 +67,7 @@ func RunSendPendingWebhookEvents() error {
 		Enabled:         gcpConfig.EnableTracing,
 		ProjectID:       gcpConfig.ProjectId,
 	}
-	telemetryRessources, err := infra.InitTelemetry(tracingConfig)
+	telemetryRessources, err := infra.InitTelemetry(tracingConfig, apiVersion)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -92,6 +93,8 @@ func RunSendPendingWebhookEvents() error {
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 	)
+
+	logger.InfoContext(ctx, "starting pending webhook event sender", slog.String("version", apiVersion))
 
 	jobs.SendPendingWebhookEvents(ctx, uc)
 	return nil

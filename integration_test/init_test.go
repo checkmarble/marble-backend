@@ -177,7 +177,7 @@ func TestMain(m *testing.M) {
 	firebaseClient := firebase.New(tokenVerifier)
 	deps := api.InitDependencies(ctx, apiConfig, dbPool, privateKey, tokenVerifier)
 
-	telemetryRessources, _ := infra.InitTelemetry(infra.TelemetryConfiguration{Enabled: false})
+	telemetryRessources, _ := infra.InitTelemetry(infra.TelemetryConfiguration{Enabled: false}, "")
 	router := api.InitRouterMiddlewares(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, testUsecases,
 		deps.Authentication, deps.TokenHandler, api.WithLocalTest(true))

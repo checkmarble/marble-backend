@@ -18,6 +18,7 @@ import (
 
 type Usecases struct {
 	Repositories                repositories.Repositories
+	apiVersion                  string
 	batchIngestionMaxSize       int
 	ingestionBucketUrl          string
 	caseManagerBucketUrl        string
@@ -27,6 +28,12 @@ type Usecases struct {
 }
 
 type Option func(*options)
+
+func WithApiVersion(apiVersion string) Option {
+	return func(o *options) {
+		o.apiVersion = apiVersion
+	}
+}
 
 func WithIngestionBucketUrl(bucket string) Option {
 	return func(o *options) {
@@ -67,6 +74,7 @@ func WithConvoyServer(url string) Option {
 }
 
 type options struct {
+	apiVersion                  string
 	batchIngestionMaxSize       int
 	ingestionBucketUrl          string
 	caseManagerBucketUrl        string
@@ -81,6 +89,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 	}
 	return Usecases{
 		Repositories:                repositories,
+		apiVersion:                  o.apiVersion,
 		batchIngestionMaxSize:       o.batchIngestionMaxSize,
 		ingestionBucketUrl:          o.ingestionBucketUrl,
 		caseManagerBucketUrl:        o.caseManagerBucketUrl,
@@ -109,6 +118,12 @@ func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFa
 		usecases.Repositories.OrganizationRepository,
 		usecases.Repositories.ExecutorGetter,
 	)
+}
+
+func (usecases *Usecases) NewVersionUsecase() VersionUsecase {
+	return VersionUsecase{
+		ApiVersion: usecases.apiVersion,
+	}
 }
 
 func (usecases *Usecases) NewLivenessUsecase() LivenessUsecase {

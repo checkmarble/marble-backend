@@ -19,7 +19,7 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
-func RunServer() error {
+func RunServer(apiVersion string) error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	apiConfig := api.Configuration{
 		Env:                  utils.GetEnv("ENV", "development"),
@@ -118,7 +118,7 @@ func RunServer() error {
 		Enabled:         gcpConfig.EnableTracing,
 		ProjectID:       gcpConfig.ProjectId,
 	}
-	telemetryRessources, err := infra.InitTelemetry(tracingConfig)
+	telemetryRessources, err := infra.InitTelemetry(tracingConfig, apiVersion)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}
@@ -150,6 +150,7 @@ func RunServer() error {
 	)
 
 	uc := usecases.NewUsecases(repositories,
+		usecases.WithApiVersion(apiVersion),
 		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),
 		usecases.WithIngestionBucketUrl(serverConfig.ingestionBucketUrl),
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
@@ -187,7 +188,7 @@ func RunServer() error {
 	defer stop()
 
 	go func() {
-		logger.InfoContext(ctx, "starting server", slog.String("port", apiConfig.Port))
+		logger.InfoContext(ctx, "starting server", slog.String("version", apiVersion), slog.String("port", apiConfig.Port))
 		err := server.ListenAndServe()
 		if !errors.Is(err, http.ErrServerClosed) {
 			utils.LogAndReportSentryError(ctx, errors.Wrap(err, "Error while serving the app"))
