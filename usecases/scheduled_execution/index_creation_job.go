@@ -2,11 +2,11 @@ package scheduled_execution
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/utils"
@@ -92,7 +92,7 @@ func (w *IndexCreationStatusWorker) Work(ctx context.Context, job *river.Job[mod
 	// If we still have pending indices, we are certain the creation is still underway
 	if len(pending) > 0 {
 		utils.LoggerFromContext(ctx).DebugContext(ctx,
-			"worker: index creation still ongoing", "indices", job.Args.Indices)
+			"worker: index creation still ongoing", "indices", mapIndexNames(job.Args.Indices))
 
 		return river.JobSnooze(1 * time.Second)
 	}
@@ -102,7 +102,7 @@ func (w *IndexCreationStatusWorker) Work(ctx context.Context, job *river.Job[mod
 		return err
 	}
 
-	doneIndices := 0
+	doneIndices := make([]models.ConcreteIndex, 0, len(job.Args.Indices))
 
 	// Compare the list of finished indices with the list that was supposed to be created,
 	// if we find all of them, it means the process successfully finished.
@@ -110,19 +110,51 @@ func (w *IndexCreationStatusWorker) Work(ctx context.Context, job *river.Job[mod
 		if slices.ContainsFunc(job.Args.Indices, func(i models.ConcreteIndex) bool {
 			return i.TableName == index.TableName && i.IndexName == index.IndexName
 		}) {
-			doneIndices += 1
+			doneIndices = append(doneIndices, index)
 		}
 	}
 
 	// If there are less finalized indices than were supposed to be created (and no ongoing
 	// creation), it means an error occured while creating the indices.
-	if doneIndices < len(job.Args.Indices) {
-		return fmt.Errorf("some index creation failed")
+	if len(doneIndices) < len(job.Args.Indices) {
+		leftIndices := make([]models.ConcreteIndex, 0, len(job.Args.Indices)-len(doneIndices))
+
+		for _, index := range job.Args.Indices {
+			if !slices.ContainsFunc(doneIndices, func(i models.ConcreteIndex) bool {
+				return i.TableName == index.TableName && i.IndexName == index.IndexName
+			}) {
+				leftIndices = append(leftIndices, index)
+			}
+		}
+
+		_, err := river.ClientFromContext[pgx.Tx](ctx).Insert(
+			ctx,
+			models.IndexCreationArgs{
+				OrgId:   job.Args.OrgId,
+				Indices: leftIndices,
+			},
+			&river.InsertOpts{
+				Queue:       job.Args.OrgId,
+				ScheduledAt: time.Now().Add(time.Minute),
+			},
+		)
+
+		utils.LoggerFromContext(ctx).DebugContext(ctx,
+			"worker: some index creation failed, resubmitting", "indices", mapIndexNames(leftIndices))
+
+		return err
 	}
 
 	// Otherwise, we are done.
 	utils.LoggerFromContext(ctx).DebugContext(ctx,
-		"worker: finished creating indices", "indices", job.Args.Indices)
+		"worker: finished creating indices", "indices", mapIndexNames(job.Args.Indices))
 
 	return nil
+}
+
+func mapIndexNames(indices []models.ConcreteIndex) []string {
+	return pure_utils.Map(
+		indices, func(i models.ConcreteIndex) string {
+			return i.IndexName
+		})
 }
