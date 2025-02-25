@@ -60,7 +60,7 @@ func RunBatchIngestion(apiVersion string) error {
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 	license := infra.VerifyLicense(licenseConfig)
 
-	infra.SetupSentry(jobConfig.sentryDsn, jobConfig.env)
+	infra.SetupSentry(jobConfig.sentryDsn, jobConfig.env, apiVersion)
 	defer sentry.Flush(3 * time.Second)
 
 	tracingConfig := infra.TelemetryConfiguration{

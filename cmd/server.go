@@ -110,7 +110,7 @@ func RunServer(apiVersion string) error {
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
 	license := infra.VerifyLicense(licenseConfig)
 
-	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env)
+	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env, apiVersion)
 	defer sentry.Flush(3 * time.Second)
 
 	tracingConfig := infra.TelemetryConfiguration{
