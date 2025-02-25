@@ -65,7 +65,8 @@ type DecisionUsecaseRepository interface {
 		organizationId string,
 		begin, end time.Time,
 	) ([]models.DecisionsByVersionByOutcome, error)
-
+	GetSummarizedDecisionStatForTestRun(ctx context.Context, exec repositories.Executor,
+		testRunId string) ([]models.DecisionsByVersionByOutcome, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
 
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
@@ -146,8 +147,7 @@ func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Contex
 		return nil, errTestRun
 	}
 
-	decisions, err := usecase.repository.DecisionsByOutcomeAndScore(ctx, exec,
-		testrun.OrganizationId, testrun.CreatedAt, testrun.ExpiresAt)
+	decisions, err := usecase.repository.GetSummarizedDecisionStatForTestRun(ctx, exec, testrun.Id)
 	if err != nil {
 		return []models.DecisionsByVersionByOutcome{}, err
 	}
