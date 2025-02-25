@@ -15,7 +15,8 @@ func Map[T, U any](src []T, f func(T) U) []U {
 	return us
 }
 
-// Map returns a new slice with the same length as src, but with values transformed by f
+// FlatMap returns a new flattened slice composed of the result of passing each element of the input slice
+// to a function returning a slice of element. This is the equivalent of doing a Map, then a Flatten.
 func FlatMap[T, U any](src []T, f func(T) []U) []U {
 	us := make([]U, 0, len(src))
 	for _, item := range src {
