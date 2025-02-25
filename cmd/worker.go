@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,7 +24,7 @@ import (
 	"github.com/riverqueue/river/rivertype"
 )
 
-func RunTaskQueue() error {
+func RunTaskQueue(apiVersion string) error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
 		EnableTracing: utils.GetEnv("ENABLE_GCP_TRACING", false),
@@ -90,7 +91,7 @@ func RunTaskQueue() error {
 		Enabled:         gcpConfig.EnableTracing,
 		ProjectID:       gcpConfig.ProjectId,
 	}
-	telemetryRessources, err := infra.InitTelemetry(tracingConfig)
+	telemetryRessources, err := infra.InitTelemetry(tracingConfig, apiVersion)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}
@@ -184,6 +185,8 @@ func RunTaskQueue() error {
 			}
 		}()
 	}
+
+	logger.InfoContext(ctx, "starting worker", slog.String("version", apiVersion))
 
 	// Asynchronously keep the task queue workers up to date with the orgs in the database
 	taskQueueWorker := uc.NewTaskQueueWorker(riverClient)
