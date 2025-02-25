@@ -2,10 +2,11 @@ package infra
 
 import "github.com/getsentry/sentry-go"
 
-func SetupSentry(dsn, env string) {
+func SetupSentry(dsn, env, apiVersion string) {
 	if err := sentry.Init(sentry.ClientOptions{
 		Dsn:           dsn,
 		EnableTracing: true,
+		Release:       apiVersion,
 		Environment:   env,
 		TracesSampler: sentry.TracesSampler(func(ctx sentry.SamplingContext) float64 {
 			if ctx.Span.Name == "GET /liveness" {

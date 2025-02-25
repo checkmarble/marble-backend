@@ -9,6 +9,11 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+// Static variable set at compilation-time through linker flags.
+//
+//	$ go build -ldflags '-X main.apiVersion=v0.10.0' .
+var apiVersion string = "dev"
+
 func main() {
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
@@ -31,13 +36,13 @@ func main() {
 	)
 
 	if *shouldRunMigrations {
-		if err := cmd.RunMigrations(); err != nil {
+		if err := cmd.RunMigrations(apiVersion); err != nil {
 			log.Fatal(err)
 		}
 	}
 
 	if *shouldRunServer {
-		err := cmd.RunServer()
+		err := cmd.RunServer(apiVersion)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -49,21 +54,21 @@ func main() {
 	}
 
 	if *shouldRunExecuteScheduledScenarios {
-		err := cmd.RunScheduledExecuter()
+		err := cmd.RunScheduledExecuter(apiVersion)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
 	if *shouldRunDataIngestion {
-		err := cmd.RunBatchIngestion()
+		err := cmd.RunBatchIngestion(apiVersion)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
 	if *shouldRunSendPendingWebhookEvents {
-		err := cmd.RunSendPendingWebhookEvents()
+		err := cmd.RunSendPendingWebhookEvents(apiVersion)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -72,14 +77,14 @@ func main() {
 	if *shouldRunScheduler {
 		// TODO: deprecated in favor of the task queue worker, which now runs the cron jobs. Will be removed eventually.
 		logger.Info("The entrypoint \"cron-scheduler\" is deprecated, its functionality has been merged into the \"worker\" entrypoint")
-		err := cmd.RunTaskQueue()
+		err := cmd.RunTaskQueue(apiVersion)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
 	if *shouldRunWorker {
-		err := cmd.RunTaskQueue()
+		err := cmd.RunTaskQueue(apiVersion)
 		if err != nil {
 			log.Fatal(err)
 		}

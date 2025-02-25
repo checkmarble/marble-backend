@@ -25,6 +25,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	tom := timeoutMiddleware(conf.DefaultTimeout)
 
 	r.GET("/liveness", tom, handleLivenessProbe(uc))
+	r.GET("/version", tom, handleVersion(uc))
 	r.POST("/token", tom, tokenHandler.GenerateToken)
 	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
 	r.GET("/is-sso-available", tom, handleIsSSOEnabled(uc))

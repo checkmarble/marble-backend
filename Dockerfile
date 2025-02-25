@@ -5,7 +5,7 @@ COPY . .
 
 RUN go get
 
-RUN CGO_ENABLED=0 go build -o /go/bin/app -ldflags="-X 'main.version=`git rev-parse --short HEAD`'"
+RUN CGO_ENABLED=0 go build -o /go/bin/app -ldflags="-X 'main.apiVersion=$(git describe --tags)'"
 
 FROM alpine:3.19
 
