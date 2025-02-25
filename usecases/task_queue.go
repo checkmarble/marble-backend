@@ -109,18 +109,27 @@ func (w *TaskQueueWorker) addMissingQueues(ctx context.Context, queues map[strin
 }
 
 func QueuesFromOrgs(ctx context.Context, orgsRepo repositories.OrganizationRepository, execGetter repositories.ExecutorGetter,
-) (queues map[string]river.QueueConfig, err error) {
+) (queues map[string]river.QueueConfig, periodics []*river.PeriodicJob, err error) {
 	exec_fac := executor_factory.NewDbExecutorFactory(orgsRepo, execGetter)
 	orgs, err := orgsRepo.AllOrganizations(ctx, exec_fac.NewExecutor())
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
-		return nil, err
+		return nil, nil, err
 	}
+
 	queues = make(map[string]river.QueueConfig, len(orgs))
+	periodics = make([]*river.PeriodicJob, 0, len(orgs)*2)
+
 	for _, org := range orgs {
+		periodics = append(periodics, []*river.PeriodicJob{
+			scheduled_execution.NewIndexCleanupPeriodicJob(org.Id),
+			scheduled_execution.NewTestRunSummaryPeriodicJob(org.Id),
+		}...)
+
 		queues[org.Id] = river.QueueConfig{
 			MaxWorkers: numberWorkersPerQueue,
 		}
 	}
-	return queues, nil
+
+	return queues, periodics, nil
 }

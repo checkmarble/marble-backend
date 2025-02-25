@@ -2,21 +2,17 @@ package cmd
 
 import (
 	"context"
-	"maps"
 	"net/http"
 	"os"
 	"os/signal"
-	"slices"
 	"syscall"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/jobs"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/cockroachdb/errors"
@@ -136,14 +132,20 @@ func RunTaskQueue() error {
 
 	// Start the task queue workers
 	workers := river.NewWorkers()
-	queues, err := usecases.QueuesFromOrgs(ctx, repositories.OrganizationRepository, repositories.ExecutorGetter)
+	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx,
+		repositories.OrganizationRepository, repositories.ExecutorGetter)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
 	}
 
-	periodics := pure_utils.Map(slices.Collect(maps.Keys(queues)),
-		scheduled_execution.NewIndexCleanupPeriodicJob)
+	// Periodics always contain the per-org tasks retrieved above. Add other, non-organization-scoped periodics below
+	periodics := append(
+		orgPeriodics,
+		[]*river.PeriodicJob{
+			// Add periodic jobs here
+		}...,
+	)
 
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
 		FetchPollInterval: 100 * time.Millisecond,
@@ -178,6 +180,7 @@ func RunTaskQueue() error {
 	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
 	river.AddWorker(workers, adminUc.NewIndexCleanupWorker())
+	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
