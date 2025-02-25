@@ -116,6 +116,23 @@ func (*MarbleDbRepository) UpdateSanctionCheckStatus(ctx context.Context, exec E
 	)
 }
 
+func (*MarbleDbRepository) UpdateSanctionCheckMatchPayload(ctx context.Context, exec Executor,
+	match models.SanctionCheckMatch, newPayload []byte,
+) (models.SanctionCheckMatch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.SanctionCheckMatch{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
+		Set("payload", newPayload).
+		Set("updated_at", "NOW()").
+		Where(squirrel.Eq{"id": match.Id}).Suffix(fmt.Sprintf("RETURNING %s",
+		strings.Join(dbmodels.SelectSanctionCheckMatchesColumn, ",")))
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
+}
+
 func (*MarbleDbRepository) ListSanctionCheckMatches(
 	ctx context.Context,
 	exec Executor,
