@@ -83,7 +83,7 @@ func RunTaskQueue(apiVersion string) error {
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 	license := infra.VerifyLicense(licenseConfig)
 
-	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env)
+	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env, apiVersion)
 	defer sentry.Flush(3 * time.Second)
 
 	tracingConfig := infra.TelemetryConfiguration{

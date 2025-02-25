@@ -9,6 +9,9 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+// Static variable set at compilation-time through linker flags.
+//
+//	$ go build -ldflags '-X main.apiVersion=v0.10.0' .
 var apiVersion string = "dev"
 
 func main() {
