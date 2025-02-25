@@ -49,7 +49,11 @@ type ScenarioTestRun struct {
 	CreatedAt               time.Time
 	ExpiresAt               time.Time
 	Status                  TestrunStatus
-	Summarized              bool
+	// Summarized indicates whether this test run results were summarized by the background worker.
+	// By the nature of how we summarize results (incrementally for the missing period), we cannot stop
+	// processing results when the test run ends), or we would miss results, so we continue processing until
+	// we reach a watermark later than the test run end date, then we set this boolean to true.
+	Summarized bool
 }
 
 type ScenarioTestRunWithSummary struct {

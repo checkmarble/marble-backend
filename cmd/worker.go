@@ -3,21 +3,17 @@ package cmd
 import (
 	"context"
 	"log/slog"
-	"maps"
 	"net/http"
 	"os"
 	"os/signal"
-	"slices"
 	"syscall"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/jobs"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/cockroachdb/errors"
@@ -137,18 +133,20 @@ func RunTaskQueue(apiVersion string) error {
 
 	// Start the task queue workers
 	workers := river.NewWorkers()
-	queues, err := usecases.QueuesFromOrgs(ctx, repositories.OrganizationRepository, repositories.ExecutorGetter)
+	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx,
+		repositories.OrganizationRepository, repositories.ExecutorGetter)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
 	}
 
-	periodics := pure_utils.FlatMap(slices.Collect(maps.Keys(queues)), func(q string) []*river.PeriodicJob {
-		return []*river.PeriodicJob{
-			scheduled_execution.NewIndexCleanupPeriodicJob(q),
-			scheduled_execution.NewTestRunSummaryPeriodicJob(q),
-		}
-	})
+	// Periodics always contain the per-org tasks retrieved above. Add other, non-organization-scoped periodics below
+	periodics := append(
+		orgPeriodics,
+		[]*river.PeriodicJob{
+			// Add periodic jobs here
+		}...,
+	)
 
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
 		FetchPollInterval: 100 * time.Millisecond,

@@ -44,7 +44,8 @@ func NewTestRunSummaryPeriodicJob(orgId string) *river.PeriodicJob {
 				}, &river.InsertOpts{
 					Queue: orgId,
 					UniqueOpts: river.UniqueOpts{
-						ByArgs: true,
+						ByQueue:  true,
+						ByPeriod: TEST_RUN_SUMMARY_WORKER_INTERVAL,
 					},
 				}
 		},
