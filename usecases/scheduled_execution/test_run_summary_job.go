@@ -29,6 +29,10 @@ type RulesRepository interface {
 		testRunId string,
 		begin, end time.Time,
 	) ([]models.RuleExecutionStat, error)
+	DecisionsByOutcomeAndScore(ctx context.Context, exec repositories.Executor, organizationId string,
+		begin, end time.Time) ([]models.DecisionsByVersionByOutcome, error)
+	SaveTestRunDecisionSummary(ctx context.Context, exec repositories.Executor, testRunId string,
+		stat models.DecisionsByVersionByOutcome, newWatermark time.Time) error
 	SaveTestRunSummary(ctx context.Context, exec repositories.Executor,
 		testRunId string, stat models.RuleExecutionStat, newWatermark time.Time,
 	) error
@@ -73,6 +77,10 @@ func NewTestRunSummaryWorker(
 	}
 }
 
+func (w *TestRunSummaryWorker) Timeout(job *river.Job[models.TestRunSummaryArgs]) time.Duration {
+	return 2 * time.Minute
+}
+
 func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.TestRunSummaryArgs]) error {
 	testRuns, err := w.repository.GetRecentTestRunForOrg(ctx, w.executor_factory.NewExecutor(), job.Args.OrgId)
 	if err != nil {
@@ -96,6 +104,11 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 		}
 
 		err := w.transaction_factory.Transaction(ctx, func(tx repositories.Transaction) error {
+			decisionStats, err := w.repository.DecisionsByOutcomeAndScore(ctx, tx, job.Args.OrgId, then, now)
+			if err != nil {
+				return err
+			}
+
 			liveStats, err := w.repository.RulesExecutionStats(ctx, tx, job.Args.OrgId,
 				testRun.ScenarioLiveIterationId, then, now)
 			if err != nil {
@@ -108,6 +121,11 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 				return err
 			}
 
+			for _, stat := range decisionStats {
+				if err := w.repository.SaveTestRunDecisionSummary(ctx, tx, testRun.Id, stat, now); err != nil {
+					return err
+				}
+			}
 			for _, stat := range liveStats {
 				if err := w.repository.SaveTestRunSummary(ctx, tx, testRun.Id, stat, now); err != nil {
 					return err

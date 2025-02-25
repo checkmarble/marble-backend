@@ -234,6 +234,27 @@ func (repo *MarbleDbRepository) SaveTestRunSummary(ctx context.Context, exec Exe
 	return ExecBuilder(ctx, exec, sql)
 }
 
+func (repo *MarbleDbRepository) SaveTestRunDecisionSummary(ctx context.Context, exec Executor,
+	testRunId string, stat models.DecisionsByVersionByOutcome, newWatermark time.Time,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Insert(dbmodels.TABLE_SCENARIO_TESTRUN_SUMMARIES+" as orig").
+		Columns("test_run_id", "version", "watermark", "outcome", "total").
+		Values(testRunId, stat.Version, newWatermark, stat.Outcome, stat.Count).
+		Suffix(`
+			on conflict (test_run_id, version, rule_stable_id, outcome) do update
+			set
+				watermark = now(),
+				total = orig.total + EXCLUDED.total
+		`)
+
+	return ExecBuilder(ctx, exec, sql)
+}
+
 func (repo *MarbleDbRepository) SetTestRunAsSummarized(ctx context.Context, exec Executor, testRunId string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
