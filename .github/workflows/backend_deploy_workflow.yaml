@@ -46,6 +46,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
+          build-args: |
+            BUILDKIT_CONTEXT_KEEP_GIT_DIR=1
           tags: ${{ env.IMAGE }}
 
       - name: "Set up Cloud SDK"
