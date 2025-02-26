@@ -201,7 +201,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		}, nil
 	}
 
-	decision, err := usecase.decisionUseCase.CreateDecision(
+	_, decision, err := usecase.decisionUseCase.CreateDecision(
 		ctx,
 		models.CreateDecisionInput{
 			ScenarioId:         scenarioId,
@@ -495,7 +495,7 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 		return models.Transfer{}, err
 	}
 
-	decision, err := usecase.decisionUseCase.CreateDecision(
+	_, decision, err := usecase.decisionUseCase.CreateDecision(
 		ctx,
 		models.CreateDecisionInput{
 			ScenarioId: scenarioId,
