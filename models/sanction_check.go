@@ -165,6 +165,7 @@ type SanctionCheckMatch struct {
 	QueryIds                     []string
 	UniqueCounterpartyIdentifier *string
 	Payload                      []byte
+	Enriched                     bool
 	ReviewedBy                   *string
 	Comments                     []SanctionCheckMatchComment
 }

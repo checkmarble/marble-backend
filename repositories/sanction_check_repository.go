@@ -126,6 +126,7 @@ func (*MarbleDbRepository) UpdateSanctionCheckMatchPayload(ctx context.Context, 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
 		Set("payload", newPayload).
+		Set("enriched", true).
 		Set("updated_at", "NOW()").
 		Where(squirrel.Eq{"id": match.Id}).Suffix(fmt.Sprintf("RETURNING %s",
 		strings.Join(dbmodels.SelectSanctionCheckMatchesColumn, ",")))

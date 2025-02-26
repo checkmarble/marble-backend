@@ -87,6 +87,7 @@ type SanctionCheckMatchDto struct {
 	Datasets                     []string                       `json:"datasets"`
 	UniqueCounterpartyIdentifier *string                        `json:"unique_counterparty_identifier"`
 	Payload                      json.RawMessage                `json:"payload"`
+	Enriched                     bool                           `json:"enriched"`
 	Comments                     []SanctionCheckMatchCommentDto `json:"comments"`
 }
 
@@ -99,6 +100,7 @@ func AdaptSanctionCheckMatchDto(m models.SanctionCheckMatch) SanctionCheckMatchD
 		QueryIds:                     m.QueryIds,
 		Datasets:                     make([]string, 0),
 		Payload:                      m.Payload,
+		Enriched:                     m.Enriched,
 		UniqueCounterpartyIdentifier: m.UniqueCounterpartyIdentifier,
 		Comments:                     pure_utils.Map(m.Comments, AdaptSanctionCheckMatchCommentDto),
 	}
