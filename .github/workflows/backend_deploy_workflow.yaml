@@ -22,7 +22,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -41,13 +43,17 @@ jobs:
           registry: europe-west1-docker.pkg.dev
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
+      
+      - name: Extract version from tag
+        id: version
+        run: echo "MARBLE_VERSION=$(git describe --tags)" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           push: true
           build-args: |
-            BUILDKIT_CONTEXT_KEEP_GIT_DIR=1
+            MARBLE_VERSION=${{ steps.version.outputs.MARBLE_VERSION }}
           tags: ${{ env.IMAGE }}
 
       - name: "Set up Cloud SDK"

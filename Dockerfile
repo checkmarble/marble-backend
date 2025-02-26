@@ -1,11 +1,13 @@
 FROM golang:1.23 as build
 
+ARG MARBLE_VERSION=dev
+
 WORKDIR /go/src/app
 COPY . .
 
 RUN go get
 
-RUN CGO_ENABLED=0 go build -o /go/bin/app -ldflags="-X 'main.apiVersion=$(git describe --tags)'"
+RUN CGO_ENABLED=0 go build -o /go/bin/app -ldflags="-X 'main.apiVersion=${MARBLE_VERSION}'"
 
 FROM alpine:3.19
 
