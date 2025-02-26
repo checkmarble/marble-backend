@@ -491,6 +491,11 @@ func (uc SanctionCheckUsecase) EnrichMatch(ctx context.Context, matchId string) 
 		return models.SanctionCheckMatch{}, err
 	}
 
+	if match.Enriched {
+		return models.SanctionCheckMatch{}, errors.Wrap(models.ConflictError,
+			"this sanction check match was already enriched")
+	}
+
 	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, match)
 	if err != nil {
 		return models.SanctionCheckMatch{}, err

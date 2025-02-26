@@ -20,6 +20,7 @@ type DBSanctionCheckMatch struct {
 	QueryIds             []string        `db:"query_ids"`
 	CounterpartyId       *string         `db:"counterparty_id"`
 	Payload              json.RawMessage `db:"payload"`
+	Enriched             bool            `db:"enriched"`
 	ReviewedBy           *string         `db:"reviewed_by"`
 	CreatedAt            time.Time       `db:"created_at"`
 	UpdatedAt            time.Time       `db:"updated_at"`
@@ -37,6 +38,7 @@ func AdaptSanctionCheckMatch(dto DBSanctionCheckMatch) (models.SanctionCheckMatc
 		QueryIds:                     dto.QueryIds,
 		UniqueCounterpartyIdentifier: dto.CounterpartyId,
 		Payload:                      dto.Payload,
+		Enriched:                     dto.Enriched,
 	}
 
 	return match, nil
