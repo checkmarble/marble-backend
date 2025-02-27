@@ -89,6 +89,10 @@ func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) (models.Open
 		return cached, nil
 	}
 
+	if ok, err := repo.IsConfigured(ctx); !ok {
+		return models.OpenSanctionsCatalog{}, err
+	}
+
 	catalogUrl := fmt.Sprintf("%s/catalog", repo.opensanctions.Host())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
