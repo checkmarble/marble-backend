@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -40,11 +41,12 @@ func NewServer(
 	uc usecases.Usecases,
 	auth Authentication,
 	tokenHandler TokenHandler,
+	logger *slog.Logger,
 	opts ...Option,
 ) *http.Server {
 	o := applyOptions(opts)
 
-	addRoutes(router, conf, uc, auth, tokenHandler)
+	addRoutes(router, conf, uc, auth, tokenHandler, logger)
 
 	var host string
 	if o.localTest {

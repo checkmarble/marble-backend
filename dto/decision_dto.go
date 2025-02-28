@@ -32,11 +32,11 @@ type DecisionListPageWithIndexesDto struct {
 	HasNextPage bool       `json:"has_next_page"`
 }
 
-func AdaptDecisionListPageWithIndexesDto(decisionsPage models.DecisionListPageWithIndexes, marbleAppHost string) DecisionListPageWithIndexesDto {
+func AdaptDecisionListPageWithIndexesDto(decisionsPage models.DecisionListPageWithIndexes, marbleAppUrl *url.URL) DecisionListPageWithIndexesDto {
 	// initialize as a non nil slice, so that it is serialized as an empty array instead of null
 	items := make([]Decision, len(decisionsPage.Decisions))
 	for i, decision := range decisionsPage.Decisions {
-		items[i] = NewDecisionDto(decision, marbleAppHost)
+		items[i] = NewDecisionDto(decision, marbleAppUrl)
 	}
 
 	return DecisionListPageWithIndexesDto{
@@ -52,10 +52,10 @@ type DecisionListPageDto struct {
 	HasNextPage bool       `json:"has_next_page"`
 }
 
-func AdaptDecisionListPageDto(decisionsPage models.DecisionListPage, marbleAppHost string) DecisionListPageDto {
+func AdaptDecisionListPageDto(decisionsPage models.DecisionListPage, marbleAppUrl *url.URL) DecisionListPageDto {
 	items := make([]Decision, len(decisionsPage.Decisions))
 	for i, decision := range decisionsPage.Decisions {
-		items[i] = NewDecisionDto(decision, marbleAppHost)
+		items[i] = NewDecisionDto(decision, marbleAppUrl)
 	}
 
 	return DecisionListPageDto{
@@ -137,10 +137,10 @@ type DecisionWithRules struct {
 	SanctionCheck *DecisionSanctionCheck `json:"sanction_check,omitempty"`
 }
 
-func NewDecisionDto(decision models.Decision, marbleAppHost string) Decision {
+func NewDecisionDto(decision models.Decision, marbleAppUrl *url.URL) Decision {
 	decisionDto := Decision{
 		Id:                decision.DecisionId,
-		AppLink:           toDecisionUrl(marbleAppHost, decision.DecisionId),
+		AppLink:           toDecisionUrl(marbleAppUrl, decision.DecisionId),
 		CreatedAt:         decision.CreatedAt,
 		TriggerObjectType: decision.ClientObject.TableName,
 		TriggerObject:     decision.ClientObject.Data,
@@ -173,22 +173,25 @@ func NewDecisionDto(decision models.Decision, marbleAppHost string) Decision {
 	return decisionDto
 }
 
-func toDecisionUrl(marbleAppHost string, decisionId string) null.String {
-	if marbleAppHost == "" {
-		return null.String{}
+func toDecisionUrl(marbleAppUrl *url.URL, decisionId string) null.String {
+	if marbleAppUrl == nil {
+		return null.StringFrom("")
+	}
+	if marbleAppUrl.String() == "" {
+		return null.StringFrom("")
 	}
 
 	url := url.URL{
-		Scheme: "https",
-		Host:   marbleAppHost,
+		Scheme: marbleAppUrl.Scheme,
+		Host:   marbleAppUrl.Host,
 		Path:   fmt.Sprintf("/decisions/%s", decisionId),
 	}
 	return null.StringFrom(url.String())
 }
 
-func NewDecisionWithRuleDto(decision models.DecisionWithRuleExecutions, marbleAppHost string, withRuleExecution bool) DecisionWithRules {
+func NewDecisionWithRuleDto(decision models.DecisionWithRuleExecutions, marbleAppUrl *url.URL, withRuleExecution bool) DecisionWithRules {
 	decisionDto := DecisionWithRules{
-		Decision: NewDecisionDto(decision.Decision, marbleAppHost),
+		Decision: NewDecisionDto(decision.Decision, marbleAppUrl),
 		Rules:    make([]DecisionRule, len(decision.RuleExecutions)),
 	}
 
@@ -246,13 +249,13 @@ type DecisionsWithMetadata struct {
 
 func AdaptDecisionsWithMetadataDto(
 	decisions []models.DecisionWithRuleExecutions,
-	marbleAppHost string,
+	marbleAppUrl *url.URL,
 	nbSkipped int,
 	withRuleExecution bool,
 ) DecisionsWithMetadata {
 	decisionDtos := make([]DecisionWithRules, len(decisions))
 	for i, decision := range decisions {
-		decisionDtos[i] = NewDecisionWithRuleDto(decision, marbleAppHost, withRuleExecution)
+		decisionDtos[i] = NewDecisionWithRuleDto(decision, marbleAppUrl, withRuleExecution)
 	}
 
 	return DecisionsWithMetadata{
