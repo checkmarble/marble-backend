@@ -1,7 +1,9 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/checkmarble/marble-backend/usecases"
@@ -21,8 +23,12 @@ func timeoutMiddleware(duration time.Duration) gin.HandlerFunc {
 	)
 }
 
-func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Authentication, tokenHandler TokenHandler) {
+func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Authentication, tokenHandler TokenHandler, logger *slog.Logger) {
 	tom := timeoutMiddleware(conf.DefaultTimeout)
+	parsedAppUrl, err := url.Parse(conf.MarbleAppUrl)
+	if err != nil || parsedAppUrl.Scheme == "" || parsedAppUrl.Host == "" {
+		logger.Error("Failed to parse the Marble app URL environment variable. The decision page url passed in the decisions API response will be empty.", "url", conf.MarbleAppUrl)
+	}
 
 	r.GET("/liveness", tom, handleLivenessProbe(uc))
 	r.GET("/version", tom, handleVersion(uc))
@@ -36,15 +42,15 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),
-		handleListDecisions(uc, conf.MarbleAppHost))
+		handleListDecisions(uc, parsedAppUrl))
 	router.GET("/decisions/with-ranks", tom,
-		handleListDecisionsInternal(uc, conf.MarbleAppHost))
+		handleListDecisionsInternal(uc, parsedAppUrl))
 	router.POST("/decisions", timeoutMiddleware(conf.DecisionTimeout),
-		handlePostDecision(uc, conf.MarbleAppHost))
+		handlePostDecision(uc, parsedAppUrl))
 	router.POST("/decisions/all",
 		timeoutMiddleware(3*conf.DecisionTimeout),
-		handlePostAllDecisions(uc, conf.MarbleAppHost))
-	router.GET("/decisions/:decision_id", tom, handleGetDecision(uc, conf.MarbleAppHost))
+		handlePostAllDecisions(uc, parsedAppUrl))
+	router.GET("/decisions/:decision_id", tom, handleGetDecision(uc, parsedAppUrl))
 	router.GET("/decisions/:decision_id/active-snoozes", tom, handleSnoozesOfDecision(uc))
 	router.POST("/decisions/:decision_id/snooze", tom, handleSnoozeDecision(uc))
 

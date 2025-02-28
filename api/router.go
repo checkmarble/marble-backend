@@ -2,7 +2,10 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/url"
+	"slices"
 	"time"
 
 	sentrygin "github.com/getsentry/sentry-go/gin"
@@ -16,15 +19,31 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func corsOption(conf Configuration) cors.Config {
-	protocol := "https://"
-	if conf.Env == "development" {
-		protocol = "http://"
-	}
-
-	allowedOrigins := []string{
-		protocol + conf.MarbleAppHost,
-		protocol + conf.MarbleBackofficeHost,
+func corsOption(ctx context.Context, conf Configuration) cors.Config {
+	logger := utils.LoggerFromContext(ctx)
+	allowedOrigins := []string{}
+	for i, s := range []string{conf.MarbleAppUrl, conf.MarbleBackofficeUrl} {
+		parsedUrl, err := url.Parse(s)
+		switch {
+		case err != nil:
+			m := map[int]string{
+				0: "marble app url",
+				1: "marble backoffice url",
+			}
+			logger.Error(
+				fmt.Sprintf("Failed to parse the URL environment variable %s for CORS. Requests made from the browser from this url to the API will be rejected.", m[i]),
+				"url", s)
+		case !slices.Contains([]string{"http", "https"}, parsedUrl.Scheme):
+			logger.Error(
+				fmt.Sprintf("The url %s does not contain a scheme (http or https), so it cannot be used for CORS.", s),
+				"url", s)
+		default:
+			u := url.URL{
+				Scheme: parsedUrl.Scheme,
+				Host:   parsedUrl.Host,
+			}
+			allowedOrigins = append(allowedOrigins, u.String())
+		}
 	}
 
 	if conf.Env == "development" {
@@ -61,7 +80,7 @@ func InitRouterMiddlewares(
 
 	r.Use(gin.Recovery())
 	r.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
-	r.Use(cors.New(corsOption(conf)))
+	r.Use(cors.New(corsOption(ctx, conf)))
 	r.Use(middleware.NewLogging(logger, conf.RequestLoggingLevel))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
 	r.Use(utils.StoreSegmentClientInContextMiddleware(segmentClient))

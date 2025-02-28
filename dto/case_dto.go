@@ -60,7 +60,7 @@ func AdaptCaseWithDecisionsDto(c models.Case) APICaseWithDecisions {
 	return APICaseWithDecisions{
 		APICase: AdaptCaseDto(c),
 		Decisions: pure_utils.Map(c.Decisions, func(d models.DecisionWithRuleExecutions) DecisionWithRules {
-			return NewDecisionWithRuleDto(d, "", false)
+			return NewDecisionWithRuleDto(d, nil, false)
 		}),
 	}
 }
