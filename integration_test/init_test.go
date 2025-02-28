@@ -165,7 +165,7 @@ func TestMain(m *testing.M) {
 	apiConfig := api.Configuration{
 		Env:                 "development",
 		AppName:             "marble-backend",
-		MarbleAppHost:       "http://localhost:3000",
+		MarbleAppUrl:        "http://localhost:3000",
 		RequestLoggingLevel: "all",
 		TokenLifetimeMinute: 60,
 		SegmentWriteKey:     "",
@@ -180,7 +180,7 @@ func TestMain(m *testing.M) {
 	telemetryRessources, _ := infra.InitTelemetry(infra.TelemetryConfiguration{Enabled: false}, "")
 	router := api.InitRouterMiddlewares(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, testUsecases,
-		deps.Authentication, deps.TokenHandler, api.WithLocalTest(true))
+		deps.Authentication, deps.TokenHandler, logger, api.WithLocalTest(true))
 
 	jwtRepository := repositories.NewJWTRepository(privateKey)
 	database := postgres.New(dbPool)
