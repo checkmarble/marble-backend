@@ -23,5 +23,13 @@ jobs:
       - name: Build
         run: go build -v ./...
 
+      - name: Cache embedded postgres
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-embedded-postgres
+        with:
+          key: pg
+          path: ~/.embedded-postgres-go
+
       - name: Test
         run: go test -v ./...
