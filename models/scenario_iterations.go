@@ -55,6 +55,7 @@ type UpdateScenarioIterationBody struct {
 }
 
 type SanctionCheckConfig struct {
+	StableId                 string
 	Name                     string
 	Description              string
 	RuleGroup                *string
@@ -87,6 +88,7 @@ type SanctionCheckOutcome struct {
 }
 
 type UpdateSanctionCheckConfigInput struct {
+	StableId                 *string
 	Name                     *string
 	Description              *string
 	RuleGroup                *string
