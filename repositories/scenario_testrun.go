@@ -262,7 +262,8 @@ func (repo *MarbleDbRepository) SetTestRunAsSummarized(ctx context.Context, exec
 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCENARIO_TESTRUN).
-		Set("summarized", true)
+		Set("summarized", true).
+		Where(squirrel.Eq{"id": testRunId})
 
 	return ExecBuilder(ctx, exec, sql)
 }
