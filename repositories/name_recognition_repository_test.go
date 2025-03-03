@@ -16,7 +16,7 @@ func getMockedNameRecognitionRepository() NameRecognitionRepository {
 	gock.InterceptClient(client)
 
 	os := infra.InitializeOpenSanctions(client, "", "", "")
-	os.WithNameRecognition("http://name.recognition/detect")
+	os.WithNameRecognition("http://name.recognition/detect", "apikey")
 
 	return NameRecognitionRepository{
 		Client:                  client,
@@ -38,6 +38,7 @@ func TestNameRecognitionCalled(t *testing.T) {
 
 	gock.New("http://name.recognition/detect").
 		Post("/detect").
+		MatchHeader("authorization", "Bearer apikey").
 		BodyString(`{"text": "dinner with joe finnigan"}`).
 		Reply(http.StatusOK).
 		BodyString(response)

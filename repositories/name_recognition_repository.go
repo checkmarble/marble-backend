@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -51,12 +52,16 @@ func (repo NameRecognitionRepository) PerformNameRecognition(ctx context.Context
 		return nil, err
 	}
 
+	if repo.NameRecognitionProvider.ApiKey != "" {
+		req.Header.Set("authorization", fmt.Sprintf("Bearer %s", repo.NameRecognitionProvider.ApiKey))
+	}
+
 	resp, err := repo.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("could not retrieve matches from label")
+		return nil, errors.New(fmt.Sprintf("status code %d", resp.StatusCode))
 	}
 
 	defer resp.Body.Close()
