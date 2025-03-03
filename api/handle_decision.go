@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 
@@ -17,7 +18,7 @@ var decisionPaginationDefaults = models.PaginationDefaults{
 	Order:  models.SortingOrderDesc,
 }
 
-func handleGetDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+func handleGetDecision(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		decisionID := c.Param("decision_id")
@@ -27,12 +28,12 @@ func handleGetDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.C
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppHost, true))
+		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppUrl, true))
 	}
 }
 
 // Endpoint used by the public API, that does not return the output decision ranks
-func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+func handleListDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -64,12 +65,12 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptDecisionListPageDto(decisions, marbleAppHost))
+		c.JSON(http.StatusOK, dto.AdaptDecisionListPageDto(decisions, marbleAppUrl))
 	}
 }
 
 // Endpoint used by the internal API to serve the app, that returns the output decision ranks
-func handleListDecisionsInternal(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+func handleListDecisionsInternal(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -101,11 +102,11 @@ func handleListDecisionsInternal(uc usecases.Usecases, marbleAppHost string) fun
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptDecisionListPageWithIndexesDto(decisions, marbleAppHost))
+		c.JSON(http.StatusOK, dto.AdaptDecisionListPageWithIndexesDto(decisions, marbleAppUrl))
 	}
 }
 
-func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+func handlePostDecision(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -147,11 +148,11 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 			})
 			return
 		}
-		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppHost, false))
+		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppUrl, false))
 	}
 }
 
-func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+func handlePostAllDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -179,6 +180,6 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *
 		if presentIngestionValidationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.AdaptDecisionsWithMetadataDto(decisions, marbleAppHost, nbSkipped, false))
+		c.JSON(http.StatusOK, dto.AdaptDecisionsWithMetadataDto(decisions, marbleAppUrl, nbSkipped, false))
 	}
 }
