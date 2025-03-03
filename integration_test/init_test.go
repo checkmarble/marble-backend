@@ -2,18 +2,14 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
+	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
@@ -47,69 +43,27 @@ var (
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		log.Fatalf("Could not construct pool: %s", err)
+	pg := embeddedpostgres.NewDatabase(
+		embeddedpostgres.DefaultConfig().
+			Version(embeddedpostgres.V15).
+			WithoutTcp().
+			Database("marble"),
+	)
+
+	if err := pg.Start(); err != nil {
+		log.Fatalf("could not start database: %s", err.Error())
 	}
 
-	err = pool.Client.Ping()
-	if err != nil {
-		log.Fatalf("Could not connect to Docker: %s", err)
-	}
+	defer func() {
+		_ = pg.Stop()
+	}()
 
-	// pulls an image, creates a container based on it and runs it
-	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "postgres",
-		Tag:        "15",
-		Env: []string{
-			fmt.Sprintf("POSTGRES_PASSWORD=%s", testPassword),
-			fmt.Sprintf("POSTGRES_USER=%s", testUser),
-			fmt.Sprintf("POSTGRES_DB=%s", testDbName),
-			"listen_addresses = '*'",
-		},
-	}, func(config *docker.HostConfig) {
-		// set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
-	})
-	if err != nil {
-		log.Fatalf("Could not start resource: %s", err)
-	}
-
-	err = resource.Expire(testDbLifetime) // Tell docker to hard kill the container in testDbLifetime seconds
-	if err != nil {
-		log.Fatalf("Could not set container lifetime: %s", err)
-	}
-
-	pool.MaxWait = testDbLifetime * time.Second
-
-	hostAndPort := resource.GetHostPort("5432/tcp") // docker container will bind to another port than 5432 if already taken
-	connectionString := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", testUser, testPassword, hostAndPort, testDbName)
-	testDbPool, err := pgxpool.New(context.Background(), connectionString)
-	if err != nil {
-		log.Fatalf("Could not connect to database: %s", err)
-	}
-	log.Printf("DB connection pool created.")
-
-	if err = pool.Retry(func() error {
-		err = testDbPool.Ping(ctx)
-		if err != nil {
-			log.Printf("Could not ping database: %s", err)
-			return err
-		}
-		return nil
-	}); err != nil {
-		log.Fatalf("Could not connect to db: %s", err)
-	}
-
-	pgConfig := infra.PgConfig{ConnectionString: connectionString}
+	pgConfig := infra.PgConfig{ConnectionString: pg.GetConnectionURL().String()}
 	migrater := repositories.NewMigrater(pgConfig)
 	logger := utils.NewLogger("text")
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
-	err = migrater.Run(ctx)
-	if err != nil {
+	if err := migrater.Run(ctx); err != nil {
 		log.Fatalf("Could not run migrations: %s", err)
 	}
 
@@ -120,9 +74,7 @@ func TestMain(m *testing.M) {
 	}
 
 	privateKey := infra.ReadParseOrGenerateSigningKey(ctx, "", "")
-
 	workers := river.NewWorkers()
-	// AddWorker panics if the worker is already registered or invalid
 
 	riverClient, err = river.NewClient(riverpgxv5.New(dbPool), &river.Config{
 		Workers: workers,
@@ -164,6 +116,10 @@ func TestMain(m *testing.M) {
 		log.Fatalln("Could not start river client:", err)
 	}
 
+	defer func() {
+		_ = riverClient.Stop(ctx)
+	}()
+
 	apiConfig := api.Configuration{
 		Env:                 "development",
 		AppName:             "marble-backend",
@@ -183,6 +139,10 @@ func TestMain(m *testing.M) {
 	router := api.InitRouterMiddlewares(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, testUsecases,
 		deps.Authentication, deps.TokenHandler, api.WithLocalTest(true))
+
+	defer func() {
+		_ = server.Shutdown(ctx)
+	}()
 
 	jwtRepository := repositories.NewJWTRepository(privateKey)
 	database := postgres.New(dbPool)
@@ -204,16 +164,5 @@ func TestMain(m *testing.M) {
 	logger.InfoContext(ctx, "started server", slog.String("url", testServer.URL))
 
 	// Run tests
-	code := m.Run()
-
-	_ = server.Shutdown(ctx)
-
-	_ = riverClient.Stop(ctx)
-
-	// You can't defer this because os.Exit doesn't care for defer
-	if err := pool.Purge(resource); err != nil {
-		log.Fatalf("Could not purge resource: %s", err)
-	}
-
-	os.Exit(code)
+	m.Run()
 }
