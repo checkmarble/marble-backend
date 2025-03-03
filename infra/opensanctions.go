@@ -28,6 +28,7 @@ type OpenSanctions struct {
 
 type NameRecognitionProvider struct {
 	ApiUrl string
+	ApiKey string
 }
 
 func InitializeOpenSanctions(client *http.Client, host, authMethod, creds string) OpenSanctions {
@@ -49,9 +50,10 @@ func InitializeOpenSanctions(client *http.Client, host, authMethod, creds string
 	return os
 }
 
-func (os *OpenSanctions) WithNameRecognition(apiUrl string) *OpenSanctions {
+func (os *OpenSanctions) WithNameRecognition(apiUrl, apiKey string) *OpenSanctions {
 	os.nameRecognition = &NameRecognitionProvider{
 		ApiUrl: apiUrl,
+		ApiKey: apiKey,
 	}
 
 	return os
