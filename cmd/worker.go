@@ -54,7 +54,8 @@ func RunTaskQueue(apiVersion string) error {
 		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
 	)
 	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
-		openSanctionsConfig.WithNameRecognition(apiUrl)
+		openSanctionsConfig.WithNameRecognition(apiUrl,
+			utils.GetEnv("NAME_RECOGNITION_API_KEY", ""))
 	}
 
 	licenseConfig := models.LicenseConfiguration{

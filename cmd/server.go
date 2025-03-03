@@ -75,7 +75,8 @@ func RunServer(apiVersion string) error {
 	)
 
 	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
-		openSanctionsConfig.WithNameRecognition(apiUrl)
+		openSanctionsConfig.WithNameRecognition(apiUrl,
+			utils.GetEnv("NAME_RECOGNITION_API_KEY", ""))
 	}
 
 	seedOrgConfig := models.SeedOrgConfiguration{

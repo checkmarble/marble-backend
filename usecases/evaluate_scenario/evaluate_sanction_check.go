@@ -233,7 +233,8 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 
 	matches, err := e.nameRecognizer.PerformNameRecognition(ctx, labelFilter)
 	if err != nil {
-		return queriesOut, false, errors.New("could not perform name recognition on label")
+		return queriesOut, false, errors.Wrap(err,
+			"could not perform name recognition on label")
 	}
 
 	var personQuery *models.OpenSanctionsCheckQuery = nil
