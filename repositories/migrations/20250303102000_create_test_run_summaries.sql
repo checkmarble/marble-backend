@@ -15,13 +15,14 @@ create table scenario_test_run_summaries (
 
     constraint fk_scenario_test_run
         foreign key (test_run_id)
-        references scenario_test_run (id)
+        references scenario_test_run (id),
+
+    unique nulls not distinct (test_run_id, version, rule_stable_id, outcome)
 );
 
 alter table scenario_test_run
     add column summarized bool not null default false;
 
-create unique index idx_unique_scenario_test_summaries on scenario_test_run_summaries (test_run_id, version, rule_stable_id, outcome);
 create index idx_scenario_test_summaries_test_run on scenario_test_run_summaries (test_run_id);
 
 -- +goose StatementEnd

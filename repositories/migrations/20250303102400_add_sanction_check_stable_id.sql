@@ -4,9 +4,12 @@
 alter table sanction_check_configs
     add column stable_id uuid null;
 
-update sanction_check_configs
-set stable_id = gen_random_uuid()
-where stable_id is null;
+update sanction_check_configs scc
+set stable_id = sci.scenario_id
+from scenario_iterations sci
+where
+    scc.scenario_iteration_id = sci.id and
+    stable_id is null;
 
 alter table sanction_check_configs
     alter column stable_id set not null;

@@ -146,7 +146,6 @@ func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
 	organizationId string,
 	iterationId string,
 	begin, end time.Time,
-	fakeStableRuleId string,
 	base string, // "decisions" or "phantom_decisions"
 ) ([]models.RuleExecutionStat, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -170,9 +169,10 @@ func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
 		return nil, err
 	}
 
-	sanctionCheckRuleName := "SELECT name FROM sanction_check_configs WHERE scenario_iteration_id = $1"
+	sanctionCheckRuleName := "SELECT stable_id, name FROM sanction_check_configs WHERE scenario_iteration_id = $1"
+	var stableId string
 	var name string
-	err = exec.QueryRow(ctx, sanctionCheckRuleName, iterationId).Scan(&name)
+	err = exec.QueryRow(ctx, sanctionCheckRuleName, iterationId).Scan(&stableId, &name)
 	// All iterations don't have a sanction check config enabled. If there is none, just early exit
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -211,7 +211,7 @@ func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
 		}
 		stat.Name = name
 		stat.Version = version
-		stat.StableRuleId = &fakeStableRuleId
+		stat.StableRuleId = &stableId
 		stats = append(stats, stat)
 	}
 

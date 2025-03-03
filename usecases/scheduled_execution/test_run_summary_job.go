@@ -29,6 +29,14 @@ type RulesRepository interface {
 		testRunId string,
 		begin, end time.Time,
 	) ([]models.RuleExecutionStat, error)
+	SanctionCheckExecutionStats(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		iterationId string,
+		begin, end time.Time,
+		base string, // "decisions" or "phantom_decisions"
+	) ([]models.RuleExecutionStat, error)
 	DecisionsByOutcomeAndScore(ctx context.Context, exec repositories.Executor, organizationId string,
 		begin, end time.Time) ([]models.DecisionsByVersionByOutcome, error)
 	SaveTestRunDecisionSummary(ctx context.Context, exec repositories.Executor, testRunId string,
@@ -121,19 +129,32 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 				return err
 			}
 
+			liveSanctionCheckStats, err := w.repository.SanctionCheckExecutionStats(
+				ctx, tx, job.Args.OrgId, testRun.ScenarioLiveIterationId, then, now, "decisions")
+			if err != nil {
+				return err
+			}
+
+			phantomSanctionChecksStats, err := w.repository.SanctionCheckExecutionStats(
+				ctx, tx, job.Args.OrgId, testRun.ScenarioIterationId, then, now, "phantom_decisions")
+			if err != nil {
+				return err
+			}
+
 			for _, stat := range decisionStats {
 				if err := w.repository.SaveTestRunDecisionSummary(ctx, tx, testRun.Id, stat, now); err != nil {
 					return err
 				}
 			}
-			for _, stat := range liveStats {
-				if err := w.repository.SaveTestRunSummary(ctx, tx, testRun.Id, stat, now); err != nil {
-					return err
-				}
-			}
-			for _, stat := range phantomStats {
-				if err := w.repository.SaveTestRunSummary(ctx, tx, testRun.Id, stat, now); err != nil {
-					return err
+
+			for _, results := range [][]models.RuleExecutionStat{
+				liveStats, phantomStats,
+				liveSanctionCheckStats, phantomSanctionChecksStats,
+			} {
+				for _, stat := range results {
+					if err := w.repository.SaveTestRunSummary(ctx, tx, testRun.Id, stat, now); err != nil {
+						return err
+					}
 				}
 			}
 
