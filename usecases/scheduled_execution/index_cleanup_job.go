@@ -12,7 +12,7 @@ import (
 	"github.com/riverqueue/river"
 )
 
-const INDEX_CLEANUP_WORKER_INTERVAL = 10 * time.Second
+const INDEX_CLEANUP_WORKER_INTERVAL = time.Hour
 
 func NewIndexCleanupPeriodicJob(orgId string) *river.PeriodicJob {
 	return river.NewPeriodicJob(
