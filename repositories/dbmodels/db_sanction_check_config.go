@@ -15,6 +15,7 @@ const TABLE_SANCTION_CHECK_CONFIGS = "sanction_check_configs"
 
 type DBSanctionCheckConfigs struct {
 	Id                  string                      `db:"id"`
+	StableId            string                      `db:"stable_id"`
 	ScenarioIterationId string                      `db:"scenario_iteration_id"`
 	Name                string                      `db:"name"`
 	Description         string                      `db:"description"`
@@ -41,6 +42,7 @@ var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
 
 func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckConfig, error) {
 	scc := models.SanctionCheckConfig{
+		StableId:      db.StableId,
 		Name:          db.Name,
 		Description:   db.Description,
 		RuleGroup:     &db.RuleGroup,

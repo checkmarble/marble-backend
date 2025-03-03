@@ -89,6 +89,7 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
 		Columns(
+			"stable_id",
 			"scenario_iteration_id",
 			"name",
 			"description",
@@ -99,6 +100,7 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 			"query",
 			"counterparty_id_expression").
 		Values(
+			squirrel.Expr("coalesce(?, gen_random_uuid())", cfg.StableId),
 			scenarioIterationId,
 			cfg.Name,
 			utils.Or(cfg.Description, ""),
