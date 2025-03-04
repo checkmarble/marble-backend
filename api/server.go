@@ -11,6 +11,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type Option func(*options)
@@ -39,7 +40,7 @@ func NewServer(
 	router *gin.Engine,
 	conf Configuration,
 	uc usecases.Usecases,
-	auth Authentication,
+	auth utils.Authentication,
 	tokenHandler TokenHandler,
 	logger *slog.Logger,
 	opts ...Option,

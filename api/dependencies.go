@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases/token"
+	"github.com/checkmarble/marble-backend/utils"
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -16,7 +17,7 @@ import (
 )
 
 type dependencies struct {
-	Authentication Authentication
+	Authentication utils.Authentication
 	TokenHandler   TokenHandler
 	SegmentClient  analytics.Client
 }
@@ -45,7 +46,7 @@ func InitDependencies(
 	segmentClient := analytics.New(conf.SegmentWriteKey)
 
 	return dependencies{
-		Authentication: NewAuthentication(tokenValidator),
+		Authentication: utils.NewAuthentication(tokenValidator),
 		SegmentClient:  segmentClient,
 		TokenHandler:   NewTokenHandler(tokenGenerator),
 	}
