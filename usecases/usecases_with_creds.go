@@ -109,6 +109,8 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		scenarioTestRunRepository: &usecases.Repositories.MarbleDbRepository,
 		scenarioEvaluator:         usecases.NewScenarioEvaluator(),
 		featureAccessReader:       usecases.NewFeatureAccessReader(),
+		openSanctionsRepository:   usecases.Repositories.OpenSanctionsRepository,
+		taskQueueRepository:       usecases.Repositories.TaskQueueRepository,
 	}
 }
 
@@ -151,6 +153,7 @@ func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecas
 		scenarioFetcher:               usecases.NewScenarioFetcher(),
 		openSanctionsProvider:         usecases.Repositories.OpenSanctionsRepository,
 		sanctionCheckConfigRepository: &usecases.Repositories.MarbleDbRepository,
+		taskQueueRepository:           usecases.Repositories.TaskQueueRepository,
 		repository:                    &usecases.Repositories.MarbleDbRepository,
 		blobRepository:                usecases.Repositories.BlobRepository,
 		blobBucketUrl:                 usecases.caseManagerBucketUrl,
@@ -544,6 +547,15 @@ func (usecases UsecasesWithCreds) NewTestRunSummaryWorker() *scheduled_execution
 	w := scheduled_execution.NewTestRunSummaryWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		&usecases.Repositories.MarbleDbRepository,
+	)
+	return &w
+}
+
+func (usecases UsecasesWithCreds) NewMatchEnrichmentWorker() *scheduled_execution.MatchEnrichmentWorker {
+	w := scheduled_execution.NewMatchEnrichmentWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewSanctionCheckUsecase(),
 		&usecases.Repositories.MarbleDbRepository,
 	)
 	return &w

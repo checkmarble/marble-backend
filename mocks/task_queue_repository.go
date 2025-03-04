@@ -52,3 +52,12 @@ func (m *TaskQueueRepository) EnqueueCreateIndexTask(
 	args := m.Called(ctx, organizationId, indices)
 	return args.Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueMatchEnrichmentTask(
+	ctx context.Context,
+	organizationId string,
+	sanctionCheckId string,
+) error {
+	args := m.Called(ctx, organizationId, sanctionCheckId)
+	return args.Error(0)
+}

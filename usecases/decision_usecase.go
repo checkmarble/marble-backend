@@ -123,6 +123,8 @@ type DecisionUsecase struct {
 	phantomUseCase            decision_phantom.PhantomDecisionUsecase
 	featureAccessReader       decisionUsecaseFeatureAccessReader
 	scenarioEvaluator         ScenarioEvaluator
+	openSanctionsRepository   repositories.OpenSanctionsRepository
+	taskQueueRepository       repositories.TaskQueueRepository
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
@@ -450,10 +452,15 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 
 		if decision.SanctionCheckExecution != nil {
-			if _, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
-				decision.DecisionId, *decision.SanctionCheckExecution, true); err != nil {
+			sc, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
+				decision.DecisionId, *decision.SanctionCheckExecution, true)
+			if err != nil {
 				return models.DecisionWithRuleExecutions{},
 					errors.Wrap(err, "could not store sanction check execution")
+			}
+
+			if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
+				_ = usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx, input.OrganizationId, sc.Id)
 			}
 		}
 
@@ -626,10 +633,14 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			}
 
 			if item.decision.SanctionCheckExecution != nil {
-				_, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
+				sc, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
 					item.decision.DecisionId, *item.decision.SanctionCheckExecution, true)
 				if err != nil {
 					return nil, errors.Wrap(err, "could not store sanction check execution")
+				}
+
+				if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
+					_ = usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx, input.OrganizationId, sc.Id)
 				}
 			}
 

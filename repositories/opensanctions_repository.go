@@ -40,6 +40,10 @@ type openSanctionsRequestQuery struct {
 	Properties models.OpenSanctionCheckFilter `json:"properties"`
 }
 
+func (repo OpenSanctionsRepository) IsSelfHosted(ctx context.Context) bool {
+	return repo.opensanctions.IsSelfHosted()
+}
+
 func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, error) {
 	if ok, err := repo.opensanctions.IsConfigured(); !ok {
 		return false, models.MissingRequirementError{

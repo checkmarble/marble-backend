@@ -42,3 +42,10 @@ type TestRunSummaryArgs struct {
 }
 
 func (TestRunSummaryArgs) Kind() string { return "test_run_summary" }
+
+type MatchEnrichmentArgs struct {
+	OrgId           string `json:"org_id"`
+	SanctionCheckId string `json:"sanction_check_id"`
+}
+
+func (MatchEnrichmentArgs) Kind() string { return "match_enrichment" }
