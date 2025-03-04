@@ -267,8 +267,11 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 		}
 
 		if uc.openSanctionsProvider.IsSelfHosted(ctx) {
-			_ = uc.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx,
-				decision.OrganizationId, sanctionCheck.Id)
+			if err := uc.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx,
+				decision.OrganizationId, sanctionCheck.Id); err != nil {
+				utils.LogAndReportSentryError(ctx, errors.Wrap(err,
+					"could not enqueue sanction check for refinement"))
+			}
 		}
 
 		if err := uc.repository.CopySanctionCheckFiles(ctx, tx, oldSanctionCheck.Id, sanctionCheck.Id); err != nil {

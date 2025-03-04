@@ -460,7 +460,11 @@ func (usecase *DecisionUsecase) CreateDecision(
 			}
 
 			if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
-				_ = usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx, input.OrganizationId, sc.Id)
+				if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
+					ctx, input.OrganizationId, sc.Id); err != nil {
+					utils.LogAndReportSentryError(ctx, errors.Wrap(err,
+						"could not enqueue sanction check for refinement"))
+				}
 			}
 		}
 
@@ -640,7 +644,11 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				}
 
 				if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
-					_ = usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx, input.OrganizationId, sc.Id)
+					if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
+						ctx, input.OrganizationId, sc.Id); err != nil {
+						utils.LogAndReportSentryError(ctx, errors.Wrap(err,
+							"could not enqueue sanction check for refinement"))
+					}
 				}
 			}
 
