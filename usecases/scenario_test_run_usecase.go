@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
 )
 
@@ -67,11 +68,14 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 		}
 	}
 
-	// we should not have any existing testrun for this scenario
+	// we should not have an existing test run for this scenario
 	testRuns, err := usecase.repository.ListRunningTestRun(ctx, exec, organizationId)
 	if err != nil {
 		return models.ScenarioTestRun{}, err
 	}
+	testRuns = utils.Filter(testRuns, func(testRun models.ScenarioTestRun) bool {
+		return testRun.ScenarioId == scenario.Id
+	})
 	if len(testRuns) > 0 {
 		return models.ScenarioTestRun{}, errors.Wrapf(models.ErrTestRunAlreadyExist,
 			"the scenario %s has a running testrun", input.ScenarioId)
