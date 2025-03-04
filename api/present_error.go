@@ -30,6 +30,9 @@ func presentError(ctx context.Context, c *gin.Context, err error) bool {
 	case errors.Is(err, models.BadParameterError):
 		logger.InfoContext(ctx, fmt.Sprintf("BadParameterError: %v", err))
 		c.JSON(http.StatusBadRequest, errorResponse)
+	case errors.Is(err, models.UnprocessableEntityError):
+		logger.InfoContext(ctx, fmt.Sprintf("UnprocessableEntityError: %v", err))
+		c.JSON(http.StatusUnprocessableEntity, errorResponse)
 	case errors.Is(err, models.UnAuthorizedError):
 		logger.InfoContext(ctx, fmt.Sprintf("UnAuthorizedError: %v", err))
 		c.JSON(http.StatusUnauthorized, errorResponse)

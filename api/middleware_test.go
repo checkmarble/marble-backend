@@ -46,8 +46,8 @@ func TestAuthentication_Middleware(t *testing.T) {
 
 		res := httptest.NewRecorder()
 
-		m := Authentication{
-			validator: mValidator,
+		m := utils.Authentication{
+			Validator: mValidator,
 		}
 
 		gin.SetMode(gin.TestMode)
@@ -69,8 +69,8 @@ func TestAuthentication_Middleware(t *testing.T) {
 		mValidator.On("Validate", mock.Anything, "token", "").
 			Return(models.Credentials{}, assert.AnError)
 
-		m := Authentication{
-			validator: mValidator,
+		m := utils.Authentication{
+			Validator: mValidator,
 		}
 
 		gin.SetMode(gin.TestMode)
@@ -88,7 +88,7 @@ func TestAuthentication_Middleware(t *testing.T) {
 	})
 
 	t.Run("bad token", func(t *testing.T) {
-		m := Authentication{}
+		m := utils.Authentication{}
 
 		gin.SetMode(gin.TestMode)
 		router := gin.New()
