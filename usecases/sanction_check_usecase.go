@@ -725,9 +725,9 @@ func (uc SanctionCheckUsecase) enforceCanRefineSanctionCheck(
 			errors.Wrap(models.NotFoundError, "no active sanction check found for this decision")
 	}
 
-	if !sanctionCheck.Status.IsReviewable() {
+	if !sanctionCheck.Status.IsRefinable() {
 		return models.Decision{}, *sanctionCheck,
-			errors.Wrap(models.NotFoundError, "this sanction is not pending review")
+			errors.Wrap(models.NotFoundError, "this sanction is not pending review or error")
 	}
 
 	decision, err := uc.enforceCanReadOrUpdateCase(ctx, sanctionCheck.DecisionId)

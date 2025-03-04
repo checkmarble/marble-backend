@@ -49,6 +49,10 @@ func (scs SanctionCheckStatus) IsReviewable() bool {
 	return scs == SanctionStatusInReview
 }
 
+func (scs SanctionCheckStatus) IsRefinable() bool {
+	return scs == SanctionStatusInReview || scs == SanctionStatusError
+}
+
 type SanctionCheckMatchStatus int
 
 const (
