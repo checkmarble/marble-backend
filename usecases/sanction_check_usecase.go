@@ -2,8 +2,10 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"mime/multipart"
 	"slices"
 
@@ -512,8 +514,14 @@ func (uc SanctionCheckUsecase) EnrichMatchWithoutAuthorization(ctx context.Conte
 		return models.SanctionCheckMatch{}, err
 	}
 
+	mergedPayload, err := mergePayloads(match.Payload, newPayload)
+	if err != nil {
+		return models.SanctionCheckMatch{}, errors.Wrap(err,
+			"could not merge payloads for match enrichment")
+	}
+
 	newMatch, err := uc.repository.UpdateSanctionCheckMatchPayload(ctx,
-		uc.executorFactory.NewExecutor(), match, newPayload)
+		uc.executorFactory.NewExecutor(), match, mergedPayload)
 	if err != nil {
 		return models.SanctionCheckMatch{}, err
 	}
@@ -780,4 +788,24 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateSanctionCheckMatch(
 		sanction: sanctionCheck,
 		match:    match,
 	}, nil
+}
+
+func mergePayloads(originalRaw, newRaw []byte) ([]byte, error) {
+	var original, new map[string]any
+
+	if err := json.Unmarshal(originalRaw, &original); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(newRaw, &new); err != nil {
+		return nil, err
+	}
+
+	maps.Copy(original, new)
+
+	out, err := json.Marshal(original)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
