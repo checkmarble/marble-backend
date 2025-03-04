@@ -369,7 +369,7 @@ func setupScenarioAndPublish(
 	// Wait for a potential 'index_creation' task to be created. If it is, we wait for both 'index_creation'
 	// and 'index_creation_status' to be completed before continuing.
 	if IfTaskIsCreated(ctx, riverClient, time.Second, "index_creation") {
-		WaitUntilAllTasksDone(t, ctx, riverClient, 5*time.Second, "index_creation", "index_creation_status")
+		WaitUntilAllTasksDone(t, ctx, riverClient, 10*time.Second, "index_creation", "index_creation_status")
 	}
 
 	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(
