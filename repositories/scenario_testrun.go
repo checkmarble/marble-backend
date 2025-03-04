@@ -123,7 +123,8 @@ func (repo *MarbleDbRepository) ListRunningTestRun(
 			tr.live_scenario_iteration_id,
 			tr.created_at, 
 			tr.expires_at,
-			tr.status`).
+			tr.status,
+			tr.summarized`).
 		From(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr").
 		Join(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS scit ON scit.id = tr.scenario_iteration_id").
 		Where(squirrel.And{
