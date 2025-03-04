@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -38,7 +39,7 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 	}
 
 	var triggerRule *[]byte
-	if cfg.TriggerRule != nil {
+	if cfg.TriggerRule != nil && cfg.TriggerRule.Function != ast.FUNC_UNDEFINED {
 		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.TriggerRule)
 		if err != nil {
 			return models.SanctionCheckConfig{}, errors.Wrap(err,

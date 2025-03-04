@@ -27,29 +27,32 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		return
 	}
 
-	triggerEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
-		ctx,
-		nil,
-		*iteration.SanctionCheckConfig.TriggerRule,
-		params.Scenario.OrganizationId,
-		dataAccessor.ClientObject,
-		params.DataModel,
-	)
-	if err != nil {
-		sanctionCheckErr = errors.Wrap(err, "could not execute sanction check trigger rule")
-		return
-	}
-	passed, ok := triggerEvaluation.ReturnValue.(bool)
-	if !ok {
-		sanctionCheckErr = errors.New("sanction check trigger rule did not evaluate to a boolean")
-	} else if !passed {
-		return
+	if iteration.SanctionCheckConfig.TriggerRule != nil {
+		triggerEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
+			ctx,
+			nil,
+			*iteration.SanctionCheckConfig.TriggerRule,
+			params.Scenario.OrganizationId,
+			dataAccessor.ClientObject,
+			params.DataModel,
+		)
+		if err != nil {
+			sanctionCheckErr = errors.Wrap(err, "could not execute sanction check trigger rule")
+			return
+		}
+		passed, ok := triggerEvaluation.ReturnValue.(bool)
+		if !ok {
+			sanctionCheckErr = errors.New("sanction check trigger rule did not evaluate to a boolean")
+		} else if !passed {
+			return
+		}
 	}
 
 	queries := []models.OpenSanctionsCheckQuery{}
 	emptyFieldRead := 0
 	nbEvaluatedFields := 0
 	emptyInput := false
+	var err error
 
 	if iteration.SanctionCheckConfig.Query.Name != nil {
 		nbEvaluatedFields += 1
