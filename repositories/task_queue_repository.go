@@ -45,6 +45,11 @@ type TaskQueueRepository interface {
 		organizationId string,
 		indices []models.ConcreteIndex,
 	) error
+	EnqueueMatchEnrichmentTask(
+		ctx context.Context,
+		organizationId string,
+		sanctionCheckId string,
+	) error
 }
 
 type riverRepository struct {
@@ -165,6 +170,31 @@ func (r riverRepository) EnqueueCreateIndexTask(
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (r riverRepository) EnqueueMatchEnrichmentTask(
+	ctx context.Context,
+	organizationId string,
+	sanctionCheckId string,
+) error {
+	res, err := r.client.Insert(
+		ctx,
+		models.MatchEnrichmentArgs{
+			OrgId:           organizationId,
+			SanctionCheckId: sanctionCheckId,
+		},
+		&river.InsertOpts{
+			Queue: organizationId,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued scheduled execution match enrichment task", "job_id", res.Job.ID)
 
 	return nil
 }

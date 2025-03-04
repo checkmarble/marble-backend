@@ -31,6 +31,7 @@ type SanctionCheckEnforceSecurityCase interface {
 }
 
 type SanctionCheckProvider interface {
+	IsSelfHosted(ctx context.Context) bool
 	GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error)
 	GetLatestLocalDataset(context.Context) (models.OpenSanctionsDatasetFreshness, error)
 	Search(context.Context, models.OpenSanctionsQuery) (models.SanctionRawSearchResponseWithMatches, error)
@@ -111,6 +112,7 @@ type SanctionCheckUsecase struct {
 	organizationRepository        SanctionCheckOrganizationRepository
 	externalRepository            SanctionsCheckUsecaseExternalRepository
 	sanctionCheckConfigRepository SanctionCheckConfigRepository
+	taskQueueRepository           repositories.TaskQueueRepository
 	repository                    SanctionCheckRepository
 
 	inboxReader           SanctionCheckInboxReader
@@ -260,6 +262,11 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 		if sanctionCheck, err = uc.repository.InsertSanctionCheck(ctx, tx,
 			decision.DecisionId, sanctionCheck, true); err != nil {
 			return models.SanctionCheckWithMatches{}, err
+		}
+
+		if uc.openSanctionsProvider.IsSelfHosted(ctx) {
+			_ = uc.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx,
+				decision.OrganizationId, sanctionCheck.Id)
 		}
 
 		if err := uc.repository.CopySanctionCheckFiles(ctx, tx, oldSanctionCheck.Id, sanctionCheck.Id); err != nil {
@@ -486,6 +493,10 @@ func (uc SanctionCheckUsecase) EnrichMatch(ctx context.Context, matchId string) 
 		return models.SanctionCheckMatch{}, err
 	}
 
+	return uc.EnrichMatchWithoutAuthorization(ctx, matchId)
+}
+
+func (uc SanctionCheckUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, matchId string) (models.SanctionCheckMatch, error) {
 	match, err := uc.repository.GetSanctionCheckMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
 	if err != nil {
 		return models.SanctionCheckMatch{}, err
