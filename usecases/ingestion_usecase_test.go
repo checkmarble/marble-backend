@@ -172,10 +172,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 	rowId := utils.ByteUuid(rowIdStr)
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is a previous version for this object
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id  FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}).
-			AddRow("1", "OK", updAt, 1.0, rowId))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}).
+			AddRow("1", updAt, rowId))
 	// update the previous version
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`UPDATE "test"."transactions" SET valid_until = $1 WHERE id IN ($2)`)).
 		WithArgs("now()", rowIdStr).
@@ -207,7 +207,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for this object
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
 		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}))
 	// insert the new version
@@ -244,9 +244,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for this object
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}))
 	// insert the new version
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5)`)).
 		WithArgs("1", "OK", updAt, 1.0, anyUuid{}).
@@ -279,10 +279,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 	rowId := utils.ByteUuid(rowIdStr)
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is a previous version for this object
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}).
-			AddRow("1", "OK", updAt.Add(time.Hour), 1.0, rowId))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}).
+			AddRow("1", updAt.Add(time.Hour), rowId))
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
 		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
@@ -374,9 +374,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_nomin
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for these objects
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2,$3)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2,$3)`)).
 		WithArgs("Infinity", "1", "2").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}))
 	// insert the new versions
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)`)).
 		WithArgs(
@@ -411,11 +411,11 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	rowId2 := utils.ByteUuid(rowIdStr2)
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there are previous versions for these objects
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2,$3)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2,$3)`)).
 		WithArgs("Infinity", "1", "2").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}).
-			AddRow("1", "OK", updAt, 1.0, rowId1).
-			AddRow("2", "OK", updAt, 2.0, rowId2))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}).
+			AddRow("1", updAt, rowId1).
+			AddRow("2", updAt, rowId2))
 	// update the previous versions
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`UPDATE "test"."transactions" SET valid_until = $1 WHERE id IN ($2,$3)`)).
 		WithArgs("now()", rowIdStr1, rowIdStr2).
