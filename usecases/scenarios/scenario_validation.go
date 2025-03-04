@@ -123,14 +123,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 
 	// Validate sanction check trigger and rule
 	if iteration.SanctionCheckConfig != nil {
-		if iteration.SanctionCheckConfig.TriggerRule == nil {
-			result.SanctionCheck.TriggerRule.Errors = append(
-				result.SanctionCheck.TriggerRule.Errors, models.ScenarioValidationError{
-					Error: errors.Wrap(models.BadParameterError,
-						"sanction check does not have a trigger condition"),
-					Code: models.TriggerConditionRequired,
-				})
-		} else {
+		if iteration.SanctionCheckConfig.TriggerRule != nil {
 			triggerRuleEvaluation, _ := ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
 				*iteration.SanctionCheckConfig.TriggerRule)
 			if _, ok := triggerRuleEvaluation.ReturnValue.(bool); !ok {
