@@ -11,6 +11,9 @@ var (
 	// BadParameterError is rendered with the http status code 400
 	BadParameterError = errors.New("bad parameter")
 
+	// UnprocessableEntityError is rendered with the http status code 422
+	UnprocessableEntityError = errors.New("unprocessable entity")
+
 	// UnAuthorizedError is rendered with the http status code 401
 	UnAuthorizedError = errors.New("unauthorized")
 
