@@ -1,13 +1,15 @@
 package pubapi
 
 import (
-	"errors"
+	"io"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
@@ -87,8 +89,36 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 		})
 
 	default:
-		resp.Error.err = err
-		resp.Error.Message = err.Error()
+		switch {
+		case errors.Is(err, io.EOF):
+			resp.Error.err = ErrMissingPayload
+			resp.Error.Message = ErrMissingPayload.Error()
+
+		case
+			errors.Is(err, models.NotFoundError),
+			errors.Is(err, pgx.ErrNoRows):
+
+			resp.Error.err = err
+			resp.Error.Message = "requested resource was not found"
+
+		case
+			errors.Is(err, ErrFeatureDisabled),
+			errors.Is(err, ErrNotConfigured),
+			errors.Is(err, ErrInvalidId),
+			errors.Is(err, ErrInvalidPayload),
+			errors.Is(err, ErrMissingPayload):
+
+			resp.Error.err = err
+			resp.Error.Message = err.Error()
+
+		default:
+			resp.Error.err = err
+			resp.Error.Message = ErrInternalServerError.Error()
+
+			if message := errors.FlattenDetails(err); message != "" {
+				resp.Error.Message = message
+			}
+		}
 	}
 
 	return resp
@@ -126,11 +156,22 @@ func (resp baseErrorResponse) Serve(c *gin.Context, statuses ...int) {
 		switch {
 		case
 			errors.Is(resp.Error.err, ErrInvalidId),
-			errors.Is(resp.Error.err, ErrInvalidPayload):
+			errors.Is(resp.Error.err, ErrInvalidPayload),
+			errors.Is(resp.Error.err, models.BadParameterError):
 			status = http.StatusBadRequest
 
-		case errors.Is(resp.Error.err, models.NotFoundError):
+		case
+			errors.Is(resp.Error.err, models.UnAuthorizedError),
+			errors.Is(resp.Error.err, models.ForbiddenError):
+			status = http.StatusUnauthorized
+
+		case
+			errors.Is(resp.Error.err, models.NotFoundError),
+			errors.Is(resp.Error.err, pgx.ErrNoRows):
 			status = http.StatusNotFound
+
+		case errors.Is(resp.Error.err, models.ConflictError):
+			status = http.StatusConflict
 
 		case errors.Is(resp.Error.err, ErrFeatureDisabled):
 			status = http.StatusPaymentRequired

@@ -14,6 +14,7 @@ func Routes(r *gin.RouterGroup, authF gin.HandlerFunc, uc usecases.Usecases) {
 		r := r.Group("/", authF)
 
 		r.GET("/decisions/:decisionId/sanction-checks", HandleListSanctionChecks(uc))
+		r.POST("/decisions/:decisionId/sanction-checks/refine", HandleRefineSanctionCheck(uc))
 		r.POST("/sanction-checks/matches/:matchId",
 			HandleUpdateSanctionCheckMatchStatus(uc))
 	}

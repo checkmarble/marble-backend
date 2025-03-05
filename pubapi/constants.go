@@ -17,6 +17,6 @@ var (
 	ErrNotConfigured   = errors.New("feature in not configured in your organization")
 
 	ErrInvalidId      = errors.New("provided resource ID is invalid")
+	ErrMissingPayload = errors.New("this endpoint expected a payload, none provided")
 	ErrInvalidPayload = errors.New("the provided payload failed validations")
-	ErrNotFound       = errors.New("requested resource was not found")
 )
