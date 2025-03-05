@@ -180,10 +180,13 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 	if err != nil {
 		return err
 	}
-	filters := selectFiltersFromTriggerAstRootAnd(
-		*liveVersion.TriggerConditionAstExpression,
-		models.TableIdentifier{Table: scenario.TriggerObjectType, Schema: db.DatabaseSchema().Schema},
-	)
+	var filters []models.Filter
+	if liveVersion.TriggerConditionAstExpression != nil {
+		filters = selectFiltersFromTriggerAstRootAnd(
+			*liveVersion.TriggerConditionAstExpression,
+			models.TableIdentifier{Table: scenario.TriggerObjectType, Schema: db.DatabaseSchema().Schema},
+		)
+	}
 
 	objectIds, err := usecase.ingestedDataReadRepository.ListAllObjectIdsFromTable(ctx, db, scenario.TriggerObjectType, filters...)
 	if err != nil {
