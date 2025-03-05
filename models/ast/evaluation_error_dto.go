@@ -35,6 +35,8 @@ var evaluationErrorDtoMap = []errorAndCode{
 	{ErrListNotFound, "LIST_NOT_FOUND"},
 	{ErrDatabaseAccessNotFound, "DATABASE_ACCESS_NOT_FOUND"},
 	{ErrFilterTableNotMatch, "FILTERS_TABLE_NOT_MATCH"},
+	{ErrAggregationFieldNotChosen, "AGGREGATION_FIELD_NOT_CHOSEN"},
+	{ErrAggregationFieldIncompatibleAggregator, "AGGREGATION_FIELD_INCOMPATIBLE_WITH_AGGREGATOR"},
 
 	// Runtime execution related errors
 	{ErrDivisionByZero, "DIVISION_BY_ZERO"},

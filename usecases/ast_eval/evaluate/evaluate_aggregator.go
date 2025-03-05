@@ -56,6 +56,11 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 		))
 	}
 
+	if tableName == "" && fieldName == "" {
+		return MakeEvaluateError(errors.Join(
+			ast.ErrAggregationFieldNotChosen,
+			ast.NewNamedArgumentError("fieldName")))
+	}
 	fieldType, err := getFieldType(a.DataModel, tableName, fieldName)
 	if err != nil {
 		return MakeEvaluateError(errors.Join(
@@ -66,8 +71,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	isValidFieldType := slices.Contains(validTypes, fieldType)
 	if !isValidFieldType {
 		return MakeEvaluateError(errors.Join(
-			errors.Wrap(ast.ErrRuntimeExpression,
-				fmt.Sprintf("field type %s is not valid for aggregator %s in Evaluate aggregator", fieldType.String(), aggregator)),
+			ast.ErrAggregationFieldIncompatibleAggregator,
 			ast.NewNamedArgumentError("fieldName"),
 		))
 	}
