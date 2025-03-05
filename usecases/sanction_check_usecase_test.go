@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	ops "github.com/go-faker/faker/v4/pkg/options"
+	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/assert"
 )
@@ -109,6 +110,7 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 
 func TestUpdateMatchStatus(t *testing.T) {
 	uc, exec := buildSanctionCheckUsecaseMock()
+	userId := models.UserId(uuid.NewString())
 
 	_, mockScmRow := utils.FakeStruct[dbmodels.DBSanctionCheckMatch](ops.WithCustomFieldProvider(
 		"SanctionCheckId", func() (interface{}, error) {
@@ -164,14 +166,14 @@ func TestUpdateMatchStatus(t *testing.T) {
 			AddRows(mockOtherScmRows...),
 		)
 	exec.Mock.ExpectQuery(`UPDATE sanction_check_matches SET reviewed_by = \$1, status = \$2, updated_at = \$3 WHERE id = \$4 RETURNING id,sanction_check_id,opensanction_entity_id,status,query_ids,counterparty_id,payload,enriched,reviewed_by,created_at,updated_at`).
-		WithArgs(models.UserId(""), models.SanctionMatchStatusConfirmedHit, "NOW()", "matchid").
+		WithArgs(&userId, models.SanctionMatchStatusConfirmedHit, "NOW()", "matchid").
 		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionCheckMatchesColumn).
 			AddRow(mockScmRow...),
 		)
 
 	for i := range 3 {
 		exec.Mock.ExpectQuery(`UPDATE sanction_check_matches SET reviewed_by = \$1, status = \$2, updated_at = \$3 WHERE id = \$4 RETURNING id,sanction_check_id,opensanction_entity_id,status,query_ids,counterparty_id,payload,enriched,reviewed_by,created_at,updated_at`).
-			WithArgs(models.UserId(""), models.SanctionMatchStatusSkipped, "NOW()", mockOtherScms[i].Id).
+			WithArgs(&userId, models.SanctionMatchStatusSkipped, "NOW()", mockOtherScms[i].Id).
 			WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionCheckMatchesColumn).
 				AddRow(mockOtherScmRows[i]...),
 			)
@@ -182,8 +184,9 @@ func TestUpdateMatchStatus(t *testing.T) {
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
 	_, err := uc.UpdateMatchStatus(context.TODO(), models.SanctionCheckMatchUpdate{
-		MatchId: "matchid",
-		Status:  models.SanctionMatchStatusConfirmedHit,
+		MatchId:    "matchid",
+		Status:     models.SanctionMatchStatusConfirmedHit,
+		ReviewerId: &userId,
 	})
 	assert.NoError(t, err)
 	assert.NoError(t, exec.Mock.ExpectationsWereMet())
