@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
@@ -145,6 +146,32 @@ func (repo *MarbleDbRepository) UpdateCase(ctx context.Context, exec Executor, u
 	return err
 }
 
+func (repo *MarbleDbRepository) SnoozeCase(ctx context.Context, exec Executor, snoozeRequest models.CaseSnoozeRequest) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_CASES).
+		Set("snoozed_until", snoozeRequest.Until).
+		Where(squirrel.Eq{"id": snoozeRequest.CaseId})
+
+	return ExecBuilder(ctx, exec, sql)
+}
+
+func (repo *MarbleDbRepository) UnsnoozeCase(ctx context.Context, exec Executor, caseId string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_CASES).
+		Set("snoozed_until", nil).
+		Where(squirrel.Eq{"id": caseId})
+
+	return ExecBuilder(ctx, exec, sql)
+}
+
 func (repo *MarbleDbRepository) CreateCaseTag(ctx context.Context, exec Executor, caseId, tagId string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -246,6 +273,12 @@ func applyCaseFilters(query squirrel.SelectBuilder, filters models.CaseFilters) 
 	}
 	if filters.Name != "" {
 		query = query.Where("c.name % ?", filters.Name)
+	}
+	if !filters.IncludeSnoozed {
+		query = query.Where(squirrel.Or{
+			squirrel.Eq{"snoozed_until": nil},
+			squirrel.LtOrEq{"snoozed_until": time.Now()},
+		})
 	}
 	return query
 }
