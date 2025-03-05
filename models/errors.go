@@ -25,6 +25,15 @@ var (
 
 	// MissingRequirement means this features required infrastructure or configuration that was not provided
 	MissingRequirement = errors.New("missing requirement")
+
+	// MiscError should not be used except as a placeholder error to hold front-facing details for the public API.
+	// Usually, if this is triggered by an actual error, it should be used instead of this. This is convenient when
+	// wanting to return an error from a boolean:
+	//
+	// if !ok {
+	//   return errors.WithDetail(MiscError, "this will be shown to the client")
+	// }
+	MiscError = errors.New("misc error")
 )
 
 // Authentication related errors

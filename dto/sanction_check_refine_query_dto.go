@@ -5,10 +5,10 @@ import (
 )
 
 type RefineQueryDto struct {
-	Thing        *RefineQueryBase         `json:"Thing,omitempty" binding:"excluded_with_all=Person Organization Vehicle"` //nolint:tagliatelle
-	Person       *RefineQueryPerson       `json:"Person,omitempty" binding:"excluded_with_all=Thing Organization Vehicle"` //nolint:tagliatelle
-	Organization *RefineQueryOrganization `json:"Organization,omitempty" binding:"excluded_with_all=Person Thing Vehicle"` //nolint:tagliatelle
-	Vehicle      *RefineQueryVehicle      `json:"Vehicle,omitempty" binding:"excluded_with_all=Thing Person Organization"` //nolint:tagliatelle
+	Thing        *RefineQueryBase         `json:"Thing,omitempty" binding:"required_without_all=Person Organization Vehicle,excluded_with=Person Organization Vehicle"` //nolint:tagliatelle
+	Person       *RefineQueryPerson       `json:"Person,omitempty" binding:"required_without_all=Thing Organization Vehicle,excluded_with=Thing Organization Vehicle"`  //nolint:tagliatelle
+	Organization *RefineQueryOrganization `json:"Organization,omitempty" binding:"required_without_all=Thing Person Vehicle,excluded_with=Person Thing Vehicle"`        //nolint:tagliatelle
+	Vehicle      *RefineQueryVehicle      `json:"Vehicle,omitempty" binding:"required_without_all=Thing Person Organization,excluded_with=Thing Person Organization"`   //nolint:tagliatelle
 }
 
 func (dto RefineQueryDto) Type() string {

@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/checkmarble/marble-backend/pubapi"
 	pubapiv1 "github.com/checkmarble/marble-backend/pubapi/v1"
-	pubapiv2 "github.com/checkmarble/marble-backend/pubapi/v2"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/checkmarble/marble-backend/usecases"
@@ -40,8 +40,11 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
 	r.GET("/is-sso-available", tom, handleIsSSOEnabled(uc))
 
-	pubapiv1.Routes(r.Group("/v1"), auth.AuthedBy(utils.PublicApiKey), uc)
-	pubapiv2.Routes(r.Group("/v2"), auth.AuthedBy(utils.PublicApiKey), uc)
+	// Public API initialization
+	{
+		pubapi.InitPublicApi()
+		pubapiv1.Routes(r.Group("/v1a"), auth.AuthedBy(utils.PublicApiKey), uc)
+	}
 
 	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey))
 
