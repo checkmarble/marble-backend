@@ -15,9 +15,9 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-set/v2"
-	"github.com/pkg/errors"
 )
 
 type SanctionCheckEnforceSecurityScenario interface {
@@ -144,7 +144,7 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 		return nil, err
 	}
 	if len(decisions) == 0 {
-		return nil, errors.Wrap(models.NotFoundError, "requested decision does not exist")
+		return nil, errors.WithDetail(models.NotFoundError, "requested decision does not exist")
 	}
 
 	if decisions[0].Case == nil {
@@ -221,7 +221,7 @@ func (uc SanctionCheckUsecase) Execute(
 }
 
 func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.SanctionCheckRefineRequest,
-	requestedBy models.UserId,
+	requestedBy *models.UserId,
 ) (models.SanctionCheckWithMatches, error) {
 	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.DecisionId)
 	if err != nil {
@@ -246,8 +246,14 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 		return models.SanctionCheckWithMatches{}, err
 	}
 
+	var requester *string
+
+	if requestedBy != nil {
+		requester = utils.Ptr(string(*requestedBy))
+	}
+
 	sanctionCheck.IsManual = true
-	sanctionCheck.RequestedBy = utils.Ptr(string(requestedBy))
+	sanctionCheck.RequestedBy = requester
 
 	sanctionCheck, err = executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
@@ -380,11 +386,11 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 	}
 
 	if !data.sanction.Status.IsReviewable() {
-		return data.match, errors.Wrap(models.BadParameterError, "this sanction is not pending review")
+		return data.match, errors.WithDetail(models.BadParameterError, "this sanction is not pending review")
 	}
 
 	if data.match.Status != models.SanctionMatchStatusPending {
-		return data.match, errors.Wrap(models.BadParameterError, "this match is not pending review")
+		return data.match, errors.WithDetail(models.UnprocessableEntityError, "this match is not pending review")
 	}
 
 	var updatedMatch models.SanctionCheckMatch
@@ -524,7 +530,7 @@ func (uc SanctionCheckUsecase) EnrichMatchWithoutAuthorization(ctx context.Conte
 	}
 
 	if match.Enriched {
-		return models.SanctionCheckMatch{}, errors.Wrap(models.ConflictError,
+		return models.SanctionCheckMatch{}, errors.WithDetail(models.UnprocessableEntityError,
 			"this sanction check match was already enriched")
 	}
 
@@ -800,6 +806,11 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateSanctionCheckMatch(
 		uc.executorFactory.NewExecutor(), match.SanctionCheckId)
 	if err != nil {
 		return sanctionCheckContextData{}, err
+	}
+
+	if sanctionCheck.IsArchived {
+		return sanctionCheckContextData{}, errors.WithDetail(models.UnprocessableEntityError,
+			"sanction check was refined and cannot be reviewed")
 	}
 
 	dec, err := uc.enforceCanReadOrUpdateCase(ctx, sanctionCheck.DecisionId)

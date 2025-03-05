@@ -1,6 +1,7 @@
 package v1
 
 import (
+	gdto "github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
@@ -13,7 +14,7 @@ func HandleListSanctionChecks(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		decisionId, err := pubapi.UuidParam(c, "decisionId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(pubapi.ErrInvalidId).Serve(c)
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -46,7 +47,7 @@ func HandleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) gin.HandlerFunc 
 	return func(c *gin.Context) {
 		matchId, err := pubapi.UuidParam(c, "matchId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(pubapi.ErrInvalidId).Serve(c)
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -74,5 +75,39 @@ func HandleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) gin.HandlerFunc 
 			NewResponse(dto.AdaptSanctionCheckMatch(match)).
 			WithLink(pubapi.LinkSanctionChecks, gin.H{"id": match.SanctionCheckId}).
 			Serve(c)
+	}
+}
+
+func HandleRefineSanctionCheck(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		decisionId, err := pubapi.UuidParam(c, "decisionId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		var params gdto.RefineQueryDto
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+
+		refineQuery := models.SanctionCheckRefineRequest{
+			DecisionId: decisionId.String(),
+			Type:       params.Type(),
+			Query:      gdto.AdaptRefineQueryDto(params),
+		}
+
+		sanctionCheck, err := sanctionCheckUsecase.Refine(c.Request.Context(), refineQuery, nil)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.NewResponse(dto.AdaptSanctionCheck(sanctionCheck)).Serve(c)
 	}
 }

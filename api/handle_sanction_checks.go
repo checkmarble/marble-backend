@@ -221,7 +221,7 @@ func handleRefineSanctionCheck(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
-		sanctionCheck, err := uc.Refine(ctx, dto.AdaptSanctionCheckRefineDto(payload), creds.ActorIdentity.UserId)
+		sanctionCheck, err := uc.Refine(ctx, dto.AdaptSanctionCheckRefineDto(payload), &creds.ActorIdentity.UserId)
 
 		if presentError(ctx, c, err) {
 			return
