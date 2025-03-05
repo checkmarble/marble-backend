@@ -18,6 +18,7 @@ type Case struct {
 	Status         CaseStatus
 	Tags           []CaseTag
 	Files          []CaseFile
+	SnoozedUntil   *time.Time
 }
 
 func (c Case) GetMetadata() CaseMetadata {
@@ -76,6 +77,7 @@ type CaseFilters struct {
 	EndDate        time.Time
 	Statuses       []CaseStatus
 	InboxIds       []string
+	IncludeSnoozed bool
 }
 
 type CaseListPage struct {
@@ -108,4 +110,9 @@ type ReviewCaseDecisionsBody struct {
 	ReviewComment string
 	ReviewStatus  string
 	UserId        string
+}
+
+type CaseSnoozeRequest struct {
+	CaseId string
+	Until  time.Time
 }

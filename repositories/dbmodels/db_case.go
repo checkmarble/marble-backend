@@ -1,6 +1,8 @@
 package dbmodels
 
 import (
+	"time"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -12,6 +14,7 @@ type DBCase struct {
 	Name           pgtype.Text      `db:"name"`
 	OrganizationId pgtype.Text      `db:"org_id"`
 	Status         pgtype.Text      `db:"status"`
+	SnoozedUntil   *time.Time       `db:"snoozed_until"`
 }
 
 type DBCaseWithContributorsAndTags struct {
@@ -28,7 +31,7 @@ type DBPaginatedCases struct {
 
 const TABLE_CASES = "cases"
 
-var SelectCaseColumn = []string{"id", "created_at", "inbox_id", "name", "org_id", "status"}
+var SelectCaseColumn = []string{"id", "created_at", "inbox_id", "name", "org_id", "status", "snoozed_until"}
 
 func AdaptCase(db DBCase) (models.Case, error) {
 	return models.Case{
@@ -38,6 +41,7 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		Name:           db.Name.String,
 		OrganizationId: db.OrganizationId.String,
 		Status:         models.CaseStatus(db.Status.String),
+		SnoozedUntil:   db.SnoozedUntil,
 	}, nil
 }
 
