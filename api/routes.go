@@ -166,6 +166,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.GET("/cases", tom, handleListCases(uc))
 	router.POST("/cases", tom, handlePostCase(uc))
 	router.GET("/cases/:case_id", tom, handleGetCase(uc))
+	router.POST("/cases/:case_id/snooze", tom, handleSnoozeCase(uc))
+	router.POST("/cases/:case_id/unsnooze", tom, handleUnsnoozeCase(uc))
 	router.PATCH("/cases/:case_id", tom, handlePatchCase(uc))
 	router.POST("/cases/:case_id/decisions", tom, handlePostCaseDecisions(uc))
 	router.POST("/cases/:case_id/comments", tom, handlePostCaseComment(uc))
