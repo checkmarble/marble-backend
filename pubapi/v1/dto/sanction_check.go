@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type SanctionCheck struct {
@@ -32,19 +33,19 @@ func AdaptSanctionCheck(model models.SanctionCheckWithMatches) SanctionCheck {
 		Status:    model.Status.String(),
 		Query:     model.SearchInput,
 		Partial:   model.Partial,
-		Matches:   make([]SanctionCheckMatch, len(model.Matches)),
+		Matches:   pure_utils.Map(model.Matches, AdaptSanctionCheckMatch),
 		CreatedAt: model.CreatedAt,
 		UpdatedAt: model.UpdatedAt,
 	}
 
-	for idx, match := range model.Matches {
-		sc.Matches[idx] = SanctionCheckMatch{
-			Id:      match.Id,
-			Queries: match.QueryIds,
-			Status:  match.Status.String(),
-			Payload: match.Payload,
-		}
-	}
-
 	return sc
+}
+
+func AdaptSanctionCheckMatch(model models.SanctionCheckMatch) SanctionCheckMatch {
+	return SanctionCheckMatch{
+		Id:      model.Id,
+		Queries: model.QueryIds,
+		Status:  model.Status.String(),
+		Payload: model.Payload,
+	}
 }

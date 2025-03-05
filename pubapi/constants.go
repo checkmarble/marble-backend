@@ -5,7 +5,9 @@ import (
 )
 
 const (
-	LinkDecisions = "decisions"
+	LinkDecisions            = "decisions"
+	LinkSanctionChecks       = "sanction_checks"
+	LinkSanctionCheckMatches = "sanction_check_matches"
 )
 
 var (

@@ -124,7 +124,7 @@ func AdaptSanctionCheckMatchUpdateInputDto(matchId string, reviewerId models.Use
 
 	update := models.SanctionCheckMatchUpdate{
 		MatchId:    matchId,
-		ReviewerId: reviewerId,
+		ReviewerId: &reviewerId,
 		Status:     models.SanctionCheckMatchStatusFrom(dto.Status),
 		Whitelist:  dto.Whitelist,
 	}

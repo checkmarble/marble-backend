@@ -176,7 +176,7 @@ type SanctionCheckMatch struct {
 
 type SanctionCheckMatchUpdate struct {
 	MatchId    string
-	ReviewerId UserId
+	ReviewerId *UserId
 	Status     SanctionCheckMatchStatus
 	Comment    *SanctionCheckMatchComment
 	Whitelist  bool
