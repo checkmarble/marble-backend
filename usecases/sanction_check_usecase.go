@@ -83,7 +83,7 @@ type SanctionCheckRepository interface {
 	CopySanctionCheckFiles(ctx context.Context, exec repositories.Executor,
 		sanctionCheckId, newSanctionCheckId string) error
 	AddSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
-		orgId, counterpartyId string, entityId string, reviewerId models.UserId) error
+		orgId, counterpartyId string, entityId string, reviewerId *models.UserId) error
 	IsSanctionCheckMatchWhitelisted(ctx context.Context, exec repositories.Executor,
 		orgId, counterpartyId string, entityId []string) ([]models.SanctionCheckWhitelist, error)
 	CountWhitelistsForCounterpartyId(ctx context.Context, exec repositories.Executor,
@@ -433,16 +433,24 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 					return err
 				}
 
-				err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-					CaseId:       data.decision.Case.Id,
-					UserId:       string(update.ReviewerId),
-					EventType:    models.SanctionCheckReviewed,
-					ResourceId:   &data.decision.DecisionId,
-					ResourceType: utils.Ptr(models.DecisionResourceType),
-					NewValue:     utils.Ptr(models.SanctionMatchStatusConfirmedHit.String()),
-				})
-				if err != nil {
-					return err
+				if data.decision.Case != nil {
+					var reviewerId *string
+
+					if update.ReviewerId != nil && len(*update.ReviewerId) > 0 {
+						reviewerId = utils.Ptr(string(*update.ReviewerId))
+					}
+
+					err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+						CaseId:       data.decision.Case.Id,
+						UserId:       reviewerId,
+						EventType:    models.SanctionCheckReviewed,
+						ResourceId:   &data.decision.DecisionId,
+						ResourceType: utils.Ptr(models.DecisionResourceType),
+						NewValue:     utils.Ptr(models.SanctionMatchStatusConfirmedHit.String()),
+					})
+					if err != nil {
+						return err
+					}
 				}
 			}
 
@@ -454,16 +462,24 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 					return err
 				}
 
-				err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-					CaseId:       data.decision.Case.Id,
-					UserId:       string(update.ReviewerId),
-					EventType:    models.SanctionCheckReviewed,
-					ResourceId:   &data.decision.DecisionId,
-					ResourceType: utils.Ptr(models.DecisionResourceType),
-					NewValue:     utils.Ptr(models.SanctionMatchStatusNoHit.String()),
-				})
-				if err != nil {
-					return err
+				if data.decision.Case != nil {
+					var reviewerId *string
+
+					if update.ReviewerId != nil && len(*update.ReviewerId) > 0 {
+						reviewerId = utils.Ptr(string(*update.ReviewerId))
+					}
+
+					err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+						CaseId:       data.decision.Case.Id,
+						UserId:       reviewerId,
+						EventType:    models.SanctionCheckReviewed,
+						ResourceId:   &data.decision.DecisionId,
+						ResourceType: utils.Ptr(models.DecisionResourceType),
+						NewValue:     utils.Ptr(models.SanctionMatchStatusNoHit.String()),
+					})
+					if err != nil {
+						return err
+					}
 				}
 			}
 
@@ -701,6 +717,8 @@ func writeSanctionCheckFileToBlobStorage(ctx context.Context,
 // Helper functions for enforcing permissions on sanction check actions go below
 
 func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decisionId string) (models.Decision, error) {
+	creds, _ := utils.CredentialsFromCtx(ctx)
+
 	exec := uc.executorFactory.NewExecutor()
 	decision, err := uc.externalRepository.DecisionsById(ctx, exec, []string{decisionId})
 	if err != nil {
@@ -710,23 +728,26 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, d
 		return models.Decision{}, errors.Wrap(models.NotFoundError,
 			"could not find the decision linked to the sanction check")
 	}
-	if decision[0].Case == nil {
-		return decision[0], errors.Wrap(models.NotFoundError,
-			"this sanction check is not linked to a case")
-	}
 
-	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, decision[0].OrganizationId, false)
-	if err != nil {
-		return models.Decision{}, errors.Wrap(err,
-			"could not retrieve organization inboxes")
-	}
+	if creds.Role != models.API_CLIENT {
+		if decision[0].Case == nil {
+			return decision[0], errors.Wrap(models.UnprocessableEntityError,
+				"this sanction check is not linked to a case")
+		}
 
-	inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) string {
-		return inbox.Id
-	})
+		inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, decision[0].OrganizationId, false)
+		if err != nil {
+			return models.Decision{}, errors.Wrap(err,
+				"could not retrieve organization inboxes")
+		}
 
-	if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxIds); err != nil {
-		return decision[0], err
+		inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) string {
+			return inbox.Id
+		})
+
+		if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxIds); err != nil {
+			return decision[0], err
+		}
 	}
 
 	return decision[0], nil

@@ -225,7 +225,7 @@ func (usecase *CaseUseCase) CreateCase(
 	if fromEndUser {
 		if err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:    newCaseId,
-			UserId:    userId,
+			UserId:    &userId,
 			EventType: models.CaseCreated,
 		}); err != nil {
 			return models.Case{}, err
@@ -533,7 +533,7 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 	if updateCaseAttributes.Name != "" && updateCaseAttributes.Name != oldCase.Name {
 		err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
 			CaseId:        updateCaseAttributes.Id,
-			UserId:        userId,
+			UserId:        &userId,
 			EventType:     models.CaseNameUpdated,
 			NewValue:      &updateCaseAttributes.Name,
 			PreviousValue: &oldCase.Name,
@@ -547,7 +547,7 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 		newStatus := string(updateCaseAttributes.Status)
 		err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
 			CaseId:        updateCaseAttributes.Id,
-			UserId:        userId,
+			UserId:        &userId,
 			EventType:     models.CaseStatusUpdated,
 			NewValue:      &newStatus,
 			PreviousValue: (*string)(&oldCase.Status),
@@ -560,7 +560,7 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 	if updateCaseAttributes.InboxId != "" && updateCaseAttributes.InboxId != oldCase.InboxId {
 		err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
 			CaseId:        updateCaseAttributes.Id,
-			UserId:        userId,
+			UserId:        &userId,
 			EventType:     models.CaseInboxChanged,
 			NewValue:      &updateCaseAttributes.InboxId,
 			PreviousValue: &oldCase.InboxId,
@@ -656,7 +656,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 
 		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:         caseCommentAttributes.Id,
-			UserId:         userId,
+			UserId:         &userId,
 			EventType:      models.CaseCommentAdded,
 			AdditionalNote: &caseCommentAttributes.Comment,
 		})
@@ -742,7 +742,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 		newValue := strings.Join(caseTagAttributes.TagIds, ",")
 		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:        caseTagAttributes.CaseId,
-			UserId:        userId,
+			UserId:        &userId,
 			EventType:     models.CaseTagsUpdated,
 			PreviousValue: &previousValue,
 			NewValue:      &newValue,
@@ -868,7 +868,7 @@ func (usecase *CaseUseCase) UpdateDecisionsWithEvents(
 		for i, decisionId := range decisionIdsToAdd {
 			createCaseEventAttributes[i] = models.CreateCaseEventAttributes{
 				CaseId:       caseId,
-				UserId:       userId,
+				UserId:       &userId,
 				EventType:    models.DecisionAdded,
 				ResourceId:   &decisionId,
 				ResourceType: &resourceType,
@@ -991,7 +991,7 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 			resourceType := models.CaseFileResourceType
 			err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 				CaseId:         input.CaseId,
-				UserId:         userId,
+				UserId:         &userId,
 				EventType:      models.CaseFileAdded,
 				ResourceType:   &resourceType,
 				ResourceId:     &newCaseFileId,
@@ -1117,7 +1117,7 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 	err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		AdditionalNote: &input.Comment,
 		CaseId:         input.CaseId,
-		UserId:         input.UserId,
+		UserId:         &input.UserId,
 		EventType:      models.CaseRuleSnoozeCreated,
 		ResourceType:   &resourceType,
 		ResourceId:     &input.RuleSnoozeId,
@@ -1200,7 +1200,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 			resourceType := models.DecisionResourceType
 			err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 				CaseId:         caseId,
-				UserId:         input.UserId,
+				UserId:         &input.UserId,
 				EventType:      models.DecisionReviewed,
 				ResourceId:     &input.DecisionId,
 				ResourceType:   &resourceType,
