@@ -55,8 +55,8 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec 
 
 	for _, createCaseEventAttribute := range createCaseEventAttributes {
 		var userId pgtype.Text
-		if createCaseEventAttribute.UserId != "" {
-			userId = pgtype.Text{String: createCaseEventAttribute.UserId, Valid: true}
+		if createCaseEventAttribute.UserId != nil {
+			userId = pgtype.Text{String: *createCaseEventAttribute.UserId, Valid: true}
 		} else {
 			userId = pgtype.Text{Valid: false}
 		}

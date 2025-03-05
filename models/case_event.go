@@ -46,7 +46,7 @@ const (
 
 type CreateCaseEventAttributes struct {
 	CaseId         string
-	UserId         string
+	UserId         *string
 	EventType      CaseEventType
 	AdditionalNote *string
 	ResourceId     *string

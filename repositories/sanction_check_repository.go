@@ -378,7 +378,7 @@ func (repo *MarbleDbRepository) CopySanctionCheckFiles(ctx context.Context, exec
 }
 
 func (repo *MarbleDbRepository) AddSanctionCheckMatchWhitelist(ctx context.Context, exec Executor,
-	orgId, counterpartyId string, entityId string, reviewerId models.UserId,
+	orgId, counterpartyId string, entityId string, reviewerId *models.UserId,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
