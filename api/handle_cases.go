@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
@@ -152,6 +153,62 @@ func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"case": dto.AdaptCaseWithDecisionsDto(inboxCase),
 		})
+	}
+}
+
+type CaseSnoozeParams struct {
+	Until time.Time `json:"until"`
+}
+
+func handleSnoozeCase(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+
+		var params CaseSnoozeParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		if params.Until.Before(time.Now()) {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError,
+				"a case cannot only be snoozed until a future date"))
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		req := models.CaseSnoozeRequest{
+			CaseId: caseId,
+			Until:  params.Until,
+		}
+
+		if err := caseUsecase.Snooze(ctx, req); err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func handleUnsnoozeCase(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+
+		uc := usecasesWithCreds(ctx, uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		if err := caseUsecase.Unsnooze(ctx, caseId); err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.Status(http.StatusNoContent)
 	}
 }
 

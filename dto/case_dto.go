@@ -18,6 +18,7 @@ type APICase struct {
 	Status         string               `json:"status"`
 	Tags           []APICaseTag         `json:"tags"`
 	Files          []APICaseFile        `json:"files"`
+	SnoozedUntil   *time.Time           `json:"snoozed_until,omitempty"`
 }
 
 type APICaseWithDecisions struct {
@@ -26,7 +27,7 @@ type APICaseWithDecisions struct {
 }
 
 func AdaptCaseDto(c models.Case) APICase {
-	return APICase{
+	dto := APICase{
 		Id:             c.Id,
 		Contributors:   pure_utils.Map(c.Contributors, NewAPICaseContributor),
 		CreatedAt:      c.CreatedAt,
@@ -38,6 +39,12 @@ func AdaptCaseDto(c models.Case) APICase {
 		Tags:           pure_utils.Map(c.Tags, NewAPICaseTag),
 		Files:          pure_utils.Map(c.Files, NewAPICaseFile),
 	}
+
+	if c.SnoozedUntil != nil && c.SnoozedUntil.After(time.Now()) {
+		dto.SnoozedUntil = c.SnoozedUntil
+	}
+
+	return dto
 }
 
 type CastListPage struct {
@@ -86,11 +93,12 @@ type CreateCaseCommentBody struct {
 }
 
 type CaseFilters struct {
-	EndDate   time.Time `form:"end_date"`
-	InboxIds  []string  `form:"inbox_id[]"`
-	StartDate time.Time `form:"start_date"`
-	Statuses  []string  `form:"status[]"`
-	Name      string    `form:"name"`
+	EndDate        time.Time `form:"end_date"`
+	InboxIds       []string  `form:"inbox_id[]"`
+	StartDate      time.Time `form:"start_date"`
+	Statuses       []string  `form:"status[]"`
+	Name           string    `form:"name"`
+	IncludeSnoozed bool      `form:"include_snoozed"`
 }
 
 type ReviewCaseDecisionsBody struct {

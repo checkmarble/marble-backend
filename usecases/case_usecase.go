@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -29,6 +30,9 @@ type CaseUseCaseRepository interface {
 		createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
 	UpdateCase(ctx context.Context, exec repositories.Executor,
 		updateCaseAttributes models.UpdateCaseAttributes) error
+	SnoozeCase(ctx context.Context, exec repositories.Executor, snoozeRequest models.CaseSnoozeRequest) error
+	UnsnoozeCase(ctx context.Context, exec repositories.Executor,
+		caseId string) error
 
 	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
 		createCaseEventAttributes models.CreateCaseEventAttributes) error
@@ -119,6 +123,7 @@ func (usecase *CaseUseCase) ListCases(
 				Statuses:       statuses,
 				OrganizationId: organizationId,
 				Name:           filters.Name,
+				IncludeSnoozed: filters.IncludeSnoozed,
 			}
 			if len(filters.InboxIds) > 0 {
 				repoFilters.InboxIds = filters.InboxIds
@@ -360,6 +365,36 @@ func (usecase *CaseUseCase) UpdateCase(
 
 	trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes)
 	return updatedCase, nil
+}
+
+func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest) error {
+	c, err := uc.repository.GetCaseById(ctx, uc.executorFactory.NewExecutor(), req.CaseId)
+	if err != nil {
+		return err
+	}
+
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c, []string{c.InboxId}); err != nil {
+		return err
+	}
+
+	return uc.repository.SnoozeCase(ctx, uc.executorFactory.NewExecutor(), req)
+}
+
+func (uc *CaseUseCase) Unsnooze(ctx context.Context, caseId string) error {
+	c, err := uc.repository.GetCaseById(ctx, uc.executorFactory.NewExecutor(), caseId)
+	if err != nil {
+		return err
+	}
+
+	if c.SnoozedUntil == nil || c.SnoozedUntil.Before(time.Now()) {
+		return errors.Wrap(models.ConflictError, "case is not currently snoozed")
+	}
+
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c, []string{c.InboxId}); err != nil {
+		return err
+	}
+
+	return uc.repository.UnsnoozeCase(ctx, uc.executorFactory.NewExecutor(), caseId)
 }
 
 func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c models.Case) bool {
@@ -697,6 +732,11 @@ func (usecase *CaseUseCase) UpdateDecisionsWithEvents(
 ) error {
 	if len(decisionIdsToAdd) > 0 {
 		if err := usecase.decisionRepository.UpdateDecisionCaseId(ctx, exec, decisionIdsToAdd, caseId); err != nil {
+			return err
+		}
+
+		err := usecase.repository.UnsnoozeCase(ctx, exec, caseId)
+		if err != nil {
 			return err
 		}
 
