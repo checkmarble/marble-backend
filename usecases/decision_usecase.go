@@ -400,6 +400,32 @@ func (usecase *DecisionUsecase) CreateDecision(
 		Pivot:        pivot,
 	}
 
+	// TODO: this logic is NOT applied on the POST /decisions/all endpoint, even though it should
+	executeTestRun := func(se *models.ScenarioExecution) {
+		defer func() {
+			if r := recover(); r != nil {
+				err := fmt.Errorf("error when creating phantom decisions with scenario id")
+				utils.LogAndReportSentryError(ctx, err)
+			}
+		}()
+		phantomInput := models.CreatePhantomDecisionInput{
+			OrganizationId:     input.OrganizationId,
+			Scenario:           scenario,
+			ClientObject:       evaluationParameters.ClientObject,
+			Pivot:              evaluationParameters.Pivot,
+			TriggerObjectTable: input.TriggerObjectTable,
+		}
+		evaluationParameters.CachedSanctionCheck = se.SanctionCheckExecution
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), PHANTOM_DECISION_TIMEOUT)
+		defer cancel()
+		logger := utils.LoggerFromContext(ctx).With("phantom_decisions_with_scenario_id", phantomInput.Scenario.Id)
+		_, _, errPhantom := usecase.phantomUseCase.CreatePhantomDecision(ctx, phantomInput, evaluationParameters)
+		if errPhantom != nil {
+			logger.ErrorContext(ctx, fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s",
+				phantomInput.Scenario.Id, errPhantom.Error()))
+		}
+	}
+
 	triggerPassed, scenarioExecution, err :=
 		usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
@@ -407,6 +433,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			fmt.Errorf("error evaluating scenario: %w", err)
 	}
 	if !triggerPassed {
+		executeTestRun(nil)
 		return false, models.DecisionWithRuleExecutions{}, nil
 	}
 
@@ -501,28 +528,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
 
-	// TODO: this logic is NOT applied on the POST /decisions/all endpoint, even though it should
-	go func() {
-		phantomInput := models.CreatePhantomDecisionInput{
-			OrganizationId:     input.OrganizationId,
-			Scenario:           scenario,
-			ClientObject:       evaluationParameters.ClientObject,
-			Pivot:              evaluationParameters.Pivot,
-			TriggerObjectTable: input.TriggerObjectTable,
-		}
-		if decision.SanctionCheckExecution != nil {
-			evaluationParameters.CachedSanctionCheck = decision.SanctionCheckExecution
-		}
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), PHANTOM_DECISION_TIMEOUT)
-		defer cancel()
-		logger := utils.LoggerFromContext(ctx).With("phantom_decisions_with_scenario_id", phantomInput.Scenario.Id)
-		_, _, errPhantom := usecase.phantomUseCase.CreatePhantomDecision(ctx, phantomInput, evaluationParameters)
-		if errPhantom != nil {
-			logger.ErrorContext(ctx, fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s",
-				phantomInput.Scenario.Id, errPhantom.Error()))
-		}
-	}()
-
+	executeTestRun(&scenarioExecution)
 	return true, newDecision, nil
 }
 
