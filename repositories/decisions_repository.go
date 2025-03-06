@@ -87,6 +87,7 @@ func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(
 	ctx context.Context,
 	exec Executor,
 	organizationId string,
+	scenarioId string,
 	begin, end time.Time,
 ) ([]models.DecisionsByVersionByOutcome, error) {
 	decisionQuery := squirrel.StatementBuilder.
@@ -99,7 +100,8 @@ func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(
 			"created_at": end,
 		}).
 		Where(squirrel.Eq{
-			"org_id": organizationId,
+			"org_id":      organizationId,
+			"scenario_id": scenarioId,
 		})
 	phantomDecisionQuery := squirrel.StatementBuilder.
 		Select("outcome, scenario_version, score").
@@ -111,7 +113,8 @@ func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(
 			"created_at": end,
 		}).
 		Where(squirrel.Eq{
-			"org_id": organizationId,
+			"org_id":      organizationId,
+			"scenario_id": scenarioId,
 		})
 	query, err := WithUnionAll(decisionQuery, phantomDecisionQuery)
 	if err != nil {
