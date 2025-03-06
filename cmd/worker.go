@@ -175,6 +175,7 @@ func RunTaskQueue(apiVersion string) error {
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
+		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
