@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"net/http"
+
 	gdto "github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
@@ -90,6 +92,13 @@ func HandleRefineSanctionCheck(uc usecases.Usecases) gin.HandlerFunc {
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+		if !params.Validate() {
+			pubapi.
+				NewErrorResponse().
+				WithErrorMessage("refine query is missing some required fields").
+				Serve(c, http.StatusBadRequest)
 			return
 		}
 
