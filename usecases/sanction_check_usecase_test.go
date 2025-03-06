@@ -143,6 +143,9 @@ func TestUpdateMatchStatus(t *testing.T) {
 		"Id", func() (interface{}, error) {
 			return "sanction_check_id", nil
 		}),
+		ops.WithCustomFieldProvider("IsArchived", func() (interface{}, error) {
+			return false, nil
+		}),
 		ops.WithCustomFieldProvider("Status", func() (interface{}, error) {
 			return "in_review", nil
 		}))

@@ -767,16 +767,17 @@ func (uc SanctionCheckUsecase) enforceCanRefineSanctionCheck(
 		uc.executorFactory.NewExecutor(), decisionId)
 	if err != nil {
 		return models.Decision{}, models.SanctionCheckWithMatches{},
-			errors.Wrap(err, "sanction check does not exist")
+			errors.WithDetail(err, "sanction check does not exist")
 	}
 	if sanctionCheck == nil {
 		return models.Decision{}, models.SanctionCheckWithMatches{},
-			errors.Wrap(models.NotFoundError, "no active sanction check found for this decision")
+			errors.WithDetail(models.NotFoundError, "no active sanction check found for this decision")
 	}
 
 	if !sanctionCheck.Status.IsRefinable() {
 		return models.Decision{}, *sanctionCheck,
-			errors.Wrap(models.NotFoundError, "this sanction is not pending review or error")
+			errors.WithDetail(models.NotFoundError,
+				"this sanction is not pending review or error")
 	}
 
 	decision, err := uc.enforceCanReadOrUpdateCase(ctx, sanctionCheck.DecisionId)
