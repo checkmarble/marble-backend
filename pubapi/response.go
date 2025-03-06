@@ -91,13 +91,18 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 
 		case
 			errors.Is(err, ErrFeatureDisabled),
-			errors.Is(err, ErrNotConfigured),
+			errors.Is(err, ErrNotConfigured):
+
+			resp.Error.err = err
+			resp.Error.Message = "feature not available"
+
+		case
 			errors.Is(err, ErrInvalidId),
 			errors.Is(err, ErrInvalidPayload),
 			errors.Is(err, ErrMissingPayload):
 
 			resp.Error.err = err
-			resp.Error.Message = err.Error()
+			resp.Error.Message = "invalid parameters or payload"
 
 		case
 			errors.Is(err, models.UnprocessableEntityError),
@@ -109,11 +114,11 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 		default:
 			resp.Error.err = err
 			resp.Error.Message = ErrInternalServerError.Error()
-
-			if message := errors.FlattenDetails(err); message != "" {
-				resp.Error.Message = message
-			}
 		}
+	}
+
+	if details := errors.GetAllDetails(err); len(details) > 0 {
+		resp.Error.Details = append(resp.Error.Details, details...)
 	}
 
 	return resp
@@ -151,6 +156,7 @@ func (resp baseErrorResponse) Serve(c *gin.Context, statuses ...int) {
 		switch {
 		case
 			errors.Is(resp.Error.err, ErrInvalidId),
+			errors.Is(resp.Error.err, ErrMissingPayload),
 			errors.Is(resp.Error.err, ErrInvalidPayload),
 			errors.Is(resp.Error.err, models.BadParameterError):
 			status = http.StatusBadRequest

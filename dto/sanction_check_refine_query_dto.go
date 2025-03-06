@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"reflect"
+
 	"github.com/checkmarble/marble-backend/models"
 )
 
@@ -27,6 +29,8 @@ func (dto RefineQueryDto) Type() string {
 type RefineQueryBase struct {
 	Name string `json:"name"`
 }
+
+func (q RefineQueryBase) GetName() string { return q.Name }
 
 type RefineQueryPerson struct {
 	RefineQueryBase
@@ -80,4 +84,46 @@ func AdaptRefineQueryDto(dto RefineQueryDto) models.OpenSanctionCheckFilter {
 	}
 
 	return filter
+}
+
+type IRefineQuery interface {
+	GetName() string
+}
+
+func (dto RefineQueryDto) Validate() bool {
+	st := reflect.TypeOf(dto)
+	sv := reflect.ValueOf(dto)
+
+	for fi := range st.NumField() {
+		fv := sv.Field(fi)
+
+		if !fv.IsZero() {
+			if fv.Interface() != nil {
+				return ValidateRefineQuery(sv.Field(fi).Elem().Interface().(IRefineQuery))
+			}
+		}
+	}
+
+	return false
+}
+
+func ValidateRefineQuery[T IRefineQuery](dto T) bool {
+	found := false
+
+	if dto.GetName() != "" {
+		return true
+	}
+
+	t := reflect.TypeOf(dto)
+	v := reflect.ValueOf(dto)
+
+	for fi := range t.NumField() {
+		if fv, ok := v.Field(fi).Interface().(string); ok {
+			if len(fv) > 0 {
+				found = true
+			}
+		}
+	}
+
+	return found
 }
