@@ -30,6 +30,10 @@ func (c Case) GetMetadata() CaseMetadata {
 	}
 }
 
+func (c Case) IsSnoozed() bool {
+	return c.SnoozedUntil != nil && c.SnoozedUntil.After(time.Now())
+}
+
 func (c CaseStatus) IsFinalized() bool {
 	return c == CaseDiscarded || c == CaseResolved
 }
@@ -113,6 +117,7 @@ type ReviewCaseDecisionsBody struct {
 }
 
 type CaseSnoozeRequest struct {
+	UserId UserId
 	CaseId string
 	Until  time.Time
 }

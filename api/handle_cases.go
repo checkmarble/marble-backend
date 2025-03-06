@@ -163,6 +163,9 @@ type CaseSnoozeParams struct {
 func handleSnoozeCase(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
+		creds, _ := utils.CredentialsFromCtx(ctx)
+
+		userId := creds.ActorIdentity.UserId
 		caseId := c.Param("case_id")
 
 		var params CaseSnoozeParams
@@ -182,6 +185,7 @@ func handleSnoozeCase(uc usecases.Usecases) func(c *gin.Context) {
 		caseUsecase := uc.NewCaseUseCase()
 
 		req := models.CaseSnoozeRequest{
+			UserId: userId,
 			CaseId: caseId,
 			Until:  params.Until,
 		}
@@ -198,12 +202,20 @@ func handleSnoozeCase(uc usecases.Usecases) func(c *gin.Context) {
 func handleUnsnoozeCase(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
+		creds, _ := utils.CredentialsFromCtx(ctx)
+
+		userId := creds.ActorIdentity.UserId
 		caseId := c.Param("case_id")
 
 		uc := usecasesWithCreds(ctx, uc)
 		caseUsecase := uc.NewCaseUseCase()
 
-		if err := caseUsecase.Unsnooze(ctx, caseId); err != nil {
+		req := models.CaseSnoozeRequest{
+			UserId: userId,
+			CaseId: caseId,
+		}
+
+		if err := caseUsecase.Unsnooze(ctx, req); err != nil {
 			presentError(ctx, c, err)
 			return
 		}
