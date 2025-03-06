@@ -290,7 +290,9 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 
 	executeTestRun := func(se *models.ScenarioExecution) {
 		evaluationParameters.TargetIterationId = nil
-		evaluationParameters.CachedSanctionCheck = se.SanctionCheckExecution
+		if se != nil {
+			evaluationParameters.CachedSanctionCheck = se.SanctionCheckExecution
+		}
 		phantomInput := models.CreatePhantomDecisionInput{
 			OrganizationId: scenario.OrganizationId,
 			Scenario:       scenario,

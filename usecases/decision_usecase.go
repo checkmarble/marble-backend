@@ -404,7 +404,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 	executeTestRun := func(se *models.ScenarioExecution) {
 		defer func() {
 			if r := recover(); r != nil {
-				err := fmt.Errorf("error when creating phantom decisions with scenario id")
+				err := fmt.Errorf("error when creating phantom decisions with scenario id: %v", r)
 				utils.LogAndReportSentryError(ctx, err)
 			}
 		}()
@@ -415,7 +415,9 @@ func (usecase *DecisionUsecase) CreateDecision(
 			Pivot:              evaluationParameters.Pivot,
 			TriggerObjectTable: input.TriggerObjectTable,
 		}
-		evaluationParameters.CachedSanctionCheck = se.SanctionCheckExecution
+		if se != nil {
+			evaluationParameters.CachedSanctionCheck = se.SanctionCheckExecution
+		}
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), PHANTOM_DECISION_TIMEOUT)
 		defer cancel()
 		logger := utils.LoggerFromContext(ctx).With("phantom_decisions_with_scenario_id", phantomInput.Scenario.Id)
