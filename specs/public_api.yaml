@@ -492,7 +492,7 @@ components:
         review_status:
           description: Review status of the decision (if outcome=block_and_review).
           type: string
-          enum: [pending, approve, rejecte]
+          enum: [pending, approve, reject]
         rules:
           description: Rules executed to take the decision.
           type: array

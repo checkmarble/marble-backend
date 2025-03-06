@@ -57,6 +57,9 @@ type RulesRepository interface {
 	SaveTestRunSummary(ctx context.Context, exec repositories.Executor,
 		testRunId string, stat models.RuleExecutionStat, newWatermark time.Time,
 	) error
+	BumpDecisionSummaryWatermark(ctx context.Context, exec repositories.Executor,
+		testRunId string, newWatermark time.Time,
+	) error
 	SetTestRunAsSummarized(ctx context.Context, exec repositories.Executor, testRunId string) error
 	ReadLatestUpdatedAt(ctx context.Context, exec repositories.Executor, testRunId string) (time.Time, error)
 	TouchLatestUpdatedAt(ctx context.Context, exec repositories.Executor, testRunId string) error
@@ -181,6 +184,11 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 						return err
 					}
 				}
+			}
+
+			// Once all summaries have been written, update the watermark on all of them, even those that have not been updated in this run.
+			if err := w.repository.BumpDecisionSummaryWatermark(ctx, tx, testRun.Id, windowBound); err != nil {
+				return err
 			}
 
 			if testRun.Status == models.Down || windowBound.After(testRun.ExpiresAt) {
