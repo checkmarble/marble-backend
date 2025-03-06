@@ -231,9 +231,9 @@ func (repo *MarbleDbRepository) SaveTestRunSummary(ctx context.Context, exec Exe
 		Suffix(`
 			on conflict (test_run_id, version, rule_stable_id, outcome) do update
 			set
-				watermark = now(),
+				watermark = ?,
 				total = orig.total + EXCLUDED.total
-		`)
+		`, newWatermark)
 
 	return ExecBuilder(ctx, exec, sql)
 }
@@ -252,9 +252,24 @@ func (repo *MarbleDbRepository) SaveTestRunDecisionSummary(ctx context.Context, 
 		Suffix(`
 			on conflict (test_run_id, version, rule_stable_id, outcome) do update
 			set
-				watermark = now(),
+				watermark = ?,
 				total = orig.total + EXCLUDED.total
-		`)
+		`, newWatermark)
+
+	return ExecBuilder(ctx, exec, sql)
+}
+
+func (repo *MarbleDbRepository) BumpDecisionSummaryWatermark(ctx context.Context, exec Executor,
+	testRunId string, newWatermark time.Time,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCENARIO_TESTRUN_SUMMARIES).
+		Where(squirrel.Eq{"test_run_id": testRunId}).
+		Set("watermark", newWatermark)
 
 	return ExecBuilder(ctx, exec, sql)
 }
