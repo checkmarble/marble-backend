@@ -37,8 +37,13 @@ type RulesRepository interface {
 		begin, end time.Time,
 		base string, // "decisions" or "phantom_decisions"
 	) ([]models.RuleExecutionStat, error)
-	DecisionsByOutcomeAndScore(ctx context.Context, exec repositories.Executor, organizationId string,
-		begin, end time.Time) ([]models.DecisionsByVersionByOutcome, error)
+	DecisionsByOutcomeAndScore(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		scenarioId string,
+		begin, end time.Time,
+	) ([]models.DecisionsByVersionByOutcome, error)
 	SaveTestRunDecisionSummary(ctx context.Context, exec repositories.Executor, testRunId string,
 		stat models.DecisionsByVersionByOutcome, newWatermark time.Time) error
 	SaveTestRunSummary(ctx context.Context, exec repositories.Executor,
@@ -112,7 +117,8 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 		}
 
 		err := w.transaction_factory.Transaction(ctx, func(tx repositories.Transaction) error {
-			decisionStats, err := w.repository.DecisionsByOutcomeAndScore(ctx, tx, job.Args.OrgId, then, now)
+			decisionStats, err := w.repository.DecisionsByOutcomeAndScore(ctx, tx,
+				job.Args.OrgId, testRun.ScenarioId, then, now)
 			if err != nil {
 				return err
 			}

@@ -59,21 +59,9 @@ type DecisionUsecaseRepository interface {
 
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 
-	DecisionsByOutcomeAndScore(
-		ctx context.Context,
-		exec repositories.Executor,
-		organizationId string,
-		begin, end time.Time,
-	) ([]models.DecisionsByVersionByOutcome, error)
 	GetSummarizedDecisionStatForTestRun(ctx context.Context, exec repositories.Executor,
 		testRunId string) ([]models.DecisionsByVersionByOutcome, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
-
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
-		models.ScenarioIteration, error,
-	)
-
-	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 }
 
 type decisionUsecaseFeatureAccessReader interface {
