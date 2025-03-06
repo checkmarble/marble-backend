@@ -377,24 +377,65 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 		return err
 	}
 
-	return uc.repository.SnoozeCase(ctx, uc.executorFactory.NewExecutor(), req)
+	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := uc.repository.SnoozeCase(ctx, tx, req); err != nil {
+			return err
+		}
+
+		var previousSnooze *string
+
+		if c.IsSnoozed() {
+			previousSnooze = utils.Ptr(c.SnoozedUntil.Format(time.RFC3339))
+		}
+
+		event := models.CreateCaseEventAttributes{
+			UserId:        string(req.UserId),
+			CaseId:        req.CaseId,
+			EventType:     models.CaseSnoozed,
+			NewValue:      utils.Ptr(req.Until.Format(time.RFC3339)),
+			PreviousValue: previousSnooze,
+		}
+
+		if err = uc.repository.CreateCaseEvent(ctx, tx, event); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
-func (uc *CaseUseCase) Unsnooze(ctx context.Context, caseId string) error {
-	c, err := uc.repository.GetCaseById(ctx, uc.executorFactory.NewExecutor(), caseId)
+func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeRequest) error {
+	c, err := uc.repository.GetCaseById(ctx, uc.executorFactory.NewExecutor(), req.CaseId)
 	if err != nil {
 		return err
 	}
 
-	if c.SnoozedUntil == nil || c.SnoozedUntil.Before(time.Now()) {
+	if !c.IsSnoozed() {
 		return errors.Wrap(models.ConflictError, "case is not currently snoozed")
 	}
 
-	if err := uc.enforceSecurity.ReadOrUpdateCase(c, []string{c.InboxId}); err != nil {
-		return err
-	}
+	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := uc.enforceSecurity.ReadOrUpdateCase(c, []string{c.InboxId}); err != nil {
+			return err
+		}
 
-	return uc.repository.UnsnoozeCase(ctx, uc.executorFactory.NewExecutor(), caseId)
+		if err = uc.repository.UnsnoozeCase(ctx, uc.executorFactory.NewExecutor(), req.CaseId); err != nil {
+			return err
+		}
+
+		event := models.CreateCaseEventAttributes{
+			UserId:        string(req.UserId),
+			CaseId:        req.CaseId,
+			EventType:     models.CaseUnsnoozed,
+			PreviousValue: utils.Ptr(c.SnoozedUntil.Format(time.RFC3339)),
+		}
+
+		if err = uc.repository.CreateCaseEvent(ctx, tx, event); err != nil {
+			return err
+		}
+
+		return err
+	})
 }
 
 func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c models.Case) bool {
