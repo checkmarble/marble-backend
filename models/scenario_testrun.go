@@ -54,6 +54,9 @@ type ScenarioTestRun struct {
 	// processing results when the test run ends), or we would miss results, so we continue processing until
 	// we reach a watermark later than the test run end date, then we set this boolean to true.
 	Summarized bool
+	// This is used a an idempotency key to make concurrent runs of the test run summary job do not produce incorrect results.
+	// Please do not update outside of this.
+	UpdatedAt time.Time
 }
 
 type ScenarioTestRunWithSummary struct {

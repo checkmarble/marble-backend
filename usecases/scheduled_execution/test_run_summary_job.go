@@ -2,11 +2,13 @@ package scheduled_execution
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/riverqueue/river"
 )
 
@@ -56,6 +58,8 @@ type RulesRepository interface {
 		testRunId string, stat models.RuleExecutionStat, newWatermark time.Time,
 	) error
 	SetTestRunAsSummarized(ctx context.Context, exec repositories.Executor, testRunId string) error
+	ReadLatestUpdatedAt(ctx context.Context, exec repositories.Executor, testRunId string) (*time.Time, error)
+	TouchLatestUpdatedAt(ctx context.Context, exec repositories.Executor, testRunId string) error
 }
 
 func NewTestRunSummaryPeriodicJob(orgId string) *river.PeriodicJob {
@@ -122,6 +126,10 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 
 		windowBound := then.Add(TEST_RUN_SUMMARY_WINDOW)
 
+		if windowBound.After(time.Now()) {
+			windowBound = time.Now()
+		}
+
 		err := w.transaction_factory.Transaction(ctx, func(tx repositories.Transaction) error {
 			decisionStats, err := w.repository.DecisionsByOutcomeAndScore(ctx, tx,
 				job.Args.OrgId, testRun.ScenarioId, then, windowBound)
@@ -160,10 +168,14 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 				}
 			}
 
+			savedNewData := false
+
 			for _, results := range [][]models.RuleExecutionStat{
 				liveStats, phantomStats, liveSanctionCheckStats, phantomSanctionChecksStats,
 			} {
 				for _, stat := range results {
+					savedNewData = true
+
 					if err := w.repository.SaveTestRunSummary(ctx, tx,
 						testRun.Id, stat, windowBound); err != nil {
 						return err
@@ -173,6 +185,23 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 
 			if testRun.Status == models.Down || windowBound.After(testRun.ExpiresAt) {
 				if err := w.repository.SetTestRunAsSummarized(ctx, tx, testRun.Id); err != nil {
+					return err
+				}
+			}
+
+			newUpdatedAt, err := w.repository.ReadLatestUpdatedAt(ctx, tx, testRun.Id)
+			if err != nil {
+				return err
+			}
+
+			if !newUpdatedAt.Equal(testRun.UpdatedAt) {
+				utils.LoggerFromContext(ctx).WarnContext(ctx,
+					"test run summary job rolled back because of detected concurrent access, rolling back")
+				return fmt.Errorf("outdated concurrency key in test run summary job, rolling back")
+			}
+
+			if savedNewData {
+				if err := w.repository.TouchLatestUpdatedAt(ctx, tx, testRun.Id); err != nil {
 					return err
 				}
 			}
