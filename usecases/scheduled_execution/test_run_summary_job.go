@@ -10,7 +10,13 @@ import (
 	"github.com/riverqueue/river"
 )
 
-const TEST_RUN_SUMMARY_WORKER_INTERVAL = 5 * time.Minute
+const (
+	// The summary is not idempotent, so we cannot afford to have two processes running at the same time for the same organization.
+	// Be mindful to not set the timeout greater (or even close) to the interval, to prevent that.
+	TEST_RUN_SUMMARY_TIMEOUT         = 2 * time.Minute
+	TEST_RUN_SUMMARY_WORKER_INTERVAL = 5 * time.Minute
+	TEST_RUN_SUMMARY_WINDOW          = 6 * time.Hour
+)
 
 type RulesRepository interface {
 	GetRecentTestRunForOrg(ctx context.Context, exec repositories.Executor, orgId string) (
@@ -91,7 +97,7 @@ func NewTestRunSummaryWorker(
 }
 
 func (w *TestRunSummaryWorker) Timeout(job *river.Job[models.TestRunSummaryArgs]) time.Duration {
-	return 2 * time.Minute
+	return TEST_RUN_SUMMARY_TIMEOUT
 }
 
 func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.TestRunSummaryArgs]) error {
@@ -99,8 +105,6 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 	if err != nil {
 		return err
 	}
-
-	now := time.Now()
 
 	for _, testRun := range testRuns {
 		then := testRun.CreatedAt
@@ -116,55 +120,58 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 			then = *earliestWatermark
 		}
 
+		windowBound := then.Add(TEST_RUN_SUMMARY_WINDOW)
+
 		err := w.transaction_factory.Transaction(ctx, func(tx repositories.Transaction) error {
 			decisionStats, err := w.repository.DecisionsByOutcomeAndScore(ctx, tx,
-				job.Args.OrgId, testRun.ScenarioId, then, now)
+				job.Args.OrgId, testRun.ScenarioId, then, windowBound)
 			if err != nil {
 				return err
 			}
 
 			liveStats, err := w.repository.RulesExecutionStats(ctx, tx, job.Args.OrgId,
-				testRun.ScenarioLiveIterationId, then, now)
+				testRun.ScenarioLiveIterationId, then, windowBound)
 			if err != nil {
 				return err
 			}
 
 			phantomStats, err := w.repository.PhanomRulesExecutionStats(ctx, tx,
-				job.Args.OrgId, testRun.ScenarioIterationId, then, now)
+				job.Args.OrgId, testRun.ScenarioIterationId, then, windowBound)
 			if err != nil {
 				return err
 			}
 
 			liveSanctionCheckStats, err := w.repository.SanctionCheckExecutionStats(
-				ctx, tx, job.Args.OrgId, testRun.ScenarioLiveIterationId, then, now, "decisions")
+				ctx, tx, job.Args.OrgId, testRun.ScenarioLiveIterationId, then, windowBound, "decisions")
 			if err != nil {
 				return err
 			}
 
 			phantomSanctionChecksStats, err := w.repository.SanctionCheckExecutionStats(
-				ctx, tx, job.Args.OrgId, testRun.ScenarioIterationId, then, now, "phantom_decisions")
+				ctx, tx, job.Args.OrgId, testRun.ScenarioIterationId, then, windowBound, "phantom_decisions")
 			if err != nil {
 				return err
 			}
 
 			for _, stat := range decisionStats {
-				if err := w.repository.SaveTestRunDecisionSummary(ctx, tx, testRun.Id, stat, now); err != nil {
+				if err := w.repository.SaveTestRunDecisionSummary(ctx, tx,
+					testRun.Id, stat, windowBound); err != nil {
 					return err
 				}
 			}
 
 			for _, results := range [][]models.RuleExecutionStat{
-				liveStats, phantomStats,
-				liveSanctionCheckStats, phantomSanctionChecksStats,
+				liveStats, phantomStats, liveSanctionCheckStats, phantomSanctionChecksStats,
 			} {
 				for _, stat := range results {
-					if err := w.repository.SaveTestRunSummary(ctx, tx, testRun.Id, stat, now); err != nil {
+					if err := w.repository.SaveTestRunSummary(ctx, tx,
+						testRun.Id, stat, windowBound); err != nil {
 						return err
 					}
 				}
 			}
 
-			if testRun.Status == models.Down {
+			if testRun.Status == models.Down || windowBound.After(testRun.ExpiresAt) {
 				if err := w.repository.SetTestRunAsSummarized(ctx, tx, testRun.Id); err != nil {
 					return err
 				}
