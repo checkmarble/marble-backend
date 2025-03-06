@@ -15,6 +15,7 @@ type DBScenarioTestRun struct {
 	ExpiresAt               time.Time `db:"expires_at"`
 	Status                  string    `db:"status"`
 	Summarized              bool      `db:"summarized"`
+	UpdatedAt               time.Time `db:"updated_at"`
 }
 
 type DBScenarioTestRunWitInfo struct {
@@ -24,7 +25,7 @@ type DBScenarioTestRunWitInfo struct {
 }
 
 type DBScenarioTestRunWithSummary struct {
-	DBScenarioTestRun
+	DBScenarioTestRunWitInfo
 
 	Summary []DbScenarioTestRunSummary `db:"summaries"`
 }
@@ -42,6 +43,7 @@ func AdaptScenarioTestrun(db DBScenarioTestRun) (models.ScenarioTestRun, error) 
 		ExpiresAt:               db.ExpiresAt,
 		Status:                  models.ScenarioTestStatusFrom(db.Status),
 		Summarized:              db.Summarized,
+		UpdatedAt:               db.UpdatedAt,
 	}, nil
 }
 
@@ -56,6 +58,7 @@ func AdaptScenarioTestrunWithInfo(db DBScenarioTestRunWitInfo) (models.ScenarioT
 		ScenarioId:              db.ScenarioId,
 		Status:                  models.ScenarioTestStatusFrom(db.Status),
 		Summarized:              db.Summarized,
+		UpdatedAt:               db.UpdatedAt,
 	}, nil
 }
 
@@ -70,7 +73,7 @@ func AdaptScenarioTestrunWithSummary(db DBScenarioTestRunWithSummary) (models.Sc
 		summaries[idx] = summary
 	}
 
-	testRun, err := AdaptScenarioTestrun(db.DBScenarioTestRun)
+	testRun, err := AdaptScenarioTestrunWithInfo(db.DBScenarioTestRunWitInfo)
 	if err != nil {
 		return models.ScenarioTestRunWithSummary{}, err
 	}
