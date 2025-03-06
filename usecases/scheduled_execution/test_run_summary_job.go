@@ -58,7 +58,7 @@ type RulesRepository interface {
 		testRunId string, stat models.RuleExecutionStat, newWatermark time.Time,
 	) error
 	SetTestRunAsSummarized(ctx context.Context, exec repositories.Executor, testRunId string) error
-	ReadLatestUpdatedAt(ctx context.Context, exec repositories.Executor, testRunId string) (*time.Time, error)
+	ReadLatestUpdatedAt(ctx context.Context, exec repositories.Executor, testRunId string) (time.Time, error)
 	TouchLatestUpdatedAt(ctx context.Context, exec repositories.Executor, testRunId string) error
 }
 
