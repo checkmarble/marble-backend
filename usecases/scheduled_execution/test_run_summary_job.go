@@ -16,7 +16,7 @@ const (
 	// The summary is not idempotent, so we cannot afford to have two processes running at the same time for the same organization.
 	// Be mindful to not set the timeout greater (or even close) to the interval, to prevent that.
 	TEST_RUN_SUMMARY_TIMEOUT         = 2 * time.Minute
-	TEST_RUN_SUMMARY_WORKER_INTERVAL = 10 * time.Second
+	TEST_RUN_SUMMARY_WORKER_INTERVAL = 5 * time.Minute
 	TEST_RUN_SUMMARY_WINDOW          = 6 * time.Hour
 )
 
