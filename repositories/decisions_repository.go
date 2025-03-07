@@ -88,6 +88,7 @@ func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(
 	exec Executor,
 	organizationId string,
 	scenarioId string,
+	scenarioLiveIterationId string,
 	begin, end time.Time,
 ) ([]models.DecisionsByVersionByOutcome, error) {
 	decisionQuery := squirrel.StatementBuilder.
@@ -126,7 +127,7 @@ func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(
 		GroupBy("scenario_version, outcome, score").
 		PlaceholderFormat(squirrel.Dollar)
 
-	return SqlToListOfRow(ctx,
+	out, err := SqlToListOfRow(ctx,
 		exec,
 		finalQuery,
 		func(row pgx.CollectableRow) (models.DecisionsByVersionByOutcome, error) {
@@ -136,6 +137,27 @@ func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(
 			}
 			return dbmodels.AdaptDecisionByOutcome(db), nil
 		})
+	if err != nil {
+		return nil, err
+	}
+
+	// return at least one count object with 0 count by default, because the watermark on it is needed for the summary calculation.
+	// See the usage in the caller test run summary job.
+	if len(out) == 0 {
+		si, err := repo.GetScenarioIteration(ctx, exec, scenarioLiveIterationId)
+		if err != nil {
+			return nil, err
+		}
+		return []models.DecisionsByVersionByOutcome{
+			{
+				Outcome: "approve",
+				Version: fmt.Sprintf("%d", *si.Version),
+				Score:   0,
+			},
+		}, nil
+	}
+
+	return out, nil
 }
 
 func (repo *MarbleDbRepository) DecisionsWithRuleExecutionsByIds(
