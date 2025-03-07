@@ -1,6 +1,7 @@
 package pubapi
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 
@@ -18,7 +19,7 @@ var validationTranslator ut.Translator
 
 type baseResponse[T any] struct {
 	Data  *T               `json:"data,omitempty"`
-	Links map[string][]any `json:"links,omitempty"`
+	Links map[string][]any `json:"-"`
 }
 
 type baseErrorResponse struct {
@@ -26,11 +27,12 @@ type baseErrorResponse struct {
 }
 
 type ErrorResponse struct {
-	err error `json:"-"`
+	err    error `json:"-"`
+	status int   `json:"-"`
 
-	Code    string   `json:"code,omitempty"`
-	Message string   `json:"message"`
-	Details []string `json:"details,omitempty"`
+	Code     string          `json:"code,omitempty"`
+	Messages []string        `json:"messages,omitempty"`
+	Detail   json.RawMessage `json:"detail,omitempty"`
 }
 
 func NewResponse[T any](data T) baseResponse[T] {
@@ -55,7 +57,7 @@ func (resp baseResponse[T]) WithLink(kind string, value any) baseResponse[T] {
 func NewErrorResponse() baseErrorResponse {
 	return baseErrorResponse{
 		Error: ErrorResponse{
-			Message: ErrInternalServerError.Error(),
+			Code: ErrInternalServerError.Error(),
 		},
 	}
 }
@@ -67,42 +69,40 @@ func (resp baseErrorResponse) WithErrorCode(code string) baseErrorResponse {
 }
 
 func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
+	resp.Error.err = err
+	resp.Error.status = http.StatusInternalServerError
+
 	switch err := err.(type) { // nolint:errorlint
 	case validator.ValidationErrors:
-		resp.Error.err = ErrInvalidPayload
-		resp.Error.Message = ErrInvalidPayload.Error()
-
-		resp.Error.Details = pure_utils.Map(err, func(verr validator.FieldError) string {
+		resp.Error.status = http.StatusBadRequest
+		resp.Error.Code = ErrInvalidPayload.Error()
+		resp.Error.Messages = pure_utils.Map(err, func(verr validator.FieldError) string {
 			return verr.Translate(validationTranslator)
 		})
 
 	default:
 		switch {
-		case errors.Is(err, io.EOF):
-			resp.Error.err = ErrMissingPayload
-			resp.Error.Message = ErrMissingPayload.Error()
-
 		case
 			errors.Is(err, models.NotFoundError),
 			errors.Is(err, pgx.ErrNoRows):
 
-			resp.Error.err = err
-			resp.Error.Message = "requested resource was not found"
+			resp.Error.status = http.StatusNotFound
+			resp.Error.Code = ErrNotFound.Error()
+
+		case errors.Is(err, ErrFeatureDisabled):
+			resp.Error.status = http.StatusPaymentRequired
+			resp.Error.Code = ErrFeatureDisabled.Error()
+
+		case errors.Is(err, ErrNotConfigured):
+			resp.Error.status = http.StatusNotImplemented
+			resp.Error.Code = ErrNotConfigured.Error()
 
 		case
-			errors.Is(err, ErrFeatureDisabled),
-			errors.Is(err, ErrNotConfigured):
+			errors.Is(err, io.EOF),
+			errors.Is(err, ErrInvalidPayload):
 
-			resp.Error.err = err
-			resp.Error.Message = "feature not available"
-
-		case
-			errors.Is(err, ErrInvalidId),
-			errors.Is(err, ErrInvalidPayload),
-			errors.Is(err, ErrMissingPayload):
-
-			resp.Error.err = err
-			resp.Error.Message = "invalid parameters or payload"
+			resp.Error.status = http.StatusBadRequest
+			resp.Error.Code = ErrInvalidPayload.Error()
 
 		case
 			errors.Is(err, models.UnprocessableEntityError),
@@ -113,25 +113,24 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 
 		default:
 			resp.Error.err = err
-			resp.Error.Message = ErrInternalServerError.Error()
 		}
 	}
 
 	if details := errors.GetAllDetails(err); len(details) > 0 {
-		resp.Error.Details = append(resp.Error.Details, details...)
+		resp.Error.Messages = append(resp.Error.Messages, details...)
 	}
 
 	return resp
 }
 
 func (resp baseErrorResponse) WithErrorMessage(message string) baseErrorResponse {
-	resp.Error.Message = message
+	resp.Error.Code = message
 
 	return resp
 }
 
 func (resp baseErrorResponse) WithErrorDetails(details ...string) baseErrorResponse {
-	resp.Error.Details = details
+	resp.Error.Messages = details
 
 	return resp
 }
@@ -146,41 +145,5 @@ func (resp baseResponse[T]) Serve(c *gin.Context, statuses ...int) {
 }
 
 func (resp baseErrorResponse) Serve(c *gin.Context, statuses ...int) {
-	status := http.StatusInternalServerError
-
-	switch {
-	case len(statuses) > 0:
-		status = statuses[0]
-
-	case resp.Error.err != nil:
-		switch {
-		case
-			errors.Is(resp.Error.err, ErrInvalidId),
-			errors.Is(resp.Error.err, ErrMissingPayload),
-			errors.Is(resp.Error.err, ErrInvalidPayload),
-			errors.Is(resp.Error.err, models.BadParameterError):
-			status = http.StatusBadRequest
-
-		case
-			errors.Is(resp.Error.err, models.UnAuthorizedError),
-			errors.Is(resp.Error.err, models.ForbiddenError):
-			status = http.StatusUnauthorized
-
-		case
-			errors.Is(resp.Error.err, models.NotFoundError),
-			errors.Is(resp.Error.err, pgx.ErrNoRows):
-			status = http.StatusNotFound
-
-		case errors.Is(resp.Error.err, models.ConflictError):
-			status = http.StatusConflict
-
-		case errors.Is(resp.Error.err, ErrFeatureDisabled):
-			status = http.StatusPaymentRequired
-
-		case errors.Is(resp.Error.err, ErrNotConfigured):
-			status = http.StatusNotImplemented
-		}
-	}
-
-	c.JSON(status, resp)
+	c.JSON(resp.Error.status, resp)
 }

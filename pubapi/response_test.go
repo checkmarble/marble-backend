@@ -54,9 +54,9 @@ func TestErrorMessagesPublicVsPrivate(t *testing.T) {
 
 		assert.Equal(t, tt.expectedStatus, w.Code)
 		assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-		assert.NotContains(t, resp.Error.Message, "private")
-		assert.NotContains(t, resp.Error.Details, "private")
-		assert.Contains(t, resp.Error.Details, "public1")
-		assert.Contains(t, resp.Error.Details, "public2")
+		assert.NotContains(t, resp.Error.Code, "private")
+		assert.NotContains(t, resp.Error.Messages, "private")
+		assert.Contains(t, resp.Error.Messages, "public1")
+		assert.Contains(t, resp.Error.Messages, "public2")
 	}
 }

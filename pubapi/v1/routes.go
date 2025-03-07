@@ -13,7 +13,10 @@ func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usec
 		r := r.Group("/", authMiddleware)
 
 		r.GET("/decisions/:decisionId/sanction-checks", HandleListSanctionChecks(uc))
-		r.POST("/decisions/:decisionId/sanction-checks/refine", HandleRefineSanctionCheck(uc))
+		r.POST("/decisions/:decisionId/sanction-checks/refine", HandleRefineSanctionCheck(uc, true))
+		r.POST("/decisions/:decisionId/sanction-checks/search", HandleRefineSanctionCheck(uc, false))
+
+		r.GET("/sanction-checks/entities/:entityId", HandleGetSanctionCheckEntity(uc))
 		r.POST("/sanction-checks/matches/:matchId",
 			HandleUpdateSanctionCheckMatchStatus(uc))
 	}

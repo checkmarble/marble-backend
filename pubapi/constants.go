@@ -11,12 +11,12 @@ const (
 )
 
 var (
-	ErrInternalServerError = errors.New("unknown error, please contact your administrator")
+	ErrInternalServerError = errors.New("server_error")
 
-	ErrFeatureDisabled = errors.New("feature is not enabled in your organization and requires a Marble license")
-	ErrNotConfigured   = errors.New("feature in not configured in your organization")
+	ErrFeatureDisabled = errors.New("feature_disabled")
+	ErrNotConfigured   = errors.New("feature_not_configured")
 
-	ErrInvalidId      = errors.New("provided resource ID is invalid")
-	ErrMissingPayload = errors.New("this endpoint expected a payload, none provided")
-	ErrInvalidPayload = errors.New("the provided payload failed validations")
+	ErrNotFound            = errors.New("not_found")
+	ErrInvalidPayload      = errors.New("invalid_payload")
+	ErrUnprocessableEntity = errors.New("unprocessable_entity")
 )

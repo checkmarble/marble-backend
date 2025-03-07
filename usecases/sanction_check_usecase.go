@@ -554,6 +554,10 @@ func (uc SanctionCheckUsecase) EnrichMatchWithoutAuthorization(ctx context.Conte
 	return newMatch, nil
 }
 
+func (uc SanctionCheckUsecase) GetEntity(ctx context.Context, entityId string) ([]byte, error) {
+	return uc.openSanctionsProvider.EnrichMatch(ctx, models.SanctionCheckMatch{EntityId: entityId})
+}
+
 func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Credentials,
 	sanctionCheckId string, files []multipart.FileHeader,
 ) ([]models.SanctionCheckFile, error) {
