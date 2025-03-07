@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"encoding/json"
 	"net/http"
 
 	gdto "github.com/checkmarble/marble-backend/dto"
@@ -80,7 +81,7 @@ func HandleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) gin.HandlerFunc 
 	}
 }
 
-func HandleRefineSanctionCheck(uc usecases.Usecases) gin.HandlerFunc {
+func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		decisionId, err := pubapi.UuidParam(c, "decisionId")
 		if err != nil {
@@ -111,12 +112,45 @@ func HandleRefineSanctionCheck(uc usecases.Usecases) gin.HandlerFunc {
 			Query:      gdto.AdaptRefineQueryDto(params),
 		}
 
-		sanctionCheck, err := sanctionCheckUsecase.Refine(c.Request.Context(), refineQuery, nil)
+		var sanctionCheck models.SanctionCheckWithMatches
+
+		switch write {
+		case true:
+			sanctionCheck, err = sanctionCheckUsecase.Refine(c.Request.Context(), refineQuery, nil)
+			if err != nil {
+				pubapi.NewErrorResponse().WithError(err).Serve(c)
+				return
+			}
+
+		case false:
+			sanctionCheck, err = sanctionCheckUsecase.Search(c.Request.Context(), refineQuery)
+			if err != nil {
+				pubapi.NewErrorResponse().WithError(err).Serve(c)
+				return
+			}
+		}
+
+		pubapi.
+			NewResponse(dto.AdaptSanctionCheck(sanctionCheck)).
+			WithLink(pubapi.LinkDecisions, gin.H{"id": decisionId}).
+			Serve(c)
+	}
+}
+
+func HandleGetSanctionCheckEntity(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		entityId := c.Param("entityId")
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+
+		entity, err := sanctionCheckUsecase.GetEntity(ctx, entityId)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.NewResponse(dto.AdaptSanctionCheck(sanctionCheck)).Serve(c)
+		pubapi.NewResponse(json.RawMessage(entity)).Serve(c)
 	}
 }
