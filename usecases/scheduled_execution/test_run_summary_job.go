@@ -16,7 +16,7 @@ const (
 	// The summary is not idempotent, so we cannot afford to have two processes running at the same time for the same organization.
 	// Be mindful to not set the timeout greater (or even close) to the interval, to prevent that.
 	TEST_RUN_SUMMARY_TIMEOUT         = 2 * time.Minute
-	TEST_RUN_SUMMARY_WORKER_INTERVAL = 5 * time.Minute
+	TEST_RUN_SUMMARY_WORKER_INTERVAL = 10 * time.Second
 	TEST_RUN_SUMMARY_WINDOW          = 6 * time.Hour
 )
 
@@ -50,6 +50,7 @@ type RulesRepository interface {
 		exec repositories.Executor,
 		organizationId string,
 		scenarioId string,
+		scenarioLiveIterationId string,
 		begin, end time.Time,
 	) ([]models.DecisionsByVersionByOutcome, error)
 	SaveTestRunDecisionSummary(ctx context.Context, exec repositories.Executor, testRunId string,
@@ -134,8 +135,13 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 		}
 
 		err := w.transaction_factory.Transaction(ctx, func(tx repositories.Transaction) error {
+			// Warning: this method is implemented to return at least one count object with 0 count by default, because the watermark on it is
+			// needed for the summary calculation.
+			// This logic is not implemented in all the subsequent repositories methods, but only because they are expected to be called together
+			// successively.
+			// TL:DR: it the job runs and there are no decisions, at least one summary must be created to advance the watermark.
 			decisionStats, err := w.repository.DecisionsByOutcomeAndScore(ctx, tx,
-				job.Args.OrgId, testRun.ScenarioId, then, windowBound)
+				job.Args.OrgId, testRun.ScenarioId, testRun.ScenarioLiveIterationId, then, windowBound)
 			if err != nil {
 				return err
 			}
