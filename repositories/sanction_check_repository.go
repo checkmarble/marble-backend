@@ -258,6 +258,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		return models.SanctionCheckWithMatches{}, err
 	}
 
+	withMatches.Count = len(matches)
 	withMatches.Matches = matches
 
 	return withMatches, nil
