@@ -102,13 +102,21 @@ func (w *IndexCreationStatusWorker) Work(ctx context.Context, job *river.Job[mod
 		return err
 	}
 
+	// TODO: place this in a better, central place for reuse.
+	// Postgres truncates index names to 63 character. The logic here used the full non-truncated names for comparison and introduced a bug.
+	// We use this function to re-truncate the name to the proper length for now.
+	truncateIndexName := func(name string) string {
+		return name[:min(63, len(name))]
+	}
+
 	doneIndices := make([]models.ConcreteIndex, 0, len(job.Args.Indices))
 
 	// Compare the list of finished indices with the list that was supposed to be created,
 	// if we find all of them, it means the process successfully finished.
 	for _, index := range validIndices {
 		if slices.ContainsFunc(job.Args.Indices, func(i models.ConcreteIndex) bool {
-			return i.TableName == index.TableName && i.IndexName == index.IndexName
+			return i.TableName == index.TableName &&
+				truncateIndexName(i.IndexName) == index.IndexName
 		}) {
 			doneIndices = append(doneIndices, index)
 		}
@@ -121,7 +129,8 @@ func (w *IndexCreationStatusWorker) Work(ctx context.Context, job *river.Job[mod
 
 		for _, index := range job.Args.Indices {
 			if !slices.ContainsFunc(doneIndices, func(i models.ConcreteIndex) bool {
-				return i.TableName == index.TableName && i.IndexName == index.IndexName
+				return i.TableName == index.TableName &&
+					truncateIndexName(i.IndexName) == index.IndexName
 			}) {
 				leftIndices = append(leftIndices, index)
 			}
