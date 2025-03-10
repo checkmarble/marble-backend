@@ -341,6 +341,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		inboxReader:             usecases.NewInboxReader(),
 		caseManagerBucketUrl:    usecases.caseManagerBucketUrl,
 		blobRepository:          usecases.Repositories.BlobRepository,
+		userRepository:          usecases.Repositories.UserRepository,
 		webhookEventsUsecase:    usecases.NewWebhookEventsUsecase(),
 		sanctionCheckRepository: &usecases.Repositories.MarbleDbRepository,
 	}

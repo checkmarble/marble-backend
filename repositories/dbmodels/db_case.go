@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -13,6 +14,7 @@ type DBCase struct {
 	InboxId        pgtype.Text      `db:"inbox_id"`
 	Name           pgtype.Text      `db:"name"`
 	OrganizationId pgtype.Text      `db:"org_id"`
+	AssignedTo     *string          `db:"assigned_to"`
 	Status         pgtype.Text      `db:"status"`
 	SnoozedUntil   *time.Time       `db:"snoozed_until"`
 }
@@ -31,15 +33,21 @@ type DBPaginatedCases struct {
 
 const TABLE_CASES = "cases"
 
-var SelectCaseColumn = []string{"id", "created_at", "inbox_id", "name", "org_id", "status", "snoozed_until"}
+var SelectCaseColumn = []string{"id", "created_at", "inbox_id", "name", "org_id", "assigned_to", "status", "snoozed_until"}
 
 func AdaptCase(db DBCase) (models.Case, error) {
+	var assigneeId *models.UserId
+	if db.AssignedTo != nil {
+		assigneeId = utils.Ptr(models.UserId(*db.AssignedTo))
+	}
+
 	return models.Case{
 		Id:             db.Id.String,
 		CreatedAt:      db.CreatedAt.Time,
 		InboxId:        db.InboxId.String,
 		Name:           db.Name.String,
 		OrganizationId: db.OrganizationId.String,
+		AssignedTo:     assigneeId,
 		Status:         models.CaseStatus(db.Status.String),
 		SnoozedUntil:   db.SnoozedUntil,
 	}, nil

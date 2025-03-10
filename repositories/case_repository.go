@@ -172,6 +172,23 @@ func (repo *MarbleDbRepository) UnsnoozeCase(ctx context.Context, exec Executor,
 	return ExecBuilder(ctx, exec, sql)
 }
 
+func (repo *MarbleDbRepository) AssignCase(ctx context.Context, exec Executor, id string, userId *models.UserId) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_CASES).
+		Set("assigned_to", userId).
+		Where(squirrel.Eq{"id": id})
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo *MarbleDbRepository) UnassignCase(ctx context.Context, exec Executor, id string) error {
+	return repo.AssignCase(ctx, exec, id, nil)
+}
+
 func (repo *MarbleDbRepository) CreateCaseTag(ctx context.Context, exec Executor, caseId, tagId string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err

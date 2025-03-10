@@ -172,6 +172,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.POST("/cases/:case_id/decisions", tom, handlePostCaseDecisions(uc))
 	router.POST("/cases/:case_id/comments", tom, handlePostCaseComment(uc))
 	router.POST("/cases/:case_id/case_tags", tom, handlePostCaseTags(uc))
+	router.POST("/cases/:case_id/assignee", tom, handleAssignCase(uc))
+	router.DELETE("/cases/:case_id/assignee", tom, handleUnassignCase(uc))
 	router.POST("/cases/:case_id/files", tom, limits.RequestSizeLimiter(maxCaseFileSize), handlePostCaseFile(uc))
 	router.GET("/cases/files/:case_file_id/download_link", tom, handleDownloadCaseFile(uc))
 	router.POST("/cases/review_decision", tom, handleReviewCaseDecisions(uc))
