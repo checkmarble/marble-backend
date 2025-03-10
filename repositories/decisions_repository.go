@@ -80,6 +80,7 @@ func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Conte
 		return models.DecisionWithRuleExecutions{},
 			errors.Wrap(models.NotFoundError, "Decision not found")
 	}
+
 	return decisions[0], nil
 }
 
