@@ -369,6 +369,8 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 	}
 
 	setToFailed := func(numRowsIngested int) {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+		defer cancel()
 		_, err := usecase.uploadLogRepository.UpdateUploadLogStatus(
 			ctx,
 			exec,

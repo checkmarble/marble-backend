@@ -601,15 +601,15 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		defer span.End()
 		triggerPassed, scenarioExecution, err :=
 			usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
-		if err != nil {
+		switch {
+		case err != nil:
 			return nil, 0, errors.Wrap(err, "error evaluating scenario in CreateAllDecisions")
-		} else if !triggerPassed {
+		case !triggerPassed:
 			nbSkipped++
+		default:
+			decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
+			items = append(items, decisionAndScenario{decision: decision, scenario: scenario})
 		}
-
-		decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
-		items = append(items, decisionAndScenario{decision: decision, scenario: scenario})
-
 	}
 
 	ctx, span2 := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions - store decisions")
