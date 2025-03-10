@@ -106,3 +106,7 @@ type ReviewCaseDecisionsBody struct {
 	ReviewComment string `json:"review_comment" binding:"required"`
 	ReviewStatus  string `json:"review_status" binding:"required"`
 }
+
+type CaseAssigneeDto struct {
+	UserId models.UserId `json:"user_id"`
+}

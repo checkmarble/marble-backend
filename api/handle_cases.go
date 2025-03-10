@@ -328,6 +328,64 @@ func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleAssignCase(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+		creds, _ := utils.CredentialsFromCtx(ctx)
+
+		var payload dto.CaseAssigneeDto
+
+		if err := c.ShouldBindBodyWithJSON(&payload); err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		req := models.CaseAssignementRequest{
+			UserId:     creds.ActorIdentity.UserId,
+			CaseId:     caseId,
+			AssigneeId: &payload.UserId,
+		}
+
+		if payload.UserId == "me" {
+			req.AssigneeId = &creds.ActorIdentity.UserId
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		if err := caseUsecase.AssignCase(ctx, req); err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func handleUnassignCase(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+		creds, _ := utils.CredentialsFromCtx(ctx)
+
+		req := models.CaseAssignementRequest{
+			UserId: creds.ActorIdentity.UserId,
+			CaseId: caseId,
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		if err := caseUsecase.UnassignCase(ctx, req); err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
 type FileForm struct {
 	Files []multipart.FileHeader `form:"file[]" binding:"required"`
 }

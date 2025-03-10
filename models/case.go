@@ -14,6 +14,7 @@ type Case struct {
 	Events         []CaseEvent
 	InboxId        string
 	OrganizationId string
+	AssignedTo     *UserId
 	Name           string
 	Status         CaseStatus
 	Tags           []CaseTag
@@ -120,4 +121,10 @@ type CaseSnoozeRequest struct {
 	UserId UserId
 	CaseId string
 	Until  time.Time
+}
+
+type CaseAssignementRequest struct {
+	UserId     UserId
+	CaseId     string
+	AssigneeId *UserId
 }

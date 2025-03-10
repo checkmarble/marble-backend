@@ -17,6 +17,15 @@ type EnforceSecurityCaseImpl struct {
 	Credentials models.Credentials
 }
 
+func EnforceSecurityCaseForUser(user models.User) *EnforceSecurityCaseImpl {
+	creds := models.NewCredentialWithUser(user)
+
+	return &EnforceSecurityCaseImpl{
+		EnforceSecurity: NewEnforceSecurity(creds),
+		Credentials:     creds,
+	}
+}
+
 func (e *EnforceSecurityCaseImpl) ReadOrUpdateCase(c models.Case, availableInboxIds []string) error {
 	err := errors.Wrap(models.ForbiddenError, "User does not have access to case's inbox")
 	for _, inboxId := range availableInboxIds {

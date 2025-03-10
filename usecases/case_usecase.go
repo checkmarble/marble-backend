@@ -52,11 +52,18 @@ type CaseUseCaseRepository interface {
 		createCaseFileInput models.CreateDbCaseFileInput) error
 	GetCaseFileById(ctx context.Context, exec repositories.Executor, caseFileId string) (models.CaseFile, error)
 	GetCasesFileByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseFile, error)
+
+	AssignCase(ctx context.Context, exec repositories.Executor, id string, userId *models.UserId) error
+	UnassignCase(ctx context.Context, exec repositories.Executor, id string) error
 }
 
 type CaseUsecaseSanctionCheckRepository interface {
 	GetActiveSanctionCheckForDecision(context.Context, repositories.Executor, string) (
 		*models.SanctionCheckWithMatches, error)
+}
+
+type CaseUsecaseUserRepository interface {
+	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
 }
 
 type webhookEventsUsecase interface {
@@ -74,6 +81,7 @@ type CaseUseCase struct {
 	decisionRepository      repositories.DecisionRepository
 	inboxReader             inboxes.InboxReader
 	blobRepository          repositories.BlobRepository
+	userRepository          CaseUsecaseUserRepository
 	caseManagerBucketUrl    string
 	transactionFactory      executor_factory.TransactionFactory
 	executorFactory         executor_factory.ExecutorFactory
@@ -436,6 +444,80 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 
 		return err
 	})
+}
+
+func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssignementRequest) error {
+	c, err := usecase.repository.GetCaseById(ctx, usecase.executorFactory.NewExecutor(), req.CaseId)
+	if err != nil {
+		return err
+	}
+
+	if c.Status.IsFinalized() {
+		return errors.Wrap(models.BadParameterError, "cannot reassign a closed case")
+	}
+
+	if req.AssigneeId == nil {
+		return errors.Wrap(models.BadParameterError, "cannot assign to a null user")
+	}
+
+	if c.AssignedTo != nil && *c.AssignedTo == *req.AssigneeId {
+		return nil
+	}
+
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx,
+		usecase.executorFactory.NewExecutor(), c.OrganizationId)
+	if err != nil {
+		return err
+	}
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		return err
+	}
+
+	assignee, err := usecase.userRepository.UserById(ctx, usecase.executorFactory.NewExecutor(), string(*req.AssigneeId))
+	if err != nil {
+		return errors.Wrap(err, "target user for assignment not found")
+	}
+
+	if err := security.EnforceSecurityCaseForUser(assignee).ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		return errors.Wrap(err, "target user lacks case permissions for assignment")
+	}
+
+	if err := usecase.repository.AssignCase(ctx, usecase.executorFactory.NewExecutor(),
+		req.CaseId, req.AssigneeId); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (usecase *CaseUseCase) UnassignCase(ctx context.Context, req models.CaseAssignementRequest) error {
+	c, err := usecase.repository.GetCaseById(ctx, usecase.executorFactory.NewExecutor(), req.CaseId)
+	if err != nil {
+		return err
+	}
+
+	if c.Status.IsFinalized() {
+		return errors.Wrap(models.BadParameterError, "cannot reassign a closed case")
+	}
+
+	if c.AssignedTo == nil {
+		return nil
+	}
+
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx,
+		usecase.executorFactory.NewExecutor(), c.OrganizationId)
+	if err != nil {
+		return err
+	}
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		return err
+	}
+
+	if err := usecase.repository.UnassignCase(ctx, usecase.executorFactory.NewExecutor(), req.CaseId); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c models.Case) bool {
