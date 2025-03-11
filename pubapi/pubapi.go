@@ -1,18 +1,32 @@
 package pubapi
 
 import (
+	"reflect"
+	"strings"
+
 	"github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/locales/en"
-	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
-	entrans "github.com/go-playground/validator/v10/translations/en"
 )
 
 func InitPublicApi() {
 	if validator, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		en := en.New()
-		uni := ut.New(en, en)
-		validationTranslator, _ = uni.GetTranslator("en")
-		_ = entrans.RegisterDefaultTranslations(validator, validationTranslator)
+		validator.RegisterTagNameFunc(fieldNameFromTag)
 	}
+}
+
+func fieldNameFromTag(fld reflect.StructField) string {
+	name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+	if len(name) > 0 {
+		if name == "-" {
+			return ""
+		}
+		return name
+	}
+
+	name = strings.SplitN(fld.Tag.Get("form"), ",", 2)[0]
+	if len(name) > 0 {
+		return name
+	}
+
+	return ""
 }

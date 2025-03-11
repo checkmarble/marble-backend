@@ -2,6 +2,7 @@ package pubapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -11,11 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
-
-	ut "github.com/go-playground/universal-translator"
 )
 
-var validationTranslator ut.Translator
+// var validationTranslator ut.Translator
 
 type baseResponse[T any] struct {
 	Data  *T               `json:"data,omitempty"`
@@ -77,8 +76,24 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 		resp.Error.status = http.StatusBadRequest
 		resp.Error.Code = ErrInvalidPayload.Error()
 		resp.Error.Messages = pure_utils.Map(err, func(verr validator.FieldError) string {
-			return verr.Translate(validationTranslator)
+			return AdaptFieldValidationError(verr)
 		})
+
+	// Special case when the validation error comes from the JSON itself not unmarshaling.
+	// Turns these:
+	//   - json: cannot unmarshal string into Go struct field .age of type int
+	// into:
+	//   - field `age` expected a int, got string
+	case *json.UnmarshalTypeError:
+		resp.Error.status = http.StatusBadRequest
+		resp.Error.Code = ErrInvalidPayload.Error()
+
+		msg := fmt.Sprintf("expected type %s field, got type `%s`", err.Type.String(), err.Value)
+		if err.Field != "" {
+			msg = fmt.Sprintf("field `%s` expected type %s, got type %s", err.Field, err.Type.String(), err.Value)
+		}
+
+		resp.Error.Messages = []string{msg}
 
 	default:
 		switch {
@@ -99,7 +114,8 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 
 		case
 			errors.Is(err, io.EOF),
-			errors.Is(err, ErrInvalidPayload):
+			errors.Is(err, ErrInvalidPayload),
+			errors.Is(err, models.BadParameterError):
 
 			resp.Error.status = http.StatusBadRequest
 			resp.Error.Code = ErrInvalidPayload.Error()

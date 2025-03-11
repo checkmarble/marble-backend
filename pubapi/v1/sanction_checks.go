@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -31,6 +32,11 @@ func HandleListSanctionChecks(uc usecases.Usecases) gin.HandlerFunc {
 		sc, err := sanctionCheckUsecase.ListSanctionChecks(c.Request.Context(), decisionId.String(), false)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+		if len(sc) == 0 {
+			pubapi.NewErrorResponse().WithError(errors.WithDetail(models.NotFoundError,
+				"this decision does not have a sanction check")).Serve(c)
 			return
 		}
 
