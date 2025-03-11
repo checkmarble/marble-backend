@@ -386,7 +386,8 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 	}
 
 	if !data.sanction.Status.IsReviewable() {
-		return data.match, errors.WithDetail(models.BadParameterError, "this sanction is not pending review")
+		return data.match, errors.WithDetail(models.UnprocessableEntityError,
+			"this sanction is not pending review")
 	}
 
 	if data.match.Status != models.SanctionMatchStatusPending {

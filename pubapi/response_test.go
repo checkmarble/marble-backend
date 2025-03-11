@@ -16,6 +16,8 @@ import (
 )
 
 func TestErrorMessagesPublicVsPrivate(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+
 	g := gin.New()
 
 	tts := []struct {

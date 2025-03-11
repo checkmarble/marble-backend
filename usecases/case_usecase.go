@@ -397,7 +397,7 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 		}
 
 		event := models.CreateCaseEventAttributes{
-			UserId:        string(req.UserId),
+			UserId:        utils.Ptr(string(req.UserId)),
 			CaseId:        req.CaseId,
 			EventType:     models.CaseSnoozed,
 			NewValue:      utils.Ptr(req.Until.Format(time.RFC3339)),
@@ -432,7 +432,7 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 		}
 
 		event := models.CreateCaseEventAttributes{
-			UserId:        string(req.UserId),
+			UserId:        utils.Ptr(string(req.UserId)),
 			CaseId:        req.CaseId,
 			EventType:     models.CaseUnsnoozed,
 			PreviousValue: utils.Ptr(c.SnoozedUntil.Format(time.RFC3339)),
