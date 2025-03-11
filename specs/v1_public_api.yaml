@@ -1,0 +1,453 @@
+openapi: 3.0.0
+info:
+  title: Marble decision engine API
+  description: Public API on decisions and data ingestion.
+  version: 1.0.0
+x-readme:
+  explorer-enabled: false
+  proxy-enabled: false
+  samples-languages: ["shell", "python", "javascript", "go", "ruby"]
+servers:
+  - url: "https://api.checkmarble.com/v1"
+tags:
+  - name: Sanction Checks
+    description: Routes for sanction checks
+paths:
+  /decisions/{decisionId}/sanction-checks:
+    get:
+      operationId: getSanctionChecksForDecision
+      tags: ["Sanction Checks"]
+      security:
+        - ApiKeyAuth: []
+      summary: Get sanction check
+      description: Retrieve sanction check details for decision
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+              description: List of sanction checks for the decision
+              content:
+                application/json:
+                  schema:
+                    allOf:
+                      - $ref: '#/components/schemas/BaseResponse'
+                      - type: object
+                        properties:
+                          data:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/SanctionCheck'
+
+        404: { $ref: '#/components/responses/404' }
+
+  /decisions/{decisionId}/sanction-checks/refine:
+    post:
+      operationId: refineSanctionChecksForDecision
+      tags: ["Sanction Checks"]
+      security:
+        - ApiKeyAuth: []
+      summary: Refine a sanction
+      description: Replace a sanction check with refined results
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              oneOf:
+                - $ref: "#/components/schemas/SanctionCheckSearchThing"
+                - $ref: "#/components/schemas/SanctionCheckSearchPerson"
+                - $ref: "#/components/schemas/SanctionCheckSearchOrganization"
+                - $ref: "#/components/schemas/SanctionCheckSearchVehicle"
+      responses:
+        200:
+          description: Refined sanction check for the decision
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SanctionCheck'
+
+        400: { $ref: '#/components/responses/400' }
+        404: { $ref: '#/components/responses/404' }
+        422: { $ref: '#/components/responses/422' }
+
+  /decisions/{decisionId}/sanction-checks/search:
+    post:
+      operationId: searchSanctionCheckForDecision
+      tags: ["Sanction Checks"]
+      security:
+        - ApiKeyAuth: []
+      summary: Perform a sanction search
+      description: Retrieve sanction check result without persisting them
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              oneOf:
+                - $ref: "#/components/schemas/SanctionCheckSearchThing"
+                - $ref: "#/components/schemas/SanctionCheckSearchPerson"
+                - $ref: "#/components/schemas/SanctionCheckSearchOrganization"
+                - $ref: "#/components/schemas/SanctionCheckSearchVehicle"
+      responses:
+        200:
+          description: Sanction check results from the search
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SanctionCheck'
+
+        400: { $ref: '#/components/responses/400' }
+        404: { $ref: '#/components/responses/404' }
+
+  /sanction-checks/matches/{matchId}:
+    post:
+      operationId: reviewSanctionCheckMatch
+      tags: ["Sanction Checks"]
+      security:
+        - ApiKeyAuth: []
+      summary: Review a sanction check
+      description: Set the review status of a sanction check match
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [no_hit, confirmed_hit]
+                whitelist:
+                  description: Whether to whitelist the "no_hit" status to prevent triggering the match in the future
+                  type: boolean
+                  default: false
+      responses:
+        200:
+          description: Match content reflecting the new status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SanctionCheckMatch'
+
+        400: { $ref: '#/components/responses/400' }
+        404: { $ref: '#/components/responses/404' }
+        422: { $ref: '#/components/responses/422' }
+              
+  /sanction-checks/whitelist:
+    post:
+      operationId: addSanctionCheckWhitelist
+      tags: ["Sanction Checks"]
+      security:
+        - ApiKeyAuth: []
+      summary: Whitelist an entity
+      description: Add a set of search term and entity ID that will not set off a sanction check alert in the future
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [counterparty, entity_id]
+              properties:
+                counterparty:
+                  description: The unique counterparty identifier that should be whitelisted when yielding the associated entity ID
+                  type: string
+                entity_id:
+                  description: The OpenSanctions entity ID to whitelist
+                  type: string
+      responses:
+        201:
+          description: The entity was whitelisted
+
+    delete:
+      operationId: deleteSanctionCheckWhitelist
+      tags: ["Sanction Checks"]
+      security:
+        - ApiKeyAuth: []
+      summary: Remove an entity whitelist
+      description: |
+        Delete a previously whitelisted entity, a match from the search term to the entity ID will subsequently trigger alerts.
+
+        If only `entity_id` is provided, all whitelist entries for that entity will be removed, regardless of which counterparty term triggers it.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entity_id]
+              properties:
+                counterparty:
+                  description: The unique counterparty identifier that should be whitelisted when yielding the associated entity ID
+                  type: string
+                entity_id:
+                  description: The OpenSanctions entity ID to whitelist
+                  type: string
+      responses:
+        204:
+          description: The whitelist entry was deleted
+
+  /sanction-checks/whitelists/search:
+    post:
+      operationId: searchSanctionCheckWhitelist
+      tags: ["Sanction Checks"]
+      security:
+        - ApiKeyAuth: []
+      summary: Search whitelisted entities
+      description: |
+        Search for whitelisted entities by OpenSanctions entity ID and/or unique counterparty identifier.
+
+        At least one of `counterparty` or `entity_id` is required to perform a search.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                counterparty:
+                  description: The unique counterparty identifier to search for
+                  type: string
+                entity_id:
+                  description: The OpenSanctions entity ID to search for
+                  type: string
+      responses:
+        201:
+          description: The entity was whitelisted
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+  
+  responses:
+    '400':
+      description: Provided parameters or payload is malformed or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    '401':
+      description: Credentials are missing or invalid
+    
+    '403':
+      description: The provided credentials are missing the required permissions for the requested action
+    
+    '404':
+      description: The requested resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    '422':
+      description: The requested action is not possible on the requested resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    BaseResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          description: Requested objects from the API
+
+    Error:
+      type: object
+      required: [code]
+      properties:
+        code:
+          description: Defined, machine-readable identifier for the error
+          type: string
+          enum:
+            - invalid_payload
+            - unprocessable_entity
+            - not_found
+            - feature_disabled
+            - feature_not_configured
+            - server_error
+        messages:
+          description: List of human-readable descriptions for the error
+          type: array
+          items:
+            type: string
+        detail:
+          description: Free-form objects providing details on the error
+          type: object
+          additionalProperties: true
+    
+    SanctionCheck:
+      type: object
+      required:
+        - id
+        - status
+        - query
+        - matches
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [in_review, no_hit, confirmed_hit, error]
+        query:
+          type: object
+          properties:
+            queries:
+              description: Queries that were submitted to OpenSanctionds with their IDs
+              type: object
+              additionalProperties: true
+              example:
+                8dd2edf9-6281-401a-b3e8-e65d974ed930:
+                  id: ABC123
+          additionalProperties: true
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/SanctionCheckMatch'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SanctionCheckMatch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        queries:
+          description: List of query IDs this match matched with
+          type: array
+          items:
+            type: string
+            format: uuid
+        status:
+          type: string
+          enum: [pending, no_hit, confirmed_hit, skipped]
+        payload:
+          description: OpenSanctions payload for the match
+          type: object
+          additionalProperties: true
+          example:
+            id: ABC123
+
+    SanctionCheckSearchThing:
+      title: Any object type
+      type: object
+      required: [Thing]
+      properties:
+        Thing:
+          type: object
+          minProperties: 1
+          properties:
+            name:
+              type: string
+
+    SanctionCheckSearchPerson:
+      title: Individual
+      type: object
+      required: [Person]
+      properties:
+        Person:
+          type: object
+          minProperties: 1
+          properties:
+            name:
+              type: string
+            birthDate:
+              type: string
+            idNumber:
+              type: string
+            address:
+              type: string
+
+    SanctionCheckSearchOrganization:
+      title: Organization or Company
+      type: object
+      required: [Organization]
+      properties:
+        Organization:
+          type: object
+          minProperties: 1
+          properties:
+            name:
+              type: string
+            registrationNumber:
+              type: string
+            address:
+              type: string
+
+    SanctionCheckSearchVehicle:
+      title: Vehicle
+      type: object
+      required: [Vehicle]
+      properties:
+        Vehicle:
+          type: object
+          minProperties: 1
+          properties:
+            name:
+              type: string
+            registrationNumber:
+              type: string
+    
+    SanctionCheckWhitelistEntry:
+      type: object
+      required: [counterparty, entity_id]
+      properties:
+        counterparty:
+          description: Unique counterparty identifier
+          type: string
+        entity_id:
+          description: OpenSanctions entity ID
+          type: string
