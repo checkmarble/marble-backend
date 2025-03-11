@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Marble decision engine API
   description: Public API on decisions and data ingestion.
-  version: 1.0.0
+  version: 0.1.0
 x-readme:
   explorer-enabled: false
   proxy-enabled: false
@@ -514,6 +514,18 @@ components:
         trigger_object_type:
           description: Object type used to take a decision.
           type: string
+        sanction_check:
+          type: object
+          properties:
+            id:
+              type: string
+            status:
+              type: string
+              enum: [in_review, no_hit, confirmed_hit, error]
+            partial:
+              type: boolean
+            count:
+              type: integer
     pivot_value:
       type: object
       required:

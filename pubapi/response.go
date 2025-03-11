@@ -30,7 +30,7 @@ type ErrorResponse struct {
 	err    error `json:"-"`
 	status int   `json:"-"`
 
-	Code     string          `json:"code,omitempty"`
+	Code     string          `json:"code"`
 	Messages []string        `json:"messages,omitempty"`
 	Detail   json.RawMessage `json:"detail,omitempty"`
 }
