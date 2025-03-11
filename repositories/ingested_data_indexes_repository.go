@@ -10,7 +10,6 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/pg_indexes"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 )
@@ -154,10 +153,6 @@ func (repo *ClientDbRepository) CreateIndexesAsync(
 		return err
 	}
 
-	for idx, index := range indexes {
-		indexes[idx].IndexName = indexToIndexName(index.Indexed, index.TableName)
-	}
-
 	go asynchronouslyCreateIndexes(ctx, exec, indexes)
 
 	return nil
@@ -222,7 +217,7 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 
 	sql := fmt.Sprintf(
 		"CREATE INDEX CONCURRENTLY %s ON %s USING btree (%s)",
-		pgx.Identifier.Sanitize([]string{index.IndexName}),
+		pgx.Identifier.Sanitize([]string{index.Name()}),
 		qualifiedTableName,
 		strings.Join(pure_utils.Map(indexedColumns, withDesc), ","),
 	)
@@ -246,7 +241,7 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 	}
 	logger.InfoContext(ctx, fmt.Sprintf(
 		"Index %s created in schema %s with DDL \"%s\"",
-		index.IndexName,
+		index.Name(),
 		exec.DatabaseSchema().Schema,
 		sql,
 	))
@@ -255,16 +250,6 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 
 func withDesc(s string) string {
 	return fmt.Sprintf("%s DESC", s)
-}
-
-func indexToIndexName(fields []string, table string) string {
-	// postgresql enforces a 63 character length limit on all identifiers
-	indexedNames := strings.Join(fields, "-")
-	out := fmt.Sprintf("idx_%s_%s", table, indexedNames)
-	randomId := uuid.NewString()
-	length := min(len(out), 53)
-
-	return out[:length] + "_" + randomId
 }
 
 func toUniqIndexName(fields []string, table string) string {

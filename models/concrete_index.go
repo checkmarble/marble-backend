@@ -1,11 +1,19 @@
 package models
 
 import (
+	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-set/v2"
+)
+
+const (
+	MAX_POSTGRES_INDEX_NAME_LENGTH      = 63
+	MAX_INDEX_NAME_LENGTH_BEFORE_SUFFIX = 53
 )
 
 type UnicityIndex struct {
@@ -17,9 +25,77 @@ type UnicityIndex struct {
 
 type ConcreteIndex struct {
 	TableName string
-	IndexName string
+	name      string
 	Indexed   []string
 	Included  []string
+}
+
+// Custom marshaller to ensure the name is initialized before marshaling
+func (i ConcreteIndex) MarshalJSON() ([]byte, error) {
+	// Ensure the name is initialized before marshaling
+	i.setName()
+	type concreteIndexJSON struct {
+		TableName string   `json:"TableName"` //nolint:tagliatelle
+		IndexName string   `json:"IndexName"` //nolint:tagliatelle
+		Indexed   []string `json:"Indexed"`   //nolint:tagliatelle
+		Included  []string `json:"Included"`  //nolint:tagliatelle
+	}
+	return json.Marshal(concreteIndexJSON{
+		TableName: i.TableName,
+		IndexName: i.name,
+		Indexed:   i.Indexed,
+		Included:  i.Included,
+	})
+}
+
+// custom unmarshaller to avoid name mismatches
+func (i *ConcreteIndex) UnmarshalJSON(data []byte) error {
+	var rawData struct {
+		TableName string   `json:"TableName"` //nolint:tagliatelle
+		IndexName string   `json:"IndexName"` //nolint:tagliatelle
+		Indexed   []string `json:"Indexed"`   //nolint:tagliatelle
+		Included  []string `json:"Included"`  //nolint:tagliatelle
+	}
+	if err := json.Unmarshal(data, &rawData); err != nil {
+		return err
+	}
+	i.TableName = rawData.TableName
+	i.name = rawData.IndexName
+	i.Indexed = rawData.Indexed
+	i.Included = rawData.Included
+
+	return nil
+}
+
+func (i *ConcreteIndex) setName() {
+	if i.name != "" {
+		return
+	}
+	// postgresql enforces a 63 character length limit on all identifiers
+	indexedNames := strings.Join(i.Indexed, "-")
+	out := fmt.Sprintf("idx_%s_%s", i.TableName, indexedNames)
+	randomId := uuid.NewString()
+	length := min(len(out), MAX_INDEX_NAME_LENGTH_BEFORE_SUFFIX)
+
+	withRandomSuffix := out[:length] + "_" + randomId
+	i.name = withRandomSuffix[:min(len(withRandomSuffix), MAX_POSTGRES_INDEX_NAME_LENGTH)]
+}
+
+// Returns the name of the index. Is generated based on the indexed table name and the indexed columns.
+// Is suffixed with a random id to avoid collisions when creating indexes on postgres (e.g. if a previous version
+// of the index exists but is invalid).
+// Includes logic to truncate the index name length to 63 chars max, so that name truncation by Postgres does not
+// interfere with the index name comparison logic.
+func (i *ConcreteIndex) Name() string {
+	if i.name != "" {
+		i.setName()
+	}
+	return i.name
+}
+
+func (i ConcreteIndex) WithName(name string) ConcreteIndex {
+	i.name = name
+	return i
 }
 
 func (i ConcreteIndex) Equal(other ConcreteIndex) bool {
