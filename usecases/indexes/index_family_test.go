@@ -12,12 +12,12 @@ import (
 func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
 	t.Run("Just one input family", func(t *testing.T) {
 		asserts := assert.New(t)
-		idxFamilies := set.HashSetFrom[models.IndexFamily]([]models.IndexFamily{
+		idxFamilies := set.HashSetFrom([]models.IndexFamily{
 			{
 				Fixed:    []string{"a", "b"},
-				Flex:     set.From[string]([]string{"c"}),
+				Flex:     set.From([]string{"c"}),
 				Last:     "d",
-				Included: set.From[string]([]string{"e", "f"}),
+				Included: set.From([]string{"e", "f"}),
 			},
 		})
 
@@ -29,16 +29,16 @@ func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
 
 	t.Run("2 non overlapping families", func(t *testing.T) {
 		asserts := assert.New(t)
-		idxFamilies := set.HashSetFrom[models.IndexFamily]([]models.IndexFamily{
+		idxFamilies := set.HashSetFrom([]models.IndexFamily{
 			{
 				Fixed:    []string{},
-				Flex:     set.From[string]([]string{"a"}),
+				Flex:     set.From([]string{"a"}),
 				Last:     "",
 				Included: set.New[string](0),
 			},
 			{
 				Fixed:    []string{},
-				Flex:     set.From[string]([]string{"b"}),
+				Flex:     set.From([]string{"b"}),
 				Last:     "",
 				Included: set.New[string](0),
 			},
@@ -52,16 +52,16 @@ func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
 
 	t.Run("2 overlapping families", func(t *testing.T) {
 		asserts := assert.New(t)
-		expected := set.HashSetFrom[models.IndexFamily]([]models.IndexFamily{{
+		expected := set.HashSetFrom([]models.IndexFamily{{
 			Fixed:    []string{},
-			Flex:     set.From[string]([]string{"a", "b"}),
+			Flex:     set.From([]string{"a", "b"}),
 			Last:     "",
 			Included: set.New[string](0),
 		}})
-		idxFamilies := set.HashSetFrom[models.IndexFamily]([]models.IndexFamily{
+		idxFamilies := set.HashSetFrom([]models.IndexFamily{
 			{
 				Fixed:    []string{},
-				Flex:     set.From[string]([]string{"a"}),
+				Flex:     set.From([]string{"a"}),
 				Last:     "",
 				Included: set.New[string](0),
 			},

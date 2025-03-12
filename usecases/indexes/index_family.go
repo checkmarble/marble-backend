@@ -53,7 +53,7 @@ func groupIdxFamiliesByTable(idxFamilies *set.HashSet[models.IndexFamily, string
 	out := make(map[string]set.Collection[models.IndexFamily])
 	for _, idxFamily := range idxFamilies.Slice() {
 		if _, ok := out[idxFamily.TableName]; !ok {
-			out[idxFamily.TableName] = set.NewHashSet[models.IndexFamily, string](0)
+			out[idxFamily.TableName] = set.NewHashSet[models.IndexFamily](0)
 		}
 		out[idxFamily.TableName].Insert(idxFamily)
 	}

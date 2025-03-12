@@ -15,25 +15,25 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 
 		qFamily := models.AggregateQueryFamily{
 			TableName:               "",
-			EqConditions:            set.From[string]([]string{"a", "b"}),
-			IneqConditions:          set.From[string]([]string{"c", "d"}),
-			SelectOrOtherConditions: set.From[string]([]string{"e", "f"}),
+			EqConditions:            set.From([]string{"a", "b"}),
+			IneqConditions:          set.From([]string{"c", "d"}),
+			SelectOrOtherConditions: set.From([]string{"e", "f"}),
 		}
 
 		idxFamily := qFamily.ToIndexFamilies()
 		asserts.Equal(2, idxFamily.Size(), "Two possible inequality conditions, so 2 families are rendered")
-		expected := set.HashSetFrom[models.IndexFamily]([]models.IndexFamily{
+		expected := set.HashSetFrom([]models.IndexFamily{
 			{
 				Fixed:    []string{},
 				Flex:     set.From([]string{"a", "b"}),
 				Last:     "c",
-				Included: set.From[string]([]string{"d", "e", "f"}),
+				Included: set.From([]string{"d", "e", "f"}),
 			},
 			{
 				Fixed:    []string{},
 				Flex:     set.From([]string{"a", "b"}),
 				Last:     "d",
-				Included: set.From[string]([]string{"c", "e", "f"}),
+				Included: set.From([]string{"c", "e", "f"}),
 			},
 		})
 		asserts.True(expected.Equal(idxFamily), "The index families in the result are the expected ones")
@@ -44,9 +44,9 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 
 		qFamily := models.AggregateQueryFamily{
 			TableName:               "",
-			EqConditions:            set.From[string]([]string{"a", "b"}),
-			IneqConditions:          set.From[string]([]string{"c"}),
-			SelectOrOtherConditions: set.From[string]([]string{"d", "e"}),
+			EqConditions:            set.From([]string{"a", "b"}),
+			IneqConditions:          set.From([]string{"c"}),
+			SelectOrOtherConditions: set.From([]string{"d", "e"}),
 		}
 
 		idxFamily := qFamily.ToIndexFamilies()
@@ -56,12 +56,12 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 			return true
 		})
 		asserts.Equal(1, idxFamily.Size(), "Just one possible inequality condition, so 1 family is rendered")
-		expected := set.HashSetFrom[models.IndexFamily]([]models.IndexFamily{
+		expected := set.HashSetFrom([]models.IndexFamily{
 			{
 				Fixed:    []string{},
 				Flex:     set.From([]string{"a", "b"}),
 				Last:     "c",
-				Included: set.From[string]([]string{"d", "e"}),
+				Included: set.From([]string{"d", "e"}),
 			},
 		})
 		asserts.True(expected.Equal(idxFamily), "The index families in the result are the expected ones")
@@ -72,9 +72,9 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 
 		qFamily := models.AggregateQueryFamily{
 			TableName:               "",
-			EqConditions:            set.From[string]([]string{"a", "b"}),
+			EqConditions:            set.From([]string{"a", "b"}),
 			IneqConditions:          set.New[string](0),
-			SelectOrOtherConditions: set.From[string]([]string{"d", "e"}),
+			SelectOrOtherConditions: set.From([]string{"d", "e"}),
 		}
 
 		idxFamily := qFamily.ToIndexFamilies()
@@ -84,12 +84,12 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 			return true
 		})
 		asserts.Equal(1, idxFamily.Size(), "No inequality condition, so 1 family is rendered")
-		expected := set.HashSetFrom[models.IndexFamily]([]models.IndexFamily{
+		expected := set.HashSetFrom([]models.IndexFamily{
 			{
 				Fixed:    []string{},
 				Flex:     set.From([]string{"a", "b"}),
 				Last:     "",
-				Included: set.From[string]([]string{"d", "e"}),
+				Included: set.From([]string{"d", "e"}),
 			},
 		})
 		asserts.True(expected.Equal(idxFamily), "The index families in the result are the expected ones")
