@@ -2,11 +2,15 @@
 -- +goose Up
 CREATE EXTENSION pg_trgm;
 
+-- +goose StatementBegin
+
 DO $$
 BEGIN
    EXECUTE format('ALTER ROLE %I SET pg_trgm.similarity_threshold = 0.1', current_user);
 END
 $$;
+
+-- +goose StatementEnd
 
 CREATE INDEX CONCURRENTLY trgm_cases_on_name ON cases USING GIN (name gin_trgm_ops);
 
