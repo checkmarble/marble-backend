@@ -23,7 +23,7 @@ func RunSendPendingWebhookEvents(apiVersion string) error {
 	}
 	pgConfig := infra.PgConfig{
 		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
-		Database:           "marble",
+		Database:           utils.GetEnv("PG_DATABASE", "marble"),
 		Hostname:           utils.GetEnv("PG_HOSTNAME", ""),
 		Password:           utils.GetEnv("PG_PASSWORD", ""),
 		Port:               utils.GetEnv("PG_PORT", "5432"),
