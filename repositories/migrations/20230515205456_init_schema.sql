@@ -3,18 +3,28 @@
 -- create and make default the marble schema
 CREATE SCHEMA IF NOT EXISTS marble;
 
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA marble TO postgres;
+do $$
+begin
+   execute 'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA marble TO ' || current_user;
+end
+$$;
 
-ALTER DATABASE marble
-SET search_path TO marble,
-  public;
+DO $$
+BEGIN
+   EXECUTE 'ALTER DATABASE ' || current_database() || ' SET search_path TO marble, public';
+END
+$$;
 
-ALTER ROLE postgres
-SET search_path TO marble,
-  public;
+DO $$
+BEGIN
+   EXECUTE format('ALTER ROLE %I SET search_path = marble, public;', current_user);
+END
+$$;
 
 -- also set it for the current session
-SET SEARCH_PATH=marble,public;
+SET
+  SEARCH_PATH = marble,
+  public;
 
 -- add UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
