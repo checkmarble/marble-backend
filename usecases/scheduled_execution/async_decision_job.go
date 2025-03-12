@@ -288,6 +288,11 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		Pivot:             pivot,
 	}
 
+	// Note: Statistics on test runs when using batch scenarios may still be slightly off, because the batch execution does a partial
+	// precomputation of the filters from the trigger condition, based on the live version of the scenario.
+	// The cleaner solution would be to do a parallel execution in batch of the test run, but even then it would be extremely tiresome to
+	// protect against all edge cases if part of one or the other job fails to run for unexpected reasons.
+	// We probably want to live with this for the time being.
 	executeTestRun := func(se *models.ScenarioExecution) {
 		evaluationParameters.TargetIterationId = nil
 		if se != nil {

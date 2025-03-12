@@ -400,7 +400,6 @@ func (usecase *DecisionUsecase) CreateDecision(
 		Pivot:        pivot,
 	}
 
-	// TODO: this logic is NOT applied on the POST /decisions/all endpoint, even though it should
 	executeTestRun := func(se *models.ScenarioExecution) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -599,6 +598,35 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			trace.WithAttributes(attribute.String("scenario_id", scenario.Id)),
 		)
 		defer span.End()
+
+		executeTestRun := func(se *models.ScenarioExecution) {
+			defer func() {
+				if r := recover(); r != nil {
+					err := fmt.Errorf("error when creating phantom decisions with scenario id: %v", r)
+					utils.LogAndReportSentryError(ctx, err)
+				}
+			}()
+			phantomInput := models.CreatePhantomDecisionInput{
+				OrganizationId:     input.OrganizationId,
+				Scenario:           scenario,
+				ClientObject:       evaluationParameters.ClientObject,
+				Pivot:              evaluationParameters.Pivot,
+				TriggerObjectTable: input.TriggerObjectTable,
+			}
+			if se != nil {
+				evaluationParameters.CachedSanctionCheck = se.SanctionCheckExecution
+			}
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), PHANTOM_DECISION_TIMEOUT)
+			defer cancel()
+			logger := utils.LoggerFromContext(ctx).With(
+				"phantom_decisions_with_scenario_id", phantomInput.Scenario.Id)
+			_, _, errPhantom := usecase.phantomUseCase.CreatePhantomDecision(ctx, phantomInput, evaluationParameters)
+			if errPhantom != nil {
+				logger.ErrorContext(ctx, fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s",
+					phantomInput.Scenario.Id, errPhantom.Error()))
+			}
+		}
+
 		triggerPassed, scenarioExecution, err :=
 			usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 		switch {
@@ -606,9 +634,11 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			return nil, 0, errors.Wrap(err, "error evaluating scenario in CreateAllDecisions")
 		case !triggerPassed:
 			nbSkipped++
+			executeTestRun(nil)
 		default:
 			decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
 			items = append(items, decisionAndScenario{decision: decision, scenario: scenario})
+			executeTestRun(&scenarioExecution)
 		}
 	}
 
