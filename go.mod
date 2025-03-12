@@ -1,6 +1,6 @@
 module github.com/checkmarble/marble-backend
 
-go 1.23.1
+go 1.24.1
 
 require (
 	firebase.google.com/go/v4 v4.14.1
