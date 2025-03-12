@@ -27,13 +27,13 @@ func (e *EnforceSecurityCustomListImpl) ReadCustomList(customList models.CustomL
 
 func (e *EnforceSecurityCustomListImpl) CreateCustomList() error {
 	return errors.Join(
-		e.Permission(models.CUSTOM_LISTS_CREATE),
+		e.Permission(models.CUSTOM_LISTS_EDIT),
 	)
 }
 
 func (e *EnforceSecurityCustomListImpl) ModifyCustomList(customList models.CustomList) error {
 	return errors.Join(
-		e.Permission(models.CUSTOM_LISTS_CREATE),
+		e.Permission(models.CUSTOM_LISTS_EDIT),
 		e.ReadOrganization(customList.OrganizationId),
 	)
 }
