@@ -62,7 +62,7 @@ func (qFamily AggregateQueryFamily) ToIndexFamilies() *set.HashSet[IndexFamily, 
 	//  at the end of the index.
 	// E.g. if we have a query with conditions a = 1, b = 2, c > 3, d > 4, e > 5, we output:
 	// { Flex: {a,b}, Last: c, Included: {d,e} }  +  { Flex: {a,b}, Last: d, Included: {c,e} }   +  { Flex: {a,b}, Last: e, Included: {c,d} }
-	output := set.NewHashSet[IndexFamily, string](0)
+	output := set.NewHashSet[IndexFamily](0)
 	if (qFamily.EqConditions == nil || qFamily.EqConditions.Size() == 0) &&
 		(qFamily.IneqConditions == nil || qFamily.IneqConditions.Size() == 0) {
 		// if there are no conditions that are indexable, we return an empty family

@@ -38,7 +38,7 @@ func indexesToCreateFromScenarioIterations(
 
 // simple utility function using extractQueryFamiliesFromAst above
 func extractQueryFamiliesFromAstSlice(ctx context.Context, nodes []ast.Node) (*set.HashSet[models.AggregateQueryFamily, string], error) {
-	families := set.NewHashSet[models.AggregateQueryFamily, string](0)
+	families := set.NewHashSet[models.AggregateQueryFamily](0)
 
 	for _, node := range nodes {
 		nodeFamilies, err := extractQueryFamiliesFromAst(ctx, node)
@@ -53,7 +53,7 @@ func extractQueryFamiliesFromAstSlice(ctx context.Context, nodes []ast.Node) (*s
 
 func extractQueryFamiliesFromAst(ctx context.Context, node ast.Node) (set.Collection[models.AggregateQueryFamily], error) {
 	logger := utils.LoggerFromContext(ctx)
-	families := set.NewHashSet[models.AggregateQueryFamily, string](0)
+	families := set.NewHashSet[models.AggregateQueryFamily](0)
 
 	if node.Function == ast.FUNC_AGGREGATOR {
 		family, err := aggregationNodeToQueryFamily(node)
@@ -163,7 +163,7 @@ func indexesToCreateFromQueryFamilies(
 	queryFamilies set.Collection[models.AggregateQueryFamily],
 	existingIndexes []models.ConcreteIndex,
 ) []models.ConcreteIndex {
-	familiesToCreate := set.NewHashSet[models.IndexFamily, string](0)
+	familiesToCreate := set.NewHashSet[models.IndexFamily](0)
 	for _, q := range queryFamilies.Slice() {
 		familiesToCreate = familiesToCreate.Union(
 			selectIdxFamiliesToCreate(q.ToIndexFamilies(), existingIndexes),

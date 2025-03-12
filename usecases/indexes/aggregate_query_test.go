@@ -308,9 +308,9 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)
 		expected.Insert(models.AggregateQueryFamily{
 			TableName:               "table",
-			EqConditions:            set.From[string]([]string{"field"}),
+			EqConditions:            set.From([]string{"field"}),
 			IneqConditions:          set.New[string](0),
-			SelectOrOtherConditions: set.From[string]([]string{"field 0"}),
+			SelectOrOtherConditions: set.From([]string{"field 0"}),
 		})
 		asserts.True(output.EqualSet(expected), "The output set should contain the one query family (that was present twice)")
 		fmt.Println(expected)
@@ -394,21 +394,21 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)
 		expected.Insert(models.AggregateQueryFamily{
 			TableName:               "table",
-			EqConditions:            set.From[string]([]string{"field"}),
+			EqConditions:            set.From([]string{"field"}),
 			IneqConditions:          set.New[string](0),
-			SelectOrOtherConditions: set.From[string]([]string{"field 0"}),
+			SelectOrOtherConditions: set.From([]string{"field 0"}),
 		})
 		expected.Insert(models.AggregateQueryFamily{
 			TableName:               "table",
 			EqConditions:            set.New[string](0),
-			IneqConditions:          set.From[string]([]string{"field"}),
-			SelectOrOtherConditions: set.From[string]([]string{"field 0"}),
+			IneqConditions:          set.From([]string{"field"}),
+			SelectOrOtherConditions: set.From([]string{"field 0"}),
 		})
 		expected.Insert(models.AggregateQueryFamily{
 			TableName:      "table",
-			EqConditions:   set.From[string]([]string{"field 0"}),
+			EqConditions:   set.From([]string{"field 0"}),
 			IneqConditions: set.New[string](0),
-			SelectOrOtherConditions: set.From[string]([]string{
+			SelectOrOtherConditions: set.From([]string{
 				"field 2", "field 3",
 			}),
 		})
