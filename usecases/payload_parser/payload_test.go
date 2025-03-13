@@ -219,6 +219,35 @@ func TestParser_ParsePayload(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "nullable missing field with object_id and updated_at with timezone-less RFC3339 datetime",
+			table: models.Table{
+				Name: "transactions",
+				Fields: map[string]models.Field{
+					"nullable": {
+						DataType: models.String,
+						Nullable: true,
+					},
+					"object_id": {
+						DataType: models.String,
+						Nullable: false,
+					},
+					"updated_at": {
+						DataType: models.Timestamp,
+						Nullable: false,
+					},
+				},
+			},
+			input: []byte(`{"object_id": "id", "updated_at": "2023-10-19T00:00:00"}`),
+			want: models.ClientObject{
+				TableName: "transactions",
+				Data: map[string]any{
+					"object_id": "id",
+					// input is in UTC+3, but the output is in UTC
+					"updated_at": time.Date(2023, time.October, 19, 0, 0, 0, 0, time.UTC),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
