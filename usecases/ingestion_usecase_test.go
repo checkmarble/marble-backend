@@ -39,29 +39,43 @@ func TestParseStringValuesToMap(t *testing.T) {
 		values  []string
 	}
 
+	refTime := time.Date(2023, 4, 10, 14, 30, 0, 0, time.UTC)
+
 	OKcases := []testCase{
 		{
 			name:    "valid case with all fields present",
 			columns: []string{"object_id", "updated_at", "value", "status"},
-			values:  []string{"1", "2020-01-01T00:00:00Z", "1.0", "OK"},
+			values:  []string{"1", "2023-04-10T14:30:00Z", "1.0", "OK"},
 		},
 		{
 			name:    "valid case with empty status and null value",
 			columns: []string{"object_id", "updated_at", "value", "status"},
-			values:  []string{"1", "2020-01-01T00:00:00Z", "", ""},
+			values:  []string{"1", "2023-04-10T14:30:00Z", "", ""},
 		},
 		{
-			name:    "error case with the other format updated_at (missing T & Z)",
+			name:    "valid case with the other format updated_at (missing T & Z)",
 			columns: []string{"object_id", "updated_at", "value", "status"},
-			values:  []string{"1234", "2023-01-01 00:00:00", "", ""},
+			values:  []string{"1234", "2023-04-10 14:30:00", "", ""},
+		},
+		{
+			name:    "valid case with custom RFC3339 format without time zone",
+			columns: []string{"object_id", "updated_at", "value", "status"},
+			values:  []string{"1234", "2023-04-10T14:30:00", "", ""},
+		},
+		{
+			name:    "valid case with RFC3339 with time zone offset",
+			columns: []string{"object_id", "updated_at", "value", "status"},
+			values:  []string{"1234", "2023-04-10T17:00:00+02:30", "", ""},
 		},
 	}
 
 	for _, c := range OKcases {
-		_, err := parseStringValuesToMap(c.columns, c.values, table)
+		result, err := parseStringValuesToMap(c.columns, c.values, table)
 		if err != nil {
 			t.Errorf("Error parsing string values to map: %v", err)
 		}
+
+		assert.WithinDuration(t, refTime, result["updated_at"].(time.Time), 0)
 	}
 
 	ErrCases := []testCase{
