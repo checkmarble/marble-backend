@@ -1,0 +1,31 @@
+# Decision with a sanction check
+
+- id: 11111111-1111-1111-1111-111111111111
+  org_id: 00000000-0000-0000-0000-000000000000
+  scenario_id: 11111111-1111-1111-1111-111111111111
+  scenario_name: Scenario name
+  scenario_description: Scenario description
+  scenario_iteration_id: 11111111-1111-1111-1111-111111111111
+  scenario_version: '42'
+  case_id: 00000000-0000-0000-0000-000000000000
+  outcome: block_and_review
+  score: 1000
+  trigger_object_type: transactions
+  trigger_object:
+    lorem: ipsum
+
+# Decision without a sanction check
+
+- id: 22222222-2222-2222-2222-222222222222
+  org_id: 00000000-0000-0000-0000-000000000000
+  scenario_id: 11111111-1111-1111-1111-111111111111
+  scenario_name: Scenario name
+  scenario_description: Scenario description
+  scenario_iteration_id: 11111111-1111-1111-1111-111111111111
+  scenario_version: '42'
+  case_id: 00000000-0000-0000-0000-000000000000
+  outcome: block_and_review
+  score: 1000
+  trigger_object_type: transactions
+  trigger_object:
+    lorem: ipsum

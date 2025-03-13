@@ -1,0 +1,4 @@
+- scenario_iteration_id: 11111111-1111-1111-1111-111111111111
+  name: Sanction check config
+  forced_outcome: approve
+  stable_id: 00000000-0000-0000-0000-000000000000
