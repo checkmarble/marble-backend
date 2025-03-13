@@ -234,7 +234,21 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 	headers, err := fileReader.Read()
 	if err != nil {
-		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV (%w)", err)
+		var csvErr *csv.ParseError
+
+		if errors.As(err, &csvErr) {
+			lastColumn := "first header"
+			if len(headers) > 0 {
+				lastColumn = fmt.Sprintf("header after `%s`", headers[len(headers)-1])
+			}
+
+			return models.UploadLog{}, errors.Wrap(models.BadParameterError,
+				fmt.Sprintf("error reading CSV %s (column %d): %v",
+					lastColumn, csvErr.Column, csvErr.Err.Error()))
+		}
+
+		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV (%w)",
+			errors.Wrap(models.BadParameterError, err.Error()))
 	}
 
 	fileName := computeFileName(organizationId, table.Name)
