@@ -1,0 +1,19 @@
+organizations:
+  - id: 00000000-0000-0000-0000-000000000000 
+    name: ACME
+
+organization_feature_access:
+  - org_id: 00000000-0000-0000-0000-000000000000
+
+api_keys:
+  - org_id: 00000000-0000-0000-0000-000000000000
+    prefix: abc
+    role: 5
+    key_hash: RAW=sha256('testapikey')
+
+scenarios:
+  - id: 11111111-1111-1111-1111-111111111111
+    org_id: 00000000-0000-0000-0000-000000000000
+    name: Scenario name
+    description: Scenario description
+    trigger_object_type: transactions
