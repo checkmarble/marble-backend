@@ -106,12 +106,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              oneOf:
-                - $ref: "#/components/schemas/SanctionCheckSearchThing"
-                - $ref: "#/components/schemas/SanctionCheckSearchPerson"
-                - $ref: "#/components/schemas/SanctionCheckSearchOrganization"
-                - $ref: "#/components/schemas/SanctionCheckSearchVehicle"
+              $ref: "#/components/schemas/SanctionCheckSearchQuery"
       responses:
         200:
           description: Sanction check results from the search
@@ -341,12 +336,14 @@ components:
           type: object
           properties:
             queries:
-              description: Queries that were submitted to OpenSanctionds with their IDs
+              description: Queries that were submitted to OpenSanctions with their IDs
               type: object
-              additionalProperties: true
+              additionalProperties:
+                $ref: "#/components/schemas/SanctionCheckSearchQuery"
               example:
                 8dd2edf9-6281-401a-b3e8-e65d974ed930:
-                  id: ABC123
+                  Thing:
+                    name: Jean-Baptiste Zorg
           additionalProperties: true
         matches:
           type: array
@@ -380,6 +377,14 @@ components:
           additionalProperties: true
           example:
             id: ABC123
+
+    SanctionCheckSearchQuery:
+      type: object
+      oneOf:
+        - $ref: "#/components/schemas/SanctionCheckSearchThing"
+        - $ref: "#/components/schemas/SanctionCheckSearchPerson"
+        - $ref: "#/components/schemas/SanctionCheckSearchOrganization"
+        - $ref: "#/components/schemas/SanctionCheckSearchVehicle"
 
     SanctionCheckSearchThing:
       title: Any object type
