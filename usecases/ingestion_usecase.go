@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -263,6 +264,16 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	for name, field := range table.Fields {
 		if !field.Nullable {
 			if !containsString(headers, name) {
+				if len(headers) == 1 && strings.Contains(headers[0], ";") {
+					return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV (%w), you might be using semicolons (;) instead of commas (,)", name, models.BadParameterError)
+				}
+
+				if slices.ContainsFunc(headers, func(header string) bool {
+					return header != strings.TrimSpace(header)
+				}) {
+					return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV (%w), there seems to be whitespace around its header name", name, models.BadParameterError)
+				}
+
 				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV (%w)", name, models.BadParameterError)
 			}
 		}
