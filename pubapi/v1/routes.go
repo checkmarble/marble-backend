@@ -23,6 +23,10 @@ func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usec
 		r.GET("/sanction-checks/entities/:entityId", HandleGetSanctionCheckEntity(uc))
 		r.POST("/sanction-checks/matches/:matchId",
 			HandleUpdateSanctionCheckMatchStatus(uc))
+
+		r.POST("/sanction-checks/whitelists/search", HandleSearchWhitelist(uc))
+		r.POST("/sanction-checks/whitelists", HandleAddWhitelist(uc))
+		r.DELETE("/sanction-checks/whitelists", HandleDeleteWhitelist(uc))
 	}
 }
 

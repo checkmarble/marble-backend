@@ -194,6 +194,8 @@ paths:
         201:
           description: The entity was whitelisted
 
+        400: { $ref: '#/components/responses/400' }
+
     delete:
       operationId: deleteSanctionCheckWhitelist
       tags: ["Sanction Checks"]
@@ -221,6 +223,8 @@ paths:
         204:
           description: The whitelist entry was deleted
 
+        400: { $ref: '#/components/responses/400' }
+
   /sanction-checks/whitelists/search:
     post:
       operationId: searchSanctionCheckWhitelist
@@ -246,8 +250,16 @@ paths:
                   description: The OpenSanctions entity ID to search for
                   type: string
       responses:
-        201:
-          description: The entity was whitelisted
+        200:
+          description: List of whitelist entries for the requested objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SanctionCheckWhitelistEntry'
+
+        400: { $ref: '#/components/responses/400' }
 
 components:
   securitySchemes:

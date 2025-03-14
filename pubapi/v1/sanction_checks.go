@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
@@ -158,5 +159,106 @@ func HandleGetSanctionCheckEntity(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		pubapi.NewResponse(json.RawMessage(entity)).Serve(c)
+	}
+}
+
+type AddWhitelistParams struct {
+	Counterparty string `json:"counterparty" binding:"required"`
+	EntityId     string `json:"entity_id" binding:"required"`
+}
+
+func HandleAddWhitelist(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, _ := utils.CredentialsFromCtx(ctx)
+
+		var params AddWhitelistParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+
+		if err := sanctionCheckUsecase.CreateWhitelist(ctx, nil, creds.OrganizationId,
+			params.Counterparty, params.EntityId, nil); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		c.Status(http.StatusCreated)
+	}
+}
+
+type DeleteWhitelistParams struct {
+	Counterparty *string `json:"counterparty"`
+	EntityId     string  `json:"entity_id" binding:"required"`
+}
+
+func HandleDeleteWhitelist(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, _ := utils.CredentialsFromCtx(ctx)
+
+		var params DeleteWhitelistParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+
+		if err := sanctionCheckUsecase.DeleteWhitelist(ctx, nil, creds.OrganizationId,
+			params.Counterparty, params.EntityId, nil); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
+type SearchWhitelistParams struct {
+	Counterparty *string `json:"counterparty"`
+	EntityId     *string `json:"entity_id"`
+}
+
+func HandleSearchWhitelist(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, _ := utils.CredentialsFromCtx(ctx)
+
+		var params SearchWhitelistParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+		if params.Counterparty == nil && params.EntityId == nil {
+			pubapi.
+				NewErrorResponse().
+				WithError(errors.WithDetail(models.BadParameterError,
+					"at least one of `counterparty` or `entity_id` must be provided")).
+				Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+
+		whitelists, err := sanctionCheckUsecase.SearchWhitelist(ctx, nil,
+			creds.OrganizationId, params.Counterparty, params.EntityId, nil)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.
+			NewResponse(pure_utils.Map(whitelists, dto.AdaptSanctionCheckWhitelist)).
+			Serve(c)
 	}
 }
