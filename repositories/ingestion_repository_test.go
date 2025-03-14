@@ -182,3 +182,78 @@ func TestCompareAndMergePayloadsWithIngestedObjects(t *testing.T) {
 		})
 	}
 }
+
+func TestMostRecentPayloadsByObjectId(t *testing.T) {
+	// Helper function to create a payload
+	createPayload := func(objectId string, updatedAt time.Time) models.ClientObject {
+		return models.ClientObject{
+			Data: map[string]interface{}{
+				"object_id":  objectId,
+				"updated_at": updatedAt,
+			},
+		}
+	}
+	now := time.Now()
+
+	t.Run("Basic Functionality", func(t *testing.T) {
+		payloads := []models.ClientObject{
+			createPayload("obj1", now.Add(-10*time.Hour)),
+			createPayload("obj2", now.Add(-5*time.Hour)),
+		}
+		expectedIds := []string{"obj1", "obj2"}
+		expectedPayloads := payloads
+
+		actualIds, actualPayloads := mostRecentPayloadsByObjectId(payloads)
+
+		assert.ElementsMatch(t, expectedIds, actualIds)
+		assert.ElementsMatch(t, expectedPayloads, actualPayloads)
+	})
+
+	t.Run("Multiple Payloads for Same Object ID", func(t *testing.T) {
+		payloads := []models.ClientObject{
+			createPayload("obj1", now.Add(-10*time.Hour)),
+			createPayload("obj1", now.Add(-5*time.Hour)), // More recent
+			createPayload("obj2", now.Add(-5*time.Hour)),
+		}
+		expectedIds := []string{"obj1", "obj2"}
+		expectedPayloads := []models.ClientObject{
+			createPayload("obj1", now.Add(-5*time.Hour)),
+			createPayload("obj2", now.Add(-5*time.Hour)),
+		}
+
+		actualIds, actualPayloads := mostRecentPayloadsByObjectId(payloads)
+
+		assert.ElementsMatch(t, expectedIds, actualIds)
+		assert.ElementsMatch(t, expectedPayloads, actualPayloads)
+	})
+
+	t.Run("No Payloads", func(t *testing.T) {
+		payloads := []models.ClientObject{}
+		expectedIds := []string{}
+		expectedPayloads := []models.ClientObject{}
+
+		actualIds, actualPayloads := mostRecentPayloadsByObjectId(payloads)
+
+		assert.ElementsMatch(t, expectedIds, actualIds)
+		assert.ElementsMatch(t, expectedPayloads, actualPayloads)
+	})
+
+	t.Run("All Payloads with Same Timestamp", func(t *testing.T) {
+		timestamp := now.Add(-5 * time.Hour)
+		payloads := []models.ClientObject{
+			createPayload("obj1", timestamp),
+			createPayload("obj1", timestamp),
+			createPayload("obj2", timestamp),
+		}
+		expectedIds := []string{"obj1", "obj2"}
+		expectedPayloads := []models.ClientObject{
+			createPayload("obj1", timestamp),
+			createPayload("obj2", timestamp),
+		}
+
+		actualIds, actualPayloads := mostRecentPayloadsByObjectId(payloads)
+
+		assert.ElementsMatch(t, expectedIds, actualIds)
+		assert.ElementsMatch(t, expectedPayloads, actualPayloads)
+	})
+}
