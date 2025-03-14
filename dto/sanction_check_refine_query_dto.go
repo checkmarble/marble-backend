@@ -1,14 +1,16 @@
 package dto
 
 import (
+	"reflect"
+
 	"github.com/checkmarble/marble-backend/models"
 )
 
 type RefineQueryDto struct {
-	Thing        *RefineQueryBase         `json:"Thing,omitempty" binding:"excluded_with_all=Person Organization Vehicle"` //nolint:tagliatelle
-	Person       *RefineQueryPerson       `json:"Person,omitempty" binding:"excluded_with_all=Thing Organization Vehicle"` //nolint:tagliatelle
-	Organization *RefineQueryOrganization `json:"Organization,omitempty" binding:"excluded_with_all=Person Thing Vehicle"` //nolint:tagliatelle
-	Vehicle      *RefineQueryVehicle      `json:"Vehicle,omitempty" binding:"excluded_with_all=Thing Person Organization"` //nolint:tagliatelle
+	Thing        *RefineQueryBase         `json:"Thing,omitempty" binding:"required_without_all=Person Organization Vehicle,excluded_with=Person Organization Vehicle"` //nolint:tagliatelle
+	Person       *RefineQueryPerson       `json:"Person,omitempty" binding:"required_without_all=Thing Organization Vehicle,excluded_with=Thing Organization Vehicle"`  //nolint:tagliatelle
+	Organization *RefineQueryOrganization `json:"Organization,omitempty" binding:"required_without_all=Thing Person Vehicle,excluded_with=Person Thing Vehicle"`        //nolint:tagliatelle
+	Vehicle      *RefineQueryVehicle      `json:"Vehicle,omitempty" binding:"required_without_all=Thing Person Organization,excluded_with=Thing Person Organization"`   //nolint:tagliatelle
 }
 
 func (dto RefineQueryDto) Type() string {
@@ -27,6 +29,8 @@ func (dto RefineQueryDto) Type() string {
 type RefineQueryBase struct {
 	Name string `json:"name"`
 }
+
+func (q RefineQueryBase) GetName() string { return q.Name }
 
 type RefineQueryPerson struct {
 	RefineQueryBase
@@ -80,4 +84,46 @@ func AdaptRefineQueryDto(dto RefineQueryDto) models.OpenSanctionCheckFilter {
 	}
 
 	return filter
+}
+
+type IRefineQuery interface {
+	GetName() string
+}
+
+func (dto RefineQueryDto) Validate() bool {
+	st := reflect.TypeOf(dto)
+	sv := reflect.ValueOf(dto)
+
+	for fi := range st.NumField() {
+		fv := sv.Field(fi)
+
+		if !fv.IsZero() {
+			if fv.Interface() != nil {
+				return ValidateRefineQuery(sv.Field(fi).Elem().Interface().(IRefineQuery))
+			}
+		}
+	}
+
+	return false
+}
+
+func ValidateRefineQuery[T IRefineQuery](dto T) bool {
+	found := false
+
+	if dto.GetName() != "" {
+		return true
+	}
+
+	t := reflect.TypeOf(dto)
+	v := reflect.ValueOf(dto)
+
+	for fi := range t.NumField() {
+		if fv, ok := v.Field(fi).Interface().(string); ok {
+			if len(fv) > 0 {
+				found = true
+			}
+		}
+	}
+
+	return found
 }

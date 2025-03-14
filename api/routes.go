@@ -6,6 +6,10 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/checkmarble/marble-backend/pubapi"
+	pubapiv1 "github.com/checkmarble/marble-backend/pubapi/v1"
+	"github.com/checkmarble/marble-backend/utils"
+
 	"github.com/checkmarble/marble-backend/usecases"
 
 	limits "github.com/gin-contrib/size"
@@ -23,7 +27,7 @@ func timeoutMiddleware(duration time.Duration) gin.HandlerFunc {
 	)
 }
 
-func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Authentication, tokenHandler TokenHandler, logger *slog.Logger) {
+func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth utils.Authentication, tokenHandler TokenHandler, logger *slog.Logger) {
 	tom := timeoutMiddleware(conf.DefaultTimeout)
 	parsedAppUrl, err := url.Parse(conf.MarbleAppUrl)
 	if err != nil || parsedAppUrl.Scheme == "" || parsedAppUrl.Host == "" {
@@ -36,7 +40,13 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
 	r.GET("/is-sso-available", tom, handleIsSSOEnabled(uc))
 
-	router := r.Use(auth.Middleware)
+	// Public API initialization
+	{
+		pubapi.InitPublicApi()
+		pubapiv1.Routes(r.Group("/v1beta"), auth.AuthedBy(utils.PublicApiKey), uc)
+	}
+
+	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey))
 
 	router.GET("/credentials", tom, handleGetCredentials())
 

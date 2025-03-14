@@ -88,6 +88,8 @@ type ScenarioEvaluator interface {
 }
 
 type decisionUsecaseSanctionCheckWriter interface {
+	GetSanctionChecksForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
+		initialOnly bool) ([]models.SanctionCheckWithMatches, error)
 	InsertSanctionCheck(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -123,6 +125,19 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	}
 	if err := usecase.enforceSecurity.ReadDecision(decision.Decision); err != nil {
 		return models.DecisionWithRuleExecutions{}, err
+	}
+
+	sc, err := usecase.sanctionCheckRepository.GetSanctionChecksForDecision(ctx,
+		usecase.executorFactory.NewExecutor(), decision.DecisionId, false)
+	if err != nil {
+		return models.DecisionWithRuleExecutions{}, err
+	}
+
+	if len(sc) > 0 {
+		decision.SanctionCheckExecution = &models.SanctionCheckWithMatches{
+			SanctionCheck: sc[0].SanctionCheck,
+			Count:         len(sc[0].Matches),
+		}
 	}
 
 	return decision, nil
@@ -440,8 +455,10 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
+		var sc models.SanctionCheckWithMatches
+
 		if decision.SanctionCheckExecution != nil {
-			sc, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
+			sc, err = usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
 				decision.DecisionId, *decision.SanctionCheckExecution, true)
 			if err != nil {
 				return models.DecisionWithRuleExecutions{},
@@ -455,6 +472,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 						"could not enqueue sanction check for refinement"))
 				}
 			}
+
+			decision.SanctionCheckExecution = &sc
 		}
 
 		if params.WithDecisionWebhooks {

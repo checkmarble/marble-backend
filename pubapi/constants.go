@@ -1,0 +1,21 @@
+package pubapi
+
+import (
+	"errors"
+)
+
+const (
+	LinkDecisions            = "decisions"
+	LinkSanctionChecks       = "sanction_checks"
+	LinkSanctionCheckMatches = "sanction_check_matches"
+)
+
+var (
+	ErrInternalServerError = errors.New("server_error")
+
+	ErrFeatureDisabled = errors.New("feature_disabled")
+	ErrNotConfigured   = errors.New("feature_not_configured")
+
+	ErrNotFound       = errors.New("not_found")
+	ErrInvalidPayload = errors.New("invalid_payload")
+)

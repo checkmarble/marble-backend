@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
@@ -28,7 +29,7 @@ type accessToken struct {
 
 func (t *TokenHandler) GenerateToken(c *gin.Context) {
 	ctx := c.Request.Context()
-	key := ParseApiKeyHeader(c.Request.Header)
+	key := utils.ParseApiKeyHeader(c.Request.Header)
 	bearerToken, err := ParseAuthorizationBearerHeader(c.Request.Header)
 	if err != nil {
 		_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))

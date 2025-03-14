@@ -15,9 +15,9 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-set/v2"
-	"github.com/pkg/errors"
 )
 
 type SanctionCheckEnforceSecurityScenario interface {
@@ -83,7 +83,11 @@ type SanctionCheckRepository interface {
 	CopySanctionCheckFiles(ctx context.Context, exec repositories.Executor,
 		sanctionCheckId, newSanctionCheckId string) error
 	AddSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
-		orgId, counterpartyId string, entityId string, reviewerId models.UserId) error
+		orgId, counterpartyId string, entityId string, reviewerId *models.UserId) error
+	DeleteSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
+		orgId string, counterpartyId *string, entityId string, reviewerId *models.UserId) error
+	SearchSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
+		orgId string, counterpartyId, entityId *string) ([]models.SanctionCheckWhitelist, error)
 	IsSanctionCheckMatchWhitelisted(ctx context.Context, exec repositories.Executor,
 		orgId, counterpartyId string, entityId []string) ([]models.SanctionCheckWhitelist, error)
 	CountWhitelistsForCounterpartyId(ctx context.Context, exec repositories.Executor,
@@ -144,7 +148,7 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 		return nil, err
 	}
 	if len(decisions) == 0 {
-		return nil, errors.Wrap(models.NotFoundError, "requested decision does not exist")
+		return nil, errors.WithDetail(models.NotFoundError, "requested decision does not exist")
 	}
 
 	if decisions[0].Case == nil {
@@ -221,7 +225,7 @@ func (uc SanctionCheckUsecase) Execute(
 }
 
 func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.SanctionCheckRefineRequest,
-	requestedBy models.UserId,
+	requestedBy *models.UserId,
 ) (models.SanctionCheckWithMatches, error) {
 	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.DecisionId)
 	if err != nil {
@@ -246,8 +250,14 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 		return models.SanctionCheckWithMatches{}, err
 	}
 
+	var requester *string
+
+	if requestedBy != nil {
+		requester = utils.Ptr(string(*requestedBy))
+	}
+
 	sanctionCheck.IsManual = true
-	sanctionCheck.RequestedBy = utils.Ptr(string(requestedBy))
+	sanctionCheck.RequestedBy = requester
 
 	sanctionCheck, err = executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
@@ -380,11 +390,12 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 	}
 
 	if !data.sanction.Status.IsReviewable() {
-		return data.match, errors.Wrap(models.BadParameterError, "this sanction is not pending review")
+		return data.match, errors.WithDetail(models.BadParameterError,
+			"this sanction is not pending review")
 	}
 
 	if data.match.Status != models.SanctionMatchStatusPending {
-		return data.match, errors.Wrap(models.BadParameterError, "this match is not pending review")
+		return data.match, errors.WithDetail(models.BadParameterError, "this match is not pending review")
 	}
 
 	var updatedMatch models.SanctionCheckMatch
@@ -433,16 +444,24 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 					return err
 				}
 
-				err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-					CaseId:       data.decision.Case.Id,
-					UserId:       string(update.ReviewerId),
-					EventType:    models.SanctionCheckReviewed,
-					ResourceId:   &data.decision.DecisionId,
-					ResourceType: utils.Ptr(models.DecisionResourceType),
-					NewValue:     utils.Ptr(models.SanctionMatchStatusConfirmedHit.String()),
-				})
-				if err != nil {
-					return err
+				if data.decision.Case != nil {
+					var reviewerId *string
+
+					if update.ReviewerId != nil && len(*update.ReviewerId) > 0 {
+						reviewerId = utils.Ptr(string(*update.ReviewerId))
+					}
+
+					err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+						CaseId:       data.decision.Case.Id,
+						UserId:       reviewerId,
+						EventType:    models.SanctionCheckReviewed,
+						ResourceId:   &data.decision.DecisionId,
+						ResourceType: utils.Ptr(models.DecisionResourceType),
+						NewValue:     utils.Ptr(models.SanctionMatchStatusConfirmedHit.String()),
+					})
+					if err != nil {
+						return err
+					}
 				}
 			}
 
@@ -454,22 +473,30 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 					return err
 				}
 
-				err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-					CaseId:       data.decision.Case.Id,
-					UserId:       string(update.ReviewerId),
-					EventType:    models.SanctionCheckReviewed,
-					ResourceId:   &data.decision.DecisionId,
-					ResourceType: utils.Ptr(models.DecisionResourceType),
-					NewValue:     utils.Ptr(models.SanctionMatchStatusNoHit.String()),
-				})
-				if err != nil {
-					return err
+				if data.decision.Case != nil {
+					var reviewerId *string
+
+					if update.ReviewerId != nil && len(*update.ReviewerId) > 0 {
+						reviewerId = utils.Ptr(string(*update.ReviewerId))
+					}
+
+					err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+						CaseId:       data.decision.Case.Id,
+						UserId:       reviewerId,
+						EventType:    models.SanctionCheckReviewed,
+						ResourceId:   &data.decision.DecisionId,
+						ResourceType: utils.Ptr(models.DecisionResourceType),
+						NewValue:     utils.Ptr(models.SanctionMatchStatusNoHit.String()),
+					})
+					if err != nil {
+						return err
+					}
 				}
 			}
 
 			if update.Status == models.SanctionMatchStatusNoHit && update.Whitelist &&
 				data.match.UniqueCounterpartyIdentifier != nil {
-				if err := uc.repository.AddSanctionCheckMatchWhitelist(ctx, tx,
+				if err := uc.CreateWhitelist(ctx, tx,
 					data.decision.OrganizationId, *data.match.UniqueCounterpartyIdentifier,
 					data.match.EntityId, update.ReviewerId); err != nil {
 					return errors.Wrap(err, "could not whitelist match")
@@ -481,6 +508,49 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 	)
 
 	return updatedMatch, err
+}
+
+func (uc SanctionCheckUsecase) CreateWhitelist(ctx context.Context, exec repositories.Executor,
+	orgId, counterpartyId, entityId string, reviewerId *models.UserId,
+) error {
+	if exec == nil {
+		exec = uc.executorFactory.NewExecutor()
+	}
+
+	if err := uc.repository.AddSanctionCheckMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId, reviewerId); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (uc SanctionCheckUsecase) DeleteWhitelist(ctx context.Context, exec repositories.Executor,
+	orgId string, counterpartyId *string, entityId string, reviewerId *models.UserId,
+) error {
+	if exec == nil {
+		exec = uc.executorFactory.NewExecutor()
+	}
+
+	if err := uc.repository.DeleteSanctionCheckMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId, reviewerId); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (uc SanctionCheckUsecase) SearchWhitelist(ctx context.Context, exec repositories.Executor,
+	orgId string, counterpartyId, entityId *string, reviewerId *models.UserId,
+) ([]models.SanctionCheckWhitelist, error) {
+	if exec == nil {
+		exec = uc.executorFactory.NewExecutor()
+	}
+
+	whitelists, err := uc.repository.SearchSanctionCheckMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId)
+	if err != nil {
+		return nil, err
+	}
+
+	return whitelists, nil
 }
 
 func (uc SanctionCheckUsecase) MatchAddComment(ctx context.Context, matchId string,
@@ -508,7 +578,7 @@ func (uc SanctionCheckUsecase) EnrichMatchWithoutAuthorization(ctx context.Conte
 	}
 
 	if match.Enriched {
-		return models.SanctionCheckMatch{}, errors.Wrap(models.ConflictError,
+		return models.SanctionCheckMatch{}, errors.WithDetail(models.ConflictError,
 			"this sanction check match was already enriched")
 	}
 
@@ -530,6 +600,10 @@ func (uc SanctionCheckUsecase) EnrichMatchWithoutAuthorization(ctx context.Conte
 	}
 
 	return newMatch, nil
+}
+
+func (uc SanctionCheckUsecase) GetEntity(ctx context.Context, entityId string) ([]byte, error) {
+	return uc.openSanctionsProvider.EnrichMatch(ctx, models.SanctionCheckMatch{EntityId: entityId})
 }
 
 func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Credentials,
@@ -701,6 +775,8 @@ func writeSanctionCheckFileToBlobStorage(ctx context.Context,
 // Helper functions for enforcing permissions on sanction check actions go below
 
 func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decisionId string) (models.Decision, error) {
+	creds, _ := utils.CredentialsFromCtx(ctx)
+
 	exec := uc.executorFactory.NewExecutor()
 	decision, err := uc.externalRepository.DecisionsById(ctx, exec, []string{decisionId})
 	if err != nil {
@@ -710,23 +786,26 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, d
 		return models.Decision{}, errors.Wrap(models.NotFoundError,
 			"could not find the decision linked to the sanction check")
 	}
-	if decision[0].Case == nil {
-		return decision[0], errors.Wrap(models.NotFoundError,
-			"this sanction check is not linked to a case")
-	}
 
-	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, decision[0].OrganizationId, false)
-	if err != nil {
-		return models.Decision{}, errors.Wrap(err,
-			"could not retrieve organization inboxes")
-	}
+	if creds.Role != models.API_CLIENT {
+		if decision[0].Case == nil {
+			return decision[0], errors.Wrap(models.NotFoundError,
+				"this sanction check is not linked to a case")
+		}
 
-	inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) string {
-		return inbox.Id
-	})
+		inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, decision[0].OrganizationId, false)
+		if err != nil {
+			return models.Decision{}, errors.Wrap(err,
+				"could not retrieve organization inboxes")
+		}
 
-	if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxIds); err != nil {
-		return decision[0], err
+		inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) string {
+			return inbox.Id
+		})
+
+		if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxIds); err != nil {
+			return decision[0], err
+		}
 	}
 
 	return decision[0], nil
@@ -740,16 +819,17 @@ func (uc SanctionCheckUsecase) enforceCanRefineSanctionCheck(
 		uc.executorFactory.NewExecutor(), decisionId)
 	if err != nil {
 		return models.Decision{}, models.SanctionCheckWithMatches{},
-			errors.Wrap(err, "sanction check does not exist")
+			errors.WithDetail(err, "sanction check does not exist")
 	}
 	if sanctionCheck == nil {
 		return models.Decision{}, models.SanctionCheckWithMatches{},
-			errors.Wrap(models.NotFoundError, "no active sanction check found for this decision")
+			errors.WithDetail(models.NotFoundError, "no active sanction check found for this decision")
 	}
 
 	if !sanctionCheck.Status.IsRefinable() {
 		return models.Decision{}, *sanctionCheck,
-			errors.Wrap(models.NotFoundError, "this sanction is not pending review or error")
+			errors.WithDetail(models.NotFoundError,
+				"this sanction is not pending review or error")
 	}
 
 	decision, err := uc.enforceCanReadOrUpdateCase(ctx, sanctionCheck.DecisionId)
@@ -779,6 +859,11 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateSanctionCheckMatch(
 		uc.executorFactory.NewExecutor(), match.SanctionCheckId)
 	if err != nil {
 		return sanctionCheckContextData{}, err
+	}
+
+	if sanctionCheck.IsArchived {
+		return sanctionCheckContextData{}, errors.WithDetail(models.MiscError,
+			"sanction check was refined and cannot be reviewed")
 	}
 
 	dec, err := uc.enforceCanReadOrUpdateCase(ctx, sanctionCheck.DecisionId)
