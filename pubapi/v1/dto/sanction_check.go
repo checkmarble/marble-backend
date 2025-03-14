@@ -49,3 +49,17 @@ func AdaptSanctionCheckMatch(model models.SanctionCheckMatch) SanctionCheckMatch
 		Payload: model.Payload,
 	}
 }
+
+type SanctionCheckWhitelist struct {
+	Counterparty string    `json:"counterparty"`
+	EntityId     string    `json:"entity_id"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+func AdaptSanctionCheckWhitelist(model models.SanctionCheckWhitelist) SanctionCheckWhitelist {
+	return SanctionCheckWhitelist{
+		Counterparty: model.CounterpartyId,
+		EntityId:     model.EntityId,
+		CreatedAt:    model.CreatedAt,
+	}
+}

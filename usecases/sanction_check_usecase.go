@@ -84,6 +84,10 @@ type SanctionCheckRepository interface {
 		sanctionCheckId, newSanctionCheckId string) error
 	AddSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
 		orgId, counterpartyId string, entityId string, reviewerId *models.UserId) error
+	DeleteSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
+		orgId string, counterpartyId *string, entityId string, reviewerId *models.UserId) error
+	SearchSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
+		orgId string, counterpartyId, entityId *string) ([]models.SanctionCheckWhitelist, error)
 	IsSanctionCheckMatchWhitelisted(ctx context.Context, exec repositories.Executor,
 		orgId, counterpartyId string, entityId []string) ([]models.SanctionCheckWhitelist, error)
 	CountWhitelistsForCounterpartyId(ctx context.Context, exec repositories.Executor,
@@ -492,7 +496,7 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 
 			if update.Status == models.SanctionMatchStatusNoHit && update.Whitelist &&
 				data.match.UniqueCounterpartyIdentifier != nil {
-				if err := uc.repository.AddSanctionCheckMatchWhitelist(ctx, tx,
+				if err := uc.CreateWhitelist(ctx, tx,
 					data.decision.OrganizationId, *data.match.UniqueCounterpartyIdentifier,
 					data.match.EntityId, update.ReviewerId); err != nil {
 					return errors.Wrap(err, "could not whitelist match")
@@ -504,6 +508,49 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 	)
 
 	return updatedMatch, err
+}
+
+func (uc SanctionCheckUsecase) CreateWhitelist(ctx context.Context, exec repositories.Executor,
+	orgId, counterpartyId, entityId string, reviewerId *models.UserId,
+) error {
+	if exec == nil {
+		exec = uc.executorFactory.NewExecutor()
+	}
+
+	if err := uc.repository.AddSanctionCheckMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId, reviewerId); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (uc SanctionCheckUsecase) DeleteWhitelist(ctx context.Context, exec repositories.Executor,
+	orgId string, counterpartyId *string, entityId string, reviewerId *models.UserId,
+) error {
+	if exec == nil {
+		exec = uc.executorFactory.NewExecutor()
+	}
+
+	if err := uc.repository.DeleteSanctionCheckMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId, reviewerId); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (uc SanctionCheckUsecase) SearchWhitelist(ctx context.Context, exec repositories.Executor,
+	orgId string, counterpartyId, entityId *string, reviewerId *models.UserId,
+) ([]models.SanctionCheckWhitelist, error) {
+	if exec == nil {
+		exec = uc.executorFactory.NewExecutor()
+	}
+
+	whitelists, err := uc.repository.SearchSanctionCheckMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId)
+	if err != nil {
+		return nil, err
+	}
+
+	return whitelists, nil
 }
 
 func (uc SanctionCheckUsecase) MatchAddComment(ctx context.Context, matchId string,

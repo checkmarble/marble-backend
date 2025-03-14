@@ -378,43 +378,6 @@ func (repo *MarbleDbRepository) CopySanctionCheckFiles(ctx context.Context, exec
 	return nil
 }
 
-func (repo *MarbleDbRepository) AddSanctionCheckMatchWhitelist(ctx context.Context, exec Executor,
-	orgId, counterpartyId string, entityId string, reviewerId *models.UserId,
-) error {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
-	}
-
-	sql := NewQueryBuilder().
-		Insert(dbmodels.TABLE_SANCTION_CHECK_WHITELISTS).
-		Columns("org_id", "counterparty_id", "entity_id", "whitelisted_by").
-		Values(orgId, counterpartyId, entityId, reviewerId).
-		Suffix("ON CONFLICT (org_id, counterparty_id, entity_id) DO NOTHING")
-
-	return ExecBuilder(ctx, exec, sql)
-}
-
-func (repo *MarbleDbRepository) IsSanctionCheckMatchWhitelisted(ctx context.Context, exec Executor,
-	orgId, counterpartyId string, entityIds []string,
-) ([]models.SanctionCheckWhitelist, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
-	}
-
-	sql := NewQueryBuilder().
-		Select(dbmodels.SanctionCheckWhitelistColumnList...).
-		From(dbmodels.TABLE_SANCTION_CHECK_WHITELISTS).
-		Where(squirrel.And{
-			squirrel.Eq{
-				"org_id":          orgId,
-				"counterparty_id": counterpartyId,
-			},
-			squirrel.Expr("entity_id = ANY(?)", entityIds),
-		})
-
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckWhitelist)
-}
-
 func (repo *MarbleDbRepository) CountWhitelistsForCounterpartyId(ctx context.Context, exec Executor,
 	orgId, counterpartyId string,
 ) (int, error) {

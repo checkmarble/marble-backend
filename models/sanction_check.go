@@ -217,6 +217,6 @@ type SanctionCheckWhitelist struct {
 	OrgId          string
 	CounterpartyId string
 	EntityId       string
-	WhitelistedBy  string
+	WhitelistedBy  *string
 	CreatedAt      time.Time
 }
