@@ -29,7 +29,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 		return 0, err
 	}
 
-	mostRecentObjectIds, mostRecentPayloads := repo.mostRecentPayloadsByObjectId(payloads)
+	mostRecentObjectIds, mostRecentPayloads := mostRecentPayloadsByObjectId(payloads)
 
 	fieldsToLoad := fieldsToLoadFromDb(payloads)
 	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, tx,
@@ -98,7 +98,8 @@ func objectIdAndUpdatedAtFromPayload(payload models.ClientObject) (string, time.
 }
 
 // Keep only the most recent (as per updated_at) payload for each object_id. In case of equal values seen, the first one wins.
-func (repo *IngestionRepositoryImpl) mostRecentPayloadsByObjectId(payloads []models.ClientObject) ([]string, []models.ClientObject) {
+// The returned slices are sorted by object_id for unit tests & query plan stability.
+func mostRecentPayloadsByObjectId(payloads []models.ClientObject) ([]string, []models.ClientObject) {
 	idxToKeep := make(map[string]int, len(payloads))
 	for i, payload := range payloads {
 		objectId, updatedAt := objectIdAndUpdatedAtFromPayload(payload)
@@ -112,15 +113,22 @@ func (repo *IngestionRepositoryImpl) mostRecentPayloadsByObjectId(payloads []mod
 				idxToKeep[objectId] = i
 			}
 		}
-
 	}
 
-	mostRecentPayloads := make([]models.ClientObject, len(idxToKeep))
-	mostRecentObjectIds := make([]string, len(idxToKeep))
-	for _, idx := range idxToKeep {
-		mostRecentPayloads[idx] = payloads[idx]
-		objectId, _ := objectIdAndUpdatedAtFromPayload(payloads[idx])
-		mostRecentObjectIds[idx] = objectId
+	// Collect and sort object IDs
+	objectIds := make([]string, 0, len(idxToKeep))
+	for objectId := range idxToKeep {
+		objectIds = append(objectIds, objectId)
+	}
+	slices.Sort(objectIds) // Sort the object IDs
+
+	// Construct result slices using sorted object IDs
+	mostRecentPayloads := make([]models.ClientObject, 0, len(objectIds))
+	mostRecentObjectIds := make([]string, 0, len(objectIds))
+	for _, objectId := range objectIds {
+		idx := idxToKeep[objectId]
+		mostRecentPayloads = append(mostRecentPayloads, payloads[idx])
+		mostRecentObjectIds = append(mostRecentObjectIds, objectId)
 	}
 
 	return mostRecentObjectIds, mostRecentPayloads
