@@ -185,6 +185,86 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              
+  /sanction-checks/whitelist:
+    post:
+      operationId: addSanctionCheckWhitelist
+      tags: ["Sanction Checks"]
+      security:
+        - ApiKeyAuth: []
+      summary: Whitelist an entity
+      description: Add a set of search term and entity ID that will not set off a sanction check alert in the future
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [counterparty, entity_id]
+              properties:
+                counterparty:
+                  description: The unique counterparty identifier that should be whitelisted when yielding the associated entity ID
+                  type: string
+                entity_id:
+                  description: The OpenSanctions entity ID to whitelist
+                  type: string
+      responses:
+        201:
+          description: The entity was whitelisted
+
+    delete:
+      operationId: deleteSanctionCheckWhitelist
+      tags: ["Sanction Checks"]
+      security:
+        - ApiKeyAuth: []
+      summary: Remove an entity whitelist
+      description: |
+        Delete a previously whitelisted entity, a match from the search term to the entity ID will subsequently trigger alerts.
+
+        If only `entity_id` is provided, all whitelist entries for that entity will be removed, regardless of which counterparty term triggers it.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entity_id]
+              properties:
+                counterparty:
+                  description: The unique counterparty identifier that should be whitelisted when yielding the associated entity ID
+                  type: string
+                entity_id:
+                  description: The OpenSanctions entity ID to whitelist
+                  type: string
+      responses:
+        204:
+          description: The whitelist entry was deleted
+
+  /sanction-checks/whitelists/search:
+    post:
+      operationId: searchSanctionCheckWhitelist
+      tags: ["Sanction Checks"]
+      security:
+        - ApiKeyAuth: []
+      summary: Search whitelisted entities
+      description: |
+        Search for whitelisted entities by OpenSanctions entity ID and/or unique counterparty identifier.
+
+        At least one of `counterparty` or `entity_id` is required to perform a search.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                counterparty:
+                  description: The unique counterparty identifier to search for
+                  type: string
+                entity_id:
+                  description: The OpenSanctions entity ID to search for
+                  type: string
+      responses:
+        201:
+          description: The entity was whitelisted
 
 components:
   securitySchemes:

@@ -14,7 +14,7 @@ type DBSanctionCheckWhitelists struct {
 	OrgId          string    `db:"org_id"`
 	CounterpartyId string    `db:"counterparty_id"`
 	EntityId       string    `db:"entity_id"`
-	WhitelistedBy  string    `db:"whitelisted_by"`
+	WhitelistedBy  *string   `db:"whitelisted_by"`
 	CreatedAt      time.Time `db:"created_at"`
 }
 
