@@ -59,13 +59,23 @@ type OpenSanctionsUpstreamDatasetFreshness struct {
 }
 
 func AdaptSanctionCheckDataset(model models.OpenSanctionsDatasetFreshness) OpenSanctionsDatasetFreshness {
+	// return OpenSanctionsDatasetFreshness{
+	// 	Upstream: OpenSanctionsUpstreamDatasetFreshness{
+	// 		Version:    model.Upstream.Version,
+	// 		Name:       model.Upstream.Name,
+	// 		LastExport: model.Upstream.LastExport,
+	// 	},
+	// 	Version:  model.Version,
+	// 	UpToDate: model.UpToDate,
+	// }
+
 	return OpenSanctionsDatasetFreshness{
 		Upstream: OpenSanctionsUpstreamDatasetFreshness{
-			Version:    model.Upstream.Version,
-			Name:       model.Upstream.Name,
-			LastExport: model.Upstream.LastExport,
+			Version:    "placeholder",
+			Name:       "placeholder",
+			LastExport: time.Now(),
 		},
-		Version:  model.Version,
-		UpToDate: model.UpToDate,
+		Version:  "placeholder",
+		UpToDate: true,
 	}
 }
