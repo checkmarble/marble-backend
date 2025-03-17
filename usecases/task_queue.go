@@ -164,6 +164,7 @@ func QueuesFromOrgs(ctx context.Context, orgsRepo repositories.OrganizationRepos
 	for _, org := range orgs {
 		periodics = append(periodics, []*river.PeriodicJob{
 			scheduled_execution.NewIndexCleanupPeriodicJob(org.Id),
+			scheduled_execution.NewIndexDeletionPeriodicJob(org.Id),
 			scheduled_execution.NewTestRunSummaryPeriodicJob(org.Id),
 		}...)
 

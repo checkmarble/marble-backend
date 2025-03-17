@@ -71,7 +71,7 @@ func (w *IndexCleanupWorker) Work(ctx context.Context, job *river.Job[models.Ind
 	for _, index := range set.From(invalidIndices).Difference(set.From(indicesPendingCreation)).Slice() {
 		logger.DebugContext(ctx, "deleting invalid index", "org", job.Args.OrgId, "index", index)
 
-		if err = w.indexEditor.DeleteInvalidIndex(ctx, db, index); err != nil {
+		if err = w.indexEditor.DeleteIndex(ctx, db, index); err != nil {
 			return err
 		}
 
