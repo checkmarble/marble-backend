@@ -197,6 +197,7 @@ func RunTaskQueue(apiVersion string) error {
 	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
 	river.AddWorker(workers, adminUc.NewIndexCleanupWorker())
+	river.AddWorker(workers, adminUc.NewIndexDeletionWorker())
 	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
 

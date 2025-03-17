@@ -462,7 +462,7 @@ func (editor *ClientDbRepository) ListInvalidIndices(ctx context.Context, exec E
 	return indices, err
 }
 
-func (editor *ClientDbRepository) DeleteInvalidIndex(ctx context.Context, exec Executor, indexName string) error {
+func (editor *ClientDbRepository) DeleteIndex(ctx context.Context, exec Executor, indexName string) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}
@@ -472,7 +472,7 @@ func (editor *ClientDbRepository) DeleteInvalidIndex(ctx context.Context, exec E
 
 	_, err := exec.Exec(ctx, sql)
 	if err != nil {
-		return errors.Wrap(err, "error while deleting invalid index")
+		return errors.Wrap(err, "error while deleting index")
 	}
 
 	return nil
