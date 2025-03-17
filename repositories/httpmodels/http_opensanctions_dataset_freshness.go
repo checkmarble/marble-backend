@@ -2,6 +2,7 @@ package httpmodels
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -47,8 +48,8 @@ func AdaptOpenSanctionDatasetFreshness(dataset HTTPOpenSanctionRemoteDataset) mo
 
 type HTTPOpenSanctionsLocalDatasets struct {
 	Datasets []struct {
-		Name         string `json:"name"`
-		IndexVersion string `json:"index_version"`
+		Name         string  `json:"name"`
+		IndexVersion *string `json:"index_version"`
 	} `json:"datasets"`
 }
 
@@ -57,16 +58,18 @@ func AdaptOpenSanctionsLocalDatasetFreshness(datasets HTTPOpenSanctionsLocalData
 
 	for _, ds := range datasets.Datasets {
 		if ds.Name == "default" {
-			version = &ds.IndexVersion
+			version = ds.IndexVersion
 		}
 	}
 
 	if version == nil {
-		return models.OpenSanctionsDatasetFreshness{}, errors.New(
-			"could not find upstream default dataset")
+		return models.OpenSanctionsDatasetFreshness{},
+			errors.New("could not find upstream default dataset")
 	}
 
-	lastUpdatedAt, err := time.ParseInLocation("20060102150405", (*version)[:len(*version)-4], time.UTC)
+	versionTimestamp, _, _ := strings.Cut(*version, "-")
+
+	lastUpdatedAt, err := time.ParseInLocation("20060102150405", versionTimestamp, time.UTC)
 	if err != nil {
 		return models.OpenSanctionsDatasetFreshness{},
 			errors.Wrap(err, "could not parse index time")
