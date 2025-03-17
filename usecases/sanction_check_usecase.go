@@ -138,7 +138,7 @@ func (uc SanctionCheckUsecase) CheckDatasetFreshness(ctx context.Context) (model
 		Version:  "placeholder",
 		UpToDate: true,
 	}, nil
-	return uc.openSanctionsProvider.GetLatestLocalDataset(ctx)
+	// return uc.openSanctionsProvider.GetLatestLocalDataset(ctx)
 }
 
 func (uc SanctionCheckUsecase) GetDatasetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
