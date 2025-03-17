@@ -69,3 +69,9 @@ func AdaptSanctionCheckDataset(model models.OpenSanctionsDatasetFreshness) OpenS
 		UpToDate: model.UpToDate,
 	}
 }
+
+func CreateOpenSanctionsFreshnessFallback() OpenSanctionsDatasetFreshness {
+	return OpenSanctionsDatasetFreshness{
+		UpToDate: true,
+	}
+}
