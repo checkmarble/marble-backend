@@ -43,6 +43,7 @@ type clientDbIndexEditor interface {
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, organizationId string, index models.UnicityIndex) error
 	CreateUniqueIndexAsync(ctx context.Context, organizationId string, index models.UnicityIndex) error
 	DeleteUniqueIndex(ctx context.Context, organizationId string, index models.UnicityIndex) error
+	GetRequiredIndices(ctx context.Context, organizationId string) (required []models.ConcreteIndex, err error)
 }
 
 type PublicationUsecaseFeatureAccessReader interface {
