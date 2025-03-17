@@ -119,28 +119,35 @@ func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc
 			Query:      gdto.AdaptRefineQueryDto(params),
 		}
 
-		var sanctionCheck models.SanctionCheckWithMatches
-
 		switch write {
 		case true:
-			sanctionCheck, err = sanctionCheckUsecase.Refine(c.Request.Context(), refineQuery, nil)
+			sanctionCheck, err := sanctionCheckUsecase.Refine(c.Request.Context(), refineQuery, nil)
 			if err != nil {
 				pubapi.NewErrorResponse().WithError(err).Serve(c)
 				return
 			}
+
+			pubapi.
+				NewResponse(dto.AdaptSanctionCheck(sanctionCheck)).
+				WithLink(pubapi.LinkDecisions, gin.H{"id": decisionId}).
+				Serve(c)
 
 		case false:
-			sanctionCheck, err = sanctionCheckUsecase.Search(c.Request.Context(), refineQuery)
+			sanctionCheck, err := sanctionCheckUsecase.Search(c.Request.Context(), refineQuery)
 			if err != nil {
 				pubapi.NewErrorResponse().WithError(err).Serve(c)
 				return
 			}
-		}
 
-		pubapi.
-			NewResponse(dto.AdaptSanctionCheck(sanctionCheck)).
-			WithLink(pubapi.LinkDecisions, gin.H{"id": decisionId}).
-			Serve(c)
+			matchPayload := func(m models.SanctionCheckMatch) json.RawMessage {
+				return m.Payload
+			}
+
+			pubapi.
+				NewResponse(pure_utils.Map(sanctionCheck.Matches, matchPayload)).
+				WithLink(pubapi.LinkDecisions, gin.H{"id": decisionId}).
+				Serve(c)
+		}
 	}
 }
 
