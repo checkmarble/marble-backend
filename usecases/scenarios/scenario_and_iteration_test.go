@@ -40,6 +40,14 @@ func (s *ScenarioFetcherRepositoryMock) GetSanctionCheckConfig(ctx context.Conte
 	return args.Get(0).(*models.SanctionCheckConfig), args.Error(1)
 }
 
+func (s *ScenarioFetcherRepositoryMock) ListLiveIterationsAndNeighbors(ctx context.Context,
+	exec repositories.Executor, orgId string,
+) ([]models.ScenarioIteration, error) {
+	args := s.Called(ctx, exec, orgId)
+
+	return []models.ScenarioIteration{}, args.Error(1)
+}
+
 func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 	scenario := models.Scenario{
 		Id: "scenario_id",
