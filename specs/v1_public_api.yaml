@@ -51,8 +51,11 @@ paths:
       tags: ["Sanction Checks"]
       security:
         - ApiKeyAuth: []
-      summary: Refine a sanction
-      description: Replace a sanction check with refined results
+      summary: Refine a sanction check
+      description: |
+        Replace a sanction check with refined results.
+
+        This endpoint will replace the active sanction check for the provided decision with one containing the result of the included query.
       parameters:
         - name: decisionId
           in: path
@@ -94,7 +97,10 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Perform a sanction search
-      description: Retrieve sanction check result without persisting them
+      description: |
+        Retrieve sanction check result without persisting them.
+
+        This endpoint will **not** replace the active sanction check, but allow to preview the results as executed in the original decision's context (using its unique counterparty ID and elligible whitelisted entries). 
       parameters:
         - name: decisionId
           in: path
@@ -118,7 +124,9 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/SanctionCheck'
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SanctionCheckMatchPayload'
 
         400: { $ref: '#/components/responses/400' }
         404: { $ref: '#/components/responses/404' }
@@ -384,11 +392,24 @@ components:
           type: string
           enum: [pending, no_hit, confirmed_hit, skipped]
         payload:
-          description: OpenSanctions payload for the match
-          type: object
-          additionalProperties: true
-          example:
-            id: ABC123
+          $ref: '#/components/schemas/SanctionCheckMatchPayload'
+    
+    SanctionCheckMatchPayload:
+      type: object
+      description: OpenSanctions payload for the match
+      additionalProperties: true
+      required: ["id"]
+      properties:
+        id:
+          description: OpenSanctions entity ID
+          type: string
+      example:
+        id: ABC123
+        schema: Organization
+        datasets: ["us_sam_exclusions"]
+        score: 0.75
+        properties:
+          name: ["ACME Inc."]
 
     SanctionCheckSearchQuery:
       type: object
