@@ -578,6 +578,15 @@ func (usecases UsecasesWithCreds) NewIndexCleanupWorker() *scheduled_execution.I
 	return &w
 }
 
+func (usecases UsecasesWithCreds) NewIndexDeletionWorker() *scheduled_execution.IndexDeletionWorker {
+	w := scheduled_execution.NewIndexDeletionWorker(
+		usecases.NewExecutorFactory(),
+		&usecases.Repositories.ClientDbRepository,
+		usecases.NewClientDbIndexEditor(),
+	)
+	return &w
+}
+
 func (usecases UsecasesWithCreds) NewTestRunSummaryWorker() *scheduled_execution.TestRunSummaryWorker {
 	w := scheduled_execution.NewTestRunSummaryWorker(
 		usecases.NewExecutorFactory(),
