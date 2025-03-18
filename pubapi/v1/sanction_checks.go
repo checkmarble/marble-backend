@@ -90,7 +90,7 @@ func HandleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) gin.HandlerFunc 
 
 func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		decisionId, err := pubapi.UuidParam(c, "decisionId")
+		sanctionCheckId, err := pubapi.UuidParam(c, "sanctionCheckId")
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -113,8 +113,14 @@ func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc
 		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
 		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
 
+		sanctionCheck, err := sanctionCheckUsecase.GetSanctionCheck(c.Request.Context(), sanctionCheckId.String())
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
 		refineQuery := models.SanctionCheckRefineRequest{
-			DecisionId: decisionId.String(),
+			DecisionId: sanctionCheck.DecisionId,
 			Type:       params.Type(),
 			Query:      gdto.AdaptRefineQueryDto(params),
 		}
@@ -129,7 +135,7 @@ func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc
 
 			pubapi.
 				NewResponse(dto.AdaptSanctionCheck(sanctionCheck)).
-				WithLink(pubapi.LinkDecisions, gin.H{"id": decisionId}).
+				WithLink(pubapi.LinkDecisions, gin.H{pubapi.LinkDecisions: sanctionCheck.DecisionId}).
 				Serve(c)
 
 		case false:
@@ -145,7 +151,7 @@ func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc
 
 			pubapi.
 				NewResponse(pure_utils.Map(sanctionCheck.Matches, matchPayload)).
-				WithLink(pubapi.LinkDecisions, gin.H{"id": decisionId}).
+				WithLink(pubapi.LinkDecisions, gin.H{pubapi.LinkDecisions: sanctionCheck.DecisionId}).
 				Serve(c)
 		}
 	}

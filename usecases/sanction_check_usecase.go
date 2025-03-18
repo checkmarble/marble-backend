@@ -139,6 +139,35 @@ func (uc SanctionCheckUsecase) GetDatasetCatalog(ctx context.Context) (models.Op
 	return uc.openSanctionsProvider.GetCatalog(ctx)
 }
 
+func (uc SanctionCheckUsecase) GetSanctionCheck(ctx context.Context, id string) (models.SanctionCheckWithMatches, error) {
+	sc, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), id)
+	if err != nil {
+		return models.SanctionCheckWithMatches{},
+			errors.Wrap(err, "could not retrieve sanction check")
+	}
+
+	decisions, err := uc.externalRepository.DecisionsById(ctx, uc.executorFactory.NewExecutor(), []string{sc.DecisionId})
+	if err != nil {
+		return models.SanctionCheckWithMatches{}, err
+	}
+	if len(decisions) == 0 {
+		return models.SanctionCheckWithMatches{},
+			errors.WithDetail(models.NotFoundError, "requested decision does not exist")
+	}
+
+	if decisions[0].Case == nil {
+		if err := uc.enforceSecurityDecision.ReadDecision(decisions[0]); err != nil {
+			return models.SanctionCheckWithMatches{}, err
+		}
+	} else {
+		if _, err = uc.enforceCanReadOrUpdateCase(ctx, decisions[0].DecisionId); err != nil {
+			return models.SanctionCheckWithMatches{}, err
+		}
+	}
+
+	return sc, nil
+}
+
 func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionId string,
 	initialOnly bool,
 ) ([]models.SanctionCheckWithMatches, error) {
