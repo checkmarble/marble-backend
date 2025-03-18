@@ -45,9 +45,9 @@ paths:
 
         404: { $ref: '#/components/responses/404' }
 
-  /decisions/{decisionId}/sanction-checks/refine:
+  /sanction-checks/{sanctionCheckId}/refine:
     post:
-      operationId: refineSanctionChecksForDecision
+      operationId: refineSanctionCheck
       tags: ["Sanction Checks"]
       security:
         - ApiKeyAuth: []
@@ -57,7 +57,7 @@ paths:
 
         This endpoint will replace the active sanction check for the provided decision with one containing the result of the included query.
       parameters:
-        - name: decisionId
+        - name: sanctionCheckId
           in: path
           required: true
           schema:
@@ -90,9 +90,9 @@ paths:
         404: { $ref: '#/components/responses/404' }
         422: { $ref: '#/components/responses/422' }
 
-  /decisions/{decisionId}/sanction-checks/search:
+  /sanction-checks/{sanctionCheckId}/search:
     post:
-      operationId: searchSanctionCheckForDecision
+      operationId: searchSanctionCheck
       tags: ["Sanction Checks"]
       security:
         - ApiKeyAuth: []
@@ -102,7 +102,7 @@ paths:
 
         This endpoint will **not** replace the active sanction check, but allow to preview the results as executed in the original decision's context (using its unique counterparty ID and elligible whitelisted entries). 
       parameters:
-        - name: decisionId
+        - name: sanctionCheckId
           in: path
           required: true
           schema:
