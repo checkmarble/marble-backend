@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
@@ -60,6 +61,11 @@ func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(ctx context.Context) {
 		if err != nil {
 			return err
 		}
+
+		if err = w.removeQueuesFromMissingOrgs(ctx, orgs); err != nil {
+			return err
+		}
+
 		return nil
 	}
 
@@ -83,7 +89,7 @@ func (w *TaskQueueWorker) addMissingQueues(ctx context.Context, queues map[strin
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	resp, err := w.riverClient.QueueList(ctx, nil)
+	resp, err := w.riverClient.QueueList(ctx, river.NewQueueListParams().First(10000))
 	if err != nil {
 		return err
 	}
@@ -102,6 +108,39 @@ func (w *TaskQueueWorker) addMissingQueues(ctx context.Context, queues map[strin
 			logger.InfoContext(ctx, fmt.Sprintf("Added queue for organization %s to task queue worker", orgId))
 
 			w.riverClient.PeriodicJobs().Add(scheduled_execution.NewIndexCleanupPeriodicJob(orgId))
+			w.riverClient.PeriodicJobs().Add(scheduled_execution.NewTestRunSummaryPeriodicJob(orgId))
+		}
+	}
+
+	return nil
+}
+
+func (w *TaskQueueWorker) removeQueuesFromMissingOrgs(ctx context.Context,
+	orgs []models.Organization,
+) error {
+	logger := utils.LoggerFromContext(ctx)
+
+	orgMap := make(map[string]struct{})
+	for _, org := range orgs {
+		orgMap[org.Id] = struct{}{}
+	}
+
+	runningQueues, err := w.riverClient.QueueList(ctx, river.NewQueueListParams().First(10000))
+	if err != nil {
+		return err
+	}
+
+	for _, q := range runningQueues.Queues {
+		if q.PausedAt != nil {
+			continue
+		}
+
+		if _, ok := orgMap[q.Name]; !ok {
+			logger.InfoContext(ctx, fmt.Sprintf("pausing queue for missing organization `%s`", q.Name))
+
+			if err := w.riverClient.QueuePause(ctx, q.Name, nil); err != nil {
+				logger.ErrorContext(ctx, fmt.Sprintf("could not pause queue for deleted organization: %s", err.Error()))
+			}
 		}
 	}
 
