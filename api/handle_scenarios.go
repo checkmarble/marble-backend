@@ -9,7 +9,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -154,7 +153,7 @@ func validateScenarioAst(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"ast_validation": ast.AdaptNodeEvaluationDto(astValidation),
+			"ast_validation": dto.AdaptAstValidationDto(astValidation),
 		})
 	}
 }

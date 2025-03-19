@@ -223,7 +223,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 
 type ValidateScenarioAst interface {
 	Validate(ctx context.Context, scenario models.Scenario, astNode *ast.Node,
-		expectedReturnType ...string) (ast.NodeEvaluation, error)
+		expectedReturnType ...string) models.AstValidation
 }
 
 type ValidateScenarioAstImpl struct {
@@ -234,30 +234,39 @@ func (self *ValidateScenarioAstImpl) Validate(ctx context.Context,
 	scenario models.Scenario,
 	astNode *ast.Node,
 	expectedReturnTypeStr ...string,
-) (ast.NodeEvaluation, error) {
+) models.AstValidation {
+	result := models.NewAstValidation()
+
 	dryRunEnvironment, err := self.AstValidator.MakeDryRunEnvironment(ctx, scenario)
 	if err != nil {
-		return ast.NodeEvaluation{}, err.Error
+		result.Errors = append(result.Errors, *err)
+		return result
 	}
 
-	astEvaluation, _ := ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, *astNode)
-	astEvaluationReturnType := reflect.TypeOf(astEvaluation.ReturnValue)
+	result.Evaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, *astNode)
 
 	if len(expectedReturnTypeStr) == 1 {
 		expectedReturnType, ok := getTypeFromString(expectedReturnTypeStr[0])
 		if !ok {
-			return ast.NodeEvaluation{}, errors.Wrapf(models.BadParameterError,
-				"unknown specified type '%s'", expectedReturnTypeStr)
+			result.Errors = append(result.Errors, models.ScenarioValidationError{
+				Error: errors.Wrapf(models.BadParameterError,
+					"unknown specified type '%s'", expectedReturnTypeStr),
+			})
+			return result
 		}
 
-		if len(astEvaluation.FlattenErrors()) == 0 &&
-			astEvaluationReturnType != expectedReturnType {
-			astEvaluation.Errors = append(astEvaluation.Errors, errors.Wrapf(models.BadParameterError,
-				"ast node does not return a %s", expectedReturnTypeStr))
+		astEvaluationReturnType := reflect.TypeOf(result.Evaluation.ReturnValue)
+		if astEvaluationReturnType != expectedReturnType {
+			result.Errors = append(result.Errors, models.ScenarioValidationError{
+				Error: errors.Wrapf(models.BadParameterError,
+					"ast node does not return a %s", expectedReturnTypeStr),
+				Code: models.FormulaIncorrectReturnType,
+			})
+			return result
 		}
 	}
 
-	return astEvaluation, nil
+	return result
 }
 
 func getTypeFromString(typeStr string) (reflect.Type, bool) {
