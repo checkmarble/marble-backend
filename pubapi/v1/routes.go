@@ -35,12 +35,14 @@ func handleVersion(c *gin.Context) {
 	pubapi.NewResponse(gin.H{"version": "v1a"}).Serve(c)
 }
 
+type ExamplePayload struct {
+	Age    int    `json:"age" binding:"required,gt=18"`
+	Email  string `json:"email" binding:"required,email"`
+	IsNice string `json:"is_nice" binding:"required,boolean"`
+}
+
 func handleExampleValidation(c *gin.Context) {
-	var payload struct {
-		Age    int    `json:"age" binding:"required,gt=18"`
-		Email  string `json:"email" binding:"required,email"`
-		IsNice string `json:"is_nice" binding:"required,boolean"`
-	}
+	var payload ExamplePayload
 
 	if err := c.ShouldBindBodyWithJSON(&payload); err != nil {
 		pubapi.NewErrorResponse().WithError(err).Serve(c)
