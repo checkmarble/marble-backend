@@ -15,7 +15,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"testing"
 	"time"
 
@@ -24,6 +23,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/gavv/httpexpect/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/go-testfixtures/testfixtures/v3"
 	"github.com/pressly/goose/v3"
@@ -32,21 +32,28 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func hurl(t *testing.T, version string, sock string) {
-	cmd := exec.Command(
-		"hurl",
-		"--test",
-		"--unix-socket", sock,
-		"--error-format=long",
-		fmt.Sprintf("specs/%s/", version),
-	)
-
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stdout
-
-	if err := cmd.Run(); err != nil {
-		t.Error(err)
+func client(t *testing.T, sock, version, apiKey string) *httpexpect.Expect {
+	httpc := http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", sock)
+			},
+		},
 	}
+
+	e := httpexpect.WithConfig(httpexpect.Config{
+		TestName: t.Name(),
+		Client:   &httpc,
+		BaseURL:  fmt.Sprintf("http://localhost/%s", version),
+		Reporter: httpexpect.NewAssertReporter(t),
+		Printers: []httpexpect.Printer{
+			httpexpect.NewDebugPrinter(t, true),
+		},
+	})
+
+	return e.Builder(func(r *httpexpect.Request) {
+		r.WithHeader("x-api-key", apiKey)
+	})
 }
 
 func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContainer {
