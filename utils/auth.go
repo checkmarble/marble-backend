@@ -18,6 +18,7 @@ type AuthType int
 const (
 	FederatedBearerToken AuthType = iota
 	PublicApiKey
+	BearerToken
 )
 
 func ParseApiKeyHeader(header http.Header) string {
@@ -51,6 +52,16 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 
 		if slices.Contains(methods, PublicApiKey) {
 			key = ParseApiKeyHeader(c.Request.Header)
+		}
+
+		if key == "" && slices.Contains(methods, BearerToken) {
+			token, err := ParseAuthorizationBearerHeader(c.Request.Header)
+			if err != nil {
+				_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+			key = token
 		}
 
 		if slices.Contains(methods, FederatedBearerToken) {
