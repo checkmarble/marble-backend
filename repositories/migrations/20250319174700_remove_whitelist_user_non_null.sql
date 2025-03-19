@@ -5,5 +5,5 @@ alter table sanction_check_whitelists
 
 -- +goose Down
 
-alter table sanction_check_whietlists
+alter table sanction_check_whitelists
     alter column whitelisted_by set not null;
