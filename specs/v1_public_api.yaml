@@ -8,7 +8,7 @@ x-readme:
   proxy-enabled: false
   samples-languages: ["shell", "python", "javascript", "go", "ruby"]
 servers:
-  - url: "https://api.checkmarble.com/v1"
+  - url: "https://api.checkmarble.com/v1beta"
 tags:
   - name: Sanction Checks
     description: Routes for sanction checks
@@ -45,6 +45,37 @@ paths:
                               $ref: '#/components/schemas/SanctionCheck'
 
         404: { $ref: '#/components/responses/404' }
+  
+  /sanction-checks/entities/{entityId}:
+    get:
+      operationId: getSanctionCheckEntity
+      tags: ["Sanction Checks"]
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Get an OpenSanctions entity
+      description: Retrieve a raw OpenSanctions entity from its ID.
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Entity data as returned by OpenSanctions
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SanctionCheckMatchPayload'
+
+        404: { $ref: '#/components/responses/404' }
+
 
   /sanction-checks/{sanctionCheckId}/refine:
     post:
@@ -415,13 +446,23 @@ components:
     
     SanctionCheckMatchPayload:
       type: object
-      description: OpenSanctions payload for the match
+      description: |
+        OpenSanctions entity data.
+
+        This is an object as defined by [OpenSanctions entity format](https://api.opensanctions.org/#tag/Data-access/operation/fetch_entity_entities__entity_id__get).
       additionalProperties: true
-      required: ["id"]
+      required: ["id", "datasets", "properties"]
       properties:
         id:
           description: OpenSanctions entity ID
           type: string
+        datasets :
+          type: array
+          items:
+            type: string
+        properties:
+          type: object
+          additionalProperties: true
       example:
         id: ABC123
         schema: Organization
