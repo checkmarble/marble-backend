@@ -244,6 +244,10 @@ func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match model
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, errors.WithDetail(models.NotFoundError, "an entity with this ID was not found")
+		}
+
 		return nil, fmt.Errorf(
 			"sanction check API returned status %d on enrichment", resp.StatusCode)
 	}
