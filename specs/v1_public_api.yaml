@@ -189,7 +189,10 @@ paths:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
       summary: Whitelist an entity
-      description: Add a set of search term and entity ID that will not set off a sanction check alert in the future
+      description: |
+        Add a set of search term and entity ID that will not set off a sanction check alert in the future.
+
+        This endpoint does not verify that the provided entity ID matches an **actual** entity on an OpenSanctions list. It is the responsibility of the caller to make sure they whitelist the correct entity ID for their needs.
       requestBody:
         content:
           application/json:
