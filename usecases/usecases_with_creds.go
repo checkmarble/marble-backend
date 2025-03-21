@@ -94,6 +94,12 @@ func (usecases *UsecasesWithCreds) NewEnforceTagSecurity() security.EnforceSecur
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewEnforceSanctionCheckSecurity() security.EnforceSecuritySanctionCheck {
+	return &security.EnforceSecurityImpl{
+		Credentials: usecases.Credentials,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		enforceSecurity:           usecases.NewEnforceDecisionSecurity(),
@@ -147,6 +153,7 @@ func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecas
 		enforceSecurityScenario:       usecases.NewEnforceScenarioSecurity(),
 		enforceSecurityDecision:       usecases.NewEnforceDecisionSecurity(),
 		enforceSecurityCase:           usecases.NewEnforceCaseSecurity(),
+		enforceSecurity:               usecases.NewEnforceSanctionCheckSecurity(),
 		externalRepository:            &usecases.Repositories.MarbleDbRepository,
 		organizationRepository:        usecases.Repositories.OrganizationRepository,
 		inboxReader:                   utils.Ptr(usecases.NewInboxReader()),
