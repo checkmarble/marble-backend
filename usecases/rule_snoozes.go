@@ -2,13 +2,15 @@ package usecases
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 type decisionGetter interface {
@@ -148,18 +150,12 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 ) (models.SnoozesOfDecision, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	if input.UserId == "" {
-		return models.SnoozesOfDecision{}, errors.Wrap(
-			models.NotFoundError,
-			"userId not found in credentials")
-	}
-
 	duration, err := time.ParseDuration(input.Duration)
 	if err != nil {
-		return models.SnoozesOfDecision{}, errors.Wrap(models.BadParameterError, err.Error())
+		return models.SnoozesOfDecision{}, errors.WithDetail(models.BadParameterError, err.Error())
 	}
 	if duration < 0 || duration > 180*24*time.Hour {
-		return models.SnoozesOfDecision{}, errors.Wrap(
+		return models.SnoozesOfDecision{}, errors.WithDetail(
 			models.BadParameterError,
 			"duration must be positive and below 180 days")
 	}
@@ -169,16 +165,16 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 		return models.SnoozesOfDecision{}, err
 	}
 	if len(decisions) == 0 {
-		return models.SnoozesOfDecision{}, errors.Wrapf(
+		return models.SnoozesOfDecision{}, errors.WithDetail(
 			models.NotFoundError,
-			"decision %s not found", input.DecisionId)
+			fmt.Sprintf("decision %s not found", input.DecisionId))
 	}
 	decision := decisions[0]
 
 	if decision.Case == nil {
-		return models.SnoozesOfDecision{}, errors.Wrapf(
-			models.BadParameterError,
-			"decision %s is not attached to a case and cannot be snoozed", input.DecisionId)
+		return models.SnoozesOfDecision{}, errors.WithDetail(
+			models.UnprocessableEntityError,
+			fmt.Sprintf("decision %s is not attached to a case and cannot be snoozed", input.DecisionId))
 	}
 	// case (inbox) permission check done in caseUsecase
 	_, err = usecase.caseUsecase.GetCase(ctx, decision.Case.Id)
@@ -187,9 +183,9 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 	}
 
 	if decision.PivotValue == nil || *decision.PivotValue == "" {
-		return models.SnoozesOfDecision{}, errors.Wrapf(
-			models.BadParameterError,
-			"Decision %s has no pivot value and cannot be snoozed", decision.DecisionId)
+		return models.SnoozesOfDecision{}, errors.WithDetail(
+			models.UnprocessableEntityError,
+			fmt.Sprintf("Decision %s has no pivot value and cannot be snoozed", decision.DecisionId))
 	}
 
 	if err := usecase.enforceSecurity.CreateSnoozesOnDecision(ctx, decision); err != nil {
@@ -218,9 +214,9 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 	}
 
 	if !ruleFound {
-		return models.SnoozesOfDecision{}, errors.Wrapf(
-			models.BadParameterError,
-			"rule %s not found in decision %s", input.RuleId, input.DecisionId)
+		return models.SnoozesOfDecision{}, errors.WithDetail(
+			models.NotFoundError,
+			fmt.Sprintf("rule %s not found in decision %s", input.RuleId, input.DecisionId))
 	}
 	snoozeGroupId := thisRule.SnoozeGroupId
 
@@ -233,9 +229,9 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 		}
 
 		if len(snoozes) > 0 {
-			return models.SnoozesOfDecision{}, errors.Wrapf(
+			return models.SnoozesOfDecision{}, errors.WithDetail(
 				models.ConflictError,
-				"rule %s already has an active snooze %s", input.RuleId, input.DecisionId)
+				fmt.Sprintf("rule %s already has an active snooze %s", input.RuleId, input.DecisionId))
 		}
 	}
 
@@ -277,11 +273,17 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 				return nil, err
 			}
 
+			var userId *string = nil
+
+			if input.UserId != nil {
+				userId = utils.Ptr(string(*input.UserId))
+			}
+
 			err = usecase.caseUsecase.CreateRuleSnoozeEvent(ctx, tx, models.RuleSnoozeCaseEventInput{
 				CaseId:         decision.Case.Id,
 				Comment:        input.Comment,
 				RuleSnoozeId:   snoozeId,
-				UserId:         string(input.UserId),
+				UserId:         userId,
 				WebhookEventId: webhookEventId,
 			})
 			if err != nil {
@@ -291,6 +293,8 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 			return usecase.ruleSnoozeRepository.ListActiveRuleSnoozesForDecision(ctx, tx, snoozeGroupIds, *decision.PivotValue)
 		},
 	)
+
+	// TODO: do we really ignore errors here?
 
 	usecase.webhooksSender.SendWebhookEventAsync(ctx, webhookEventId)
 

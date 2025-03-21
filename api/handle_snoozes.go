@@ -67,7 +67,7 @@ func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 			Duration:       input.Duration,
 			OrganizationId: organizationId,
 			RuleId:         input.RuleId,
-			UserId:         userId,
+			UserId:         &userId,
 		})
 		if presentError(ctx, c, err) {
 			return
