@@ -16,6 +16,8 @@ func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usec
 
 		r.POST("/example", handleExampleValidation)
 
+		r.POST("/decisions/:decisionId/snooze", HandleSnoozeRule(uc))
+
 		r.GET("/decisions/:decisionId/sanction-checks", HandleListSanctionChecks(uc))
 
 		r.POST("/sanction-checks/:sanctionCheckId/refine", HandleRefineSanctionCheck(uc, true))
