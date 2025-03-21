@@ -71,6 +71,8 @@ func AdaptFieldValidationError(fe validator.FieldError) string {
 				strings.ReplaceAll(fe.Param(), " ", ", "))
 		case "excluded_unless":
 			return fmt.Sprintf("cannot be provided unless %s", fe.Param())
+		case "uuid":
+			return "should be a UUID"
 		}
 
 		return "is invalid"
