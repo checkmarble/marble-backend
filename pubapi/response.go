@@ -97,6 +97,10 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 
 	default:
 		switch {
+		case errors.Is(err, models.ForbiddenError):
+			resp.Error.status = http.StatusForbidden
+			resp.Error.Code = ErrForbidden.Error()
+
 		case
 			errors.Is(err, models.NotFoundError),
 			errors.Is(err, pgx.ErrNoRows):

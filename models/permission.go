@@ -56,6 +56,9 @@ const (
 	TAG_CREATE
 	TAG_UPDATE
 	TAG_DELETE
+	SANCTION_CHECK_WHITELIST_READ
+	SANCTION_CHECK_WHITELIST_WRITE
+	SANCTION_CHECK_FREEFORM_SEARCH
 )
 
 func (r Permission) String() (string, error) {
@@ -109,6 +112,9 @@ func (r Permission) String() (string, error) {
 		"TAG_CREATE",
 		"TAG_UPDATE",
 		"TAG_DELETE",
+		"SANCTION_CHECK_WHITELIST_READ",
+		"SANCTION_CHECK_WHITELIST_WRITE",
+		"SANCTION_CHECK_FREEFORM_SEARCH",
 	}
 	if int(r) > len(permissions)-1 {
 		return "", errors.New("Invalid permission: no string representation has been set")

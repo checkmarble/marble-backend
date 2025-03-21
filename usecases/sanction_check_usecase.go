@@ -32,6 +32,12 @@ type SanctionCheckEnforceSecurityCase interface {
 	ReadOrUpdateCase(models.Case, []string) error
 }
 
+type SanctionCheckEnforceSecurity interface {
+	ReadWhitelist(context.Context) error
+	WriteWhitelist(context.Context) error
+	PerformFreeformSearch(context.Context) error
+}
+
 type SanctionCheckProvider interface {
 	IsSelfHosted(ctx context.Context) bool
 	GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error)
@@ -114,6 +120,7 @@ type SanctionCheckUsecase struct {
 	enforceSecurityScenario SanctionCheckEnforceSecurityScenario
 	enforceSecurityDecision SanctionCheckEnforceSecurityDecision
 	enforceSecurityCase     SanctionCheckEnforceSecurityCase
+	enforceSecurity         SanctionCheckEnforceSecurity
 
 	organizationRepository        SanctionCheckOrganizationRepository
 	externalRepository            SanctionsCheckUsecaseExternalRepository
@@ -359,6 +366,10 @@ func (uc SanctionCheckUsecase) FreeformSearch(ctx context.Context,
 	scc models.SanctionCheckConfig,
 	refine models.SanctionCheckRefineRequest,
 ) (models.SanctionCheckWithMatches, error) {
+	if err := uc.enforceSecurity.PerformFreeformSearch(ctx); err != nil {
+		return models.SanctionCheckWithMatches{}, err
+	}
+
 	query := models.OpenSanctionsQuery{
 		IsRefinement: false,
 		Config:       scc,
@@ -561,6 +572,10 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 func (uc SanctionCheckUsecase) CreateWhitelist(ctx context.Context, exec repositories.Executor,
 	orgId, counterpartyId, entityId string, reviewerId *models.UserId,
 ) error {
+	if err := uc.enforceSecurity.WriteWhitelist(ctx); err != nil {
+		return err
+	}
+
 	if exec == nil {
 		exec = uc.executorFactory.NewExecutor()
 	}
@@ -575,6 +590,10 @@ func (uc SanctionCheckUsecase) CreateWhitelist(ctx context.Context, exec reposit
 func (uc SanctionCheckUsecase) DeleteWhitelist(ctx context.Context, exec repositories.Executor,
 	orgId string, counterpartyId *string, entityId string, reviewerId *models.UserId,
 ) error {
+	if err := uc.enforceSecurity.WriteWhitelist(ctx); err != nil {
+		return err
+	}
+
 	if exec == nil {
 		exec = uc.executorFactory.NewExecutor()
 	}
@@ -589,6 +608,10 @@ func (uc SanctionCheckUsecase) DeleteWhitelist(ctx context.Context, exec reposit
 func (uc SanctionCheckUsecase) SearchWhitelist(ctx context.Context, exec repositories.Executor,
 	orgId string, counterpartyId, entityId *string, reviewerId *models.UserId,
 ) ([]models.SanctionCheckWhitelist, error) {
+	if err := uc.enforceSecurity.ReadWhitelist(ctx); err != nil {
+		return nil, err
+	}
+
 	if exec == nil {
 		exec = uc.executorFactory.NewExecutor()
 	}
