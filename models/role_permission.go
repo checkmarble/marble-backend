@@ -51,6 +51,8 @@ var ROLES_PERMISSIOMS = map[Role][]Permission{
 		INGESTION,
 		WEBHOOK_EVENT, // Necessary because a permission check is embedded in the webhooks events usecase
 		CASE_READ_WRITE,
+		READ_SNOOZES,
+		CREATE_SNOOZE,
 		SANCTION_CHECK_WHITELIST_READ,
 		SANCTION_CHECK_WHITELIST_WRITE,
 		SANCTION_CHECK_FREEFORM_SEARCH,
