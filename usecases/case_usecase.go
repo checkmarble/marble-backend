@@ -1109,15 +1109,17 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 		return err
 	}
 
-	if err := usecase.createCaseContributorIfNotExist(ctx, tx, input.CaseId, input.UserId); err != nil {
-		return err
+	if input.UserId != nil {
+		if err := usecase.createCaseContributorIfNotExist(ctx, tx, input.CaseId, *input.UserId); err != nil {
+			return err
+		}
 	}
 
 	resourceType := models.RuleSnoozeResourceType
 	err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		AdditionalNote: &input.Comment,
 		CaseId:         input.CaseId,
-		UserId:         &input.UserId,
+		UserId:         input.UserId,
 		EventType:      models.CaseRuleSnoozeCreated,
 		ResourceType:   &resourceType,
 		ResourceId:     &input.RuleSnoozeId,

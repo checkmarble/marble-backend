@@ -578,7 +578,7 @@ func createDecisions(
 		Duration:       "500ms", // snooze for 0.5 sec, after this wait for the snooze to end before moving on
 		OrganizationId: organizationId,
 		RuleId:         ruleId, // snooze a rule (nevermind which one)
-		UserId:         usecasesWithUserCreds.Credentials.ActorIdentity.UserId,
+		UserId:         utils.Ptr(usecasesWithUserCreds.Credentials.ActorIdentity.UserId),
 	})
 	if err != nil {
 		assert.FailNow(t, "Failed to snooze decision", err)
