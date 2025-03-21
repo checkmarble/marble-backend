@@ -21,7 +21,7 @@ require (
 	github.com/go-faker/faker/v4 v4.5.0
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/go-testfixtures/testfixtures/v3 v3.14.0
-	github.com/golang-jwt/jwt/v4 v4.5.1
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/uuid v1.6.0
 	github.com/guregu/null/v5 v5.0.0
 	github.com/h2non/gock v1.2.0
