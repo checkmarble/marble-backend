@@ -157,6 +157,48 @@ func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc
 	}
 }
 
+func HandleSanctionFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var params gdto.RefineQueryDto
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+		if !params.Validate() {
+			pubapi.
+				NewErrorResponse().
+				WithErrorMessage("refine query is missing some required fields").
+				Serve(c, http.StatusBadRequest)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		creds, _ := utils.CredentialsFromCtx(c.Request.Context())
+		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+
+		refineQuery := models.SanctionCheckRefineRequest{
+			Type:  params.Type(),
+			Query: gdto.AdaptRefineQueryDto(params),
+		}
+
+		sanctionCheck, err := sanctionCheckUsecase.FreeformSearch(c.Request.Context(),
+			creds.OrganizationId, models.SanctionCheckConfig{}, refineQuery)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		matchPayload := func(m models.SanctionCheckMatch) json.RawMessage {
+			return m.Payload
+		}
+
+		pubapi.
+			NewResponse(pure_utils.Map(sanctionCheck.Matches, matchPayload)).
+			Serve(c)
+	}
+}
+
 func HandleGetSanctionCheckEntity(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

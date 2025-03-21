@@ -20,6 +20,7 @@ func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usec
 
 		r.POST("/sanction-checks/:sanctionCheckId/refine", HandleRefineSanctionCheck(uc, true))
 		r.POST("/sanction-checks/:sanctionCheckId/search", HandleRefineSanctionCheck(uc, false))
+		r.POST("/sanction-checks/search", HandleSanctionFreeformSearch(uc))
 
 		r.GET("/sanction-checks/entities/:entityId", HandleGetSanctionCheckEntity(uc))
 		r.POST("/sanction-checks/matches/:matchId",
