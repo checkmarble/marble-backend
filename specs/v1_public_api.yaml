@@ -165,6 +165,37 @@ paths:
         400: { $ref: '#/components/responses/400' }
         404: { $ref: '#/components/responses/404' }
 
+  /sanction-checks/search:
+    post:
+      operationId: searchSanctionCheck
+      tags: ["Sanction Checks"]
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Perform a free-form sanction search
+      description: Search for sanctioned entities outside of the context of a decision.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SanctionCheckSearchQuery"
+      responses:
+        200:
+          description: Sanction check results from the search
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SanctionCheckMatchPayload'
+
+        400: { $ref: '#/components/responses/400' }
+
   /sanction-checks/matches/{matchId}:
     post:
       operationId: reviewSanctionCheckMatch

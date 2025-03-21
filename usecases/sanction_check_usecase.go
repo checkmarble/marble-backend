@@ -354,6 +354,25 @@ func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.Sanctio
 	return sanctionCheck, nil
 }
 
+func (uc SanctionCheckUsecase) FreeformSearch(ctx context.Context,
+	orgId string,
+	scc models.SanctionCheckConfig,
+	refine models.SanctionCheckRefineRequest,
+) (models.SanctionCheckWithMatches, error) {
+	query := models.OpenSanctionsQuery{
+		IsRefinement: false,
+		Config:       scc,
+		Queries:      models.AdaptRefineRequestToMatchable(refine),
+	}
+
+	sanctionCheck, err := uc.Execute(ctx, orgId, query)
+	if err != nil {
+		return models.SanctionCheckWithMatches{}, err
+	}
+
+	return sanctionCheck, nil
+}
+
 func (uc SanctionCheckUsecase) FilterOutWhitelistedMatches(ctx context.Context, orgId string,
 	sanctionCheck models.SanctionCheckWithMatches, counterpartyId string,
 ) (models.SanctionCheckWithMatches, error) {
