@@ -102,8 +102,12 @@ type TimeProvider func() time.Time
 // The local dataset is always considered up to date if its version matches
 // that of its upstream counterpart.
 func (dataset *OpenSanctionsDatasetFreshness) CheckIsUpToDate(tp TimeProvider) error {
+	if dataset == nil {
+		return errors.New("trying to check freshness on a nil dataset")
+	}
+
 	if dataset.Upstream.Version == dataset.Version {
-		(*dataset).UpToDate = true
+		dataset.UpToDate = true
 		return nil
 	}
 
@@ -115,18 +119,18 @@ func (dataset *OpenSanctionsDatasetFreshness) CheckIsUpToDate(tp TimeProvider) e
 	tickAfterLastUpdate, _ := gronx.NextTickAfter(dataset.Upstream.Schedule, dataset.LastExport, false)
 
 	if tickAfterLastUpdate.Add(OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY).Before(dataset.Upstream.LastExport) {
-		(*dataset).UpToDate = false
+		dataset.UpToDate = false
 		return nil
 	}
 
 	tickAfterLastChange, _ := gronx.NextTickAfter(dataset.Upstream.Schedule, dataset.Upstream.LastExport, false)
 
 	if tp().After(tickAfterLastChange.Add(OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY)) {
-		(*dataset).UpToDate = false
+		dataset.UpToDate = false
 		return nil
 	}
 
-	(*dataset).UpToDate = true
+	dataset.UpToDate = true
 
 	return nil
 }

@@ -174,7 +174,7 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (
 
 	dataset.Upstream = upstream
 	if err := dataset.CheckIsUpToDate(time.Now); err != nil {
-		return models.OpenSanctionsDatasetFreshness{}, nil
+		return models.OpenSanctionsDatasetFreshness{}, err
 	}
 
 	return dataset, nil
