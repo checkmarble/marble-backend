@@ -89,7 +89,7 @@ The application can be run with the following flags:
 
 ## API
 
-The rooting of the application is defined inside `api/routes.go`.
+The routing of the application is defined inside `api/routes.go`.
 
 For further information on the API, you can also refer to the following resources:
 
