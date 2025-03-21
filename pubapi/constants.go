@@ -16,6 +16,7 @@ var (
 	ErrFeatureDisabled = errors.New("feature_disabled")
 	ErrNotConfigured   = errors.New("feature_not_configured")
 
+	ErrForbidden           = errors.New("forbidden")
 	ErrNotFound            = errors.New("not_found")
 	ErrInvalidPayload      = errors.New("invalid_payload")
 	ErrUnprocessableEntity = errors.New("unprocessable_entity")

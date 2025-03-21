@@ -50,6 +50,10 @@ var ROLES_PERMISSIOMS = map[Role][]Permission{
 		PHANTOM_DECISION_CREATE, // Necessary because a permission check is embedded in the phantom decision usecase
 		INGESTION,
 		WEBHOOK_EVENT, // Necessary because a permission check is embedded in the webhooks events usecase
+		CASE_READ_WRITE,
+		SANCTION_CHECK_WHITELIST_READ,
+		SANCTION_CHECK_WHITELIST_WRITE,
+		SANCTION_CHECK_FREEFORM_SEARCH,
 	},
 	TRANSFER_CHECK_API_CLIENT: {
 		TRANSFER_READ,
