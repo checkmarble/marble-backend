@@ -8,6 +8,7 @@ import (
 	"maps"
 	"mime/multipart"
 	"slices"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -132,7 +133,16 @@ type SanctionCheckUsecase struct {
 }
 
 func (uc SanctionCheckUsecase) CheckDatasetFreshness(ctx context.Context) (models.OpenSanctionsDatasetFreshness, error) {
-	return uc.openSanctionsProvider.GetLatestLocalDataset(ctx)
+	return models.OpenSanctionsDatasetFreshness{
+		Upstream: models.OpenSanctionsUpstreamDatasetFreshness{
+			Version:    "placeholder",
+			Name:       "placeholder",
+			LastExport: time.Now(),
+		},
+		Version:  "placeholder",
+		UpToDate: true,
+	}, nil
+	// return uc.openSanctionsProvider.GetLatestLocalDataset(ctx)
 }
 
 func (uc SanctionCheckUsecase) GetDatasetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
