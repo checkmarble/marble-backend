@@ -19,5 +19,6 @@ var (
 	ErrForbidden           = errors.New("forbidden")
 	ErrNotFound            = errors.New("not_found")
 	ErrInvalidPayload      = errors.New("invalid_payload")
+	ErrConflict            = errors.New("conflict")
 	ErrUnprocessableEntity = errors.New("unprocessable_entity")
 )
