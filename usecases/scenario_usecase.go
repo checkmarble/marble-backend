@@ -94,8 +94,14 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 					return models.Scenario{}, err
 				}
 				if len(validation.Errors) > 0 || len(validation.Evaluation.FlattenErrors()) > 0 {
-					return models.Scenario{}, errors.Join(
-						validation.Evaluation.FlattenErrors()...)
+					errs := append(
+						validation.Evaluation.FlattenErrors(),
+						pure_utils.Map(
+							validation.Errors, func(err models.ScenarioValidationError) error {
+								return err.Error
+							})...,
+					)
+					return models.Scenario{}, errors.Join(errs...)
 				}
 			}
 
@@ -162,9 +168,9 @@ func (usecase *ScenarioUsecase) ValidateScenarioAst(ctx context.Context,
 		return validation, err
 	}
 
-	validation, err = usecase.validateScenarioAst.Validate(ctx, scenario, astNode, expectedReturnType...), nil
+	validation = usecase.validateScenarioAst.Validate(ctx, scenario, astNode, expectedReturnType...)
 
-	return validation, err
+	return validation, nil
 }
 
 func (usecase *ScenarioUsecase) CreateScenario(
