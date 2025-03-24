@@ -93,8 +93,15 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 				if err != nil {
 					return models.Scenario{}, err
 				}
-				if len(validation.FlattenErrors()) > 0 {
-					return models.Scenario{}, errors.Join(validation.FlattenErrors()...)
+				if len(validation.Errors) > 0 || len(validation.Evaluation.FlattenErrors()) > 0 {
+					errs := append(
+						validation.Evaluation.FlattenErrors(),
+						pure_utils.Map(
+							validation.Errors, func(err models.ScenarioValidationError) error {
+								return err.Error
+							})...,
+					)
+					return models.Scenario{}, errors.Join(errs...)
 				}
 			}
 
@@ -150,7 +157,7 @@ func validateScenarioUpdate(scenario models.Scenario, input models.UpdateScenari
 
 func (usecase *ScenarioUsecase) ValidateScenarioAst(ctx context.Context,
 	scenarioId string, astNode *ast.Node, expectedReturnType ...string,
-) (validation ast.NodeEvaluation, err error) {
+) (validation models.AstValidation, err error) {
 	scenario, err := usecase.scenarioFetcher.FetchScenario(ctx,
 		usecase.executorFactory.NewExecutor(), scenarioId)
 	if err != nil {
@@ -161,9 +168,9 @@ func (usecase *ScenarioUsecase) ValidateScenarioAst(ctx context.Context,
 		return validation, err
 	}
 
-	validation, err = usecase.validateScenarioAst.Validate(ctx, scenario, astNode, expectedReturnType...)
+	validation = usecase.validateScenarioAst.Validate(ctx, scenario, astNode, expectedReturnType...)
 
-	return validation, err
+	return validation, nil
 }
 
 func (usecase *ScenarioUsecase) CreateScenario(
