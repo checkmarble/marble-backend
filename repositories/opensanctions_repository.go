@@ -195,14 +195,14 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 			errors.Wrap(err, "could not perform sanction check")
 	}
 
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return models.SanctionRawSearchResponseWithMatches{}, fmt.Errorf(
 			"sanction check API returned status %d", resp.StatusCode)
 	}
 
 	var matches httpmodels.HTTPOpenSanctionsResult
-
-	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&matches); err != nil {
 		return models.SanctionRawSearchResponseWithMatches{}, errors.Wrap(err,
@@ -243,6 +243,8 @@ func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match model
 			errors.Wrap(err, "could not enrich sanction check match")
 	}
 
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, errors.WithDetail(models.NotFoundError, "an entity with this ID was not found")
@@ -251,8 +253,6 @@ func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match model
 		return nil, fmt.Errorf(
 			"sanction check API returned status %d on enrichment", resp.StatusCode)
 	}
-
-	defer resp.Body.Close()
 
 	var newMatch json.RawMessage
 

@@ -2,7 +2,6 @@ package scheduled_execution
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"time"
 
@@ -109,8 +108,6 @@ func (w *IndexCreationStatusWorker) Work(ctx context.Context, job *river.Job[mod
 	// if we find all of them, it means the process successfully finished.
 	for _, index := range validIndices {
 		if slices.ContainsFunc(job.Args.Indices, func(i models.ConcreteIndex) bool {
-			n := i.Name()
-			fmt.Println("n", n)
 			return i.TableName == index.TableName &&
 				i.Name() == index.Name()
 		}) {
