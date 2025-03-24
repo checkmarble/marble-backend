@@ -293,8 +293,9 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 			return usecase.ruleSnoozeRepository.ListActiveRuleSnoozesForDecision(ctx, tx, snoozeGroupIds, *decision.PivotValue)
 		},
 	)
-
-	// TODO: do we really ignore errors here?
+	if err != nil {
+		return models.SnoozesOfDecision{}, errors.Wrap(err, "could not persist decision snooze")
+	}
 
 	usecase.webhooksSender.SendWebhookEventAsync(ctx, webhookEventId)
 
