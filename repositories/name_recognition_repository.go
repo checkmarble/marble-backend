@@ -60,11 +60,12 @@ func (repo NameRecognitionRepository) PerformNameRecognition(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
+
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New(fmt.Sprintf("status code %d", resp.StatusCode))
 	}
-
-	defer resp.Body.Close()
 
 	var payload []NameRecognitionMatch
 

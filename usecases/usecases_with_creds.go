@@ -556,6 +556,7 @@ func (usecases UsecasesWithCreds) NewTestRunSummaryWorker() *scheduled_execution
 func (usecases UsecasesWithCreds) NewMatchEnrichmentWorker() *scheduled_execution.MatchEnrichmentWorker {
 	w := scheduled_execution.NewMatchEnrichmentWorker(
 		usecases.NewExecutorFactory(),
+		usecases.Usecases.Repositories.OpenSanctionsRepository,
 		usecases.NewSanctionCheckUsecase(),
 		&usecases.Repositories.MarbleDbRepository,
 	)
