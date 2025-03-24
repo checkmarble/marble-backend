@@ -302,6 +302,135 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 	return models.NewSnoozesOfDecision(decision.DecisionId, snoozes, it), nil
 }
 
+func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
+	ctx context.Context, input models.SnoozeDecisionInput,
+) (models.SnoozesOfDecision, error) {
+	exec := usecase.executorFactory.NewExecutor()
+
+	duration, err := time.ParseDuration(input.Duration)
+	if err != nil {
+		return models.SnoozesOfDecision{}, errors.WithDetail(models.BadParameterError, err.Error())
+	}
+	if duration < 0 || duration > 180*24*time.Hour {
+		return models.SnoozesOfDecision{}, errors.WithDetail(
+			models.BadParameterError,
+			"duration must be positive and below 180 days")
+	}
+
+	decisions, err := usecase.decisionGetter.DecisionsById(ctx, exec, []string{input.DecisionId})
+	if err != nil {
+		return models.SnoozesOfDecision{}, err
+	}
+	if len(decisions) == 0 {
+		return models.SnoozesOfDecision{}, errors.WithDetail(
+			models.NotFoundError,
+			fmt.Sprintf("decision %s not found", input.DecisionId))
+	}
+	decision := decisions[0]
+
+	if decision.PivotValue == nil || *decision.PivotValue == "" {
+		return models.SnoozesOfDecision{}, errors.WithDetail(
+			models.UnprocessableEntityError,
+			fmt.Sprintf("Decision %s has no pivot value and cannot be snoozed", decision.DecisionId))
+	}
+
+	if err := usecase.enforceSecurity.CreateSnoozesOnDecision(ctx, decision); err != nil {
+		return models.SnoozesOfDecision{}, err
+	}
+
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId)
+	if err != nil {
+		return models.SnoozesOfDecision{}, err
+	}
+
+	// verify input rule is in the decision
+	ruleFound := false
+	ruleIdx := 0
+	thisRule := models.Rule{}
+	snoozeGroupIds := make([]string, 0, len(it.Rules))
+	for i, rule := range it.Rules {
+		if rule.Id == input.RuleId {
+			ruleFound = true
+			thisRule = rule
+			ruleIdx = i
+		}
+		if rule.SnoozeGroupId != nil {
+			snoozeGroupIds = append(snoozeGroupIds, *rule.SnoozeGroupId)
+		}
+	}
+
+	if !ruleFound {
+		return models.SnoozesOfDecision{}, errors.WithDetail(
+			models.NotFoundError,
+			fmt.Sprintf("rule %s not found in decision %s", input.RuleId, input.DecisionId))
+	}
+	snoozeGroupId := thisRule.SnoozeGroupId
+
+	if snoozeGroupId != nil {
+		snoozes, err := usecase.ruleSnoozeRepository.ListActiveRuleSnoozesForDecision(ctx, exec, []string{
+			*snoozeGroupId,
+		}, *decision.PivotValue)
+		if err != nil {
+			return models.SnoozesOfDecision{}, err
+		}
+
+		if len(snoozes) > 0 {
+			return models.SnoozesOfDecision{}, errors.WithDetail(
+				models.ConflictError,
+				fmt.Sprintf("rule %s already has an active snooze %s", input.RuleId, input.DecisionId))
+		}
+	}
+
+	webhookEventId := uuid.NewString()
+	snoozes, err := executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Transaction) ([]models.RuleSnooze, error) {
+			if snoozeGroupId == nil {
+				val := uuid.NewString()
+				snoozeGroupId = &val
+				snoozeGroupIds = append(snoozeGroupIds, *snoozeGroupId)
+				err := usecase.ruleSnoozeRepository.CreateSnoozeGroup(ctx, tx, val, input.OrganizationId)
+				if err != nil {
+					return nil, err
+				}
+				err = usecase.ruleRepository.UpdateRule(ctx, tx, models.UpdateRuleInput{
+					Id:            thisRule.Id,
+					SnoozeGroupId: snoozeGroupId,
+				})
+				if err != nil {
+					return nil, err
+				}
+				// "it" variable is reused in NewSnoozesOfDecision() at the end of the function to return the created snooze
+				// update it here rather than re-reading it from the DB
+				it.Rules[ruleIdx].SnoozeGroupId = snoozeGroupId
+			}
+			snoozeId := uuid.NewString()
+			err = usecase.ruleSnoozeRepository.CreateRuleSnooze(ctx, tx, models.RuleSnoozeCreateInput{
+				Id:                    snoozeId,
+				CreatedByUserId:       input.UserId,
+				ExpiresAt:             time.Now().Add(duration),
+				CreatedFromDecisionId: input.DecisionId,
+				CreatedFromRuleId:     thisRule.Id,
+				PivotValue:            *decision.PivotValue,
+				SnoozeGroupId:         *snoozeGroupId,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			return usecase.ruleSnoozeRepository.ListActiveRuleSnoozesForDecision(ctx, tx, snoozeGroupIds, *decision.PivotValue)
+		},
+	)
+	if err != nil {
+		return models.SnoozesOfDecision{}, errors.Wrap(err, "could not persist decision snooze")
+	}
+
+	usecase.webhooksSender.SendWebhookEventAsync(ctx, webhookEventId)
+
+	return models.NewSnoozesOfDecision(decision.DecisionId, snoozes, it), nil
+}
+
 func (usecase RuleSnoozeUsecase) ActiveSnoozesForScenarioIteration(ctx context.Context, iterationId string) (models.SnoozesOfIteration, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, iterationId)

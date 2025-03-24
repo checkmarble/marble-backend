@@ -41,7 +41,7 @@ func HandleSnoozeRule(uc usecases.Usecases) gin.HandlerFunc {
 			Duration:       params.Duration,
 		}
 
-		if _, err = ruleSnoozeUsecase.SnoozeDecision(c.Request.Context(), snooze); err != nil {
+		if _, err = ruleSnoozeUsecase.SnoozeDecisionWithoutCase(c.Request.Context(), snooze); err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
