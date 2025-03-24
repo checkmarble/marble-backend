@@ -65,7 +65,7 @@ func (repo *CustomListRepositoryPostgresql) AllCustomLists(ctx context.Context, 
 			Select(dbmodels.ColumnsSelectCustomList...).
 			From(dbmodels.TABLE_CUSTOM_LIST).
 			Where("organization_id = ? AND deleted_at IS NULL", organizationId).
-			OrderBy("id"),
+			OrderBy("name"),
 		dbmodels.AdaptCustomList,
 	)
 }
