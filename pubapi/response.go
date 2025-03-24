@@ -108,6 +108,10 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 			resp.Error.status = http.StatusNotFound
 			resp.Error.Code = ErrNotFound.Error()
 
+		case errors.Is(err, models.ConflictError):
+			resp.Error.status = http.StatusConflict
+			resp.Error.Code = ErrConflict.Error()
+
 		case errors.Is(err, ErrFeatureDisabled):
 			resp.Error.status = http.StatusPaymentRequired
 			resp.Error.Code = ErrFeatureDisabled.Error()
