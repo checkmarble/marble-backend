@@ -10,9 +10,58 @@ x-readme:
 servers:
   - url: "https://api.checkmarble.com/v1beta"
 tags:
+  - name: Decisions
+    description: Routes for decisions
   - name: Sanction Checks
     description: Routes for sanction checks
 paths:
+  /decisions/{decisionId}/snooze:
+    post:
+      operationId: snoozeRule
+      tags: ["Decisions"]
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Snooze a rule
+      description: |
+        Snooze a rule for a pivot value.
+
+        Snooze a rule for the provided duration, for the pivot value the decision pertains to. The given decision must be part of a case for its rules to be snoozed.
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["rule_id", "duration"]
+              properties:
+                rule_id:
+                  type: string
+                  format: uuid
+                duration:
+                  description: |
+                    Duration for which the snooze will take effect.
+
+                    Must use Go's [`time.ParseDuration`](https://pkg.go.dev/time#example-ParseDuration) syntax (e.g. "1h", "10h30m", etc.).
+
+                    Maximum value is 180 days ("4320h").
+                  type: string
+                  format: duration
+      responses:
+        201:
+          description: Rule was successfully snoozed
+
+        400: { $ref: '#/components/responses/400' }
+        404: { $ref: '#/components/responses/404' }
+        409: { $ref: '#/components/responses/409' }
+        422: { $ref: '#/components/responses/422'}
+
   /decisions/{decisionId}/sanction-checks:
     get:
       operationId: getSanctionChecksForDecision
@@ -373,6 +422,13 @@ components:
     
     '404':
       description: The requested resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    '409':
+      description: The resource being created conflicts with an existing resource
       content:
         application/json:
           schema:
