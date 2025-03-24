@@ -46,6 +46,8 @@ var validWebhookEventTypes = []WebhookEventType{
 	WebhookEventType_CaseCommentCreated,
 	WebhookEventType_CaseFileCreated,
 	WebhookEventType_DecisionCreated,
+	WebhookEventType_CaseRuleSnoozeCreated,
+	WebhookEventType_CaseDecisionReviewed,
 }
 
 type WebhookEventContent struct {
