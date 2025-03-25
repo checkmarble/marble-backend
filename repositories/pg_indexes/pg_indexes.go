@@ -58,6 +58,27 @@ func (pgIndex PGIndex) AdaptConcreteIndex() models.ConcreteIndex {
 
 	idx.TableName = pgIndex.TableName
 	idx = idx.WithName(pgIndex.Name)
+
+	namePrefix := ""
+	nameSplit := strings.Split(pgIndex.Name, "_")
+	if len(nameSplit) > 1 {
+		namePrefix = nameSplit[0]
+	}
+
+	switch namePrefix {
+	case "nav":
+		idx.Type = models.IndexTypeNavigation
+	case "idx":
+		idx.Type = models.IndexTypeAggregation
+	default:
+	}
+
+	// Does not handle the case of failed index (invalid status) - add the information later if it's not too cumbersome to pass it around
+	if pgIndex.CreationInProgress {
+		idx.Status = models.IndexStatusPending
+	} else {
+		idx.Status = models.IndexStatusValid
+	}
 	return idx
 }
 

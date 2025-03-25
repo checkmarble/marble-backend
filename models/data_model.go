@@ -101,11 +101,12 @@ func (dm DataModel) AllFieldsAsMap() map[string]Field {
 // ///////////////////////////////
 
 type Table struct {
-	ID            string
-	Name          string
-	Description   string
-	Fields        map[string]Field
-	LinksToSingle map[string]LinkToSingle
+	ID                string
+	Name              string
+	Description       string
+	Fields            map[string]Field
+	LinksToSingle     map[string]LinkToSingle
+	NavigationOptions []NavigationOption
 }
 
 func (t Table) Copy() Table {
@@ -287,4 +288,20 @@ func (d DataModel) AddUnicityConstraintStatusToDataModel(uniqueIndexes []Unicity
 		}
 	}
 	return dm
+}
+
+// ///////////////////////////////
+// Navigation options - AKA how we can explore client data objects in a "one to many" way
+// ///////////////////////////////
+
+type NavigationOption struct {
+	ParentFieldName   string
+	ParentFieldId     string
+	ChildTableName    string
+	ChildTableId      string
+	ChildFieldName    string
+	ChildFieldId      string
+	OrderingFieldName string
+	OrderingFieldId   string
+	Status            IndexStatus
 }
