@@ -40,6 +40,7 @@ type clientDbIndexEditor interface {
 		indexes []models.ConcreteIndex,
 		onSuccess models.OnCreateIndexesSuccess) error
 	ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error)
+	ListAllIndexes(ctx context.Context, organizationId string) ([]models.ConcreteIndex, error)
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, organizationId string, index models.UnicityIndex) error
 	CreateUniqueIndexAsync(ctx context.Context, organizationId string, index models.UnicityIndex) error
 	DeleteUniqueIndex(ctx context.Context, organizationId string, index models.UnicityIndex) error

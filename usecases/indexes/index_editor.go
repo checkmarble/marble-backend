@@ -175,6 +175,20 @@ func (editor ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context, orga
 	return editor.ingestedDataIndexesRepository.ListAllUniqueIndexes(ctx, db)
 }
 
+func (editor ClientDbIndexEditor) ListAllIndexes(ctx context.Context, organizationId string) ([]models.ConcreteIndex, error) {
+	if err := editor.enforceSecurityDataModel.ReadDataModel(); err != nil {
+		return nil, err
+	}
+
+	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return nil, errors.Wrap(
+			err,
+			"Error while creating client schema executor in ListAllIndexes")
+	}
+	return editor.ingestedDataIndexesRepository.ListAllValidIndexes(ctx, db)
+}
+
 func (editor ClientDbIndexEditor) CreateUniqueIndexAsync(
 	ctx context.Context,
 	organizationId string,
