@@ -44,6 +44,12 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 		return models.DataModel{}, err
 	}
 
+	indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID)
+	if err != nil {
+		return models.DataModel{}, err
+	}
+	addNavigationOptionsToDataModel(&dataModel, indexes)
+
 	uniqueIndexes, err := usecase.clientDbIndexEditor.ListAllUniqueIndexes(ctx, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
@@ -51,6 +57,64 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 
 	return dataModel, nil
+}
+
+func addNavigationOptionsToDataModel(dataModel *models.DataModel, indexes []models.ConcreteIndex) {
+	navigationOptions := make(map[string][]models.NavigationOption, len(dataModel.Tables))
+	for _, index := range indexes {
+		if index.Type != models.IndexTypeNavigation {
+			continue
+		}
+
+		childTable, ok := dataModel.Tables[index.TableName]
+		if !ok {
+			continue
+		}
+
+		if len(index.Indexed) < 2 {
+			continue
+		}
+		fieldName := index.Indexed[0]
+
+		childOrderingField, ok := childTable.Fields[index.Indexed[1]]
+		if !ok {
+			continue
+		}
+
+		var candidateLinksFromThisField []models.LinkToSingle
+		for _, l := range childTable.LinksToSingle {
+			if l.ChildFieldName == fieldName {
+				candidateLinksFromThisField = append(candidateLinksFromThisField, l)
+			}
+		}
+
+		for _, link := range candidateLinksFromThisField {
+			navOption := models.NavigationOption{
+				ParentFieldName:   link.ParentFieldName,
+				ParentFieldId:     link.ParentFieldId,
+				ChildTableName:    link.ChildTableName,
+				ChildTableId:      link.ChildTableId,
+				ChildFieldName:    link.ChildFieldName,
+				ChildFieldId:      link.ChildFieldId,
+				OrderingFieldName: childOrderingField.Name,
+				OrderingFieldId:   childOrderingField.ID,
+				Status:            index.Status,
+			}
+			if _, ok := navigationOptions[link.ParentTableName]; !ok {
+				navigationOptions[link.ParentTableName] = []models.NavigationOption{}
+			}
+			navigationOptions[link.ParentTableName] =
+				append(navigationOptions[link.ParentTableName], navOption)
+		}
+	}
+
+	for tableName, table := range dataModel.Tables {
+		if options, ok := navigationOptions[table.Name]; ok {
+			t := table
+			t.NavigationOptions = options
+			dataModel.Tables[tableName] = t
+		}
+	}
 }
 
 func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organizationId, name, description string) (string, error) {
