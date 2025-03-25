@@ -159,6 +159,12 @@ func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc
 
 func HandleSanctionFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
 		var params gdto.RefineQueryDto
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
@@ -174,7 +180,6 @@ func HandleSanctionFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
-		creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
 
 		refineQuery := models.SanctionCheckRefineRequest{
@@ -183,7 +188,7 @@ func HandleSanctionFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		sanctionCheck, err := sanctionCheckUsecase.FreeformSearch(c.Request.Context(),
-			creds.OrganizationId, models.SanctionCheckConfig{}, refineQuery)
+			orgId, models.SanctionCheckConfig{}, refineQuery)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -225,7 +230,11 @@ type AddWhitelistParams struct {
 func HandleAddWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, _ := utils.CredentialsFromCtx(ctx)
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
 
 		var params AddWhitelistParams
 
@@ -237,7 +246,7 @@ func HandleAddWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
 
-		if err := sanctionCheckUsecase.CreateWhitelist(ctx, nil, creds.OrganizationId,
+		if err := sanctionCheckUsecase.CreateWhitelist(ctx, nil, orgId,
 			params.Counterparty, params.EntityId, nil); err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -255,7 +264,11 @@ type DeleteWhitelistParams struct {
 func HandleDeleteWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, _ := utils.CredentialsFromCtx(ctx)
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
 
 		var params DeleteWhitelistParams
 
@@ -267,7 +280,7 @@ func HandleDeleteWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
 
-		if err := sanctionCheckUsecase.DeleteWhitelist(ctx, nil, creds.OrganizationId,
+		if err := sanctionCheckUsecase.DeleteWhitelist(ctx, nil, orgId,
 			params.Counterparty, params.EntityId, nil); err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -285,7 +298,11 @@ type SearchWhitelistParams struct {
 func HandleSearchWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, _ := utils.CredentialsFromCtx(ctx)
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
 
 		var params SearchWhitelistParams
 
@@ -306,7 +323,7 @@ func HandleSearchWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
 
 		whitelists, err := sanctionCheckUsecase.SearchWhitelist(ctx, nil,
-			creds.OrganizationId, params.Counterparty, params.EntityId, nil)
+			orgId, params.Counterparty, params.EntityId, nil)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
