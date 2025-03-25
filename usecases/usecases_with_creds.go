@@ -603,3 +603,15 @@ func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUs
 		sanctionCheckConfigRepository: &usecases.Repositories.MarbleDbRepository,
 	}
 }
+
+func (usecases *UsecasesWithCreds) NewEntityAnnotationUsecase() EntityAnnotationUsecase {
+	return EntityAnnotationUsecase{
+		repository:                 &usecases.Repositories.MarbleDbRepository,
+		dataModelRepository:        usecases.Repositories.DataModelRepository,
+		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+		blobRepository:             usecases.Repositories.BlobRepository,
+		bucketUrl:                  usecases.caseManagerBucketUrl,
+		executorFactory:            usecases.NewExecutorFactory(),
+		transactionFactory:         usecases.NewTransactionFactory(),
+	}
+}

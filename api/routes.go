@@ -74,6 +74,13 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/ingestion/:object_type/upload-logs", tom, handleListUploadLogs(uc))
 	router.GET("/ingestion/:object_type/:object_id", tom, handleGetIngestedObject(uc))
 
+	router.GET("/ingestion/:object_type/:object_id/annotations", tom, handleListEntityAnnotations(uc))
+	router.POST("/ingestion/:object_type/:object_id/annotations", tom, handleCreateEntityAnnotation(uc))
+	router.POST("/ingestion/:object_type/:object_id/annotations/file", tom, handleCreateEntityFileAnnotation(uc))
+
+	router.GET("/annotations/file/:annotationId/:partId", tom, handleGetEntityFileAnnotation(uc))
+	router.DELETE("/annotations/:annotationId", tom, handleDeleteEntityAnnotation(uc))
+
 	router.GET("/scenarios", tom, listScenarios(uc))
 	router.POST("/scenarios", tom, createScenario(uc))
 	router.GET("/scenarios/:scenario_id", tom, getScenario(uc))
