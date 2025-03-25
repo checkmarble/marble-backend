@@ -17,6 +17,12 @@ type SnoozeRuleParams struct {
 
 func HandleSnoozeRule(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
 		decisionId, err := pubapi.UuidParam(c, "decisionId")
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
@@ -30,12 +36,11 @@ func HandleSnoozeRule(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
 		ruleSnoozeUsecase := uc.NewRuleSnoozeUsecase()
 
 		snooze := models.SnoozeDecisionInput{
-			OrganizationId: creds.OrganizationId,
+			OrganizationId: orgId,
 			DecisionId:     decisionId.String(),
 			RuleId:         params.RuleId,
 			Duration:       params.Duration,
