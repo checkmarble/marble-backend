@@ -25,6 +25,7 @@ type OrganizationRepository interface {
 		exec Executor,
 		updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
 	) error
+	HasOrganizations(ctx context.Context, exec Executor) (bool, error)
 }
 
 type OrganizationRepositoryPostgresql struct{}
@@ -200,4 +201,18 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganizationFeatureAccess(
 
 	err := ExecBuilder(ctx, exec, query)
 	return err
+}
+
+func (repo *OrganizationRepositoryPostgresql) HasOrganizations(ctx context.Context, exec Executor) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	var exists bool
+	err := exec.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM "+dbmodels.TABLE_ORGANIZATION+" LIMIT 1)").Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }

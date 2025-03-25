@@ -18,6 +18,7 @@ type UserRepository interface {
 	UserById(ctx context.Context, exec Executor, userId string) (models.User, error)
 	ListUsers(ctx context.Context, exec Executor, organizationIDFilter *string) ([]models.User, error)
 	UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error)
+	HasUsers(ctx context.Context, exec Executor) (bool, error)
 }
 
 type UserRepositoryPostgresql struct{}
@@ -170,4 +171,17 @@ func (repo *UserRepositoryPostgresql) UserByEmail(ctx context.Context, exec Exec
 			OrderBy("id"),
 		dbmodels.AdaptUser,
 	)
+}
+
+func (repo *UserRepositoryPostgresql) HasUsers(ctx context.Context, exec Executor) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+	var exists bool
+	err := exec.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM "+dbmodels.TABLE_USERS+" LIMIT 1)").Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }

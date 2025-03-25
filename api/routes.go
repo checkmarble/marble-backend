@@ -39,6 +39,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	r.POST("/token", tom, tokenHandler.GenerateToken)
 	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
 	r.GET("/is-sso-available", tom, handleIsSSOEnabled(uc))
+	r.GET("/signup-status", tom, handleSignupStatus(uc))
 
 	// Public API initialization
 	{
