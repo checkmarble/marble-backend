@@ -57,10 +57,10 @@ paths:
         201:
           description: Rule was successfully snoozed
 
-        400: { $ref: '#/components/responses/400' }
-        404: { $ref: '#/components/responses/404' }
-        409: { $ref: '#/components/responses/409' }
-        422: { $ref: '#/components/responses/422'}
+        400: { $ref: "#/components/responses/400" }
+        404: { $ref: "#/components/responses/404" }
+        409: { $ref: "#/components/responses/409" }
+        422: { $ref: "#/components/responses/422" }
 
   /decisions/{decisionId}/sanction-checks:
     get:
@@ -80,21 +80,21 @@ paths:
             format: uuid
       responses:
         200:
-              description: List of sanction checks for the decision
-              content:
-                application/json:
-                  schema:
-                    allOf:
-                      - $ref: '#/components/schemas/BaseResponse'
-                      - type: object
-                        properties:
-                          data:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/SanctionCheck'
+          description: List of sanction checks for the decision
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SanctionCheck"
 
-        404: { $ref: '#/components/responses/404' }
-  
+        404: { $ref: "#/components/responses/404" }
+
   /sanction-checks/entities/{entityId}:
     get:
       operationId: getSanctionCheckEntity
@@ -117,14 +117,13 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/BaseResponse'
+                  - $ref: "#/components/schemas/BaseResponse"
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/SanctionCheckMatchPayload'
+                        $ref: "#/components/schemas/SanctionCheckMatchPayload"
 
-        404: { $ref: '#/components/responses/404' }
-
+        404: { $ref: "#/components/responses/404" }
 
   /sanction-checks/{sanctionCheckId}/refine:
     post:
@@ -162,15 +161,15 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/BaseResponse'
+                  - $ref: "#/components/schemas/BaseResponse"
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/SanctionCheck'
+                        $ref: "#/components/schemas/SanctionCheck"
 
-        400: { $ref: '#/components/responses/400' }
-        404: { $ref: '#/components/responses/404' }
-        422: { $ref: '#/components/responses/422' }
+        400: { $ref: "#/components/responses/400" }
+        404: { $ref: "#/components/responses/404" }
+        422: { $ref: "#/components/responses/422" }
 
   /sanction-checks/{sanctionCheckId}/search:
     post:
@@ -183,7 +182,7 @@ paths:
       description: |
         Retrieve sanction check result without persisting them.
 
-        This endpoint will **not** replace the active sanction check, but allow to preview the results as executed in the original decision's context (using its unique counterparty ID and elligible whitelisted entries). 
+        This endpoint will **not** replace the active sanction check, but allow to preview the results as executed in the original decision's context (using its unique counterparty ID and elligible whitelisted entries).
       parameters:
         - name: sanctionCheckId
           in: path
@@ -203,20 +202,20 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/BaseResponse'
+                  - $ref: "#/components/schemas/BaseResponse"
                   - type: object
                     properties:
                       data:
                         type: array
                         items:
-                          $ref: '#/components/schemas/SanctionCheckMatchPayload'
+                          $ref: "#/components/schemas/SanctionCheckMatchPayload"
 
-        400: { $ref: '#/components/responses/400' }
-        404: { $ref: '#/components/responses/404' }
+        400: { $ref: "#/components/responses/400" }
+        404: { $ref: "#/components/responses/404" }
 
   /sanction-checks/search:
     post:
-      operationId: searchSanctionCheck
+      operationId: searchSanctionFreeformCheck
       tags: ["Sanction Checks"]
       security:
         - BearerTokenAuth: []
@@ -235,15 +234,15 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/BaseResponse'
+                  - $ref: "#/components/schemas/BaseResponse"
                   - type: object
                     properties:
                       data:
                         type: array
                         items:
-                          $ref: '#/components/schemas/SanctionCheckMatchPayload'
+                          $ref: "#/components/schemas/SanctionCheckMatchPayload"
 
-        400: { $ref: '#/components/responses/400' }
+        400: { $ref: "#/components/responses/400" }
 
   /sanction-checks/matches/{matchId}:
     post:
@@ -282,16 +281,16 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/BaseResponse'
+                  - $ref: "#/components/schemas/BaseResponse"
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/SanctionCheckMatch'
+                        $ref: "#/components/schemas/SanctionCheckMatch"
 
-        400: { $ref: '#/components/responses/400' }
-        404: { $ref: '#/components/responses/404' }
-        422: { $ref: '#/components/responses/422' }
-              
+        400: { $ref: "#/components/responses/400" }
+        404: { $ref: "#/components/responses/404" }
+        422: { $ref: "#/components/responses/422" }
+
   /sanction-checks/whitelist:
     post:
       operationId: addSanctionCheckWhitelist
@@ -321,7 +320,7 @@ paths:
         201:
           description: The entity was whitelisted
 
-        400: { $ref: '#/components/responses/400' }
+        400: { $ref: "#/components/responses/400" }
 
     delete:
       operationId: deleteSanctionCheckWhitelist
@@ -351,7 +350,7 @@ paths:
         204:
           description: The whitelist entry was deleted
 
-        400: { $ref: '#/components/responses/400' }
+        400: { $ref: "#/components/responses/400" }
 
   /sanction-checks/whitelists/search:
     post:
@@ -385,16 +384,16 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/BaseResponse'
+                  - $ref: "#/components/schemas/BaseResponse"
                   - type: object
                     required: ["data"]
                     properties:
                       data:
                         type: array
                         items:
-                          $ref: '#/components/schemas/SanctionCheckWhitelistEntry'
+                          $ref: "#/components/schemas/SanctionCheckWhitelistEntry"
 
-        400: { $ref: '#/components/responses/400' }
+        400: { $ref: "#/components/responses/400" }
 
 components:
   securitySchemes:
@@ -405,41 +404,41 @@ components:
       type: apiKey
       in: header
       name: X-API-KEY
-  
+
   responses:
-    '400':
+    "400":
       description: Provided parameters or payload is malformed or invalid
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
 
-    '401':
+    "401":
       description: Credentials are missing or invalid
-    
-    '403':
+
+    "403":
       description: The provided credentials are missing the required permissions for the requested action
-    
-    '404':
+
+    "404":
       description: The requested resource does not exist
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
-    
-    '409':
+            $ref: "#/components/schemas/Error"
+
+    "409":
       description: The resource being created conflicts with an existing resource
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
-    
-    '422':
+            $ref: "#/components/schemas/Error"
+
+    "422":
       description: The requested action is not possible on the requested resource
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
 
   schemas:
     BaseResponse:
@@ -472,7 +471,7 @@ components:
           description: Free-form objects providing details on the error
           type: object
           additionalProperties: true
-    
+
     SanctionCheck:
       type: object
       required:
@@ -505,7 +504,7 @@ components:
         matches:
           type: array
           items:
-            $ref: '#/components/schemas/SanctionCheckMatch'
+            $ref: "#/components/schemas/SanctionCheckMatch"
         created_at:
           type: string
           format: date-time
@@ -529,8 +528,8 @@ components:
           type: string
           enum: [pending, no_hit, confirmed_hit, skipped]
         payload:
-          $ref: '#/components/schemas/SanctionCheckMatchPayload'
-    
+          $ref: "#/components/schemas/SanctionCheckMatchPayload"
+
     SanctionCheckMatchPayload:
       type: object
       description: |
@@ -543,7 +542,7 @@ components:
         id:
           description: OpenSanctions entity ID
           type: string
-        datasets :
+        datasets:
           type: array
           items:
             type: string
@@ -625,7 +624,7 @@ components:
               type: string
             registrationNumber:
               type: string
-    
+
     SanctionCheckWhitelistEntry:
       type: object
       required: [counterparty, entity_id]
