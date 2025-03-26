@@ -15,19 +15,19 @@ type DBEntityAnnotation struct {
 	ObjectId       string          `db:"object_id"`
 	AnnotationType string          `db:"annotation_type"`
 	Payload        json.RawMessage `db:"payload"`
-	AttachedBy     *string         `db:"attached_by"`
+	AnnotatedBy    *string         `db:"annotated_by"`
 	CreatedAt      time.Time       `db:"created_at"`
 	DeletedAt      *time.Time      `db:"deleted_at"`
 }
 
-const TABLE_ENTITY_ATTACHMENTS = "entity_annotations"
+const TABLE_ENTITY_ANNOTATIONS = "entity_annotations"
 
 var EntityAnnotationColumns = utils.ColumnList[DBEntityAnnotation]()
 
 func AdaptEntityAnnotation(db DBEntityAnnotation) (models.EntityAnnotation, error) {
 	var userId *models.UserId
-	if db.AttachedBy != nil {
-		userId = utils.Ptr(models.UserId(*db.AttachedBy))
+	if db.AnnotatedBy != nil {
+		userId = utils.Ptr(models.UserId(*db.AnnotatedBy))
 	}
 
 	return models.EntityAnnotation{
@@ -37,7 +37,7 @@ func AdaptEntityAnnotation(db DBEntityAnnotation) (models.EntityAnnotation, erro
 		ObjectId:       db.ObjectId,
 		AnnotationType: models.EntityAnnotationFrom(db.AnnotationType),
 		Payload:        db.Payload,
-		AttachedBy:     userId,
+		AnnotatedBy:    userId,
 		CreatedAt:      db.CreatedAt,
 		DeletedAt:      db.DeletedAt,
 	}, nil

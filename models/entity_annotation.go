@@ -47,7 +47,7 @@ type EntityAnnotation struct {
 	ObjectId       string
 	AnnotationType EntityAnnotationType
 	Payload        json.RawMessage
-	AttachedBy     *UserId
+	AnnotatedBy    *UserId
 	CreatedAt      time.Time
 	DeletedAt      *time.Time
 }
@@ -65,5 +65,11 @@ type CreateEntityAnnotationRequest struct {
 	ObjectId       string
 	AnnotationType EntityAnnotationType
 	Payload        EntityAnnotationPayload
-	AttachedBy     *UserId
+	AnnotatedBy    *UserId
+}
+
+type AnnotationByIdRequest struct {
+	OrgId          string
+	AnnotationId   string
+	AnnotationType *EntityAnnotationType
 }
