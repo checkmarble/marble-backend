@@ -46,3 +46,8 @@ func (r *UserRepository) UserByEmail(ctx context.Context, exec repositories.Exec
 	args := r.Called(ctx, exec, email)
 	return args.Get(0).(*models.User), args.Error(1)
 }
+
+func (r *UserRepository) HasUsers(ctx context.Context, exec repositories.Executor) (bool, error) {
+	args := r.Called(ctx, exec)
+	return args.Bool(0), args.Error(1)
+}
