@@ -16,14 +16,12 @@ func handleSignupStatus(uc usecases.Usecases) func(c *gin.Context) {
 		)
 
 		hasAnOrganization, err := signupUc.HasAnOrganization(ctx)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		hasAUser, err := signupUc.HasAUser(ctx)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if presentError(ctx, c, err) {
 			return
 		}
 
