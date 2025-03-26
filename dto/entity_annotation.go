@@ -12,11 +12,11 @@ import (
 )
 
 type EntityAnnotationDto struct {
-	Id         string          `json:"id"`
-	Type       string          `json:"type"`
-	Payload    json.RawMessage `json:"payload"`
-	AttachedBy *string         `json:"attached_by,omitempty"`
-	CreatedAt  time.Time       `json:"created_at"`
+	Id          string    `json:"id"`
+	Type        string    `json:"type"`
+	Payload     any       `json:"payload"`
+	AnnotatedBy *string   `json:"annotated_by,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type PostEntityAnnotationDto struct {
@@ -31,8 +31,8 @@ type PostEntityFileAnnotationDto struct {
 
 func AdaptEntityAnnotation(model models.EntityAnnotation) (EntityAnnotationDto, error) {
 	var userId *string
-	if model.AttachedBy != nil {
-		userId = utils.Ptr(string(*model.AttachedBy))
+	if model.AnnotatedBy != nil {
+		userId = utils.Ptr(string(*model.AnnotatedBy))
 	}
 
 	payload, err := AdaptEntityAnnotationPayload(model)
@@ -41,11 +41,52 @@ func AdaptEntityAnnotation(model models.EntityAnnotation) (EntityAnnotationDto, 
 	}
 
 	return EntityAnnotationDto{
-		Id:         model.Id,
-		Type:       model.AnnotationType.String(),
-		Payload:    model.Payload,
-		AttachedBy: userId,
-		CreatedAt:  model.CreatedAt,
+		Id:          model.Id,
+		Type:        model.AnnotationType.String(),
+		Payload:     payload,
+		AnnotatedBy: userId,
+		CreatedAt:   model.CreatedAt,
+	}, nil
+}
+
+type returnEntityAnnotationComment struct {
+	Text string `json:"text"`
+}
+
+type returnEntityAnnotationTag struct {
+	Tag string `json:"tag"`
+}
+
+type returnEntityAnnotationFile struct {
+	Caption string `json:"caption"`
+	Files   []struct {
+		Key      string `json:"key"`
+		Filename string `json:"filename"`
+	} `json:"files"`
+}
+
+func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err error) {
+	switch model.AnnotationType {
+	case models.EntityAnnotationComment:
+		var o returnEntityAnnotationComment
+
+		err = json.Unmarshal(model.Payload, &o)
+		out = o
+
+	case models.EntityAnnotationTag:
+		var o returnEntityAnnotationTag
+
+		err = json.Unmarshal(model.Payload, &o)
+		out = o
+
+	case models.EntityAnnotationFile:
+		var o returnEntityAnnotationFile
+
+		err = json.Unmarshal(model.Payload, &o)
+		out = o
+
+	default:
+		return nil, errors.New("could not adapt annotation type")
 	}
 
 	return

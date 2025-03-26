@@ -11,19 +11,16 @@ import (
 func (repo *MarbleDbRepository) GetEntityAnnotationById(
 	ctx context.Context,
 	exec Executor,
-	req models.EntityAnnotationRequest,
-	id string,
+	req models.AnnotationByIdRequest,
 ) ([]models.EntityAnnotation, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	filters := squirrel.Eq{
-		"id":          id,
-		"org_id":      req.OrgId,
-		"object_type": req.ObjectType,
-		"object_id":   req.ObjectId,
-		"deleted_at":  nil,
+		"id":         req.AnnotationId,
+		"org_id":     req.OrgId,
+		"deleted_at": nil,
 	}
 
 	if req.AnnotationType != nil {
@@ -32,7 +29,7 @@ func (repo *MarbleDbRepository) GetEntityAnnotationById(
 
 	sql := NewQueryBuilder().
 		Select(dbmodels.EntityAnnotationColumns...).
-		From(dbmodels.TABLE_ENTITY_ATTACHMENTS).
+		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
 		Where(filters)
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptEntityAnnotation)
@@ -60,7 +57,7 @@ func (repo *MarbleDbRepository) GetEntityAnnotations(
 
 	sql := NewQueryBuilder().
 		Select(dbmodels.EntityAnnotationColumns...).
-		From(dbmodels.TABLE_ENTITY_ATTACHMENTS).
+		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
 		Where(filters)
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptEntityAnnotation)
@@ -76,15 +73,15 @@ func (repo *MarbleDbRepository) CreateEntityAnnotation(
 	}
 
 	sql := NewQueryBuilder().
-		Insert(dbmodels.TABLE_ENTITY_ATTACHMENTS).
-		Columns("org_id", "object_type", "object_id", "annotation_type", "payload", "attached_by").
+		Insert(dbmodels.TABLE_ENTITY_ANNOTATIONS).
+		Columns("org_id", "object_type", "object_id", "annotation_type", "payload", "annotated_by").
 		Values(
 			req.OrgId,
 			req.ObjectType,
 			req.ObjectId,
 			req.AnnotationType,
 			req.Payload,
-			req.AttachedBy,
+			req.AnnotatedBy,
 		).
 		Suffix("returning *")
 
@@ -108,22 +105,43 @@ func (repo *MarbleDbRepository) IsObjectTagSet(ctx context.Context, exec Executo
 	}
 
 	query := NewQueryBuilder().
-		Select("count(1)").
-		From(dbmodels.TABLE_ENTITY_ATTACHMENTS).
-		Where(filters)
+		Select("1").
+		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
+		Where(filters).
+		Limit(1).
+		Prefix("select exists (").Suffix(")")
 
 	sql, args, err := query.ToSql()
 	if err != nil {
 		return false, err
 	}
 
-	row := exec.QueryRow(ctx, sql, args...)
+	var hasTag bool
 
-	var tagCount int
-
-	if err := row.Scan(&tagCount); err != nil {
+	if err := exec.QueryRow(ctx, sql, args...).Scan(&hasTag); err != nil {
 		return false, err
 	}
 
-	return tagCount > 0, nil
+	return hasTag, nil
+}
+
+func (repo *MarbleDbRepository) DeleteEntityAnnotation(ctx context.Context, exec Executor,
+	req models.AnnotationByIdRequest,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	filters := squirrel.Eq{
+		"id":         req.AnnotationId,
+		"org_id":     req.OrgId,
+		"deleted_at": nil,
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_ENTITY_ANNOTATIONS).
+		Set("deleted_at", "now()").
+		Where(filters)
+
+	return ExecBuilder(ctx, exec, sql)
 }
