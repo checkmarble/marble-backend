@@ -66,9 +66,10 @@ func DecodeEntityAnnotationPayload(kind models.EntityAnnotationType, payload jso
 		out = o
 
 	case models.EntityAnnotationTag:
-		var comment models.EntityAnnotationCommentPayload
-		err := json.Unmarshal(payload, &comment)
-		return comment, err
+		var o models.EntityAnnotationTagPayload
+
+		err = json.Unmarshal(payload, &o)
+		out = o
 
 	default:
 		return nil, fmt.Errorf("invalid annotation type")

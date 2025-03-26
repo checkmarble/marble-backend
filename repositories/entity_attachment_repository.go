@@ -90,3 +90,40 @@ func (repo *MarbleDbRepository) CreateEntityAnnotation(
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptEntityAnnotation)
 }
+
+func (repo *MarbleDbRepository) IsObjectTagSet(ctx context.Context, exec Executor,
+	req models.CreateEntityAnnotationRequest, tagId string,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	filters := squirrel.Eq{
+		"org_id":          req.OrgId,
+		"object_type":     req.ObjectType,
+		"annotation_type": models.EntityAnnotationTag,
+		"object_id":       req.ObjectId,
+		"deleted_at":      nil,
+		"payload->>'tag'": tagId,
+	}
+
+	query := NewQueryBuilder().
+		Select("count(1)").
+		From(dbmodels.TABLE_ENTITY_ATTACHMENTS).
+		Where(filters)
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return false, err
+	}
+
+	row := exec.QueryRow(ctx, sql, args...)
+
+	var tagCount int
+
+	if err := row.Scan(&tagCount); err != nil {
+		return false, err
+	}
+
+	return tagCount > 0, nil
+}
