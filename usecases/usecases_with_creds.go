@@ -609,6 +609,7 @@ func (usecases *UsecasesWithCreds) NewEntityAnnotationUsecase() EntityAnnotation
 		repository:                 &usecases.Repositories.MarbleDbRepository,
 		dataModelRepository:        usecases.Repositories.DataModelRepository,
 		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+		tagRepository:              &usecases.Repositories.MarbleDbRepository,
 		blobRepository:             usecases.Repositories.BlobRepository,
 		bucketUrl:                  usecases.caseManagerBucketUrl,
 		executorFactory:            usecases.NewExecutorFactory(),
