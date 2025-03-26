@@ -24,6 +24,8 @@ type EntityAnnotationRepository interface {
 		req models.EntityAnnotationRequest) ([]models.EntityAnnotation, error)
 	CreateEntityAnnotation(ctx context.Context, exec repositories.Executor,
 		req models.CreateEntityAnnotationRequest) (models.EntityAnnotation, error)
+	DeleteEntityAnnotation(ctx context.Context, exec repositories.Executor,
+		req models.AnnotationByIdRequest) error
 	IsObjectTagSet(ctx context.Context, exec repositories.Executor,
 		req models.CreateEntityAnnotationRequest, tagId string) (bool, error)
 }
@@ -129,6 +131,12 @@ func (uc EntityAnnotationUsecase) GetFileDownloadUrl(ctx context.Context,
 	}
 
 	return "", errors.Wrap(models.NotFoundError, "could not find requested file part")
+}
+
+func (uc EntityAnnotationUsecase) DeleteAnnotation(ctx context.Context,
+	req models.AnnotationByIdRequest,
+) error {
+	return uc.repository.DeleteEntityAnnotation(ctx, uc.executorFactory.NewExecutor(), req)
 }
 
 func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId, objectType, objectId string) error {

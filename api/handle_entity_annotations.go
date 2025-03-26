@@ -89,6 +89,7 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			ObjectId:       objectId,
 			AnnotationType: models.EntityAnnotationFrom(payload.Type),
 			Payload:        parsedPayload,
+			AnnotatedBy:    &creds.ActorIdentity.UserId,
 		}
 
 		if req.AnnotationType == models.EntityAnnotationUnknown {
@@ -153,6 +154,7 @@ func handleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			Payload: models.EntityAnnotationFilePayload{
 				Caption: payload.Caption,
 			},
+			AnnotatedBy: &creds.ActorIdentity.UserId,
 		}
 
 		if err := binding.Validator.ValidateStruct(req.Payload); err != nil {
@@ -207,5 +209,28 @@ func handleGetEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusCreated, gin.H{"url": annotation})
+	}
+}
+
+func handleDeleteEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, _ := utils.CredentialsFromCtx(ctx)
+		annotationId := c.Param("annotationId")
+
+		uc := usecasesWithCreds(ctx, uc)
+		annotationsUsecase := uc.NewEntityAnnotationUsecase()
+
+		req := models.AnnotationByIdRequest{
+			OrgId:        creds.OrganizationId,
+			AnnotationId: annotationId,
+		}
+
+		if err := annotationsUsecase.DeleteAnnotation(ctx, req); err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.Status(http.StatusNoContent)
 	}
 }
