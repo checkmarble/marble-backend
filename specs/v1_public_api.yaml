@@ -12,8 +12,8 @@ servers:
 tags:
   - name: Decisions
     description: Routes for decisions
-  - name: Sanction Checks
-    description: Routes for sanction checks
+  - name: Screening
+    description: Routes for screening
 paths:
   /decisions/{decisionId}/snooze:
     post:
@@ -62,15 +62,15 @@ paths:
         409: { $ref: "#/components/responses/409" }
         422: { $ref: "#/components/responses/422" }
 
-  /decisions/{decisionId}/sanction-checks:
+  /decisions/{decisionId}/screenings:
     get:
-      operationId: getSanctionChecksForDecision
-      tags: ["Sanction Checks"]
+      operationId: getScreeningForDecision
+      tags: ["Screening"]
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Get sanction check
-      description: Retrieve sanction check details for decision
+      summary: Get screening results
+      description: Retrieve screening result details for decision
       parameters:
         - name: decisionId
           in: path
@@ -80,7 +80,7 @@ paths:
             format: uuid
       responses:
         200:
-          description: List of sanction checks for the decision
+          description: List of screening results for the decision
           content:
             application/json:
               schema:
@@ -91,14 +91,14 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/SanctionCheck"
+                          $ref: "#/components/schemas/Screening"
 
         404: { $ref: "#/components/responses/404" }
 
-  /sanction-checks/entities/{entityId}:
+  /screening/entities/{entityId}:
     get:
-      operationId: getSanctionCheckEntity
-      tags: ["Sanction Checks"]
+      operationId: getScreeningEntity
+      tags: ["Screening"]
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
@@ -121,24 +121,24 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/SanctionCheckMatchPayload"
+                        $ref: "#/components/schemas/ScreeningMatchPayload"
 
         404: { $ref: "#/components/responses/404" }
 
-  /sanction-checks/{sanctionCheckId}/refine:
+  /screening/{screeningId}/refine:
     post:
-      operationId: refineSanctionCheck
-      tags: ["Sanction Checks"]
+      operationId: refineScreening
+      tags: ["Screening"]
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Refine a sanction check
+      summary: Refine a screening result
       description: |
-        Replace a sanction check with refined results.
+        Replace a screening result with refined results.
 
-        This endpoint will replace the active sanction check for the provided decision with one containing the result of the included query.
+        This endpoint will replace the provided screening result for the provided decision with one containing the result of the included query.
       parameters:
-        - name: sanctionCheckId
+        - name: screeningId
           in: path
           required: true
           schema:
@@ -150,13 +150,13 @@ paths:
             schema:
               type: object
               oneOf:
-                - $ref: "#/components/schemas/SanctionCheckSearchThing"
-                - $ref: "#/components/schemas/SanctionCheckSearchPerson"
-                - $ref: "#/components/schemas/SanctionCheckSearchOrganization"
-                - $ref: "#/components/schemas/SanctionCheckSearchVehicle"
+                - $ref: "#/components/schemas/ScreeningSearchThing"
+                - $ref: "#/components/schemas/ScreeningSearchPerson"
+                - $ref: "#/components/schemas/ScreeningSearchOrganization"
+                - $ref: "#/components/schemas/ScreeningSearchVehicle"
       responses:
         200:
-          description: Refined sanction check for the decision
+          description: Refined screening result for the decision
           content:
             application/json:
               schema:
@@ -165,26 +165,26 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/SanctionCheck"
+                        $ref: "#/components/schemas/Screening"
 
         400: { $ref: "#/components/responses/400" }
         404: { $ref: "#/components/responses/404" }
         422: { $ref: "#/components/responses/422" }
 
-  /sanction-checks/{sanctionCheckId}/search:
+  /screening/{screeningId}/search:
     post:
-      operationId: searchSanctionCheck
-      tags: ["Sanction Checks"]
+      operationId: searchScreening
+      tags: ["Screening"]
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Perform a sanction search
+      summary: Perform a screening search
       description: |
-        Retrieve sanction check result without persisting them.
+        Retrieve screening result without persisting them.
 
-        This endpoint will **not** replace the active sanction check, but allow to preview the results as executed in the original decision's context (using its unique counterparty ID and elligible whitelisted entries).
+        This endpoint will **not** replace the provided screening result, but allow to preview the results as executed in the original decision's context (using its unique counterparty ID and elligible whitelisted entries).
       parameters:
-        - name: sanctionCheckId
+        - name: screeningId
           in: path
           required: true
           schema:
@@ -194,10 +194,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SanctionCheckSearchQuery"
+              $ref: "#/components/schemas/ScreeningSearchQuery"
       responses:
         200:
-          description: Sanction check results from the search
+          description: Screening results from the search
           content:
             application/json:
               schema:
@@ -208,28 +208,28 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/SanctionCheckMatchPayload"
+                          $ref: "#/components/schemas/ScreeningMatchPayload"
 
         400: { $ref: "#/components/responses/400" }
         404: { $ref: "#/components/responses/404" }
 
-  /sanction-checks/search:
+  /screening/search:
     post:
-      operationId: searchSanctionFreeformCheck
-      tags: ["Sanction Checks"]
+      operationId: searchScreeningFreeformCheck
+      tags: ["Screening"]
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Perform a free-form sanction search
+      summary: Perform a free-form screening search
       description: Search for sanctioned entities outside of the context of a decision.
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SanctionCheckSearchQuery"
+              $ref: "#/components/schemas/ScreeningSearchQuery"
       responses:
         200:
-          description: Sanction check results from the search
+          description: Screening result from the search
           content:
             application/json:
               schema:
@@ -240,19 +240,19 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/SanctionCheckMatchPayload"
+                          $ref: "#/components/schemas/ScreeningMatchPayload"
 
         400: { $ref: "#/components/responses/400" }
 
-  /sanction-checks/matches/{matchId}:
+  /screening/matches/{matchId}:
     post:
-      operationId: reviewSanctionCheckMatch
-      tags: ["Sanction Checks"]
+      operationId: reviewScreeningMatch
+      tags: ["Screening"]
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Review a sanction check
-      description: Set the review status of a sanction check match
+      summary: Review a screening match
+      description: Set the review status of a screening match
       parameters:
         - name: matchId
           in: path
@@ -285,22 +285,22 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/SanctionCheckMatch"
+                        $ref: "#/components/schemas/ScreeningMatch"
 
         400: { $ref: "#/components/responses/400" }
         404: { $ref: "#/components/responses/404" }
         422: { $ref: "#/components/responses/422" }
 
-  /sanction-checks/whitelist:
+  /screening/whitelist:
     post:
-      operationId: addSanctionCheckWhitelist
-      tags: ["Sanction Checks"]
+      operationId: addScreeningWhitelist
+      tags: ["Screening"]
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
       summary: Whitelist an entity
       description: |
-        Add a set of search term and entity ID that will not set off a sanction check alert in the future.
+        Add a set of search term and entity ID that will not set off a screening alert in the future.
 
         This endpoint does not verify that the provided entity ID matches an **actual** entity on an OpenSanctions list. It is the responsibility of the caller to make sure they whitelist the correct entity ID for their needs.
       requestBody:
@@ -323,8 +323,8 @@ paths:
         400: { $ref: "#/components/responses/400" }
 
     delete:
-      operationId: deleteSanctionCheckWhitelist
-      tags: ["Sanction Checks"]
+      operationId: deleteScreeningWhitelist
+      tags: ["Screening"]
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
@@ -352,10 +352,10 @@ paths:
 
         400: { $ref: "#/components/responses/400" }
 
-  /sanction-checks/whitelists/search:
+  /screening/whitelists/search:
     post:
-      operationId: searchSanctionCheckWhitelist
-      tags: ["Sanction Checks"]
+      operationId: searchScreeningWhitelist
+      tags: ["Screening"]
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
@@ -391,7 +391,7 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/SanctionCheckWhitelistEntry"
+                          $ref: "#/components/schemas/ScreeningWhitelistEntry"
 
         400: { $ref: "#/components/responses/400" }
 
@@ -442,6 +442,7 @@ components:
 
   schemas:
     BaseResponse:
+      title: Base response
       type: object
       required: [data]
       properties:
@@ -449,6 +450,7 @@ components:
           description: Requested objects from the API
 
     Error:
+      title: Error response
       type: object
       required: [code]
       properties:
@@ -472,7 +474,8 @@ components:
           type: object
           additionalProperties: true
 
-    SanctionCheck:
+    Screening:
+      title: Screening result
       type: object
       required:
         - id
@@ -495,7 +498,7 @@ components:
               description: Queries that were submitted to OpenSanctions with their IDs
               type: object
               additionalProperties:
-                $ref: "#/components/schemas/SanctionCheckSearchQuery"
+                $ref: "#/components/schemas/ScreeningSearchQuery"
               example:
                 8dd2edf9-6281-401a-b3e8-e65d974ed930:
                   Thing:
@@ -504,7 +507,7 @@ components:
         matches:
           type: array
           items:
-            $ref: "#/components/schemas/SanctionCheckMatch"
+            $ref: "#/components/schemas/ScreeningMatch"
         created_at:
           type: string
           format: date-time
@@ -512,7 +515,8 @@ components:
           type: string
           format: date-time
 
-    SanctionCheckMatch:
+    ScreeningMatch:
+      title: Screening match
       type: object
       properties:
         id:
@@ -528,9 +532,10 @@ components:
           type: string
           enum: [pending, no_hit, confirmed_hit, skipped]
         payload:
-          $ref: "#/components/schemas/SanctionCheckMatchPayload"
+          $ref: "#/components/schemas/ScreeningMatchPayload"
 
-    SanctionCheckMatchPayload:
+    ScreeningMatchPayload:
+      title: Screening match entity
       type: object
       description: |
         OpenSanctions entity data.
@@ -557,16 +562,17 @@ components:
         properties:
           name: ["ACME Inc."]
 
-    SanctionCheckSearchQuery:
+    ScreeningSearchQuery:
+      title: Screening search query
       type: object
       oneOf:
-        - $ref: "#/components/schemas/SanctionCheckSearchThing"
-        - $ref: "#/components/schemas/SanctionCheckSearchPerson"
-        - $ref: "#/components/schemas/SanctionCheckSearchOrganization"
-        - $ref: "#/components/schemas/SanctionCheckSearchVehicle"
+        - $ref: "#/components/schemas/ScreeningSearchThing"
+        - $ref: "#/components/schemas/ScreeningSearchPerson"
+        - $ref: "#/components/schemas/ScreeningSearchOrganization"
+        - $ref: "#/components/schemas/ScreeningSearchVehicle"
 
-    SanctionCheckSearchThing:
-      title: Any object type
+    ScreeningSearchThing:
+      title: Any entity type
       type: object
       required: [Thing]
       properties:
@@ -577,7 +583,7 @@ components:
             name:
               type: string
 
-    SanctionCheckSearchPerson:
+    ScreeningSearchPerson:
       title: Individual
       type: object
       required: [Person]
@@ -595,7 +601,7 @@ components:
             address:
               type: string
 
-    SanctionCheckSearchOrganization:
+    ScreeningSearchOrganization:
       title: Organization or Company
       type: object
       required: [Organization]
@@ -611,7 +617,7 @@ components:
             address:
               type: string
 
-    SanctionCheckSearchVehicle:
+    ScreeningSearchVehicle:
       title: Vehicle
       type: object
       required: [Vehicle]
@@ -625,7 +631,8 @@ components:
             registrationNumber:
               type: string
 
-    SanctionCheckWhitelistEntry:
+    ScreeningWhitelistEntry:
+      title: Screening whitelist entry
       type: object
       required: [counterparty, entity_id]
       properties:

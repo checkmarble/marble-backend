@@ -12,23 +12,23 @@ import (
 )
 
 func whitelists(t *testing.T, e *httpexpect.Expect) {
-	e.POST("/sanction-checks/whitelists").
+	e.POST("/screening/whitelists").
 		WithJSON(api.AddWhitelistParams{Counterparty: "Jean-Baptiste Zorg", EntityId: "ABC123"}).
 		Expect().
 		Status(http.StatusCreated)
 
-	e.POST("/sanction-checks/whitelists").
+	e.POST("/screening/whitelists").
 		WithJSON(api.AddWhitelistParams{Counterparty: "Joe Bill", EntityId: "ABC123"}).
 		Expect().
 		Status(http.StatusCreated)
 
-	e.POST("/sanction-checks/whitelists").
+	e.POST("/screening/whitelists").
 		WithJSON(api.AddWhitelistParams{Counterparty: "JBZ", EntityId: "ABC123"}).
 		Expect().
 		Status(http.StatusCreated)
 
 	{
-		out := e.POST("/sanction-checks/whitelists/search").
+		out := e.POST("/screening/whitelists/search").
 			WithJSON(api.SearchWhitelistParams{EntityId: utils.Ptr("ABC123")}).
 			Expect().
 			Status(http.StatusOK).
@@ -46,13 +46,13 @@ func whitelists(t *testing.T, e *httpexpect.Expect) {
 		assert.Equal(t, 3, found.Size(), "not all counterparties were found matching the entity ID")
 	}
 
-	e.DELETE("/sanction-checks/whitelists").
+	e.DELETE("/screening/whitelists").
 		WithJSON(api.DeleteWhitelistParams{EntityId: "ABC123", Counterparty: utils.Ptr("Joe Bill")}).
 		Expect().
 		Status(http.StatusNoContent)
 
 	{
-		out := e.POST("/sanction-checks/whitelists/search").
+		out := e.POST("/screening/whitelists/search").
 			WithJSON(api.SearchWhitelistParams{EntityId: utils.Ptr("ABC123")}).
 			Expect().
 			Status(http.StatusOK).
@@ -64,12 +64,12 @@ func whitelists(t *testing.T, e *httpexpect.Expect) {
 		})
 	}
 
-	e.DELETE("/sanction-checks/whitelists").
+	e.DELETE("/screening/whitelists").
 		WithJSON(api.DeleteWhitelistParams{EntityId: "ABC123"}).
 		Expect().
 		Status(http.StatusNoContent)
 
-	e.POST("/sanction-checks/whitelists/search").
+	e.POST("/screening/whitelists/search").
 		WithJSON(api.SearchWhitelistParams{EntityId: utils.Ptr("ABC123")}).
 		Expect().
 		Status(http.StatusOK).
