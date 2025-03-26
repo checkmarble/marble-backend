@@ -24,14 +24,22 @@ type EntityAnnotationRepository interface {
 		req models.EntityAnnotationRequest) ([]models.EntityAnnotation, error)
 	CreateEntityAnnotation(ctx context.Context, exec repositories.Executor,
 		req models.CreateEntityAnnotationRequest) (models.EntityAnnotation, error)
+	IsObjectTagSet(ctx context.Context, exec repositories.Executor,
+		req models.CreateEntityAnnotationRequest, tagId string) (bool, error)
+}
+
+type TagRepository interface {
+	GetTagById(ctx context.Context, exec repositories.Executor, tagId string) (models.Tag, error)
 }
 
 type EntityAnnotationUsecase struct {
 	repository                 EntityAnnotationRepository
 	dataModelRepository        repositories.DataModelRepository
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
-	blobRepository             repositories.BlobRepository
-	bucketUrl                  string
+	tagRepository              TagRepository
+
+	blobRepository repositories.BlobRepository
+	bucketUrl      string
 
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
@@ -50,6 +58,10 @@ func (uc EntityAnnotationUsecase) Attach(ctx context.Context,
 ) (models.EntityAnnotation, error) {
 	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType, req.ObjectId); err != nil {
 		return models.EntityAnnotation{}, errors.Wrap(models.NotFoundError, err.Error())
+	}
+
+	if err := uc.validateAnnotation(ctx, req); err != nil {
+		return models.EntityAnnotation{}, err
 	}
 
 	return uc.repository.CreateEntityAnnotation(ctx, uc.executorFactory.NewExecutor(), req)
@@ -81,7 +93,7 @@ func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
 
 	fp, ok := req.Payload.(models.EntityAnnotationFilePayload)
 	if !ok {
-		return models.EntityAnnotation{}, errors.New("could not understand request")
+		return models.EntityAnnotation{}, errors.Wrap(models.BadParameterError, "could not understand request")
 	}
 
 	req.Payload = models.EntityAnnotationFilePayload{
@@ -101,7 +113,7 @@ func (uc EntityAnnotationUsecase) GetFileDownloadUrl(ctx context.Context,
 		return "", err
 	}
 	if len(files) != 1 {
-		return "", errors.New("requested file not found")
+		return "", errors.Wrap(models.NotFoundError, "requested file not found")
 	}
 
 	var fp models.EntityAnnotationFilePayload
@@ -116,7 +128,7 @@ func (uc EntityAnnotationUsecase) GetFileDownloadUrl(ctx context.Context,
 		}
 	}
 
-	return "", errors.New("could not find requested file part")
+	return "", errors.Wrap(models.NotFoundError, "could not find requested file part")
 }
 
 func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId, objectType, objectId string) error {
@@ -127,7 +139,7 @@ func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId, object
 
 	table, ok := dataModel.Tables[objectType]
 	if !ok {
-		return errors.New("unknown object type")
+		return errors.Wrap(models.NotFoundError, "unknown object type")
 	}
 
 	db, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
@@ -136,7 +148,29 @@ func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId, object
 	}
 
 	if _, err := uc.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, objectId); err != nil {
-		return errors.New("unknown object")
+		return errors.Wrap(models.NotFoundError, "unknown object")
+	}
+
+	return nil
+}
+
+func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req models.CreateEntityAnnotationRequest) error {
+	if req.AnnotationType == models.EntityAnnotationTag {
+		payload, ok := req.Payload.(models.EntityAnnotationTagPayload)
+		if !ok {
+			return errors.New("invalid payload for annotation type")
+		}
+		if _, err := uc.tagRepository.GetTagById(ctx, uc.executorFactory.NewExecutor(), payload.Tag); err != nil {
+			return errors.Wrap(models.NotFoundError, "unknown tag")
+		}
+		exists, err := uc.repository.IsObjectTagSet(ctx, uc.executorFactory.NewExecutor(), req, payload.Tag)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return errors.Wrap(models.ConflictError,
+				"tag is already annotated on this object")
+		}
 	}
 
 	return nil
