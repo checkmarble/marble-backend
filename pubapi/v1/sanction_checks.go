@@ -90,7 +90,7 @@ func HandleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) gin.HandlerFunc 
 
 func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		sanctionCheckId, err := pubapi.UuidParam(c, "sanctionCheckId")
+		sanctionCheckId, err := pubapi.UuidParam(c, "screeningId")
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
