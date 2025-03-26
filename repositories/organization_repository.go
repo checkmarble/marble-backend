@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -209,7 +210,8 @@ func (repo *OrganizationRepositoryPostgresql) HasOrganizations(ctx context.Conte
 	}
 
 	var exists bool
-	err := exec.QueryRow(ctx, fmt.Sprintf("SELECT EXISTS (SELECT 1 FROM %s LIMIT 1)", dbmodels.TABLE_ORGANIZATION)).Scan(&exists)
+	err := exec.QueryRow(ctx, fmt.Sprintf("SELECT EXISTS (SELECT 1 FROM %s LIMIT 1)",
+		dbmodels.TABLE_ORGANIZATION)).Scan(&exists)
 	if err != nil {
 		return false, err
 	}
