@@ -59,6 +59,7 @@ const (
 	SANCTION_CHECK_WHITELIST_READ
 	SANCTION_CHECK_WHITELIST_WRITE
 	SANCTION_CHECK_FREEFORM_SEARCH
+	ANNOTATION_DELETE
 )
 
 func (r Permission) String() (string, error) {
@@ -115,6 +116,7 @@ func (r Permission) String() (string, error) {
 		"SANCTION_CHECK_WHITELIST_READ",
 		"SANCTION_CHECK_WHITELIST_WRITE",
 		"SANCTION_CHECK_FREEFORM_SEARCH",
+		"ANNOTATION_DELETE",
 	}
 	if int(r) > len(permissions)-1 {
 		return "", errors.New("Invalid permission: no string representation has been set")

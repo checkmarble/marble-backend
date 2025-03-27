@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
@@ -35,6 +36,8 @@ type TagRepository interface {
 }
 
 type EntityAnnotationUsecase struct {
+	enforceSecurityAnnotation security.EnforceSecurityAnnotation
+
 	repository                 EntityAnnotationRepository
 	dataModelRepository        repositories.DataModelRepository
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
@@ -136,6 +139,10 @@ func (uc EntityAnnotationUsecase) GetFileDownloadUrl(ctx context.Context,
 func (uc EntityAnnotationUsecase) DeleteAnnotation(ctx context.Context,
 	req models.AnnotationByIdRequest,
 ) error {
+	if err := uc.enforceSecurityAnnotation.DeleteAnnotation(); err != nil {
+		return errors.Wrap(models.ForbiddenError, err.Error())
+	}
+
 	return uc.repository.DeleteEntityAnnotation(ctx, uc.executorFactory.NewExecutor(), req)
 }
 
