@@ -1,35 +1,51 @@
+version: "2"
 linters:
   enable:
+    - durationcheck
     - errorlint
     - loggercheck
-    - durationcheck
     - sloglint
-    - unconvert
     - tagliatelle
+    - unconvert
+  settings:
+    tagliatelle:
+      case:
+        rules:
+          avro: snake
+          bson: camel
+          env: upperSnake
+          envconfig: upperSnake
+          json: snake
+          mapstructure: kebab
+          toml: camel
+          xml: camel
+          yaml: camel
+        use-field-name: true
 
-issues:
-  exclude-rules:
-    - path: repository/ingested_data_indexes_repository.go
-      text: "should be called, not discarded, to avoid a context leak"
-
-linters-settings:
-  tagliatelle:
-    # Check the struct tag name case.
-    case:
-      # Use the struct field name to check the name of the struct tag.
-      # Default: false
-      use-field-name: true
-      # `camel` is used for `json` and `yaml`, and `header` is used for `header` (can be overridden)
-      # Default: {}
-      rules:
-        # Any struct tag type can be used.
-        # Support string case: `camel`, `pascal`, `kebab`, `snake`, `upperSnake`, `goCamel`, `goPascal`, `goKebab`, `goSnake`, `upper`, `lower`, `header`
-        json: snake
-        yaml: camel
-        xml: camel
-        toml: camel
-        bson: camel
-        avro: snake
-        mapstructure: kebab
-        env: upperSnake
-        envconfig: upperSnake
+    staticcheck:
+      checks:
+        - -ST1006
+        - -QF1001
+        - -QF1002
+        - -QF1003
+        - -QF1004
+        - -QF1008
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: repository/ingested_data_indexes_repository.go
+        text: should be called, not discarded, to avoid a context leak
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
