@@ -11,7 +11,7 @@ type EntityAnnotationCommentPayload struct {
 func (EntityAnnotationCommentPayload) entityAnnotationPayload() {}
 
 type EntityAnnotationFilePayload struct {
-	Caption string                            `json:"caption" binding:"required"`
+	Caption string                            `json:"caption"`
 	Bucket  string                            `json:"bucket"`
 	Files   []EntityAnnotationFilePayloadFile `json:"files"`
 }

@@ -100,6 +100,13 @@ func (usecases *UsecasesWithCreds) NewEnforceSanctionCheckSecurity() security.En
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewEnforceAnnotationSecurity() security.EnforceSecurityAnnotation {
+	return &security.EnforceSecurityAnnotationImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		enforceSecurity:           usecases.NewEnforceDecisionSecurity(),
@@ -606,6 +613,7 @@ func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUs
 
 func (usecases *UsecasesWithCreds) NewEntityAnnotationUsecase() EntityAnnotationUsecase {
 	return EntityAnnotationUsecase{
+		enforceSecurityAnnotation:  usecases.NewEnforceAnnotationSecurity(),
 		repository:                 &usecases.Repositories.MarbleDbRepository,
 		dataModelRepository:        usecases.Repositories.DataModelRepository,
 		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
