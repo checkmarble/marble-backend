@@ -2,13 +2,14 @@ package dto
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"mime/multipart"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
+	"github.com/gin-gonic/gin/binding"
 )
 
 type EntityAnnotationDto struct {
@@ -25,8 +26,8 @@ type PostEntityAnnotationDto struct {
 }
 
 type PostEntityFileAnnotationDto struct {
-	Caption string                 `form:"caption"`
-	Files   []multipart.FileHeader `form:"files[]"`
+	Caption string                 `form:"caption" binding:"required"`
+	Files   []multipart.FileHeader `form:"files[]" binding:"gte=1"`
 }
 
 func AdaptEntityAnnotation(model models.EntityAnnotation) (EntityAnnotationDto, error) {
@@ -60,7 +61,7 @@ type returnEntityAnnotationTag struct {
 type returnEntityAnnotationFile struct {
 	Caption string `json:"caption"`
 	Files   []struct {
-		Key      string `json:"key"`
+		Id       string `json:"id"`
 		Filename string `json:"filename"`
 	} `json:"files"`
 }
@@ -92,16 +93,12 @@ func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err e
 	return
 }
 
+// DecodeEntityAnnotationPayload makes sure the provided payload object matche what we expect.
+// The "file" type is not present here on purpose because they are not created through JSON.
 func DecodeEntityAnnotationPayload(kind models.EntityAnnotationType, payload json.RawMessage) (out models.EntityAnnotationPayload, err error) {
 	switch kind {
 	case models.EntityAnnotationComment:
 		var o models.EntityAnnotationCommentPayload
-
-		err = json.Unmarshal(payload, &o)
-		out = o
-
-	case models.EntityAnnotationFile:
-		var o models.EntityAnnotationFilePayload
 
 		err = json.Unmarshal(payload, &o)
 		out = o
@@ -112,8 +109,12 @@ func DecodeEntityAnnotationPayload(kind models.EntityAnnotationType, payload jso
 		err = json.Unmarshal(payload, &o)
 		out = o
 
-	default:
+	default: // Unknown types or "file"
 		return nil, fmt.Errorf("invalid annotation type")
+	}
+
+	if err := binding.Validator.ValidateStruct(out); err != nil {
+		return nil, err
 	}
 
 	return

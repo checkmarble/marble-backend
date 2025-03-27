@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -11,7 +10,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 )
 
 func handleListEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
@@ -101,11 +99,6 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 				"cannot use generic annotation endpoint to add file annotation"))
 			return
 		}
-		if err := binding.Validator.ValidateStruct(req.Payload); err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError,
-				fmt.Sprintf("invalid payload for annotation type: %v", err)))
-			return
-		}
 
 		annotation, err := annotationsUsecase.Attach(ctx, req)
 		if err != nil {
@@ -155,12 +148,6 @@ func handleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 				Caption: payload.Caption,
 			},
 			AnnotatedBy: &creds.ActorIdentity.UserId,
-		}
-
-		if err := binding.Validator.ValidateStruct(req.Payload); err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError,
-				fmt.Sprintf("invalid payload for annotation type: %v", err)))
-			return
 		}
 
 		annotation, err := annotationsUsecase.AttachFile(ctx, req, payload.Files)
