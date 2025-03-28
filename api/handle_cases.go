@@ -474,6 +474,32 @@ func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleGetCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, found := utils.CredentialsFromCtx(ctx)
+		if !found {
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			return
+		}
+
+		caseId := c.Param("case_id")
+
+		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
+		objects, err := uc.GetPivots(ctx, creds.OrganizationId, caseId)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		mapObject := func(o models.DataModelObject) dto.DataModelObject {
+			return dto.DataModelObject{Data: o.Data, Metadata: o.Metadata}
+		}
+
+		c.JSON(http.StatusOK, pure_utils.MapValues(objects, mapObject))
+	}
+}
+
 func handleGetRelatedCases(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
