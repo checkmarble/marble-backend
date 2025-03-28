@@ -13,8 +13,10 @@ type CustomListRepository struct {
 	mock.Mock
 }
 
-func (cl *CustomListRepository) AllCustomLists(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.CustomList, error) {
-	args := cl.Called(exec, organizationId)
+func (cl *CustomListRepository) AllCustomLists(ctx context.Context, exec repositories.Executor,
+	organizationId string, forUpdate ...bool,
+) ([]models.CustomList, error) {
+	args := cl.Called(exec, organizationId, forUpdate)
 	return args.Get(0).([]models.CustomList), args.Error(1)
 }
 

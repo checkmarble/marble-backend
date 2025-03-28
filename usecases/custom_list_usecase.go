@@ -27,7 +27,7 @@ type CustomListUseCase struct {
 
 func (usecase *CustomListUseCase) GetCustomLists(ctx context.Context, organizationId string) ([]models.CustomList, error) {
 	customLists, err := usecase.CustomListRepository.AllCustomLists(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId)
+		usecase.executorFactory.NewExecutor(), organizationId, true)
 	if err != nil {
 		return []models.CustomList{}, err
 	}

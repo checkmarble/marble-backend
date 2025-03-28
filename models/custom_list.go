@@ -10,6 +10,7 @@ type CustomList struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time
+	ValuesCount    *int `json:"values_count,omitempty"`
 }
 
 type CustomListValue struct {

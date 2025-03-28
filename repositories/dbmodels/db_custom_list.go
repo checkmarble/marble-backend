@@ -15,6 +15,7 @@ type DBCustomListResult struct {
 	CreatedAt   time.Time  `db:"created_at"`
 	UpdatedAt   time.Time  `db:"updated_at"`
 	DeletedAt   *time.Time `db:"deleted_at"`
+	ValuesCount *int       `db:"values_count"`
 }
 
 const TABLE_CUSTOM_LIST = "custom_lists"
@@ -30,5 +31,6 @@ func AdaptCustomList(db DBCustomListResult) (models.CustomList, error) {
 		CreatedAt:      db.CreatedAt,
 		UpdatedAt:      db.UpdatedAt,
 		DeletedAt:      db.DeletedAt,
+		ValuesCount:    db.ValuesCount,
 	}, nil
 }

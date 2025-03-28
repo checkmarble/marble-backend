@@ -13,6 +13,7 @@ type CustomList struct {
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	ValuesCount *int      `json:"values_count"`
 }
 
 func AdaptCustomListDto(list models.CustomList) CustomList {
@@ -22,6 +23,7 @@ func AdaptCustomListDto(list models.CustomList) CustomList {
 		Description: list.Description,
 		CreatedAt:   list.CreatedAt,
 		UpdatedAt:   list.UpdatedAt,
+		ValuesCount: list.ValuesCount,
 	}
 }
 

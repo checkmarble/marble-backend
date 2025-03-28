@@ -10,7 +10,8 @@ import (
 )
 
 type CustomListRepository interface {
-	AllCustomLists(ctx context.Context, exec Executor, organizationId string) ([]models.CustomList, error)
+	AllCustomLists(ctx context.Context, exec Executor, organizationId string,
+		includeValueCount ...bool) ([]models.CustomList, error)
 	GetCustomListById(ctx context.Context, exec Executor, id string) (models.CustomList, error)
 	GetCustomListValues(
 		ctx context.Context,
@@ -53,19 +54,33 @@ type CustomListRepository interface {
 
 type CustomListRepositoryPostgresql struct{}
 
-func (repo *CustomListRepositoryPostgresql) AllCustomLists(ctx context.Context, exec Executor, organizationId string) ([]models.CustomList, error) {
+func (repo *CustomListRepositoryPostgresql) AllCustomLists(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+	includeValueCount ...bool,
+) ([]models.CustomList, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("*").
+		From(dbmodels.TABLE_CUSTOM_LIST+" AS cl").
+		Where("cl.organization_id = ? AND cl.deleted_at IS NULL", organizationId).
+		OrderBy("cl.name")
+
+	if len(includeValueCount) > 0 && includeValueCount[0] {
+		query = query.Columns(
+			"(SELECT COUNT(*) FROM " + dbmodels.TABLE_CUSTOM_LIST_VALUE +
+				" v WHERE v.custom_list_id = cl.id AND v.deleted_at IS NULL) AS values_count",
+		)
 	}
 
 	return SqlToListOfModels(
 		ctx,
 		exec,
-		NewQueryBuilder().
-			Select(dbmodels.ColumnsSelectCustomList...).
-			From(dbmodels.TABLE_CUSTOM_LIST).
-			Where("organization_id = ? AND deleted_at IS NULL", organizationId).
-			OrderBy("name"),
+		query,
 		dbmodels.AdaptCustomList,
 	)
 }
