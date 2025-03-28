@@ -187,6 +187,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/cases/:case_id/files", tom, limits.RequestSizeLimiter(maxCaseFileSize), handlePostCaseFile(uc))
 	router.GET("/cases/files/:case_file_id/download_link", tom, handleDownloadCaseFile(uc))
 	router.POST("/cases/review_decision", tom, handleReviewCaseDecisions(uc))
+
+	router.GET("/cases/:case_id/pivots", tom, handleGetCasePivotObjects(uc))
 	router.GET("/cases/decisions/:decision_id/related", tom, handleGetRelatedCases(uc))
 
 	router.GET("/inboxes/:inbox_id", tom, handleGetInboxById(uc))

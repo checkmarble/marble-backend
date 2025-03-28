@@ -79,17 +79,19 @@ type webhookEventsUsecase interface {
 }
 
 type CaseUseCase struct {
-	enforceSecurity         security.EnforceSecurityCase
-	repository              CaseUseCaseRepository
-	decisionRepository      repositories.DecisionRepository
-	inboxReader             inboxes.InboxReader
-	blobRepository          repositories.BlobRepository
-	userRepository          CaseUsecaseUserRepository
-	caseManagerBucketUrl    string
-	transactionFactory      executor_factory.TransactionFactory
-	executorFactory         executor_factory.ExecutorFactory
-	webhookEventsUsecase    webhookEventsUsecase
-	sanctionCheckRepository CaseUsecaseSanctionCheckRepository
+	enforceSecurity            security.EnforceSecurityCase
+	repository                 CaseUseCaseRepository
+	decisionRepository         repositories.DecisionRepository
+	inboxReader                inboxes.InboxReader
+	blobRepository             repositories.BlobRepository
+	userRepository             CaseUsecaseUserRepository
+	dataModelRepository        repositories.DataModelRepository
+	ingestedDataReadRepository repositories.IngestedDataReadRepository
+	caseManagerBucketUrl       string
+	transactionFactory         executor_factory.TransactionFactory
+	executorFactory            executor_factory.ExecutorFactory
+	webhookEventsUsecase       webhookEventsUsecase
+	sanctionCheckRepository    CaseUsecaseSanctionCheckRepository
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -1241,6 +1243,66 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
 
 	return c, nil
+}
+
+func (uc *CaseUseCase) GetPivots(ctx context.Context, orgId, caseId string) (map[string]models.DataModelObject, error) {
+	exec := uc.executorFactory.NewExecutor()
+	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
+	if err != nil {
+		return nil, err
+	}
+
+	availableInboxIds, err := uc.getAvailableInboxIds(ctx, exec, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		return nil, err
+	}
+
+	decisions, err := uc.decisionRepository.DecisionsByCaseId(ctx, exec, orgId, caseId)
+	if err != nil {
+		return nil, err
+	}
+
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, orgId, false)
+	if err != nil {
+		return nil, err
+	}
+
+	objects := make(map[string]models.DataModelObject)
+
+	for _, d := range decisions {
+		if d.PivotId == nil || d.PivotValue == nil {
+			continue
+		}
+
+		pivotMeta, err := uc.dataModelRepository.GetPivot(ctx, exec, *d.PivotId)
+		if err != nil {
+			return nil, err
+		}
+
+		pivot := models.AdaptPivot(pivotMeta, dataModel)
+		table := dataModel.Tables[pivot.PivotTable]
+
+		pivotObjects, err := uc.ingestedDataReadRepository.QueryIngestedObject(ctx, clientDbExec, table, *d.PivotValue)
+		if err != nil {
+			return nil, err
+		}
+		if len(pivotObjects) == 0 {
+			continue
+		}
+
+		objects[d.DecisionId] = pivotObjects[0]
+	}
+
+	return objects, nil
 }
 
 func (uc *CaseUseCase) GetRelatedCases(ctx context.Context, orgId, decisionId string) ([]models.Case, error) {
