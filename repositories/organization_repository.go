@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -25,6 +26,7 @@ type OrganizationRepository interface {
 		exec Executor,
 		updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
 	) error
+	HasOrganizations(ctx context.Context, exec Executor) (bool, error)
 }
 
 type OrganizationRepositoryPostgresql struct{}
@@ -200,4 +202,19 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganizationFeatureAccess(
 
 	err := ExecBuilder(ctx, exec, query)
 	return err
+}
+
+func (repo *OrganizationRepositoryPostgresql) HasOrganizations(ctx context.Context, exec Executor) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	var exists bool
+	err := exec.QueryRow(ctx, fmt.Sprintf("SELECT EXISTS (SELECT 1 FROM %s LIMIT 1)",
+		dbmodels.TABLE_ORGANIZATION)).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }
