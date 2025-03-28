@@ -55,6 +55,9 @@ type CaseUseCaseRepository interface {
 
 	AssignCase(ctx context.Context, exec repositories.Executor, id string, userId *models.UserId) error
 	UnassignCase(ctx context.Context, exec repositories.Executor, id string) error
+
+	GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor,
+		orgId, pivotId, pivotValue string) ([]models.Case, error)
 }
 
 type CaseUsecaseSanctionCheckRepository interface {
@@ -1238,6 +1241,48 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
 
 	return c, nil
+}
+
+func (uc *CaseUseCase) GetRelatedCases(ctx context.Context, orgId, decisionId string) ([]models.Case, error) {
+	exec := uc.executorFactory.NewExecutor()
+
+	availableInboxIds, err := uc.getAvailableInboxIds(ctx, exec, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	decision, err := uc.decisionRepository.DecisionsById(ctx, exec, []string{decisionId})
+	if err != nil {
+		return nil, err
+	}
+	if len(decision) == 0 {
+		return nil, errors.Wrap(models.NotFoundError, "requested decision does not exist")
+	}
+	if decision[0].Case == nil {
+		return nil, errors.Wrap(models.NotFoundError, "requested decision is not in a case")
+	}
+	if decision[0].PivotId == nil || decision[0].PivotValue == nil {
+		return nil, errors.Wrap(models.NotFoundError, "decision does not have a pivot value")
+	}
+
+	if err := uc.enforceSecurity.ReadOrUpdateCase(*decision[0].Case, availableInboxIds); err != nil {
+		return nil, err
+	}
+
+	cases, err := uc.repository.GetCasesWithPivotValue(ctx, exec, orgId, *decision[0].PivotId, *decision[0].PivotValue)
+	if err != nil {
+		return nil, err
+	}
+
+	allowedCases := make([]models.Case, 0, len(cases))
+
+	for _, c := range cases {
+		if err := uc.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err == nil {
+			allowedCases = append(allowedCases, c)
+		}
+	}
+
+	return allowedCases, nil
 }
 
 func validateDecisionReview(decision models.Decision) error {
