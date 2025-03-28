@@ -413,6 +413,27 @@ func (repo *MarbleDbRepository) GetCasesFileByCaseId(ctx context.Context, exec E
 	)
 }
 
+func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec Executor, orgId, pivotId, pivotValue string) ([]models.Case, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(columnsNames("c", dbmodels.SelectCaseColumn)...).
+		Distinct().
+		From(dbmodels.TABLE_DECISIONS + " d").
+		InnerJoin("cases c on c.id = d.case_id").
+		Where(squirrel.Eq{
+			"d.org_id":      orgId,
+			"d.pivot_id":    pivotId,
+			"d.pivot_value": pivotValue,
+		}).
+		OrderBy("c.created_at DESC").
+		Limit(5)
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptCase)
+}
+
 func orderConditionForCases(p models.PaginationAndSorting) string {
 	return fmt.Sprintf("c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)
 }
