@@ -13,19 +13,19 @@ func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usec
 		r := r.Group("/", authMiddleware)
 
 		r.POST("/decisions/:decisionId/snooze", HandleSnoozeRule(uc))
-		r.GET("/decisions/:decisionId/sanction-checks", HandleListSanctionChecks(uc))
+		r.GET("/decisions/:decisionId/screenings", HandleListSanctionChecks(uc))
 
-		r.POST("/sanction-checks/:sanctionCheckId/refine", HandleRefineSanctionCheck(uc, true))
-		r.POST("/sanction-checks/:sanctionCheckId/search", HandleRefineSanctionCheck(uc, false))
-		r.POST("/sanction-checks/search", HandleSanctionFreeformSearch(uc))
+		r.POST("/screening/:screeningId/refine", HandleRefineSanctionCheck(uc, true))
+		r.POST("/screening/:screeningId/search", HandleRefineSanctionCheck(uc, false))
+		r.POST("/screening/search", HandleSanctionFreeformSearch(uc))
 
-		r.GET("/sanction-checks/entities/:entityId", HandleGetSanctionCheckEntity(uc))
-		r.POST("/sanction-checks/matches/:matchId",
+		r.GET("/screening/entities/:entityId", HandleGetSanctionCheckEntity(uc))
+		r.POST("/screening/matches/:matchId",
 			HandleUpdateSanctionCheckMatchStatus(uc))
 
-		r.POST("/sanction-checks/whitelists/search", HandleSearchWhitelist(uc))
-		r.POST("/sanction-checks/whitelists", HandleAddWhitelist(uc))
-		r.DELETE("/sanction-checks/whitelists", HandleDeleteWhitelist(uc))
+		r.POST("/screening/whitelists/search", HandleSearchWhitelist(uc))
+		r.POST("/screening/whitelists", HandleAddWhitelist(uc))
+		r.DELETE("/screening/whitelists", HandleDeleteWhitelist(uc))
 	}
 }
 

@@ -19,8 +19,11 @@ func handleSanctionCheckDatasetFreshness(uc usecases.Usecases) func(c *gin.Conte
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
 
 		dataset, err := uc.CheckDatasetFreshness(ctx)
+		if err != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx,
+				"could not check OpenSanctions dataset freshness", "error", err.Error())
 
-		if presentError(ctx, c, err) {
+			c.JSON(http.StatusOK, dto.CreateOpenSanctionsFreshnessFallback())
 			return
 		}
 

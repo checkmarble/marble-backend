@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type APICase struct {
@@ -19,6 +20,7 @@ type APICase struct {
 	Tags           []APICaseTag         `json:"tags"`
 	Files          []APICaseFile        `json:"files"`
 	SnoozedUntil   *time.Time           `json:"snoozed_until,omitempty"`
+	AssignedTo     *string              `json:"assigned_to,omitempty"`
 }
 
 type APICaseWithDecisions struct {
@@ -42,6 +44,9 @@ func AdaptCaseDto(c models.Case) APICase {
 
 	if c.SnoozedUntil != nil && c.SnoozedUntil.After(time.Now()) {
 		dto.SnoozedUntil = c.SnoozedUntil
+	}
+	if c.AssignedTo != nil {
+		dto.AssignedTo = utils.Ptr(string(*c.AssignedTo))
 	}
 
 	return dto
