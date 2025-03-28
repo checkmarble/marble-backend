@@ -11,6 +11,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -470,5 +471,27 @@ func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(case_)})
+	}
+}
+
+func handleGetRelatedCases(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, found := utils.CredentialsFromCtx(ctx)
+		if !found {
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			return
+		}
+
+		decisionId := c.Param("decision_id")
+
+		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
+		cases, err := uc.GetRelatedCases(ctx, creds.OrganizationId, decisionId)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(cases, dto.AdaptCaseDto))
 	}
 }
