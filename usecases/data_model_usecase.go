@@ -14,8 +14,20 @@ import (
 	"github.com/pkg/errors"
 )
 
+type dataModelUsecaseIndexEditor interface {
+	ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error)
+	ListAllIndexes(
+		ctx context.Context,
+		organizationId string,
+		indexTypes ...models.IndexType,
+	) ([]models.ConcreteIndex, error)
+	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, organizationId string, index models.UnicityIndex) error
+	CreateUniqueIndexAsync(ctx context.Context, organizationId string, index models.UnicityIndex) error
+	DeleteUniqueIndex(ctx context.Context, organizationId string, index models.UnicityIndex) error
+}
+
 type DataModelUseCase struct {
-	clientDbIndexEditor          clientDbIndexEditor
+	clientDbIndexEditor          dataModelUsecaseIndexEditor
 	dataModelRepository          repositories.DataModelRepository
 	enforceSecurity              security.EnforceSecurityOrganization
 	executorFactory              executor_factory.ExecutorFactory
@@ -33,23 +45,24 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return models.DataModel{}, err
 	}
+	exec := usecase.executorFactory.NewExecutor()
 
-	dataModel, err := usecase.dataModelRepository.GetDataModel(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		organizationID,
-		true,
-	)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, true)
 	if err != nil {
 		return models.DataModel{}, err
 	}
 
-	pivots, err := usecase.ListPivots(ctx, organizationID, nil)
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationID, nil)
 	if err != nil {
 		return models.DataModel{}, err
 	}
 
-	indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID)
+	pivots := make([]models.Pivot, 0, len(pivotsMeta))
+	for _, pivot := range pivotsMeta {
+		pivots = append(pivots, models.AdaptPivot(pivot, dataModel))
+	}
+
+	indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID, models.IndexTypeNavigation)
 	if err != nil {
 		return models.DataModel{}, err
 	}
