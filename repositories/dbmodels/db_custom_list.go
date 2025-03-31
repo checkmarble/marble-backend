@@ -1,6 +1,7 @@
 package dbmodels
 
 import (
+	"math"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -34,7 +35,7 @@ func AdaptCustomList(db DBCustomListResult) (models.CustomList, error) {
 	}
 
 	customList.ValuesCount = &models.ValuesInfo{
-		Count:   db.NumberItems,
+		Count:   int(math.Min(float64(db.NumberItems), float64(models.VALUES_COUNT_LIMIT))),
 		HasMore: db.NumberItems > models.VALUES_COUNT_LIMIT,
 	}
 
