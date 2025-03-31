@@ -5,6 +5,8 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/Masterminds/squirrel"
 )
@@ -53,21 +55,45 @@ type CustomListRepository interface {
 
 type CustomListRepositoryPostgresql struct{}
 
-func (repo *CustomListRepositoryPostgresql) AllCustomLists(ctx context.Context, exec Executor, organizationId string) ([]models.CustomList, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
+func (repo *CustomListRepositoryPostgresql) AllCustomLists(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+) ([]models.CustomList, error) {
+	query := `
+			SELECT
+				cl.*,
+				(
+					SELECT count(*)
+					FROM (
+						SELECT *
+						FROM custom_list_values AS clv
+						WHERE clv.custom_list_id=cl.id
+						AND clv.deleted_at IS NULL
+						LIMIT $2
+						) as sub
+					) as nb_items
+			FROM custom_lists AS cl
+			WHERE cl.organization_id = $1
+				AND cl.deleted_at IS NULL
+			ORDER BY cl.name
+	`
+	rows, err := exec.Query(ctx, query, organizationId, models.VALUES_COUNT_LIMIT+1)
+	if err != nil {
 		return nil, err
 	}
-
-	return SqlToListOfModels(
-		ctx,
-		exec,
-		NewQueryBuilder().
-			Select(dbmodels.ColumnsSelectCustomList...).
-			From(dbmodels.TABLE_CUSTOM_LIST).
-			Where("organization_id = ? AND deleted_at IS NULL", organizationId).
-			OrderBy("name"),
-		dbmodels.AdaptCustomList,
-	)
+	defer rows.Close()
+	customsList, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.CustomList, error) {
+		customList, err := adaptModelUsingRowToStruct(row, dbmodels.AdaptCustomList)
+		if err != nil {
+			return models.CustomList{}, err
+		}
+		return customList, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return customsList, nil
 }
 
 func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Context, exec Executor, id string) (models.CustomList, error) {
@@ -75,15 +101,42 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Contex
 		return models.CustomList{}, err
 	}
 
-	return SqlToModel(
-		ctx,
-		exec,
-		NewQueryBuilder().
-			Select(dbmodels.ColumnsSelectCustomList...).
-			From(dbmodels.TABLE_CUSTOM_LIST).
-			Where("id = ? AND deleted_at IS NULL", id),
-		dbmodels.AdaptCustomList,
-	)
+	query := `
+			SELECT
+				cl.*,
+				(
+					SELECT count(*)
+					FROM (
+						SELECT *
+						FROM custom_list_values AS clv
+						WHERE clv.custom_list_id=cl.id
+						AND clv.deleted_at IS NULL
+						LIMIT $2
+						) as sub
+					) as nb_items
+			FROM custom_lists AS cl
+			WHERE cl.id = $1
+			AND cl.deleted_at IS NULL
+	`
+	rows, err := exec.Query(ctx, query, id, models.VALUES_COUNT_LIMIT+1)
+	if err != nil {
+		return models.CustomList{}, err
+	}
+	defer rows.Close()
+	customsList, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.CustomList, error) {
+		customList, err := adaptModelUsingRowToStruct(row, dbmodels.AdaptCustomList)
+		if err != nil {
+			return models.CustomList{}, err
+		}
+		return customList, nil
+	})
+	if err != nil {
+		return models.CustomList{}, err
+	}
+	if len(customsList) == 0 {
+		return models.CustomList{}, errors.Wrap(models.NotFoundError, "custom list not found")
+	}
+	return customsList[0], nil
 }
 
 func (repo *CustomListRepositoryPostgresql) GetCustomListValues(
