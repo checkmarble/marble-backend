@@ -264,13 +264,19 @@ type DataModelObject struct {
 // ///////////////////////////////
 
 type NavigationOption struct {
-	ParentFieldName   string
-	ParentFieldId     string
-	ChildTableName    string
-	ChildTableId      string
-	ChildFieldName    string
-	ChildFieldId      string
+	// A navigation options starts from a table and field value
+	SourceTableName string
+	SourceTableId   string
+	SourceFieldName string
+	SourceFieldId   string
+
+	// And goes to another table (may be the same), filtering on a field and ordering on another field
+	TargetTableName   string
+	TargetTableId     string
+	FilterFieldName   string
+	FilterFieldId     string
 	OrderingFieldName string
 	OrderingFieldId   string
-	Status            IndexStatus
+
+	Status IndexStatus
 }

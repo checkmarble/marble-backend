@@ -30,12 +30,14 @@ type Field struct {
 }
 
 type NavigationOption struct {
-	ParentFieldName   string `json:"parent_field_name"`
-	ParentFieldId     string `json:"parent_field_id"`
-	ChildTableName    string `json:"child_table_name"`
-	ChildTableId      string `json:"child_table_id"`
-	ChildFieldName    string `json:"child_field_name"`
-	ChildFieldId      string `json:"child_field_id"`
+	SourceTableName   string `json:"source_table_name"`
+	SourceTableId     string `json:"source_table_id"`
+	SourceFieldName   string `json:"source_field_name"`
+	SourceFieldId     string `json:"source_field_id"`
+	TargetTableName   string `json:"target_table_name"`
+	TargetTableId     string `json:"target_table_id"`
+	FilterFieldName   string `json:"filter_field_name"`
+	FilterFieldId     string `json:"filter_field_id"`
 	OrderingFieldName string `json:"ordering_field_name"`
 	OrderingFieldId   string `json:"ordering_field_id"`
 	Status            string `json:"status"`
@@ -95,12 +97,14 @@ func adaptDataModelLink(linkToSingle models.LinkToSingle) LinkToSingle {
 
 func adaptDataModelNavigationOption(navigationOption models.NavigationOption) NavigationOption {
 	return NavigationOption{
-		ParentFieldName:   navigationOption.ParentFieldName,
-		ParentFieldId:     navigationOption.ParentFieldId,
-		ChildTableName:    navigationOption.ChildTableName,
-		ChildTableId:      navigationOption.ChildTableId,
-		ChildFieldName:    navigationOption.ChildFieldName,
-		ChildFieldId:      navigationOption.ChildFieldId,
+		SourceTableName:   navigationOption.SourceTableName,
+		SourceTableId:     navigationOption.SourceTableId,
+		SourceFieldName:   navigationOption.SourceFieldName,
+		SourceFieldId:     navigationOption.SourceFieldId,
+		TargetTableName:   navigationOption.TargetTableName,
+		TargetTableId:     navigationOption.TargetTableId,
+		FilterFieldName:   navigationOption.FilterFieldName,
+		FilterFieldId:     navigationOption.FilterFieldId,
 		OrderingFieldName: navigationOption.OrderingFieldName,
 		OrderingFieldId:   navigationOption.OrderingFieldId,
 		Status:            navigationOption.Status.String(),
