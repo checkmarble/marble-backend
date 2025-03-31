@@ -13,7 +13,16 @@ import (
 )
 
 type IngestedDataIndexesRepository interface {
-	ListAllValidIndexes(ctx context.Context, exec repositories.Executor) ([]models.ConcreteIndex, error)
+	ListAllValidIndexes(
+		ctx context.Context,
+		exec repositories.Executor,
+		indexTypes ...models.IndexType,
+	) ([]models.ConcreteIndex, error)
+	ListAllIndexes(
+		ctx context.Context,
+		exec repositories.Executor,
+		indexTypes ...models.IndexType,
+	) ([]models.ConcreteIndex, error)
 	ListAllUniqueIndexes(ctx context.Context, exec repositories.Executor) ([]models.UnicityIndex, error)
 	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) error
 	CreateIndexesWithCallback(
@@ -79,7 +88,7 @@ func (editor ClientDbIndexEditor) GetIndexesToCreate(
 			"Error while creating client schema executor in CreateDatamodelIndexesForScenarioPublication")
 	}
 
-	existingIndexes, err := editor.ingestedDataIndexesRepository.ListAllValidIndexes(ctx, db)
+	existingIndexes, err := editor.ingestedDataIndexesRepository.ListAllValidIndexes(ctx, db, models.IndexTypeAggregation)
 	if err != nil {
 		return toCreate, numPending, errors.Wrap(err,
 			"Error while fetching existing indexes in CreateDatamodelIndexesForScenarioPublication")
@@ -175,7 +184,11 @@ func (editor ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context, orga
 	return editor.ingestedDataIndexesRepository.ListAllUniqueIndexes(ctx, db)
 }
 
-func (editor ClientDbIndexEditor) ListAllIndexes(ctx context.Context, organizationId string) ([]models.ConcreteIndex, error) {
+func (editor ClientDbIndexEditor) ListAllIndexes(
+	ctx context.Context,
+	organizationId string,
+	indexTypes ...models.IndexType,
+) ([]models.ConcreteIndex, error) {
 	if err := editor.enforceSecurityDataModel.ReadDataModel(); err != nil {
 		return nil, err
 	}
@@ -186,7 +199,7 @@ func (editor ClientDbIndexEditor) ListAllIndexes(ctx context.Context, organizati
 			err,
 			"Error while creating client schema executor in ListAllIndexes")
 	}
-	return editor.ingestedDataIndexesRepository.ListAllValidIndexes(ctx, db)
+	return editor.ingestedDataIndexesRepository.ListAllIndexes(ctx, db)
 }
 
 func (editor ClientDbIndexEditor) CreateUniqueIndexAsync(

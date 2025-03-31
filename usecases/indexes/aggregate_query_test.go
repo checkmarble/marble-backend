@@ -485,6 +485,7 @@ func Test_indexesToCreateFromScenarioIterations(t *testing.T) {
 			TableName: "table",
 			Indexed:   []string{"field"},
 			Included:  []string{"field 0"},
+			Type:      models.IndexTypeAggregation,
 		}, out[0])
 	})
 
