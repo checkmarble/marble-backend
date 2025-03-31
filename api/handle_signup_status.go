@@ -15,17 +15,18 @@ func handleSignupStatus(uc usecases.Usecases) func(c *gin.Context) {
 			uc.Repositories.UserRepository,
 		)
 
-		hasAnOrganization, err := signupUc.HasAnOrganization(ctx)
+		migrationsRunForOrgs, hasAnOrganization, err := signupUc.HasAnOrganization(ctx)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		hasAUser, err := signupUc.HasAUser(ctx)
+		migrationsRunForUsers, hasAUser, err := signupUc.HasAUser(ctx)
 		if presentError(ctx, c, err) {
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
+			"migrations_run":      migrationsRunForOrgs && migrationsRunForUsers,
 			"has_an_organization": hasAnOrganization,
 			"has_a_user":          hasAUser,
 		})
