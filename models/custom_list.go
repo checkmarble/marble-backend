@@ -2,6 +2,13 @@ package models
 
 import "time"
 
+const VALUES_COUNT_LIMIT = 100 // Maximum count number of values to be returned when showing customs list information
+
+type ValuesInfo struct {
+	Count   int
+	HasMore bool
+}
+
 type CustomList struct {
 	Id             string
 	OrganizationId string
@@ -10,7 +17,7 @@ type CustomList struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time
-	ValuesCount    *int `json:"values_count,omitempty"`
+	ValuesCount    *ValuesInfo
 }
 
 type CustomListValue struct {

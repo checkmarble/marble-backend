@@ -7,13 +7,18 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
+type ValuesInfo struct {
+	Count   int  `json:"count"`
+	HasMore bool `json:"has_more"`
+}
+
 type CustomList struct {
-	Id          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	ValuesCount *int      `json:"values_count"`
+	Id          string     `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	ValuesCount ValuesInfo `json:"values_count"`
 }
 
 func AdaptCustomListDto(list models.CustomList) CustomList {
@@ -23,7 +28,10 @@ func AdaptCustomListDto(list models.CustomList) CustomList {
 		Description: list.Description,
 		CreatedAt:   list.CreatedAt,
 		UpdatedAt:   list.UpdatedAt,
-		ValuesCount: list.ValuesCount,
+		ValuesCount: ValuesInfo{
+			Count:   list.ValuesCount.Count,
+			HasMore: list.ValuesCount.HasMore,
+		},
 	}
 }
 

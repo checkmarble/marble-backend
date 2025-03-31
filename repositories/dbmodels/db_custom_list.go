@@ -15,7 +15,7 @@ type DBCustomListResult struct {
 	CreatedAt   time.Time  `db:"created_at"`
 	UpdatedAt   time.Time  `db:"updated_at"`
 	DeletedAt   *time.Time `db:"deleted_at"`
-	ValuesCount *int       `db:"values_count"`
+	NumberItems int        `db:"nb_items"`
 }
 
 const TABLE_CUSTOM_LIST = "custom_lists"
@@ -23,7 +23,7 @@ const TABLE_CUSTOM_LIST = "custom_lists"
 var ColumnsSelectCustomList = utils.ColumnList[DBCustomListResult]()
 
 func AdaptCustomList(db DBCustomListResult) (models.CustomList, error) {
-	return models.CustomList{
+	customList := models.CustomList{
 		Id:             db.Id,
 		OrganizationId: db.OrgId,
 		Name:           db.Name,
@@ -31,6 +31,12 @@ func AdaptCustomList(db DBCustomListResult) (models.CustomList, error) {
 		CreatedAt:      db.CreatedAt,
 		UpdatedAt:      db.UpdatedAt,
 		DeletedAt:      db.DeletedAt,
-		ValuesCount:    db.ValuesCount,
-	}, nil
+	}
+
+	customList.ValuesCount = &models.ValuesInfo{
+		Count:   db.NumberItems,
+		HasMore: db.NumberItems > models.VALUES_COUNT_LIMIT,
+	}
+
+	return customList, nil
 }
