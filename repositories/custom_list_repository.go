@@ -69,6 +69,7 @@ func (repo *CustomListRepositoryPostgresql) AllCustomLists(
 						SELECT *
 						FROM custom_list_values AS clv
 						WHERE clv.custom_list_id=cl.id
+						AND clv.deleted_at IS NULL
 						LIMIT $2
 						) as sub
 					) as nb_items
@@ -109,6 +110,7 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Contex
 						SELECT *
 						FROM custom_list_values AS clv
 						WHERE clv.custom_list_id=cl.id
+						AND clv.deleted_at IS NULL
 						LIMIT $2
 						) as sub
 					) as nb_items
