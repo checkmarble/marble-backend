@@ -400,7 +400,7 @@ func (e ScenarioEvaluator) EvalScenario(
 	triggerPassed, se, errSe := e.processScenarioIteration(ctx, params, versionToRun, start, logger, exec)
 	if errSe != nil {
 		return false, models.ScenarioExecution{}, errors.Wrap(errSe,
-			"error processing scenario iteration in EvalTestRunScenario")
+			"error processing scenario iteration in EvalScenario")
 	}
 	return triggerPassed, se, nil
 }
