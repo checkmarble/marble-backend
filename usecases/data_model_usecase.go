@@ -44,11 +44,16 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 		return models.DataModel{}, err
 	}
 
+	pivots, err := usecase.ListPivots(ctx, organizationID, nil)
+	if err != nil {
+		return models.DataModel{}, err
+	}
+
 	indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
 	}
-	addNavigationOptionsToDataModel(&dataModel, indexes)
+	addNavigationOptionsToDataModel(&dataModel, indexes, pivots)
 
 	uniqueIndexes, err := usecase.clientDbIndexEditor.ListAllUniqueIndexes(ctx, organizationID)
 	if err != nil {
@@ -88,8 +93,25 @@ func addUnicityConstraintStatusToDataModel(dataModel models.DataModel, uniqueInd
 	return dm
 }
 
-func addNavigationOptionsToDataModel(dataModel *models.DataModel, indexes []models.ConcreteIndex) {
+func addNavigationOptionsToDataModel(dataModel *models.DataModel, indexes []models.ConcreteIndex, pivots []models.Pivot) {
+	// navigation options are computed from the following heuristic:
+	// - table A has a link to table B (through A.a -> B.b) and there exists an index table A on (a, some_timestamp_field)
+	// - table A has a pivot value defined that is a field of table A itself (e.g. "transactions.account_id"), and there exists an index table A on (a, some_timestamp_field)
+
 	navigationOptions := make(map[string][]models.NavigationOption, len(dataModel.Tables))
+	// for _, pivot := range pivots {
+	// 	if pivot.FieldId == nil {
+	// 		continue
+	// 	}
+	// 	table, ok := dataModel.Tables[pivot.BaseTable]
+	// 	if !ok {
+	// 		continue
+	// 	}
+	// 	field, ok := table.Fields[*pivot.FieldId]
+	// 	if !ok {
+	// 		continue
+	// 	}
+
 	for _, index := range indexes {
 		if index.Type != models.IndexTypeNavigation {
 			continue
@@ -104,6 +126,10 @@ func addNavigationOptionsToDataModel(dataModel *models.DataModel, indexes []mode
 			continue
 		}
 		fieldName := index.Indexed[0]
+		field, ok := childTable.Fields[fieldName]
+		if !ok {
+			continue
+		}
 
 		childOrderingField, ok := childTable.Fields[index.Indexed[1]]
 		if !ok {
@@ -118,13 +144,16 @@ func addNavigationOptionsToDataModel(dataModel *models.DataModel, indexes []mode
 		}
 
 		for _, link := range candidateLinksFromThisField {
+			// the parent table is the source table and the navigation option is the "reverse link", plus order.
 			navOption := models.NavigationOption{
-				ParentFieldName:   link.ParentFieldName,
-				ParentFieldId:     link.ParentFieldId,
-				ChildTableName:    link.ChildTableName,
-				ChildTableId:      link.ChildTableId,
-				ChildFieldName:    link.ChildFieldName,
-				ChildFieldId:      link.ChildFieldId,
+				SourceTableName:   link.ParentTableName,
+				SourceTableId:     link.ParentTableId,
+				SourceFieldName:   link.ParentFieldName,
+				SourceFieldId:     link.ParentFieldId,
+				TargetTableName:   link.ChildTableName,
+				TargetTableId:     link.ChildTableId,
+				FilterFieldName:   link.ChildFieldName,
+				FilterFieldId:     link.ChildFieldId,
 				OrderingFieldName: childOrderingField.Name,
 				OrderingFieldId:   childOrderingField.ID,
 				Status:            index.Status,
@@ -134,6 +163,35 @@ func addNavigationOptionsToDataModel(dataModel *models.DataModel, indexes []mode
 			}
 			navigationOptions[link.ParentTableName] =
 				append(navigationOptions[link.ParentTableName], navOption)
+		}
+
+		for _, pivot := range pivots {
+			if pivot.BaseTable != index.TableName {
+				continue
+			}
+			if pivot.Field != field.Name {
+				continue
+			}
+
+			// the pivot table is the base table and the child and parent fields are the same
+			navOption := models.NavigationOption{
+				SourceTableName:   pivot.BaseTable,
+				SourceTableId:     pivot.BaseTableId,
+				SourceFieldName:   field.Name,
+				SourceFieldId:     field.ID,
+				TargetTableName:   pivot.PivotTable,
+				TargetTableId:     pivot.PivotTableId,
+				FilterFieldName:   field.Name,
+				FilterFieldId:     field.ID,
+				OrderingFieldName: childOrderingField.Name,
+				OrderingFieldId:   childOrderingField.ID,
+				Status:            index.Status,
+			}
+			if _, ok := navigationOptions[pivot.BaseTable]; !ok {
+				navigationOptions[pivot.BaseTable] = []models.NavigationOption{}
+			}
+			navigationOptions[pivot.BaseTable] =
+				append(navigationOptions[pivot.BaseTable], navOption)
 		}
 	}
 
