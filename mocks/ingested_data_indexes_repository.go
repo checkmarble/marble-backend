@@ -16,8 +16,32 @@ type IngestedDataIndexesRepository struct {
 func (m *IngestedDataIndexesRepository) ListAllValidIndexes(
 	ctx context.Context,
 	exec repositories.Executor,
+	indexTypes ...models.IndexType,
 ) ([]models.ConcreteIndex, error) {
-	args := m.Called(ctx, exec)
+	callArgs := []any{ctx, exec}
+	for _, indexType := range indexTypes {
+		callArgs = append(callArgs, indexType)
+	}
+	args := m.Called(callArgs...)
+	if args.Error(1) != nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.ConcreteIndex), args.Error(1)
+}
+
+func (m *IngestedDataIndexesRepository) ListAllIndexes(
+	ctx context.Context,
+	exec repositories.Executor,
+	indexTypes ...models.IndexType,
+) ([]models.ConcreteIndex, error) {
+	callArgs := []any{ctx, exec}
+	for _, indexType := range indexTypes {
+		callArgs = append(callArgs, indexType)
+	}
+	args := m.Called(callArgs...)
+	if args.Error(1) != nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).([]models.ConcreteIndex), args.Error(1)
 }
 

@@ -131,6 +131,7 @@ func (i ConcreteIndex) Covers(f IndexFamily) bool {
 		TableName: strings.ToUpper(i.TableName),
 		Indexed:   pure_utils.Map(i.Indexed, strings.ToUpper),
 		Included:  pure_utils.Map(i.Included, strings.ToUpper),
+		// variable is local to this function, no need to set the other fields
 	}
 
 	if i.TableName != f.TableName {

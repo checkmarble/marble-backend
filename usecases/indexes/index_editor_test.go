@@ -163,7 +163,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_GetIndexesToCreate_nominal_1() {
 	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction,
 		suite.iterationId).Return(suite.scenarioAndIteration, nil)
 	suite.enforceSecurity.On("PublishScenario", suite.scenario).Return(nil)
-	suite.ingestedDataIndexesRepository.On("ListAllValidIndexes", suite.ctx, suite.transaction).
+	suite.ingestedDataIndexesRepository.On("ListAllValidIndexes", suite.ctx, suite.transaction, models.IndexTypeAggregation).
 		Return(suite.existingIndexes, nil)
 	suite.ingestedDataIndexesRepository.On("CountPendingIndexes", suite.ctx, suite.transaction).Return(0, nil)
 
@@ -186,7 +186,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_GetIndexesToCreate_nominal_2() {
 	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction,
 		suite.iterationId).Return(suite.scenarioAndIteration, nil)
 	suite.enforceSecurity.On("PublishScenario", suite.scenario).Return(nil)
-	suite.ingestedDataIndexesRepository.On("ListAllValidIndexes", suite.ctx, suite.transaction).
+	suite.ingestedDataIndexesRepository.On("ListAllValidIndexes", suite.ctx, suite.transaction, models.IndexTypeAggregation).
 		Return(suite.existingIndexes, nil)
 	suite.ingestedDataIndexesRepository.On("CountPendingIndexes", suite.ctx, suite.transaction).Return(1, nil)
 
@@ -209,7 +209,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_GetIndexesToCreate_nominal_3() {
 	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction,
 		suite.iterationId).Return(suite.scenarioAndIterationWithQuery, nil)
 	suite.enforceSecurity.On("PublishScenario", suite.scenario).Return(nil)
-	suite.ingestedDataIndexesRepository.On("ListAllValidIndexes", suite.ctx, suite.transaction).
+	suite.ingestedDataIndexesRepository.On("ListAllValidIndexes", suite.ctx, suite.transaction, models.IndexTypeAggregation).
 		Return(suite.existingIndexes, nil)
 	suite.ingestedDataIndexesRepository.On("CountPendingIndexes", suite.ctx, suite.transaction).Return(1, nil)
 

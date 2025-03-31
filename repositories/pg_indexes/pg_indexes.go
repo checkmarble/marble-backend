@@ -21,7 +21,7 @@ type PGIndex struct {
 }
 
 func parseCreateIndexStatement(sql string) models.ConcreteIndex {
-	// This function EXPECTS the input to be a correctly formatted CREATE INDEX statement
+	// The input to this function MUST be a correctly formatted CREATE INDEX statement
 	// coming straight from the DB. It will not work correctly if it is not one.
 	// However, we do not try to parse it all generality because that is beyond the scope of this function.
 	// Moreover, column names are enforced to be alphanumeric + "_" only at data model edition time, so

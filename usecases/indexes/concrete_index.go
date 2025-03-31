@@ -15,7 +15,7 @@ func selectConcreteIndexesToCreate(
 	toCreateIdx := make([]models.ConcreteIndex, 0, toCreateFamilies.Size())
 	toCreateFamilies.ForEach(func(family models.IndexFamily) bool {
 		indexed := family.Fixed
-		// Here is an arbitraty order
+		// Here is an arbitrary order
 		indexed = append(indexed, family.Flex.Slice()...)
 		if family.Last != "" {
 			indexed = append(indexed, family.Last)
@@ -24,6 +24,8 @@ func selectConcreteIndexesToCreate(
 			TableName: family.TableName,
 			Indexed:   indexed,
 			Included:  family.Included.Slice(),
+			Type:      models.IndexTypeAggregation,
+			Status:    models.IndexStatusUnknown,
 		})
 		return true
 	})

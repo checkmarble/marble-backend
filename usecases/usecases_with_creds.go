@@ -252,7 +252,7 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() *ScenarioPubl
 	)
 }
 
-func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() clientDbIndexEditor {
+func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() indexes.ClientDbIndexEditor {
 	return indexes.NewClientDbIndexEditor(
 		usecases.NewExecutorFactory(),
 		usecases.NewScenarioFetcher(),
