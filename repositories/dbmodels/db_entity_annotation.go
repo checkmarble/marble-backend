@@ -13,6 +13,7 @@ type DBEntityAnnotation struct {
 	OrgId          string          `db:"org_id"`
 	ObjectType     string          `db:"object_type"`
 	ObjectId       string          `db:"object_id"`
+	CaseId         *string         `db:"case_id"`
 	AnnotationType string          `db:"annotation_type"`
 	Payload        json.RawMessage `db:"payload"`
 	AnnotatedBy    *string         `db:"annotated_by"`
@@ -35,6 +36,7 @@ func AdaptEntityAnnotation(db DBEntityAnnotation) (models.EntityAnnotation, erro
 		OrgId:          db.OrgId,
 		ObjectType:     db.ObjectType,
 		ObjectId:       db.ObjectId,
+		CaseId:         db.CaseId,
 		AnnotationType: models.EntityAnnotationFrom(db.AnnotationType),
 		Payload:        db.Payload,
 		AnnotatedBy:    userId,

@@ -102,6 +102,33 @@ func (repo *MarbleDbRepository) GetEntityAnnotationsForObjects(
 	return annotationsByObject, nil
 }
 
+func (repo *MarbleDbRepository) GetEntityAnnotationsForCase(
+	ctx context.Context,
+	exec Executor,
+	req models.CaseEntityAnnotationRequest,
+) ([]models.EntityAnnotation, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	filters := squirrel.Eq{
+		"org_id":     req.OrgId,
+		"case_id":    req.CaseId,
+		"deleted_at": nil,
+	}
+
+	if req.AnnotationType != nil {
+		filters["annotation_type"] = req.AnnotationType.String()
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.EntityAnnotationColumns...).
+		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
+		Where(filters)
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptEntityAnnotation)
+}
+
 func (repo *MarbleDbRepository) CreateEntityAnnotation(
 	ctx context.Context,
 	exec Executor,
@@ -113,11 +140,12 @@ func (repo *MarbleDbRepository) CreateEntityAnnotation(
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_ENTITY_ANNOTATIONS).
-		Columns("org_id", "object_type", "object_id", "annotation_type", "payload", "annotated_by").
+		Columns("org_id", "object_type", "object_id", "case_id", "annotation_type", "payload", "annotated_by").
 		Values(
 			req.OrgId,
 			req.ObjectType,
 			req.ObjectId,
+			req.CaseId,
 			req.AnnotationType,
 			req.Payload,
 			req.AnnotatedBy,

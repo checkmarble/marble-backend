@@ -25,6 +25,8 @@ type EntityAnnotationRepository interface {
 		req models.EntityAnnotationRequest) ([]models.EntityAnnotation, error)
 	GetEntityAnnotationsForObjects(ctx context.Context, exec repositories.Executor,
 		req models.EntityAnnotationRequestForObjects) (map[string][]models.EntityAnnotation, error)
+	GetEntityAnnotationsForCase(ctx context.Context, exec repositories.Executor,
+		req models.CaseEntityAnnotationRequest) ([]models.EntityAnnotation, error)
 	CreateEntityAnnotation(ctx context.Context, exec repositories.Executor,
 		req models.CreateEntityAnnotationRequest) (models.EntityAnnotation, error)
 	DeleteEntityAnnotation(ctx context.Context, exec repositories.Executor,
@@ -70,6 +72,12 @@ func (uc EntityAnnotationUsecase) ListForObjects(ctx context.Context,
 	}
 
 	return uc.repository.GetEntityAnnotationsForObjects(ctx, uc.executorFactory.NewExecutor(), req)
+}
+
+func (uc EntityAnnotationUsecase) ListForCase(ctx context.Context,
+	req models.CaseEntityAnnotationRequest,
+) ([]models.EntityAnnotation, error) {
+	return uc.repository.GetEntityAnnotationsForCase(ctx, uc.executorFactory.NewExecutor(), req)
 }
 
 func (uc EntityAnnotationUsecase) Attach(ctx context.Context,

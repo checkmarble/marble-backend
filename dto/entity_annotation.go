@@ -14,6 +14,7 @@ import (
 
 type EntityAnnotationDto struct {
 	Id          string    `json:"id"`
+	CaseId      *string   `json:"case_id,omitempty"`
 	Type        string    `json:"type"`
 	Payload     any       `json:"payload"`
 	AnnotatedBy *string   `json:"annotated_by,omitempty"`
@@ -26,6 +27,7 @@ type EntityAnnotationForObjectsParams struct {
 }
 
 type PostEntityAnnotationDto struct {
+	CaseId  *string         `json:"case_id"`
 	Type    string          `json:"type"`
 	Payload json.RawMessage `json:"payload"`
 }
@@ -48,6 +50,7 @@ func AdaptEntityAnnotation(model models.EntityAnnotation) (EntityAnnotationDto, 
 
 	return EntityAnnotationDto{
 		Id:          model.Id,
+		CaseId:      model.CaseId,
 		Type:        model.AnnotationType.String(),
 		Payload:     payload,
 		AnnotatedBy: userId,
