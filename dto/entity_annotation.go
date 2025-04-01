@@ -13,9 +13,10 @@ import (
 )
 
 type EntityAnnotationDto struct {
-	Id          string    `json:"id"`
-	CaseId      *string   `json:"case_id,omitempty"`
-	Type        string    `json:"type"`
+	Id     string  `json:"id"`
+	CaseId *string `json:"case_id,omitempty"`
+	Type   string  `json:"type"`
+	// See description of the payload schema in models/entity_annotation_payload.go
 	Payload     any       `json:"payload"`
 	AnnotatedBy *string   `json:"annotated_by,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -27,8 +28,9 @@ type EntityAnnotationForObjectsParams struct {
 }
 
 type PostEntityAnnotationDto struct {
-	CaseId  *string         `json:"case_id"`
-	Type    string          `json:"type"`
+	CaseId *string `json:"case_id"`
+	Type   string  `json:"type"`
+	// See description of the payload schema in models/entity_annotation_payload.go
 	Payload json.RawMessage `json:"payload"`
 }
 
@@ -58,15 +60,15 @@ func AdaptEntityAnnotation(model models.EntityAnnotation) (EntityAnnotationDto, 
 	}, nil
 }
 
-type returnEntityAnnotationComment struct {
+type EntityAnnotationCommentDto struct {
 	Text string `json:"text"`
 }
 
-type returnEntityAnnotationTag struct {
+type EntityAnnotationTagDto struct {
 	Tag string `json:"tag"`
 }
 
-type returnEntityAnnotationFile struct {
+type EntityAnnotationFileDto struct {
 	Caption string `json:"caption"`
 	Files   []struct {
 		Id       string `json:"id"`
@@ -77,19 +79,19 @@ type returnEntityAnnotationFile struct {
 func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err error) {
 	switch model.AnnotationType {
 	case models.EntityAnnotationComment:
-		var o returnEntityAnnotationComment
+		var o EntityAnnotationCommentDto
 
 		err = json.Unmarshal(model.Payload, &o)
 		out = o
 
 	case models.EntityAnnotationTag:
-		var o returnEntityAnnotationTag
+		var o EntityAnnotationTagDto
 
 		err = json.Unmarshal(model.Payload, &o)
 		out = o
 
 	case models.EntityAnnotationFile:
-		var o returnEntityAnnotationFile
+		var o EntityAnnotationFileDto
 
 		err = json.Unmarshal(model.Payload, &o)
 		out = o

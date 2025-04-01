@@ -47,10 +47,11 @@ type EntityAnnotation struct {
 	ObjectId       string
 	CaseId         *string
 	AnnotationType EntityAnnotationType
-	Payload        json.RawMessage
-	AnnotatedBy    *UserId
-	CreatedAt      time.Time
-	DeletedAt      *time.Time
+	// See description of the payload schema in models/entity_annotation_payload.go
+	Payload     json.RawMessage
+	AnnotatedBy *UserId
+	CreatedAt   time.Time
+	DeletedAt   *time.Time
 }
 
 type EntityAnnotationRequest struct {
@@ -79,8 +80,9 @@ type CreateEntityAnnotationRequest struct {
 	ObjectId       string
 	CaseId         *string
 	AnnotationType EntityAnnotationType
-	Payload        EntityAnnotationPayload
-	AnnotatedBy    *UserId
+	// See description of the payload schema in models/entity_annotation_payload.go
+	Payload     EntityAnnotationPayload
+	AnnotatedBy *UserId
 }
 
 type AnnotationByIdRequest struct {
