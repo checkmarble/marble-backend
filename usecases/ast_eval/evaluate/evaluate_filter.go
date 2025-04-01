@@ -29,6 +29,7 @@ var validTypeForFilterOperators = map[ast.FilterOperator][]models.DataType{
 	ast.FILTER_IS_NOT_EMPTY:     {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
 	ast.FILTER_STARTS_WITH:      {models.String},
 	ast.FILTER_ENDS_WITH:        {models.String},
+	ast.FILTER_FUZZY_MATCH:      {models.String},
 }
 
 func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {

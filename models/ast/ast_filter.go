@@ -18,6 +18,7 @@ const (
 	FILTER_STARTS_WITH       FilterOperator = "StringStartsWith"
 	FILTER_ENDS_WITH         FilterOperator = "StringEndsWith"
 	FILTER_UNKNOWN_OPERATION FilterOperator = "FILTER_UNKNOWN_OPERATION"
+	FILTER_FUZZY_MATCH       FilterOperator = "FuzzyMatch"
 )
 
 func (op FilterOperator) IsUnary() bool {
