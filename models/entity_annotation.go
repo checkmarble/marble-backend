@@ -59,6 +59,13 @@ type EntityAnnotationRequest struct {
 	AnnotationType *EntityAnnotationType
 }
 
+type EntityAnnotationRequestForObjects struct {
+	OrgId          string
+	ObjectType     string
+	ObjectIds      []string
+	AnnotationType *EntityAnnotationType
+}
+
 type CreateEntityAnnotationRequest struct {
 	OrgId          string
 	ObjectType     string
