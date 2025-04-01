@@ -99,7 +99,7 @@ func (i *ConcreteIndex) setName() {
 // Includes logic to truncate the index name length to 63 chars max, so that name truncation by Postgres does not
 // interfere with the index name comparison logic.
 func (i *ConcreteIndex) Name() string {
-	if i.name != "" {
+	if i.name == "" {
 		i.setName()
 	}
 	return i.name
@@ -237,24 +237,25 @@ const (
 	IndexTypeAggregation
 )
 
-func (t IndexType) String() string {
-	switch t {
-	case IndexTypeNavigation:
-		return "navigation"
-	case IndexTypeAggregation:
-		return "aggregation"
-	default:
-		return "unknown"
-	}
-}
+// TODO: remove it not used at the end of the PR
+// func (t IndexType) String() string {
+// 	switch t {
+// 	case IndexTypeNavigation:
+// 		return "navigation"
+// 	case IndexTypeAggregation:
+// 		return "aggregation"
+// 	default:
+// 		return "unknown"
+// 	}
+// }
 
-func IndexTypeFromString(s string) IndexType {
-	switch s {
-	case "navigation":
-		return IndexTypeNavigation
-	case "aggregation":
-		return IndexTypeAggregation
-	default:
-		return IndexTypeUnknown
-	}
-}
+// func IndexTypeFromString(s string) IndexType {
+// 	switch s {
+// 	case "navigation":
+// 		return IndexTypeNavigation
+// 	case "aggregation":
+// 		return IndexTypeAggregation
+// 	default:
+// 		return IndexTypeUnknown
+// 	}
+// }

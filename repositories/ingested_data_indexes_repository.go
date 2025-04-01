@@ -60,7 +60,8 @@ func (repo *ClientDbRepository) ListAllIndexes(
 
 	indexes := make([]models.ConcreteIndex, 0, len(pgIndexes))
 	for _, pgIndex := range pgIndexes {
-		if len(indexTypes) > 0 && !slices.Contains(indexTypes, pgIndex.AdaptConcreteIndex().Type) {
+		if len(indexTypes) > 0 && !slices.Contains(indexTypes,
+			pgIndex.AdaptConcreteIndex().Type) {
 			continue
 		}
 		indexes = append(indexes, pgIndex.AdaptConcreteIndex())

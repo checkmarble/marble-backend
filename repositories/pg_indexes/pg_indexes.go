@@ -73,12 +73,15 @@ func (pgIndex PGIndex) AdaptConcreteIndex() models.ConcreteIndex {
 	default:
 	}
 
-	// Does not handle the case of failed index (invalid status) - add the information later if it's not too cumbersome to pass it around
-	if pgIndex.CreationInProgress {
+	switch {
+	case pgIndex.CreationInProgress:
 		idx.Status = models.IndexStatusPending
-	} else {
+	case pgIndex.IsValid:
 		idx.Status = models.IndexStatusValid
+	default:
+		idx.Status = models.IndexStatusInvalid
 	}
+
 	return idx
 }
 
