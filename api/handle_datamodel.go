@@ -197,3 +197,29 @@ func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, openapi)
 	}
 }
+
+func handleCreateNavigationOption(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		sourceTableId := c.Param("tableID")
+
+		var input dto.CreateNavigationOptionInput
+		if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
+		err := usecase.CreateNavigationOption(ctx, models.CreateNavigationOptionInput{
+			SourceTableId:   sourceTableId,
+			SourceFieldId:   input.SourceFieldId,
+			TargetTableId:   input.TargetTableId,
+			FilterFieldId:   input.FilterFieldId,
+			OrderingFieldId: input.OrderingFieldId,
+		})
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}

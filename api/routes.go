@@ -229,6 +229,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/data-model/openapi", tom, handleGetOpenAPI(uc))
 	router.POST("/data-model/pivots", tom, handleCreateDataModelPivot(uc))
 	router.GET("/data-model/pivots", tom, handleListDataModelPivots(uc))
+	router.POST("/data-model/tables/:tableID/navigation_options", tom, handleCreateNavigationOption(uc))
 
 	router.POST("/transfers", tom, handleCreateTransfer(uc))
 	router.GET("/transfers", tom, handleQueryTransfers(uc))
