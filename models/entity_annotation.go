@@ -45,6 +45,7 @@ type EntityAnnotation struct {
 	OrgId          string
 	ObjectType     string
 	ObjectId       string
+	CaseId         *string
 	AnnotationType EntityAnnotationType
 	Payload        json.RawMessage
 	AnnotatedBy    *UserId
@@ -59,6 +60,12 @@ type EntityAnnotationRequest struct {
 	AnnotationType *EntityAnnotationType
 }
 
+type CaseEntityAnnotationRequest struct {
+	OrgId          string
+	CaseId         string
+	AnnotationType *EntityAnnotationType
+}
+
 type EntityAnnotationRequestForObjects struct {
 	OrgId          string
 	ObjectType     string
@@ -70,6 +77,7 @@ type CreateEntityAnnotationRequest struct {
 	OrgId          string
 	ObjectType     string
 	ObjectId       string
+	CaseId         *string
 	AnnotationType EntityAnnotationType
 	Payload        EntityAnnotationPayload
 	AnnotatedBy    *UserId

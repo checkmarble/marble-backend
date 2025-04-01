@@ -99,6 +99,48 @@ func handleListEntityAnnotationsForObjects(uc usecases.Usecases) gin.HandlerFunc
 	}
 }
 
+func handleGetAnnotationByCase(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, _ := utils.CredentialsFromCtx(ctx)
+
+		caseId := c.Param("case_id")
+
+		uc := usecasesWithCreds(ctx, uc)
+		annotationsUsecase := uc.NewEntityAnnotationUsecase()
+
+		req := models.CaseEntityAnnotationRequest{
+			OrgId:  creds.OrganizationId,
+			CaseId: caseId,
+		}
+
+		if t := c.Query("type"); t != "" {
+			annotationType := models.EntityAnnotationFrom(t)
+
+			if annotationType == models.EntityAnnotationUnknown {
+				presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid annotation type"))
+				return
+			}
+
+			req.AnnotationType = &annotationType
+		}
+
+		annotations, err := annotationsUsecase.ListForCase(ctx, req)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		out, err := pure_utils.MapErr(annotations, dto.AdaptEntityAnnotation)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, out)
+	}
+}
+
 func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -128,6 +170,7 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			OrgId:          creds.OrganizationId,
 			ObjectType:     objectType,
 			ObjectId:       objectId,
+			CaseId:         payload.CaseId,
 			AnnotationType: models.EntityAnnotationFrom(payload.Type),
 			Payload:        parsedPayload,
 			AnnotatedBy:    &creds.ActorIdentity.UserId,
