@@ -76,19 +76,19 @@ func TestAdaptEntityAnnotation(t *testing.T) {
 
 		switch tt.kind {
 		case models.EntityAnnotationComment:
-			payload, ok := genericPayload.(returnEntityAnnotationComment)
+			payload, ok := genericPayload.(EntityAnnotationCommentDto)
 
 			assert.True(t, ok)
 			assert.Equal(t, "comment text", payload.Text)
 
 		case models.EntityAnnotationTag:
-			payload, ok := genericPayload.(returnEntityAnnotationTag)
+			payload, ok := genericPayload.(EntityAnnotationTagDto)
 
 			assert.True(t, ok)
 			assert.Equal(t, "tag_id", payload.Tag)
 
 		case models.EntityAnnotationFile:
-			payload, ok := genericPayload.(returnEntityAnnotationFile)
+			payload, ok := genericPayload.(EntityAnnotationFileDto)
 
 			assert.True(t, ok)
 			assert.Equal(t, "thecaption", payload.Caption)
