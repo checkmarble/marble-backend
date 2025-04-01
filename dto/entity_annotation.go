@@ -20,6 +20,11 @@ type EntityAnnotationDto struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+type EntityAnnotationForObjectsParams struct {
+	ObjectType string   `json:"object_type"`
+	ObjectIds  []string `json:"object_ids"`
+}
+
 type PostEntityAnnotationDto struct {
 	Type    string          `json:"type"`
 	Payload json.RawMessage `json:"payload"`

@@ -23,10 +23,6 @@ func (repo *MarbleDbRepository) GetEntityAnnotationById(
 		"deleted_at": nil,
 	}
 
-	if req.AnnotationType != nil {
-		filters["annotation_type"] = req.AnnotationType.String()
-	}
-
 	sql := NewQueryBuilder().
 		Select(dbmodels.EntityAnnotationColumns...).
 		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
@@ -61,6 +57,49 @@ func (repo *MarbleDbRepository) GetEntityAnnotations(
 		Where(filters)
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptEntityAnnotation)
+}
+
+func (repo *MarbleDbRepository) GetEntityAnnotationsForObjects(
+	ctx context.Context,
+	exec Executor,
+	req models.EntityAnnotationRequestForObjects,
+) (map[string][]models.EntityAnnotation, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	filters := squirrel.Eq{
+		"org_id":      req.OrgId,
+		"object_type": req.ObjectType,
+		"deleted_at":  nil,
+	}
+
+	if req.AnnotationType != nil {
+		filters["annotation_type"] = req.AnnotationType.String()
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.EntityAnnotationColumns...).
+		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
+		Where(filters).
+		Where("object_id = ANY(?)", req.ObjectIds)
+
+	annotations, err := SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptEntityAnnotation)
+	if err != nil {
+		return nil, err
+	}
+
+	annotationsByObject := make(map[string][]models.EntityAnnotation)
+
+	for _, ann := range annotations {
+		if _, ok := annotationsByObject[ann.ObjectId]; !ok {
+			annotationsByObject[ann.ObjectId] = make([]models.EntityAnnotation, 0)
+		}
+
+		annotationsByObject[ann.ObjectId] = append(annotationsByObject[ann.ObjectId], ann)
+	}
+
+	return annotationsByObject, nil
 }
 
 func (repo *MarbleDbRepository) CreateEntityAnnotation(

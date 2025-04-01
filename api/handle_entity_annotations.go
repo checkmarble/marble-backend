@@ -56,6 +56,49 @@ func handleListEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+func handleListEntityAnnotationsForObjects(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, _ := utils.CredentialsFromCtx(ctx)
+
+		var params dto.EntityAnnotationForObjectsParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		annotationsUsecase := uc.NewEntityAnnotationUsecase()
+
+		req := models.EntityAnnotationRequestForObjects{
+			OrgId:      creds.OrganizationId,
+			ObjectType: params.ObjectType,
+			ObjectIds:  params.ObjectIds,
+		}
+
+		annotations, err := annotationsUsecase.ListForObjects(ctx, req)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		adapt := func(anns []models.EntityAnnotation) ([]dto.EntityAnnotationDto, error) {
+			return pure_utils.MapErr(anns, func(ann models.EntityAnnotation) (dto.EntityAnnotationDto, error) {
+				return dto.AdaptEntityAnnotation(ann)
+			})
+		}
+
+		out, err := pure_utils.MapValuesErr(annotations, adapt)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, out)
+	}
+}
+
 func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
