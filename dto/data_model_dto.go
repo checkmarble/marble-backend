@@ -153,3 +153,10 @@ type DataModelObject struct {
 	Data     map[string]any `json:"data"`
 	Metadata map[string]any `json:"metadata"`
 }
+
+type CreateNavigationOptionInput struct {
+	SourceFieldId   string `json:"source_field_id"`
+	TargetTableId   string `json:"target_table_id"`
+	FilterFieldId   string `json:"filter_field_id"`
+	OrderingFieldId string `json:"ordering_field_id"`
+}

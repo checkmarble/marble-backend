@@ -124,6 +124,15 @@ func (t Table) Copy() Table {
 	return out
 }
 
+func (t Table) GetFieldById(fieldId string) (Field, bool) {
+	for _, field := range t.Fields {
+		if field.ID == fieldId {
+			return field, true
+		}
+	}
+	return Field{}, false
+}
+
 type TableMetadata struct {
 	ID             string
 	Description    string
@@ -310,4 +319,12 @@ type NavigationOption struct {
 	OrderingFieldId   string
 
 	Status IndexStatus
+}
+
+type CreateNavigationOptionInput struct {
+	SourceTableId   string
+	SourceFieldId   string
+	TargetTableId   string
+	FilterFieldId   string
+	OrderingFieldId string
 }
