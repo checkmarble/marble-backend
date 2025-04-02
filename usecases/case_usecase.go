@@ -26,6 +26,7 @@ type CaseUseCaseRepository interface {
 	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters,
 		pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
+	GetCaseMetadataById(ctx context.Context, exec repositories.Executor, caseId string) (models.CaseMetadata, error)
 	CreateCase(ctx context.Context, exec repositories.Executor,
 		createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
 	UpdateCase(ctx context.Context, exec repositories.Executor,
@@ -33,6 +34,8 @@ type CaseUseCaseRepository interface {
 	SnoozeCase(ctx context.Context, exec repositories.Executor, snoozeRequest models.CaseSnoozeRequest) error
 	UnsnoozeCase(ctx context.Context, exec repositories.Executor,
 		caseId string) error
+
+	DecisionPivotValuesByCase(ctx context.Context, exec repositories.Executor, caseId string) ([]models.PivotDataWithCount, error)
 
 	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
 		createCaseEventAttributes models.CreateCaseEventAttributes) error
@@ -78,6 +81,14 @@ type webhookEventsUsecase interface {
 	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
 }
 
+type caseUsecaseIngestedDataReader interface {
+	ReadPivotObjectsFromValues(
+		ctx context.Context,
+		organizationId string,
+		values []models.PivotDataWithCount,
+	) ([]models.PivotObject, error)
+}
+
 type CaseUseCase struct {
 	enforceSecurity         security.EnforceSecurityCase
 	repository              CaseUseCaseRepository
@@ -90,6 +101,7 @@ type CaseUseCase struct {
 	executorFactory         executor_factory.ExecutorFactory
 	webhookEventsUsecase    webhookEventsUsecase
 	sanctionCheckRepository CaseUsecaseSanctionCheckRepository
+	ingestedDataReader      caseUsecaseIngestedDataReader
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -150,7 +162,7 @@ func (usecase *CaseUseCase) ListCases(
 				return models.CaseListPage{}, err
 			}
 			for _, c := range cases {
-				if err := usecase.enforceSecurity.ReadOrUpdateCase(c.Case, availableInboxIds); err != nil {
+				if err := usecase.enforceSecurity.ReadOrUpdateCase(c.Case.GetMetadata(), availableInboxIds); err != nil {
 					return models.CaseListPage{}, err
 				}
 			}
@@ -202,7 +214,7 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 	if err != nil {
 		return models.Case{}, err
 	}
-	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return models.Case{}, err
 	}
 
@@ -336,7 +348,7 @@ func (usecase *CaseUseCase) UpdateCase(
 					fmt.Sprintf("User does not have access the new inbox %s", updateCaseAttributes.InboxId))
 			}
 		}
-		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
 
@@ -384,7 +396,7 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 		return err
 	}
 
-	if err := uc.enforceSecurity.ReadOrUpdateCase(c, []string{c.InboxId}); err != nil {
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), []string{c.InboxId}); err != nil {
 		return err
 	}
 
@@ -426,7 +438,7 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 	}
 
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		if err := uc.enforceSecurity.ReadOrUpdateCase(c, []string{c.InboxId}); err != nil {
+		if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), []string{c.InboxId}); err != nil {
 			return err
 		}
 
@@ -472,7 +484,7 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 	if err != nil {
 		return err
 	}
-	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return err
 	}
 
@@ -481,7 +493,7 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 		return errors.Wrap(err, "target user for assignment not found")
 	}
 
-	if err := security.EnforceSecurityCaseForUser(assignee).ReadOrUpdateCase(c, availableInboxIds); err != nil {
+	if err := security.EnforceSecurityCaseForUser(assignee).ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return errors.Wrap(err, "target user lacks case permissions for assignment")
 	}
 
@@ -512,7 +524,7 @@ func (usecase *CaseUseCase) UnassignCase(ctx context.Context, req models.CaseAss
 	if err != nil {
 		return err
 	}
-	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return err
 	}
 
@@ -589,7 +601,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
 		if err := usecase.validateDecisions(ctx, tx, decisionIds); err != nil {
@@ -649,7 +661,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
 
@@ -714,7 +726,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
 
@@ -933,7 +945,7 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 	if err != nil {
 		return models.Case{}, err
 	}
-	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return models.Case{}, err
 	}
 
@@ -1090,7 +1102,7 @@ func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId strin
 	if err != nil {
 		return "", err
 	}
-	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return "", err
 	}
 
@@ -1108,7 +1120,7 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 	if err != nil {
 		return err
 	}
-	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return err
 	}
 
@@ -1177,7 +1189,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	if err != nil {
 		return models.Case{}, err
 	}
-	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return models.Case{}, err
 	}
 
@@ -1265,7 +1277,7 @@ func (uc *CaseUseCase) GetRelatedCases(ctx context.Context, orgId, decisionId st
 		return nil, errors.Wrap(models.NotFoundError, "decision does not have a pivot value")
 	}
 
-	if err := uc.enforceSecurity.ReadOrUpdateCase(*decision[0].Case, availableInboxIds); err != nil {
+	if err := uc.enforceSecurity.ReadOrUpdateCase((*decision[0].Case).GetMetadata(), availableInboxIds); err != nil {
 		return nil, err
 	}
 
@@ -1277,7 +1289,7 @@ func (uc *CaseUseCase) GetRelatedCases(ctx context.Context, orgId, decisionId st
 	allowedCases := make([]models.Case, 0, len(cases))
 
 	for _, c := range cases {
-		if err := uc.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err == nil {
+		if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err == nil {
 			allowedCases = append(allowedCases, c)
 		}
 	}
@@ -1296,4 +1308,27 @@ func validateDecisionReview(decision models.Decision) error {
 	}
 
 	return nil
+}
+
+func (usecase *CaseUseCase) ReadCasePivotObjects(ctx context.Context, caseId string) ([]models.PivotObject, error) {
+	exec := usecase.executorFactory.NewExecutor()
+	c, err := usecase.repository.GetCaseMetadataById(ctx, exec, caseId)
+	if err != nil {
+		return nil, err
+	}
+
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
+	if err != nil {
+		return nil, err
+	}
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		return nil, err
+	}
+
+	pivotValues, err := usecase.repository.DecisionPivotValuesByCase(ctx, exec, caseId)
+	if err != nil {
+		return nil, err
+	}
+
+	return usecase.ingestedDataReader.ReadPivotObjectsFromValues(ctx, c.OrganizationId, pivotValues)
 }

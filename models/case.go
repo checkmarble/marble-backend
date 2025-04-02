@@ -28,6 +28,7 @@ func (c Case) GetMetadata() CaseMetadata {
 		CreatedAt:      c.CreatedAt,
 		OrganizationId: c.OrganizationId,
 		Status:         c.Status,
+		InboxId:        c.InboxId,
 	}
 }
 
@@ -44,6 +45,7 @@ type CaseMetadata struct {
 	CreatedAt      time.Time
 	OrganizationId string
 	Status         CaseStatus
+	InboxId        string
 }
 
 type CaseStatus string

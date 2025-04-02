@@ -94,6 +94,23 @@ func (repo *MarbleDbRepository) GetCaseById(ctx context.Context, exec Executor, 
 	)
 }
 
+func (repo *MarbleDbRepository) GetCaseMetadataById(ctx context.Context, exec Executor, caseId string) (models.CaseMetadata, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.CaseMetadata{}, err
+	}
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectCaseColumn...).
+		From(dbmodels.TABLE_CASES).
+		Where(squirrel.Eq{"id": caseId})
+	c, err := SqlToModel(
+		ctx,
+		exec,
+		query,
+		dbmodels.AdaptCase,
+	)
+	return c.GetMetadata(), err
+}
+
 func (repo *MarbleDbRepository) CreateCase(ctx context.Context, exec Executor,
 	createCaseAttributes models.CreateCaseAttributes, newCaseId string,
 ) error {

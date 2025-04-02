@@ -64,6 +64,7 @@ type DecisionRepository interface {
 	) ([]models.Decision, error)
 	UpdateDecisionCaseId(ctx context.Context, exec Executor, decisionsIds []string, caseId string) error
 	ReviewDecision(ctx context.Context, exec Executor, decisionId string, reviewStatus string) error
+	DecisionPivotValuesByCase(ctx context.Context, exec Executor, caseId string) ([]models.PivotDataWithCount, error)
 }
 
 // the size of the batch is chosen without any benchmark
@@ -890,4 +891,27 @@ func (repo *MarbleDbRepository) ReviewDecision(ctx context.Context, exec Executo
 
 	err := ExecBuilder(ctx, exec, query)
 	return err
+}
+
+// Returns a DISTINCT set of (pivot_id, pivot_value) pairs from decisions for the given caseId
+func (repo *MarbleDbRepository) DecisionPivotValuesByCase(ctx context.Context, exec Executor, caseId string) ([]models.PivotDataWithCount, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("pivot_id, pivot_value, count(*) as nb").
+		From(dbmodels.TABLE_DECISIONS).
+		Where(squirrel.Eq{"case_id": caseId}).
+		Where(squirrel.NotEq{"pivot_id": nil}).
+		GroupBy("pivot_id, pivot_value")
+
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.PivotDataWithCount, error) {
+		var pivotData models.PivotDataWithCount
+		err := row.Scan(&pivotData.PivotId, &pivotData.PivotValue, &pivotData.NbOfDecisions)
+		if err != nil {
+			return models.PivotDataWithCount{}, err
+		}
+		return pivotData, nil
+	})
 }
