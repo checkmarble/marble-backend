@@ -530,7 +530,6 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	ctx context.Context,
 	input models.CreateAllDecisionsInput,
 ) (decisions []models.DecisionWithRuleExecutions, nbSkipped int, err error) {
-	time.Sleep(12 * time.Second)
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions")
