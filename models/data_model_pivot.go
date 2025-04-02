@@ -133,3 +133,10 @@ type CreatePivotInput struct {
 	FieldId        *string
 	PathLinkIds    []string
 }
+
+// Pivot data, from decisions
+type PivotDataWithCount struct {
+	PivotId       string
+	PivotValue    string
+	NbOfDecisions int
+}
