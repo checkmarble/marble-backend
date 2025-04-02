@@ -199,6 +199,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/cases/review_decision", tom, handleReviewCaseDecisions(uc))
 	router.GET("/cases/:case_id/annotations", tom, handleGetAnnotationByCase(uc))
 	router.GET("/cases/decisions/:decision_id/related", tom, handleGetRelatedCases(uc))
+	router.GET("/cases/:case_id/pivot_objects", tom, handleReadCasePivotObjects(uc))
 
 	router.GET("/inboxes/:inbox_id", tom, handleGetInboxById(uc))
 	router.PATCH("/inboxes/:inbox_id", tom, handlePatchInbox(uc))

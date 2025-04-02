@@ -113,7 +113,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		enforceSecurityScenario:   usecases.NewEnforceScenarioSecurity(),
 		executorFactory:           usecases.NewExecutorFactory(),
 		transactionFactory:        usecases.NewTransactionFactory(),
-		dataModelRepository:       usecases.Repositories.DataModelRepository,
+		dataModelRepository:       usecases.Repositories.MarbleDbRepository,
 		repository:                &usecases.Repositories.MarbleDbRepository,
 		sanctionCheckRepository:   &usecases.Repositories.MarbleDbRepository,
 		decisionWorkflows:         usecases.NewDecisionWorkflows(),
@@ -221,7 +221,7 @@ func (usecases *UsecasesWithCreds) NewRuleUsecase() RuleUsecase {
 func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 	return AstExpressionUsecase{
 		EnforceSecurity:     usecases.NewEnforceScenarioSecurity(),
-		DataModelRepository: usecases.Repositories.DataModelRepository,
+		DataModelRepository: usecases.Repositories.MarbleDbRepository,
 		Repository:          &usecases.Repositories.MarbleDbRepository,
 		executorFactory:     usecases.NewExecutorFactory(),
 	}
@@ -266,7 +266,7 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 		usecases.NewEnforceOrganizationSecurity(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.OrganizationRepository,
-		usecases.Repositories.DataModelRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.UserRepository,
 		usecases.NewOrganizationCreator(),
 		usecases.Repositories.OrganizationSchemaRepository,
@@ -278,7 +278,7 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
 	return DataModelUseCase{
 		clientDbIndexEditor:          usecases.NewClientDbIndexEditor(),
-		dataModelRepository:          usecases.Repositories.DataModelRepository,
+		dataModelRepository:          usecases.Repositories.MarbleDbRepository,
 		enforceSecurity:              usecases.NewEnforceOrganizationSecurity(),
 		executorFactory:              usecases.NewExecutorFactory(),
 		organizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
@@ -293,7 +293,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		executorFactory:       usecases.NewExecutorFactory(),
 		ingestionRepository:   usecases.Repositories.IngestionRepository,
 		blobRepository:        usecases.Repositories.BlobRepository,
-		dataModelRepository:   usecases.Repositories.DataModelRepository,
+		dataModelRepository:   usecases.Repositories.MarbleDbRepository,
 		uploadLogRepository:   usecases.Repositories.UploadLogRepository,
 		ingestionBucketUrl:    usecases.ingestionBucketUrl,
 		batchIngestionMaxSize: usecases.Usecases.batchIngestionMaxSize,
@@ -356,6 +356,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		userRepository:          usecases.Repositories.UserRepository,
 		webhookEventsUsecase:    usecases.NewWebhookEventsUsecase(),
 		sanctionCheckRepository: &usecases.Repositories.MarbleDbRepository,
+		ingestedDataReader:      usecases.NewIngestedDataReaderUsecase(),
 	}
 }
 
@@ -416,7 +417,7 @@ func (usecases *UsecasesWithCreds) NewAnalyticsUseCase() AnalyticsUseCase {
 
 func (usecases *UsecasesWithCreds) NewTransferCheckUsecase() TransferCheckUsecase {
 	return TransferCheckUsecase{
-		dataModelRepository:               usecases.Repositories.DataModelRepository,
+		dataModelRepository:               usecases.Repositories.MarbleDbRepository,
 		decisionUseCase:                   usecases.NewDecisionUsecase(),
 		decisionRepository:                &usecases.Repositories.MarbleDbRepository,
 		enforceSecurity:                   security.NewEnforceSecurity(usecases.Credentials),
@@ -449,7 +450,7 @@ func (usecases *UsecasesWithCreds) NewTransferDataReader() transfers_data_read.T
 		security.NewEnforceSecurity(usecases.Credentials),
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.IngestedDataReadRepository,
-		usecases.Repositories.DataModelRepository,
+		usecases.Repositories.MarbleDbRepository,
 	)
 }
 
@@ -510,7 +511,7 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *scheduled_execution.
 	w := scheduled_execution.NewAsyncDecisionWorker(
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
-		usecases.Repositories.DataModelRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewTransactionFactory(),
@@ -576,11 +577,11 @@ func (usecases UsecasesWithCreds) NewMatchEnrichmentWorker() *scheduled_executio
 }
 
 func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataReaderUsecase {
-	return IngestedDataReaderUsecase{
-		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
-		dataModelRepository:        usecases.Repositories.DataModelRepository,
-		executorFactory:            usecases.NewExecutorFactory(),
-	}
+	return NewIngestedDataReaderUsecase(
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+	)
 }
 
 func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.FeatureAccessReader {
@@ -613,7 +614,7 @@ func (usecases *UsecasesWithCreds) NewEntityAnnotationUsecase() EntityAnnotation
 	return EntityAnnotationUsecase{
 		enforceSecurityAnnotation:  usecases.NewEnforceAnnotationSecurity(),
 		repository:                 &usecases.Repositories.MarbleDbRepository,
-		dataModelRepository:        usecases.Repositories.DataModelRepository,
+		dataModelRepository:        usecases.Repositories.MarbleDbRepository,
 		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
 		tagRepository:              &usecases.Repositories.MarbleDbRepository,
 		blobRepository:             usecases.Repositories.BlobRepository,

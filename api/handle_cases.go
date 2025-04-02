@@ -495,3 +495,19 @@ func handleGetRelatedCases(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, pure_utils.Map(cases, dto.AdaptCaseDto))
 	}
 }
+
+func handleReadCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+
+		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
+		pivotObjects, err := uc.ReadCasePivotObjects(ctx, caseId)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, pivotObjects)
+	}
+}

@@ -29,7 +29,7 @@ type SanctionCheckEnforceSecurityDecision interface {
 }
 
 type SanctionCheckEnforceSecurityCase interface {
-	ReadOrUpdateCase(models.Case, []string) error
+	ReadOrUpdateCase(models.CaseMetadata, []string) error
 }
 
 type SanctionCheckEnforceSecurity interface {
@@ -874,7 +874,7 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, d
 			return inbox.Id
 		})
 
-		if err := uc.enforceSecurityCase.ReadOrUpdateCase(*decision[0].Case, inboxIds); err != nil {
+		if err := uc.enforceSecurityCase.ReadOrUpdateCase((*decision[0].Case).GetMetadata(), inboxIds); err != nil {
 			return decision[0], err
 		}
 	}

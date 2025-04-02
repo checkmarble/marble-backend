@@ -43,7 +43,7 @@ type DataModelRepository interface {
 
 type DataModelRepositoryPostgresql struct{}
 
-func (repo *DataModelRepositoryPostgresql) GetDataModel(
+func (repo MarbleDbRepository) GetDataModel(
 	ctx context.Context,
 	exec Executor,
 	organizationID string,
@@ -105,7 +105,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(
 	return dataModel, nil
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(ctx context.Context, exec Executor, organizationID, tableID, name, description string) error {
+func (repo MarbleDbRepository) CreateDataModelTable(ctx context.Context, exec Executor, organizationID, tableID, name, description string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(ctx context.Cont
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error) {
+func (repo MarbleDbRepository) GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.TableMetadata{}, err
 	}
@@ -137,7 +137,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context
 	)
 }
 
-func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error {
+func (repo MarbleDbRepository) UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -153,7 +153,7 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Cont
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelField(
+func (repo MarbleDbRepository) CreateDataModelField(
 	ctx context.Context,
 	exec Executor,
 	fieldId string,
@@ -184,7 +184,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(
+func (repo MarbleDbRepository) UpdateDataModelField(
 	ctx context.Context,
 	exec Executor,
 	fieldID string,
@@ -212,7 +212,7 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Context, exec Executor, id string, link models.DataModelLinkCreateInput) error {
+func (repo MarbleDbRepository) CreateDataModelLink(ctx context.Context, exec Executor, id string, link models.DataModelLinkCreateInput) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -247,7 +247,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Conte
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) getTablesAndFields(ctx context.Context, exec Executor,
+func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Executor,
 	organizationID string,
 ) ([]dbmodels.DbDataModelTableJoinField, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -291,7 +291,7 @@ func (repo *DataModelRepositoryPostgresql) getTablesAndFields(ctx context.Contex
 	return fields, err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, exec Executor, organizationID string) ([]models.LinkToSingle, error) {
+func (repo MarbleDbRepository) GetLinks(ctx context.Context, exec Executor, organizationID string) ([]models.LinkToSingle, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, exec Ex
 	return links, nil
 }
 
-func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error {
+func (repo MarbleDbRepository) DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -357,7 +357,7 @@ func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, 
 	)
 }
 
-func (repo *DataModelRepositoryPostgresql) GetEnumValues(ctx context.Context, exec Executor, fieldID string) ([]any, error) {
+func (repo MarbleDbRepository) GetEnumValues(ctx context.Context, exec Executor, fieldID string) ([]any, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -392,7 +392,7 @@ func (repo *DataModelRepositoryPostgresql) GetEnumValues(ctx context.Context, ex
 	return values, nil
 }
 
-func (repo *DataModelRepositoryPostgresql) GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.FieldMetadata, error) {
+func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.FieldMetadata, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.FieldMetadata{}, err
 	}
@@ -435,7 +435,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelField(ctx context.Context
 // Data table pivot methods
 // ///////////////////////////////
 
-func (repo *DataModelRepositoryPostgresql) CreatePivot(
+func (repo MarbleDbRepository) CreatePivot(
 	ctx context.Context,
 	exec Executor,
 	id string,
@@ -463,7 +463,7 @@ func (repo *DataModelRepositoryPostgresql) CreatePivot(
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) ListPivots(
+func (repo MarbleDbRepository) ListPivots(
 	ctx context.Context,
 	exec Executor,
 	organizationId string,
@@ -486,7 +486,7 @@ func (repo *DataModelRepositoryPostgresql) ListPivots(
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptPivotMetadata)
 }
 
-func (repo *DataModelRepositoryPostgresql) GetPivot(ctx context.Context, exec Executor, pivotId string) (models.PivotMetadata, error) {
+func (repo MarbleDbRepository) GetPivot(ctx context.Context, exec Executor, pivotId string) (models.PivotMetadata, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.PivotMetadata{}, err
 	}
@@ -502,7 +502,7 @@ func (repo *DataModelRepositoryPostgresql) GetPivot(ctx context.Context, exec Ex
 	)
 }
 
-func (repo *DataModelRepositoryPostgresql) BatchInsertEnumValues(ctx context.Context, exec Executor, enumValues models.EnumValues, table models.Table) error {
+func (repo MarbleDbRepository) BatchInsertEnumValues(ctx context.Context, exec Executor, enumValues models.EnumValues, table models.Table) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

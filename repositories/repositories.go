@@ -82,7 +82,6 @@ type Repositories struct {
 	UserRepository                    UserRepository
 	OrganizationRepository            OrganizationRepository
 	IngestionRepository               IngestionRepository
-	DataModelRepository               DataModelRepository
 	IngestedDataReadRepository        IngestedDataReadRepository
 	MarbleDbRepository                MarbleDbRepository
 	ClientDbRepository                ClientDbRepository
@@ -128,7 +127,6 @@ func NewRepositories(
 		UserRepository:                &UserRepositoryPostgresql{},
 		OrganizationRepository:        &OrganizationRepositoryPostgresql{},
 		IngestionRepository:           &IngestionRepositoryImpl{},
-		DataModelRepository:           &DataModelRepositoryPostgresql{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
 		MarbleDbRepository:            MarbleDbRepository{},
 		ScenarioTestrunRepository:     &MarbleDbRepository{},
