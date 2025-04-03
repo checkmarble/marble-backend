@@ -19,7 +19,12 @@ type ScenarioTestRunRepository interface {
 		input models.ScenarioTestRunCreateDbInput,
 	) error
 	ListRunningTestRun(ctx context.Context, exec Executor, organizationId string) ([]models.ScenarioTestRun, error)
-	ListTestRunsByScenarioID(ctx context.Context, exec Executor, scenarioID string) ([]models.ScenarioTestRun, error)
+	ListTestRunsByScenarioID(
+		ctx context.Context,
+		exec Executor,
+		scenarioID string,
+		status ...models.TestrunStatus,
+	) ([]models.ScenarioTestRun, error)
 	GetTestRunByLiveVersionID(
 		ctx context.Context,
 		exec Executor,
@@ -141,8 +146,11 @@ func (repo *MarbleDbRepository) ListRunningTestRun(
 	)
 }
 
-func (repo *MarbleDbRepository) ListTestRunsByScenarioID(ctx context.Context,
-	exec Executor, scenarioID string,
+func (repo *MarbleDbRepository) ListTestRunsByScenarioID(
+	ctx context.Context,
+	exec Executor,
+	scenarioID string,
+	status ...models.TestrunStatus,
 ) ([]models.ScenarioTestRun, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -154,6 +162,11 @@ func (repo *MarbleDbRepository) ListTestRunsByScenarioID(ctx context.Context,
 		Join(dbmodels.TABLE_SCENARIOS + " AS sc ON sc.id = scit.scenario_id").
 		Where(squirrel.Eq{"sc.id": scenarioID}).
 		OrderBy("tr.created_at DESC")
+
+	if len(status) > 0 {
+		query = query.Where(squirrel.Eq{"tr.status": status})
+	}
+
 	return SqlToListOfModels(
 		ctx,
 		exec,

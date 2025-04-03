@@ -3,13 +3,10 @@ package repositories
 import (
 	"context"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -101,35 +98,4 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 	}
 	err = ExecBuilder(ctx, exec, builderForRules)
 	return err
-}
-
-func (repo *MarbleDbRepository) GetTestRunIterationIdByScenarioId(ctx context.Context,
-	exec Executor, scenarioID string,
-) (*string, error) {
-	// to be defined once we will integrate the testrun feature
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
-	}
-	query := NewQueryBuilder().
-		Select("scit.id").
-		From(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS scit").
-		Join(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr ON scit.id = tr.scenario_iteration_id").
-		Join(dbmodels.TABLE_SCENARIOS + " AS sc ON sc.id = scit.scenario_id").
-		Where(squirrel.Eq{"tr.status": models.Up.String()}).
-		Where(squirrel.Eq{"sc.id": scenarioID})
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return nil, err
-	}
-	row := exec.QueryRow(ctx, sql, args...)
-	var scenarioIterationID string
-	err = row.Scan(&scenarioIterationID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &scenarioIterationID, nil
 }

@@ -11,9 +11,6 @@ import (
 
 type ScenarioUsecaseRepository interface {
 	GetScenarioById(ctx context.Context, exec Executor, scenarioId string) (models.Scenario, error)
-	GetScenarioByLiveScenarioIterationId(ctx context.Context,
-		exec Executor, scenarioIterationId string,
-	) (models.Scenario, error)
 	ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId string) ([]models.Scenario, error)
 	CreateScenario(
 		ctx context.Context,
@@ -44,21 +41,6 @@ func (repo *MarbleDbRepository) GetScenarioById(ctx context.Context, exec Execut
 		ctx,
 		exec,
 		selectScenarios().Where(squirrel.Eq{"id": scenarioId}),
-		dbmodels.AdaptScenario,
-	)
-}
-
-func (repo *MarbleDbRepository) GetScenarioByLiveScenarioIterationId(ctx context.Context,
-	exec Executor, scenarioIterationId string,
-) (models.Scenario, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.Scenario{}, err
-	}
-
-	return SqlToModel(
-		ctx,
-		exec,
-		selectScenarios().Where(squirrel.Eq{"live_scenario_iteration_id": scenarioIterationId}),
 		dbmodels.AdaptScenario,
 	)
 }
