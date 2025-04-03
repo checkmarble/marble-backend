@@ -105,21 +105,28 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Con
 	}
 
 	updateRequest := NewQueryBuilder().Update(dbmodels.TABLE_ORGANIZATION)
+	hasUpdates := false
 
 	if updateOrganization.DefaultScenarioTimezone != nil {
 		updateRequest = updateRequest.Set(
 			"default_scenario_timezone",
 			*updateOrganization.DefaultScenarioTimezone)
+		hasUpdates = true
 	}
 	if updateOrganization.SanctionCheckConfig.MatchThreshold != nil {
 		updateRequest = updateRequest.Set("sanctions_threshold",
 			*updateOrganization.SanctionCheckConfig.MatchThreshold)
+		hasUpdates = true
 	}
 	if updateOrganization.SanctionCheckConfig.MatchLimit != nil {
 		updateRequest = updateRequest.Set("sanctions_limit",
 			*updateOrganization.SanctionCheckConfig.MatchLimit)
+		hasUpdates = true
 	}
 
+	if !hasUpdates {
+		return nil
+	}
 	updateRequest = updateRequest.Where("id = ?", updateOrganization.Id)
 
 	err := ExecBuilder(ctx, exec, updateRequest)

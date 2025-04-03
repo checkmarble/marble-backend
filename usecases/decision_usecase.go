@@ -694,12 +694,7 @@ func (usecase *DecisionUsecase) executeTestRun(
 	scenario models.Scenario,
 	scenarioExecution *models.ScenarioExecution,
 ) {
-	defer func() {
-		if r := recover(); r != nil {
-			err := fmt.Errorf("error when creating phantom decisions with scenario id: %v", r)
-			utils.LogAndReportSentryError(ctx, err)
-		}
-	}()
+	defer utils.RecoverAndReportSentryError(ctx, "executeTestRun")
 	phantomInput := models.CreatePhantomDecisionInput{
 		OrganizationId:     organizationId,
 		Scenario:           scenario,
