@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 
 	"github.com/getsentry/sentry-go"
 )
@@ -22,5 +23,13 @@ func LogAndReportSentryError(ctx context.Context, err error) {
 		hub.CaptureException(err)
 	} else {
 		sentry.CaptureException(err)
+	}
+}
+
+func RecoverAndReportSentryError(ctx context.Context, callerName string) {
+	if r := recover(); r != nil {
+		logger := LoggerFromContext(ctx)
+		logger.ErrorContext(ctx, fmt.Sprintf("Recovered from panic in %s", callerName))
+		LogAndReportSentryError(ctx, errors.New(string(debug.Stack())))
 	}
 }

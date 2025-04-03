@@ -261,8 +261,8 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	///////////////////////////////
 	defer func() {
 		if r := recover(); r != nil {
-			logger.ErrorContext(ctx, "recovered from panic during Eval. stacktrace from panic: ")
-			logger.ErrorContext(ctx, string(debug.Stack()))
+			logger.ErrorContext(ctx, "recovered from panic during EvalTestRunScenario. stacktrace from panic:")
+			utils.LogAndReportSentryError(ctx, errors.New(string(debug.Stack())))
 
 			err = models.ErrPanicInScenarioEvalution
 			se = models.ScenarioExecution{}
@@ -341,8 +341,8 @@ func (e ScenarioEvaluator) EvalScenario(
 	///////////////////////////////
 	defer func() {
 		if r := recover(); r != nil {
-			logger.ErrorContext(ctx, "recovered from panic during Eval. stacktrace from panic: ")
-			logger.ErrorContext(ctx, string(debug.Stack()))
+			logger.ErrorContext(ctx, "recovered from panic during EvalScenario. stacktrace from panic:")
+			utils.LogAndReportSentryError(ctx, errors.New(string(debug.Stack())))
 
 			err = models.ErrPanicInScenarioEvalution
 			se = models.ScenarioExecution{}

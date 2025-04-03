@@ -104,12 +104,8 @@ func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.C
 	executionErrorChan := make(chan error, len(pendingScheduledExecutions))
 
 	startScheduledExecution := func(scheduledExecution models.ScheduledExecution) {
-		defer func() {
-			if r := recover(); r != nil {
-				err := fmt.Errorf("panic in ExecuteAllScheduledScenarios: %v", r)
-				utils.LogAndReportSentryError(ctx, err)
-			}
-		}()
+		defer utils.RecoverAndReportSentryError(ctx, "ExecuteAllScheduledScenarios")
+
 		defer waitGroup.Done()
 		ctx = utils.StoreLoggerInContext(
 			ctx,
