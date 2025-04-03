@@ -415,6 +415,8 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 		return err
 	}
 
+	// TODO: can we snooze/unsnooze a case if its status is pending or closed?
+
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := uc.repository.SnoozeCase(ctx, tx, req); err != nil {
 			return err
@@ -512,12 +514,22 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 		return errors.Wrap(err, "target user lacks case permissions for assignment")
 	}
 
-	if err := usecase.repository.AssignCase(ctx, usecase.executorFactory.NewExecutor(),
-		req.CaseId, req.AssigneeId); err != nil {
-		return err
-	}
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := usecase.repository.AssignCase(ctx, tx, req.CaseId, req.AssigneeId); err != nil {
+			return err
+		}
 
-	return nil
+		if c.Status == models.CasePending {
+			if err = usecase.repository.UpdateCase(ctx, tx, models.UpdateCaseAttributes{
+				Id:     c.Id,
+				Status: models.CaseInvestigating,
+			}); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func (usecase *CaseUseCase) UnassignCase(ctx context.Context, req models.CaseAssignementRequest) error {
