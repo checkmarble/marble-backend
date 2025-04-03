@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type Case struct {
 	AssignedTo     *UserId
 	Name           string
 	Status         CaseStatus
+	Outcome        CaseOutcome
 	Tags           []CaseTag
 	Files          []CaseFile
 	SnoozedUntil   *time.Time
@@ -36,7 +38,7 @@ func (c Case) IsSnoozed() bool {
 }
 
 func (c CaseStatus) IsFinalized() bool {
-	return c == CaseDiscarded || c == CaseResolved
+	return c == CaseClosed
 }
 
 type CaseMetadata struct {
@@ -44,17 +46,44 @@ type CaseMetadata struct {
 	CreatedAt      time.Time
 	OrganizationId string
 	Status         CaseStatus
+	Outcome        CaseOutcome
 }
 
 type CaseStatus string
 
 const (
-	CaseOpen          CaseStatus = "open"
+	CasePending       CaseStatus = "pending"
 	CaseInvestigating CaseStatus = "investigating"
-	CaseDiscarded     CaseStatus = "discarded"
-	CaseResolved      CaseStatus = "resolved"
+	CaseClosed        CaseStatus = "closed"
 	CaseUnknownStatus CaseStatus = "unknown"
 )
+
+type CaseOutcome string
+
+const (
+	CaseOutcomeUnset   = "unset"
+	CaseConfirmedRisk  = "confirmed_risk"
+	CaseValuableAlert  = "valuable_alert"
+	CaseFalsePositive  = "false_positive"
+	CaseUnknownOutcome = "unknown"
+)
+
+func (o CaseStatus) CanTransition(newStatus CaseStatus) bool {
+	if o == newStatus {
+		return true
+	}
+
+	switch o {
+	case CasePending:
+		return true
+	case CaseInvestigating:
+		return slices.Contains([]CaseStatus{CaseClosed}, newStatus)
+	case CaseClosed:
+		return slices.Contains([]CaseStatus{CaseInvestigating}, newStatus)
+	default:
+		return false
+	}
+}
 
 type CreateCaseAttributes struct {
 	DecisionIds    []string
@@ -68,6 +97,7 @@ type UpdateCaseAttributes struct {
 	InboxId string
 	Name    string
 	Status  CaseStatus
+	Outcome CaseOutcome
 }
 
 type CreateCaseCommentAttributes struct {
