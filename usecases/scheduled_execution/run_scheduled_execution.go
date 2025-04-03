@@ -60,7 +60,6 @@ type taskQueueRepository interface {
 
 type RunScheduledExecution struct {
 	repository                     RunScheduledExecutionRepository
-	testrunScenarioRepository      repositories.EvalTestRunScenarioRepository
 	executorFactory                executor_factory.ExecutorFactory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	ingestedDataReadRepository     repositories.IngestedDataReadRepository
@@ -70,7 +69,6 @@ type RunScheduledExecution struct {
 
 func NewRunScheduledExecution(
 	repository RunScheduledExecutionRepository,
-	testrunScenarioRepository repositories.EvalTestRunScenarioRepository,
 	executorFactory executor_factory.ExecutorFactory,
 	ingestedDataReadRepository repositories.IngestedDataReadRepository,
 	transactionFactory executor_factory.TransactionFactory,
@@ -79,7 +77,6 @@ func NewRunScheduledExecution(
 ) *RunScheduledExecution {
 	return &RunScheduledExecution{
 		repository:                     repository,
-		testrunScenarioRepository:      testrunScenarioRepository,
 		executorFactory:                executorFactory,
 		ingestedDataReadRepository:     ingestedDataReadRepository,
 		transactionFactory:             transactionFactory,

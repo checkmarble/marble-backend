@@ -43,10 +43,17 @@ func (s *ScenarioTestrunRepository) GetTestRunByID(ctx context.Context, exec rep
 	return args.Get(0).(models.ScenarioTestRun), args.Error(1)
 }
 
-func (s *ScenarioTestrunRepository) ListTestRunsByScenarioID(ctx context.Context,
-	exec repositories.Executor, scenarioID string,
+func (s *ScenarioTestrunRepository) ListTestRunsByScenarioID(
+	ctx context.Context,
+	exec repositories.Executor,
+	scenarioID string,
+	status ...models.TestrunStatus,
 ) ([]models.ScenarioTestRun, error) {
-	args := s.Called(ctx, exec, scenarioID)
+	callArgs := []any{ctx, exec, scenarioID}
+	for _, s := range status {
+		callArgs = append(callArgs, s)
+	}
+	args := s.Called(callArgs...)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

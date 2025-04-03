@@ -77,7 +77,6 @@ type ScenarioEvaluator struct {
 	evalScenarioRepository            repositories.EvalScenarioRepository
 	evalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
 	evalSanctionCheckUsecase          EvalSanctionCheckUsecase
-	evalTestRunScenarioRepository     repositories.EvalTestRunScenarioRepository
 	scenarioTestRunRepository         repositories.ScenarioTestRunRepository
 	scenarioRepository                repositories.ScenarioUsecaseRepository
 	executorFactory                   executor_factory.ExecutorFactory
@@ -92,7 +91,6 @@ func NewScenarioEvaluator(
 	evalScenarioRepository repositories.EvalScenarioRepository,
 	evalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository,
 	evalSanctionCheckUsecase EvalSanctionCheckUsecase,
-	evalTestRunScenarioRepository repositories.EvalTestRunScenarioRepository,
 	scenarioTestRunRepository repositories.ScenarioTestRunRepository,
 	scenarioRepository repositories.ScenarioUsecaseRepository,
 	executorFactory executor_factory.ExecutorFactory,
@@ -106,7 +104,6 @@ func NewScenarioEvaluator(
 		evalScenarioRepository:            evalScenarioRepository,
 		evalSanctionCheckConfigRepository: evalSanctionCheckConfigRepository,
 		evalSanctionCheckUsecase:          evalSanctionCheckUsecase,
-		evalTestRunScenarioRepository:     evalTestRunScenarioRepository,
 		scenarioTestRunRepository:         scenarioTestRunRepository,
 		scenarioRepository:                scenarioRepository,
 		executorFactory:                   executorFactory,
@@ -278,35 +275,24 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		trace.WithAttributes(
 			attribute.String("scenario_id", params.Scenario.Id),
 			attribute.String("organization_id", params.Scenario.OrganizationId),
-			attribute.String("scenario_iteration_id", *params.Scenario.LiveVersionID),
 			attribute.String("object_id", params.ClientObject.Data["object_id"].(string)),
 		),
 	)
 	defer span.End()
-	testrun, err := e.scenarioTestRunRepository.GetTestRunByLiveVersionID(ctx, exec, *params.Scenario.LiveVersionID)
+	testruns, err := e.scenarioTestRunRepository.ListTestRunsByScenarioID(ctx, exec, params.Scenario.Id, models.Up)
 	if err != nil {
 		return false, se, err
 	}
-	if testrun == nil || testrun.Status != models.Up {
+	if len(testruns) == 0 || testruns[0].Status != models.Up {
 		return false, se, nil
 	}
-	scenario, err := e.scenarioRepository.GetScenarioByLiveScenarioIterationId(ctx, exec, testrun.ScenarioLiveIterationId)
-	if err != nil {
-		return false, se, err
-	}
-	if scenario.Id == "" {
-		logger.ErrorContext(ctx, "the live version iteration associated to the current testrun does not match with the actual live scenario iteration")
+
+	if params.Scenario.LiveVersionID == nil || *params.Scenario.LiveVersionID != testruns[0].ScenarioLiveIterationId {
+		logger.WarnContext(ctx, "the live version iteration associated to the current testrun does not match with the actual live scenario iteration")
 		return false, se, nil
 	}
-	testRunIterationId, err := e.evalTestRunScenarioRepository.GetTestRunIterationIdByScenarioId(ctx, exec, params.Scenario.Id)
-	if err != nil {
-		return false, se, errors.Wrap(err,
-			"error getting testrun scenario iteration in EvalTestRunScenario")
-	}
-	if testRunIterationId == nil {
-		return false, se, nil
-	}
-	testRunIteration, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, *testRunIterationId)
+
+	testRunIteration, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, testruns[0].ScenarioIterationId)
 	if err != nil {
 		return false, se, err
 	}
@@ -321,7 +307,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	}
 	if scc != nil {
 		liveVersionScc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(
-			ctx, exec, *params.Scenario.LiveVersionID)
+			ctx, exec, testruns[0].ScenarioLiveIterationId)
 		if err != nil {
 			return false, se, err
 		}
@@ -339,7 +325,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	if copiedSanctionCheck != nil {
 		se.SanctionCheckExecution = copiedSanctionCheck
 	}
-	se.TestRunId = testrun.Id
+	se.TestRunId = testruns[0].Id
 	return triggerPassed, se, nil
 }
 
