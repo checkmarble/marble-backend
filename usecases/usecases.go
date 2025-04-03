@@ -276,7 +276,7 @@ func (usecases *Usecases) NewValidateScenarioIteration() scenarios.ValidateScena
 
 func (usecases *Usecases) NewAstValidator() scenarios.AstValidator {
 	return &scenarios.AstValidatorImpl{
-		DataModelRepository:             usecases.Repositories.DataModelRepository,
+		DataModelRepository:             usecases.Repositories.MarbleDbRepository,
 		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironmentFactory,
 		ExecutorFactory:                 usecases.NewExecutorFactory(),
 	}

@@ -13,7 +13,7 @@ func (sanctionCheckEnforcerMock) ReadDecision(models.Decision) error {
 	return nil
 }
 
-func (sanctionCheckEnforcerMock) ReadOrUpdateCase(models.Case, []string) error {
+func (sanctionCheckEnforcerMock) ReadOrUpdateCase(models.CaseMetadata, []string) error {
 	return nil
 }
 
