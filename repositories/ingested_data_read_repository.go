@@ -477,7 +477,7 @@ func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fie
 	case ast.FILTER_ENDS_WITH:
 		return query.Where(squirrel.Like{fmt.Sprintf("%s.%s", tableName, fieldName): fmt.Sprintf("%%%s", value)}), nil
 	case ast.FILTER_FUZZY_MATCH:
-		return query.Where(fmt.Sprintf("similarity(%s.%s, ? > 0.6)", tableName, fieldName), value), nil
+		return query.Where(fmt.Sprintf("similarity(%s.%s, ?) > 0.6", tableName, fieldName), value), nil
 	default:
 		return query, fmt.Errorf("unknown operator %s: %w", operator, models.BadParameterError)
 	}
