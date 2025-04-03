@@ -382,7 +382,7 @@ func (e ScenarioEvaluator) EvalScenario(
 		trace.WithAttributes(
 			attribute.String("scenario_id", params.Scenario.Id),
 			attribute.String("organization_id", params.Scenario.OrganizationId),
-			attribute.String("scenario_iteration_id", *params.Scenario.LiveVersionID),
+			attribute.String("scenario_iteration_id", targetVersionId),
 			attribute.String("object_id", params.ClientObject.Data["object_id"].(string)),
 		),
 	)
