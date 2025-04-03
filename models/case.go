@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type Case struct {
 	AssignedTo     *UserId
 	Name           string
 	Status         CaseStatus
+	Outcome        CaseOutcome
 	Tags           []CaseTag
 	Files          []CaseFile
 	SnoozedUntil   *time.Time
@@ -37,7 +39,7 @@ func (c Case) IsSnoozed() bool {
 }
 
 func (c CaseStatus) IsFinalized() bool {
-	return c == CaseDiscarded || c == CaseResolved
+	return c == CaseClosed
 }
 
 type CaseMetadata struct {
@@ -46,17 +48,46 @@ type CaseMetadata struct {
 	OrganizationId string
 	Status         CaseStatus
 	InboxId        string
+	Outcome        CaseOutcome
 }
 
 type CaseStatus string
 
 const (
-	CaseOpen          CaseStatus = "open"
+	CasePending       CaseStatus = "pending"
 	CaseInvestigating CaseStatus = "investigating"
-	CaseDiscarded     CaseStatus = "discarded"
-	CaseResolved      CaseStatus = "resolved"
+	CaseClosed        CaseStatus = "closed"
 	CaseUnknownStatus CaseStatus = "unknown"
 )
+
+func (s CaseStatus) CanTransition(newStatus CaseStatus) bool {
+	if s == newStatus {
+		return true
+	}
+
+	switch s {
+	case CasePending:
+		return true
+	case CaseInvestigating:
+		return slices.Contains([]CaseStatus{CaseClosed}, newStatus)
+	case CaseClosed:
+		return slices.Contains([]CaseStatus{CaseInvestigating}, newStatus)
+	default:
+		return false
+	}
+}
+
+type CaseOutcome string
+
+const (
+	CaseOutcomeUnset   = "unset"
+	CaseConfirmedRisk  = "confirmed_risk"
+	CaseValuableAlert  = "valuable_alert"
+	CaseFalsePositive  = "false_positive"
+	CaseUnknownOutcome = "unknown"
+)
+
+var ValidCaseOutcomes = []CaseOutcome{CaseOutcomeUnset, CaseConfirmedRisk, CaseValuableAlert, CaseFalsePositive}
 
 type CreateCaseAttributes struct {
 	DecisionIds    []string
@@ -70,6 +101,7 @@ type UpdateCaseAttributes struct {
 	InboxId string
 	Name    string
 	Status  CaseStatus
+	Outcome CaseOutcome
 }
 
 type CreateCaseCommentAttributes struct {

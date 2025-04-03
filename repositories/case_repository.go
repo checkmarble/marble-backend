@@ -158,6 +158,9 @@ func (repo *MarbleDbRepository) UpdateCase(ctx context.Context, exec Executor, u
 	if updateCaseAttributes.Status != "" {
 		query = query.Set("status", updateCaseAttributes.Status)
 	}
+	if updateCaseAttributes.Outcome != "" {
+		query = query.Set("outcome", updateCaseAttributes.Outcome)
+	}
 
 	err := ExecBuilder(ctx, exec, query)
 	return err
