@@ -29,6 +29,7 @@ const (
 	CaseNameUpdated       CaseEventType = "name_updated"
 	CaseRuleSnoozeCreated CaseEventType = "rule_snooze_created"
 	CaseStatusUpdated     CaseEventType = "status_updated"
+	CaseOutcomeUpdated    CaseEventType = "outcome_updated"
 	CaseTagsUpdated       CaseEventType = "tags_updated"
 	SanctionCheckReviewed CaseEventType = "sanction_check_reviewed"
 	DecisionAdded         CaseEventType = "decision_added"

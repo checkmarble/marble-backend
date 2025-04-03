@@ -352,6 +352,21 @@ func (usecase *CaseUseCase) UpdateCase(
 			return models.Case{}, err
 		}
 
+		if c.Status == models.CasePending && (updateCaseAttributes.Status == "" ||
+			updateCaseAttributes.Status == models.CasePending) {
+			updateCaseAttributes.Status = models.CaseInvestigating
+		}
+
+		if updateCaseAttributes.Status != "" && !c.Status.CanTransition(updateCaseAttributes.Status) {
+			return c, errors.Wrap(models.BadParameterError,
+				fmt.Sprintf("invalid case status transition from %s to %s", c.Status, updateCaseAttributes.Status))
+		}
+
+		if updateCaseAttributes.Outcome != "" && !slices.Contains(models.ValidCaseOutcomes, updateCaseAttributes.Outcome) {
+			return c, errors.Wrap(models.BadParameterError,
+				fmt.Sprintf("invalid case outcome '%s'", updateCaseAttributes.Outcome))
+		}
+
 		err = usecase.repository.UpdateCase(ctx, tx, updateCaseAttributes)
 		if err != nil {
 			return models.Case{}, err
@@ -538,7 +553,8 @@ func (usecase *CaseUseCase) UnassignCase(ctx context.Context, req models.CaseAss
 func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c models.Case) bool {
 	return (updateCaseAttributes.Name == "" || updateCaseAttributes.Name == c.Name) &&
 		(updateCaseAttributes.Status == "" || updateCaseAttributes.Status == c.Status) &&
-		(updateCaseAttributes.InboxId == "" || updateCaseAttributes.InboxId == c.InboxId)
+		(updateCaseAttributes.InboxId == "" || updateCaseAttributes.InboxId == c.InboxId) &&
+		(updateCaseAttributes.Outcome == "" || updateCaseAttributes.Outcome == c.Outcome)
 }
 
 func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec repositories.Executor,
@@ -566,6 +582,20 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 			EventType:     models.CaseStatusUpdated,
 			NewValue:      &newStatus,
 			PreviousValue: (*string)(&oldCase.Status),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	if updateCaseAttributes.Outcome != "" && updateCaseAttributes.Outcome != oldCase.Outcome {
+		newOutcome := string(updateCaseAttributes.Outcome)
+		err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
+			CaseId:        updateCaseAttributes.Id,
+			UserId:        &userId,
+			EventType:     models.CaseOutcomeUpdated,
+			NewValue:      &newOutcome,
+			PreviousValue: (*string)(&oldCase.Outcome),
 		})
 		if err != nil {
 			return err
