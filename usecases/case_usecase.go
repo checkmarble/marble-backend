@@ -340,6 +340,17 @@ func (usecase *CaseUseCase) UpdateCase(
 			return models.Case{}, err
 		}
 
+		// TODO: do we want to automatically change the status on an update, if the update is not changing it already?
+		if c.Status == models.CasePending && (updateCaseAttributes.Status == "" ||
+			updateCaseAttributes.Status == models.CasePending) {
+			updateCaseAttributes.Status = models.CaseInvestigating
+		}
+
+		if !c.Status.CanTransition(updateCaseAttributes.Status) {
+			return c, errors.Wrap(models.BadParameterError,
+				fmt.Sprintf("invalid case status transition from %s to %s", c.Status, updateCaseAttributes.Status))
+		}
+
 		err = usecase.repository.UpdateCase(ctx, tx, updateCaseAttributes)
 		if err != nil {
 			return models.Case{}, err
@@ -387,6 +398,8 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 	if err := uc.enforceSecurity.ReadOrUpdateCase(c, []string{c.InboxId}); err != nil {
 		return err
 	}
+
+	// TODO: can we snooze/unsnooze a case if its status is pending or closed?
 
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := uc.repository.SnoozeCase(ctx, tx, req); err != nil {
@@ -485,12 +498,22 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 		return errors.Wrap(err, "target user lacks case permissions for assignment")
 	}
 
-	if err := usecase.repository.AssignCase(ctx, usecase.executorFactory.NewExecutor(),
-		req.CaseId, req.AssigneeId); err != nil {
-		return err
-	}
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := usecase.repository.AssignCase(ctx, tx, req.CaseId, req.AssigneeId); err != nil {
+			return err
+		}
 
-	return nil
+		if c.Status == models.CasePending {
+			if err = usecase.repository.UpdateCase(ctx, tx, models.UpdateCaseAttributes{
+				Id:     c.Id,
+				Status: models.CaseInvestigating,
+			}); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func (usecase *CaseUseCase) UnassignCase(ctx context.Context, req models.CaseAssignementRequest) error {
@@ -526,7 +549,8 @@ func (usecase *CaseUseCase) UnassignCase(ctx context.Context, req models.CaseAss
 func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c models.Case) bool {
 	return (updateCaseAttributes.Name == "" || updateCaseAttributes.Name == c.Name) &&
 		(updateCaseAttributes.Status == "" || updateCaseAttributes.Status == c.Status) &&
-		(updateCaseAttributes.InboxId == "" || updateCaseAttributes.InboxId == c.InboxId)
+		(updateCaseAttributes.InboxId == "" || updateCaseAttributes.InboxId == c.InboxId) &&
+		(updateCaseAttributes.Outcome == "" || updateCaseAttributes.Outcome == c.Outcome)
 }
 
 func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec repositories.Executor,
@@ -554,6 +578,20 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 			EventType:     models.CaseStatusUpdated,
 			NewValue:      &newStatus,
 			PreviousValue: (*string)(&oldCase.Status),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	if updateCaseAttributes.Outcome != "" && updateCaseAttributes.Outcome != oldCase.Outcome {
+		newOutcome := string(updateCaseAttributes.Outcome)
+		err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
+			CaseId:        updateCaseAttributes.Id,
+			UserId:        &userId,
+			EventType:     models.CaseOutcomeUpdated,
+			NewValue:      &newOutcome,
+			PreviousValue: (*string)(&oldCase.Outcome),
 		})
 		if err != nil {
 			return err

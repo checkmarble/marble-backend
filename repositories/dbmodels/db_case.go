@@ -16,6 +16,7 @@ type DBCase struct {
 	OrganizationId pgtype.Text      `db:"org_id"`
 	AssignedTo     *string          `db:"assigned_to"`
 	Status         pgtype.Text      `db:"status"`
+	Outcome        pgtype.Text      `db:"outcome"`
 	SnoozedUntil   *time.Time       `db:"snoozed_until"`
 }
 
@@ -33,7 +34,7 @@ type DBPaginatedCases struct {
 
 const TABLE_CASES = "cases"
 
-var SelectCaseColumn = []string{"id", "created_at", "inbox_id", "name", "org_id", "assigned_to", "status", "snoozed_until"}
+var SelectCaseColumn = []string{"id", "created_at", "inbox_id", "name", "org_id", "assigned_to", "status", "outcome", "snoozed_until"}
 
 func AdaptCase(db DBCase) (models.Case, error) {
 	var assigneeId *models.UserId
@@ -49,6 +50,7 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		OrganizationId: db.OrganizationId.String,
 		AssignedTo:     assigneeId,
 		Status:         models.CaseStatus(db.Status.String),
+		Outcome:        models.CaseOutcome(db.Outcome.String),
 		SnoozedUntil:   db.SnoozedUntil,
 	}, nil
 }

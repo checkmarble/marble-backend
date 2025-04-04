@@ -248,7 +248,7 @@ func caseIsBetterMatch(a, b caseMetadataWithDecisionCount) bool {
 	}
 
 	if a.Status != b.Status {
-		return a.Status == models.CaseOpen
+		return a.Status == models.CasePending
 	}
 
 	return a.CreatedAt.After(b.CreatedAt)
