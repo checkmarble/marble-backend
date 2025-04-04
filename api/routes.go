@@ -80,6 +80,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/ingestion/:object_type/:object_id/annotations", tom, handleCreateEntityAnnotation(uc))
 	router.POST("/ingestion/:object_type/:object_id/annotations/file", tom, handleCreateEntityFileAnnotation(uc))
 
+	router.POST("/client_data/:object_type/list", tom, handleReadClientDataAsList(uc))
+
 	router.GET("/annotations/file/:annotationId/:partId", tom, handleGetEntityFileAnnotation(uc))
 	router.DELETE("/annotations/:annotationId", tom, handleDeleteEntityAnnotation(uc))
 

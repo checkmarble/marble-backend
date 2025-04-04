@@ -23,11 +23,11 @@ type ClientObjectDetail struct {
 	RelatedObjects []RelatedObject
 }
 
-func (c *ClientObjectDetail) MarshalJSON() ([]byte, error) {
-	if c != nil && c.RelatedObjects == nil {
+func (c ClientObjectDetail) MarshalJSON() ([]byte, error) {
+	if c.RelatedObjects == nil {
 		c.RelatedObjects = make([]RelatedObject, 0)
 	}
-	if c != nil && c.Data == nil {
+	if c.Data == nil {
 		c.Data = make(map[string]any)
 	}
 	return json.Marshal(struct {
@@ -49,39 +49,4 @@ type RelatedObject struct {
 type ClientObjectMetadata struct {
 	ValidFrom  time.Time `json:"valid_from"`
 	ObjectType string    `json:"object_type"`
-}
-
-func ExamplePivotObject() PivotObject {
-	return PivotObject{
-		PivotObjectId:     "obj123",
-		PivotValue:        "value1",
-		PivotId:           "pivot1",
-		PivotType:         "type1",
-		PivotObjectName:   "Object 1",
-		PivotFieldName:    "field1",
-		IsIngested:        true,
-		NumberOfDecisions: 2,
-		PivotObjectData: ClientObjectDetail{
-			Metadata: ClientObjectMetadata{
-				ValidFrom: time.Now(),
-			},
-			Data: map[string]any{
-				"key1": "value1",
-				"key2": 42,
-			},
-			RelatedObjects: []RelatedObject{
-				{
-					LinkName: "link1",
-					Detail: ClientObjectDetail{
-						Metadata: ClientObjectMetadata{
-							ValidFrom: time.Now(),
-						},
-						Data: map[string]any{
-							"relatedKey": "relatedValue",
-						},
-					},
-				},
-			},
-		},
-	}
 }

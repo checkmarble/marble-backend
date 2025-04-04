@@ -18,6 +18,12 @@ type ingestedDataReaderClientDbRepository interface {
 		table models.Table,
 		objectId string,
 	) ([]models.DataModelObject, error)
+	ListAllObjectIdsFromTable(
+		ctx context.Context,
+		exec repositories.Executor,
+		tableName string,
+		filters ...models.Filter,
+	) ([]string, error) // TODO: remove this, only introduced for a MVP for Chris
 }
 
 type ingestedDataReaderRepository interface {
@@ -241,4 +247,41 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	pivotObject.IsIngested = true
 
 	return pivotObject, nil
+}
+
+func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
+	ctx context.Context,
+	orgId string,
+	objectType string,
+) ([]models.ClientObjectDetail, bool, error) {
+	exec := usecase.executorFactory.NewExecutor()
+	dataModel, err := usecase.repository.GetDataModel(ctx, exec, orgId, false)
+	if err != nil {
+		return nil, false, err
+	}
+	table, ok := dataModel.Tables[objectType]
+	if !ok {
+		return nil, false, errors.Wrapf(models.NotFoundError,
+			"Table '%s' not found in ReadIngestedClientObjects", objectType)
+	}
+
+	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, orgId)
+	if err != nil {
+		return nil, false, err
+	}
+
+	listObjectIds, err := usecase.clientDbRepository.ListAllObjectIdsFromTable(ctx, db, table.Name)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if len(listObjectIds) == 0 {
+		return nil, false, nil
+	}
+
+	objects, err := usecase.GetIngestedObject_variant(ctx, orgId, dataModel, objectType, listObjectIds[0])
+	if err != nil {
+		return nil, false, err
+	}
+	return append(objects, objects[0], objects[0], objects[0]), len(listObjectIds) > 1, nil
 }

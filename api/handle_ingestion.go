@@ -247,3 +247,26 @@ func handleGetIngestedObject(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, dto.DataModelObject{Data: objects[0].Data, Metadata: objects[0].Metadata})
 	}
 }
+
+func handleReadClientDataAsList(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		objectType := c.Param("object_type")
+		usecase := usecasesWithCreds(ctx, uc).NewIngestedDataReaderUsecase()
+
+		clientObjects, hasMore, err := usecase.ReadIngestedClientObjects(ctx, orgId, objectType)
+
+		c.JSON(http.StatusOK, dto.ClientDataListResponse{
+			Data: clientObjects,
+			Pagination: dto.ClientDataListPagination{
+				NextCursorId: nil,
+				HasNextCase:  hasMore,
+			},
+		})
+	}
+}
