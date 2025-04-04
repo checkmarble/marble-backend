@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -19,24 +20,54 @@ var INDEX_CREATION_TIMEOUT time.Duration = 60 * 4 * time.Minute // 4 hours
 func (repo *ClientDbRepository) ListAllValidIndexes(
 	ctx context.Context,
 	exec Executor,
+	indexTypes ...models.IndexType,
 ) ([]models.ConcreteIndex, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	pgIndexes, err := repo.listAllIndexes(ctx, exec)
+	pgIndexes, err := repo.listAllPgIndexes(ctx, exec)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while listing all indexes")
 	}
 
-	var validOrPendingIndexes []models.ConcreteIndex
+	var validIndexes []models.ConcreteIndex
 	for _, pgIndex := range pgIndexes {
+		if len(indexTypes) > 0 && !slices.Contains(indexTypes, pgIndex.AdaptConcreteIndex().Type) {
+			continue
+		}
 		if pgIndex.IsValid {
-			validOrPendingIndexes = append(validOrPendingIndexes, pgIndex.AdaptConcreteIndex())
+			validIndexes = append(validIndexes, pgIndex.AdaptConcreteIndex())
 		}
 	}
 
-	return validOrPendingIndexes, nil
+	return validIndexes, nil
+}
+
+func (repo *ClientDbRepository) ListAllIndexes(
+	ctx context.Context,
+	exec Executor,
+	indexTypes ...models.IndexType,
+) ([]models.ConcreteIndex, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	pgIndexes, err := repo.listAllPgIndexes(ctx, exec)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while listing all indexes")
+	}
+
+	indexes := make([]models.ConcreteIndex, 0, len(pgIndexes))
+	for _, pgIndex := range pgIndexes {
+		if len(indexTypes) > 0 && !slices.Contains(indexTypes,
+			pgIndex.AdaptConcreteIndex().Type) {
+			continue
+		}
+		indexes = append(indexes, pgIndex.AdaptConcreteIndex())
+	}
+
+	return indexes, nil
 }
 
 func (repo *ClientDbRepository) ListAllUniqueIndexes(
@@ -47,7 +78,7 @@ func (repo *ClientDbRepository) ListAllUniqueIndexes(
 		return nil, err
 	}
 
-	pgIndexes, err := repo.listAllIndexes(ctx, exec)
+	pgIndexes, err := repo.listAllPgIndexes(ctx, exec)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while listing all indexes")
 	}
@@ -73,7 +104,7 @@ func (repo *ClientDbRepository) CountPendingIndexes(
 		return 0, err
 	}
 
-	pgIndexes, err := repo.listAllIndexes(ctx, exec)
+	pgIndexes, err := repo.listAllPgIndexes(ctx, exec)
 	if err != nil {
 		return 0, errors.Wrap(err, "error while listing all indexes")
 	}
@@ -87,7 +118,7 @@ func (repo *ClientDbRepository) CountPendingIndexes(
 	return count, nil
 }
 
-func (repo *ClientDbRepository) listAllIndexes(
+func (repo *ClientDbRepository) listAllPgIndexes(
 	ctx context.Context,
 	exec Executor,
 ) ([]pg_indexes.PGIndex, error) {

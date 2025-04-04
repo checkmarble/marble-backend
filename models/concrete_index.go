@@ -28,6 +28,8 @@ type ConcreteIndex struct {
 	name      string
 	Indexed   []string
 	Included  []string
+	Type      IndexType
+	Status    IndexStatus
 }
 
 // Custom marshaller to ensure the name is initialized before marshaling
@@ -72,8 +74,18 @@ func (i *ConcreteIndex) setName() {
 		return
 	}
 	// postgresql enforces a 63 character length limit on all identifiers
+	prefix := ""
+	switch i.Type {
+	case IndexTypeNavigation:
+		prefix = "nav"
+	case IndexTypeAggregation:
+		prefix = "idx"
+	default:
+		prefix = "idx"
+	}
+
 	indexedNames := strings.Join(i.Indexed, "-")
-	out := fmt.Sprintf("idx_%s_%s", i.TableName, indexedNames)
+	out := fmt.Sprintf("%s_%s_%s", prefix, i.TableName, indexedNames)
 	randomId := uuid.NewString()
 	length := min(len(out), MAX_INDEX_NAME_LENGTH_BEFORE_SUFFIX)
 
@@ -87,7 +99,7 @@ func (i *ConcreteIndex) setName() {
 // Includes logic to truncate the index name length to 63 chars max, so that name truncation by Postgres does not
 // interfere with the index name comparison logic.
 func (i *ConcreteIndex) Name() string {
-	if i.name != "" {
+	if i.name == "" {
 		i.setName()
 	}
 	return i.name
@@ -119,6 +131,7 @@ func (i ConcreteIndex) Covers(f IndexFamily) bool {
 		TableName: strings.ToUpper(i.TableName),
 		Indexed:   pure_utils.Map(i.Indexed, strings.ToUpper),
 		Included:  pure_utils.Map(i.Included, strings.ToUpper),
+		// variable is local to this function, no need to set the other fields
 	}
 
 	if i.TableName != f.TableName {
@@ -180,3 +193,69 @@ func (i ConcreteIndex) Covers(f IndexFamily) bool {
 
 	return true
 }
+
+type IndexStatus int
+
+const (
+	IndexStatusUnknown IndexStatus = iota
+	IndexStatusPending
+	IndexStatusValid
+	IndexStatusInvalid
+)
+
+func (s IndexStatus) String() string {
+	switch s {
+	case IndexStatusPending:
+		return "pending"
+	case IndexStatusValid:
+		return "valid"
+	case IndexStatusInvalid:
+		return "invalid"
+	default:
+		return "unknown"
+	}
+}
+
+func IndexStatusFromString(s string) IndexStatus {
+	switch s {
+	case "pending":
+		return IndexStatusPending
+	case "valid":
+		return IndexStatusValid
+	case "invalid":
+		return IndexStatusInvalid
+	default:
+		return IndexStatusUnknown
+	}
+}
+
+type IndexType int
+
+const (
+	IndexTypeUnknown IndexType = iota
+	IndexTypeNavigation
+	IndexTypeAggregation
+)
+
+// TODO: remove it not used at the end of the PR
+// func (t IndexType) String() string {
+// 	switch t {
+// 	case IndexTypeNavigation:
+// 		return "navigation"
+// 	case IndexTypeAggregation:
+// 		return "aggregation"
+// 	default:
+// 		return "unknown"
+// 	}
+// }
+
+// func IndexTypeFromString(s string) IndexType {
+// 	switch s {
+// 	case "navigation":
+// 		return IndexTypeNavigation
+// 	case "aggregation":
+// 		return IndexTypeAggregation
+// 	default:
+// 		return IndexTypeUnknown
+// 	}
+// }

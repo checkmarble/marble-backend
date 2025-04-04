@@ -101,11 +101,12 @@ func (dm DataModel) AllFieldsAsMap() map[string]Field {
 // ///////////////////////////////
 
 type Table struct {
-	ID            string
-	Name          string
-	Description   string
-	Fields        map[string]Field
-	LinksToSingle map[string]LinkToSingle
+	ID                string
+	Name              string
+	Description       string
+	Fields            map[string]Field
+	LinksToSingle     map[string]LinkToSingle
+	NavigationOptions []NavigationOption
 }
 
 func (t Table) Copy() Table {
@@ -121,6 +122,15 @@ func (t Table) Copy() Table {
 	out.Fields = fields
 	out.LinksToSingle = links
 	return out
+}
+
+func (t Table) GetFieldById(fieldId string) (Field, bool) {
+	for _, field := range t.Fields {
+		if field.ID == fieldId {
+			return field, true
+		}
+	}
+	return Field{}, false
 }
 
 type TableMetadata struct {
@@ -256,4 +266,34 @@ type DataModelLinkCreateInput struct {
 type DataModelObject struct {
 	Data     map[string]any
 	Metadata map[string]any
+}
+
+// ///////////////////////////////
+// Navigation options - AKA how we can explore client data objects in a "one to many" way
+// ///////////////////////////////
+
+type NavigationOption struct {
+	// A navigation options starts from a table and field value
+	SourceTableName string
+	SourceTableId   string
+	SourceFieldName string
+	SourceFieldId   string
+
+	// And goes to another table (may be the same), filtering on a field and ordering on another field
+	TargetTableName   string
+	TargetTableId     string
+	FilterFieldName   string
+	FilterFieldId     string
+	OrderingFieldName string
+	OrderingFieldId   string
+
+	Status IndexStatus
+}
+
+type CreateNavigationOptionInput struct {
+	SourceTableId   string
+	SourceFieldId   string
+	TargetTableId   string
+	FilterFieldId   string
+	OrderingFieldId string
 }

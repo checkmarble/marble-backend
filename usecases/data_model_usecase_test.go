@@ -222,6 +222,11 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_no_unique() {
 	usecase := suite.makeUsecase()
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	var nilStr *string
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr).
+		Return(nil, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
@@ -245,6 +250,11 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_with_unique() {
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
 
+	var nilStr *string
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr).
+		Return(nil, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
 	dataModel, err := usecase.GetDataModel(suite.ctx, suite.organizationId)
 	suite.Require().NoError(err, "no error expected")
 	suite.Require().Equal(suite.dataModelWithUnique, dataModel,
@@ -681,6 +691,11 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_nominal() {
 	// for GetDataModel (reused in CreateDataModelLink), copied from TestGetDataModel_nominal_with_unique
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	var nilStr *string
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr).
+		Return(nil, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
@@ -718,6 +733,11 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_parent_field_not
 	// for GetDataModel (reused in CreateDataModelLink), copied from TestGetDataModel_nominal_no_unique
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	var nilStr *string
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr).
+		Return(nil, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
@@ -781,6 +801,11 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	// for GetDataModel (reused in UpdateDataModelField), copied from TestGetDataModel_nominal_with_unique
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	var nilStr *string
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr).
+		Return(nil, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
@@ -813,6 +838,11 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	// for GetDataModel (reused in UpdateDataModelField), copied from TestGetDataModel_nominal_with_unique
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	var nilStr *string
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr).
+		Return(nil, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
@@ -852,6 +882,11 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	// for GetDataModel (reused in UpdateDataModelField), copied from TestGetDataModel_nominal_with_unique
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	var nilStr *string
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr).
+		Return(nil, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
@@ -899,6 +934,11 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	// for GetDataModel (reused in UpdateDataModelField), copied from TestGetDataModel_nominal_with_unique
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	var nilStr *string
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr).
+		Return(nil, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)

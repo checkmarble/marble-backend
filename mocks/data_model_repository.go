@@ -80,10 +80,19 @@ func (d *DataModelRepository) CreatePivot(ctx context.Context, exec repositories
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) ListPivots(ctx context.Context, exec repositories.Executor,
-	organization_id string, tableId *string,
+func (d *DataModelRepository) ListPivots(
+	ctx context.Context,
+	exec repositories.Executor,
+	organization_id string,
+	tableId *string,
 ) ([]models.PivotMetadata, error) {
 	args := d.Called(ctx, exec, organization_id, tableId)
+	if args.Error(1) != nil {
+		return nil, args.Error(1)
+	}
+	if args.Get(0) == nil {
+		return []models.PivotMetadata{}, nil
+	}
 	return args.Get(0).([]models.PivotMetadata), args.Error(1)
 }
 

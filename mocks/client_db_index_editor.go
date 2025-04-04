@@ -54,6 +54,25 @@ func (editor *ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context, org
 	return args.Get(0).([]models.UnicityIndex), args.Error(1)
 }
 
+func (editor *ClientDbIndexEditor) ListAllIndexes(
+	ctx context.Context,
+	organizationId string,
+	indexTypes ...models.IndexType,
+) ([]models.ConcreteIndex, error) {
+	callArgs := []any{ctx, organizationId}
+	for _, indexType := range indexTypes {
+		callArgs = append(callArgs, indexType)
+	}
+	args := editor.Called(callArgs...)
+	if args.Error(1) != nil {
+		return nil, args.Error(1)
+	}
+	if args.Get(0) == nil {
+		return nil, nil
+	}
+	return args.Get(0).([]models.ConcreteIndex), args.Error(1)
+}
+
 func (editor *ClientDbIndexEditor) CreateUniqueIndex(
 	ctx context.Context,
 	exec repositories.Executor,

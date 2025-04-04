@@ -14,8 +14,25 @@ import (
 	"github.com/pkg/errors"
 )
 
+type dataModelUsecaseIndexEditor interface {
+	ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error)
+	ListAllIndexes(
+		ctx context.Context,
+		organizationId string,
+		indexTypes ...models.IndexType,
+	) ([]models.ConcreteIndex, error)
+	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, organizationId string, index models.UnicityIndex) error
+	CreateUniqueIndexAsync(ctx context.Context, organizationId string, index models.UnicityIndex) error
+	DeleteUniqueIndex(ctx context.Context, organizationId string, index models.UnicityIndex) error
+	CreateIndexesAsync(
+		ctx context.Context,
+		organizationId string,
+		indexes []models.ConcreteIndex,
+	) error
+}
+
 type DataModelUseCase struct {
-	clientDbIndexEditor          clientDbIndexEditor
+	clientDbIndexEditor          dataModelUsecaseIndexEditor
 	dataModelRepository          repositories.DataModelRepository
 	enforceSecurity              security.EnforceSecurityOrganization
 	executorFactory              executor_factory.ExecutorFactory
@@ -33,16 +50,28 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return models.DataModel{}, err
 	}
+	exec := usecase.executorFactory.NewExecutor()
 
-	dataModel, err := usecase.dataModelRepository.GetDataModel(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		organizationID,
-		true,
-	)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, true)
 	if err != nil {
 		return models.DataModel{}, err
 	}
+
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationID, nil)
+	if err != nil {
+		return models.DataModel{}, err
+	}
+
+	pivots := make([]models.Pivot, 0, len(pivotsMeta))
+	for _, pivot := range pivotsMeta {
+		pivots = append(pivots, models.AdaptPivot(pivot, dataModel))
+	}
+
+	indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID, models.IndexTypeNavigation)
+	if err != nil {
+		return models.DataModel{}, err
+	}
+	addNavigationOptionsToDataModel(&dataModel, indexes, pivots)
 
 	uniqueIndexes, err := usecase.clientDbIndexEditor.ListAllUniqueIndexes(ctx, organizationID)
 	if err != nil {
@@ -80,6 +109,105 @@ func addUnicityConstraintStatusToDataModel(dataModel models.DataModel, uniqueInd
 		}
 	}
 	return dm
+}
+
+func addNavigationOptionsToDataModel(dataModel *models.DataModel, indexes []models.ConcreteIndex, pivots []models.Pivot) {
+	// navigation options are computed from the following heuristic:
+	// - table A has a link to table B (through A.a -> B.b) and there exists an index table A on (a, some_timestamp_field)
+	// - table A has a pivot value defined that is a field of table A itself (e.g. "transactions.account_id"), and there exists an index table A on (a, some_timestamp_field)
+
+	navigationOptions := make(map[string][]models.NavigationOption, len(dataModel.Tables))
+
+	for _, index := range indexes {
+		if index.Type != models.IndexTypeNavigation {
+			continue
+		}
+
+		childTable, ok := dataModel.Tables[index.TableName]
+		if !ok {
+			continue
+		}
+
+		if len(index.Indexed) < 2 {
+			continue
+		}
+		fieldName := index.Indexed[0]
+		field, ok := childTable.Fields[fieldName]
+		if !ok {
+			continue
+		}
+
+		childOrderingField, ok := childTable.Fields[index.Indexed[1]]
+		if !ok {
+			continue
+		}
+
+		var candidateLinksFromThisField []models.LinkToSingle
+		for _, l := range childTable.LinksToSingle {
+			if l.ChildFieldName == fieldName {
+				candidateLinksFromThisField = append(candidateLinksFromThisField, l)
+			}
+		}
+
+		for _, link := range candidateLinksFromThisField {
+			// the parent table is the source table and the navigation option is the "reverse link", plus order.
+			navOption := models.NavigationOption{
+				SourceTableName:   link.ParentTableName,
+				SourceTableId:     link.ParentTableId,
+				SourceFieldName:   link.ParentFieldName,
+				SourceFieldId:     link.ParentFieldId,
+				TargetTableName:   link.ChildTableName,
+				TargetTableId:     link.ChildTableId,
+				FilterFieldName:   link.ChildFieldName,
+				FilterFieldId:     link.ChildFieldId,
+				OrderingFieldName: childOrderingField.Name,
+				OrderingFieldId:   childOrderingField.ID,
+				Status:            index.Status,
+			}
+			if _, ok := navigationOptions[link.ParentTableName]; !ok {
+				navigationOptions[link.ParentTableName] = []models.NavigationOption{}
+			}
+			navigationOptions[link.ParentTableName] =
+				append(navigationOptions[link.ParentTableName], navOption)
+		}
+
+		for _, pivot := range pivots {
+			if pivot.BaseTable != index.TableName {
+				continue
+			}
+			if pivot.Field != field.Name {
+				continue
+			}
+
+			// the pivot table is the base table and the child and parent fields are the same
+			navOption := models.NavigationOption{
+				SourceTableName:   pivot.BaseTable,
+				SourceTableId:     pivot.BaseTableId,
+				SourceFieldName:   field.Name,
+				SourceFieldId:     field.ID,
+				TargetTableName:   pivot.PivotTable,
+				TargetTableId:     pivot.PivotTableId,
+				FilterFieldName:   field.Name,
+				FilterFieldId:     field.ID,
+				OrderingFieldName: childOrderingField.Name,
+				OrderingFieldId:   childOrderingField.ID,
+				Status:            index.Status,
+			}
+			if _, ok := navigationOptions[pivot.BaseTable]; !ok {
+				navigationOptions[pivot.BaseTable] = []models.NavigationOption{}
+			}
+			navigationOptions[pivot.BaseTable] =
+				append(navigationOptions[pivot.BaseTable], navOption)
+		}
+	}
+
+	for tableName, table := range dataModel.Tables {
+		if options, ok := navigationOptions[table.Name]; ok {
+			t := table
+			t.NavigationOptions = options
+			dataModel.Tables[tableName] = t
+		}
+	}
 }
 
 func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organizationId, name, description string) (string, error) {
@@ -538,4 +666,158 @@ func (usecase *DataModelUseCase) ListPivots(ctx context.Context, organizationId 
 	}
 
 	return pivots, nil
+}
+
+func (usecase *DataModelUseCase) CreateNavigationOption(ctx context.Context, input models.CreateNavigationOptionInput) error {
+	exec := usecase.executorFactory.NewExecutor()
+
+	// Basic sanity checks on input
+	if input.SourceTableId == input.TargetTableId && input.SourceFieldId != input.FilterFieldId {
+		return errors.Wrap(
+			models.BadParameterError,
+			"if source and target tables are the same, source and filter fields must be the same",
+		)
+	}
+	if input.FilterFieldId == input.OrderingFieldId {
+		return errors.Wrap(
+			models.BadParameterError,
+			"filter and ordering fields must be different",
+		)
+	}
+
+	// get data model for the org, with pivot definition
+	sourceTableMeta, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, input.SourceTableId)
+	if err != nil {
+		return err
+	}
+	orgId := sourceTableMeta.OrganizationID
+	if err := usecase.enforceSecurity.WriteDataModel(orgId); err != nil {
+		return err
+	}
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, orgId, true)
+	if err != nil {
+		return err
+	}
+	uniqueIndexes, err := usecase.clientDbIndexEditor.ListAllUniqueIndexes(ctx, orgId)
+	if err != nil {
+		return err
+	}
+	dataModel = addUnicityConstraintStatusToDataModel(dataModel, uniqueIndexes)
+	allTables := dataModel.AllTablesAsMap()
+
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, orgId, nil)
+	if err != nil {
+		return err
+	}
+	// Consider only the pivot defined on the input source table, if present. Other pivot values are irrelevant in this context.
+	pivots := make([]models.Pivot, 0, 1)
+	for _, pivot := range pivotsMeta {
+		if pivot.BaseTableId == input.SourceTableId && pivot.FieldId != nil {
+			pivots = append(pivots, models.AdaptPivot(pivot, dataModel))
+		}
+	}
+
+	// verify that the navigation option input matches one of the two cases where they can be created (reverse link or self-table pivot value)
+	canCreateNavOption := false
+	targetTable, ok := allTables[input.TargetTableId]
+	if !ok {
+		return errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("target table %s not found", input.TargetTableId),
+		)
+	}
+	sourceTable, ok := allTables[input.SourceTableId]
+	if !ok {
+		return errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("source table %s not found", input.SourceTableId),
+		)
+	}
+	sourceField, ok := sourceTable.GetFieldById(input.SourceFieldId)
+	if !ok {
+		return errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("source field %s not found in table %s", input.SourceFieldId, sourceTable.Name),
+		)
+	}
+	filterField, ok := targetTable.GetFieldById(input.FilterFieldId)
+	if !ok {
+		return errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("filter field %s not found in table %s", input.FilterFieldId, targetTable.Name),
+		)
+	}
+	orderingField, ok := targetTable.GetFieldById(input.OrderingFieldId)
+	if !ok {
+		return errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("ordering field %s not found in table %s", input.OrderingFieldId, targetTable.Name),
+		)
+	}
+
+	for _, link := range targetTable.LinksToSingle {
+		if link.ParentFieldId == input.SourceFieldId &&
+			link.ParentTableId == input.SourceTableId {
+			canCreateNavOption = true
+			break
+		}
+	}
+	for _, pivot := range pivots {
+		// no navigation option on fields that are marked as unique
+		if pivot.BaseTableId == input.SourceTableId && pivot.Field == sourceField.Name {
+			if filterField.UnicityConstraint != models.NoUnicityConstraint {
+				return errors.Wrap(
+					models.BadParameterError,
+					fmt.Sprintf("cannot create navigation option on unique field %s.%s",
+						targetTable.Name, filterField.Name),
+				)
+			}
+			canCreateNavOption = true
+		}
+	}
+
+	if !canCreateNavOption {
+		return errors.Wrap(
+			models.UnprocessableEntityError,
+			fmt.Sprintf("cannot create navigation option from %s.%s to %s.%s: must be a reverse link of self-table pivot value",
+				sourceTable.Name, sourceField.Name,
+				targetTable.Name, filterField.Name),
+		)
+	}
+
+	// enrich data model with the existing navigation options to check against conflict
+	indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, orgId, models.IndexTypeNavigation)
+	if err != nil {
+		return err
+	}
+	addNavigationOptionsToDataModel(&dataModel, indexes, pivots)
+
+	// last, check if the navigation option already exists
+	for _, navOption := range dataModel.AllTablesAsMap()[input.SourceTableId].NavigationOptions {
+		if navOption.SourceFieldName == sourceField.Name &&
+			navOption.FilterFieldName == filterField.Name &&
+			navOption.OrderingFieldName == orderingField.Name {
+			if navOption.Status == models.IndexStatusValid {
+				return errors.Wrap(
+					models.ConflictError,
+					fmt.Sprintf("navigation option %s.%s -> %s.%s (order on %s) already exists",
+						sourceTable.Name, sourceField.Name,
+						targetTable.Name, filterField.Name, orderingField.Name),
+				)
+			}
+			// index already pending creation, early return for noop
+			if navOption.Status == models.IndexStatusPending {
+				return nil
+			}
+		}
+	}
+
+	// Finally, create the index
+	return usecase.clientDbIndexEditor.CreateIndexesAsync(ctx, orgId, []models.ConcreteIndex{
+		{
+			Type:      models.IndexTypeNavigation,
+			TableName: targetTable.Name,
+			Indexed:   []string{filterField.Name, orderingField.Name},
+		},
+	})
 }

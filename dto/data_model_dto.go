@@ -29,12 +29,27 @@ type Field struct {
 	UnicityConstraint string `json:"unicity_constraint"`
 }
 
+type NavigationOption struct {
+	SourceTableName   string `json:"source_table_name"`
+	SourceTableId     string `json:"source_table_id"`
+	SourceFieldName   string `json:"source_field_name"`
+	SourceFieldId     string `json:"source_field_id"`
+	TargetTableName   string `json:"target_table_name"`
+	TargetTableId     string `json:"target_table_id"`
+	FilterFieldName   string `json:"filter_field_name"`
+	FilterFieldId     string `json:"filter_field_id"`
+	OrderingFieldName string `json:"ordering_field_name"`
+	OrderingFieldId   string `json:"ordering_field_id"`
+	Status            string `json:"status"`
+}
+
 type Table struct {
-	ID            string                  `json:"id"`
-	Name          string                  `json:"name"`
-	Description   string                  `json:"description"`
-	Fields        map[string]Field        `json:"fields"`
-	LinksToSingle map[string]LinkToSingle `json:"links_to_single,omitempty"`
+	ID                string                  `json:"id"`
+	Name              string                  `json:"name"`
+	Description       string                  `json:"description"`
+	Fields            map[string]Field        `json:"fields"`
+	LinksToSingle     map[string]LinkToSingle `json:"links_to_single,omitempty"`
+	NavigationOptions []NavigationOption      `json:"navigation_options,omitempty"`
 }
 
 type DataModel struct {
@@ -43,11 +58,12 @@ type DataModel struct {
 
 func AdaptTableDto(table models.Table) Table {
 	return Table{
-		Name:          table.Name,
-		ID:            table.ID,
-		Fields:        pure_utils.MapValues(table.Fields, adaptDataModelField),
-		LinksToSingle: pure_utils.MapValues(table.LinksToSingle, adaptDataModelLink),
-		Description:   table.Description,
+		Name:              table.Name,
+		ID:                table.ID,
+		Fields:            pure_utils.MapValues(table.Fields, adaptDataModelField),
+		LinksToSingle:     pure_utils.MapValues(table.LinksToSingle, adaptDataModelLink),
+		NavigationOptions: pure_utils.Map(table.NavigationOptions, adaptDataModelNavigationOption),
+		Description:       table.Description,
 	}
 }
 
@@ -76,6 +92,22 @@ func adaptDataModelLink(linkToSingle models.LinkToSingle) LinkToSingle {
 		ChildTableId:    linkToSingle.ChildTableId,
 		ChildFieldName:  linkToSingle.ChildFieldName,
 		ChildFieldId:    linkToSingle.ChildFieldId,
+	}
+}
+
+func adaptDataModelNavigationOption(navigationOption models.NavigationOption) NavigationOption {
+	return NavigationOption{
+		SourceTableName:   navigationOption.SourceTableName,
+		SourceTableId:     navigationOption.SourceTableId,
+		SourceFieldName:   navigationOption.SourceFieldName,
+		SourceFieldId:     navigationOption.SourceFieldId,
+		TargetTableName:   navigationOption.TargetTableName,
+		TargetTableId:     navigationOption.TargetTableId,
+		FilterFieldName:   navigationOption.FilterFieldName,
+		FilterFieldId:     navigationOption.FilterFieldId,
+		OrderingFieldName: navigationOption.OrderingFieldName,
+		OrderingFieldId:   navigationOption.OrderingFieldId,
+		Status:            navigationOption.Status.String(),
 	}
 }
 
@@ -120,4 +152,11 @@ type CreateFieldInput struct {
 type DataModelObject struct {
 	Data     map[string]any `json:"data"`
 	Metadata map[string]any `json:"metadata"`
+}
+
+type CreateNavigationOptionInput struct {
+	SourceFieldId   string `json:"source_field_id"`
+	TargetTableId   string `json:"target_table_id"`
+	FilterFieldId   string `json:"filter_field_id"`
+	OrderingFieldId string `json:"ordering_field_id"`
 }
