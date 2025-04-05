@@ -63,16 +63,39 @@ firebase --project [GOOGLE_CLOUD_PROJECT] emulators:start --import=./firebase-lo
 
 Export your `.env` file (e.g. using [direnv](https://direnv.net/) or [mise](https://mise.jdx.dev/)) and run the root of the project:
 
+The backend project is made of five discrete components:
+
+ - The API server
+ - The background worker
+ - The scheduled executor
+ - The data ingestion worker
+ - The pending webhook handler
+
+Depending on which feature you need while developing, you should run one or more of those services. The last three are one-off commands that are usually run in cron and do not need to run in the background. The worker, though, handles all asynchronous background tasks the API needs (such as index creation) and might be requireed for some of the API functionnality to work properly.
+
+The `docker compose` of this repository only contains the _dependencies_ required to run the backend service, but does not start the services themselves. It is assumed the developer will run them themselves.
+
 ```sh
-go run . --migrations --server
+go run . --migrations --server # To start the API
+go run . --worker # To start the worker
 ```
 
-alternatively, using mise :
+Alternatively, using mise :
+
 ```sh
 mise exec -- go run . --migrations --server
+mise exec -- go run . --worker
 ```
 
-> Using VSCode, you can also run the `Migrate and Launch (.env)` task in the "Run and debug" tab. This will load your env file, migrate the DB and start the server.
+If you need to run the one-off components (for example if you are working on background data ingestion or on scheduled scenario execution), run them directly from your editor or the terminal when required:
+
+```sh
+go run . --scheduled-executer
+go run . --send-pending-webhook-events
+go run . --data-ingestion
+```
+
+> Using VSCode, you can also run the `Migrate and Launch (.env)` task in the "Run and debug" tab. This will load your env file, migrate the DB and start the server. Other components can also be started with the appropriately-named tasks.
 
 ## Application flags
 
