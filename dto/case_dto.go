@@ -22,6 +22,7 @@ type APICase struct {
 	Files          []APICaseFile        `json:"files"`
 	SnoozedUntil   *time.Time           `json:"snoozed_until,omitempty"`
 	AssignedTo     *string              `json:"assigned_to,omitempty"`
+	Boost          string               `json:"boost,omitempty"`
 }
 
 type APICaseWithDecisions struct {
@@ -42,6 +43,7 @@ func AdaptCaseDto(c models.Case) APICase {
 		Outcome:        string(c.Outcome),
 		Tags:           pure_utils.Map(c.Tags, NewAPICaseTag),
 		Files:          pure_utils.Map(c.Files, NewAPICaseFile),
+		Boost:          c.Boost.String(),
 	}
 
 	if c.SnoozedUntil != nil && c.SnoozedUntil.After(time.Now()) {
