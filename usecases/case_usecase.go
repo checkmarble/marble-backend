@@ -58,6 +58,8 @@ type CaseUseCaseRepository interface {
 
 	AssignCase(ctx context.Context, exec repositories.Executor, id string, userId *models.UserId) error
 	UnassignCase(ctx context.Context, exec repositories.Executor, id string) error
+	BoostCase(ctx context.Context, exec repositories.Executor, id string, reason models.BoostReason) error
+	UnboostCase(ctx context.Context, exec repositories.Executor, id string) error
 
 	GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor,
 		orgId, pivotId, pivotValue string) ([]models.Case, error)
@@ -375,6 +377,10 @@ func (usecase *CaseUseCase) UpdateCase(
 			return models.Case{}, err
 		}
 
+		if err = usecase.repository.UnboostCase(ctx, tx, updateCaseAttributes.Id); err != nil {
+			return models.Case{}, err
+		}
+
 		if err := usecase.updateCaseCreateEvents(ctx, tx, updateCaseAttributes, c, userId); err != nil {
 			return models.Case{}, err
 		}
@@ -428,6 +434,10 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 			previousSnooze = utils.Ptr(c.SnoozedUntil.Format(time.RFC3339))
 		}
 
+		if err := uc.repository.BoostCase(ctx, tx, req.CaseId, models.BoostUnsnoozed); err != nil {
+			return err
+		}
+
 		event := models.CreateCaseEventAttributes{
 			UserId:        utils.Ptr(string(req.UserId)),
 			CaseId:        req.CaseId,
@@ -459,7 +469,11 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 			return err
 		}
 
-		if err = uc.repository.UnsnoozeCase(ctx, uc.executorFactory.NewExecutor(), req.CaseId); err != nil {
+		if err = uc.repository.UnsnoozeCase(ctx, tx, req.CaseId); err != nil {
+			return err
+		}
+
+		if err = uc.repository.UnboostCase(ctx, tx, req.CaseId); err != nil {
 			return err
 		}
 
@@ -517,6 +531,12 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := usecase.repository.AssignCase(ctx, tx, req.CaseId, req.AssigneeId); err != nil {
 			return err
+		}
+
+		if req.AssigneeId != nil && *req.AssigneeId != req.UserId {
+			if err = usecase.repository.BoostCase(ctx, tx, req.CaseId, models.BoostReassigned); err != nil {
+				return err
+			}
 		}
 
 		if c.Status == models.CasePending {
@@ -656,6 +676,12 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		}
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseId, userId); err != nil {
 			return models.Case{}, err
+		}
+
+		if len(c.Decisions) > 0 {
+			if err := usecase.repository.BoostCase(ctx, tx, caseId, models.BoostNewDecision); err != nil {
+				return models.Case{}, err
+			}
 		}
 
 		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, caseId)

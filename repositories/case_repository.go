@@ -161,9 +161,23 @@ func (repo *MarbleDbRepository) UpdateCase(ctx context.Context, exec Executor, u
 	if updateCaseAttributes.Outcome != "" {
 		query = query.Set("outcome", updateCaseAttributes.Outcome)
 	}
+	if updateCaseAttributes.Boost != models.BoostUnboost {
+		query = query.Set("boost", updateCaseAttributes.Boost)
+	}
+	if updateCaseAttributes.Boost == models.BoostUnboost {
+		query = query.Set("boost", nil)
+	}
 
 	err := ExecBuilder(ctx, exec, query)
 	return err
+}
+
+func (repo *MarbleDbRepository) BoostCase(ctx context.Context, exec Executor, id string, reason models.BoostReason) error {
+	return repo.UpdateCase(ctx, exec, models.UpdateCaseAttributes{Id: id, Boost: reason})
+}
+
+func (repo *MarbleDbRepository) UnboostCase(ctx context.Context, exec Executor, id string) error {
+	return repo.UpdateCase(ctx, exec, models.UpdateCaseAttributes{Id: id, Boost: models.BoostUnboost})
 }
 
 func (repo *MarbleDbRepository) SnoozeCase(ctx context.Context, exec Executor, snoozeRequest models.CaseSnoozeRequest) error {
@@ -284,7 +298,8 @@ func casesWithRankColumns() []string {
 }
 
 func casesCoreQueryWithRank(pagination models.PaginationAndSorting) squirrel.SelectBuilder {
-	orderCondition := fmt.Sprintf("c.%s %s, c.id %s", pagination.Sorting, pagination.Order, pagination.Order)
+	orderCondition := fmt.Sprintf("c.boost is null, c.%s %s, c.id %s",
+		pagination.Sorting, pagination.Order, pagination.Order)
 
 	return squirrel.StatementBuilder.
 		Select(dbmodels.SelectCaseColumn...).
@@ -454,5 +469,5 @@ func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec
 }
 
 func orderConditionForCases(p models.PaginationAndSorting) string {
-	return fmt.Sprintf("c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)
+	return fmt.Sprintf("c.boost is null, c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)
 }
