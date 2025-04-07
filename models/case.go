@@ -22,6 +22,7 @@ type Case struct {
 	Tags           []CaseTag
 	Files          []CaseFile
 	SnoozedUntil   *time.Time
+	Boost          *BoostReason
 }
 
 func (c Case) GetMetadata() CaseMetadata {
@@ -102,6 +103,7 @@ type UpdateCaseAttributes struct {
 	Name    string
 	Status  CaseStatus
 	Outcome CaseOutcome
+	Boost   BoostReason
 }
 
 type CreateCaseCommentAttributes struct {
@@ -161,4 +163,21 @@ type CaseAssignementRequest struct {
 	UserId     UserId
 	CaseId     string
 	AssigneeId *UserId
+}
+
+type BoostReason string
+
+const (
+	BoostUnboost     BoostReason = ""
+	BoostUnsnoozed   BoostReason = "unsnoozed"
+	BoostReassigned  BoostReason = "reassigned"
+	BoostEscalated   BoostReason = "escalated"
+	BoostNewDecision BoostReason = "new_decision"
+)
+
+func (br *BoostReason) String() string {
+	if br == nil {
+		return ""
+	}
+	return string(*br)
 }
