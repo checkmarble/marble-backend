@@ -54,8 +54,7 @@ func (uc SuspiciousActivityReportUsecase) ListReports(
 ) ([]models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	_, err := uc.canUpdateCase(ctx, exec, orgId, caseId)
-	if err != nil {
+	if err := uc.hasCasePermissions(ctx, exec, orgId, caseId); err != nil {
 		return nil, err
 	}
 
@@ -74,8 +73,7 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 ) (models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	_, err := uc.canUpdateCase(ctx, exec, orgId, req.CaseId)
-	if err != nil {
+	if err := uc.hasCasePermissions(ctx, exec, orgId, req.CaseId); err != nil {
 		return models.SuspiciousActivityReport{}, err
 	}
 
@@ -98,16 +96,27 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 ) (models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	_, err := uc.canUpdateCase(ctx, exec, orgId, req.CaseId)
-	if err != nil {
+	if err := uc.hasCasePermissions(ctx, exec, orgId, req.CaseId); err != nil {
 		return models.SuspiciousActivityReport{}, err
+	}
+
+	sar, err := uc.repository.GetSuspiciousActivityReportById(ctx, exec, req.CaseId, req.ReportId, false)
+	if err != nil {
+		return models.SuspiciousActivityReport{},
+			errors.Wrap(models.NotFoundError, err.Error())
+	}
+
+	if sar.Status == models.SarCompleted {
+		return models.SuspiciousActivityReport{},
+			errors.Wrap(models.UnprocessableEntityError,
+				"suspicious activity report is marked as completed")
 	}
 
 	if req.Status == models.SarUnknown {
 		req.Status = models.SarPending
 	}
 
-	sar, err := uc.repository.UpdateSuspiciousActivityReport(ctx, exec, req)
+	sar, err = uc.repository.UpdateSuspiciousActivityReport(ctx, exec, req)
 	if err != nil {
 		return models.SuspiciousActivityReport{}, err
 	}
@@ -121,8 +130,7 @@ func (uc SuspiciousActivityReportUsecase) GenerateReportUrl(
 ) (string, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	_, err := uc.canUpdateCase(ctx, exec, orgId, caseId)
-	if err != nil {
+	if err := uc.hasCasePermissions(ctx, exec, orgId, caseId); err != nil {
 		return "", err
 	}
 
@@ -146,8 +154,7 @@ func (uc SuspiciousActivityReportUsecase) UploadReport(
 ) (models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	_, err := uc.canUpdateCase(ctx, exec, orgId, req.CaseId)
-	if err != nil {
+	if err := uc.hasCasePermissions(ctx, exec, orgId, req.CaseId); err != nil {
 		return models.SuspiciousActivityReport{}, err
 	}
 
@@ -157,12 +164,6 @@ func (uc SuspiciousActivityReportUsecase) UploadReport(
 		sar, err := uc.repository.GetSuspiciousActivityReportById(ctx, tx, req.CaseId, req.ReportId, true)
 		if err != nil {
 			return models.SuspiciousActivityReport{}, err
-		}
-
-		if sar.Status == models.SarCompleted {
-			return models.SuspiciousActivityReport{},
-				errors.Wrap(models.UnprocessableEntityError,
-					"the suspicious activity report is marked as completed")
 		}
 
 		blobKey := fmt.Sprintf("%s/%s/sar/%s", orgId, req.CaseId, uuid.NewString())
@@ -190,32 +191,41 @@ func (uc SuspiciousActivityReportUsecase) DeleteReport(
 ) error {
 	exec := uc.executorFactory.NewExecutor()
 
-	_, err := uc.canUpdateCase(ctx, exec, orgId, req.CaseId)
+	sar, err := uc.repository.GetSuspiciousActivityReportById(ctx, exec, req.CaseId, req.ReportId, true)
 	if err != nil {
+		return err
+	}
+
+	if sar.Status == models.SarCompleted {
+		return errors.Wrap(models.UnprocessableEntityError,
+			"the suspicious activity report is marked as completed")
+	}
+
+	if err = uc.hasCasePermissions(ctx, exec, orgId, req.CaseId); err != nil {
 		return err
 	}
 
 	return uc.repository.DeleteSuspiciousActivityReport(ctx, exec, req)
 }
 
-func (uc SuspiciousActivityReportUsecase) canUpdateCase(ctx context.Context,
+func (uc SuspiciousActivityReportUsecase) hasCasePermissions(ctx context.Context,
 	exec repositories.Executor, orgId, caseId string,
-) (models.Case, error) {
+) error {
 	c, err := uc.caseUsecase.GetCase(ctx, caseId)
 	if err != nil {
-		return models.Case{}, errors.Wrap(models.NotFoundError, err.Error())
+		return errors.Wrap(models.NotFoundError, err.Error())
 	}
 
 	inboxIds, err := uc.caseUsecase.getAvailableInboxIds(ctx, exec, orgId)
 	if err != nil {
-		return models.Case{}, err
+		return err
 	}
 
 	if err := uc.enforceCaseSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxIds); err != nil {
-		return models.Case{}, err
+		return err
 	}
 
-	return c, nil
+	return nil
 }
 
 func (uc SuspiciousActivityReportUsecase) writeToBlobStorage(ctx context.Context, fileHeader multipart.FileHeader, newFileReference string,
