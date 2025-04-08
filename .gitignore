@@ -56,3 +56,4 @@ e2e_test
 # client db config file
 *client_db_config.json
 *.pem
+!.jwt-key.example.pem
