@@ -242,7 +242,7 @@ func asynchronouslyCreateIndexes(
 
 func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteIndex) error {
 	logger := utils.LoggerFromContext(ctx)
-	qualifiedTableName := tableNameWithSchema(exec, index.TableName)
+	qualifiedTableName := pgIdentifierWithSchema(exec, index.TableName)
 	indexedColumns := index.Indexed
 	includedColumns := index.Included
 
@@ -321,7 +321,7 @@ func dropIdxSqlQuery(indexName string, exec Executor) string {
 
 func createUniqueIndex(ctx context.Context, exec Executor, index models.UnicityIndex, async bool) error {
 	logger := utils.LoggerFromContext(ctx)
-	qualifiedTableName := tableNameWithSchema(exec, index.TableName)
+	qualifiedTableName := pgIdentifierWithSchema(exec, index.TableName)
 	indexName := pgx.Identifier.Sanitize([]string{
 		toUniqIndexName(index.Fields, index.TableName),
 	})

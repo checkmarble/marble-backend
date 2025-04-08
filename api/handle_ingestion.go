@@ -257,16 +257,23 @@ func handleReadClientDataAsList(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		objectType := c.Param("object_type")
+		var input dto.ClientDataListRequestBody
+		if err := c.ShouldBindJSON(&input); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewIngestedDataReaderUsecase()
 
-		clientObjects, hasMore, err := usecase.ReadIngestedClientObjects(ctx, orgId, objectType)
+		clientObjects, nextPagination, err := usecase.ReadIngestedClientObjects(ctx, orgId,
+			objectType, dto.AdaptClientDataListRequestBody(input))
+		if presentError(ctx, c, err) {
+			return
+		}
 
 		c.JSON(http.StatusOK, dto.ClientDataListResponse{
-			Data: clientObjects,
-			Pagination: dto.ClientDataListPagination{
-				NextCursorId: nil,
-				HasNextCase:  hasMore,
-			},
+			Data:       clientObjects,
+			Pagination: dto.AdaptClientDataListPaginationDto(nextPagination),
 		})
 	}
 }

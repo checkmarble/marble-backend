@@ -151,7 +151,7 @@ func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(
 	// Should be sorted consistently for unit tests & query plan stability
 	slices.Sort(fieldsToLoad)
 	fieldsToLoad = append(fieldsToLoad, "id")
-	qualifiedTableName := tableNameWithSchema(tx, table.Name)
+	qualifiedTableName := pgIdentifierWithSchema(tx, table.Name)
 
 	q := NewQueryBuilder().
 		Select(fieldsToLoad...).
@@ -252,7 +252,7 @@ func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx 
 	exec Executor, tableName string, obsoleteIngestedObjectIds []string,
 ) error {
 	sql := NewQueryBuilder().
-		Update(tableNameWithSchema(exec, tableName)).
+		Update(pgIdentifierWithSchema(exec, tableName)).
 		Set("valid_until", "now()").
 		Where(squirrel.Eq{"id": obsoleteIngestedObjectIds})
 	err := ExecBuilder(ctx, exec, sql)
@@ -263,7 +263,7 @@ func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx 
 func (repo *IngestionRepositoryImpl) batchInsertPayloads(ctx context.Context, exec Executor, payloads []models.ClientObject, table models.Table,
 ) error {
 	columnNames := models.ColumnNames(table)
-	query := NewQueryBuilder().Insert(tableNameWithSchema(exec, table.Name))
+	query := NewQueryBuilder().Insert(pgIdentifierWithSchema(exec, table.Name))
 
 	for _, payload := range payloads {
 

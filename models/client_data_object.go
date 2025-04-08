@@ -50,3 +50,26 @@ type ClientObjectMetadata struct {
 	ValidFrom  time.Time `json:"valid_from"`
 	ObjectType string    `json:"object_type"`
 }
+
+type StringOrNumber struct {
+	StringValue *string
+	FloatValue  *float64
+}
+
+type ClientDataListPagination struct {
+	NextCursorId *string
+	HasNextPage  bool
+}
+
+type ClientDataListRequestBody struct {
+	ExplorationOptions ExplorationOptions
+	CursorId           *string
+	Limit              int
+}
+
+type ExplorationOptions struct {
+	SourceTableName   string
+	FilterFieldName   string
+	FilterFieldValue  StringOrNumber
+	OrderingFieldName string
+}
