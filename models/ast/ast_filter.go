@@ -40,5 +40,6 @@ var FuncFilterAttributes = FuncAttributes{
 		"fieldName",
 		"operator",
 		"value",
+		"options",
 	},
 }
