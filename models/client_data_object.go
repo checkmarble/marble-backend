@@ -47,7 +47,8 @@ type RelatedObject struct {
 }
 
 type ClientObjectMetadata struct {
-	ValidFrom time.Time `json:"valid_from"`
+	ValidFrom  time.Time `json:"valid_from"`
+	ObjectType string    `json:"object_type"`
 }
 
 func ExamplePivotObject() PivotObject {
