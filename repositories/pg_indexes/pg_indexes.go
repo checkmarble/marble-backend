@@ -59,11 +59,7 @@ func (pgIndex PGIndex) AdaptConcreteIndex() models.ConcreteIndex {
 	idx.TableName = pgIndex.TableName
 	idx = idx.WithName(pgIndex.Name)
 
-	namePrefix := ""
-	nameSplit := strings.Split(pgIndex.Name, "_")
-	if len(nameSplit) > 1 {
-		namePrefix = nameSplit[0]
-	}
+	namePrefix, _, _ := strings.Cut(pgIndex.Name, "_")
 
 	switch namePrefix {
 	case "nav":

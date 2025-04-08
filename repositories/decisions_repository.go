@@ -893,7 +893,7 @@ func (repo *MarbleDbRepository) ReviewDecision(ctx context.Context, exec Executo
 	return err
 }
 
-// Returns a DISTINCT set of (pivot_id, pivot_value) pairs from decisions for the given caseId
+// Returns a DISTINCT set of (pivot_id, pivot_value) pairs from decisions for the given caseId, with count
 func (repo *MarbleDbRepository) DecisionPivotValuesByCase(ctx context.Context, exec Executor, caseId string) ([]models.PivotDataWithCount, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

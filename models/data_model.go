@@ -268,6 +268,37 @@ type DataModelObject struct {
 	Metadata map[string]any
 }
 
+// Utility methods on data model
+
+func (d DataModel) AddUnicityConstraintStatusToDataModel(uniqueIndexes []UnicityIndex) DataModel {
+	dm := d.Copy()
+	for _, index := range uniqueIndexes {
+		// here we only care about single fields with a unicity constraint
+		if len(index.Fields) != 1 {
+			continue
+		}
+		table, ok := dm.Tables[index.TableName]
+		if !ok {
+			continue
+		}
+		field, ok := table.Fields[index.Fields[0]]
+		if !ok {
+			continue
+		}
+
+		if field.Name == index.Fields[0] {
+			if index.CreationInProcess && field.UnicityConstraint != ActiveUniqueConstraint {
+				field.UnicityConstraint = PendingUniqueConstraint
+			} else {
+				field.UnicityConstraint = ActiveUniqueConstraint
+			}
+			// cannot directly modify the struct field in the map, so we need to reassign it
+			dm.Tables[index.TableName].Fields[index.Fields[0]] = field
+		}
+	}
+	return dm
+}
+
 // ///////////////////////////////
 // Navigation options - AKA how we can explore client data objects in a "one to many" way
 // ///////////////////////////////

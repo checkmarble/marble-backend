@@ -204,7 +204,7 @@ func handleCreateNavigationOption(uc usecases.Usecases) func(c *gin.Context) {
 		sourceTableId := c.Param("tableID")
 
 		var input dto.CreateNavigationOptionInput
-		if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
+		if err := c.ShouldBindJSON(&input); err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}

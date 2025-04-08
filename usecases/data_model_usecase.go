@@ -64,7 +64,7 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 
 	pivots := make([]models.Pivot, 0, len(pivotsMeta))
 	for _, pivot := range pivotsMeta {
-		pivots = append(pivots, models.AdaptPivot(pivot, dataModel))
+		pivots = append(pivots, pivot.Enrich(dataModel))
 	}
 
 	indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID, models.IndexTypeNavigation)
@@ -77,38 +77,9 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 	if err != nil {
 		return models.DataModel{}, err
 	}
-	dataModel = addUnicityConstraintStatusToDataModel(dataModel, uniqueIndexes)
+	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 
 	return dataModel, nil
-}
-
-func addUnicityConstraintStatusToDataModel(dataModel models.DataModel, uniqueIndexes []models.UnicityIndex) models.DataModel {
-	dm := dataModel.Copy()
-	for _, index := range uniqueIndexes {
-		// here we only care about single fields with a unicity constraint
-		if len(index.Fields) != 1 {
-			continue
-		}
-		table, ok := dm.Tables[index.TableName]
-		if !ok {
-			continue
-		}
-		field, ok := table.Fields[index.Fields[0]]
-		if !ok {
-			continue
-		}
-
-		if field.Name == index.Fields[0] {
-			if index.CreationInProcess && field.UnicityConstraint != models.ActiveUniqueConstraint {
-				field.UnicityConstraint = models.PendingUniqueConstraint
-			} else {
-				field.UnicityConstraint = models.ActiveUniqueConstraint
-			}
-			// cannot directly modify the struct field in the map, so we need to reassign it
-			dm.Tables[index.TableName].Fields[index.Fields[0]] = field
-		}
-	}
-	return dm
 }
 
 func addNavigationOptionsToDataModel(dataModel *models.DataModel, indexes []models.ConcreteIndex, pivots []models.Pivot) {
@@ -568,7 +539,7 @@ func (usecase *DataModelUseCase) CreatePivot(ctx context.Context, input models.C
 				return models.Pivot{}, err
 			}
 			pivotMeta, err := usecase.dataModelRepository.GetPivot(ctx, tx, id)
-			return models.AdaptPivot(pivotMeta, dm), err
+			return pivotMeta.Enrich(dm), err
 		},
 	)
 }
@@ -662,7 +633,7 @@ func (usecase *DataModelUseCase) ListPivots(ctx context.Context, organizationId 
 		if err != nil {
 			return nil, err
 		}
-		pivots = append(pivots, models.AdaptPivot(pivot, dm))
+		pivots = append(pivots, pivot.Enrich(dm))
 	}
 
 	return pivots, nil
@@ -702,7 +673,7 @@ func (usecase *DataModelUseCase) CreateNavigationOption(ctx context.Context, inp
 	if err != nil {
 		return err
 	}
-	dataModel = addUnicityConstraintStatusToDataModel(dataModel, uniqueIndexes)
+	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 	allTables := dataModel.AllTablesAsMap()
 
 	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, orgId, nil)
@@ -713,7 +684,7 @@ func (usecase *DataModelUseCase) CreateNavigationOption(ctx context.Context, inp
 	pivots := make([]models.Pivot, 0, 1)
 	for _, pivot := range pivotsMeta {
 		if pivot.BaseTableId == input.SourceTableId && pivot.FieldId != nil {
-			pivots = append(pivots, models.AdaptPivot(pivot, dataModel))
+			pivots = append(pivots, pivot.Enrich(dataModel))
 		}
 	}
 
