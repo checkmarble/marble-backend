@@ -35,21 +35,21 @@ type Pivot struct {
 	PathLinkIds []string
 }
 
-func AdaptPivot(pivotMeta PivotMetadata, dataModel DataModel) Pivot {
+func (p PivotMetadata) Enrich(dataModel DataModel) Pivot {
 	pivot := Pivot{
-		Id:             pivotMeta.Id,
-		CreatedAt:      pivotMeta.CreatedAt,
-		OrganizationId: pivotMeta.OrganizationId,
+		Id:             p.Id,
+		CreatedAt:      p.CreatedAt,
+		OrganizationId: p.OrganizationId,
 
-		BaseTableId: pivotMeta.BaseTableId,
-		PathLinkIds: pivotMeta.PathLinkIds,
+		BaseTableId: p.BaseTableId,
+		PathLinkIds: p.PathLinkIds,
 	}
 
-	baseTable := dataModel.AllTablesAsMap()[pivotMeta.BaseTableId]
+	baseTable := dataModel.AllTablesAsMap()[p.BaseTableId]
 	pivot.BaseTable = baseTable.Name
 
-	if pivotMeta.FieldId != nil {
-		field := dataModel.AllFieldsAsMap()[*pivotMeta.FieldId]
+	if p.FieldId != nil {
+		field := dataModel.AllFieldsAsMap()[*p.FieldId]
 		pivot.Field = field.Name
 		pivot.FieldId = field.ID
 		// in this case, the pivot table is the base table
@@ -114,7 +114,7 @@ func FieldFromPath(dm DataModel, pathLinkIds []string) Field {
 // Find the pivot definition, if there is one for this table
 func FindPivot(pivotsMeta []PivotMetadata, table string, dm DataModel) *Pivot {
 	pivots := pure_utils.Map(pivotsMeta, func(p PivotMetadata) Pivot {
-		return AdaptPivot(p, dm)
+		return p.Enrich(dm)
 	})
 	var pivot *Pivot
 	for _, p := range pivots {

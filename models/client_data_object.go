@@ -6,15 +6,53 @@ import (
 )
 
 type PivotObject struct {
-	PivotObjectId     string             `json:"pivot_object_id"`
-	PivotValue        string             `json:"pivot_value"`
-	PivotId           string             `json:"pivot_id"`
-	PivotType         string             `json:"pivot_type"` // TODO: replace by enum
-	PivotObjectName   string             `json:"pivot_object_name"`
-	PivotFieldName    string             `json:"pivot_field_name"`
-	IsIngested        bool               `json:"is_ingested"`
-	PivotObjectData   ClientObjectDetail `json:"pivot_object_data"`
-	NumberOfDecisions int                `json:"number_of_decisions"`
+	PivotObjectId     string
+	PivotValue        string
+	PivotId           string
+	PivotType         PivotType
+	PivotObjectName   string
+	PivotFieldName    string
+	IsIngested        bool
+	PivotObjectData   ClientObjectDetail
+	NumberOfDecisions int
+}
+
+// PivotType corresponds to the type of entity that is materialized by a pivot value.
+// A pivot can be a concrete object if it identifies a unique ingested object:
+//   - a pivot defined by a (seris of) link from the base table identifies the object at the end of the links
+//   - a pivot defined as a unique field (object_id or other) on a table, identifies that object
+//   - conversely, a pivot defined by a "grouping" field on a table where many rows may share that value (e.g. "transactions.account_id")
+//     allows to group decisions, snooze rules etc, but does not identify a concrete object that can be ingested.
+//
+// Most pivot definitions should be of type "object", but we have to support the other case for backward compatibility.
+type PivotType int
+
+const (
+	PivotTypeUnknown PivotType = iota
+	PivotTypeObject
+	PivotTypeField
+)
+
+func (p PivotType) String() string {
+	switch p {
+	case PivotTypeObject:
+		return "object"
+	case PivotTypeField:
+		return "field"
+	default:
+		return "unknown"
+	}
+}
+
+func PivotTypeFromString(s string) PivotType {
+	switch s {
+	case "object":
+		return PivotTypeObject
+	case "field":
+		return PivotTypeField
+	default:
+		return PivotTypeUnknown
+	}
 }
 
 type ClientObjectDetail struct {
@@ -23,15 +61,15 @@ type ClientObjectDetail struct {
 	RelatedObjects []RelatedObject
 }
 
-func (c *ClientObjectDetail) MarshalJSON() ([]byte, error) {
-	if c != nil && c.RelatedObjects == nil {
+func (c ClientObjectDetail) MarshalJSON() ([]byte, error) {
+	if c.RelatedObjects == nil {
 		c.RelatedObjects = make([]RelatedObject, 0)
 	}
-	if c != nil && c.Data == nil {
+	if c.Data == nil {
 		c.Data = make(map[string]any)
 	}
 	return json.Marshal(struct {
-		Metadata       ClientObjectMetadata `json:"metadata,omitzero"`
+		Metadata       ClientObjectMetadata `json:"metadata"`
 		Data           map[string]any       `json:"data"`
 		RelatedObjects []RelatedObject      `json:"related_objects"`
 	}{
@@ -49,39 +87,4 @@ type RelatedObject struct {
 type ClientObjectMetadata struct {
 	ValidFrom  time.Time `json:"valid_from"`
 	ObjectType string    `json:"object_type"`
-}
-
-func ExamplePivotObject() PivotObject {
-	return PivotObject{
-		PivotObjectId:     "obj123",
-		PivotValue:        "value1",
-		PivotId:           "pivot1",
-		PivotType:         "type1",
-		PivotObjectName:   "Object 1",
-		PivotFieldName:    "field1",
-		IsIngested:        true,
-		NumberOfDecisions: 2,
-		PivotObjectData: ClientObjectDetail{
-			Metadata: ClientObjectMetadata{
-				ValidFrom: time.Now(),
-			},
-			Data: map[string]any{
-				"key1": "value1",
-				"key2": 42,
-			},
-			RelatedObjects: []RelatedObject{
-				{
-					LinkName: "link1",
-					Detail: ClientObjectDetail{
-						Metadata: ClientObjectMetadata{
-							ValidFrom: time.Now(),
-						},
-						Data: map[string]any{
-							"relatedKey": "relatedValue",
-						},
-					},
-				},
-			},
-		},
-	}
 }

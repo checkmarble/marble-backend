@@ -27,6 +27,13 @@ type IngestedDataReadRepository interface {
 		table models.Table,
 		objectId string,
 	) ([]models.DataModelObject, error)
+	QueryIngestedObjectByUniqueField(
+		ctx context.Context,
+		exec Executor,
+		table models.Table,
+		uniqueFieldValue string,
+		uniqueFieldName string,
+	) ([]models.DataModelObject, error)
 	QueryAggregatedValue(
 		ctx context.Context,
 		exec Executor,
@@ -238,6 +245,51 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 			LeftSql:    fmt.Sprintf("%s.object_id", qualifiedTableName),
 			Operator:   ast.FUNC_EQUAL,
 			RightValue: objectId,
+		}}...,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	ingestedObjects := make([]models.DataModelObject, len(objectsAsMap))
+	for i, object := range objectsAsMap {
+		ingestedObject := models.DataModelObject{Data: map[string]any{}, Metadata: map[string]any{}}
+		for fieldName, fieldValue := range object {
+			if slices.Contains(columnNames, fieldName) {
+				ingestedObject.Data[fieldName] = fieldValue
+			} else {
+				ingestedObject.Metadata[fieldName] = fieldValue
+			}
+		}
+		ingestedObjects[i] = ingestedObject
+	}
+
+	return ingestedObjects, nil
+}
+
+func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByUniqueField(
+	ctx context.Context,
+	exec Executor,
+	table models.Table,
+	uniqueFieldValue string,
+	uniqueFieldName string,
+) ([]models.DataModelObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	columnNames := models.ColumnNames(table)
+
+	qualifiedTableName := tableNameWithSchema(exec, table.Name)
+	objectsAsMap, err := queryWithDynamicColumnList(
+		ctx,
+		exec,
+		qualifiedTableName,
+		append(columnNames, "valid_from"),
+		[]models.Filter{{
+			LeftSql:    fmt.Sprintf("%s.%s", qualifiedTableName, uniqueFieldName),
+			Operator:   ast.FUNC_EQUAL,
+			RightValue: uniqueFieldValue,
 		}}...,
 	)
 	if err != nil {

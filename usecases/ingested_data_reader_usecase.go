@@ -18,6 +18,13 @@ type ingestedDataReaderClientDbRepository interface {
 		table models.Table,
 		objectId string,
 	) ([]models.DataModelObject, error)
+	QueryIngestedObjectByUniqueField(
+		ctx context.Context,
+		exec repositories.Executor,
+		table models.Table,
+		uniqueFieldValue string,
+		uniqueFieldName string,
+	) ([]models.DataModelObject, error)
 }
 
 type ingestedDataReaderRepository interface {
@@ -35,55 +42,48 @@ type ingestedDataReaderRepository interface {
 	) ([]models.PivotMetadata, error)
 }
 
+type ingestedDataReaderIndexReader interface {
+	ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error)
+}
+
 type IngestedDataReaderUsecase struct {
-	clientDbRepository ingestedDataReaderClientDbRepository
-	repository         ingestedDataReaderRepository
-	executorFactory    executor_factory.ExecutorFactory
+	clientDbRepository            ingestedDataReaderClientDbRepository
+	repository                    ingestedDataReaderRepository
+	executorFactory               executor_factory.ExecutorFactory
+	ingestedDataReaderIndexReader ingestedDataReaderIndexReader
 }
 
 func NewIngestedDataReaderUsecase(
 	clientDbRepository ingestedDataReaderClientDbRepository,
 	repository ingestedDataReaderRepository,
 	executorFactory executor_factory.ExecutorFactory,
+	ingestedDataReaderIndexReader ingestedDataReaderIndexReader,
 ) IngestedDataReaderUsecase {
 	return IngestedDataReaderUsecase{
-		clientDbRepository: clientDbRepository,
-		repository:         repository,
-		executorFactory:    executorFactory,
+		clientDbRepository:            clientDbRepository,
+		repository:                    repository,
+		executorFactory:               executorFactory,
+		ingestedDataReaderIndexReader: ingestedDataReaderIndexReader,
 	}
 }
 
 func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 	ctx context.Context,
 	organizationId string,
+	dataModel *models.DataModel,
 	objectType string,
-	objectId string,
-) ([]models.DataModelObject, error) {
-	exec := usecase.executorFactory.NewExecutor()
-
-	dataModel, err := usecase.repository.GetDataModel(ctx, exec, organizationId, false)
-	if err != nil {
-		return nil, err
-	}
-
-	table := dataModel.Tables[objectType]
-
-	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
-	if err != nil {
-		return nil, err
-	}
-
-	return usecase.clientDbRepository.QueryIngestedObject(ctx, db, table, objectId)
-}
-
-// TODO: logic to be merged with the method above. Rework function signatures to use DataModelObject=>ClientObjectDetail everywhere
-func (usecase IngestedDataReaderUsecase) GetIngestedObject_variant(
-	ctx context.Context,
-	organizationId string,
-	dataModel models.DataModel,
-	objectType string,
-	objectId string,
+	uniqueFieldValue string,
+	uniqueFieldName string,
 ) ([]models.ClientObjectDetail, error) {
+	if dataModel == nil {
+		d, err := usecase.repository.GetDataModel(ctx,
+			usecase.executorFactory.NewExecutor(), organizationId, false)
+		if err != nil {
+			return nil, err
+		}
+		dataModel = &d
+	}
+
 	table := dataModel.Tables[objectType]
 
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
@@ -91,7 +91,7 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject_variant(
 		return nil, err
 	}
 
-	objects, err := usecase.clientDbRepository.QueryIngestedObject(ctx, db, table, objectId)
+	objects, err := usecase.clientDbRepository.QueryIngestedObjectByUniqueField(ctx, db, table, uniqueFieldValue, uniqueFieldName)
 	if err != nil {
 		return nil, err
 	}
@@ -121,58 +121,70 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 		return nil, err
 	}
 
+	uniqueIndexes, err := usecase.ingestedDataReaderIndexReader.ListAllUniqueIndexes(ctx, orgId)
+	if err != nil {
+		return nil, err
+	}
+	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
+
 	pivotsMeta, err := usecase.repository.ListPivots(ctx, exec, orgId, nil)
 	if err != nil {
 		return nil, err
 	}
 	pivots := make([]models.Pivot, 0, len(pivotsMeta))
 	for _, pivot := range pivotsMeta {
-		pivots = append(pivots, models.AdaptPivot(pivot, dataModel))
+		pivots = append(pivots, pivot.Enrich(dataModel))
 	}
+
 	type pivotObjectDetail struct {
 		pivotTable string
 		pivotField string
-		pivotType  string // "object" or "field"
+		pivotType  models.PivotType
 	}
-
 	mapOfPivotDetail := make(map[string]pivotObjectDetail, len(pivots))
 	for _, pivot := range pivots {
-		var t string
+		var t models.PivotType
+		pivotField := dataModel.AllFieldsAsMap()[pivot.FieldId]
 		switch {
-		case len(pivot.PathLinks) > 0 || pivot.Field == "object_id":
-			t = "object"
+		case len(pivot.PathLinks) > 0 || pivotField.UnicityConstraint == models.ActiveUniqueConstraint:
+			t = models.PivotTypeObject
 		default:
-			t = "field"
+			t = models.PivotTypeField
 		}
 
-		var field string
+		var fieldName string
 		switch {
 		case pivot.Field != "":
-			field = pivot.Field
+			fieldName = pivot.Field
 		default:
 			lastLink := dataModel.AllLinksAsMap()[pivot.PathLinkIds[len(pivot.PathLinkIds)-1]]
 			lastField := dataModel.AllFieldsAsMap()[lastLink.ParentFieldId]
-			field = lastField.Name
+			fieldName = lastField.Name
 		}
 		mapOfPivotDetail[pivot.Id] = pivotObjectDetail{
 			pivotTable: pivot.PivotTable,
-			pivotField: field,
+			pivotField: fieldName,
 			pivotType:  t,
 		}
 	}
 
-	// keys of format "tableName.fieldName" - we want to group further than just by pivotId-pivotValue
+	// keys of format "tableName.fieldName" - we want to group further than just by pivotId-pivotValue, to deduplicate pivot objects that appear from different pivots (trigger object types)
 	pivotObjectsMapKey := func(table, field string) string {
 		return table + "." + field
 	}
 
-	pivotObjects := make(map[string]models.PivotObject, len(values))
+	pivotObjectsMap := make(map[string]models.PivotObject, len(values))
 	for _, value := range values {
 		pivotDetail, ok := mapOfPivotDetail[value.PivotId]
 		if !ok {
 			logger.WarnContext(ctx, "Pivot unexpectedly not found in map in ReadPivotObjectsFromValues", "pivotId", value.PivotId)
 			continue
 		}
+
+		if _, ok := pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable, pivotDetail.pivotField)]; ok {
+			continue
+		}
+
 		pivotObject := models.PivotObject{
 			PivotValue:      value.PivotValue,
 			PivotId:         value.PivotId,
@@ -196,12 +208,11 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 				"failed to read data for pivot object {id: %s, value: %s} in ReadPivotObjectsFromValues",
 				pivotObject.PivotId, pivotObject.PivotValue)
 		}
-		// TODO tomorrow: finish the proper logic to not overwrite the pivotObject if it already exists
-		pivotObjects[pivotObjectsMapKey(pivotDetail.pivotTable, pivotDetail.pivotField)] = pivotObject
+		pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable, pivotDetail.pivotField)] = pivotObject
 	}
 
-	pivotObjectsAsSlice := make([]models.PivotObject, 0, len(pivotObjects))
-	for _, pivotObject := range pivotObjects {
+	pivotObjectsAsSlice := make([]models.PivotObject, 0, len(pivotObjectsMap))
+	for _, pivotObject := range pivotObjectsMap {
 		pivotObjectsAsSlice = append(pivotObjectsAsSlice, pivotObject)
 	}
 	return pivotObjectsAsSlice, nil
@@ -214,16 +225,17 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	organizationId string,
 	dataModel models.DataModel,
 ) (models.PivotObject, error) {
-	if pivotObject.PivotObjectId == "" {
+	if pivotObject.PivotType == models.PivotTypeField {
 		return pivotObject, nil
 	}
 
-	objectDataSlice, err := usecase.GetIngestedObject_variant(
+	objectDataSlice, err := usecase.GetIngestedObject(
 		ctx,
 		organizationId,
-		dataModel,
+		&dataModel,
 		pivotObject.PivotObjectName,
-		pivotObject.PivotObjectId)
+		pivotObject.PivotValue,
+		pivotObject.PivotFieldName)
 	if err != nil {
 		return models.PivotObject{}, err
 	}
