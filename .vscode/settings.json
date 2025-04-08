@@ -27,4 +27,5 @@
       },
       "Prettier-SQL.expressionWidth": 80,
       "Prettier-SQL.SQLFlavourOverride": "postgresql",
+      "go.lintTool": "golangci-lint-v2"
 }
