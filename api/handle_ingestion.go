@@ -234,7 +234,7 @@ func handleGetIngestedObject(uc usecases.Usecases) func(c *gin.Context) {
 		objectId := c.Param("object_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestedDataReaderUsecase()
-		objects, err := usecase.GetIngestedObject(ctx, organizationID, objectType, objectId)
+		objects, err := usecase.GetIngestedObject(ctx, organizationID, nil, objectType, objectId, "object_id")
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -244,6 +244,6 @@ func handleGetIngestedObject(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.DataModelObject{Data: objects[0].Data, Metadata: objects[0].Metadata})
+		c.JSON(http.StatusOK, objects[0])
 	}
 }

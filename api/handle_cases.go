@@ -508,6 +508,6 @@ func handleReadCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"pivot_objects": pivotObjects})
+		c.JSON(http.StatusOK, gin.H{"pivot_objects": pure_utils.Map(pivotObjects, dto.AdaptPivotObjectDto)})
 	}
 }
