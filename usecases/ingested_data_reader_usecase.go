@@ -218,7 +218,6 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 	return pivotObjectsAsSlice, nil
 }
 
-// TODO: add option to recursively fetch "nested" objects too
 func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	ctx context.Context,
 	pivotObject models.PivotObject,
@@ -249,8 +248,46 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 
 	pivotObject.PivotObjectData.Data = objectData.Data
 	pivotObject.PivotObjectData.Metadata = objectData.Metadata
-	pivotObject.PivotObjectData.RelatedObjects = objectData.RelatedObjects
 	pivotObject.IsIngested = true
+
+	// Enriches the pivot object with one level of related objects (fiend objects that are linked to the pivot object, without further recursion)
+	table := dataModel.Tables[pivotObject.PivotObjectName]
+	for _, link := range table.LinksToSingle {
+		relatedObjectUniqueField := link.ParentFieldName
+		relatedObjectObjectType := link.ParentTableName
+		linkValue, ok := objectData.Data[link.ChildFieldName]
+		if !ok {
+			continue
+		}
+		// Will not work with links that are using "number" type fields. I accept this for now, it's not something we really try to encourage anyway
+		// and the possibility may just go away completely if we deprecate "unique" fields on tables.
+		linkValueStr, ok := linkValue.(string)
+		if !ok {
+			continue
+		}
+		relatedObjectDataSlice, err := usecase.GetIngestedObject(
+			ctx,
+			organizationId,
+			&dataModel,
+			relatedObjectObjectType,
+			linkValueStr,
+			relatedObjectUniqueField)
+		if err != nil {
+			return models.PivotObject{}, err
+		}
+		if len(relatedObjectDataSlice) == 0 {
+			continue
+		}
+		relatedObjectData := relatedObjectDataSlice[0]
+		pivotObject.PivotObjectData.RelatedObjects = append(
+			pivotObject.PivotObjectData.RelatedObjects, models.RelatedObject{
+				LinkName: link.Name,
+				Detail: models.ClientObjectDetail{
+					Data:     relatedObjectData.Data,
+					Metadata: relatedObjectData.Metadata,
+				},
+			})
+	}
 
 	return pivotObject, nil
 }
