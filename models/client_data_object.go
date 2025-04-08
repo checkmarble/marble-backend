@@ -43,7 +43,7 @@ func (c *ClientObjectDetail) MarshalJSON() ([]byte, error) {
 
 type RelatedObject struct {
 	LinkName string             `json:"link_name"`
-	Detail   ClientObjectDetail `json:"related_object_detail"`
+	Detail   ClientObjectDetail `json:"related_object_detail"` //nolint:tagliatelle
 }
 
 type ClientObjectMetadata struct {
