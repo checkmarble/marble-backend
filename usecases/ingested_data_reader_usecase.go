@@ -101,7 +101,7 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject_variant(
 		validFrom, _ := object.Metadata["valid_from"].(time.Time)
 		clientObject := models.ClientObjectDetail{
 			Data:     object.Data,
-			Metadata: models.ClientObjectMetadata{ValidFrom: validFrom},
+			Metadata: models.ClientObjectMetadata{ValidFrom: validFrom, ObjectType: objectType},
 		}
 		clientObjects = append(clientObjects, clientObject)
 	}
@@ -228,6 +228,9 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 		return models.PivotObject{}, err
 	}
 	if len(objectDataSlice) == 0 {
+		pivotObject.PivotObjectData.Metadata = models.ClientObjectMetadata{
+			ObjectType: pivotObject.PivotObjectName,
+		}
 		return pivotObject, nil
 	}
 	objectData := objectDataSlice[0]
