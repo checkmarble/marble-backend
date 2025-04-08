@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -507,6 +508,13 @@ func handleReadCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
 			presentError(ctx, c, err)
 			return
 		}
+
+		// Sort them for idempotent behavior, in the case the frontend makes assumptions on the order
+		sort.Slice(pivotObjects, func(i, j int) bool {
+			return (pivotObjects[i].PivotId < pivotObjects[j].PivotId) ||
+				(pivotObjects[i].PivotId == pivotObjects[j].PivotId &&
+					pivotObjects[i].PivotValue < pivotObjects[j].PivotValue)
+		})
 
 		c.JSON(http.StatusOK, gin.H{"pivot_objects": pure_utils.Map(pivotObjects, dto.AdaptPivotObjectDto)})
 	}
