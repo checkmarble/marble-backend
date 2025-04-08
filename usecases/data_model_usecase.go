@@ -64,7 +64,7 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 
 	pivots := make([]models.Pivot, 0, len(pivotsMeta))
 	for _, pivot := range pivotsMeta {
-		pivots = append(pivots, models.AdaptPivot(pivot, dataModel))
+		pivots = append(pivots, pivot.Enrich(dataModel))
 	}
 
 	indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID, models.IndexTypeNavigation)
@@ -673,7 +673,7 @@ func (usecase *DataModelUseCase) CreateNavigationOption(ctx context.Context, inp
 	if err != nil {
 		return err
 	}
-	dataModel = addUnicityConstraintStatusToDataModel(dataModel, uniqueIndexes)
+	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 	allTables := dataModel.AllTablesAsMap()
 
 	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, orgId, nil)
@@ -684,7 +684,7 @@ func (usecase *DataModelUseCase) CreateNavigationOption(ctx context.Context, inp
 	pivots := make([]models.Pivot, 0, 1)
 	for _, pivot := range pivotsMeta {
 		if pivot.BaseTableId == input.SourceTableId && pivot.FieldId != nil {
-			pivots = append(pivots, models.AdaptPivot(pivot, dataModel))
+			pivots = append(pivots, pivot.Enrich(dataModel))
 		}
 	}
 
