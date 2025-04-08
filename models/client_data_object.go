@@ -69,7 +69,7 @@ func (c ClientObjectDetail) MarshalJSON() ([]byte, error) {
 		c.Data = make(map[string]any)
 	}
 	return json.Marshal(struct {
-		Metadata       ClientObjectMetadata `json:"metadata"`
+		Metadata       ClientObjectMetadata `json:"metadata,omitzero"`
 		Data           map[string]any       `json:"data"`
 		RelatedObjects []RelatedObject      `json:"related_objects"`
 	}{
