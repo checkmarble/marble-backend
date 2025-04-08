@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -54,6 +55,12 @@ type IngestedDataReadRepository interface {
 }
 
 type IngestedDataReadRepositoryImpl struct{}
+
+type FuzzyMatchFilter struct {
+	Term      string  `json:"term"`
+	Threshold float64 `json:"threshold"`
+	Algorithm string  `json:"algorithm" default:"levenshtein"`
+}
 
 // "read db field" methods
 func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error) {
@@ -477,7 +484,11 @@ func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fie
 	case ast.FILTER_ENDS_WITH:
 		return query.Where(squirrel.Like{fmt.Sprintf("%s.%s", tableName, fieldName): fmt.Sprintf("%%%s", value)}), nil
 	case ast.FILTER_FUZZY_MATCH:
-		return query.Where(fmt.Sprintf("similarity(%s.%s, ?) > 0.6", tableName, fieldName), value), nil
+		var filter FuzzyMatchFilter
+		if err := json.Unmarshal([]byte(value.(string)), &filter); err != nil {
+			return query, fmt.Errorf("failed to unmarshal fuzzy match filter: %w", err)
+		}
+		return query.Where(fmt.Sprintf("similarity(%s.%s, ?) > ?", tableName, fieldName), filter.Term, filter.Threshold), nil
 	default:
 		return query, fmt.Errorf("unknown operator %s: %w", operator, models.BadParameterError)
 	}

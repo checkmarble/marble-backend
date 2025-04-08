@@ -36,8 +36,8 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 	tableName, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
 	fieldName, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 	operatorStr, operatorErr := AdaptNamedArgument(arguments.NamedArgs, "operator", adaptArgumentToString)
-
-	errs := filterNilErrors(tableNameErr, fieldNameErr, operatorErr)
+	_, optionsErr := AdaptNamedArgument(arguments.NamedArgs, "options", adaptArgumentToListOfStrings)
+	errs := filterNilErrors(tableNameErr, fieldNameErr, operatorErr, optionsErr)
 	if len(errs) > 0 {
 		return nil, errs
 	}
