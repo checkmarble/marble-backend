@@ -181,7 +181,9 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 			continue
 		}
 
-		if _, ok := pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable, pivotDetail.pivotField)]; ok {
+		if pivotObject, ok := pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable, pivotDetail.pivotField)]; ok {
+			pivotObject.NumberOfDecisions += value.NbOfDecisions
+			pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable, pivotDetail.pivotField)] = pivotObject
 			continue
 		}
 
