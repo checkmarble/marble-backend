@@ -52,6 +52,11 @@ type ingestedDataReaderRepository interface {
 
 type ingestedDataReaderIndexReader interface {
 	ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error)
+	ListAllIndexes(
+		ctx context.Context,
+		organizationId string,
+		indexTypes ...models.IndexType,
+	) ([]models.ConcreteIndex, error)
 }
 
 type IngestedDataReaderUsecase struct {
@@ -313,19 +318,101 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 	if err != nil {
 		return
 	}
-	table, ok := dataModel.Tables[objectType]
+
+	targetTable, ok := dataModel.Tables[objectType]
 	if !ok {
 		err = errors.Wrapf(models.NotFoundError,
 			"Table '%s' not found in ReadIngestedClientObjects", objectType)
 		return
 	}
 
+	// Enrich data model with pivots and indexes to add navigation options
+	pivotsMeta, err := usecase.repository.ListPivots(ctx, exec, orgId, nil)
+	if err != nil {
+		return
+	}
+	pivots := make([]models.Pivot, len(pivotsMeta))
+	for i, pivot := range pivotsMeta {
+		pivots[i] = pivot.Enrich(dataModel)
+	}
+
+	indexes, err := usecase.ingestedDataReaderIndexReader.ListAllIndexes(ctx, orgId, models.IndexTypeNavigation)
+	if err != nil {
+		return
+	}
+	dataModel = dataModel.AddNavigationOptionsToDataModel(indexes, pivots)
+
+	uniqueIndexes, err := usecase.ingestedDataReaderIndexReader.ListAllUniqueIndexes(ctx, orgId)
+	if err != nil {
+		return
+	}
+	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
+
+	explo := input.ExplorationOptions
+	sourceTable, ok := dataModel.Tables[explo.SourceTableName]
+	if !ok {
+		err = errors.Wrapf(models.NotFoundError,
+			"Table '%s' not found in ReadIngestedClientObjects", explo.SourceTableName)
+		return
+	}
+	filterField, ok := targetTable.Fields[explo.FilterFieldName]
+	if !ok {
+		err = errors.Wrapf(models.NotFoundError,
+			"Field '%s' not found in table '%s' in ReadIngestedClientObjects",
+			explo.FilterFieldName, explo.SourceTableName)
+		return
+	}
+	_, ok = targetTable.Fields[explo.OrderingFieldName]
+	if !ok {
+		err = errors.Wrapf(models.NotFoundError,
+			"Field '%s' not found in table '%s' in ReadIngestedClientObjects",
+			explo.OrderingFieldName, explo.SourceTableName)
+		return
+	}
+	navigationOptionFound := false
+	for _, options := range sourceTable.NavigationOptions {
+		if options.FilterFieldName == explo.FilterFieldName &&
+			options.OrderingFieldName == explo.OrderingFieldName &&
+			options.TargetTableName == targetTable.Name {
+			navigationOptionFound = true
+			break
+		}
+	}
+	if !navigationOptionFound {
+		err = errors.Wrapf(models.UnprocessableEntityError,
+			"Navigation option not found allowed from table %s => table %s filtering on %s ordering on %s",
+			sourceTable.Name, targetTable.Name, explo.FilterFieldName, explo.OrderingFieldName)
+		return
+	}
+	switch filterField.DataType {
+	case models.String:
+		if explo.FilterFieldValue.StringValue == nil {
+			err = errors.Wrapf(models.UnprocessableEntityError,
+				"Filter field %s of type %s must be a string in ReadIngestedClientObjects",
+				explo.FilterFieldName, filterField.DataType)
+			return
+		}
+	case models.Float:
+		if explo.FilterFieldValue.FloatValue == nil {
+			err = errors.Wrapf(models.UnprocessableEntityError,
+				"Filter field %s of type %s must be a number in ReadIngestedClientObjects",
+				explo.FilterFieldName, filterField.DataType)
+			return
+		}
+	default:
+		err = errors.Wrapf(models.UnprocessableEntityError,
+			"Filter field %s of type %s not supported in ReadIngestedClientObjects",
+			explo.FilterFieldName, filterField.DataType)
+		return
+	}
+
+	// All input validation having passed, now query the objects for real
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, orgId)
 	if err != nil {
 		return
 	}
 
-	rawObjects, err := usecase.clientDbRepository.ListIngestedObjects(ctx, db, table,
+	rawObjects, err := usecase.clientDbRepository.ListIngestedObjects(ctx, db, targetTable,
 		input.ExplorationOptions, input.CursorId, input.Limit+1)
 	if err != nil {
 		return

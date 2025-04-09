@@ -299,6 +299,107 @@ func (d DataModel) AddUnicityConstraintStatusToDataModel(uniqueIndexes []Unicity
 	return dm
 }
 
+func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivots []Pivot) DataModel {
+	dm := d.Copy()
+	// navigation options are computed from the following heuristic:
+	// - table A has a link to table B (through A.a -> B.b) and there exists an index table A on (a, some_timestamp_field)
+	// - table A has a pivot value defined that is a field of table A itself (e.g. "transactions.account_id"), and there exists an index table A on (a, some_timestamp_field)
+
+	navigationOptions := make(map[string][]NavigationOption, len(d.Tables))
+
+	for _, index := range indexes {
+		if index.Type != IndexTypeNavigation {
+			continue
+		}
+
+		childTable, ok := dm.Tables[index.TableName]
+		if !ok {
+			continue
+		}
+
+		if len(index.Indexed) < 2 {
+			continue
+		}
+		fieldName := index.Indexed[0]
+		field, ok := childTable.Fields[fieldName]
+		if !ok {
+			continue
+		}
+
+		childOrderingField, ok := childTable.Fields[index.Indexed[1]]
+		if !ok {
+			continue
+		}
+
+		var candidateLinksFromThisField []LinkToSingle
+		for _, l := range childTable.LinksToSingle {
+			if l.ChildFieldName == fieldName {
+				candidateLinksFromThisField = append(candidateLinksFromThisField, l)
+			}
+		}
+
+		for _, link := range candidateLinksFromThisField {
+			// the parent table is the source table and the navigation option is the "reverse link", plus order.
+			navOption := NavigationOption{
+				SourceTableName:   link.ParentTableName,
+				SourceTableId:     link.ParentTableId,
+				SourceFieldName:   link.ParentFieldName,
+				SourceFieldId:     link.ParentFieldId,
+				TargetTableName:   link.ChildTableName,
+				TargetTableId:     link.ChildTableId,
+				FilterFieldName:   link.ChildFieldName,
+				FilterFieldId:     link.ChildFieldId,
+				OrderingFieldName: childOrderingField.Name,
+				OrderingFieldId:   childOrderingField.ID,
+				Status:            index.Status,
+			}
+			if _, ok := navigationOptions[link.ParentTableName]; !ok {
+				navigationOptions[link.ParentTableName] = []NavigationOption{}
+			}
+			navigationOptions[link.ParentTableName] =
+				append(navigationOptions[link.ParentTableName], navOption)
+		}
+
+		for _, pivot := range pivots {
+			if pivot.BaseTable != index.TableName {
+				continue
+			}
+			if pivot.Field != field.Name {
+				continue
+			}
+
+			// the pivot table is the base table and the child and parent fields are the same
+			navOption := NavigationOption{
+				SourceTableName:   pivot.BaseTable,
+				SourceTableId:     pivot.BaseTableId,
+				SourceFieldName:   field.Name,
+				SourceFieldId:     field.ID,
+				TargetTableName:   pivot.PivotTable,
+				TargetTableId:     pivot.PivotTableId,
+				FilterFieldName:   field.Name,
+				FilterFieldId:     field.ID,
+				OrderingFieldName: childOrderingField.Name,
+				OrderingFieldId:   childOrderingField.ID,
+				Status:            index.Status,
+			}
+			if _, ok := navigationOptions[pivot.BaseTable]; !ok {
+				navigationOptions[pivot.BaseTable] = []NavigationOption{}
+			}
+			navigationOptions[pivot.BaseTable] =
+				append(navigationOptions[pivot.BaseTable], navOption)
+		}
+	}
+
+	for tableName, table := range dm.Tables {
+		if options, ok := navigationOptions[table.Name]; ok {
+			t := table
+			t.NavigationOptions = options
+			dm.Tables[tableName] = t
+		}
+	}
+	return dm
+}
+
 // ///////////////////////////////
 // Navigation options - AKA how we can explore client data objects in a "one to many" way
 // ///////////////////////////////
