@@ -26,7 +26,7 @@ func (c ClientDataListResponse) MarshalJSON() ([]byte, error) {
 
 type ClientDataListPagination struct {
 	NextCursorId *string `json:"next_cursor_id"`
-	HasNextCase  bool    `json:"has_next_page"`
+	HasNextPage  bool    `json:"has_next_page"`
 }
 
 type ClientDataListRequestBody struct {
@@ -66,7 +66,7 @@ func AdaptClientDataListRequestBody(input ClientDataListRequestBody) models.Clie
 func AdaptClientDataListPaginationDto(input models.ClientDataListPagination) ClientDataListPagination {
 	return ClientDataListPagination{
 		NextCursorId: input.NextCursorId,
-		HasNextCase:  input.HasNextPage,
+		HasNextPage:  input.HasNextPage,
 	}
 }
 
