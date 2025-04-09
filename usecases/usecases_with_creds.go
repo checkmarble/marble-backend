@@ -359,6 +359,18 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewSuspiciousActivityReportUsecase() *SuspiciousActivityReportUsecase {
+	return &SuspiciousActivityReportUsecase{
+		executorFactory:      usecases.NewExecutorFactory(),
+		transactionFactory:   usecases.NewTransactionFactory(),
+		enforceCaseSecurity:  usecases.NewEnforceCaseSecurity(),
+		caseUsecase:          usecases.NewCaseUseCase(),
+		repository:           &usecases.Repositories.MarbleDbRepository,
+		blobRepository:       usecases.NewCaseUseCase().blobRepository,
+		caseManagerBucketUrl: usecases.caseManagerBucketUrl,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 	sec := security.EnforceSecurityInboxes{
 		EnforceSecurity: usecases.NewEnforceSecurity(),

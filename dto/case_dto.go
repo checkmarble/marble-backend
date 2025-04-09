@@ -17,10 +17,12 @@ type APICase struct {
 	InboxId        string               `json:"inbox_id"`
 	Name           string               `json:"name"`
 	Status         string               `json:"status"`
+	Outcome        string               `json:"outcome"`
 	Tags           []APICaseTag         `json:"tags"`
 	Files          []APICaseFile        `json:"files"`
 	SnoozedUntil   *time.Time           `json:"snoozed_until,omitempty"`
 	AssignedTo     *string              `json:"assigned_to,omitempty"`
+	Boost          string               `json:"boost,omitempty"`
 }
 
 type APICaseWithDecisions struct {
@@ -38,8 +40,10 @@ func AdaptCaseDto(c models.Case) APICase {
 		InboxId:        c.InboxId,
 		Name:           c.Name,
 		Status:         string(c.Status),
+		Outcome:        string(c.Outcome),
 		Tags:           pure_utils.Map(c.Tags, NewAPICaseTag),
 		Files:          pure_utils.Map(c.Files, NewAPICaseFile),
+		Boost:          c.Boost.String(),
 	}
 
 	if c.SnoozedUntil != nil && c.SnoozedUntil.After(time.Now()) {
@@ -87,6 +91,7 @@ type UpdateCaseBody struct {
 	InboxId string `json:"inbox_id"`
 	Name    string `json:"name"`
 	Status  string `json:"status"`
+	Outcome string `json:"outcome"`
 }
 
 type AddDecisionToCaseBody struct {
