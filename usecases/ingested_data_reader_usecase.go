@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -244,42 +245,15 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	pivotObject.IsIngested = true
 
 	// Enriches the pivot object with one level of related objects (fiend objects that are linked to the pivot object, without further recursion)
-	table := dataModel.Tables[pivotObject.PivotObjectName]
-	for _, link := range table.LinksToSingle {
-		relatedObjectUniqueField := link.ParentFieldName
-		relatedObjectObjectType := link.ParentTableName
-		linkValue, ok := objectData.Data[link.ChildFieldName]
-		if !ok {
-			continue
-		}
-		// Will not work with links that are using "number" type fields. I accept this for now, it's not something we really try to encourage anyway
-		// and the possibility may just go away completely if we deprecate "unique" fields on tables.
-		linkValueStr, ok := linkValue.(string)
-		if !ok {
-			continue
-		}
-		relatedObjectDataSlice, err := usecase.GetIngestedObject(
-			ctx,
-			organizationId,
-			&dataModel,
-			relatedObjectObjectType,
-			linkValueStr,
-			relatedObjectUniqueField)
-		if err != nil {
-			return models.PivotObject{}, err
-		}
-		if len(relatedObjectDataSlice) == 0 {
-			continue
-		}
-		relatedObjectData := relatedObjectDataSlice[0]
-		pivotObject.PivotObjectData.RelatedObjects = append(
-			pivotObject.PivotObjectData.RelatedObjects, models.RelatedObject{
-				LinkName: link.Name,
-				Detail: models.ClientObjectDetail{
-					Data:     relatedObjectData.Data,
-					Metadata: relatedObjectData.Metadata,
-				},
-			})
+	pivotObject.PivotObjectData, err = usecase.enrichClientDataObjectWithRelatedObjectsData(
+		ctx,
+		organizationId,
+		dataModel.Tables[pivotObject.PivotObjectName],
+		dataModel,
+		pivotObject.PivotObjectData,
+	)
+	if err != nil {
+		return models.PivotObject{}, err
 	}
 
 	return pivotObject, nil
@@ -398,8 +372,99 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 			Data:     object.Data,
 			Metadata: models.ClientObjectMetadata{ValidFrom: validFrom, ObjectType: objectType},
 		}
+
+		clientObject, err = usecase.enrichClientDataObjectWithRelatedObjectsData(
+			ctx,
+			orgId,
+			targetTable,
+			dataModel,
+			clientObject,
+			allParentTables(dataModel, sourceTable.Name)...,
+		)
+		if err != nil {
+			return
+		}
 		objects = append(objects, clientObject)
 	}
 
 	return objects, pagination, nil
+}
+
+func allParentTables(dataModel models.DataModel, tableName string) []string {
+	visited := map[string]bool{tableName: true}
+	result := []string{tableName}
+	queue := []string{tableName}
+
+	for len(queue) > 0 {
+		// Pop first element from queue
+		current := queue[0]
+		queue = queue[1:]
+
+		currentTable := dataModel.Tables[current]
+		for _, link := range currentTable.LinksToSingle {
+			if !visited[link.ParentTableName] {
+				visited[link.ParentTableName] = true
+				result = append(result, link.ParentTableName)
+				queue = append(queue, link.ParentTableName)
+			}
+		}
+	}
+
+	return result
+}
+
+// Enriches a client data object with one level (no further recursion) of related objects, following links pointing from that object.
+// Optionally takes a list of tables to which NOT to go, so that in a context where we are e.g. listing transactions from an account,
+// we may return data on a transaction.beneficiary but don't lose time reading data on transaction.account (which is presumably already in the context)
+func (usecase IngestedDataReaderUsecase) enrichClientDataObjectWithRelatedObjectsData(
+	ctx context.Context,
+	organizationId string,
+	baseObjectTable models.Table,
+	dataModel models.DataModel,
+	baseObject models.ClientObjectDetail,
+	parentObjectsToIgnore ...string,
+) (models.ClientObjectDetail, error) {
+	for _, link := range baseObjectTable.LinksToSingle {
+		if slices.Contains(parentObjectsToIgnore, link.ParentTableName) {
+			continue
+		}
+
+		relatedObjectUniqueField := link.ParentFieldName
+		relatedObjectObjectType := link.ParentTableName
+		linkValue, ok := baseObject.Data[link.ChildFieldName]
+		if !ok {
+			continue
+		}
+		// Will not work with links that are using "number" type fields. I accept this for now, it's not something we really try to encourage anyway
+		// and the possibility may just go away completely if we deprecate "unique" fields on tables.
+		linkValueStr, ok := linkValue.(string)
+		if !ok {
+			continue
+		}
+		relatedObjectDataSlice, err := usecase.GetIngestedObject(
+			ctx,
+			organizationId,
+			&dataModel,
+			relatedObjectObjectType,
+			linkValueStr,
+			relatedObjectUniqueField)
+		if err != nil {
+			return models.ClientObjectDetail{}, errors.Wrapf(err,
+				"failed to read related object data of type %s through link %s for object %s: %s",
+				relatedObjectObjectType, link.Name, baseObjectTable.Name, relatedObjectUniqueField)
+		}
+		if len(relatedObjectDataSlice) == 0 {
+			continue
+		}
+		relatedObjectData := relatedObjectDataSlice[0]
+		baseObject.RelatedObjects = append(
+			baseObject.RelatedObjects, models.RelatedObject{
+				LinkName: link.Name,
+				Detail: models.ClientObjectDetail{
+					Data:     relatedObjectData.Data,
+					Metadata: relatedObjectData.Metadata,
+				},
+			})
+	}
+	return baseObject, nil
 }
