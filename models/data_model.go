@@ -400,6 +400,21 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 	return dm
 }
 
+// Controls hwo the data model should be read. This allows us to specify what level of detail is needed on the returned data model, allowing to bypass some
+// possibly expensive queries where only a partial data model is useful, while still factorizing the data model reading code in just one usecase method.
+type DataModelReadOptions struct {
+	// Controls whether the returned data model should include a sample of the enum values that have been seen, for fields that are flagged as enum.
+	// Typically useful for the frontend, but not for internal usage in the backend.
+	IncludeEnums bool
+
+	// Controls whether the returned data model should include the navigation options between tables in the data model. Typically useful for the frontend
+	// and some backend internal usage, but not everywhere (see ingested data reader usecase).
+	IncludeNavigationOptions bool
+
+	// Controls whether the returned data model should include information on fields marked as unique. If false, all fields will appear as having no unicity constraint.
+	IncludeUnicityConstraints bool
+}
+
 // ///////////////////////////////
 // Navigation options - AKA how we can explore client data objects in a "one to many" way
 // ///////////////////////////////

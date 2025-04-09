@@ -46,38 +46,46 @@ var (
 	validNameRegex = regexp.MustCompile(`^[a-z]+[a-z0-9_]+$`)
 )
 
-func (usecase DataModelUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {
+func (usecase DataModelUseCase) GetDataModel(
+	ctx context.Context,
+	organizationID string,
+	options models.DataModelReadOptions,
+) (models.DataModel, error) {
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return models.DataModel{}, err
 	}
 	exec := usecase.executorFactory.NewExecutor()
 
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, true)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, options.IncludeEnums)
 	if err != nil {
 		return models.DataModel{}, err
 	}
 
-	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationID, nil)
-	if err != nil {
-		return models.DataModel{}, err
+	if options.IncludeNavigationOptions {
+		pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationID, nil)
+		if err != nil {
+			return models.DataModel{}, err
+		}
+
+		pivots := make([]models.Pivot, len(pivotsMeta))
+		for i, pivot := range pivotsMeta {
+			pivots[i] = pivot.Enrich(dataModel)
+		}
+
+		indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID, models.IndexTypeNavigation)
+		if err != nil {
+			return models.DataModel{}, err
+		}
+		dataModel = dataModel.AddNavigationOptionsToDataModel(indexes, pivots)
 	}
 
-	pivots := make([]models.Pivot, len(pivotsMeta))
-	for i, pivot := range pivotsMeta {
-		pivots[i] = pivot.Enrich(dataModel)
+	if options.IncludeUnicityConstraints {
+		uniqueIndexes, err := usecase.clientDbIndexEditor.ListAllUniqueIndexes(ctx, organizationID)
+		if err != nil {
+			return models.DataModel{}, err
+		}
+		dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 	}
-
-	indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID, models.IndexTypeNavigation)
-	if err != nil {
-		return models.DataModel{}, err
-	}
-	dataModel = dataModel.AddNavigationOptionsToDataModel(indexes, pivots)
-
-	uniqueIndexes, err := usecase.clientDbIndexEditor.ListAllUniqueIndexes(ctx, organizationID)
-	if err != nil {
-		return models.DataModel{}, err
-	}
-	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 
 	return dataModel, nil
 }
@@ -244,7 +252,9 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 	} else if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 		return err
 	}
-	dataModel, err := usecase.GetDataModel(ctx, table.OrganizationID)
+	dataModel, err := usecase.GetDataModel(ctx, table.OrganizationID, models.DataModelReadOptions{
+		IncludeUnicityConstraints: true,
+	})
 	if err != nil {
 		return err
 	}
@@ -379,7 +389,9 @@ func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link m
 	}
 
 	// Check that the parent field is unique by getting the full data model
-	dataModel, err := usecase.GetDataModel(ctx, link.OrganizationID)
+	dataModel, err := usecase.GetDataModel(ctx, link.OrganizationID, models.DataModelReadOptions{
+		IncludeUnicityConstraints: true,
+	})
 	if err != nil {
 		return "", err
 	}

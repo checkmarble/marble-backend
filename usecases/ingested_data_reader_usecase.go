@@ -12,12 +12,6 @@ import (
 )
 
 type ingestedDataReaderClientDbRepository interface {
-	QueryIngestedObject(
-		ctx context.Context,
-		exec repositories.Executor,
-		table models.Table,
-		objectId string,
-	) ([]models.DataModelObject, error)
 	ListIngestedObjects(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -36,12 +30,6 @@ type ingestedDataReaderClientDbRepository interface {
 }
 
 type ingestedDataReaderRepository interface {
-	GetDataModel(
-		ctx context.Context,
-		exec repositories.Executor,
-		organizationID string,
-		fetchEnumValues bool,
-	) (models.DataModel, error)
 	ListPivots(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -51,7 +39,7 @@ type ingestedDataReaderRepository interface {
 }
 
 type ingestedDataReaderDataModelUsecase interface {
-	GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error)
+	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions) (models.DataModel, error)
 }
 
 type IngestedDataReaderUsecase struct {
@@ -84,8 +72,7 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 	uniqueFieldName string,
 ) ([]models.ClientObjectDetail, error) {
 	if dataModel == nil {
-		d, err := usecase.repository.GetDataModel(ctx,
-			usecase.executorFactory.NewExecutor(), organizationId, false)
+		d, err := usecase.dataModelUsecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +111,9 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 
-	dataModel, err := usecase.dataModelUsecase.GetDataModel(ctx, orgId)
+	dataModel, err := usecase.dataModelUsecase.GetDataModel(ctx, orgId, models.DataModelReadOptions{
+		IncludeUnicityConstraints: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +291,9 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 	objectType string,
 	input models.ClientDataListRequestBody,
 ) (objects []models.ClientObjectDetail, pagination models.ClientDataListPagination, err error) {
-	dataModel, err := usecase.dataModelUsecase.GetDataModel(ctx, orgId)
+	dataModel, err := usecase.dataModelUsecase.GetDataModel(ctx, orgId, models.DataModelReadOptions{
+		IncludeNavigationOptions: true,
+	})
 	if err != nil {
 		return
 	}

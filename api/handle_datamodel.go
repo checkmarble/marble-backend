@@ -22,7 +22,11 @@ func handleGetDataModel(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		dataModel, err := usecase.GetDataModel(ctx, organizationID)
+		dataModel, err := usecase.GetDataModel(ctx, organizationID, models.DataModelReadOptions{
+			IncludeEnums:              true,
+			IncludeNavigationOptions:  true,
+			IncludeUnicityConstraints: true,
+		})
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -188,7 +192,11 @@ func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		dataModel, err := usecase.GetDataModel(ctx, organizationID)
+		dataModel, err := usecase.GetDataModel(ctx, organizationID, models.DataModelReadOptions{
+			IncludeEnums:              false,
+			IncludeNavigationOptions:  false,
+			IncludeUnicityConstraints: false,
+		})
 		if presentError(ctx, c, err) {
 			return
 		}
