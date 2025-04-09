@@ -46,7 +46,7 @@ var (
 	validNameRegex = regexp.MustCompile(`^[a-z]+[a-z0-9_]+$`)
 )
 
-func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {
+func (usecase DataModelUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return models.DataModel{}, err
 	}

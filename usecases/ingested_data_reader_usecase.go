@@ -50,33 +50,28 @@ type ingestedDataReaderRepository interface {
 	) ([]models.PivotMetadata, error)
 }
 
-type ingestedDataReaderIndexReader interface {
-	ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error)
-	ListAllIndexes(
-		ctx context.Context,
-		organizationId string,
-		indexTypes ...models.IndexType,
-	) ([]models.ConcreteIndex, error)
+type ingestedDataReaderDataModelUsecase interface {
+	GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error)
 }
 
 type IngestedDataReaderUsecase struct {
-	clientDbRepository            ingestedDataReaderClientDbRepository
-	repository                    ingestedDataReaderRepository
-	executorFactory               executor_factory.ExecutorFactory
-	ingestedDataReaderIndexReader ingestedDataReaderIndexReader
+	clientDbRepository ingestedDataReaderClientDbRepository
+	repository         ingestedDataReaderRepository
+	executorFactory    executor_factory.ExecutorFactory
+	dataModelUsecase   ingestedDataReaderDataModelUsecase
 }
 
 func NewIngestedDataReaderUsecase(
 	clientDbRepository ingestedDataReaderClientDbRepository,
 	repository ingestedDataReaderRepository,
 	executorFactory executor_factory.ExecutorFactory,
-	ingestedDataReaderIndexReader ingestedDataReaderIndexReader,
+	dataModelUsecase ingestedDataReaderDataModelUsecase,
 ) IngestedDataReaderUsecase {
 	return IngestedDataReaderUsecase{
-		clientDbRepository:            clientDbRepository,
-		repository:                    repository,
-		executorFactory:               executorFactory,
-		ingestedDataReaderIndexReader: ingestedDataReaderIndexReader,
+		clientDbRepository: clientDbRepository,
+		repository:         repository,
+		executorFactory:    executorFactory,
+		dataModelUsecase:   dataModelUsecase,
 	}
 }
 
@@ -129,16 +124,10 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 
-	dataModel, err := usecase.repository.GetDataModel(ctx, exec, orgId, false)
+	dataModel, err := usecase.dataModelUsecase.GetDataModel(ctx, orgId)
 	if err != nil {
 		return nil, err
 	}
-
-	uniqueIndexes, err := usecase.ingestedDataReaderIndexReader.ListAllUniqueIndexes(ctx, orgId)
-	if err != nil {
-		return nil, err
-	}
-	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 
 	pivotsMeta, err := usecase.repository.ListPivots(ctx, exec, orgId, nil)
 	if err != nil {
@@ -313,8 +302,7 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 	objectType string,
 	input models.ClientDataListRequestBody,
 ) (objects []models.ClientObjectDetail, pagination models.ClientDataListPagination, err error) {
-	exec := usecase.executorFactory.NewExecutor()
-	dataModel, err := usecase.repository.GetDataModel(ctx, exec, orgId, false)
+	dataModel, err := usecase.dataModelUsecase.GetDataModel(ctx, orgId)
 	if err != nil {
 		return
 	}
@@ -325,28 +313,6 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 			"Table '%s' not found in ReadIngestedClientObjects", objectType)
 		return
 	}
-
-	// Enrich data model with pivots and indexes to add navigation options
-	pivotsMeta, err := usecase.repository.ListPivots(ctx, exec, orgId, nil)
-	if err != nil {
-		return
-	}
-	pivots := make([]models.Pivot, len(pivotsMeta))
-	for i, pivot := range pivotsMeta {
-		pivots[i] = pivot.Enrich(dataModel)
-	}
-
-	indexes, err := usecase.ingestedDataReaderIndexReader.ListAllIndexes(ctx, orgId, models.IndexTypeNavigation)
-	if err != nil {
-		return
-	}
-	dataModel = dataModel.AddNavigationOptionsToDataModel(indexes, pivots)
-
-	uniqueIndexes, err := usecase.ingestedDataReaderIndexReader.ListAllUniqueIndexes(ctx, orgId)
-	if err != nil {
-		return
-	}
-	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 
 	explo := input.ExplorationOptions
 	sourceTable, ok := dataModel.Tables[explo.SourceTableName]

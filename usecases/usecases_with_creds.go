@@ -581,7 +581,7 @@ func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataRea
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
-		usecases.NewClientDbIndexEditor(),
+		usecases.NewDataModelUseCase(),
 	)
 }
 

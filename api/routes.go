@@ -72,14 +72,24 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleIngestionMultiplePartialUpsert(uc))
 	router.POST("/ingestion/:object_type/batch", timeoutMiddleware(conf.BatchTimeout), handlePostCsvIngestion(uc))
 	router.GET("/ingestion/:object_type/upload-logs", tom, handleListUploadLogs(uc))
-	router.GET("/ingestion/:object_type/:object_id", tom, handleGetIngestedObject(uc))
+	// TODO: remove deprecated endpoints
+	router.GET("/ingestion/:object_type/:object_id", tom, handleGetIngestedObject(uc)) // deprecated, use "/client_data/..."
 
-	router.GET("/ingestion/:object_type/:object_id/annotations", tom, handleListEntityAnnotations(uc))
-	router.POST("/ingestion/:object_type/annotations", tom,
+	router.GET("/ingestion/:object_type/:object_id/annotations", tom,
+		handleListEntityAnnotations(uc)) // deprecated, use "/client_data/..."
+	router.POST("/ingestion/:object_type/annotations", tom, // deprecated, use "/client_data/..."
+		handleListEntityAnnotationsForObjects(uc)) // deprecated, use "/client_data/..."
+	router.POST("/ingestion/:object_type/:object_id/annotations", tom,
+		handleCreateEntityAnnotation(uc)) // deprecated, use "/client_data/..."
+	router.POST("/ingestion/:object_type/:object_id/annotations/file", tom,
+		handleCreateEntityFileAnnotation(uc)) // deprecated, use "/client_data/..."
+
+	router.GET("/client_data/:object_type/:object_id", tom, handleGetIngestedObject(uc))
+	router.GET("/client_data/:object_type/:object_id/annotations", tom, handleListEntityAnnotations(uc))
+	router.POST("/client_data/:object_type/annotations", tom,
 		handleListEntityAnnotationsForObjects(uc))
-	router.POST("/ingestion/:object_type/:object_id/annotations", tom, handleCreateEntityAnnotation(uc))
-	router.POST("/ingestion/:object_type/:object_id/annotations/file", tom, handleCreateEntityFileAnnotation(uc))
-
+	router.POST("/client_data/:object_type/:object_id/annotations", tom, handleCreateEntityAnnotation(uc))
+	router.POST("/client_data/:object_type/:object_id/annotations/file", tom, handleCreateEntityFileAnnotation(uc))
 	router.POST("/client_data/:object_type/list", tom, handleReadClientDataAsList(uc))
 
 	router.GET("/annotations/file/:annotationId/:partId", tom, handleGetEntityFileAnnotation(uc))
