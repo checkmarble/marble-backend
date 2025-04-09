@@ -236,26 +236,3 @@ const (
 	IndexTypeNavigation
 	IndexTypeAggregation
 )
-
-// TODO: remove it not used at the end of the PR
-// func (t IndexType) String() string {
-// 	switch t {
-// 	case IndexTypeNavigation:
-// 		return "navigation"
-// 	case IndexTypeAggregation:
-// 		return "aggregation"
-// 	default:
-// 		return "unknown"
-// 	}
-// }
-
-// func IndexTypeFromString(s string) IndexType {
-// 	switch s {
-// 	case "navigation":
-// 		return IndexTypeNavigation
-// 	case "aggregation":
-// 		return IndexTypeAggregation
-// 	default:
-// 		return IndexTypeUnknown
-// 	}
-// }

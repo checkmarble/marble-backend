@@ -62,9 +62,9 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 		return models.DataModel{}, err
 	}
 
-	pivots := make([]models.Pivot, 0, len(pivotsMeta))
-	for _, pivot := range pivotsMeta {
-		pivots = append(pivots, pivot.Enrich(dataModel))
+	pivots := make([]models.Pivot, len(pivotsMeta))
+	for i, pivot := range pivotsMeta {
+		pivots[i] = pivot.Enrich(dataModel)
 	}
 
 	indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID, models.IndexTypeNavigation)

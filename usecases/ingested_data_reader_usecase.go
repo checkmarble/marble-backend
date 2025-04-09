@@ -104,14 +104,14 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 		return nil, err
 	}
 
-	clientObjects := make([]models.ClientObjectDetail, 0, len(objects))
-	for _, object := range objects {
+	clientObjects := make([]models.ClientObjectDetail, len(objects))
+	for i, object := range objects {
 		validFrom, _ := object.Metadata["valid_from"].(time.Time)
 		clientObject := models.ClientObjectDetail{
 			Data:     object.Data,
 			Metadata: models.ClientObjectMetadata{ValidFrom: validFrom, ObjectType: objectType},
 		}
-		clientObjects = append(clientObjects, clientObject)
+		clientObjects[i] = clientObject
 	}
 	return clientObjects, nil
 }
