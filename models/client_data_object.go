@@ -55,6 +55,8 @@ func PivotTypeFromString(s string) PivotType {
 	}
 }
 
+// This struct is used as a DTO, but instead of using struct tags directly they are set on an anonymous struct below in the MarshalJSON method.
+// This is so we can set the RelatedObjects and Data to empty slices/maps if they are nil, and avoid return a null array/object.
 type ClientObjectDetail struct {
 	Metadata       ClientObjectMetadata
 	Data           map[string]any
