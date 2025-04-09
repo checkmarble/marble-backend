@@ -288,7 +288,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByUniqueField(
 
 	columnNames := models.ColumnNames(table)
 
-	qualifiedTableName := tableNameWithSchema(exec, table.Name)
+	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
 	objectsAsMap, err := queryWithDynamicColumnList(
 		ctx,
 		exec,
