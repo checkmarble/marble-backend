@@ -92,3 +92,8 @@ func (editor *ClientDbIndexEditor) DeleteUniqueIndex(ctx context.Context, organi
 	args := editor.Called(ctx, organizationId, index)
 	return args.Error(0)
 }
+
+func (editor *ClientDbIndexEditor) GetRequiredIndices(ctx context.Context, organizationId string) (required []models.ConcreteIndex, err error) {
+	args := editor.Called(ctx, organizationId)
+	return []models.ConcreteIndex{}, args.Error(1)
+}

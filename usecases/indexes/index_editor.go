@@ -42,6 +42,7 @@ type IngestedDataIndexesRepository interface {
 
 type ScenarioFetcher interface {
 	FetchScenarioAndIteration(ctx context.Context, exec repositories.Executor, iterationId string) (models.ScenarioAndIteration, error)
+	ListLiveIterationsAndNeighbors(ctx context.Context, exec repositories.Executor, orgId string) ([]models.ScenarioIteration, error)
 }
 
 type ClientDbIndexEditor struct {
@@ -108,6 +109,29 @@ func (editor ClientDbIndexEditor) GetIndexesToCreate(
 	if err != nil {
 		return toCreate, numPending, errors.Wrap(err,
 			"Error while counting pending indexes in CreateDatamodelIndexesForScenarioPublication")
+	}
+
+	return
+}
+
+func (editor ClientDbIndexEditor) GetRequiredIndices(
+	ctx context.Context,
+	organizationId string,
+) (required []models.ConcreteIndex, err error) {
+	exec := editor.executorFactory.NewExecutor()
+	iterations, err := editor.scenarioFetcher.ListLiveIterationsAndNeighbors(ctx, exec, organizationId)
+	if err != nil {
+		return required, err
+	}
+
+	required, err = indexesToCreateFromScenarioIterations(
+		ctx,
+		iterations,
+		[]models.ConcreteIndex{},
+	)
+	if err != nil {
+		return required, errors.Wrap(err,
+			"Error while finding indexes to create from scenario iterations in CreateDatamodelIndexesForScenarioPublication")
 	}
 
 	return
