@@ -184,11 +184,26 @@ func (i ConcreteIndex) Covers(f IndexFamily) bool {
 		if f.Size() > len(i.Indexed) || i.Indexed[f.Size()-1] != f.Last {
 			return false
 		}
+		// then, the included columns must be in the concrete index
+		if !set.From(i.Included).Subset(f.Included) {
+			return false
+		}
 	}
 
-	// included columns in the concrete index are missing some required included columns in the index family
-	if !set.From(i.Included).Subset(f.Included) {
-		return false
+	// if there is no forced last column on the index family, the the next N elements in f.flex must be indexed in i, and the
+	// included elements in f must also be present in i
+	if f.Last == "" {
+		if len(f.Fixed)+f.Flex.Size() > len(i.Indexed) {
+			return false
+		}
+		nextNIndexed := i.Indexed[len(f.Fixed) : len(f.Fixed)+f.Flex.Size()]
+		if !set.From(nextNIndexed).Equal(f.Flex) {
+			return false
+		}
+		lastNIndexed := i.Indexed[len(f.Fixed)+f.Flex.Size():]
+		if !set.From(i.Included).Union(set.From(lastNIndexed)).Subset(f.Included) {
+			return false
+		}
 	}
 
 	return true
