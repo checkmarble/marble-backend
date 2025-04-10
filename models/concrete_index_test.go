@@ -174,4 +174,24 @@ func TestCovers(t *testing.T) {
 
 		asserts.True(idx.Covers(family), "The index is an instance of the family")
 	})
+
+	t.Run("'Included' columns from index family can also just be in the index - 1", func(t *testing.T) {
+		asserts := assert.New(t)
+		family := NewIndexFamily()
+		family.TableName = "table"
+		family.Flex.InsertSlice([]string{"a", "b", "c"})
+		family.Included.InsertSlice([]string{"d"})
+
+		asserts.True(idx.Covers(family), "The index is an instance of the family")
+	})
+
+	t.Run("'Included' columns from index family can also just be in the index - 2", func(t *testing.T) {
+		asserts := assert.New(t)
+		family := NewIndexFamily()
+		family.TableName = "table"
+		family.Fixed = []string{"a", "b", "c"}
+		family.Included.InsertSlice([]string{"d"})
+
+		asserts.True(idx.Covers(family), "The index is an instance of the family")
+	})
 }
