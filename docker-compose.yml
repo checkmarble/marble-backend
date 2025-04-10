@@ -1,7 +1,9 @@
 services:
   db:
     container_name: postgres
-    image: postgres:15
+    # image: postgres:15
+    # image: europe-west1-docker.pkg.dev/marble-infra/marble/postgresql-db:latest
+    image: postgres:16
     shm_size: 1g
     restart: always
     environment:
