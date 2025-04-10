@@ -46,139 +46,48 @@ var (
 	validNameRegex = regexp.MustCompile(`^[a-z]+[a-z0-9_]+$`)
 )
 
-func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {
+func (usecase DataModelUseCase) GetDataModel(
+	ctx context.Context,
+	organizationID string,
+	options models.DataModelReadOptions,
+) (models.DataModel, error) {
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return models.DataModel{}, err
 	}
 	exec := usecase.executorFactory.NewExecutor()
 
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, true)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, options.IncludeEnums)
 	if err != nil {
 		return models.DataModel{}, err
 	}
 
-	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationID, nil)
-	if err != nil {
-		return models.DataModel{}, err
+	if options.IncludeNavigationOptions {
+		pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationID, nil)
+		if err != nil {
+			return models.DataModel{}, err
+		}
+
+		pivots := make([]models.Pivot, len(pivotsMeta))
+		for i, pivot := range pivotsMeta {
+			pivots[i] = pivot.Enrich(dataModel)
+		}
+
+		indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID, models.IndexTypeNavigation)
+		if err != nil {
+			return models.DataModel{}, err
+		}
+		dataModel = dataModel.AddNavigationOptionsToDataModel(indexes, pivots)
 	}
 
-	pivots := make([]models.Pivot, len(pivotsMeta))
-	for i, pivot := range pivotsMeta {
-		pivots[i] = pivot.Enrich(dataModel)
+	if options.IncludeUnicityConstraints {
+		uniqueIndexes, err := usecase.clientDbIndexEditor.ListAllUniqueIndexes(ctx, organizationID)
+		if err != nil {
+			return models.DataModel{}, err
+		}
+		dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 	}
-
-	indexes, err := usecase.clientDbIndexEditor.ListAllIndexes(ctx, organizationID, models.IndexTypeNavigation)
-	if err != nil {
-		return models.DataModel{}, err
-	}
-	addNavigationOptionsToDataModel(&dataModel, indexes, pivots)
-
-	uniqueIndexes, err := usecase.clientDbIndexEditor.ListAllUniqueIndexes(ctx, organizationID)
-	if err != nil {
-		return models.DataModel{}, err
-	}
-	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 
 	return dataModel, nil
-}
-
-func addNavigationOptionsToDataModel(dataModel *models.DataModel, indexes []models.ConcreteIndex, pivots []models.Pivot) {
-	// navigation options are computed from the following heuristic:
-	// - table A has a link to table B (through A.a -> B.b) and there exists an index table A on (a, some_timestamp_field)
-	// - table A has a pivot value defined that is a field of table A itself (e.g. "transactions.account_id"), and there exists an index table A on (a, some_timestamp_field)
-
-	navigationOptions := make(map[string][]models.NavigationOption, len(dataModel.Tables))
-
-	for _, index := range indexes {
-		if index.Type != models.IndexTypeNavigation {
-			continue
-		}
-
-		childTable, ok := dataModel.Tables[index.TableName]
-		if !ok {
-			continue
-		}
-
-		if len(index.Indexed) < 2 {
-			continue
-		}
-		fieldName := index.Indexed[0]
-		field, ok := childTable.Fields[fieldName]
-		if !ok {
-			continue
-		}
-
-		childOrderingField, ok := childTable.Fields[index.Indexed[1]]
-		if !ok {
-			continue
-		}
-
-		var candidateLinksFromThisField []models.LinkToSingle
-		for _, l := range childTable.LinksToSingle {
-			if l.ChildFieldName == fieldName {
-				candidateLinksFromThisField = append(candidateLinksFromThisField, l)
-			}
-		}
-
-		for _, link := range candidateLinksFromThisField {
-			// the parent table is the source table and the navigation option is the "reverse link", plus order.
-			navOption := models.NavigationOption{
-				SourceTableName:   link.ParentTableName,
-				SourceTableId:     link.ParentTableId,
-				SourceFieldName:   link.ParentFieldName,
-				SourceFieldId:     link.ParentFieldId,
-				TargetTableName:   link.ChildTableName,
-				TargetTableId:     link.ChildTableId,
-				FilterFieldName:   link.ChildFieldName,
-				FilterFieldId:     link.ChildFieldId,
-				OrderingFieldName: childOrderingField.Name,
-				OrderingFieldId:   childOrderingField.ID,
-				Status:            index.Status,
-			}
-			if _, ok := navigationOptions[link.ParentTableName]; !ok {
-				navigationOptions[link.ParentTableName] = []models.NavigationOption{}
-			}
-			navigationOptions[link.ParentTableName] =
-				append(navigationOptions[link.ParentTableName], navOption)
-		}
-
-		for _, pivot := range pivots {
-			if pivot.BaseTable != index.TableName {
-				continue
-			}
-			if pivot.Field != field.Name {
-				continue
-			}
-
-			// the pivot table is the base table and the child and parent fields are the same
-			navOption := models.NavigationOption{
-				SourceTableName:   pivot.BaseTable,
-				SourceTableId:     pivot.BaseTableId,
-				SourceFieldName:   field.Name,
-				SourceFieldId:     field.ID,
-				TargetTableName:   pivot.PivotTable,
-				TargetTableId:     pivot.PivotTableId,
-				FilterFieldName:   field.Name,
-				FilterFieldId:     field.ID,
-				OrderingFieldName: childOrderingField.Name,
-				OrderingFieldId:   childOrderingField.ID,
-				Status:            index.Status,
-			}
-			if _, ok := navigationOptions[pivot.BaseTable]; !ok {
-				navigationOptions[pivot.BaseTable] = []models.NavigationOption{}
-			}
-			navigationOptions[pivot.BaseTable] =
-				append(navigationOptions[pivot.BaseTable], navOption)
-		}
-	}
-
-	for tableName, table := range dataModel.Tables {
-		if options, ok := navigationOptions[table.Name]; ok {
-			t := table
-			t.NavigationOptions = options
-			dataModel.Tables[tableName] = t
-		}
-	}
 }
 
 func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organizationId, name, description string) (string, error) {
@@ -343,7 +252,9 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 	} else if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 		return err
 	}
-	dataModel, err := usecase.GetDataModel(ctx, table.OrganizationID)
+	dataModel, err := usecase.GetDataModel(ctx, table.OrganizationID, models.DataModelReadOptions{
+		IncludeUnicityConstraints: true,
+	})
 	if err != nil {
 		return err
 	}
@@ -478,7 +389,9 @@ func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link m
 	}
 
 	// Check that the parent field is unique by getting the full data model
-	dataModel, err := usecase.GetDataModel(ctx, link.OrganizationID)
+	dataModel, err := usecase.GetDataModel(ctx, link.OrganizationID, models.DataModelReadOptions{
+		IncludeUnicityConstraints: true,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -761,7 +674,7 @@ func (usecase *DataModelUseCase) CreateNavigationOption(ctx context.Context, inp
 	if err != nil {
 		return err
 	}
-	addNavigationOptionsToDataModel(&dataModel, indexes, pivots)
+	dataModel = dataModel.AddNavigationOptionsToDataModel(indexes, pivots)
 
 	// last, check if the navigation option already exists
 	for _, navOption := range dataModel.AllTablesAsMap()[input.SourceTableId].NavigationOptions {

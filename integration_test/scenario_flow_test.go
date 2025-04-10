@@ -209,7 +209,10 @@ func createDataModelAndSetupCaseManager(
 		}
 	}
 
-	dm, err = usecase.GetDataModel(ctx, organizationId)
+	dm, err = usecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{
+		IncludeNavigationOptions:  true,
+		IncludeUnicityConstraints: true,
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not get data model", err)
 	}
@@ -258,7 +261,11 @@ func createDataModelAndSetupCaseManager(
 	}
 	fmt.Printf("Created inbox %s successfully\n", inbox.Id)
 
-	dm, err = usecase.GetDataModel(ctx, organizationId)
+	dm, err = usecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{
+		IncludeEnums:              false,
+		IncludeNavigationOptions:  false,
+		IncludeUnicityConstraints: false,
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not get data model", err)
 	}

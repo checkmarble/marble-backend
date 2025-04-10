@@ -43,6 +43,14 @@ type IngestedDataReadRepository interface {
 		aggregator ast.Aggregator,
 		filters []models.FilterWithType,
 	) (any, error)
+	ListIngestedObjects(
+		ctx context.Context,
+		exec Executor,
+		table models.Table,
+		params models.ExplorationOptions,
+		cursorId *string,
+		limit int,
+	) ([]models.DataModelObject, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -112,7 +120,7 @@ func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (
 	// This is because a given table can appear multiple times in the path, and we need to distinguish between them
 	// or the generated SQL is ambiguous.
 	// NB "table_0" would be the trigger table, but it's not used in the query
-	firstTableName := tableNameWithSchema(exec, firstTable.Name)
+	firstTableName := pgIdentifierWithSchema(exec, firstTable.Name)
 	firstTableAlias := "table_1"
 	// "last table" is the last table reached starting from the trigger table and following the path, from which the field is selected.
 	// Exactly which table this is is detedmined below
@@ -151,7 +159,7 @@ func addJoinsOnIntermediateTables(
 		}
 
 		aliasCurrentTable := fmt.Sprintf("table_%d", i)
-		nextTableName := tableNameWithSchema(exec, nextTable.Name)
+		nextTableName := pgIdentifierWithSchema(exec, nextTable.Name)
 		aliastNextTable := fmt.Sprintf("table_%d", i+1)
 
 		joinClause := fmt.Sprintf(
@@ -185,7 +193,7 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 		return nil, err
 	}
 
-	qualifiedTableName := tableNameWithSchema(exec, tableName)
+	qualifiedTableName := pgIdentifierWithSchema(exec, tableName)
 	q := NewQueryBuilder().
 		Select("object_id").
 		From(qualifiedTableName).
@@ -235,7 +243,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 
 	columnNames := models.ColumnNames(table)
 
-	qualifiedTableName := tableNameWithSchema(exec, table.Name)
+	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
 	objectsAsMap, err := queryWithDynamicColumnList(
 		ctx,
 		exec,
@@ -280,7 +288,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByUniqueField(
 
 	columnNames := models.ColumnNames(table)
 
-	qualifiedTableName := tableNameWithSchema(exec, table.Name)
+	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
 	objectsAsMap, err := queryWithDynamicColumnList(
 		ctx,
 		exec,
@@ -380,7 +388,7 @@ func createQueryAggregated(
 		selectExpression = fmt.Sprintf("%s(%s)", aggregator, fieldName)
 	}
 
-	qualifiedTableName := tableNameWithSchema(exec, tableName)
+	qualifiedTableName := pgIdentifierWithSchema(exec, tableName)
 
 	query := NewQueryBuilder().
 		Select(selectExpression).
@@ -471,4 +479,106 @@ func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fie
 	default:
 		return query, fmt.Errorf("unknown operator %s: %w", operator, models.BadParameterError)
 	}
+}
+
+func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
+	ctx context.Context,
+	exec Executor,
+	table models.Table,
+	params models.ExplorationOptions,
+	cursorId *string,
+	limit int,
+) ([]models.DataModelObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	tableColumnNames := models.ColumnNames(table)
+	columnNames := append(tableColumnNames, "valid_from")
+	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
+	filterFieldName := pgIdentifierWithSchema(exec, table.Name,
+		params.FilterFieldName)
+	qualifiedOrderingField := pgIdentifierWithSchema(exec, table.Name,
+		params.OrderingFieldName)
+
+	type pagination struct {
+		fields string
+		values []any
+	}
+	var paginationValues *pagination
+	if cursorId != nil {
+		cursorObjects, err := repo.QueryIngestedObject(ctx, exec, table, *cursorId)
+		if err != nil {
+			return nil, errors.Wrap(err, "error while querying DB for cursor in ListIngestedObjects")
+		}
+		if len(cursorObjects) == 0 {
+			return nil, errors.Wrap(models.NotFoundError, "cursor not found")
+		}
+		cursorObject := cursorObjects[0]
+		orderFieldVal, ok := cursorObject.Data[params.OrderingFieldName]
+		if !ok {
+			return nil, errors.Newf("field %s not found in cursor object",
+				params.OrderingFieldName)
+		}
+		cursorObjectId, ok := cursorObject.Data["object_id"]
+		if !ok {
+			return nil, errors.Newf("field %s not found in cursor object", "object_id")
+		}
+		paginationValues = &pagination{
+			fields: fmt.Sprintf("(%s, %s) < (?, ?)", qualifiedOrderingField, "object_id"),
+			values: []any{orderFieldVal, cursorObjectId},
+		}
+
+	}
+
+	var filterFieldValue any
+	if params.FilterFieldValue.StringValue != nil {
+		filterFieldValue = *params.FilterFieldValue.StringValue
+	} else if params.FilterFieldValue.FloatValue != nil {
+		filterFieldValue = *params.FilterFieldValue.FloatValue
+	} else {
+		return nil, errors.New("invalid nil filter field value")
+	}
+
+	q := NewQueryBuilder().
+		Select(columnNames...).
+		From(qualifiedTableName).
+		Where(squirrel.Eq{
+			filterFieldName: filterFieldValue,
+			fmt.Sprintf("%s.valid_until", qualifiedTableName): "Infinity",
+		}).
+		OrderBy(qualifiedOrderingField+" DESC", "object_id DESC").
+		Limit(uint64(limit))
+	if paginationValues != nil {
+		q = q.Where(paginationValues.fields, paginationValues.values...)
+	}
+
+	sql, args, err := q.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "error while building SQL query in ListIngestedObjects")
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while querying DB in ListIngestedObjects")
+	}
+
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.DataModelObject, error) {
+		values, err := row.Values()
+		if err != nil {
+			return models.DataModelObject{}, errors.Wrap(err,
+				"error while fetching rows in ListIngestedObjects")
+		}
+
+		ingestedObject := models.DataModelObject{Data: map[string]any{}, Metadata: map[string]any{}}
+		for i, columnName := range columnNames {
+			if slices.Contains(tableColumnNames, columnName) {
+				ingestedObject.Data[columnName] = values[i]
+			} else {
+				ingestedObject.Metadata[columnName] = values[i]
+			}
+		}
+
+		return ingestedObject, nil
+	})
 }
