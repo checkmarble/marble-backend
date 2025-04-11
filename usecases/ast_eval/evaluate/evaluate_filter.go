@@ -29,13 +29,13 @@ var validTypeForFilterOperators = map[ast.FilterOperator][]models.DataType{
 	ast.FILTER_IS_NOT_EMPTY:     {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
 	ast.FILTER_STARTS_WITH:      {models.String},
 	ast.FILTER_ENDS_WITH:        {models.String},
+	ast.FILTER_FUZZY_MATCH:      {models.String},
 }
 
 func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	tableName, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
 	fieldName, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 	operatorStr, operatorErr := AdaptNamedArgument(arguments.NamedArgs, "operator", adaptArgumentToString)
-
 	errs := filterNilErrors(tableNameErr, fieldNameErr, operatorErr)
 	if len(errs) > 0 {
 		return nil, errs
@@ -86,6 +86,9 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 	} else {
 		if operator == ast.FILTER_IS_IN_LIST || operator == ast.FILTER_IS_NOT_IN_LIST {
 			promotedValue, err = adaptArgumentToListOfStrings(value)
+		} else if operator == ast.FILTER_FUZZY_MATCH {
+			// promotedValue, err = adaptArgumentToBool(value)
+			promotedValue = value
 		} else {
 			promotedValue, err = promoteArgumentToDataType(value, fieldType)
 		}

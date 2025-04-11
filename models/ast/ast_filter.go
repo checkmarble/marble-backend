@@ -18,10 +18,19 @@ const (
 	FILTER_STARTS_WITH       FilterOperator = "StringStartsWith"
 	FILTER_ENDS_WITH         FilterOperator = "StringEndsWith"
 	FILTER_UNKNOWN_OPERATION FilterOperator = "FILTER_UNKNOWN_OPERATION"
+	FILTER_FUZZY_MATCH       FilterOperator = "FuzzyMatch"
 )
 
 func (op FilterOperator) IsUnary() bool {
 	return slices.Contains([]FilterOperator{FILTER_IS_EMPTY, FILTER_IS_NOT_EMPTY}, op)
+}
+
+func (op FilterOperator) IsComplex() bool {
+	return slices.Contains([]FilterOperator{FILTER_FUZZY_MATCH}, op)
+}
+
+func (op FilterOperator) IsBinary() bool {
+	return !op.IsUnary()
 }
 
 type Filter struct {
@@ -41,3 +50,14 @@ var FuncFilterAttributes = FuncAttributes{
 		"value",
 	},
 }
+
+// var ComplexFilterAttributes = FuncAttributes{
+// 	DebugName: "FUNC_COMPLEX_FILTER",
+// 	AstName:   "ComplexFilter",
+// 	NamedArguments: []string{
+// 		"tableName",
+// 		"fieldName",
+// 		"operator",
+// 		"value",
+// 	},
+// }

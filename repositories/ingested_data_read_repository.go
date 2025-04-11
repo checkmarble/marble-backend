@@ -55,6 +55,12 @@ type IngestedDataReadRepository interface {
 
 type IngestedDataReadRepositoryImpl struct{}
 
+type FuzzyMatchFilter struct {
+	Value     string
+	Threshold float64
+	Algorithm string
+}
+
 // "read db field" methods
 func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
@@ -476,6 +482,13 @@ func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fie
 		return query.Where(squirrel.Like{fmt.Sprintf("%s.%s", tableName, fieldName): fmt.Sprintf("%s%%", value)}), nil
 	case ast.FILTER_ENDS_WITH:
 		return query.Where(squirrel.Like{fmt.Sprintf("%s.%s", tableName, fieldName): fmt.Sprintf("%%%s", value)}), nil
+	case ast.FILTER_FUZZY_MATCH:
+		fuzzyFilter, ok := value.(FuzzyMatchFilter)
+		if !ok {
+			return query, fmt.Errorf("invalid value type for FuzzyMatchFilter")
+		}
+		return query.Where(fmt.Sprintf("similarity(%s.%s, ?) > ?", tableName, fieldName),
+			fuzzyFilter.Value, fuzzyFilter.Threshold), nil
 	default:
 		return query, fmt.Errorf("unknown operator %s: %w", operator, models.BadParameterError)
 	}
