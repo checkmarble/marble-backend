@@ -58,12 +58,16 @@ func adapatVariableValue(namedArgs map[string]any, name string) (string, error) 
 		return value, nil
 	}
 
+	if value, err := AdaptNamedArgument(namedArgs, name, promoteArgumentToInt64); err == nil {
+		return strconv.FormatInt(value, 10), nil
+	}
+
 	if value, err := AdaptNamedArgument(namedArgs, name, promoteArgumentToFloat64); err == nil {
 		return strconv.FormatFloat(value, 'f', 2, 64), nil
 	}
 
-	if value, err := AdaptNamedArgument(namedArgs, name, promoteArgumentToInt64); err == nil {
-		return strconv.FormatInt(value, 10), nil
+	if err := argumentNotNil(namedArgs[name]); err != nil {
+		return "", err
 	}
 
 	return "", cockroachdbErrors.Wrap(ast.ErrArgumentInvalidType,
