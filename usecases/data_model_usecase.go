@@ -167,6 +167,9 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field
 	if field.Name == "id" {
 		return "", errors.Wrap(models.BadParameterError, "field name 'id' is reserved")
 	}
+	// NB: even if we decide in the future to be more permissive on allowed field names, for instance if we escape them and allow special characters
+	// (which I don't think we should), they MUST still remain lower case, unless we first migrate all non escaped fields&tables in data_model_fields/data_model_tables
+	// to lower case and change logic in models/concrete_index.go ConcreteIndex.Covers()
 	if !validNameRegex.MatchString(field.Name) {
 		return "", errors.Wrap(models.BadParameterError,
 			"field name must only contain lower case alphanumeric characters and underscores, and start by a letter")
