@@ -483,6 +483,7 @@ func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fie
 	case ast.FILTER_ENDS_WITH:
 		return query.Where(squirrel.Like{fmt.Sprintf("%s.%s", tableName, fieldName): fmt.Sprintf("%%%s", value)}), nil
 	case ast.FILTER_FUZZY_MATCH:
+		// TODO: finish implementing the exact logic we want in the sql query.
 		fuzzyFilterOptions, ok := value.(ast.FuzzyMatchOptions)
 		if !ok {
 			return query, fmt.Errorf("invalid value type for FuzzyMatchFilter")
