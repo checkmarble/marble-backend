@@ -25,6 +25,14 @@ func (op FilterOperator) IsUnary() bool {
 	return slices.Contains([]FilterOperator{FILTER_IS_EMPTY, FILTER_IS_NOT_EMPTY}, op)
 }
 
+func (op FilterOperator) IsComplex() bool {
+	return slices.Contains([]FilterOperator{FILTER_FUZZY_MATCH}, op)
+}
+
+func (op FilterOperator) IsBinary() bool {
+	return !op.IsUnary()
+}
+
 type Filter struct {
 	TableName string
 	FieldName string
@@ -40,6 +48,16 @@ var FuncFilterAttributes = FuncAttributes{
 		"fieldName",
 		"operator",
 		"value",
-		"options",
 	},
 }
+
+// var ComplexFilterAttributes = FuncAttributes{
+// 	DebugName: "FUNC_COMPLEX_FILTER",
+// 	AstName:   "ComplexFilter",
+// 	NamedArguments: []string{
+// 		"tableName",
+// 		"fieldName",
+// 		"operator",
+// 		"value",
+// 	},
+// }

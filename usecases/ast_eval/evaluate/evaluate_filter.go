@@ -36,8 +36,7 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 	tableName, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
 	fieldName, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 	operatorStr, operatorErr := AdaptNamedArgument(arguments.NamedArgs, "operator", adaptArgumentToString)
-	_, optionsErr := AdaptNamedArgument(arguments.NamedArgs, "options", adaptArgumentToListOfStrings)
-	errs := filterNilErrors(tableNameErr, fieldNameErr, operatorErr, optionsErr)
+	errs := filterNilErrors(tableNameErr, fieldNameErr, operatorErr)
 	if len(errs) > 0 {
 		return nil, errs
 	}
@@ -87,6 +86,9 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 	} else {
 		if operator == ast.FILTER_IS_IN_LIST || operator == ast.FILTER_IS_NOT_IN_LIST {
 			promotedValue, err = adaptArgumentToListOfStrings(value)
+		} else if operator == ast.FILTER_FUZZY_MATCH {
+			// promotedValue, err = adaptArgumentToBool(value)
+			promotedValue = value
 		} else {
 			promotedValue, err = promoteArgumentToDataType(value, fieldType)
 		}

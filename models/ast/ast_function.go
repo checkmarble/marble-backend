@@ -49,6 +49,7 @@ const (
 	FUNC_IS_MULTIPLE_OF
 	FUNC_STRING_TEMPLATE
 	FUNC_STRING_CONCAT
+	FUNC_FUZZY_MATCH_FILTER_OPTIONS
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
@@ -205,6 +206,11 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName:      "FUNC_FUZZY_MATCH_ANY_OF",
 		AstName:        "FuzzyMatchAnyOf",
 		NamedArguments: []string{"algorithm"},
+	},
+	FUNC_FUZZY_MATCH_FILTER_OPTIONS: {
+		DebugName:      "FUNC_FUZZY_MATCH_FILTER_OPTIONS",
+		AstName:        "FuzzyMatchOptions",
+		NamedArguments: []string{"algorithm", "threshold", "value"},
 	},
 	FUNC_IS_EMPTY: {
 		DebugName: "FUNC_IS_EMPTY",

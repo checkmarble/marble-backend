@@ -138,13 +138,15 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 			if !family.EqConditions.Contains(fieldName) {
 				family.IneqConditions.Insert(fieldName)
 			}
+		case ast.FILTER_FUZZY_MATCH:
 		case ast.FILTER_IS_IN_LIST, ast.FILTER_IS_NOT_IN_LIST, ast.FILTER_NOT_EQUAL,
 			ast.FILTER_IS_EMPTY, ast.FILTER_IS_NOT_EMPTY, ast.FILTER_ENDS_WITH,
-			ast.FILTER_STARTS_WITH, ast.FILTER_FUZZY_MATCH:
+			ast.FILTER_STARTS_WITH:
 			if !family.EqConditions.Contains(fieldName) &&
 				!family.IneqConditions.Contains(fieldName) {
 				family.SelectOrOtherConditions.Insert(fieldName)
 			}
+
 		default:
 			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
 				fmt.Sprintf("Filter operator %s is not valid", operatorStr))
