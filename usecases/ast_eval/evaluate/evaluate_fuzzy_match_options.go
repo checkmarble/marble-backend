@@ -2,35 +2,54 @@ package evaluate
 
 import (
 	"context"
+	"fmt"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/cockroachdb/errors"
 )
 
-type FuzzyMatchOptions struct {
-	Algorithm     string
-	Threshold     float64
-	Value         string
-	NamedChildren map[string]any
+type FuzzyMatchOptionsEvaluator struct{}
+
+var allowedFuzzyMatchAlgorithms = []string{
+	"bag_of_words_similarity",
+	"direct_string_similarity",
+	"token_set_ratio", // TODO: remove this option
 }
 
-func (f FuzzyMatchOptions) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
+func (f FuzzyMatchOptionsEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	algorithm, err := AdaptNamedArgument(arguments.NamedArgs, "algorithm", adaptArgumentToString)
 	if err != nil {
 		return nil, []error{err}
 	}
-	f.Algorithm = algorithm
+	if !slices.Contains(allowedFuzzyMatchAlgorithms, algorithm) {
+		return MakeEvaluateError(errors.Join(
+			ast.NewNamedArgumentError("algorithm"),
+			errors.Wrap(ast.ErrRuntimeExpression,
+				fmt.Sprintf("algorithm %s is not valid in Evaluate fuzzy match options", algorithm)),
+		))
+	}
 
 	threshold, err := AdaptNamedArgument(arguments.NamedArgs, "threshold", promoteArgumentToFloat64)
 	if err != nil {
 		return nil, []error{err}
 	}
-	f.Threshold = threshold
+	if threshold < 0 || threshold > 100 {
+		return MakeEvaluateError(errors.Join(
+			ast.NewNamedArgumentError("threshold"),
+			errors.Wrap(ast.ErrRuntimeExpression,
+				fmt.Sprintf("threshold %f is not valid in Evaluate fuzzy match options", threshold)),
+		))
+	}
 
 	value, err := AdaptNamedArgument(arguments.NamedArgs, "value", adaptArgumentToString)
 	if err != nil {
 		return nil, []error{err}
 	}
-	f.Value = value
 
-	return f, nil
+	return ast.FuzzyMatchOptions{
+		Algorithm: algorithm,
+		Threshold: threshold,
+		Value:     value,
+	}, nil
 }
