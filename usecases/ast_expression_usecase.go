@@ -14,13 +14,30 @@ import (
 
 type AstExpressionUsecaseRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+	GetDataModel(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationID string,
+		fetchEnumValues bool,
+	) (models.DataModel, error)
 }
 
 type AstExpressionUsecase struct {
-	executorFactory     executor_factory.ExecutorFactory
-	EnforceSecurity     security.EnforceSecurityScenario
-	DataModelRepository repositories.DataModelRepository
-	Repository          AstExpressionUsecaseRepository
+	executorFactory executor_factory.ExecutorFactory
+	enforceSecurity security.EnforceSecurityScenario
+	repository      AstExpressionUsecaseRepository
+}
+
+func NewAstExpressionUsecase(
+	executorFactory executor_factory.ExecutorFactory,
+	enforceSecurity security.EnforceSecurityScenario,
+	repository AstExpressionUsecaseRepository,
+) AstExpressionUsecase {
+	return AstExpressionUsecase{
+		executorFactory: executorFactory,
+		enforceSecurity: enforceSecurity,
+		repository:      repository,
+	}
 }
 
 type EditorIdentifiers struct {
@@ -28,7 +45,7 @@ type EditorIdentifiers struct {
 	DatabaseAccessors []ast.Node `json:"database_accessors"`
 }
 
-func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
+func getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
 	dataAccessors := []ast.Node{}
 	var recursiveDatabaseAccessor func(path []string, links map[string]models.LinkToSingle) error
 
@@ -77,7 +94,7 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 	return dataAccessors, nil
 }
 
-func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
+func getPayloadIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
 	dataAccessors := []ast.Node{}
 
 	triggerObjectTable, found := dataModel.Tables[scenario.TriggerObjectType]
@@ -99,29 +116,28 @@ func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scena
 	return dataAccessors, nil
 }
 
-func (usecase *AstExpressionUsecase) EditorIdentifiers(ctx context.Context, scenarioId string) (EditorIdentifiers, error) {
-	scenario, err := usecase.Repository.GetScenarioById(ctx,
-		usecase.executorFactory.NewExecutor(), scenarioId)
+func (usecase AstExpressionUsecase) EditorIdentifiers(ctx context.Context, scenarioId string) (EditorIdentifiers, error) {
+	exec := usecase.executorFactory.NewExecutor()
+	scenario, err := usecase.repository.GetScenarioById(ctx, exec, scenarioId)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
 
-	if err := usecase.EnforceSecurity.ReadScenario(scenario); err != nil {
+	if err := usecase.enforceSecurity.ReadScenario(scenario); err != nil {
 		return EditorIdentifiers{}, err
 	}
 
-	dataModel, err := usecase.DataModelRepository.GetDataModel(ctx,
-		usecase.executorFactory.NewExecutor(), scenario.OrganizationId, false)
+	dataModel, err := usecase.repository.GetDataModel(ctx, exec, scenario.OrganizationId, false)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
 
-	databaseAccessors, err := usecase.getLinkedDatabaseIdentifiers(scenario, dataModel)
+	databaseAccessors, err := getLinkedDatabaseIdentifiers(scenario, dataModel)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
 
-	payloadAccessors, err := usecase.getPayloadIdentifiers(scenario, dataModel)
+	payloadAccessors, err := getPayloadIdentifiers(scenario, dataModel)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
