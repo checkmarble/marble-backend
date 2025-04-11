@@ -8,7 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
-var columnNamesRegex = regexp.MustCompile(`(\([a-zA-Z0-9,_\ ]+\))`)
+var columnNamesRegex = regexp.MustCompile(`(\([\"a-zA-Z0-9,_\ ]+\))`)
 
 type PGIndex struct {
 	CreationInProgress bool
@@ -33,9 +33,9 @@ func parseCreateIndexStatement(sql string) models.ConcreteIndex {
 	indexedColumnsRaw := strings.Split(strings.Trim(matches[0], "() "), ",")
 	indexedColumnNames := pure_utils.Map(indexedColumnsRaw, func(s string) string {
 		// We discard the order of the index (ASC/DESC) because this is not relevant or modelized (yet) for our purposes
-		parts := strings.Split(strings.Trim(s, " "), " ")
+		colName, _, _ := strings.Cut(s, " DESC")
 		// the first part of the string must be the column name
-		return parts[0]
+		return strings.Trim(colName, " \"")
 	})
 
 	var includedColumnNames []string
@@ -43,7 +43,7 @@ func parseCreateIndexStatement(sql string) models.ConcreteIndex {
 	if len(matches) > 1 {
 		names := strings.Split(strings.Trim(matches[1], "() "), ",")
 		includedColumnNames = pure_utils.Map(names, func(s string) string {
-			return strings.Trim(s, " ")
+			return strings.Trim(s, " \"")
 		})
 	}
 
