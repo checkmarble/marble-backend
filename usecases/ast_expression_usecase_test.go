@@ -46,7 +46,6 @@ func TestAstExpressionUsecase_getLinkedDatabaseIdentifiers(t *testing.T) {
 		},
 	}
 
-	u := AstExpressionUsecase{}
-	_, err := u.getLinkedDatabaseIdentifiers(scenario, model)
+	_, err := getLinkedDatabaseIdentifiers(scenario, model)
 	assert.NoError(t, err)
 }

@@ -219,12 +219,11 @@ func (usecases *UsecasesWithCreds) NewRuleUsecase() RuleUsecase {
 }
 
 func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
-	return AstExpressionUsecase{
-		EnforceSecurity:     usecases.NewEnforceScenarioSecurity(),
-		DataModelRepository: usecases.Repositories.MarbleDbRepository,
-		Repository:          &usecases.Repositories.MarbleDbRepository,
-		executorFactory:     usecases.NewExecutorFactory(),
-	}
+	return NewAstExpressionUsecase(
+		usecases.NewExecutorFactory(),
+		usecases.NewEnforceScenarioSecurity(),
+		&usecases.Repositories.MarbleDbRepository,
+	)
 }
 
 func (usecases *UsecasesWithCreds) NewCustomListUseCase() CustomListUseCase {
