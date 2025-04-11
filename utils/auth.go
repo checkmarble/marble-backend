@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -76,8 +77,17 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 
 		credentials, err := a.Validator.Validate(ctx, jwtToken, key)
 		if err != nil {
-			_ = c.Error(fmt.Errorf("validator.Validate error: %w", err))
-			c.AbortWithStatus(http.StatusUnauthorized)
+			if errors.Is(err, models.NotFoundError) {
+				_ = c.Error(fmt.Errorf("validator.Validate error: %w", err))
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+
+			LogAndReportSentryError(ctx, err)
+			LoggerFromContext(ctx).ErrorContext(ctx,
+				"errors while validating token", "error", err)
+
+			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
