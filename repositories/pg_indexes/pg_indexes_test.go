@@ -49,4 +49,43 @@ func TestParseCreateIndexStatement(t *testing.T) {
 			idx,
 		)
 	})
+
+	t.Run("With escaped field name", func(t *testing.T) {
+		asserts := assert.New(t)
+		idx := parseCreateIndexStatement(`CREATE INDEX index_name ON Transaction (id, "userpublicid" DESC)`)
+		fmt.Println(idx)
+		asserts.Equal(
+			models.ConcreteIndex{
+				Indexed:  []string{"id", "userpublicid"},
+				Included: nil,
+			},
+			idx,
+		)
+	})
+
+	t.Run("With escaped field name, case sensitive", func(t *testing.T) {
+		asserts := assert.New(t)
+		idx := parseCreateIndexStatement(`CREATE INDEX index_name ON Transaction (id, "TIME" DESC)`)
+		fmt.Println(idx)
+		asserts.Equal(
+			models.ConcreteIndex{
+				Indexed:  []string{"id", "TIME"},
+				Included: nil,
+			},
+			idx,
+		)
+	})
+
+	t.Run("With escaped field name in included", func(t *testing.T) {
+		asserts := assert.New(t)
+		idx := parseCreateIndexStatement(`CREATE INDEX index_name ON Transaction (id, "userpublicid" DESC) INCLUDE ("time")`)
+		fmt.Println(idx)
+		asserts.Equal(
+			models.ConcreteIndex{
+				Indexed:  []string{"id", "userpublicid"},
+				Included: []string{"time"},
+			},
+			idx,
+		)
+	})
 }

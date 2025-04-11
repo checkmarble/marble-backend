@@ -240,6 +240,8 @@ func asynchronouslyCreateIndexes(
 	}
 }
 
+// ⚠️ ⚠️ WARNING ⚠️ ⚠️ : if we change how we create indexes (including, but not only, if we every allow to create indexes on something else than table columns),
+// We need to review the index parsing logic in repositories/pg_indexes.go.
 func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteIndex) error {
 	logger := utils.LoggerFromContext(ctx)
 	qualifiedTableName := pgIdentifierWithSchema(exec, index.TableName)
