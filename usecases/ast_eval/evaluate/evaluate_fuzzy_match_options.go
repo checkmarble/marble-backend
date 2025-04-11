@@ -49,7 +49,7 @@ func (f FuzzyMatchOptionsEvaluator) Evaluate(ctx context.Context, arguments ast.
 
 	return ast.FuzzyMatchOptions{
 		Algorithm: algorithm,
-		Threshold: threshold,
+		Threshold: threshold / 100,
 		Value:     value,
 	}, nil
 }
