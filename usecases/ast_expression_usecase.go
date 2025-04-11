@@ -47,7 +47,11 @@ type EditorIdentifiers struct {
 
 func getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
 	dataAccessors := []ast.Node{}
-	var recursiveDatabaseAccessor func(path []string, links map[string]models.LinkToSingle) error
+	var recursiveDatabaseAccessor func(
+		baseTable string,
+		path []string,
+		links map[string]models.LinkToSingle,
+	) error
 
 	triggerObjectTable, found := dataModel.Tables[scenario.TriggerObjectType]
 	if !found {
@@ -55,14 +59,18 @@ func getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.Dat
 	}
 
 	var visited []string
-	recursiveDatabaseAccessor = func(path []string, links map[string]models.LinkToSingle) error {
+	recursiveDatabaseAccessor = func(
+		baseTable string,
+		path []string,
+		links map[string]models.LinkToSingle,
+	) error {
 		for linkName, link := range links {
 			table, found := dataModel.Tables[link.ParentTableName]
 			if !found {
 				return fmt.Errorf("table %s not found in data model", scenario.TriggerObjectType)
 			}
 
-			relation := fmt.Sprintf("%s/%s", table.Name, linkName)
+			relation := fmt.Sprintf("%s/%s", baseTable, linkName)
 			idx := slices.Index(visited, relation)
 			if idx != -1 {
 				continue
@@ -80,15 +88,18 @@ func getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.Dat
 				)
 			}
 
-			if err := recursiveDatabaseAccessor(pathForLink, table.LinksToSingle); err != nil {
+			if err := recursiveDatabaseAccessor(table.Name, pathForLink, table.LinksToSingle); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
 
-	var path []string
-	if err := recursiveDatabaseAccessor(path, triggerObjectTable.LinksToSingle); err != nil {
+	if err := recursiveDatabaseAccessor(
+		triggerObjectTable.Name,
+		[]string{},
+		triggerObjectTable.LinksToSingle,
+	); err != nil {
 		return nil, err
 	}
 	return dataAccessors, nil
