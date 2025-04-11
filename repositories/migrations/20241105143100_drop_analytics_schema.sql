@@ -9,7 +9,11 @@ DROP USER IF EXISTS analytics;
 -- +goose StatementBegin
 CREATE SCHEMA IF NOT EXISTS analytics;
 
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA analytics TO postgres;
+do $$
+begin
+   execute 'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA analytics TO ' || current_user;
+end
+$$;
 
 DO $$ BEGIN
       CREATE USER analytics;

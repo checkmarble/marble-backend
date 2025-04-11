@@ -30,10 +30,10 @@ import (
 )
 
 const (
-	testDbLifetime   = 120 // seconds
-	testUser         = "postgres"
+	testDbLifetime   = 120     // seconds
+	testUser         = "admin" // Nb: not using the default "postgres" on purpose, to verify the migrations run even with a different user
 	testPassword     = "pwd"
-	testDbName       = "marble"
+	testDbName       = "marble_db" // Nb: not using the default "marble" on purpose, to verify the migrations run even with a different db name
 	marbleAdminEmail = "test@admin.com"
 )
 
