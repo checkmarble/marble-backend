@@ -75,6 +75,12 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 			jwtToken = token
 		}
 
+		if key == "" && jwtToken == "" {
+			_ = c.Error(fmt.Errorf("missing authentication method"))
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
 		credentials, err := a.Validator.Validate(ctx, jwtToken, key)
 		if err != nil {
 			if errors.Is(err, models.NotFoundError) {
@@ -100,33 +106,6 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 		}
 		c.Next()
 	}
-}
-
-func (a *Authentication) Middleware(c *gin.Context) {
-	ctx := c.Request.Context()
-	key := ParseApiKeyHeader(c.Request.Header)
-	jwtToken, err := ParseAuthorizationBearerHeader(c.Request.Header)
-	if err != nil {
-		_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
-
-	credentials, err := a.Validator.Validate(ctx, jwtToken, key)
-	if err != nil {
-		_ = c.Error(fmt.Errorf("validator.Validate error: %w", err))
-		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-
-	newContext := context.WithValue(ctx, ContextKeyCredentials, credentials)
-	if attr, ok := identityAttr(credentials.ActorIdentity); ok {
-		logger := LoggerFromContext(newContext).
-			With(attr).
-			With(slog.String("Role", credentials.Role.String()))
-		c.Request = c.Request.WithContext(context.WithValue(newContext, ContextKeyLogger, logger))
-	}
-	c.Next()
 }
 
 func NewAuthentication(validator validator) Authentication {
