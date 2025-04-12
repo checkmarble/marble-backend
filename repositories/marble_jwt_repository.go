@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 
 	"github.com/golang-jwt/jwt/v4"
 )
@@ -44,14 +45,18 @@ func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (models
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		method, ok := token.Method.(*jwt.SigningMethodRSA)
 		if !ok || method != ValidationAlgo {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, errors.Wrapf(models.UnAuthorizedError,
+				"unexpected signing method: %v", token.Header["alg"])
 		}
 		return &repo.jwtSigningPrivateKey.PublicKey, nil
 	}
 
 	token, err := jwt.ParseWithClaims(marbleToken, &Claims{}, keyFunc)
 	if err != nil {
-		return models.Credentials{}, err
+		return models.Credentials{}, errors.Join(
+			models.UnAuthorizedError,
+			errors.Wrapf(err, "Error parsing jwt token claims"),
+		)
 	}
 
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
