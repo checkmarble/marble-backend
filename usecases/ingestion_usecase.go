@@ -676,6 +676,7 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	go func() {
 		// I'm giving it a short deadline because it's not critical to the user - in any situation i'd rather it fails
 		// than take more than 40ms
+		defer utils.RecoverAndReportSentryError(ctx, "insertEnumValuesAndIngest")
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Millisecond*40)
 		defer cancel()
 		enumValues := buildEnumValuesContainersFromTable(table)
@@ -684,11 +685,11 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 		}
 		exec := usecase.executorFactory.NewExecutor()
 		err := usecase.dataModelRepository.BatchInsertEnumValues(ctx, exec, enumValues, table)
-		if err != nil {
-			utils.LogAndReportSentryError(ctx, err)
-		} else if errors.Is(err, context.DeadlineExceeded) {
+		if errors.Is(err, context.DeadlineExceeded) {
 			logger := utils.LoggerFromContext(ctx)
 			logger.WarnContext(ctx, "Deadline exceeded while inserting enum values")
+		} else if err != nil {
+			utils.LogAndReportSentryError(ctx, err)
 		}
 	}()
 
