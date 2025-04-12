@@ -83,15 +83,15 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 
 		credentials, err := a.Validator.Validate(ctx, jwtToken, key)
 		if err != nil {
-			if errors.Is(err, models.NotFoundError) {
+			if errors.Is(err, models.NotFoundError) ||
+				errors.Is(err, models.UnAuthorizedError) {
 				_ = c.Error(fmt.Errorf("validator.Validate error: %w", err))
 				c.AbortWithStatus(http.StatusUnauthorized)
 				return
 			}
 
 			LogAndReportSentryError(ctx, err)
-			LoggerFromContext(ctx).ErrorContext(ctx,
-				"errors while validating token", "error", err)
+			LoggerFromContext(ctx).ErrorContext(ctx, "errors while validating token", "error", err)
 
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
