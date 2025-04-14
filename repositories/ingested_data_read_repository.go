@@ -389,7 +389,6 @@ func createQueryAggregated(
 	}
 
 	qualifiedTableName := pgIdentifierWithSchema(exec, tableName)
-	qualifiedFieldName := pgIdentifierWithSchema(exec, tableName, fieldName)
 
 	query := NewQueryBuilder().
 		Select(selectExpression).
@@ -398,6 +397,7 @@ func createQueryAggregated(
 
 	var err error
 	for _, filter := range filters {
+		qualifiedFieldName := pgIdentifierWithSchema(exec, tableName, filter.Filter.FieldName)
 		query, err = addConditionForOperator(query, qualifiedFieldName, filter.FieldType,
 			filter.Filter.Operator, filter.Filter.Value)
 		if err != nil {
