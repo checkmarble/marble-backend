@@ -181,3 +181,12 @@ func (br *BoostReason) String() string {
 	}
 	return string(*br)
 }
+
+const CaseDecisionsPerPage = 50
+
+type CaseDecisionsRequest struct {
+	OrgId    string
+	CaseId   string
+	CursorId string
+	Limit    int
+}

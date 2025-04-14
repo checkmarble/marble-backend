@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -226,6 +228,57 @@ func handleUnsnoozeCase(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		c.Status(http.StatusNoContent)
+	}
+}
+
+func handleListCaseDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		orgId, _ := utils.OrganizationIdFromRequest(c.Request)
+		caseId := c.Param("case_id")
+		cursorId := c.Query("cursor_id")
+		limit := models.CaseDecisionsPerPage
+
+		if c.Query("limit") != "" {
+			l, err := strconv.Atoi(c.Query("limit"))
+			if err != nil {
+				presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+				return
+			}
+
+			limit = l
+		}
+
+		req := models.CaseDecisionsRequest{
+			OrgId:    orgId,
+			CaseId:   caseId,
+			CursorId: cursorId,
+			Limit:    limit,
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
+		decisions, hasMore, err := usecase.ListCaseDecisions(ctx, req)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		nextCursorId := ""
+
+		if len(decisions) > 0 {
+			nextCursorId = decisions[len(decisions)-1].DecisionId
+		}
+
+		c.JSON(http.StatusOK, dto.CaseDecisionListDto{
+			Decisions: pure_utils.Map(decisions, func(d models.DecisionWithRuleExecutions) dto.DecisionWithRules {
+				return dto.NewDecisionWithRuleDto(d, marbleAppUrl, false)
+			}),
+			Pagination: dto.CaseDecisionListPaginationDto{
+				HasMore:      hasMore,
+				NextCursorId: nextCursorId,
+			},
+		})
 	}
 }
 

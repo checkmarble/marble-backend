@@ -227,6 +227,21 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 	return c, nil
 }
 
+func (usecase *CaseUseCase) ListCaseDecisions(ctx context.Context, req models.CaseDecisionsRequest) ([]models.DecisionWithRuleExecutions, bool, error) {
+	_, err := usecase.GetCase(ctx, req.CaseId)
+	if err != nil {
+		return nil, false, err
+	}
+
+	decisions, hasMore, err := usecase.decisionRepository.DecisionsByCaseIdFromCursor(ctx,
+		usecase.executorFactory.NewExecutor(), req)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return decisions, hasMore, nil
+}
+
 func (usecase *CaseUseCase) CreateCase(
 	ctx context.Context,
 	tx repositories.Transaction,

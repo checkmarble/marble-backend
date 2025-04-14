@@ -120,3 +120,13 @@ type ReviewCaseDecisionsBody struct {
 type CaseAssigneeDto struct {
 	UserId models.UserId `json:"user_id"`
 }
+
+type CaseDecisionListDto struct {
+	Decisions  []DecisionWithRules           `json:"decisions"`
+	Pagination CaseDecisionListPaginationDto `json:"pagination"`
+}
+
+type CaseDecisionListPaginationDto struct {
+	HasMore      bool   `json:"has_more"`
+	NextCursorId string `json:"next_cursor_id"`
+}
