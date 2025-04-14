@@ -45,6 +45,9 @@ var FuncFilterAttributes = FuncAttributes{
 
 type FuzzyMatchOptions struct {
 	Algorithm string
-	Threshold float64 // Threshold represents the similarity score, expressed as a decimal between 0.0 and 1.0.
-	Value     string
+
+	// Threshold represents the similarity score, expressed as a decimal between 0.0 and 1.0.
+	Threshold float64
+
+	Value string
 }

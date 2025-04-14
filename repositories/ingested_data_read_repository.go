@@ -55,12 +55,6 @@ type IngestedDataReadRepository interface {
 
 type IngestedDataReadRepositoryImpl struct{}
 
-// type FuzzyMatchFilter struct {
-// 	Value     string
-// 	Threshold float64
-// 	Algorithm string
-// }
-
 // "read db field" methods
 func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
@@ -395,6 +389,7 @@ func createQueryAggregated(
 	}
 
 	qualifiedTableName := pgIdentifierWithSchema(exec, tableName)
+	qualifiedFieldName := pgIdentifierWithSchema(exec, tableName, fieldName)
 
 	query := NewQueryBuilder().
 		Select(selectExpression).
@@ -403,8 +398,8 @@ func createQueryAggregated(
 
 	var err error
 	for _, filter := range filters {
-		query, err = addConditionForOperator(query, qualifiedTableName,
-			filter.Filter.FieldName, filter.FieldType, filter.Filter.Operator, filter.Filter.Value)
+		query, err = addConditionForOperator(query, qualifiedFieldName, filter.FieldType,
+			filter.Filter.Operator, filter.Filter.Value)
 		if err != nil {
 			return squirrel.SelectBuilder{}, err
 		}
@@ -442,54 +437,86 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(
 	return result, nil
 }
 
-func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fieldName string, fieldType models.DataType,
+func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fieldType models.DataType,
 	operator ast.FilterOperator, value any,
 ) (squirrel.SelectBuilder, error) {
 	switch operator {
 	case ast.FILTER_EQUAL, ast.FILTER_IS_IN_LIST:
-		return query.Where(squirrel.Eq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+		return query.Where(squirrel.Eq{fieldName: value}), nil
 	case ast.FILTER_NOT_EQUAL, ast.FILTER_IS_NOT_IN_LIST:
-		return query.Where(squirrel.NotEq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+		return query.Where(squirrel.NotEq{fieldName: value}), nil
 	case ast.FILTER_GREATER:
-		return query.Where(squirrel.Gt{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+		return query.Where(squirrel.Gt{fieldName: value}), nil
 	case ast.FILTER_GREATER_OR_EQUAL:
-		return query.Where(squirrel.GtOrEq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+		return query.Where(squirrel.GtOrEq{fieldName: value}), nil
 	case ast.FILTER_LESSER:
-		return query.Where(squirrel.Lt{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+		return query.Where(squirrel.Lt{fieldName: value}), nil
 	case ast.FILTER_LESSER_OR_EQUAL:
-		return query.Where(squirrel.LtOrEq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+		return query.Where(squirrel.LtOrEq{fieldName: value}), nil
 	case ast.FILTER_IS_EMPTY:
 		orCondition := squirrel.Or{
-			squirrel.Eq{fmt.Sprintf("%s.%s", tableName, fieldName): nil},
+			squirrel.Eq{fieldName: nil},
 		}
 		if fieldType == models.String {
 			orCondition = append(orCondition, squirrel.Eq{
-				fmt.Sprintf("%s.%s", tableName, fieldName): "",
+				fieldName: "",
 			})
 		}
 		return query.Where(orCondition), nil
 	case ast.FILTER_IS_NOT_EMPTY:
 		andCondition := squirrel.And{
-			squirrel.NotEq{fmt.Sprintf("%s.%s", tableName, fieldName): nil},
+			squirrel.NotEq{fieldName: nil},
 		}
 		if fieldType == models.String {
 			andCondition = append(andCondition,
-				squirrel.NotEq{fmt.Sprintf("%s.%s", tableName, fieldName): ""},
+				squirrel.NotEq{fieldName: ""},
 			)
 		}
 		return query.Where(andCondition), nil
 	case ast.FILTER_STARTS_WITH:
-		return query.Where(squirrel.Like{fmt.Sprintf("%s.%s", tableName, fieldName): fmt.Sprintf("%s%%", value)}), nil
+		return query.Where(squirrel.Like{fieldName: fmt.Sprintf("%s%%", value)}), nil
 	case ast.FILTER_ENDS_WITH:
-		return query.Where(squirrel.Like{fmt.Sprintf("%s.%s", tableName, fieldName): fmt.Sprintf("%%%s", value)}), nil
+		return query.Where(squirrel.Like{fieldName: fmt.Sprintf("%%%s", value)}), nil
 	case ast.FILTER_FUZZY_MATCH:
-		// TODO: finish implementing the exact logic we want in the sql query.
 		fuzzyFilterOptions, ok := value.(ast.FuzzyMatchOptions)
 		if !ok {
 			return query, fmt.Errorf("invalid value type for FuzzyMatchFilter")
 		}
-		return query.Where(fmt.Sprintf("similarity(%s.%s, ?) > ?", tableName, fieldName),
-			fuzzyFilterOptions.Value, fuzzyFilterOptions.Threshold), nil
+		value, threshold := fuzzyFilterOptions.Value, fuzzyFilterOptions.Threshold
+		switch fuzzyFilterOptions.Algorithm {
+		case "bag_of_words_similarity_db":
+			// Basic word_similarity is not symmetric. Make it symmetric, checking if the shorter string is "mostly" included in the longer one.
+			condition := fmt.Sprintf(`
+			CASE
+				WHEN length(%s) < length(?) THEN word_similarity(%s, ?)
+				ELSE word_similarity(?, %s)
+			END > ?`,
+				fieldName, fieldName, fieldName,
+			)
+			query = query.Where(condition, value, value, value, threshold)
+			return query, nil
+		case "direct_string_similarity_db":
+			// NB: Some tuning parameters are hard-coded in the query string below. This is because the query is hard enough to read as it is.
+			// The parameters are:
+			// - string length below which levenshtein distance is used instead of trigram similarity (because that breaks down for short strings): 6
+			// - string length below which the trigram similarity is boosted by an arbitrary value: 11
+			// - amount by which the trigram similarity is boosted: 0.05 times a factor, that is maximal when strings are the shortest (6 chars => 0.25 score bump)
+			//   and maximal when strings are just below the boost threshold (10 chars => 0.05 score bump)
+			condition := fmt.Sprintf(`
+			CASE 
+				WHEN GREATEST(LENGTH(%s), LENGTH(?)) < 6 THEN 1.0 - (levenshtein(%s, ?)::float / GREATEST(LENGTH(%s), LENGTH(?)))
+				WHEN GREATEST(LENGTH(%s), LENGTH(?)) < 11 THEN LEAST(1.0, SIMILARITY(%s, ?) + 0.05 * (11 - LEAST(1, LENGTH(%s), LENGTH(?))))
+				ELSE SIMILARITY(%s, ?)
+			END > ?`,
+				fieldName, fieldName, fieldName, fieldName, fieldName, fieldName, fieldName,
+			)
+			query = query.Where(condition, value, value, value, value, value, value, value, threshold)
+			return query, nil
+		default:
+			return query, fmt.Errorf("unknown algorithm %s: %w",
+				fuzzyFilterOptions.Algorithm, models.BadParameterError)
+		}
+
 	default:
 		return query, fmt.Errorf("unknown operator %s: %w", operator, models.BadParameterError)
 	}
