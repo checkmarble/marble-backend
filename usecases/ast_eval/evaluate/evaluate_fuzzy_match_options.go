@@ -30,7 +30,8 @@ func (f FuzzyMatchOptionsEvaluator) Evaluate(ctx context.Context, arguments ast.
 		))
 	}
 
-	threshold, err := AdaptNamedArgument(arguments.NamedArgs, "threshold", promoteArgumentToFloat64)
+	threshold, err := AdaptNamedArgument(arguments.NamedArgs, "threshold",
+		promoteArgumentToFloat64) // Threshold is received as an integer (0–100) from the client and converted to a float (0.0–1.0) for internal processing.
 	if err != nil {
 		return nil, []error{err}
 	}
