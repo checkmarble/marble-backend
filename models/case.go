@@ -130,3 +130,12 @@ type CaseAssignementRequest struct {
 	CaseId     string
 	AssigneeId *UserId
 }
+
+const CaseDecisionsPerPage = 50
+
+type CaseDecisionsRequest struct {
+	OrgId    string
+	CaseId   string
+	CursorId string
+	Limit    int
+}
