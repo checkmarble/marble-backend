@@ -35,6 +35,10 @@ type DecisionRepository interface {
 		exec Executor,
 		organizationId, caseId string,
 	) ([]models.DecisionWithRuleExecutions, error)
+	DecisionsByCaseIdFromCursor(
+		ctx context.Context,
+		exec Executor,
+		req models.CaseDecisionsRequest) ([]models.DecisionWithRuleExecutions, bool, error)
 	DecisionsByObjectId(ctx context.Context, exec Executor, organizationId string, objectId string) ([]models.DecisionCore, error)
 	DecisionsOfScheduledExecution(
 		ctx context.Context,
@@ -251,6 +255,51 @@ func (repo *MarbleDbRepository) DecisionsByCaseId(
 	err := <-errChan
 
 	return decisions, err
+}
+
+func (repo *MarbleDbRepository) DecisionsByCaseIdFromCursor(
+	ctx context.Context,
+	exec Executor,
+	req models.CaseDecisionsRequest,
+) ([]models.DecisionWithRuleExecutions, bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, false, err
+	}
+
+	query := selectDecisions().
+		Where(squirrel.Eq{"org_id": req.OrgId}).
+		Where(squirrel.Eq{"case_id": req.CaseId}).
+		Limit(uint64(req.Limit) + 1).
+		OrderBy("created_at DESC, id DESC")
+
+	if req.CursorId != "" {
+		cursorDecision, err := repo.DecisionsById(ctx, exec, []string{req.CursorId})
+		if err != nil {
+			return nil, false, err
+		}
+		if len(cursorDecision) == 0 {
+			return nil, false, errors.Wrap(models.NotFoundError, "could not find decision for cursor")
+		}
+
+		query = query.Where(squirrel.Expr("(created_at, id) < (?, ?)",
+			cursorDecision[0].CreatedAt, req.CursorId))
+	}
+
+	decisionsChan, errChan := repo.channelOfDecisions(ctx, exec, query)
+
+	decisions := ChanToSlice(decisionsChan)
+
+	if err := <-errChan; err != nil {
+		return nil, false, err
+	}
+
+	if len(decisions) == 0 {
+		return []models.DecisionWithRuleExecutions{}, false, nil
+	}
+
+	hasMore := len(decisions) > req.Limit
+
+	return decisions[:min(len(decisions), req.Limit)], hasMore, nil
 }
 
 func (repo *MarbleDbRepository) DecisionsByObjectId(
