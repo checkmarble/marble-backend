@@ -65,6 +65,8 @@ type CaseUseCaseRepository interface {
 
 	GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor,
 		orgId, pivotValue string) ([]models.Case, error)
+
+	GetNextCase(ctx context.Context, exec repositories.Executor, c models.Case) (string, error)
 }
 
 type CaseUsecaseSanctionCheckRepository interface {
@@ -1384,6 +1386,31 @@ func (uc *CaseUseCase) GetRelatedCases(ctx context.Context, orgId, pivotValue st
 	}
 
 	return allowedCases, nil
+}
+
+func (uc *CaseUseCase) GetNextCaseId(ctx context.Context, orgId, caseId string) (string, error) {
+	exec := uc.executorFactory.NewExecutor()
+
+	availableInboxIds, err := uc.getAvailableInboxIds(ctx, exec, orgId)
+	if err != nil {
+		return "", err
+	}
+
+	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
+	if err != nil {
+		return "", err
+	}
+
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+		return "", err
+	}
+
+	nextCaseId, err := uc.repository.GetNextCase(ctx, exec, c)
+	if err != nil {
+		return "", err
+	}
+
+	return nextCaseId, nil
 }
 
 func validateDecisionReview(decision models.Decision) error {
