@@ -548,6 +548,22 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 			}
 		}
 
+		var userId *string
+
+		if req.UserId != "" {
+			userId = utils.Ptr(string(req.UserId))
+		}
+
+		if err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			CaseId:        c.Id,
+			UserId:        userId,
+			EventType:     models.CaseAssigned,
+			NewValue:      (*string)(req.AssigneeId),
+			PreviousValue: (*string)(c.AssignedTo),
+		}); err != nil {
+			return err
+		}
+
 		return nil
 	})
 }
@@ -575,11 +591,29 @@ func (usecase *CaseUseCase) UnassignCase(ctx context.Context, req models.CaseAss
 		return err
 	}
 
-	if err := usecase.repository.UnassignCase(ctx, usecase.executorFactory.NewExecutor(), req.CaseId); err != nil {
-		return err
-	}
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := usecase.repository.UnassignCase(ctx, tx, req.CaseId); err != nil {
+			return err
+		}
 
-	return nil
+		var userId *string
+
+		if req.UserId != "" {
+			userId = utils.Ptr(string(req.UserId))
+		}
+
+		if err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			CaseId:        c.Id,
+			UserId:        userId,
+			EventType:     models.CaseAssigned,
+			NewValue:      nil,
+			PreviousValue: (*string)(c.AssignedTo),
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c models.Case) bool {

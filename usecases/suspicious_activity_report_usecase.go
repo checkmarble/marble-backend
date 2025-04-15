@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
@@ -34,6 +35,9 @@ type SuspiciousActivityReportRepository interface {
 		req models.UploadSuspiciousActivityReportRequest) (models.SuspiciousActivityReport, error)
 	DeleteSuspiciousActivityReport(ctx context.Context, exec repositories.Executor,
 		req models.UpdateSuspiciousActivityReportRequest) error
+
+	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
+		createCaseEventAttributes models.CreateCaseEventAttributes) error
 }
 
 type SuspiciousActivityReportUsecase struct {
@@ -81,12 +85,32 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 		req.Status = models.SarPending
 	}
 
-	sar, err := uc.repository.CreateSuspiciousActivityReport(ctx, exec, req)
-	if err != nil {
-		return models.SuspiciousActivityReport{}, err
-	}
+	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
+		tx repositories.Transaction,
+	) (models.SuspiciousActivityReport, error) {
+		sar, err := uc.repository.CreateSuspiciousActivityReport(ctx, exec, req)
+		if err != nil {
+			return models.SuspiciousActivityReport{}, err
+		}
 
-	return sar, nil
+		var userId *string
+
+		if creds, ok := utils.CredentialsFromCtx(ctx); ok {
+			userId = utils.Ptr(string(creds.ActorIdentity.UserId))
+		}
+
+		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			CaseId:       sar.CaseId,
+			UserId:       userId,
+			EventType:    models.SarCreated,
+			ResourceType: utils.Ptr(models.SarResourceType),
+			ResourceId:   utils.Ptr(sar.Id),
+		}); err != nil {
+			return models.SuspiciousActivityReport{}, err
+		}
+
+		return sar, nil
+	})
 }
 
 func (uc SuspiciousActivityReportUsecase) UpdateReport(
@@ -112,16 +136,42 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 				"suspicious activity report is marked as completed")
 	}
 
+	if sar.Status == req.Status {
+		return sar, nil
+	}
+
 	if req.Status == models.SarUnknown {
 		req.Status = models.SarPending
 	}
 
-	sar, err = uc.repository.UpdateSuspiciousActivityReport(ctx, exec, req)
-	if err != nil {
-		return models.SuspiciousActivityReport{}, err
+	var userId *string
+
+	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
+		userId = utils.Ptr(string(creds.ActorIdentity.UserId))
 	}
 
-	return sar, nil
+	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
+		tx repositories.Transaction,
+	) (models.SuspiciousActivityReport, error) {
+		updatedSar, err := uc.repository.UpdateSuspiciousActivityReport(ctx, tx, req)
+		if err != nil {
+			return models.SuspiciousActivityReport{}, err
+		}
+
+		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			CaseId:        sar.CaseId,
+			UserId:        userId,
+			EventType:     models.SarStatusChanged,
+			ResourceType:  utils.Ptr(models.SarResourceType),
+			ResourceId:    utils.Ptr(updatedSar.Id),
+			NewValue:      utils.Ptr(updatedSar.Status.String()),
+			PreviousValue: utils.Ptr(sar.Status.String()),
+		}); err != nil {
+			return models.SuspiciousActivityReport{}, err
+		}
+
+		return updatedSar, nil
+	})
 }
 
 func (uc SuspiciousActivityReportUsecase) GenerateReportUrl(
@@ -158,6 +208,12 @@ func (uc SuspiciousActivityReportUsecase) UploadReport(
 		return models.SuspiciousActivityReport{}, err
 	}
 
+	var userId *string
+
+	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
+		userId = utils.Ptr(string(creds.ActorIdentity.UserId))
+	}
+
 	sar, err := executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.SuspiciousActivityReport, error) {
@@ -174,6 +230,17 @@ func (uc SuspiciousActivityReportUsecase) UploadReport(
 
 		req.Bucket = uc.caseManagerBucketUrl
 		req.BlobKey = blobKey
+
+		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			CaseId:       sar.CaseId,
+			UserId:       userId,
+			EventType:    models.SarFileUploaded,
+			ResourceType: utils.Ptr(models.SarResourceType),
+			ResourceId:   utils.Ptr(sar.Id),
+			NewValue:     utils.Ptr(req.File.Filename),
+		}); err != nil {
+			return models.SuspiciousActivityReport{}, err
+		}
 
 		return uc.repository.UploadSuspiciousActivityReport(ctx, tx, sar, req)
 	})
@@ -205,7 +272,25 @@ func (uc SuspiciousActivityReportUsecase) DeleteReport(
 		return err
 	}
 
-	return uc.repository.DeleteSuspiciousActivityReport(ctx, exec, req)
+	var userId *string
+
+	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
+		userId = utils.Ptr(string(creds.ActorIdentity.UserId))
+	}
+
+	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			CaseId:       sar.CaseId,
+			UserId:       userId,
+			EventType:    models.SarDeleted,
+			ResourceType: utils.Ptr(models.SarResourceType),
+			ResourceId:   utils.Ptr(sar.Id),
+		}); err != nil {
+			return err
+		}
+
+		return uc.repository.DeleteSuspiciousActivityReport(ctx, exec, req)
+	})
 }
 
 func (uc SuspiciousActivityReportUsecase) hasCasePermissions(ctx context.Context,
