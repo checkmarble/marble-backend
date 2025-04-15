@@ -31,6 +31,11 @@ const (
 	CaseStatusUpdated     CaseEventType = "status_updated"
 	CaseOutcomeUpdated    CaseEventType = "outcome_updated"
 	CaseTagsUpdated       CaseEventType = "tags_updated"
+	CaseAssigned          CaseEventType = "case_assigned"
+	SarCreated            CaseEventType = "sar_created"
+	SarDeleted            CaseEventType = "sar_deleted"
+	SarStatusChanged      CaseEventType = "sar_status_changed"
+	SarFileUploaded       CaseEventType = "sar_file_uploaded"
 	SanctionCheckReviewed CaseEventType = "sanction_check_reviewed"
 	DecisionAdded         CaseEventType = "decision_added"
 	DecisionReviewed      CaseEventType = "decision_reviewed"
@@ -45,6 +50,7 @@ const (
 	CaseTagResourceType    CaseEventResourceType = "case_tag"
 	CaseFileResourceType   CaseEventResourceType = "case_file"
 	RuleSnoozeResourceType CaseEventResourceType = "rule_snooze"
+	SarResourceType        CaseEventResourceType = "sar"
 )
 
 type CreateCaseEventAttributes struct {
