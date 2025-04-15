@@ -430,7 +430,7 @@ func (repo *MarbleDbRepository) GetCasesFileByCaseId(ctx context.Context, exec E
 	)
 }
 
-func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec Executor, orgId, pivotId, pivotValue string) ([]models.Case, error) {
+func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec Executor, orgId, pivotValue string) ([]models.Case, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
