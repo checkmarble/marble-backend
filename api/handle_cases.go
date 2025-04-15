@@ -486,10 +486,10 @@ func handleGetRelatedCases(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		decisionId := c.Param("decision_id")
+		pivotValue := c.Param("pivotValue")
 
 		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cases, err := uc.GetRelatedCases(ctx, creds.OrganizationId, decisionId)
+		cases, err := uc.GetRelatedCases(ctx, creds.OrganizationId, pivotValue)
 		if err != nil {
 			presentError(ctx, c, err)
 			return
