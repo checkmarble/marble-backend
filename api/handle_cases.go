@@ -523,3 +523,19 @@ func handleReadCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"pivot_objects": pure_utils.Map(pivotObjects, dto.AdaptPivotObjectDto)})
 	}
 }
+
+func handleEscalateCase(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+
+		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
+
+		if err := uc.EscalateCase(ctx, caseId); err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}

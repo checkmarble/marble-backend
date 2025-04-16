@@ -100,6 +100,11 @@ func (e *EnforceSecurity) ReadInbox(i models.Inbox) error {
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) ReadInboxMetadata(i models.Inbox) error {
+	args := e.Called(i)
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) CreateInbox(organizationId string) error {
 	args := e.Called(organizationId)
 	return args.Error(0)

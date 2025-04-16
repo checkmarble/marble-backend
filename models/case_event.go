@@ -36,6 +36,7 @@ const (
 	DecisionReviewed      CaseEventType = "decision_reviewed"
 	CaseSnoozed           CaseEventType = "case_snoozed"
 	CaseUnsnoozed         CaseEventType = "case_unsnoozed"
+	CaseEscalated         CaseEventType = "case_escalated"
 )
 
 type CaseEventResourceType string

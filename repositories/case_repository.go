@@ -471,3 +471,17 @@ func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec
 func orderConditionForCases(p models.PaginationAndSorting) string {
 	return fmt.Sprintf("c.boost is null, c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)
 }
+
+func (repo *MarbleDbRepository) EscalateCase(ctx context.Context, exec Executor, id, inboxId string) error {
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_CASES).
+		SetMap(map[string]any{
+			"inbox_id":      inboxId,
+			"snoozed_until": nil,
+			"assigned_to":   nil,
+			"boost":         models.BoostEscalated,
+		}).
+		Where(squirrel.Eq{"id": id})
+
+	return ExecBuilder(ctx, exec, sql)
+}

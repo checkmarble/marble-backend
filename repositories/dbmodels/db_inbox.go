@@ -10,12 +10,13 @@ import (
 // Inboxes
 
 type DBInbox struct {
-	Id             string    `db:"id"`
-	OrganizationId string    `db:"organization_id"`
-	CreatedAt      time.Time `db:"created_at"`
-	UpdatedAt      time.Time `db:"updated_at"`
-	Name           string    `db:"name"`
-	Status         string    `db:"status"`
+	Id                string    `db:"id"`
+	OrganizationId    string    `db:"organization_id"`
+	CreatedAt         time.Time `db:"created_at"`
+	UpdatedAt         time.Time `db:"updated_at"`
+	Name              string    `db:"name"`
+	Status            string    `db:"status"`
+	EscalationInboxId *string   `db:"escalation_inbox_id"`
 }
 
 const TABLE_INBOXES = "inboxes"
@@ -24,12 +25,13 @@ var SelectInboxColumn = utils.ColumnList[DBInbox]()
 
 func AdaptInbox(db DBInbox) (models.Inbox, error) {
 	return models.Inbox{
-		Id:             db.Id,
-		OrganizationId: db.OrganizationId,
-		CreatedAt:      db.CreatedAt,
-		UpdatedAt:      db.UpdatedAt,
-		Name:           db.Name,
-		Status:         models.InboxStatus(db.Status),
+		Id:                db.Id,
+		OrganizationId:    db.OrganizationId,
+		CreatedAt:         db.CreatedAt,
+		UpdatedAt:         db.UpdatedAt,
+		Name:              db.Name,
+		Status:            models.InboxStatus(db.Status),
+		EscalationInboxId: db.EscalationInboxId,
 	}, nil
 }
 
