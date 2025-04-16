@@ -61,6 +61,8 @@ type CaseUseCaseRepository interface {
 	BoostCase(ctx context.Context, exec repositories.Executor, id string, reason models.BoostReason) error
 	UnboostCase(ctx context.Context, exec repositories.Executor, id string) error
 
+	EscalateCase(ctx context.Context, exec repositories.Executor, id, inboxId string) error
+
 	GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor,
 		orgId, pivotValue string) ([]models.Case, error)
 }
@@ -1418,4 +1420,67 @@ func (usecase *CaseUseCase) ReadCasePivotObjects(ctx context.Context, caseId str
 	}
 
 	return usecase.ingestedDataReader.ReadPivotObjectsFromValues(ctx, c.OrganizationId, pivotValues)
+}
+
+func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
+	exec := uc.executorFactory.NewExecutor()
+	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
+	if err != nil {
+		return err
+	}
+	if c.Status == models.CaseClosed {
+		return errors.New("case is already closed, cannot escalate")
+	}
+
+	availableInboxIds, err := uc.getAvailableInboxIds(ctx, exec, c.OrganizationId)
+	if err != nil {
+		return err
+	}
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+		return err
+	}
+
+	sourceInbox, err := uc.inboxReader.GetInboxById(ctx, c.InboxId)
+	if err != nil {
+		return errors.Wrap(err, "could not read source inbox")
+	}
+	if sourceInbox.EscalationInboxId == nil {
+		return errors.Wrap(models.UnprocessableEntityError,
+			"the source inbox does not have escalation configured")
+	}
+
+	// Not using the inboxReader here because we do not want to check for permission. A user
+	// escalating a case will usually not have access to the target inbox.
+	targetInbox, err := uc.inboxReader.GetEscalationInboxMetadata(ctx, *sourceInbox.EscalationInboxId)
+	if err != nil {
+		return errors.Wrap(err, "could not read target inbox")
+	}
+	if targetInbox.Status != models.InboxStatusActive {
+		return errors.Wrap(models.UnprocessableEntityError, "target inbox is inactive")
+	}
+
+	var userId *string
+	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
+		userId = utils.Ptr(string(creds.ActorIdentity.UserId))
+	}
+
+	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := uc.repository.EscalateCase(ctx, tx, caseId, targetInbox.Id); err != nil {
+			return errors.Wrap(err, "could not escalate case")
+		}
+
+		event := models.CreateCaseEventAttributes{
+			CaseId:        caseId,
+			UserId:        userId,
+			EventType:     models.CaseEscalated,
+			NewValue:      &targetInbox.Id,
+			PreviousValue: &sourceInbox.Id,
+		}
+
+		if err := uc.repository.CreateCaseEvent(ctx, tx, event); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }

@@ -18,6 +18,7 @@ type InboxRepository interface {
 
 type EnforceSecurityInboxes interface {
 	ReadInbox(i models.Inbox) error
+	ReadInboxMetadata(inbox models.Inbox) error
 	CreateInbox(organizationId string) error
 	ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error
 	CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser,
@@ -42,6 +43,19 @@ func (i *InboxReader) GetInboxById(ctx context.Context, inboxId string) (models.
 	}
 
 	return inbox, err
+}
+
+func (i *InboxReader) GetEscalationInboxMetadata(ctx context.Context, inboxId string) (models.InboxMetadata, error) {
+	inbox, err := i.InboxRepository.GetInboxById(ctx, i.ExecutorFactory.NewExecutor(), inboxId)
+	if err != nil {
+		return models.InboxMetadata{}, err
+	}
+
+	if err := i.EnforceSecurity.ReadInboxMetadata(inbox); err != nil {
+		return models.InboxMetadata{}, err
+	}
+
+	return inbox.GetMetadata(), nil
 }
 
 func (i *InboxReader) ListInboxes(
