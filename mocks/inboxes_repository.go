@@ -30,8 +30,8 @@ func (r *InboxRepository) CreateInbox(ctx context.Context, exec repositories.Exe
 	return args.Error(0)
 }
 
-func (r *InboxRepository) UpdateInbox(ctx context.Context, exec repositories.Executor, inboxId, name string) error {
-	args := r.Called(exec, inboxId, name)
+func (r *InboxRepository) UpdateInbox(ctx context.Context, exec repositories.Executor, inboxId, name string, escalationInboxId *string) error {
+	args := r.Called(exec, inboxId, name, escalationInboxId)
 	return args.Error(0)
 }
 

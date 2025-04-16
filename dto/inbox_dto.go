@@ -8,24 +8,26 @@ import (
 )
 
 type InboxDto struct {
-	Id         string         `json:"id"`
-	CreatedAt  time.Time      `json:"created_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
-	Name       string         `json:"name"`
-	Status     string         `json:"status"`
-	Users      []InboxUserDto `json:"users"`
-	CasesCount *int           `json:"cases_count"`
+	Id                string         `json:"id"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+	Name              string         `json:"name"`
+	Status            string         `json:"status"`
+	EscalationInboxId *string        `json:"escalation_inbox_id,omitempty"`
+	Users             []InboxUserDto `json:"users"`
+	CasesCount        *int           `json:"cases_count"`
 }
 
 func AdaptInboxDto(i models.Inbox) InboxDto {
 	return InboxDto{
-		Id:         i.Id,
-		CreatedAt:  i.CreatedAt,
-		UpdatedAt:  i.UpdatedAt,
-		Name:       i.Name,
-		Status:     string(i.Status),
-		Users:      pure_utils.Map(i.InboxUsers, AdaptInboxUserDto),
-		CasesCount: i.CasesCount,
+		Id:                i.Id,
+		CreatedAt:         i.CreatedAt,
+		UpdatedAt:         i.UpdatedAt,
+		Name:              i.Name,
+		Status:            string(i.Status),
+		EscalationInboxId: i.EscalationInboxId,
+		Users:             pure_utils.Map(i.InboxUsers, AdaptInboxUserDto),
+		CasesCount:        i.CasesCount,
 	}
 }
 

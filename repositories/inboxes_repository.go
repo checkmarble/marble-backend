@@ -81,17 +81,19 @@ func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, exec Executor, 
 				"id",
 				"organization_id",
 				"name",
+				"escalation_inbox_id",
 			).
 			Values(
 				newInboxId,
 				input.OrganizationId,
 				input.Name,
+				input.EscalationInboxId,
 			),
 	)
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, inboxId, name string) error {
+func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, inboxId, name string, escalationInboxId *string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -102,6 +104,7 @@ func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, 
 		NewQueryBuilder().Update(dbmodels.TABLE_INBOXES).
 			Set("name", name).
 			Set("updated_at", squirrel.Expr("NOW()")).
+			Set("escalation_inbox_id", escalationInboxId).
 			Where(squirrel.Eq{"id": inboxId}),
 	)
 	return err

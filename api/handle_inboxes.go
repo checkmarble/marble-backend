@@ -64,7 +64,8 @@ func handleListInboxes(uc usecases.Usecases) func(c *gin.Context) {
 }
 
 type CreateInboxInput struct {
-	Name string `json:"name" binding:"required"`
+	Name              string  `json:"name" binding:"required"`
+	EscalationInboxId *string `json:"escalation_inbox_id" binding:"omitempty,uuid"`
 }
 
 func handlePostInbox(uc usecases.Usecases) func(c *gin.Context) {
@@ -83,7 +84,9 @@ func handlePostInbox(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inbox, err := usecase.CreateInbox(ctx, models.CreateInboxInput{
-			Name: createInboxInput.Name, OrganizationId: organizationId,
+			Name:              createInboxInput.Name,
+			OrganizationId:    organizationId,
+			EscalationInboxId: createInboxInput.EscalationInboxId,
 		})
 		if presentError(ctx, c, err) {
 			return
@@ -105,7 +108,8 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		var data struct {
-			Name string `json:"name" binding:"required"`
+			Name              string  `json:"name" binding:"required"`
+			EscalationInboxId *string `json:"escalation_inbox_id" binding:"omitempty,uuid"`
 		}
 		if err := c.ShouldBind(&data); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -113,7 +117,7 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inbox, err := usecase.UpdateInbox(ctx, getInboxInput.InboxId, data.Name)
+		inbox, err := usecase.UpdateInbox(ctx, getInboxInput.InboxId, data.Name, data.EscalationInboxId)
 		if presentError(ctx, c, err) {
 			return
 		}

@@ -18,7 +18,8 @@ type InboxRepository interface {
 		inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
 	CreateInbox(ctx context.Context, exec repositories.Executor,
 		createInboxAttributes models.CreateInboxInput, newInboxId string) error
-	UpdateInbox(ctx context.Context, exec repositories.Executor, inboxId, name string) error
+	UpdateInbox(ctx context.Context, exec repositories.Executor,
+		inboxId, name string, escalationInboxId *string) error
 	SoftDeleteInbox(ctx context.Context, exec repositories.Executor, inboxId string) error
 
 	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters,
@@ -76,7 +77,7 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 	return inbox, nil
 }
 
-func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name string) (models.Inbox, error) {
+func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name string, escalationInboxId *string) (models.Inbox, error) {
 	inbox, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
@@ -95,7 +96,7 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 				return models.Inbox{}, err
 			}
 
-			if err := usecase.inboxRepository.UpdateInbox(ctx, tx, inboxId, name); err != nil {
+			if err := usecase.inboxRepository.UpdateInbox(ctx, tx, inboxId, name, escalationInboxId); err != nil {
 				return models.Inbox{}, err
 			}
 
