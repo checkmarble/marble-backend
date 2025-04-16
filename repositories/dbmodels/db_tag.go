@@ -13,6 +13,7 @@ type DBTag struct {
 	Name           string           `db:"name"`
 	Color          string           `db:"color"`
 	OrganizationId string           `db:"org_id"`
+	Target         string           `db:"target"`
 	CreatedAt      time.Time        `db:"created_at"`
 	UpdatedAt      time.Time        `db:"updated_at"`
 	DeletedAt      pgtype.Timestamp `db:"deleted_at"`
@@ -30,6 +31,7 @@ var SelectTagColumn = utils.ColumnList[DBTag]()
 func AdaptTag(db DBTag) (models.Tag, error) {
 	return models.Tag{
 		Id:             db.Id,
+		Target:         models.TagTargetFromString(db.Target),
 		Name:           db.Name,
 		Color:          db.Color,
 		OrganizationId: db.OrganizationId,

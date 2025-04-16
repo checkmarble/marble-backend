@@ -23,20 +23,29 @@ func handleListTags(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		withCaseCountFilter := struct {
-			WithCaseCount bool `form:"withCaseCount"`
+		params := struct {
+			Target        string `form:"target" binding:"omitempty,oneof=case object"`
+			WithCaseCount bool   `form:"withCaseCount"`
 		}{}
-		if err := c.ShouldBind(&withCaseCountFilter); err != nil {
+
+		if err := c.ShouldBind(&params); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
+		target := models.TagTargetFromString(params.Target)
+
+		if target == models.TagTargetUnknown {
+			target = models.TagTargetCase
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
-		tags, err := usecase.ListAllTags(ctx, organizationId, withCaseCountFilter.WithCaseCount)
+		tags, err := usecase.ListAllTags(ctx, organizationId, target, params.WithCaseCount)
 
 		if presentError(ctx, c, err) {
 			return
 		}
+
 		c.JSON(http.StatusOK, gin.H{"tags": pure_utils.Map(tags, dto.AdaptTagDto)})
 	}
 }
@@ -57,6 +66,7 @@ func handlePostTag(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
 		tag, err := usecase.CreateTag(ctx, models.CreateTagAttributes{
 			OrganizationId: organizationId,
+			Target:         models.TagTargetFromString(data.Target),
 			Name:           data.Name,
 			Color:          data.Color,
 		})

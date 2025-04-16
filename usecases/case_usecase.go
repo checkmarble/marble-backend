@@ -803,6 +803,9 @@ func (usecase *CaseUseCase) createCaseTag(ctx context.Context, exec repositories
 		return err
 	}
 
+	if tag.Target != models.TagTargetCase {
+		return errors.Wrap(models.BadParameterError, "provided tag is not targeting cases")
+	}
 	if tag.DeletedAt != nil {
 		return fmt.Errorf("tag %s is deleted %w", tag.Id, models.BadParameterError)
 	}
