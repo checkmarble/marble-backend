@@ -15,7 +15,7 @@ import (
 
 type TagUseCaseRepository interface {
 	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId string,
-		withCaseCount bool) ([]models.Tag, error)
+		target models.TagTarget, withCaseCount bool) ([]models.Tag, error)
 	CreateTag(ctx context.Context, exec repositories.Executor, attributes models.CreateTagAttributes, newTagId string) error
 	UpdateTag(ctx context.Context, exec repositories.Executor, attributes models.UpdateTagAttributes) error
 	GetTagById(ctx context.Context, exec repositories.Executor, tagId string) (models.Tag, error)
@@ -30,12 +30,11 @@ type TagUseCase struct {
 	repository         TagUseCaseRepository
 }
 
-func (usecase *TagUseCase) ListAllTags(ctx context.Context, organizationId string, withCaseCount bool) ([]models.Tag, error) {
-	tags, err := usecase.repository.ListOrganizationTags(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		organizationId,
-		withCaseCount)
+func (usecase *TagUseCase) ListAllTags(ctx context.Context, organizationId string,
+	target models.TagTarget, withCaseCount bool,
+) ([]models.Tag, error) {
+	tags, err := usecase.repository.ListOrganizationTags(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId, target, withCaseCount)
 	if err != nil {
 		return nil, err
 	}
