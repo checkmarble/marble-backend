@@ -148,6 +148,7 @@ func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 			Id:      caseInput.Id,
 			Name:    data.Name,
 			Status:  models.CaseStatus(data.Status),
+			Outcome: models.CaseOutcome(data.Outcome),
 			InboxId: data.InboxId,
 		})
 

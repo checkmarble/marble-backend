@@ -16,7 +16,9 @@ type DBCase struct {
 	OrganizationId pgtype.Text      `db:"org_id"`
 	AssignedTo     *string          `db:"assigned_to"`
 	Status         pgtype.Text      `db:"status"`
+	Outcome        pgtype.Text      `db:"outcome"`
 	SnoozedUntil   *time.Time       `db:"snoozed_until"`
+	Boost          *string          `db:"boost"`
 }
 
 type DBCaseWithContributorsAndTags struct {
@@ -33,12 +35,20 @@ type DBPaginatedCases struct {
 
 const TABLE_CASES = "cases"
 
-var SelectCaseColumn = []string{"id", "created_at", "inbox_id", "name", "org_id", "assigned_to", "status", "snoozed_until"}
+var SelectCaseColumn = []string{
+	"id", "created_at", "inbox_id", "name", "org_id", "assigned_to",
+	"status", "outcome", "snoozed_until", "boost",
+}
 
 func AdaptCase(db DBCase) (models.Case, error) {
 	var assigneeId *models.UserId
 	if db.AssignedTo != nil {
 		assigneeId = utils.Ptr(models.UserId(*db.AssignedTo))
+	}
+
+	var boostReason *models.BoostReason
+	if db.Boost != nil {
+		boostReason = utils.Ptr(models.BoostReason(*db.Boost))
 	}
 
 	return models.Case{
@@ -49,7 +59,9 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		OrganizationId: db.OrganizationId.String,
 		AssignedTo:     assigneeId,
 		Status:         models.CaseStatus(db.Status.String),
+		Outcome:        models.CaseOutcome(db.Outcome.String),
 		SnoozedUntil:   db.SnoozedUntil,
+		Boost:          boostReason,
 	}, nil
 }
 

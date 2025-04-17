@@ -203,6 +203,15 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/cases/:case_id/annotations", tom, handleGetAnnotationByCase(uc))
 	router.GET("/cases/decisions/:decision_id/related", tom, handleGetRelatedCases(uc))
 	router.GET("/cases/:case_id/pivot_objects", tom, handleReadCasePivotObjects(uc))
+	router.GET("/cases/:case_id/sar", tom, handleListSuspiciousActivityReports(uc))
+	router.POST("/cases/:case_id/sar", tom, handleCreateSuspiciousActivityReport(uc))
+	router.PATCH("/cases/:case_id/sar/:reportId", tom, handleUpdateSuspiciousActivityReport(uc))
+	router.GET("/cases/:case_id/sar/:reportId/download", tom,
+		handleDownloadFileToSuspiciousActivityReport(uc))
+	router.POST("/cases/:case_id/sar/:reportId/file", tom,
+		handleUploadFileToSuspiciousActivityReport(uc))
+	router.DELETE("/cases/:case_id/sar/:reportId", tom,
+		handleDeleteSuspiciousActivityReport(uc))
 
 	router.GET("/inboxes/:inbox_id", tom, handleGetInboxById(uc))
 	router.PATCH("/inboxes/:inbox_id", tom, handlePatchInbox(uc))
