@@ -471,3 +471,43 @@ func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec
 func orderConditionForCases(p models.PaginationAndSorting) string {
 	return fmt.Sprintf("c.boost is null, c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)
 }
+
+func (repo *MarbleDbRepository) GetNextCase(ctx context.Context, exec Executor, c models.Case) (string, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return "", err
+	}
+
+	query := NewQueryBuilder().
+		Select("id").
+		From(dbmodels.TABLE_CASES).
+		Where(squirrel.And{
+			squirrel.Eq{
+				"org_id":      c.OrganizationId,
+				"inbox_id":    c.InboxId,
+				"assigned_to": nil,
+			},
+			squirrel.Expr("(created_at, id) < (?, ?)", c.CreatedAt, c.Id),
+		}).
+		OrderBy("boost is null", "created_at desc", "id desc").
+		Limit(1)
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return "", err
+	}
+
+	row := exec.QueryRow(ctx, sql, args...)
+
+	var nextCaseId string
+
+	if err := row.Scan(&nextCaseId); err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return "", errors.Wrap(models.NotFoundError, "no next case")
+		default:
+			return "", err
+		}
+	}
+
+	return nextCaseId, nil
+}
