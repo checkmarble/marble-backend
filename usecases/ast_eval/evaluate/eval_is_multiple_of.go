@@ -10,6 +10,10 @@ import (
 type IsMultipleOf struct{}
 
 func (f IsMultipleOf) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
+	// "value" input comes from payload or DB, can be null and should not fail. "divider" should be set to a power of 10 in the rule builder, so it should never be nil.
+	if arguments.NamedArgs["value"] == nil {
+		return nil, nil
+	}
 	value, valueErr := AdaptNamedArgument(arguments.NamedArgs, "value", promoteArgumentToFloat64)
 	divider, dividerErr := AdaptNamedArgument(arguments.NamedArgs, "divider", promoteArgumentToFloat64)
 
