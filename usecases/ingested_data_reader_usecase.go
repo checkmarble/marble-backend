@@ -160,9 +160,9 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 		}
 	}
 
-	// keys of format "tableName.fieldName" - we want to group further than just by pivotId-pivotValue, to deduplicate pivot objects that appear from different pivots (trigger object types)
-	pivotObjectsMapKey := func(table, field string) string {
-		return table + "." + field
+	// keys of format "{tableName}.{fieldName}.{pivotValue}" - we want to group further than just by pivotId-pivotValue, to deduplicate pivot objects that appear from different pivots (trigger object types)
+	pivotObjectsMapKey := func(table, field, value string) string {
+		return table + "." + field + "." + value
 	}
 
 	pivotObjectsMap := make(map[string]models.PivotObject, len(values))
@@ -173,9 +173,11 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 			continue
 		}
 
-		if pivotObject, ok := pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable, pivotDetail.pivotField)]; ok {
+		if pivotObject, ok := pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable,
+			pivotDetail.pivotField, value.PivotValue)]; ok {
 			pivotObject.NumberOfDecisions += value.NbOfDecisions
-			pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable, pivotDetail.pivotField)] = pivotObject
+			pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable,
+				pivotDetail.pivotField, value.PivotValue)] = pivotObject
 			continue
 		}
 
@@ -202,7 +204,7 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 				"failed to read data for pivot object {id: %s, value: %s} in ReadPivotObjectsFromValues",
 				pivotObject.PivotId, pivotObject.PivotValue)
 		}
-		pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable, pivotDetail.pivotField)] = pivotObject
+		pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable, pivotDetail.pivotField, value.PivotValue)] = pivotObject
 	}
 
 	pivotObjectsAsSlice := make([]models.PivotObject, 0, len(pivotObjectsMap))
