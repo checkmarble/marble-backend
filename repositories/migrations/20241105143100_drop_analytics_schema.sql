@@ -2,8 +2,6 @@
 -- +goose StatementBegin
 DROP SCHEMA IF EXISTS analytics CASCADE;
 
-DROP USER IF EXISTS analytics;
-
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
