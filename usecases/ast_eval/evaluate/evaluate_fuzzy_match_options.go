@@ -14,7 +14,6 @@ type FuzzyMatchOptionsEvaluator struct{}
 var allowedFuzzyMatchAlgorithms = []string{
 	"bag_of_words_similarity_db",
 	"direct_string_similarity_db",
-	"token_set_ratio",
 }
 
 func (f FuzzyMatchOptionsEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
