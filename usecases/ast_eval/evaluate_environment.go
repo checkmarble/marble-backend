@@ -97,5 +97,6 @@ func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
 	environment.AddEvaluator(ast.FUNC_IS_MULTIPLE_OF, evaluate.IsMultipleOf{})
 	environment.AddEvaluator(ast.FUNC_STRING_TEMPLATE, evaluate.StringTemplate{})
 	environment.AddEvaluator(ast.FUNC_STRING_CONCAT, evaluate.StringConcat{})
+	environment.AddEvaluator(ast.FUNC_FUZZY_MATCH_FILTER_OPTIONS, evaluate.FuzzyMatchOptionsEvaluator{})
 	return environment
 }

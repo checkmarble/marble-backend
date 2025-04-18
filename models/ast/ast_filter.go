@@ -18,6 +18,7 @@ const (
 	FILTER_STARTS_WITH       FilterOperator = "StringStartsWith"
 	FILTER_ENDS_WITH         FilterOperator = "StringEndsWith"
 	FILTER_UNKNOWN_OPERATION FilterOperator = "FILTER_UNKNOWN_OPERATION"
+	FILTER_FUZZY_MATCH       FilterOperator = "FuzzyMatch"
 )
 
 func (op FilterOperator) IsUnary() bool {
@@ -40,4 +41,13 @@ var FuncFilterAttributes = FuncAttributes{
 		"operator",
 		"value",
 	},
+}
+
+type FuzzyMatchOptions struct {
+	Algorithm string
+
+	// Threshold represents the similarity score, expressed as a decimal between 0.0 and 1.0.
+	Threshold float64
+
+	Value string
 }

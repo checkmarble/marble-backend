@@ -29,13 +29,13 @@ var validTypeForFilterOperators = map[ast.FilterOperator][]models.DataType{
 	ast.FILTER_IS_NOT_EMPTY:     {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
 	ast.FILTER_STARTS_WITH:      {models.String},
 	ast.FILTER_ENDS_WITH:        {models.String},
+	ast.FILTER_FUZZY_MATCH:      {models.String},
 }
 
 func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	tableName, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
 	fieldName, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 	operatorStr, operatorErr := AdaptNamedArgument(arguments.NamedArgs, "operator", adaptArgumentToString)
-
 	errs := filterNilErrors(tableNameErr, fieldNameErr, operatorErr)
 	if len(errs) > 0 {
 		return nil, errs
@@ -79,31 +79,38 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 			Value:     nil,
 		}, nil
 	}
+
+	// The value that is promoted here is then passed directly to the ingested data read repository to be used as a filter value in the sql query.
 	var promotedValue any
-	// When value is a float, it cannot be cast to int but SQL can handle the comparision, so no casting is required
-	if fieldType == models.Int && reflect.TypeOf(value) == reflect.TypeOf(float64(0)) {
+	switch {
+	case operator == ast.FILTER_FUZZY_MATCH:
+		// fuzzy match filter takes a custom type (ast.FuzzyMatchOptions), pass it through as it is.
 		promotedValue = value
-	} else {
-		if operator == ast.FILTER_IS_IN_LIST || operator == ast.FILTER_IS_NOT_IN_LIST {
-			promotedValue, err = adaptArgumentToListOfStrings(value)
-		} else {
-			promotedValue, err = promoteArgumentToDataType(value, fieldType)
-		}
-		if err != nil {
-			return MakeEvaluateError(errors.Join(
-				errors.Wrap(ast.ErrArgumentInvalidType,
-					fmt.Sprintf("value is not compatible with selected field %s.%s in Evaluate filter", tableName, fieldName)),
-				ast.NewNamedArgumentError("value"),
-				err,
-			))
-		}
+	case fieldType == models.Int && reflect.TypeOf(value) == reflect.TypeOf(float64(0)):
+		// When value is a float, it cannot be cast to int but SQL can handle the comparision, so no casting is required
+		promotedValue = value
+	case operator == ast.FILTER_IS_IN_LIST || operator == ast.FILTER_IS_NOT_IN_LIST:
+		// isInList filter takes a slice of strings, accept a slice of any and cast it to a slice of strings (and normalize them)
+		promotedValue, err = adaptArgumentToListOfStrings(value)
+		// err is checked outside of the switch
+	default:
+		// by default, it is assumed that the value on the right of the comparison should have the same type as the field on the left
+		promotedValue, err = promoteArgumentToDataType(value, fieldType)
+		// err is checked outside of the switch
+	}
+	if err != nil {
+		return MakeEvaluateError(errors.Join(
+			errors.Wrap(ast.ErrArgumentInvalidType,
+				fmt.Sprintf("value is not compatible with selected field %s.%s in Evaluate filter", tableName, fieldName)),
+			ast.NewNamedArgumentError("value"),
+			err,
+		))
 	}
 
-	returnValue := ast.Filter{
+	return ast.Filter{
 		TableName: tableName,
 		FieldName: fieldName,
 		Operator:  operator,
 		Value:     promotedValue,
-	}
-	return returnValue, nil
+	}, nil
 }
