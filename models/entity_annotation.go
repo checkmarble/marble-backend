@@ -90,3 +90,26 @@ type AnnotationByIdRequest struct {
 	AnnotationId   string
 	AnnotationType *EntityAnnotationType
 }
+
+type GroupedEntityAnnotations struct {
+	Comments []EntityAnnotation
+	Tags     []EntityAnnotation
+	Files    []EntityAnnotation
+}
+
+func GroupAnnotationsByType(annotations []EntityAnnotation) GroupedEntityAnnotations {
+	grouped := GroupedEntityAnnotations{}
+
+	for _, annotation := range annotations {
+		switch annotation.AnnotationType {
+		case EntityAnnotationComment:
+			grouped.Comments = append(grouped.Comments, annotation)
+		case EntityAnnotationTag:
+			grouped.Tags = append(grouped.Tags, annotation)
+		case EntityAnnotationFile:
+			grouped.Files = append(grouped.Files, annotation)
+		}
+	}
+
+	return grouped
+}
