@@ -80,9 +80,15 @@ type PivotObject struct {
 	IsIngested        bool                      `json:"is_ingested"`
 	PivotObjectData   models.ClientObjectDetail `json:"pivot_object_data"`
 	NumberOfDecisions int                       `json:"number_of_decisions"`
+	Annotations       GroupedEntityAnnotations  `json:"annotations"`
 }
 
-func AdaptPivotObjectDto(p models.PivotObject) PivotObject {
+func AdaptPivotObjectDto(p models.PivotObject) (PivotObject, error) {
+	annotations, err := AdaptGroupedEntityAnnotations(p.Annotations)
+	if err != nil {
+		return PivotObject{}, err
+	}
+
 	return PivotObject{
 		PivotObjectId:     p.PivotObjectId,
 		PivotValue:        p.PivotValue,
@@ -93,5 +99,44 @@ func AdaptPivotObjectDto(p models.PivotObject) PivotObject {
 		IsIngested:        p.IsIngested,
 		PivotObjectData:   p.PivotObjectData,
 		NumberOfDecisions: p.NumberOfDecisions,
+		Annotations:       annotations,
+	}, nil
+}
+
+type GroupedEntityAnnotations struct {
+	Comments []EntityAnnotationDto `json:"comments"`
+	Tags     []EntityAnnotationDto `json:"tags"`
+	Files    []EntityAnnotationDto `json:"files"`
+}
+
+func AdaptGroupedEntityAnnotations(a models.GroupedEntityAnnotations) (GroupedEntityAnnotations, error) {
+	out := GroupedEntityAnnotations{
+		Comments: make([]EntityAnnotationDto, len(a.Comments)),
+		Tags:     make([]EntityAnnotationDto, len(a.Tags)),
+		Files:    make([]EntityAnnotationDto, len(a.Files)),
 	}
+
+	for i, comment := range a.Comments {
+		dto, err := AdaptEntityAnnotation(comment)
+		if err != nil {
+			return GroupedEntityAnnotations{}, err
+		}
+		out.Comments[i] = dto
+	}
+	for i, tag := range a.Tags {
+		dto, err := AdaptEntityAnnotation(tag)
+		if err != nil {
+			return GroupedEntityAnnotations{}, err
+		}
+		out.Tags[i] = dto
+	}
+	for i, file := range a.Files {
+		dto, err := AdaptEntityAnnotation(file)
+		if err != nil {
+			return GroupedEntityAnnotations{}, err
+		}
+		out.Files[i] = dto
+	}
+
+	return out, nil
 }
