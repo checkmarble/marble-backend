@@ -15,6 +15,7 @@ type PivotObject struct {
 	IsIngested        bool
 	PivotObjectData   ClientObjectDetail
 	NumberOfDecisions int
+	Annotations       GroupedEntityAnnotations
 }
 
 // PivotType corresponds to the type of entity that is materialized by a pivot value.

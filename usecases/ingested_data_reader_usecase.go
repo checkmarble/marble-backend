@@ -37,6 +37,11 @@ type ingestedDataReaderRepository interface {
 		organization_id string,
 		tableId *string,
 	) ([]models.PivotMetadata, error)
+	GetEntityAnnotations(
+		ctx context.Context,
+		exec repositories.Executor,
+		req models.EntityAnnotationRequest,
+	) ([]models.EntityAnnotation, error)
 }
 
 type ingestedDataReaderDataModelUsecase interface {
@@ -245,6 +250,19 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	pivotObject.PivotObjectData.Data = objectData.Data
 	pivotObject.PivotObjectData.Metadata = objectData.Metadata
 	pivotObject.IsIngested = true
+
+	annotations, err := usecase.repository.GetEntityAnnotations(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		models.EntityAnnotationRequest{
+			OrgId:      organizationId,
+			ObjectType: pivotObject.PivotObjectName,
+			ObjectId:   pivotObject.PivotObjectId,
+		})
+	if err != nil {
+		return models.PivotObject{}, err
+	}
+	pivotObject.Annotations = models.GroupAnnotationsByType(annotations)
 
 	// Enriches the pivot object with one level of related objects (fiend objects that are linked to the pivot object, without further recursion)
 	pivotObject.PivotObjectData, err = usecase.enrichClientDataObjectWithRelatedObjectsData(
