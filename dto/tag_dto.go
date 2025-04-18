@@ -27,8 +27,9 @@ func AdaptTagDto(t models.Tag) APITag {
 }
 
 type CreateTagBody struct {
-	Name  string `json:"name" binding:"required"`
-	Color string `json:"color" binding:"required,hexcolor"`
+	Target string `json:"target" binding:"required,oneof=case object"`
+	Name   string `json:"name" binding:"required"`
+	Color  string `json:"color" binding:"required,hexcolor"`
 }
 
 type UpdateTagBody struct {

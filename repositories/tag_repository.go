@@ -10,7 +10,7 @@ import (
 )
 
 func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, exec Executor,
-	organizationId string, withCaseCount bool,
+	organizationId string, target models.TagTarget, withCaseCount bool,
 ) ([]models.Tag, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -19,10 +19,11 @@ func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, exec E
 		Select(dbmodels.SelectTagColumn...).
 		From(fmt.Sprintf("%s AS t", dbmodels.TABLE_TAGS)).
 		Where(squirrel.Eq{"org_id": organizationId}).
+		Where(squirrel.Eq{"target": target}).
 		Where(squirrel.Eq{"deleted_at": nil}).
 		OrderBy("created_at DESC")
 
-	if withCaseCount {
+	if target == models.TagTargetCase && withCaseCount {
 		query = query.Column("(SELECT count(distinct ct.case_id) FROM " +
 			dbmodels.TABLE_CASE_TAGS + " AS ct WHERE ct.tag_id = t.id AND ct.deleted_at IS NULL) AS cases_count")
 		return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptTagWithCasesCount)
@@ -47,12 +48,14 @@ func (repo *MarbleDbRepository) CreateTag(ctx context.Context, exec Executor,
 				"org_id",
 				"name",
 				"color",
+				"target",
 			).
 			Values(
 				newTagId,
 				attributes.OrganizationId,
 				attributes.Name,
 				attributes.Color,
+				attributes.Target,
 			),
 	)
 	return err
