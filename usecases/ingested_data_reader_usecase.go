@@ -262,7 +262,7 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	if err != nil {
 		return models.PivotObject{}, err
 	}
-	pivotObject.Annotations = models.GroupAnnotationsByType(annotations)
+	pivotObject.PivotObjectData.Annotations = models.GroupAnnotationsByType(annotations)
 
 	// Enriches the pivot object with one level of related objects (fiend objects that are linked to the pivot object, without further recursion)
 	pivotObject.PivotObjectData, err = usecase.enrichClientDataObjectWithRelatedObjectsData(

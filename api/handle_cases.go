@@ -572,12 +572,12 @@ func handleReadCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
 				strings.Compare(a.PivotValue, b.PivotValue),
 			)
 		})
-		pivotDtos, err := pure_utils.MapErr(pivotObjects, dto.AdaptPivotObjectDto)
+		pivotObjectDtos, err := pure_utils.MapErr(pivotObjects, dto.AdaptPivotObjectDto)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"pivot_objects": pivotDtos})
+		c.JSON(http.StatusOK, gin.H{"pivot_objects": pivotObjectDtos})
 	}
 }
 
