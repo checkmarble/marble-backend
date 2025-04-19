@@ -54,6 +54,7 @@ func handleReadClientDataAsList(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestedDataReaderUsecase()
 
+		// TODO: use adapter
 		clientObjects, nextPagination, err := usecase.ReadIngestedClientObjects(ctx, orgId,
 			objectType, dto.AdaptClientDataListRequestBody(input))
 		if presentError(ctx, c, err) {

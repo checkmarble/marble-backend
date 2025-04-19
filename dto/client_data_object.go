@@ -2,9 +2,88 @@ package dto
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
+
+// This struct is used as a DTO, but instead of using struct tags directly they are set on an anonymous struct below in the MarshalJSON method.
+// This is so we can set the RelatedObjects and Data to empty slices/maps if they are nil, and avoid return a null array/object.
+type ClientObjectDetail struct {
+	Metadata       ClientObjectMetadata
+	Data           map[string]any
+	RelatedObjects []RelatedObject
+	Annotations    GroupedEntityAnnotations
+}
+
+// ⚠️ this function is used recursively due to ClientObjectDetail.RelatedObjects. Handle with care.
+func AdaptClientObjectDetailDto(c models.ClientObjectDetail) (ClientObjectDetail, error) {
+	var relatedObjects []RelatedObject
+	// This check is important to avoid infinite recursion
+	if len(relatedObjects) > 0 {
+		var err error
+		relatedObjects, err = pure_utils.MapErr(c.RelatedObjects, AdaptRelatedObjectDto)
+		if err != nil {
+			return ClientObjectDetail{}, err
+		}
+	}
+
+	out := ClientObjectDetail{
+		Metadata: ClientObjectMetadata{
+			ValidFrom:  c.Metadata.ValidFrom,
+			ObjectType: c.Metadata.ObjectType,
+		},
+		Data:           c.Data,
+		RelatedObjects: relatedObjects,
+	}
+
+	annotations, err := AdaptGroupedEntityAnnotations(c.Annotations)
+	if err != nil {
+		return out, err
+	}
+	out.Annotations = annotations
+
+	return out, nil
+}
+
+func (c ClientObjectDetail) MarshalJSON() ([]byte, error) {
+	if c.RelatedObjects == nil {
+		c.RelatedObjects = make([]RelatedObject, 0)
+	}
+	if c.Data == nil {
+		c.Data = make(map[string]any)
+	}
+	return json.Marshal(struct {
+		Metadata       ClientObjectMetadata     `json:"metadata,omitzero"`
+		Data           map[string]any           `json:"data"`
+		RelatedObjects []RelatedObject          `json:"related_objects"`
+		Annotations    GroupedEntityAnnotations `json:"annotations,omitzero"`
+	}{
+		Metadata:       c.Metadata,
+		Data:           c.Data,
+		RelatedObjects: c.RelatedObjects,
+		Annotations:    c.Annotations,
+	})
+}
+
+type RelatedObject struct {
+	LinkName string             `json:"link_name"`
+	Detail   ClientObjectDetail `json:"related_object_detail"` //nolint:tagliatelle
+}
+
+func AdaptRelatedObjectDto(o models.RelatedObject) (RelatedObject, error) {
+	c, err := AdaptClientObjectDetailDto(o.Detail)
+	return RelatedObject{
+		LinkName: o.LinkName,
+		Detail:   c,
+	}, err
+}
+
+type ClientObjectMetadata struct {
+	ValidFrom  time.Time `json:"valid_from"`
+	ObjectType string    `json:"object_type"`
+}
 
 type ClientDataListResponse struct {
 	Data       []models.ClientObjectDetail `json:"data"`
@@ -71,24 +150,22 @@ func AdaptClientDataListPaginationDto(input models.ClientDataListPagination) Cli
 }
 
 type PivotObject struct {
-	PivotObjectId     string                    `json:"pivot_object_id"`
-	PivotValue        string                    `json:"pivot_value"`
-	PivotId           string                    `json:"pivot_id"`
-	PivotType         string                    `json:"pivot_type"`
-	PivotObjectName   string                    `json:"pivot_object_name"`
-	PivotFieldName    string                    `json:"pivot_field_name"`
-	IsIngested        bool                      `json:"is_ingested"`
-	PivotObjectData   models.ClientObjectDetail `json:"pivot_object_data"`
-	NumberOfDecisions int                       `json:"number_of_decisions"`
-	Annotations       GroupedEntityAnnotations  `json:"annotations"`
+	PivotObjectId     string             `json:"pivot_object_id"`
+	PivotValue        string             `json:"pivot_value"`
+	PivotId           string             `json:"pivot_id"`
+	PivotType         string             `json:"pivot_type"`
+	PivotObjectName   string             `json:"pivot_object_name"`
+	PivotFieldName    string             `json:"pivot_field_name"`
+	IsIngested        bool               `json:"is_ingested"`
+	PivotObjectData   ClientObjectDetail `json:"pivot_object_data"`
+	NumberOfDecisions int                `json:"number_of_decisions"`
 }
 
 func AdaptPivotObjectDto(p models.PivotObject) (PivotObject, error) {
-	annotations, err := AdaptGroupedEntityAnnotations(p.Annotations)
+	pivotObjectData, err := AdaptClientObjectDetailDto(p.PivotObjectData)
 	if err != nil {
 		return PivotObject{}, err
 	}
-
 	return PivotObject{
 		PivotObjectId:     p.PivotObjectId,
 		PivotValue:        p.PivotValue,
@@ -97,16 +174,15 @@ func AdaptPivotObjectDto(p models.PivotObject) (PivotObject, error) {
 		PivotObjectName:   p.PivotObjectName,
 		PivotFieldName:    p.PivotFieldName,
 		IsIngested:        p.IsIngested,
-		PivotObjectData:   p.PivotObjectData,
+		PivotObjectData:   pivotObjectData,
 		NumberOfDecisions: p.NumberOfDecisions,
-		Annotations:       annotations,
 	}, nil
 }
 
 type GroupedEntityAnnotations struct {
-	Comments []EntityAnnotationDto `json:"comments"`
-	Tags     []EntityAnnotationDto `json:"tags"`
-	Files    []EntityAnnotationDto `json:"files"`
+	Comments []EntityAnnotationDto `json:"comments,omitzero"`
+	Tags     []EntityAnnotationDto `json:"tags,omitzero"`
+	Files    []EntityAnnotationDto `json:"files,omitzero"`
 }
 
 func AdaptGroupedEntityAnnotations(a models.GroupedEntityAnnotations) (GroupedEntityAnnotations, error) {
