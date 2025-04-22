@@ -108,7 +108,7 @@ type CaseFilters struct {
 
 type ReviewCaseDecisionsBody struct {
 	DecisionId    string `json:"decision_id" binding:"required"`
-	ReviewComment string `json:"review_comment" binding:"required"`
+	ReviewComment string `json:"review_comment"`
 	ReviewStatus  string `json:"review_status" binding:"required"`
 }
 
