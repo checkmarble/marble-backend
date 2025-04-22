@@ -39,6 +39,10 @@ type DataModelRepository interface {
 	CreatePivot(ctx context.Context, exec Executor, id string, pivot models.CreatePivotInput) error
 	ListPivots(ctx context.Context, exec Executor, organization_id string, tableId *string) ([]models.PivotMetadata, error)
 	GetPivot(ctx context.Context, exec Executor, pivotId string) (models.PivotMetadata, error)
+
+	GetDataModelOptionsForTable(ctx context.Context, exec Executor, tableId string) (*models.DataModelOptions, error)
+	UpsertDataModelOptions(ctx context.Context, exec Executor,
+		req models.UpdateDataModelOptionsRequest) (models.DataModelOptions, error)
 }
 
 type DataModelRepositoryPostgresql struct{}

@@ -708,3 +708,70 @@ func (usecase *DataModelUseCase) CreateNavigationOption(ctx context.Context, inp
 		},
 	})
 }
+
+func (uc DataModelUseCase) GetDataModelOptions(ctx context.Context, orgId, tableId string) (models.DataModelOptions, error) {
+	exec := uc.executorFactory.NewExecutor()
+
+	if err := uc.enforceSecurity.ReadDataModel(); err != nil {
+		return models.DataModelOptions{}, err
+	}
+
+	tableMeta, err := uc.dataModelRepository.GetDataModelTable(ctx, exec, tableId)
+	if err != nil {
+		return models.DataModelOptions{}, err
+	}
+	if tableMeta.OrganizationID != orgId {
+		return models.DataModelOptions{}, errors.Wrap(models.NotFoundError, "table not found")
+	}
+
+	opts, err := uc.dataModelRepository.GetDataModelOptionsForTable(ctx, exec, tableId)
+	if err != nil {
+		return models.DataModelOptions{}, err
+	}
+
+	if opts == nil {
+		return models.DataModelOptions{}, nil
+	}
+
+	return *opts, nil
+}
+
+func (uc DataModelUseCase) UpdateDataModelOptions(ctx context.Context,
+	orgId string,
+	req models.UpdateDataModelOptionsRequest,
+) (models.DataModelOptions, error) {
+	exec := uc.executorFactory.NewExecutor()
+
+	if err := uc.enforceSecurity.WriteDataModel(orgId); err != nil {
+		return models.DataModelOptions{}, err
+	}
+
+	tableMeta, err := uc.dataModelRepository.GetDataModelTable(ctx, exec, req.TableId)
+	if err != nil {
+		return models.DataModelOptions{}, err
+	}
+	if tableMeta.OrganizationID != orgId {
+		return models.DataModelOptions{}, errors.Wrap(models.NotFoundError, "table not found")
+	}
+
+	if req.DisplayedFields != nil && len(*req.DisplayedFields) > 0 {
+		for _, fieldId := range *req.DisplayedFields {
+			fieldMeta, err := uc.dataModelRepository.GetDataModelField(ctx, exec, fieldId)
+			if err != nil {
+				return models.DataModelOptions{}, errors.Wrap(models.NotFoundError, err.Error())
+			}
+
+			if fieldMeta.TableId != req.TableId {
+				return models.DataModelOptions{}, errors.Wrap(
+					models.UnprocessableEntityError, "provided field does not exist ont the table")
+			}
+		}
+	}
+
+	opts, err := uc.dataModelRepository.UpsertDataModelOptions(ctx, exec, req)
+	if err != nil {
+		return models.DataModelOptions{}, err
+	}
+
+	return opts, nil
+}
