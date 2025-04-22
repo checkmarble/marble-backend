@@ -53,6 +53,7 @@ func handleSetDataModelOptions(uc usecases.Usecases) func(c *gin.Context) {
 		req := models.UpdateDataModelOptionsRequest{
 			TableId:         tableId,
 			DisplayedFields: payload.DisplayedFields,
+			FieldOrder:      payload.FieldOrder,
 		}
 
 		uc := usecasesWithCreds(ctx, uc)

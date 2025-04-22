@@ -1,8 +1,10 @@
 package usecases
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 
@@ -724,14 +726,24 @@ func (uc DataModelUseCase) GetDataModelOptions(ctx context.Context, orgId, table
 		return models.DataModelOptions{}, errors.Wrap(models.NotFoundError, "table not found")
 	}
 
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, tableMeta.OrganizationID, false)
+	if err != nil {
+		return models.DataModelOptions{}, err
+	}
+
 	opts, err := uc.dataModelRepository.GetDataModelOptionsForTable(ctx, exec, tableId)
 	if err != nil {
 		return models.DataModelOptions{}, err
 	}
 
 	if opts == nil {
-		return models.DataModelOptions{}, nil
+		opts = &models.DataModelOptions{}
 	}
+
+	opts.FieldOrder = sortTableFieldsForDisplay(
+		dataModel.Tables[tableMeta.Name].Fields,
+		*opts,
+	)
 
 	return *opts, nil
 }
@@ -753,17 +765,31 @@ func (uc DataModelUseCase) UpdateDataModelOptions(ctx context.Context,
 	if tableMeta.OrganizationID != orgId {
 		return models.DataModelOptions{}, errors.Wrap(models.NotFoundError, "table not found")
 	}
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, tableMeta.OrganizationID, false)
+	if err != nil {
+		return models.DataModelOptions{}, err
+	}
 
-	if req.DisplayedFields != nil && len(*req.DisplayedFields) > 0 {
-		for _, fieldId := range *req.DisplayedFields {
-			fieldMeta, err := uc.dataModelRepository.GetDataModelField(ctx, exec, fieldId)
-			if err != nil {
-				return models.DataModelOptions{}, errors.Wrap(models.NotFoundError, err.Error())
+	table, ok := dataModel.Tables[tableMeta.Name]
+	if !ok {
+		return models.DataModelOptions{}, errors.Wrap(
+			models.UnprocessableEntityError, "table not found")
+	}
+
+	if req.DisplayedFields != nil && len(req.DisplayedFields) > 0 {
+		for _, fieldId := range req.DisplayedFields {
+			fieldFound := false
+
+			for _, tableField := range table.Fields {
+				if tableField.ID == fieldId {
+					fieldFound = true
+					break
+				}
 			}
 
-			if fieldMeta.TableId != req.TableId {
+			if !fieldFound {
 				return models.DataModelOptions{}, errors.Wrap(
-					models.UnprocessableEntityError, "provided field does not exist ont the table")
+					models.UnprocessableEntityError, "provided field does not exist on the table")
 			}
 		}
 	}
@@ -774,4 +800,45 @@ func (uc DataModelUseCase) UpdateDataModelOptions(ctx context.Context,
 	}
 
 	return opts, nil
+}
+
+func sortTableFieldsForDisplay(fieldsMeta map[string]models.Field, opts models.DataModelOptions) []string {
+	// Build the full ordered list of fields by appending the ordered fields from
+	// the options and appending the rest of the (unordered) fields as they came from
+	// the database.
+	// Leftover fields can happen if a field was added to the table after the order was
+	// set.
+	dbFields := slices.Collect(maps.Values(fieldsMeta))
+
+	slices.SortFunc(dbFields, func(lhs, rhs models.Field) int {
+		return cmp.Compare(lhs.Name, rhs.Name)
+	})
+
+	orderedFields := make([]string, len(opts.FieldOrder), len(dbFields))
+
+	for idx, field := range opts.FieldOrder {
+		// In the case of manually deleted fields, omit them from the order (will be empty string)
+		if !slices.ContainsFunc(dbFields, func(f models.Field) bool {
+			return f.ID == field
+		}) {
+			continue
+		}
+
+		orderedFields[idx] = opts.FieldOrder[idx]
+	}
+	for _, field := range dbFields {
+		if slices.Contains(opts.FieldOrder, field.ID) {
+			continue
+		}
+
+		orderedFields = append(orderedFields, field.ID)
+	}
+
+	// Delete any empty string from the ordered fields (those represent fields present in the
+	// order, that were deleted from the database).
+	orderedFields = slices.DeleteFunc(orderedFields, func(f string) bool {
+		return f == ""
+	})
+
+	return orderedFields
 }
