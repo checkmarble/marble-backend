@@ -105,3 +105,17 @@ func (d *DataModelRepository) BatchInsertEnumValues(ctx context.Context, exec re
 	args := d.Called(ctx, exec, enumValues, table)
 	return args.Error(0)
 }
+
+func (d *DataModelRepository) GetDataModelOptionsForTable(ctx context.Context,
+	exec repositories.Executor, tableId string,
+) (*models.DataModelOptions, error) {
+	args := d.Called(ctx, exec, tableId)
+	return args.Get(0).(*models.DataModelOptions), args.Error(1)
+}
+
+func (d *DataModelRepository) UpsertDataModelOptions(ctx context.Context, exec repositories.Executor,
+	req models.UpdateDataModelOptionsRequest,
+) (models.DataModelOptions, error) {
+	args := d.Called(ctx, exec, req)
+	return args.Get(0).(models.DataModelOptions), args.Error(1)
+}

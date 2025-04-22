@@ -160,3 +160,17 @@ type CreateNavigationOptionInput struct {
 	FilterFieldId   string `json:"filter_field_id"`
 	OrderingFieldId string `json:"ordering_field_id"`
 }
+
+type UpdateDataModelOptionsInput struct {
+	DisplayedFields *[]string `json:"displayed_fields"`
+}
+
+type DataModelOptions struct {
+	DisplayedFields []string `json:"displayed_fields,omitzero"`
+}
+
+func AdaptDataModelOptions(m models.DataModelOptions) DataModelOptions {
+	return DataModelOptions{
+		DisplayedFields: m.DisplayedFields,
+	}
+}
