@@ -8,7 +8,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
 
@@ -38,6 +37,9 @@ func (repo MarbleDbRepository) UpsertDataModelOptions(ctx context.Context, exec 
 	if req.DisplayedFields != nil {
 		updateFields = append(updateFields, "displayed_fields = excluded.displayed_fields")
 	}
+	if req.FieldOrder != nil {
+		updateFields = append(updateFields, "field_order = excluded.field_order")
+	}
 
 	if len(updateFields) == 0 {
 		return models.DataModelOptions{}, errors.New("nothing to update")
@@ -45,8 +47,8 @@ func (repo MarbleDbRepository) UpsertDataModelOptions(ctx context.Context, exec 
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_DATA_MODEL_OPTIONS).
-		Columns("table_id", "displayed_fields").
-		Values(req.TableId, utils.Or(req.DisplayedFields, []string{})).
+		Columns("table_id", "displayed_fields", "field_order").
+		Values(req.TableId, req.DisplayedFields, req.FieldOrder).
 		Suffix(fmt.Sprintf("on conflict (table_id) do update set %s", strings.Join(updateFields, ","))).
 		Suffix("returning *")
 

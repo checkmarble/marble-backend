@@ -9,6 +9,7 @@ type DbDataModelOptions struct {
 	Id              string   `db:"id"`
 	TableId         string   `db:"table_id"`
 	DisplayedFields []string `db:"displayed_fields"`
+	FieldOrder      []string `db:"field_order"`
 }
 
 const TABLE_DATA_MODEL_OPTIONS = "data_model_options"
@@ -20,5 +21,6 @@ func AdaptDataModelOptions(db DbDataModelOptions) (models.DataModelOptions, erro
 		Id:              db.Id,
 		TableId:         db.TableId,
 		DisplayedFields: db.DisplayedFields,
+		FieldOrder:      db.FieldOrder,
 	}, nil
 }

@@ -162,15 +162,18 @@ type CreateNavigationOptionInput struct {
 }
 
 type UpdateDataModelOptionsInput struct {
-	DisplayedFields *[]string `json:"displayed_fields"`
+	DisplayedFields []string `json:"displayed_fields"`
+	FieldOrder      []string `json:"field_order"`
 }
 
 type DataModelOptions struct {
 	DisplayedFields []string `json:"displayed_fields,omitzero"`
+	FieldOrder      []string `json:"field_order,omitzero"`
 }
 
 func AdaptDataModelOptions(m models.DataModelOptions) DataModelOptions {
 	return DataModelOptions{
 		DisplayedFields: m.DisplayedFields,
+		FieldOrder:      m.FieldOrder,
 	}
 }
