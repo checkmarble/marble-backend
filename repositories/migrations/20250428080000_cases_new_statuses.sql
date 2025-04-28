@@ -7,8 +7,8 @@ alter table cases
     add column outcome text not null default 'unset',
     alter column status set default 'pending';
 
--- Backup of the tuples (id, status) into a temporary table so we
--- can rollback the migration if needs be.
+-- Backup of the tuples (id, status) into a temporary table so we can rollback
+-- the migration if needs be.
 
 create table tmp_case_statuses as
 select id, status
