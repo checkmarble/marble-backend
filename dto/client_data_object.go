@@ -86,17 +86,17 @@ type ClientObjectMetadata struct {
 }
 
 type ClientDataListResponse struct {
-	Data       []models.ClientObjectDetail `json:"data"`
-	Pagination ClientDataListPagination    `json:"pagination"`
+	Data       []ClientObjectDetail     `json:"data"`
+	Pagination ClientDataListPagination `json:"pagination"`
 }
 
 func (c ClientDataListResponse) MarshalJSON() ([]byte, error) {
 	if c.Data == nil {
-		c.Data = make([]models.ClientObjectDetail, 0)
+		c.Data = make([]ClientObjectDetail, 0)
 	}
 	return json.Marshal(struct {
-		Data       []models.ClientObjectDetail `json:"data"`
-		Pagination ClientDataListPagination    `json:"pagination"`
+		Data       []ClientObjectDetail     `json:"data"`
+		Pagination ClientDataListPagination `json:"pagination"`
 	}{
 		Data:       c.Data,
 		Pagination: c.Pagination,
@@ -183,6 +183,11 @@ type GroupedEntityAnnotations struct {
 	Comments []EntityAnnotationDto `json:"comments,omitzero"`
 	Tags     []EntityAnnotationDto `json:"tags,omitzero"`
 	Files    []EntityAnnotationDto `json:"files,omitzero"`
+}
+
+// Implements IsZero so that omitzero can be used when marshalling ClientObjectDetail
+func (g GroupedEntityAnnotations) IsZero() bool {
+	return len(g.Comments) == 0 && len(g.Tags) == 0 && len(g.Files) == 0
 }
 
 func AdaptGroupedEntityAnnotations(a models.GroupedEntityAnnotations) (GroupedEntityAnnotations, error) {
