@@ -61,7 +61,7 @@ firebase --project [GOOGLE_CLOUD_PROJECT] emulators:start --import=./firebase-lo
 
 ### Launch the project
 
-Export your `.env` file (e.g. using [direnv](https://direnv.net/) or [mise](https://mise.jdx.dev/)) and run the root of the project:
+ or [mise](https://mise.jdx.dev/)) and run the root of the project:
 
 The backend project is made of five discrete components:
 
@@ -76,19 +76,25 @@ Depending on which feature you need while developing, you should run one or more
 The `docker compose` of this repository only contains the _dependencies_ required to run the backend service, but does not start the services themselves. It is assumed the developer will run them themselves.
 
 ```sh
-go run . --migrations --server # To start the API
-go run . --worker # To start the worker
-```
-
-Alternatively, using mise :
-
-```sh
 mise exec -- go run . --migrations --server
 mise exec -- go run . --worker
 ```
 
+Alternatively without mise, export your `.env` file (e.g. using [direnv](https://direnv.net/) :
+```sh
+go run . --migrations --server # To start the API
+go run . --worker # To start the worker
+```
+
 If you need to run the one-off components (for example if you are working on background data ingestion or on scheduled scenario execution), run them directly from your editor or the terminal when required:
 
+```sh
+mise exec -- go run . --scheduled-executer
+mise exec -- go run . --send-pending-webhook-events
+mise exec -- go run . --data-ingestion
+```
+
+Alternatively, without mise :
 ```sh
 go run . --scheduled-executer
 go run . --send-pending-webhook-events

@@ -1,7 +1,8 @@
 {
       "recommendations": [
             "golang.go",
-            "inferrinizzard.prettier-sql-vscode"
+            "inferrinizzard.prettier-sql-vscode",
+            "hverlin.mise-vscode"
       ]
     }
     
