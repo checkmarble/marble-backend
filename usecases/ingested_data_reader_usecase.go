@@ -310,14 +310,14 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 	if !ok {
 		err = errors.Wrapf(models.NotFoundError,
 			"Field '%s' not found in table '%s' in ReadIngestedClientObjects",
-			explo.FilterFieldName, explo.SourceTableName)
+			explo.FilterFieldName, targetTable.Name)
 		return
 	}
 	_, ok = targetTable.Fields[explo.OrderingFieldName]
 	if !ok {
 		err = errors.Wrapf(models.NotFoundError,
 			"Field '%s' not found in table '%s' in ReadIngestedClientObjects",
-			explo.OrderingFieldName, explo.SourceTableName)
+			explo.OrderingFieldName, targetTable.Name)
 		return
 	}
 	navigationOptionFound := false
