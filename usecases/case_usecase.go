@@ -373,6 +373,12 @@ func (usecase *CaseUseCase) UpdateCase(
 				fmt.Sprintf("invalid case outcome '%s'", updateCaseAttributes.Outcome))
 		}
 
+		if c.AssignedTo == nil {
+			if err := usecase.SelfAssignOnAction(ctx, tx, c.Id, userId); err != nil {
+				return models.Case{}, err
+			}
+		}
+
 		err = usecase.repository.UpdateCase(ctx, tx, updateCaseAttributes)
 		if err != nil {
 			return models.Case{}, err
@@ -442,6 +448,12 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 			return err
 		}
 
+		if c.AssignedTo == nil {
+			if err := uc.SelfAssignOnAction(ctx, tx, c.Id, string(req.UserId)); err != nil {
+				return err
+			}
+		}
+
 		event := models.CreateCaseEventAttributes{
 			UserId:        utils.Ptr(string(req.UserId)),
 			CaseId:        req.CaseId,
@@ -481,6 +493,12 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 			return err
 		}
 
+		if c.AssignedTo == nil {
+			if err := uc.SelfAssignOnAction(ctx, tx, c.Id, string(req.UserId)); err != nil {
+				return err
+			}
+		}
+
 		event := models.CreateCaseEventAttributes{
 			UserId:        utils.Ptr(string(req.UserId)),
 			CaseId:        req.CaseId,
@@ -494,6 +512,23 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 
 		return err
 	})
+}
+
+func (usecase *CaseUseCase) SelfAssignOnAction(ctx context.Context, tx repositories.Executor, caseId, userId string) error {
+	if err := usecase.repository.AssignCase(ctx, tx, caseId, utils.Ptr(models.UserId(userId))); err != nil {
+		return err
+	}
+
+	if err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		CaseId:    caseId,
+		UserId:    &userId,
+		EventType: models.CaseAssigned,
+		NewValue:  &userId,
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssignementRequest) error {
@@ -784,6 +819,13 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 		if err != nil {
 			return models.Case{}, err
 		}
+
+		if c.AssignedTo == nil {
+			if err := usecase.SelfAssignOnAction(ctx, tx, c.Id, userId); err != nil {
+				return models.Case{}, err
+			}
+		}
+
 		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, caseCommentAttributes.Id)
 		if err != nil {
 			return models.Case{}, err
@@ -878,6 +920,12 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, caseTagAttributes.CaseId)
 		if err != nil {
 			return models.Case{}, err
+		}
+
+		if c.AssignedTo == nil {
+			if err := usecase.SelfAssignOnAction(ctx, tx, c.Id, userId); err != nil {
+				return models.Case{}, err
+			}
 		}
 
 		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{

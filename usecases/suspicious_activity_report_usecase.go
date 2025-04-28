@@ -17,6 +17,7 @@ import (
 
 type SuspiciousActivityReportCaseUsecase interface {
 	GetCase(ctx context.Context, id string) (models.Case, error)
+	SelfAssignOnAction(ctx context.Context, tx repositories.Executor, caseId, userId string) error
 
 	getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]string, error)
 }
@@ -58,7 +59,7 @@ func (uc SuspiciousActivityReportUsecase) ListReports(
 ) ([]models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	if err := uc.hasCasePermissions(ctx, exec, orgId, caseId); err != nil {
+	if _, err := uc.hasCasePermissions(ctx, exec, orgId, caseId); err != nil {
 		return nil, err
 	}
 
@@ -77,7 +78,8 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 ) (models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	if err := uc.hasCasePermissions(ctx, exec, orgId, req.CaseId); err != nil {
+	c, err := uc.hasCasePermissions(ctx, exec, orgId, req.CaseId)
+	if err != nil {
 		return models.SuspiciousActivityReport{}, err
 	}
 
@@ -97,6 +99,12 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 
 		if creds, ok := utils.CredentialsFromCtx(ctx); ok {
 			userId = utils.Ptr(string(creds.ActorIdentity.UserId))
+		}
+
+		if c.AssignedTo == nil && userId != nil {
+			if err := uc.caseUsecase.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
+				return models.SuspiciousActivityReport{}, err
+			}
 		}
 
 		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
@@ -120,7 +128,8 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 ) (models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	if err := uc.hasCasePermissions(ctx, exec, orgId, req.CaseId); err != nil {
+	c, err := uc.hasCasePermissions(ctx, exec, orgId, req.CaseId)
+	if err != nil {
 		return models.SuspiciousActivityReport{}, err
 	}
 
@@ -158,6 +167,12 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 			return models.SuspiciousActivityReport{}, err
 		}
 
+		if c.AssignedTo == nil && userId != nil {
+			if err := uc.caseUsecase.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
+				return models.SuspiciousActivityReport{}, err
+			}
+		}
+
 		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:        sar.CaseId,
 			UserId:        userId,
@@ -180,7 +195,7 @@ func (uc SuspiciousActivityReportUsecase) GenerateReportUrl(
 ) (string, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	if err := uc.hasCasePermissions(ctx, exec, orgId, caseId); err != nil {
+	if _, err := uc.hasCasePermissions(ctx, exec, orgId, caseId); err != nil {
 		return "", err
 	}
 
@@ -204,7 +219,8 @@ func (uc SuspiciousActivityReportUsecase) UploadReport(
 ) (models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	if err := uc.hasCasePermissions(ctx, exec, orgId, req.CaseId); err != nil {
+	c, err := uc.hasCasePermissions(ctx, exec, orgId, req.CaseId)
+	if err != nil {
 		return models.SuspiciousActivityReport{}, err
 	}
 
@@ -230,6 +246,12 @@ func (uc SuspiciousActivityReportUsecase) UploadReport(
 
 		req.Bucket = uc.caseManagerBucketUrl
 		req.BlobKey = blobKey
+
+		if c.AssignedTo == nil && userId != nil {
+			if err := uc.caseUsecase.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
+				return models.SuspiciousActivityReport{}, err
+			}
+		}
 
 		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:       sar.CaseId,
@@ -268,7 +290,7 @@ func (uc SuspiciousActivityReportUsecase) DeleteReport(
 			"the suspicious activity report is marked as completed")
 	}
 
-	if err = uc.hasCasePermissions(ctx, exec, orgId, req.CaseId); err != nil {
+	if _, err = uc.hasCasePermissions(ctx, exec, orgId, req.CaseId); err != nil {
 		return err
 	}
 
@@ -295,22 +317,22 @@ func (uc SuspiciousActivityReportUsecase) DeleteReport(
 
 func (uc SuspiciousActivityReportUsecase) hasCasePermissions(ctx context.Context,
 	exec repositories.Executor, orgId, caseId string,
-) error {
+) (models.Case, error) {
 	c, err := uc.caseUsecase.GetCase(ctx, caseId)
 	if err != nil {
-		return errors.Wrap(models.NotFoundError, err.Error())
+		return models.Case{}, errors.Wrap(models.NotFoundError, err.Error())
 	}
 
 	inboxIds, err := uc.caseUsecase.getAvailableInboxIds(ctx, exec, orgId)
 	if err != nil {
-		return err
+		return models.Case{}, err
 	}
 
 	if err := uc.enforceCaseSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxIds); err != nil {
-		return err
+		return models.Case{}, err
 	}
 
-	return nil
+	return c, nil
 }
 
 func (uc SuspiciousActivityReportUsecase) writeToBlobStorage(ctx context.Context, fileHeader multipart.FileHeader, newFileReference string,
