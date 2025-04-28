@@ -143,6 +143,13 @@ It happens that the migrations end up being misordered. This happens if two peop
 
 The easiest way of doings this is by installing the goose cli with brew (`brew install goose`), configuring the goose environment variables (typically `export GOOSE_DRIVER=postgres` and `export GOOSE_DBSTRING="user=postgres dbname=marble host=localhost password=marble"` should work), and then running `goose down` as many times as needed from the `repositories/migrations` folder. See also [the goose doc](https://github.com/pressly/goose).
 
+##### (VSCode) Install recommended VSCode extensions
+
+There is a recommended extensions list in the `.vscode/extensions.json` file.
+
+All required configuration settings are already included inside the `.vscode/settings.json` file.
+Recommended settings are in the `.vscode/.user-settings.sample.json` file. Cherry-pick them to your user config file.
+
 ## FAQ
 
 ### How to update firebase local data ?
