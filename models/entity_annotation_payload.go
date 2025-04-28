@@ -61,7 +61,7 @@ type EntityAnnotationFilePayloadFile struct {
 func (EntityAnnotationFilePayload) entityAnnotationPayload() {}
 
 type EntityAnnotationTagPayload struct {
-	Tag string `json:"tag" binding:"required"`
+	TagId string `json:"tag_id" binding:"required"`
 }
 
 func (EntityAnnotationTagPayload) entityAnnotationPayload() {}
