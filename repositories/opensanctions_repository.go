@@ -46,6 +46,9 @@ func (repo OpenSanctionsRepository) IsSelfHosted(ctx context.Context) bool {
 
 func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, error) {
 	if ok, err := repo.opensanctions.IsConfigured(); !ok {
+		utils.LoggerFromContext(ctx).WarnContext(ctx,
+			"open sanction is not misconfigured", "error", err)
+
 		return false, models.MissingRequirementError{
 			Requirement: models.REQUIREMENT_OPEN_SANCTIONS,
 			Reason:      models.REQUIREMENT_REASON_MISSING_CONFIGURATION,
@@ -57,6 +60,9 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, err
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
 	if err != nil {
+		utils.LoggerFromContext(ctx).WarnContext(ctx,
+			"could not create OpenSanctions healthcheck request", "error", err)
+
 		return false, models.MissingRequirementError{
 			Requirement: models.REQUIREMENT_OPEN_SANCTIONS,
 			Reason:      models.REQUIREMENT_REASON_INVALID_CONFIGURATION,
@@ -66,6 +72,9 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, err
 
 	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
+		utils.LoggerFromContext(ctx).WarnContext(ctx,
+			"OpenSanctions healthcheck returned an error", "error", err)
+
 		return false, models.MissingRequirementError{
 			Requirement: models.REQUIREMENT_OPEN_SANCTIONS,
 			Reason:      models.REQUIREMENT_REASON_HEALTHCHECK_FAILED,
@@ -74,6 +83,9 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		utils.LoggerFromContext(ctx).WarnContext(ctx,
+			"OpenSanctions healthcheck returned non-OK status code", "code", resp.StatusCode)
+
 		return false, models.MissingRequirementError{
 			Requirement: models.REQUIREMENT_OPEN_SANCTIONS,
 			Reason:      models.REQUIREMENT_REASON_HEALTHCHECK_FAILED,
