@@ -52,6 +52,10 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 		return models.Tag{}, err
 	}
 
+	if attributes.Target == models.TagTargetUnknown {
+		attributes.Target = models.TagTargetCase
+	}
+
 	tag, err := executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory, func(tx repositories.Transaction) (models.Tag, error) {
 			newTagId := uuid.NewString()
