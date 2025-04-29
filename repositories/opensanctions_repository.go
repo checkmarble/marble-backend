@@ -53,7 +53,7 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, err
 		}
 	}
 
-	catalogUrl := fmt.Sprintf("%s/healthz", repo.opensanctions.Host())
+	catalogUrl := fmt.Sprintf("%s/readyz", repo.opensanctions.Host())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
 	if err != nil {
