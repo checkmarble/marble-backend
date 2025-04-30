@@ -41,6 +41,8 @@ func (t *TokenHandler) GenerateToken(c *gin.Context) {
 	if err != nil {
 		_ = c.Error(fmt.Errorf("generator.GenerateToken error: %w", err))
 
+		utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not verify firebase token", "error", err)
+
 		if errors.Is(err, models.ErrUnknownUser) {
 			c.JSON(http.StatusUnauthorized, dto.APIErrorResponse{
 				Message:   "Unknown user: ErrUnknownUser",
