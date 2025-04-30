@@ -194,7 +194,7 @@ func RunServer(config CompiledConfig) error {
 
 	repositories := repositories.NewRepositories(
 		pool,
-		gcpConfig.GoogleApplicationCredentials,
+		gcpConfig,
 		repositories.WithMetabase(infra.InitializeMetabase(apiConfig.MetabaseConfig)),
 		repositories.WithTransferCheckEnrichmentBucket(serverConfig.transferCheckEnrichmentBucketUrl),
 		repositories.WithConvoyClientProvider(
