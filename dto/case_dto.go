@@ -103,12 +103,13 @@ type CreateCaseCommentBody struct {
 }
 
 type CaseFilters struct {
-	EndDate        time.Time `form:"end_date"`
-	InboxIds       []string  `form:"inbox_id[]"`
-	StartDate      time.Time `form:"start_date"`
-	Statuses       []string  `form:"status[]"`
-	Name           string    `form:"name"`
-	IncludeSnoozed bool      `form:"include_snoozed"`
+	EndDate        time.Time     `form:"end_date"`
+	InboxIds       []string      `form:"inbox_id[]"`
+	StartDate      time.Time     `form:"start_date"`
+	Statuses       []string      `form:"status[]"`
+	Name           string        `form:"name"`
+	IncludeSnoozed bool          `form:"include_snoozed"`
+	AssigneeId     models.UserId `form:"assignee_id"`
 }
 
 type ReviewCaseDecisionsBody struct {
