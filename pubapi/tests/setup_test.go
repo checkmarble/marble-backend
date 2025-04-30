@@ -132,7 +132,7 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 
 	deps := api.InitDependencies(ctx, cfg, pool, key, nil)
 	openSanctions := infra.InitializeOpenSanctions(http.DefaultClient, " ", " ", " ")
-	repos := repositories.NewRepositories(pool, "",
+	repos := repositories.NewRepositories(pool, infra.GcpConfig{},
 		repositories.WithOpenSanctions(openSanctions))
 	uc := usecases.NewUsecases(repos, usecases.WithLicense(models.NewFullLicense()), usecases.WithOpensanctions(true))
 	router := api.InitRouterMiddlewares(ctx, cfg, nil, infra.TelemetryRessources{})

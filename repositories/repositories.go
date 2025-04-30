@@ -112,14 +112,14 @@ func WithUnionAll(builder squirrel.SelectBuilder, unionAllQuery squirrel.SelectB
 
 func NewRepositories(
 	marbleConnectionPool *pgxpool.Pool,
-	googleApplicationCredentials string,
+	gcpConfig infra.GcpConfig,
 	opts ...Option,
 ) Repositories {
 	options := getOptions(opts)
 
 	executorGetter := NewExecutorGetter(marbleConnectionPool, options.clientDbConfig, options.tp)
 
-	blobRepository := NewBlobRepository(googleApplicationCredentials)
+	blobRepository := NewBlobRepository(gcpConfig)
 
 	return Repositories{
 		ExecutorGetter:                executorGetter,

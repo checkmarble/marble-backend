@@ -90,7 +90,7 @@ func RunBatchIngestion(apiVersion string) error {
 
 	repositories := repositories.NewRepositories(
 		pool,
-		gcpConfig.GoogleApplicationCredentials,
+		infra.GcpConfig{},
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(convoyConfiguration),
 			convoyConfiguration.RateLimit,

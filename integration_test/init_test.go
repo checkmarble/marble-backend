@@ -142,7 +142,7 @@ func TestMain(m *testing.M) {
 	// but it is not blocking (an error will be logged but the test will pass). We sill need to pass the provider
 	// or else the repository will panic.
 	repos := repositories.NewRepositories(dbPool,
-		"",
+		infra.GcpConfig{},
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(infra.ConvoyConfiguration{}), 0),
 		repositories.WithRiverClient(riverClient),
