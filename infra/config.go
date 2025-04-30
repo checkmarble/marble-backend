@@ -34,6 +34,10 @@ func NewGcpConfig(ctx context.Context, gcpProjectId string, googleApplicationCre
 		utils.LoggerFromContext(ctx).Warn("could not validate Google Cloud credentials, some features might not work properly", "error", err)
 	}
 
+	if !strings.HasSuffix(adcPrincipal, GcpServiceAccountSuffix) {
+		utils.LoggerFromContext(ctx).Warn("you might be authenticated with user Google user account (instead of a service account), file downloads will not be functional")
+	}
+
 	// We determine the Google Cloud project in the following priority:
 	//  - The value of GOOGLE_CLOUD_PROJECT, that can override automatic detection
 	//  - The project we detect from the ADC / private key file
@@ -54,6 +58,7 @@ func NewGcpConfig(ctx context.Context, gcpProjectId string, googleApplicationCre
 			projectId = strings.TrimSuffix(domain, GcpServiceAccountSuffix)
 		}
 	}
+
 	if projectId == "" {
 		return GcpConfig{}, errors.New("could not detect Google Cloud project ID, you must set GOOGLE_CLOUD_PROJECT")
 	}

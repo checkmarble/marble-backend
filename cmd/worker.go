@@ -121,7 +121,7 @@ func RunTaskQueue(apiVersion string) error {
 
 	repositories := repositories.NewRepositories(
 		pool,
-		gcpConfig.GoogleApplicationCredentials,
+		infra.GcpConfig{},
 		repositories.WithRiverClient(riverClient),
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(convoyConfiguration),
