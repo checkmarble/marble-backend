@@ -119,6 +119,7 @@ type CaseFilters struct {
 	Statuses       []CaseStatus
 	InboxIds       []string
 	IncludeSnoozed bool
+	AssigneeId     UserId
 }
 
 type CaseListPage struct {

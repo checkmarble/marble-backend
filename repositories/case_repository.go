@@ -332,6 +332,9 @@ func applyCaseFilters(query squirrel.SelectBuilder, filters models.CaseFilters) 
 			squirrel.LtOrEq{"snoozed_until": time.Now()},
 		})
 	}
+	if filters.AssigneeId != "" {
+		query = query.Where(squirrel.Eq{"assigned_to": filters.AssigneeId})
+	}
 	return query
 }
 
