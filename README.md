@@ -61,7 +61,7 @@ firebase --project [GOOGLE_CLOUD_PROJECT] emulators:start --import=./firebase-lo
 
 ### Launch the project
 
- or [mise](https://mise.jdx.dev/)) and run the root of the project:
+ Export your `.env` file (e.g [mise](https://mise.jdx.dev/)) and run the root of the project:
 
 The backend project is made of five discrete components:
 
@@ -80,7 +80,7 @@ mise exec -- go run . --migrations --server
 mise exec -- go run . --worker
 ```
 
-Alternatively without mise, export your `.env` file (e.g. using [direnv](https://direnv.net/) :
+Alternatively without mise, export your `.env` file (e.g. using [direnv](https://direnv.net/)) :
 ```sh
 go run . --migrations --server # To start the API
 go run . --worker # To start the worker
