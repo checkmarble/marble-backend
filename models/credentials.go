@@ -1,9 +1,5 @@
 package models
 
-import (
-	"fmt"
-)
-
 type Identity struct {
 	UserId     UserId
 	Email      string
@@ -17,10 +13,6 @@ type Credentials struct {
 	OrganizationId string
 	PartnerId      *string
 	Role           Role
-}
-
-func (c Credentials) ActorIdentityDescription() string {
-	return fmt.Sprintf("%s%s (%s)", c.ActorIdentity.Email, c.ActorIdentity.ApiKeyName, c.Role.String())
 }
 
 func NewCredentialWithUser(user User) Credentials {

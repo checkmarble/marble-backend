@@ -1,6 +1,9 @@
 package infra
 
-import "github.com/getsentry/sentry-go"
+import (
+	"github.com/cockroachdb/errors"
+	"github.com/getsentry/sentry-go"
+)
 
 func SetupSentry(dsn, env, apiVersion string) {
 	if err := sentry.Init(sentry.ClientOptions{
@@ -34,6 +37,10 @@ func SetupSentry(dsn, env, apiVersion string) {
 		BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 			if event.Request != nil {
 				event.Request.Headers["X-Api-Key"] = "[redacted]"
+			}
+			if hint != nil && event != nil && len(event.Exception) > 0 {
+				originalErr := errors.UnwrapAll(hint.OriginalException)
+				event.Exception[len(event.Exception)-1].Type = originalErr.Error()
 			}
 			return event
 		},

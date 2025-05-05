@@ -20,7 +20,7 @@ func LogAndReportSentryError(ctx context.Context, err error) {
 	}
 
 	if hub := sentry.GetHubFromContext(ctx); hub != nil {
-		hub.CaptureException(err)
+		CaptureSentryException(ctx, hub, err)
 	} else {
 		sentry.CaptureException(err)
 	}
@@ -32,4 +32,25 @@ func RecoverAndReportSentryError(ctx context.Context, callerName string) {
 		logger.ErrorContext(ctx, fmt.Sprintf("Recovered from panic in %s", callerName))
 		LogAndReportSentryError(ctx, errors.New(string(debug.Stack())))
 	}
+}
+
+func CaptureSentryException(ctx context.Context, hub *sentry.Hub, err error) {
+	creds, ok := CredentialsFromCtx(ctx)
+	if ok {
+		if creds.ActorIdentity.ApiKeyName != "" {
+			hub.Scope().SetUser(sentry.User{
+				Name: creds.ActorIdentity.ApiKeyName,
+			})
+		}
+		if creds.ActorIdentity.UserId != "" {
+			hub.Scope().SetUser(sentry.User{
+				ID:       string(creds.ActorIdentity.UserId),
+				Username: fmt.Sprintf("%s %s", creds.ActorIdentity.FirstName, creds.ActorIdentity.LastName),
+				Email:    creds.ActorIdentity.Email,
+			})
+		}
+		hub.Scope().SetTag("organization_id", creds.OrganizationId)
+		hub.Scope().SetTag("role", creds.Role.String())
+	}
+	hub.CaptureException(err)
 }
