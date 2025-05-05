@@ -952,10 +952,10 @@ func (repo *MarbleDbRepository) DecisionPivotValuesByCase(ctx context.Context, e
 		Select("pivot_id, pivot_value, count(*) as nb").
 		From(dbmodels.TABLE_DECISIONS).
 		Where(squirrel.Eq{"case_id": caseId}).
-		Where(squirrel.NotEq{"pivot_id": nil}).
+		Where(squirrel.NotEq{"pivot_id": nil, "pivot_value": nil}).
 		GroupBy("pivot_id, pivot_value")
 
-	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.PivotDataWithCount, error) {
+	out, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.PivotDataWithCount, error) {
 		var pivotData models.PivotDataWithCount
 		err := row.Scan(&pivotData.PivotId, &pivotData.PivotValue, &pivotData.NbOfDecisions)
 		if err != nil {
@@ -963,4 +963,8 @@ func (repo *MarbleDbRepository) DecisionPivotValuesByCase(ctx context.Context, e
 		}
 		return pivotData, nil
 	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error reading pivot values in DecisionPivotValuesByCase")
+	}
+	return out, nil
 }
