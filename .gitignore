@@ -39,10 +39,8 @@ go.work
 docker-compose.dev.yml
 *.log
 
-.idea
 /.firebase
 /firebase-local-data
-__debug_bin*
 
 # Used by the file-based local blob repository
 /tempFiles
@@ -57,3 +55,8 @@ e2e_test
 *client_db_config.json
 *.pem
 !.jwt-key.example.pem
+
+# IDE
+.idea
+.vscode/mise-tools/
+__debug_bin*

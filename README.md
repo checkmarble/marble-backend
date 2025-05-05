@@ -61,7 +61,7 @@ firebase --project [GOOGLE_CLOUD_PROJECT] emulators:start --import=./firebase-lo
 
 ### Launch the project
 
-Export your `.env` file (e.g. using [direnv](https://direnv.net/) or [mise](https://mise.jdx.dev/)) and run the root of the project:
+ Export your `.env` file (e.g [mise](https://mise.jdx.dev/)) and run the root of the project:
 
 The backend project is made of five discrete components:
 
@@ -76,19 +76,25 @@ Depending on which feature you need while developing, you should run one or more
 The `docker compose` of this repository only contains the _dependencies_ required to run the backend service, but does not start the services themselves. It is assumed the developer will run them themselves.
 
 ```sh
-go run . --migrations --server # To start the API
-go run . --worker # To start the worker
-```
-
-Alternatively, using mise :
-
-```sh
 mise exec -- go run . --migrations --server
 mise exec -- go run . --worker
 ```
 
+Alternatively without mise, export your `.env` file (e.g. using [direnv](https://direnv.net/)) :
+```sh
+go run . --migrations --server # To start the API
+go run . --worker # To start the worker
+```
+
 If you need to run the one-off components (for example if you are working on background data ingestion or on scheduled scenario execution), run them directly from your editor or the terminal when required:
 
+```sh
+mise exec -- go run . --scheduled-executer
+mise exec -- go run . --send-pending-webhook-events
+mise exec -- go run . --data-ingestion
+```
+
+Alternatively, without mise :
 ```sh
 go run . --scheduled-executer
 go run . --send-pending-webhook-events
@@ -136,6 +142,13 @@ goose create add_some_column sql
 It happens that the migrations end up being misordered. This happens if two people pushed new migrations A and B, B having a timestamp greated than A, but B B is commited first to main. The issue can occur when pushing to the main branch, or when pulling changes from remote main to the local branch. In this case, you may need to roll back a few local migrations before you can migrate up again.
 
 The easiest way of doings this is by installing the goose cli with brew (`brew install goose`), configuring the goose environment variables (typically `export GOOSE_DRIVER=postgres` and `export GOOSE_DBSTRING="user=postgres dbname=marble host=localhost password=marble"` should work), and then running `goose down` as many times as needed from the `repositories/migrations` folder. See also [the goose doc](https://github.com/pressly/goose).
+
+##### (VSCode) Install recommended VSCode extensions
+
+There is a recommended extensions list in the `.vscode/extensions.json` file.
+
+All required configuration settings are already included inside the `.vscode/settings.json` file.
+Recommended settings are in the `.vscode/.user-settings.sample.json` file. Cherry-pick them to your user config file.
 
 ## FAQ
 
