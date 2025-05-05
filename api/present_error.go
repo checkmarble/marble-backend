@@ -68,13 +68,13 @@ func presentError(ctx context.Context, c *gin.Context, err error) bool {
 		logger.WarnContext(ctx, fmt.Sprintf("Deadline exceeded: %v", err))
 		c.JSON(http.StatusRequestTimeout, dto.APIErrorResponse{Message: timeoutMst})
 	case errors.Is(err, context.Canceled):
-		logger.WarnContext(ctx, fmt.Sprintf("Deadline exceeded: %v", err))
+		logger.WarnContext(ctx, fmt.Sprintf("Context canceled: %v", err))
 		c.JSON(http.StatusRequestTimeout, dto.APIErrorResponse{Message: timeoutMst})
 
 	default:
 		logger.ErrorContext(ctx, fmt.Sprintf("Unexpected Error: %+v", err))
 		if hub := sentrygin.GetHubFromContext(c); hub != nil {
-			hub.CaptureException(err)
+			utils.CaptureSentryException(ctx, hub, err)
 		} else {
 			sentry.CaptureException(err)
 		}
