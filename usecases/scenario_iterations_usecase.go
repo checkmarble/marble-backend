@@ -128,7 +128,7 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 	}
 
 	if body.ScoreReviewThreshold == nil {
-		defaultReviewThreshold := 0
+		defaultReviewThreshold := 1
 		body.ScoreReviewThreshold = &defaultReviewThreshold
 	}
 
