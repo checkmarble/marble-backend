@@ -159,7 +159,9 @@ func (w *AsyncDecisionWorker) Work(ctx context.Context, job *river.Job[models.As
 	for _, webhookEventId := range webhookEventIds {
 		w.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
-	testRunCallback()
+	if testRunCallback != nil {
+		testRunCallback()
+	}
 
 	return nil
 }
