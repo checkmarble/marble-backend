@@ -342,6 +342,7 @@ func (usecase *CaseUseCase) UpdateCase(
 	updateCaseAttributes models.UpdateCaseAttributes,
 ) (models.Case, error) {
 	webhookEventId := uuid.New().String()
+	updateDone := false
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
@@ -425,15 +426,18 @@ func (usecase *CaseUseCase) UpdateCase(
 			return models.Case{}, err
 		}
 
+		updateDone = true
 		return updatedCase, nil
 	})
 	if err != nil {
 		return models.Case{}, err
 	}
 
-	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
+	if updateDone {
+		usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
+		trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes)
+	}
 
-	trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes)
 	return updatedCase, nil
 }
 
