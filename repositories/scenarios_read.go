@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -77,4 +79,38 @@ func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, exec Execu
 		query,
 		dbmodels.AdaptScenario,
 	)
+}
+
+func (repo *MarbleDbRepository) ListLiveIterationsAndNeighbors(ctx context.Context,
+	exec Executor, orgId string,
+) ([]models.ScenarioIteration, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	liveCte := NewQueryBuilder().
+		Select("scenario_id", "version").
+		From(dbmodels.TABLE_SCENARIO_ITERATIONS + " si").
+		InnerJoin("scenarios s on s.live_scenario_iteration_id = si.id").
+		Where(squirrel.Eq{"si.org_id": orgId}).Prefix("with live as(").Suffix(")")
+
+	sql := NewQueryBuilder().
+		Select(columnsNames("si", dbmodels.SelectScenarioIterationColumn)...).
+		PrefixExpr(liveCte).
+		Column(
+			fmt.Sprintf(
+				"array_agg(row(%s)) filter (where sir.id is not null) as rules",
+				strings.Join(columnsNames("sir", dbmodels.SelectRulesColumn), ","),
+			),
+		).
+		From(dbmodels.TABLE_SCENARIO_ITERATIONS + " si").
+		InnerJoin("live l on l.scenario_id = si.scenario_id").
+		LeftJoin(dbmodels.TABLE_RULES + " AS sir ON sir.scenario_iteration_id = si.id").
+		Where(squirrel.And{
+			squirrel.NotEq{"si.version": nil},
+			squirrel.Expr("si.version >= l.version - 1"),
+		}).
+		GroupBy("si.id")
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScenarioIterationWithRules)
 }
