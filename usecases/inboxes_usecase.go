@@ -29,6 +29,7 @@ type InboxRepository interface {
 type EnforceSecurityInboxes interface {
 	ReadInbox(i models.Inbox) error
 	CreateInbox(organizationId string) error
+	UpdateInbox(inbox models.Inbox) error
 }
 
 type InboxUsecase struct {
@@ -92,7 +93,7 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 					"This inbox is archived and cannot be updated")
 			}
 
-			if err := usecase.enforceSecurity.CreateInbox(inbox.OrganizationId); err != nil {
+			if err := usecase.enforceSecurity.UpdateInbox(inbox); err != nil {
 				return models.Inbox{}, err
 			}
 
