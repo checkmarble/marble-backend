@@ -37,6 +37,25 @@ func handleGetInboxById(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleGetInboxMetadataById(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		var getInboxInput GetInboxIdUriInput
+		if err := c.ShouldBindUri(&getInboxInput); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
+		inbox, err := usecase.GetInboxMetadataById(ctx, getInboxInput.InboxId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptInboxMetadataDto(inbox))
+	}
+}
+
 func handleListInboxes(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -60,6 +79,32 @@ func handleListInboxes(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"inboxes": pure_utils.Map(inboxes, dto.AdaptInboxDto)})
+	}
+}
+
+func handleListInboxesMetadata(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		withCaseCountFilter := struct {
+			WithCaseCount bool `form:"withCaseCount"`
+		}{}
+		if err := c.ShouldBind(&withCaseCountFilter); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
+		inboxes, err := usecase.ListInboxesMetadata(ctx, organizationId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(inboxes, dto.AdaptInboxMetadataDto))
 	}
 }
 

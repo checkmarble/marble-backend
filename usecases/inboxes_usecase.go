@@ -28,6 +28,7 @@ type InboxRepository interface {
 
 type EnforceSecurityInboxes interface {
 	ReadInbox(i models.Inbox) error
+	ReadInboxMetadata(i models.Inbox) error
 	CreateInbox(organizationId string) error
 	UpdateInbox(inbox models.Inbox) error
 }
@@ -43,12 +44,42 @@ type InboxUsecase struct {
 	inboxUsers         inboxes.InboxUsers
 }
 
+func (usecase *InboxUsecase) GetInboxMetadataById(ctx context.Context, inboxId string) (models.InboxMetadata, error) {
+	inbox, err := usecase.inboxRepository.GetInboxById(ctx,
+		usecase.executorFactory.NewExecutor(), inboxId)
+	if err != nil {
+		return models.InboxMetadata{}, errors.Wrap(err, "could not get inbox")
+	}
+
+	if err := usecase.enforceSecurity.ReadInboxMetadata(inbox); err != nil {
+		return models.InboxMetadata{}, err
+	}
+
+	return inbox.GetMetadata(), nil
+}
+
 func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId string) (models.Inbox, error) {
 	return usecase.inboxReader.GetInboxById(ctx, inboxId)
 }
 
 func (usecase *InboxUsecase) ListInboxes(ctx context.Context, organizationId string, withCaseCount bool) ([]models.Inbox, error) {
 	return usecase.inboxReader.ListInboxes(ctx, usecase.executorFactory.NewExecutor(), organizationId, withCaseCount)
+}
+
+func (usecase *InboxUsecase) ListInboxesMetadata(ctx context.Context, organizationId string) ([]models.InboxMetadata, error) {
+	inboxes, err := usecase.inboxRepository.ListInboxes(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId, nil, false)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not list inboxes")
+	}
+
+	for _, inbox := range inboxes {
+		if err := usecase.enforceSecurity.ReadInboxMetadata(inbox); err != nil {
+			return nil, err
+		}
+	}
+
+	return pure_utils.Map(inboxes, func(i models.Inbox) models.InboxMetadata { return i.GetMetadata() }), nil
 }
 
 func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.CreateInboxInput) (models.Inbox, error) {

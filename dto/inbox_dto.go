@@ -50,3 +50,15 @@ func AdaptInboxUserDto(i models.InboxUser) InboxUserDto {
 		UserId:    i.UserId,
 	}
 }
+
+type InboxMetadataDto struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
+func AdaptInboxMetadataDto(i models.InboxMetadata) InboxMetadataDto {
+	return InboxMetadataDto{
+		Id:   i.Id,
+		Name: i.Name,
+	}
+}
