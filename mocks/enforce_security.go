@@ -110,6 +110,11 @@ func (e *EnforceSecurity) CreateInbox(organizationId string) error {
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) UpdateInbox(inbox models.Inbox) error {
+	args := e.Called(inbox)
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error {
 	args := e.Called(inboxUser, actorInboxUsers)
 	return args.Error(0)

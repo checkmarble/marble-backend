@@ -45,6 +45,19 @@ func (e EnforceSecurityInboxes) CreateInbox(organizationId string) error {
 	return errors.Join(e.Permission(models.INBOX_EDITOR), e.ReadOrganization(organizationId))
 }
 
+func (e EnforceSecurityInboxes) UpdateInbox(inbox models.Inbox) error {
+	// Inbox admins are allowed to update the inbox, even if they are not organization admins
+	for _, inboxMember := range inbox.InboxUsers {
+		if inboxMember.UserId == string(e.Credentials.ActorIdentity.UserId) &&
+			inboxMember.Role == models.InboxUserRoleAdmin {
+			return nil
+		}
+	}
+
+	return errors.Join(e.Permission(models.INBOX_EDITOR),
+		e.ReadOrganization(inbox.OrganizationId))
+}
+
 func (e EnforceSecurityInboxes) ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error {
 	// org admins can read all inbox users
 	err := e.Permission(models.INBOX_EDITOR)
