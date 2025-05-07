@@ -31,7 +31,7 @@ func (repo *MarbleDbRepository) GetEntityAnnotationById(
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptEntityAnnotation)
 }
 
-func (repo *MarbleDbRepository) GetEntityAnnotations(
+func (repo MarbleDbRepository) GetEntityAnnotations(
 	ctx context.Context,
 	exec Executor,
 	req models.EntityAnnotationRequest,
@@ -59,7 +59,7 @@ func (repo *MarbleDbRepository) GetEntityAnnotations(
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptEntityAnnotation)
 }
 
-func (repo *MarbleDbRepository) GetEntityAnnotationsForObjects(
+func (repo MarbleDbRepository) GetEntityAnnotationsForObjects(
 	ctx context.Context,
 	exec Executor,
 	req models.EntityAnnotationRequestForObjects,
@@ -102,7 +102,7 @@ func (repo *MarbleDbRepository) GetEntityAnnotationsForObjects(
 	return annotationsByObject, nil
 }
 
-func (repo *MarbleDbRepository) GetEntityAnnotationsForCase(
+func (repo MarbleDbRepository) GetEntityAnnotationsForCase(
 	ctx context.Context,
 	exec Executor,
 	req models.CaseEntityAnnotationRequest,

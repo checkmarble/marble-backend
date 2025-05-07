@@ -560,8 +560,7 @@ func handleReadCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
 
 		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		pivotObjects, err := uc.ReadCasePivotObjects(ctx, caseId)
-		if err != nil {
-			presentError(ctx, c, err)
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -572,8 +571,12 @@ func handleReadCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
 				strings.Compare(a.PivotValue, b.PivotValue),
 			)
 		})
+		pivotObjectDtos, err := pure_utils.MapErr(pivotObjects, dto.AdaptPivotObjectDto)
+		if presentError(ctx, c, err) {
+			return
+		}
 
-		c.JSON(http.StatusOK, gin.H{"pivot_objects": pure_utils.Map(pivotObjects, dto.AdaptPivotObjectDto)})
+		c.JSON(http.StatusOK, gin.H{"pivot_objects": pivotObjectDtos})
 	}
 }
 

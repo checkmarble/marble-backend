@@ -198,7 +198,7 @@ func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req mo
 		if !ok {
 			return errors.New("invalid payload for annotation type")
 		}
-		tag, err := uc.tagRepository.GetTagById(ctx, uc.executorFactory.NewExecutor(), payload.Tag)
+		tag, err := uc.tagRepository.GetTagById(ctx, uc.executorFactory.NewExecutor(), payload.TagId)
 		if err != nil {
 			return errors.Wrap(models.NotFoundError, "unknown tag")
 		}
@@ -206,7 +206,7 @@ func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req mo
 			return errors.Wrap(models.UnprocessableEntityError,
 				"provided tag is not targeting ingested objects")
 		}
-		exists, err := uc.repository.IsObjectTagSet(ctx, uc.executorFactory.NewExecutor(), req, payload.Tag)
+		exists, err := uc.repository.IsObjectTagSet(ctx, uc.executorFactory.NewExecutor(), req, payload.TagId)
 		if err != nil {
 			return err
 		}

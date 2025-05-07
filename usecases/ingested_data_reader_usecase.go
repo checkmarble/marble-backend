@@ -37,6 +37,11 @@ type ingestedDataReaderRepository interface {
 		organization_id string,
 		tableId *string,
 	) ([]models.PivotMetadata, error)
+	GetEntityAnnotations(
+		ctx context.Context,
+		exec repositories.Executor,
+		req models.EntityAnnotationRequest,
+	) ([]models.EntityAnnotation, error)
 }
 
 type ingestedDataReaderDataModelUsecase interface {
@@ -246,6 +251,19 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	pivotObject.PivotObjectData.Metadata = objectData.Metadata
 	pivotObject.IsIngested = true
 
+	annotations, err := usecase.repository.GetEntityAnnotations(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		models.EntityAnnotationRequest{
+			OrgId:      organizationId,
+			ObjectType: pivotObject.PivotObjectName,
+			ObjectId:   pivotObject.PivotObjectId,
+		})
+	if err != nil {
+		return models.PivotObject{}, err
+	}
+	pivotObject.PivotObjectData.Annotations = models.GroupAnnotationsByType(annotations)
+
 	// Enriches the pivot object with one level of related objects (fiend objects that are linked to the pivot object, without further recursion)
 	pivotObject.PivotObjectData, err = usecase.enrichClientDataObjectWithRelatedObjectsData(
 		ctx,
@@ -292,14 +310,14 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 	if !ok {
 		err = errors.Wrapf(models.NotFoundError,
 			"Field '%s' not found in table '%s' in ReadIngestedClientObjects",
-			explo.FilterFieldName, explo.SourceTableName)
+			explo.FilterFieldName, targetTable.Name)
 		return
 	}
 	_, ok = targetTable.Fields[explo.OrderingFieldName]
 	if !ok {
 		err = errors.Wrapf(models.NotFoundError,
 			"Field '%s' not found in table '%s' in ReadIngestedClientObjects",
-			explo.OrderingFieldName, explo.SourceTableName)
+			explo.OrderingFieldName, targetTable.Name)
 		return
 	}
 	navigationOptionFound := false
