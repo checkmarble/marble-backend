@@ -12,6 +12,10 @@ on:
         description: "version to deploy"
         required: true
 
+permissions:
+  contents: read
+  id-token: "write" # needed for using open id token to authenticate with GCP services
+
 jobs:
   build_and_deploy_backend:
     name: Build and deploy back-end
@@ -43,7 +47,7 @@ jobs:
           registry: europe-west1-docker.pkg.dev
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
-      
+
       - name: Extract version from tag
         id: version
         run: echo "MARBLE_VERSION=$(git describe --tags)" >> "$GITHUB_OUTPUT"
