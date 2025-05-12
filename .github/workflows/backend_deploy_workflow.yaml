@@ -11,8 +11,8 @@ on:
         type: string
         description: "version to deploy"
         required: true
+    secrets:
       segment_write_key_opensource:
-        type: string
         description: write key for segment (open source deployment)
 
 permissions:
@@ -61,7 +61,7 @@ jobs:
           push: true
           build-args: |
             MARBLE_VERSION=${{ steps.version.outputs.MARBLE_VERSION }}
-            SEGMENT_WRITE_KEY=${{ inputs.segment_write_key_opensource }}
+            SEGMENT_WRITE_KEY=${{ secrets.segment_write_key_opensource }}
           tags: ${{ env.IMAGE }}
 
       - name: "Set up Cloud SDK"
