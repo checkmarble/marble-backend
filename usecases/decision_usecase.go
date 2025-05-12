@@ -291,6 +291,7 @@ func (usecase *DecisionUsecase) ListDecisions(
 			ScheduledExecutionIds: filters.ScheduledExecutionIds,
 			StartDate:             filters.StartDate,
 			TriggerObjects:        triggerObjectTypes,
+			TriggerObjectId:       filters.TriggerObjectId,
 		})
 	if err != nil {
 		return models.DecisionListPage{}, err

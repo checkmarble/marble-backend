@@ -162,6 +162,7 @@ type DecisionFilters struct {
 	ScheduledExecutionIds []string
 	StartDate             time.Time
 	TriggerObjects        []string
+	TriggerObjectId       *string
 }
 
 type DecisionListPageWithIndexes struct {
