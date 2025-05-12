@@ -37,6 +37,8 @@ func SetupSentry(dsn, env, apiVersion string) {
 		BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 			if event.Request != nil {
 				event.Request.Headers["X-Api-Key"] = "[redacted]"
+				// We do NOT want to send the request body to Sentry
+				event.Request.Data = ""
 			}
 			if hint != nil && event != nil && len(event.Exception) > 0 {
 				originalErr := errors.UnwrapAll(hint.OriginalException)
