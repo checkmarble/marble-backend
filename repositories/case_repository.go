@@ -298,7 +298,7 @@ func casesWithRankColumns() []string {
 }
 
 func casesCoreQueryWithRank(pagination models.PaginationAndSorting) squirrel.SelectBuilder {
-	orderCondition := fmt.Sprintf("c.boost is null, c.%s %s, c.id %s",
+	orderCondition := fmt.Sprintf("c.boost is null, c.assigned_to is not null, c.%s %s, c.id %s",
 		pagination.Sorting, pagination.Order, pagination.Order)
 
 	return squirrel.StatementBuilder.
@@ -472,7 +472,7 @@ func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec
 }
 
 func orderConditionForCases(p models.PaginationAndSorting) string {
-	return fmt.Sprintf("c.boost is null, c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)
+	return fmt.Sprintf("c.boost is null, c.assigned_to is not null, c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)
 }
 
 func (repo *MarbleDbRepository) EscalateCase(ctx context.Context, exec Executor, id, inboxId string) error {
