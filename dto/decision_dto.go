@@ -23,6 +23,7 @@ type DecisionFilters struct {
 	ScheduledExecutionIds []string  `form:"scheduled_execution_id[]"`
 	StartDate             time.Time `form:"start_date"`
 	TriggerObjects        []string  `form:"trigger_object[]"`
+	TriggerObjectId       *string   `form:"trigger_object_id"`
 }
 
 type DecisionListPageWithIndexesDto struct {

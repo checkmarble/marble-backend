@@ -488,6 +488,9 @@ func selectDecisionsWithFilters(
 	if len(filters.TriggerObjects) > 0 {
 		query = query.Where(squirrel.Eq{"d.trigger_object_type": filters.TriggerObjects})
 	}
+	if filters.TriggerObjectId != nil {
+		query = query.Where(squirrel.Eq{"d.trigger_object->>'object_id'": *filters.TriggerObjectId})
+	}
 	if !filters.StartDate.IsZero() {
 		query = query.Where(squirrel.GtOrEq{"d.created_at": filters.StartDate})
 	}
