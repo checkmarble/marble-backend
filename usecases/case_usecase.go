@@ -390,21 +390,10 @@ func (usecase *CaseUseCase) UpdateCase(
 				fmt.Sprintf("invalid case outcome '%s'", updateCaseAttributes.Outcome))
 		}
 
-		if c.AssignedTo == nil {
-			if err := usecase.SelfAssignOnAction(ctx, tx, c.Id, userId); err != nil {
-				return models.Case{}, err
-			}
-		}
-
-		err = usecase.repository.UpdateCase(ctx, tx, updateCaseAttributes)
-		if err != nil {
+		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
 			return models.Case{}, err
 		}
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, updateCaseAttributes.Id, userId); err != nil {
-			return models.Case{}, err
-		}
-
-		if err = usecase.repository.UnboostCase(ctx, tx, updateCaseAttributes.Id); err != nil {
 			return models.Case{}, err
 		}
 
@@ -468,10 +457,8 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 			return err
 		}
 
-		if c.AssignedTo == nil {
-			if err := uc.SelfAssignOnAction(ctx, tx, c.Id, string(req.UserId)); err != nil {
-				return err
-			}
+		if err := uc.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+			return err
 		}
 
 		event := models.CreateCaseEventAttributes{
@@ -509,14 +496,14 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 			return err
 		}
 
-		if err = uc.repository.UnboostCase(ctx, tx, req.CaseId); err != nil {
-			return err
-		}
-
 		if c.AssignedTo == nil {
 			if err := uc.SelfAssignOnAction(ctx, tx, c.Id, string(req.UserId)); err != nil {
 				return err
 			}
+		}
+
+		if err := uc.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+			return err
 		}
 
 		event := models.CreateCaseEventAttributes{
@@ -840,10 +827,8 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 			return models.Case{}, err
 		}
 
-		if c.AssignedTo == nil {
-			if err := usecase.SelfAssignOnAction(ctx, tx, c.Id, userId); err != nil {
-				return models.Case{}, err
-			}
+		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+			return models.Case{}, err
 		}
 
 		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, caseCommentAttributes.Id)
@@ -942,10 +927,8 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 			return models.Case{}, err
 		}
 
-		if c.AssignedTo == nil {
-			if err := usecase.SelfAssignOnAction(ctx, tx, c.Id, userId); err != nil {
-				return models.Case{}, err
-			}
+		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+			return models.Case{}, err
 		}
 
 		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
@@ -1578,4 +1561,18 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 
 		return nil
 	})
+}
+
+func (uc *CaseUseCase) PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error {
+	if userId := uc.enforceSecurity.UserId(); userId != nil && c.AssignedTo == nil {
+		if err := uc.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
+			return err
+		}
+	}
+
+	if err := uc.repository.UnboostCase(ctx, tx, c.Id); err != nil {
+		return err
+	}
+
+	return nil
 }

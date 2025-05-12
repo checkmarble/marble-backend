@@ -11,6 +11,9 @@ type EnforceSecurity interface {
 	Permission(permission models.Permission) error
 	ReadOrganization(organizationId string) error
 	Permissions(permissions []models.Permission) error
+
+	OrgId() string
+	UserId() *string
 }
 
 type EnforceSecurityImpl struct {
@@ -21,6 +24,18 @@ func NewEnforceSecurity(credentials models.Credentials) *EnforceSecurityImpl {
 	return &EnforceSecurityImpl{
 		Credentials: credentials,
 	}
+}
+
+func (e *EnforceSecurityImpl) OrgId() string {
+	return e.Credentials.OrganizationId
+}
+
+func (e *EnforceSecurityImpl) UserId() *string {
+	if e.Credentials.ActorIdentity.UserId == "" {
+		return nil
+	}
+
+	return utils.Ptr(string(e.Credentials.ActorIdentity.UserId))
 }
 
 func (e *EnforceSecurityImpl) ReadOrganization(organizationId string) error {

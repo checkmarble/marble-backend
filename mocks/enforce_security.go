@@ -25,6 +25,16 @@ func (e *EnforceSecurity) Permissions(permissions []models.Permission) error {
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) OrgId() string {
+	args := e.Called()
+	return args.String(0)
+}
+
+func (e *EnforceSecurity) UserId() *string {
+	args := e.Called()
+	return args.Get(0).(*string)
+}
+
 func (e *EnforceSecurity) ReadDecision(decision models.Decision) error {
 	args := e.Called(decision)
 	return args.Error(0)

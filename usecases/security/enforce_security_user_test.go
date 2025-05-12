@@ -21,6 +21,14 @@ func (mockUserEnforceSecurity) Permissions(permissions []models.Permission) erro
 	return nil
 }
 
+func (mockUserEnforceSecurity) UserId() *string {
+	return nil
+}
+
+func (mockUserEnforceSecurity) OrgId() string {
+	return ""
+}
+
 func TestUpdateUserRole(t *testing.T) {
 	tts := []struct {
 		name      string
