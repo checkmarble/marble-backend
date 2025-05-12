@@ -1,13 +1,14 @@
 FROM golang:1.24 AS build
 
 ARG MARBLE_VERSION=dev
+ARG SEGMENT_WRITE_KEY=
 
 WORKDIR /go/src/app
 COPY . .
 
 RUN go get
 
-RUN CGO_ENABLED=0 go build -o /go/bin/app -ldflags="-X 'main.apiVersion=${MARBLE_VERSION}'"
+RUN CGO_ENABLED=0 go build -o /go/bin/app -ldflags="-X 'main.apiVersion=${MARBLE_VERSION}' -X 'main.segmentWriteKey=${SEGMENT_WRITE_KEY}'"
 
 FROM alpine:3.19
 

@@ -26,3 +26,4 @@ jobs:
     with:
       environment: "staging"
       version: latest
+      segment_write_key_opensource: ${{ secrets.SEGMENT_WRITE_KEY_OPENSOURCE }}

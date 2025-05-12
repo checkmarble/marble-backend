@@ -43,6 +43,9 @@ func InitDependencies(
 	jwtRepository := repositories.NewJWTRepository(signingKey)
 	tokenValidator := token.NewValidator(database, jwtRepository)
 	tokenGenerator := token.NewGenerator(database, jwtRepository, firebaseClient, conf.TokenLifetimeMinute)
+	if conf.DisableSegment {
+		conf.SegmentWriteKey = ""
+	}
 	segmentClient := analytics.New(conf.SegmentWriteKey)
 
 	return dependencies{

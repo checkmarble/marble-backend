@@ -11,8 +11,16 @@ import (
 
 // Static variable set at compilation-time through linker flags.
 //
-//	$ go build -ldflags '-X main.apiVersion=v0.10.0' .
-var apiVersion string = "dev"
+//	$ go build -ldflags '-X main.apiVersion=v0.10.0 -X ...' .
+var (
+	apiVersion      string = "dev"
+	segmentWriteKey string = ""
+)
+
+var compiledConfig = cmd.CompiledConfig{
+	Version:         apiVersion,
+	SegmentWriteKey: segmentWriteKey,
+}
 
 func main() {
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
@@ -42,7 +50,7 @@ func main() {
 	}
 
 	if *shouldRunServer {
-		err := cmd.RunServer(apiVersion)
+		err := cmd.RunServer(compiledConfig)
 		if err != nil {
 			log.Fatal(err)
 		}

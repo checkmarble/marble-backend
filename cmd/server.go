@@ -21,7 +21,7 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
-func RunServer(apiVersion string) error {
+func RunServer(config CompiledConfig) error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	apiConfig := api.Configuration{
 		Env:                 utils.GetEnv("ENV", "development"),
@@ -31,10 +31,14 @@ func RunServer(apiVersion string) error {
 		Port:                utils.GetRequiredEnv[string]("PORT"),
 		RequestLoggingLevel: utils.GetEnv("REQUEST_LOGGING_LEVEL", "all"),
 		TokenLifetimeMinute: utils.GetEnv("TOKEN_LIFETIME_MINUTE", 60*2),
-		SegmentWriteKey:     utils.GetEnv("SEGMENT_WRITE_KEY", ""),
+		SegmentWriteKey:     utils.GetEnv("SEGMENT_WRITE_KEY", config.SegmentWriteKey),
+		DisableSegment:      utils.GetEnv("DISABLE_SEGMENT", false),
 		BatchTimeout:        time.Duration(utils.GetEnv("BATCH_TIMEOUT_SECOND", 55)) * time.Second,
 		DecisionTimeout:     time.Duration(utils.GetEnv("DECISION_TIMEOUT_SECOND", 10)) * time.Second,
 		DefaultTimeout:      time.Duration(utils.GetEnv("DEFAULT_TIMEOUT_SECOND", 5)) * time.Second,
+	}
+	if apiConfig.DisableSegment {
+		apiConfig.SegmentWriteKey = ""
 	}
 	gcpConfig := infra.GcpConfig{
 		EnableTracing:                utils.GetEnv("ENABLE_GCP_TRACING", false),
@@ -115,7 +119,7 @@ func RunServer(apiVersion string) error {
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
 	license := infra.VerifyLicense(licenseConfig)
 
-	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env, apiVersion)
+	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env, config.Version)
 	defer sentry.Flush(3 * time.Second)
 
 	tracingConfig := infra.TelemetryConfiguration{
@@ -123,7 +127,7 @@ func RunServer(apiVersion string) error {
 		Enabled:         gcpConfig.EnableTracing,
 		ProjectID:       gcpConfig.ProjectId,
 	}
-	telemetryRessources, err := infra.InitTelemetry(tracingConfig, apiVersion)
+	telemetryRessources, err := infra.InitTelemetry(tracingConfig, config.Version)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}
@@ -162,7 +166,7 @@ func RunServer(apiVersion string) error {
 	)
 
 	uc := usecases.NewUsecases(repositories,
-		usecases.WithApiVersion(apiVersion),
+		usecases.WithApiVersion(config.Version),
 		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),
 		usecases.WithIngestionBucketUrl(serverConfig.ingestionBucketUrl),
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
@@ -203,7 +207,7 @@ func RunServer(apiVersion string) error {
 	defer stop()
 
 	go func() {
-		logger.InfoContext(ctx, "starting server", slog.String("version", apiVersion), slog.String("port", apiConfig.Port))
+		logger.InfoContext(ctx, "starting server", slog.String("version", config.Version), slog.String("port", apiConfig.Port))
 		err := server.ListenAndServe()
 		if !errors.Is(err, http.ErrServerClosed) {
 			utils.LogAndReportSentryError(ctx, errors.Wrap(err, "Error while serving the app"))
