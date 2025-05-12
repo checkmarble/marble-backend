@@ -11,6 +11,7 @@ type Configuration struct {
 	RequestLoggingLevel string
 	TokenLifetimeMinute int
 	SegmentWriteKey     string
+	DisableSegment      bool
 	BatchTimeout        time.Duration
 	DecisionTimeout     time.Duration
 	DefaultTimeout      time.Duration
