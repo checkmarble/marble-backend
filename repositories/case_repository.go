@@ -127,12 +127,14 @@ func (repo *MarbleDbRepository) CreateCase(ctx context.Context, exec Executor,
 				"inbox_id",
 				"name",
 				"org_id",
+				"assigned_to",
 			).
 			Values(
 				newCaseId,
 				createCaseAttributes.InboxId,
 				createCaseAttributes.Name,
 				createCaseAttributes.OrganizationId,
+				createCaseAttributes.AssigneeId,
 			),
 	)
 	return err
