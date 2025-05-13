@@ -506,6 +506,8 @@ func (repo *MarbleDbRepository) GetNextCase(ctx context.Context, exec Executor, 
 				"assigned_to": nil,
 			},
 			squirrel.NotEq{"status": "closed"},
+			squirrel.NotEq{"id": c.Id},
+			squirrel.GtOrEq{"created_at": c.CreatedAt},
 		}).
 		OrderBy("boost is null", "created_at", "id").
 		Limit(1)
