@@ -267,6 +267,14 @@ func (usecase *CaseUseCase) CreateCase(
 		}); err != nil {
 			return models.Case{}, err
 		}
+		if err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			CaseId:    newCaseId,
+			UserId:    &userId,
+			EventType: models.CaseAssigned,
+			NewValue:  &userId,
+		}); err != nil {
+			return models.Case{}, err
+		}
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, newCaseId, userId); err != nil {
 			return models.Case{}, err
 		}

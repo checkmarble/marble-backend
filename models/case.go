@@ -95,6 +95,7 @@ type CreateCaseAttributes struct {
 	InboxId        string
 	Name           string
 	OrganizationId string
+	AssigneeId     *string
 }
 
 type UpdateCaseAttributes struct {

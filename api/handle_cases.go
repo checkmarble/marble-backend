@@ -112,6 +112,7 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 				InboxId:        data.InboxId,
 				Name:           data.Name,
 				OrganizationId: organizationId,
+				AssigneeId:     &userId,
 			})
 
 		if presentError(ctx, c, err) {
