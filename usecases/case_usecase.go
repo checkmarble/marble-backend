@@ -398,6 +398,11 @@ func (usecase *CaseUseCase) UpdateCase(
 				fmt.Sprintf("invalid case outcome '%s'", updateCaseAttributes.Outcome))
 		}
 
+		err = usecase.repository.UpdateCase(ctx, tx, updateCaseAttributes)
+		if err != nil {
+			return models.Case{}, err
+		}
+
 		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
 			return models.Case{}, err
 		}
