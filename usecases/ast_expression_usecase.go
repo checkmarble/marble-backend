@@ -51,6 +51,7 @@ func getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.Dat
 		baseTable string,
 		path []string,
 		links map[string]models.LinkToSingle,
+		visited []string,
 	) error
 
 	triggerObjectTable, found := dataModel.Tables[scenario.TriggerObjectType]
@@ -58,24 +59,23 @@ func getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.Dat
 		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
 	}
 
-	var visited []string
 	recursiveDatabaseAccessor = func(
 		baseTable string,
 		path []string,
 		links map[string]models.LinkToSingle,
+		visited []string,
 	) error {
+		visited = append(visited, baseTable)
 		for linkName, link := range links {
 			table, found := dataModel.Tables[link.ParentTableName]
 			if !found {
 				return fmt.Errorf("table %s not found in data model", scenario.TriggerObjectType)
 			}
-
-			relation := fmt.Sprintf("%s/%s", baseTable, linkName)
-			idx := slices.Index(visited, relation)
-			if idx != -1 {
+			if slices.Contains(visited, table.Name) {
 				continue
 			}
-			visited = append(visited, relation)
+			visitedDeepCp := append(make([]string, 0, len(visited)+1), visited...)
+			visitedDeepCp = append(visitedDeepCp, table.Name)
 
 			// deepcopy so that different identifiers don't collide
 			pathForLink := append(make([]string, 0, len(path)+1), path...)
@@ -91,7 +91,9 @@ func getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.Dat
 				)
 			}
 
-			if err := recursiveDatabaseAccessor(table.Name, pathForLink, table.LinksToSingle); err != nil {
+			if err := recursiveDatabaseAccessor(
+				table.Name, pathForLink,
+				table.LinksToSingle, visitedDeepCp); err != nil {
 				return err
 			}
 		}
@@ -102,6 +104,7 @@ func getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.Dat
 		triggerObjectTable.Name,
 		[]string{},
 		triggerObjectTable.LinksToSingle,
+		[]string{},
 	); err != nil {
 		return nil, err
 	}
