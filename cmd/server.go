@@ -115,6 +115,7 @@ func RunServer(config CompiledConfig) error {
 	}
 
 	logger := utils.NewLogger(serverConfig.loggingFormat)
+
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
 	license := infra.VerifyLicense(licenseConfig)

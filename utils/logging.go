@@ -174,8 +174,8 @@ func (h *GcpHandler) Handle(ctx context.Context, r slog.Record) error {
 	return h.internalHandler.Handle(ctx, r)
 }
 
-func NewGcpHandler(projectId string) *GcpHandler {
-	slogOption := slog.HandlerOptions{ReplaceAttr: GCPLoggerAttributeReplacer}
+func NewGcpHandler(projectId string, slogOption slog.HandlerOptions) *GcpHandler {
+	slogOption.ReplaceAttr = GCPLoggerAttributeReplacer
 	jsonHandler := slog.NewJSONHandler(os.Stdout, &slogOption)
 	return &GcpHandler{projectId: projectId, internalHandler: jsonHandler}
 }

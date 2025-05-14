@@ -18,21 +18,32 @@ func NewLogger(format string) *slog.Logger {
 		format = "text"
 	}
 
+	lvl := slog.LevelInfo
+
+	switch {
+	case format == "text" || os.Getenv("LOG_LEVEL") == "debug":
+		lvl = slog.LevelDebug
+	}
+
+	loggerOptions := slog.HandlerOptions{
+		Level: lvl,
+	}
+
 	switch format {
 	case "text":
 		logHandler := LocalDevHandlerOptions{
-			SlogOpts: slog.HandlerOptions{Level: slog.LevelDebug},
+			SlogOpts: loggerOptions,
 			UseColor: true,
 		}.NewLocalDevHandler(os.Stdout)
 		logger = slog.New(logHandler)
 	case "json":
-		logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, &loggerOptions))
 	case "gcp":
 		creds, err := google.FindDefaultCredentials(context.Background())
 		if err != nil || creds.ProjectID == "" {
 			fmt.Printf("failed to find default credentials (%v) or projectId empty: the traceId in logs will not be usable\n", err)
 		}
-		logger = slog.New(NewGcpHandler(creds.ProjectID))
+		logger = slog.New(NewGcpHandler(creds.ProjectID, loggerOptions))
 	}
 	return logger
 }
