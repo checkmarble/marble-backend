@@ -588,6 +588,16 @@ func (usecases UsecasesWithCreds) NewMatchEnrichmentWorker() *scheduled_executio
 	return &w
 }
 
+func (usecases UsecasesWithCreds) NewOffloadingWorker() *scheduled_execution.OffloadingWorker {
+	return scheduled_execution.NewOffloadingWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.BlobRepository,
+		usecases.offloadingBucketUrl,
+	)
+}
+
 func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataReaderUsecase {
 	return NewIngestedDataReaderUsecase(
 		usecases.Repositories.IngestedDataReadRepository,
