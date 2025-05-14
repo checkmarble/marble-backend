@@ -76,7 +76,10 @@ func getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.Dat
 				continue
 			}
 			visited = append(visited, relation)
-			pathForLink := append(path, linkName)
+
+			// deepcopy so that different identifiers don't collide
+			pathForLink := append(make([]string, 0, len(path)+1), path...)
+			pathForLink = append(pathForLink, linkName)
 
 			for fieldName := range table.Fields {
 				dataAccessors = append(dataAccessors,
