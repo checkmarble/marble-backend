@@ -147,7 +147,8 @@ func (w *TaskQueueWorker) removeQueuesFromMissingOrgs(ctx context.Context,
 	return nil
 }
 
-func QueuesFromOrgs(ctx context.Context, orgsRepo repositories.OrganizationRepository, execGetter repositories.ExecutorGetter,
+func QueuesFromOrgs(ctx context.Context, orgsRepo repositories.OrganizationRepository,
+	execGetter repositories.ExecutorGetter, enableOffloading bool,
 ) (queues map[string]river.QueueConfig, periodics []*river.PeriodicJob, err error) {
 	exec_fac := executor_factory.NewDbExecutorFactory(orgsRepo, execGetter)
 	orgs, err := orgsRepo.AllOrganizations(ctx, exec_fac.NewExecutor())
@@ -164,6 +165,10 @@ func QueuesFromOrgs(ctx context.Context, orgsRepo repositories.OrganizationRepos
 			scheduled_execution.NewIndexCleanupPeriodicJob(org.Id),
 			scheduled_execution.NewTestRunSummaryPeriodicJob(org.Id),
 		}...)
+
+		if enableOffloading {
+			periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(org.Id))
+		}
 
 		queues[org.Id] = river.QueueConfig{
 			MaxWorkers: numberWorkersPerQueue,

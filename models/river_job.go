@@ -49,3 +49,9 @@ type MatchEnrichmentArgs struct {
 }
 
 func (MatchEnrichmentArgs) Kind() string { return "match_enrichment" }
+
+type OffloadingArgs struct {
+	OrgId string `json:"org_id"`
+}
+
+func (OffloadingArgs) Kind() string { return "offloading" }
