@@ -224,6 +224,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	args models.AsyncDecisionArgs,
 	tx repositories.Transaction,
 ) (decisionCreated bool, webhookIds []string, testRunCallback func(), err error) {
+	decisionStart := time.Now()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
 		ctx,
@@ -336,6 +337,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 
 	decision := models.AdaptScenarExecToDecision(scenarioExecution, object, &args.ScheduledExecutionId)
 	sendWebhookEventId := make([]string, 0, 2)
+	storageStart := time.Now()
 
 	err = w.decisionRepository.StoreDecision(
 		ctx,
@@ -346,6 +348,21 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	)
 	if err != nil {
 		return false, nil, nil, errors.Wrapf(err, "error storing decision in AsyncDecisionWorker %s", scenario.Id)
+	}
+
+	if scenarioExecution.ExecutionMetrics != nil {
+		storageDuration := time.Since(storageStart)
+		decisionDuration := time.Since(decisionStart)
+
+		scenarioExecution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
+
+		utils.LoggerFromContext(ctx).InfoContext(ctx,
+			fmt.Sprintf("created decision (async) %s in %dms", decision.DecisionId,
+				decisionDuration.Milliseconds()), "org_id", scenario.OrganizationId, "decision_id",
+			decision.DecisionId, "scenario_id", scenario.Id, "score", scenarioExecution.Score,
+			"outcome", scenarioExecution.Outcome, "duration", decisionDuration.Milliseconds(),
+			"rules", scenarioExecution.ExecutionMetrics.Rules, "steps",
+			scenarioExecution.ExecutionMetrics.Steps)
 	}
 
 	if decision.SanctionCheckExecution != nil {

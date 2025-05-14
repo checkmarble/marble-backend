@@ -3,6 +3,7 @@ package evaluate_scenario
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
@@ -26,6 +27,8 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	if iteration.SanctionCheckConfig == nil {
 		return
 	}
+
+	start := time.Now()
 
 	if iteration.SanctionCheckConfig.TriggerRule != nil {
 		triggerEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
@@ -64,14 +67,20 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		}
 	}
 
+	var nameRecognitionDuration time.Duration
+
 	if iteration.SanctionCheckConfig.Query.Label != nil {
 		nbEvaluatedFields += 1
-		queries, emptyInput, err = e.evaluateSanctionCheckLabel(ctx, queries, iteration, dataAccessor)
+		nameRecognizedQueries, emptyInput, duration, err :=
+			e.evaluateSanctionCheckLabel(ctx, queries, iteration, dataAccessor)
 		if err != nil {
 			return nil, true, errors.Wrap(err, "could not evaluate sanction check label")
 		} else if emptyInput {
 			emptyFieldRead += 1
 		}
+
+		queries = nameRecognizedQueries
+		nameRecognitionDuration = duration
 	}
 
 	if emptyFieldRead == nbEvaluatedFields {
@@ -146,6 +155,8 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	}
 
 	sanctionCheck = &result
+	sanctionCheck.Duration = time.Since(start)
+	sanctionCheck.NameRecognitionDuration = nameRecognitionDuration
 	performed = true
 	return
 }
@@ -192,7 +203,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 	queries []models.OpenSanctionsCheckQuery,
 	iteration models.ScenarioIteration,
 	dataAccessor DataAccessor,
-) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, err error) {
+) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, took time.Duration, err error) {
 	queriesOut = queries
 	labelFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
 		*iteration.SanctionCheckConfig.Query.Label, iteration.OrganizationId,
@@ -207,7 +218,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 
 	labelFilter, ok := labelFilterAny.ReturnValue.(string)
 	if !ok {
-		return nil, false, errors.New("label filter name query did not return a string")
+		return nil, false, 0, errors.New("label filter name query did not return a string")
 	}
 	if labelFilter == "" {
 		emptyInput = true
@@ -228,12 +239,14 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 			queriesOut[0].Filters["name"] = append(queriesOut[0].Filters["name"], labelFilter)
 		}
 
-		return queriesOut, false, nil
+		return queriesOut, false, 0, nil
 	}
+
+	beforeNameRecognition := time.Now()
 
 	matches, err := e.nameRecognizer.PerformNameRecognition(ctx, labelFilter)
 	if err != nil {
-		return queriesOut, false, errors.Wrap(err,
+		return queriesOut, false, 0, errors.Wrap(err,
 			"could not perform name recognition on label")
 	}
 
@@ -272,5 +285,5 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 		queriesOut = append(queriesOut, *companyQuery)
 	}
 
-	return queriesOut, false, nil
+	return queriesOut, false, time.Since(beforeNameRecognition), nil
 }

@@ -108,3 +108,14 @@ func MapKeyValue[KL, KR comparable, VL, VR any](in map[KL]VL, f func(k KL, v VL)
 
 	return out
 }
+
+func MapSliceToMap[T, V any, K comparable](input []T, f func(v T) (K, V)) map[K]V {
+	output := make(map[K]V, len(input))
+
+	for _, item := range input {
+		k, v := f(item)
+		output[k] = v
+	}
+
+	return output
+}
