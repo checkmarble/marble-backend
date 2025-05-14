@@ -79,6 +79,13 @@ type ScenarioExecution struct {
 	Outcome                Outcome
 	OrganizationId         string
 	TestRunId              string
+
+	ExecutionMetrics *ScenarioExecutionMetrics
+}
+
+type ScenarioExecutionMetrics struct {
+	Steps map[string]int64
+	Rules map[string]int64
 }
 
 type RuleExecutionStat struct {
@@ -97,6 +104,7 @@ type RuleExecution struct {
 	Result              bool
 	ResultScoreModifier int
 	Rule                Rule
+	Duration            time.Duration
 }
 
 func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject ClientObject, scheduledExecutionId *string) DecisionWithRuleExecutions {

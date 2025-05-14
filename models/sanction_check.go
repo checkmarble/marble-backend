@@ -119,6 +119,9 @@ type SanctionCheckWithMatches struct {
 	SanctionCheck
 	Matches []SanctionCheckMatch
 	Count   int
+
+	Duration                time.Duration
+	NameRecognitionDuration time.Duration
 }
 
 type SanctionRawSearchResponseWithMatches struct {

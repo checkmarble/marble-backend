@@ -367,6 +367,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 	input models.CreateDecisionInput,
 	params models.CreateDecisionParams,
 ) (bool, models.DecisionWithRuleExecutions, error) {
+	decisionStart := time.Now()
+
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
@@ -441,6 +443,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 	defer span.End()
 
 	sendWebhookEventId := make([]string, 0)
+	storageStart := time.Now()
 	newDecision, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.DecisionWithRuleExecutions, error) {
@@ -517,6 +520,22 @@ func (usecase *DecisionUsecase) CreateDecision(
 		return false, models.DecisionWithRuleExecutions{}, err
 	}
 
+	if scenarioExecution.ExecutionMetrics != nil {
+		storageDuration := time.Since(storageStart)
+		decisionDuration := time.Since(decisionStart)
+
+		scenarioExecution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
+
+		utils.LoggerFromContext(ctx).InfoContext(ctx,
+			fmt.Sprintf("created decision %s in %dms", decision.DecisionId,
+				decisionDuration.Milliseconds()), "org_id", scenario.OrganizationId, "decision_id",
+			decision.DecisionId, "scenario_id", scenario.Id, "score", scenarioExecution.Score,
+			"outcome", scenarioExecution.Outcome, "duration", decisionDuration.Milliseconds(),
+			"rules", scenarioExecution.ExecutionMetrics.Rules, "steps",
+			scenarioExecution.ExecutionMetrics.Steps)
+
+	}
+
 	for _, webhookEventId := range sendWebhookEventId {
 		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
@@ -530,6 +549,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	ctx context.Context,
 	input models.CreateAllDecisionsInput,
 ) (decisions []models.DecisionWithRuleExecutions, nbSkipped int, err error) {
+	decisionStart := time.Now()
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions")
@@ -571,8 +591,9 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	}
 
 	type decisionAndScenario struct {
-		decision models.DecisionWithRuleExecutions
-		scenario models.Scenario
+		decision  models.DecisionWithRuleExecutions
+		scenario  models.Scenario
+		execution models.ScenarioExecution
 	}
 	var items []decisionAndScenario
 	for _, scenario := range filteredScenarios {
@@ -602,7 +623,10 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable, evaluationParameters, scenario, nil)
 		default:
 			decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
-			items = append(items, decisionAndScenario{decision: decision, scenario: scenario})
+			items = append(items, decisionAndScenario{
+				decision: decision,
+				scenario: scenario, execution: scenarioExecution,
+			})
 			usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable,
 				evaluationParameters, scenario, &scenarioExecution)
 		}
@@ -618,6 +642,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		var ids []string
 		for _, item := range items {
 			ids = append(ids, item.decision.DecisionId)
+			storageStart := time.Now()
 			if err = usecase.repository.StoreDecision(
 				ctx,
 				tx,
@@ -642,6 +667,22 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 							"could not enqueue sanction check for refinement"))
 					}
 				}
+			}
+
+			if item.execution.ExecutionMetrics != nil {
+				storageDuration := time.Since(storageStart)
+				decisionDuration := time.Since(decisionStart)
+
+				item.execution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
+
+				utils.LoggerFromContext(ctx).InfoContext(ctx,
+					fmt.Sprintf("created decision (all) %s in %dms", item.decision.DecisionId,
+						decisionDuration.Milliseconds()), "org_id",
+					item.scenario.OrganizationId, "decision_id",
+					item.decision.DecisionId, "scenario_id", item.scenario.Id, "score", item.execution.Score,
+					"outcome", item.execution.Outcome, "duration", decisionDuration.Milliseconds(),
+					"rules", item.execution.ExecutionMetrics.Rules, "steps",
+					item.execution.ExecutionMetrics.Steps)
 			}
 
 			webhookEventId := uuid.NewString()

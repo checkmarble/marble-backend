@@ -14,6 +14,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
@@ -24,6 +25,15 @@ import (
 // Maximum number of rules executed concurrently
 // TODO: set value from configuration/env instead
 const MAX_CONCURRENT_RULE_EXECUTIONS = 5
+
+const (
+	LogTriggerDurationKey    = "trigger"
+	LogEvaluationDurationKey = "evaluation"
+	LogRulesDurationKey      = "rules"
+	LogScreeningDurationKey  = "screening"
+	LogNerDurationKey        = "ner"
+	LogStorageDurationKey    = "storage"
+)
 
 type ScenarioEvaluationParameters struct {
 	Scenario            models.Scenario
@@ -139,6 +149,9 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	// Evaluate the trigger
 
+	beforeTriggerExpression := time.Now()
+	triggerExpressionDuration := 0 * time.Millisecond
+
 	if iteration.TriggerConditionAstExpression != nil {
 		ok, err := e.evalScenarioTrigger(
 			ctx,
@@ -155,6 +168,8 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		if !ok {
 			return false, models.ScenarioExecution{}, nil
 		}
+
+		triggerExpressionDuration = time.Since(beforeTriggerExpression)
 	}
 
 	var pivotValue *string
@@ -184,6 +199,9 @@ func (e ScenarioEvaluator) processScenarioIteration(
 			errSnooze,
 			"error when listing active rule snozze")
 	}
+
+	beforeRules := time.Now()
+
 	// Evaluate all rules
 	score, ruleExecutions, errEval := e.evalAllScenarioRules(
 		ctx,
@@ -196,6 +214,8 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		return false, models.ScenarioExecution{}, errors.Wrap(errEval,
 			"error during concurrent rule evaluation")
 	}
+
+	rulesDuration := time.Since(beforeRules)
 
 	var outcome models.Outcome
 
@@ -243,8 +263,34 @@ func (e ScenarioEvaluator) processScenarioIteration(
 	}
 
 	elapsed := time.Since(start)
-	logger.InfoContext(ctx, fmt.Sprintf("Evaluated scenario in %dms",
-		elapsed.Milliseconds()), "score", score, "outcome", outcome, "duration", elapsed.Milliseconds())
+
+	ruleDurations := pure_utils.MapSliceToMap(ruleExecutions, func(exec models.RuleExecution) (string, int64) {
+		id := exec.Rule.Id
+		if exec.Rule.StableRuleId != nil {
+			id = *exec.Rule.StableRuleId
+		}
+
+		return id, exec.Duration.Milliseconds()
+	})
+
+	stepDurations := make(map[string]int64, 5)
+	stepDurations[LogTriggerDurationKey] = triggerExpressionDuration.Milliseconds()
+	stepDurations[LogEvaluationDurationKey] = elapsed.Milliseconds()
+	stepDurations[LogRulesDurationKey] = rulesDuration.Milliseconds()
+
+	if sanctionCheckExecution != nil {
+		stepDurations[LogScreeningDurationKey] = sanctionCheckExecution.Duration.Milliseconds()
+
+		if sanctionCheckExecution.NameRecognitionDuration != 0 {
+			stepDurations[LogNerDurationKey] =
+				sanctionCheckExecution.NameRecognitionDuration.Milliseconds()
+		}
+	}
+
+	se.ExecutionMetrics = &models.ScenarioExecutionMetrics{
+		Steps: stepDurations,
+		Rules: ruleDurations,
+	}
 
 	return true, se, nil
 }
@@ -413,6 +459,7 @@ func (e ScenarioEvaluator) evalScenarioRule(
 	dataModel models.DataModel,
 	snoozes []models.RuleSnooze,
 ) (int, models.RuleExecution, error) {
+	start := time.Now()
 	ruleExecution := models.RuleExecution{}
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioRule",
@@ -490,26 +537,24 @@ func (e ScenarioEvaluator) evalScenarioRule(
 		)
 	}
 
+	ruleStats := ast.BuildEvaluationStats(ruleEvaluation, false)
+	functionStats := ruleStats.FunctionStats()
+
 	// Increment scenario score when rule result is true
 	if ruleExecution.Result {
 		ruleExecution.Outcome = "hit"
 		ruleExecution.ResultScoreModifier = rule.ScoreModifier
-		logger.InfoContext(ctx, "Rule executed",
-			slog.Int("score_modifier", rule.ScoreModifier),
-			slog.String("ruleName", rule.Name),
-			slog.Bool("result", ruleExecution.Result),
-		)
+
+		logger.InfoContext(ctx, fmt.Sprintf("rule evaluated in %dms",
+			ruleStats.Took.Milliseconds()), "duration",
+			ruleStats.Took.Milliseconds(), "nodes", ruleStats.Nodes, "skipped", ruleStats.SkippedCount,
+			"cached", ruleStats.CachedCount, "ruleName", rule.Name, "score_modifier",
+			rule.ScoreModifier, "result", ruleExecution.Result)
+
+		logger.DebugContext(ctx, "rule nodes breakdown", "functions", functionStats)
 	}
 
-	ruleStats := ast.BuildEvaluationStats(ruleEvaluation, false)
-	functionStats := ruleStats.FunctionStats()
-
-	logger.InfoContext(ctx, fmt.Sprintf("rule evaluated in %dms",
-		ruleStats.Took.Milliseconds()), "duration",
-		ruleStats.Took.Milliseconds(), "nodes", ruleStats.Nodes, "skipped", ruleStats.SkippedCount,
-		"cached", ruleStats.CachedCount)
-
-	logger.DebugContext(ctx, "rule nodes breakdown", "functions", functionStats)
+	ruleExecution.Duration = time.Since(start)
 
 	return ruleExecution.ResultScoreModifier, ruleExecution, nil
 }
