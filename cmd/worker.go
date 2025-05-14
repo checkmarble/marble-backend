@@ -67,6 +67,8 @@ func RunTaskQueue(apiVersion string) error {
 		env                         string
 		failedWebhooksRetryPageSize int
 		ingestionBucketUrl          string
+		offloadDecisionRules        bool
+		offloadingBucketUrl         string
 		loggingFormat               string
 		sentryDsn                   string
 		cloudRunProbePort           string
@@ -75,6 +77,8 @@ func RunTaskQueue(apiVersion string) error {
 		env:                         utils.GetEnv("ENV", "development"),
 		failedWebhooksRetryPageSize: utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
 		ingestionBucketUrl:          utils.GetRequiredEnv[string]("INGESTION_BUCKET_URL"),
+		offloadDecisionRules:        utils.GetEnv("OFFLOAD_DECISION_RULES", false),
+		offloadingBucketUrl:         utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
 		loggingFormat:               utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:                   utils.GetEnv("SENTRY_DSN", ""),
 		cloudRunProbePort:           utils.GetEnv("CLOUD_RUN_PROBE_PORT", ""),
@@ -135,7 +139,7 @@ func RunTaskQueue(apiVersion string) error {
 	// Start the task queue workers
 	workers := river.NewWorkers()
 	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx,
-		repositories.OrganizationRepository, repositories.ExecutorGetter)
+		repositories.OrganizationRepository, repositories.ExecutorGetter, workerConfig.offloadDecisionRules)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -172,6 +176,7 @@ func RunTaskQueue(apiVersion string) error {
 
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
+		usecases.WithOffloadingBucketUrl(workerConfig.offloadingBucketUrl),
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
@@ -185,6 +190,10 @@ func RunTaskQueue(apiVersion string) error {
 	river.AddWorker(workers, adminUc.NewIndexCleanupWorker())
 	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
+
+	if workerConfig.offloadDecisionRules {
+		river.AddWorker(workers, adminUc.NewOffloadingWorker())
+	}
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)

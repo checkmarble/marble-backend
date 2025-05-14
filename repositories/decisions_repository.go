@@ -971,3 +971,52 @@ func (repo *MarbleDbRepository) DecisionPivotValuesByCase(ctx context.Context, e
 	}
 	return out, nil
 }
+
+func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context, exec Executor,
+	req models.OffloadDecisionRuleRequest,
+) ([]models.OffloadableDecisionRule, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	if req.Watermark == nil {
+		req.Watermark = &models.OffloadingWatermark{
+			WatermarkTime: time.Time{},
+			WatermarkId:   uuid.UUID{}.String(),
+		}
+	}
+
+	sql := NewQueryBuilder().
+		Select("d.created_at as created_at", "dr.*").
+		Prefix("with decisions as (").
+		PrefixExpr(
+			squirrel.
+				Select("id", "created_at").
+				From(dbmodels.TABLE_DECISIONS).
+				Where(squirrel.And{
+					squirrel.Eq{"org_id": req.OrgId},
+					squirrel.Lt{"created_at": req.DeleteBefore},
+					squirrel.Expr("(created_at, id) > (?, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId),
+				}).
+				OrderBy("created_at, id").
+				Limit(uint64(req.BatchSize)),
+		).
+		Prefix(")").
+		From("decision_rules dr").
+		InnerJoin("decisions d on d.id = dr.decision_id")
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptOffloadableRuleExecution)
+}
+
+func (repo *MarbleDbRepository) RemoveDecisionRulePayload(ctx context.Context, tx Transaction, ids []string) error {
+	if err := validateMarbleDbExecutor(tx); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_DECISION_RULES).
+		Set("rule_evaluation", nil).
+		Where(squirrel.Eq{"id": ids})
+
+	return ExecBuilder(ctx, tx, sql)
+}
