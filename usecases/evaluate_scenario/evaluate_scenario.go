@@ -545,7 +545,7 @@ func (e ScenarioEvaluator) evalScenarioRule(
 		ruleExecution.Outcome = "hit"
 		ruleExecution.ResultScoreModifier = rule.ScoreModifier
 
-		logger.InfoContext(ctx, fmt.Sprintf("rule evaluated in %dms",
+		logger.DebugContext(ctx, fmt.Sprintf("rule evaluated in %dms",
 			ruleStats.Took.Milliseconds()), "duration",
 			ruleStats.Took.Milliseconds(), "nodes", ruleStats.Nodes, "skipped", ruleStats.SkippedCount,
 			"cached", ruleStats.CachedCount, "ruleName", rule.Name, "score_modifier",
