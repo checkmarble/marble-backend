@@ -39,6 +39,8 @@ func (t *TokenHandler) GenerateToken(c *gin.Context) {
 
 	marbleToken, expirationTime, err := t.generator.GenerateToken(ctx, key, bearerToken)
 	if err != nil {
+		utils.LoggerFromContext(ctx).ErrorContext(ctx, err.Error())
+
 		_ = c.Error(fmt.Errorf("generator.GenerateToken error: %w", err))
 
 		if errors.Is(err, models.ErrUnknownUser) {

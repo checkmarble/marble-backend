@@ -43,8 +43,8 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 			},
 			Auth: dto.ConfigAuthDto{
 				Firebase: dto.ConfigAuthFirebaseDto{
-					IsEmulator:  cfg.FirebaseConfig.EmulatorUrl != "",
-					EmulatorUrl: cfg.FirebaseConfig.EmulatorUrl,
+					IsEmulator:  cfg.FirebaseConfig.EmulatorHost != "",
+					EmulatorUrl: cfg.FirebaseConfig.EmulatorHost,
 					ProjectId:   cfg.FirebaseConfig.ProjectId,
 					ApiKey:      cfg.FirebaseConfig.ApiKey,
 					AuthDomain:  cfg.FirebaseConfig.AuthDomain,
