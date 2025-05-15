@@ -25,8 +25,12 @@ type Configuration struct {
 }
 
 type FirebaseConfig struct {
-	EmulatorUrl string
-	ProjectId   string
-	ApiKey      string
-	AuthDomain  string
+	EmulatorHost string
+	ProjectId    string
+	ApiKey       string
+	AuthDomain   string
+}
+
+func (cfg FirebaseConfig) IsEmulator() bool {
+	return cfg.EmulatorHost != ""
 }

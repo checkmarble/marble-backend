@@ -23,6 +23,9 @@ import (
 )
 
 func RunServer(config CompiledConfig) error {
+	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
+	ctx := utils.StoreLoggerInContext(context.Background(), logger)
+
 	// This is where we read the environment variables and set up the configuration for the application.
 	apiConfig := api.Configuration{
 		Env:                 utils.GetEnv("ENV", "development"),
@@ -47,20 +50,26 @@ func RunServer(config CompiledConfig) error {
 			},
 		},
 		FirebaseConfig: api.FirebaseConfig{
-			EmulatorUrl: utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
-			ApiKey:      utils.GetEnv("FIREBASE_API_KEY", ""),
-			AuthDomain:  utils.GetEnv("FIREBASE_AUTH_DOMAIN", ""),
-			ProjectId:   utils.GetEnv("FIREBASE_PROJECT_ID", ""),
+			ProjectId:    utils.GetEnv("FIREBASE_PROJECT_ID", ""),
+			EmulatorHost: utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
+			ApiKey:       utils.GetEnv("FIREBASE_API_KEY", ""),
+			AuthDomain:   utils.GetEnv("FIREBASE_AUTH_DOMAIN", ""),
 		},
 	}
 	if apiConfig.DisableSegment {
 		apiConfig.SegmentWriteKey = ""
 	}
-	gcpConfig := infra.GcpConfig{
-		EnableTracing:                utils.GetEnv("ENABLE_GCP_TRACING", false),
-		ProjectId:                    utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		GoogleApplicationCredentials: utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
+
+	gcpConfig, err := infra.NewGcpConfig(
+		ctx,
+		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
+		utils.GetEnv("ENABLE_GCP_TRACING", false),
+	)
+	if err != nil {
+		return err
 	}
+
 	pgConfig := infra.PgConfig{
 		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:           utils.GetEnv("PG_DATABASE", "marble"),
@@ -122,30 +131,33 @@ func RunServer(config CompiledConfig) error {
 		firebaseEmulatorHost:             utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
 	}
 
-	logger := utils.NewLogger(serverConfig.loggingFormat)
-
-	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
 	license := infra.VerifyLicense(licenseConfig)
 
+	logger.Info("successfully authenticated in GCP", "principal", gcpConfig.PrincipalEmail, "project", gcpConfig.ProjectId)
+
+	if !apiConfig.FirebaseConfig.IsEmulator() {
+		if apiConfig.FirebaseConfig.ApiKey == "" {
+			logger.Warn("no FIREBASE_API_KEY specified, this will be an error in the future")
+		}
+
+		if apiConfig.FirebaseConfig.AuthDomain == "" {
+			logger.Warn(fmt.Sprintf("no FIREBASE_AUTH_DOMAIN specified, defaulting to %s", apiConfig.FirebaseConfig.AuthDomain))
+
+			apiConfig.FirebaseConfig.AuthDomain = fmt.Sprintf("%s.firebaseapp.com", apiConfig.FirebaseConfig.ProjectId)
+		}
+	} else {
+		// The auth domain, when using the emulator, is always the emulator host itself
+		apiConfig.FirebaseConfig.AuthDomain = apiConfig.FirebaseConfig.EmulatorHost
+	}
+
 	if apiConfig.FirebaseConfig.ProjectId == "" {
-		logger.Warn("no FIREBASE_PROJECT_ID specified, defaulting to GOOGLE_CLOUD_PROJECT", "project", gcpConfig.ProjectId)
+		logger.Info("FIREBASE_PROJECT_ID was not provided, falling back to Google Cloud project", "project", gcpConfig.ProjectId)
+
 		apiConfig.FirebaseConfig.ProjectId = gcpConfig.ProjectId
 	}
-	if apiConfig.FirebaseConfig.ApiKey == "" {
-		logger.Warn("no FIREBASE_API_KEY specified, this will be an error in the future")
-	}
-	if apiConfig.FirebaseConfig.AuthDomain == "" {
-		if apiConfig.FirebaseConfig.EmulatorUrl != "" {
-			apiConfig.FirebaseConfig.AuthDomain = apiConfig.FirebaseConfig.EmulatorUrl
-			logger.Warn("no FIREBASE_AUTH_DOMAIN specified, defaulting to FIREBASE_AUTH_EMULATOR_HOST",
-				"auth_domain", apiConfig.FirebaseConfig.EmulatorUrl)
-		} else {
-			apiConfig.FirebaseConfig.AuthDomain = fmt.Sprintf("%s.firebaseapp.com", apiConfig.FirebaseConfig.ProjectId)
-			logger.Warn(fmt.Sprintf("no FIREBASE_AUTH_DOMAIN specified, defaulting to %s", apiConfig.FirebaseConfig.AuthDomain))
-		}
-		logger.Warn("no FIREBASE_API_KEY specified, this will be an error in the future")
-	}
+
+	logger.Info("firebase project configured", "project", apiConfig.FirebaseConfig.ProjectId)
 
 	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env, config.Version)
 	defer sentry.Flush(3 * time.Second)
