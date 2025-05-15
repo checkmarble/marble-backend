@@ -113,14 +113,15 @@ type CreateCaseCommentAttributes struct {
 }
 
 type CaseFilters struct {
-	OrganizationId string
-	Name           string
-	StartDate      time.Time
-	EndDate        time.Time
-	Statuses       []CaseStatus
-	InboxIds       []string
-	IncludeSnoozed bool
-	AssigneeId     UserId
+	OrganizationId  string
+	Name            string
+	StartDate       time.Time
+	EndDate         time.Time
+	Statuses        []CaseStatus
+	InboxIds        []string
+	IncludeSnoozed  bool
+	ExcludeAssigned bool
+	AssigneeId      UserId
 }
 
 type CaseListPage struct {

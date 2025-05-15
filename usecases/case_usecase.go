@@ -147,13 +147,14 @@ func (usecase *CaseUseCase) ListCases(
 			}
 
 			repoFilters := models.CaseFilters{
-				StartDate:      filters.StartDate,
-				EndDate:        filters.EndDate,
-				Statuses:       statuses,
-				OrganizationId: organizationId,
-				Name:           filters.Name,
-				IncludeSnoozed: filters.IncludeSnoozed,
-				AssigneeId:     filters.AssigneeId,
+				StartDate:       filters.StartDate,
+				EndDate:         filters.EndDate,
+				Statuses:        statuses,
+				OrganizationId:  organizationId,
+				Name:            filters.Name,
+				IncludeSnoozed:  filters.IncludeSnoozed,
+				ExcludeAssigned: filters.ExcludeAssigned,
+				AssigneeId:      filters.AssigneeId,
 			}
 			if len(filters.InboxIds) > 0 {
 				repoFilters.InboxIds = filters.InboxIds
