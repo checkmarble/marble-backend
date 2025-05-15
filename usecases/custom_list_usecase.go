@@ -231,7 +231,7 @@ func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Con
 		duration := end.Sub(start)
 		// divide by 1e6 convert to milliseconds (base is nanoseconds)
 		avgDuration := float64(duration) / float64(total*1e6)
-		logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested %d custom list values in %s, average %vms", total, duration, avgDuration))
+		logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested %d custom list values in %s, average %vms", total, duration, avgDuration))
 	}
 	defer printDuration()
 

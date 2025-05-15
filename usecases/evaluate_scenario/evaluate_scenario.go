@@ -314,7 +314,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 			se = models.ScenarioExecution{}
 		}
 	}()
-	logger.InfoContext(ctx, "Evaluating scenario test run", "scenarioId", params.Scenario.Id)
+	logger.DebugContext(ctx, "Evaluating scenario test run", "scenarioId", params.Scenario.Id)
 	exec := e.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.EvalTestRunScenario",
@@ -395,7 +395,7 @@ func (e ScenarioEvaluator) EvalScenario(
 		}
 	}()
 
-	logger.InfoContext(ctx, "Evaluating scenario", "scenarioId", params.Scenario.Id)
+	logger.DebugContext(ctx, "Evaluating scenario", "scenarioId", params.Scenario.Id)
 	exec := e.executorFactory.NewExecutor()
 
 	// If the scenario has no live version, don't try to Eval() it, return early

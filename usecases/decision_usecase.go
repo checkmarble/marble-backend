@@ -527,12 +527,15 @@ func (usecase *DecisionUsecase) CreateDecision(
 		scenarioExecution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
 
 		utils.LoggerFromContext(ctx).InfoContext(ctx,
-			fmt.Sprintf("created decision %s in %dms", decision.DecisionId,
-				decisionDuration.Milliseconds()), "org_id", scenario.OrganizationId, "decision_id",
-			decision.DecisionId, "scenario_id", scenario.Id, "score", scenarioExecution.Score,
-			"outcome", scenarioExecution.Outcome, "duration", decisionDuration.Milliseconds(),
-			"rules", scenarioExecution.ExecutionMetrics.Rules, "steps",
-			scenarioExecution.ExecutionMetrics.Steps)
+			fmt.Sprintf("created decision %s in %dms", decision.DecisionId, decisionDuration.Milliseconds()),
+			"org_id", scenario.OrganizationId,
+			"decision_id", decision.DecisionId,
+			"scenario_id", scenario.Id,
+			"score", scenarioExecution.Score,
+			"outcome", scenarioExecution.Outcome,
+			"duration", decisionDuration.Milliseconds(),
+			"rules", scenarioExecution.ExecutionMetrics.Rules,
+			"steps", scenarioExecution.ExecutionMetrics.Steps)
 
 	}
 
@@ -676,13 +679,16 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				item.execution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
 
 				utils.LoggerFromContext(ctx).InfoContext(ctx,
-					fmt.Sprintf("created decision (all) %s in %dms", item.decision.DecisionId,
-						decisionDuration.Milliseconds()), "org_id",
-					item.scenario.OrganizationId, "decision_id",
-					item.decision.DecisionId, "scenario_id", item.scenario.Id, "score", item.execution.Score,
-					"outcome", item.execution.Outcome, "duration", decisionDuration.Milliseconds(),
-					"rules", item.execution.ExecutionMetrics.Rules, "steps",
-					item.execution.ExecutionMetrics.Steps)
+					fmt.Sprintf("created decision (all) %s in %dms",
+						item.decision.DecisionId, decisionDuration.Milliseconds()),
+					"org_id", item.scenario.OrganizationId,
+					"decision_id", item.decision.DecisionId,
+					"scenario_id", item.scenario.Id,
+					"score", item.execution.Score,
+					"outcome", item.execution.Outcome,
+					"duration", decisionDuration.Milliseconds(),
+					"rules", item.execution.ExecutionMetrics.Rules,
+					"steps", item.execution.ExecutionMetrics.Steps)
 			}
 
 			webhookEventId := uuid.NewString()

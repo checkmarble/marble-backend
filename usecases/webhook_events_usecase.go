@@ -213,7 +213,7 @@ func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webho
 		return models.Scheduled, err
 	}
 
-	logger.InfoContext(ctx, fmt.Sprintf("Start processing webhook event %s", webhookEvent.Id))
+	logger.DebugContext(ctx, fmt.Sprintf("Start processing webhook event %s", webhookEvent.Id))
 
 	webhookEventUpdate := models.WebhookEventUpdate{Id: webhookEvent.Id}
 
