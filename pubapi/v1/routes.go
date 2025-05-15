@@ -6,12 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
+func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases, cfg pubapi.Config) {
 	r.GET("/-/version", handleVersion)
 
 	{
 		r := r.Group("/", authMiddleware)
 
+		r.GET("/decisions", HandleListDecisions(uc))
+		r.GET("/decisions/:decisionId", HandleGetDecision(uc))
 		r.POST("/decisions/:decisionId/snooze", HandleSnoozeRule(uc))
 		r.GET("/decisions/:decisionId/screenings", HandleListSanctionChecks(uc))
 

@@ -1,0 +1,979 @@
+openapi: 3.1.0
+info:
+  title: Marble decision engine API
+  description: Public API on decisions and data ingestion.
+  version: 1.0.0
+x-readme:
+  explorer-enabled: false
+  proxy-enabled: false
+  samples-languages:
+    - shell
+    - python
+    - javascript
+    - go
+    - ruby
+servers:
+  - url: https://api.checkmarble.com/v1beta
+tags:
+  - name: Decisions
+    description: Routes for decisions
+  - name: Screening
+    description: Routes for screening
+paths:
+  /decisions:
+    get:
+      operationId: listDecision
+      tags:
+        - Decisions
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: List decisions
+      description: |
+        List decisions according to a filter set
+      parameters:
+        - name: scenario_id
+          description: Filter decisions by their scenario
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: scheduled_execution_id
+          description: Filter decisions created by a specific scheduled execution
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: case_id
+          description: Filter decisions added to a given case
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: outcome
+          description: Filter decisions having a specific outcome
+          in: query
+          schema:
+            type: string
+            enum: ["approve", "review", "block_and_review", "decline"]
+        - name: review_status
+          description: |
+            Filter decisions having a specific review status.
+
+            Can only be used if `outcome` if set to `block_and_review`.
+          in: query
+          schema:
+            type: string
+            enum: ["pending", "approve", "decline"]
+        - name: trigger_object_id
+          description: Filter decisions related a a specific trigger's `object_id`.
+          in: query
+          schema:
+            type: string
+        - name: pivot_value
+          description: Filter decisions with a given pivot object value
+          in: query
+          schema:
+            type: string
+        - name: start
+          description: Only display decisions created after this date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          description: Only display decisions created before this date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/offset_id"
+      responses:
+        "200":
+          description: Screening results from the search
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - $ref: "#/components/schemas/BasePagination"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Decision"
+        "400":
+          $ref: "#/components/responses/400"
+
+  /decisions/{decisionId}:
+    get:
+      operationId: getDecision
+      tags:
+        - Decisions
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Get a decision
+      description: |
+        Retrieve a decision by ID.
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Screening results from the search
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Decision"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
+  /decisions/{decisionId}/snooze:
+    post:
+      operationId: snoozeRule
+      tags:
+        - Decisions
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Snooze a rule
+      description: |
+        Snooze a rule for a pivot value.
+
+        Snooze a rule for the provided duration, for the pivot value the decision pertains to. The given decision must be part of a case for its rules to be snoozed.
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rule_id
+                - duration
+              properties:
+                rule_id:
+                  type: string
+                  format: uuid
+                duration:
+                  description: |
+                    Duration for which the snooze will take effect.
+
+                    Must use Go's [`time.ParseDuration`](https://pkg.go.dev/time#example-ParseDuration) syntax (e.g. "1h", "10h30m", etc.).
+
+                    Maximum value is 180 days ("4320h").
+                  type: string
+                  format: duration
+      responses:
+        "201":
+          description: Rule was successfully snoozed
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+        "409":
+          $ref: "#/components/responses/409"
+        "422":
+          $ref: "#/components/responses/422"
+
+  /decisions/{decisionId}/screenings:
+    get:
+      operationId: getScreeningForDecision
+      tags:
+        - Screening
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Get screening results
+      description: Retrieve screening result details for decision
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of screening results for the decision
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Screening"
+        "404":
+          $ref: "#/components/responses/404"
+
+  /screening/entities/{entityId}:
+    get:
+      operationId: getScreeningEntity
+      tags:
+        - Screening
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Get an OpenSanctions entity
+      description: Retrieve a raw OpenSanctions entity from its ID.
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Entity data as returned by OpenSanctions
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ScreeningMatchPayload"
+        "404":
+          $ref: "#/components/responses/404"
+
+  /screening/{screeningId}/refine:
+    post:
+      operationId: refineScreening
+      tags:
+        - Screening
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Refine a screening result
+      description: |
+        Replace a screening result with refined results.
+
+        This endpoint will replace the provided screening result for the provided decision with one containing the result of the included query.
+      parameters:
+        - name: screeningId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              oneOf:
+                - $ref: "#/components/schemas/ScreeningSearchThing"
+                - $ref: "#/components/schemas/ScreeningSearchPerson"
+                - $ref: "#/components/schemas/ScreeningSearchOrganization"
+                - $ref: "#/components/schemas/ScreeningSearchVehicle"
+      responses:
+        "200":
+          description: Refined screening result for the decision
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Screening"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+        "422":
+          $ref: "#/components/responses/422"
+
+  /screening/{screeningId}/search:
+    post:
+      operationId: searchScreening
+      tags:
+        - Screening
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Perform a screening search
+      description: |
+        Retrieve screening result without persisting them.
+
+        This endpoint will **not** replace the provided screening result, but allow to preview the results as executed in the original decision's context (using its unique counterparty ID and elligible whitelisted entries).
+      parameters:
+        - name: screeningId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScreeningSearchQuery"
+      responses:
+        "200":
+          description: Screening results from the search
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ScreeningMatchPayload"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
+  /screening/search:
+    post:
+      operationId: searchScreeningFreeformCheck
+      tags:
+        - Screening
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Perform a free-form screening search
+      description: Search for sanctioned entities outside of the context of a decision.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScreeningSearchQuery"
+      responses:
+        "200":
+          description: Screening result from the search
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ScreeningMatchPayload"
+        "400":
+          $ref: "#/components/responses/400"
+
+  /screening/matches/{matchId}:
+    post:
+      operationId: reviewScreeningMatch
+      tags:
+        - Screening
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Review a screening match
+      description: Set the review status of a screening match
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - no_hit
+                    - confirmed_hit
+                whitelist:
+                  description:
+                    Whether to whitelist the "no_hit" status to prevent
+                    triggering the match in the future
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Match content reflecting the new status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ScreeningMatch"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+        "422":
+          $ref: "#/components/responses/422"
+
+  /screening/whitelist:
+    post:
+      operationId: addScreeningWhitelist
+      tags:
+        - Screening
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Whitelist an entity
+      description: |
+        Add a set of search term and entity ID that will not set off a screening alert in the future.
+
+        This endpoint does not verify that the provided entity ID matches an **actual** entity on an OpenSanctions list. It is the responsibility of the caller to make sure they whitelist the correct entity ID for their needs.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - counterparty
+                - entity_id
+              properties:
+                counterparty:
+                  description:
+                    The unique counterparty identifier that should be whitelisted
+                    when yielding the associated entity ID
+                  type: string
+                entity_id:
+                  description: The OpenSanctions entity ID to whitelist
+                  type: string
+      responses:
+        "201":
+          description: The entity was whitelisted
+        "400":
+          $ref: "#/components/responses/400"
+    delete:
+      operationId: deleteScreeningWhitelist
+      tags:
+        - Screening
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Remove an entity whitelist
+      description: |
+        Delete a previously whitelisted entity, a match from the search term to the entity ID will subsequently trigger alerts.
+
+        If only `entity_id` is provided, all whitelist entries for that entity will be removed, regardless of which counterparty term triggers it.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - entity_id
+              properties:
+                counterparty:
+                  description:
+                    The unique counterparty identifier that should be whitelisted
+                    when yielding the associated entity ID
+                  type: string
+                entity_id:
+                  description: The OpenSanctions entity ID to whitelist
+                  type: string
+      responses:
+        "204":
+          description: The whitelist entry was deleted
+        "400":
+          $ref: "#/components/responses/400"
+
+  /screening/whitelists/search:
+    post:
+      operationId: searchScreeningWhitelist
+      tags:
+        - Screening
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Search whitelisted entities
+      description: |
+        Search for whitelisted entities by OpenSanctions entity ID and/or unique counterparty identifier.
+
+        At least one of `counterparty` or `entity_id` is required to perform a search.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                counterparty:
+                  description: The unique counterparty identifier to search for
+                  type: string
+                entity_id:
+                  description: The OpenSanctions entity ID to search for
+                  type: string
+      responses:
+        "200":
+          description: List of whitelist entries for the requested objects
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ScreeningWhitelistEntry"
+        "400":
+          $ref: "#/components/responses/400"
+
+components:
+  securitySchemes:
+    BearerTokenAuth:
+      type: http
+      scheme: bearer
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+
+  responses:
+    "400":
+      description: Provided parameters or payload is malformed or invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    "401":
+      description: Credentials are missing or invalid
+    "403":
+      description:
+        The provided credentials are missing the required permissions for
+        the requested action
+    "404":
+      description: The requested resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    "409":
+      description: The resource being created conflicts with an existing resource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    "422":
+      description: The requested action is not possible on the requested resource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  parameters:
+    limit:
+      name: limit
+      description: How many item to return on each page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+    order:
+      name: order
+      description: Sort direction for items
+      in: query
+      schema:
+        type: string
+        enum: ["ASC", "DESC"]
+    offset_id:
+      name: offset_id
+      description: |
+        Value to start iterating from.
+
+        Should be a value returned in the `pagination.next_page_id` field of a response.
+      in: query
+      schema:
+        type: string
+
+  schemas:
+    BaseResponse:
+      title: Base response
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          description: Requested objects from the API
+
+    BasePagination:
+      type: object
+      properties:
+        pagination:
+          title: Pagination information
+          type: object
+          required:
+            - has_more
+          properties:
+            has_more:
+              description: Whether there are more elements to iteration through
+              type: boolean
+            next_page_id:
+              description: Value to use in pagination filter to request for the next page
+              type: string
+
+    Error:
+      title: Error response
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          description: Defined, machine-readable identifier for the error
+          type: string
+          enum:
+            - invalid_payload
+            - unprocessable_entity
+            - not_found
+            - feature_disabled
+            - feature_not_configured
+            - server_error
+        messages:
+          description: List of human-readable descriptions for the error
+          type: array
+          items:
+            type: string
+        detail:
+          description: Free-form objects providing details on the error
+          type: object
+          additionalProperties: true
+
+    Case:
+      title: Case
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+
+    Scenario:
+      title: Scenario
+      type: object
+      required:
+        - id
+        - iteration_id
+        - version
+      properties:
+        id:
+          description: ID of the scenario to use when creating decisions
+          type: string
+          format: uuid
+        iteration_id:
+          description: Internal ID for the version of the scenario
+          type: string
+          format: uuid
+        version:
+          description: Human-readable version of the scenario
+          type: string
+
+    Decision:
+      title: Decision
+      type: object
+      required:
+        - id
+        - outcome
+        - review_status
+        - scenario
+        - trigger_object
+        - score
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        scheduled_execution_id:
+          type: string
+          format: uuid
+        case:
+          $ref: "#/components/schemas/Case"
+        scenario:
+          $ref: "#/components/schemas/Scenario"
+        trigger_object:
+          type: object
+          required:
+            - object_id
+            - updated_at
+          properties:
+            object_id:
+              type: string
+            updated_at:
+              type: string
+              format: date-time
+          additionalProperties: true
+        outcome:
+          description: Outcome of the decision
+          type: string
+          enum: ["approve", "review", "block_and_review", "decline"]
+        review_status:
+          description: Manual arbitration status for the decision when the outcome was `block_and_review`
+          type: string
+          enum: ["pending", "approve", "decline"]
+          nullable: true
+        score:
+          description: Final score for the decision
+          type: integer
+        rules:
+          description: Rule that were executed for this decision
+          type: array
+          items:
+            $ref: "#/components/schemas/DecisionRule"
+        created_at:
+          type: string
+          format: date-time
+
+    DecisionRule:
+      type: object
+      required:
+        - name
+        - outcome
+        - score_modifier
+      properties:
+        name:
+          description: Name of the rule in the scenario version
+          type: string
+        outcome:
+          description: Outcome of the rule execution
+          type: string
+          enum: ["hit", "no_hit", "snoozed", "error"]
+        score_modifier:
+          description: Impact of this rule on the decision score if it hit
+          type: integer
+        error:
+          description: Any error that occured while executing the rule
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+
+    Screening:
+      title: Screening result
+      type: object
+      required:
+        - id
+        - status
+        - query
+        - matches
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - in_review
+            - no_hit
+            - confirmed_hit
+            - error
+        query:
+          type: object
+          properties:
+            queries:
+              description:
+                Queries that were submitted to OpenSanctions with their
+                IDs
+              type: object
+              additionalProperties:
+                $ref: "#/components/schemas/ScreeningSearchQuery"
+              example:
+                8dd2edf9-6281-401a-b3e8-e65d974ed930:
+                  Thing:
+                    name: Jean-Baptiste Zorg
+          additionalProperties: true
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScreeningMatch"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ScreeningMatch:
+      title: Screening match
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        queries:
+          description: List of query IDs this match matched with
+          type: array
+          items:
+            type: string
+            format: uuid
+        status:
+          type: string
+          enum:
+            - pending
+            - no_hit
+            - confirmed_hit
+            - skipped
+        payload:
+          $ref: "#/components/schemas/ScreeningMatchPayload"
+
+    ScreeningMatchPayload:
+      title: Screening match entity
+      type: object
+      description: |
+        OpenSanctions entity data.
+
+        This is an object as defined by [OpenSanctions entity format](https://api.opensanctions.org/#tag/Data-access/operation/fetch_entity_entities__entity_id__get).
+      additionalProperties: true
+      required:
+        - id
+        - datasets
+        - properties
+      properties:
+        id:
+          description: OpenSanctions entity ID
+          type: string
+        datasets:
+          type: array
+          items:
+            type: string
+        properties:
+          type: object
+          additionalProperties: true
+      example:
+        id: ABC123
+        schema: Organization
+        datasets:
+          - us_sam_exclusions
+        score: 0.75
+        properties:
+          name:
+            - ACME Inc.
+
+    ScreeningSearchQuery:
+      title: Screening search query
+      type: object
+      oneOf:
+        - $ref: "#/components/schemas/ScreeningSearchThing"
+        - $ref: "#/components/schemas/ScreeningSearchPerson"
+        - $ref: "#/components/schemas/ScreeningSearchOrganization"
+        - $ref: "#/components/schemas/ScreeningSearchVehicle"
+
+    ScreeningSearchThing:
+      title: Any entity type
+      type: object
+      required:
+        - Thing
+      properties:
+        Thing:
+          type: object
+          minProperties: 1
+          properties:
+            name:
+              type: string
+
+    ScreeningSearchPerson:
+      title: Individual
+      type: object
+      required:
+        - Person
+      properties:
+        Person:
+          type: object
+          minProperties: 1
+          properties:
+            name:
+              type: string
+            birthDate:
+              type: string
+            idNumber:
+              type: string
+            address:
+              type: string
+
+    ScreeningSearchOrganization:
+      title: Organization or Company
+      type: object
+      required:
+        - Organization
+      properties:
+        Organization:
+          type: object
+          minProperties: 1
+          properties:
+            name:
+              type: string
+            registrationNumber:
+              type: string
+            address:
+              type: string
+
+    ScreeningSearchVehicle:
+      title: Vehicle
+      type: object
+      required:
+        - Vehicle
+      properties:
+        Vehicle:
+          type: object
+          minProperties: 1
+          properties:
+            name:
+              type: string
+            registrationNumber:
+              type: string
+
+    ScreeningWhitelistEntry:
+      title: Screening whitelist entry
+      type: object
+      required:
+        - counterparty
+        - entity_id
+      properties:
+        counterparty:
+          description: Unique counterparty identifier
+          type: string
+        entity_id:
+          description: OpenSanctions entity ID
+          type: string

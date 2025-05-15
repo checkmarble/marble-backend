@@ -1,12 +1,17 @@
 package pubapi
 
 import (
+	"net/url"
 	"reflect"
 	"strings"
 
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 )
+
+type Config struct {
+	MarbleAppUrl *url.URL
+}
 
 func InitPublicApi() {
 	if validator, ok := binding.Validator.Engine().(*validator.Validate); ok {
