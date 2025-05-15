@@ -36,7 +36,8 @@ func InitDependencies(
 	database := postgres.New(dbPool)
 
 	if len(optTokenVerifier) == 0 {
-		optTokenVerifier = append(optTokenVerifier, infra.InitializeFirebase(ctx))
+		optTokenVerifier = append(optTokenVerifier,
+			infra.InitializeFirebase(ctx, conf.FirebaseConfig.ProjectId))
 	}
 
 	firebaseClient := firebase.New(optTokenVerifier[0])
