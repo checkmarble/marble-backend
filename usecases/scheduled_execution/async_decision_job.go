@@ -357,12 +357,15 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		scenarioExecution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
 
 		utils.LoggerFromContext(ctx).InfoContext(ctx,
-			fmt.Sprintf("created decision (async) %s in %dms", decision.DecisionId,
-				decisionDuration.Milliseconds()), "org_id", scenario.OrganizationId, "decision_id",
-			decision.DecisionId, "scenario_id", scenario.Id, "score", scenarioExecution.Score,
-			"outcome", scenarioExecution.Outcome, "duration", decisionDuration.Milliseconds(),
-			"rules", scenarioExecution.ExecutionMetrics.Rules, "steps",
-			scenarioExecution.ExecutionMetrics.Steps)
+			fmt.Sprintf("created decision (async) %s in %dms", decision.DecisionId, decisionDuration.Milliseconds()),
+			"org_id", scenario.OrganizationId,
+			"decision_id", decision.DecisionId,
+			"scenario_id", scenario.Id,
+			"score", scenarioExecution.Score,
+			"outcome", scenarioExecution.Outcome,
+			"duration", decisionDuration.Milliseconds(),
+			"rules", scenarioExecution.ExecutionMetrics.Rules,
+			"steps", scenarioExecution.ExecutionMetrics.Steps)
 	}
 
 	if decision.SanctionCheckExecution != nil {

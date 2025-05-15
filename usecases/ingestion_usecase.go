@@ -103,7 +103,7 @@ func (usecase *IngestionUseCase) IngestObject(
 		return 0, err
 	}
 
-	logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nb),
+	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nb),
 		slog.String("organization_id", organizationId),
 		slog.String("object_type", objectType),
 		slog.Int("nb_objects", nb),
@@ -193,7 +193,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 		return 0, err
 	}
 
-	logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nb),
+	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nb),
 		slog.String("organization_id", organizationId),
 		slog.String("object_type", objectType),
 		slog.Int("nb_objects", nb),
@@ -493,7 +493,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		// divide by 1e6 convert to milliseconds (base is nanoseconds)
 		avgDuration := float64(duration) / float64(total*1e6)
 		if total > 0 {
-			logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested %d objects in %s, average %vms", total, duration, avgDuration))
+			logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested %d objects in %s, average %vms", total, duration, avgDuration))
 		}
 	}
 	defer printDuration()
