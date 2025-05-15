@@ -19,7 +19,7 @@ require (
 	github.com/gin-contrib/size v1.0.1
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-faker/faker/v4 v4.5.0
-	github.com/go-playground/validator/v10 v10.22.0
+	github.com/go-playground/validator/v10 v10.26.0
 	github.com/go-testfixtures/testfixtures/v3 v3.14.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/uuid v1.6.0
@@ -139,7 +139,7 @@ require (
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.4 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/getkin/kin-openapi v0.131.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect

@@ -1,0 +1,11 @@
+- id: 11111111-1111-1111-1111-111111111111
+  org_id: 00000000-0000-0000-0000-000000000000 
+  scenario_iteration_id: 11111111-1111-1111-1111-111111111111
+  display_order: 1
+  name: The Rule
+  description: The Description
+  score_modifier: +9000
+  formula_ast_expression:
+    ok: true
+  rule_group: The Group 
+  stable_rule_id: 11111111-1111-1111-1111-111111111111

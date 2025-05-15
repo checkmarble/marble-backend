@@ -17,8 +17,14 @@ import (
 // var validationTranslator ut.Translator
 
 type baseResponse[T any] struct {
-	Data  *T               `json:"data,omitempty"`
-	Links map[string][]any `json:"-"`
+	Data       *T                  `json:"data,omitempty"`
+	Links      map[string][]any    `json:"-"`
+	Pagination *paginationResponse `json:"pagination,omitempty"`
+}
+
+type paginationResponse struct {
+	HasMore    bool   `json:"has_more"`
+	NextPageId string `json:"next_page_id,omitempty"`
 }
 
 type baseErrorResponse struct {
@@ -38,6 +44,17 @@ func NewResponse[T any](data T) baseResponse[T] {
 	return baseResponse[T]{
 		Data: &data,
 	}
+}
+
+func (resp baseResponse[T]) WithPagination(hasMore bool, nextPageId string) baseResponse[T] {
+	if hasMore {
+		resp.Pagination = &paginationResponse{
+			HasMore:    hasMore,
+			NextPageId: nextPageId,
+		}
+	}
+
+	return resp
 }
 
 func (resp baseResponse[T]) WithLink(kind string, value any) baseResponse[T] {

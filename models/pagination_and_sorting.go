@@ -1,6 +1,8 @@
 package models
 
 import (
+	"fmt"
+
 	"github.com/cockroachdb/errors"
 )
 
@@ -79,13 +81,16 @@ func SortingOrderFrom(s string) SortingOrder {
 
 func ValidatePagination(pagination PaginationAndSorting) error {
 	if pagination.Order == SortingOrderUnknown {
-		return errors.Wrapf(BadParameterError, "invalid pagination: order must be either ASC or DESC, received %s", pagination.Order)
+		return errors.WithDetail(BadParameterError,
+			fmt.Sprintf("invalid pagination: order must be either ASC or DESC, received %s", pagination.Order))
 	}
 	if pagination.Sorting == SortingFieldUnknown {
-		return errors.Wrapf(BadParameterError, "invalid pagination: sorting must be either created_at or updated_at, received %s", pagination.Sorting)
+		return errors.WithDetail(BadParameterError,
+			fmt.Sprintf("invalid pagination: sorting must be either created_at or updated_at, received %s", pagination.Sorting))
 	}
 	if pagination.Limit <= 0 {
-		return errors.Wrapf(BadParameterError, "invalid pagination: limit must be greater than 0, received %d", pagination.Limit)
+		return errors.WithDetail(BadParameterError,
+			fmt.Sprintf("invalid pagination: limit must be greater than 0, received %d", pagination.Limit))
 	}
 	return nil
 }
