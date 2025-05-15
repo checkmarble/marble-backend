@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os/signal"
@@ -36,6 +37,21 @@ func RunServer(config CompiledConfig) error {
 		BatchTimeout:        time.Duration(utils.GetEnv("BATCH_TIMEOUT_SECOND", 55)) * time.Second,
 		DecisionTimeout:     time.Duration(utils.GetEnv("DECISION_TIMEOUT_SECOND", 10)) * time.Second,
 		DefaultTimeout:      time.Duration(utils.GetEnv("DEFAULT_TIMEOUT_SECOND", 5)) * time.Second,
+
+		MetabaseConfig: infra.MetabaseConfiguration{
+			SiteUrl:             utils.GetEnv("METABASE_SITE_URL", ""),
+			JwtSigningKey:       []byte(utils.GetEnv("METABASE_JWT_SIGNING_KEY", "")),
+			TokenLifetimeMinute: utils.GetEnv("METABASE_TOKEN_LIFETIME_MINUTE", 10),
+			Resources: map[models.EmbeddingType]int{
+				models.GlobalDashboard: utils.GetEnv("METABASE_GLOBAL_DASHBOARD_ID", 0),
+			},
+		},
+		FirebaseConfig: api.FirebaseConfig{
+			EmulatorUrl: utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
+			ApiKey:      utils.GetEnv("FIREBASE_API_KEY", ""),
+			AuthDomain:  utils.GetEnv("FIREBASE_AUTH_DOMAIN", ""),
+			ProjectId:   utils.GetEnv("FIREBASE_PROJECT_ID", ""),
+		},
 	}
 	if apiConfig.DisableSegment {
 		apiConfig.SegmentWriteKey = ""
@@ -55,14 +71,6 @@ func RunServer(config CompiledConfig) error {
 		MaxPoolConnections: utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
 		ClientDbConfigFile: utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
 		SslMode:            utils.GetEnv("PG_SSL_MODE", "prefer"),
-	}
-	metabaseConfig := infra.MetabaseConfiguration{
-		SiteUrl:             utils.GetEnv("METABASE_SITE_URL", ""),
-		JwtSigningKey:       []byte(utils.GetEnv("METABASE_JWT_SIGNING_KEY", "")),
-		TokenLifetimeMinute: utils.GetEnv("METABASE_TOKEN_LIFETIME_MINUTE", 10),
-		Resources: map[models.EmbeddingType]int{
-			models.GlobalDashboard: utils.GetEnv("METABASE_GLOBAL_DASHBOARD_ID", 0),
-		},
 	}
 	convoyConfiguration := infra.ConvoyConfiguration{
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
@@ -120,6 +128,25 @@ func RunServer(config CompiledConfig) error {
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
 	license := infra.VerifyLicense(licenseConfig)
 
+	if apiConfig.FirebaseConfig.ProjectId == "" {
+		logger.Warn("no FIREBASE_PROJECT_ID specified, defaulting to GOOGLE_CLOUD_PROJECT", "project", gcpConfig.ProjectId)
+		apiConfig.FirebaseConfig.ProjectId = gcpConfig.ProjectId
+	}
+	if apiConfig.FirebaseConfig.ApiKey == "" {
+		logger.Warn("no FIREBASE_API_KEY specified, this will be an error in the future")
+	}
+	if apiConfig.FirebaseConfig.AuthDomain == "" {
+		if apiConfig.FirebaseConfig.EmulatorUrl != "" {
+			apiConfig.FirebaseConfig.AuthDomain = apiConfig.FirebaseConfig.EmulatorUrl
+			logger.Warn("no FIREBASE_AUTH_DOMAIN specified, defaulting to FIREBASE_AUTH_EMULATOR_HOST",
+				"auth_domain", apiConfig.FirebaseConfig.EmulatorUrl)
+		} else {
+			apiConfig.FirebaseConfig.AuthDomain = fmt.Sprintf("%s.firebaseapp.com", apiConfig.FirebaseConfig.ProjectId)
+			logger.Warn(fmt.Sprintf("no FIREBASE_AUTH_DOMAIN specified, defaulting to %s", apiConfig.FirebaseConfig.AuthDomain))
+		}
+		logger.Warn("no FIREBASE_API_KEY specified, this will be an error in the future")
+	}
+
 	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env, config.Version)
 	defer sentry.Flush(3 * time.Second)
 
@@ -154,7 +181,7 @@ func RunServer(config CompiledConfig) error {
 	repositories := repositories.NewRepositories(
 		pool,
 		gcpConfig.GoogleApplicationCredentials,
-		repositories.WithMetabase(infra.InitializeMetabase(metabaseConfig)),
+		repositories.WithMetabase(infra.InitializeMetabase(apiConfig.MetabaseConfig)),
 		repositories.WithTransferCheckEnrichmentBucket(serverConfig.transferCheckEnrichmentBucketUrl),
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(convoyConfiguration),
@@ -173,7 +200,7 @@ func RunServer(config CompiledConfig) error {
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
-		usecases.WithMetabase(metabaseConfig.SiteUrl),
+		usecases.WithMetabase(apiConfig.MetabaseConfig.SiteUrl),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithTestMode(serverConfig.firebaseEmulatorHost != ""),
 	)
