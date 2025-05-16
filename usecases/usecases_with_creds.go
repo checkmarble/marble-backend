@@ -124,6 +124,8 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		featureAccessReader:       usecases.NewFeatureAccessReader(),
 		openSanctionsRepository:   usecases.Repositories.OpenSanctionsRepository,
 		taskQueueRepository:       usecases.Repositories.TaskQueueRepository,
+		offloadingBucketUrl:       usecases.offloadingBucketUrl,
+		blobRepository:            usecases.NewCaseUseCase().blobRepository,
 	}
 }
 

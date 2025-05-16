@@ -28,7 +28,7 @@ type offloadingRepository interface {
 		orgId, table, watermarkId string, watermarkTime time.Time) error
 
 	GetOffloadableDecisionRules(ctx context.Context, exec repositories.Executor,
-		req models.OffloadDecisionRuleRequest) ([]models.OffloadableDecisionRule, error)
+		req models.OffloadDecisionRuleRequest) (<-chan repositories.ModelResult[models.OffloadableDecisionRule], error)
 	RemoveDecisionRulePayload(ctx context.Context, tx repositories.Transaction, ids []string) error
 }
 
@@ -79,6 +79,10 @@ func NewOffloadingWorker(executorFactory executor_factory.ExecutorFactory, trans
 }
 
 func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.OffloadingArgs]) error {
+	if job.Args.OrgId != "b0d7c8b9-136a-4f75-95e2-77714b67e54d" {
+		return nil
+	}
+
 	logger := utils.LoggerFromContext(ctx)
 
 	exec := w.executorFactory.NewExecutor()
@@ -91,7 +95,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 	req := models.OffloadDecisionRuleRequest{
 		OrgId: job.Args.OrgId,
 		// TODO: make offloading threshold configurable?
-		DeleteBefore: time.Now().Add(-24 * 30 * time.Hour),
+		DeleteBefore: time.Now(), // time.Now().Add(-24 * 30 * time.Hour),
 		BatchSize:    OFFLOADING_DECISIONS_BATCH_SIZE,
 		Watermark:    wm,
 	}
@@ -101,23 +105,25 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 		return err
 	}
 
-	// We are up to date.
-	if len(rules) == 0 {
-		return nil
-	}
-
-	if wm == nil {
-		logger.Debug(fmt.Sprintf("found %d decisions rules to offload", len(rules)), "org_id", job.Args.OrgId)
-	} else {
-		logger.Debug(fmt.Sprintf("found %d decisions rules to offload", len(rules)), "org_id",
-			job.Args.OrgId, "watermark_id", wm.WatermarkId, "watermark_time", wm.WatermarkTime)
-	}
-
 	offloadedIds := make([]string, OFFLOADING_SAVE_POINT_BATCH_SIZE)
+	idx := 0
 
-	for idx, rule := range rules {
+	var lastOfBatch *models.OffloadableDecisionRule
+
+	for item := range rules {
+		if item.Error != nil {
+			return item.Error
+		}
+
+		rule := item.Model
+
+		if rule.RuleExecutionId == nil {
+			lastOfBatch = &rule
+			continue
+		}
+
 		key := fmt.Sprintf("offloading/decision_rules/%s/%d/%d/%s/%s", req.OrgId,
-			rule.CreatedAt.Year(), rule.CreatedAt.Month(), rule.DecisionId, rule.Rule.Id)
+			rule.CreatedAt.Year(), rule.CreatedAt.Month(), rule.DecisionId, *rule.RuleId)
 
 		opts := blob.WriterOptions{Metadata: map[string]string{
 			"Custom-Date": rule.CreatedAt.Format(time.RFC3339),
@@ -131,7 +137,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 
 		enc := json.NewEncoder(wr)
 
-		if err := enc.Encode(rule.Evaluation); err != nil {
+		if err := enc.Encode(rule.RuleEvaluation); err != nil {
 			return err
 		}
 
@@ -139,14 +145,12 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 			return err
 		}
 
-		offloadedIds[idx%OFFLOADING_SAVE_POINT_BATCH_SIZE] = rule.Id
+		offloadedIds[idx%OFFLOADING_SAVE_POINT_BATCH_SIZE] = *rule.RuleExecutionId
 
 		// If we get here, we have a full batch, so we can send the whole slice to be persisted.
 		// See below for the other case.
 		if (idx+1)%OFFLOADING_SAVE_POINT_BATCH_SIZE == 0 {
 			err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-				fmt.Println("SAVING", rule.DecisionId)
-
 				if err := w.repository.RemoveDecisionRulePayload(ctx, tx, offloadedIds); err != nil {
 					return err
 				}
@@ -165,25 +169,40 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 				return err
 			}
 		}
+
+		idx += 1
+		lastOfBatch = &rule
+	}
+
+	if idx == 0 {
+		return nil
 	}
 
 	// If we did not get a multiple of of save point batch size, we still have len(rules)%batch_size
 	// items to persist.
-	if len(rules)%OFFLOADING_SAVE_POINT_BATCH_SIZE > 0 {
-		lastDecisionRule := rules[len(rules)-1]
-		remainingItems := offloadedIds[:len(rules)%OFFLOADING_SAVE_POINT_BATCH_SIZE]
+	if idx%OFFLOADING_SAVE_POINT_BATCH_SIZE > 0 {
+		remainingItems := offloadedIds[:idx%OFFLOADING_SAVE_POINT_BATCH_SIZE]
 
 		return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 			if err := w.repository.RemoveDecisionRulePayload(ctx, tx, remainingItems); err != nil {
 				return err
 			}
 			if err := w.repository.SaveOffloadingWatermark(ctx, tx, job.Args.OrgId, "decision_rules",
-				lastDecisionRule.DecisionId, lastDecisionRule.CreatedAt); err != nil {
+				lastOfBatch.DecisionId, lastOfBatch.CreatedAt); err != nil {
 				return err
 			}
 
 			return nil
 		})
+	}
+
+	if idx > 0 {
+		if wm == nil {
+			logger.Debug(fmt.Sprintf("offloaded %d decisions rules", idx), "org_id", job.Args.OrgId)
+		} else {
+			logger.Debug(fmt.Sprintf("offloaded %d decisions rules", idx), "org_id",
+				job.Args.OrgId, "watermark_id", wm.WatermarkId, "watermark_time", wm.WatermarkTime)
+		}
 	}
 
 	return nil

@@ -974,7 +974,7 @@ func (repo *MarbleDbRepository) DecisionPivotValuesByCase(ctx context.Context, e
 
 func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context, exec Executor,
 	req models.OffloadDecisionRuleRequest,
-) ([]models.OffloadableDecisionRule, error) {
+) (<-chan ModelResult[models.OffloadableDecisionRule], error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -987,8 +987,14 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 	}
 
 	sql := NewQueryBuilder().
-		Select("d.created_at as created_at", "dr.*").
-		Prefix("with decisions as (").
+		Select(
+			"d.id as id",
+			"d.created_at as created_at",
+			"dr.id as rule_execution_id",
+			"dr.rule_id as rule_id",
+			"dr.rule_evaluation as rule_evaluation",
+		).
+		Prefix("with pending_decisions as (").
 		PrefixExpr(
 			squirrel.
 				Select("id", "created_at").
@@ -1003,9 +1009,17 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 		).
 		Prefix(")").
 		From("decision_rules dr").
-		InnerJoin("decisions d on d.id = dr.decision_id")
+		RightJoin("pending_decisions d on d.id = dr.decision_id")
 
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptOffloadableRuleExecution)
+	cb := func(row pgx.CollectableRow) (models.OffloadableDecisionRule, error) {
+		dbRow, err := pgx.RowToStructByName[dbmodels.DbOffloadableDecisionRule](row)
+		if err != nil {
+			return models.OffloadableDecisionRule{}, err
+		}
+		return dbmodels.AdaptOffloadableRuleExecution(dbRow)
+	}
+
+	return SqlToFallibleChannelOfModel(ctx, exec, sql, cb), nil
 }
 
 func (repo *MarbleDbRepository) RemoveDecisionRulePayload(ctx context.Context, tx Transaction, ids []string) error {

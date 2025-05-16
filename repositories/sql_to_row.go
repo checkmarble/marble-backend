@@ -37,6 +37,48 @@ func SqlToChannelOfModels[Model any](ctx context.Context, exec Executor, query s
 	return modelsChannel, errChannel
 }
 
+type ModelResult[M any] struct {
+	Model M
+	Error error
+}
+
+func SqlToFallibleChannelOfModel[Model any](ctx context.Context, exec Executor, query squirrel.Sqlizer,
+	adapter func(row pgx.CollectableRow) (Model, error),
+) <-chan ModelResult[Model] {
+	modelsChannel := make(chan ModelResult[Model], 1)
+
+	go func() {
+		defer close(modelsChannel)
+
+		err := ForEachRow(ctx, exec, query, func(row pgx.CollectableRow) error {
+			model, err := adapter(row)
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				modelsChannel <- ModelResult[Model]{model, err}
+			}
+			return nil
+		})
+		if err != nil {
+			if err == context.Canceled {
+				return
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				modelsChannel <- ModelResult[Model]{*new(Model), err}
+			}
+			return
+		}
+	}()
+
+	return modelsChannel
+}
+
 func SqlToListOfRow[Model any](ctx context.Context, exec Executor, query squirrel.Sqlizer,
 	adapter func(row pgx.CollectableRow) (Model, error),
 ) ([]Model, error) {
