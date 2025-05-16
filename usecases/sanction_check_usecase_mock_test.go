@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/stretchr/testify/mock"
 )
 
 type sanctionCheckEnforcerMock struct{}
@@ -15,6 +16,16 @@ func (sanctionCheckEnforcerMock) ReadDecision(models.Decision) error {
 
 func (sanctionCheckEnforcerMock) ReadOrUpdateCase(models.CaseMetadata, []string) error {
 	return nil
+}
+
+type SanctionCheckCaseUsecaseMock struct {
+	mock.Mock
+}
+
+func (m *SanctionCheckCaseUsecaseMock) PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error {
+	args := m.Called(ctx, tx, c)
+
+	return args.Error(0)
 }
 
 type sanctionCheckRepositoryMock struct{}

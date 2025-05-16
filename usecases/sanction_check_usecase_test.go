@@ -14,20 +14,25 @@ import (
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.ExecutorFactoryStub) {
 	enforceSecurity := sanctionCheckEnforcerMock{}
-	mock := sanctionCheckRepositoryMock{}
+	repoMock := sanctionCheckRepositoryMock{}
 	exec := executor_factory.NewExecutorFactoryStub()
 	txFac := executor_factory.NewTransactionFactoryStub(exec)
+
+	caseUsecaseMock := SanctionCheckCaseUsecaseMock{}
+	caseUsecaseMock.On("PerformCaseActionSideEffects", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	uc := SanctionCheckUsecase{
 		enforceSecurityDecision:       enforceSecurity,
 		enforceSecurityCase:           enforceSecurity,
-		organizationRepository:        mock,
-		externalRepository:            mock,
-		inboxReader:                   mock,
+		caseUsecase:                   &caseUsecaseMock,
+		organizationRepository:        repoMock,
+		externalRepository:            repoMock,
+		inboxReader:                   repoMock,
 		repository:                    &repositories.MarbleDbRepository{},
 		sanctionCheckConfigRepository: &repositories.MarbleDbRepository{},
 		executorFactory:               exec,
