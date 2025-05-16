@@ -14,7 +14,7 @@ func TestDecodeEntityAnnotation(t *testing.T) {
 		ok      bool
 	}{
 		{models.EntityAnnotationComment, []byte(`{"text":"comment text"}`), true},
-		{models.EntityAnnotationTag, []byte(`{"tag": "tag_id"}`), true},
+		{models.EntityAnnotationTag, []byte(`{"tag_id": "tag_id"}`), true},
 
 		{models.EntityAnnotationComment, []byte(`{}`), false},
 		{models.EntityAnnotationTag, []byte(`{}`), false},
@@ -45,7 +45,7 @@ func TestDecodeEntityAnnotation(t *testing.T) {
 			payload, ok := genericPayload.(models.EntityAnnotationTagPayload)
 
 			assert.True(t, ok)
-			assert.Equal(t, "tag_id", payload.Tag)
+			assert.Equal(t, "tag_id", payload.TagId)
 
 		case models.EntityAnnotationFile:
 			payload, ok := genericPayload.(models.EntityAnnotationFilePayload)

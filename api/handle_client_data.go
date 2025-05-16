@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -59,9 +60,13 @@ func handleReadClientDataAsList(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
+		clientObjectDtos, err := pure_utils.MapErr(clientObjects, dto.AdaptClientObjectDetailDto)
+		if presentError(ctx, c, err) {
+			return
+		}
 
 		c.JSON(http.StatusOK, dto.ClientDataListResponse{
-			Data:       clientObjects,
+			Data:       clientObjectDtos,
 			Pagination: dto.AdaptClientDataListPaginationDto(nextPagination),
 		})
 	}
