@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"slices"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -62,6 +64,8 @@ type DecisionUsecaseRepository interface {
 	GetSummarizedDecisionStatForTestRun(ctx context.Context, exec repositories.Executor,
 		testRunId string) ([]models.DecisionsByVersionByOutcome, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
+
+	GetOffloadingWatermark(ctx context.Context, exec repositories.Executor, orgId, table string) (*models.OffloadingWatermark, error)
 }
 
 type decisionUsecaseFeatureAccessReader interface {
@@ -115,6 +119,9 @@ type DecisionUsecase struct {
 	scenarioEvaluator         ScenarioEvaluator
 	openSanctionsRepository   repositories.OpenSanctionsRepository
 	taskQueueRepository       repositories.TaskQueueRepository
+
+	offloadingBucketUrl string
+	blobRepository      repositories.BlobRepository
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
@@ -123,7 +130,12 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
+
 	if err := usecase.enforceSecurity.ReadDecision(decision.Decision); err != nil {
+		return models.DecisionWithRuleExecutions{}, err
+	}
+
+	if err := usecase.GetOffloadedDecisionRules(ctx, decision.OrganizationId, decision); err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
@@ -810,4 +822,46 @@ func (usecase DecisionUsecase) validatePayload(
 	}
 
 	return
+}
+
+func (uc DecisionUsecase) GetOffloadedDecisionRules(ctx context.Context, orgId string,
+	decision models.DecisionWithRuleExecutions,
+) error {
+	offloadingWatermark, err := uc.repository.GetOffloadingWatermark(ctx,
+		uc.executorFactory.NewExecutor(), orgId, "decision_rules")
+	if err != nil {
+		return err
+	}
+
+	if offloadingWatermark == nil {
+		return nil
+	}
+	if decision.CreatedAt.After(offloadingWatermark.WatermarkTime) {
+		return nil
+	}
+
+	for idx, rule := range decision.RuleExecutions {
+		key := fmt.Sprintf("offloading/decision_rules/%s/%d/%d/%s/%s", orgId,
+			decision.CreatedAt.Year(), decision.CreatedAt.Month(), rule.DecisionId, rule.Rule.Id)
+
+		blob, err := uc.blobRepository.GetBlob(ctx, uc.offloadingBucketUrl, key)
+		if err != nil {
+			return err
+		}
+		defer blob.ReadCloser.Close()
+
+		content, err := io.ReadAll(blob.ReadCloser)
+		if err != nil {
+			return err
+		}
+
+		ruleEvaluation, err := dbmodels.DeserializeNodeEvaluationDto(content)
+		if err != nil {
+			return err
+		}
+
+		decision.RuleExecutions[idx].Evaluation = ruleEvaluation
+	}
+
+	return nil
 }

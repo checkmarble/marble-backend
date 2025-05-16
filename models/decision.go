@@ -146,9 +146,14 @@ type OffloadDecisionRuleRequest struct {
 }
 
 type OffloadableDecisionRule struct {
-	CreatedAt time.Time `db:"created_at"`
+	// Decision
+	DecisionId string
+	CreatedAt  time.Time
 
-	RuleExecution
+	// Rule execution
+	RuleExecutionId *string
+	RuleId          *string
+	RuleEvaluation  *ast.NodeEvaluationDto
 }
 
 // Decision input models
