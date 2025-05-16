@@ -55,9 +55,14 @@ func AdaptRuleExecution(db DbDecisionRule) (models.RuleExecution, error) {
 }
 
 type DbOffloadableDecisionRule struct {
-	CreatedAt time.Time `db:"created_at"`
+	// Decision
+	DecisionId string    `db:"id"`
+	CreatedAt  time.Time `db:"created_at"`
 
-	DbDecisionRule
+	// Rule execution
+	RuleExecutionId *string `db:"rule_execution_id"`
+	RuleId          *string `db:"rule_id"`
+	RuleEvaluation  []byte  `db:"rule_evaluation"`
 }
 
 func AdaptOffloadableRuleExecution(db DbOffloadableDecisionRule) (models.OffloadableDecisionRule, error) {
@@ -66,30 +71,11 @@ func AdaptOffloadableRuleExecution(db DbOffloadableDecisionRule) (models.Offload
 		return models.OffloadableDecisionRule{}, err
 	}
 
-	outcome := db.Outcome
-	if outcome == "" {
-		if db.ErrorCode != 0 {
-			outcome = "error"
-		} else if db.Result {
-			outcome = "hit"
-		} else {
-			outcome = "no_hit"
-		}
-	}
-
 	return models.OffloadableDecisionRule{
-		CreatedAt: db.CreatedAt,
-		RuleExecution: models.RuleExecution{
-			Id:                  db.Id,
-			DecisionId:          db.DecisionId,
-			ExecutionError:      db.ErrorCode,
-			Evaluation:          evaluation,
-			Outcome:             outcome,
-			Result:              db.Result,
-			ResultScoreModifier: db.ScoreModifier,
-			Rule: models.Rule{
-				Id: db.RuleId,
-			},
-		},
+		DecisionId:      db.DecisionId,
+		CreatedAt:       db.CreatedAt,
+		RuleExecutionId: db.RuleExecutionId,
+		RuleId:          db.RuleId,
+		RuleEvaluation:  evaluation,
 	}, nil
 }
