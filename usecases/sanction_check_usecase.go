@@ -116,12 +116,17 @@ type SanctionCheckOrganizationRepository interface {
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
 }
 
+type SanctionCheckCaseUsecase interface {
+	PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error
+}
+
 type SanctionCheckUsecase struct {
 	enforceSecurityScenario SanctionCheckEnforceSecurityScenario
 	enforceSecurityDecision SanctionCheckEnforceSecurityDecision
 	enforceSecurityCase     SanctionCheckEnforceSecurityCase
 	enforceSecurity         SanctionCheckEnforceSecurity
 
+	caseUsecase                   SanctionCheckCaseUsecase
 	organizationRepository        SanctionCheckOrganizationRepository
 	externalRepository            SanctionsCheckUsecaseExternalRepository
 	sanctionCheckConfigRepository SanctionCheckConfigRepository
@@ -482,6 +487,12 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 
 				// For now, there can be only one comment, added while reviewing, so we can directly add it.
 				updatedMatch.Comments = []models.SanctionCheckMatchComment{comment}
+			}
+
+			if data.decision.Case != nil {
+				if err := uc.caseUsecase.PerformCaseActionSideEffects(ctx, tx, *data.decision.Case); err != nil {
+					return err
+				}
 			}
 
 			// If the match is confirmed, all other pending matches should be set to "skipped" and the sanction check to "confirmed_hit"
