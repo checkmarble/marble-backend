@@ -1408,6 +1408,10 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 				return models.Case{}, err
 			}
 
+			if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+				return models.Case{}, err
+			}
+
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: c.OrganizationId,
