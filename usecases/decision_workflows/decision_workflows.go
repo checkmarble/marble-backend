@@ -90,7 +90,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		return false, nil
 	}
 
-	if scenario.DecisionToCaseWorkflowType == models.WorkflowCreateCase {
+	createNewCaseForDecision := func(ctx context.Context) (bool, error) {
 		caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, params, scenario)
 		if err != nil {
 			return false, errors.Wrap(err, "error creating case for decision")
@@ -101,46 +101,25 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		if err != nil {
 			return false, errors.Wrap(err, "error creating case for decision")
 		}
+
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: newCase.OrganizationId,
 			EventContent:   models.NewWebhookEventCaseCreatedWorkflow(newCase.GetMetadata()),
 		})
-		if err != nil {
-			return false, err
-		}
-
-		return true, nil
+		return true, err
 	}
 
-	if scenario.DecisionToCaseWorkflowType == models.WorkflowAddToCaseIfPossible {
+	switch scenario.DecisionToCaseWorkflowType {
+	case models.WorkflowCreateCase:
+		return createNewCaseForDecision(ctx)
+	case models.WorkflowAddToCaseIfPossible:
 		matchedCase, added, err := d.addToOpenCase(ctx, tx, scenario, decision)
 		if err != nil {
 			return false, errors.Wrap(err, "error adding decision to open case")
 		}
-
 		if !added {
-			caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, params, scenario)
-			if err != nil {
-				return false, errors.Wrap(err, "error creating case for decision")
-			}
-
-			input := automaticCreateCaseAttributes(scenario, decision, caseName)
-			newCase, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
-			if err != nil {
-				return false, errors.Wrap(err, "error creating case for decision")
-			}
-
-			err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-				Id:             webhookEventId,
-				OrganizationId: newCase.OrganizationId,
-				EventContent:   models.NewWebhookEventCaseCreatedWorkflow(newCase.GetMetadata()),
-			})
-			if err != nil {
-				return false, err
-			}
-
-			return true, nil
+			return createNewCaseForDecision(ctx)
 		}
 
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
@@ -153,9 +132,9 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		}
 
 		return true, nil
+	default:
+		return false, errors.New(fmt.Sprintf("unknown workflow type: %s", scenario.DecisionToCaseWorkflowType))
 	}
-
-	return false, errors.New(fmt.Sprintf("unknown workflow type: %s", scenario.DecisionToCaseWorkflowType))
 }
 
 func automaticCreateCaseAttributes(
@@ -190,29 +169,32 @@ func (d DecisionsWorkflows) addToOpenCase(
 		return models.CaseMetadata{}, false, errors.Wrap(err, "error selecting cases with pivot")
 	}
 
-	if len(eligibleCases) == 0 {
+	var bestMatchCase models.CaseMetadata
+	switch len(eligibleCases) {
+	case 0:
 		return models.CaseMetadata{}, false, nil
-	}
+	case 1:
+		bestMatchCase = eligibleCases[0]
+	default:
+		caseIds := make([]string, len(eligibleCases))
+		for i, c := range eligibleCases {
+			caseIds[i] = c.Id
+		}
 
-	caseIds := make([]string, 0, len(eligibleCases))
-	for _, c := range eligibleCases {
-		caseIds = append(caseIds, c.Id)
-	}
+		decisionCounts, err := d.repository.CountDecisionsByCaseIds(ctx, tx, scenario.OrganizationId, caseIds)
+		if err != nil {
+			return models.CaseMetadata{}, false, errors.Wrap(err, "error counting decisions by case ids")
+		}
 
-	decisionCounts, err := d.repository.CountDecisionsByCaseIds(ctx, tx, scenario.OrganizationId, caseIds)
-	if err != nil {
-		return models.CaseMetadata{}, false, errors.Wrap(err, "error counting decisions by case ids")
+		cases := make([]caseMetadataWithDecisionCount, len(eligibleCases))
+		for i, c := range eligibleCases {
+			cases[i] = caseMetadataWithDecisionCount{
+				CaseMetadata:  c,
+				DecisionCount: decisionCounts[c.Id],
+			}
+		}
+		bestMatchCase = findBestMatchCase(cases)
 	}
-
-	cases := make([]caseMetadataWithDecisionCount, 0, len(eligibleCases))
-	for _, c := range eligibleCases {
-		cases = append(cases, caseMetadataWithDecisionCount{
-			CaseMetadata:  c,
-			DecisionCount: decisionCounts[c.Id],
-		})
-	}
-
-	bestMatchCase := findBestMatchCase(cases)
 	err = d.caseEditor.UpdateDecisionsWithEvents(ctx, tx, bestMatchCase.Id, "", []string{decision.DecisionId})
 	if err != nil {
 		return models.CaseMetadata{}, false, errors.Wrap(err, "error updating case")
