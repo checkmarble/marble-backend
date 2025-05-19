@@ -62,13 +62,22 @@ func RunTaskQueue(apiVersion string) error {
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
+
+	offloadingConfig := infra.OffloadingConfig{
+		Enabled:         utils.GetEnv("OFFLOADING_ENABLED", false),
+		BucketUrl:       utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
+		JobInterval:     utils.GetEnvDuration("OFFLOADING_JOB_INTERVAL", 30*time.Minute),
+		OffloadBefore:   utils.GetEnvDuration("OFFLOADING_BEFORE", 7*24*time.Hour),
+		BatchSize:       utils.GetEnv("OFFLOADING_BATCH_SIZE", 10_000),
+		SavepointEvery:  utils.GetEnv("OFFLOADING_SAVE_POINTS", 100),
+		WritesPerSecond: utils.GetEnv("OFFLOADING_WRITES_PER_SEC", 200),
+	}
+
 	workerConfig := struct {
 		appName                     string
 		env                         string
 		failedWebhooksRetryPageSize int
 		ingestionBucketUrl          string
-		offloadDecisionRules        bool
-		offloadingBucketUrl         string
 		loggingFormat               string
 		sentryDsn                   string
 		cloudRunProbePort           string
@@ -77,8 +86,6 @@ func RunTaskQueue(apiVersion string) error {
 		env:                         utils.GetEnv("ENV", "development"),
 		failedWebhooksRetryPageSize: utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
 		ingestionBucketUrl:          utils.GetRequiredEnv[string]("INGESTION_BUCKET_URL"),
-		offloadDecisionRules:        utils.GetEnv("OFFLOAD_DECISION_RULES", false),
-		offloadingBucketUrl:         utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
 		loggingFormat:               utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:                   utils.GetEnv("SENTRY_DSN", ""),
 		cloudRunProbePort:           utils.GetEnv("CLOUD_RUN_PROBE_PORT", ""),
@@ -139,7 +146,7 @@ func RunTaskQueue(apiVersion string) error {
 	// Start the task queue workers
 	workers := river.NewWorkers()
 	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx,
-		repositories.OrganizationRepository, repositories.ExecutorGetter, workerConfig.offloadDecisionRules)
+		repositories.OrganizationRepository, repositories.ExecutorGetter, offloadingConfig)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -176,7 +183,7 @@ func RunTaskQueue(apiVersion string) error {
 
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
-		usecases.WithOffloadingBucketUrl(workerConfig.offloadingBucketUrl),
+		usecases.WithOffloading(offloadingConfig),
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
@@ -191,7 +198,7 @@ func RunTaskQueue(apiVersion string) error {
 	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
 
-	if workerConfig.offloadDecisionRules {
+	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
 	}
 

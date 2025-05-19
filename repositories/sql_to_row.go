@@ -62,7 +62,7 @@ func SqlToFallibleChannelOfModel[Model any](ctx context.Context, exec Executor, 
 			return nil
 		})
 		if err != nil {
-			if err == context.Canceled {
+			if errors.Is(err, context.Canceled) {
 				return
 			}
 
