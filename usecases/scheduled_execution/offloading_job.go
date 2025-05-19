@@ -17,6 +17,8 @@ import (
 )
 
 type offloadingRepository interface {
+	GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId string, createdAt time.Time) string
+
 	GetOffloadingWatermark(ctx context.Context, exec repositories.Executor, orgId, table string) (*models.OffloadingWatermark, error)
 	SaveOffloadingWatermark(ctx context.Context, tx repositories.Transaction,
 		orgId, table, watermarkId string, watermarkTime time.Time) error
@@ -123,8 +125,8 @@ loop:
 			}
 
 			if rule.RuleEvaluation != nil {
-				key := fmt.Sprintf("offloading/decision_rules/%s/%d/%d/%s/%s", req.OrgId,
-					rule.CreatedAt.Year(), rule.CreatedAt.Month(), rule.DecisionId, *rule.RuleId)
+				key := w.repository.GetOffloadedDecisionRuleKey(req.OrgId,
+					rule.DecisionId, *rule.RuleId, rule.CreatedAt)
 
 				opts := blob.WriterOptions{Metadata: map[string]string{
 					"Custom-Date": rule.CreatedAt.Format(time.RFC3339),

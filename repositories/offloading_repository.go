@@ -2,12 +2,22 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
+
+const (
+	OffloadingDecisionRules = "decision_rules"
+)
+
+func (repo *MarbleDbRepository) GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId string, createdAt time.Time) string {
+	return fmt.Sprintf("offloading/decision_rules/%s/%d/%d/%s/%s", orgId,
+		createdAt.Year(), createdAt.Month(), decisionId, ruleId)
+}
 
 func (repo *MarbleDbRepository) GetOffloadingWatermark(ctx context.Context, exec Executor, orgId, table string) (*models.OffloadingWatermark, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
