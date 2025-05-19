@@ -28,14 +28,13 @@ type SuspiciousActivityReportRepository interface {
 	GetSuspiciousActivityReportById(ctx context.Context, exec repositories.Executor, caseId, id string,
 		forUpdate bool) (models.SuspiciousActivityReport, error)
 	CreateSuspiciousActivityReport(ctx context.Context, exec repositories.Executor,
-		req models.CreateSuspiciousActivityReportRequest) (models.SuspiciousActivityReport, error)
+		req models.SuspiciousActivityReportRequest) (models.SuspiciousActivityReport, error)
 	UpdateSuspiciousActivityReport(ctx context.Context, exec repositories.Executor,
-		req models.UpdateSuspiciousActivityReportRequest) (models.SuspiciousActivityReport, error)
+		req models.SuspiciousActivityReportRequest) (models.SuspiciousActivityReport, error)
 	UploadSuspiciousActivityReport(ctx context.Context, tx repositories.Transaction,
-		sar models.SuspiciousActivityReport,
-		req models.UploadSuspiciousActivityReportRequest) (models.SuspiciousActivityReport, error)
+		sar models.SuspiciousActivityReport, req models.SuspiciousActivityReportRequest) (models.SuspiciousActivityReport, error)
 	DeleteSuspiciousActivityReport(ctx context.Context, exec repositories.Executor,
-		req models.UpdateSuspiciousActivityReportRequest) error
+		req models.SuspiciousActivityReportRequest) error
 
 	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
 		createCaseEventAttributes models.CreateCaseEventAttributes) error
@@ -74,7 +73,7 @@ func (uc SuspiciousActivityReportUsecase) ListReports(
 func (uc SuspiciousActivityReportUsecase) CreateReport(
 	ctx context.Context,
 	orgId string,
-	req models.CreateSuspiciousActivityReportRequest,
+	req models.SuspiciousActivityReportRequest,
 ) (models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
@@ -83,8 +82,19 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 		return models.SuspiciousActivityReport{}, err
 	}
 
-	if req.Status == models.SarUnknown {
-		req.Status = models.SarPending
+	if req.Status == nil {
+		req.Status = utils.Ptr(models.SarPending)
+	}
+
+	if req.File != nil {
+		blobKey := fmt.Sprintf("%s/%s/sar/%s", orgId, req.CaseId, uuid.NewString())
+
+		if err := uc.writeToBlobStorage(ctx, *req.File, blobKey); err != nil {
+			return models.SuspiciousActivityReport{}, err
+		}
+
+		req.Bucket = &uc.caseManagerBucketUrl
+		req.BlobKey = &blobKey
 	}
 
 	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
@@ -117,6 +127,19 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 			return models.SuspiciousActivityReport{}, err
 		}
 
+		if req.File != nil {
+			if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+				CaseId:       sar.CaseId,
+				UserId:       userId,
+				EventType:    models.SarFileUploaded,
+				ResourceType: utils.Ptr(models.SarResourceType),
+				ResourceId:   utils.Ptr(sar.Id),
+				NewValue:     utils.Ptr(req.File.Filename),
+			}); err != nil {
+				return models.SuspiciousActivityReport{}, err
+			}
+		}
+
 		return sar, nil
 	})
 }
@@ -124,7 +147,7 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 func (uc SuspiciousActivityReportUsecase) UpdateReport(
 	ctx context.Context,
 	orgId string,
-	req models.UpdateSuspiciousActivityReportRequest,
+	req models.SuspiciousActivityReportRequest,
 ) (models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
@@ -133,24 +156,29 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 		return models.SuspiciousActivityReport{}, err
 	}
 
-	sar, err := uc.repository.GetSuspiciousActivityReportById(ctx, exec, req.CaseId, req.ReportId, false)
+	sar, err := uc.repository.GetSuspiciousActivityReportById(ctx, exec, req.CaseId, *req.ReportId, false)
 	if err != nil {
 		return models.SuspiciousActivityReport{},
 			errors.Wrap(models.NotFoundError, err.Error())
 	}
 
-	if sar.Status == models.SarCompleted {
-		return models.SuspiciousActivityReport{},
-			errors.Wrap(models.UnprocessableEntityError,
-				"suspicious activity report is marked as completed")
-	}
-
-	if sar.Status == req.Status {
+	if req.Status != nil && sar.Status == *req.Status && req.File == nil {
 		return sar, nil
 	}
 
-	if req.Status == models.SarUnknown {
-		req.Status = models.SarPending
+	if req.Status == nil {
+		req.Status = utils.Ptr(models.SarPending)
+	}
+
+	if req.File != nil {
+		blobKey := fmt.Sprintf("%s/%s/sar/%s", orgId, req.CaseId, uuid.NewString())
+
+		if err := uc.writeToBlobStorage(ctx, *req.File, blobKey); err != nil {
+			return models.SuspiciousActivityReport{}, err
+		}
+
+		req.Bucket = &uc.caseManagerBucketUrl
+		req.BlobKey = &blobKey
 	}
 
 	var userId *string
@@ -162,7 +190,13 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.SuspiciousActivityReport, error) {
-		updatedSar, err := uc.repository.UpdateSuspiciousActivityReport(ctx, tx, req)
+		var updatedSar models.SuspiciousActivityReport
+
+		if req.File == nil {
+			updatedSar, err = uc.repository.UpdateSuspiciousActivityReport(ctx, exec, req)
+		} else {
+			updatedSar, err = uc.repository.UploadSuspiciousActivityReport(ctx, tx, sar, req)
+		}
 		if err != nil {
 			return models.SuspiciousActivityReport{}, err
 		}
@@ -212,75 +246,14 @@ func (uc SuspiciousActivityReportUsecase) GenerateReportUrl(
 	return uc.blobRepository.GenerateSignedUrl(ctx, *sar.Bucket, *sar.BlobKey)
 }
 
-func (uc SuspiciousActivityReportUsecase) UploadReport(
-	ctx context.Context,
-	orgId string,
-	req models.UploadSuspiciousActivityReportRequest,
-) (models.SuspiciousActivityReport, error) {
-	exec := uc.executorFactory.NewExecutor()
-
-	c, err := uc.hasCasePermissions(ctx, exec, orgId, req.CaseId)
-	if err != nil {
-		return models.SuspiciousActivityReport{}, err
-	}
-
-	var userId *string
-
-	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
-		userId = utils.Ptr(string(creds.ActorIdentity.UserId))
-	}
-
-	sar, err := executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
-		tx repositories.Transaction,
-	) (models.SuspiciousActivityReport, error) {
-		sar, err := uc.repository.GetSuspiciousActivityReportById(ctx, tx, req.CaseId, req.ReportId, true)
-		if err != nil {
-			return models.SuspiciousActivityReport{}, err
-		}
-
-		blobKey := fmt.Sprintf("%s/%s/sar/%s", orgId, req.CaseId, uuid.NewString())
-
-		if err := uc.writeToBlobStorage(ctx, req.File, blobKey); err != nil {
-			return models.SuspiciousActivityReport{}, err
-		}
-
-		req.Bucket = uc.caseManagerBucketUrl
-		req.BlobKey = blobKey
-
-		if c.AssignedTo == nil && userId != nil {
-			if err := uc.caseUsecase.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
-				return models.SuspiciousActivityReport{}, err
-			}
-		}
-
-		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-			CaseId:       sar.CaseId,
-			UserId:       userId,
-			EventType:    models.SarFileUploaded,
-			ResourceType: utils.Ptr(models.SarResourceType),
-			ResourceId:   utils.Ptr(sar.Id),
-			NewValue:     utils.Ptr(req.File.Filename),
-		}); err != nil {
-			return models.SuspiciousActivityReport{}, err
-		}
-
-		return uc.repository.UploadSuspiciousActivityReport(ctx, tx, sar, req)
-	})
-	if err != nil {
-		return models.SuspiciousActivityReport{}, err
-	}
-
-	return sar, nil
-}
-
 func (uc SuspiciousActivityReportUsecase) DeleteReport(
 	ctx context.Context,
 	orgId string,
-	req models.UpdateSuspiciousActivityReportRequest,
+	req models.SuspiciousActivityReportRequest,
 ) error {
 	exec := uc.executorFactory.NewExecutor()
 
-	sar, err := uc.repository.GetSuspiciousActivityReportById(ctx, exec, req.CaseId, req.ReportId, true)
+	sar, err := uc.repository.GetSuspiciousActivityReportById(ctx, exec, req.CaseId, *req.ReportId, true)
 	if err != nil {
 		return err
 	}

@@ -56,7 +56,7 @@ func (repo *MarbleDbRepository) GetSuspiciousActivityReportById(ctx context.Cont
 
 func (repo *MarbleDbRepository) CreateSuspiciousActivityReport(ctx context.Context,
 	exec Executor,
-	req models.CreateSuspiciousActivityReportRequest,
+	req models.SuspiciousActivityReportRequest,
 ) (models.SuspiciousActivityReport, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.SuspiciousActivityReport{}, err
@@ -85,17 +85,18 @@ func (repo *MarbleDbRepository) CreateSuspiciousActivityReport(ctx context.Conte
 }
 
 func (repo *MarbleDbRepository) UpdateSuspiciousActivityReport(ctx context.Context,
-	exec Executor,
-	req models.UpdateSuspiciousActivityReportRequest,
+	tx Executor,
+	req models.SuspiciousActivityReportRequest,
 ) (models.SuspiciousActivityReport, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
+	if err := validateMarbleDbExecutor(tx); err != nil {
 		return models.SuspiciousActivityReport{}, err
 	}
 
-	values := map[string]any{
-		"status": req.Status,
-	}
+	values := map[string]any{}
 
+	if req.Status != nil {
+		values["status"] = req.Status
+	}
 	if req.DeletedAt != nil {
 		values["deleted_at"] = utils.Ptr(time.Now())
 	}
@@ -110,18 +111,21 @@ func (repo *MarbleDbRepository) UpdateSuspiciousActivityReport(ctx context.Conte
 		}).
 		Suffix("returning *")
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSuspiciousActivityReport)
+	return SqlToModel(ctx, tx, sql, dbmodels.AdaptSuspiciousActivityReport)
 }
 
 func (repo *MarbleDbRepository) UploadSuspiciousActivityReport(ctx context.Context, tx Transaction,
 	sar models.SuspiciousActivityReport,
-	req models.UploadSuspiciousActivityReportRequest,
+	req models.SuspiciousActivityReportRequest,
 ) (models.SuspiciousActivityReport, error) {
+	// First file uploaded for a SAR means a simple update.
 	if sar.Bucket == nil || sar.BlobKey == nil {
 		sql := NewQueryBuilder().
 			Update(dbmodels.TABLE_SUSPICIOUS_ACTIVITY_REPORTS).
+			Set("status", req.Status).
 			Set("bucket", req.Bucket).
 			Set("blob_key", req.BlobKey).
+			Set("uploaded_by", req.UploadedBy).
 			Where(squirrel.Eq{
 				"case_id":    req.CaseId,
 				"report_id":  req.ReportId,
@@ -132,7 +136,7 @@ func (repo *MarbleDbRepository) UploadSuspiciousActivityReport(ctx context.Conte
 		return SqlToModel(ctx, tx, sql, dbmodels.AdaptSuspiciousActivityReport)
 	}
 
-	_, err := repo.UpdateSuspiciousActivityReport(ctx, tx, models.UpdateSuspiciousActivityReportRequest{
+	_, err := repo.UpdateSuspiciousActivityReport(ctx, tx, models.SuspiciousActivityReportRequest{
 		CaseId:    req.CaseId,
 		ReportId:  req.ReportId,
 		DeletedAt: utils.Ptr(time.Now()),
@@ -141,14 +145,14 @@ func (repo *MarbleDbRepository) UploadSuspiciousActivityReport(ctx context.Conte
 		return models.SuspiciousActivityReport{}, err
 	}
 
-	create := models.CreateSuspiciousActivityReportRequest{
+	create := models.SuspiciousActivityReportRequest{
 		CaseId:     sar.CaseId,
 		ReportId:   &sar.ReportId,
-		Status:     sar.Status,
-		Bucket:     &req.Bucket,
-		BlobKey:    &req.BlobKey,
+		Status:     &sar.Status,
+		Bucket:     req.Bucket,
+		BlobKey:    req.BlobKey,
 		CreatedBy:  models.UserId(sar.CreatedBy),
-		UploadedBy: &req.UploadedBy,
+		UploadedBy: req.UploadedBy,
 	}
 
 	return repo.CreateSuspiciousActivityReport(ctx, tx, create)
@@ -156,7 +160,7 @@ func (repo *MarbleDbRepository) UploadSuspiciousActivityReport(ctx context.Conte
 
 func (repo *MarbleDbRepository) DeleteSuspiciousActivityReport(ctx context.Context,
 	exec Executor,
-	req models.UpdateSuspiciousActivityReportRequest,
+	req models.SuspiciousActivityReportRequest,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
