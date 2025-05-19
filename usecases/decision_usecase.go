@@ -846,6 +846,11 @@ func (uc DecisionUsecase) GetOffloadedDecisionRules(ctx context.Context, orgId s
 
 		blob, err := uc.blobRepository.GetBlob(ctx, uc.offloadingBucketUrl, key)
 		if err != nil {
+			// A missing rule before the watermark means it was null and can be skipped.
+			if errors.Is(err, models.NotFoundError) {
+				continue
+			}
+
 			return err
 		}
 		defer blob.ReadCloser.Close()

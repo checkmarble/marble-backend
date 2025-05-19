@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -23,6 +24,7 @@ type Usecases struct {
 	ingestionBucketUrl          string
 	caseManagerBucketUrl        string
 	offloadingBucketUrl         string
+	offloadingConfig            infra.OffloadingConfig
 	failedWebhooksRetryPageSize int
 	hasConvoyServerSetup        bool
 	hasMetabaseSetup            bool
@@ -48,6 +50,12 @@ func WithIngestionBucketUrl(bucket string) Option {
 func WithOffloadingBucketUrl(bucket string) Option {
 	return func(o *options) {
 		o.offloadingBucketUrl = bucket
+	}
+}
+
+func WithOffloading(cfg infra.OffloadingConfig) Option {
+	return func(o *options) {
+		o.offloadingConfig = cfg
 	}
 }
 
@@ -111,6 +119,7 @@ type options struct {
 	ingestionBucketUrl          string
 	caseManagerBucketUrl        string
 	offloadingBucketUrl         string
+	offloadingConfig            infra.OffloadingConfig
 	failedWebhooksRetryPageSize int
 	license                     models.LicenseValidation
 	hasConvoyServerSetup        bool
@@ -130,6 +139,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		ingestionBucketUrl:          o.ingestionBucketUrl,
 		caseManagerBucketUrl:        o.caseManagerBucketUrl,
 		offloadingBucketUrl:         o.offloadingBucketUrl,
+		offloadingConfig:            o.offloadingConfig,
 		failedWebhooksRetryPageSize: o.failedWebhooksRetryPageSize,
 		license:                     o.license,
 		hasConvoyServerSetup:        o.hasConvoyServerSetup,

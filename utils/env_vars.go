@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"time"
 )
 
 type ParserFunc func(v string) (interface{}, error)
@@ -52,4 +53,19 @@ func GetRequiredEnv[T envVarType](envVar string) T {
 		log.Fatalf("%s environment variable is required", envVar)
 	}
 	return parseEnvVar[T](envVar, envValue)
+}
+
+func GetEnvDuration(envVar string, defaultValue time.Duration) time.Duration {
+	envValue, ok := os.LookupEnv(envVar)
+	if !ok || envValue == "" {
+		log.Printf("%s environment variable is not set, using default value '%v'", envVar, defaultValue)
+		return defaultValue
+	}
+
+	dur, err := time.ParseDuration(envValue)
+	if err != nil {
+		log.Fatalf("invalid duration value '%s' for %s", envValue, envVar)
+	}
+
+	return dur
 }
