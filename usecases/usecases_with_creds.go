@@ -597,6 +597,7 @@ func (usecases UsecasesWithCreds) NewOffloadingWorker() *scheduled_execution.Off
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.BlobRepository,
 		usecases.offloadingBucketUrl,
+		usecases.offloadingConfig,
 	)
 }
 
