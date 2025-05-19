@@ -210,8 +210,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/cases/:case_id/sar/:reportId", tom, handleUpdateSuspiciousActivityReport(uc))
 	router.GET("/cases/:case_id/sar/:reportId/download", tom,
 		handleDownloadFileToSuspiciousActivityReport(uc))
-	router.POST("/cases/:case_id/sar/:reportId/file", tom,
-		handleUploadFileToSuspiciousActivityReport(uc))
 	router.DELETE("/cases/:case_id/sar/:reportId", tom,
 		handleDeleteSuspiciousActivityReport(uc))
 	router.POST("/cases/:case_id/escalate", tom, handleEscalateCase(uc))

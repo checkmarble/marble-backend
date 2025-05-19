@@ -16,16 +16,9 @@ type SuspiciousActivityReportDto struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
-type CreateSuspiciousActivityReportParams struct {
-	Status string `json:"status" binding:"oneof='pending completed"`
-}
-
-type UpdateSuspiciousActivityReportParams struct {
-	Status string `json:"status" binding:"required,oneof='pending completed"`
-}
-
-type UploadSuspiciousActivityReportParams struct {
-	File multipart.FileHeader `form:"file"`
+type SuspiciousActivityReportParams struct {
+	Status *string               `form:"status" binding:"omitempty,oneof=pending completed"`
+	File   *multipart.FileHeader `form:"file"`
 }
 
 func AdaptSuspiciousActivityReportDto(model models.SuspiciousActivityReport) SuspiciousActivityReportDto {

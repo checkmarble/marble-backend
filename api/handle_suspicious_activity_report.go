@@ -31,16 +31,17 @@ func handleListSuspiciousActivityReports(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+// multipart endpoint to accept file uploads at the same time as status
 func handleCreateSuspiciousActivityReport(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, _ := utils.CredentialsFromCtx(ctx)
 
-		var params dto.CreateSuspiciousActivityReportParams
+		var params dto.SuspiciousActivityReportParams
 
 		caseId := c.Param("case_id")
 
-		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+		if err := c.ShouldBind(&params); err != nil {
 			presentError(ctx, c, err)
 			return
 		}
@@ -48,10 +49,21 @@ func handleCreateSuspiciousActivityReport(uc usecases.Usecases) gin.HandlerFunc 
 		uc := usecasesWithCreds(ctx, uc)
 		sarUsecase := uc.NewSuspiciousActivityReportUsecase()
 
-		req := models.CreateSuspiciousActivityReportRequest{
+		var status *models.SarStatus
+
+		if params.Status != nil {
+			status = utils.Ptr(models.SarStatusFromString(*params.Status))
+		}
+
+		req := models.SuspiciousActivityReportRequest{
 			CaseId:    caseId,
-			Status:    models.SarStatusFromString(params.Status),
+			Status:    status,
+			File:      params.File,
 			CreatedBy: creds.ActorIdentity.UserId,
+		}
+
+		if params.File != nil {
+			req.UploadedBy = &creds.ActorIdentity.UserId
 		}
 
 		sar, err := sarUsecase.CreateReport(ctx, creds.OrganizationId, req)
@@ -64,17 +76,18 @@ func handleCreateSuspiciousActivityReport(uc usecases.Usecases) gin.HandlerFunc 
 	}
 }
 
+// multipart endpoint to accept file uploads at the same time as status
 func handleUpdateSuspiciousActivityReport(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, _ := utils.CredentialsFromCtx(ctx)
 
-		var params dto.UpdateSuspiciousActivityReportParams
+		var params dto.SuspiciousActivityReportParams
 
 		caseId := c.Param("case_id")
 		reportId := c.Param("reportId")
 
-		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+		if err := c.ShouldBind(&params); err != nil {
 			presentError(ctx, c, err)
 			return
 		}
@@ -82,10 +95,21 @@ func handleUpdateSuspiciousActivityReport(uc usecases.Usecases) gin.HandlerFunc 
 		uc := usecasesWithCreds(ctx, uc)
 		sarUsecase := uc.NewSuspiciousActivityReportUsecase()
 
-		req := models.UpdateSuspiciousActivityReportRequest{
+		var status *models.SarStatus
+
+		if params.Status != nil {
+			status = utils.Ptr(models.SarStatusFromString(*params.Status))
+		}
+
+		req := models.SuspiciousActivityReportRequest{
 			CaseId:   caseId,
-			ReportId: reportId,
-			Status:   models.SarStatusFromString(params.Status),
+			ReportId: &reportId,
+			Status:   status,
+			File:     params.File,
+		}
+
+		if params.File != nil {
+			req.UploadedBy = &creds.ActorIdentity.UserId
 		}
 
 		sar, err := sarUsecase.UpdateReport(ctx, creds.OrganizationId, req)
@@ -119,41 +143,6 @@ func handleDownloadFileToSuspiciousActivityReport(uc usecases.Usecases) gin.Hand
 	}
 }
 
-func handleUploadFileToSuspiciousActivityReport(uc usecases.Usecases) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		creds, _ := utils.CredentialsFromCtx(ctx)
-
-		var params dto.UploadSuspiciousActivityReportParams
-
-		caseId := c.Param("case_id")
-		reportId := c.Param("reportId")
-
-		if err := c.ShouldBind(&params); err != nil {
-			presentError(ctx, c, err)
-			return
-		}
-
-		uc := usecasesWithCreds(ctx, uc)
-		sarUsecase := uc.NewSuspiciousActivityReportUsecase()
-
-		req := models.UploadSuspiciousActivityReportRequest{
-			CaseId:     caseId,
-			ReportId:   reportId,
-			File:       params.File,
-			UploadedBy: creds.ActorIdentity.UserId,
-		}
-
-		sar, err := sarUsecase.UploadReport(ctx, creds.OrganizationId, req)
-		if err != nil {
-			presentError(ctx, c, err)
-			return
-		}
-
-		c.JSON(http.StatusOK, dto.AdaptSuspiciousActivityReportDto(sar))
-	}
-}
-
 func handleDeleteSuspiciousActivityReport(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -165,9 +154,9 @@ func handleDeleteSuspiciousActivityReport(uc usecases.Usecases) gin.HandlerFunc 
 		uc := usecasesWithCreds(ctx, uc)
 		sarUsecase := uc.NewSuspiciousActivityReportUsecase()
 
-		req := models.UpdateSuspiciousActivityReportRequest{
+		req := models.SuspiciousActivityReportRequest{
 			CaseId:   caseId,
-			ReportId: reportId,
+			ReportId: &reportId,
 		}
 
 		if err := sarUsecase.DeleteReport(ctx, creds.OrganizationId, req); err != nil {

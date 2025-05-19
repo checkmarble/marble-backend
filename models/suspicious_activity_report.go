@@ -48,28 +48,14 @@ type SuspiciousActivityReport struct {
 	DeletedAt  *time.Time
 }
 
-type CreateSuspiciousActivityReportRequest struct {
+type SuspiciousActivityReportRequest struct {
 	CaseId     string
 	ReportId   *string
-	Status     SarStatus
 	Bucket     *string
 	BlobKey    *string
+	Status     *SarStatus
+	File       *multipart.FileHeader
 	CreatedBy  UserId
 	UploadedBy *UserId
-}
-
-type UpdateSuspiciousActivityReportRequest struct {
-	CaseId    string
-	ReportId  string
-	Status    SarStatus
-	DeletedAt *time.Time
-}
-
-type UploadSuspiciousActivityReportRequest struct {
-	CaseId     string
-	ReportId   string
-	Bucket     string
-	BlobKey    string
-	File       multipart.FileHeader
-	UploadedBy UserId
+	DeletedAt  *time.Time
 }
