@@ -63,16 +63,6 @@ func RunTaskQueue(apiVersion string) error {
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
 
-	offloadingConfig := infra.OffloadingConfig{
-		Enabled:         utils.GetEnv("OFFLOADING_ENABLED", false),
-		BucketUrl:       utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
-		JobInterval:     utils.GetEnvDuration("OFFLOADING_JOB_INTERVAL", 30*time.Minute),
-		OffloadBefore:   utils.GetEnvDuration("OFFLOADING_BEFORE", 7*24*time.Hour),
-		BatchSize:       utils.GetEnv("OFFLOADING_BATCH_SIZE", 10_000),
-		SavepointEvery:  utils.GetEnv("OFFLOADING_SAVE_POINTS", 100),
-		WritesPerSecond: utils.GetEnv("OFFLOADING_WRITES_PER_SEC", 200),
-	}
-
 	workerConfig := struct {
 		appName                     string
 		env                         string
@@ -94,6 +84,18 @@ func RunTaskQueue(apiVersion string) error {
 	logger := utils.NewLogger(workerConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 	license := infra.VerifyLicense(licenseConfig)
+
+	offloadingConfig := infra.OffloadingConfig{
+		Enabled:         utils.GetEnv("OFFLOADING_ENABLED", false),
+		BucketUrl:       utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
+		JobInterval:     utils.GetEnvDuration("OFFLOADING_JOB_INTERVAL", 30*time.Minute),
+		OffloadBefore:   utils.GetEnvDuration("OFFLOADING_BEFORE", 7*24*time.Hour),
+		BatchSize:       utils.GetEnv("OFFLOADING_BATCH_SIZE", 10_000),
+		SavepointEvery:  utils.GetEnv("OFFLOADING_SAVE_POINTS", 100),
+		WritesPerSecond: utils.GetEnv("OFFLOADING_WRITES_PER_SEC", 200),
+	}
+
+	offloadingConfig.ValidateAndFix(ctx)
 
 	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env, apiVersion)
 	defer sentry.Flush(3 * time.Second)
