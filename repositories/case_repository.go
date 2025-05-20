@@ -300,8 +300,8 @@ func casesWithRankColumns() []string {
 }
 
 func casesCoreQueryWithRank(pagination models.PaginationAndSorting) squirrel.SelectBuilder {
-	orderCondition := fmt.Sprintf("c.boost is null, c.assigned_to is not null, c.%s %s, c.id %s",
-		pagination.Sorting, pagination.Order, pagination.Order)
+	orderCondition := fmt.Sprintf("c.boost is null %s, c.%s %s, c.id %s",
+		pagination.Order, pagination.Sorting, pagination.Order, pagination.Order)
 
 	return squirrel.StatementBuilder.
 		Select(dbmodels.SelectCaseColumn...).
