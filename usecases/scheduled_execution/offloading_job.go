@@ -78,9 +78,29 @@ func NewOffloadingWorker(executorFactory executor_factory.ExecutorFactory, trans
 func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.OffloadingArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
 	exec := w.executorFactory.NewExecutor()
-	timeout := time.After(w.config.JobInterval - 5*time.Minute)
-	limiter := time.NewTicker(time.Second / time.Duration(w.config.WritesPerSecond))
-	defer limiter.Stop()
+	timeout := time.After(10 * time.Second)
+
+	tickets := make(chan struct{}, w.config.WritesPerSecond)
+
+	for range w.config.WritesPerSecond {
+		tickets <- struct{}{}
+	}
+
+	ticker := time.NewTicker(time.Second / time.Duration(w.config.WritesPerSecond))
+	defer ticker.Stop()
+
+	go func() {
+		defer close(tickets)
+
+		for {
+			select {
+			case <-ticker.C:
+				<-tickets
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 loop:
 	for {
@@ -108,10 +128,12 @@ loop:
 
 		for item := range rules {
 			select {
-			case <-limiter.C:
 			case <-timeout:
 				break loop
+			default:
 			}
+
+			tickets <- struct{}{}
 
 			if item.Error != nil {
 				return item.Error
