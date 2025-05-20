@@ -1008,8 +1008,8 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 				Limit(uint64(req.BatchSize)),
 		).
 		Prefix(")").
-		From("decision_rules dr").
-		RightJoin("pending_decisions d on d.id = dr.decision_id")
+		From("pending_decisions d").
+		LeftJoin("decision_rules dr on dr.decision_id = d.id")
 
 	cb := func(row pgx.CollectableRow) (models.OffloadableDecisionRule, error) {
 		dbRow, err := pgx.RowToStructByName[dbmodels.DbOffloadableDecisionRule](row)
@@ -1022,7 +1022,7 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 	return SqlToFallibleChannelOfModel(ctx, exec, sql, cb), nil
 }
 
-func (repo *MarbleDbRepository) RemoveDecisionRulePayload(ctx context.Context, tx Transaction, ids []string) error {
+func (repo *MarbleDbRepository) RemoveDecisionRulePayload(ctx context.Context, tx Transaction, ids []*string) error {
 	if err := validateMarbleDbExecutor(tx); err != nil {
 		return err
 	}

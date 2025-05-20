@@ -129,7 +129,7 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
-	if err := usecase.offloadedReader.GetOffloadedDecisionRules(ctx, decision.OrganizationId, decision); err != nil {
+	if err := usecase.offloadedReader.MutateWithOffloadedDecisionRules(ctx, decision.OrganizationId, decision); err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
