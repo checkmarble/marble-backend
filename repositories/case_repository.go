@@ -477,7 +477,7 @@ func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec
 }
 
 func orderConditionForCases(p models.PaginationAndSorting) string {
-	return fmt.Sprintf("c.boost is null, c.assigned_to is not null, c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)
+	return fmt.Sprintf("c.boost is null %s, c.%s %s, c.id %s", p.Order, p.Sorting, p.Order, p.Order)
 }
 
 func (repo *MarbleDbRepository) EscalateCase(ctx context.Context, exec Executor, id, inboxId string) error {
