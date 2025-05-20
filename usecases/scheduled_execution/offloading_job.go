@@ -12,8 +12,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/rivertype"
 	"gocloud.dev/blob"
+	"golang.org/x/time/rate"
 )
 
 type offloadingRepository interface {
@@ -25,7 +25,7 @@ type offloadingRepository interface {
 
 	GetOffloadableDecisionRules(ctx context.Context, exec repositories.Executor,
 		req models.OffloadDecisionRuleRequest) (<-chan repositories.ModelResult[models.OffloadableDecisionRule], error)
-	RemoveDecisionRulePayload(ctx context.Context, tx repositories.Transaction, ids []string) error
+	RemoveDecisionRulePayload(ctx context.Context, tx repositories.Transaction, ids []*string) error
 }
 
 func NewOffloadingPeriodicJob(orgId string, interval time.Duration) *river.PeriodicJob {
@@ -39,11 +39,6 @@ func NewOffloadingPeriodicJob(orgId string, interval time.Duration) *river.Perio
 					UniqueOpts: river.UniqueOpts{
 						ByQueue:  true,
 						ByPeriod: interval,
-						ByState: []rivertype.JobState{
-							rivertype.JobStateAvailable,
-							rivertype.JobStatePending, rivertype.JobStateRunning,
-							rivertype.JobStateRetryable, rivertype.JobStateScheduled,
-						},
 					},
 				}
 		},
@@ -59,7 +54,13 @@ type OffloadingWorker struct {
 	repository         offloadingRepository
 	blobRepository     repositories.BlobRepository
 
-	config infra.OffloadingConfig
+	limiter *rate.Limiter
+	config  infra.OffloadingConfig
+}
+
+func (w *OffloadingWorker) Timeout(job *river.Job[models.OffloadingArgs]) time.Duration {
+	// A timeout of JobInterval is okay because we set a custom timeout that will be slightly lower.
+	return w.config.JobInterval
 }
 
 func NewOffloadingWorker(executorFactory executor_factory.ExecutorFactory, transactionFactory executor_factory.TransactionFactory,
@@ -71,6 +72,7 @@ func NewOffloadingWorker(executorFactory executor_factory.ExecutorFactory, trans
 		transactionFactory: transactionFactory,
 		repository:         repository,
 		blobRepository:     blobRepository,
+		limiter:            rate.NewLimiter(rate.Limit(offloadConfig.WritesPerSecond), 1),
 		config:             offloadConfig,
 	}
 }
@@ -78,31 +80,14 @@ func NewOffloadingWorker(executorFactory executor_factory.ExecutorFactory, trans
 func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.OffloadingArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
 	exec := w.executorFactory.NewExecutor()
-	timeout := time.After(10 * time.Second)
 
-	tickets := make(chan struct{}, w.config.WritesPerSecond)
-
-	for range w.config.WritesPerSecond {
-		tickets <- struct{}{}
+	grace := time.Duration(w.config.JobInterval.Seconds()*0.90) * time.Second
+	if grace.Minutes() > 3 {
+		grace = 3 * time.Minute
 	}
 
-	ticker := time.NewTicker(time.Second / time.Duration(w.config.WritesPerSecond))
-	defer ticker.Stop()
+	timeout := time.After(w.config.JobInterval - grace)
 
-	go func() {
-		defer close(tickets)
-
-		for {
-			select {
-			case <-ticker.C:
-				<-tickets
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-loop:
 	for {
 		wm, err := w.repository.GetOffloadingWatermark(ctx, exec, job.Args.OrgId, "decision_rules")
 		if err != nil {
@@ -116,12 +101,14 @@ loop:
 			Watermark:    wm,
 		}
 
-		rules, err := w.repository.GetOffloadableDecisionRules(ctx, w.executorFactory.NewExecutor(), req)
+		rules, err := w.repository.GetOffloadableDecisionRules(ctx, exec, req)
 		if err != nil {
 			return err
 		}
 
-		offloadedIds := make([]string, w.config.SavepointEvery)
+		// Slice of pointers to not have to keep track of which decision were skipped or not, the
+		// query ignores NULL IDs.
+		offloadedIds := make([]*string, w.config.SavepointEvery)
 		idx := 0
 
 		var lastOfBatch *models.OffloadableDecisionRule
@@ -129,24 +116,23 @@ loop:
 		for item := range rules {
 			select {
 			case <-timeout:
-				break loop
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
 			default:
+				if err := w.limiter.Wait(ctx); err != nil {
+					return err
+				}
 			}
-
-			tickets <- struct{}{}
 
 			if item.Error != nil {
 				return item.Error
 			}
 
 			rule := item.Model
+			offloadedIds[idx%w.config.SavepointEvery] = nil
 
-			if rule.RuleExecutionId == nil {
-				lastOfBatch = &rule
-				continue
-			}
-
-			if rule.RuleEvaluation != nil {
+			if rule.RuleExecutionId != nil && rule.RuleEvaluation != nil {
 				key := w.repository.GetOffloadedDecisionRuleKey(req.OrgId,
 					rule.DecisionId, *rule.RuleId, rule.CreatedAt)
 
@@ -169,9 +155,10 @@ loop:
 				if err := wr.Close(); err != nil {
 					return err
 				}
+
+				offloadedIds[idx%w.config.SavepointEvery] = rule.RuleExecutionId
 			}
 
-			offloadedIds[idx%w.config.SavepointEvery] = *rule.RuleExecutionId
 			idx += 1
 
 			// If we get here, we have a full batch, so we can send the whole slice to be persisted.
@@ -186,7 +173,7 @@ loop:
 						return err
 					}
 
-					logger.Debug(fmt.Sprintf("successfully offloaded %d decision rules", idx), "org_id", job.Args.OrgId)
+					logger.Debug(fmt.Sprintf("offloading save point after %d decision rules", idx), "org_id", job.Args.OrgId)
 
 					return nil
 				})
@@ -207,7 +194,7 @@ loop:
 		if idx%w.config.SavepointEvery > 0 {
 			remainingItems := offloadedIds[:idx%w.config.SavepointEvery]
 
-			return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 				if err := w.repository.RemoveDecisionRulePayload(ctx, tx, remainingItems); err != nil {
 					return err
 				}
@@ -216,21 +203,21 @@ loop:
 					return err
 				}
 
-				logger.Debug(fmt.Sprintf("successfully offloaded %d decision rules", idx+1), "org_id", job.Args.OrgId)
+				logger.Debug(fmt.Sprintf("offloading save point after %d decision rules", idx+1), "org_id", job.Args.OrgId)
 
 				return nil
 			})
-		}
 
-		if idx > 0 {
-			if wm == nil {
-				logger.Debug(fmt.Sprintf("offloaded %d decisions rules", idx), "org_id", job.Args.OrgId)
-			} else {
-				logger.Debug(fmt.Sprintf("offloaded %d decisions rules", idx), "org_id",
-					job.Args.OrgId, "watermark_id", wm.WatermarkId, "watermark_time", wm.WatermarkTime)
+			if err != nil {
+				return err
 			}
 		}
-	}
 
-	return nil
+		if wm == nil {
+			logger.Debug(fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id", job.Args.OrgId)
+		} else {
+			logger.Debug(fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id",
+				job.Args.OrgId, "watermark_id", wm.WatermarkId, "watermark_time", wm.WatermarkTime)
+		}
+	}
 }

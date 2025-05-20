@@ -24,7 +24,7 @@ type OffloadedReader struct {
 	offloadingBucketUrl string
 }
 
-func (uc OffloadedReader) GetOffloadedDecisionRules(ctx context.Context, orgId string,
+func (uc OffloadedReader) MutateWithOffloadedDecisionRules(ctx context.Context, orgId string,
 	decision models.DecisionWithRuleExecutions,
 ) error {
 	offloadingWatermark, err := uc.repository.GetOffloadingWatermark(ctx,
