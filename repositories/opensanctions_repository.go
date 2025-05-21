@@ -310,7 +310,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 			"could not parse OpenSanctions response")
 	}
 
-	requestUrl := fmt.Sprintf("%s/match/sanctions", repo.opensanctions.Host())
+	requestUrl := fmt.Sprintf("%s/match/default", repo.opensanctions.Host())
 
 	if qs := repo.buildQueryString(&query.Config, &query); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
