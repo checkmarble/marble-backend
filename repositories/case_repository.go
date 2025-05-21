@@ -300,8 +300,7 @@ func casesWithRankColumns() []string {
 }
 
 func casesCoreQueryWithRank(pagination models.PaginationAndSorting) squirrel.SelectBuilder {
-	orderCondition := fmt.Sprintf("c.boost is null %s, c.%s %s, c.id %s",
-		pagination.Order, pagination.Sorting, pagination.Order, pagination.Order)
+	orderCondition := fmt.Sprintf("c.boost is null %[1]s, c.%[2]s %[1]s, c.id %[1]s", pagination.Order, pagination.Sorting)
 
 	return squirrel.StatementBuilder.
 		Select(dbmodels.SelectCaseColumn...).
@@ -348,18 +347,18 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 		return query, nil
 	}
 
-	var offsetField any
+	var offsetFieldVal any
 	switch p.Sorting {
 	case models.CasesSortingCreatedAt:
-		offsetField = offsetCase.CreatedAt
+		offsetFieldVal = offsetCase.CreatedAt
 	default:
 		// only pagination by created_at is allowed for now
 		return query, fmt.Errorf("invalid sorting field: %w", models.BadParameterError)
 	}
 
-	queryConditionBefore := fmt.Sprintf("s.%s < ? OR (s.%s = ? AND s.id < ?)", p.Sorting, p.Sorting)
-	queryConditionAfter := fmt.Sprintf("s.%s > ? OR (s.%s = ? AND s.id > ?)", p.Sorting, p.Sorting)
-	args := []any{offsetField, offsetField, p.OffsetId}
+	queryConditionBefore := fmt.Sprintf("(s.boost IS NULL, s.%s, s.id) < (?, ?, ?)", p.Sorting)
+	queryConditionAfter := fmt.Sprintf("(s.boost IS NULL, s.%s, s.id) > (?, ?, ?)", p.Sorting)
+	args := []any{offsetCase.Boost == nil, offsetFieldVal, p.OffsetId}
 
 	if p.Order == models.SortingOrderDesc {
 		query = query.Where(queryConditionBefore, args...)
@@ -477,7 +476,7 @@ func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec
 }
 
 func orderConditionForCases(p models.PaginationAndSorting) string {
-	return fmt.Sprintf("c.boost is null %s, c.%s %s, c.id %s", p.Order, p.Sorting, p.Order, p.Order)
+	return fmt.Sprintf("c.boost is null %[1]s, c.%[2]s %[1]s, c.id %[1]s", p.Order, p.Sorting)
 }
 
 func (repo *MarbleDbRepository) EscalateCase(ctx context.Context, exec Executor, id, inboxId string) error {
