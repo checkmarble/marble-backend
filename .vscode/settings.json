@@ -25,4 +25,10 @@
       "Prettier-SQL.expressionWidth": 80,
       "Prettier-SQL.SQLFlavourOverride": "postgresql",
       "mise.configureExtensionsAutomatically": false,
+      "go.lintTool": "golangci-lint",
+      "go.lintFlags": [
+            "run",
+            "--config=${workspaceFolder}/.golangci.yml",
+            "--allow-parallel-runners",
+      ],
 }
