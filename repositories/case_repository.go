@@ -314,6 +314,8 @@ func applyCaseFilters(query squirrel.SelectBuilder, filters models.CaseFilters) 
 
 	if len(filters.Statuses) > 0 {
 		query = query.Where(squirrel.Eq{"c.status": filters.Statuses})
+	} else {
+		query = query.Where(squirrel.NotEq{"c.status": "closed"})
 	}
 	if !filters.StartDate.IsZero() {
 		query = query.Where(squirrel.GtOrEq{"c.created_at": filters.StartDate})
