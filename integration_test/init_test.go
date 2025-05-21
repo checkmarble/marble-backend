@@ -170,6 +170,7 @@ func TestMain(m *testing.M) {
 		MarbleAppUrl:        "http://localhost:3000",
 		RequestLoggingLevel: "all",
 		TokenLifetimeMinute: 60,
+		DisableSegment:      true,
 		SegmentWriteKey:     "",
 		BatchTimeout:        55 * time.Second,
 		DecisionTimeout:     10 * time.Second,
@@ -180,7 +181,7 @@ func TestMain(m *testing.M) {
 	deps := api.InitDependencies(ctx, apiConfig, dbPool, privateKey, tokenVerifier)
 
 	telemetryRessources, _ := infra.InitTelemetry(infra.TelemetryConfiguration{Enabled: false}, "")
-	router := api.InitRouterMiddlewares(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
+	router := api.InitRouterMiddlewares(ctx, apiConfig, apiConfig.DisableSegment, deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, testUsecases,
 		deps.Authentication, deps.TokenHandler, logger, api.WithLocalTest(true))
 

@@ -53,10 +53,8 @@ func TrackEventWithUserId(ctx context.Context, event models.AnalyticsEvent, user
 }
 
 func Identify(ctx context.Context, userId models.UserId, traits map[string]interface{}) {
-	logger := utils.LoggerFromContext(ctx)
 	segmentClient, found := utils.SegmentClientFromContext(ctx)
 	if !found || segmentClient == nil {
-		logger.ErrorContext(ctx, "Segment client not found in context")
 		return
 	}
 
@@ -76,10 +74,8 @@ func Identify(ctx context.Context, userId models.UserId, traits map[string]inter
 }
 
 func Group(ctx context.Context, userId models.UserId, organizationId string, traits map[string]interface{}) {
-	logger := utils.LoggerFromContext(ctx)
 	segmentClient, found := utils.SegmentClientFromContext(ctx)
 	if !found || segmentClient == nil {
-		logger.ErrorContext(ctx, "Segment client not found in context")
 		return
 	}
 
@@ -114,10 +110,8 @@ func getCredentialsAndAnalyticsClientFromContext(ctx context.Context) (models.Cr
 }
 
 func getAnalyticsClientFromContext(ctx context.Context) (analytics.Client, bool) {
-	logger := utils.LoggerFromContext(ctx)
 	segmentClient, found := utils.SegmentClientFromContext(ctx)
 	if !found || segmentClient == nil {
-		logger.ErrorContext(ctx, "Segment client not found in context")
 		return nil, false
 	}
 	return segmentClient, true
