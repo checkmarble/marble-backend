@@ -393,6 +393,20 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 			Metadata: models.ClientObjectMetadata{ValidFrom: validFrom, ObjectType: objectType},
 		}
 
+		var annotations []models.EntityAnnotation
+		annotations, err = usecase.repository.GetEntityAnnotations(
+			ctx,
+			usecase.executorFactory.NewExecutor(),
+			models.EntityAnnotationRequest{
+				OrgId:      orgId,
+				ObjectType: objectType,
+				ObjectId:   object.Data["object_id"].(string),
+			})
+		if err != nil {
+			return
+		}
+		clientObject.Annotations = models.GroupAnnotationsByType(annotations)
+
 		clientObject, err = usecase.enrichClientDataObjectWithRelatedObjectsData(
 			ctx,
 			orgId,

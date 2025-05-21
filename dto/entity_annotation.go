@@ -65,7 +65,7 @@ type EntityAnnotationCommentDto struct {
 }
 
 type EntityAnnotationTagDto struct {
-	Tag string `json:"tag"`
+	Tag string `json:"tag_id"`
 }
 
 type EntityAnnotationFileDto struct {
