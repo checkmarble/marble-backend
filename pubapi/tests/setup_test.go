@@ -135,7 +135,7 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 	repos := repositories.NewRepositories(pool, "",
 		repositories.WithOpenSanctions(openSanctions))
 	uc := usecases.NewUsecases(repos, usecases.WithLicense(models.NewFullLicense()), usecases.WithOpensanctions(true))
-	router := api.InitRouterMiddlewares(ctx, cfg, nil, infra.TelemetryRessources{})
+	router := api.InitRouterMiddlewares(ctx, cfg, true, nil, infra.TelemetryRessources{})
 
 	server := api.NewServer(
 		router,

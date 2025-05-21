@@ -67,6 +67,7 @@ func corsOption(ctx context.Context, conf Configuration) cors.Config {
 func InitRouterMiddlewares(
 	ctx context.Context,
 	conf Configuration,
+	disableSegment bool,
 	segmentClient analytics.Client,
 	telemetryRessources infra.TelemetryRessources,
 ) *gin.Engine {
@@ -83,7 +84,9 @@ func InitRouterMiddlewares(
 	r.Use(cors.New(corsOption(ctx, conf)))
 	r.Use(middleware.NewLogging(logger, conf.RequestLoggingLevel))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
-	r.Use(utils.StoreSegmentClientInContextMiddleware(segmentClient))
+	if !disableSegment {
+		r.Use(utils.StoreSegmentClientInContextMiddleware(segmentClient))
+	}
 	r.Use(otelgin.Middleware(
 		conf.AppName,
 		otelgin.WithTracerProvider(telemetryRessources.TracerProvider),
