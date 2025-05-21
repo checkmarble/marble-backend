@@ -19,6 +19,16 @@ type OpenSanctionsCatalogSection struct {
 type OpenSanctionsCatalogDataset struct {
 	Name  string `json:"name"`
 	Title string `json:"title"`
+	Tag   string `json:"tag"`
+}
+
+var datasetTagMapping = map[string]string{
+	"regulatory":       "adverse-media",
+	"debarment":        "adverse-media",
+	"special_interest": "adverse-media",
+	"enrichers":        "third-partiers",
+	"peps":             "peps",
+	"sanctions":        "sanctions",
 }
 
 func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsCatalog {
@@ -34,9 +44,19 @@ func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsC
 		}
 
 		for idx, d := range s.Datasets {
+			var tag string
+
+			for _, ds := range d.Tags {
+				if t, ok := datasetTagMapping[ds]; ok {
+					tag = t
+					break
+				}
+			}
+
 			section.Datasets[idx] = OpenSanctionsCatalogDataset{
 				Name:  d.Name,
 				Title: d.Title,
+				Tag:   tag,
 			}
 		}
 

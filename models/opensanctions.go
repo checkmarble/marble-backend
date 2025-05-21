@@ -23,6 +23,7 @@ type OpenSanctionsCatalogSection struct {
 type OpenSanctionsCatalogDataset struct {
 	Name  string
 	Title string
+	Tags  []string
 }
 
 type OpenSanctionsQuery struct {
