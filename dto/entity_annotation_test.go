@@ -62,7 +62,7 @@ func TestAdaptEntityAnnotation(t *testing.T) {
 		payload []byte
 	}{
 		{models.EntityAnnotationComment, []byte(`{"text":"comment text"}`)},
-		{models.EntityAnnotationTag, []byte(`{"tag": "tag_id"}`)},
+		{models.EntityAnnotationTag, []byte(`{"tag_id": "tag_id"}`)},
 		{models.EntityAnnotationFile, []byte(`{"caption":"thecaption", "bucket":"bucket_name", "files":[{"id": "theid", "key": "thekey", "filename": "thefilename"}]}`)},
 	}
 
@@ -85,7 +85,7 @@ func TestAdaptEntityAnnotation(t *testing.T) {
 			payload, ok := genericPayload.(EntityAnnotationTagDto)
 
 			assert.True(t, ok)
-			assert.Equal(t, "tag_id", payload.Tag)
+			assert.Equal(t, "tag_id", payload.TagId)
 
 		case models.EntityAnnotationFile:
 			payload, ok := genericPayload.(EntityAnnotationFileDto)
