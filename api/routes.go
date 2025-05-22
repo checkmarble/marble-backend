@@ -72,8 +72,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleIngestionMultiplePartialUpsert(uc))
 	router.POST("/ingestion/:object_type/batch", timeoutMiddleware(conf.BatchTimeout), handlePostCsvIngestion(uc))
 	router.GET("/ingestion/:object_type/upload-logs", tom, handleListUploadLogs(uc))
-	// TODO: remove deprecated endpoints
-	router.GET("/ingestion/:object_type/:object_id", tom, handleGetIngestedObject(uc)) // deprecated, use "/client_data/..."
 
 	router.GET("/client_data/:object_type/:object_id", tom, handleGetIngestedObject(uc))
 	router.GET("/client_data/:object_type/:object_id/annotations", tom, handleListEntityAnnotations(uc))

@@ -79,7 +79,7 @@ func (s CaseStatus) CanTransition(newStatus CaseStatus) bool {
 }
 
 func (s CaseStatus) EnrichedStatus(snoozedUntil *time.Time, boost *BoostReason) string {
-	if s == CaseInvestigating && snoozedUntil != nil && snoozedUntil.After(time.Now()) {
+	if (s == CaseInvestigating || s == CasePending) && snoozedUntil != nil && snoozedUntil.After(time.Now()) {
 		return "snoozed"
 	}
 	if s == CaseInvestigating && boost != nil {
