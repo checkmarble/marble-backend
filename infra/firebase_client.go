@@ -8,8 +8,8 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func InitializeFirebase(ctx context.Context) *auth.Client {
-	app, err := firebase.NewApp(ctx, nil)
+func InitializeFirebase(ctx context.Context, projectId string) *auth.Client {
+	app, err := firebase.NewApp(ctx, &firebase.Config{ProjectID: projectId})
 	if err != nil {
 		panic(errors.Wrap(err, "error initializing app"))
 	}
