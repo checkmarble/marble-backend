@@ -8,10 +8,10 @@ type PaginationParams struct {
 	Limit int    `form:"limit" binding:"omitempty,min=1"`
 }
 
-func (p PaginationParams) ToModel() models.PaginationAndSorting {
-	return models.PaginationAndSorting{
+func (p PaginationParams) ToModel(defaults models.PaginationDefaults) models.PaginationAndSorting {
+	return models.WithPaginationDefaults(models.PaginationAndSorting{
 		OffsetId: p.After,
 		Order:    models.SortingOrderFrom(p.Order),
 		Limit:    p.Limit,
-	}
+	}, defaults)
 }
