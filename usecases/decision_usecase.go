@@ -389,7 +389,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 	}
 	scenario, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
 	if errors.Is(err, models.NotFoundError) {
-		return false, models.DecisionWithRuleExecutions{}, errors.Wrap(err, "scenario not found")
+		return false, models.DecisionWithRuleExecutions{}, errors.WithDetail(err, "scenario not found")
 	} else if err != nil {
 		return false, models.DecisionWithRuleExecutions{},
 			errors.Wrap(err, "error getting scenario")
