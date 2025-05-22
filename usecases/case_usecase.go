@@ -454,8 +454,6 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 		return err
 	}
 
-	// TODO: can we snooze/unsnooze a case if its status is pending or closed?
-
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := uc.repository.SnoozeCase(ctx, tx, req); err != nil {
 			return err
