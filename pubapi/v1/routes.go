@@ -17,6 +17,8 @@ func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usec
 		r.POST("/decisions/:decisionId/snooze", HandleSnoozeRule(uc))
 		r.GET("/decisions/:decisionId/screenings", HandleListSanctionChecks(uc))
 
+		r.GET("/batch-executions", HandleListBatchExecutions(uc))
+
 		r.POST("/screening/:screeningId/refine", HandleRefineSanctionCheck(uc, true))
 		r.POST("/screening/:screeningId/search", HandleRefineSanctionCheck(uc, false))
 		r.POST("/screening/search", HandleSanctionFreeformSearch(uc))

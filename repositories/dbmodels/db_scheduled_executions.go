@@ -25,12 +25,15 @@ const TABLE_SCHEDULED_EXECUTIONS = "scheduled_executions"
 
 var ScheduledExecutionFields = utils.ColumnList[DBScheduledExecution]()
 
-func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario) models.ScheduledExecution {
+func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario,
+	iteration models.ScenarioIteration,
+) models.ScheduledExecution {
 	return models.ScheduledExecution{
 		Id:                         db.Id,
 		OrganizationId:             db.OrganizationId,
 		ScenarioId:                 db.ScenarioId,
 		ScenarioIterationId:        db.ScenarioIterationId,
+		ScenarioVersion:            iteration.Version,
 		Status:                     models.ScheduledExecutionStatusFrom(db.Status),
 		StartedAt:                  db.StartedAt,
 		FinishedAt:                 db.FinishedAt,
