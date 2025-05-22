@@ -1,6 +1,7 @@
 package params
 
 import (
+	"encoding/json"
 	"time"
 
 	gdto "github.com/checkmarble/marble-backend/dto"
@@ -47,4 +48,14 @@ func (p ListDecisionsParams) ToFilters() gdto.DecisionFilters {
 	filters.EndDate = time.Time(p.EndDate)
 
 	return filters
+}
+
+type CreateDecisionParams struct {
+	ScenarioId    string          `json:"scenario_id" binding:"required,uuid"`
+	TriggerObject json.RawMessage `json:"trigger_object" binding:"required"`
+}
+
+type CreateAllDecisionsParams struct {
+	TriggerObjectType string          `json:"trigger_object_type" binding:"required"`
+	TriggerObject     json.RawMessage `json:"trigger_object" binding:"required"`
 }

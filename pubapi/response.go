@@ -18,6 +18,7 @@ import (
 
 type baseResponse[T any] struct {
 	Data       *T                  `json:"data,omitempty"`
+	Metadata   map[string]any      `json:"metadata,omitempty"`
 	Links      map[string][]any    `json:"-"`
 	Pagination *paginationResponse `json:"pagination,omitempty"`
 }
@@ -70,6 +71,12 @@ func (resp baseResponse[T]) WithLink(kind string, value any) baseResponse[T] {
 	return resp
 }
 
+func (resp baseResponse[T]) WithMetadata(metadata map[string]any) baseResponse[T] {
+	resp.Metadata = metadata
+
+	return resp
+}
+
 func NewErrorResponse() baseErrorResponse {
 	return baseErrorResponse{
 		Error: ErrorResponse{
@@ -82,6 +89,12 @@ func (resp baseErrorResponse) WithErrorCode(code string) baseErrorResponse {
 	resp.Error.Code = code
 
 	return resp
+}
+
+func (resp baseErrorResponse) setErrorCode(code string) {
+	if resp.Error.Code == "" {
+		resp.Error.Code = code
+	}
 }
 
 func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
@@ -116,26 +129,26 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 		switch {
 		case errors.Is(err, models.ForbiddenError):
 			resp.Error.status = http.StatusForbidden
-			resp.Error.Code = ErrForbidden.Error()
+			resp.setErrorCode(ErrForbidden.Error())
 
 		case
 			errors.Is(err, models.NotFoundError),
 			errors.Is(err, pgx.ErrNoRows):
 
 			resp.Error.status = http.StatusNotFound
-			resp.Error.Code = ErrNotFound.Error()
+			resp.setErrorCode(ErrNotFound.Error())
 
 		case errors.Is(err, models.ConflictError):
 			resp.Error.status = http.StatusConflict
-			resp.Error.Code = ErrConflict.Error()
+			resp.setErrorCode(ErrConflict.Error())
 
 		case errors.Is(err, ErrFeatureDisabled):
 			resp.Error.status = http.StatusPaymentRequired
-			resp.Error.Code = ErrFeatureDisabled.Error()
+			resp.setErrorCode(ErrFeatureDisabled.Error())
 
 		case errors.Is(err, ErrNotConfigured):
 			resp.Error.status = http.StatusNotImplemented
-			resp.Error.Code = ErrNotConfigured.Error()
+			resp.setErrorCode(ErrNotConfigured.Error())
 
 		case
 			errors.Is(err, io.EOF),
@@ -143,14 +156,14 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 			errors.Is(err, models.BadParameterError):
 
 			resp.Error.status = http.StatusBadRequest
-			resp.Error.Code = ErrInvalidPayload.Error()
+			resp.setErrorCode(ErrInvalidPayload.Error())
 
 		case
 			errors.Is(err, models.UnprocessableEntityError),
 			errors.Is(err, ErrUnprocessableEntity):
 
 			resp.Error.status = http.StatusUnprocessableEntity
-			resp.Error.Code = ErrUnprocessableEntity.Error()
+			resp.setErrorCode(ErrUnprocessableEntity.Error())
 
 		default:
 			resp.Error.err = err
@@ -165,7 +178,7 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 }
 
 func (resp baseErrorResponse) WithErrorMessage(message string) baseErrorResponse {
-	resp.Error.Code = message
+	resp.Error.Messages = append(resp.Error.Messages, message)
 
 	return resp
 }
