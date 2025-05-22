@@ -10,16 +10,16 @@ import (
 )
 
 type Decision struct {
-	Id                   string           `json:"id"`
-	ScheduledExecutionId *string          `json:"scheduled_execution_id,omitempty"`
-	Case                 *Case            `json:"case,omitempty"`
-	CreatedAt            time.Time        `json:"created_at"`
-	TriggerObject        map[string]any   `json:"trigger_object"`
-	Outcome              string           `json:"outcome"`
-	ReviewStatus         *string          `json:"review_status"`
-	Scenario             DecisionScenario `json:"scenario"`
-	Score                int              `json:"score"`
-	Rules                []DecisionRule   `json:"rules,omitempty"`
+	Id            string           `json:"id"`
+	BatchRunId    *string          `json:"batch_execution_id,omitempty"`
+	Case          *Case            `json:"case,omitempty"`
+	CreatedAt     time.Time        `json:"created_at"`
+	TriggerObject map[string]any   `json:"trigger_object"`
+	Outcome       string           `json:"outcome"`
+	ReviewStatus  *string          `json:"review_status"`
+	Scenario      DecisionScenario `json:"scenario"`
+	Score         int              `json:"score"`
+	Rules         []DecisionRule   `json:"rules,omitempty"`
 }
 
 type DecisionScenario struct {
@@ -43,13 +43,13 @@ type DecisionRuleError struct {
 func AdaptDecision(ruleExecutions []models.RuleExecution) func(models.Decision) Decision {
 	return func(model models.Decision) Decision {
 		d := Decision{
-			Id:                   model.DecisionId,
-			CreatedAt:            model.CreatedAt,
-			TriggerObject:        model.ClientObject.Data,
-			Outcome:              model.Outcome.String(),
-			ReviewStatus:         model.ReviewStatus,
-			Score:                model.Score,
-			ScheduledExecutionId: model.ScheduledExecutionId,
+			Id:            model.DecisionId,
+			CreatedAt:     model.CreatedAt,
+			TriggerObject: model.ClientObject.Data,
+			Outcome:       model.Outcome.String(),
+			ReviewStatus:  model.ReviewStatus,
+			Score:         model.Score,
+			BatchRunId:    model.ScheduledExecutionId,
 			Scenario: DecisionScenario{
 				Id:          model.ScenarioId,
 				IterationId: model.ScenarioIterationId,

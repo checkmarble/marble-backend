@@ -16,6 +16,7 @@ import (
 type dbJoinScheduledExecutionAndScenario struct {
 	dbmodels.DBScheduledExecution
 	dbmodels.DBScenario
+	dbmodels.DBScenarioIteration
 }
 
 func adaptJoinScheduledExecutionWithScenario(row pgx.CollectableRow) (models.ScheduledExecution, error) {
@@ -28,18 +29,25 @@ func adaptJoinScheduledExecutionWithScenario(row pgx.CollectableRow) (models.Sch
 	if err != nil {
 		return models.ScheduledExecution{}, err
 	}
-	return dbmodels.AdaptScheduledExecution(db.DBScheduledExecution, scenario), nil
+	iteration, err := dbmodels.AdaptScenarioIteration(db.DBScenarioIteration)
+	if err != nil {
+		return models.ScheduledExecution{}, err
+	}
+	return dbmodels.AdaptScheduledExecution(db.DBScheduledExecution, scenario, iteration), nil
 }
 
 func selectJoinScheduledExecutionAndScenario() squirrel.SelectBuilder {
 	var columns []string
 	columns = append(columns, columnsNames("se", dbmodels.ScheduledExecutionFields)...)
 	columns = append(columns, columnsNames("scenario", dbmodels.SelectScenarioColumn)...)
+	columns = append(columns, columnsNames("scenario_iterations",
+		dbmodels.SelectScenarioIterationColumn)...)
 
 	return NewQueryBuilder().
 		Select(columns...).
 		From(fmt.Sprintf("%s AS se", dbmodels.TABLE_SCHEDULED_EXECUTIONS)).
-		Join(fmt.Sprintf("%s AS scenario ON scenario.id = se.scenario_id", dbmodels.TABLE_SCENARIOS))
+		Join(fmt.Sprintf("%s AS scenario ON scenario.id = se.scenario_id", dbmodels.TABLE_SCENARIOS)).
+		Join(fmt.Sprintf("%s AS scenario_iterations ON scenario_iterations.id = se.scenario_iteration_id", dbmodels.TABLE_SCENARIO_ITERATIONS))
 }
 
 func (repo *MarbleDbRepository) GetScheduledExecution(ctx context.Context, exec Executor, id string) (models.ScheduledExecution, error) {

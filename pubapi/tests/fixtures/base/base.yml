@@ -1,5 +1,5 @@
 organizations:
-  - id: 00000000-0000-0000-0000-000000000000 
+  - id: 00000000-0000-0000-0000-000000000000
     name: ACME
 
 organization_feature_access:
@@ -16,4 +16,9 @@ scenarios:
     org_id: 00000000-0000-0000-0000-000000000000
     name: Scenario name
     description: Scenario description
+    trigger_object_type: transactions
+  - id: 22222222-2222-2222-2222-222222222222
+    org_id: 00000000-0000-0000-0000-000000000000
+    name: Scenario 2 name
+    description: Scenario 2 description
     trigger_object_type: transactions

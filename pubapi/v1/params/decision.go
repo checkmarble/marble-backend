@@ -11,15 +11,15 @@ import (
 type ListDecisionsParams struct {
 	pubapi.PaginationParams
 
-	ScenarioId           *string         `form:"scenario_id" binding:"omitzero,uuid"`
-	ScheduledExecutionId *string         `form:"scheduled_execution_id" binding:"omitzero,uuid"`
-	CaseId               *string         `form:"case_id" binding:"omitzero,uuid"`
-	Outcome              *string         `form:"outcome" binding:"omitzero,oneof=approve review block_and_review decline"`
-	ReviewStatus         *string         `form:"review_status" binding:"omitzero,oneof=pending approve decline,excluded_unless=Outcome block_and_review"`
-	TriggerObjectId      *string         `form:"trigger_object_id"`
-	PivotValue           *string         `form:"pivot_value"`
-	StartDate            pubapi.DateTime `form:"start"`
-	EndDate              pubapi.DateTime `form:"end"`
+	ScenarioId       *string         `form:"scenario_id" binding:"omitzero,uuid"`
+	BatchExecutionId *string         `form:"batch_execution_id" binding:"omitzero,uuid"`
+	CaseId           *string         `form:"case_id" binding:"omitzero,uuid"`
+	Outcome          *string         `form:"outcome" binding:"omitzero,oneof=approve review block_and_review decline"`
+	ReviewStatus     *string         `form:"review_status" binding:"omitzero,oneof=pending approve decline,excluded_unless=Outcome block_and_review"`
+	TriggerObjectId  *string         `form:"trigger_object_id"`
+	PivotValue       *string         `form:"pivot_value"`
+	StartDate        pubapi.DateTime `form:"start"`
+	EndDate          pubapi.DateTime `form:"end"`
 }
 
 func (p ListDecisionsParams) ToFilters() gdto.DecisionFilters {
@@ -28,8 +28,8 @@ func (p ListDecisionsParams) ToFilters() gdto.DecisionFilters {
 	if !utils.NilOrZero(p.ScenarioId) {
 		filters.ScenarioIds = []string{*p.ScenarioId}
 	}
-	if !utils.NilOrZero(p.ScheduledExecutionId) {
-		filters.ScheduledExecutionIds = []string{*p.ScheduledExecutionId}
+	if !utils.NilOrZero(p.BatchExecutionId) {
+		filters.ScheduledExecutionIds = []string{*p.BatchExecutionId}
 	}
 	if !utils.NilOrZero(p.CaseId) {
 		filters.CaseIds = []string{*p.CaseId}
