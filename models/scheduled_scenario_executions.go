@@ -24,6 +24,11 @@ type ScheduledExecution struct {
 	Manual                     bool
 }
 
+type PaginatedScheduledExecutions struct {
+	Executions []ScheduledExecution
+	HasMore    bool
+}
+
 type ScheduledExecutionStatus int
 
 const (

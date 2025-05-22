@@ -47,7 +47,7 @@ func HandleListDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		filters := params.ToFilters()
-		paging := models.WithPaginationDefaults(params.PaginationParams.ToModel(), decisionPaginationDefaults)
+		paging := params.PaginationParams.ToModel(decisionPaginationDefaults)
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		decisionsUsecase := uc.NewDecisionUsecase()

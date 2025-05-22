@@ -26,6 +26,13 @@ func (s *ScheduledExecutionUsecaseRepository) ListScheduledExecutions(ctx contex
 	return args.Get(0).([]models.ScheduledExecution), args.Error(1)
 }
 
+func (s *ScheduledExecutionUsecaseRepository) ListPaginatedScheduledExecutions(ctx context.Context,
+	exec repositories.Executor, filters models.ListScheduledExecutionsFilters, paging models.PaginationAndSorting,
+) ([]models.ScheduledExecution, error) {
+	args := s.Called(exec, filters)
+	return args.Get(0).([]models.ScheduledExecution), args.Error(1)
+}
+
 func (s *ScheduledExecutionUsecaseRepository) CreateScheduledExecution(ctx context.Context,
 	exec repositories.Executor, input models.CreateScheduledExecutionInput, newScheduledExecutionId string,
 ) error {

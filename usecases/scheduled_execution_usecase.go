@@ -25,6 +25,8 @@ type ScheduledExecutionUsecaseRepository interface {
 	GetScheduledExecution(ctx context.Context, exec repositories.Executor, id string) (models.ScheduledExecution, error)
 	ListScheduledExecutions(ctx context.Context, exec repositories.Executor,
 		filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
+	ListPaginatedScheduledExecutions(ctx context.Context, exec repositories.Executor,
+		filters models.ListScheduledExecutionsFilters, paging models.PaginationAndSorting) ([]models.ScheduledExecution, error)
 	CreateScheduledExecution(ctx context.Context, exec repositories.Executor,
 		input models.CreateScheduledExecutionInput, id string) error
 	UpdateScheduledExecutionStatus(
@@ -114,6 +116,37 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(
 			}
 		}
 		return executions, nil
+	})
+}
+
+func (usecase *ScheduledExecutionUsecase) ListPaginatedScheduledExecutions(
+	ctx context.Context,
+	organizationId string,
+	filters models.ListScheduledExecutionsFilters,
+	paging models.PaginationAndSorting,
+) (models.PaginatedScheduledExecutions, error) {
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Transaction,
+	) (models.PaginatedScheduledExecutions, error) {
+		executions, err := usecase.repository.ListPaginatedScheduledExecutions(ctx, tx, filters, paging)
+		if err != nil {
+			return models.PaginatedScheduledExecutions{}, err
+		}
+
+		for _, execution := range executions {
+			if err := usecase.enforceSecurity.ReadScheduledExecution(execution); err != nil {
+				return models.PaginatedScheduledExecutions{}, err
+			}
+		}
+
+		hasMore := false
+
+		if len(executions) > paging.Limit {
+			hasMore = true
+			executions = executions[:paging.Limit]
+		}
+
+		return models.PaginatedScheduledExecutions{Executions: executions, HasMore: hasMore}, nil
 	})
 }
 
