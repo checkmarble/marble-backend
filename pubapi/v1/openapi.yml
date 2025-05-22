@@ -38,8 +38,8 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: scheduled_execution_id
-          description: Filter decisions created by a specific scheduled execution
+        - name: batch_execution_id
+          description: Filter decisions created by a specific batch execution
           in: query
           schema:
             type: string
@@ -322,7 +322,7 @@ paths:
       description: |
         Retrieve screening result without persisting them.
 
-        This endpoint will **not** replace the provided screening result, but allow to preview the results as executed in the original decision's context (using its unique counterparty ID and elligible whitelisted entries).
+        This endpoint will **not** replace the provided screening result, but allow to preview the results as executed in the original decision's context (using its unique counterparty ID and eligible whitelisted entries).
       parameters:
         - name: screeningId
           in: path
@@ -545,13 +545,46 @@ paths:
                 allOf:
                   - $ref: "#/components/schemas/BaseResponse"
                   - type: object
-                    required:
-                      - data
                     properties:
                       data:
                         type: array
                         items:
                           $ref: "#/components/schemas/ScreeningWhitelistEntry"
+        "400":
+          $ref: "#/components/responses/400"
+
+  /batch-executions:
+    get:
+      operationId: listBatchExecutions
+      tags:
+        - Batch executions
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: List batch executions
+      description: |
+        List scheduled, ongoing and finished batch executions
+      parameters:
+        - name: scenario_id
+          description: List batch executions for a specific scenario
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of batch executions matching the filters
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/BatchExecution"
         "400":
           $ref: "#/components/responses/400"
 
@@ -719,7 +752,7 @@ components:
         id:
           type: string
           format: uuid
-        scheduled_execution_id:
+        batch_execution_id:
           type: string
           format: uuid
         case:
@@ -850,11 +883,7 @@ components:
             format: uuid
         status:
           type: string
-          enum:
-            - pending
-            - no_hit
-            - confirmed_hit
-            - skipped
+          enum: ["pending", "no_hit", "confirmed_hit", "skipped"]
         payload:
           $ref: "#/components/schemas/ScreeningMatchPayload"
 
@@ -977,3 +1006,41 @@ components:
         entity_id:
           description: OpenSanctions entity ID
           type: string
+
+    BatchExecution:
+      title: Batch execution
+      type: object
+      required:
+        - id
+        - scenario
+        - manual
+        - status
+        - decisions_created
+        - created_at
+      properties:
+        id:
+          description: ID of the batch execution
+          type: string
+          format: uuid
+        scenario:
+          $ref: "#/components/schemas/Scenario"
+        manual:
+          description: Whether the batch was started manually (or through scheduling)
+          type: boolean
+        status:
+          description: Status of the batch execution
+          type: string
+          enum:
+            ["pending", "processing", "success", "partial_failure", "failure"]
+        decisions_created:
+          description: Number of decisions that were created by this batch execution
+          type: integer
+          min: 0
+        created_at:
+          description: Date the execution was created
+          type: string
+          format: date-time
+        finished_at:
+          description: Date the execution finished processing
+          type: string
+          format: date-time
