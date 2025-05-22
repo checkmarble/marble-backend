@@ -95,6 +95,46 @@ func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exe
 	)
 }
 
+func (repo *MarbleDbRepository) ListPaginatedScheduledExecutions(ctx context.Context, exec Executor,
+	filters models.ListScheduledExecutionsFilters, paging models.PaginationAndSorting,
+) ([]models.ScheduledExecution, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	var cursorExecution *models.ScheduledExecution
+
+	if paging.OffsetId != "" {
+		execution, err := repo.GetScheduledExecution(ctx, exec, paging.OffsetId)
+		if err != nil {
+			return nil, err
+		}
+		cursorExecution = &execution
+	}
+
+	query := selectJoinScheduledExecutionAndScenario().
+		OrderBy("se.started_at DESC").
+		Limit(uint64(paging.Limit + 1))
+
+	if cursorExecution != nil {
+		query = query.Where(squirrel.Expr("(se.started_at, se.id) < (?, ?)", cursorExecution.StartedAt, cursorExecution.FinishedAt))
+	}
+
+	if filters.ScenarioId != "" {
+		query = query.Where(squirrel.Eq{"se.scenario_id": filters.ScenarioId})
+	}
+	if filters.OrganizationId != "" {
+		query = query.Where(squirrel.Eq{"se.organization_id": filters.OrganizationId})
+	}
+
+	return SqlToListOfRow(
+		ctx,
+		exec,
+		query,
+		adaptJoinScheduledExecutionWithScenario,
+	)
+}
+
 func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, exec Executor,
 	createScheduledEx models.CreateScheduledExecutionInput, newScheduledExecutionId string,
 ) error {

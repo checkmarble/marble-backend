@@ -67,7 +67,7 @@ func testDecisionFilters(t *testing.T, e *httpexpect.Expect) {
 		{"case_id", ids[0], 2, ""},
 		{"outcome", "decline", 1, ids[2]},
 		{"trigger_object_id", ids[1], 1, ids[1]},
-		{"scheduled_execution_id", ids[2], 1, ids[2]},
+		{"batch_execution_id", ids[2], 1, ids[2]},
 		{"pivot_value", ids[1], 1, ids[1]},
 		{"start", "2025-02-01T00:00:00Z", 1, ids[2]},
 		{"end", "2025-02-01T00:00:00Z", 1, ids[1]},

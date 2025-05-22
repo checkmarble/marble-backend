@@ -44,4 +44,27 @@ func batchExecutions(t *testing.T, e *httpexpect.Expect) {
 		JSON().
 		Object().Path("$.data").Array().
 		Length().IsEqual(1)
+
+	first := e.GET("/batch-executions").
+		WithQuery("limit", "1").
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object()
+
+	first.Path("$.data").Array().Length().IsEqual(1)
+	first.Path("$.data").Array().Value(0).Object().HasValue("id", "11111111-1111-1111-1111-111111111111")
+	first.Path("$.pagination").Object().
+		HasValue("has_more", true).
+		HasValue("next_page_id", "11111111-1111-1111-1111-111111111111")
+
+	second := e.GET("/batch-executions").
+		WithQuery("limit", "1").
+		WithQuery("after", "11111111-1111-1111-1111-111111111111").
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object()
+
+	second.Path("$.data").Array().Length().IsEqual(1)
+	second.Path("$.data").Array().Value(0).Object().HasValue("id", "22222222-2222-2222-2222-222222222222")
+	second.NotContainsKey("pagination")
 }
