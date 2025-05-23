@@ -62,6 +62,7 @@ type DbOffloadableDecisionRule struct {
 	// Rule execution
 	RuleExecutionId *string `db:"rule_execution_id"`
 	RuleId          *string `db:"rule_id"`
+	RuleOutcome     *string `db:"outcome"`
 	RuleEvaluation  []byte  `db:"rule_evaluation"`
 }
 
@@ -76,6 +77,7 @@ func AdaptOffloadableRuleExecution(db DbOffloadableDecisionRule) (models.Offload
 		CreatedAt:       db.CreatedAt,
 		RuleExecutionId: db.RuleExecutionId,
 		RuleId:          db.RuleId,
+		RuleOutcome:     db.RuleOutcome,
 		RuleEvaluation:  evaluation,
 	}, nil
 }

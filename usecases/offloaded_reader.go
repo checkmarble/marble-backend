@@ -13,7 +13,7 @@ import (
 )
 
 type offloadableRepository interface {
-	GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId string, createdAt time.Time) string
+	GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId, outcome string, createdAt time.Time) string
 	GetOffloadingWatermark(ctx context.Context, exec repositories.Executor, orgId, table string) (*models.OffloadingWatermark, error)
 }
 
@@ -41,7 +41,8 @@ func (uc OffloadedReader) MutateWithOffloadedDecisionRules(ctx context.Context, 
 	}
 
 	for idx, rule := range decision.RuleExecutions {
-		key := uc.repository.GetOffloadedDecisionRuleKey(orgId, rule.DecisionId, rule.Rule.Id, decision.CreatedAt)
+		key := uc.repository.GetOffloadedDecisionRuleKey(orgId, rule.DecisionId,
+			rule.Rule.Id, rule.Outcome, decision.CreatedAt)
 
 		blob, err := uc.blobRepository.GetBlob(ctx, uc.offloadingBucketUrl, key)
 		if err != nil {

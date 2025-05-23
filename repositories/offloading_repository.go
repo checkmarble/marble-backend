@@ -14,8 +14,10 @@ const (
 	OffloadingDecisionRules = "decision_rules"
 )
 
-func (repo *MarbleDbRepository) GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId string, createdAt time.Time) string {
-	return fmt.Sprintf("offloading/decision_rules/%s/%d/%d/%s/%s", orgId,
+func (repo *MarbleDbRepository) GetOffloadedDecisionRuleKey(
+	orgId, decisionId, ruleId, outcome string, createdAt time.Time,
+) string {
+	return fmt.Sprintf("offloading/decision_rules/%s/%s/%d/%d/%s/%s", outcome, orgId,
 		createdAt.Year(), createdAt.Month(), decisionId, ruleId)
 }
 
