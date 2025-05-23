@@ -21,4 +21,5 @@ var (
 	ErrInvalidPayload      = errors.New("invalid_payload")
 	ErrConflict            = errors.New("conflict")
 	ErrUnprocessableEntity = errors.New("unprocessable_entity")
+	ErrTimeout             = errors.New("timeout")
 )

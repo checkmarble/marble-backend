@@ -1,8 +1,6 @@
 package v1
 
 import (
-	"fmt"
-
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
@@ -41,9 +39,6 @@ func HandleListBatchExecutions(uc usecases.Usecases) gin.HandlerFunc {
 
 		filters := params.ToFilters(orgId)
 		paging := params.PaginationParams.ToModel(batchExecutionsPaginationDefaults)
-
-		fmt.Println(filters)
-		fmt.Println(params.PaginationParams)
 
 		scheduledExecutions, err := scheduledExecutionsUsecase.ListScheduledExecutions(ctx, orgId, filters, &paging)
 		if err != nil {
