@@ -465,11 +465,11 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 			previousSnooze = utils.Ptr(c.SnoozedUntil.Format(time.RFC3339))
 		}
 
-		if err := uc.repository.BoostCase(ctx, tx, req.CaseId, models.BoostUnsnoozed); err != nil {
+		// Case side effects should be called before snoozing, since it removes the boost.
+		if err := uc.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
 			return err
 		}
-
-		if err := uc.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+		if err := uc.repository.BoostCase(ctx, tx, req.CaseId, models.BoostUnsnoozed); err != nil {
 			return err
 		}
 
@@ -496,7 +496,7 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 	}
 
 	if !c.IsSnoozed() {
-		return errors.Wrap(models.ConflictError, "case is not currently snoozed")
+		return nil
 	}
 
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
@@ -504,17 +504,11 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 			return err
 		}
 
-		if err = uc.repository.UnsnoozeCase(ctx, tx, req.CaseId); err != nil {
+		// Case side effects should be called before unsnoozing, since it removes the boost.
+		if err := uc.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
 			return err
 		}
-
-		if c.AssignedTo == nil {
-			if err := uc.SelfAssignOnAction(ctx, tx, c.Id, string(req.UserId)); err != nil {
-				return err
-			}
-		}
-
-		if err := uc.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+		if err = uc.repository.UnsnoozeCase(ctx, tx, req.CaseId); err != nil {
 			return err
 		}
 
@@ -591,19 +585,8 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 			return err
 		}
 
-		if req.AssigneeId != nil && *req.AssigneeId != req.UserId {
-			if err = usecase.repository.BoostCase(ctx, tx, req.CaseId, models.BoostReassigned); err != nil {
-				return err
-			}
-		}
-
-		if c.Status == models.CasePending {
-			if err = usecase.repository.UpdateCase(ctx, tx, models.UpdateCaseAttributes{
-				Id:     c.Id,
-				Status: models.CaseInvestigating,
-			}); err != nil {
-				return err
-			}
+		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+			return err
 		}
 
 		var userId *string
@@ -1302,6 +1285,10 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 		}
 	}
 
+	if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+		return err
+	}
+
 	resourceType := models.RuleSnoozeResourceType
 	err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		AdditionalNote: &input.Comment,
@@ -1582,6 +1569,14 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 func (uc *CaseUseCase) PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error {
 	if userId := uc.enforceSecurity.UserId(); userId != nil && c.AssignedTo == nil {
 		if err := uc.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
+			return err
+		}
+	}
+
+	if c.Status == models.CasePending {
+		update := models.UpdateCaseAttributes{Id: c.Id, Status: models.CaseInvestigating}
+
+		if err := uc.repository.UpdateCase(ctx, tx, update); err != nil {
 			return err
 		}
 	}

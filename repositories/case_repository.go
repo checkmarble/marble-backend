@@ -203,6 +203,7 @@ func (repo *MarbleDbRepository) UnsnoozeCase(ctx context.Context, exec Executor,
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_CASES).
 		Set("snoozed_until", nil).
+		Set("boost", nil).
 		Where(squirrel.Eq{"id": caseId})
 
 	return ExecBuilder(ctx, exec, sql)
