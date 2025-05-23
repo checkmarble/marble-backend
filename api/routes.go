@@ -43,12 +43,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	// Public API initialization
 	{
-		cfg := pubapi.Config{
-			MarbleAppUrl: parsedAppUrl,
-		}
-
 		pubapi.InitPublicApi()
-		pubapiv1.Routes(r.Group("/v1beta"), auth.AuthedBy(utils.PublicApiKey, utils.BearerToken), uc, cfg)
+		pubapiv1.Routes(r.Group("/v1beta"), auth.AuthedBy(utils.PublicApiKey, utils.BearerToken), uc)
 	}
 
 	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey))

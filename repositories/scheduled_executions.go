@@ -73,7 +73,7 @@ func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exe
 	query := selectJoinScheduledExecutionAndScenario().OrderBy("se.started_at DESC, se.id DESC")
 
 	if paging != nil {
-		query = query.Limit(uint64(paging.Limit + 1))
+		query = query.Limit(uint64(paging.Limit))
 
 		if paging.OffsetId != "" {
 			switch cursorExecution, err := repo.GetScheduledExecution(ctx, exec, paging.OffsetId); err {

@@ -1,7 +1,6 @@
 package dto
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -18,17 +17,12 @@ type ScheduledExecution struct {
 }
 
 func AdaptScheduledExecution(model models.ScheduledExecution) ScheduledExecution {
-	version := ""
-	if model.ScenarioVersion != nil {
-		version = fmt.Sprintf("%d", *model.ScenarioVersion)
-	}
-
 	return ScheduledExecution{
 		Id: model.Id,
 		Scenario: DecisionScenario{
 			Id:          model.ScenarioId,
 			IterationId: model.ScenarioIterationId,
-			Version:     version,
+			Version:     model.ScenarioVersion,
 		},
 		Manual:           model.Manual,
 		Status:           model.Status.String(),

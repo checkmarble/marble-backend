@@ -108,6 +108,150 @@ paths:
         "400":
           $ref: "#/components/responses/400"
 
+    post:
+      operationId: createAllDecision
+      tags:
+        - Decisions
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Create all decisions
+      description: |
+        Create decisions by running a trigger object through all elligible scenarios
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - trigger_object_type
+                - trigger_object
+              properties:
+                trigger_object_type:
+                  description: Type of the trigger object that is passed in
+                  type: string
+                trigger_object:
+                  description: The object on which to make a decision
+                  type: object
+                  additionalProperties: true
+                  required:
+                    - object_id
+                    - updated_at
+      responses:
+        "200":
+          description: Screening results from the search
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - $ref: "#/components/schemas/BasePagination"
+                  - type: object
+                    required: true
+                    properties:
+                      metadata:
+                        required:
+                          - total
+                          - approve
+                          - review
+                          - block_and_review
+                          - decline
+                          - skipped
+                        properties:
+                          total:
+                            type: integer
+                          approve:
+                            type: integer
+                          review:
+                            type: integer
+                          block_and_review:
+                            type: integer
+                          decline:
+                            type: integer
+                          skipped:
+                            type: integer
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Decision"
+        "400":
+          $ref: "#/components/responses/400"
+
+  /decisions/all:
+    post:
+      operationId: createDecision
+      tags:
+        - Decisions
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Create decisions
+      description: |
+        Create a decision by running a trigger object through a scenario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - scenario_id
+                - trigger_object
+              properties:
+                scenario_id:
+                  description: ID of the scenario to run
+                  type: string
+                  format: uuid
+                trigger_object:
+                  description: The object on which to make a decision
+                  type: object
+                  additionalProperties: true
+                  required:
+                    - object_id
+                    - updated_at
+      responses:
+        "200":
+          description: Screening results from the search
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - $ref: "#/components/schemas/BasePagination"
+                  - type: object
+                    required: true
+                    properties:
+                      metadata:
+                        required:
+                          - total
+                          - approve
+                          - review
+                          - block_and_review
+                          - decline
+                          - skipped
+                        properties:
+                          total:
+                            type: integer
+                          approve:
+                            type: integer
+                          review:
+                            type: integer
+                          block_and_review:
+                            type: integer
+                          decline:
+                            type: integer
+                          skipped:
+                            type: integer
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Decision"
+        "400":
+          $ref: "#/components/responses/400"
+
   /decisions/{decisionId}:
     get:
       operationId: getDecision

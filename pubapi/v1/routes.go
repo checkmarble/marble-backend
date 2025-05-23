@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases, cfg pubapi.Config) {
+func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
 	r.GET("/-/version", handleVersion)
 
 	{

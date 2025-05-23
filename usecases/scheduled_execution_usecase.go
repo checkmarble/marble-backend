@@ -93,7 +93,18 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(
 			filters.OrganizationId = organizationId
 		}
 
-		executions, err := usecase.repository.ListScheduledExecutions(ctx, tx, filters, paging)
+		var repoPaging *models.PaginationAndSorting
+
+		if paging != nil {
+			repoPaging = &models.PaginationAndSorting{
+				Limit:    paging.Limit + 1,
+				Order:    paging.Order,
+				Sorting:  paging.Sorting,
+				OffsetId: paging.OffsetId,
+			}
+		}
+
+		executions, err := usecase.repository.ListScheduledExecutions(ctx, tx, filters, repoPaging)
 		if err != nil {
 			return models.PaginatedScheduledExecutions{}, err
 		}
