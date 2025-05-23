@@ -62,6 +62,7 @@ func RunTaskQueue(apiVersion string) error {
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
+
 	workerConfig := struct {
 		appName                     string
 		env                         string
@@ -83,6 +84,18 @@ func RunTaskQueue(apiVersion string) error {
 	logger := utils.NewLogger(workerConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 	license := infra.VerifyLicense(licenseConfig)
+
+	offloadingConfig := infra.OffloadingConfig{
+		Enabled:         utils.GetEnv("OFFLOADING_ENABLED", false),
+		BucketUrl:       utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
+		JobInterval:     utils.GetEnvDuration("OFFLOADING_JOB_INTERVAL", 30*time.Minute),
+		OffloadBefore:   utils.GetEnvDuration("OFFLOADING_BEFORE", 7*24*time.Hour),
+		BatchSize:       utils.GetEnv("OFFLOADING_BATCH_SIZE", 10_000),
+		SavepointEvery:  utils.GetEnv("OFFLOADING_SAVE_POINTS", 100),
+		WritesPerSecond: utils.GetEnv("OFFLOADING_WRITES_PER_SEC", 200),
+	}
+
+	offloadingConfig.ValidateAndFix(ctx)
 
 	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env, apiVersion)
 	defer sentry.Flush(3 * time.Second)
@@ -135,7 +148,7 @@ func RunTaskQueue(apiVersion string) error {
 	// Start the task queue workers
 	workers := river.NewWorkers()
 	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx,
-		repositories.OrganizationRepository, repositories.ExecutorGetter)
+		repositories.OrganizationRepository, repositories.ExecutorGetter, offloadingConfig)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -172,6 +185,7 @@ func RunTaskQueue(apiVersion string) error {
 
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
+		usecases.WithOffloading(offloadingConfig),
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
@@ -185,6 +199,10 @@ func RunTaskQueue(apiVersion string) error {
 	river.AddWorker(workers, adminUc.NewIndexCleanupWorker())
 	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
+
+	if offloadingConfig.Enabled {
+		river.AddWorker(workers, adminUc.NewOffloadingWorker())
+	}
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)

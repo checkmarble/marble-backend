@@ -37,6 +37,7 @@ const (
 type BlobRepository interface {
 	GetBlob(ctx context.Context, bucketUrl, key string) (models.Blob, error)
 	OpenStream(ctx context.Context, bucketUrl, key string, fileName string) (io.WriteCloser, error)
+	OpenStreamWithOptions(ctx context.Context, bucketUrl, key string, opts *blob.WriterOptions) (io.WriteCloser, error)
 	DeleteFile(ctx context.Context, bucketUrl, key string) error
 	GenerateSignedUrl(ctx context.Context, bucketUrl, key string) (string, error)
 }
@@ -181,6 +182,15 @@ func (repository *blobRepository) OpenStream(ctx context.Context, bucketUrl, key
 	return bucket.NewWriter(ctx, key, &blob.WriterOptions{
 		ContentDisposition: fmt.Sprintf("attachment; filename=\"%s\"", fileName),
 	})
+}
+
+func (repository *blobRepository) OpenStreamWithOptions(ctx context.Context, bucketUrl, key string, opts *blob.WriterOptions) (io.WriteCloser, error) {
+	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	return bucket.NewWriter(ctx, key, opts)
 }
 
 func (repository *blobRepository) DeleteFile(ctx context.Context, bucketUrl, key string) error {

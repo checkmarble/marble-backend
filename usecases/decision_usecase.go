@@ -109,6 +109,7 @@ type DecisionUsecase struct {
 	sanctionCheckRepository   decisionUsecaseSanctionCheckWriter
 	scenarioTestRunRepository repositories.ScenarioTestRunRepository
 	decisionWorkflows         decisionWorkflowsUsecase
+	offloadedReader           OffloadedReader
 	webhookEventsSender       webhookEventsUsecase
 	phantomUseCase            decision_phantom.PhantomDecisionUsecase
 	featureAccessReader       decisionUsecaseFeatureAccessReader
@@ -123,7 +124,12 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
+
 	if err := usecase.enforceSecurity.ReadDecision(decision.Decision); err != nil {
+		return models.DecisionWithRuleExecutions{}, err
+	}
+
+	if err := usecase.offloadedReader.MutateWithOffloadedDecisionRules(ctx, decision.OrganizationId, decision); err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
 

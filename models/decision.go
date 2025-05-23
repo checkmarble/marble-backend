@@ -97,6 +97,7 @@ type RuleExecutionStat struct {
 }
 
 type RuleExecution struct {
+	Id                  string
 	DecisionId          string
 	ExecutionError      ast.ExecutionError
 	Evaluation          *ast.NodeEvaluationDto
@@ -135,6 +136,25 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 		RuleExecutions:         scenarioExecution.RuleExecutions,
 		SanctionCheckExecution: scenarioExecution.SanctionCheckExecution,
 	}
+}
+
+type OffloadDecisionRuleRequest struct {
+	OrgId        string
+	DeleteBefore time.Time
+	BatchSize    int
+	Watermark    *OffloadingWatermark
+}
+
+type OffloadableDecisionRule struct {
+	// Decision
+	DecisionId string
+	CreatedAt  time.Time
+
+	// Rule execution
+	RuleExecutionId *string
+	RuleId          *string
+	RuleOutcome     *string
+	RuleEvaluation  *ast.NodeEvaluationDto
 }
 
 // Decision input models

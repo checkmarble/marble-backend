@@ -96,6 +96,7 @@ func RunServer(config CompiledConfig) error {
 		batchIngestionMaxSize            int
 		caseManagerBucket                string
 		ingestionBucketUrl               string
+		offloadingBucketUrl              string
 		jwtSigningKey                    string
 		jwtSigningKeyFile                string
 		loggingFormat                    string
@@ -106,6 +107,7 @@ func RunServer(config CompiledConfig) error {
 		batchIngestionMaxSize:            utils.GetEnv("BATCH_INGESTION_MAX_SIZE", 0),
 		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 		ingestionBucketUrl:               utils.GetEnv("INGESTION_BUCKET_URL", ""),
+		offloadingBucketUrl:              utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
 		jwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
 		jwtSigningKeyFile:                utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY_FILE", ""),
 		loggingFormat:                    utils.GetEnv("LOGGING_FORMAT", "text"),
@@ -170,6 +172,7 @@ func RunServer(config CompiledConfig) error {
 		usecases.WithApiVersion(config.Version),
 		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),
 		usecases.WithIngestionBucketUrl(serverConfig.ingestionBucketUrl),
+		usecases.WithOffloadingBucketUrl(serverConfig.offloadingBucketUrl),
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),

@@ -124,6 +124,16 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		featureAccessReader:       usecases.NewFeatureAccessReader(),
 		openSanctionsRepository:   usecases.Repositories.OpenSanctionsRepository,
 		taskQueueRepository:       usecases.Repositories.TaskQueueRepository,
+		offloadedReader:           usecases.NewOffloadedReader(),
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewOffloadedReader() OffloadedReader {
+	return OffloadedReader{
+		executorFactory:     usecases.NewExecutorFactory(),
+		repository:          &usecases.Repositories.MarbleDbRepository,
+		blobRepository:      usecases.Repositories.BlobRepository,
+		offloadingBucketUrl: usecases.offloadingBucketUrl,
 	}
 }
 
@@ -586,6 +596,17 @@ func (usecases UsecasesWithCreds) NewMatchEnrichmentWorker() *scheduled_executio
 		&usecases.Repositories.MarbleDbRepository,
 	)
 	return &w
+}
+
+func (usecases UsecasesWithCreds) NewOffloadingWorker() *scheduled_execution.OffloadingWorker {
+	return scheduled_execution.NewOffloadingWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.BlobRepository,
+		usecases.offloadingBucketUrl,
+		usecases.offloadingConfig,
+	)
 }
 
 func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataReaderUsecase {
