@@ -153,6 +153,7 @@ type OffloadableDecisionRule struct {
 	// Rule execution
 	RuleExecutionId *string
 	RuleId          *string
+	RuleOutcome     *string
 	RuleEvaluation  *ast.NodeEvaluationDto
 }
 

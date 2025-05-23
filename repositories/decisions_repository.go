@@ -992,6 +992,7 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 			"d.created_at as created_at",
 			"dr.id as rule_execution_id",
 			"dr.rule_id as rule_id",
+			"dr.outcome as outcome",
 			"dr.rule_evaluation as rule_evaluation",
 		).
 		Prefix("with pending_decisions as (").

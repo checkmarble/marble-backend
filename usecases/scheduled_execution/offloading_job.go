@@ -17,7 +17,7 @@ import (
 )
 
 type offloadingRepository interface {
-	GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId string, createdAt time.Time) string
+	GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId, outcome string, createdAt time.Time) string
 
 	GetOffloadingWatermark(ctx context.Context, exec repositories.Executor, orgId, table string) (*models.OffloadingWatermark, error)
 	SaveOffloadingWatermark(ctx context.Context, tx repositories.Transaction,
@@ -132,9 +132,9 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 			rule := item.Model
 			offloadedIds[idx%w.config.SavepointEvery] = nil
 
-			if rule.RuleExecutionId != nil && rule.RuleEvaluation != nil {
+			if rule.RuleExecutionId != nil && rule.RuleEvaluation != nil && rule.RuleOutcome != nil {
 				key := w.repository.GetOffloadedDecisionRuleKey(req.OrgId,
-					rule.DecisionId, *rule.RuleId, rule.CreatedAt)
+					rule.DecisionId, *rule.RuleId, *rule.RuleOutcome, rule.CreatedAt)
 
 				opts := blob.WriterOptions{Metadata: map[string]string{
 					"Custom-Date": rule.CreatedAt.Format(time.RFC3339),
@@ -207,7 +207,6 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 
 				return nil
 			})
-
 			if err != nil {
 				return err
 			}
