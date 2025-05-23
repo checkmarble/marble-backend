@@ -64,67 +64,39 @@ func (repo *MarbleDbRepository) GetScheduledExecution(ctx context.Context, exec 
 }
 
 func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exec Executor,
-	filters models.ListScheduledExecutionsFilters,
+	filters models.ListScheduledExecutionsFilters, paging *models.PaginationAndSorting,
 ) ([]models.ScheduledExecution, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
-	query := selectJoinScheduledExecutionAndScenario().OrderBy("se.started_at DESC")
 
-	if filters.ScenarioId != "" {
-		query = query.Where(squirrel.Eq{"se.scenario_id": filters.ScenarioId})
+	query := selectJoinScheduledExecutionAndScenario().OrderBy("se.started_at DESC, se.id DESC")
+
+	if paging != nil {
+		query = query.Limit(uint64(paging.Limit + 1))
+
+		if paging.OffsetId != "" {
+			switch cursorExecution, err := repo.GetScheduledExecution(ctx, exec, paging.OffsetId); err {
+			case nil:
+				query = query.Where(squirrel.Expr("(se.started_at, se.id) < (?, ?)",
+					cursorExecution.StartedAt, cursorExecution.FinishedAt))
+			default:
+				return nil, err
+			}
+		}
 	}
 
 	if filters.OrganizationId != "" {
 		query = query.Where(squirrel.Eq{"se.organization_id": filters.OrganizationId})
 	}
-
+	if filters.ScenarioId != "" {
+		query = query.Where(squirrel.Eq{"se.scenario_id": filters.ScenarioId})
+	}
 	if filters.Status != nil {
 		query = query.Where(squirrel.Eq{"se.status": filters.Status})
 	}
-
 	if filters.ExcludeManual {
 		query = query.Where(squirrel.NotEq{"se.manual": true})
-	}
-
-	return SqlToListOfRow(
-		ctx,
-		exec,
-		query,
-		adaptJoinScheduledExecutionWithScenario,
-	)
-}
-
-func (repo *MarbleDbRepository) ListPaginatedScheduledExecutions(ctx context.Context, exec Executor,
-	filters models.ListScheduledExecutionsFilters, paging models.PaginationAndSorting,
-) ([]models.ScheduledExecution, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
-	}
-
-	var cursorExecution *models.ScheduledExecution
-
-	if paging.OffsetId != "" {
-		execution, err := repo.GetScheduledExecution(ctx, exec, paging.OffsetId)
-		if err != nil {
-			return nil, err
-		}
-		cursorExecution = &execution
-	}
-
-	query := selectJoinScheduledExecutionAndScenario().
-		OrderBy("se.started_at DESC").
-		Limit(uint64(paging.Limit + 1))
-
-	if cursorExecution != nil {
-		query = query.Where(squirrel.Expr("(se.started_at, se.id) < (?, ?)", cursorExecution.StartedAt, cursorExecution.FinishedAt))
-	}
-
-	if filters.ScenarioId != "" {
-		query = query.Where(squirrel.Eq{"se.scenario_id": filters.ScenarioId})
-	}
-	if filters.OrganizationId != "" {
-		query = query.Where(squirrel.Eq{"se.organization_id": filters.OrganizationId})
 	}
 
 	return SqlToListOfRow(
