@@ -31,11 +31,15 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 		return nil
 	}
 
-	previousExecutions, err := usecase.repository.ListScheduledExecutions(ctx, exec, models.ListScheduledExecutionsFilters{
-		ScenarioId: scenarioId, Status: []models.ScheduledExecutionStatus{
-			models.ScheduledExecutionPending, models.ScheduledExecutionProcessing,
+	previousExecutions, err := usecase.repository.ListScheduledExecutions(
+		ctx,
+		exec,
+		models.ListScheduledExecutionsFilters{
+			ScenarioId: scenarioId,
+			Status:     []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing},
 		},
-	})
+		nil,
+	)
 	if err != nil {
 		return err
 	}
@@ -79,9 +83,15 @@ func (usecase *RunScheduledExecution) scenarioIsDue(
 		return false, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 	}
 
-	previousExecutions, err := usecase.repository.ListScheduledExecutions(ctx, exec, models.ListScheduledExecutionsFilters{
-		ScenarioId: scenario.Id, ExcludeManual: true,
-	})
+	previousExecutions, err := usecase.repository.ListScheduledExecutions(
+		ctx,
+		exec,
+		models.ListScheduledExecutionsFilters{
+			ScenarioId:    scenario.Id,
+			ExcludeManual: true,
+		},
+		nil,
+	)
 	if err != nil {
 		return false, fmt.Errorf("error listing scheduled executions: %w", err)
 	}

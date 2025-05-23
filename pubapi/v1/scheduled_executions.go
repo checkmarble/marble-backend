@@ -45,7 +45,7 @@ func HandleListBatchExecutions(uc usecases.Usecases) gin.HandlerFunc {
 		fmt.Println(filters)
 		fmt.Println(params.PaginationParams)
 
-		scheduledExecutions, err := scheduledExecutionsUsecase.ListPaginatedScheduledExecutions(ctx, orgId, filters, paging)
+		scheduledExecutions, err := scheduledExecutionsUsecase.ListScheduledExecutions(ctx, orgId, filters, &paging)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return

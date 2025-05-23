@@ -24,9 +24,7 @@ type ScheduledExecutionUsecaseRepository interface {
 
 	GetScheduledExecution(ctx context.Context, exec repositories.Executor, id string) (models.ScheduledExecution, error)
 	ListScheduledExecutions(ctx context.Context, exec repositories.Executor,
-		filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
-	ListPaginatedScheduledExecutions(ctx context.Context, exec repositories.Executor,
-		filters models.ListScheduledExecutionsFilters, paging models.PaginationAndSorting) ([]models.ScheduledExecution, error)
+		filters models.ListScheduledExecutionsFilters, paging *models.PaginationAndSorting) ([]models.ScheduledExecution, error)
 	CreateScheduledExecution(ctx context.Context, exec repositories.Executor,
 		input models.CreateScheduledExecutionInput, id string) error
 	UpdateScheduledExecutionStatus(
@@ -85,50 +83,17 @@ func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(
 func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(
 	ctx context.Context,
 	organizationId string,
-	scenarioId *string,
-) ([]models.ScheduledExecution, error) {
-	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Transaction,
-	) ([]models.ScheduledExecution, error) {
-		var executions []models.ScheduledExecution
-		var err error
-		if scenarioId == nil {
-			executions, err = usecase.repository.ListScheduledExecutions(ctx, tx, models.ListScheduledExecutionsFilters{
-				OrganizationId: organizationId,
-			})
-			if err != nil {
-				return []models.ScheduledExecution{}, err
-			}
-		} else {
-			var err error
-			executions, err = usecase.repository.ListScheduledExecutions(ctx, tx, models.ListScheduledExecutionsFilters{
-				ScenarioId: *scenarioId,
-			})
-			if err != nil {
-				return []models.ScheduledExecution{}, err
-			}
-		}
-
-		// security check
-		for _, execution := range executions {
-			if err := usecase.enforceSecurity.ReadScheduledExecution(execution); err != nil {
-				return []models.ScheduledExecution{}, err
-			}
-		}
-		return executions, nil
-	})
-}
-
-func (usecase *ScheduledExecutionUsecase) ListPaginatedScheduledExecutions(
-	ctx context.Context,
-	organizationId string,
 	filters models.ListScheduledExecutionsFilters,
-	paging models.PaginationAndSorting,
+	paging *models.PaginationAndSorting,
 ) (models.PaginatedScheduledExecutions, error) {
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.PaginatedScheduledExecutions, error) {
-		executions, err := usecase.repository.ListPaginatedScheduledExecutions(ctx, tx, filters, paging)
+		if filters.ScenarioId == "" {
+			filters.OrganizationId = organizationId
+		}
+
+		executions, err := usecase.repository.ListScheduledExecutions(ctx, tx, filters, paging)
 		if err != nil {
 			return models.PaginatedScheduledExecutions{}, err
 		}
@@ -141,7 +106,7 @@ func (usecase *ScheduledExecutionUsecase) ListPaginatedScheduledExecutions(
 
 		hasMore := false
 
-		if len(executions) > paging.Limit {
+		if paging != nil && len(executions) > paging.Limit {
 			hasMore = true
 			executions = executions[:paging.Limit]
 		}
@@ -169,11 +134,15 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 		return fmt.Errorf("scenario iteration is not live %w", models.BadParameterError)
 	}
 
-	pendingExecutions, err := usecase.repository.ListScheduledExecutions(ctx, exec, models.ListScheduledExecutionsFilters{
-		ScenarioId: scenario.Id, Status: []models.ScheduledExecutionStatus{
-			models.ScheduledExecutionPending, models.ScheduledExecutionProcessing,
+	pendingExecutions, err := usecase.repository.ListScheduledExecutions(
+		ctx,
+		exec,
+		models.ListScheduledExecutionsFilters{
+			ScenarioId: scenario.Id,
+			Status:     []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing},
 		},
-	})
+		nil,
+	)
 	if err != nil {
 		return err
 	}

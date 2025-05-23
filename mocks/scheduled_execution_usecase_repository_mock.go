@@ -20,16 +20,9 @@ func (s *ScheduledExecutionUsecaseRepository) GetScheduledExecution(ctx context.
 }
 
 func (s *ScheduledExecutionUsecaseRepository) ListScheduledExecutions(ctx context.Context,
-	exec repositories.Executor, filters models.ListScheduledExecutionsFilters,
+	exec repositories.Executor, filters models.ListScheduledExecutionsFilters, paging *models.PaginationAndSorting,
 ) ([]models.ScheduledExecution, error) {
-	args := s.Called(exec, filters)
-	return args.Get(0).([]models.ScheduledExecution), args.Error(1)
-}
-
-func (s *ScheduledExecutionUsecaseRepository) ListPaginatedScheduledExecutions(ctx context.Context,
-	exec repositories.Executor, filters models.ListScheduledExecutionsFilters, paging models.PaginationAndSorting,
-) ([]models.ScheduledExecution, error) {
-	args := s.Called(exec, filters)
+	args := s.Called(exec, filters, paging)
 	return args.Get(0).([]models.ScheduledExecution), args.Error(1)
 }
 

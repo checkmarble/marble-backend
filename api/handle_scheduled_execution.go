@@ -33,7 +33,6 @@ func handleListScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		scenarioId := c.Query("scenario_id")
-		scenarioIdPtr := utils.PtrTo(scenarioId, &utils.PtrToOptions{OmitZero: true})
 
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(ctx, c, err) {
@@ -42,14 +41,21 @@ func handleListScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewScheduledExecutionUsecase()
 
-		executions, err := usecase.ListScheduledExecutions(ctx, organizationId, scenarioIdPtr)
+		executions, err := usecase.ListScheduledExecutions(
+			ctx,
+			organizationId,
+			models.ListScheduledExecutionsFilters{
+				ScenarioId: scenarioId,
+			},
+			nil,
+		)
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"scheduled_executions": pure_utils.Map(executions, dto.AdaptScheduledExecutionDto),
+			"scheduled_executions": pure_utils.Map(executions.Executions, dto.AdaptScheduledExecutionDto),
 		})
 	}
 }
