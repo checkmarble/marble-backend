@@ -109,13 +109,13 @@ func createDecisionsBatch(
 	organizationId, scenarioId, scenarioIterationId string,
 ) {
 	scheduledExecUsecase := usecasesWithUserCreds.NewScheduledExecutionUsecase()
-	ses, err := scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, &scenarioId)
+	ses, err := scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, models.ListScheduledExecutionsFilters{ScenarioId: scenarioId}, nil)
 	if err != nil {
 		assert.FailNow(t, "Failed to list scheduled executions", err)
 	}
-	if len(ses) != 0 {
+	if len(ses.Executions) != 0 {
 		assert.FailNowf(t, "wrong number of scheduled executions",
-			"Expected zero scheduled execution for the scenario %s, got %d", scenarioId, len(ses))
+			"Expected zero scheduled execution for the scenario %s, got %d", scenarioId, len(ses.Executions))
 	}
 
 	err = scheduledExecUsecase.CreateScheduledExecution(ctx, models.CreateScheduledExecutionInput{
@@ -128,13 +128,13 @@ func createDecisionsBatch(
 		assert.FailNow(t, "Failed to create scheduled executions", err)
 	}
 
-	ses, err = scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, &scenarioId)
+	ses, err = scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, models.ListScheduledExecutionsFilters{ScenarioId: scenarioId}, nil)
 	if err != nil {
 		assert.FailNow(t, "Failed to list scheduled executions", err)
 	}
-	if len(ses) != 1 {
+	if len(ses.Executions) != 1 {
 		assert.FailNowf(t, "wrong number of scheduled executions",
-			"Expected one scheduled execution for the scenario %s, got %d", scenarioId, len(ses))
+			"Expected one scheduled execution for the scenario %s, got %d", scenarioId, len(ses.Executions))
 	}
 
 	runScheduledExecUsecase := usecasesWithUserCreds.NewRunScheduledExecution()
@@ -146,7 +146,7 @@ func createDecisionsBatch(
 	start := time.Now()
 	se := models.ScheduledExecution{}
 	for time.Since(start) < 10*time.Second && se.Status != models.ScheduledExecutionSuccess {
-		se, err = scheduledExecUsecase.GetScheduledExecution(ctx, ses[0].Id)
+		se, err = scheduledExecUsecase.GetScheduledExecution(ctx, ses.Executions[0].Id)
 		if err != nil {
 			assert.FailNow(t, "Failed to get scheduled execution", err)
 		}
