@@ -17,7 +17,7 @@ import (
 
 type SuspiciousActivityReportCaseUsecase interface {
 	GetCase(ctx context.Context, id string) (models.Case, error)
-	SelfAssignOnAction(ctx context.Context, tx repositories.Executor, caseId, userId string) error
+	PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error
 
 	getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]string, error)
 }
@@ -111,10 +111,8 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 			userId = utils.Ptr(string(creds.ActorIdentity.UserId))
 		}
 
-		if c.AssignedTo == nil && userId != nil {
-			if err := uc.caseUsecase.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
-				return models.SuspiciousActivityReport{}, err
-			}
+		if err := uc.caseUsecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+			return models.SuspiciousActivityReport{}, err
 		}
 
 		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
@@ -201,10 +199,8 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 			return models.SuspiciousActivityReport{}, err
 		}
 
-		if c.AssignedTo == nil && userId != nil {
-			if err := uc.caseUsecase.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
-				return models.SuspiciousActivityReport{}, err
-			}
+		if err := uc.caseUsecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+			return models.SuspiciousActivityReport{}, err
 		}
 
 		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
@@ -263,7 +259,8 @@ func (uc SuspiciousActivityReportUsecase) DeleteReport(
 			"the suspicious activity report is marked as completed")
 	}
 
-	if _, err = uc.hasCasePermissions(ctx, exec, orgId, req.CaseId); err != nil {
+	c, err := uc.hasCasePermissions(ctx, exec, orgId, req.CaseId)
+	if err != nil {
 		return err
 	}
 
@@ -281,6 +278,10 @@ func (uc SuspiciousActivityReportUsecase) DeleteReport(
 			ResourceType: utils.Ptr(models.SarResourceType),
 			ResourceId:   utils.Ptr(sar.Id),
 		}); err != nil {
+			return err
+		}
+
+		if err := uc.caseUsecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
 			return err
 		}
 
