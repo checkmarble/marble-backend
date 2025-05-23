@@ -12,15 +12,17 @@ import (
 type ListDecisionsParams struct {
 	pubapi.PaginationParams
 
-	ScenarioId       *string         `form:"scenario_id" binding:"omitzero,uuid"`
-	BatchExecutionId *string         `form:"batch_execution_id" binding:"omitzero,uuid"`
-	CaseId           *string         `form:"case_id" binding:"omitzero,uuid"`
-	Outcome          *string         `form:"outcome" binding:"omitzero,oneof=approve review block_and_review decline"`
-	ReviewStatus     *string         `form:"review_status" binding:"omitzero,oneof=pending approve decline,excluded_unless=Outcome block_and_review"`
-	TriggerObjectId  *string         `form:"trigger_object_id"`
-	PivotValue       *string         `form:"pivot_value"`
-	StartDate        pubapi.DateTime `form:"start"`
-	EndDate          pubapi.DateTime `form:"end"`
+	ScenarioId       *string `form:"scenario_id" binding:"omitzero,uuid"`
+	BatchExecutionId *string `form:"batch_execution_id" binding:"omitzero,uuid"`
+	CaseId           *string `form:"case_id" binding:"omitzero,uuid"`
+	Outcome          *string `form:"outcome" binding:"omitzero,oneof=approve review block_and_review decline"`
+	ReviewStatus     *string `form:"review_status" binding:"omitzero,oneof=pending approve decline,excluded_unless=Outcome block_and_review"`
+	TriggerObjectId  *string `form:"trigger_object_id"`
+	PivotValue       *string `form:"pivot_value"`
+
+	// Both date filters are inclusive
+	StartDate pubapi.DateTime `form:"start"`
+	EndDate   pubapi.DateTime `form:"end"`
 }
 
 func (p ListDecisionsParams) ToFilters() gdto.DecisionFilters {

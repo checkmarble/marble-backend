@@ -13,7 +13,7 @@ type ScheduledExecution struct {
 	OrganizationId             string
 	ScenarioId                 string
 	ScenarioIterationId        string
-	ScenarioVersion            *int
+	ScenarioVersion            string
 	Status                     ScheduledExecutionStatus
 	StartedAt                  time.Time
 	FinishedAt                 *time.Time

@@ -11,16 +11,17 @@ import (
 )
 
 type Decision struct {
-	Id               string           `json:"id"`
-	BatchExecutionId *string          `json:"batch_execution_id,omitempty"`
-	Case             *Case            `json:"case,omitempty"`
-	CreatedAt        time.Time        `json:"created_at"`
-	TriggerObject    map[string]any   `json:"trigger_object"`
-	Outcome          string           `json:"outcome"`
-	ReviewStatus     *string          `json:"review_status"`
-	Scenario         DecisionScenario `json:"scenario"`
-	Score            int              `json:"score"`
-	Rules            []DecisionRule   `json:"rules,omitempty"`
+	Id               string              `json:"id"`
+	BatchExecutionId *string             `json:"batch_execution_id,omitempty"`
+	Case             *Case               `json:"case,omitempty"`
+	CreatedAt        time.Time           `json:"created_at"`
+	TriggerObject    map[string]any      `json:"trigger_object"`
+	Outcome          string              `json:"outcome"`
+	ReviewStatus     *string             `json:"review_status"`
+	Scenario         DecisionScenario    `json:"scenario"`
+	Score            int                 `json:"score"`
+	Rules            []DecisionRule      `json:"rules,omitzero"`
+	Screenings       []DecisionScreening `json:"screenings,omitzero"`
 }
 
 type DecisionScenario struct {
@@ -30,10 +31,15 @@ type DecisionScenario struct {
 }
 
 type DecisionRule struct {
+	Id            string             `json:"id"`
 	Name          string             `json:"name"`
 	Outcome       string             `json:"outcome"`
 	ScoreModifier int                `json:"score_modifier"`
 	Error         *DecisionRuleError `json:"error,omitempty"`
+}
+
+type DecisionScreening struct {
+	Id string `json:"id"`
 }
 
 type DecisionRuleError struct {
@@ -41,7 +47,7 @@ type DecisionRuleError struct {
 	Message string `json:"message"`
 }
 
-func AdaptDecision(ruleExecutions []models.RuleExecution) func(models.Decision) Decision {
+func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, sanctionCheck *models.SanctionCheckWithMatches) func(models.Decision) Decision {
 	return func(model models.Decision) Decision {
 		d := Decision{
 			Id:               model.DecisionId,
@@ -58,12 +64,20 @@ func AdaptDecision(ruleExecutions []models.RuleExecution) func(models.Decision) 
 			},
 		}
 
-		if ruleExecutions != nil {
-			d.Rules = pure_utils.Map(ruleExecutions, AdaptDecisionRule)
+		if includeRules {
+			d.Rules = []DecisionRule{}
 		}
 
 		if model.Case != nil {
 			d.Case = utils.Ptr(AdaptCase(*model.Case))
+		}
+
+		if ruleExecutions != nil {
+			d.Rules = pure_utils.Map(ruleExecutions, AdaptDecisionRule)
+		}
+
+		if sanctionCheck != nil {
+			d.Screenings = []DecisionScreening{AdaptDecisionScreening(*sanctionCheck)}
 		}
 
 		return d
@@ -81,6 +95,7 @@ func AdaptDecisionRule(rule models.RuleExecution) DecisionRule {
 	}
 
 	out := DecisionRule{
+		Id:            rule.Rule.Id,
 		Name:          rule.Rule.Name,
 		Outcome:       rule.Outcome,
 		ScoreModifier: rule.ResultScoreModifier,
@@ -88,6 +103,12 @@ func AdaptDecisionRule(rule models.RuleExecution) DecisionRule {
 	}
 
 	return out
+}
+
+func AdaptDecisionScreening(sc models.SanctionCheckWithMatches) DecisionScreening {
+	return DecisionScreening{
+		Id: sc.Id,
+	}
 }
 
 func AdaptDecisionsMetadata(stats dto.DecisionsAggregateMetadata) map[string]any {

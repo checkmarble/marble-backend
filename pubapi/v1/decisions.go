@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"fmt"
 	"time"
 
 	gdto "github.com/checkmarble/marble-backend/dto"
@@ -41,7 +40,8 @@ func HandleListDecisions(uc usecases.Usecases) gin.HandlerFunc {
 
 		if !params.StartDate.IsZero() && !params.EndDate.IsZero() {
 			if time.Time(params.StartDate).After(time.Time(params.EndDate)) {
-				pubapi.NewErrorResponse().WithError(errors.WithDetail(pubapi.ErrInvalidPayload, "end date should be after start date")).Serve(c)
+				pubapi.NewErrorResponse().WithError(errors.WithDetail(
+					pubapi.ErrInvalidPayload, "end date should be after start date")).Serve(c)
 				return
 			}
 		}
@@ -65,7 +65,7 @@ func HandleListDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		pubapi.
-			NewResponse(pure_utils.Map(decisions.Decisions, dto.AdaptDecision(nil))).
+			NewResponse(pure_utils.Map(decisions.Decisions, dto.AdaptDecision(false, nil, nil))).
 			WithPagination(decisions.HasNextPage, nextPageId).
 			Serve(c)
 	}
@@ -75,20 +75,24 @@ func HandleGetDecision(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		decisionId := c.Param("decisionId")
+		decisionId, err := pubapi.UuidParam(c, "decisionId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		decisionsUsecase := uc.NewDecisionUsecase()
 
-		decision, err := decisionsUsecase.GetDecision(ctx, decisionId)
-		fmt.Printf("%#v\n", decision)
+		decision, err := decisionsUsecase.GetDecision(ctx, decisionId.String())
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		pubapi.
-			NewResponse(dto.AdaptDecision(decision.RuleExecutions)(decision.Decision)).
+			NewResponse(dto.AdaptDecision(true, decision.RuleExecutions,
+				decision.SanctionCheckExecution)(decision.Decision)).
 			Serve(c)
 	}
 }
@@ -139,7 +143,6 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 				WithRuleExecutionDetails:    true,
 			},
 		)
-
 		if err != nil {
 			if presentDecisionCreationError(c, err) {
 				return
@@ -149,15 +152,36 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
+		stats := gdto.DecisionsAggregateMetadata{}
+
 		if !triggerPassed {
-			pubapi.NewErrorResponse().
-				WithErrorCode(string(gdto.TriggerConditionNotMatched)).
-				WithError(errors.WithDetail(pubapi.ErrUnprocessableEntity, "the payload object you sent does not match the trigger condition of the scenario")).
+			stats.Count.Skipped = 1
+
+			pubapi.
+				NewResponse([]struct{}{}).
+				WithMetadata(dto.AdaptDecisionsMetadata(stats)).
 				Serve(c)
 			return
 		}
 
-		pubapi.NewResponse(dto.AdaptDecision(decision.RuleExecutions)(decision.Decision)).Serve(c)
+		stats.Count.Total = 1
+
+		switch decision.Outcome {
+		case models.Approve:
+			stats.Count.Approve = 1
+		case models.Review:
+			stats.Count.Review = 1
+		case models.BlockAndReview:
+			stats.Count.BlockAndReview = 1
+		case models.Decline:
+			stats.Count.Decline = 1
+		}
+
+		pubapi.
+			NewResponse([]dto.Decision{dto.AdaptDecision(true, decision.RuleExecutions,
+				decision.SanctionCheckExecution)(decision.Decision)}).
+			WithMetadata(dto.AdaptDecisionsMetadata(stats)).
+			Serve(c)
 	}
 }
 
@@ -189,7 +213,6 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 				PayloadRaw:         payload.TriggerObject,
 			},
 		)
-
 		if err != nil {
 			if presentDecisionCreationError(c, err) {
 				return
@@ -200,7 +223,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		dtos := pure_utils.Map(decisions, func(d models.DecisionWithRuleExecutions) dto.Decision {
-			return dto.AdaptDecision(d.RuleExecutions)(d.Decision)
+			return dto.AdaptDecision(true, d.RuleExecutions, d.SanctionCheckExecution)(d.Decision)
 		})
 
 		stats := gdto.AdaptDecisionsMetadata(decisions, skipped)
@@ -215,16 +238,11 @@ func presentDecisionCreationError(c *gin.Context, err error) bool {
 	if errors.As(err, &validationError) {
 		_, errs := validationError.GetSomeItem()
 
-		details := make([]string, 0, len(errs))
-
-		for field, fieldErr := range errs {
-			details = append(details, fmt.Sprintf("%s %s", field, fieldErr))
-		}
-
 		pubapi.NewErrorResponse().
 			WithError(errs).
 			WithErrorCode(string(gdto.SchemaMismatchError)).
-			WithErrorDetails(details...).
+			WithErrorMessage("the provided trigger object is invalid").
+			WithErrorDetails(errs).
 			Serve(c)
 
 		return true

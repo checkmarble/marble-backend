@@ -1,6 +1,7 @@
 package dbmodels
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -33,7 +34,7 @@ func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario,
 		OrganizationId:             db.OrganizationId,
 		ScenarioId:                 db.ScenarioId,
 		ScenarioIterationId:        db.ScenarioIterationId,
-		ScenarioVersion:            iteration.Version,
+		ScenarioVersion:            strconv.Itoa(utils.Or(iteration.Version, 0)),
 		Status:                     models.ScheduledExecutionStatusFrom(db.Status),
 		StartedAt:                  db.StartedAt,
 		FinishedAt:                 db.FinishedAt,
