@@ -79,13 +79,16 @@ func SortingOrderFrom(s string) SortingOrder {
 
 func ValidatePagination(pagination PaginationAndSorting) error {
 	if pagination.Order == SortingOrderUnknown {
-		return errors.Wrapf(BadParameterError, "invalid pagination: order must be either ASC or DESC, received %s", pagination.Order)
+		return errors.WithDetailf(BadParameterError,
+			"invalid pagination: order must be either ASC or DESC, received %s", pagination.Order)
 	}
 	if pagination.Sorting == SortingFieldUnknown {
-		return errors.Wrapf(BadParameterError, "invalid pagination: sorting must be either created_at or updated_at, received %s", pagination.Sorting)
+		return errors.WithDetailf(BadParameterError,
+			"invalid pagination: sorting must be either created_at or updated_at, received %s", pagination.Sorting)
 	}
 	if pagination.Limit <= 0 {
-		return errors.Wrapf(BadParameterError, "invalid pagination: limit must be greater than 0, received %d", pagination.Limit)
+		return errors.WithDetailf(BadParameterError,
+			"invalid pagination: limit must be greater than 0, received %d", pagination.Limit)
 	}
 	return nil
 }

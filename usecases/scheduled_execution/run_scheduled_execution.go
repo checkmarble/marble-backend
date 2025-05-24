@@ -26,7 +26,7 @@ type RunScheduledExecutionRepository interface {
 	) ([]models.DecisionToCreate, error)
 
 	ListScheduledExecutions(ctx context.Context, exec repositories.Executor,
-		filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
+		filters models.ListScheduledExecutionsFilters, paging *models.PaginationAndSorting) ([]models.ScheduledExecution, error)
 	CreateScheduledExecution(ctx context.Context, exec repositories.Executor,
 		input models.CreateScheduledExecutionInput, newScheduledExecutionId string) error
 	UpdateScheduledExecutionStatus(
@@ -93,7 +93,9 @@ func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.C
 		usecase.executorFactory.NewExecutor(),
 		models.ListScheduledExecutionsFilters{
 			Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending},
-		})
+		},
+		nil,
+	)
 	if err != nil {
 		return fmt.Errorf("error while listing pending ScheduledExecutions: %w", err)
 	}

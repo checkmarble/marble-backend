@@ -1,6 +1,7 @@
 package pubapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,7 +9,10 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
@@ -17,8 +21,15 @@ import (
 // var validationTranslator ut.Translator
 
 type baseResponse[T any] struct {
-	Data  *T               `json:"data,omitempty"`
-	Links map[string][]any `json:"-"`
+	Data       *T                  `json:"data,omitempty"`
+	Metadata   map[string]any      `json:"metadata,omitempty"`
+	Links      map[string][]any    `json:"-"`
+	Pagination *paginationResponse `json:"pagination,omitempty"`
+}
+
+type paginationResponse struct {
+	HasMore    bool   `json:"has_more"`
+	NextPageId string `json:"next_page_id,omitempty"`
 }
 
 type baseErrorResponse struct {
@@ -40,6 +51,17 @@ func NewResponse[T any](data T) baseResponse[T] {
 	}
 }
 
+func (resp baseResponse[T]) WithPagination(hasMore bool, nextPageId string) baseResponse[T] {
+	if hasMore {
+		resp.Pagination = &paginationResponse{
+			HasMore:    hasMore,
+			NextPageId: nextPageId,
+		}
+	}
+
+	return resp
+}
+
 func (resp baseResponse[T]) WithLink(kind string, value any) baseResponse[T] {
 	if resp.Links == nil {
 		resp.Links = make(map[string][]any)
@@ -53,11 +75,15 @@ func (resp baseResponse[T]) WithLink(kind string, value any) baseResponse[T] {
 	return resp
 }
 
+func (resp baseResponse[T]) WithMetadata(metadata map[string]any) baseResponse[T] {
+	resp.Metadata = metadata
+
+	return resp
+}
+
 func NewErrorResponse() baseErrorResponse {
 	return baseErrorResponse{
-		Error: ErrorResponse{
-			Code: ErrInternalServerError.Error(),
-		},
+		Error: ErrorResponse{},
 	}
 }
 
@@ -65,6 +91,16 @@ func (resp baseErrorResponse) WithErrorCode(code string) baseErrorResponse {
 	resp.Error.Code = code
 
 	return resp
+}
+
+func (resp *baseErrorResponse) setErrorCode(code string) {
+	if resp.Error.Code == "" {
+		resp.Error.Code = code
+	}
+}
+
+func (resp *baseErrorResponse) overrideMessage(msg string) {
+	resp.Error.Messages = []string{msg}
 }
 
 func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
@@ -99,26 +135,26 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 		switch {
 		case errors.Is(err, models.ForbiddenError):
 			resp.Error.status = http.StatusForbidden
-			resp.Error.Code = ErrForbidden.Error()
+			resp.setErrorCode(ErrForbidden.Error())
 
 		case
 			errors.Is(err, models.NotFoundError),
 			errors.Is(err, pgx.ErrNoRows):
 
 			resp.Error.status = http.StatusNotFound
-			resp.Error.Code = ErrNotFound.Error()
+			resp.setErrorCode(ErrNotFound.Error())
 
 		case errors.Is(err, models.ConflictError):
 			resp.Error.status = http.StatusConflict
-			resp.Error.Code = ErrConflict.Error()
+			resp.setErrorCode(ErrConflict.Error())
 
 		case errors.Is(err, ErrFeatureDisabled):
 			resp.Error.status = http.StatusPaymentRequired
-			resp.Error.Code = ErrFeatureDisabled.Error()
+			resp.setErrorCode(ErrFeatureDisabled.Error())
 
 		case errors.Is(err, ErrNotConfigured):
 			resp.Error.status = http.StatusNotImplemented
-			resp.Error.Code = ErrNotConfigured.Error()
+			resp.setErrorCode(ErrNotConfigured.Error())
 
 		case
 			errors.Is(err, io.EOF),
@@ -126,17 +162,27 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 			errors.Is(err, models.BadParameterError):
 
 			resp.Error.status = http.StatusBadRequest
-			resp.Error.Code = ErrInvalidPayload.Error()
+			resp.setErrorCode(ErrInvalidPayload.Error())
 
 		case
 			errors.Is(err, models.UnprocessableEntityError),
 			errors.Is(err, ErrUnprocessableEntity):
 
 			resp.Error.status = http.StatusUnprocessableEntity
-			resp.Error.Code = ErrUnprocessableEntity.Error()
+			resp.setErrorCode(ErrUnprocessableEntity.Error())
+
+		case
+			errors.Is(err, context.DeadlineExceeded),
+			errors.Is(err, context.Canceled):
+
+			resp.Error.status = http.StatusRequestTimeout
+			resp.setErrorCode(ErrTimeout.Error())
+			resp.overrideMessage("The API timed out while processing your request.")
 
 		default:
 			resp.Error.err = err
+			resp.setErrorCode(ErrInternalServerError.Error())
+			resp.overrideMessage("An unexpected error occurred. Please try again later, or contact support if the problem persists.")
 		}
 	}
 
@@ -148,13 +194,19 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 }
 
 func (resp baseErrorResponse) WithErrorMessage(message string) baseErrorResponse {
-	resp.Error.Code = message
+	resp.Error.Messages = append(resp.Error.Messages, message)
 
 	return resp
 }
 
-func (resp baseErrorResponse) WithErrorDetails(details ...string) baseErrorResponse {
-	resp.Error.Messages = details
+func (resp baseErrorResponse) WithErrorMessages(msgs ...string) baseErrorResponse {
+	resp.Error.Messages = msgs
+
+	return resp
+}
+
+func (resp baseErrorResponse) WithErrorDetails(details json.Marshaler) baseErrorResponse {
+	resp.Error.Detail, _ = json.Marshal(details)
 
 	return resp
 }
@@ -169,5 +221,31 @@ func (resp baseResponse[T]) Serve(c *gin.Context, statuses ...int) {
 }
 
 func (resp baseErrorResponse) Serve(c *gin.Context, statuses ...int) {
+	ctx := c.Request.Context()
+	msg := resp.Error.err.Error()
+
+	switch {
+	case errors.Is(resp.Error.err, context.Canceled):
+		msg = "context was canceled"
+	case errors.Is(resp.Error.err, context.DeadlineExceeded):
+		msg = "deadline exceeded"
+	}
+
+	utils.LoggerFromContext(ctx).ErrorContext(
+		ctx,
+		fmt.Sprintf("error (%s): %s", resp.Error.Code, msg),
+		"code", resp.Error.Code,
+		"status", resp.Error.status,
+	)
+
+	if resp.Error.status == http.StatusInternalServerError {
+		switch hub := sentrygin.GetHubFromContext(c); hub {
+		case nil:
+			sentry.CaptureException(resp.Error.err)
+		default:
+			utils.CaptureSentryException(ctx, hub, resp.Error.err)
+		}
+	}
+
 	c.JSON(resp.Error.status, resp)
 }

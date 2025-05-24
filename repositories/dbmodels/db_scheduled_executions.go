@@ -1,6 +1,7 @@
 package dbmodels
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -25,12 +26,15 @@ const TABLE_SCHEDULED_EXECUTIONS = "scheduled_executions"
 
 var ScheduledExecutionFields = utils.ColumnList[DBScheduledExecution]()
 
-func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario) models.ScheduledExecution {
+func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario,
+	iteration models.ScenarioIteration,
+) models.ScheduledExecution {
 	return models.ScheduledExecution{
 		Id:                         db.Id,
 		OrganizationId:             db.OrganizationId,
 		ScenarioId:                 db.ScenarioId,
 		ScenarioIterationId:        db.ScenarioIterationId,
+		ScenarioVersion:            strconv.Itoa(utils.Or(iteration.Version, 0)),
 		Status:                     models.ScheduledExecutionStatusFrom(db.Status),
 		StartedAt:                  db.StartedAt,
 		FinishedAt:                 db.FinishedAt,

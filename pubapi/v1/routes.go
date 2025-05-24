@@ -12,8 +12,14 @@ func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usec
 	{
 		r := r.Group("/", authMiddleware)
 
+		r.GET("/decisions", HandleListDecisions(uc))
+		r.GET("/decisions/:decisionId", HandleGetDecision(uc))
+		r.POST("/decisions", HandleCreateDecision(uc))
+		r.POST("/decisions/all", HandleCreateAllDecisions(uc))
 		r.POST("/decisions/:decisionId/snooze", HandleSnoozeRule(uc))
 		r.GET("/decisions/:decisionId/screenings", HandleListSanctionChecks(uc))
+
+		r.GET("/batch-executions", HandleListBatchExecutions(uc))
 
 		r.POST("/screening/:screeningId/refine", HandleRefineSanctionCheck(uc, true))
 		r.POST("/screening/:screeningId/search", HandleRefineSanctionCheck(uc, false))

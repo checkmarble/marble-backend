@@ -16,6 +16,7 @@ import (
 type dbJoinScheduledExecutionAndScenario struct {
 	dbmodels.DBScheduledExecution
 	dbmodels.DBScenario
+	dbmodels.DBScenarioIteration
 }
 
 func adaptJoinScheduledExecutionWithScenario(row pgx.CollectableRow) (models.ScheduledExecution, error) {
@@ -28,18 +29,25 @@ func adaptJoinScheduledExecutionWithScenario(row pgx.CollectableRow) (models.Sch
 	if err != nil {
 		return models.ScheduledExecution{}, err
 	}
-	return dbmodels.AdaptScheduledExecution(db.DBScheduledExecution, scenario), nil
+	iteration, err := dbmodels.AdaptScenarioIteration(db.DBScenarioIteration)
+	if err != nil {
+		return models.ScheduledExecution{}, err
+	}
+	return dbmodels.AdaptScheduledExecution(db.DBScheduledExecution, scenario, iteration), nil
 }
 
 func selectJoinScheduledExecutionAndScenario() squirrel.SelectBuilder {
 	var columns []string
 	columns = append(columns, columnsNames("se", dbmodels.ScheduledExecutionFields)...)
 	columns = append(columns, columnsNames("scenario", dbmodels.SelectScenarioColumn)...)
+	columns = append(columns, columnsNames("scenario_iterations",
+		dbmodels.SelectScenarioIterationColumn)...)
 
 	return NewQueryBuilder().
 		Select(columns...).
 		From(fmt.Sprintf("%s AS se", dbmodels.TABLE_SCHEDULED_EXECUTIONS)).
-		Join(fmt.Sprintf("%s AS scenario ON scenario.id = se.scenario_id", dbmodels.TABLE_SCENARIOS))
+		Join(fmt.Sprintf("%s AS scenario ON scenario.id = se.scenario_id", dbmodels.TABLE_SCENARIOS)).
+		Join(fmt.Sprintf("%s AS scenario_iterations ON scenario_iterations.id = se.scenario_iteration_id", dbmodels.TABLE_SCENARIO_ITERATIONS))
 }
 
 func (repo *MarbleDbRepository) GetScheduledExecution(ctx context.Context, exec Executor, id string) (models.ScheduledExecution, error) {
@@ -56,25 +64,37 @@ func (repo *MarbleDbRepository) GetScheduledExecution(ctx context.Context, exec 
 }
 
 func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exec Executor,
-	filters models.ListScheduledExecutionsFilters,
+	filters models.ListScheduledExecutionsFilters, paging *models.PaginationAndSorting,
 ) ([]models.ScheduledExecution, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
-	query := selectJoinScheduledExecutionAndScenario().OrderBy("se.started_at DESC")
 
-	if filters.ScenarioId != "" {
-		query = query.Where(squirrel.Eq{"se.scenario_id": filters.ScenarioId})
+	query := selectJoinScheduledExecutionAndScenario().OrderBy("se.started_at DESC, se.id DESC")
+
+	if paging != nil {
+		query = query.Limit(uint64(paging.Limit))
+
+		if paging.OffsetId != "" {
+			switch cursorExecution, err := repo.GetScheduledExecution(ctx, exec, paging.OffsetId); err {
+			case nil:
+				query = query.Where(squirrel.Expr("(se.started_at, se.id) < (?, ?)",
+					cursorExecution.StartedAt, cursorExecution.FinishedAt))
+			default:
+				return nil, err
+			}
+		}
 	}
 
 	if filters.OrganizationId != "" {
 		query = query.Where(squirrel.Eq{"se.organization_id": filters.OrganizationId})
 	}
-
+	if filters.ScenarioId != "" {
+		query = query.Where(squirrel.Eq{"se.scenario_id": filters.ScenarioId})
+	}
 	if filters.Status != nil {
 		query = query.Where(squirrel.Eq{"se.status": filters.Status})
 	}
-
 	if filters.ExcludeManual {
 		query = query.Where(squirrel.NotEq{"se.manual": true})
 	}

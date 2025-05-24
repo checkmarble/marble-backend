@@ -13,6 +13,7 @@ type ScheduledExecution struct {
 	OrganizationId             string
 	ScenarioId                 string
 	ScenarioIterationId        string
+	ScenarioVersion            string
 	Status                     ScheduledExecutionStatus
 	StartedAt                  time.Time
 	FinishedAt                 *time.Time
@@ -21,6 +22,11 @@ type ScheduledExecution struct {
 	NumberOfPlannedDecisions   *int
 	Scenario                   Scenario
 	Manual                     bool
+}
+
+type PaginatedScheduledExecutions struct {
+	Executions []ScheduledExecution
+	HasMore    bool
 }
 
 type ScheduledExecutionStatus int
