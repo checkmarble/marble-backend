@@ -31,23 +31,26 @@ func HandleListDecisions(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		var params params.ListDecisionsParams
+		var p params.ListDecisionsParams
 
-		if err := c.ShouldBindQuery(&params); err != nil {
+		if err := c.ShouldBindQuery(&p); err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		if !params.StartDate.IsZero() && !params.EndDate.IsZero() {
-			if time.Time(params.StartDate).After(time.Time(params.EndDate)) {
-				pubapi.NewErrorResponse().WithError(errors.WithDetail(
-					pubapi.ErrInvalidPayload, "end date should be after start date")).Serve(c)
+		if !p.StartDate.IsZero() && !p.EndDate.IsZero() {
+			if time.Time(p.StartDate).After(time.Time(p.EndDate)) {
+				pubapi.NewErrorResponse().WithError(errors.WithDetail(pubapi.ErrInvalidPayload, "end date should be after start date")).Serve(c)
+				return
+			}
+			if time.Time(p.StartDate).Before(time.Time(p.EndDate).Add(-params.MAX_DECISIONS_DATE_RANGE)) {
+				pubapi.NewErrorResponse().WithError(errors.WithDetailf(pubapi.ErrInvalidPayload, "start and end date must be at most %.0f days apart", params.MAX_DECISIONS_DATE_RANGE.Hours()/24)).Serve(c)
 				return
 			}
 		}
 
-		filters := params.ToFilters()
-		paging := params.PaginationParams.ToModel(decisionPaginationDefaults)
+		filters := p.ToFilters()
+		paging := p.PaginationParams.ToModel(decisionPaginationDefaults)
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		decisionsUsecase := uc.NewDecisionUsecase()

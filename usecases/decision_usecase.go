@@ -253,8 +253,10 @@ func (usecase *DecisionUsecase) ListDecisions(
 	paginationAndSorting models.PaginationAndSorting,
 	filters dto.DecisionFilters,
 ) (models.DecisionListPage, error) {
-	if err := usecase.validateScenarioIds(ctx, filters.ScenarioIds, organizationId); err != nil {
-		return models.DecisionListPage{}, err
+	if !filters.AllowInvalidScenarioId {
+		if err := usecase.validateScenarioIds(ctx, filters.ScenarioIds, organizationId); err != nil {
+			return models.DecisionListPage{}, err
+		}
 	}
 
 	outcomes, err := usecase.validateOutcomes(filters.Outcomes)

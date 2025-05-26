@@ -14,7 +14,8 @@ type SanctionCheck struct {
 	Query   json.RawMessage `json:"query"`
 	Partial bool            `json:"partial"`
 
-	Matches []SanctionCheckMatch `json:"matches"`
+	MatchCount int                  `json:"match_count"`
+	Matches    []SanctionCheckMatch `json:"matches,omitzero"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -27,18 +28,28 @@ type SanctionCheckMatch struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-func AdaptSanctionCheck(model models.SanctionCheckWithMatches) SanctionCheck {
-	sc := SanctionCheck{
-		Id:        model.Id,
-		Status:    model.Status.String(),
-		Query:     model.SearchInput,
-		Partial:   model.Partial,
-		Matches:   pure_utils.Map(model.Matches, AdaptSanctionCheckMatch),
-		CreatedAt: model.CreatedAt,
-		UpdatedAt: model.UpdatedAt,
-	}
+func AdaptSanctionCheck(includeMatches bool) func(models.SanctionCheckWithMatches) SanctionCheck {
+	return func(model models.SanctionCheckWithMatches) SanctionCheck {
+		sc := SanctionCheck{
+			Id:         model.Id,
+			Status:     model.Status.String(),
+			Query:      model.SearchInput,
+			Partial:    model.Partial,
+			MatchCount: len(model.Matches),
+			CreatedAt:  model.CreatedAt,
+			UpdatedAt:  model.UpdatedAt,
+		}
 
-	return sc
+		if includeMatches {
+			sc.Matches = []SanctionCheckMatch{}
+
+			if model.Matches != nil {
+				sc.Matches = pure_utils.Map(model.Matches, AdaptSanctionCheckMatch)
+			}
+		}
+
+		return sc
+	}
 }
 
 func AdaptSanctionCheckMatch(model models.SanctionCheckMatch) SanctionCheckMatch {

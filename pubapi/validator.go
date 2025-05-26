@@ -63,6 +63,8 @@ func AdaptFieldValidationError(fe validator.FieldError) string {
 			return fmt.Sprintf("should be in the format '%s'", time.RFC3339)
 		case "required_with_all", "required_if":
 			return "is required when using the other parameters in your query"
+		case "required_with":
+			return fmt.Sprintf("is required when used with %s", fe.Param())
 		case "required_without_all":
 			return fmt.Sprintf("should be provided if none of %s is provided",
 				strings.ReplaceAll(fe.Param(), " ", ", "))
