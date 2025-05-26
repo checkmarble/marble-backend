@@ -48,7 +48,7 @@ func TestCustomListValues(t *testing.T) {
 	testCustomListValues := []models.CustomListValue{{Value: "test"}, {Value: "test2"}}
 
 	execFactory.On("NewExecutor").Return(exec)
-	clr.On("GetCustomListById", exec, testListId).Return(testList, nil)
+	clr.On("GetCustomListById", exec, testListId, true).Return(testList, nil)
 	clr.On("GetCustomListValues", exec, models.GetCustomListValuesInput{Id: testListId}).Return(testCustomListValues, nil)
 
 	er.On("ReadOrganization", testListOrgId).Return(nil)
@@ -74,7 +74,7 @@ func TestCustomListValuesNoAccess(t *testing.T) {
 	customListEval := evaluate.NewCustomListValuesAccess(clr, er, execFactory)
 
 	execFactory.On("NewExecutor").Return(exec)
-	clr.On("GetCustomListById", exec, testListId).Return(testList, nil)
+	clr.On("GetCustomListById", exec, testListId, true).Return(testList, nil)
 	er.On("ReadOrganization", testListOrgId).Return(models.ForbiddenError)
 
 	_, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testCustomListNamedArgs})

@@ -39,7 +39,7 @@ func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.A
 		return MakeEvaluateError(err)
 	}
 
-	list, err := clva.CustomListRepository.GetCustomListById(ctx, exec, listId)
+	list, err := clva.CustomListRepository.GetCustomListById(ctx, exec, listId, true)
 	if errors.Is(err, models.NotFoundError) {
 		return MakeEvaluateError(ast.ErrListNotFound)
 	} else if err != nil {

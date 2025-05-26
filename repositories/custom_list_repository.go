@@ -13,7 +13,7 @@ import (
 
 type CustomListRepository interface {
 	AllCustomLists(ctx context.Context, exec Executor, organizationId string) ([]models.CustomList, error)
-	GetCustomListById(ctx context.Context, exec Executor, id string) (models.CustomList, error)
+	GetCustomListById(ctx context.Context, exec Executor, id string, includeDeleted bool) (models.CustomList, error)
 	GetCustomListValues(
 		ctx context.Context,
 		exec Executor,
@@ -96,7 +96,9 @@ func (repo *CustomListRepositoryPostgresql) AllCustomLists(
 	return customsList, nil
 }
 
-func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Context, exec Executor, id string) (models.CustomList, error) {
+func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Context, exec Executor,
+	id string, includeDeleted bool,
+) (models.CustomList, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.CustomList{}, err
 	}
@@ -116,8 +118,12 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Contex
 					) as nb_items
 			FROM custom_lists AS cl
 			WHERE cl.id = $1
-			AND cl.deleted_at IS NULL
 	`
+
+	if !includeDeleted {
+		query = query + "AND cl.deleted_at IS NULL"
+	}
+
 	rows, err := exec.Query(ctx, query, id, models.VALUES_COUNT_LIMIT+1)
 	if err != nil {
 		return models.CustomList{}, err

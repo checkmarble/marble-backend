@@ -18,8 +18,10 @@ func (cl *CustomListRepository) AllCustomLists(ctx context.Context, exec reposit
 	return args.Get(0).([]models.CustomList), args.Error(1)
 }
 
-func (cl *CustomListRepository) GetCustomListById(ctx context.Context, exec repositories.Executor, id string) (models.CustomList, error) {
-	args := cl.Called(exec, id)
+func (cl *CustomListRepository) GetCustomListById(ctx context.Context, exec repositories.Executor,
+	id string, includeDeleted bool,
+) (models.CustomList, error) {
+	args := cl.Called(exec, id, includeDeleted)
 	return args.Get(0).(models.CustomList), args.Error(1)
 }
 
