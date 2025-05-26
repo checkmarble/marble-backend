@@ -44,8 +44,12 @@ func buildSanctionCheckUsecaseMock() (SanctionCheckUsecase, executor_factory.Exe
 
 func TestListSanctionChecksOnDecision(t *testing.T) {
 	uc, exec := buildSanctionCheckUsecaseMock()
+	sccId := uuid.NewString()
 
 	sccRow, mockSccRow := utils.FakeStruct[dbmodels.DBSanctionCheckConfigs](
+		ops.WithCustomFieldProvider("Id", func() (interface{}, error) {
+			return sccId, nil
+		}),
 		ops.WithCustomFieldProvider("TriggerRule", func() (interface{}, error) {
 			return []byte(`{}`), nil
 		}),
@@ -61,7 +65,12 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 	)
 
 	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBSanctionCheckWithMatches](
-		ops.WithRandomMapAndSliceMinSize(1), ops.WithRandomMapAndSliceMaxSize(1))
+		ops.WithRandomMapAndSliceMinSize(1),
+		ops.WithRandomMapAndSliceMaxSize(1),
+		ops.WithCustomFieldProvider("SanctionCheckConfigId", func() (interface{}, error) {
+			return sccId, nil
+		}),
+	)
 
 	mockComments, mockCommentsRows := utils.FakeStructs[dbmodels.DBSanctionCheckMatchComment](
 		4,
@@ -72,7 +81,7 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 
 	exec.Mock.ExpectQuery(escapeSql(`
 		SELECT
-			sc.id, sc.decision_id, sc.status, sc.search_input, sc.search_datasets, sc.match_threshold, sc.match_limit, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.initial_has_matches, sc.whitelisted_entities, sc.error_codes, sc.created_at, sc.updated_at,
+			sc.id, sc.decision_id, sc.sanction_check_config_id, sc.status, sc.search_input, sc.search_datasets, sc.match_threshold, sc.match_limit, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.initial_has_matches, sc.whitelisted_entities, sc.error_codes, sc.created_at, sc.updated_at,
 			ARRAY_AGG(ROW(scm.id,scm.sanction_check_id,scm.opensanction_entity_id,scm.status,scm.query_ids,scm.counterparty_id,scm.payload,scm.enriched,scm.reviewed_by,scm.created_at,scm.updated_at) ORDER BY array_position(.+, scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL) AS matches
 		FROM sanction_checks AS sc
 		LEFT JOIN sanction_check_matches AS scm ON sc.id = scm.sanction_check_id
@@ -162,7 +171,7 @@ func TestUpdateMatchStatus(t *testing.T) {
 			AddRow(mockScmRow...),
 		)
 	exec.Mock.
-		ExpectQuery(`SELECT id, decision_id, status, search_input, search_datasets, match_threshold, match_limit, is_manual, requested_by, is_partial, is_archived, initial_has_matches, whitelisted_entities, error_codes, created_at, updated_at FROM sanction_checks WHERE id = \$1`).
+		ExpectQuery(`SELECT id, decision_id, sanction_check_config_id, status, search_input, search_datasets, match_threshold, match_limit, is_manual, requested_by, is_partial, is_archived, initial_has_matches, whitelisted_entities, error_codes, created_at, updated_at FROM sanction_checks WHERE id = \$1`).
 		WithArgs("sanction_check_id").
 		WillReturnRows(pgxmock.NewRows(dbmodels.SelectSanctionChecksColumn).
 			AddRow(mockScRow...),
