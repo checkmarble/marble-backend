@@ -42,7 +42,7 @@ func HandleListSanctionChecks(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		pubapi.
-			NewResponse(pure_utils.Map(sc, dto.AdaptSanctionCheck)).
+			NewResponse(pure_utils.Map(sc, dto.AdaptSanctionCheck(true))).
 			WithLink(pubapi.LinkDecisions, gin.H{"id": decisionId.String()}).
 			Serve(c)
 	}
@@ -134,7 +134,7 @@ func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc
 			}
 
 			pubapi.
-				NewResponse(dto.AdaptSanctionCheck(sanctionCheck)).
+				NewResponse(dto.AdaptSanctionCheck(true)(sanctionCheck)).
 				WithLink(pubapi.LinkDecisions, gin.H{pubapi.LinkDecisions: sanctionCheck.DecisionId}).
 				Serve(c)
 

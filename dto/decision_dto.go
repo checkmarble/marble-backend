@@ -24,6 +24,10 @@ type DecisionFilters struct {
 	StartDate             time.Time `form:"start_date"`
 	TriggerObjects        []string  `form:"trigger_object[]"`
 	TriggerObjectId       *string   `form:"trigger_object_id"`
+
+	// COMPAT: set to true to not error out if a scenario ID filter is passed that does not match
+	// a scenario of the organization. Legacy APIs used to have a 400 returned.
+	AllowInvalidScenarioId bool `form:"-"`
 }
 
 type DecisionListPageWithIndexesDto struct {

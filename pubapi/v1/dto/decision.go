@@ -11,17 +11,17 @@ import (
 )
 
 type Decision struct {
-	Id               string              `json:"id"`
-	BatchExecutionId *string             `json:"batch_execution_id,omitempty"`
-	Case             *Case               `json:"case,omitempty"`
-	CreatedAt        time.Time           `json:"created_at"`
-	TriggerObject    map[string]any      `json:"trigger_object"`
-	Outcome          string              `json:"outcome"`
-	ReviewStatus     *string             `json:"review_status"`
-	Scenario         DecisionScenario    `json:"scenario"`
-	Score            int                 `json:"score"`
-	Rules            []DecisionRule      `json:"rules,omitzero"`
-	Screenings       []DecisionScreening `json:"screenings,omitzero"`
+	Id               string           `json:"id"`
+	BatchExecutionId *string          `json:"batch_execution_id,omitempty"`
+	Case             *Case            `json:"case,omitempty"`
+	CreatedAt        time.Time        `json:"created_at"`
+	TriggerObject    map[string]any   `json:"trigger_object"`
+	Outcome          string           `json:"outcome"`
+	ReviewStatus     *string          `json:"review_status"`
+	Scenario         DecisionScenario `json:"scenario"`
+	Score            int              `json:"score"`
+	Rules            []DecisionRule   `json:"rules,omitzero"`
+	Screenings       []SanctionCheck  `json:"screenings,omitzero"`
 }
 
 type DecisionScenario struct {
@@ -36,10 +36,6 @@ type DecisionRule struct {
 	Outcome       string             `json:"outcome"`
 	ScoreModifier int                `json:"score_modifier"`
 	Error         *DecisionRuleError `json:"error,omitempty"`
-}
-
-type DecisionScreening struct {
-	Id string `json:"id"`
 }
 
 type DecisionRuleError struct {
@@ -64,20 +60,21 @@ func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, san
 			},
 		}
 
-		if includeRules {
-			d.Rules = []DecisionRule{}
-		}
-
 		if model.Case != nil {
 			d.Case = utils.Ptr(AdaptCase(*model.Case))
 		}
 
-		if ruleExecutions != nil {
-			d.Rules = pure_utils.Map(ruleExecutions, AdaptDecisionRule)
-		}
+		if includeRules {
+			d.Rules = []DecisionRule{}
+			d.Screenings = []SanctionCheck{}
 
-		if sanctionCheck != nil {
-			d.Screenings = []DecisionScreening{AdaptDecisionScreening(*sanctionCheck)}
+			if ruleExecutions != nil {
+				d.Rules = pure_utils.Map(ruleExecutions, AdaptDecisionRule)
+			}
+
+			if sanctionCheck != nil {
+				d.Screenings = []SanctionCheck{AdaptSanctionCheck(false)(*sanctionCheck)}
+			}
 		}
 
 		return d
@@ -103,12 +100,6 @@ func AdaptDecisionRule(rule models.RuleExecution) DecisionRule {
 	}
 
 	return out
-}
-
-func AdaptDecisionScreening(sc models.SanctionCheckWithMatches) DecisionScreening {
-	return DecisionScreening{
-		Id: sc.Id,
-	}
 }
 
 func AdaptDecisionsMetadata(stats dto.DecisionsAggregateMetadata) map[string]any {

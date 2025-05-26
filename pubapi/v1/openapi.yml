@@ -30,7 +30,9 @@ paths:
         - ApiKeyAuth: []
       summary: List decisions
       description: |
-        List decisions according to a filter set
+        List decisions according to a filter set.
+
+        Listing decisions is always time-boxed between the provided `start` and `end` dates. If those parameters are omitted, it defaults to the past 30 days. If the parameters are provided, their range cannot exceed 90 days.
       parameters:
         - name: scenario_id
           description: Filter decisions by their scenario
@@ -70,23 +72,33 @@ paths:
           in: query
           schema:
             type: string
+            maxLength: 256
         - name: pivot_value
           description: Filter decisions with a given pivot object value
           in: query
           schema:
             type: string
+            maxLength: 256
         - name: start
-          description: Only display decisions created after this date
+          description: |
+            Only display decisions created after this date.
+
+            If provided, one must also provide an `end` date.
           in: query
           schema:
             type: string
             format: date-time
+            default: "30 days ago"
         - name: end
-          description: Only display decisions created before this date
+          description: |
+            Only display decisions created before this date.
+
+            If provided, one must also provide a `start` date.
           in: query
           schema:
             type: string
             format: date-time
+            default: "now"
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/order"
         - $ref: "#/components/parameters/offset_id"
@@ -109,15 +121,15 @@ paths:
           $ref: "#/components/responses/400"
 
     post:
-      operationId: createAllDecision
+      operationId: createDecision
       tags:
         - Decisions
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Create all decisions
+      summary: Create decision
       description: |
-        Create decisions by running a trigger object through all elligible scenarios
+        Create a decision by running a trigger object through a scenario
       requestBody:
         content:
           application/json:
@@ -175,21 +187,25 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/Decision"
+                          allOf:
+                            - $ref: "#/components/schemas/Decision"
+                            - $ref: "#/components/schemas/DecisionExecutions"
         "400":
           $ref: "#/components/responses/400"
+        "422":
+          $ref: "#/components/responses/422"
 
   /decisions/all:
     post:
-      operationId: createDecision
+      operationId: createAllDecisions
       tags:
         - Decisions
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Create decisions
+      summary: Create all decisions
       description: |
-        Create a decision by running a trigger object through a scenario
+        Create decisions by running a trigger object through all eligible scenarios
       requestBody:
         content:
           application/json:
@@ -248,8 +264,12 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/Decision"
+                          allOf:
+                            - $ref: "#/components/schemas/Decision"
+                            - $ref: "#/components/schemas/DecisionExecutions"
         "400":
+          $ref: "#/components/responses/400"
+        "422":
           $ref: "#/components/responses/400"
 
   /decisions/{decisionId}:
@@ -281,7 +301,9 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/Decision"
+                        allOf:
+                          - $ref: "#/components/schemas/Decision"
+                          - $ref: "#/components/schemas/DecisionExecutions"
         "400":
           $ref: "#/components/responses/400"
         "404":
@@ -370,7 +392,11 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/Screening"
+                          allOf:
+                            - $ref: "#/components/schemas/Screening"
+                            - $ref: "#/components/schemas/ScreeningExecutions"
+        "400":
+          $ref: "#/components/responses/400"
         "404":
           $ref: "#/components/responses/404"
 
@@ -446,7 +472,9 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/Screening"
+                        allOf:
+                          - $ref: "#/components/schemas/Screening"
+                          - $ref: "#/components/schemas/ScreeningExecutions"
         "400":
           $ref: "#/components/responses/400"
         "404":
@@ -497,6 +525,8 @@ paths:
           $ref: "#/components/responses/400"
         "404":
           $ref: "#/components/responses/404"
+        "422":
+          $ref: "#/components/responses/422"
 
   /screening/search:
     post:
@@ -927,16 +957,29 @@ components:
         score:
           description: Final score for the decision
           type: integer
-        rules:
-          description: Rule that were executed for this decision
-          type: array
-          items:
-            $ref: "#/components/schemas/DecisionRule"
         created_at:
           type: string
           format: date-time
 
+    DecisionExecutions:
+      type: object
+      required:
+        - rules
+        - screenings
+      properties:
+        rules:
+          description: Rules that were executed for this decision
+          type: array
+          items:
+            $ref: "#/components/schemas/DecisionRule"
+        screenings:
+          description: List of screening results
+          type: array
+          items:
+            $ref: "#/components/schemas/Screening"
+
     DecisionRule:
+      title: Rule execution
       type: object
       required:
         - name
@@ -966,13 +1009,13 @@ components:
               type: string
 
     Screening:
-      title: Screening result
+      title: Screening execution
       type: object
       required:
         - id
         - status
         - query
-        - matches
+        - match_count
         - created_at
         - updated_at
       properties:
@@ -1001,16 +1044,24 @@ components:
                   Thing:
                     name: Jean-Baptiste Zorg
           additionalProperties: true
-        matches:
-          type: array
-          items:
-            $ref: "#/components/schemas/ScreeningMatch"
+        match_count:
+          description: Number of matches for the query
+          type: integer
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
+
+    ScreeningExecutions:
+      type: object
+      required: ["matches"]
+      properties:
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScreeningMatch"
 
     ScreeningMatch:
       title: Screening match

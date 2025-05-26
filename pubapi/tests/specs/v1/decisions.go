@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gavv/httpexpect/v2"
 )
@@ -69,8 +70,6 @@ func testDecisionFilters(t *testing.T, e *httpexpect.Expect) {
 		{"trigger_object_id", ids[1], 1, ids[1]},
 		{"batch_execution_id", ids[2], 1, ids[2]},
 		{"pivot_value", ids[1], 1, ids[1]},
-		{"start", "2025-02-01T00:00:00Z", 1, ids[2]},
-		{"end", "2025-02-01T00:00:00Z", 1, ids[1]},
 	}
 
 	for _, tt := range tts {
@@ -88,6 +87,32 @@ func testDecisionFilters(t *testing.T, e *httpexpect.Expect) {
 			}
 		})
 	}
+
+	t.Run("API V1 testing decisions with date filter", func(t *testing.T) {
+		ds := e.GET("/decisions").
+			WithQuery("start", time.Now().Add(-24*time.Hour).Format(time.RFC3339)).
+			WithQuery("end", time.Now().Add(24*time.Hour).Format(time.RFC3339)).
+			Expect().
+			Status(http.StatusOK).
+			JSON().Object().Path("$.data").Array()
+
+		ds.Length().IsEqual(1)
+		ds.Value(0).Object().HasValue("id", ids[1])
+	})
+
+	t.Run("API V1 testing decisions with invalid date filter", func(t *testing.T) {
+		e.GET("/decisions").
+			WithQuery("start", time.Now().Add(24*time.Hour).Format(time.RFC3339)).
+			WithQuery("end", time.Now().Add(-24*time.Hour).Format(time.RFC3339)).
+			Expect().
+			Status(http.StatusBadRequest)
+
+		e.GET("/decisions").
+			WithQuery("start", time.Now().Add(-365*24*time.Hour).Format(time.RFC3339)).
+			WithQuery("end", time.Now().Format(time.RFC3339)).
+			Expect().
+			Status(http.StatusBadRequest)
+	})
 
 	t.Run("API V1 testing decisions with review_status filter but no outcome", func(t *testing.T) {
 		e.GET("/decisions").
