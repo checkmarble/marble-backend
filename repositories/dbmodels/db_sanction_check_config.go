@@ -42,12 +42,14 @@ var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
 
 func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckConfig, error) {
 	scc := models.SanctionCheckConfig{
-		StableId:      db.StableId,
-		Name:          db.Name,
-		Description:   db.Description,
-		RuleGroup:     &db.RuleGroup,
-		Datasets:      db.Datasets,
-		ForcedOutcome: models.OutcomeFrom(db.ForcedOutcome),
+		Id:                  db.Id,
+		ScenarioIterationId: db.ScenarioIterationId,
+		StableId:            db.StableId,
+		Name:                db.Name,
+		Description:         db.Description,
+		RuleGroup:           &db.RuleGroup,
+		Datasets:            db.Datasets,
+		ForcedOutcome:       models.OutcomeFrom(db.ForcedOutcome),
 	}
 
 	if db.TriggerRule != nil {
