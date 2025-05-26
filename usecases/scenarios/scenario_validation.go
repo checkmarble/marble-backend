@@ -122,100 +122,102 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 	}
 
 	// Validate sanction check trigger and rule
-	if iteration.SanctionCheckConfig != nil {
-		if iteration.SanctionCheckConfig.TriggerRule != nil {
-			triggerRuleEvaluation, _ := ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-				*iteration.SanctionCheckConfig.TriggerRule)
-			if _, ok := triggerRuleEvaluation.ReturnValue.(bool); !ok {
-				result.SanctionCheck.TriggerRule.Errors = append(
-					result.SanctionCheck.TriggerRule.Errors, models.ScenarioValidationError{
-						Error: errors.Wrap(models.BadParameterError,
-							"sanction check trigger formula does not return a boolean"),
-						Code: models.FormulaMustReturnBoolean,
-					})
-			}
-		}
-
-		queryValidation := models.NewRuleValidation()
-
-		if iteration.SanctionCheckConfig.Query == nil {
-			queryValidation.Errors = append(queryValidation.Errors, models.ScenarioValidationError{
-				Error: errors.Wrap(models.BadParameterError,
-					"sanction check does not have a query formula"),
-				Code: models.RuleFormulaRequired,
-			})
-		} else {
-			isSpecified := func(a *ast.Node) bool {
-				return a != nil
-			}
-
-			isNameProvided, isLabelProvided := false, false
-
-			if isSpecified(iteration.SanctionCheckConfig.Query.Name) {
-				queryNameValidation := models.NewRuleValidation()
-				isNameProvided = true
-
-				queryNameValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-					*iteration.SanctionCheckConfig.Query.Name)
-
-				if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(string); !ok {
-					queryNameValidation.Errors = append(
-						queryNameValidation.Errors, models.ScenarioValidationError{
+	if len(iteration.SanctionCheckConfigs) > 0 {
+		for _, scc := range iteration.SanctionCheckConfigs {
+			if scc.TriggerRule != nil {
+				triggerRuleEvaluation, _ := ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
+					*scc.TriggerRule)
+				if _, ok := triggerRuleEvaluation.ReturnValue.(bool); !ok {
+					result.SanctionCheck.TriggerRule.Errors = append(
+						result.SanctionCheck.TriggerRule.Errors, models.ScenarioValidationError{
 							Error: errors.Wrap(models.BadParameterError,
-								"sanction check namefilter does not return a string"),
-							Code: models.FormulaMustReturnString,
+								"sanction check trigger formula does not return a boolean"),
+							Code: models.FormulaMustReturnBoolean,
 						})
 				}
-
-				result.SanctionCheck.QueryName = queryNameValidation
 			}
 
-			if isSpecified(iteration.SanctionCheckConfig.Query.Label) {
-				queryLabelValidation := models.NewRuleValidation()
-				isLabelProvided = true
+			queryValidation := models.NewRuleValidation()
 
-				queryLabelValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-					*iteration.SanctionCheckConfig.Query.Label)
-
-				if _, ok := queryLabelValidation.RuleEvaluation.ReturnValue.(string); !ok {
-					queryLabelValidation.Errors = append(
-						queryLabelValidation.Errors, models.ScenarioValidationError{
-							Error: errors.Wrap(models.BadParameterError,
-								"sanction check label filter does not return a string"),
-							Code: models.FormulaMustReturnString,
-						})
-				}
-
-				result.SanctionCheck.QueryLabel = queryLabelValidation
-			}
-
-			if !isNameProvided && !isLabelProvided {
+			if scc.Query == nil {
 				queryValidation.Errors = append(queryValidation.Errors, models.ScenarioValidationError{
 					Error: errors.Wrap(models.BadParameterError,
-						"at least one of name or label filter must be provided"),
+						"sanction check does not have a query formula"),
 					Code: models.RuleFormulaRequired,
 				})
-			}
-		}
+			} else {
+				isSpecified := func(a *ast.Node) bool {
+					return a != nil
+				}
 
-		counterpartyIdValidation := models.NewRuleValidation()
+				isNameProvided, isLabelProvided := false, false
 
-		if iteration.SanctionCheckConfig.CounterpartyIdExpression != nil {
-			counterpartyIdValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-				*iteration.SanctionCheckConfig.CounterpartyIdExpression)
+				if isSpecified(scc.Query.Name) {
+					queryNameValidation := models.NewRuleValidation()
+					isNameProvided = true
 
-			if _, ok := counterpartyIdValidation.RuleEvaluation.ReturnValue.(string); !ok {
-				counterpartyIdValidation.Errors = append(
-					counterpartyIdValidation.Errors, models.ScenarioValidationError{
+					queryNameValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
+						*scc.Query.Name)
+
+					if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(string); !ok {
+						queryNameValidation.Errors = append(
+							queryNameValidation.Errors, models.ScenarioValidationError{
+								Error: errors.Wrap(models.BadParameterError,
+									"sanction check namefilter does not return a string"),
+								Code: models.FormulaMustReturnString,
+							})
+					}
+
+					result.SanctionCheck.QueryName = queryNameValidation
+				}
+
+				if isSpecified(scc.Query.Label) {
+					queryLabelValidation := models.NewRuleValidation()
+					isLabelProvided = true
+
+					queryLabelValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
+						*scc.Query.Label)
+
+					if _, ok := queryLabelValidation.RuleEvaluation.ReturnValue.(string); !ok {
+						queryLabelValidation.Errors = append(
+							queryLabelValidation.Errors, models.ScenarioValidationError{
+								Error: errors.Wrap(models.BadParameterError,
+									"sanction check label filter does not return a string"),
+								Code: models.FormulaMustReturnString,
+							})
+					}
+
+					result.SanctionCheck.QueryLabel = queryLabelValidation
+				}
+
+				if !isNameProvided && !isLabelProvided {
+					queryValidation.Errors = append(queryValidation.Errors, models.ScenarioValidationError{
 						Error: errors.Wrap(models.BadParameterError,
-							"sanction check counterparty ID expression does not return a string"),
-						Code: models.FormulaMustReturnString,
+							"at least one of name or label filter must be provided"),
+						Code: models.RuleFormulaRequired,
 					})
+				}
 			}
-		}
 
-		result.SanctionCheck.Query = queryValidation
-		result.SanctionCheck.CounterpartyIdExpression = counterpartyIdValidation
+			counterpartyIdValidation := models.NewRuleValidation()
+
+			if scc.CounterpartyIdExpression != nil {
+				counterpartyIdValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
+					*scc.CounterpartyIdExpression)
+
+				if _, ok := counterpartyIdValidation.RuleEvaluation.ReturnValue.(string); !ok {
+					counterpartyIdValidation.Errors = append(
+						counterpartyIdValidation.Errors, models.ScenarioValidationError{
+							Error: errors.Wrap(models.BadParameterError,
+								"sanction check counterparty ID expression does not return a string"),
+							Code: models.FormulaMustReturnString,
+						})
+				}
+			}
+
+			result.SanctionCheck.Query = queryValidation
+			result.SanctionCheck.CounterpartyIdExpression = counterpartyIdValidation
+		}
 	}
 
 	return result

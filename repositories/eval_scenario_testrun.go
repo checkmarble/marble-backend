@@ -11,5 +11,5 @@ type EvalScenarioRepository interface {
 }
 
 type EvalSanctionCheckConfigRepository interface {
-	GetSanctionCheckConfig(ctx context.Context, exec Executor, scenarioIterationId string) (*models.SanctionCheckConfig, error)
+	ListSanctionCheckConfigs(ctx context.Context, exec Executor, scenarioIterationId string) ([]models.SanctionCheckConfig, error)
 }

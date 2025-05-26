@@ -7,6 +7,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 // Read DTO
@@ -24,14 +25,14 @@ type ScenarioIterationDto struct {
 }
 
 type ScenarioIterationBodyDto struct {
-	TriggerConditionAstExpression *NodeDto             `json:"trigger_condition_ast_expression"`
-	Rules                         []RuleDto            `json:"rules"`
-	SanctionCheckConfig           *SanctionCheckConfig `json:"sanction_check_config,omitempty"`
-	ScoreReviewThreshold          *int                 `json:"score_review_threshold"`
-	ScoreBlockAndReviewThreshold  *int                 `json:"score_block_and_review_threshold"`
-	ScoreRejectThreshold_deprec   *int                 `json:"score_reject_threshold"` //nolint:tagliatelle
-	ScoreDeclineThreshold         *int                 `json:"score_decline_threshold"`
-	Schedule                      string               `json:"schedule"`
+	TriggerConditionAstExpression *NodeDto              `json:"trigger_condition_ast_expression"`
+	Rules                         []RuleDto             `json:"rules"`
+	SanctionCheckConfigs          []SanctionCheckConfig `json:"sanction_check_configs,omitempty"`
+	ScoreReviewThreshold          *int                  `json:"score_review_threshold"`
+	ScoreBlockAndReviewThreshold  *int                  `json:"score_block_and_review_threshold"`
+	ScoreRejectThreshold_deprec   *int                  `json:"score_reject_threshold"` //nolint:tagliatelle
+	ScoreDeclineThreshold         *int                  `json:"score_decline_threshold"`
+	Schedule                      string                `json:"schedule"`
 }
 
 func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIterationWithBodyDto, error) {
@@ -42,7 +43,7 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		ScoreDeclineThreshold:        si.ScoreDeclineThreshold,
 		Schedule:                     si.Schedule,
 		Rules:                        make([]RuleDto, len(si.Rules)),
-		SanctionCheckConfig:          nil,
+		SanctionCheckConfigs:         nil,
 	}
 	for i, rule := range si.Rules {
 		apiRule, err := AdaptRuleDto(rule)
@@ -53,14 +54,14 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		body.Rules[i] = apiRule
 	}
 
-	if si.SanctionCheckConfig != nil {
-		scc, err := AdaptSanctionCheckConfig(*si.SanctionCheckConfig)
+	if len(si.SanctionCheckConfigs) > 0 {
+		sccs, err := pure_utils.MapErr(si.SanctionCheckConfigs, AdaptSanctionCheckConfig)
 		if err != nil {
 			return ScenarioIterationWithBodyDto{},
 				errors.Wrap(err, "could not parse the sanction check trigger rule")
 		}
 
-		body.SanctionCheckConfig = &scc
+		body.SanctionCheckConfigs = sccs
 	}
 
 	if si.TriggerConditionAstExpression != nil {

@@ -103,9 +103,9 @@ func TestSanctionCheckSkippedWhenTriggerRuleFalse(t *testing.T) {
 	eval, _ := getSanctionCheckEvaluator()
 
 	iteration := models.ScenarioIteration{
-		SanctionCheckConfig: &models.SanctionCheckConfig{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: false},
-		},
+		}},
 	}
 
 	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
@@ -119,12 +119,12 @@ func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
 	eval, _ := getSanctionCheckEvaluator()
 
 	iteration := models.ScenarioIteration{
-		SanctionCheckConfig: &models.SanctionCheckConfig{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
 				Name: &ast.Node{Constant: 12},
 			},
-		},
+		}},
 	}
 
 	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
@@ -138,16 +138,16 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 	eval, exec := getSanctionCheckEvaluator()
 
 	iteration := models.ScenarioIteration{
-		SanctionCheckConfig: &models.SanctionCheckConfig{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
 				Name: &ast.Node{Constant: "constant string"},
 			},
-		},
+		}},
 	}
 
 	expectedQuery := models.OpenSanctionsQuery{
-		Config: *iteration.SanctionCheckConfig,
+		Config: iteration.SanctionCheckConfigs[0],
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
@@ -171,7 +171,7 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 	eval, exec := getSanctionCheckEvaluator()
 
 	iteration := models.ScenarioIteration{
-		SanctionCheckConfig: &models.SanctionCheckConfig{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
 				Name: &ast.Node{
@@ -183,11 +183,11 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 					},
 				},
 			},
-		},
+		}},
 	}
 
 	expectedQuery := models.OpenSanctionsQuery{
-		Config: *iteration.SanctionCheckConfig,
+		Config: iteration.SanctionCheckConfigs[0],
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
@@ -221,17 +221,17 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 		Return(names, nil)
 
 	iteration := models.ScenarioIteration{
-		SanctionCheckConfig: &models.SanctionCheckConfig{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
 				Name:  &ast.Node{Constant: "bob gross"},
 				Label: &ast.Node{Constant: "dinner with joe finnigan"},
 			},
-		},
+		}},
 	}
 
 	expectedQuery := models.OpenSanctionsQuery{
-		Config: *iteration.SanctionCheckConfig,
+		Config: iteration.SanctionCheckConfigs[0],
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
@@ -268,17 +268,17 @@ func TestSanctionCheckCalledWithNameRecognitionDisabled(t *testing.T) {
 	exec.Mock.On("IsConfigured").Return(false)
 
 	iteration := models.ScenarioIteration{
-		SanctionCheckConfig: &models.SanctionCheckConfig{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
 			Query: &models.SanctionCheckConfigQuery{
 				Name:  &ast.Node{Constant: "bob gross"},
 				Label: &ast.Node{Constant: "dinner with joe finnigan"},
 			},
-		},
+		}},
 	}
 
 	expectedQuery := models.OpenSanctionsQuery{
-		Config: *iteration.SanctionCheckConfig,
+		Config: iteration.SanctionCheckConfigs[0],
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",

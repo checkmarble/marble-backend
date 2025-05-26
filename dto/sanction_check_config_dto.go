@@ -8,6 +8,7 @@ import (
 )
 
 type SanctionCheckConfig struct {
+	Id                       string                    `json:"id"`
 	Name                     *string                   `json:"name"`
 	Description              *string                   `json:"description"`
 	RuleGroup                *string                   `json:"rule_group,omitempty"`
@@ -20,6 +21,7 @@ type SanctionCheckConfig struct {
 
 func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckConfig, error) {
 	config := SanctionCheckConfig{
+		Id:            model.Id,
 		Name:          &model.Name,
 		Description:   &model.Description,
 		RuleGroup:     model.RuleGroup,
@@ -59,6 +61,7 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 
 func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSanctionCheckConfigInput, error) {
 	config := models.UpdateSanctionCheckConfigInput{
+		Id:          dto.Id,
 		Name:        dto.Name,
 		Description: dto.Description,
 		RuleGroup:   dto.RuleGroup,
