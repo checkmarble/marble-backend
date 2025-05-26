@@ -12,7 +12,10 @@ type ScenarioFetcherRepository interface {
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
-	GetSanctionCheckConfig(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (*models.SanctionCheckConfig, error)
+	ListSanctionCheckConfigs(ctx context.Context, exec repositories.Executor,
+		scenarioIterationId string) ([]models.SanctionCheckConfig, error)
+	GetSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
+		scenarioIterationId, sanctionCheckId string) (*models.SanctionCheckConfig, error)
 }
 
 type ScenarioFetcher struct {
@@ -27,11 +30,11 @@ func (fetcher ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context,
 		return models.ScenarioAndIteration{}, err
 	}
 
-	sanctionCheckConfig, err := fetcher.Repository.GetSanctionCheckConfig(ctx, exec, iterationId)
+	sanctionCheckConfig, err := fetcher.Repository.ListSanctionCheckConfigs(ctx, exec, iterationId)
 	if err != nil {
 		return models.ScenarioAndIteration{}, err
 	}
-	result.Iteration.SanctionCheckConfig = sanctionCheckConfig
+	result.Iteration.SanctionCheckConfigs = sanctionCheckConfig
 
 	result.Scenario, err = fetcher.Repository.GetScenarioById(ctx, exec, result.Iteration.ScenarioId)
 	if err != nil {

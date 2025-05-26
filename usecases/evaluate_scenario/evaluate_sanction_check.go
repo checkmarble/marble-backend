@@ -19,145 +19,149 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	params ScenarioEvaluationParameters,
 	dataAccessor DataAccessor,
 ) (
-	sanctionCheck *models.SanctionCheckWithMatches,
+	sanctionCheck []models.SanctionCheckWithMatches,
 	performed bool,
 	sanctionCheckErr error,
 ) {
 	// First, check if the sanction check should be performed
-	if iteration.SanctionCheckConfig == nil {
+	if len(iteration.SanctionCheckConfigs) == 0 {
 		return
 	}
 
-	start := time.Now()
+	for _, scc := range iteration.SanctionCheckConfigs {
+		start := time.Now()
 
-	if iteration.SanctionCheckConfig.TriggerRule != nil {
-		triggerEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
-			ctx,
-			nil,
-			*iteration.SanctionCheckConfig.TriggerRule,
-			params.Scenario.OrganizationId,
-			dataAccessor.ClientObject,
-			params.DataModel,
-		)
-		if err != nil {
-			sanctionCheckErr = errors.Wrap(err, "could not execute sanction check trigger rule")
-			return
-		}
-		passed, ok := triggerEvaluation.ReturnValue.(bool)
-		if !ok {
-			sanctionCheckErr = errors.New("sanction check trigger rule did not evaluate to a boolean")
-		} else if !passed {
-			return
-		}
-	}
-
-	queries := []models.OpenSanctionsCheckQuery{}
-	emptyFieldRead := 0
-	nbEvaluatedFields := 0
-	emptyInput := false
-	var err error
-
-	if iteration.SanctionCheckConfig.Query.Name != nil {
-		nbEvaluatedFields += 1
-		queries, emptyInput, err = e.evaluateSanctionCheckName(ctx, queries, iteration, dataAccessor)
-		if err != nil {
-			return nil, true, errors.Wrap(err, "could not evaluate sanction check name")
-		} else if emptyInput {
-			emptyFieldRead += 1
-		}
-	}
-
-	var nameRecognitionDuration time.Duration
-
-	if iteration.SanctionCheckConfig.Query.Label != nil {
-		nbEvaluatedFields += 1
-		nameRecognizedQueries, emptyInput, duration, err :=
-			e.evaluateSanctionCheckLabel(ctx, queries, iteration, dataAccessor)
-		if err != nil {
-			return nil, true, errors.Wrap(err, "could not evaluate sanction check label")
-		} else if emptyInput {
-			emptyFieldRead += 1
-		}
-
-		queries = nameRecognizedQueries
-		nameRecognitionDuration = duration
-	}
-
-	if emptyFieldRead == nbEvaluatedFields {
-		sanctionCheck = &models.SanctionCheckWithMatches{
-			SanctionCheck: models.SanctionCheck{
-				Status:     models.SanctionStatusError,
-				ErrorCodes: []string{ErrSanctionCheckAllFieldsNullOrEmpty},
-			},
-		}
-
-		performed = false
-		return
-	}
-
-	var uniqueCounterpartyIdentifier *string
-
-	query := models.OpenSanctionsQuery{
-		Config:  *iteration.SanctionCheckConfig,
-		Queries: queries,
-	}
-
-	if iteration.SanctionCheckConfig.CounterpartyIdExpression != nil {
-		counterpartyIdResult, err := e.evaluateAstExpression.EvaluateAstExpression(
-			ctx,
-			nil,
-			*iteration.SanctionCheckConfig.CounterpartyIdExpression,
-			params.Scenario.OrganizationId,
-			dataAccessor.ClientObject,
-			params.DataModel,
-		)
-		if err != nil {
-			sanctionCheckErr = errors.Wrap(err, "could not extract object field for whitelist check")
-			return
-		}
-
-		counterpartyId, ok := counterpartyIdResult.ReturnValue.(string)
-		if counterpartyIdResult.ReturnValue == nil || !ok {
-			sanctionCheckErr = errors.Wrapf(err, "could not parse object field for white list check as string, read %v", counterpartyIdResult.ReturnValue)
-			return
-		}
-
-		if trimmed := strings.TrimSpace(counterpartyId); trimmed != "" {
-			uniqueCounterpartyIdentifier = &counterpartyId
-
-			whitelistCount, err := e.evalSanctionCheckUsecase.CountWhitelistsForCounterpartyId(
-				ctx, iteration.OrganizationId, *uniqueCounterpartyIdentifier)
+		if scc.TriggerRule != nil {
+			triggerEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
+				ctx,
+				nil,
+				*scc.TriggerRule,
+				params.Scenario.OrganizationId,
+				dataAccessor.ClientObject,
+				params.DataModel,
+			)
 			if err != nil {
-				sanctionCheckErr = errors.Wrap(err, "could not retrieve whitelist count")
+				sanctionCheckErr = errors.Wrap(err, "could not execute sanction check trigger rule")
+				return
+			}
+			passed, ok := triggerEvaluation.ReturnValue.(bool)
+			if !ok {
+				sanctionCheckErr = errors.New("sanction check trigger rule did not evaluate to a boolean")
+			} else if !passed {
+				return
+			}
+		}
+
+		queries := []models.OpenSanctionsCheckQuery{}
+		emptyFieldRead := 0
+		nbEvaluatedFields := 0
+		emptyInput := false
+		var err error
+
+		if scc.Query.Name != nil {
+			nbEvaluatedFields += 1
+			queries, emptyInput, err = e.evaluateSanctionCheckName(ctx, queries, iteration, scc, dataAccessor)
+			if err != nil {
+				return nil, true, errors.Wrap(err, "could not evaluate sanction check name")
+			} else if emptyInput {
+				emptyFieldRead += 1
+			}
+		}
+
+		var nameRecognitionDuration time.Duration
+
+		if scc.Query.Label != nil {
+			nbEvaluatedFields += 1
+			nameRecognizedQueries, emptyInput, duration, err :=
+				e.evaluateSanctionCheckLabel(ctx, queries, iteration, scc, dataAccessor)
+			if err != nil {
+				return nil, true, errors.Wrap(err, "could not evaluate sanction check label")
+			} else if emptyInput {
+				emptyFieldRead += 1
+			}
+
+			queries = nameRecognizedQueries
+			nameRecognitionDuration = duration
+		}
+
+		if emptyFieldRead == nbEvaluatedFields {
+			sanctionCheck = append(sanctionCheck, models.SanctionCheckWithMatches{
+				SanctionCheck: models.SanctionCheck{
+					Status:     models.SanctionStatusError,
+					ErrorCodes: []string{ErrSanctionCheckAllFieldsNullOrEmpty},
+				},
+			})
+
+			performed = false
+			return
+		}
+
+		var uniqueCounterpartyIdentifier *string
+
+		query := models.OpenSanctionsQuery{
+			Config:  scc,
+			Queries: queries,
+		}
+
+		if scc.CounterpartyIdExpression != nil {
+			counterpartyIdResult, err := e.evaluateAstExpression.EvaluateAstExpression(
+				ctx,
+				nil,
+				*scc.CounterpartyIdExpression,
+				params.Scenario.OrganizationId,
+				dataAccessor.ClientObject,
+				params.DataModel,
+			)
+			if err != nil {
+				sanctionCheckErr = errors.Wrap(err, "could not extract object field for whitelist check")
 				return
 			}
 
-			query.LimitIncrease = whitelistCount
+			counterpartyId, ok := counterpartyIdResult.ReturnValue.(string)
+			if counterpartyIdResult.ReturnValue == nil || !ok {
+				sanctionCheckErr = errors.Wrapf(err, "could not parse object field for white list check as string, read %v", counterpartyIdResult.ReturnValue)
+				return
+			}
+
+			if trimmed := strings.TrimSpace(counterpartyId); trimmed != "" {
+				uniqueCounterpartyIdentifier = &counterpartyId
+
+				whitelistCount, err := e.evalSanctionCheckUsecase.CountWhitelistsForCounterpartyId(
+					ctx, iteration.OrganizationId, *uniqueCounterpartyIdentifier)
+				if err != nil {
+					sanctionCheckErr = errors.Wrap(err, "could not retrieve whitelist count")
+					return
+				}
+
+				query.LimitIncrease = whitelistCount
+			}
 		}
-	}
 
-	result, err := e.evalSanctionCheckUsecase.Execute(ctx, params.Scenario.OrganizationId, query)
-	if err != nil {
-		sanctionCheckErr = errors.Wrap(err, "could not perform sanction check")
-		return
-	}
-
-	if uniqueCounterpartyIdentifier != nil {
-		for idx := range result.Matches {
-			result.Matches[idx].UniqueCounterpartyIdentifier = uniqueCounterpartyIdentifier
-		}
-
-		result, err = e.evalSanctionCheckUsecase.FilterOutWhitelistedMatches(ctx,
-			params.Scenario.OrganizationId, result, *uniqueCounterpartyIdentifier)
+		result, err := e.evalSanctionCheckUsecase.Execute(ctx, params.Scenario.OrganizationId, query)
 		if err != nil {
+			sanctionCheckErr = errors.Wrap(err, "could not perform sanction check")
 			return
 		}
-	}
 
-	sanctionCheck = &result
-	sanctionCheck.Duration = time.Since(start)
-	sanctionCheck.NameRecognitionDuration = nameRecognitionDuration
-	performed = true
+		if uniqueCounterpartyIdentifier != nil {
+			for idx := range result.Matches {
+				result.Matches[idx].UniqueCounterpartyIdentifier = uniqueCounterpartyIdentifier
+			}
+
+			result, err = e.evalSanctionCheckUsecase.FilterOutWhitelistedMatches(ctx,
+				params.Scenario.OrganizationId, result, *uniqueCounterpartyIdentifier)
+			if err != nil {
+				return
+			}
+		}
+
+		result.SanctionCheckConfigId = scc.Id
+		result.Duration = time.Since(start)
+		result.NameRecognitionDuration = nameRecognitionDuration
+
+		sanctionCheck = append(sanctionCheck, result)
+		performed = true
+	}
 	return
 }
 
@@ -165,11 +169,12 @@ func (e ScenarioEvaluator) evaluateSanctionCheckName(
 	ctx context.Context,
 	queries []models.OpenSanctionsCheckQuery,
 	iteration models.ScenarioIteration,
+	scc models.SanctionCheckConfig,
 	dataAccessor DataAccessor,
 ) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, err error) {
 	queriesOut = queries
 	nameFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-		*iteration.SanctionCheckConfig.Query.Name, iteration.OrganizationId,
+		*scc.Query.Name, iteration.OrganizationId,
 		dataAccessor.ClientObject, dataAccessor.DataModel)
 	if err != nil {
 		return
@@ -202,11 +207,12 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 	ctx context.Context,
 	queries []models.OpenSanctionsCheckQuery,
 	iteration models.ScenarioIteration,
+	scc models.SanctionCheckConfig,
 	dataAccessor DataAccessor,
 ) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, took time.Duration, err error) {
 	queriesOut = queries
 	labelFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-		*iteration.SanctionCheckConfig.Query.Label, iteration.OrganizationId,
+		*scc.Query.Label, iteration.OrganizationId,
 		dataAccessor.ClientObject, dataAccessor.DataModel)
 	if err != nil {
 		return

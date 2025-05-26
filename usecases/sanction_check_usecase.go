@@ -57,8 +57,8 @@ type SanctionCheckInboxReader interface {
 
 type SanctionCheckRepository interface {
 	GetActiveSanctionCheckForDecision(context.Context, repositories.Executor, string) (
-		*models.SanctionCheckWithMatches, error)
-	GetSanctionChecksForDecision(ctx context.Context, exec repositories.Executor, decisionId string, initialOnly bool) (
+		models.SanctionCheckWithMatches, error)
+	ListSanctionChecksForDecision(ctx context.Context, exec repositories.Executor, decisionId string, initialOnly bool) (
 		[]models.SanctionCheckWithMatches, error)
 	GetSanctionCheck(context.Context, repositories.Executor, string) (models.SanctionCheckWithMatches, error)
 	GetSanctionCheckWithoutMatches(context.Context, repositories.Executor, string) (models.SanctionCheck, error)
@@ -202,12 +202,12 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 		}
 	}
 
-	scs, err := uc.repository.GetSanctionChecksForDecision(ctx, exec, decisions[0].DecisionId, initialOnly)
+	scs, err := uc.repository.ListSanctionChecksForDecision(ctx, exec, decisions[0].DecisionId, initialOnly)
 	if err != nil {
 		return nil, err
 	}
 
-	scc, err := uc.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
+	sccs, err := uc.sanctionCheckConfigRepository.ListSanctionCheckConfigs(ctx,
 		uc.executorFactory.NewExecutor(), decisions[0].ScenarioIterationId)
 	if err != nil {
 		return nil, err
@@ -216,9 +216,26 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 	matchIds := set.New[string](0)
 	matchIdToMatch := make(map[string]*models.SanctionCheckMatch)
 
+	var (
+		sanctionCheckConfig models.SanctionCheckConfig
+		found               bool
+	)
+
 	for sidx, sc := range scs {
+		for _, scc := range sccs {
+			if sc.SanctionCheckConfigId == scc.Id {
+				sanctionCheckConfig = scc
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return nil, errors.New("could not find sanction check config for match")
+		}
+
 		scs[sidx].Config = models.SanctionCheckConfigRef{
-			Name: scc.Name,
+			Name: sanctionCheckConfig.Name,
 		}
 
 		for midx, match := range sc.Matches {
@@ -268,13 +285,13 @@ func (uc SanctionCheckUsecase) Execute(
 func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.SanctionCheckRefineRequest,
 	requestedBy *models.UserId,
 ) (models.SanctionCheckWithMatches, error) {
-	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.DecisionId)
+	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.SanctionCheckId)
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
 	}
 
 	scc, err := uc.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
-		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId)
+		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId, sc.SanctionCheckConfigId)
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
 	}
@@ -303,7 +320,7 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 	sanctionCheck, err = executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.SanctionCheckWithMatches, error) {
-		oldSanctionCheck, err := uc.repository.GetActiveSanctionCheckForDecision(ctx, tx, decision.DecisionId)
+		oldSanctionCheck, err := uc.repository.GetActiveSanctionCheckForDecision(ctx, tx, sc.Id)
 		if err != nil {
 			return models.SanctionCheckWithMatches{}, err
 		}
@@ -340,13 +357,13 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 }
 
 func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.SanctionCheckRefineRequest) (models.SanctionCheckWithMatches, error) {
-	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.DecisionId)
+	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.SanctionCheckId)
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
 	}
 
 	scc, err := uc.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
-		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId)
+		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId, sc.SanctionCheckConfigId)
 	if err != nil {
 		return models.SanctionCheckWithMatches{}, err
 	}
@@ -691,7 +708,8 @@ func (uc SanctionCheckUsecase) GetEntity(ctx context.Context, entityId string) (
 func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Credentials,
 	sanctionCheckId string, files []multipart.FileHeader,
 ) ([]models.SanctionCheckFile, error) {
-	sc, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), sanctionCheckId)
+	sc, err := uc.repository.GetActiveSanctionCheckForDecision(ctx,
+		uc.executorFactory.NewExecutor(), sanctionCheckId)
 	if err != nil {
 		return nil, err
 	}
@@ -699,22 +717,6 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 	match, err := uc.enforceCanReadOrUpdateCase(ctx, sc.DecisionId)
 	if err != nil {
 		return nil, err
-	}
-
-	if sc.IsArchived {
-		latestSanctionCheck, err := uc.repository.GetActiveSanctionCheckForDecision(ctx,
-			uc.executorFactory.NewExecutor(), sc.DecisionId)
-		if err != nil {
-			return nil, err
-		}
-
-		sc = *latestSanctionCheck
-	}
-
-	for _, fileHeader := range files {
-		if err := validateFileType(fileHeader); err != nil {
-			return nil, err
-		}
 	}
 
 	for _, fileHeader := range files {
@@ -795,7 +797,8 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 }
 
 func (uc SanctionCheckUsecase) ListFiles(ctx context.Context, sanctionCheckId string) ([]models.SanctionCheckFile, error) {
-	sc, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), sanctionCheckId)
+	sc, err := uc.repository.GetActiveSanctionCheckForDecision(ctx,
+		uc.executorFactory.NewExecutor(), sanctionCheckId)
 	if err != nil {
 		return nil, err
 	}
@@ -895,31 +898,26 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, d
 
 func (uc SanctionCheckUsecase) enforceCanRefineSanctionCheck(
 	ctx context.Context,
-	decisionId string,
+	sanctionCheckId string,
 ) (models.Decision, models.SanctionCheckWithMatches, error) {
-	sanctionCheck, err := uc.repository.GetActiveSanctionCheckForDecision(ctx,
-		uc.executorFactory.NewExecutor(), decisionId)
+	sc, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), sanctionCheckId)
 	if err != nil {
 		return models.Decision{}, models.SanctionCheckWithMatches{},
 			errors.WithDetail(err, "sanction check does not exist")
 	}
-	if sanctionCheck == nil {
-		return models.Decision{}, models.SanctionCheckWithMatches{},
-			errors.WithDetail(models.NotFoundError, "no active sanction check found for this decision")
-	}
 
-	if !sanctionCheck.Status.IsRefinable() {
-		return models.Decision{}, *sanctionCheck,
+	if !sc.Status.IsRefinable() {
+		return models.Decision{}, sc,
 			errors.WithDetail(models.NotFoundError,
 				"this sanction is not pending review or error")
 	}
 
-	decision, err := uc.enforceCanReadOrUpdateCase(ctx, sanctionCheck.DecisionId)
+	decision, err := uc.enforceCanReadOrUpdateCase(ctx, sc.DecisionId)
 	if err != nil {
 		return models.Decision{}, models.SanctionCheckWithMatches{}, err
 	}
 
-	return decision, *sanctionCheck, nil
+	return decision, sc, nil
 }
 
 type sanctionCheckContextData struct {

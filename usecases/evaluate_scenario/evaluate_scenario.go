@@ -41,7 +41,7 @@ type ScenarioEvaluationParameters struct {
 	ClientObject        models.ClientObject
 	DataModel           models.DataModel
 	Pivot               *models.Pivot
-	CachedSanctionCheck *models.SanctionCheckWithMatches
+	CachedSanctionCheck map[string]models.SanctionCheckWithMatches
 }
 
 type EvalSanctionCheckUsecase interface {
@@ -219,15 +219,19 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	var outcome models.Outcome
 
-	sanctionCheckExecution, santionCheckPerformed, err :=
+	sanctionCheckExecutions, santionCheckPerformed, err :=
 		e.evaluateSanctionCheck(ctx, iteration, params, dataAccessor)
 	if err != nil {
 		return false, models.ScenarioExecution{},
 			errors.Wrap(err, "could not perform sanction check")
 	}
 
-	if santionCheckPerformed && sanctionCheckExecution.Count > 0 {
-		outcome = iteration.SanctionCheckConfig.ForcedOutcome
+	if santionCheckPerformed {
+		for idx, sce := range sanctionCheckExecutions {
+			if sce.Count > 0 {
+				outcome = iteration.SanctionCheckConfigs[idx].ForcedOutcome
+			}
+		}
 	}
 
 	// We only go through the nominal score classifier if the sanction check was not executed or if it was, but
@@ -246,16 +250,16 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	// Build ScenarioExecution as result
 	se := models.ScenarioExecution{
-		ScenarioId:             params.Scenario.Id,
-		ScenarioIterationId:    iteration.Id,
-		ScenarioName:           params.Scenario.Name,
-		ScenarioDescription:    params.Scenario.Description,
-		ScenarioVersion:        *iteration.Version,
-		RuleExecutions:         ruleExecutions,
-		SanctionCheckExecution: sanctionCheckExecution,
-		Score:                  score,
-		Outcome:                outcome,
-		OrganizationId:         params.Scenario.OrganizationId,
+		ScenarioId:              params.Scenario.Id,
+		ScenarioIterationId:     iteration.Id,
+		ScenarioName:            params.Scenario.Name,
+		ScenarioDescription:     params.Scenario.Description,
+		ScenarioVersion:         *iteration.Version,
+		RuleExecutions:          ruleExecutions,
+		SanctionCheckExecutions: sanctionCheckExecutions,
+		Score:                   score,
+		Outcome:                 outcome,
+		OrganizationId:          params.Scenario.OrganizationId,
 	}
 	if params.Pivot != nil {
 		se.PivotId = &params.Pivot.Id
@@ -278,12 +282,12 @@ func (e ScenarioEvaluator) processScenarioIteration(
 	stepDurations[LogEvaluationDurationKey] = elapsed.Milliseconds()
 	stepDurations[LogRulesDurationKey] = rulesDuration.Milliseconds()
 
-	if sanctionCheckExecution != nil {
-		stepDurations[LogScreeningDurationKey] = sanctionCheckExecution.Duration.Milliseconds()
+	for idx := range sanctionCheckExecutions {
+		stepDurations[LogScreeningDurationKey] = sanctionCheckExecutions[idx].Duration.Milliseconds()
 
-		if sanctionCheckExecution.NameRecognitionDuration != 0 {
+		if sanctionCheckExecutions[idx].NameRecognitionDuration != 0 {
 			stepDurations[LogNerDurationKey] =
-				sanctionCheckExecution.NameRecognitionDuration.Milliseconds()
+				sanctionCheckExecutions[idx].NameRecognitionDuration.Milliseconds()
 		}
 	}
 
@@ -345,31 +349,42 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 
 	// If the live version had a sanction check executed, and if it has the same configuration (except for the trigger rule),
 	// we just reuse the cached sanction check execution to avoid another (possibly paid) call to the sanction check service.
-	var copiedSanctionCheck *models.SanctionCheckWithMatches
-	scc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, testRunIteration.Id)
+	copiedSanctionCheck := make([]models.SanctionCheckWithMatches, 0)
+
+	sccs, err := e.evalSanctionCheckConfigRepository.ListSanctionCheckConfigs(ctx, exec, testRunIteration.Id)
 	if err != nil {
 		return false, se, errors.Wrap(err,
 			"error getting sanction check config from scenario iteration")
 	}
-	if scc != nil {
-		liveVersionScc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(
+
+	if len(sccs) > 0 {
+		liveVersionSccs, err := e.evalSanctionCheckConfigRepository.ListSanctionCheckConfigs(
 			ctx, exec, testruns[0].ScenarioLiveIterationId)
 		if err != nil {
 			return false, se, err
 		}
-		if params.CachedSanctionCheck != nil && liveVersionScc.HasSameQuery(*scc) {
-			copiedSanctionCheck = params.CachedSanctionCheck
-			scc = nil
+
+		for _, testVersionScc := range sccs {
+			for _, liveVersionScc := range liveVersionSccs {
+				if testVersionScc.StableId == liveVersionScc.StableId {
+					if cached, ok := params.CachedSanctionCheck[liveVersionScc.ScenarioIterationId]; ok {
+						if liveVersionScc.HasSameQuery(testVersionScc) {
+							copiedSanctionCheck = append(copiedSanctionCheck, cached)
+						}
+					}
+				}
+			}
 		}
 	}
-	testRunIteration.SanctionCheckConfig = scc
+
+	testRunIteration.SanctionCheckConfigs = sccs
 
 	triggerPassed, se, err = e.processScenarioIteration(ctx, params, testRunIteration, start, logger, exec)
 	if err != nil {
 		return false, se, err
 	}
-	if copiedSanctionCheck != nil {
-		se.SanctionCheckExecution = copiedSanctionCheck
+	if len(copiedSanctionCheck) > 0 {
+		se.SanctionCheckExecutions = copiedSanctionCheck
 	}
 	se.TestRunId = testruns[0].Id
 	return triggerPassed, se, nil
@@ -426,13 +441,13 @@ func (e ScenarioEvaluator) EvalScenario(
 			"error getting scenario iteration in EvalScenario")
 	}
 
-	scc, err := e.evalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, versionToRun.Id)
+	scc, err := e.evalSanctionCheckConfigRepository.ListSanctionCheckConfigs(ctx, exec, versionToRun.Id)
 	if err != nil {
 		return false, models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting sanction check config from scenario iteration")
 	}
-	versionToRun.SanctionCheckConfig = scc
-	if scc != nil {
+	versionToRun.SanctionCheckConfigs = scc
+	if len(scc) > 0 {
 		featureAccess, err := e.featureAccessReader.GetOrganizationFeatureAccess(ctx, params.Scenario.OrganizationId)
 		if err != nil {
 			return false, models.ScenarioExecution{}, err

@@ -123,17 +123,19 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 				return err
 			}
 
-			if phantomDecision.SanctionCheckExecution != nil {
+			if phantomDecision.SanctionCheckExecutions != nil {
 				// We don't need to store the matches in the case of a phantom decision
 				// because we are only interested in statistics on the sanction check status
-				_, err := usecase.externalRepository.InsertSanctionCheck(
-					ctx,
-					tx,
-					phantomDecision.PhantomDecisionId,
-					*phantomDecision.SanctionCheckExecution,
-					false)
-				if err != nil {
-					return errors.Wrap(err, "could not store sanction check execution")
+				for _, sce := range phantomDecision.SanctionCheckExecutions {
+					_, err := usecase.externalRepository.InsertSanctionCheck(
+						ctx,
+						tx,
+						phantomDecision.PhantomDecisionId,
+						sce,
+						false)
+					if err != nil {
+						return errors.Wrap(err, "could not store sanction check execution")
+					}
 				}
 			}
 

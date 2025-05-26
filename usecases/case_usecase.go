@@ -71,7 +71,7 @@ type CaseUseCaseRepository interface {
 
 type CaseUsecaseSanctionCheckRepository interface {
 	GetActiveSanctionCheckForDecision(context.Context, repositories.Executor, string) (
-		*models.SanctionCheckWithMatches, error)
+		models.SanctionCheckWithMatches, error)
 }
 
 type CaseUsecaseUserRepository interface {
@@ -1357,7 +1357,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 		if err != nil {
 			return models.Case{}, errors.Wrap(err, "could not retrieve sanction check")
 		}
-		if sanctionCheck != nil && sanctionCheck.Status != models.SanctionStatusNoHit {
+		if sanctionCheck.Status != models.SanctionStatusNoHit {
 			return models.Case{}, errors.Wrap(models.BadParameterError,
 				"cannot approve a decision with possible sanction hits")
 		}

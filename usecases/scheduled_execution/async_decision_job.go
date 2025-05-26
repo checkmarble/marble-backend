@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
@@ -299,7 +300,12 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	executeTestRun := func(se *models.ScenarioExecution) {
 		evaluationParameters.TargetIterationId = nil
 		if se != nil {
-			evaluationParameters.CachedSanctionCheck = se.SanctionCheckExecution
+			evaluationParameters.CachedSanctionCheck = pure_utils.MapSliceToMap(
+				se.SanctionCheckExecutions,
+				func(scm models.SanctionCheckWithMatches) (string, models.SanctionCheckWithMatches) {
+					return se.ScenarioIterationId, scm
+				},
+			)
 		}
 		phantomInput := models.CreatePhantomDecisionInput{
 			OrganizationId: scenario.OrganizationId,
@@ -368,12 +374,14 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 			"steps", scenarioExecution.ExecutionMetrics.Steps)
 	}
 
-	if decision.SanctionCheckExecution != nil {
-		_, err := w.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
-			decision.DecisionId, *decision.SanctionCheckExecution, true)
-		if err != nil {
-			return false, nil, nil, errors.Wrap(err,
-				"could not store sanction check execution")
+	if decision.SanctionCheckExecutions != nil {
+		for _, sce := range decision.SanctionCheckExecutions {
+			_, err := w.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
+				decision.DecisionId, sce, true)
+			if err != nil {
+				return false, nil, nil, errors.Wrap(err,
+					"could not store sanction check execution")
+			}
 		}
 	}
 

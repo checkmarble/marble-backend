@@ -43,7 +43,7 @@ type DecisionRuleError struct {
 	Message string `json:"message"`
 }
 
-func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, sanctionCheck *models.SanctionCheckWithMatches) func(models.Decision) Decision {
+func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, sanctionCheck []models.SanctionCheckWithMatches) func(models.Decision) Decision {
 	return func(model models.Decision) Decision {
 		d := Decision{
 			Id:               model.DecisionId,
@@ -73,7 +73,7 @@ func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, san
 			}
 
 			if sanctionCheck != nil {
-				d.Screenings = []SanctionCheck{AdaptSanctionCheck(false)(*sanctionCheck)}
+				d.Screenings = pure_utils.Map(sanctionCheck, AdaptSanctionCheck(false))
 			}
 		}
 
