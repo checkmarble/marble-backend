@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/cockroachdb/errors"
@@ -58,6 +59,10 @@ func (suite *ScenarioPublicationUsecaseTestSuite) SetupTest() {
 	suite.clientDbIndexEditor = new(mocks.ClientDbIndexEditor)
 	suite.featureAccessReader = new(mocks.FeatureAccessReader)
 	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
+
+	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, mock.Anything).Return(models.OrganizationFeatureAccess{
+		Sanctions: models.Allowed,
+	}, nil)
 
 	suite.organizationId = "organizationId"
 	suite.scenarioId = "scenarioId"
@@ -145,6 +150,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) SetupTest() {
 	suite.repositoryError = errors.New("some repository error")
 	suite.securityError = errors.New("some security error")
 	suite.ctx = utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
+
+	fmt.Println(suite.featureAccessReader.GetOrganizationFeatureAccess(context.TODO(), ""))
+	fmt.Println("OK")
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) makeUsecase() *ScenarioPublicationUsecase {

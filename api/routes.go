@@ -95,7 +95,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/scenario-iterations/:iteration_id", tom, handleGetScenarioIteration(uc))
 	router.POST("/scenario-iterations/:iteration_id", tom, handleCreateDraftFromIteration(uc))
 	router.PATCH("/scenario-iterations/:iteration_id", tom, handleUpdateScenarioIteration(uc))
-	router.PATCH("/scenario-iterations/:iteration_id/sanction-check", tom, handleConfigureSanctionCheck(uc))
+	router.POST("/scenario-iterations/:iteration_id/sanction-check", tom, handleCreateSanctionCheckConfig(uc))
+	router.PATCH("/scenario-iterations/:iteration_id/sanction-check/:config_id", tom, handleUpdateSanctionCheckConfig(uc))
 	router.DELETE("/scenario-iterations/:iteration_id/sanction-check", tom, handleDeleteSanctionCheckConfig(uc))
 	router.POST("/scenario-iterations/:iteration_id/validate", tom, handleValidateScenarioIteration(uc))
 	router.POST("/scenario-iterations/:iteration_id/commit",

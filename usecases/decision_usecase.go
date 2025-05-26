@@ -14,6 +14,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
@@ -88,7 +89,7 @@ type ScenarioEvaluator interface {
 }
 
 type decisionUsecaseSanctionCheckWriter interface {
-	GetSanctionChecksForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
+	ListSanctionChecksForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
 		initialOnly bool) ([]models.SanctionCheckWithMatches, error)
 	InsertSanctionCheck(
 		ctx context.Context,
@@ -133,16 +134,18 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
-	sc, err := usecase.sanctionCheckRepository.GetSanctionChecksForDecision(ctx,
+	scs, err := usecase.sanctionCheckRepository.ListSanctionChecksForDecision(ctx,
 		usecase.executorFactory.NewExecutor(), decision.DecisionId, false)
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
-	if len(sc) > 0 {
-		decision.SanctionCheckExecution = &models.SanctionCheckWithMatches{
-			SanctionCheck: sc[0].SanctionCheck,
-			Count:         len(sc[0].Matches),
+	decision.SanctionCheckExecutions = make([]models.SanctionCheckWithMatches, len(scs))
+
+	for idx, sc := range scs {
+		decision.SanctionCheckExecutions[idx] = models.SanctionCheckWithMatches{
+			SanctionCheck: sc.SanctionCheck,
+			Count:         len(sc.Matches),
 		}
 	}
 
@@ -391,7 +394,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 	}
 	scenario, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
 	if errors.Is(err, models.NotFoundError) {
-		return false, models.DecisionWithRuleExecutions{}, errors.WithDetail(err, "scenario not found")
+		return false, models.DecisionWithRuleExecutions{},
+			errors.WithDetail(err, "scenario not found")
 	} else if err != nil {
 		return false, models.DecisionWithRuleExecutions{},
 			errors.Wrap(err, "error getting scenario")
@@ -467,25 +471,32 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
-		var sc models.SanctionCheckWithMatches
+		var scs []models.SanctionCheckWithMatches
 
-		if decision.SanctionCheckExecution != nil {
-			sc, err = usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
-				decision.DecisionId, *decision.SanctionCheckExecution, true)
-			if err != nil {
-				return models.DecisionWithRuleExecutions{},
-					errors.Wrap(err, "could not store sanction check execution")
+		if len(decision.SanctionCheckExecutions) > 0 {
+			scs = make([]models.SanctionCheckWithMatches, len(decision.SanctionCheckExecutions))
+
+			for idx, sce := range decision.SanctionCheckExecutions {
+				sc, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx, decision.DecisionId, sce, true)
+				if err != nil {
+					return models.DecisionWithRuleExecutions{},
+						errors.Wrap(err, "could not store sanction check execution")
+				}
+
+				scs[idx] = sc
 			}
 
 			if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
-				if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
-					ctx, input.OrganizationId, sc.Id); err != nil {
-					utils.LogAndReportSentryError(ctx, errors.Wrap(err,
-						"could not enqueue sanction check for refinement"))
+				for _, sc := range scs {
+					if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
+						ctx, input.OrganizationId, sc.Id); err != nil {
+						utils.LogAndReportSentryError(ctx, errors.Wrap(err,
+							"could not enqueue sanction check for refinement"))
+					}
 				}
 			}
 
-			decision.SanctionCheckExecution = &sc
+			decision.SanctionCheckExecutions = scs
 		}
 
 		if params.WithDecisionWebhooks {
@@ -665,11 +676,15 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}
 
-			if item.decision.SanctionCheckExecution != nil {
-				sc, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
-					item.decision.DecisionId, *item.decision.SanctionCheckExecution, true)
-				if err != nil {
-					return nil, errors.Wrap(err, "could not store sanction check execution")
+			if item.decision.SanctionCheckExecutions != nil {
+				var sc models.SanctionCheckWithMatches
+
+				for _, sce := range item.decision.SanctionCheckExecutions {
+					sc, err = usecase.sanctionCheckRepository.InsertSanctionCheck(
+						ctx, tx, item.decision.DecisionId, sce, true)
+					if err != nil {
+						return nil, errors.Wrap(err, "could not store sanction check execution")
+					}
 				}
 
 				if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
@@ -759,7 +774,12 @@ func (usecase *DecisionUsecase) executeTestRun(
 		TriggerObjectTable: triggerObjectTable,
 	}
 	if scenarioExecution != nil {
-		evaluationParameters.CachedSanctionCheck = scenarioExecution.SanctionCheckExecution
+		evaluationParameters.CachedSanctionCheck = pure_utils.MapSliceToMap(
+			scenarioExecution.SanctionCheckExecutions,
+			func(scm models.SanctionCheckWithMatches) (string, models.SanctionCheckWithMatches) {
+				return scenarioExecution.ScenarioIterationId, scm
+			},
+		)
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), PHANTOM_DECISION_TIMEOUT)
 	defer cancel()

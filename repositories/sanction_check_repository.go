@@ -13,19 +13,36 @@ import (
 func (*MarbleDbRepository) GetActiveSanctionCheckForDecision(
 	ctx context.Context,
 	exec Executor,
-	decisionId string,
-) (*models.SanctionCheckWithMatches, error) {
+	sanctionCheckId string,
+) (models.SanctionCheckWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
+		return models.SanctionCheckWithMatches{}, err
 	}
 
 	sql := selectSanctionChecksWithMatches().
-		Where(squirrel.Eq{"sc.decision_id": decisionId, "sc.is_archived": false})
+		Where(squirrel.Eq{
+			"sc.id": sanctionCheckId,
+		})
 
-	return SqlToOptionalModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckWithMatches)
+	askedFor, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckWithMatches)
+	if err != nil {
+		return models.SanctionCheckWithMatches{}, err
+	}
+	if !askedFor.IsArchived {
+		return askedFor, nil
+	}
+
+	sql = selectSanctionChecksWithMatches().
+		Where(squirrel.Eq{
+			"sc.decision_id":              askedFor.DecisionId,
+			"sc.sanction_check_config_id": askedFor.SanctionCheckConfigId,
+			"sc.is_archived":              false,
+		})
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckWithMatches)
 }
 
-func (*MarbleDbRepository) GetSanctionChecksForDecision(
+func (*MarbleDbRepository) ListSanctionChecksForDecision(
 	ctx context.Context,
 	exec Executor,
 	decisionId string,
@@ -209,6 +226,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECKS).Columns(
 		"decision_id",
+		"sanction_check_config_id",
 		"search_input",
 		"search_datasets",
 		"match_threshold",
@@ -222,6 +240,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		"error_codes",
 	).Values(
 		decisionId,
+		sanctionCheck.SanctionCheckConfigId,
 		sanctionCheck.SearchInput,
 		sanctionCheck.Datasets,
 		sanctionCheck.OrgConfig.MatchThreshold,

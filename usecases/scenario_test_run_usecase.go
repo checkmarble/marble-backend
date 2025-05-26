@@ -53,11 +53,11 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
 	}
 
-	scc, err := usecase.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, input.PhantomIterationId)
+	sccs, err := usecase.sanctionCheckConfigRepository.ListSanctionCheckConfigs(ctx, exec, input.PhantomIterationId)
 	if err != nil {
 		return models.ScenarioTestRun{}, err
 	}
-	if scc != nil {
+	if len(sccs) > 0 {
 		featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId)
 		if err != nil {
 			return models.ScenarioTestRun{}, err
