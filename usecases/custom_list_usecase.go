@@ -60,7 +60,7 @@ func (usecase *CustomListUseCase) CreateCustomList(
 		if err != nil {
 			return models.CustomList{}, err
 		}
-		return usecase.CustomListRepository.GetCustomListById(ctx, tx, newCustomListId)
+		return usecase.CustomListRepository.GetCustomListById(ctx, tx, newCustomListId, false)
 	})
 	if err != nil {
 		return models.CustomList{}, err
@@ -80,7 +80,7 @@ func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context,
 		tx repositories.Transaction,
 	) (models.CustomList, error) {
 		if updateCustomList.Name != nil || updateCustomList.Description != nil {
-			customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, updateCustomList.Id)
+			customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, updateCustomList.Id, false)
 			if err != nil {
 				return models.CustomList{}, err
 			}
@@ -92,7 +92,7 @@ func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context,
 				return models.CustomList{}, err
 			}
 		}
-		return usecase.CustomListRepository.GetCustomListById(ctx, tx, updateCustomList.Id)
+		return usecase.CustomListRepository.GetCustomListById(ctx, tx, updateCustomList.Id, false)
 	})
 	if err != nil {
 		return models.CustomList{}, err
@@ -107,7 +107,7 @@ func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context,
 
 func (usecase *CustomListUseCase) SoftDeleteCustomList(ctx context.Context, listId string) error {
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, listId)
+		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, listId, false)
 		if err != nil {
 			return err
 		}
@@ -128,7 +128,7 @@ func (usecase *CustomListUseCase) SoftDeleteCustomList(ctx context.Context, list
 
 func (usecase *CustomListUseCase) GetCustomListById(ctx context.Context, id string) (models.CustomList, error) {
 	customList, err := usecase.CustomListRepository.GetCustomListById(ctx,
-		usecase.executorFactory.NewExecutor(), id)
+		usecase.executorFactory.NewExecutor(), id, false)
 	if err != nil {
 		return models.CustomList{}, err
 	}
@@ -162,7 +162,7 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 	value, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.CustomListValue, error) {
-		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, addCustomListValue.CustomListId)
+		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, addCustomListValue.CustomListId, false)
 		if err != nil {
 			return models.CustomListValue{}, err
 		}
@@ -190,7 +190,7 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 
 func (usecase *CustomListUseCase) ReadCustomListValuesToCSV(ctx context.Context, customListID string, w io.Writer) (string, error) {
 	exec := usecase.executorFactory.NewExecutor()
-	customList, err := usecase.CustomListRepository.GetCustomListById(ctx, exec, customListID)
+	customList, err := usecase.CustomListRepository.GetCustomListById(ctx, exec, customListID, false)
 	if err != nil {
 		return "", err
 	}
@@ -249,7 +249,7 @@ func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Con
 
 	var results models.BatchInsertCustomListValueResults
 	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, customListID)
+		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, customListID, false)
 		if err != nil {
 			return err
 		}
@@ -370,7 +370,8 @@ func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context,
 	}
 
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, deleteCustomListValue.CustomListId)
+		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx,
+			deleteCustomListValue.CustomListId, false)
 		if err != nil {
 			return err
 		}
