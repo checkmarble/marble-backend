@@ -1,6 +1,7 @@
 package httpmodels
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -24,6 +25,7 @@ var (
 		"South America":  "sa",
 		"United Nations": "un",
 		"Other":          "other",
+		"Internal":       "internal",
 	}
 )
 
@@ -42,7 +44,7 @@ type HTTPOpenSanctionCatalogDataset struct {
 func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.OpenSanctionsCatalog {
 	sections := make(map[string]*models.OpenSanctionsCatalogSection, len(OPEN_SANCTIONS_CONTINENT_CODES))
 	datasetMap := make(map[string]*HTTPOpenSanctionCatalogDataset, len(datasets))
-	loadedDatasets := make(map[string]set.Set[string])
+	loadedDatasets := make(map[string]*set.Set[string])
 
 	slices.SortFunc(datasets, func(lhs, rhs HTTPOpenSanctionCatalogDataset) int {
 		return strings.Compare(lhs.Title, rhs.Title)
@@ -64,10 +66,16 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.
 		return *section
 	}
 	sortF := func(lhs, rhs models.OpenSanctionsCatalogSection) int {
-		if lhs.Name == "other" || rhs.Name == "un" {
+		if lhs.Name == "internal" || rhs.Name == "un" {
+			return 2
+		}
+		if rhs.Name == "internal" || lhs.Name == "un" {
+			return -2
+		}
+		if lhs.Name == "other" {
 			return 1
 		}
-		if rhs.Name == "other" || lhs.Name == "un" {
+		if rhs.Name == "other" {
 			return -1
 		}
 		return strings.Compare(lhs.Title, rhs.Title)
@@ -79,7 +87,7 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.
 }
 
 func findDatasets(sections map[string]*models.OpenSanctionsCatalogSection,
-	loadedDatasets map[string]set.Set[string], datasets []HTTPOpenSanctionCatalogDataset,
+	loadedDatasets map[string]*set.Set[string], datasets []HTTPOpenSanctionCatalogDataset,
 ) {
 	for _, dataset := range datasets {
 		if len(dataset.Children) > 0 {
@@ -90,7 +98,7 @@ func findDatasets(sections map[string]*models.OpenSanctionsCatalogSection,
 			continue
 		}
 
-		regionCode, regionName := regionFromDatasetName(dataset.Name)
+		regionCode, regionName := regionFromDatasetName(dataset.Name, tags)
 
 		if _, ok := sections[regionCode]; !ok {
 			sections[regionCode] = &models.OpenSanctionsCatalogSection{
@@ -111,18 +119,22 @@ func findDatasets(sections map[string]*models.OpenSanctionsCatalogSection,
 		sections[regionCode].Datasets = append(sections[regionCode].Datasets, models.OpenSanctionsCatalogDataset{
 			Name:  dataset.Name,
 			Title: dataset.Title,
-			Tags:  tags.Slice(),
+			Tags:  *tags,
 		})
 	}
 }
 
-func findLoadedDatasets(loaded map[string]set.Set[string], parents *set.Set[string],
+func findLoadedDatasets(loaded map[string]*set.Set[string], parents *set.Set[string],
 	datasets map[string]*HTTPOpenSanctionCatalogDataset, current *HTTPOpenSanctionCatalogDataset,
 ) {
 	parents = parents.Copy()
 	parents.Insert(current.Name)
 
-	loaded[current.Name] = *parents
+	if _, ok := loaded[current.Name]; ok {
+		loaded[current.Name].InsertSet(parents)
+	} else {
+		loaded[current.Name] = parents
+	}
 
 	for _, child := range current.Children {
 		if childDataset, ok := datasets[child]; ok {
@@ -142,7 +154,11 @@ func regionCodeFromName(code string) string {
 	return "other"
 }
 
-func regionFromDatasetName(name string) (string, string) {
+func regionFromDatasetName(name string, tags *set.Set[string]) (string, string) {
+	if !tags.Contains("default") {
+		return "internal", "Internal"
+	}
+
 	cc := ""
 
 	if strings.HasPrefix(name, "ext") && len(name) >= 6 && isDatasetSeparator(name[3]) {
