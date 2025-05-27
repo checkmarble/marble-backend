@@ -6,6 +6,7 @@ import (
 	"github.com/adhocore/gronx"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
+	"github.com/hashicorp/go-set/v2"
 )
 
 const OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
@@ -23,7 +24,7 @@ type OpenSanctionsCatalogSection struct {
 type OpenSanctionsCatalogDataset struct {
 	Name  string
 	Title string
-	Tags  []string
+	Tags  set.Set[string]
 }
 
 type OpenSanctionsQuery struct {

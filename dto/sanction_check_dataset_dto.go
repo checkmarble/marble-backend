@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -26,7 +27,8 @@ var datasetTagMapping = map[string]string{
 	"regulatory":       "adverse-media",
 	"debarment":        "adverse-media",
 	"special_interest": "adverse-media",
-	"enrichers":        "third-partiers",
+	"enrichers":        "third-parties",
+	"crime":            "adverse-media",
 	"peps":             "peps",
 	"sanctions":        "sanctions",
 }
@@ -46,9 +48,18 @@ func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsC
 		for idx, d := range s.Datasets {
 			var tag string
 
-			for _, ds := range d.Tags {
+			for _, ds := range d.Tags.Slice() {
 				if t, ok := datasetTagMapping[ds]; ok {
 					tag = t
+					break
+				}
+
+				if strings.Contains(ds, "sanctions") {
+					tag = "sanctions"
+					break
+				}
+				if strings.Contains(ds, "wanted") {
+					tag = "adverse-media"
 					break
 				}
 			}
