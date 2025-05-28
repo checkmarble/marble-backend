@@ -63,7 +63,7 @@ type SanctionCheckConfig struct {
 	RuleGroup                *string
 	Datasets                 []string
 	TriggerRule              *ast.Node
-	Query                    *SanctionCheckConfigQuery
+	Query                    *ast.Node
 	ForcedOutcome            Outcome
 	CounterpartyIdExpression *ast.Node
 }
@@ -73,7 +73,7 @@ func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
 		return false
 	}
 
-	if !scc.Query.equal(other.Query) {
+	if scc.Query.Hash() == other.Query.Hash() {
 		return false
 	}
 
@@ -97,22 +97,7 @@ type UpdateSanctionCheckConfigInput struct {
 	RuleGroup                *string
 	Datasets                 []string
 	TriggerRule              *ast.Node
-	Query                    *SanctionCheckConfigQuery
+	Query                    *ast.Node
 	CounterpartyIdExpression *ast.Node
 	ForcedOutcome            *Outcome
-}
-
-type SanctionCheckConfigQuery struct {
-	Name  *ast.Node
-	Label *ast.Node
-}
-
-func (sccq *SanctionCheckConfigQuery) equal(other *SanctionCheckConfigQuery) bool {
-	if sccq == nil && other == nil {
-		return true
-	}
-	if sccq != nil && other == nil || sccq == nil && other != nil {
-		return false
-	}
-	return sccq.Name.Hash() == other.Name.Hash()
 }

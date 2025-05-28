@@ -54,10 +54,7 @@ func TestListSanctionChecksOnDecision(t *testing.T) {
 			return []byte(`{}`), nil
 		}),
 		ops.WithCustomFieldProvider("Query", func() (interface{}, error) {
-			return &dbmodels.DBSanctionCheckConfigQuery{
-				Name:  []byte(`{}`),
-				Label: []byte(`{}`),
-			}, nil
+			return []byte(`{}`), nil
 		}),
 		ops.WithCustomFieldProvider("CounterpartyIdExpr", func() (interface{}, error) {
 			return []byte(`{}`), nil
