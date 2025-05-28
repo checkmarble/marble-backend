@@ -121,9 +121,7 @@ func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
-			Query: &models.SanctionCheckConfigQuery{
-				Name: &ast.Node{Constant: 12},
-			},
+			Query:       &ast.Node{Constant: 12},
 		}},
 	}
 
@@ -140,9 +138,7 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
-			Query: &models.SanctionCheckConfigQuery{
-				Name: &ast.Node{Constant: "constant string"},
-			},
+			Query:       &ast.Node{Constant: "constant string"},
 		}},
 	}
 
@@ -173,14 +169,12 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
-			Query: &models.SanctionCheckConfigQuery{
-				Name: &ast.Node{
-					Function:      ast.FUNC_STRING_CONCAT,
-					NamedChildren: map[string]ast.Node{"with_separator": {Constant: true}},
-					Children: []ast.Node{
-						{Constant: "hello"},
-						{Constant: "world"},
-					},
+			Query: &ast.Node{
+				Function:      ast.FUNC_STRING_CONCAT,
+				NamedChildren: map[string]ast.Node{"with_separator": {Constant: true}},
+				Children: []ast.Node{
+					{Constant: "hello"},
+					{Constant: "world"},
 				},
 			},
 		}},
@@ -223,10 +217,7 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
-			Query: &models.SanctionCheckConfigQuery{
-				Name:  &ast.Node{Constant: "bob gross"},
-				Label: &ast.Node{Constant: "dinner with joe finnigan"},
-			},
+			Query:       &ast.Node{Constant: "bob gross"},
 		}},
 	}
 
@@ -237,18 +228,6 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 				Type: "Thing",
 				Filters: models.OpenSanctionCheckFilter{
 					"name": []string{"bob gross"},
-				},
-			},
-			{
-				Type: "Person",
-				Filters: models.OpenSanctionCheckFilter{
-					"name": []string{"joe finnigan", "bill bob"},
-				},
-			},
-			{
-				Type: "Organization",
-				Filters: models.OpenSanctionCheckFilter{
-					"name": []string{"acme inc."},
 				},
 			},
 		},
@@ -270,10 +249,7 @@ func TestSanctionCheckCalledWithNameRecognitionDisabled(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
-			Query: &models.SanctionCheckConfigQuery{
-				Name:  &ast.Node{Constant: "bob gross"},
-				Label: &ast.Node{Constant: "dinner with joe finnigan"},
-			},
+			Query:       &ast.Node{Constant: "bob gross"},
 		}},
 	}
 
@@ -283,7 +259,7 @@ func TestSanctionCheckCalledWithNameRecognitionDisabled(t *testing.T) {
 			{
 				Type: "Thing",
 				Filters: models.OpenSanctionCheckFilter{
-					"name": []string{"bob gross", "dinner with joe finnigan"},
+					"name": []string{"bob gross"},
 				},
 			},
 		},

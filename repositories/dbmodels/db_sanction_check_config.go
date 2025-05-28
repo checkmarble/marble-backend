@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
 )
@@ -14,29 +14,19 @@ import (
 const TABLE_SANCTION_CHECK_CONFIGS = "sanction_check_configs"
 
 type DBSanctionCheckConfigs struct {
-	Id                  string                      `db:"id"`
-	StableId            string                      `db:"stable_id"`
-	ScenarioIterationId string                      `db:"scenario_iteration_id"`
-	Name                string                      `db:"name"`
-	Description         string                      `db:"description"`
-	RuleGroup           string                      `db:"rule_group"`
-	Datasets            []string                    `db:"datasets"`
-	TriggerRule         []byte                      `db:"trigger_rule"`
-	Query               *DBSanctionCheckConfigQuery `db:"query"`
-	ForcedOutcome       string                      `db:"forced_outcome"`
-	CounterpartyIdExpr  []byte                      `db:"counterparty_id_expression"`
-	UpdatedAt           time.Time                   `db:"updated_at"`
-	ConfigVersion       string                      `db:"config_version"`
-}
-
-type DBSanctionCheckConfigQuery struct {
-	Name  json.RawMessage `json:"name"`
-	Label json.RawMessage `json:"label"`
-}
-
-type DBSanctionCheckConfigQueryInput struct {
-	Name  *dto.NodeDto `json:"name,omitempty"`
-	Label *dto.NodeDto `json:"label,omitempty"`
+	Id                  string          `db:"id"`
+	StableId            string          `db:"stable_id"`
+	ScenarioIterationId string          `db:"scenario_iteration_id"`
+	Name                string          `db:"name"`
+	Description         string          `db:"description"`
+	RuleGroup           string          `db:"rule_group"`
+	Datasets            []string        `db:"datasets"`
+	TriggerRule         []byte          `db:"trigger_rule"`
+	Query               json.RawMessage `db:"query"`
+	ForcedOutcome       string          `db:"forced_outcome"`
+	CounterpartyIdExpr  []byte          `db:"counterparty_id_expression"`
+	UpdatedAt           time.Time       `db:"updated_at"`
+	ConfigVersion       string          `db:"config_version"`
 }
 
 var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
@@ -64,12 +54,12 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 	}
 
 	if db.Query != nil {
-		query, err := AdaptSanctionCheckConfigQuery(*db.Query)
+		query, err := AdaptSanctionCheckConfigQuery(db.Query)
 		if err != nil {
 			return models.SanctionCheckConfig{}, errors.Wrap(err, "unable to unmarshal query formula")
 		}
 
-		scc.Query = &query
+		scc.Query = query
 	}
 
 	if db.CounterpartyIdExpr != nil {
@@ -85,24 +75,10 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 	return scc, nil
 }
 
-func AdaptSanctionCheckConfigQuery(db DBSanctionCheckConfigQuery) (models.SanctionCheckConfigQuery, error) {
-	model := models.SanctionCheckConfigQuery{}
-
-	if db.Name != nil {
-		nameAst, err := AdaptSerializedAstExpression(db.Name)
-		if err != nil {
-			return models.SanctionCheckConfigQuery{}, err
-		}
-		model.Name = nameAst
+func AdaptSanctionCheckConfigQuery(db json.RawMessage) (*ast.Node, error) {
+	nameAst, err := AdaptSerializedAstExpression(db)
+	if err != nil {
+		return nil, err
 	}
-
-	if db.Label != nil {
-		labelAst, err := AdaptSerializedAstExpression(db.Label)
-		if err != nil {
-			return models.SanctionCheckConfigQuery{}, err
-		}
-		model.Label = labelAst
-	}
-
-	return model, nil
+	return nameAst, nil
 }
