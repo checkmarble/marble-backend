@@ -2,20 +2,21 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
 
 type SanctionCheckConfig struct {
-	Id                       string                    `json:"id"`
-	Name                     *string                   `json:"name"`
-	Description              *string                   `json:"description"`
-	RuleGroup                *string                   `json:"rule_group,omitempty"`
-	Datasets                 []string                  `json:"datasets,omitempty"`
-	ForcedOutcome            *string                   `json:"forced_outcome,omitempty"`
-	TriggerRule              *NodeDto                  `json:"trigger_rule"`
-	Query                    *SanctionCheckConfigQuery `json:"query"`
-	CounterpartyIdExpression *NodeDto                  `json:"counterparty_id_expression"`
+	Id                       string   `json:"id"`
+	Name                     *string  `json:"name"`
+	Description              *string  `json:"description"`
+	RuleGroup                *string  `json:"rule_group,omitempty"`
+	Datasets                 []string `json:"datasets,omitempty"`
+	ForcedOutcome            *string  `json:"forced_outcome,omitempty"`
+	TriggerRule              *NodeDto `json:"trigger_rule"`
+	Query                    *NodeDto `json:"query"`
+	CounterpartyIdExpression *NodeDto `json:"counterparty_id_expression"`
 }
 
 func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckConfig, error) {
@@ -113,56 +114,20 @@ type SanctionCheckConfigQuery struct {
 	Label *NodeDto `json:"label,omitempty"`
 }
 
-func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (SanctionCheckConfigQuery, error) {
-	dto := SanctionCheckConfigQuery{
-		Name:  nil,
-		Label: nil,
+func AdaptSanctionCheckConfigQuery(model ast.Node) (NodeDto, error) {
+	nameAst, err := AdaptNodeDto(model)
+	if err != nil {
+		return NodeDto{}, err
 	}
 
-	if model.Name != nil {
-		nameAst, err := AdaptNodeDto(*model.Name)
-		if err != nil {
-			return SanctionCheckConfigQuery{}, err
-		}
-
-		dto.Name = &nameAst
-	}
-
-	if model.Label != nil {
-		labelAst, err := AdaptNodeDto(*model.Label)
-		if err != nil {
-			return SanctionCheckConfigQuery{}, err
-		}
-
-		dto.Label = &labelAst
-	}
-
-	return dto, nil
+	return nameAst, nil
 }
 
-func AdaptSanctionCheckConfigQueryDto(dto SanctionCheckConfigQuery) (models.SanctionCheckConfigQuery, error) {
-	model := models.SanctionCheckConfigQuery{
-		Name:  nil,
-		Label: nil,
+func AdaptSanctionCheckConfigQueryDto(dto NodeDto) (ast.Node, error) {
+	nameAst, err := AdaptASTNode(dto)
+	if err != nil {
+		return ast.Node{}, err
 	}
 
-	if dto.Name != nil {
-		nameAst, err := AdaptASTNode(*dto.Name)
-		if err != nil {
-			return models.SanctionCheckConfigQuery{}, err
-		}
-
-		model.Name = &nameAst
-	}
-
-	if dto.Label != nil {
-		labelAst, err := AdaptASTNode(*dto.Label)
-		if err != nil {
-			return models.SanctionCheckConfigQuery{}, err
-		}
-
-		model.Label = &labelAst
-	}
-
-	return model, nil
+	return nameAst, nil
 }

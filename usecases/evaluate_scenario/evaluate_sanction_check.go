@@ -58,7 +58,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		emptyInput := false
 		var err error
 
-		if scc.Query.Name != nil {
+		if scc.Query != nil {
 			nbEvaluatedFields += 1
 			queries, emptyInput, err = e.evaluateSanctionCheckName(ctx, queries, iteration, scc, dataAccessor)
 			if err != nil {
@@ -66,22 +66,6 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 			} else if emptyInput {
 				emptyFieldRead += 1
 			}
-		}
-
-		var nameRecognitionDuration time.Duration
-
-		if scc.Query.Label != nil {
-			nbEvaluatedFields += 1
-			nameRecognizedQueries, emptyInput, duration, err :=
-				e.evaluateSanctionCheckLabel(ctx, queries, iteration, scc, dataAccessor)
-			if err != nil {
-				return nil, true, errors.Wrap(err, "could not evaluate sanction check label")
-			} else if emptyInput {
-				emptyFieldRead += 1
-			}
-
-			queries = nameRecognizedQueries
-			nameRecognitionDuration = duration
 		}
 
 		if emptyFieldRead == nbEvaluatedFields {
@@ -157,7 +141,6 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 
 		result.SanctionCheckConfigId = scc.Id
 		result.Duration = time.Since(start)
-		result.NameRecognitionDuration = nameRecognitionDuration
 
 		sanctionCheck = append(sanctionCheck, result)
 		performed = true
@@ -174,7 +157,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheckName(
 ) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, err error) {
 	queriesOut = queries
 	nameFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-		*scc.Query.Name, iteration.OrganizationId,
+		*scc.Query, iteration.OrganizationId,
 		dataAccessor.ClientObject, dataAccessor.DataModel)
 	if err != nil {
 		return
@@ -201,95 +184,4 @@ func (e ScenarioEvaluator) evaluateSanctionCheckName(
 	})
 
 	return queriesOut, false, nil
-}
-
-func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
-	ctx context.Context,
-	queries []models.OpenSanctionsCheckQuery,
-	iteration models.ScenarioIteration,
-	scc models.SanctionCheckConfig,
-	dataAccessor DataAccessor,
-) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, took time.Duration, err error) {
-	queriesOut = queries
-	labelFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-		*scc.Query.Label, iteration.OrganizationId,
-		dataAccessor.ClientObject, dataAccessor.DataModel)
-	if err != nil {
-		return
-	}
-	if labelFilterAny.ReturnValue == nil {
-		emptyInput = true
-		return
-	}
-
-	labelFilter, ok := labelFilterAny.ReturnValue.(string)
-	if !ok {
-		return nil, false, 0, errors.New("label filter name query did not return a string")
-	}
-	if labelFilter == "" {
-		emptyInput = true
-		return
-	}
-
-	if e.nameRecognizer == nil || !e.nameRecognizer.IsConfigured() {
-		switch len(queriesOut) {
-		case 0:
-			queriesOut = append(queriesOut, models.OpenSanctionsCheckQuery{
-				Type: "Thing",
-				Filters: models.OpenSanctionCheckFilter{
-					"name": []string{labelFilter},
-				},
-			})
-
-		default:
-			queriesOut[0].Filters["name"] = append(queriesOut[0].Filters["name"], labelFilter)
-		}
-
-		return queriesOut, false, 0, nil
-	}
-
-	beforeNameRecognition := time.Now()
-
-	matches, err := e.nameRecognizer.PerformNameRecognition(ctx, labelFilter)
-	if err != nil {
-		return queriesOut, false, 0, errors.Wrap(err,
-			"could not perform name recognition on label")
-	}
-
-	var personQuery *models.OpenSanctionsCheckQuery = nil
-	var companyQuery *models.OpenSanctionsCheckQuery = nil
-
-	for _, match := range matches {
-		switch match.Type {
-		case "Person":
-			if personQuery == nil {
-				personQuery = &models.OpenSanctionsCheckQuery{
-					Type:    "Person",
-					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
-				}
-				continue
-			}
-
-			personQuery.Filters["name"] = append(personQuery.Filters["name"], match.Text)
-		case "Company":
-			if companyQuery == nil {
-				companyQuery = &models.OpenSanctionsCheckQuery{
-					Type:    "Organization",
-					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
-				}
-				continue
-			}
-
-			companyQuery.Filters["name"] = append(companyQuery.Filters["name"], match.Text)
-		}
-	}
-
-	if personQuery != nil {
-		queriesOut = append(queriesOut, *personQuery)
-	}
-	if companyQuery != nil {
-		queriesOut = append(queriesOut, *companyQuery)
-	}
-
-	return queriesOut, false, time.Since(beforeNameRecognition), nil
 }
