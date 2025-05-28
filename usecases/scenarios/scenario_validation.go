@@ -150,14 +150,14 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 					return a != nil
 				}
 
-				isNameProvided, isLabelProvided := false, false
+				isNameProvided := false
 
-				if isSpecified(scc.Query.Name) {
+				if isSpecified(scc.Query) {
 					queryNameValidation := models.NewRuleValidation()
 					isNameProvided = true
 
 					queryNameValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-						*scc.Query.Name)
+						*scc.Query)
 
 					if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(string); !ok {
 						queryNameValidation.Errors = append(
@@ -171,26 +171,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 					result.SanctionCheck.QueryName = queryNameValidation
 				}
 
-				if isSpecified(scc.Query.Label) {
-					queryLabelValidation := models.NewRuleValidation()
-					isLabelProvided = true
-
-					queryLabelValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-						*scc.Query.Label)
-
-					if _, ok := queryLabelValidation.RuleEvaluation.ReturnValue.(string); !ok {
-						queryLabelValidation.Errors = append(
-							queryLabelValidation.Errors, models.ScenarioValidationError{
-								Error: errors.Wrap(models.BadParameterError,
-									"sanction check label filter does not return a string"),
-								Code: models.FormulaMustReturnString,
-							})
-					}
-
-					result.SanctionCheck.QueryLabel = queryLabelValidation
-				}
-
-				if !isNameProvided && !isLabelProvided {
+				if !isNameProvided {
 					queryValidation.Errors = append(queryValidation.Errors, models.ScenarioValidationError{
 						Error: errors.Wrap(models.BadParameterError,
 							"at least one of name or label filter must be provided"),
