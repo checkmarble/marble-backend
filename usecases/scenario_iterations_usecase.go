@@ -10,6 +10,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
@@ -93,13 +94,13 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 		return models.ScenarioIteration{}, err
 	}
 
-	scc, err := usecase.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
+	scc, err := usecase.sanctionCheckConfigRepository.ListSanctionCheckConfigs(ctx,
 		usecase.executorFactory.NewExecutor(), si.Id)
 	if err != nil {
 		return models.ScenarioIteration{}, errors.Wrap(err,
 			"could not retrieve sanction check config while getting scenario iteration")
 	}
-	si.SanctionCheckConfig = scc
+	si.SanctionCheckConfigs = scc
 
 	if err := usecase.enforceSecurity.ReadScenarioIteration(si); err != nil {
 		return models.ScenarioIteration{}, err
@@ -212,7 +213,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 				return models.ScenarioIteration{}, err
 			}
 
-			sanctionCheckConfig, err := usecase.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, tx, si.Id)
+			sanctionCheckConfigs, err := usecase.sanctionCheckConfigRepository.ListSanctionCheckConfigs(ctx, tx, si.Id)
 			if err != nil {
 				return models.ScenarioIteration{}, errors.Wrap(err,
 					"could not retrieve sanction check config while creating draft")
@@ -283,23 +284,29 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 			newScenarioIteration, err := usecase.repository.CreateScenarioIterationAndRules(
 				ctx, tx, organizationId, createScenarioIterationInput)
 
-			if sanctionCheckConfig != nil {
-				newSanctionCheckConfig := models.UpdateSanctionCheckConfigInput{
-					StableId:                 &sanctionCheckConfig.StableId,
-					Name:                     &sanctionCheckConfig.Name,
-					Description:              &sanctionCheckConfig.Description,
-					RuleGroup:                sanctionCheckConfig.RuleGroup,
-					Datasets:                 sanctionCheckConfig.Datasets,
-					TriggerRule:              sanctionCheckConfig.TriggerRule,
-					CounterpartyIdExpression: sanctionCheckConfig.CounterpartyIdExpression,
-					Query:                    sanctionCheckConfig.Query,
-					ForcedOutcome:            &sanctionCheckConfig.ForcedOutcome,
-				}
+			if len(sanctionCheckConfigs) > 0 {
+				newSanctionCheckConfigs := pure_utils.Map(sanctionCheckConfigs, func(
+					scc models.SanctionCheckConfig,
+				) models.UpdateSanctionCheckConfigInput {
+					return models.UpdateSanctionCheckConfigInput{
+						StableId:                 &scc.StableId,
+						Name:                     &scc.Name,
+						Description:              &scc.Description,
+						RuleGroup:                scc.RuleGroup,
+						Datasets:                 scc.Datasets,
+						TriggerRule:              scc.TriggerRule,
+						CounterpartyIdExpression: scc.CounterpartyIdExpression,
+						Query:                    scc.Query,
+						ForcedOutcome:            &scc.ForcedOutcome,
+					}
+				})
 
-				if _, err := usecase.sanctionCheckConfigRepository.UpsertSanctionCheckConfig(
-					ctx, tx, newScenarioIteration.Id, newSanctionCheckConfig); err != nil {
-					return models.ScenarioIteration{}, errors.Wrap(err,
-						"could not duplicate sanction check config for new iteration")
+				for _, scc := range newSanctionCheckConfigs {
+					if _, err := usecase.sanctionCheckConfigRepository.CreateSanctionCheckConfig(
+						ctx, tx, newScenarioIteration.Id, scc); err != nil {
+						return models.ScenarioIteration{}, errors.Wrap(err,
+							"could not duplicate sanction check config for new iteration")
+					}
 				}
 			}
 

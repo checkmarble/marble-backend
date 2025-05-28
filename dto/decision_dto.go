@@ -140,8 +140,8 @@ type Decision struct {
 
 type DecisionWithRules struct {
 	Decision
-	Rules         []DecisionRule         `json:"rules"`
-	SanctionCheck *DecisionSanctionCheck `json:"sanction_check,omitempty"`
+	Rules          []DecisionRule          `json:"rules"`
+	SanctionChecks []DecisionSanctionCheck `json:"sanction_checks,omitempty"`
 }
 
 func NewDecisionDto(decision models.Decision, marbleAppUrl *url.URL) Decision {
@@ -206,12 +206,16 @@ func NewDecisionWithRuleDto(decision models.DecisionWithRuleExecutions, marbleAp
 		decisionDto.Rules[i] = NewDecisionRuleDto(ruleExecution, withRuleExecution)
 	}
 
-	if decision.SanctionCheckExecution != nil {
-		decisionDto.SanctionCheck = &DecisionSanctionCheck{
-			Id:      decision.SanctionCheckExecution.Id,
-			Status:  decision.SanctionCheckExecution.Status.String(),
-			Partial: decision.SanctionCheckExecution.Partial,
-			Count:   decision.SanctionCheckExecution.Count,
+	if decision.SanctionCheckExecutions != nil {
+		decisionDto.SanctionChecks = make([]DecisionSanctionCheck, len(decision.SanctionCheckExecutions))
+
+		for idx, sce := range decision.SanctionCheckExecutions {
+			decisionDto.SanctionChecks[idx] = DecisionSanctionCheck{
+				Id:      sce.Id,
+				Status:  sce.Status.String(),
+				Partial: sce.Partial,
+				Count:   sce.Count,
+			}
 		}
 	}
 
