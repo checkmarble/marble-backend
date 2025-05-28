@@ -67,26 +67,14 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 		triggerRule = astJson
 	}
 
-	var query *dbmodels.DBSanctionCheckConfigQueryInput
+	var query dto.NodeDto
 
 	if cfg.Query != nil {
-		query = &dbmodels.DBSanctionCheckConfigQueryInput{}
-
-		if cfg.Query.Name != nil {
-			ser, err := dto.AdaptNodeDto(*cfg.Query.Name)
-			if err != nil {
-				return models.SanctionCheckConfig{}, err
-			}
-			query.Name = &ser
+		ser, err := dto.AdaptNodeDto(*cfg.Query)
+		if err != nil {
+			return models.SanctionCheckConfig{}, err
 		}
-
-		if cfg.Query.Label != nil {
-			ser, err := dto.AdaptNodeDto(*cfg.Query.Label)
-			if err != nil {
-				return models.SanctionCheckConfig{}, err
-			}
-			query.Label = &ser
-		}
+		query = ser
 	}
 
 	var counterpartyIdExpr *[]byte
@@ -155,25 +143,15 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 		triggerRule = astJson
 	}
 
-	var query *dbmodels.DBSanctionCheckConfigQueryInput
+	var query dto.NodeDto
 
 	if cfg.Query != nil {
-		query = &dbmodels.DBSanctionCheckConfigQueryInput{}
-
-		if cfg.Query.Name != nil {
-			ser, err := dto.AdaptNodeDto(*cfg.Query.Name)
+		if cfg.Query != nil {
+			ser, err := dto.AdaptNodeDto(*cfg.Query)
 			if err != nil {
 				return models.SanctionCheckConfig{}, err
 			}
-			query.Name = &ser
-		}
-
-		if cfg.Query.Label != nil {
-			ser, err := dto.AdaptNodeDto(*cfg.Query.Label)
-			if err != nil {
-				return models.SanctionCheckConfig{}, err
-			}
-			query.Label = &ser
+			query = ser
 		}
 	}
 
