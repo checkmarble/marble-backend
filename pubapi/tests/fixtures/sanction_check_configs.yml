@@ -3,3 +3,4 @@
   name: Sanction check config
   forced_outcome: approve
   stable_id: 00000000-0000-0000-0000-000000000000
+  config_version: v2
