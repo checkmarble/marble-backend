@@ -1,7 +1,6 @@
 package httpmodels
 
 import (
-	"fmt"
 	"maps"
 	"slices"
 	"strings"
