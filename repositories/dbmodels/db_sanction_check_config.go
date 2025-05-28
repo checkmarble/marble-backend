@@ -26,6 +26,7 @@ type DBSanctionCheckConfigs struct {
 	ForcedOutcome       string                      `db:"forced_outcome"`
 	CounterpartyIdExpr  []byte                      `db:"counterparty_id_expression"`
 	UpdatedAt           time.Time                   `db:"updated_at"`
+	ConfigVersion       string                      `db:"config_version"`
 }
 
 type DBSanctionCheckConfigQuery struct {
