@@ -117,7 +117,8 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 			"forced_outcome",
 			"trigger_rule",
 			"query",
-			"counterparty_id_expression").
+			"counterparty_id_expression",
+			"config_version").
 		Values(
 			squirrel.Expr("coalesce(?, gen_random_uuid())", cfg.StableId),
 			scenarioIterationId,
@@ -129,6 +130,7 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 			triggerRule,
 			query,
 			counterpartyIdExpr,
+			"v2",
 		).
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
 
