@@ -508,10 +508,23 @@ func (repo *MarbleDbRepository) GetNextCase(ctx context.Context, exec Executor, 
 				"inbox_id":    c.InboxId,
 				"assigned_to": nil,
 			},
+			squirrel.Or{
+				squirrel.Eq{"snoozed_until": nil},
+				squirrel.LtOrEq{"snoozed_until": time.Now()},
+			},
 			squirrel.NotEq{"status": "closed"},
 		}).
-		OrderBy("boost is null", "created_at", "id").
+		OrderBy("boost is not null", "created_at", "id").
 		Limit(1)
+
+	if c.AssignedTo == nil && c.Status != "closed" && (c.SnoozedUntil == nil || c.SnoozedUntil.Before(time.Now())) {
+		query = query.Where(
+			squirrel.And{
+				squirrel.NotEq{"id": c.Id},
+				squirrel.GtOrEq{"created_at": c.CreatedAt},
+			},
+		)
+	}
 
 	sql, args, err := query.ToSql()
 	if err != nil {
