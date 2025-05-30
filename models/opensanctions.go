@@ -7,12 +7,14 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 	"github.com/hashicorp/go-set/v2"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 )
 
 const OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
 
 type OpenSanctionsCatalog struct {
 	Sections []OpenSanctionsCatalogSection
+	Tags     *expirable.LRU[string, []string]
 }
 
 type OpenSanctionsCatalogSection struct {
@@ -24,7 +26,7 @@ type OpenSanctionsCatalogSection struct {
 type OpenSanctionsCatalogDataset struct {
 	Name  string
 	Title string
-	Tags  set.Set[string]
+	Path  set.Set[string]
 }
 
 type OpenSanctionsQuery struct {

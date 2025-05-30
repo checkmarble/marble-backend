@@ -37,6 +37,13 @@ type HTTPOpenSanctionRemoteDataset struct {
 	} `json:"coverage"`
 }
 
+type HTTPOpenSanctionsRemoteIndexTags struct {
+	Datasets []struct {
+		Name string   `json:"name"`
+		Tags []string `json:"tags"`
+	} `json:"datasets"`
+}
+
 func AdaptOpenSanctionDatasetFreshness(dataset HTTPOpenSanctionRemoteDataset) models.OpenSanctionsUpstreamDatasetFreshness {
 	return models.OpenSanctionsUpstreamDatasetFreshness{
 		Name:       dataset.Name,

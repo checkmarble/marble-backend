@@ -31,6 +31,15 @@ var datasetTagMapping = map[string]string{
 	"crime":            "adverse-media",
 	"peps":             "peps",
 	"sanctions":        "sanctions",
+
+	// Upstream tags
+	"list.sanction":         "sanctions",
+	"list.sanction.counter": "sanctions",
+	"list.sanction.eu":      "sanctions",
+	"list.pep":              "peps",
+	"list.regulatory":       "adverse-media",
+	"list.risk":             "adverse-media",
+	"list.wanted":           "adverse-media",
 }
 
 func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsCatalog {
@@ -48,19 +57,29 @@ func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsC
 		for idx, d := range s.Datasets {
 			var tag string
 
-			for _, ds := range d.Tags.Slice() {
-				if t, ok := datasetTagMapping[ds]; ok {
-					tag = t
-					break
+			if tags, ok := model.Tags.Get(d.Name); ok {
+				for _, upstreamTag := range tags {
+					if t, ok := datasetTagMapping[upstreamTag]; ok {
+						tag = t
+					}
 				}
+			}
 
-				if strings.Contains(ds, "sanctions") {
-					tag = "sanctions"
-					break
-				}
-				if strings.Contains(ds, "wanted") {
-					tag = "adverse-media"
-					break
+			if tag == "" {
+				for _, ds := range d.Path.Slice() {
+					if t, ok := datasetTagMapping[ds]; ok {
+						tag = t
+						break
+					}
+
+					if strings.Contains(ds, "sanctions") {
+						tag = "sanctions"
+						break
+					}
+					if strings.Contains(ds, "wanted") {
+						tag = "adverse-media"
+						break
+					}
 				}
 			}
 
