@@ -14,19 +14,20 @@ import (
 const TABLE_SANCTION_CHECK_CONFIGS = "sanction_check_configs"
 
 type DBSanctionCheckConfigs struct {
-	Id                  string          `db:"id"`
-	StableId            string          `db:"stable_id"`
-	ScenarioIterationId string          `db:"scenario_iteration_id"`
-	Name                string          `db:"name"`
-	Description         string          `db:"description"`
-	RuleGroup           string          `db:"rule_group"`
-	Datasets            []string        `db:"datasets"`
-	TriggerRule         []byte          `db:"trigger_rule"`
-	Query               json.RawMessage `db:"query"`
-	ForcedOutcome       string          `db:"forced_outcome"`
-	CounterpartyIdExpr  []byte          `db:"counterparty_id_expression"`
-	UpdatedAt           time.Time       `db:"updated_at"`
-	ConfigVersion       string          `db:"config_version"`
+	Id                  string                                  `db:"id"`
+	StableId            string                                  `db:"stable_id"`
+	ScenarioIterationId string                                  `db:"scenario_iteration_id"`
+	Name                string                                  `db:"name"`
+	Description         string                                  `db:"description"`
+	RuleGroup           string                                  `db:"rule_group"`
+	Datasets            []string                                `db:"datasets"`
+	TriggerRule         []byte                                  `db:"trigger_rule"`
+	Query               json.RawMessage                         `db:"query"`
+	ForcedOutcome       string                                  `db:"forced_outcome"`
+	CounterpartyIdExpr  []byte                                  `db:"counterparty_id_expression"`
+	UpdatedAt           time.Time                               `db:"updated_at"`
+	Preprocessing       models.SanctionCheckConfigPreprocessing `db:"preprocessing"`
+	ConfigVersion       string                                  `db:"config_version"`
 }
 
 var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
@@ -41,6 +42,7 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 		RuleGroup:           &db.RuleGroup,
 		Datasets:            db.Datasets,
 		ForcedOutcome:       models.OutcomeFrom(db.ForcedOutcome),
+		Preprocessing:       db.Preprocessing,
 	}
 
 	if db.TriggerRule != nil {

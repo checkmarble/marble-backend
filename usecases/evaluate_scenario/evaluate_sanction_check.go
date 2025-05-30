@@ -53,31 +53,36 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		}
 
 		queries := []models.OpenSanctionsCheckQuery{}
-		emptyFieldRead := 0
-		nbEvaluatedFields := 0
-		emptyInput := false
 		var err error
 
 		if scc.Query != nil {
-			nbEvaluatedFields += 1
-			queries, emptyInput, err = e.evaluateSanctionCheckName(ctx, queries, iteration, scc, dataAccessor)
+			emptyInput := false
+
+			switch scc.Preprocessing.UseNer {
+			case false:
+				queries, emptyInput, err = e.evaluateSanctionCheckName(ctx, queries, iteration, scc, dataAccessor)
+			case true:
+				queries, emptyInput, err = e.evaluateSanctionCheckLabel(ctx, queries, iteration, scc, dataAccessor)
+				if len(queries) == 0 {
+					continue
+				}
+			}
+
 			if err != nil {
 				return nil, true, errors.Wrap(err, "could not evaluate sanction check name")
-			} else if emptyInput {
-				emptyFieldRead += 1
 			}
-		}
 
-		if emptyFieldRead == nbEvaluatedFields {
-			sanctionCheck = append(sanctionCheck, models.SanctionCheckWithMatches{
-				SanctionCheck: models.SanctionCheck{
-					Status:     models.SanctionStatusError,
-					ErrorCodes: []string{ErrSanctionCheckAllFieldsNullOrEmpty},
-				},
-			})
+			if emptyInput {
+				sanctionCheck = append(sanctionCheck, models.SanctionCheckWithMatches{
+					SanctionCheck: models.SanctionCheck{
+						Status:     models.SanctionStatusError,
+						ErrorCodes: []string{ErrSanctionCheckAllFieldsNullOrEmpty},
+					},
+				})
 
-			performed = false
-			return
+				performed = false
+				return
+			}
 		}
 
 		var uniqueCounterpartyIdentifier *string
@@ -176,6 +181,12 @@ func (e ScenarioEvaluator) evaluateSanctionCheckName(
 		return
 	}
 
+	nameFilter, preprocessingErr := e.preprocessCounterpartyName(ctx, nameFilter, scc.Preprocessing)
+	if preprocessingErr != nil {
+		err = preprocessingErr
+		return
+	}
+
 	queriesOut = append(queriesOut, models.OpenSanctionsCheckQuery{
 		Type: "Thing",
 		Filters: models.OpenSanctionCheckFilter{
@@ -184,4 +195,118 @@ func (e ScenarioEvaluator) evaluateSanctionCheckName(
 	})
 
 	return queriesOut, false, nil
+}
+
+func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
+	ctx context.Context,
+	queries []models.OpenSanctionsCheckQuery,
+	iteration models.ScenarioIteration,
+	scc models.SanctionCheckConfig,
+	dataAccessor DataAccessor,
+) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, err error) {
+	queriesOut = queries
+	labelFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
+		*scc.Query, iteration.OrganizationId,
+		dataAccessor.ClientObject, dataAccessor.DataModel)
+	if err != nil {
+		return
+	}
+	if labelFilterAny.ReturnValue == nil {
+		emptyInput = true
+		return
+	}
+
+	labelFilter, ok := labelFilterAny.ReturnValue.(string)
+	if !ok {
+		return nil, false, errors.New("label filter name query did not return a string")
+	}
+	if labelFilter == "" {
+		emptyInput = true
+		return
+	}
+
+	if e.nameRecognizer == nil || !e.nameRecognizer.IsConfigured() {
+		switch len(queriesOut) {
+		case 0:
+			queriesOut = append(queriesOut, models.OpenSanctionsCheckQuery{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{labelFilter},
+				},
+			})
+
+		default:
+			queriesOut[0].Filters["name"] = append(queriesOut[0].Filters["name"], labelFilter)
+		}
+
+		return queriesOut, false, nil
+	}
+
+	matches, err := e.nameRecognizer.PerformNameRecognition(ctx, labelFilter)
+	if err != nil {
+		return queriesOut, false, errors.Wrap(err,
+			"could not perform name recognition on label")
+	}
+
+	var personQuery *models.OpenSanctionsCheckQuery = nil
+	var companyQuery *models.OpenSanctionsCheckQuery = nil
+
+	if len(matches) == 0 {
+		labelFilter, preprocessingErr := e.preprocessCounterpartyName(ctx, labelFilter, scc.Preprocessing)
+		if preprocessingErr != nil {
+			err = preprocessingErr
+			return
+		}
+
+		queriesOut = append(queriesOut, models.OpenSanctionsCheckQuery{
+			Type:    "Thing",
+			Filters: models.OpenSanctionCheckFilter{"name": []string{labelFilter}},
+		})
+	}
+
+	for _, match := range matches {
+		labelFilter, preprocessingErr := e.preprocessCounterpartyName(ctx, match.Text, scc.Preprocessing)
+		if preprocessingErr != nil {
+			err = preprocessingErr
+			return
+		}
+
+		match.Text = labelFilter
+
+		switch match.Type {
+		case "Person":
+			if personQuery == nil {
+				personQuery = &models.OpenSanctionsCheckQuery{
+					Type:    "Person",
+					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
+				}
+				continue
+			}
+
+			personQuery.Filters["name"] = append(personQuery.Filters["name"], match.Text)
+		case "Company":
+			if companyQuery == nil {
+				companyQuery = &models.OpenSanctionsCheckQuery{
+					Type:    "Organization",
+					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
+				}
+				continue
+			}
+
+			companyQuery.Filters["name"] = append(companyQuery.Filters["name"], match.Text)
+		}
+	}
+
+	if personQuery != nil {
+		queriesOut = append(queriesOut, *personQuery)
+	}
+	if companyQuery != nil {
+		queriesOut = append(queriesOut, *companyQuery)
+	}
+
+	return queriesOut, false, nil
+}
+
+func (e ScenarioEvaluator) preprocessCounterpartyName(_ context.Context, name string, _ models.SanctionCheckConfigPreprocessing) (string, error) {
+	return name, nil
 }

@@ -204,8 +204,6 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 	names := []httpmodels.HTTPNameRecognitionMatch{
 		{Type: "Person", Text: "joe finnigan"},
-		{Type: "Company", Text: "acme inc."},
-		{Type: "Person", Text: "bill bob"},
 	}
 
 	eval, exec := getSanctionCheckEvaluator()
@@ -216,8 +214,9 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
-			TriggerRule: &ast.Node{Constant: true},
-			Query:       &ast.Node{Constant: "bob gross"},
+			TriggerRule:   &ast.Node{Constant: true},
+			Query:         &ast.Node{Constant: "dinner with joe finnigan"},
+			Preprocessing: models.SanctionCheckConfigPreprocessing{UseNer: true},
 		}},
 	}
 
@@ -225,9 +224,9 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 		Config: iteration.SanctionCheckConfigs[0],
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
-				Type: "Thing",
+				Type: "Person",
 				Filters: models.OpenSanctionCheckFilter{
-					"name": []string{"bob gross"},
+					"name": []string{"joe finnigan"},
 				},
 			},
 		},
