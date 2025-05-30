@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/hashicorp/go-set/v2"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 )
 
 var (
@@ -40,7 +41,7 @@ type HTTPOpenSanctionCatalogDataset struct {
 	Children     []string `json:"children"`
 }
 
-func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.OpenSanctionsCatalog {
+func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset, tags *expirable.LRU[string, []string]) models.OpenSanctionsCatalog {
 	sections := make(map[string]*models.OpenSanctionsCatalogSection, len(OPEN_SANCTIONS_CONTINENT_CODES))
 	datasetMap := make(map[string]*HTTPOpenSanctionCatalogDataset, len(datasets))
 	loadedDatasets := make(map[string]*set.Set[string])
@@ -82,6 +83,7 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.
 
 	return models.OpenSanctionsCatalog{
 		Sections: slices.SortedFunc(maps.Values(pure_utils.MapValues(sections, f)), sortF),
+		Tags:     tags,
 	}
 }
 
@@ -118,7 +120,7 @@ func findDatasets(sections map[string]*models.OpenSanctionsCatalogSection,
 		sections[regionCode].Datasets = append(sections[regionCode].Datasets, models.OpenSanctionsCatalogDataset{
 			Name:  dataset.Name,
 			Title: dataset.Title,
-			Tags:  *tags,
+			Path:  *tags,
 		})
 	}
 }

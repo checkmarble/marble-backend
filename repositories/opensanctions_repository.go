@@ -21,11 +21,15 @@ import (
 )
 
 const (
-	OPEN_SANCTIONS_DATASET_URL       = "https://data.opensanctions.org/datasets/latest/default/index.json"
+	OPEN_SANCTIONS_DEFAULT_INDEX_URL = "https://data.opensanctions.org/datasets/latest/default/index.json"
+	OPEN_SANCTIONS_INDEX_URL         = "https://data.opensanctions.org/datasets/latest/index.json"
 	OPEN_SANCTIONS_CATALOG_CACHE_KEY = "catalog"
 )
 
-var OPEN_SANCTIONS_DATASET_CACHE = expirable.NewLRU[string, models.OpenSanctionsCatalog](1, nil, time.Hour)
+var (
+	OPEN_SANCTIONS_DATASET_CACHE = expirable.NewLRU[string, models.OpenSanctionsCatalog](1, nil, time.Hour)
+	OPEN_SANCTIONS_DATASET_TAGS  = expirable.NewLRU[string, []string](0, nil, 0)
+)
 
 type OpenSanctionsRepository struct {
 	opensanctions infra.OpenSanctions
@@ -121,7 +125,11 @@ func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) (models.Open
 		return models.OpenSanctionsCatalog{}, err
 	}
 
-	catalogModel := httpmodels.AdaptOpenSanctionCatalog(catalog.Datasets)
+	if err := repo.GatherTags(ctx); err != nil {
+		return models.OpenSanctionsCatalog{}, err
+	}
+
+	catalogModel := httpmodels.AdaptOpenSanctionCatalog(catalog.Datasets, OPEN_SANCTIONS_DATASET_TAGS)
 
 	if len(catalogModel.Sections) > 0 {
 		OPEN_SANCTIONS_DATASET_CACHE.Add(OPEN_SANCTIONS_CATALOG_CACHE_KEY, catalogModel)
@@ -131,7 +139,7 @@ func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) (models.Open
 }
 
 func (repo OpenSanctionsRepository) GetLatestUpstreamDatasetFreshness(ctx context.Context) (models.OpenSanctionsUpstreamDatasetFreshness, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, OPEN_SANCTIONS_DATASET_URL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, OPEN_SANCTIONS_DEFAULT_INDEX_URL, nil)
 	if err != nil {
 		return models.OpenSanctionsUpstreamDatasetFreshness{}, err
 	}
@@ -150,6 +158,36 @@ func (repo OpenSanctionsRepository) GetLatestUpstreamDatasetFreshness(ctx contex
 	}
 
 	return httpmodels.AdaptOpenSanctionDatasetFreshness(dataset), err
+}
+
+func (repo OpenSanctionsRepository) GatherTags(ctx context.Context) error {
+	if OPEN_SANCTIONS_DATASET_TAGS.Len() > 0 {
+		return nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, OPEN_SANCTIONS_INDEX_URL, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := repo.opensanctions.Client().Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	var dataset httpmodels.HTTPOpenSanctionsRemoteIndexTags
+
+	if err := json.NewDecoder(resp.Body).Decode(&dataset); err != nil {
+		return err
+	}
+
+	for _, ds := range dataset.Datasets {
+		OPEN_SANCTIONS_DATASET_TAGS.Add(ds.Name, ds.Tags)
+	}
+
+	return nil
 }
 
 func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (models.OpenSanctionsDatasetFreshness, error) {
