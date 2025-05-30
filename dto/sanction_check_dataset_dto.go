@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -19,6 +20,26 @@ type OpenSanctionsCatalogSection struct {
 type OpenSanctionsCatalogDataset struct {
 	Name  string `json:"name"`
 	Title string `json:"title"`
+	Tag   string `json:"tag"`
+}
+
+var datasetTagMapping = map[string]string{
+	"regulatory":       "adverse-media",
+	"debarment":        "adverse-media",
+	"special_interest": "adverse-media",
+	"enrichers":        "third-parties",
+	"crime":            "adverse-media",
+	"peps":             "peps",
+	"sanctions":        "sanctions",
+
+	// Upstream tags
+	"list.sanction":         "sanctions",
+	"list.sanction.counter": "sanctions",
+	"list.sanction.eu":      "sanctions",
+	"list.pep":              "peps",
+	"list.regulatory":       "adverse-media",
+	"list.risk":             "adverse-media",
+	"list.wanted":           "adverse-media",
 }
 
 func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsCatalog {
@@ -34,9 +55,38 @@ func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsC
 		}
 
 		for idx, d := range s.Datasets {
+			var tag string
+
+			if tags, ok := model.Tags.Get(d.Name); ok {
+				for _, upstreamTag := range tags {
+					if t, ok := datasetTagMapping[upstreamTag]; ok {
+						tag = t
+					}
+				}
+			}
+
+			if tag == "" {
+				for _, ds := range d.Path.Slice() {
+					if t, ok := datasetTagMapping[ds]; ok {
+						tag = t
+						break
+					}
+
+					if strings.Contains(ds, "sanctions") {
+						tag = "sanctions"
+						break
+					}
+					if strings.Contains(ds, "wanted") {
+						tag = "adverse-media"
+						break
+					}
+				}
+			}
+
 			section.Datasets[idx] = OpenSanctionsCatalogDataset{
 				Name:  d.Name,
 				Title: d.Title,
+				Tag:   tag,
 			}
 		}
 

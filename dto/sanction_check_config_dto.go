@@ -2,6 +2,7 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
@@ -126,6 +127,18 @@ func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (Sanct
 	}
 
 	if model.Label != nil {
+		// For backward compatibility, we always assume this is a string out of StringConcat.
+		// It used to be a single payload field, so if we are in that case, we wrap it in StringConcat.
+		if model.Label.Function != ast.FUNC_STRING_CONCAT {
+			model.Label = &ast.Node{
+				Function: ast.FUNC_STRING_CONCAT,
+				Children: []ast.Node{*model.Label},
+				NamedChildren: map[string]ast.Node{
+					"with_separator": {Constant: true},
+				},
+			}
+		}
+
 		labelAst, err := AdaptNodeDto(*model.Label)
 		if err != nil {
 			return SanctionCheckConfigQuery{}, err

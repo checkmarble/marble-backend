@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/hashicorp/go-set/v2"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 )
 
 var (
@@ -24,9 +25,7 @@ var (
 		"South America":  "sa",
 		"United Nations": "un",
 		"Other":          "other",
-	}
-	OPEN_SANCTIONS_WHITELISTED_COLLECTIONS = []string{
-		"sanctions",
+		"Internal":       "internal",
 	}
 )
 
@@ -42,36 +41,65 @@ type HTTPOpenSanctionCatalogDataset struct {
 	Children     []string `json:"children"`
 }
 
-func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.OpenSanctionsCatalog {
+func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset, tags *expirable.LRU[string, []string]) models.OpenSanctionsCatalog {
 	sections := make(map[string]*models.OpenSanctionsCatalogSection, len(OPEN_SANCTIONS_CONTINENT_CODES))
 	datasetMap := make(map[string]*HTTPOpenSanctionCatalogDataset, len(datasets))
-	loadedDatasets := set.New[string](len(datasets))
-	whitelist := set.New[string](len(datasets))
+	loadedDatasets := make(map[string]*set.Set[string])
 
 	slices.SortFunc(datasets, func(lhs, rhs HTTPOpenSanctionCatalogDataset) int {
 		return strings.Compare(lhs.Title, rhs.Title)
 	})
 
 	for _, dataset := range datasets {
-		if slices.Contains(OPEN_SANCTIONS_WHITELISTED_COLLECTIONS, dataset.Name) {
-			whitelist.InsertSlice(dataset.Children)
-		}
-
 		datasetMap[dataset.Name] = &dataset
 	}
 
 	for _, dataset := range datasets {
 		if dataset.Load && dataset.IndexVersion != nil {
-			findLoadedDatasets(loadedDatasets, whitelist, datasetMap, &dataset)
+			findLoadedDatasets(loadedDatasets, set.New[string](0), datasetMap, &dataset)
 		}
 	}
 
+	findDatasets(sections, loadedDatasets, datasets)
+
+	f := func(section *models.OpenSanctionsCatalogSection) models.OpenSanctionsCatalogSection {
+		return *section
+	}
+	sortF := func(lhs, rhs models.OpenSanctionsCatalogSection) int {
+		if lhs.Name == "internal" || rhs.Name == "un" {
+			return 2
+		}
+		if rhs.Name == "internal" || lhs.Name == "un" {
+			return -2
+		}
+		if lhs.Name == "other" {
+			return 1
+		}
+		if rhs.Name == "other" {
+			return -1
+		}
+		return strings.Compare(lhs.Title, rhs.Title)
+	}
+
+	return models.OpenSanctionsCatalog{
+		Sections: slices.SortedFunc(maps.Values(pure_utils.MapValues(sections, f)), sortF),
+		Tags:     tags,
+	}
+}
+
+func findDatasets(sections map[string]*models.OpenSanctionsCatalogSection,
+	loadedDatasets map[string]*set.Set[string], datasets []HTTPOpenSanctionCatalogDataset,
+) {
 	for _, dataset := range datasets {
-		if len(dataset.Children) > 0 || !loadedDatasets.Contains(dataset.Name) {
+		if len(dataset.Children) > 0 {
+			continue
+		}
+		tags, ok := loadedDatasets[dataset.Name]
+		if !ok {
 			continue
 		}
 
-		regionCode, regionName := regionFromDatasetName(dataset.Name)
+		regionCode, regionName := regionFromDatasetName(dataset.Name, tags)
 
 		if _, ok := sections[regionCode]; !ok {
 			sections[regionCode] = &models.OpenSanctionsCatalogSection{
@@ -92,37 +120,26 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset) models.
 		sections[regionCode].Datasets = append(sections[regionCode].Datasets, models.OpenSanctionsCatalogDataset{
 			Name:  dataset.Name,
 			Title: dataset.Title,
+			Path:  *tags,
 		})
-	}
-
-	f := func(section *models.OpenSanctionsCatalogSection) models.OpenSanctionsCatalogSection {
-		return *section
-	}
-	sortF := func(lhs, rhs models.OpenSanctionsCatalogSection) int {
-		if lhs.Name == "other" || rhs.Name == "un" {
-			return 1
-		}
-		if rhs.Name == "other" || lhs.Name == "un" {
-			return -1
-		}
-		return strings.Compare(lhs.Title, rhs.Title)
-	}
-
-	return models.OpenSanctionsCatalog{
-		Sections: slices.SortedFunc(maps.Values(pure_utils.MapValues(sections, f)), sortF),
 	}
 }
 
-func findLoadedDatasets(loaded *set.Set[string], whitelist *set.Set[string],
+func findLoadedDatasets(loaded map[string]*set.Set[string], parents *set.Set[string],
 	datasets map[string]*HTTPOpenSanctionCatalogDataset, current *HTTPOpenSanctionCatalogDataset,
 ) {
-	if whitelist.Contains(current.Name) {
-		loaded.Insert(current.Name)
+	parents = parents.Copy()
+	parents.Insert(current.Name)
+
+	if _, ok := loaded[current.Name]; ok {
+		loaded[current.Name].InsertSet(parents)
+	} else {
+		loaded[current.Name] = parents
 	}
 
 	for _, child := range current.Children {
 		if childDataset, ok := datasets[child]; ok {
-			findLoadedDatasets(loaded, whitelist, datasets, childDataset)
+			findLoadedDatasets(loaded, parents, datasets, childDataset)
 		}
 	}
 }
@@ -138,7 +155,11 @@ func regionCodeFromName(code string) string {
 	return "other"
 }
 
-func regionFromDatasetName(name string) (string, string) {
+func regionFromDatasetName(name string, tags *set.Set[string]) (string, string) {
+	if !tags.Contains("default") {
+		return "internal", "Internal"
+	}
+
 	cc := ""
 
 	if strings.HasPrefix(name, "ext") && len(name) >= 6 && isDatasetSeparator(name[3]) {

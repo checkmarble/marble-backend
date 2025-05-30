@@ -43,7 +43,7 @@ func TestOpenSanctionsSelfHostedApi(t *testing.T) {
 	}
 
 	gock.New("https://yente.local").
-		Post("/match/sanctions").
+		Post("/match/default").
 		Reply(http.StatusBadRequest)
 
 	_, err := repo.Search(context.TODO(), query)
@@ -71,7 +71,7 @@ func TestOpenSanctionsSelfHostedAndApiKey(t *testing.T) {
 	}
 
 	gock.New("https://yente.local").
-		Post("/match/sanctions").
+		Post("/match/default").
 		MatchParam("api_key", "abcdef").
 		Reply(http.StatusBadRequest)
 
@@ -100,7 +100,7 @@ func TestOpenSanctionsSaaSAndApiKey(t *testing.T) {
 	}
 
 	gock.New(infra.OPEN_SANCTIONS_API_HOST).
-		Post("/match/sanctions").
+		Post("/match/default").
 		MatchParam("api_key", "abcdef").
 		Reply(http.StatusBadRequest)
 
@@ -129,7 +129,7 @@ func TestOpenSanctionsSelfHostedAndBearerToken(t *testing.T) {
 	}
 
 	gock.New("https://yente.local").
-		Post("/match/sanctions").
+		Post("/match/default").
 		MatchHeader("authorization", "Bearer abcdef").
 		Reply(http.StatusBadRequest)
 
@@ -158,7 +158,7 @@ func TestOpenSanctionsSelfHostedAndBasicAuth(t *testing.T) {
 	}
 
 	gock.New("https://yente.local").
-		Post("/match/sanctions").
+		Post("/match/default").
 		MatchHeader("authorization", "Basic YWJjZGVmOmhlbGxvd29ybGQ=").
 		Reply(http.StatusBadRequest)
 
@@ -187,7 +187,7 @@ func TestOpenSanctionsError(t *testing.T) {
 	}
 
 	gock.New(infra.OPEN_SANCTIONS_API_HOST).
-		Post("/match/sanctions").
+		Post("/match/default").
 		Reply(http.StatusBadRequest)
 
 	_, err := repo.Search(context.TODO(), query)
@@ -217,7 +217,7 @@ func TestOpenSanctionsSuccessfulPartialResponse(t *testing.T) {
 	body, _ := os.ReadFile("./fixtures/opensanctions/response_partial.json")
 
 	gock.New(infra.OPEN_SANCTIONS_API_HOST).
-		Post("/match/sanctions").
+		Post("/match/default").
 		Reply(http.StatusOK).
 		BodyString(string(body))
 
@@ -251,7 +251,7 @@ func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 	body, _ := os.ReadFile("./fixtures/opensanctions/response_full.json")
 
 	gock.New(infra.OPEN_SANCTIONS_API_HOST).
-		Post("/match/sanctions").
+		Post("/match/default").
 		Reply(http.StatusOK).
 		BodyString(string(body))
 
