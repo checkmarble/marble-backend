@@ -204,8 +204,7 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 	names := []httpmodels.HTTPNameRecognitionMatch{
 		{Type: "Person", Text: "joe finnigan"},
-		{Type: "Company", Text: "acme inc."},
-		{Type: "Person", Text: "bill bob"},
+		{Type: "Company", Text: "ACME Inc."},
 	}
 
 	eval, exec := getSanctionCheckEvaluator()
@@ -216,8 +215,9 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
-			TriggerRule: &ast.Node{Constant: true},
-			Query:       &ast.Node{Constant: "bob gross"},
+			TriggerRule:   &ast.Node{Constant: true},
+			Query:         &ast.Node{Constant: "dinner with joe finnigan"},
+			Preprocessing: models.SanctionCheckConfigPreprocessing{UseNer: true},
 		}},
 	}
 
@@ -225,9 +225,15 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 		Config: iteration.SanctionCheckConfigs[0],
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
-				Type: "Thing",
+				Type: "Person",
 				Filters: models.OpenSanctionCheckFilter{
-					"name": []string{"bob gross"},
+					"name": []string{"joe finnigan"},
+				},
+			},
+			{
+				Type: "Organization",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"ACME Inc."},
 				},
 			},
 		},
@@ -271,5 +277,139 @@ func TestSanctionCheckCalledWithNameRecognitionDisabled(t *testing.T) {
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
 	assert.True(t, performed)
+	assert.NoError(t, err)
+}
+
+func TestSanctionCheckCalledWithNumbersPreprocessing(t *testing.T) {
+	names := []httpmodels.HTTPNameRecognitionMatch{
+		{Type: "Person", Text: "joe finnigan"},
+	}
+
+	eval, exec := getSanctionCheckEvaluator()
+	exec.Mock.On("IsConfigured").Return(true)
+	exec.Mock.
+		On("PerformNameRecognition", mock.Anything, "dinner  with  joe finnigan").
+		Return(names, nil)
+
+	iteration := models.ScenarioIteration{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{{
+			TriggerRule:   &ast.Node{Constant: true},
+			Query:         &ast.Node{Constant: "din2ner 123 with 4 joe fi4n5n65i8gan"},
+			Preprocessing: models.SanctionCheckConfigPreprocessing{UseNer: true, RemoveNumbers: true},
+		}},
+	}
+
+	expectedQuery := models.OpenSanctionsQuery{
+		Config: iteration.SanctionCheckConfigs[0],
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Person",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"joe finnigan"},
+				},
+			},
+		},
+	}
+
+	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+		ScenarioEvaluationParameters{}, DataAccessor{})
+
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+
+	assert.True(t, performed)
+	assert.NoError(t, err)
+}
+
+func TestSanctionCheckWithLengthPreprocessing(t *testing.T) {
+	eval, exec := getSanctionCheckEvaluator()
+
+	exec.Mock.On("IsConfigured").Return(true)
+	exec.Mock.
+		On("PerformNameRecognition", mock.Anything, "constant string").
+		Return([]httpmodels.HTTPNameRecognitionMatch{}, nil)
+
+	iteration := models.ScenarioIteration{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{{
+			TriggerRule:   &ast.Node{Constant: true},
+			Query:         &ast.Node{Constant: "constant string"},
+			Preprocessing: models.SanctionCheckConfigPreprocessing{SkipIfUnder: 10, UseNer: true},
+		}},
+	}
+
+	expectedQuery := models.OpenSanctionsQuery{
+		Config: iteration.SanctionCheckConfigs[0],
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"constant string"},
+				},
+			},
+		},
+	}
+
+	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+		ScenarioEvaluationParameters{}, DataAccessor{})
+
+	exec.Mock.AssertCalled(t, "PerformNameRecognition", mock.Anything, "constant string")
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+
+	assert.True(t, performed)
+	assert.NoError(t, err)
+
+	iteration = models.ScenarioIteration{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{{
+			TriggerRule:   &ast.Node{Constant: true},
+			Query:         &ast.Node{Constant: "constant"},
+			Preprocessing: models.SanctionCheckConfigPreprocessing{SkipIfUnder: 10},
+		}},
+	}
+
+	expectedQuery = models.OpenSanctionsQuery{
+		Config:  iteration.SanctionCheckConfigs[0],
+		Queries: []models.OpenSanctionsCheckQuery{},
+	}
+
+	_, performed, err = eval.evaluateSanctionCheck(context.TODO(), iteration,
+		ScenarioEvaluationParameters{}, DataAccessor{})
+
+	exec.Mock.AssertNotCalled(t, "Execute", context.TODO(), "", expectedQuery)
+
+	assert.False(t, performed)
+	assert.NoError(t, err)
+}
+
+func TestSanctionCheckWithPreNerLengthPreprocessing(t *testing.T) {
+	eval, exec := getSanctionCheckEvaluator()
+
+	exec.Mock.On("IsConfigured").Return(true)
+
+	iteration := models.ScenarioIteration{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{{
+			TriggerRule:   &ast.Node{Constant: true},
+			Query:         &ast.Node{Constant: "short"},
+			Preprocessing: models.SanctionCheckConfigPreprocessing{SkipIfUnder: 10, UseNer: true},
+		}},
+	}
+
+	expectedQuery := models.OpenSanctionsQuery{
+		Config: iteration.SanctionCheckConfigs[0],
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"short"},
+				},
+			},
+		},
+	}
+
+	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+		ScenarioEvaluationParameters{}, DataAccessor{})
+
+	exec.Mock.AssertNotCalled(t, "PerformNameRecognition", mock.Anything, mock.Anything)
+	exec.Mock.AssertNotCalled(t, "Execute", context.TODO(), "", expectedQuery)
+
+	assert.False(t, performed)
 	assert.NoError(t, err)
 }
