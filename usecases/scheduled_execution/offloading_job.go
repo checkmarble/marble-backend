@@ -137,7 +137,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 					rule.DecisionId, *rule.RuleId, *rule.RuleOutcome, rule.CreatedAt)
 
 				opts := blob.WriterOptions{Metadata: map[string]string{
-					"Custom-Date": rule.CreatedAt.Format(time.RFC3339),
+					"Custom-Time": rule.CreatedAt.Format(time.RFC3339),
 				}}
 
 				wr, err := w.blobRepository.OpenStreamWithOptions(ctx, w.config.BucketUrl, key, &opts)

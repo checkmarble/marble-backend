@@ -1031,6 +1031,7 @@ func (repo *MarbleDbRepository) RemoveDecisionRulePayload(ctx context.Context, t
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_DECISION_RULES).
 		Set("rule_evaluation", nil).
+		Set("outcome", squirrel.Expr("case outcome when '' then 'no_hit' else outcome end")).
 		Where(squirrel.Eq{"id": ids})
 
 	return ExecBuilder(ctx, tx, sql)
