@@ -106,6 +106,7 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 			"trigger_rule",
 			"query",
 			"counterparty_id_expression",
+			"preprocessing",
 			"config_version").
 		Values(
 			squirrel.Expr("coalesce(?, gen_random_uuid())", cfg.StableId),
@@ -118,6 +119,7 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 			triggerRule,
 			query,
 			counterpartyIdExpr,
+			utils.Or(cfg.Preprocessing, models.SanctionCheckConfigPreprocessing{}),
 			"v2",
 		).
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
@@ -201,6 +203,9 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 	}
 	if cfg.ForcedOutcome != nil {
 		sql = sql.Set("forced_outcome", forcedOutcome)
+	}
+	if cfg.Preprocessing != nil {
+		sql = sql.Set("preprocessing", *cfg.Preprocessing)
 	}
 	if len(updateFields) > 0 {
 		sql = sql.Set("updated_at", time.Now())
