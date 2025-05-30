@@ -66,6 +66,16 @@ type SanctionCheckConfig struct {
 	Query                    *ast.Node
 	ForcedOutcome            Outcome
 	CounterpartyIdExpression *ast.Node
+	Preprocessing            SanctionCheckConfigPreprocessing
+}
+
+type SanctionCheckConfigPreprocessing struct {
+	UseNer        bool `json:"use_ner,omitempty"`
+	SkipIfUnder   int  `json:"skip_if_under"`
+	RemoveNumbers bool `json:"remove_numbers"`
+
+	BlacklistListId string      `json:"blacklist_list_id"`
+	BlacklistList   *CustomList `json:"-"`
 }
 
 func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
@@ -100,4 +110,5 @@ type UpdateSanctionCheckConfigInput struct {
 	Query                    *ast.Node
 	CounterpartyIdExpression *ast.Node
 	ForcedOutcome            *Outcome
+	Preprocessing            *SanctionCheckConfigPreprocessing
 }
