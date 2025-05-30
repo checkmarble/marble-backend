@@ -3,6 +3,7 @@
 
 alter table sanction_check_configs
     add column config_version text,
+    add column preprocessing jsonb not null default '{}',
     drop constraint if exists sanction_check_configs_scenario_iteration_id_key;
 
 create index if not exists idx_scc_iteration_id
@@ -68,7 +69,7 @@ begin
             config_version = 'v1_name'
         where id = config.id;
 
-        insert into sanction_check_configs (scenario_iteration_id, name, description, rule_group, forced_outcome, trigger_rule, datasets, query, created_at, updated_at, counterparty_id_expression, stable_id, config_version)
+        insert into sanction_check_configs (scenario_iteration_id, name, description, rule_group, forced_outcome, trigger_rule, datasets, query, created_at, updated_at, counterparty_id_expression, stable_id, preprocessing, config_version)
         values (
             config.scenario_iteration_id,
             config.name,
@@ -91,6 +92,7 @@ begin
             config.updated_at,
             config.counterparty_id_expression,
             new_stable_id,
+            '{"use_ner": true}',
             'v1_label'
         );
         end loop;
@@ -153,6 +155,7 @@ end
 $$ language plpgsql;
 
 alter table sanction_check_configs
+    drop column preprocessing,
     drop column config_version,
     add constraint sanction_check_configs_scenario_iteration_id_key
     unique (scenario_iteration_id);

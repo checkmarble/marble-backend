@@ -8,15 +8,16 @@ import (
 )
 
 type SanctionCheckConfig struct {
-	Id                       string   `json:"id"`
-	Name                     *string  `json:"name"`
-	Description              *string  `json:"description"`
-	RuleGroup                *string  `json:"rule_group,omitempty"`
-	Datasets                 []string `json:"datasets,omitempty"`
-	ForcedOutcome            *string  `json:"forced_outcome,omitempty"`
-	TriggerRule              *NodeDto `json:"trigger_rule"`
-	Query                    *NodeDto `json:"query"`
-	CounterpartyIdExpression *NodeDto `json:"counterparty_id_expression"`
+	Id                       string                                   `json:"id"`
+	Name                     *string                                  `json:"name"`
+	Description              *string                                  `json:"description"`
+	RuleGroup                *string                                  `json:"rule_group,omitempty"`
+	Datasets                 []string                                 `json:"datasets,omitempty"`
+	ForcedOutcome            *string                                  `json:"forced_outcome,omitempty"`
+	TriggerRule              *NodeDto                                 `json:"trigger_rule"`
+	Query                    *NodeDto                                 `json:"query"`
+	CounterpartyIdExpression *NodeDto                                 `json:"counterparty_id_expression"`
+	Preprocessing            *models.SanctionCheckConfigPreprocessing `json:"preprocessing,omitzero"`
 }
 
 func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckConfig, error) {
@@ -27,6 +28,7 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 		RuleGroup:     model.RuleGroup,
 		Datasets:      model.Datasets,
 		ForcedOutcome: utils.Ptr(model.ForcedOutcome.String()),
+		Preprocessing: &model.Preprocessing,
 	}
 
 	if model.TriggerRule != nil {
@@ -61,11 +63,12 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 
 func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSanctionCheckConfigInput, error) {
 	config := models.UpdateSanctionCheckConfigInput{
-		Id:          dto.Id,
-		Name:        dto.Name,
-		Description: dto.Description,
-		RuleGroup:   dto.RuleGroup,
-		Datasets:    dto.Datasets,
+		Id:            dto.Id,
+		Name:          dto.Name,
+		Description:   dto.Description,
+		RuleGroup:     dto.RuleGroup,
+		Datasets:      dto.Datasets,
+		Preprocessing: dto.Preprocessing,
 	}
 	if dto.ForcedOutcome != nil {
 		config.ForcedOutcome = utils.Ptr(models.OutcomeFrom(*dto.ForcedOutcome))
