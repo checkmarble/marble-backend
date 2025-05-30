@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -136,9 +137,19 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 				key := w.repository.GetOffloadedDecisionRuleKey(req.OrgId,
 					rule.DecisionId, *rule.RuleId, *rule.RuleOutcome, rule.CreatedAt)
 
-				opts := blob.WriterOptions{Metadata: map[string]string{
-					"Custom-Date": rule.CreatedAt.Format(time.RFC3339),
-				}}
+				opts := blob.WriterOptions{}
+
+				// Only if we work on GCS, retrieve the typed writer and set the Custom-Time fixed metadata to the rule creation time.
+				// We do not (currently) set the date on other blob storage platforms (but maybe we should?)
+				opts.BeforeWrite = func(asFunc func(any) bool) error {
+					var gcsWriter *storage.Writer
+
+					if asFunc(&gcsWriter) {
+						gcsWriter.CustomTime = rule.CreatedAt
+					}
+
+					return nil
+				}
 
 				wr, err := w.blobRepository.OpenStreamWithOptions(ctx, w.config.BucketUrl, key, &opts)
 				if err != nil {
