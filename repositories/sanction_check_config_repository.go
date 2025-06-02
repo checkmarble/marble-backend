@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -67,10 +68,10 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 		triggerRule = astJson
 	}
 
-	var query dto.NodeDto
+	var query map[string]dto.NodeDto
 
 	if cfg.Query != nil {
-		ser, err := dto.AdaptNodeDto(*cfg.Query)
+		ser, err := pure_utils.MapValuesErr(cfg.Query, dto.AdaptNodeDto)
 		if err != nil {
 			return models.SanctionCheckConfig{}, err
 		}
@@ -145,16 +146,14 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 		triggerRule = astJson
 	}
 
-	var query dto.NodeDto
+	var query map[string]dto.NodeDto
 
 	if cfg.Query != nil {
-		if cfg.Query != nil {
-			ser, err := dto.AdaptNodeDto(*cfg.Query)
-			if err != nil {
-				return models.SanctionCheckConfig{}, err
-			}
-			query = ser
+		ser, err := pure_utils.MapValuesErr(cfg.Query, dto.AdaptNodeDto)
+		if err != nil {
+			return models.SanctionCheckConfig{}, err
 		}
+		query = ser
 	}
 
 	var counterpartyIdExpr *[]byte
