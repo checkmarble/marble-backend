@@ -146,18 +146,21 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 					Code: models.RuleFormulaRequired,
 				})
 			} else {
-				isSpecified := func(a *ast.Node) bool {
-					return a != nil
+				isSpecified := func(query map[string]ast.Node, key string) bool {
+					if _, ok := query[key]; ok {
+						return true
+					}
+					return false
 				}
 
 				isNameProvided := false
 
-				if isSpecified(scc.Query) {
+				if isSpecified(scc.Query, "name") {
 					queryNameValidation := models.NewRuleValidation()
 					isNameProvided = true
 
 					queryNameValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-						*scc.Query)
+						scc.Query["name"])
 
 					if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(string); !ok {
 						queryNameValidation.Errors = append(
