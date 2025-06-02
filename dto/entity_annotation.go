@@ -35,6 +35,7 @@ type PostEntityAnnotationDto struct {
 }
 
 type PostEntityFileAnnotationDto struct {
+	CaseId  *string                `form:"case_id" binding:"omitempty,uuid"`
 	Caption string                 `form:"caption" binding:"required"`
 	Files   []multipart.FileHeader `form:"files[]" binding:"gte=1"`
 }

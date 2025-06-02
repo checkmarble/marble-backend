@@ -1199,6 +1199,54 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 	return usecase.getCaseWithDetails(ctx, exec, input.CaseId)
 }
 
+func (uc *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Transaction, annotationId string, annotationReq models.CreateEntityAnnotationRequest) error {
+	return uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		CaseId:         *annotationReq.CaseId,
+		UserId:         (*string)(annotationReq.AnnotatedBy),
+		EventType:      models.CaseEntityAnnotated,
+		ResourceType:   utils.Ptr(models.AnnotationResourceType),
+		ResourceId:     &annotationId,
+		AdditionalNote: utils.Ptr(annotationReq.AnnotationType.String()),
+	})
+}
+
+func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositories.Transaction, annotationId string, annotationReq models.CreateEntityAnnotationRequest, files []models.EntityAnnotationFilePayloadFile) error {
+	if annotationReq.CaseId == nil {
+		return errors.New("tried to attach file annotation to a case without a case ID")
+	}
+
+	for _, file := range files {
+		newFileUuid := uuid.NewString()
+
+		err := uc.repository.CreateDbCaseFile(ctx, tx, models.CreateDbCaseFileInput{
+			Id:            newFileUuid,
+			BucketName:    uc.caseManagerBucketUrl,
+			CaseId:        *annotationReq.CaseId,
+			FileName:      file.Filename,
+			FileReference: file.Key,
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		CaseId:         *annotationReq.CaseId,
+		UserId:         (*string)(annotationReq.AnnotatedBy),
+		EventType:      models.CaseEntityAnnotated,
+		ResourceType:   utils.Ptr(models.AnnotationResourceType),
+		ResourceId:     &annotationId,
+		AdditionalNote: utils.Ptr(annotationReq.AnnotationType.String()),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func validateFileType(file multipart.FileHeader) error {
 	supportedFileTypes := []string{
 		"text/",

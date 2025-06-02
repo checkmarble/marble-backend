@@ -42,6 +42,7 @@ const (
 	CaseSnoozed           CaseEventType = "case_snoozed"
 	CaseUnsnoozed         CaseEventType = "case_unsnoozed"
 	CaseEscalated         CaseEventType = "case_escalated"
+	CaseEntityAnnotated   CaseEventType = "entity_annotated"
 )
 
 type CaseEventResourceType string
@@ -52,6 +53,7 @@ const (
 	CaseFileResourceType   CaseEventResourceType = "case_file"
 	RuleSnoozeResourceType CaseEventResourceType = "rule_snooze"
 	SarResourceType        CaseEventResourceType = "sar"
+	AnnotationResourceType CaseEventResourceType = "annotation"
 )
 
 type CreateCaseEventAttributes struct {

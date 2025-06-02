@@ -75,6 +75,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	router.GET("/client_data/:object_type/:object_id", tom, handleGetIngestedObject(uc))
 	router.GET("/client_data/:object_type/:object_id/annotations", tom, handleListEntityAnnotations(uc))
+	router.GET("/client_data/annotations/:id", tom, handleGetEntityAnnotation(uc))
 	router.POST("/client_data/:object_type/annotations", tom,
 		handleListEntityAnnotationsForObjects(uc))
 	router.POST("/client_data/:object_type/:object_id/annotations", tom, handleCreateEntityAnnotation(uc))

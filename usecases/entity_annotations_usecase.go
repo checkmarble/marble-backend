@@ -16,6 +16,8 @@ import (
 )
 
 type EntityAnnotationRepository interface {
+	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
+		createCaseEventAttributes models.CreateCaseEventAttributes) error
 	GetEntityAnnotationById(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -35,6 +37,11 @@ type EntityAnnotationRepository interface {
 		req models.CreateEntityAnnotationRequest, tagId string) (bool, error)
 }
 
+type EntityAnnotationCaseUsecase interface {
+	AttachAnnotation(ctx context.Context, tx repositories.Transaction, annotationId string, annotationReq models.CreateEntityAnnotationRequest) error
+	AttachAnnotationFiles(ctx context.Context, tx repositories.Transaction, annotationId string, annotationReq models.CreateEntityAnnotationRequest, files []models.EntityAnnotationFilePayloadFile) error
+}
+
 type TagRepository interface {
 	GetTagById(ctx context.Context, exec repositories.Executor, tagId string) (models.Tag, error)
 }
@@ -45,6 +52,7 @@ type EntityAnnotationUsecase struct {
 	repository                 EntityAnnotationRepository
 	dataModelRepository        repositories.DataModelRepository
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
+	caseUsecase                EntityAnnotationCaseUsecase
 	tagRepository              TagRepository
 
 	blobRepository repositories.BlobRepository
@@ -60,6 +68,22 @@ func (uc EntityAnnotationUsecase) List(ctx context.Context, req models.EntityAnn
 	}
 
 	return uc.repository.GetEntityAnnotations(ctx, uc.executorFactory.NewExecutor(), req)
+}
+func (uc EntityAnnotationUsecase) Get(ctx context.Context, orgId, id string) (models.EntityAnnotation, error) {
+	annotations, err := uc.repository.GetEntityAnnotationById(ctx, uc.executorFactory.NewExecutor(), models.AnnotationByIdRequest{
+		OrgId:          orgId,
+		AnnotationId:   id,
+		IncludeDeleted: true,
+	})
+
+	if err != nil {
+		return models.EntityAnnotation{}, err
+	}
+	if len(annotations) == 0 {
+		return models.EntityAnnotation{}, errors.Wrap(models.NotFoundError, "requested annotation was not found")
+	}
+
+	return annotations[0], nil
 }
 
 func (uc EntityAnnotationUsecase) ListForObjects(ctx context.Context,
@@ -91,7 +115,20 @@ func (uc EntityAnnotationUsecase) Attach(ctx context.Context,
 		return models.EntityAnnotation{}, err
 	}
 
-	return uc.repository.CreateEntityAnnotation(ctx, uc.executorFactory.NewExecutor(), req)
+	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.EntityAnnotation, error) {
+		annotation, err := uc.repository.CreateEntityAnnotation(ctx, uc.executorFactory.NewExecutor(), req)
+		if err != nil {
+			return models.EntityAnnotation{}, err
+		}
+
+		if req.CaseId != nil {
+			if err := uc.caseUsecase.AttachAnnotation(ctx, tx, annotation.Id, req); err != nil {
+				return models.EntityAnnotation{}, err
+			}
+		}
+
+		return annotation, nil
+	})
 }
 
 func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
@@ -129,7 +166,20 @@ func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
 		Files:   metadata,
 	}
 
-	return uc.repository.CreateEntityAnnotation(ctx, uc.executorFactory.NewExecutor(), req)
+	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.EntityAnnotation, error) {
+		annotation, err := uc.repository.CreateEntityAnnotation(ctx, tx, req)
+		if err != nil {
+			return models.EntityAnnotation{}, err
+		}
+
+		if req.CaseId != nil {
+			if err := uc.caseUsecase.AttachAnnotationFiles(ctx, tx, annotation.Id, req, metadata); err != nil {
+				return models.EntityAnnotation{}, err
+			}
+		}
+
+		return annotation, nil
+	})
 }
 
 func (uc EntityAnnotationUsecase) GetFileDownloadUrl(ctx context.Context,
