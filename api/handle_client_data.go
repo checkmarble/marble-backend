@@ -34,7 +34,12 @@ func handleGetIngestedObject(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusOK, objects[0])
+		output, err := dto.AdaptClientObjectDetailDto(objects[0])
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, output)
 	}
 }
 

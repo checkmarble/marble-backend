@@ -89,6 +89,7 @@ type AnnotationByIdRequest struct {
 	OrgId          string
 	AnnotationId   string
 	AnnotationType *EntityAnnotationType
+	IncludeDeleted bool
 }
 
 type GroupedEntityAnnotations struct {

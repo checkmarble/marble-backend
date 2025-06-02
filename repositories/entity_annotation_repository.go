@@ -18,9 +18,12 @@ func (repo *MarbleDbRepository) GetEntityAnnotationById(
 	}
 
 	filters := squirrel.Eq{
-		"id":         req.AnnotationId,
-		"org_id":     req.OrgId,
-		"deleted_at": nil,
+		"id":     req.AnnotationId,
+		"org_id": req.OrgId,
+	}
+
+	if !req.IncludeDeleted {
+		filters["deleted_at"] = nil
 	}
 
 	sql := NewQueryBuilder().

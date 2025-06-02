@@ -56,6 +56,32 @@ func handleListEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+func handleGetEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, _ := utils.CredentialsFromCtx(ctx)
+
+		id := c.Param("id")
+
+		uc := usecasesWithCreds(ctx, uc)
+		annotationsUsecase := uc.NewEntityAnnotationUsecase()
+
+		annotations, err := annotationsUsecase.Get(ctx, creds.OrganizationId, id)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		out, err := dto.AdaptEntityAnnotation(annotations)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, out)
+	}
+}
+
 func handleListEntityAnnotationsForObjects(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -227,6 +253,7 @@ func handleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 
 		req := models.CreateEntityAnnotationRequest{
 			OrgId:          creds.OrganizationId,
+			CaseId:         payload.CaseId,
 			ObjectType:     objectType,
 			ObjectId:       objectId,
 			AnnotationType: models.EntityAnnotationFile,

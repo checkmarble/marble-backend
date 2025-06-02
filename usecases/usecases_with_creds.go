@@ -650,6 +650,7 @@ func (usecases *UsecasesWithCreds) NewEntityAnnotationUsecase() EntityAnnotation
 		repository:                 &usecases.Repositories.MarbleDbRepository,
 		dataModelRepository:        usecases.Repositories.MarbleDbRepository,
 		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+		caseUsecase:                usecases.NewCaseUseCase(),
 		tagRepository:              &usecases.Repositories.MarbleDbRepository,
 		blobRepository:             usecases.Repositories.BlobRepository,
 		bucketUrl:                  usecases.caseManagerBucketUrl,
