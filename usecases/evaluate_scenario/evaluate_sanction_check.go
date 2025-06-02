@@ -2,11 +2,14 @@ package evaluate_scenario
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 )
 
@@ -171,7 +174,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheckName(
 ) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, err error) {
 	queriesOut = queries
 	nameFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-		*scc.Query, iteration.OrganizationId,
+		scc.Query["name"], iteration.OrganizationId,
 		dataAccessor.ClientObject, dataAccessor.DataModel)
 	if err != nil {
 		return
@@ -190,7 +193,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheckName(
 		return
 	}
 
-	nameFilter, skip, preprocessingErr := e.preprocessCounterpartyName(ctx, nameFilter, scc.Preprocessing)
+	nameFilter, skip, preprocessingErr := e.preprocessCounterpartyName(ctx, iteration.OrganizationId, nameFilter, scc.Preprocessing)
 	if preprocessingErr != nil {
 		err = preprocessingErr
 		return
@@ -217,7 +220,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 ) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, err error) {
 	queriesOut = queries
 	labelFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-		*scc.Query, iteration.OrganizationId,
+		scc.Query["name"], iteration.OrganizationId,
 		dataAccessor.ClientObject, dataAccessor.DataModel)
 	if err != nil {
 		return
@@ -236,7 +239,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 		return
 	}
 
-	processed, skip, preprocessingErr := e.preprocessCounterpartyNameForNer(ctx, labelFilter, scc.Preprocessing)
+	labelFilter, skip, preprocessingErr := e.preprocessCounterpartyNameForNer(ctx, labelFilter, scc.Preprocessing)
 	if preprocessingErr != nil {
 		err = preprocessingErr
 		return
@@ -244,8 +247,6 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 	if skip {
 		return nil, false, nil
 	}
-
-	labelFilter = processed
 
 	if e.nameRecognizer == nil || !e.nameRecognizer.IsConfigured() {
 		switch len(queriesOut) {
@@ -275,7 +276,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 
 	if len(matches) == 0 {
 		labelFilter, skip, preprocessingErr :=
-			e.preprocessCounterpartyName(ctx, labelFilter, scc.Preprocessing)
+			e.preprocessCounterpartyName(ctx, iteration.OrganizationId, labelFilter, scc.Preprocessing)
 		if preprocessingErr != nil {
 			err = preprocessingErr
 			return
@@ -291,7 +292,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 
 	for _, match := range matches {
 		labelFilter, skip, preprocessingErr :=
-			e.preprocessCounterpartyName(ctx, match.Text, scc.Preprocessing)
+			e.preprocessCounterpartyName(ctx, iteration.OrganizationId, match.Text, scc.Preprocessing)
 		if preprocessingErr != nil {
 			err = preprocessingErr
 			return
@@ -336,10 +337,10 @@ func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
 	return queriesOut, false, nil
 }
 
-func (e ScenarioEvaluator) preprocessCounterpartyName(_ context.Context, input string,
+func (e ScenarioEvaluator) preprocessCounterpartyName(ctx context.Context, orgId, input string,
 	opts models.SanctionCheckConfigPreprocessing,
-) (name string, skip bool, err error) {
-	name = input
+) (string, bool, error) {
+	name := input
 
 	if opts.RemoveNumbers {
 		var tmp strings.Builder
@@ -352,23 +353,48 @@ func (e ScenarioEvaluator) preprocessCounterpartyName(_ context.Context, input s
 
 		name = tmp.String()
 	}
-	if opts.SkipIfUnder > 0 && len(input) < opts.SkipIfUnder {
-		skip = true
-		return
+	if opts.SkipIfUnder > 0 && len(name) < opts.SkipIfUnder {
+		return name, true, nil
 	}
 
-	return
+	if opts.BlacklistListId != "" {
+		customListEval, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil, ast.NewNodeCustomListAccess(opts.BlacklistListId), orgId, models.ClientObject{}, models.DataModel{})
+		if err != nil {
+			return name, false, err
+		}
+
+		list, ok := customListEval.ReturnValue.([]string)
+		if !ok {
+			return name, false, errors.New("could not retrieve custom list")
+		}
+
+		list = pure_utils.Map(list, func(s string) string {
+			return strings.ToLower(s)
+		})
+
+		fields := strings.Fields(name)
+		tmp := make([]string, 0, len(fields))
+
+		for _, word := range strings.Fields(name) {
+			if !slices.Contains(list, strings.ToLower(word)) {
+				tmp = append(tmp, word)
+			}
+		}
+
+		name = strings.Join(tmp, " ")
+	}
+
+	return name, false, nil
 }
 
 func (e ScenarioEvaluator) preprocessCounterpartyNameForNer(_ context.Context, input string,
 	opts models.SanctionCheckConfigPreprocessing,
-) (name string, skip bool, err error) {
-	name = input
+) (string, bool, error) {
+	name := input
 
-	if opts.SkipIfUnder > 0 && len(input) < opts.SkipIfUnder {
-		skip = true
-		return
+	if opts.SkipIfUnder > 0 && len(name) < opts.SkipIfUnder {
+		return name, true, nil
 	}
 
-	return
+	return name, false, nil
 }
