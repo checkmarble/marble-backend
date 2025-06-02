@@ -1,6 +1,7 @@
 package models
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -63,19 +64,17 @@ type SanctionCheckConfig struct {
 	RuleGroup                *string
 	Datasets                 []string
 	TriggerRule              *ast.Node
-	Query                    *ast.Node
+	Query                    map[string]ast.Node
 	ForcedOutcome            Outcome
 	CounterpartyIdExpression *ast.Node
 	Preprocessing            SanctionCheckConfigPreprocessing
 }
 
 type SanctionCheckConfigPreprocessing struct {
-	UseNer        bool `json:"use_ner,omitempty"`
-	SkipIfUnder   int  `json:"skip_if_under"`
-	RemoveNumbers bool `json:"remove_numbers"`
-
-	BlacklistListId string      `json:"blacklist_list_id"`
-	BlacklistList   *CustomList `json:"-"`
+	UseNer          bool   `json:"use_ner,omitempty"`
+	SkipIfUnder     int    `json:"skip_if_under"`
+	RemoveNumbers   bool   `json:"remove_numbers"`
+	BlacklistListId string `json:"blacklist_list_id"`
 }
 
 func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
@@ -83,7 +82,7 @@ func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
 		return false
 	}
 
-	if scc.Query.Hash() == other.Query.Hash() {
+	if !reflect.DeepEqual(scc, other) {
 		return false
 	}
 
@@ -107,7 +106,7 @@ type UpdateSanctionCheckConfigInput struct {
 	RuleGroup                *string
 	Datasets                 []string
 	TriggerRule              *ast.Node
-	Query                    *ast.Node
+	Query                    map[string]ast.Node
 	CounterpartyIdExpression *ast.Node
 	ForcedOutcome            *Outcome
 	Preprocessing            *SanctionCheckConfigPreprocessing

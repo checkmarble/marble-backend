@@ -77,10 +77,22 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 	return scc, nil
 }
 
-func AdaptSanctionCheckConfigQuery(db json.RawMessage) (*ast.Node, error) {
-	nameAst, err := AdaptSerializedAstExpression(db)
-	if err != nil {
+func AdaptSanctionCheckConfigQuery(db json.RawMessage) (map[string]ast.Node, error) {
+	var anyMap map[string]json.RawMessage
+
+	if err := json.Unmarshal(db, &anyMap); err != nil {
 		return nil, err
 	}
-	return nameAst, nil
+
+	astMap := make(map[string]ast.Node)
+
+	for k := range anyMap {
+		nameAst, err := AdaptSerializedAstExpression(anyMap[k])
+		if err != nil {
+			return nil, err
+		}
+
+		astMap[k] = *nameAst
+	}
+	return astMap, nil
 }

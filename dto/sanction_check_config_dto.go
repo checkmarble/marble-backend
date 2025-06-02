@@ -3,6 +3,7 @@ package dto
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
@@ -15,7 +16,7 @@ type SanctionCheckConfig struct {
 	Datasets                 []string                                 `json:"datasets,omitempty"`
 	ForcedOutcome            *string                                  `json:"forced_outcome,omitempty"`
 	TriggerRule              *NodeDto                                 `json:"trigger_rule"`
-	Query                    *NodeDto                                 `json:"query"`
+	Query                    map[string]NodeDto                       `json:"query"`
 	CounterpartyIdExpression *NodeDto                                 `json:"counterparty_id_expression"`
 	Preprocessing            *models.SanctionCheckConfigPreprocessing `json:"preprocessing,omitzero"`
 }
@@ -41,12 +42,11 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 	}
 
 	if model.Query != nil {
-		query, err := AdaptSanctionCheckConfigQuery(*model.Query)
+		query, err := pure_utils.MapValuesErr(model.Query, AdaptSanctionCheckConfigQuery)
 		if err != nil {
 			return SanctionCheckConfig{}, err
 		}
-
-		config.Query = &query
+		config.Query = query
 	}
 
 	if model.CounterpartyIdExpression != nil {
@@ -86,7 +86,7 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 	}
 
 	if dto.Query != nil {
-		query, err := AdaptSanctionCheckConfigQueryDto(*dto.Query)
+		query, err := AdaptSanctionCheckConfigQueryDto(dto.Query)
 		if err != nil {
 			return models.UpdateSanctionCheckConfigInput{}, errors.Wrap(
 				models.BadParameterError,
@@ -94,7 +94,7 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 			)
 		}
 
-		config.Query = &query
+		config.Query = query
 	}
 
 	if dto.CounterpartyIdExpression != nil {
@@ -126,11 +126,6 @@ func AdaptSanctionCheckConfigQuery(model ast.Node) (NodeDto, error) {
 	return nameAst, nil
 }
 
-func AdaptSanctionCheckConfigQueryDto(dto NodeDto) (ast.Node, error) {
-	nameAst, err := AdaptASTNode(dto)
-	if err != nil {
-		return ast.Node{}, err
-	}
-
-	return nameAst, nil
+func AdaptSanctionCheckConfigQueryDto(dto map[string]NodeDto) (map[string]ast.Node, error) {
+	return pure_utils.MapValuesErr(dto, AdaptASTNode)
 }

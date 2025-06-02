@@ -50,13 +50,38 @@ begin
     update sanction_check_configs
     set
         config_version = 'v1_name_only',
-        query = (query->>'name')::jsonb
+        query =
+            case (query->>'name')::jsonb->>'name'
+            when 'StringConcat' then jsonb_build_object('name', (query->>'name')::jsonb)
+            else jsonb_build_object(
+                'name', jsonb_build_object(
+                    'name', 'StringConcat',
+                    'children', jsonb_build_array((query->>'name')::jsonb),
+                    'named_children', jsonb_build_object(
+                        'with_separator', jsonb_build_object('constant', true)
+                    )
+                )
+            )
+            end
     where query->>'name' is not null and query->>'label' is null;
 
     update sanction_check_configs
     set
         config_version = 'v1_label_only',
-        query = (query->>'label')::jsonb
+        preprocessing = '{"use_ner": true}',
+        query =
+            case (query->>'label')::jsonb->>'name'
+            when 'StringConcat' then jsonb_build_object('name', (query->>'label')::jsonb)
+            else jsonb_build_object(
+                'name', jsonb_build_object(
+                    'name', 'StringConcat',
+                    'children', jsonb_build_array((query->>'label')::jsonb),
+                    'named_children', jsonb_build_object(
+                        'with_separator', jsonb_build_object('constant', true)
+                    )
+                )
+            )
+            end
     where query->>'label' is not null and query->>'name' is null;
 
     for iteration_config in iteration_configs loop
@@ -65,7 +90,7 @@ begin
     foreach config in array iteration_config.rows loop
         update sanction_check_configs
         set
-            query = ((query - 'label')->>'name')::jsonb,
+            query = (query - 'label')::jsonb,
             config_version = 'v1_name'
         where id = config.id;
 
@@ -79,12 +104,14 @@ begin
             config.trigger_rule,
             config.datasets,
             case (config.query->>'label')::jsonb->>'name'
-            when 'StringConcat' then (config.query->>'label')::jsonb
+            when 'StringConcat' then jsonb_build_object('name', (config.query->>'label')::jsonb)
             else jsonb_build_object(
-                'name', 'StringConcat',
-                'children', jsonb_build_array((config.query->>'label')::jsonb),
-                'named_children', jsonb_build_object(
-                    'with_separator', jsonb_build_object('constant', true)
+                'name', jsonb_build_object(
+                    'name', 'StringConcat',
+                    'children', jsonb_build_array((config.query->>'label')::jsonb),
+                    'named_children', jsonb_build_object(
+                        'with_separator', jsonb_build_object('constant', true)
+                    )
                 )
             )
             end,
@@ -123,20 +150,16 @@ declare
     select
         scenario_iteration_id,
         (min(id::text) filter (where config_version = 'v1_name')::uuid) as initial_id,
-        json_build_object(
-            'name', min(query::text) filter (where config_version = 'v1_name')::jsonb,
-            'label', min(query::text) filter (where config_version = 'v1_label')::jsonb
+        jsonb_build_object(
+            'name', min((query->>'name')::text) filter (where config_version = 'v1_name')::jsonb,
+            'label', min((query->>'name')::text) filter (where config_version = 'v1_label')::jsonb
         ) as query
     from sanction_check_configs
     where config_version in ('v1_name', 'v1_label')
     group by scenario_iteration_id;
 begin
     update sanction_check_configs
-    set query = json_build_object('name', query)
-    where config_version = 'v1_name_only';
-
-    update sanction_check_configs
-    set query = json_build_object('label', query)
+    set query = jsonb_build_object('label', (query->>'name')::jsonb)
     where config_version = 'v1_label_only';
 
     for iteration_config in iteration_configs loop
