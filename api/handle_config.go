@@ -38,16 +38,17 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 				HasUser:    hasAUser,
 			},
 			Urls: dto.ConfigUrlsDto{
-				Marble:   cfg.MarbleAppUrl,
-				Metabase: cfg.MetabaseConfig.SiteUrl,
+				Marble:    dto.NewNullString(cfg.MarbleAppUrl),
+				MarbleApi: dto.NewNullString(cfg.MarbleApiUrl),
+				Metabase:  dto.NewNullString(cfg.MetabaseConfig.SiteUrl),
 			},
 			Auth: dto.ConfigAuthDto{
 				Firebase: dto.ConfigAuthFirebaseDto{
 					IsEmulator:  cfg.FirebaseConfig.EmulatorHost != "",
 					EmulatorUrl: cfg.FirebaseConfig.EmulatorHost,
-					ProjectId:   cfg.FirebaseConfig.ProjectId,
-					ApiKey:      cfg.FirebaseConfig.ApiKey,
-					AuthDomain:  cfg.FirebaseConfig.AuthDomain,
+					ProjectId:   dto.NewNullString(cfg.FirebaseConfig.ProjectId),
+					ApiKey:      dto.NewNullString(cfg.FirebaseConfig.ApiKey),
+					AuthDomain:  dto.NewNullString(cfg.FirebaseConfig.AuthDomain),
 				},
 			},
 			Features: dto.ConfigFeaturesDto{
