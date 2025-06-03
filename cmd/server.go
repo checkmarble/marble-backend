@@ -30,6 +30,7 @@ func RunServer(config CompiledConfig) error {
 	apiConfig := api.Configuration{
 		Env:                 utils.GetEnv("ENV", "development"),
 		AppName:             "marble-backend",
+		MarbleApiUrl:        utils.GetEnv("MARBLE_API_URL", ""),
 		MarbleAppUrl:        utils.GetEnv("MARBLE_APP_URL", ""),
 		MarbleBackofficeUrl: utils.GetEnv("MARBLE_BACKOFFICE_URL", ""),
 		Port:                utils.GetRequiredEnv[string]("PORT"),
@@ -138,6 +139,12 @@ func RunServer(config CompiledConfig) error {
 
 	logger.Info("successfully authenticated in GCP", "principal", gcpConfig.PrincipalEmail, "project", gcpConfig.ProjectId)
 
+	if apiConfig.FirebaseConfig.ProjectId == "" {
+		logger.Info("FIREBASE_PROJECT_ID was not provided, falling back to Google Cloud project", "project", gcpConfig.ProjectId)
+
+		apiConfig.FirebaseConfig.ProjectId = gcpConfig.ProjectId
+	}
+
 	if !apiConfig.FirebaseConfig.IsEmulator() {
 		if apiConfig.FirebaseConfig.ApiKey == "" {
 			logger.Warn("no FIREBASE_API_KEY specified, this will be an error in the future")
@@ -151,12 +158,6 @@ func RunServer(config CompiledConfig) error {
 	} else {
 		// The auth domain, when using the emulator, is always the emulator host itself
 		apiConfig.FirebaseConfig.AuthDomain = apiConfig.FirebaseConfig.EmulatorHost
-	}
-
-	if apiConfig.FirebaseConfig.ProjectId == "" {
-		logger.Info("FIREBASE_PROJECT_ID was not provided, falling back to Google Cloud project", "project", gcpConfig.ProjectId)
-
-		apiConfig.FirebaseConfig.ProjectId = gcpConfig.ProjectId
 	}
 
 	logger.Info("firebase project configured", "project", apiConfig.FirebaseConfig.ProjectId)

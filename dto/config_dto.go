@@ -1,5 +1,25 @@
 package dto
 
+import (
+	"encoding/json"
+)
+
+type NullString struct {
+	s string
+}
+
+func NewNullString(s string) NullString {
+	return NullString{s: s}
+}
+
+func (s NullString) MarshalJSON() ([]byte, error) {
+	if s.s == "" {
+		return []byte(`null`), nil
+	}
+
+	return json.Marshal(s.s)
+}
+
 type ConfigDto struct {
 	Version  string            `json:"version"`
 	Status   ConfigStatusDto   `json:"status"`
@@ -15,8 +35,9 @@ type ConfigStatusDto struct {
 }
 
 type ConfigUrlsDto struct {
-	Marble   string `json:"marble"`
-	Metabase string `json:"metabase"`
+	Marble    NullString `json:"marble"`
+	MarbleApi NullString `json:"api"` //nolint:tagliatelle
+	Metabase  NullString `json:"metabase"`
 }
 
 type ConfigAuthDto struct {
@@ -24,11 +45,11 @@ type ConfigAuthDto struct {
 }
 
 type ConfigAuthFirebaseDto struct {
-	IsEmulator  bool   `json:"is_emulator"`
-	EmulatorUrl string `json:"emulator_url,omitempty"`
-	ProjectId   string `json:"project_id"`
-	ApiKey      string `json:"api_key"`
-	AuthDomain  string `json:"auth_domain"`
+	IsEmulator   bool       `json:"is_emulator"`
+	EmulatorHost string     `json:"emulator_host,omitempty"`
+	ProjectId    NullString `json:"project_id"`
+	ApiKey       NullString `json:"api_key"`
+	AuthDomain   NullString `json:"auth_domain"`
 }
 
 type ConfigFeaturesDto struct {
