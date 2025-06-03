@@ -260,13 +260,6 @@ func handleGetEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		annotationId := c.Param("annotationId")
 		partId := c.Param("partId")
 
-		var payload dto.PostEntityFileAnnotationDto
-
-		if err := c.ShouldBind(&payload); err != nil {
-			presentError(ctx, c, err)
-			return
-		}
-
 		uc := usecasesWithCreds(ctx, uc)
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
