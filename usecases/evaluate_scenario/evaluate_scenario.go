@@ -228,7 +228,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	if santionCheckPerformed {
 		for idx, sce := range sanctionCheckExecutions {
-			if sce.Count > 0 {
+			if sce.Count > 0 && iteration.SanctionCheckConfigs[idx].ForcedOutcome.Priority() > outcome.Priority() {
 				outcome = iteration.SanctionCheckConfigs[idx].ForcedOutcome
 			}
 		}
