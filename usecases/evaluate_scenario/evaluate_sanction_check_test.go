@@ -137,7 +137,7 @@ func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
 	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
-	assert.True(t, performed)
+	assert.False(t, performed)
 	assert.Error(t, err)
 }
 
@@ -441,6 +441,71 @@ func TestSanctionCheckWithListPreprocessing(t *testing.T) {
 				Type: "Thing",
 				Filters: models.OpenSanctionCheckFilter{
 					"name": []string{"Contains Words"},
+				},
+			},
+		},
+	}
+
+	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+		ScenarioEvaluationParameters{}, DataAccessor{})
+
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+
+	assert.True(t, performed)
+	assert.NoError(t, err)
+}
+
+func TestSanctionCheckWithAllPreprocessing(t *testing.T) {
+	names := []httpmodels.HTTPNameRecognitionMatch{
+		{Type: "Person", Text: "joe2 bill"},
+		{Type: "Person", Text: "short"},
+		{Type: "Company", Text: "ACME Forbidden Inc."},
+	}
+
+	eval, exec := getSanctionCheckEvaluator()
+	exec.Mock.On("IsConfigured").Return(true)
+	exec.Mock.
+		On("PerformNameRecognition", mock.Anything, "does not matter").
+		Return(names, nil)
+
+	iteration := models.ScenarioIteration{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{
+			{
+				TriggerRule: &ast.Node{Constant: true},
+				Query:       map[string]ast.Node{"name": {Constant: "does not matter"}},
+				Preprocessing: models.SanctionCheckConfigPreprocessing{
+					UseNer:          true,
+					SkipIfUnder:     6,
+					RemoveNumbers:   true,
+					BlacklistListId: "ola",
+				},
+			},
+			{
+				TriggerRule: &ast.Node{Constant: true},
+				Query:       map[string]ast.Node{"name": {Constant: "short"}},
+				Preprocessing: models.SanctionCheckConfigPreprocessing{
+					UseNer:          true,
+					SkipIfUnder:     6,
+					RemoveNumbers:   true,
+					BlacklistListId: "ola",
+				},
+			},
+		},
+	}
+
+	expectedQuery := models.OpenSanctionsQuery{
+		Config: iteration.SanctionCheckConfigs[0],
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Person",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"joe bill"},
+				},
+			},
+			{
+				Type: "Organization",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"ACME Inc."},
 				},
 			},
 		},

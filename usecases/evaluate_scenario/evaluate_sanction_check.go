@@ -2,14 +2,10 @@ package evaluate_scenario
 
 import (
 	"context"
-	"slices"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 )
 
@@ -60,42 +56,47 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		var err error
 
 		if scc.Query != nil {
-			emptyInput := false
-
-			switch scc.Preprocessing.UseNer {
-			case false:
-				queries, emptyInput, err = e.evaluateSanctionCheckName(ctx, queries, iteration, scc, dataAccessor)
-			case true:
-				queries, emptyInput, err = e.evaluateSanctionCheckLabel(ctx, queries, iteration, scc, dataAccessor)
-			}
-
+			inputAst, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
+				scc.Query["name"], iteration.OrganizationId,
+				dataAccessor.ClientObject, dataAccessor.DataModel)
 			if err != nil {
-				return nil, true, errors.Wrap(err, "could not evaluate sanction check name")
+				return
 			}
 
-			// TODO: should we ignore a sanction check config that resolve to an empty counterparty name or fail?
-			if emptyInput {
-				sanctionCheck = append(sanctionCheck, models.SanctionCheckWithMatches{
-					SanctionCheck: models.SanctionCheck{
-						SanctionCheckConfigId: scc.Id,
-						Status:                models.SanctionStatusError,
-						ErrorCodes:            []string{ErrSanctionCheckAllFieldsNullOrEmpty},
-					},
-				})
+			if inputAst.ReturnValue == nil {
+				sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty))
 				continue
 			}
+
+			input, ok := inputAst.ReturnValue.(string)
+			if !ok {
+				return nil, false, errors.New("name filter name query did not return a string")
+			}
+			if input == "" {
+				sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty))
+				continue
+			}
+
+			queries = []models.OpenSanctionsCheckQuery{
+				{
+					Type: "Thing",
+					Filters: models.OpenSanctionCheckFilter{
+						"name": []string{input},
+					},
+				},
+			}
+
+			if queries, err = e.preprocess(ctx, queries, iteration, scc); err != nil {
+				return nil, true, errors.Wrap(err, "could not evaluate sanction check name")
+			}
 		}
 
-		// TODO: what should we do when we do not resolve to any query?
 		if len(queries) == 0 {
-			sanctionCheck = append(sanctionCheck, models.SanctionCheckWithMatches{
-				SanctionCheck: models.SanctionCheck{
-					SanctionCheckConfigId: scc.Id,
-					Status:                models.SanctionStatusNoHit,
-				},
-			})
+			sanctionCheck = append(sanctionCheck, outcomeNoHit(scc))
 			continue
 		}
+
+		performed = true
 
 		var uniqueCounterpartyIdentifier *string
 
@@ -165,236 +166,53 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	return
 }
 
-func (e ScenarioEvaluator) evaluateSanctionCheckName(
+func (e ScenarioEvaluator) preprocess(
 	ctx context.Context,
 	queries []models.OpenSanctionsCheckQuery,
 	iteration models.ScenarioIteration,
 	scc models.SanctionCheckConfig,
-	dataAccessor DataAccessor,
-) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, err error) {
-	queriesOut = queries
-	nameFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-		scc.Query["name"], iteration.OrganizationId,
-		dataAccessor.ClientObject, dataAccessor.DataModel)
-	if err != nil {
-		return
-	}
-	if nameFilterAny.ReturnValue == nil {
-		emptyInput = true
-		return
+) ([]models.OpenSanctionsCheckQuery, error) {
+	var err error
+
+	out := append(make([]models.OpenSanctionsCheckQuery, 0, len(queries)), queries...)
+
+	steps := []ScreeningPreprocessor{
+		SkipIfUnder,
+		NameEntityRecognition,
+		RemoveNumbers,
+		RemoveFromList,
+		SkipIfUnder,
 	}
 
-	nameFilter, ok := nameFilterAny.ReturnValue.(string)
-	if !ok {
-		return nil, false, errors.New("name filter name query did not return a string")
-	}
-	if nameFilter == "" {
-		emptyInput = true
-		return
+	for _, step := range steps {
+		if out, err = step(ctx, e, out, iteration, scc); err != nil {
+			return nil, err
+		}
+
+		if len(queries) == 0 {
+			break
+		}
 	}
 
-	nameFilter, skip, preprocessingErr := e.preprocessCounterpartyName(ctx, iteration.OrganizationId, nameFilter, scc.Preprocessing)
-	if preprocessingErr != nil {
-		err = preprocessingErr
-		return
-	}
-
-	if !skip {
-		queriesOut = append(queriesOut, models.OpenSanctionsCheckQuery{
-			Type: "Thing",
-			Filters: models.OpenSanctionCheckFilter{
-				"name": []string{nameFilter},
-			},
-		})
-	}
-
-	return queriesOut, false, nil
+	return out, nil
 }
 
-func (e ScenarioEvaluator) evaluateSanctionCheckLabel(
-	ctx context.Context,
-	queries []models.OpenSanctionsCheckQuery,
-	iteration models.ScenarioIteration,
-	scc models.SanctionCheckConfig,
-	dataAccessor DataAccessor,
-) (queriesOut []models.OpenSanctionsCheckQuery, emptyInput bool, err error) {
-	queriesOut = queries
-	labelFilterAny, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-		scc.Query["name"], iteration.OrganizationId,
-		dataAccessor.ClientObject, dataAccessor.DataModel)
-	if err != nil {
-		return
+func outcomeNoHit(scc models.SanctionCheckConfig) models.SanctionCheckWithMatches {
+	return models.SanctionCheckWithMatches{
+		SanctionCheck: models.SanctionCheck{
+			SanctionCheckConfigId: scc.Id,
+			Status:                models.SanctionStatusNoHit,
+			ErrorCodes:            []string{ErrSanctionCheckAllFieldsNullOrEmpty},
+		},
 	}
-	if labelFilterAny.ReturnValue == nil {
-		emptyInput = true
-		return
-	}
-
-	labelFilter, ok := labelFilterAny.ReturnValue.(string)
-	if !ok {
-		return nil, false, errors.New("label filter name query did not return a string")
-	}
-	if labelFilter == "" {
-		emptyInput = true
-		return
-	}
-
-	labelFilter, skip, preprocessingErr := e.preprocessCounterpartyNameForNer(ctx, labelFilter, scc.Preprocessing)
-	if preprocessingErr != nil {
-		err = preprocessingErr
-		return
-	}
-	if skip {
-		return nil, false, nil
-	}
-
-	if e.nameRecognizer == nil || !e.nameRecognizer.IsConfigured() {
-		switch len(queriesOut) {
-		case 0:
-			queriesOut = append(queriesOut, models.OpenSanctionsCheckQuery{
-				Type: "Thing",
-				Filters: models.OpenSanctionCheckFilter{
-					"name": []string{labelFilter},
-				},
-			})
-
-		default:
-			queriesOut[0].Filters["name"] = append(queriesOut[0].Filters["name"], labelFilter)
-		}
-
-		return queriesOut, false, nil
-	}
-
-	matches, err := e.nameRecognizer.PerformNameRecognition(ctx, labelFilter)
-	if err != nil {
-		return queriesOut, false, errors.Wrap(err,
-			"could not perform name recognition on label")
-	}
-
-	var personQuery *models.OpenSanctionsCheckQuery = nil
-	var companyQuery *models.OpenSanctionsCheckQuery = nil
-
-	if len(matches) == 0 {
-		labelFilter, skip, preprocessingErr :=
-			e.preprocessCounterpartyName(ctx, iteration.OrganizationId, labelFilter, scc.Preprocessing)
-		if preprocessingErr != nil {
-			err = preprocessingErr
-			return
-		}
-
-		if !skip {
-			queriesOut = append(queriesOut, models.OpenSanctionsCheckQuery{
-				Type:    "Thing",
-				Filters: models.OpenSanctionCheckFilter{"name": []string{labelFilter}},
-			})
-		}
-	}
-
-	for _, match := range matches {
-		labelFilter, skip, preprocessingErr :=
-			e.preprocessCounterpartyName(ctx, iteration.OrganizationId, match.Text, scc.Preprocessing)
-		if preprocessingErr != nil {
-			err = preprocessingErr
-			return
-		}
-		if skip {
-			continue
-		}
-
-		match.Text = labelFilter
-
-		switch match.Type {
-		case "Person":
-			if personQuery == nil {
-				personQuery = &models.OpenSanctionsCheckQuery{
-					Type:    "Person",
-					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
-				}
-				continue
-			}
-
-			personQuery.Filters["name"] = append(personQuery.Filters["name"], match.Text)
-		case "Company":
-			if companyQuery == nil {
-				companyQuery = &models.OpenSanctionsCheckQuery{
-					Type:    "Organization",
-					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
-				}
-				continue
-			}
-
-			companyQuery.Filters["name"] = append(companyQuery.Filters["name"], match.Text)
-		}
-	}
-
-	if personQuery != nil {
-		queriesOut = append(queriesOut, *personQuery)
-	}
-	if companyQuery != nil {
-		queriesOut = append(queriesOut, *companyQuery)
-	}
-
-	return queriesOut, false, nil
 }
 
-func (e ScenarioEvaluator) preprocessCounterpartyName(ctx context.Context, orgId, input string,
-	opts models.SanctionCheckConfigPreprocessing,
-) (string, bool, error) {
-	name := input
-
-	if opts.RemoveNumbers {
-		var tmp strings.Builder
-
-		for _, c := range name {
-			if !unicode.IsDigit(c) {
-				tmp.WriteRune(c)
-			}
-		}
-
-		name = tmp.String()
+func outcomeError(scc models.SanctionCheckConfig, err string) models.SanctionCheckWithMatches {
+	return models.SanctionCheckWithMatches{
+		SanctionCheck: models.SanctionCheck{
+			SanctionCheckConfigId: scc.Id,
+			Status:                models.SanctionStatusError,
+			ErrorCodes:            []string{err},
+		},
 	}
-	if opts.SkipIfUnder > 0 && len(name) < opts.SkipIfUnder {
-		return name, true, nil
-	}
-
-	if opts.BlacklistListId != "" {
-		customListEval, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil, ast.NewNodeCustomListAccess(opts.BlacklistListId), orgId, models.ClientObject{}, models.DataModel{})
-		if err != nil {
-			return name, false, err
-		}
-
-		list, ok := customListEval.ReturnValue.([]string)
-		if !ok {
-			return name, false, errors.New("could not retrieve custom list")
-		}
-
-		list = pure_utils.Map(list, func(s string) string {
-			return strings.ToLower(s)
-		})
-
-		fields := strings.Fields(name)
-		tmp := make([]string, 0, len(fields))
-
-		for _, word := range strings.Fields(name) {
-			if !slices.Contains(list, strings.ToLower(word)) {
-				tmp = append(tmp, word)
-			}
-		}
-
-		name = strings.Join(tmp, " ")
-	}
-
-	return name, false, nil
-}
-
-func (e ScenarioEvaluator) preprocessCounterpartyNameForNer(_ context.Context, input string,
-	opts models.SanctionCheckConfigPreprocessing,
-) (string, bool, error) {
-	name := input
-
-	if opts.SkipIfUnder > 0 && len(name) < opts.SkipIfUnder {
-		return name, true, nil
-	}
-
-	return name, false, nil
 }

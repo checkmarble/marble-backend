@@ -37,10 +37,12 @@ func ScenarioValidationToError(validation models.ScenarioValidation) error {
 
 	errs = append(errs, pure_utils.Map(validation.Decision.Errors, toError)...)
 
-	errs = append(errs, pure_utils.Map(validation.SanctionCheck.TriggerRule.Errors, toError)...)
-	errs = append(errs, validation.SanctionCheck.TriggerRule.TriggerEvaluation.FlattenErrors()...)
-	errs = append(errs, validation.SanctionCheck.Query.RuleEvaluation.FlattenErrors()...)
-	errs = append(errs, validation.SanctionCheck.CounterpartyIdExpression.RuleEvaluation.FlattenErrors()...)
+	for _, sc := range validation.SanctionCheck {
+		errs = append(errs, pure_utils.Map(sc.TriggerRule.Errors, toError)...)
+		errs = append(errs, sc.TriggerRule.TriggerEvaluation.FlattenErrors()...)
+		errs = append(errs, sc.Query.RuleEvaluation.FlattenErrors()...)
+		errs = append(errs, sc.CounterpartyIdExpression.RuleEvaluation.FlattenErrors()...)
+	}
 
 	return errors.Join(errs...)
 }
@@ -123,13 +125,17 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 
 	// Validate sanction check trigger and rule
 	if len(iteration.SanctionCheckConfigs) > 0 {
-		for _, scc := range iteration.SanctionCheckConfigs {
+		result.SanctionCheck = make([]models.SanctionCheckConfigValidation, len(iteration.SanctionCheckConfigs))
+
+		for idx, scc := range iteration.SanctionCheckConfigs {
+			result.SanctionCheck[idx] = models.NewSanctionCheckValidation()
+
 			if scc.TriggerRule != nil {
 				triggerRuleEvaluation, _ := ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
 					*scc.TriggerRule)
 				if _, ok := triggerRuleEvaluation.ReturnValue.(bool); !ok {
-					result.SanctionCheck.TriggerRule.Errors = append(
-						result.SanctionCheck.TriggerRule.Errors, models.ScenarioValidationError{
+					result.SanctionCheck[idx].TriggerRule.Errors = append(
+						result.SanctionCheck[idx].TriggerRule.Errors, models.ScenarioValidationError{
 							Error: errors.Wrap(models.BadParameterError,
 								"sanction check trigger formula does not return a boolean"),
 							Code: models.FormulaMustReturnBoolean,
@@ -171,7 +177,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 							})
 					}
 
-					result.SanctionCheck.QueryName = queryNameValidation
+					result.SanctionCheck[idx].QueryName = queryNameValidation
 				}
 
 				if !isNameProvided {
@@ -199,8 +205,8 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 				}
 			}
 
-			result.SanctionCheck.Query = queryValidation
-			result.SanctionCheck.CounterpartyIdExpression = counterpartyIdValidation
+			result.SanctionCheck[idx].Query = queryValidation
+			result.SanctionCheck[idx].CounterpartyIdExpression = counterpartyIdValidation
 		}
 	}
 
