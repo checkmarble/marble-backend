@@ -5,18 +5,19 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 // Inboxes
 
 type DBInbox struct {
-	Id                string    `db:"id"`
+	Id                uuid.UUID `db:"id"`
 	OrganizationId    string    `db:"organization_id"`
 	CreatedAt         time.Time `db:"created_at"`
 	UpdatedAt         time.Time `db:"updated_at"`
 	Name              string    `db:"name"`
 	Status            string    `db:"status"`
-	EscalationInboxId *string   `db:"escalation_inbox_id"`
+	EscalationInboxId *uuid.UUID `db:"escalation_inbox_id"`
 }
 
 const TABLE_INBOXES = "inboxes"
@@ -38,9 +39,9 @@ func AdaptInbox(db DBInbox) (models.Inbox, error) {
 // Inbox users
 
 type DBInboxUser struct {
-	Id        string    `db:"id"`
-	InboxId   string    `db:"inbox_id"`
-	UserId    string    `db:"user_id"`
+	Id        uuid.UUID `db:"id"`
+	InboxId   uuid.UUID `db:"inbox_id"`
+	UserId    uuid.UUID `db:"user_id"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 	Role      string    `db:"role"`

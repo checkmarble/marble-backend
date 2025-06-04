@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type InboxStatus string
 
@@ -10,11 +14,11 @@ const (
 )
 
 type Inbox struct {
-	Id                string
+	Id                uuid.UUID
 	Name              string
 	OrganizationId    string
 	Status            InboxStatus
-	EscalationInboxId *string
+	EscalationInboxId *uuid.UUID
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	InboxUsers        []InboxUser
@@ -22,7 +26,7 @@ type Inbox struct {
 }
 
 type InboxMetadata struct {
-	Id     string
+	Id     uuid.UUID
 	Name   string
 	Status InboxStatus
 }
@@ -38,11 +42,11 @@ func (i Inbox) GetMetadata() InboxMetadata {
 type CreateInboxInput struct {
 	Name              string
 	OrganizationId    string
-	EscalationInboxId *string
+	EscalationInboxId *uuid.UUID
 }
 
 type UpdateInboxInput struct {
-	Id                string
+	Id                uuid.UUID
 	Name              string
-	EscalationInboxId *string
+	EscalationInboxId *uuid.UUID
 }

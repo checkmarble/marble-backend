@@ -8,18 +8,19 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
 type InboxUserRepository interface {
-	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId string) (models.Inbox, error)
-	GetInboxUserById(ctx context.Context, exec repositories.Executor, inboxUserId string) (models.InboxUser, error)
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
+	GetInboxUserById(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID) (models.InboxUser, error)
 	ListInboxUsers(ctx context.Context, exec repositories.Executor,
-		filters models.InboxUserFilterInput) ([]models.InboxUser, error)
+		filters models.InboxUserFilterInput) ([]models.InboxUser, error) // Assuming filters fields are UUIDs
 	CreateInboxUser(ctx context.Context, exec repositories.Executor,
-		createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId string) error
-	UpdateInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId string, role models.InboxUserRole) error
-	DeleteInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId string) error
+		createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId uuid.UUID) error
+	UpdateInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID, role models.InboxUserRole) error
+	DeleteInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID) error
 }
 
 type EnforceSecurityInboxUsers interface {
@@ -38,15 +39,16 @@ type InboxUsers struct {
 	Credentials         models.Credentials
 }
 
-func (usecase *InboxUsers) GetInboxUserById(ctx context.Context, inboxUserId string) (models.InboxUser, error) {
+func (usecase *InboxUsers) GetInboxUserById(ctx context.Context, inboxUserId uuid.UUID) (models.InboxUser, error) {
 	exec := usecase.ExecutorFactory.NewExecutor()
 	inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, exec, inboxUserId)
 	if err != nil {
 		return models.InboxUser{}, err
 	}
 
+	actorUserId := usecase.Credentials.ActorIdentity.UserId
 	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
-		UserId: usecase.Credentials.ActorIdentity.UserId,
+		UserId: models.UserId(actorUserId),
 	})
 	if err != nil {
 		return models.InboxUser{}, err
@@ -60,17 +62,18 @@ func (usecase *InboxUsers) GetInboxUserById(ctx context.Context, inboxUserId str
 	return inboxUser, nil
 }
 
-func (usecase *InboxUsers) ListInboxUsers(ctx context.Context, inboxId string) ([]models.InboxUser, error) {
+func (usecase *InboxUsers) ListInboxUsers(ctx context.Context, inboxId uuid.UUID) ([]models.InboxUser, error) {
 	exec := usecase.ExecutorFactory.NewExecutor()
+	actorUserId := usecase.Credentials.ActorIdentity.UserId
 	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
-		UserId: usecase.Credentials.ActorIdentity.UserId,
+		UserId: models.UserId(actorUserId),
 	})
 	if err != nil {
 		return []models.InboxUser{}, err
 	}
 
 	inboxUsers, err := usecase.InboxUserRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
-		InboxId: inboxId,
+		InboxId: inboxId, // inboxId is already uuid.UUID
 	})
 	if err != nil {
 		return []models.InboxUser{}, err
@@ -99,14 +102,16 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 		ctx,
 		usecase.TransactionFactory,
 		func(tx repositories.Transaction) (models.InboxUser, error) {
+			actorUserId := usecase.Credentials.ActorIdentity.UserId
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
-				UserId: usecase.Credentials.ActorIdentity.UserId,
+				UserId: models.UserId(actorUserId),
 			})
 			if err != nil {
 				return models.InboxUser{}, err
 			}
 
-			targetUser, err := usecase.UserRepository.UserById(ctx, tx, input.UserId)
+			// input.UserId and input.InboxId are already uuid.UUID from previous model changes
+			targetUser, err := usecase.UserRepository.UserById(ctx, tx, input.UserId.String()) // Assuming UserById still expects string ID
 			if err != nil {
 				return models.InboxUser{}, err
 			}
@@ -120,8 +125,12 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 				return models.InboxUser{}, err
 			}
 
-			newInboxUserId := pure_utils.NewPrimaryKey(input.InboxId)
-			if err := usecase.InboxUserRepository.CreateInboxUser(ctx, tx, input, newInboxUserId); err != nil {
+			newInboxUserIdStr := pure_utils.NewPrimaryKey(input.InboxId.String()) // NewPrimaryKey likely takes string
+			newInboxUserUUID, err := uuid.Parse(newInboxUserIdStr)
+			if err != nil {
+				return models.InboxUser{}, errors.Wrap(err, "failed to parse new inbox user ID")
+			}
+			if err := usecase.InboxUserRepository.CreateInboxUser(ctx, tx, input, newInboxUserUUID); err != nil {
 				if repositories.IsUniqueViolationError(err) {
 					return models.InboxUser{}, errors.Wrap(models.ConflictError,
 						"This combination of user_id and inbox_user_id already exists")
@@ -129,7 +138,7 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 				return models.InboxUser{}, err
 			}
 
-			inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, tx, newInboxUserId)
+			inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, tx, newInboxUserUUID)
 
 			return inboxUser, err
 		})
@@ -143,13 +152,14 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 	return inboxUser, nil
 }
 
-func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId string, role models.InboxUserRole) (models.InboxUser, error) {
+func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId uuid.UUID, role models.InboxUserRole) (models.InboxUser, error) {
 	inboxUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.TransactionFactory,
 		func(tx repositories.Transaction) (models.InboxUser, error) {
+			actorUserId := usecase.Credentials.ActorIdentity.UserId
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
-				UserId: usecase.Credentials.ActorIdentity.UserId,
+				UserId: models.UserId(actorUserId),
 			})
 			if err != nil {
 				return models.InboxUser{}, err
@@ -181,7 +191,7 @@ func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId stri
 	return inboxUser, nil
 }
 
-func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId string) error {
+func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId uuid.UUID) error {
 	err := usecase.TransactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Transaction) error {
@@ -190,8 +200,9 @@ func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId stri
 				return err
 			}
 
+			actorUserId := usecase.Credentials.ActorIdentity.UserId
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
-				UserId: usecase.Credentials.ActorIdentity.UserId,
+				UserId: models.UserId(actorUserId),
 			})
 			if err != nil {
 				return err
