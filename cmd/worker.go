@@ -147,8 +147,8 @@ func RunTaskQueue(apiVersion string) error {
 
 	// Start the task queue workers
 	workers := river.NewWorkers()
-	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx,
-		repositories.OrganizationRepository, repositories.ExecutorGetter, offloadingConfig)
+	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx, &repositories.MarbleDbRepository,
+		repositories.ExecutorGetter, offloadingConfig)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err

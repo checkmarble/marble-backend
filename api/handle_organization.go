@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -9,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func handleGetOrganizations(uc usecases.Usecases) func(c *gin.Context) {
@@ -110,10 +112,24 @@ func handleDeleteOrganization(uc usecases.Usecases) func(c *gin.Context) {
 func handleGetOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		organizationID := c.Param("organization_id")
+
+		creds, found := utils.CredentialsFromCtx(ctx)
+		if !found {
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			return
+		}
+
+		organizationIdFromPath := c.Param("organization_id")
+		organizationIdFromQuery := c.Query("organization_id")
+		orgId := creds.OrganizationId
+		if orgId == "" && organizationIdFromQuery != "" {
+			orgId = organizationIdFromQuery
+		} else if orgId == "" && organizationIdFromPath != "" {
+			orgId = organizationIdFromPath
+		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		featureAccess, err := usecase.GetOrganizationFeatureAccess(ctx, organizationID)
+		featureAccess, err := usecase.GetOrganizationFeatureAccess(ctx, orgId, utils.Ptr(creds.ActorIdentity.UserId))
 		if presentError(ctx, c, err) {
 			return
 		}

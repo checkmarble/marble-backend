@@ -159,14 +159,14 @@ func NewUsecases(repositories repositories.Repositories, opts ...Option) Usecase
 
 func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory {
 	return executor_factory.NewDbExecutorFactory(
-		usecases.Repositories.OrganizationRepository,
+		&usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.ExecutorGetter,
 	)
 }
 
 func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFactory {
 	return executor_factory.NewDbExecutorFactory(
-		usecases.Repositories.OrganizationRepository,
+		&usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.ExecutorGetter,
 	)
 }
@@ -188,9 +188,9 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	return SeedUseCase{
 		transactionFactory:     usecases.NewTransactionFactory(),
 		executorFactory:        usecases.NewExecutorFactory(),
-		userRepository:         usecases.Repositories.UserRepository,
+		userRepository:         &usecases.Repositories.MarbleDbRepository,
 		organizationCreator:    usecases.NewOrganizationCreator(),
-		organizationRepository: usecases.Repositories.OrganizationRepository,
+		organizationRepository: &usecases.Repositories.MarbleDbRepository,
 		customListRepository:   usecases.Repositories.CustomListRepository,
 	}
 }
@@ -199,7 +199,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 	return organization.OrganizationCreator{
 		CustomListRepository:   usecases.Repositories.CustomListRepository,
 		ExecutorFactory:        usecases.NewExecutorFactory(),
-		OrganizationRepository: usecases.Repositories.OrganizationRepository,
+		OrganizationRepository: &usecases.Repositories.MarbleDbRepository,
 		TransactionFactory:     usecases.NewTransactionFactory(),
 	}
 }
@@ -207,7 +207,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 func (usecases *Usecases) NewExportScheduleExecution() *scheduled_execution.ExportScheduleExecution {
 	return &scheduled_execution.ExportScheduleExecution{
 		DecisionRepository:     &usecases.Repositories.MarbleDbRepository,
-		OrganizationRepository: usecases.Repositories.OrganizationRepository,
+		OrganizationRepository: &usecases.Repositories.MarbleDbRepository,
 		ExecutorFactory:        usecases.NewExecutorFactory(),
 	}
 }
@@ -260,7 +260,7 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 	environment.AddEvaluator(ast.FUNC_TIMESTAMP_EXTRACT,
 		evaluate.NewTimestampExtract(
 			usecases.NewExecutorFactory(),
-			usecases.Repositories.OrganizationRepository,
+			&usecases.Repositories.MarbleDbRepository,
 			params.OrganizationId))
 
 	return environment
@@ -318,7 +318,7 @@ func (usecases *Usecases) NewLicenseUsecase() PublicLicenseUseCase {
 func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx]) *TaskQueueWorker {
 	return NewTaskQueueWorker(
 		usecases.NewExecutorFactory(),
-		usecases.Repositories.OrganizationRepository,
+		&usecases.Repositories.MarbleDbRepository,
 		riverClient,
 	)
 }

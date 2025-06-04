@@ -13,6 +13,9 @@ type APIOrganizationFeatureAccess struct {
 	Roles       string `json:"roles"`
 	Analytics   string `json:"analytics"`
 	Sanctions   string `json:"sanctions"`
+
+	// user-scoped - temporarly at least
+	AiAssist string `json:"ai_assist"`
 }
 
 func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOrganizationFeatureAccess {
@@ -24,6 +27,7 @@ func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOr
 		Roles:       f.Roles.String(),
 		Analytics:   f.Analytics.String(),
 		Sanctions:   f.Sanctions.String(),
+		AiAssist:    f.AiAssist.String(),
 	}
 }
 

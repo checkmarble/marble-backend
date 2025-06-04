@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type OrganizationFeatureAccess struct {
 	Id             string
@@ -14,6 +16,9 @@ type OrganizationFeatureAccess struct {
 	Sanctions      FeatureAccess
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+
+	// user-scoped, temporarily at least
+	AiAssist FeatureAccess
 }
 
 func (o OrganizationFeatureAccess) WithTestMode() OrganizationFeatureAccess {
@@ -66,6 +71,7 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	l LicenseEntitlements,
 	c FeaturesConfiguration,
 	hasTestMode bool,
+	user *User,
 ) OrganizationFeatureAccess {
 	o := OrganizationFeatureAccess{
 		Id:             f.Id,
@@ -115,6 +121,10 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	}
 	if o.Sanctions.IsAllowed() && !c.Sanctions {
 		o.Sanctions = MissingConfiguration
+	}
+
+	if user != nil && *&user.AiAssistEnabled {
+		o.AiAssist = Allowed
 	}
 
 	return o

@@ -79,8 +79,6 @@ func WithTracerProvider(tp trace.TracerProvider) Option {
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
 	ConvoyRepository                  ConvoyRepository
-	UserRepository                    UserRepository
-	OrganizationRepository            OrganizationRepository
 	IngestionRepository               IngestionRepository
 	IngestedDataReadRepository        IngestedDataReadRepository
 	MarbleDbRepository                MarbleDbRepository
@@ -124,8 +122,6 @@ func NewRepositories(
 	return Repositories{
 		ExecutorGetter:                executorGetter,
 		ConvoyRepository:              NewConvoyRepository(options.convoyClientProvider, options.convoyRateLimit),
-		UserRepository:                &UserRepositoryPostgresql{},
-		OrganizationRepository:        &OrganizationRepositoryPostgresql{},
 		IngestionRepository:           &IngestionRepositoryImpl{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
 		MarbleDbRepository:            MarbleDbRepository{},

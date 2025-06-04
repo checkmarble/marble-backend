@@ -69,6 +69,7 @@ type ScenarioEvaluatorFeatureAccessReader interface {
 	GetOrganizationFeatureAccess(
 		ctx context.Context,
 		organizationId string,
+		userId *models.UserId,
 	) (models.OrganizationFeatureAccess, error)
 }
 
@@ -130,7 +131,6 @@ func (e ScenarioEvaluator) processScenarioIteration(
 	params ScenarioEvaluationParameters,
 	iteration models.ScenarioIteration,
 	start time.Time,
-	logger *slog.Logger,
 	exec repositories.Executor,
 ) (bool, models.ScenarioExecution, error) {
 	// Check the scenario & trigger_object's types
@@ -364,7 +364,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	}
 	testRunIteration.SanctionCheckConfig = scc
 
-	triggerPassed, se, err = e.processScenarioIteration(ctx, params, testRunIteration, start, logger, exec)
+	triggerPassed, se, err = e.processScenarioIteration(ctx, params, testRunIteration, start, exec)
 	if err != nil {
 		return false, se, err
 	}
@@ -433,7 +433,7 @@ func (e ScenarioEvaluator) EvalScenario(
 	}
 	versionToRun.SanctionCheckConfig = scc
 	if scc != nil {
-		featureAccess, err := e.featureAccessReader.GetOrganizationFeatureAccess(ctx, params.Scenario.OrganizationId)
+		featureAccess, err := e.featureAccessReader.GetOrganizationFeatureAccess(ctx, params.Scenario.OrganizationId, nil)
 		if err != nil {
 			return false, models.ScenarioExecution{}, err
 		}
@@ -443,7 +443,7 @@ func (e ScenarioEvaluator) EvalScenario(
 		}
 	}
 
-	triggerPassed, se, errSe := e.processScenarioIteration(ctx, params, versionToRun, start, logger, exec)
+	triggerPassed, se, errSe := e.processScenarioIteration(ctx, params, versionToRun, start, exec)
 	if errSe != nil {
 		return false, models.ScenarioExecution{}, errors.Wrap(errSe,
 			"error processing scenario iteration in EvalScenario")

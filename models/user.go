@@ -5,14 +5,15 @@ import "time"
 type UserId string
 
 type User struct {
-	UserId         UserId
-	Email          string
-	Role           Role
-	OrganizationId string
-	PartnerId      *string
-	FirstName      string
-	LastName       string
-	DeletedAt      *time.Time
+	UserId          UserId
+	Email           string
+	Role            Role
+	OrganizationId  string
+	PartnerId       *string
+	FirstName       string
+	LastName        string
+	DeletedAt       *time.Time
+	AiAssistEnabled bool
 }
 
 type CreateUser struct {

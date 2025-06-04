@@ -176,7 +176,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/organizations/:organization_id", tom, handleGetOrganization(uc))
 	router.PATCH("/organizations/:organization_id", tom, handlePatchOrganization(uc))
 	router.DELETE("/organizations/:organization_id", tom, handleDeleteOrganization(uc))
+
+	// TODO: deprecated, still used by the back-office. Modify back-office to use the new endpoint below with organization_id query param
 	router.GET("/organizations/:organization_id/feature_access", tom, handleGetOrganizationFeatureAccess(uc))
+	router.GET("/feature_access", tom, handleGetOrganizationFeatureAccess(uc))
 	router.PATCH("/organizations/:organization_id/feature_access", tom,
 		handlePatchOrganizationFeatureAccess(uc))
 

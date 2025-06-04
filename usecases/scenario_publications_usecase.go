@@ -49,6 +49,7 @@ type PublicationUsecaseFeatureAccessReader interface {
 	GetOrganizationFeatureAccess(
 		ctx context.Context,
 		organizationId string,
+		userId *models.UserId,
 	) (models.OrganizationFeatureAccess, error)
 }
 
@@ -156,7 +157,7 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 				return nil, err
 			}
 			if scenarioAndIteration.Iteration.SanctionCheckConfig != nil {
-				featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId)
+				featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId, nil)
 				if err != nil {
 					return nil, err
 				}

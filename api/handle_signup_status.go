@@ -11,8 +11,8 @@ func handleSignupStatus(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		signupUc := usecases.NewSignupUsecase(uc.NewExecutorFactory(),
-			uc.Repositories.OrganizationRepository,
-			uc.Repositories.UserRepository,
+			&uc.Repositories.MarbleDbRepository,
+			&uc.Repositories.MarbleDbRepository,
 		)
 
 		migrationsRunForOrgs, hasAnOrganization, err := signupUc.HasAnOrganization(ctx)
