@@ -64,13 +64,6 @@ type DecisionUsecaseRepository interface {
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
 }
 
-type decisionUsecaseFeatureAccessReader interface {
-	GetOrganizationFeatureAccess(
-		ctx context.Context,
-		organizationId string,
-	) (models.OrganizationFeatureAccess, error)
-}
-
 type decisionWorkflowsUsecase interface {
 	AutomaticDecisionToCase(
 		ctx context.Context,
@@ -112,7 +105,6 @@ type DecisionUsecase struct {
 	offloadedReader           OffloadedReader
 	webhookEventsSender       webhookEventsUsecase
 	phantomUseCase            decision_phantom.PhantomDecisionUsecase
-	featureAccessReader       decisionUsecaseFeatureAccessReader
 	scenarioEvaluator         ScenarioEvaluator
 	openSanctionsRepository   repositories.OpenSanctionsRepository
 	taskQueueRepository       repositories.TaskQueueRepository
@@ -129,7 +121,8 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
-	if err := usecase.offloadedReader.MutateWithOffloadedDecisionRules(ctx, decision.OrganizationId, decision); err != nil {
+	if err := usecase.offloadedReader.MutateWithOffloadedDecisionRules(ctx,
+		decision.OrganizationId, decision); err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
@@ -391,7 +384,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 	}
 	scenario, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
 	if errors.Is(err, models.NotFoundError) {
-		return false, models.DecisionWithRuleExecutions{}, errors.WithDetail(err, "scenario not found")
+		return false, models.DecisionWithRuleExecutions{},
+			errors.WithDetail(err, "scenario not found")
 	} else if err != nil {
 		return false, models.DecisionWithRuleExecutions{},
 			errors.Wrap(err, "error getting scenario")

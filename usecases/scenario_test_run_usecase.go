@@ -16,6 +16,7 @@ type TestRunUsecaseFeatureAccessReader interface {
 	GetOrganizationFeatureAccess(
 		ctx context.Context,
 		organizationId string,
+		userId *models.UserId,
 	) (models.OrganizationFeatureAccess, error)
 }
 
@@ -58,7 +59,7 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 		return models.ScenarioTestRun{}, err
 	}
 	if scc != nil {
-		featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId)
+		featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId, nil)
 		if err != nil {
 			return models.ScenarioTestRun{}, err
 		}

@@ -11,9 +11,11 @@ type FeatureAccessReader struct {
 	mock.Mock
 }
 
-func (r *FeatureAccessReader) GetOrganizationFeatureAccess(ctx context.Context,
+func (r *FeatureAccessReader) GetOrganizationFeatureAccess(
+	ctx context.Context,
 	organizationId string,
+	userId *models.UserId,
 ) (models.OrganizationFeatureAccess, error) {
-	args := r.Called(ctx, organizationId)
+	args := r.Called(ctx, organizationId, userId)
 	return args.Get(0).(models.OrganizationFeatureAccess), args.Error(1)
 }

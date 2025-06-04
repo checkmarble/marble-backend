@@ -12,6 +12,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 		dbFeatureAccess DbStoredOrganizationFeatureAccess
 		license         LicenseEntitlements
 		config          FeaturesConfiguration
+		user            User
 		testMode        bool
 		expected        OrganizationFeatureAccess
 	}{
@@ -37,6 +38,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				Sanctions: true,
 				Analytics: true,
 			},
+			user: User{AiAssistEnabled: true},
 			expected: OrganizationFeatureAccess{
 				Id:             "1",
 				OrganizationId: "org1",
@@ -47,6 +49,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				Workflows:      Allowed,
 				RuleSnoozes:    Allowed,
 				Roles:          Allowed,
+				AiAssist:       Allowed,
 			},
 		},
 		{
@@ -71,6 +74,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				Sanctions: true,
 				Analytics: true,
 			},
+			user: User{AiAssistEnabled: true},
 			expected: OrganizationFeatureAccess{
 				Id:             "2",
 				OrganizationId: "org2",
@@ -81,6 +85,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				Workflows:      Allowed,
 				RuleSnoozes:    Allowed,
 				Roles:          Allowed,
+				AiAssist:       Allowed,
 			},
 		},
 		{
@@ -105,6 +110,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				Sanctions: false,
 				Analytics: false,
 			},
+			user: User{AiAssistEnabled: false},
 			expected: OrganizationFeatureAccess{
 				Id:             "3",
 				OrganizationId: "org3",
@@ -115,6 +121,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				Workflows:      Allowed,
 				RuleSnoozes:    Allowed,
 				Roles:          Allowed,
+				AiAssist:       Restricted,
 			},
 		},
 		{
@@ -139,6 +146,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				Sanctions: true,
 				Analytics: false,
 			},
+			user:     User{AiAssistEnabled: false},
 			testMode: true,
 			expected: OrganizationFeatureAccess{
 				Id:             "4",
@@ -150,13 +158,14 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				Workflows:      Test,
 				RuleSnoozes:    Allowed,
 				Roles:          Allowed,
+				AiAssist:       Restricted,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.dbFeatureAccess.MergeWithLicenseEntitlement(tt.license, tt.config, tt.testMode)
+			result := tt.dbFeatureAccess.MergeWithLicenseEntitlement(tt.license, tt.config, tt.testMode, &tt.user)
 			assert.Equal(t, tt.expected, result, tt.name)
 		})
 	}

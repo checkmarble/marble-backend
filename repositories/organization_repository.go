@@ -31,7 +31,7 @@ type OrganizationRepository interface {
 
 type OrganizationRepositoryPostgresql struct{}
 
-func (repo *OrganizationRepositoryPostgresql) AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error) {
+func (repo *MarbleDbRepository) AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (repo *OrganizationRepositoryPostgresql) AllOrganizations(ctx context.Conte
 	)
 }
 
-func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Context,
+func (repo *MarbleDbRepository) GetOrganizationById(ctx context.Context,
 	exec Executor, organizationId string,
 ) (models.Organization, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -65,7 +65,7 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Co
 	)
 }
 
-func (repo *OrganizationRepositoryPostgresql) CreateOrganization(
+func (repo *MarbleDbRepository) CreateOrganization(
 	ctx context.Context,
 	exec Executor,
 	newOrganizationId, name string,
@@ -99,7 +99,7 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(
 	return newErr
 }
 
-func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error {
+func (repo *MarbleDbRepository) UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Con
 	return err
 }
 
-func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error {
+func (repo *MarbleDbRepository) DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(ctx context.Con
 	return err
 }
 
-func (repo *OrganizationRepositoryPostgresql) DeleteOrganizationDecisionRulesAsync(
+func (repo *MarbleDbRepository) DeleteOrganizationDecisionRulesAsync(
 	ctx context.Context, exec Executor, organizationId string,
 ) {
 	// This is used asynchronously after the organization is deleted, because it is not dramatic if it fails
@@ -160,7 +160,7 @@ func (repo *OrganizationRepositoryPostgresql) DeleteOrganizationDecisionRulesAsy
 	}()
 }
 
-func (repo *OrganizationRepositoryPostgresql) GetOrganizationFeatureAccess(ctx context.Context, exec Executor,
+func (repo *MarbleDbRepository) GetOrganizationFeatureAccess(ctx context.Context, exec Executor,
 	organizationId string,
 ) (models.DbStoredOrganizationFeatureAccess, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -178,7 +178,7 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationFeatureAccess(ctx c
 	)
 }
 
-func (repo *OrganizationRepositoryPostgresql) UpdateOrganizationFeatureAccess(
+func (repo *MarbleDbRepository) UpdateOrganizationFeatureAccess(
 	ctx context.Context,
 	exec Executor,
 	updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
@@ -211,7 +211,7 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganizationFeatureAccess(
 	return err
 }
 
-func (repo *OrganizationRepositoryPostgresql) HasOrganizations(ctx context.Context, exec Executor) (bool, error) {
+func (repo *MarbleDbRepository) HasOrganizations(ctx context.Context, exec Executor) (bool, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return false, err
 	}

@@ -16,6 +16,7 @@ type OrganizationUsecaseFeatureAccessReader interface {
 	GetOrganizationFeatureAccess(
 		ctx context.Context,
 		organizationId string,
+		user *models.UserId,
 	) (models.OrganizationFeatureAccess, error)
 }
 
@@ -150,10 +151,12 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 	return nil
 }
 
-func (usecase *OrganizationUseCase) GetOrganizationFeatureAccess(ctx context.Context,
+func (usecase *OrganizationUseCase) GetOrganizationFeatureAccess(
+	ctx context.Context,
 	organizationId string,
+	userId *models.UserId,
 ) (models.OrganizationFeatureAccess, error) {
-	return usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId)
+	return usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId, userId)
 }
 
 func (usecase *OrganizationUseCase) UpdateOrganizationFeatureAccess(
