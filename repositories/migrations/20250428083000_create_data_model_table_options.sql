@@ -1,4 +1,5 @@
 -- +goose Up
+-- +goose StatementBegin
 
 create table data_model_options (
   id uuid default gen_random_uuid(),
@@ -12,6 +13,11 @@ create table data_model_options (
     on delete cascade
 );
 
+-- +goose StatementEnd
+
 -- +goose Down
+-- +goose StatementBegin
 
 drop table data_model_options;
+
+-- +goose StatementEnd
