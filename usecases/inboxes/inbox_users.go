@@ -48,7 +48,7 @@ func (usecase *InboxUsers) GetInboxUserById(ctx context.Context, inboxUserId uui
 
 	actorUserId := usecase.Credentials.ActorIdentity.UserId
 	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
-		UserId: models.UserId(actorUserId),
+		UserId: actorUserId,
 	})
 	if err != nil {
 		return models.InboxUser{}, err
@@ -66,7 +66,7 @@ func (usecase *InboxUsers) ListInboxUsers(ctx context.Context, inboxId uuid.UUID
 	exec := usecase.ExecutorFactory.NewExecutor()
 	actorUserId := usecase.Credentials.ActorIdentity.UserId
 	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
-		UserId: models.UserId(actorUserId),
+		UserId: actorUserId,
 	})
 	if err != nil {
 		return []models.InboxUser{}, err
@@ -104,7 +104,7 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 		func(tx repositories.Transaction) (models.InboxUser, error) {
 			actorUserId := usecase.Credentials.ActorIdentity.UserId
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
-				UserId: models.UserId(actorUserId),
+				UserId: actorUserId,
 			})
 			if err != nil {
 				return models.InboxUser{}, err
@@ -159,7 +159,7 @@ func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId uuid
 		func(tx repositories.Transaction) (models.InboxUser, error) {
 			actorUserId := usecase.Credentials.ActorIdentity.UserId
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
-				UserId: models.UserId(actorUserId),
+				UserId: actorUserId,
 			})
 			if err != nil {
 				return models.InboxUser{}, err
@@ -202,7 +202,7 @@ func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId uuid
 
 			actorUserId := usecase.Credentials.ActorIdentity.UserId
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
-				UserId: models.UserId(actorUserId),
+				UserId: actorUserId,
 			})
 			if err != nil {
 				return err

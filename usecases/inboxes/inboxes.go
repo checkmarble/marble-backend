@@ -14,7 +14,8 @@ type InboxRepository interface {
 	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
 		inboxIds []uuid.UUID, withCaseCount bool) ([]models.Inbox, error)
 	ListInboxUsers(ctx context.Context, exec repositories.Executor,
-		filters models.InboxUserFilterInput) ([]models.InboxUser, error) // Assuming filters.InboxId and filters.UserId are now UUIDs based on prior changes to models.InboxUserFilterInput
+		filters models.InboxUserFilterInput) ([]models.InboxUser, error)
+	// Assuming filters.InboxId and filters.UserId are now UUIDs based on prior changes to models.InboxUserFilterInput
 }
 
 type EnforceSecurityInboxes interface {
@@ -107,7 +108,7 @@ func (i *InboxReader) getAvailableInboxes(ctx context.Context, exec repositories
 	userId := i.Credentials.ActorIdentity.UserId
 
 	inboxUsers, err := i.InboxRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
-		UserId: models.UserId(userId), // Pass as models.UserId (string)
+		UserId: userId,
 	})
 	if err != nil {
 		return []uuid.UUID{}, err
