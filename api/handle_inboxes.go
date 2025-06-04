@@ -10,10 +10,11 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type GetInboxIdUriInput struct {
-	InboxId string `uri:"inbox_id" binding:"required,uuid"`
+	InboxId uuid.UUID `uri:"inbox_id" binding:"required,uuid"`
 }
 
 func handleGetInboxById(uc usecases.Usecases) func(c *gin.Context) {
@@ -109,8 +110,8 @@ func handleListInboxesMetadata(uc usecases.Usecases) func(c *gin.Context) {
 }
 
 type CreateInboxInput struct {
-	Name              string  `json:"name" binding:"required"`
-	EscalationInboxId *string `json:"escalation_inbox_id" binding:"omitempty,uuid"`
+	Name              string     `json:"name" binding:"required"`
+	EscalationInboxId *uuid.UUID `json:"escalation_inbox_id" binding:"omitempty,uuid"`
 }
 
 func handlePostInbox(uc usecases.Usecases) func(c *gin.Context) {
@@ -153,8 +154,8 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		var data struct {
-			Name              string  `json:"name" binding:"required"`
-			EscalationInboxId *string `json:"escalation_inbox_id" binding:"omitempty,uuid"`
+			Name              string     `json:"name" binding:"required"`
+			EscalationInboxId *uuid.UUID `json:"escalation_inbox_id" binding:"omitempty,uuid"`
 		}
 		if err := c.ShouldBind(&data); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -191,7 +192,7 @@ func handleDeleteInbox(uc usecases.Usecases) func(c *gin.Context) {
 }
 
 type GetInboxUserInput struct {
-	Id string `uri:"inbox_user_id" binding:"required,uuid"`
+	Id uuid.UUID `uri:"inbox_user_id" binding:"required,uuid"`
 }
 
 func handleGetInboxUserById(uc usecases.Usecases) func(c *gin.Context) {
@@ -247,11 +248,11 @@ func handleListInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
 
 type CreateInboxUserInput struct {
 	Uri struct {
-		InboxId string `uri:"inbox_id" binding:"required,uuid"`
+		InboxId uuid.UUID `uri:"inbox_id" binding:"required,uuid"`
 	}
 	Body struct {
-		UserId string `json:"user_id" binding:"required,uuid"`
-		Role   string `json:"role" binding:"required"`
+		UserId uuid.UUID `json:"user_id" binding:"required,uuid"`
+		Role   string    `json:"role" binding:"required"`
 	}
 }
 

@@ -6,14 +6,15 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/google/uuid"
 )
 
 type InboxRepository interface {
-	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId string) (models.Inbox, error)
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
 	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
-		inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
+		inboxIds []uuid.UUID, withCaseCount bool) ([]models.Inbox, error)
 	ListInboxUsers(ctx context.Context, exec repositories.Executor,
-		filters models.InboxUserFilterInput) ([]models.InboxUser, error)
+		filters models.InboxUserFilterInput) ([]models.InboxUser, error) // Assuming filters.InboxId and filters.UserId are now UUIDs based on prior changes to models.InboxUserFilterInput
 }
 
 type EnforceSecurityInboxes interface {
@@ -32,7 +33,7 @@ type InboxReader struct {
 	ExecutorFactory executor_factory.ExecutorFactory
 }
 
-func (i *InboxReader) GetInboxById(ctx context.Context, inboxId string) (models.Inbox, error) {
+func (i *InboxReader) GetInboxById(ctx context.Context, inboxId uuid.UUID) (models.Inbox, error) {
 	inbox, err := i.InboxRepository.GetInboxById(ctx, i.ExecutorFactory.NewExecutor(), inboxId)
 	if err != nil {
 		return models.Inbox{}, err
@@ -45,7 +46,7 @@ func (i *InboxReader) GetInboxById(ctx context.Context, inboxId string) (models.
 	return inbox, err
 }
 
-func (i *InboxReader) GetEscalationInboxMetadata(ctx context.Context, inboxId string) (models.InboxMetadata, error) {
+func (i *InboxReader) GetEscalationInboxMetadata(ctx context.Context, inboxId uuid.UUID) (models.InboxMetadata, error) {
 	inbox, err := i.InboxRepository.GetInboxById(ctx, i.ExecutorFactory.NewExecutor(), inboxId)
 	if err != nil {
 		return models.InboxMetadata{}, err
@@ -98,19 +99,22 @@ func (i *InboxReader) isAdminHasAccessToAllInboxes() bool {
 	return i.Credentials.Role == models.ADMIN || i.Credentials.Role == models.MARBLE_ADMIN
 }
 
-func (i *InboxReader) getAvailableInboxes(ctx context.Context, exec repositories.Executor) ([]string, error) {
-	availableInboxIds := make([]string, 0)
+func (i *InboxReader) getAvailableInboxes(ctx context.Context, exec repositories.Executor) ([]uuid.UUID, error) {
+	availableInboxIds := make([]uuid.UUID, 0)
 
+	// Assuming i.Credentials.ActorIdentity.UserId is compatible with uuid.UUID for models.InboxUserFilterInput.UserId
+	// UserId in InboxUserFilterInput is models.UserId (string), so no parsing needed for i.Credentials.ActorIdentity.UserId.
 	userId := i.Credentials.ActorIdentity.UserId
+
 	inboxUsers, err := i.InboxRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
-		UserId: userId,
+		UserId: models.UserId(userId), // Pass as models.UserId (string)
 	})
 	if err != nil {
-		return []string{}, err
+		return []uuid.UUID{}, err
 	}
 
 	for _, inboxUser := range inboxUsers {
-		availableInboxIds = append(availableInboxIds, inboxUser.InboxId)
+		availableInboxIds = append(availableInboxIds, inboxUser.InboxId) // inboxUser.InboxId is already uuid.UUID
 	}
 	return availableInboxIds, nil
 }

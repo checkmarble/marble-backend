@@ -7,11 +7,12 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 
 	"github.com/Masterminds/squirrel"
 )
 
-func (repo *MarbleDbRepository) GetInboxById(ctx context.Context, exec Executor, inboxId string) (models.Inbox, error) {
+func (repo *MarbleDbRepository) GetInboxById(ctx context.Context, exec Executor, inboxId uuid.UUID) (models.Inbox, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.Inbox{}, err
 	}
@@ -25,7 +26,7 @@ func (repo *MarbleDbRepository) GetInboxById(ctx context.Context, exec Executor,
 }
 
 func (repo *MarbleDbRepository) ListInboxes(ctx context.Context, exec Executor,
-	organizationId string, inboxIds []string, withCaseCount bool,
+	organizationId string, inboxIds []uuid.UUID, withCaseCount bool,
 ) ([]models.Inbox, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -68,7 +69,7 @@ func selectInboxesJoinUsers() squirrel.SelectBuilder {
 		OrderBy("i.created_at DESC")
 }
 
-func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, exec Executor, input models.CreateInboxInput, newInboxId string) error {
+func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, exec Executor, input models.CreateInboxInput, newInboxId uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -93,7 +94,7 @@ func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, exec Executor, 
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, inboxId, name string, escalationInboxId *string) error {
+func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, inboxId uuid.UUID, name string, escalationInboxId *uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -110,7 +111,7 @@ func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, 
 	return err
 }
 
-func (repo *MarbleDbRepository) SoftDeleteInbox(ctx context.Context, exec Executor, inboxId string) error {
+func (repo *MarbleDbRepository) SoftDeleteInbox(ctx context.Context, exec Executor, inboxId uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

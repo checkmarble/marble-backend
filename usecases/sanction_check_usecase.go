@@ -893,7 +893,7 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, d
 		}
 
 		inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) string {
-			return inbox.Id
+			return inbox.Id.String() // Convert uuid.UUID to string
 		})
 
 		if err := uc.enforceSecurityCase.ReadOrUpdateCase((*decision[0].Case).GetMetadata(), inboxIds); err != nil {

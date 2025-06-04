@@ -3,6 +3,7 @@ package security
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
+	// "github.com/google/uuid" // Removed as it's unused
 )
 
 type EnforceSecurityInboxes struct {
@@ -18,8 +19,9 @@ func (e EnforceSecurityInboxes) ReadInbox(i models.Inbox) error {
 	}
 
 	// any other user can read an inbox if he is a member of the inbox
+	actorUserIdStr := string(e.Credentials.ActorIdentity.UserId)
 	for _, user := range i.InboxUsers {
-		if user.UserId == string(e.Credentials.ActorIdentity.UserId) {
+		if user.UserId.String() == actorUserIdStr {
 			return nil
 		}
 	}
@@ -47,8 +49,9 @@ func (e EnforceSecurityInboxes) CreateInbox(organizationId string) error {
 
 func (e EnforceSecurityInboxes) UpdateInbox(inbox models.Inbox) error {
 	// Inbox admins are allowed to update the inbox, even if they are not organization admins
+	actorUserIdStr := string(e.Credentials.ActorIdentity.UserId)
 	for _, inboxMember := range inbox.InboxUsers {
-		if inboxMember.UserId == string(e.Credentials.ActorIdentity.UserId) &&
+		if inboxMember.UserId.String() == actorUserIdStr &&
 			inboxMember.Role == models.InboxUserRoleAdmin {
 			return nil
 		}

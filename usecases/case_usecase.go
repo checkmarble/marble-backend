@@ -204,7 +204,7 @@ func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repos
 	}
 	availableInboxIds := make([]string, len(inboxes))
 	for i, inbox := range inboxes {
-		availableInboxIds[i] = inbox.Id
+		availableInboxIds[i] = inbox.Id.String() // Convert uuid.UUID to string
 	}
 	return availableInboxIds, nil
 }
@@ -372,8 +372,12 @@ func (usecase *CaseUseCase) UpdateCase(
 		}
 		if updateCaseAttributes.InboxId != "" {
 			// access check on the case's new requested inbox
+			parsedNewInboxId, err := uuid.Parse(updateCaseAttributes.InboxId)
+			if err != nil {
+				return models.Case{}, errors.Wrap(err, "failed to parse updateCaseAttributes.InboxId for permission check")
+			}
 			if _, err := usecase.inboxReader.GetInboxById(ctx,
-				updateCaseAttributes.InboxId); err != nil {
+				parsedNewInboxId); err != nil {
 				return models.Case{}, errors.Wrap(err,
 					fmt.Sprintf("User does not have access the new inbox %s", updateCaseAttributes.InboxId))
 			}
@@ -1550,7 +1554,11 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 		return err
 	}
 
-	sourceInbox, err := uc.inboxReader.GetInboxById(ctx, c.InboxId)
+	parsedSourceInboxId, err := uuid.Parse(c.InboxId)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse source inbox id")
+	}
+	sourceInbox, err := uc.inboxReader.GetInboxById(ctx, parsedSourceInboxId)
 	if err != nil {
 		return errors.Wrap(err, "could not read source inbox")
 	}
@@ -1575,7 +1583,10 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 	}
 
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		if err := uc.repository.EscalateCase(ctx, tx, caseId, targetInbox.Id); err != nil {
+		targetInboxIdStr := targetInbox.Id.String() // targetInbox.Id is uuid.UUID from GetEscalationInboxMetadata
+		sourceInboxIdStr := sourceInbox.Id.String() // sourceInbox.Id is uuid.UUID from GetInboxById
+
+		if err := uc.repository.EscalateCase(ctx, tx, caseId, targetInboxIdStr); err != nil {
 			return errors.Wrap(err, "could not escalate case")
 		}
 
@@ -1583,8 +1594,8 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 			CaseId:        caseId,
 			UserId:        userId,
 			EventType:     models.CaseEscalated,
-			NewValue:      &targetInbox.Id,
-			PreviousValue: &sourceInbox.Id,
+			NewValue:      &targetInboxIdStr,
+			PreviousValue: &sourceInboxIdStr,
 		}
 
 		if err := uc.repository.CreateCaseEvent(ctx, tx, event); err != nil {

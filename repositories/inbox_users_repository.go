@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid" // Ensure this import is present
 
 	"github.com/Masterminds/squirrel"
 )
@@ -17,7 +18,7 @@ func selectInboxUsers() squirrel.SelectBuilder {
 		Join(dbmodels.TABLE_INBOXES + " AS i ON i.id = inbox_id")
 }
 
-func (repo *MarbleDbRepository) GetInboxUserById(ctx context.Context, exec Executor, inboxUserId string) (models.InboxUser, error) {
+func (repo *MarbleDbRepository) GetInboxUserById(ctx context.Context, exec Executor, inboxUserId uuid.UUID) (models.InboxUser, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.InboxUser{}, err
 	}
@@ -40,10 +41,10 @@ func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, exec Executo
 
 	query := selectInboxUsers()
 
-	if filters.InboxId != "" {
+	if filters.InboxId != uuid.Nil {
 		query = query.Where(squirrel.Eq{"u.inbox_id": filters.InboxId})
 	}
-	if filters.UserId != "" {
+	if filters.UserId != "" { // Reverted: models.UserId is likely still a string type
 		query = query.Where(squirrel.Eq{"u.user_id": filters.UserId})
 	}
 
@@ -56,7 +57,7 @@ func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, exec Executo
 }
 
 func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, exec Executor,
-	input models.CreateInboxUserInput, newInboxUserId string,
+	input models.CreateInboxUserInput, newInboxUserId uuid.UUID,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -82,7 +83,7 @@ func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, exec Execut
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Executor, inboxUserId string, role models.InboxUserRole) error {
+func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Executor, inboxUserId uuid.UUID, role models.InboxUserRole) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Execut
 	return err
 }
 
-func (repo *MarbleDbRepository) DeleteInboxUser(ctx context.Context, exec Executor, inboxUserId string) error {
+func (repo *MarbleDbRepository) DeleteInboxUser(ctx context.Context, exec Executor, inboxUserId uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

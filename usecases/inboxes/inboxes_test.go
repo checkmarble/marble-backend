@@ -11,6 +11,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type InboxReaderTestSuite struct {
@@ -26,7 +27,8 @@ type InboxReaderTestSuite struct {
 	adminCredentials   models.Credentials
 
 	organizationId  string
-	inboxId         string
+	inboxId         string // string version
+	parsedInboxId   uuid.UUID // uuid version
 	inbox           models.Inbox
 	adminUserId     models.UserId
 	nonAdminUserId  models.UserId
@@ -48,10 +50,15 @@ func (suite *InboxReaderTestSuite) SetupTest() {
 
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
 	suite.inboxId = "0ae6fda7-f7b3-4218-9fc3-4efa329432a7"
+	var err error
+	suite.parsedInboxId, err = uuid.Parse(suite.inboxId)
+	if err != nil {
+		panic("failed to parse test inboxId: " + err.Error())
+	}
 	suite.adminUserId = models.UserId("some user id")
 	suite.nonAdminUserId = models.UserId("some other user id")
 	suite.inbox = models.Inbox{
-		Id:             suite.inboxId,
+		Id:             suite.parsedInboxId, // Use parsed UUID
 		OrganizationId: suite.organizationId,
 		Name:           "test inbox",
 	}
@@ -104,10 +111,10 @@ func (suite *InboxReaderTestSuite) Test_GetInboxById_nominal() {
 	t := suite.T()
 
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
-	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.inboxId).Return(suite.inbox, nil)
+	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.parsedInboxId).Return(suite.inbox, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(nil)
 
-	result, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.inbox.Id)
+	result, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.parsedInboxId) // Pass parsed UUID
 
 	assert.NoError(t, err)
 	assert.Equal(t, suite.inbox, result)
@@ -117,9 +124,9 @@ func (suite *InboxReaderTestSuite) Test_GetInboxById_nominal() {
 
 func (suite *InboxReaderTestSuite) Test_GetInboxById_repository_error() {
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
-	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.inboxId).Return(models.Inbox{}, suite.repositoryError)
+	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.parsedInboxId).Return(models.Inbox{}, suite.repositoryError)
 
-	_, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.inbox.Id)
+	_, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.parsedInboxId) // Pass parsed UUID
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.repositoryError)
@@ -129,10 +136,10 @@ func (suite *InboxReaderTestSuite) Test_GetInboxById_repository_error() {
 
 func (suite *InboxReaderTestSuite) Test_GetInboxById_security_error() {
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
-	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.inboxId).Return(suite.inbox, nil)
+	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.parsedInboxId).Return(suite.inbox, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.inbox.Id)
+	_, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.parsedInboxId) // Pass parsed UUID
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.securityError)
@@ -142,7 +149,7 @@ func (suite *InboxReaderTestSuite) Test_GetInboxById_security_error() {
 
 func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_admin() {
 	suite.inboxRepository.On("ListInboxes", suite.transaction, suite.organizationId,
-		mock.MatchedBy(func(s []string) bool { return s == nil })).Return([]models.Inbox{suite.inbox}, nil)
+		mock.MatchedBy(func(s []uuid.UUID) bool { return s == nil })).Return([]models.Inbox{suite.inbox}, nil) // Expect []uuid.UUID
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(nil)
 
 	result, err := suite.makeUsecaseAdmin().ListInboxes(suite.ctx, suite.transaction, suite.organizationId, false)
@@ -157,10 +164,10 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_admin() {
 func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_non_admin() {
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		UserId: suite.nonAdminUserId,
-	}).Return([]models.InboxUser{{InboxId: suite.inboxId}}, nil)
-	suite.inboxRepository.On("ListInboxes", suite.transaction, suite.organizationId, []string{
-		suite.inboxId,
+		UserId: suite.nonAdminUserId, // UserId in filter is string
+	}).Return([]models.InboxUser{{InboxId: suite.parsedInboxId}}, nil) // InboxUser.InboxId is uuid.UUID
+	suite.inboxRepository.On("ListInboxes", suite.transaction, suite.organizationId, []uuid.UUID{ // Expect []uuid.UUID
+		suite.parsedInboxId,
 	}).Return([]models.Inbox{suite.inbox}, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(nil)
 
@@ -191,10 +198,10 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_no_inboxes() {
 func (suite *InboxReaderTestSuite) Test_ListInboxes_repository_error() {
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		UserId: suite.nonAdminUserId,
-	}).Return([]models.InboxUser{{InboxId: suite.inboxId}}, nil)
-	suite.inboxRepository.On("ListInboxes", suite.transaction, suite.organizationId, []string{
-		suite.inboxId,
+		UserId: suite.nonAdminUserId, // UserId in filter is string
+	}).Return([]models.InboxUser{{InboxId: suite.parsedInboxId}}, nil) // InboxUser.InboxId is uuid.UUID
+	suite.inboxRepository.On("ListInboxes", suite.transaction, suite.organizationId, []uuid.UUID{ // Expect []uuid.UUID
+		suite.parsedInboxId,
 	}).Return([]models.Inbox{}, suite.repositoryError)
 
 	_, err := suite.makeUsecase().ListInboxes(suite.ctx, suite.transaction, suite.organizationId, false)
@@ -208,10 +215,10 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_repository_error() {
 func (suite *InboxReaderTestSuite) Test_ListInboxes_security_error() {
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		UserId: suite.nonAdminUserId,
-	}).Return([]models.InboxUser{{InboxId: suite.inboxId}}, nil)
-	suite.inboxRepository.On("ListInboxes", suite.transaction, suite.organizationId, []string{
-		suite.inboxId,
+		UserId: suite.nonAdminUserId, // UserId in filter is string
+	}).Return([]models.InboxUser{{InboxId: suite.parsedInboxId}}, nil) // InboxUser.InboxId is uuid.UUID
+	suite.inboxRepository.On("ListInboxes", suite.transaction, suite.organizationId, []uuid.UUID{ // Expect []uuid.UUID
+		suite.parsedInboxId,
 	}).Return([]models.Inbox{suite.inbox}, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(suite.securityError)
 

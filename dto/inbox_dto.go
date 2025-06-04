@@ -5,15 +5,16 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 )
 
 type InboxDto struct {
-	Id                string         `json:"id"`
+	Id                uuid.UUID      `json:"id"`
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
 	Name              string         `json:"name"`
 	Status            string         `json:"status"`
-	EscalationInboxId *string        `json:"escalation_inbox_id,omitempty"`
+	EscalationInboxId *uuid.UUID     `json:"escalation_inbox_id,omitempty"`
 	Users             []InboxUserDto `json:"users"`
 	CasesCount        *int           `json:"cases_count"`
 }
@@ -32,12 +33,12 @@ func AdaptInboxDto(i models.Inbox) InboxDto {
 }
 
 type InboxUserDto struct {
-	Id        string    `json:"id"`
+	Id        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Role      string    `json:"role"`
-	InboxId   string    `json:"inbox_id"`
-	UserId    string    `json:"user_id"`
+	InboxId   uuid.UUID `json:"inbox_id"`
+	UserId    uuid.UUID `json:"user_id"`
 }
 
 func AdaptInboxUserDto(i models.InboxUser) InboxUserDto {
@@ -52,8 +53,8 @@ func AdaptInboxUserDto(i models.InboxUser) InboxUserDto {
 }
 
 type InboxMetadataDto struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+	Id   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
 
 func AdaptInboxMetadataDto(i models.InboxMetadata) InboxMetadataDto {
