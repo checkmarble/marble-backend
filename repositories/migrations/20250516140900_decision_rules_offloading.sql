@@ -1,4 +1,5 @@
 -- +goose Up
+-- +goose StatementBegin
 
 create table offloading_watermarks (
   org_id uuid,
@@ -14,6 +15,10 @@ create table offloading_watermarks (
     on delete cascade
 );
 
+-- +goose StatementEnd
+
 -- +goose Down
+-- +goose StatementBegin
 
 drop table offloading_watermarks;
+-- +goose StatementEnd

@@ -7,14 +7,15 @@ import (
 )
 
 type DBUserResult struct {
-	Id             string             `db:"id"`
-	Email          string             `db:"email"`
-	Role           int                `db:"role"`
-	OrganizationId *string            `db:"organization_id"`
-	PartnerId      *string            `db:"partner_id"`
-	FirstName      pgtype.Text        `db:"first_name"`
-	LastName       pgtype.Text        `db:"last_name"`
-	DeletedAt      pgtype.Timestamptz `db:"deleted_at"`
+	Id              string             `db:"id"`
+	Email           string             `db:"email"`
+	Role            int                `db:"role"`
+	OrganizationId  *string            `db:"organization_id"`
+	PartnerId       *string            `db:"partner_id"`
+	FirstName       pgtype.Text        `db:"first_name"`
+	LastName        pgtype.Text        `db:"last_name"`
+	DeletedAt       pgtype.Timestamptz `db:"deleted_at"`
+	AiAssistEnabled bool               `db:"ai_assist_enabled"`
 }
 
 const TABLE_USERS = "users"
@@ -23,10 +24,11 @@ var UserFields = utils.ColumnList[DBUserResult]()
 
 func AdaptUser(db DBUserResult) (models.User, error) {
 	user := models.User{
-		UserId:    models.UserId(db.Id),
-		Email:     db.Email,
-		Role:      models.Role(db.Role),
-		PartnerId: db.PartnerId,
+		UserId:          models.UserId(db.Id),
+		Email:           db.Email,
+		Role:            models.Role(db.Role),
+		PartnerId:       db.PartnerId,
+		AiAssistEnabled: db.AiAssistEnabled,
 	}
 	if db.OrganizationId != nil {
 		user.OrganizationId = *db.OrganizationId
