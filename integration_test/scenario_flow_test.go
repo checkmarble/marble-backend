@@ -269,7 +269,7 @@ func createDataModelAndSetupCaseManager(
 	if err != nil {
 		assert.FailNow(t, "Could not get data model", err)
 	}
-	return dm, inbox.Id
+	return dm, inbox.Id.String()
 }
 
 func setupScenarioAndPublish(

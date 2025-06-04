@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -73,8 +74,9 @@ func (sanctionCheckRepositoryMock) ListInboxes(
 	organizationId string,
 	withCaseCount bool,
 ) ([]models.Inbox, error) {
+	parsedInboxId, _ := uuid.Parse("00000000-0000-0000-0000-000000000000") // Placeholder UUID
 	inboxes := []models.Inbox{
-		{Id: "inboxid"},
+		{Id: parsedInboxId},
 	}
 
 	return inboxes, nil

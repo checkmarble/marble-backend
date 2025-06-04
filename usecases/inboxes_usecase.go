@@ -10,20 +10,21 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type InboxRepository interface {
-	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId string) (models.Inbox, error)
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
 	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
-		inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
+		inboxIds []uuid.UUID, withCaseCount bool) ([]models.Inbox, error)
 	CreateInbox(ctx context.Context, exec repositories.Executor,
-		createInboxAttributes models.CreateInboxInput, newInboxId string) error
+		createInboxAttributes models.CreateInboxInput, newInboxId uuid.UUID) error
 	UpdateInbox(ctx context.Context, exec repositories.Executor,
-		inboxId, name string, escalationInboxId *string) error
-	SoftDeleteInbox(ctx context.Context, exec repositories.Executor, inboxId string) error
+		inboxId uuid.UUID, name string, escalationInboxId *uuid.UUID) error
+	SoftDeleteInbox(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) error
 
 	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters,
-		pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
+		pagination models.PaginationAndSorting) ([]models.CaseWithRank, error) // Assuming CaseFilters.InboxIds will be updated to []uuid.UUID if necessary
 }
 
 type EnforceSecurityInboxes interface {
@@ -44,7 +45,7 @@ type InboxUsecase struct {
 	inboxUsers         inboxes.InboxUsers
 }
 
-func (usecase *InboxUsecase) GetInboxMetadataById(ctx context.Context, inboxId string) (models.InboxMetadata, error) {
+func (usecase *InboxUsecase) GetInboxMetadataById(ctx context.Context, inboxId uuid.UUID) (models.InboxMetadata, error) {
 	inbox, err := usecase.inboxRepository.GetInboxById(ctx,
 		usecase.executorFactory.NewExecutor(), inboxId)
 	if err != nil {
@@ -58,7 +59,7 @@ func (usecase *InboxUsecase) GetInboxMetadataById(ctx context.Context, inboxId s
 	return inbox.GetMetadata(), nil
 }
 
-func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId string) (models.Inbox, error) {
+func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId uuid.UUID) (models.Inbox, error) {
 	return usecase.inboxReader.GetInboxById(ctx, inboxId)
 }
 
@@ -91,12 +92,16 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 				return models.Inbox{}, err
 			}
 
-			newInboxId := pure_utils.NewPrimaryKey(input.OrganizationId)
-			if err := usecase.inboxRepository.CreateInbox(ctx, tx, input, newInboxId); err != nil {
+			newInboxIdStr := pure_utils.NewPrimaryKey(input.OrganizationId)
+			newInboxUUID, err := uuid.Parse(newInboxIdStr)
+			if err != nil {
+				return models.Inbox{}, errors.Wrap(err, "failed to parse new inbox ID")
+			}
+			if err := usecase.inboxRepository.CreateInbox(ctx, tx, input, newInboxUUID); err != nil {
 				return models.Inbox{}, err
 			}
 
-			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, newInboxId)
+			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, newInboxUUID)
 			return inbox, err
 		})
 	if err != nil {
@@ -109,7 +114,7 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 	return inbox, nil
 }
 
-func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name string, escalationInboxId *string) (models.Inbox, error) {
+func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId uuid.UUID, name string, escalationInboxId *uuid.UUID) (models.Inbox, error) {
 	inbox, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
@@ -144,7 +149,7 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 	return inbox, nil
 }
 
-func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) error {
+func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId uuid.UUID) error {
 	err := usecase.transactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Transaction) error {
@@ -161,8 +166,9 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) er
 				return err
 			}
 
+			// models.CaseFilters.InboxIds is []string
 			cases, err := usecase.inboxRepository.ListOrganizationCases(ctx, tx,
-				models.CaseFilters{InboxIds: []string{inboxId}, OrganizationId: inbox.OrganizationId},
+				models.CaseFilters{InboxIds: []string{inboxId.String()}, OrganizationId: inbox.OrganizationId},
 				models.PaginationAndSorting{Limit: 1, Order: models.SortingOrderDesc, Sorting: models.CasesSortingCreatedAt},
 			)
 			if err != nil {
@@ -185,11 +191,14 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) er
 	return nil
 }
 
-func (usecase *InboxUsecase) GetInboxUserById(ctx context.Context, inboxUserId string) (models.InboxUser, error) {
+// Methods delegating to inboxUsers - signatures will be updated in inbox_users.go, calls here should match the updated interface.
+// For now, assuming the method names and general structure remain, types will be enforced by the compiler once inbox_users.go is updated.
+
+func (usecase *InboxUsecase) GetInboxUserById(ctx context.Context, inboxUserId uuid.UUID) (models.InboxUser, error) {
 	return usecase.inboxUsers.GetInboxUserById(ctx, inboxUserId)
 }
 
-func (usecase *InboxUsecase) ListInboxUsers(ctx context.Context, inboxId string) ([]models.InboxUser, error) {
+func (usecase *InboxUsecase) ListInboxUsers(ctx context.Context, inboxId uuid.UUID) ([]models.InboxUser, error) {
 	return usecase.inboxUsers.ListInboxUsers(ctx, inboxId)
 }
 
@@ -198,13 +207,13 @@ func (usecase *InboxUsecase) ListAllInboxUsers(ctx context.Context) ([]models.In
 }
 
 func (usecase *InboxUsecase) CreateInboxUser(ctx context.Context, input models.CreateInboxUserInput) (models.InboxUser, error) {
-	return usecase.inboxUsers.CreateInboxUser(ctx, input)
+	return usecase.inboxUsers.CreateInboxUser(ctx, input) // input already uses uuid.UUID for IDs from model changes
 }
 
-func (usecase *InboxUsecase) UpdateInboxUser(ctx context.Context, inboxUserId string, role models.InboxUserRole) (models.InboxUser, error) {
+func (usecase *InboxUsecase) UpdateInboxUser(ctx context.Context, inboxUserId uuid.UUID, role models.InboxUserRole) (models.InboxUser, error) {
 	return usecase.inboxUsers.UpdateInboxUser(ctx, inboxUserId, role)
 }
 
-func (usecase *InboxUsecase) DeleteInboxUser(ctx context.Context, inboxUserId string) error {
+func (usecase *InboxUsecase) DeleteInboxUser(ctx context.Context, inboxUserId uuid.UUID) error {
 	return usecase.inboxUsers.DeleteInboxUser(ctx, inboxUserId)
 }
