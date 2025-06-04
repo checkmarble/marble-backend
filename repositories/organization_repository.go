@@ -29,8 +29,6 @@ type OrganizationRepository interface {
 	HasOrganizations(ctx context.Context, exec Executor) (bool, error)
 }
 
-type OrganizationRepositoryPostgresql struct{}
-
 func (repo *MarbleDbRepository) AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

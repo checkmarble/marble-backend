@@ -21,8 +21,6 @@ type UserRepository interface {
 	HasUsers(ctx context.Context, exec Executor) (bool, error)
 }
 
-type UserRepositoryPostgresql struct{}
-
 func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
 	userId := uuid.NewString()
 
