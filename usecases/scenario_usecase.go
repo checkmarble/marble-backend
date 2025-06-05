@@ -73,7 +73,7 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 
 			// the DecisionToCaseInboxId and DecisionToCaseOutcomes settings are of higher criticity (they
 			// influence how decisions are treated) so require a higher permission to update
-			changeWorkflowSettings := scenarioInput.DecisionToCaseInboxId.Valid ||
+			changeWorkflowSettings := scenarioInput.DecisionToCaseInboxId.Set ||
 				scenarioInput.DecisionToCaseOutcomes != nil ||
 				scenarioInput.DecisionToCaseWorkflowType != nil ||
 				scenarioInput.DecisionToCaseNameTemplate != nil
@@ -131,12 +131,8 @@ func validateScenarioUpdate(scenario models.Scenario, input models.UpdateScenari
 	}
 
 	// next compute the new scenario, after updates
-	if input.DecisionToCaseInboxId.Valid {
-		if input.DecisionToCaseInboxId.String == "" {
-			scenario.DecisionToCaseInboxId = nil
-		} else {
-			scenario.DecisionToCaseInboxId = &input.DecisionToCaseInboxId.String
-		}
+	if input.DecisionToCaseInboxId.Set {
+		scenario.DecisionToCaseInboxId = input.DecisionToCaseInboxId.Ptr()
 	}
 	if input.DecisionToCaseOutcomes != nil {
 		scenario.DecisionToCaseOutcomes = input.DecisionToCaseOutcomes

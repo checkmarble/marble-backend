@@ -197,14 +197,14 @@ func (usecase *CaseUseCase) ListCases(
 	)
 }
 
-func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]string, error) {
+func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]uuid.UUID, error) {
 	inboxes, err := usecase.inboxReader.ListInboxes(ctx, exec, organizationId, false)
 	if err != nil {
-		return []string{}, errors.Wrap(err, "failed to list available inboxes in usecase")
+		return []uuid.UUID{}, errors.Wrap(err, "failed to list available inboxes in usecase")
 	}
-	availableInboxIds := make([]string, len(inboxes))
+	availableInboxIds := make([]uuid.UUID, len(inboxes))
 	for i, inbox := range inboxes {
-		availableInboxIds[i] = inbox.Id.String() // Convert uuid.UUID to string
+		availableInboxIds[i] = inbox.Id
 	}
 	return availableInboxIds, nil
 }
@@ -370,14 +370,10 @@ func (usecase *CaseUseCase) UpdateCase(
 		if err != nil {
 			return models.Case{}, err
 		}
-		if updateCaseAttributes.InboxId != "" {
+		if updateCaseAttributes.InboxId != nil {
 			// access check on the case's new requested inbox
-			parsedNewInboxId, err := uuid.Parse(updateCaseAttributes.InboxId)
-			if err != nil {
-				return models.Case{}, errors.Wrap(err, "failed to parse updateCaseAttributes.InboxId for permission check")
-			}
 			if _, err := usecase.inboxReader.GetInboxById(ctx,
-				parsedNewInboxId); err != nil {
+				*updateCaseAttributes.InboxId); err != nil {
 				return models.Case{}, errors.Wrap(err,
 					fmt.Sprintf("User does not have access the new inbox %s", updateCaseAttributes.InboxId))
 			}
@@ -456,7 +452,7 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 		return err
 	}
 
-	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), []string{c.InboxId}); err != nil {
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), []uuid.UUID{c.InboxId}); err != nil {
 		return err
 	}
 
@@ -506,7 +502,7 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 	}
 
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), []string{c.InboxId}); err != nil {
+		if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), []uuid.UUID{c.InboxId}); err != nil {
 			return err
 		}
 
@@ -666,7 +662,7 @@ func (usecase *CaseUseCase) UnassignCase(ctx context.Context, req models.CaseAss
 func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c models.Case) bool {
 	return (updateCaseAttributes.Name == "" || updateCaseAttributes.Name == c.Name) &&
 		(updateCaseAttributes.Status == "" || updateCaseAttributes.Status == c.Status) &&
-		(updateCaseAttributes.InboxId == "" || updateCaseAttributes.InboxId == c.InboxId) &&
+		(updateCaseAttributes.InboxId == nil || *updateCaseAttributes.InboxId == c.InboxId) &&
 		(updateCaseAttributes.Outcome == "" || updateCaseAttributes.Outcome == c.Outcome)
 }
 
@@ -715,13 +711,13 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 		}
 	}
 
-	if updateCaseAttributes.InboxId != "" && updateCaseAttributes.InboxId != oldCase.InboxId {
+	if updateCaseAttributes.InboxId != nil && *updateCaseAttributes.InboxId != oldCase.InboxId {
 		err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
 			CaseId:        updateCaseAttributes.Id,
 			UserId:        &userId,
 			EventType:     models.CaseInboxChanged,
-			NewValue:      &updateCaseAttributes.InboxId,
-			PreviousValue: &oldCase.InboxId,
+			NewValue:      utils.Ptr(updateCaseAttributes.InboxId.String()),
+			PreviousValue: utils.Ptr(oldCase.InboxId.String()),
 		})
 		if err != nil {
 			return err
@@ -1554,11 +1550,7 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 		return err
 	}
 
-	parsedSourceInboxId, err := uuid.Parse(c.InboxId)
-	if err != nil {
-		return errors.Wrap(err, "failed to parse source inbox id")
-	}
-	sourceInbox, err := uc.inboxReader.GetInboxById(ctx, parsedSourceInboxId)
+	sourceInbox, err := uc.inboxReader.GetInboxById(ctx, c.InboxId)
 	if err != nil {
 		return errors.Wrap(err, "could not read source inbox")
 	}

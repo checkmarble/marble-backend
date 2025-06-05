@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/guregu/null/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertest"
 	"github.com/segmentio/analytics-go/v3"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
@@ -94,7 +94,7 @@ func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases
 	return creds
 }
 
-func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models.Credentials, models.DataModel, string) {
+func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models.Credentials, models.DataModel, uuid.UUID) {
 	// Create a new organization
 	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases)
 	orgUsecase := testAdminUsecase.NewOrganizationUseCase()
@@ -152,7 +152,7 @@ func createDataModelAndSetupCaseManager(
 	t *testing.T,
 	usecases usecases.UsecasesWithCreds,
 	organizationId string,
-) (dm models.DataModel, inboxId string) {
+) (dm models.DataModel, inboxId uuid.UUID) {
 	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases)
 
 	usecase := testAdminUsecase.NewDataModelUseCase()
@@ -269,14 +269,15 @@ func createDataModelAndSetupCaseManager(
 	if err != nil {
 		assert.FailNow(t, "Could not get data model", err)
 	}
-	return dm, inbox.Id.String()
+	return dm, inbox.Id
 }
 
 func setupScenarioAndPublish(
 	ctx context.Context,
 	t *testing.T,
 	usecasesWithCreds usecases.UsecasesWithCreds,
-	organizationId, inboxId string,
+	organizationId string,
+	inboxId uuid.UUID,
 	rules []models.CreateRuleInput,
 ) (scenarioId, scenarioIterationId string) {
 	// Create a new empty scenario
@@ -410,7 +411,7 @@ func setupScenarioAndPublish(
 	_, err = scenarioUsecase.UpdateScenario(ctx, models.UpdateScenarioInput{
 		Id:                         scenarioId,
 		DecisionToCaseOutcomes:     []models.Outcome{models.Decline, models.Review},
-		DecisionToCaseInboxId:      null.StringFrom(inboxId),
+		DecisionToCaseInboxId:      pure_utils.NullFrom(inboxId),
 		DecisionToCaseWorkflowType: &workflowType,
 	})
 	if err != nil {

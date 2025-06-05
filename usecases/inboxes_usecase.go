@@ -24,7 +24,8 @@ type InboxRepository interface {
 	SoftDeleteInbox(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) error
 
 	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters,
-		pagination models.PaginationAndSorting) ([]models.CaseWithRank, error) // Assuming CaseFilters.InboxIds will be updated to []uuid.UUID if necessary
+		pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
+	// Assuming CaseFilters.InboxIds will be updated to []uuid.UUID if necessary
 }
 
 type EnforceSecurityInboxes interface {
@@ -166,9 +167,8 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId uuid.UUID)
 				return err
 			}
 
-			// models.CaseFilters.InboxIds is []string
 			cases, err := usecase.inboxRepository.ListOrganizationCases(ctx, tx,
-				models.CaseFilters{InboxIds: []string{inboxId.String()}, OrganizationId: inbox.OrganizationId},
+				models.CaseFilters{InboxIds: []uuid.UUID{inboxId}, OrganizationId: inbox.OrganizationId},
 				models.PaginationAndSorting{Limit: 1, Order: models.SortingOrderDesc, Sorting: models.CasesSortingCreatedAt},
 			)
 			if err != nil {
