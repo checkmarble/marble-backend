@@ -50,32 +50,34 @@ func (f StringStartsEndsWith) Evaluate(ctx context.Context, arguments ast.Argume
 }
 
 func startsEndsWithString(left string, right string, f ast.Function) (any, []error) {
-	if f == ast.FUNC_STRING_STARTS_WITH {
+	switch f {
+	case ast.FUNC_STRING_STARTS_WITH:
 		return strings.HasPrefix(strings.ToLower(left), strings.ToLower(right)), nil
-	} else if f == ast.FUNC_STRING_ENDS_WITH {
+	case ast.FUNC_STRING_ENDS_WITH:
 		return strings.HasSuffix(strings.ToLower(left), strings.ToLower(right)), nil
-	} else {
+	default:
 		return MakeEvaluateError(errors.New(fmt.Sprintf(
 			"StringStartsWith does not support %s function", f.DebugString())))
 	}
 }
 
 func startsEndsWithListOfStrings(left string, right []string, f ast.Function) (any, []error) {
-	if f == ast.FUNC_STRING_STARTS_WITH {
+	switch f {
+	case ast.FUNC_STRING_STARTS_WITH:
 		for _, r := range right {
 			if strings.HasPrefix(strings.ToLower(left), strings.ToLower(r)) {
 				return true, nil
 			}
 		}
 		return false, nil
-	} else if f == ast.FUNC_STRING_ENDS_WITH {
+	case ast.FUNC_STRING_ENDS_WITH:
 		for _, r := range right {
 			if strings.HasSuffix(strings.ToLower(left), strings.ToLower(r)) {
 				return true, nil
 			}
 		}
 		return false, nil
-	} else {
+	default:
 		return MakeEvaluateError(errors.New(fmt.Sprintf(
 			"StringStartsWith does not support %s function", f.DebugString())))
 	}

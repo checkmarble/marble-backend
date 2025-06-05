@@ -531,10 +531,11 @@ func (repo MarbleDbRepository) BatchInsertEnumValues(ctx context.Context, exec E
 		dataType := table.Fields[fieldName].DataType
 
 		for value := range values {
-			if dataType == models.String {
+			switch dataType {
+			case models.String:
 				textQuery = textQuery.Values(fieldId, value)
 				shouldInsertTextValues = true
-			} else if dataType == models.Float {
+			case models.Float:
 				floatQuery = floatQuery.Values(fieldId, value)
 				shouldInsertFloatValues = true
 			}
