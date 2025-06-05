@@ -42,12 +42,12 @@ func (s *ScenarioFetcherRepositoryMock) ListSanctionCheckConfigs(ctx context.Con
 
 func (s *ScenarioFetcherRepositoryMock) GetSanctionCheckConfig(ctx context.Context,
 	exec repositories.Executor, scenarioIterationId, sanctionCheckId string,
-) (*models.SanctionCheckConfig, error) {
+) (models.SanctionCheckConfig, error) {
 	args := s.Called(exec, scenarioIterationId)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return models.SanctionCheckConfig{}, args.Error(1)
 	}
-	return args.Get(0).(*models.SanctionCheckConfig), args.Error(1)
+	return args.Get(0).(models.SanctionCheckConfig), args.Error(1)
 }
 
 func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
