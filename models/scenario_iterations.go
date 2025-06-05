@@ -64,6 +64,7 @@ type SanctionCheckConfig struct {
 	RuleGroup                *string
 	Datasets                 []string
 	TriggerRule              *ast.Node
+	EntityType               string
 	Query                    map[string]ast.Node
 	Threshold                *int
 	ForcedOutcome            Outcome
@@ -73,9 +74,9 @@ type SanctionCheckConfig struct {
 
 type SanctionCheckConfigPreprocessing struct {
 	UseNer          bool   `json:"use_ner,omitempty"`
-	SkipIfUnder     int    `json:"skip_if_under"`
-	RemoveNumbers   bool   `json:"remove_numbers"`
-	BlacklistListId string `json:"blacklist_list_id"`
+	SkipIfUnder     int    `json:"skip_if_under,omitempty"`
+	RemoveNumbers   bool   `json:"remove_numbers,omitempty"`
+	BlacklistListId string `json:"blacklist_list_id,omitempty"`
 }
 
 func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
@@ -108,6 +109,7 @@ type UpdateSanctionCheckConfigInput struct {
 	Datasets                 []string
 	Threshold                *int
 	TriggerRule              *ast.Node
+	EntityType               *string
 	Query                    map[string]ast.Node
 	CounterpartyIdExpression *ast.Node
 	ForcedOutcome            *Outcome

@@ -31,7 +31,7 @@ func SkipIfUnder(ctx context.Context, e ScenarioEvaluator, queries []models.Open
 	skipped := 0
 
 	for _, query := range queries {
-		if len(query.Filters["name"][0]) < scc.Preprocessing.SkipIfUnder {
+		if len(query.GetName()) < scc.Preprocessing.SkipIfUnder {
 			skipped += 1
 			continue
 		}
@@ -159,7 +159,7 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, queries []m
 					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
 				})
 
-			case "Company":
+			case "Company", "Organization":
 				out = append(out, models.OpenSanctionsCheckQuery{
 					Type:    "Organization",
 					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},

@@ -6,6 +6,15 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
+var (
+	OpenSanctionsValidFieldsPerClass = map[string][]string{
+		"Thing":        {"name"},
+		"Person":       {"name", "birthDate", "nationality", "idNumber", "address"},
+		"Organization": {"name", "country", "registrationNumber", "address"},
+		"Vehicle":      {"name", "registrationNumber"},
+	}
+)
+
 type RefineQueryDto struct {
 	Thing        *RefineQueryBase         `json:"Thing,omitempty" binding:"required_without_all=Person Organization Vehicle,excluded_with=Person Organization Vehicle"` //nolint:tagliatelle
 	Person       *RefineQueryPerson       `json:"Person,omitempty" binding:"required_without_all=Thing Organization Vehicle,excluded_with=Thing Organization Vehicle"`  //nolint:tagliatelle

@@ -147,6 +147,7 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
+			EntityType:  "Thing",
 			Query:       map[string]ast.Node{"name": {Constant: "constant string"}},
 		}},
 	}
@@ -172,12 +173,49 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestSanctionCheckWithSpecificEntityType(t *testing.T) {
+	eval, exec := getSanctionCheckEvaluator()
+
+	iteration := models.ScenarioIteration{
+		SanctionCheckConfigs: []models.SanctionCheckConfig{{
+			TriggerRule: &ast.Node{Constant: true},
+			EntityType:  "Person",
+			Query: map[string]ast.Node{
+				"name":      {Constant: "constant string"},
+				"birthDate": {Constant: "thedate"},
+			},
+		}},
+	}
+
+	expectedQuery := models.OpenSanctionsQuery{
+		Config: iteration.SanctionCheckConfigs[0],
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Person",
+				Filters: models.OpenSanctionCheckFilter{
+					"name":      []string{"constant string"},
+					"birthDate": []string{"thedate"},
+				},
+			},
+		},
+	}
+
+	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+		ScenarioEvaluationParameters{}, DataAccessor{})
+
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+
+	assert.True(t, performed)
+	assert.NoError(t, err)
+}
+
 func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 	eval, exec := getSanctionCheckEvaluator()
 
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
+			EntityType:  "Thing",
 			Query: map[string]ast.Node{"name": {
 				Function:      ast.FUNC_STRING_CONCAT,
 				NamedChildren: map[string]ast.Node{"with_separator": {Constant: true}},
@@ -264,6 +302,7 @@ func TestSanctionCheckCalledWithNameRecognitionDisabled(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule: &ast.Node{Constant: true},
+			EntityType:  "Thing",
 			Query:       map[string]ast.Node{"name": {Constant: "bob gross"}},
 		}},
 	}
@@ -340,6 +379,7 @@ func TestSanctionCheckWithLengthPreprocessing(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
+			EntityType:    "Thing",
 			Query:         map[string]ast.Node{"name": {Constant: "constant string"}},
 			Preprocessing: models.SanctionCheckConfigPreprocessing{SkipIfUnder: 10, UseNer: true},
 		}},
@@ -429,6 +469,7 @@ func TestSanctionCheckWithListPreprocessing(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		SanctionCheckConfigs: []models.SanctionCheckConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
+			EntityType:    "Thing",
 			Query:         map[string]ast.Node{"name": {Constant: "This Contains Forbidden Words"}},
 			Preprocessing: models.SanctionCheckConfigPreprocessing{BlacklistListId: "ola"},
 		}},
