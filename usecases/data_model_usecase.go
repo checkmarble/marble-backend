@@ -776,7 +776,7 @@ func (uc DataModelUseCase) UpdateDataModelOptions(ctx context.Context,
 			models.UnprocessableEntityError, "table not found")
 	}
 
-	if req.DisplayedFields != nil && len(req.DisplayedFields) > 0 {
+	if len(req.DisplayedFields) > 0 {
 		for _, fieldId := range req.DisplayedFields {
 			fieldFound := false
 

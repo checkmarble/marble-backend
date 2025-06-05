@@ -47,11 +47,12 @@ func (f ContainsAny) Evaluate(ctx context.Context, arguments ast.Arguments) (any
 		}
 	}
 
-	if f.Function == ast.FUNC_CONTAINS_ANY {
+	switch f.Function {
+	case ast.FUNC_CONTAINS_ANY:
 		return containsElement, nil
-	} else if f.Function == ast.FUNC_CONTAINS_NONE {
+	case ast.FUNC_CONTAINS_NONE:
 		return !containsElement, nil
-	} else {
+	default:
 		return MakeEvaluateError(errors.New(fmt.Sprintf(
 			"ContainsAny does not support %s function", f.Function.DebugString())))
 	}

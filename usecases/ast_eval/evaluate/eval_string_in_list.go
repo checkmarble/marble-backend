@@ -37,11 +37,12 @@ func (f StringInList) Evaluate(ctx context.Context, arguments ast.Arguments) (an
 		return nil, errs
 	}
 
-	if f.Function == ast.FUNC_IS_IN_LIST {
+	switch f.Function {
+	case ast.FUNC_IS_IN_LIST:
 		return stringInList(left, right), nil
-	} else if f.Function == ast.FUNC_IS_NOT_IN_LIST {
+	case ast.FUNC_IS_NOT_IN_LIST:
 		return !stringInList(left, right), nil
-	} else {
+	default:
 		return MakeEvaluateError(errors.New(fmt.Sprintf(
 			"StringInList does not support %s function", f.Function.DebugString())))
 	}

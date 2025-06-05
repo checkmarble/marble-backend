@@ -123,7 +123,7 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 		o.Sanctions = MissingConfiguration
 	}
 
-	if user != nil && *&user.AiAssistEnabled {
+	if user != nil && user.AiAssistEnabled {
 		o.AiAssist = Allowed
 	}
 
