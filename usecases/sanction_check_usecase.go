@@ -299,7 +299,7 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 	query := models.OpenSanctionsQuery{
 		IsRefinement: true,
 		OrgConfig:    sc.OrgConfig,
-		Config:       *scc,
+		Config:       scc,
 		Queries:      models.AdaptRefineRequestToMatchable(refine),
 	}
 
@@ -371,7 +371,7 @@ func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.Sanctio
 	query := models.OpenSanctionsQuery{
 		IsRefinement: true,
 		OrgConfig:    sc.OrgConfig,
-		Config:       *scc,
+		Config:       scc,
 		Queries:      models.AdaptRefineRequestToMatchable(refine),
 	}
 

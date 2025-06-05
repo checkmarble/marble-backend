@@ -37,9 +37,9 @@ func (repo *MarbleDbRepository) GetSanctionCheckConfig(
 	ctx context.Context,
 	exec Executor,
 	scenarioIterationId, sanctionCheckConfigId string,
-) (*models.SanctionCheckConfig, error) {
+) (models.SanctionCheckConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
+		return models.SanctionCheckConfig{}, err
 	}
 
 	sql := NewQueryBuilder().
@@ -47,7 +47,7 @@ func (repo *MarbleDbRepository) GetSanctionCheckConfig(
 		From(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
 		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationId, "id": sanctionCheckConfigId})
 
-	return SqlToOptionalModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
 }
 
 func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, exec Executor,
@@ -208,6 +208,10 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 	}
 	if len(updateFields) > 0 {
 		sql = sql.Set("updated_at", time.Now())
+	}
+
+	if len(updateFields) == 0 {
+		return repo.GetSanctionCheckConfig(ctx, exec, scenarioIterationId, id)
 	}
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)

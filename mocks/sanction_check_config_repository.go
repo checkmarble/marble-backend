@@ -29,12 +29,12 @@ func (r *SanctionCheckConfigRepository) GetSanctionCheckConfig(
 	exec repositories.Executor,
 	scenarioIterationId string,
 	sanctionCheckId string,
-) (*models.SanctionCheckConfig, error) {
+) (models.SanctionCheckConfig, error) {
 	args := r.Called(ctx, exec, scenarioIterationId, sanctionCheckId)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return models.SanctionCheckConfig{}, args.Error(1)
 	}
-	return args.Get(0).(*models.SanctionCheckConfig), args.Error(1)
+	return args.Get(0).(models.SanctionCheckConfig), args.Error(1)
 }
 
 func (r *SanctionCheckConfigRepository) CreateSanctionCheckConfig(

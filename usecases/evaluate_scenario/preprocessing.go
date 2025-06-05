@@ -144,6 +144,7 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, queries []m
 		}
 
 		if len(matches) == 0 {
+			utils.LoggerFromContext(ctx).Debug("screening preprocessing: name entity recognition returns no match, using initial query")
 			out = append(out, query)
 			continue
 		}

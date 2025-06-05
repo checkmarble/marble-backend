@@ -48,7 +48,8 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 			if !ok {
 				sanctionCheckErr = errors.New("sanction check trigger rule did not evaluate to a boolean")
 			} else if !passed {
-				return
+				sanctionCheck = append(sanctionCheck, outcomeNoHit(scc))
+				continue
 			}
 		}
 
