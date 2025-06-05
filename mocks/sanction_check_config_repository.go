@@ -61,8 +61,8 @@ func (r *SanctionCheckConfigRepository) UpdateSanctionCheckConfig(
 func (r *SanctionCheckConfigRepository) DeleteSanctionCheckConfig(
 	ctx context.Context,
 	exec repositories.Executor,
-	scenarioIterationId string,
+	scenarioIterationId, configId string,
 ) error {
-	args := r.Called(ctx, exec, scenarioIterationId)
+	args := r.Called(ctx, exec, scenarioIterationId, configId)
 	return args.Error(0)
 }

@@ -20,7 +20,7 @@ type SanctionCheckConfigRepository interface {
 		scenarioIterationId string, sanctionCheckConfig models.UpdateSanctionCheckConfigInput) (models.SanctionCheckConfig, error)
 	UpdateSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
 		scenarioIterationId, sanctionCheckId string, sanctionCheckConfig models.UpdateSanctionCheckConfigInput) (models.SanctionCheckConfig, error)
-	DeleteSanctionCheckConfig(ctx context.Context, exec repositories.Executor, iterationId string) error
+	DeleteSanctionCheckConfig(ctx context.Context, exec repositories.Executor, iterationId, configId string) error
 }
 
 func (uc SanctionCheckUsecase) CreateSanctionCheckConfig(ctx context.Context, iterationId string,
@@ -106,7 +106,7 @@ func (uc SanctionCheckUsecase) UpdateSanctionCheckConfig(ctx context.Context,
 	return scc, nil
 }
 
-func (uc SanctionCheckUsecase) DeleteSanctionCheckConfig(ctx context.Context, iterationId string) error {
+func (uc SanctionCheckUsecase) DeleteSanctionCheckConfig(ctx context.Context, iterationId, configId string) error {
 	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx,
 		uc.executorFactory.NewExecutor(), iterationId)
 	if err != nil {
@@ -123,5 +123,5 @@ func (uc SanctionCheckUsecase) DeleteSanctionCheckConfig(ctx context.Context, it
 	}
 
 	return uc.sanctionCheckConfigRepository.DeleteSanctionCheckConfig(ctx,
-		uc.executorFactory.NewExecutor(), iterationId)
+		uc.executorFactory.NewExecutor(), iterationId, configId)
 }
