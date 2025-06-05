@@ -15,7 +15,7 @@ type ScenarioFetcherRepository interface {
 	ListSanctionCheckConfigs(ctx context.Context, exec repositories.Executor,
 		scenarioIterationId string) ([]models.SanctionCheckConfig, error)
 	GetSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
-		scenarioIterationId, sanctionCheckId string) (*models.SanctionCheckConfig, error)
+		scenarioIterationId, sanctionCheckId string) (models.SanctionCheckConfig, error)
 }
 
 type ScenarioFetcher struct {
