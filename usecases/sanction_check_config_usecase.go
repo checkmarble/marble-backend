@@ -15,7 +15,7 @@ type SanctionCheckConfigRepository interface {
 	ListSanctionCheckConfigs(ctx context.Context, exec repositories.Executor,
 		scenarioIterationId string) ([]models.SanctionCheckConfig, error)
 	GetSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
-		scenarioIterationId, id string) (*models.SanctionCheckConfig, error)
+		scenarioIterationId, id string) (models.SanctionCheckConfig, error)
 	CreateSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
 		scenarioIterationId string, sanctionCheckConfig models.UpdateSanctionCheckConfigInput) (models.SanctionCheckConfig, error)
 	UpdateSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
