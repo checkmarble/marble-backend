@@ -193,7 +193,7 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (
 }
 
 func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.OpenSanctionsQuery) (models.SanctionRawSearchResponseWithMatches, error) {
-	req, rawQuery, err := repo.searchRequest(ctx, query)
+	req, rawQuery, err := repo.searchRequest(ctx, &query)
 	if err != nil {
 		return models.SanctionRawSearchResponseWithMatches{}, err
 	}
@@ -231,6 +231,8 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 			"duration", time.Since(startedAt).Milliseconds(),
 			"matches", len(sanctionCheck.Matches),
 			"partial", sanctionCheck.Partial)
+
+	sanctionCheck.EffectiveThreshold = query.EffectiveThreshold
 
 	return sanctionCheck, err
 }
@@ -290,7 +292,7 @@ func (repo OpenSanctionsRepository) authenticateRequest(req *http.Request) {
 }
 
 func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
-	query models.OpenSanctionsQuery,
+	query *models.OpenSanctionsQuery,
 ) (*http.Request, []byte, error) {
 	q := openSanctionsRequest{
 		Queries: make(map[string]openSanctionsRequestQuery, len(query.Queries)),
@@ -312,7 +314,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 
 	requestUrl := fmt.Sprintf("%s/match/sanctions", repo.opensanctions.Host())
 
-	if qs := repo.buildQueryString(&query.Config, &query); len(qs) > 0 {
+	if qs := repo.buildQueryString(&query.Config, query); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
 	}
 
@@ -336,9 +338,11 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg *models.SanctionCheckCo
 	}
 
 	if query != nil {
+		query.EffectiveThreshold = utils.Or(query.Config.Threshold, query.OrgConfig.MatchThreshold)
+
 		// Unless determined otherwise, we do not need those results that are *not*
 		// matches. They could still be filtered further down the chain, but we do not need them returned.
-		qs.Set("threshold", fmt.Sprintf("%.2f", float64(query.OrgConfig.MatchThreshold)/100))
+		qs.Set("threshold", fmt.Sprintf("%.2f", float64(query.EffectiveThreshold)/100))
 		qs.Set("cutoff", fmt.Sprintf("%.2f", float64(query.OrgConfig.MatchThreshold)/100))
 
 		qs.Set("limit", fmt.Sprintf("%d", query.OrgConfig.MatchLimit+query.LimitIncrease))

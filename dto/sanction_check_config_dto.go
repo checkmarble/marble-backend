@@ -14,6 +14,7 @@ type SanctionCheckConfig struct {
 	Description              *string                                  `json:"description"`
 	RuleGroup                *string                                  `json:"rule_group,omitempty"`
 	Datasets                 []string                                 `json:"datasets,omitempty"`
+	Threshold                *int                                     `json:"threshold,omitempty" binding:"omitempty,min=0,max=100"`
 	ForcedOutcome            *string                                  `json:"forced_outcome,omitempty"`
 	TriggerRule              *NodeDto                                 `json:"trigger_rule"`
 	Query                    map[string]NodeDto                       `json:"query"`
@@ -28,6 +29,7 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 		Description:   &model.Description,
 		RuleGroup:     model.RuleGroup,
 		Datasets:      model.Datasets,
+		Threshold:     model.Threshold,
 		ForcedOutcome: utils.Ptr(model.ForcedOutcome.String()),
 		Preprocessing: &model.Preprocessing,
 	}
@@ -68,6 +70,7 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 		Description:   dto.Description,
 		RuleGroup:     dto.RuleGroup,
 		Datasets:      dto.Datasets,
+		Threshold:     dto.Threshold,
 		Preprocessing: dto.Preprocessing,
 	}
 	if dto.ForcedOutcome != nil {

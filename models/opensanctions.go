@@ -27,11 +27,12 @@ type OpenSanctionsCatalogDataset struct {
 }
 
 type OpenSanctionsQuery struct {
-	IsRefinement  bool
-	LimitIncrease int
-	Queries       []OpenSanctionsCheckQuery
-	Config        SanctionCheckConfig
-	OrgConfig     OrganizationOpenSanctionsConfig
+	IsRefinement       bool
+	EffectiveThreshold int
+	LimitIncrease      int
+	Queries            []OpenSanctionsCheckQuery
+	Config             SanctionCheckConfig
+	OrgConfig          OrganizationOpenSanctionsConfig
 }
 
 type OpenSanctionsCheckQuery struct {
