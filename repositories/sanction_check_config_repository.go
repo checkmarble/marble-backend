@@ -217,10 +217,13 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
 }
 
-func (repo *MarbleDbRepository) DeleteSanctionCheckConfig(ctx context.Context, exec Executor, scenarioIterationId string) error {
+func (repo *MarbleDbRepository) DeleteSanctionCheckConfig(ctx context.Context, exec Executor, scenarioIterationId, configId string) error {
 	sql := NewQueryBuilder().
 		Delete(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
-		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationId})
+		Where(squirrel.Eq{
+			"scenario_iteration_id": scenarioIterationId,
+			"id":                    configId,
+		})
 
 	if err := ExecBuilder(ctx, exec, sql); err != nil {
 		return err
