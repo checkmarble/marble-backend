@@ -160,10 +160,11 @@ func handleUpdateSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) 
 func handleDeleteSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		iterationId := c.Param("iteration_id")
+		configId := c.Param("config_id")
 		ctx := c.Request.Context()
 		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
 
-		if presentError(ctx, c, uc.DeleteSanctionCheckConfig(ctx, iterationId)) {
+		if presentError(ctx, c, uc.DeleteSanctionCheckConfig(ctx, iterationId, configId)) {
 			return
 		}
 
