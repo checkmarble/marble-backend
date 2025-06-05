@@ -106,6 +106,7 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 			"threshold",
 			"forced_outcome",
 			"trigger_rule",
+			"entity_type",
 			"query",
 			"counterparty_id_expression",
 			"preprocessing",
@@ -120,6 +121,7 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 			cfg.Threshold,
 			forcedOutcome.String(),
 			triggerRule,
+			utils.Or(cfg.EntityType, "Thing"),
 			query,
 			counterpartyIdExpr,
 			utils.Or(cfg.Preprocessing, models.SanctionCheckConfigPreprocessing{}),
@@ -177,45 +179,56 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
 		Where(squirrel.Eq{"id": id}).
-		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SanctionCheckConfigColumnList, ","))).
+		Set("updated_at", time.Now())
 
-	updateFields := make([]string, 0, 4)
+	updateFields := false
 
 	if cfg.Name != nil {
 		sql = sql.Set("name", cfg.Name)
+		updateFields = true
 	}
 	if cfg.Description != nil {
 		sql = sql.Set("description", cfg.Description)
+		updateFields = true
 	}
 	if cfg.RuleGroup != nil {
 		sql = sql.Set("rule_group", cfg.RuleGroup)
+		updateFields = true
 	}
 	if cfg.Datasets != nil {
 		sql = sql.Set("datasets", cfg.Datasets)
+		updateFields = true
 	}
 	if cfg.Threshold != nil {
 		sql = sql.Set("threshold", cfg.Threshold)
 	}
 	if cfg.TriggerRule != nil {
 		sql = sql.Set("trigger_rule", triggerRule)
+		updateFields = true
+	}
+	if cfg.Query != nil {
+		sql = sql.Set("entity_type", cfg.EntityType)
+		updateFields = true
 	}
 	if cfg.Query != nil {
 		sql = sql.Set("query", query)
+		updateFields = true
 	}
 	if cfg.CounterpartyIdExpression != nil {
 		sql = sql.Set("counterparty_id_expression", counterpartyIdExpr)
+		updateFields = true
 	}
 	if cfg.ForcedOutcome != nil {
 		sql = sql.Set("forced_outcome", forcedOutcome)
+		updateFields = true
 	}
 	if cfg.Preprocessing != nil {
 		sql = sql.Set("preprocessing", *cfg.Preprocessing)
-	}
-	if len(updateFields) > 0 {
-		sql = sql.Set("updated_at", time.Now())
+		updateFields = true
 	}
 
-	if len(updateFields) == 0 {
+	if !updateFields {
 		return repo.GetSanctionCheckConfig(ctx, exec, scenarioIterationId, id)
 	}
 
