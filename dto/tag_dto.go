@@ -13,6 +13,7 @@ type APITag struct {
 	OrganizationId string    `json:"organization_id"`
 	CreatedAt      time.Time `json:"created_at"`
 	CasesCount     *int      `json:"cases_count"`
+	Target         string    `json:"target"`
 }
 
 func AdaptTagDto(t models.Tag) APITag {
@@ -23,6 +24,7 @@ func AdaptTagDto(t models.Tag) APITag {
 		OrganizationId: t.OrganizationId,
 		CreatedAt:      t.CreatedAt,
 		CasesCount:     t.CasesCount,
+		Target:         string(t.Target),
 	}
 }
 
