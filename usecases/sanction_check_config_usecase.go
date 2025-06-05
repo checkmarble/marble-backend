@@ -84,6 +84,19 @@ func (uc SanctionCheckUsecase) UpdateSanctionCheckConfig(ctx context.Context,
 			fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id))
 	}
 
+	currentScc, err := uc.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, uc.executorFactory.NewExecutor(), iterationId, sanctionCheckId)
+	if err != nil {
+		return models.SanctionCheckConfig{}, err
+	}
+
+	if scCfg.EntityType != nil && *scCfg.EntityType != "Thing" {
+		if scCfg.Preprocessing == nil {
+			scCfg.Preprocessing = &currentScc.Preprocessing
+		}
+
+		scCfg.Preprocessing.UseNer = false
+	}
+
 	if scCfg.Query != nil {
 		if scCfg.Query != nil && scCfg.Query["name"].Function != ast.FUNC_STRING_CONCAT {
 			return models.SanctionCheckConfig{}, errors.New(
