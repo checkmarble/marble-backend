@@ -123,7 +123,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 				return err
 			}
 
-			if phantomDecision.SanctionCheckExecutions != nil {
+			if len(phantomDecision.SanctionCheckExecutions) > 0 {
 				// We don't need to store the matches in the case of a phantom decision
 				// because we are only interested in statistics on the sanction check status
 				for _, sce := range phantomDecision.SanctionCheckExecutions {
