@@ -15,7 +15,7 @@ func (sanctionCheckEnforcerMock) ReadDecision(models.Decision) error {
 	return nil
 }
 
-func (sanctionCheckEnforcerMock) ReadOrUpdateCase(models.CaseMetadata, []string) error {
+func (sanctionCheckEnforcerMock) ReadOrUpdateCase(models.CaseMetadata, []uuid.UUID) error {
 	return nil
 }
 

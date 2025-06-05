@@ -6,6 +6,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type APICase struct {
@@ -14,7 +15,7 @@ type APICase struct {
 	CreatedAt      time.Time            `json:"created_at"`
 	DecisionsCount int                  `json:"decisions_count"`
 	Events         []APICaseEvent       `json:"events"`
-	InboxId        string               `json:"inbox_id"`
+	InboxId        uuid.UUID            `json:"inbox_id"`
 	Name           string               `json:"name"`
 	Status         string               `json:"status"`
 	Outcome        string               `json:"outcome"`
@@ -82,16 +83,16 @@ func AdaptCaseWithDecisionsDto(c models.Case) APICaseWithDecisions {
 }
 
 type CreateCaseBody struct {
-	DecisionIds []string `json:"decision_ids"`
-	InboxId     string   `json:"inbox_id" binding:"required"`
-	Name        string   `json:"name" binding:"required"`
+	DecisionIds []string  `json:"decision_ids"`
+	InboxId     uuid.UUID `json:"inbox_id" binding:"required"`
+	Name        string    `json:"name" binding:"required"`
 }
 
 type UpdateCaseBody struct {
-	InboxId string `json:"inbox_id"`
-	Name    string `json:"name"`
-	Status  string `json:"status"`
-	Outcome string `json:"outcome"`
+	InboxId *uuid.UUID `json:"inbox_id"`
+	Name    string     `json:"name"`
+	Status  string     `json:"status"`
+	Outcome string     `json:"outcome"`
 }
 
 type AddDecisionToCaseBody struct {
@@ -104,7 +105,7 @@ type CreateCaseCommentBody struct {
 
 type CaseFilters struct {
 	EndDate         time.Time     `form:"end_date"`
-	InboxIds        []string      `form:"inbox_id[]"`
+	InboxIds        []uuid.UUID   `form:"inbox_id[]"`
 	StartDate       time.Time     `form:"start_date"`
 	Statuses        []string      `form:"status[]"`
 	Name            string        `form:"name"`
