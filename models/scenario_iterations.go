@@ -65,6 +65,7 @@ type SanctionCheckConfig struct {
 	Datasets                 []string
 	TriggerRule              *ast.Node
 	Query                    map[string]ast.Node
+	Threshold                *int
 	ForcedOutcome            Outcome
 	CounterpartyIdExpression *ast.Node
 	Preprocessing            SanctionCheckConfigPreprocessing
@@ -105,6 +106,7 @@ type UpdateSanctionCheckConfigInput struct {
 	Description              *string
 	RuleGroup                *string
 	Datasets                 []string
+	Threshold                *int
 	TriggerRule              *ast.Node
 	Query                    map[string]ast.Node
 	CounterpartyIdExpression *ast.Node

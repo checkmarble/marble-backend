@@ -103,6 +103,7 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 			"description",
 			"rule_group",
 			"datasets",
+			"threshold",
 			"forced_outcome",
 			"trigger_rule",
 			"query",
@@ -116,6 +117,7 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 			utils.Or(cfg.Description, ""),
 			utils.Or(cfg.RuleGroup, ""),
 			cfg.Datasets,
+			cfg.Threshold,
 			forcedOutcome.String(),
 			triggerRule,
 			query,
@@ -190,6 +192,9 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 	}
 	if cfg.Datasets != nil {
 		sql = sql.Set("datasets", cfg.Datasets)
+	}
+	if cfg.Threshold != nil {
+		sql = sql.Set("threshold", cfg.Threshold)
 	}
 	if cfg.TriggerRule != nil {
 		sql = sql.Set("trigger_rule", triggerRule)

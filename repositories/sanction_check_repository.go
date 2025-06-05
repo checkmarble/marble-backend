@@ -243,7 +243,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		sanctionCheck.SanctionCheckConfigId,
 		sanctionCheck.SearchInput,
 		sanctionCheck.Datasets,
-		sanctionCheck.OrgConfig.MatchThreshold,
+		sanctionCheck.EffectiveThreshold,
 		sanctionCheck.OrgConfig.MatchLimit,
 		sanctionCheck.Partial,
 		sanctionCheck.IsManual,
