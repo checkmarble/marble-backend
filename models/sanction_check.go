@@ -118,8 +118,9 @@ type SanctionCheckConfigRef struct {
 }
 type SanctionCheckWithMatches struct {
 	SanctionCheck
-	Matches []SanctionCheckMatch
-	Count   int
+	Matches            []SanctionCheckMatch
+	Count              int
+	EffectiveThreshold int
 
 	Duration                time.Duration
 	NameRecognitionDuration time.Duration
@@ -131,6 +132,7 @@ type SanctionRawSearchResponseWithMatches struct {
 	WhitelistedEntities []string
 	Partial             bool
 	ErrorCodes          []string
+	EffectiveThreshold  int
 
 	Matches []SanctionCheckMatch
 	Count   int
@@ -150,8 +152,9 @@ func (s SanctionRawSearchResponseWithMatches) AdaptSanctionCheckFromSearchRespon
 			CreatedAt:             time.Now(),
 			UpdatedAt:             time.Now(),
 		},
-		Matches: s.Matches,
-		Count:   s.Count,
+		Matches:            s.Matches,
+		EffectiveThreshold: s.EffectiveThreshold,
+		Count:              s.Count,
 	}
 	sanctionCheck.Status = sanctionCheck.InitialStatusFromMatches()
 	return sanctionCheck
