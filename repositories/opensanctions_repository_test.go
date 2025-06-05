@@ -10,6 +10,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/h2non/gock"
 	"github.com/stretchr/testify/assert"
 )
@@ -245,7 +246,7 @@ func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 				},
 			},
 		},
-		OrgConfig: models.OrganizationOpenSanctionsConfig{},
+		OrgConfig: models.OrganizationOpenSanctionsConfig{MatchThreshold: 70},
 	}
 
 	body, _ := os.ReadFile("./fixtures/opensanctions/response_full.json")
@@ -261,6 +262,48 @@ func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, matches.Matches, 2)
 	assert.Equal(t, false, matches.Partial)
+	assert.Equal(t, 70, matches.EffectiveThreshold)
+
+	for idx := range 2 {
+		if !strings.Contains(string(matches.Matches[idx].Payload), "Joe") &&
+			!strings.Contains(string(matches.Matches[idx].Payload), "ACME Inc.") {
+			t.Error("payloads did not contain required text")
+		}
+	}
+}
+
+func TestOpenSanctionsSuccessfulFullResponseWithThresholdOverride(t *testing.T) {
+	defer gock.Off()
+
+	repo := getMockedOpenSanctionsRepository("", "", "")
+	cfg := models.SanctionCheckConfig{Threshold: utils.Ptr(30)}
+	query := models.OpenSanctionsQuery{
+		Config: cfg,
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionCheckFilter{
+					"name": []string{"bob"},
+				},
+			},
+		},
+		OrgConfig: models.OrganizationOpenSanctionsConfig{MatchThreshold: 70},
+	}
+
+	body, _ := os.ReadFile("./fixtures/opensanctions/response_full.json")
+
+	gock.New(infra.OPEN_SANCTIONS_API_HOST).
+		Post("/match/default").
+		Reply(http.StatusOK).
+		BodyString(string(body))
+
+	matches, err := repo.Search(context.TODO(), query)
+
+	assert.False(t, gock.HasUnmatchedRequest())
+	assert.NoError(t, err)
+	assert.Len(t, matches.Matches, 2)
+	assert.Equal(t, false, matches.Partial)
+	assert.Equal(t, 30, matches.EffectiveThreshold)
 
 	for idx := range 2 {
 		if !strings.Contains(string(matches.Matches[idx].Payload), "Joe") &&
