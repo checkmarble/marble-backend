@@ -48,6 +48,10 @@ do $$
     declare config sanction_check_configs%rowtype;
 begin
     update sanction_check_configs
+    set config_version = 'v1_empty'
+    where query = '{}';
+
+    update sanction_check_configs
     set
         config_version = 'v1_name_only',
         query =
@@ -158,6 +162,10 @@ declare
     where config_version in ('v1_name', 'v1_label')
     group by scenario_iteration_id;
 begin
+    update sanction_check_configs
+    set query = '{}'
+    where config_version = 'v1_empty';
+
     update sanction_check_configs
     set query = jsonb_build_object('label', (query->>'name')::jsonb)
     where config_version = 'v1_label_only';
