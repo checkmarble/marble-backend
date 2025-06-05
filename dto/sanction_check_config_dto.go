@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"slices"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -17,6 +19,7 @@ type SanctionCheckConfig struct {
 	Threshold                *int                                     `json:"threshold,omitempty" binding:"omitempty,min=0,max=100"`
 	ForcedOutcome            *string                                  `json:"forced_outcome,omitempty"`
 	TriggerRule              *NodeDto                                 `json:"trigger_rule"`
+	EntityType               *string                                  `json:"entity_type" binding:"omitempty,oneof=Thing Person Organization Vehicle"`
 	Query                    map[string]NodeDto                       `json:"query"`
 	CounterpartyIdExpression *NodeDto                                 `json:"counterparty_id_expression"`
 	Preprocessing            *models.SanctionCheckConfigPreprocessing `json:"preprocessing,omitzero"`
@@ -31,6 +34,7 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 		Datasets:      model.Datasets,
 		Threshold:     model.Threshold,
 		ForcedOutcome: utils.Ptr(model.ForcedOutcome.String()),
+		EntityType:    &model.EntityType,
 		Preprocessing: &model.Preprocessing,
 	}
 
@@ -71,6 +75,7 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 		RuleGroup:     dto.RuleGroup,
 		Datasets:      dto.Datasets,
 		Threshold:     dto.Threshold,
+		EntityType:    dto.EntityType,
 		Preprocessing: dto.Preprocessing,
 	}
 	if dto.ForcedOutcome != nil {
@@ -131,4 +136,29 @@ func AdaptSanctionCheckConfigQuery(model ast.Node) (NodeDto, error) {
 
 func AdaptSanctionCheckConfigQueryDto(dto map[string]NodeDto) (map[string]ast.Node, error) {
 	return pure_utils.MapValuesErr(dto, AdaptASTNode)
+}
+
+func (scc SanctionCheckConfig) ValidateOpenSanctionsQuery() error {
+	entityType := utils.Or(scc.EntityType, "Thing")
+
+	if (scc.EntityType == nil && scc.Query != nil) || (scc.EntityType != nil && scc.Query == nil) {
+		return errors.Wrapf(models.BadParameterError, "entity_type and query must be specified together")
+	}
+
+	if scc.Preprocessing != nil && entityType != "Thing" && scc.Preprocessing.UseNer {
+		return errors.Wrapf(models.BadParameterError, "can only use NER preprocessing when using entity type 'Thing'")
+	}
+
+	allowedFields, ok := OpenSanctionsValidFieldsPerClass[entityType]
+	if !ok {
+		return errors.Wrapf(models.BadParameterError, "invalid OpenSanctions entity class '%s'", entityType)
+	}
+
+	for field := range scc.Query {
+		if !slices.Contains(allowedFields, field) {
+			return errors.Wrapf(models.BadParameterError, "invalid field '%s' for OpenSanctions entity class '%s'", field, entityType)
+		}
+	}
+
+	return nil
 }

@@ -94,6 +94,11 @@ func handleCreateSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) 
 			return
 		}
 
+		if presentError(ctx, c, input.ValidateOpenSanctionsQuery()) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
 		config, err := dto.AdaptSanctionCheckConfigInputDto(input)
 
 		if presentError(ctx, c, err) {
@@ -129,6 +134,10 @@ func handleUpdateSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) 
 
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		if presentError(ctx, c, input.ValidateOpenSanctionsQuery()) {
 			return
 		}
 

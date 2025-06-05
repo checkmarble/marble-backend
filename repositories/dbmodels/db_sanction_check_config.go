@@ -22,6 +22,7 @@ type DBSanctionCheckConfigs struct {
 	RuleGroup           string                                  `db:"rule_group"`
 	Datasets            []string                                `db:"datasets"`
 	TriggerRule         []byte                                  `db:"trigger_rule"`
+	EntityType          string                                  `db:"entity_type"`
 	Query               json.RawMessage                         `db:"query"`
 	Threshold           *int                                    `db:"threshold"`
 	ForcedOutcome       string                                  `db:"forced_outcome"`
@@ -41,6 +42,7 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 		Name:                db.Name,
 		Description:         db.Description,
 		RuleGroup:           &db.RuleGroup,
+		EntityType:          db.EntityType,
 		Datasets:            db.Datasets,
 		Threshold:           db.Threshold,
 		ForcedOutcome:       models.OutcomeFrom(db.ForcedOutcome),

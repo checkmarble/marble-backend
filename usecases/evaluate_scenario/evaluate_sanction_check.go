@@ -57,34 +57,36 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		var err error
 
 		if scc.Query != nil {
-			inputAst, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-				scc.Query["name"], iteration.OrganizationId,
-				dataAccessor.ClientObject, dataAccessor.DataModel)
-			if err != nil {
-				return
-			}
-
-			if inputAst.ReturnValue == nil {
-				sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty))
-				continue
-			}
-
-			input, ok := inputAst.ReturnValue.(string)
-			if !ok {
-				return nil, false, errors.New("name filter name query did not return a string")
-			}
-			if input == "" {
-				sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty))
-				continue
-			}
-
 			queries = []models.OpenSanctionsCheckQuery{
 				{
-					Type: "Thing",
-					Filters: models.OpenSanctionCheckFilter{
-						"name": []string{input},
-					},
+					Type:    scc.EntityType,
+					Filters: models.OpenSanctionCheckFilter{},
 				},
+			}
+
+			for fieldName, fieldAst := range scc.Query {
+				inputAst, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
+					fieldAst, iteration.OrganizationId,
+					dataAccessor.ClientObject, dataAccessor.DataModel)
+				if err != nil {
+					return
+				}
+
+				if inputAst.ReturnValue == nil {
+					sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty))
+					continue
+				}
+
+				input, ok := inputAst.ReturnValue.(string)
+				if !ok {
+					return nil, false, errors.New("name filter name query did not return a string")
+				}
+				if input == "" {
+					sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty))
+					continue
+				}
+
+				queries[0].Filters[fieldName] = []string{input}
 			}
 
 			if queries, err = e.preprocess(ctx, queries, iteration, scc); err != nil {
