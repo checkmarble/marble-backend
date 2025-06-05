@@ -6,29 +6,29 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/guregu/null/v5"
+	"github.com/google/uuid"
 )
 
 // Read DTO
 type ScenarioDto struct {
-	Id                         string      `json:"id"`
-	CreatedAt                  time.Time   `json:"created_at"`
-	DecisionToCaseOutcomes     []string    `json:"decision_to_case_outcomes"`
-	DecisionToCaseInboxId      null.String `json:"decision_to_case_inbox_id"`
-	DecisionToCaseWorkflowType string      `json:"decision_to_case_workflow_type"`
-	DecisionToCaseNameTemplate *NodeDto    `json:"decision_to_case_name_template"`
-	Description                string      `json:"description"`
-	LiveVersionID              *string     `json:"live_version_id,omitempty"`
-	Name                       string      `json:"name"`
-	OrganizationId             string      `json:"organization_id"`
-	TriggerObjectType          string      `json:"trigger_object_type"`
+	Id                         string     `json:"id"`
+	CreatedAt                  time.Time  `json:"created_at"`
+	DecisionToCaseOutcomes     []string   `json:"decision_to_case_outcomes"`
+	DecisionToCaseInboxId      *uuid.UUID `json:"decision_to_case_inbox_id"`
+	DecisionToCaseWorkflowType string     `json:"decision_to_case_workflow_type"`
+	DecisionToCaseNameTemplate *NodeDto   `json:"decision_to_case_name_template"`
+	Description                string     `json:"description"`
+	LiveVersionID              *string    `json:"live_version_id,omitempty"`
+	Name                       string     `json:"name"`
+	OrganizationId             string     `json:"organization_id"`
+	TriggerObjectType          string     `json:"trigger_object_type"`
 }
 
 func AdaptScenarioDto(scenario models.Scenario) (ScenarioDto, error) {
 	scenarioDto := ScenarioDto{
 		Id:                    scenario.Id,
 		CreatedAt:             scenario.CreatedAt,
-		DecisionToCaseInboxId: null.StringFromPtr(scenario.DecisionToCaseInboxId),
+		DecisionToCaseInboxId: scenario.DecisionToCaseInboxId,
 		DecisionToCaseOutcomes: pure_utils.Map(scenario.DecisionToCaseOutcomes,
 			func(o models.Outcome) string { return o.String() }),
 		DecisionToCaseWorkflowType: string(scenario.DecisionToCaseWorkflowType),
@@ -71,12 +71,12 @@ func AdaptCreateScenarioInput(input CreateScenarioBody, organizationId string) m
 
 // Update scenario DTO
 type UpdateScenarioBody struct {
-	DecisionToCaseOutcomes     []string    `json:"decision_to_case_outcomes"`
-	DecisionToCaseInboxId      null.String `json:"decision_to_case_inbox_id"`
-	DecisionToCaseWorkflowType *string     `json:"decision_to_case_workflow_type"`
-	DecisionToCaseNameTemplate *NodeDto    `json:"decision_to_case_name_template"`
-	Description                *string     `json:"description"`
-	Name                       *string     `json:"name"`
+	DecisionToCaseOutcomes     []string                   `json:"decision_to_case_outcomes"`
+	DecisionToCaseInboxId      pure_utils.Null[uuid.UUID] `json:"decision_to_case_inbox_id"`
+	DecisionToCaseWorkflowType *string                    `json:"decision_to_case_workflow_type"`
+	DecisionToCaseNameTemplate *NodeDto                   `json:"decision_to_case_name_template"`
+	Description                *string                    `json:"description"`
+	Name                       *string                    `json:"name"`
 }
 
 func AdaptUpdateScenarioInput(scenarioId string, input UpdateScenarioBody) models.UpdateScenarioInput {

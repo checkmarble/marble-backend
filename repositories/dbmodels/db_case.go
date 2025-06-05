@@ -5,13 +5,14 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type DBCase struct {
 	Id             pgtype.Text      `db:"id"`
 	CreatedAt      pgtype.Timestamp `db:"created_at"`
-	InboxId        pgtype.Text      `db:"inbox_id"`
+	InboxId        uuid.UUID        `db:"inbox_id"`
 	Name           pgtype.Text      `db:"name"`
 	OrganizationId pgtype.Text      `db:"org_id"`
 	AssignedTo     *string          `db:"assigned_to"`
@@ -54,7 +55,7 @@ func AdaptCase(db DBCase) (models.Case, error) {
 	return models.Case{
 		Id:             db.Id.String,
 		CreatedAt:      db.CreatedAt.Time,
-		InboxId:        db.InboxId.String,
+		InboxId:        db.InboxId,
 		Name:           db.Name.String,
 		OrganizationId: db.OrganizationId.String,
 		AssignedTo:     assigneeId,

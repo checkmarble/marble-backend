@@ -5,13 +5,14 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/guregu/null/v5"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -147,18 +148,20 @@ func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario() {
 }
 
 func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario_with_workflow() {
+	aUuid := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+
 	scenarioInput := models.UpdateScenarioInput{
 		Id:                    suite.scenarioId,
-		DecisionToCaseInboxId: null.StringFrom("inbox_id_2"),
+		DecisionToCaseInboxId: pure_utils.NullFrom(aUuid),
 	}
 
 	scenario := suite.scenario
 	scenario.DecisionToCaseWorkflowType = models.WorkflowCreateCase
-	scenario.DecisionToCaseInboxId = utils.Ptr("inbox_id")
+	scenario.DecisionToCaseInboxId = utils.Ptr(aUuid)
 	scenario.DecisionToCaseOutcomes = []models.Outcome{models.Decline}
 
 	updatedScenario := scenario
-	updatedScenario.DecisionToCaseInboxId = utils.Ptr("inbox_id_2")
+	updatedScenario.DecisionToCaseInboxId = utils.Ptr(aUuid)
 
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(scenario, nil).Once()
@@ -178,14 +181,15 @@ func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario_with_workflow() {
 }
 
 func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario_with_workflow_error() {
+	aUuid := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	scenarioInput := models.UpdateScenarioInput{
 		Id:                    suite.scenarioId,
-		DecisionToCaseInboxId: null.StringFrom(""),
+		DecisionToCaseInboxId: pure_utils.Null[uuid.UUID]{Valid: false, Set: true},
 	}
 
 	scenario := suite.scenario
 	scenario.DecisionToCaseWorkflowType = models.WorkflowCreateCase
-	scenario.DecisionToCaseInboxId = utils.Ptr("inbox_id")
+	scenario.DecisionToCaseInboxId = utils.Ptr(aUuid)
 	scenario.DecisionToCaseOutcomes = []models.Outcome{models.Decline}
 
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)

@@ -4,7 +4,8 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/guregu/null/v5"
+	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 )
 
 type WorkflowType string
@@ -25,7 +26,7 @@ type Scenario struct {
 	Id                         string
 	CreatedAt                  time.Time
 	DecisionToCaseOutcomes     []Outcome
-	DecisionToCaseInboxId      *string
+	DecisionToCaseInboxId      *uuid.UUID
 	DecisionToCaseWorkflowType WorkflowType
 	DecisionToCaseNameTemplate *ast.Node
 	Description                string
@@ -45,7 +46,7 @@ type CreateScenarioInput struct {
 type UpdateScenarioInput struct {
 	Id                         string
 	DecisionToCaseOutcomes     []Outcome
-	DecisionToCaseInboxId      null.String
+	DecisionToCaseInboxId      pure_utils.Null[uuid.UUID]
 	DecisionToCaseWorkflowType *WorkflowType
 	DecisionToCaseNameTemplate *ast.Node
 	Description                *string

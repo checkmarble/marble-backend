@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Case struct {
@@ -13,7 +15,7 @@ type Case struct {
 	Decisions      []DecisionWithRuleExecutions
 	DecisionsCount int
 	Events         []CaseEvent
-	InboxId        string
+	InboxId        uuid.UUID
 	OrganizationId string
 	AssignedTo     *UserId
 	Name           string
@@ -48,7 +50,7 @@ type CaseMetadata struct {
 	CreatedAt      time.Time
 	OrganizationId string
 	Status         CaseStatus
-	InboxId        string
+	InboxId        uuid.UUID
 	Outcome        CaseOutcome
 }
 
@@ -102,7 +104,7 @@ var ValidCaseOutcomes = []CaseOutcome{CaseOutcomeUnset, CaseConfirmedRisk, CaseV
 
 type CreateCaseAttributes struct {
 	DecisionIds    []string
-	InboxId        string
+	InboxId        uuid.UUID
 	Name           string
 	OrganizationId string
 	AssigneeId     *string
@@ -110,7 +112,7 @@ type CreateCaseAttributes struct {
 
 type UpdateCaseAttributes struct {
 	Id      string
-	InboxId string
+	InboxId *uuid.UUID
 	Name    string
 	Status  CaseStatus
 	Outcome CaseOutcome
@@ -128,7 +130,7 @@ type CaseFilters struct {
 	StartDate       time.Time
 	EndDate         time.Time
 	Statuses        []CaseStatus
-	InboxIds        []string
+	InboxIds        []uuid.UUID
 	IncludeSnoozed  bool
 	ExcludeAssigned bool
 	AssigneeId      UserId

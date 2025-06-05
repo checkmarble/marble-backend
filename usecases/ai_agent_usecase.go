@@ -16,6 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -44,7 +45,8 @@ type AiAgentUsecaseIngestedDataReader interface {
 		orgId string,
 		objectType string,
 		input models.ClientDataListRequestBody,
-	) (objects []models.ClientObjectDetail, fieldStats []models.FieldStatistics, pagination models.ClientDataListPagination, err error)
+	) (objects []models.ClientObjectDetail, fieldStats []models.FieldStatistics,
+		pagination models.ClientDataListPagination, err error)
 }
 
 type AiAgentUsecaseDataModelUsecase interface {
@@ -89,7 +91,7 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list available inboxes in usecase")
 	}
-	availableInboxIds := make([]string, len(inboxes))
+	availableInboxIds := make([]uuid.UUID, len(inboxes))
 	for i, inbox := range inboxes {
 		availableInboxIds[i] = inbox.Id
 	}

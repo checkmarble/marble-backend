@@ -149,8 +149,8 @@ func (repo *MarbleDbRepository) UpdateCase(ctx context.Context, exec Executor, u
 		"id": updateCaseAttributes.Id,
 	})
 
-	if updateCaseAttributes.InboxId != "" {
-		query = query.Set("inbox_id", updateCaseAttributes.InboxId)
+	if updateCaseAttributes.InboxId != nil {
+		query = query.Set("inbox_id", *updateCaseAttributes.InboxId)
 	}
 
 	if updateCaseAttributes.Name != "" {
