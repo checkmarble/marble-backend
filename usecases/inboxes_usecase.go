@@ -191,9 +191,6 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId uuid.UUID)
 	return nil
 }
 
-// Methods delegating to inboxUsers - signatures will be updated in inbox_users.go, calls here should match the updated interface.
-// For now, assuming the method names and general structure remain, types will be enforced by the compiler once inbox_users.go is updated.
-
 func (usecase *InboxUsecase) GetInboxUserById(ctx context.Context, inboxUserId uuid.UUID) (models.InboxUser, error) {
 	return usecase.inboxUsers.GetInboxUserById(ctx, inboxUserId)
 }

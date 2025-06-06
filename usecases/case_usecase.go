@@ -1575,8 +1575,8 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 	}
 
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		targetInboxIdStr := targetInbox.Id.String() // targetInbox.Id is uuid.UUID from GetEscalationInboxMetadata
-		sourceInboxIdStr := sourceInbox.Id.String() // sourceInbox.Id is uuid.UUID from GetInboxById
+		targetInboxIdStr := targetInbox.Id.String()
+		sourceInboxIdStr := sourceInbox.Id.String()
 
 		if err := uc.repository.EscalateCase(ctx, tx, caseId, targetInboxIdStr); err != nil {
 			return errors.Wrap(err, "could not escalate case")
