@@ -1,6 +1,7 @@
 -- +goose NO TRANSACTION
 -- +goose Up
-CREATE EXTENSION pg_trgm;
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- +goose StatementBegin
 
@@ -28,5 +29,3 @@ CREATE INDEX CONCURRENTLY case_org_id_idx ON cases (org_id, created_at DESC);
 DROP INDEX CONCURRENTLY IF EXISTS case_org_id_idx_2;
 
 DROP INDEX CONCURRENTLY IF EXISTS trgm_cases_on_name;
-
-DROP EXTENSION pg_trgm;
