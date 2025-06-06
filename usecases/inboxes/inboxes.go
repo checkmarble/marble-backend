@@ -15,7 +15,6 @@ type InboxRepository interface {
 		inboxIds []uuid.UUID, withCaseCount bool) ([]models.Inbox, error)
 	ListInboxUsers(ctx context.Context, exec repositories.Executor,
 		filters models.InboxUserFilterInput) ([]models.InboxUser, error)
-	// Assuming filters.InboxId and filters.UserId are now UUIDs based on prior changes to models.InboxUserFilterInput
 }
 
 type EnforceSecurityInboxes interface {
@@ -103,10 +102,7 @@ func (i *InboxReader) isAdminHasAccessToAllInboxes() bool {
 func (i *InboxReader) getAvailableInboxes(ctx context.Context, exec repositories.Executor) ([]uuid.UUID, error) {
 	availableInboxIds := make([]uuid.UUID, 0)
 
-	// Assuming i.Credentials.ActorIdentity.UserId is compatible with uuid.UUID for models.InboxUserFilterInput.UserId
-	// UserId in InboxUserFilterInput is models.UserId (string), so no parsing needed for i.Credentials.ActorIdentity.UserId.
 	userId := i.Credentials.ActorIdentity.UserId
-
 	inboxUsers, err := i.InboxRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
 		UserId: userId,
 	})
@@ -115,7 +111,7 @@ func (i *InboxReader) getAvailableInboxes(ctx context.Context, exec repositories
 	}
 
 	for _, inboxUser := range inboxUsers {
-		availableInboxIds = append(availableInboxIds, inboxUser.InboxId) // inboxUser.InboxId is already uuid.UUID
+		availableInboxIds = append(availableInboxIds, inboxUser.InboxId)
 	}
 	return availableInboxIds, nil
 }

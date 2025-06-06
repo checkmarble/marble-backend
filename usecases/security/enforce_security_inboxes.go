@@ -3,7 +3,6 @@ package security
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
-	// "github.com/google/uuid" // Removed as it's unused
 )
 
 type EnforceSecurityInboxes struct {
