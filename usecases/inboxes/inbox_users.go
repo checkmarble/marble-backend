@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
@@ -16,7 +15,7 @@ type InboxUserRepository interface {
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
 	GetInboxUserById(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID) (models.InboxUser, error)
 	ListInboxUsers(ctx context.Context, exec repositories.Executor,
-		filters models.InboxUserFilterInput) ([]models.InboxUser, error) // Assuming filters fields are UUIDs
+		filters models.InboxUserFilterInput) ([]models.InboxUser, error)
 	CreateInboxUser(ctx context.Context, exec repositories.Executor,
 		createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId uuid.UUID) error
 	UpdateInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID, role models.InboxUserRole) error
@@ -110,8 +109,7 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 				return models.InboxUser{}, err
 			}
 
-			// input.UserId and input.InboxId are already uuid.UUID from previous model changes
-			targetUser, err := usecase.UserRepository.UserById(ctx, tx, input.UserId.String()) // Assuming UserById still expects string ID
+			targetUser, err := usecase.UserRepository.UserById(ctx, tx, input.UserId.String())
 			if err != nil {
 				return models.InboxUser{}, err
 			}
@@ -125,11 +123,7 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 				return models.InboxUser{}, err
 			}
 
-			newInboxUserIdStr := pure_utils.NewPrimaryKey(input.InboxId.String()) // NewPrimaryKey likely takes string
-			newInboxUserUUID, err := uuid.Parse(newInboxUserIdStr)
-			if err != nil {
-				return models.InboxUser{}, errors.Wrap(err, "failed to parse new inbox user ID")
-			}
+			newInboxUserUUID := uuid.New()
 			if err := usecase.InboxUserRepository.CreateInboxUser(ctx, tx, input, newInboxUserUUID); err != nil {
 				if repositories.IsUniqueViolationError(err) {
 					return models.InboxUser{}, errors.Wrap(models.ConflictError,
