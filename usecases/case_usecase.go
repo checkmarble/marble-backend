@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -112,15 +111,11 @@ func (usecase *CaseUseCase) ListCases(
 	ctx context.Context,
 	organizationId string,
 	pagination models.PaginationAndSorting,
-	filters dto.CaseFilters,
+	filters models.CaseFilters,
 ) (models.CaseListPage, error) {
 	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() &&
 		filters.StartDate.After(filters.EndDate) {
 		return models.CaseListPage{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
-	}
-	statuses, err := models.ValidateCaseStatuses(filters.Statuses)
-	if err != nil {
-		return models.CaseListPage{}, err
 	}
 
 	if err := models.ValidatePagination(pagination); err != nil {
@@ -147,7 +142,7 @@ func (usecase *CaseUseCase) ListCases(
 			repoFilters := models.CaseFilters{
 				StartDate:       filters.StartDate,
 				EndDate:         filters.EndDate,
-				Statuses:        statuses,
+				Statuses:        filters.Statuses,
 				OrganizationId:  organizationId,
 				Name:            filters.Name,
 				IncludeSnoozed:  filters.IncludeSnoozed,
