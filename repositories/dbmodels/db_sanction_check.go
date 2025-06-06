@@ -16,22 +16,23 @@ var (
 )
 
 type DBSanctionCheck struct {
-	Id                  string          `db:"id"`
-	DecisionId          string          `db:"decision_id"`
-	Status              string          `db:"status"`
-	SearchInput         json.RawMessage `db:"search_input"`
-	SearchDatasets      []string        `db:"search_datasets"`
-	MatchThreshold      int             `db:"match_threshold"`
-	MatchLimit          int             `db:"match_limit"`
-	IsManual            bool            `db:"is_manual"`
-	RequestedBy         *string         `db:"requested_by"`
-	IsPartial           bool            `db:"is_partial"`
-	IsArchived          bool            `db:"is_archived"`
-	InitialHasMatches   bool            `db:"initial_has_matches"`
-	WhitelistedEntities []string        `db:"whitelisted_entities"`
-	ErrorCodes          []string        `db:"error_codes"`
-	CreatedAt           time.Time       `db:"created_at"`
-	UpdatedAt           time.Time       `db:"updated_at"`
+	Id                    string          `db:"id"`
+	DecisionId            string          `db:"decision_id"`
+	SanctionCheckConfigId string          `db:"sanction_check_config_id"`
+	Status                string          `db:"status"`
+	SearchInput           json.RawMessage `db:"search_input"`
+	SearchDatasets        []string        `db:"search_datasets"`
+	MatchThreshold        int             `db:"match_threshold"`
+	MatchLimit            int             `db:"match_limit"`
+	IsManual              bool            `db:"is_manual"`
+	RequestedBy           *string         `db:"requested_by"`
+	IsPartial             bool            `db:"is_partial"`
+	IsArchived            bool            `db:"is_archived"`
+	InitialHasMatches     bool            `db:"initial_has_matches"`
+	WhitelistedEntities   []string        `db:"whitelisted_entities"`
+	ErrorCodes            []string        `db:"error_codes"`
+	CreatedAt             time.Time       `db:"created_at"`
+	UpdatedAt             time.Time       `db:"updated_at"`
 }
 
 type DBSanctionCheckWithMatches struct {
@@ -46,21 +47,22 @@ func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheck, error) {
 	}
 
 	return models.SanctionCheck{
-		Id:                  dto.Id,
-		DecisionId:          dto.DecisionId,
-		Datasets:            dto.SearchDatasets,
-		SearchInput:         dto.SearchInput,
-		OrgConfig:           cfg,
-		Partial:             dto.IsPartial,
-		Status:              models.SanctionCheckStatusFrom(dto.Status),
-		IsManual:            dto.IsManual,
-		IsArchived:          dto.IsArchived,
-		InitialHasMatches:   dto.InitialHasMatches,
-		WhitelistedEntities: dto.WhitelistedEntities,
-		RequestedBy:         dto.RequestedBy,
-		ErrorCodes:          dto.ErrorCodes,
-		CreatedAt:           dto.CreatedAt,
-		UpdatedAt:           dto.UpdatedAt,
+		Id:                    dto.Id,
+		DecisionId:            dto.DecisionId,
+		SanctionCheckConfigId: dto.SanctionCheckConfigId,
+		Datasets:              dto.SearchDatasets,
+		SearchInput:           dto.SearchInput,
+		OrgConfig:             cfg,
+		Partial:               dto.IsPartial,
+		Status:                models.SanctionCheckStatusFrom(dto.Status),
+		IsManual:              dto.IsManual,
+		IsArchived:            dto.IsArchived,
+		InitialHasMatches:     dto.InitialHasMatches,
+		WhitelistedEntities:   dto.WhitelistedEntities,
+		RequestedBy:           dto.RequestedBy,
+		ErrorCodes:            dto.ErrorCodes,
+		CreatedAt:             dto.CreatedAt,
+		UpdatedAt:             dto.UpdatedAt,
 	}, nil
 }
 

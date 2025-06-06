@@ -4,21 +4,23 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
 
-func (repo *MarbleDbRepository) GetSanctionCheckConfig(
+func (repo *MarbleDbRepository) ListSanctionCheckConfigs(
 	ctx context.Context,
 	exec Executor,
 	scenarioIterationId string,
-) (*models.SanctionCheckConfig, error) {
+) ([]models.SanctionCheckConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -28,10 +30,27 @@ func (repo *MarbleDbRepository) GetSanctionCheckConfig(
 		From(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
 		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationId})
 
-	return SqlToOptionalModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
 }
 
-func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, exec Executor,
+func (repo *MarbleDbRepository) GetSanctionCheckConfig(
+	ctx context.Context,
+	exec Executor,
+	scenarioIterationId, sanctionCheckConfigId string,
+) (models.SanctionCheckConfig, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.SanctionCheckConfig{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SanctionCheckConfigColumnList...).
+		From(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
+		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationId, "id": sanctionCheckConfigId})
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
+}
+
+func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, exec Executor,
 	scenarioIterationId string, cfg models.UpdateSanctionCheckConfigInput,
 ) (models.SanctionCheckConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -49,26 +68,14 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 		triggerRule = astJson
 	}
 
-	var query *dbmodels.DBSanctionCheckConfigQueryInput
+	var query map[string]dto.NodeDto
 
 	if cfg.Query != nil {
-		query = &dbmodels.DBSanctionCheckConfigQueryInput{}
-
-		if cfg.Query.Name != nil {
-			ser, err := dto.AdaptNodeDto(*cfg.Query.Name)
-			if err != nil {
-				return models.SanctionCheckConfig{}, err
-			}
-			query.Name = &ser
+		ser, err := pure_utils.MapValuesErr(cfg.Query, dto.AdaptNodeDto)
+		if err != nil {
+			return models.SanctionCheckConfig{}, err
 		}
-
-		if cfg.Query.Label != nil {
-			ser, err := dto.AdaptNodeDto(*cfg.Query.Label)
-			if err != nil {
-				return models.SanctionCheckConfig{}, err
-			}
-			query.Label = &ser
-		}
+		query = ser
 	}
 
 	var counterpartyIdExpr *[]byte
@@ -99,7 +106,9 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 			"forced_outcome",
 			"trigger_rule",
 			"query",
-			"counterparty_id_expression").
+			"counterparty_id_expression",
+			"preprocessing",
+			"config_version").
 		Values(
 			squirrel.Expr("coalesce(?, gen_random_uuid())", cfg.StableId),
 			scenarioIterationId,
@@ -111,55 +120,110 @@ func (repo *MarbleDbRepository) UpsertSanctionCheckConfig(ctx context.Context, e
 			triggerRule,
 			query,
 			counterpartyIdExpr,
-		)
-
-	updateFields := make([]string, 0, 4)
-
-	if cfg.Name != nil {
-		updateFields = append(updateFields, "name = EXCLUDED.name")
-	}
-	if cfg.Description != nil {
-		updateFields = append(updateFields, "description = EXCLUDED.description")
-	}
-	if cfg.RuleGroup != nil {
-		updateFields = append(updateFields, "rule_group = EXCLUDED.rule_group")
-	}
-	if cfg.Datasets != nil {
-		updateFields = append(updateFields, "datasets = EXCLUDED.datasets")
-	}
-	if cfg.TriggerRule != nil {
-		updateFields = append(updateFields, "trigger_rule = EXCLUDED.trigger_rule")
-	}
-	if cfg.Query != nil {
-		updateFields = append(updateFields, "query = EXCLUDED.query")
-	}
-	if cfg.CounterpartyIdExpression != nil {
-		updateFields = append(updateFields, "counterparty_id_expression = EXCLUDED.counterparty_id_expression")
-	}
-	if cfg.ForcedOutcome != nil {
-		updateFields = append(updateFields, "forced_outcome = EXCLUDED.forced_outcome")
-	}
-	if len(updateFields) > 0 {
-		updateFields = append(updateFields, "updated_at = NOW()")
-	}
-
-	switch len(updateFields) {
-	case 0:
-		sql = sql.Suffix("ON CONFLICT (scenario_iteration_id) DO NOTHING")
-	default:
-		sql = sql.Suffix(fmt.Sprintf("ON CONFLICT (scenario_iteration_id) DO UPDATE SET %s", strings.Join(updateFields, ",")))
-	}
-
-	sql = sql.Suffix(fmt.Sprintf("RETURNING %s",
-		strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
+			utils.Or(cfg.Preprocessing, models.SanctionCheckConfigPreprocessing{}),
+			"v2",
+		).
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
 }
 
-func (repo *MarbleDbRepository) DeleteSanctionCheckConfig(ctx context.Context, exec Executor, scenarioIterationId string) error {
+func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, exec Executor,
+	scenarioIterationId string, id string, cfg models.UpdateSanctionCheckConfigInput,
+) (models.SanctionCheckConfig, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.SanctionCheckConfig{}, err
+	}
+
+	var triggerRule *[]byte
+	if cfg.TriggerRule != nil && cfg.TriggerRule.Function != ast.FUNC_UNDEFINED {
+		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.TriggerRule)
+		if err != nil {
+			return models.SanctionCheckConfig{}, errors.Wrap(err,
+				"could not serialize sanction check trigger rule")
+		}
+
+		triggerRule = astJson
+	}
+
+	var query map[string]dto.NodeDto
+
+	if cfg.Query != nil {
+		ser, err := pure_utils.MapValuesErr(cfg.Query, dto.AdaptNodeDto)
+		if err != nil {
+			return models.SanctionCheckConfig{}, err
+		}
+		query = ser
+	}
+
+	var counterpartyIdExpr *[]byte
+
+	if cfg.CounterpartyIdExpression != nil {
+		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.CounterpartyIdExpression)
+		if err != nil {
+			return models.SanctionCheckConfig{}, err
+		}
+
+		counterpartyIdExpr = astJson
+	}
+
+	forcedOutcome := models.BlockAndReview
+	if cfg.ForcedOutcome != nil {
+		forcedOutcome = *cfg.ForcedOutcome
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
+		Where(squirrel.Eq{"id": id}).
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
+
+	updateFields := make([]string, 0, 4)
+
+	if cfg.Name != nil {
+		sql = sql.Set("name", cfg.Name)
+	}
+	if cfg.Description != nil {
+		sql = sql.Set("description", cfg.Description)
+	}
+	if cfg.RuleGroup != nil {
+		sql = sql.Set("rule_group", cfg.RuleGroup)
+	}
+	if cfg.Datasets != nil {
+		sql = sql.Set("datasets", cfg.Datasets)
+	}
+	if cfg.TriggerRule != nil {
+		sql = sql.Set("trigger_rule", triggerRule)
+	}
+	if cfg.Query != nil {
+		sql = sql.Set("query", query)
+	}
+	if cfg.CounterpartyIdExpression != nil {
+		sql = sql.Set("counterparty_id_expression", counterpartyIdExpr)
+	}
+	if cfg.ForcedOutcome != nil {
+		sql = sql.Set("forced_outcome", forcedOutcome)
+	}
+	if cfg.Preprocessing != nil {
+		sql = sql.Set("preprocessing", *cfg.Preprocessing)
+	}
+	if len(updateFields) > 0 {
+		sql = sql.Set("updated_at", time.Now())
+	}
+
+	if len(updateFields) == 0 {
+		return repo.GetSanctionCheckConfig(ctx, exec, scenarioIterationId, id)
+	}
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
+}
+
+func (repo *MarbleDbRepository) DeleteSanctionCheckConfig(ctx context.Context, exec Executor, scenarioIterationId, configId string) error {
 	sql := NewQueryBuilder().
 		Delete(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
-		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationId})
+		Where(squirrel.Eq{
+			"scenario_iteration_id": scenarioIterationId,
+			"id":                    configId,
+		})
 
 	if err := ExecBuilder(ctx, exec, sql); err != nil {
 		return err

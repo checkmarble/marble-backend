@@ -12,14 +12,18 @@ import (
 )
 
 type SanctionCheckConfigRepository interface {
-	GetSanctionCheckConfig(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (*models.SanctionCheckConfig, error)
-	UpsertSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
+	ListSanctionCheckConfigs(ctx context.Context, exec repositories.Executor,
+		scenarioIterationId string) ([]models.SanctionCheckConfig, error)
+	GetSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
+		scenarioIterationId, id string) (models.SanctionCheckConfig, error)
+	CreateSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
 		scenarioIterationId string, sanctionCheckConfig models.UpdateSanctionCheckConfigInput) (models.SanctionCheckConfig, error)
-	DeleteSanctionCheckConfig(ctx context.Context, exec repositories.Executor, iterationId string) error
+	UpdateSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
+		scenarioIterationId, sanctionCheckId string, sanctionCheckConfig models.UpdateSanctionCheckConfigInput) (models.SanctionCheckConfig, error)
+	DeleteSanctionCheckConfig(ctx context.Context, exec repositories.Executor, iterationId, configId string) error
 }
 
-func (uc SanctionCheckUsecase) ConfigureSanctionCheck(ctx context.Context,
-	iterationId string,
+func (uc SanctionCheckUsecase) CreateSanctionCheckConfig(ctx context.Context, iterationId string,
 	scCfg models.UpdateSanctionCheckConfigInput,
 ) (models.SanctionCheckConfig, error) {
 	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx,
@@ -39,7 +43,7 @@ func (uc SanctionCheckUsecase) ConfigureSanctionCheck(ctx context.Context,
 	}
 
 	if scCfg.Query != nil {
-		if scCfg.Query.Name != nil && scCfg.Query.Name.Function != ast.FUNC_STRING_CONCAT {
+		if scCfg.Query != nil && scCfg.Query["name"].Function != ast.FUNC_STRING_CONCAT {
 			return models.SanctionCheckConfig{}, errors.New(
 				"query name filter must be a StringConcat")
 		}
@@ -51,7 +55,7 @@ func (uc SanctionCheckUsecase) ConfigureSanctionCheck(ctx context.Context,
 			"sanction check config: invalid forced outcome")
 	}
 
-	scc, err := uc.sanctionCheckConfigRepository.UpsertSanctionCheckConfig(ctx, uc.executorFactory.NewExecutor(),
+	scc, err := uc.sanctionCheckConfigRepository.CreateSanctionCheckConfig(ctx, uc.executorFactory.NewExecutor(),
 		iterationId, scCfg)
 	if err != nil {
 		return models.SanctionCheckConfig{}, err
@@ -60,7 +64,49 @@ func (uc SanctionCheckUsecase) ConfigureSanctionCheck(ctx context.Context,
 	return scc, nil
 }
 
-func (uc SanctionCheckUsecase) DeleteSanctionCheckConfig(ctx context.Context, iterationId string) error {
+func (uc SanctionCheckUsecase) UpdateSanctionCheckConfig(ctx context.Context,
+	iterationId, sanctionCheckId string,
+	scCfg models.UpdateSanctionCheckConfigInput,
+) (models.SanctionCheckConfig, error) {
+	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx,
+		uc.executorFactory.NewExecutor(), iterationId)
+	if err != nil {
+		return models.SanctionCheckConfig{}, errors.Wrap(err,
+			"could not find provided scenario iteration")
+	}
+
+	if err := uc.enforceSecurityScenario.UpdateScenario(scenarioAndIteration.Scenario); err != nil {
+		return models.SanctionCheckConfig{}, err
+	}
+
+	if scenarioAndIteration.Iteration.Version != nil {
+		return models.SanctionCheckConfig{}, errors.Wrap(models.ErrScenarioIterationNotDraft,
+			fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id))
+	}
+
+	if scCfg.Query != nil {
+		if scCfg.Query != nil && scCfg.Query["name"].Function != ast.FUNC_STRING_CONCAT {
+			return models.SanctionCheckConfig{}, errors.New(
+				"query name filter must be a StringConcat")
+		}
+	}
+
+	if scCfg.ForcedOutcome != nil &&
+		!slices.Contains(models.ValidForcedOutcome, *scCfg.ForcedOutcome) {
+		return models.SanctionCheckConfig{}, errors.Wrap(models.BadParameterError,
+			"sanction check config: invalid forced outcome")
+	}
+
+	scc, err := uc.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(ctx, uc.executorFactory.NewExecutor(),
+		iterationId, sanctionCheckId, scCfg)
+	if err != nil {
+		return models.SanctionCheckConfig{}, err
+	}
+
+	return scc, nil
+}
+
+func (uc SanctionCheckUsecase) DeleteSanctionCheckConfig(ctx context.Context, iterationId, configId string) error {
 	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx,
 		uc.executorFactory.NewExecutor(), iterationId)
 	if err != nil {
@@ -77,5 +123,5 @@ func (uc SanctionCheckUsecase) DeleteSanctionCheckConfig(ctx context.Context, it
 	}
 
 	return uc.sanctionCheckConfigRepository.DeleteSanctionCheckConfig(ctx,
-		uc.executorFactory.NewExecutor(), iterationId)
+		uc.executorFactory.NewExecutor(), iterationId, configId)
 }

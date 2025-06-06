@@ -1,6 +1,7 @@
 package models
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -16,7 +17,7 @@ type ScenarioIteration struct {
 	UpdatedAt                     time.Time
 	TriggerConditionAstExpression *ast.Node
 	Rules                         []Rule
-	SanctionCheckConfig           *SanctionCheckConfig
+	SanctionCheckConfigs          []SanctionCheckConfig
 	ScoreReviewThreshold          *int
 	ScoreBlockAndReviewThreshold  *int
 	ScoreDeclineThreshold         *int
@@ -55,15 +56,25 @@ type UpdateScenarioIterationBody struct {
 }
 
 type SanctionCheckConfig struct {
+	Id                       string
 	StableId                 string
+	ScenarioIterationId      string
 	Name                     string
 	Description              string
 	RuleGroup                *string
 	Datasets                 []string
 	TriggerRule              *ast.Node
-	Query                    *SanctionCheckConfigQuery
+	Query                    map[string]ast.Node
 	ForcedOutcome            Outcome
 	CounterpartyIdExpression *ast.Node
+	Preprocessing            SanctionCheckConfigPreprocessing
+}
+
+type SanctionCheckConfigPreprocessing struct {
+	UseNer          bool   `json:"use_ner,omitempty"`
+	SkipIfUnder     int    `json:"skip_if_under"`
+	RemoveNumbers   bool   `json:"remove_numbers"`
+	BlacklistListId string `json:"blacklist_list_id"`
 }
 
 func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
@@ -71,7 +82,7 @@ func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
 		return false
 	}
 
-	if !scc.Query.equal(other.Query) {
+	if !reflect.DeepEqual(scc, other) {
 		return false
 	}
 
@@ -88,28 +99,15 @@ type SanctionCheckOutcome struct {
 }
 
 type UpdateSanctionCheckConfigInput struct {
+	Id                       string
 	StableId                 *string
 	Name                     *string
 	Description              *string
 	RuleGroup                *string
 	Datasets                 []string
 	TriggerRule              *ast.Node
-	Query                    *SanctionCheckConfigQuery
+	Query                    map[string]ast.Node
 	CounterpartyIdExpression *ast.Node
 	ForcedOutcome            *Outcome
-}
-
-type SanctionCheckConfigQuery struct {
-	Name  *ast.Node
-	Label *ast.Node
-}
-
-func (sccq *SanctionCheckConfigQuery) equal(other *SanctionCheckConfigQuery) bool {
-	if sccq == nil && other == nil {
-		return true
-	}
-	if sccq != nil && other == nil || sccq == nil && other != nil {
-		return false
-	}
-	return sccq.Name.Hash() == other.Name.Hash()
+	Preprocessing            *SanctionCheckConfigPreprocessing
 }
