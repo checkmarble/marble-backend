@@ -27,17 +27,17 @@ type InboxUsecaseTestSuite struct {
 	credentials        models.Credentials
 	adminCredentials   models.Credentials
 
-	organizationId     string
-	inboxId            string
-	parsedInboxId      uuid.UUID
-	inbox              models.Inbox
-	adminUserId        string
-	parsedAdminUserId  uuid.UUID
-	nonAdminUserId     string
+	organizationId       string
+	inboxId              string
+	parsedInboxId        uuid.UUID
+	inbox                models.Inbox
+	adminUserId          string
+	parsedAdminUserId    uuid.UUID
+	nonAdminUserId       string
 	parsedNonAdminUserId uuid.UUID
-	repositoryError    error
-	securityError   error
-	ctx             context.Context
+	repositoryError      error
+	securityError        error
+	ctx                  context.Context
 }
 
 func (suite *InboxUsecaseTestSuite) SetupTest() {
@@ -140,11 +140,12 @@ func (suite *InboxUsecaseTestSuite) AssertExpectations() {
 
 func (suite *InboxUsecaseTestSuite) Test_CreateInbox_nominal() {
 	input := models.CreateInboxInput{Name: "test inbox", OrganizationId: suite.organizationId}
-	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil) // Transaction func doesn't see the ID
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateInbox", suite.organizationId).Return(nil)
 	suite.inboxRepository.On("CreateInbox", suite.transaction, input,
-		mock.AnythingOfType("uuid.UUID")).Return(nil) // Expect uuid.UUID for newInboxId
-	suite.inboxRepository.On("GetInboxById", suite.transaction, mock.AnythingOfType("uuid.UUID")).Return(suite.inbox, nil) // Expect uuid.UUID
+		mock.AnythingOfType("uuid.UUID")).Return(nil)
+	suite.inboxRepository.On("GetInboxById", suite.transaction,
+		mock.AnythingOfType("uuid.UUID")).Return(suite.inbox, nil)
 
 	inbox, err := suite.makeUsecaseAdmin().CreateInbox(suite.ctx, input)
 
@@ -173,7 +174,7 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInbox_repository_error() {
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateInbox", suite.organizationId).Return(nil)
 	suite.inboxRepository.On("CreateInbox", suite.transaction, input,
-		mock.AnythingOfType("uuid.UUID")).Return(suite.repositoryError) // Expect uuid.UUID
+		mock.AnythingOfType("uuid.UUID")).Return(suite.repositoryError)
 
 	_, err := suite.makeUsecaseAdmin().CreateInbox(suite.ctx, input)
 
@@ -184,15 +185,17 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInbox_repository_error() {
 }
 
 func (suite *InboxUsecaseTestSuite) Test_GetInboxUserById_nominal() {
-	inboxUser := models.InboxUser{InboxId: suite.parsedInboxId, UserId: suite.parsedNonAdminUserId} // InboxUser fields are UUID
-	// Use a valid UUID string for parsing if this specific ID is used in mock setups or assertions by value
-	parsedTestInboxUserId := uuid.MustParse("c0000000-0000-0000-0000-000000000003")
+	inboxUser := models.InboxUser{
+		InboxId: suite.parsedInboxId,
+		UserId:  suite.parsedNonAdminUserId,
+	}
+	parsedTestInboxUserId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
 	suite.inboxRepository.On("GetInboxUserById", suite.transaction,
-		parsedTestInboxUserId).Return(inboxUser, nil) // Expect uuid.UUID
+		parsedTestInboxUserId).Return(inboxUser, nil)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		UserId: models.UserId(suite.nonAdminUserId), // Filter UserId is string (this is the string version of parsedNonAdminUserId)
+		UserId: models.UserId(suite.nonAdminUserId),
 	}).Return([]models.InboxUser{inboxUser}, nil)
 	suite.enforceSecurity.On("ReadInboxUser", inboxUser,
 		mock.AnythingOfType("[]models.InboxUser")).Return(nil)
@@ -207,14 +210,17 @@ func (suite *InboxUsecaseTestSuite) Test_GetInboxUserById_nominal() {
 }
 
 func (suite *InboxUsecaseTestSuite) Test_GetInboxUserById_security_error() {
-	inboxUser := models.InboxUser{InboxId: suite.parsedInboxId, UserId: suite.parsedNonAdminUserId} // InboxUser fields are UUID
-	parsedTestInboxUserId := uuid.MustParse("c0000000-0000-0000-0000-000000000004") // Use a valid UUID string
+	inboxUser := models.InboxUser{
+		InboxId: suite.parsedInboxId,
+		UserId:  suite.parsedNonAdminUserId,
+	}
+	parsedTestInboxUserId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
 	suite.inboxRepository.On("GetInboxUserById", suite.transaction,
-		parsedTestInboxUserId).Return(inboxUser, nil) // Expect uuid.UUID
+		parsedTestInboxUserId).Return(inboxUser, nil)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		UserId: models.UserId(suite.nonAdminUserId), // Filter UserId is string (this is the string version of parsedNonAdminUserId)
+		UserId: models.UserId(suite.nonAdminUserId),
 	}).Return([]models.InboxUser{inboxUser}, nil)
 	suite.enforceSecurity.On("ReadInboxUser", inboxUser, []models.InboxUser{inboxUser}).Return(suite.securityError)
 
@@ -227,17 +233,20 @@ func (suite *InboxUsecaseTestSuite) Test_GetInboxUserById_security_error() {
 }
 
 func (suite *InboxUsecaseTestSuite) Test_ListInboxUsers_nominal() {
-	inboxUser := models.InboxUser{InboxId: suite.parsedInboxId, UserId: suite.parsedNonAdminUserId} // InboxUser fields are UUID
+	inboxUser := models.InboxUser{
+		InboxId: suite.parsedInboxId,
+		UserId:  suite.parsedNonAdminUserId,
+	}
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		InboxId: suite.parsedInboxId, // Filter InboxId is uuid.UUID
+		InboxId: suite.parsedInboxId,
 	}).Return([]models.InboxUser{inboxUser}, nil)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		UserId: models.UserId(suite.nonAdminUserId), // Filter UserId is string
+		UserId: models.UserId(suite.nonAdminUserId),
 	}).Return([]models.InboxUser{inboxUser}, nil)
 	suite.enforceSecurity.On("ReadInboxUser", inboxUser, []models.InboxUser{inboxUser}).Return(nil)
 
-	result, err := suite.makeUsecase().ListInboxUsers(context.Background(), suite.parsedInboxId) // Pass parsed UUID
+	result, err := suite.makeUsecase().ListInboxUsers(context.Background(), suite.parsedInboxId)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -247,32 +256,34 @@ func (suite *InboxUsecaseTestSuite) Test_ListInboxUsers_nominal() {
 }
 
 func (suite *InboxUsecaseTestSuite) Test_CreateInboxUser_nominal_non_admin() {
-	// InboxUser fields are UUID
-	inboxUser := models.InboxUser{InboxId: suite.parsedInboxId, UserId: suite.parsedNonAdminUserId, Role: models.InboxUserRoleAdmin}
-	// CreateInboxUserInput fields are UUID
+	inboxUser := models.InboxUser{
+		InboxId: suite.parsedInboxId,
+		UserId:  suite.parsedNonAdminUserId, Role: models.InboxUserRoleAdmin,
+	}
 	input := models.CreateInboxUserInput{
 		InboxId: suite.parsedInboxId,
 		UserId:  suite.parsedNonAdminUserId, Role: models.InboxUserRoleAdmin,
 	}
-	// models.User.UserId is string (models.UserId type). UserById mock expects string.
+
 	targetUser := models.User{
 		OrganizationId: suite.organizationId,
-		UserId:         models.UserId(suite.nonAdminUserId), // This UserId is string
+		UserId:         models.UserId(suite.nonAdminUserId),
 	}
-	targetInbox := models.Inbox{OrganizationId: suite.organizationId, Id: suite.parsedInboxId} // Id is uuid.UUID
+	targetInbox := models.Inbox{OrganizationId: suite.organizationId, Id: suite.parsedInboxId}
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateInboxUser", input,
 		mock.AnythingOfType("[]models.InboxUser"), targetInbox, targetUser).Return(nil)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		UserId: models.UserId(suite.nonAdminUserId), // Filter UserId is string
+		UserId: models.UserId(suite.nonAdminUserId),
 	}).Return([]models.InboxUser{inboxUser}, nil)
-	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.parsedInboxId).Return( // Expect uuid.UUID
+	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.parsedInboxId).Return(
 		targetInbox, nil).Return(targetInbox, nil)
 	suite.inboxRepository.On("CreateInboxUser", suite.transaction, input,
-		mock.AnythingOfType("uuid.UUID")).Return(nil) // Expect uuid.UUID for newInboxUserId
+		mock.AnythingOfType("uuid.UUID")).Return(nil)
 	suite.inboxRepository.On("GetInboxUserById", suite.transaction,
-		mock.AnythingOfType("uuid.UUID")).Return(inboxUser, nil) // Expect uuid.UUID
-	suite.userRepository.On("UserById", suite.ctx, suite.transaction, suite.nonAdminUserId).Return(targetUser, nil) // UserById expects string
+		mock.AnythingOfType("uuid.UUID")).Return(inboxUser, nil)
+	suite.userRepository.On("UserById", suite.ctx, suite.transaction, suite.nonAdminUserId).Return(
+		targetUser, nil)
 
 	newInboxUser, err := suite.makeUsecase().CreateInboxUser(suite.ctx, input)
 
