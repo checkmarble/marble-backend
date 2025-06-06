@@ -1,7 +1,9 @@
 package usecases
 
 import (
+	"archive/zip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -1199,7 +1201,9 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 	return usecase.getCaseWithDetails(ctx, exec, input.CaseId)
 }
 
-func (uc *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Transaction, annotationId string, annotationReq models.CreateEntityAnnotationRequest) error {
+func (uc *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Transaction,
+	annotationId string, annotationReq models.CreateEntityAnnotationRequest,
+) error {
 	return uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		CaseId:         *annotationReq.CaseId,
 		UserId:         (*string)(annotationReq.AnnotatedBy),
@@ -1210,7 +1214,9 @@ func (uc *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Tra
 	})
 }
 
-func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositories.Transaction, annotationId string, annotationReq models.CreateEntityAnnotationRequest, files []models.EntityAnnotationFilePayloadFile) error {
+func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositories.Transaction,
+	annotationId string, annotationReq models.CreateEntityAnnotationRequest, files []models.EntityAnnotationFilePayloadFile,
+) error {
 	if annotationReq.CaseId == nil {
 		return errors.New("tried to attach file annotation to a case without a case ID")
 	}
@@ -1225,7 +1231,6 @@ func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositorie
 			FileName:      file.Filename,
 			FileReference: file.Key,
 		})
-
 		if err != nil {
 			return err
 		}
@@ -1239,7 +1244,6 @@ func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositorie
 		ResourceId:     &annotationId,
 		AdditionalNote: utils.Ptr(annotationReq.AnnotationType.String()),
 	})
-
 	if err != nil {
 		return err
 	}
@@ -1634,4 +1638,57 @@ func (uc *CaseUseCase) PerformCaseActionSideEffects(ctx context.Context, tx repo
 	}
 
 	return nil
+}
+
+func (uc *CaseUseCase) GetCaseDataZip(ctx context.Context, caseId string) (io.Reader, error) {
+	exec := uc.executorFactory.NewExecutor()
+	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
+	if err != nil {
+		return nil, err
+	}
+
+	availableInboxIds, err := uc.getAvailableInboxIds(ctx, exec, c.OrganizationId)
+	if err != nil {
+		return nil, err
+	}
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+		return nil, err
+	}
+
+	caseDto := dto.AdaptCaseDto(c)
+	caseJson, err := json.Marshal(caseDto)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not marshal case to JSON")
+	}
+
+	pr, pw := io.Pipe()
+
+	// Start writing zip archive in a goroutine
+	go func() {
+		zipw := zip.NewWriter(pw)
+		defer func() {
+			// Close in reverse order
+			if r := recover(); r != nil {
+				logger := utils.LoggerFromContext(ctx)
+				logger.ErrorContext(ctx, "panic while writing zip archive", "error", r)
+			}
+			zipw.Close()
+			pw.Close()
+		}()
+
+		// Write case.json file
+		f, err := zipw.Create("case.json")
+		if err != nil {
+			pw.CloseWithError(errors.Wrap(err, "could not create case.json in zip"))
+			return
+		}
+		if _, err := f.Write(caseJson); err != nil {
+			pw.CloseWithError(errors.Wrap(err, "could not write case JSON to zip"))
+			return
+		}
+
+		// Add more files below by doing more calls to zipw.Create() and writing to the returned io.Writer
+	}()
+
+	return pr, nil
 }

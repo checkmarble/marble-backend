@@ -3,6 +3,7 @@ package api
 import (
 	"cmp"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -614,5 +615,27 @@ func handleGetNextCase(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"id": nextCaseId})
+	}
+}
+
+func handleGetCaseDataForCopilot(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+
+		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
+
+		zipReader, err := uc.GetCaseDataZip(ctx, caseId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.Header("Content-Type", "application/zip")
+		c.Header("Content-Disposition", "attachment; filename=test.zip")
+		if _, err := io.Copy(c.Writer, zipReader); err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+		c.Status(http.StatusOK)
 	}
 }
