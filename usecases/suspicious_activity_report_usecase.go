@@ -19,7 +19,7 @@ type SuspiciousActivityReportCaseUsecase interface {
 	GetCase(ctx context.Context, id string) (models.Case, error)
 	PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error
 
-	getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]string, error)
+	getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]uuid.UUID, error)
 }
 
 type SuspiciousActivityReportRepository interface {

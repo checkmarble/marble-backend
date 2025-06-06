@@ -29,7 +29,7 @@ type SanctionCheckEnforceSecurityDecision interface {
 }
 
 type SanctionCheckEnforceSecurityCase interface {
-	ReadOrUpdateCase(models.CaseMetadata, []string) error
+	ReadOrUpdateCase(models.CaseMetadata, []uuid.UUID) error
 }
 
 type SanctionCheckEnforceSecurity interface {
@@ -881,7 +881,7 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, d
 				"could not retrieve organization inboxes")
 		}
 
-		inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) string {
+		inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) uuid.UUID {
 			return inbox.Id
 		})
 
