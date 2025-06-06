@@ -37,7 +37,12 @@ func handleListCases(uc usecases.Usecases) func(c *gin.Context) {
 
 		var filters dto.CaseFilters
 		if err := c.ShouldBind(&filters); err != nil {
-			c.Status(http.StatusBadRequest)
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		parsedFilters, err := filters.Parse()
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -50,7 +55,7 @@ func handleListCases(uc usecases.Usecases) func(c *gin.Context) {
 			dto.AdaptPaginationAndSorting(paginationAndSortingDto), casesPaginationDefaults)
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cases, err := usecase.ListCases(ctx, organizationId, paginationAndSorting, filters)
+		cases, err := usecase.ListCases(ctx, organizationId, paginationAndSorting, parsedFilters)
 		if presentError(ctx, c, err) {
 			return
 		}

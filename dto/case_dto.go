@@ -6,6 +6,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -103,15 +104,65 @@ type CreateCaseCommentBody struct {
 	Comment string `json:"comment" binding:"required"`
 }
 
+// type UnmarshallingUuid struct {
+// 	uuid.UUID
+// }
+
+// func (u *UnmarshallingUuid) UnmarshalParam(param string) error {
+// 	parsed, err := uuid.Parse(param)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	u.UUID = parsed
+// 	return nil
+// }
+
 type CaseFilters struct {
 	EndDate         time.Time     `form:"end_date"`
-	InboxIds        []uuid.UUID   `form:"inbox_id[]"`
+	InboxIds        []string      `form:"inbox_id[]"`
 	StartDate       time.Time     `form:"start_date"`
 	Statuses        []string      `form:"status[]"`
 	Name            string        `form:"name"`
 	IncludeSnoozed  bool          `form:"include_snoozed"`
 	ExcludeAssigned bool          `form:"exclude_assigned"`
 	AssigneeId      models.UserId `form:"assignee_id"`
+}
+
+func ParseSliceUUID(slice []string) ([]uuid.UUID, error) {
+	parsed := make([]uuid.UUID, len(slice))
+	for i, item := range slice {
+		parsedItem, err := uuid.Parse(item)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse UUID in slice")
+		}
+		parsed[i] = parsedItem
+	}
+	return parsed, nil
+}
+
+func (f CaseFilters) Parse() (models.CaseFilters, error) {
+	out := models.CaseFilters{
+		EndDate:         f.EndDate,
+		StartDate:       f.StartDate,
+		Name:            f.Name,
+		IncludeSnoozed:  f.IncludeSnoozed,
+		ExcludeAssigned: f.ExcludeAssigned,
+		AssigneeId:      f.AssigneeId,
+	}
+
+	var err error
+	out.InboxIds, err = ParseSliceUUID(f.InboxIds)
+	if err != nil {
+		return out, errors.Wrap(err, "failed to parse inbox IDs")
+	}
+
+	statuses, err := models.ValidateCaseStatuses(f.Statuses)
+	if err != nil {
+		return out, err
+	}
+	out.Statuses = statuses
+
+	return out, nil
 }
 
 type ReviewCaseDecisionsBody struct {
