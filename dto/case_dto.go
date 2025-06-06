@@ -128,18 +128,6 @@ type CaseFilters struct {
 	AssigneeId      models.UserId `form:"assignee_id"`
 }
 
-func ParseSliceUUID(slice []string) ([]uuid.UUID, error) {
-	parsed := make([]uuid.UUID, len(slice))
-	for i, item := range slice {
-		parsedItem, err := uuid.Parse(item)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to parse UUID in slice")
-		}
-		parsed[i] = parsedItem
-	}
-	return parsed, nil
-}
-
 func (f CaseFilters) Parse() (models.CaseFilters, error) {
 	out := models.CaseFilters{
 		EndDate:         f.EndDate,
@@ -151,7 +139,7 @@ func (f CaseFilters) Parse() (models.CaseFilters, error) {
 	}
 
 	var err error
-	out.InboxIds, err = ParseSliceUUID(f.InboxIds)
+	out.InboxIds, err = utils.ParseSliceUUID(f.InboxIds)
 	if err != nil {
 		return out, errors.Wrap(err, "failed to parse inbox IDs")
 	}
