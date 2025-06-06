@@ -55,9 +55,7 @@ func Test_ReadInbox(t *testing.T) {
 	})
 
 	t.Run("non admin", func(t *testing.T) {
-		// For this test case, actor's ID must be a string representation of a valid UUID
-		// to match the UserId in InboxUsers after .String() conversion.
-		actorUserIdString := "30000000-0000-0000-0000-000000000001"
+		actorUserIdString := "00000000-0000-0000-0000-000000000000"
 		actorParsedUUID := uuid.MustParse(actorUserIdString)
 		specificActorIdentity := models.Identity{UserId: models.UserId(actorUserIdString)}
 
@@ -68,7 +66,6 @@ func Test_ReadInbox(t *testing.T) {
 		}
 
 		t.Run("User is member of the inbox", func(t *testing.T) {
-			// The InboxUser's UserId must be the UUID form of the actor's string ID
 			err := sec.ReadInbox(models.Inbox{
 				OrganizationId: organizationId,
 				InboxUsers:     []models.InboxUser{{UserId: actorParsedUUID}},
@@ -132,16 +129,13 @@ func Test_CreateInbox(t *testing.T) {
 func Test_ReadInboxUser(t *testing.T) {
 	organizationId := "orgId"
 	anotherOrganizationId := "anotherOrgId"
-	userId := models.UserId("userId") // This remains string for ActorIdentity for some tests
+	userId := models.UserId("userId")
 	actorIdentity := models.Identity{
 		UserId: userId,
 	}
-	// Use valid UUID strings for parsing to avoid uuid.Nil issues
-	inboxIdString1 := "10000000-0000-0000-0000-000000000001"
-	parsedInboxId1 := uuid.MustParse(inboxIdString1)
 
-	inboxIdString2 := "10000000-0000-0000-0000-000000000002" // Different UUID for "anotherInboxId"
-	parsedInboxId2 := uuid.MustParse(inboxIdString2)
+	inboxId1 := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	inboxId2 := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
 	t.Run("admin", func(t *testing.T) {
 		creds := models.Credentials{Role: models.ADMIN, OrganizationId: organizationId}
@@ -151,14 +145,14 @@ func Test_ReadInboxUser(t *testing.T) {
 		}
 
 		t.Run("Should be able to read any inbox user from the org", func(t *testing.T) {
-			err := sec.ReadInboxUser(models.InboxUser{InboxId: parsedInboxId1, OrganizationId: organizationId}, nil)
+			err := sec.ReadInboxUser(models.InboxUser{InboxId: inboxId1, OrganizationId: organizationId}, nil)
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
 		})
 		t.Run("Should not be able to read any inbox user from another org", func(t *testing.T) {
 			err := sec.ReadInboxUser(models.InboxUser{
-				InboxId:        parsedInboxId1, // Target user is in parsedInboxId1
+				InboxId:        inboxId1,
 				OrganizationId: anotherOrganizationId,
 			}, nil)
 			if err == nil {
@@ -175,18 +169,16 @@ func Test_ReadInboxUser(t *testing.T) {
 		}
 
 		t.Run("Should be able to read an inbox user if the calling user is member of the inbox", func(t *testing.T) {
-			// Actor is part of parsedInboxId1, target user is also in parsedInboxId1
-			err := sec.ReadInboxUser(models.InboxUser{InboxId: parsedInboxId1}, []models.InboxUser{
-				{InboxId: parsedInboxId1},
+			err := sec.ReadInboxUser(models.InboxUser{InboxId: inboxId1}, []models.InboxUser{
+				{InboxId: inboxId1},
 			})
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
 		})
 		t.Run("Should not be able to read an inbox user if the calling user is not a member of the inbox", func(t *testing.T) {
-			// Actor is part of parsedInboxId2, target user is in parsedInboxId1
-			err := sec.ReadInboxUser(models.InboxUser{InboxId: parsedInboxId1}, []models.InboxUser{
-				{InboxId: parsedInboxId2},
+			err := sec.ReadInboxUser(models.InboxUser{InboxId: inboxId1}, []models.InboxUser{
+				{InboxId: inboxId2},
 			})
 			if err == nil {
 				t.Errorf("Expected error, got nil")
@@ -199,8 +191,7 @@ func Test_CreateInboxUser(t *testing.T) {
 	t.Run("admin", func(t *testing.T) {
 		organizationId := "orgId"
 		anotherOrganizationId := "anotherOrgId"
-		// Define a general parsedInboxId for admin tests, distinct from Test_ReadInboxUser's
-		adminTestInboxId := uuid.MustParse("c0000000-0000-0000-0000-000000000001")
+		adminTestInboxId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
 		creds := models.Credentials{Role: models.ADMIN, OrganizationId: organizationId}
 		sec := security.EnforceSecurityInboxes{
@@ -209,14 +200,15 @@ func Test_CreateInboxUser(t *testing.T) {
 		}
 
 		t.Run("Should be able to create an inbox user in any inbox", func(t *testing.T) {
-			createInputTargetUserId, _ := uuid.Parse("d0000000-0000-0000-0000-000000000001")
+			userIdString := "11111111-1111-1111-1111-111111111111"
+			createInputTargetUserId := uuid.MustParse(userIdString)
 			err := sec.CreateInboxUser(
 				models.CreateInboxUserInput{
 					InboxId: adminTestInboxId,
 					UserId:  createInputTargetUserId,
 				}, nil, models.Inbox{
 					Id: adminTestInboxId, OrganizationId: organizationId,
-				}, models.User{UserId: models.UserId(createInputTargetUserId.String()), OrganizationId: organizationId},
+				}, models.User{UserId: models.UserId(userIdString), OrganizationId: organizationId},
 			)
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
@@ -224,14 +216,15 @@ func Test_CreateInboxUser(t *testing.T) {
 		})
 
 		t.Run("Should not be able to create an inbox user in another org", func(t *testing.T) {
-			createInputTargetUserId2, _ := uuid.Parse("d0000000-0000-0000-0000-000000000002")
+			userIdString := "11111111-1111-1111-1111-111111111111"
+			userIdParsed := uuid.MustParse(userIdString)
 			err := sec.CreateInboxUser(
 				models.CreateInboxUserInput{
 					InboxId: adminTestInboxId,
-					UserId:  createInputTargetUserId2,
+					UserId:  userIdParsed,
 				}, nil, models.Inbox{
-					Id: adminTestInboxId, OrganizationId: anotherOrganizationId, // Inbox in another org
-				}, models.User{UserId: models.UserId(createInputTargetUserId2.String()), OrganizationId: organizationId},
+					Id: adminTestInboxId, OrganizationId: anotherOrganizationId,
+				}, models.User{UserId: models.UserId(userIdString), OrganizationId: organizationId},
 			)
 			if err == nil {
 				t.Errorf("Expected an error, got %v", err)
@@ -240,14 +233,15 @@ func Test_CreateInboxUser(t *testing.T) {
 	})
 
 	t.Run("non admin", func(t *testing.T) {
-		organizationId_nonadmin := "orgId" // Renamed to avoid conflict if outer scope vars were intended
+		organizationId_nonadmin := "orgId"
 		anotherOrganizationId_nonadmin := "anotherOrgId"
-		userId_nonadmin_str := "30000000-0000-0000-0000-000000000001" // Actor's ID must be valid UUID string for some checks
-		actorIdentity_nonadmin := models.Identity{UserId: models.UserId(userId_nonadmin_str)}
+		actorIdentity_nonadmin := models.Identity{
+			UserId: models.UserId("00000000-0000-0000-0000-000000000000"),
+		}
 
 		// Use distinct UUIDs for target inbox vs actor's own inboxes for negative tests
-		targetInboxId := uuid.MustParse("b0000000-0000-0000-0000-000000000001")    // Inbox where action is attempted
-		actorsOwnInboxId := uuid.MustParse("b0000000-0000-0000-0000-000000000002") // Actor's actual inbox
+		targetInboxId := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+		actorsOwnInboxId := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 
 		creds := models.Credentials{
 			Role:           models.BUILDER,
@@ -259,9 +253,8 @@ func Test_CreateInboxUser(t *testing.T) {
 		}
 
 		t.Run("Should be able to create an inbox user in an inbox if the calling user is admin of the inbox", func(t *testing.T) {
-			actorMemberUserId, _ := uuid.Parse("a0000000-0000-0000-0000-00000000000a") // UUID for InboxUser.UserId
-			createInputTargetUserId, _ := uuid.Parse(
-				"c0000000-0000-0000-0000-00000000000c") // UUID for CreateInboxUserInput.UserId
+			actorMemberUserId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
+			createInputTargetUserId := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 
 			err := sec.CreateInboxUser(
 				models.CreateInboxUserInput{
@@ -284,20 +277,20 @@ func Test_CreateInboxUser(t *testing.T) {
 		})
 
 		t.Run("Should not be able to create an inbox user in an inbox if the calling user is not member of the inbox", func(t *testing.T) {
-			createInputTargetUserId2, _ := uuid.Parse("c0000000-0000-0000-0000-00000000000d")
-			actorMemberUserId2, _ := uuid.Parse("a0000000-0000-0000-0000-00000000000b")
+			actorMemberUserId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
+			createInputTargetUserId := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 			err := sec.CreateInboxUser(
 				models.CreateInboxUserInput{
 					InboxId: targetInboxId,
-					UserId:  createInputTargetUserId2,
+					UserId:  createInputTargetUserId,
 				}, // Attempting to create in targetInboxId
 				[]models.InboxUser{{
 					InboxId: actorsOwnInboxId,
-					Role:    models.InboxUserRoleAdmin, UserId: actorMemberUserId2,
+					Role:    models.InboxUserRoleAdmin, UserId: actorMemberUserId,
 				}}, // Actor is admin of a *different* inbox
 				models.Inbox{Id: targetInboxId, OrganizationId: organizationId_nonadmin},
 				models.User{
-					UserId:         models.UserId(createInputTargetUserId2.String()),
+					UserId:         models.UserId(createInputTargetUserId.String()),
 					OrganizationId: organizationId_nonadmin,
 				},
 			)
@@ -307,20 +300,20 @@ func Test_CreateInboxUser(t *testing.T) {
 		})
 
 		t.Run("Should not be able to create an inbox user in an inbox if the calling user is not admin of the inbox", func(t *testing.T) {
-			createInputTargetUserId3, _ := uuid.Parse("c0000000-0000-0000-0000-00000000000e")
-			actorMemberUserId3, _ := uuid.Parse("a0000000-0000-0000-0000-00000000000c")
+			actorMemberUserId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
+			createInputTargetUserId := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 			err := sec.CreateInboxUser(
 				models.CreateInboxUserInput{
 					InboxId: targetInboxId,
-					UserId:  createInputTargetUserId3,
+					UserId:  createInputTargetUserId,
 				}, // Attempting to create in targetInboxId
 				[]models.InboxUser{{
 					InboxId: targetInboxId,
-					Role:    models.InboxUserRoleMember, UserId: actorMemberUserId3,
+					Role:    models.InboxUserRoleMember, UserId: actorMemberUserId,
 				}}, // Actor is only a member, not admin
 				models.Inbox{Id: targetInboxId, OrganizationId: organizationId_nonadmin},
 				models.User{
-					UserId:         models.UserId(createInputTargetUserId3.String()),
+					UserId:         models.UserId(createInputTargetUserId.String()),
 					OrganizationId: organizationId_nonadmin,
 				},
 			)
@@ -330,17 +323,17 @@ func Test_CreateInboxUser(t *testing.T) {
 		})
 
 		t.Run("Should not be able to create an inbox user if the target user does not belong to the right org", func(t *testing.T) {
-			createInputTargetUserId4, _ := uuid.Parse("c0000000-0000-0000-0000-00000000000f")
-			actorMemberUserId4, _ := uuid.Parse("a0000000-0000-0000-0000-00000000000d")
+			actorMemberUserId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
+			createInputTargetUserId := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 			err := sec.CreateInboxUser(
-				models.CreateInboxUserInput{InboxId: targetInboxId, UserId: createInputTargetUserId4},
+				models.CreateInboxUserInput{InboxId: targetInboxId, UserId: createInputTargetUserId},
 				[]models.InboxUser{{
 					InboxId: targetInboxId,
-					Role:    models.InboxUserRoleAdmin, UserId: actorMemberUserId4,
+					Role:    models.InboxUserRoleAdmin, UserId: actorMemberUserId,
 				}}, // Actor is admin of the target inbox
 				models.Inbox{Id: targetInboxId, OrganizationId: organizationId_nonadmin},
 				models.User{
-					UserId:         models.UserId(createInputTargetUserId4.String()),
+					UserId:         models.UserId(createInputTargetUserId.String()),
 					OrganizationId: anotherOrganizationId_nonadmin,
 				}, // Target user in different org
 			)
