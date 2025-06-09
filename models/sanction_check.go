@@ -168,6 +168,7 @@ type SanctionCheckMatch struct {
 	IsMatch                      bool
 	SanctionCheckId              string
 	EntityId                     string
+	Referents                    []string
 	Status                       SanctionCheckMatchStatus
 	QueryIds                     []string
 	UniqueCounterpartyIdentifier *string

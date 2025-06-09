@@ -20,6 +20,7 @@ type HTTPOpenSanctionsResult struct {
 
 type HTTPOpenSanctionResultResult struct {
 	Id         string   `json:"id"`
+	Referents  []string `json:"referents"`
 	Match      bool     `json:"match"`
 	Schema     string   `json:"schema"`
 	Datasets   []string `json:"datasets"`
@@ -51,9 +52,10 @@ func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsRes
 
 			if _, ok := matches[parsed.Id]; !ok {
 				entity := models.SanctionCheckMatch{
-					IsMatch:  parsed.Match,
-					Payload:  match,
-					EntityId: parsed.Id,
+					IsMatch:   parsed.Match,
+					Payload:   match,
+					EntityId:  parsed.Id,
+					Referents: parsed.Referents,
 				}
 
 				matches[parsed.Id] = entity
