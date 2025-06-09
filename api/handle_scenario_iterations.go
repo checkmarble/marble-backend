@@ -94,7 +94,7 @@ func handleCreateSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) 
 			return
 		}
 
-		if presentError(ctx, c, input.ValidateOpenSanctionsQuery()) {
+		if len(input.Query) > 0 && presentError(ctx, c, input.ValidateOpenSanctionsQuery()) {
 			c.Status(http.StatusBadRequest)
 			return
 		}
