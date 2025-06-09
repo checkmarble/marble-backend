@@ -1199,7 +1199,9 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 	return usecase.getCaseWithDetails(ctx, exec, input.CaseId)
 }
 
-func (uc *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Transaction, annotationId string, annotationReq models.CreateEntityAnnotationRequest) error {
+func (uc *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Transaction,
+	annotationId string, annotationReq models.CreateEntityAnnotationRequest,
+) error {
 	return uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		CaseId:         *annotationReq.CaseId,
 		UserId:         (*string)(annotationReq.AnnotatedBy),
@@ -1210,7 +1212,9 @@ func (uc *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Tra
 	})
 }
 
-func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositories.Transaction, annotationId string, annotationReq models.CreateEntityAnnotationRequest, files []models.EntityAnnotationFilePayloadFile) error {
+func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositories.Transaction,
+	annotationId string, annotationReq models.CreateEntityAnnotationRequest, files []models.EntityAnnotationFilePayloadFile,
+) error {
 	if annotationReq.CaseId == nil {
 		return errors.New("tried to attach file annotation to a case without a case ID")
 	}
@@ -1225,7 +1229,6 @@ func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositorie
 			FileName:      file.Filename,
 			FileReference: file.Key,
 		})
-
 		if err != nil {
 			return err
 		}
@@ -1239,7 +1242,6 @@ func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositorie
 		ResourceId:     &annotationId,
 		AdditionalNote: utils.Ptr(annotationReq.AnnotationType.String()),
 	})
-
 	if err != nil {
 		return err
 	}
@@ -1401,6 +1403,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	}
 
 	if input.ReviewStatus == models.ReviewStatusApprove {
+		// GetActiveSanctionCheckForDecision expets a sanction check id last, not a decision id. (also, would be great to add named params to the interface definition of it above)
 		sanctionCheck, err := usecase.sanctionCheckRepository.GetActiveSanctionCheckForDecision(ctx, exec, decisions[0].DecisionId)
 		if err != nil {
 			return models.Case{}, errors.Wrap(err, "could not retrieve sanction check")

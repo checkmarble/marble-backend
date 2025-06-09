@@ -13,6 +13,10 @@ const (
 	ErrSanctionCheckAllFieldsNullOrEmpty = "all_fields_null_or_empty"
 )
 
+// As we have seen, a call to yente may have quite high latency. We probably want to have some level of concurrency
+// on sanction check evaluations, even if it does of course not improve the global throughput in case of high load of
+// sanction checks.
+// Also, for what it's worth, I think the return parameter "performed" is no longer useful
 func (e ScenarioEvaluator) evaluateSanctionCheck(
 	ctx context.Context,
 	iteration models.ScenarioIteration,
@@ -89,6 +93,10 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				queries[0].Filters[fieldName] = []string{input}
 			}
 
+			// A minor point but for easier debugging, since we're doing quite a few debug logs nested in "preprocess", I think it's
+			// worth adding some context values to the logging we pass in context (using logger.With(...)).
+			// The most convenient of course would be to pass the id of the sanction check, though that would require some inversion of control
+			// where we generate the id ahead of performing the check, so I'll let you judge if that is worth it.
 			if queries, err = e.preprocess(ctx, queries, iteration, scc); err != nil {
 				return nil, true, errors.Wrap(err, "could not evaluate sanction check name")
 			}

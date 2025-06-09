@@ -33,6 +33,7 @@ type CreateScenarioIterationInput struct {
 	Body       *CreateScenarioIterationBody
 }
 
+// does not handle sanction check configs - but it's also not used for real except in tests today
 type CreateScenarioIterationBody struct {
 	TriggerConditionAstExpression *ast.Node
 	Rules                         []CreateRuleInput
@@ -73,9 +74,10 @@ type SanctionCheckConfig struct {
 }
 
 type SanctionCheckConfigPreprocessing struct {
-	UseNer          bool   `json:"use_ner,omitempty"`
-	SkipIfUnder     int    `json:"skip_if_under,omitempty"`
-	RemoveNumbers   bool   `json:"remove_numbers,omitempty"`
+	UseNer        bool `json:"use_ner,omitempty"`
+	SkipIfUnder   int  `json:"skip_if_under,omitempty"`
+	RemoveNumbers bool `json:"remove_numbers,omitempty"`
+	// just naming, but I think I'd rename to something more like "IgnoreListId" - blacklist may be interpreted differently
 	BlacklistListId string `json:"blacklist_list_id,omitempty"`
 }
 

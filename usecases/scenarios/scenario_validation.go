@@ -124,10 +124,13 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 	}
 
 	// Validate sanction check trigger and rule
+	// Pascal: can probably de-indent all of this for free, considering that the case "len(scc)=0" is no longer really an edge case (empty slice is an empty slice)
+	// NB: in a few other places too probably
 	if len(iteration.SanctionCheckConfigs) > 0 {
 		result.SanctionCheck = make([]models.SanctionCheckConfigValidation, len(iteration.SanctionCheckConfigs))
 
 		for idx, scc := range iteration.SanctionCheckConfigs {
+			// maybe nitpicking, but would it make sense to you to construct the validation object here, and assign it to "result" at the end of the block ?
 			result.SanctionCheck[idx] = models.NewSanctionCheckValidation()
 
 			if scc.TriggerRule != nil {
@@ -207,6 +210,9 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 
 			result.SanctionCheck[idx].Query = queryValidation
 			result.SanctionCheck[idx].CounterpartyIdExpression = counterpartyIdValidation
+
+			// For security, keep a validation on the preprocessing here? At least, check NER is not active if matching on something other than
+			// "thing" ? Unless we have a high level of confidence that a strong validation is done at PATCH time.
 		}
 	}
 
