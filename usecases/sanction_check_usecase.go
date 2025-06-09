@@ -392,8 +392,8 @@ func (uc SanctionCheckUsecase) FreeformSearch(ctx context.Context,
 func (uc SanctionCheckUsecase) FilterOutWhitelistedMatches(ctx context.Context, orgId string,
 	sanctionCheck models.SanctionCheckWithMatches, counterpartyId string,
 ) (models.SanctionCheckWithMatches, error) {
-	matchesSet := set.From(pure_utils.Map(sanctionCheck.Matches, func(m models.SanctionCheckMatch) string {
-		return m.EntityId
+	matchesSet := set.From(pure_utils.FlatMap(sanctionCheck.Matches, func(m models.SanctionCheckMatch) []string {
+		return append(m.Referents, m.EntityId)
 	}))
 
 	whitelists, err := uc.repository.IsSanctionCheckMatchWhitelisted(ctx,
@@ -406,7 +406,11 @@ func (uc SanctionCheckUsecase) FilterOutWhitelistedMatches(ctx context.Context, 
 
 	for _, match := range sanctionCheck.Matches {
 		isWhitelisted := slices.ContainsFunc(whitelists, func(w models.SanctionCheckWhitelist) bool {
-			return match.EntityId == w.EntityId
+			if match.EntityId == w.EntityId {
+				return true
+			}
+
+			return slices.Contains(match.Referents, w.EntityId)
 		})
 
 		if isWhitelisted {
@@ -430,6 +434,10 @@ func (uc SanctionCheckUsecase) FilterOutWhitelistedMatches(ctx context.Context, 
 
 	sanctionCheck.Matches = matchesAfterWhitelisting
 	sanctionCheck.Count = len(sanctionCheck.Matches)
+
+	if sanctionCheck.Count == 0 {
+		sanctionCheck.Status = models.SanctionStatusNoHit
+	}
 
 	return sanctionCheck, nil
 }

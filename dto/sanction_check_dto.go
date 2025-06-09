@@ -81,6 +81,7 @@ func AdaptSanctionCheckRefineDto(dto SanctionCheckRefineDto) models.SanctionChec
 type SanctionCheckMatchDto struct {
 	Id                           string                         `json:"id"`
 	EntityId                     string                         `json:"entity_id"`
+	Referents                    []string                       `json:"referents"`
 	QueryIds                     []string                       `json:"query_ids"`
 	Status                       string                         `json:"status"`
 	ReviewedBy                   *string                        `json:"reviewer_id,omitempty"` //nolint:tagliatelle
@@ -95,6 +96,7 @@ func AdaptSanctionCheckMatchDto(m models.SanctionCheckMatch) SanctionCheckMatchD
 	match := SanctionCheckMatchDto{
 		Id:                           m.Id,
 		EntityId:                     m.EntityId,
+		Referents:                    m.Referents,
 		Status:                       m.Status.String(),
 		ReviewedBy:                   m.ReviewedBy,
 		QueryIds:                     m.QueryIds,
