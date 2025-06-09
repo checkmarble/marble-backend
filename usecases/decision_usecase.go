@@ -523,6 +523,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			if err != nil {
 				return models.DecisionWithRuleExecutions{}, err
 			}
+			dec.SanctionCheckExecutions = scs
 			return dec, nil
 		}
 
