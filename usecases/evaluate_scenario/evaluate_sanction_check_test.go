@@ -134,11 +134,12 @@ func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
 		}},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	sce, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
-	assert.False(t, performed)
-	assert.Error(t, err)
+	assert.NoError(t, err)
+	assert.True(t, performed)
+	assert.Equal(t, models.SanctionStatusError, sce[0].Status)
 }
 
 func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {

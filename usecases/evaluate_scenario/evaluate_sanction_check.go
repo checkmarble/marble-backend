@@ -10,7 +10,12 @@ import (
 )
 
 const (
-	ErrSanctionCheckAllFieldsNullOrEmpty = "all_fields_null_or_empty"
+	// ErrSanctionCheckInvalidAst              = "invalid_ast"
+	ErrSanctionCheckTriggerRuleNotBoolean   = "trigger_rule_not_boolean"
+	ErrSanctionCheckCounterpartyIdNotString = "counterparty_id_not_string"
+	ErrSanctionCheckAllFieldsNullOrEmpty    = "all_fields_null_or_empty"
+	ErrSanctionCheckFieldsNotString         = "fields_not_string"
+	ErrSanctionCheckPreprocessingFailed     = "preprocessing_failed"
 )
 
 func (e ScenarioEvaluator) evaluateSanctionCheck(
@@ -41,12 +46,12 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				params.DataModel,
 			)
 			if err != nil {
-				sanctionCheckErr = errors.Wrap(err, "could not execute sanction check trigger rule")
-				return
+				return nil, false, errors.New("could not parse screening trigger condition AST expression")
 			}
 			passed, ok := triggerEvaluation.ReturnValue.(bool)
 			if !ok {
-				sanctionCheckErr = errors.New("sanction check trigger rule did not evaluate to a boolean")
+				sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckTriggerRuleNotBoolean))
+				continue
 			} else if !passed {
 				sanctionCheck = append(sanctionCheck, outcomeNoHit(scc))
 				continue
@@ -69,7 +74,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 					fieldAst, iteration.OrganizationId,
 					dataAccessor.ClientObject, dataAccessor.DataModel)
 				if err != nil {
-					return
+					return nil, false, errors.New("could not parse screening counterparty name AST expression")
 				}
 
 				if inputAst.ReturnValue == nil {
@@ -79,7 +84,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 
 				input, ok := inputAst.ReturnValue.(string)
 				if !ok {
-					return nil, false, errors.New("name filter name query did not return a string")
+					sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckFieldsNotString))
 				}
 				if input == "" {
 					sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty))
@@ -118,13 +123,12 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				params.DataModel,
 			)
 			if err != nil {
-				sanctionCheckErr = errors.Wrap(err, "could not extract object field for whitelist check")
-				return
+				return nil, false, errors.New("could not parse screening counterparty ID AST expression")
 			}
 
 			counterpartyId, ok := counterpartyIdResult.ReturnValue.(string)
 			if counterpartyIdResult.ReturnValue == nil || !ok {
-				sanctionCheckErr = errors.Wrapf(err, "could not parse object field for white list check as string, read %v", counterpartyIdResult.ReturnValue)
+				sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckCounterpartyIdNotString))
 				return
 			}
 

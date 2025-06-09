@@ -43,9 +43,11 @@ func (uc SanctionCheckUsecase) CreateSanctionCheckConfig(ctx context.Context, it
 	}
 
 	if scCfg.Query != nil {
-		if scCfg.Query != nil && scCfg.Query["name"].Function != ast.FUNC_STRING_CONCAT {
-			return models.SanctionCheckConfig{}, errors.New(
-				"query name filter must be a StringConcat")
+		for _, v := range scCfg.Query {
+			if v.Function != ast.FUNC_STRING_CONCAT {
+				return models.SanctionCheckConfig{}, errors.New(
+					"query field filters must be a StringConcat")
+			}
 		}
 	}
 
