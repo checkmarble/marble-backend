@@ -72,8 +72,9 @@ type CaseUseCaseRepository interface {
 }
 
 type CaseUsecaseSanctionCheckRepository interface {
-	GetActiveSanctionCheckForDecision(context.Context, repositories.Executor, string) (
+	GetActiveSanctionCheckForDecision(ctx context.Context, exec repositories.Executor, sanctionCheckId string) (
 		models.SanctionCheckWithMatches, error)
+	ListSanctionChecksForDecision(ctx context.Context, exec repositories.Executor, decisionId string, initialOnly bool) ([]models.SanctionCheckWithMatches, error)
 }
 
 type webhookEventsUsecase interface {
@@ -1392,13 +1393,16 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	}
 
 	if input.ReviewStatus == models.ReviewStatusApprove {
-		sanctionCheck, err := usecase.sanctionCheckRepository.GetActiveSanctionCheckForDecision(ctx, exec, decisions[0].DecisionId)
+		sanctionChecks, err := usecase.sanctionCheckRepository.ListSanctionChecksForDecision(ctx, exec, decisions[0].DecisionId, false)
 		if err != nil {
 			return models.Case{}, errors.Wrap(err, "could not retrieve sanction check")
 		}
-		if sanctionCheck.Status != models.SanctionStatusNoHit {
-			return models.Case{}, errors.Wrap(models.BadParameterError,
-				"cannot approve a decision with possible sanction hits")
+
+		for _, sc := range sanctionChecks {
+			if sc.Status != models.SanctionStatusNoHit && sc.Status != models.SanctionStatusError {
+				return models.Case{}, errors.Wrap(models.BadParameterError,
+					"cannot approve a decision with possible sanction hits")
+			}
 		}
 	}
 

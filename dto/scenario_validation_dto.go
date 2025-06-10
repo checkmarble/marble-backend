@@ -38,11 +38,10 @@ type decisionValidationDto struct {
 }
 
 type sanctionCheckConfigValidationDto struct {
-	Trigger                  triggerValidationDto `json:"trigger"`
-	Query                    ruleValidationDto    `json:"query"`
-	QueryName                ruleValidationDto    `json:"query_name"`
-	QueryLabel               ruleValidationDto    `json:"query_label"`
-	CounterpartyIdExpression ruleValidationDto    `json:"counterparty_id_expression"`
+	Trigger                  triggerValidationDto         `json:"trigger"`
+	Query                    ruleValidationDto            `json:"query"`
+	QueryFields              map[string]ruleValidationDto `json:"query_fields"`
+	CounterpartyIdExpression ruleValidationDto            `json:"counterparty_id_expression"`
 }
 
 type ScenarioValidationDto struct {
@@ -77,14 +76,12 @@ func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationD
 					Errors:         pure_utils.Map(sc.Query.Errors, AdaptScenarioValidationErrorDto),
 					RuleEvaluation: ast.AdaptNodeEvaluationDto(sc.Query.RuleEvaluation),
 				},
-				QueryName: ruleValidationDto{
-					Errors:         pure_utils.Map(sc.QueryName.Errors, AdaptScenarioValidationErrorDto),
-					RuleEvaluation: ast.AdaptNodeEvaluationDto(sc.QueryName.RuleEvaluation),
-				},
-				QueryLabel: ruleValidationDto{
-					Errors:         pure_utils.Map(sc.QueryLabel.Errors, AdaptScenarioValidationErrorDto),
-					RuleEvaluation: ast.AdaptNodeEvaluationDto(sc.QueryLabel.RuleEvaluation),
-				},
+				QueryFields: pure_utils.MapValues(sc.QueryFields, func(e models.RuleValidation) ruleValidationDto {
+					return ruleValidationDto{
+						Errors:         pure_utils.Map(e.Errors, AdaptScenarioValidationErrorDto),
+						RuleEvaluation: ast.AdaptNodeEvaluationDto(e.RuleEvaluation),
+					}
+				}),
 				CounterpartyIdExpression: ruleValidationDto{
 					Errors:         pure_utils.Map(sc.CounterpartyIdExpression.Errors, AdaptScenarioValidationErrorDto),
 					RuleEvaluation: ast.AdaptNodeEvaluationDto(sc.CounterpartyIdExpression.RuleEvaluation),

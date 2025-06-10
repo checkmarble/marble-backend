@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 )
 
 func (*MarbleDbRepository) GetActiveSanctionCheckForDecision(
@@ -100,7 +101,7 @@ func selectSanctionChecksWithMatches() squirrel.SelectBuilder {
 		GroupBy("sc.id")
 }
 
-func (*MarbleDbRepository) ArchiveSanctionCheck(ctx context.Context, exec Executor, decisionId string) error {
+func (*MarbleDbRepository) ArchiveSanctionCheck(ctx context.Context, exec Executor, id string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -109,7 +110,7 @@ func (*MarbleDbRepository) ArchiveSanctionCheck(ctx context.Context, exec Execut
 		Update(dbmodels.TABLE_SANCTION_CHECKS).
 		Set("is_archived", true).
 		Where(
-			squirrel.Eq{"decision_id": decisionId, "is_archived": false},
+			squirrel.Eq{"id": id, "is_archived": false},
 		)
 
 	return ExecBuilder(ctx, exec, sql)
@@ -217,6 +218,11 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		return sanctionCheck, err
 	}
 
+	scId := sanctionCheck.Id
+	if scId == "" {
+		scId = uuid.NewString()
+	}
+
 	whitelistedEntities := make([]string, 0)
 
 	if sanctionCheck.WhitelistedEntities != nil {
@@ -225,6 +231,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECKS).Columns(
+		"id",
 		"decision_id",
 		"sanction_check_config_id",
 		"search_input",
@@ -239,6 +246,7 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 		"status",
 		"error_codes",
 	).Values(
+		scId,
 		decisionId,
 		sanctionCheck.SanctionCheckConfigId,
 		sanctionCheck.SearchInput,
