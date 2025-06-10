@@ -37,3 +37,41 @@ func AdaptNodeEvaluationDto(evaluation NodeEvaluation) NodeEvaluationDto {
 func isReturnValueOmitted(evaluation NodeEvaluation) bool {
 	return evaluation.Function == FUNC_CUSTOM_LIST_ACCESS
 }
+
+func MergeAstTrees(definition Node, evaluation NodeEvaluationDto) NodeEvaluationWithDefinitionDto {
+	attrs, _ := definition.Function.Attributes()
+
+	out := NodeEvaluationWithDefinitionDto{
+		ReturnValue: evaluation.ReturnValue,
+		Errors:      evaluation.Errors,
+		Skipped:     evaluation.Skipped,
+		Function:    attrs.AstName,
+		Constant:    definition.Constant,
+	}
+
+	out.Children = make([]NodeEvaluationWithDefinitionDto, len(evaluation.Children))
+	for i, child := range evaluation.Children {
+		out.Children[i] = MergeAstTrees(definition.Children[i], child)
+	}
+
+	out.NamedChildren = make(map[string]NodeEvaluationWithDefinitionDto, len(evaluation.NamedChildren))
+	for name, child := range evaluation.NamedChildren {
+		out.NamedChildren[name] = MergeAstTrees(definition.NamedChildren[name], child)
+	}
+
+	if definition.Constant != nil {
+		out.Constant = definition.Constant
+	}
+
+	return out
+}
+
+type NodeEvaluationWithDefinitionDto struct {
+	ReturnValue   ReturnValueDto                             `json:"return_value"`
+	Errors        []EvaluationErrorDto                       `json:"errors,omitempty"`
+	Children      []NodeEvaluationWithDefinitionDto          `json:"children,omitempty"`
+	NamedChildren map[string]NodeEvaluationWithDefinitionDto `json:"named_children,omitempty"`
+	Skipped       bool                                       `json:"skipped"`
+	Function      string                                     `json:"function"`
+	Constant      any                                        `json:"constant,omitempty"`
+}

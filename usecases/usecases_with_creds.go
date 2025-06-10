@@ -366,6 +366,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		webhookEventsUsecase:    usecases.NewWebhookEventsUsecase(),
 		sanctionCheckRepository: &usecases.Repositories.MarbleDbRepository,
 		ingestedDataReader:      usecases.NewIngestedDataReaderUsecase(),
+		dataModelUsecase:        usecases.NewDataModelUseCase(),
 	}
 }
 
