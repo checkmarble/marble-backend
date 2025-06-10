@@ -134,9 +134,9 @@ func (uc EntityAnnotationUsecase) Attach(ctx context.Context,
 func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
 	req models.CreateEntityAnnotationRequest,
 	files []multipart.FileHeader,
-) (models.EntityAnnotation, error) {
+) ([]models.EntityAnnotation, error) {
 	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType, req.ObjectId); err != nil {
-		return models.EntityAnnotation{}, errors.Wrap(models.NotFoundError, err.Error())
+		return nil, errors.Wrap(models.NotFoundError, err.Error())
 	}
 
 	metadata := make([]models.EntityAnnotationFilePayloadFile, len(files))
@@ -145,7 +145,7 @@ func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
 		key := fmt.Sprintf("annotations/%s/%s/%s", req.OrgId, req.ObjectType, uuid.NewString())
 
 		if err := uc.writeFileAnnotationToBlobStorage(ctx, file, key); err != nil {
-			return models.EntityAnnotation{}, err
+			return nil, err
 		}
 
 		metadata[idx] = models.EntityAnnotationFilePayloadFile{
@@ -157,28 +157,36 @@ func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
 
 	fp, ok := req.Payload.(models.EntityAnnotationFilePayload)
 	if !ok {
-		return models.EntityAnnotation{}, errors.Wrap(models.BadParameterError, "could not understand request")
+		return nil, errors.Wrap(models.BadParameterError, "could not understand request")
 	}
 
-	req.Payload = models.EntityAnnotationFilePayload{
-		Caption: fp.Caption,
-		Bucket:  uc.bucketUrl,
-		Files:   metadata,
-	}
+	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) ([]models.EntityAnnotation, error) {
+		annotations := make([]models.EntityAnnotation, len(metadata))
 
-	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.EntityAnnotation, error) {
-		annotation, err := uc.repository.CreateEntityAnnotation(ctx, tx, req)
-		if err != nil {
-			return models.EntityAnnotation{}, err
-		}
+		for idx, file := range metadata {
+			fileReq := req
 
-		if req.CaseId != nil {
-			if err := uc.caseUsecase.AttachAnnotationFiles(ctx, tx, annotation.Id, req, metadata); err != nil {
-				return models.EntityAnnotation{}, err
+			fileReq.Payload = models.EntityAnnotationFilePayload{
+				Caption: fp.Caption,
+				Bucket:  uc.bucketUrl,
+				Files:   []models.EntityAnnotationFilePayloadFile{file},
 			}
+
+			annotation, err := uc.repository.CreateEntityAnnotation(ctx, tx, fileReq)
+			if err != nil {
+				return nil, err
+			}
+
+			if req.CaseId != nil {
+				if err := uc.caseUsecase.AttachAnnotationFiles(ctx, tx, annotation.Id, req, metadata); err != nil {
+					return nil, err
+				}
+			}
+
+			annotations[idx] = annotation
 		}
 
-		return annotation, nil
+		return annotations, nil
 	})
 }
 
