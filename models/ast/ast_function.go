@@ -3,7 +3,6 @@ package ast
 import (
 	"fmt"
 
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 )
 
@@ -240,12 +239,6 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	},
 	FUNC_FILTER: FuncFilterAttributes,
 }
-
-var FuncAstNameMap = pure_utils.MapKeyValue(FuncAttributesMap, func(function Function,
-	attrs FuncAttributes,
-) (Function, string) {
-	return function, attrs.AstName
-})
 
 func (f Function) Attributes() (FuncAttributes, error) {
 	if attributes, ok := FuncAttributesMap[f]; ok {
