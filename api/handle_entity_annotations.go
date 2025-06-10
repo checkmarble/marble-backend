@@ -263,13 +263,13 @@ func handleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			AnnotatedBy: &creds.ActorIdentity.UserId,
 		}
 
-		annotation, err := annotationsUsecase.AttachFile(ctx, req, payload.Files)
+		annotations, err := annotationsUsecase.AttachFile(ctx, req, payload.Files)
 		if err != nil {
 			presentError(ctx, c, err)
 			return
 		}
 
-		out, err := dto.AdaptEntityAnnotation(annotation)
+		out, err := pure_utils.MapErr(annotations, dto.AdaptEntityAnnotation)
 		if err != nil {
 			presentError(ctx, c, err)
 			return
