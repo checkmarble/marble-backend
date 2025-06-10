@@ -100,6 +100,8 @@ func selectSanctionChecksWithMatches() squirrel.SelectBuilder {
 		GroupBy("sc.id")
 }
 
+// The signature (the "real one", even if types stay the same) should change to expect a sanction check id instead of a decision id here
+// It is used in the "refine" usecase, where it probably is assumed to be a "by id" thing.
 func (*MarbleDbRepository) ArchiveSanctionCheck(ctx context.Context, exec Executor, decisionId string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err

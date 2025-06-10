@@ -357,6 +357,8 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 			"error getting sanction check config from scenario iteration")
 	}
 
+	// I should come back to this tomorrow, but the whole logic in this block and using "copiedSanctionCheck" seems incorrect,
+	// I don't think it handles well the case where there are several sanction checks rules but only some have been modified.
 	if len(sccs) > 0 {
 		liveVersionSccs, err := e.evalSanctionCheckConfigRepository.ListSanctionCheckConfigs(
 			ctx, exec, testruns[0].ScenarioLiveIterationId)
@@ -435,6 +437,8 @@ func (e ScenarioEvaluator) EvalScenario(
 	)
 	defer span.End()
 
+	// we have some places like this that still read from the repo, then enrich from the sanction check configs. The full logic is handled in the
+	// scenario iteration usecase and in "scenario and iteration" usecase. It would probably be safer to only use those.
 	versionToRun, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, targetVersionId)
 	if err != nil {
 		return false, models.ScenarioExecution{}, errors.Wrap(err,

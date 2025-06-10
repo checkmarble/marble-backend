@@ -22,7 +22,10 @@ type ScreeningPreprocessor func(
 	scc models.SanctionCheckConfig,
 ) ([]models.OpenSanctionsCheckQuery, error)
 
-func SkipIfUnder(ctx context.Context, e ScenarioEvaluator, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.SanctionCheckConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func SkipIfUnder(ctx context.Context, e ScenarioEvaluator, queries []models.OpenSanctionsCheckQuery,
+	iteration models.ScenarioIteration, scc models.SanctionCheckConfig,
+) ([]models.OpenSanctionsCheckQuery, error) {
+	// nitpicking, but it's not "really" an edge case
 	if scc.Preprocessing.SkipIfUnder == 0 {
 		return queries, nil
 	}
@@ -40,13 +43,17 @@ func SkipIfUnder(ctx context.Context, e ScenarioEvaluator, queries []models.Open
 	}
 
 	if skipped > 0 {
-		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: SkipIfUnder skipped %d queries", skipped))
+		utils.LoggerFromContext(ctx).DebugContext(ctx,
+			fmt.Sprintf("screening preprocessing: SkipIfUnder skipped %d queries", skipped))
 	}
 
 	return out, nil
 }
 
-func RemoveNumbers(ctx context.Context, e ScenarioEvaluator, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.SanctionCheckConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func RemoveNumbers(ctx context.Context, e ScenarioEvaluator,
+	queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration,
+	scc models.SanctionCheckConfig,
+) ([]models.OpenSanctionsCheckQuery, error) {
 	if !scc.Preprocessing.RemoveNumbers {
 		return queries, nil
 	}
@@ -72,13 +79,17 @@ func RemoveNumbers(ctx context.Context, e ScenarioEvaluator, queries []models.Op
 	}
 
 	if removed > 0 {
-		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: RemoveNumbers removed %d characters", removed))
+		utils.LoggerFromContext(ctx).DebugContext(ctx,
+			fmt.Sprintf("screening preprocessing: RemoveNumbers removed %d characters", removed))
 	}
 
 	return out, nil
 }
 
-func RemoveFromList(ctx context.Context, e ScenarioEvaluator, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.SanctionCheckConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func RemoveFromList(ctx context.Context, e ScenarioEvaluator,
+	queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration,
+	scc models.SanctionCheckConfig,
+) ([]models.OpenSanctionsCheckQuery, error) {
 	if scc.Preprocessing.BlacklistListId == "" {
 		return queries, nil
 	}
@@ -87,7 +98,9 @@ func RemoveFromList(ctx context.Context, e ScenarioEvaluator, queries []models.O
 	removed := 0
 
 	for _, query := range queries {
-		customListEval, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil, ast.NewNodeCustomListAccess(scc.Preprocessing.BlacklistListId), iteration.OrganizationId, models.ClientObject{}, models.DataModel{})
+		customListEval, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
+			ast.NewNodeCustomListAccess(scc.Preprocessing.BlacklistListId),
+			iteration.OrganizationId, models.ClientObject{}, models.DataModel{})
 		if err != nil {
 			return nil, err
 		}
@@ -119,13 +132,17 @@ func RemoveFromList(ctx context.Context, e ScenarioEvaluator, queries []models.O
 	}
 
 	if removed > 0 {
-		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: RemoveFromList removed %d characters", removed))
+		utils.LoggerFromContext(ctx).DebugContext(ctx,
+			fmt.Sprintf("screening preprocessing: RemoveFromList removed %d characters", removed))
 	}
 
 	return out, nil
 }
 
-func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.SanctionCheckConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator,
+	queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration,
+	scc models.SanctionCheckConfig,
+) ([]models.OpenSanctionsCheckQuery, error) {
 	if !scc.Preprocessing.UseNer {
 		return queries, nil
 	}
@@ -169,7 +186,9 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, queries []m
 	}
 
 	if performed {
-		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: NameEntityRecognition turned %d into %d", len(queries), len(out)), "before", queries, "after", out)
+		utils.LoggerFromContext(ctx).DebugContext(ctx,
+			fmt.Sprintf("screening preprocessing: NameEntityRecognition turned %d into %d",
+				len(queries), len(out)), "before", queries, "after", out)
 	}
 
 	return out, nil
