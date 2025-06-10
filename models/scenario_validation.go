@@ -80,8 +80,7 @@ type decisionValidation struct {
 type SanctionCheckConfigValidation struct {
 	TriggerRule              triggerValidation
 	Query                    RuleValidation
-	QueryName                RuleValidation
-	QueryLabel               RuleValidation
+	QueryFields              map[string]RuleValidation
 	CounterpartyIdExpression RuleValidation
 }
 
@@ -115,5 +114,6 @@ func NewSanctionCheckValidation() SanctionCheckConfigValidation {
 		TriggerRule: triggerValidation{
 			Errors: make([]ScenarioValidationError, 0),
 		},
+		QueryFields: make(map[string]RuleValidation),
 	}
 }

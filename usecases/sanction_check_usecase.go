@@ -325,7 +325,7 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 			return models.SanctionCheckWithMatches{}, err
 		}
 
-		if err := uc.repository.ArchiveSanctionCheck(ctx, tx, decision.DecisionId); err != nil {
+		if err := uc.repository.ArchiveSanctionCheck(ctx, tx, sc.Id); err != nil {
 			return models.SanctionCheckWithMatches{}, err
 		}
 

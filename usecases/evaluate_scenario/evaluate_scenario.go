@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime/debug"
+	"slices"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -219,24 +220,23 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	var outcome models.Outcome
 
-	sanctionCheckExecutions, santionCheckPerformed, err :=
+	sanctionCheckExecutions, err :=
 		e.evaluateSanctionCheck(ctx, iteration, params, dataAccessor)
 	if err != nil {
 		return false, models.ScenarioExecution{},
 			errors.Wrap(err, "could not perform sanction check")
 	}
 
-	if santionCheckPerformed {
-		for idx, sce := range sanctionCheckExecutions {
-			if sce.Count > 0 && iteration.SanctionCheckConfigs[idx].ForcedOutcome.Priority() > outcome.Priority() {
-				outcome = iteration.SanctionCheckConfigs[idx].ForcedOutcome
-			}
+	for idx, sce := range sanctionCheckExecutions {
+		if sce.Count > 0 && iteration.SanctionCheckConfigs[idx].ForcedOutcome.Priority() > outcome.Priority() {
+			outcome = iteration.SanctionCheckConfigs[idx].ForcedOutcome
 		}
 	}
 
-	// We only go through the nominal score classifier if the sanction check was not executed or if it was, but
-	// there was not forced outcome configured on it.
-	if !santionCheckPerformed {
+	// We only go through the nominal score classifier if no sanction check returned any match (either no_hit or error)
+	if !slices.ContainsFunc(sanctionCheckExecutions, func(e models.SanctionCheckWithMatches) bool {
+		return e.Status != models.SanctionStatusNoHit && e.Status != models.SanctionStatusError
+	}) {
 		if score >= *iteration.ScoreDeclineThreshold {
 			outcome = models.Decline
 		} else if score >= *iteration.ScoreBlockAndReviewThreshold {
@@ -357,6 +357,8 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 			"error getting sanction check config from scenario iteration")
 	}
 
+	sccsToRun := slices.Clone(sccs)
+
 	if len(sccs) > 0 {
 		liveVersionSccs, err := e.evalSanctionCheckConfigRepository.ListSanctionCheckConfigs(
 			ctx, exec, testruns[0].ScenarioLiveIterationId)
@@ -370,6 +372,8 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 					if cached, ok := params.CachedSanctionCheck[liveVersionScc.ScenarioIterationId]; ok {
 						if liveVersionScc.HasSameQuery(testVersionScc) {
 							copiedSanctionCheck = append(copiedSanctionCheck, cached)
+							sccsToRun = slices.Delete(sccsToRun, 0, 1)
+							break
 						}
 					}
 				}
@@ -377,14 +381,14 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		}
 	}
 
-	testRunIteration.SanctionCheckConfigs = sccs
+	testRunIteration.SanctionCheckConfigs = sccsToRun
 
 	triggerPassed, se, err = e.processScenarioIteration(ctx, params, testRunIteration, start, exec)
 	if err != nil {
 		return false, se, err
 	}
 	if len(copiedSanctionCheck) > 0 {
-		se.SanctionCheckExecutions = copiedSanctionCheck
+		se.SanctionCheckExecutions = append(se.SanctionCheckExecutions, copiedSanctionCheck...)
 	}
 	se.TestRunId = testruns[0].Id
 	return triggerPassed, se, nil
