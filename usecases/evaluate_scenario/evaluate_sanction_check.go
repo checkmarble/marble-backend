@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 const (
@@ -25,7 +26,6 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	dataAccessor DataAccessor,
 ) (
 	sanctionCheck []models.SanctionCheckWithMatches,
-	performed bool,
 	sanctionCheckErr error,
 ) {
 	// First, check if the sanction check should be performed
@@ -34,6 +34,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	}
 
 	for _, scc := range iteration.SanctionCheckConfigs {
+		scId := uuid.NewString()
 		start := time.Now()
 
 		if scc.TriggerRule != nil {
@@ -46,7 +47,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				params.DataModel,
 			)
 			if err != nil {
-				return nil, false, errors.New("could not parse screening trigger condition AST expression")
+				return nil, errors.New("could not parse screening trigger condition AST expression")
 			}
 			passed, ok := triggerEvaluation.ReturnValue.(bool)
 			if !ok {
@@ -74,7 +75,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 					fieldAst, iteration.OrganizationId,
 					dataAccessor.ClientObject, dataAccessor.DataModel)
 				if err != nil {
-					return nil, false, errors.New("could not parse screening counterparty name AST expression")
+					return nil, errors.New("could not parse screening counterparty name AST expression")
 				}
 
 				if inputAst.ReturnValue == nil {
@@ -94,8 +95,8 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				queries[0].Filters[fieldName] = []string{input}
 			}
 
-			if queries, err = e.preprocess(ctx, queries, iteration, scc); err != nil {
-				return nil, true, errors.Wrap(err, "could not evaluate sanction check name")
+			if queries, err = e.preprocess(ctx, scId, queries, iteration, scc); err != nil {
+				return nil, errors.Wrap(err, "could not evaluate sanction check name")
 			}
 		}
 
@@ -103,8 +104,6 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 			sanctionCheck = append(sanctionCheck, outcomeNoHit(scc))
 			continue
 		}
-
-		performed = true
 
 		var uniqueCounterpartyIdentifier *string
 
@@ -123,7 +122,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				params.DataModel,
 			)
 			if err != nil {
-				return nil, false, errors.New("could not parse screening counterparty ID AST expression")
+				return nil, errors.New("could not parse screening counterparty ID AST expression")
 			}
 
 			counterpartyId, ok := counterpartyIdResult.ReturnValue.(string)
@@ -164,17 +163,19 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 			}
 		}
 
+		result.Id = scId
 		result.SanctionCheckConfigId = scc.Id
 		result.Duration = time.Since(start)
 
 		sanctionCheck = append(sanctionCheck, result)
-		performed = true
 	}
+
 	return
 }
 
 func (e ScenarioEvaluator) preprocess(
 	ctx context.Context,
+	sanctionCheckId string,
 	queries []models.OpenSanctionsCheckQuery,
 	iteration models.ScenarioIteration,
 	scc models.SanctionCheckConfig,
@@ -187,12 +188,12 @@ func (e ScenarioEvaluator) preprocess(
 		SkipIfUnder,
 		NameEntityRecognition,
 		RemoveNumbers,
-		RemoveFromList,
+		IgnoreList,
 		SkipIfUnder,
 	}
 
 	for _, step := range steps {
-		if out, err = step(ctx, e, out, iteration, scc); err != nil {
+		if out, err = step(ctx, e, sanctionCheckId, out, iteration, scc); err != nil {
 			return nil, err
 		}
 

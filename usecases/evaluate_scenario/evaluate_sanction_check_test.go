@@ -101,10 +101,9 @@ func TestSanctionCheckSkippedWhenDisabled(t *testing.T) {
 
 	iteration := models.ScenarioIteration{}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
-	assert.False(t, performed)
 	assert.NoError(t, err)
 }
 
@@ -117,10 +116,9 @@ func TestSanctionCheckSkippedWhenTriggerRuleFalse(t *testing.T) {
 		}},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
-	assert.False(t, performed)
 	assert.NoError(t, err)
 }
 
@@ -134,11 +132,10 @@ func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
 		}},
 	}
 
-	sce, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	sce, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	assert.NoError(t, err)
-	assert.True(t, performed)
 	assert.Equal(t, models.SanctionStatusError, sce[0].Status)
 }
 
@@ -165,12 +162,11 @@ func TestSanctionCheckCalledWhenNameFilterConstant(t *testing.T) {
 		},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
-	assert.True(t, performed)
 	assert.NoError(t, err)
 }
 
@@ -201,12 +197,11 @@ func TestSanctionCheckWithSpecificEntityType(t *testing.T) {
 		},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
-	assert.True(t, performed)
 	assert.NoError(t, err)
 }
 
@@ -240,12 +235,11 @@ func TestSanctionCheckCalledWhenNameFilterConcat(t *testing.T) {
 		},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
-	assert.True(t, performed)
 	assert.NoError(t, err)
 }
 
@@ -287,12 +281,11 @@ func TestSanctionCheckCalledWithNameRecognizedLabel(t *testing.T) {
 		},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
-	assert.True(t, performed)
 	assert.NoError(t, err)
 }
 
@@ -320,12 +313,11 @@ func TestSanctionCheckCalledWithNameRecognitionDisabled(t *testing.T) {
 		},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
-	assert.True(t, performed)
 	assert.NoError(t, err)
 }
 
@@ -360,12 +352,11 @@ func TestSanctionCheckCalledWithNumbersPreprocessing(t *testing.T) {
 		},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
-	assert.True(t, performed)
 	assert.NoError(t, err)
 }
 
@@ -398,13 +389,12 @@ func TestSanctionCheckWithLengthPreprocessing(t *testing.T) {
 		},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "PerformNameRecognition", mock.Anything, "constant string")
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
-	assert.True(t, performed)
 	assert.NoError(t, err)
 
 	iteration = models.ScenarioIteration{
@@ -420,12 +410,11 @@ func TestSanctionCheckWithLengthPreprocessing(t *testing.T) {
 		Queries: []models.OpenSanctionsCheckQuery{},
 	}
 
-	_, performed, err = eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err = eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertNotCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
-	assert.False(t, performed)
 	assert.NoError(t, err)
 }
 
@@ -454,13 +443,12 @@ func TestSanctionCheckWithPreNerLengthPreprocessing(t *testing.T) {
 		},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertNotCalled(t, "PerformNameRecognition", mock.Anything, mock.Anything)
 	exec.Mock.AssertNotCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
-	assert.False(t, performed)
 	assert.NoError(t, err)
 }
 
@@ -472,7 +460,7 @@ func TestSanctionCheckWithListPreprocessing(t *testing.T) {
 			TriggerRule:   &ast.Node{Constant: true},
 			EntityType:    "Thing",
 			Query:         map[string]ast.Node{"name": {Constant: "This Contains Forbidden Words"}},
-			Preprocessing: models.SanctionCheckConfigPreprocessing{BlacklistListId: "ola"},
+			Preprocessing: models.SanctionCheckConfigPreprocessing{IgnoreListId: "ola"},
 		}},
 	}
 
@@ -488,12 +476,11 @@ func TestSanctionCheckWithListPreprocessing(t *testing.T) {
 		},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
-	assert.True(t, performed)
 	assert.NoError(t, err)
 }
 
@@ -516,20 +503,20 @@ func TestSanctionCheckWithAllPreprocessing(t *testing.T) {
 				TriggerRule: &ast.Node{Constant: true},
 				Query:       map[string]ast.Node{"name": {Constant: "does not matter"}},
 				Preprocessing: models.SanctionCheckConfigPreprocessing{
-					UseNer:          true,
-					SkipIfUnder:     6,
-					RemoveNumbers:   true,
-					BlacklistListId: "ola",
+					UseNer:        true,
+					SkipIfUnder:   6,
+					RemoveNumbers: true,
+					IgnoreListId:  "ola",
 				},
 			},
 			{
 				TriggerRule: &ast.Node{Constant: true},
 				Query:       map[string]ast.Node{"name": {Constant: "short"}},
 				Preprocessing: models.SanctionCheckConfigPreprocessing{
-					UseNer:          true,
-					SkipIfUnder:     6,
-					RemoveNumbers:   true,
-					BlacklistListId: "ola",
+					UseNer:        true,
+					SkipIfUnder:   6,
+					RemoveNumbers: true,
+					IgnoreListId:  "ola",
 				},
 			},
 		},
@@ -553,11 +540,10 @@ func TestSanctionCheckWithAllPreprocessing(t *testing.T) {
 		},
 	}
 
-	_, performed, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
 
-	assert.True(t, performed)
 	assert.NoError(t, err)
 }
