@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -71,6 +72,9 @@ type CaseUseCaseRepository interface {
 	GetNextCase(ctx context.Context, exec repositories.Executor, c models.Case) (string, error)
 
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
+
+	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
+	ListUsers(ctx context.Context, exec repositories.Executor, organizationIDFilter *string) ([]models.User, error)
 }
 
 type CaseUsecaseSanctionCheckRepository interface {
@@ -80,6 +84,7 @@ type CaseUsecaseSanctionCheckRepository interface {
 
 type CaseUsecaseUserRepository interface {
 	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
+	ListUsers(ctx context.Context, exec repositories.Executor, organizationIDFilter *string) ([]models.User, error)
 }
 
 type webhookEventsUsecase interface {
@@ -1672,7 +1677,14 @@ func (uc *CaseUseCase) GetCaseDataZip(ctx context.Context, caseId string) (io.Re
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve case events")
 	}
-	caseEventsDto := pure_utils.Map(caseEvents, dto.NewAPICaseEvent)
+	users, err := uc.repository.ListUsers(ctx, exec, &c.OrganizationId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve users for case events")
+	}
+	caseEventsDto := make([]agent_dto.CaseEvent, len(caseEvents))
+	for i := range caseEvents {
+		caseEventsDto[i] = agent_dto.AdaptCaseEventDto(caseEvents[i], users)
+	}
 	caseEventsJson, err := json.Marshal(caseEventsDto)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not marshal case events to JSON")
@@ -1682,18 +1694,17 @@ func (uc *CaseUseCase) GetCaseDataZip(ctx context.Context, caseId string) (io.Re
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve case decisions")
 	}
-	decisionDtos := make([]dto.CaseRecapDecisionDto, len(decisions))
+	decisionDtos := make([]agent_dto.Decision, len(decisions))
 	for i := range decisions {
-		rulesWithDetails := make([]dto.CaseRecapRuleDto, len(decisions[i].RuleExecutions))
+		rulesWithDetails := make([]agent_dto.DecisionRule, len(decisions[i].RuleExecutions))
 		for j, decRule := range decisions[i].RuleExecutions {
 			rule, err := uc.repository.GetRuleById(ctx, exec, decRule.Rule.Id)
 			if err != nil {
 				return nil, errors.Wrapf(err, "could not retrieve rule %s for decision %s", decRule.Id, decisions[i].DecisionId)
 			}
-			rulesWithDetails[j] = dto.AcaptCaseRecapRuleDto(
-				dto.NewDecisionRuleDto(decRule, true), rule)
+			rulesWithDetails[j] = agent_dto.AcaptDecisionRule(decRule, rule)
 		}
-		decisionDtos[i] = dto.AdaptCaseRecapDecisionDto(decisions[i].Decision, rulesWithDetails)
+		decisionDtos[i] = agent_dto.AdaptDecision(decisions[i].Decision, rulesWithDetails)
 	}
 	decisionsJson, err := json.Marshal(decisionDtos)
 	if err != nil {
@@ -1706,7 +1717,7 @@ func (uc *CaseUseCase) GetCaseDataZip(ctx context.Context, caseId string) (io.Re
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve data model")
 	}
-	dataModelDto := dto.AdaptDataModelDto(dataModel)
+	dataModelDto := agent_dto.AdaptDataModelDto(dataModel)
 	dataModelJson, err := json.Marshal(dataModelDto)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not marshal data model to JSON")
