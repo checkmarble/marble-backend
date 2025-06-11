@@ -43,22 +43,20 @@ func (p PivotType) String() string {
 	}
 }
 
-func PivotTypeFromString(s string) PivotType {
-	switch s {
-	case "object":
-		return PivotTypeObject
-	case "field":
-		return PivotTypeField
-	default:
-		return PivotTypeUnknown
-	}
-}
-
 type ClientObjectDetail struct {
 	Metadata       ClientObjectMetadata
 	Data           map[string]any
 	RelatedObjects []RelatedObject
 	Annotations    GroupedEntityAnnotations
+}
+
+func (c ClientObjectDetail) CanBeAnnotated() bool {
+	objectId, present := c.Data["object_id"]
+	if !present {
+		return false
+	}
+	_, isString := objectId.(string)
+	return isString
 }
 
 type RelatedObject struct {
@@ -67,7 +65,7 @@ type RelatedObject struct {
 }
 
 type ClientObjectMetadata struct {
-	ValidFrom  time.Time
+	ValidFrom  *time.Time
 	ObjectType string
 }
 
