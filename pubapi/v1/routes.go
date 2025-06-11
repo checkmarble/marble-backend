@@ -6,32 +6,35 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Routes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
-	r.GET("/-/version", handleVersion)
+func Routes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
+	unauthed.GET("/-/version", handleVersion)
+
+	authed := unauthed.Group("/", authMiddleware)
 
 	{
-		r := r.Group("/", authMiddleware)
+		root := authed.Group("/", pubapi.TimeoutMiddleware(conf.DefaultTimeout))
+		decision := authed.Group("/", pubapi.TimeoutMiddleware(conf.DecisionTimeout))
 
-		r.GET("/decisions", HandleListDecisions(uc))
-		r.GET("/decisions/:decisionId", HandleGetDecision(uc))
-		r.POST("/decisions", HandleCreateDecision(uc))
-		r.POST("/decisions/all", HandleCreateAllDecisions(uc))
-		r.POST("/decisions/:decisionId/snooze", HandleSnoozeRule(uc))
-		r.GET("/decisions/:decisionId/screenings", HandleListSanctionChecks(uc))
+		root.GET("/decisions", HandleListDecisions(uc))
+		root.GET("/decisions/:decisionId", HandleGetDecision(uc))
+		root.POST("/decisions/:decisionId/snooze", HandleSnoozeRule(uc))
+		root.GET("/decisions/:decisionId/screenings", HandleListSanctionChecks(uc))
 
-		r.GET("/batch-executions", HandleListBatchExecutions(uc))
+		decision.POST("/decisions", HandleCreateDecision(uc))
+		decision.POST("/decisions/all", HandleCreateAllDecisions(uc))
 
-		r.POST("/screening/:screeningId/refine", HandleRefineSanctionCheck(uc, true))
-		r.POST("/screening/:screeningId/search", HandleRefineSanctionCheck(uc, false))
-		r.POST("/screening/search", HandleSanctionFreeformSearch(uc))
+		root.GET("/batch-executions", HandleListBatchExecutions(uc))
 
-		r.GET("/screening/entities/:entityId", HandleGetSanctionCheckEntity(uc))
-		r.POST("/screening/matches/:matchId",
-			HandleUpdateSanctionCheckMatchStatus(uc))
+		root.POST("/screening/:screeningId/refine", HandleRefineSanctionCheck(uc, true))
+		root.POST("/screening/:screeningId/search", HandleRefineSanctionCheck(uc, false))
+		root.POST("/screening/search", HandleSanctionFreeformSearch(uc))
 
-		r.POST("/screening/whitelists/search", HandleSearchWhitelist(uc))
-		r.POST("/screening/whitelists", HandleAddWhitelist(uc))
-		r.DELETE("/screening/whitelists", HandleDeleteWhitelist(uc))
+		root.GET("/screening/entities/:entityId", HandleGetSanctionCheckEntity(uc))
+		root.POST("/screening/matches/:matchId", HandleUpdateSanctionCheckMatchStatus(uc))
+
+		root.POST("/screening/whitelists/search", HandleSearchWhitelist(uc))
+		root.POST("/screening/whitelists", HandleAddWhitelist(uc))
+		root.DELETE("/screening/whitelists", HandleDeleteWhitelist(uc))
 	}
 }
 
