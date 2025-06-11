@@ -1,11 +1,15 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type InboxUser struct {
-	Id             string
-	InboxId        string
-	UserId         string
+	Id             uuid.UUID
+	InboxId        uuid.UUID
+	UserId         uuid.UUID
 	OrganizationId string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -13,8 +17,8 @@ type InboxUser struct {
 }
 
 type CreateInboxUserInput struct {
-	InboxId string
-	UserId  string
+	InboxId uuid.UUID
+	UserId  uuid.UUID
 	Role    InboxUserRole
 }
 
@@ -26,6 +30,6 @@ const (
 )
 
 type InboxUserFilterInput struct {
-	InboxId string
+	InboxId uuid.UUID
 	UserId  UserId
 }

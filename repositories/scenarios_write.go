@@ -51,12 +51,8 @@ func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, exec Executo
 		Where("id = ?", scenario.Id)
 
 	countApply := 0
-	if scenario.DecisionToCaseInboxId.Valid {
-		if scenario.DecisionToCaseInboxId.String == "" {
-			sql = sql.Set("decision_to_case_inbox_id", nil)
-		} else {
-			sql = sql.Set("decision_to_case_inbox_id", scenario.DecisionToCaseInboxId)
-		}
+	if scenario.DecisionToCaseInboxId.Set {
+		sql = sql.Set("decision_to_case_inbox_id", scenario.DecisionToCaseInboxId.Value())
 		countApply++
 	}
 	if scenario.DecisionToCaseOutcomes != nil {

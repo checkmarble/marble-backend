@@ -6,6 +6,8 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type APICase struct {
@@ -14,7 +16,7 @@ type APICase struct {
 	CreatedAt      time.Time            `json:"created_at"`
 	DecisionsCount int                  `json:"decisions_count"`
 	Events         []APICaseEvent       `json:"events"`
-	InboxId        string               `json:"inbox_id"`
+	InboxId        uuid.UUID            `json:"inbox_id"`
 	Name           string               `json:"name"`
 	Status         string               `json:"status"`
 	Outcome        string               `json:"outcome"`
@@ -82,16 +84,16 @@ func AdaptCaseWithDecisionsDto(c models.Case) APICaseWithDecisions {
 }
 
 type CreateCaseBody struct {
-	DecisionIds []string `json:"decision_ids"`
-	InboxId     string   `json:"inbox_id" binding:"required"`
-	Name        string   `json:"name" binding:"required"`
+	DecisionIds []string  `json:"decision_ids"`
+	InboxId     uuid.UUID `json:"inbox_id" binding:"required"`
+	Name        string    `json:"name" binding:"required"`
 }
 
 type UpdateCaseBody struct {
-	InboxId string `json:"inbox_id"`
-	Name    string `json:"name"`
-	Status  string `json:"status"`
-	Outcome string `json:"outcome"`
+	InboxId *uuid.UUID `json:"inbox_id"`
+	Name    string     `json:"name"`
+	Status  string     `json:"status"`
+	Outcome string     `json:"outcome"`
 }
 
 type AddDecisionToCaseBody struct {
@@ -102,6 +104,19 @@ type CreateCaseCommentBody struct {
 	Comment string `json:"comment" binding:"required"`
 }
 
+// type UnmarshallingUuid struct {
+// 	uuid.UUID
+// }
+
+// func (u *UnmarshallingUuid) UnmarshalParam(param string) error {
+// 	parsed, err := uuid.Parse(param)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	u.UUID = parsed
+// 	return nil
+// }
+
 type CaseFilters struct {
 	EndDate         time.Time     `form:"end_date"`
 	InboxIds        []string      `form:"inbox_id[]"`
@@ -111,6 +126,31 @@ type CaseFilters struct {
 	IncludeSnoozed  bool          `form:"include_snoozed"`
 	ExcludeAssigned bool          `form:"exclude_assigned"`
 	AssigneeId      models.UserId `form:"assignee_id"`
+}
+
+func (f CaseFilters) Parse() (models.CaseFilters, error) {
+	out := models.CaseFilters{
+		EndDate:         f.EndDate,
+		StartDate:       f.StartDate,
+		Name:            f.Name,
+		IncludeSnoozed:  f.IncludeSnoozed,
+		ExcludeAssigned: f.ExcludeAssigned,
+		AssigneeId:      f.AssigneeId,
+	}
+
+	var err error
+	out.InboxIds, err = utils.ParseSliceUUID(f.InboxIds)
+	if err != nil {
+		return out, errors.Wrap(err, "failed to parse inbox IDs")
+	}
+
+	statuses, err := models.ValidateCaseStatuses(f.Statuses)
+	if err != nil {
+		return out, err
+	}
+	out.Statuses = statuses
+
+	return out, nil
 }
 
 type ReviewCaseDecisionsBody struct {
