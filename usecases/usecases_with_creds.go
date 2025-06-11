@@ -365,7 +365,6 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		webhookEventsUsecase:    usecases.NewWebhookEventsUsecase(),
 		sanctionCheckRepository: &usecases.Repositories.MarbleDbRepository,
 		ingestedDataReader:      usecases.NewIngestedDataReaderUsecase(),
-		dataModelUsecase:        usecases.NewDataModelUseCase(),
 	}
 }
 
@@ -656,4 +655,15 @@ func (usecases *UsecasesWithCreds) NewEntityAnnotationUsecase() EntityAnnotation
 		executorFactory:            usecases.NewExecutorFactory(),
 		transactionFactory:         usecases.NewTransactionFactory(),
 	}
+}
+
+func (usecases *UsecasesWithCreds) NewAiAgentUsecase() AiAgentUsecase {
+	return NewAiAgentUsecase(
+		usecases.NewEnforceCaseSecurity(),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewInboxReader(),
+		usecases.NewExecutorFactory(),
+		usecases.NewIngestedDataReaderUsecase(),
+		usecases.NewDataModelUseCase(),
+	)
 }
