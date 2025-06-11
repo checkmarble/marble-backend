@@ -102,7 +102,7 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 		validFrom, _ := object.Metadata["valid_from"].(time.Time)
 		clientObject := models.ClientObjectDetail{
 			Data:     object.Data,
-			Metadata: models.ClientObjectMetadata{ValidFrom: validFrom, ObjectType: objectType},
+			Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: objectType},
 		}
 		clientObjects[i] = clientObject
 	}
@@ -390,7 +390,7 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 		validFrom, _ := object.Metadata["valid_from"].(time.Time)
 		clientObject := models.ClientObjectDetail{
 			Data:     object.Data,
-			Metadata: models.ClientObjectMetadata{ValidFrom: validFrom, ObjectType: objectType},
+			Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: objectType},
 		}
 
 		var annotations []models.EntityAnnotation

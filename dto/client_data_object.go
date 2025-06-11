@@ -31,8 +31,9 @@ func AdaptClientObjectDetailDto(c models.ClientObjectDetail) (ClientObjectDetail
 
 	out := ClientObjectDetail{
 		Metadata: ClientObjectMetadata{
-			ValidFrom:  c.Metadata.ValidFrom,
-			ObjectType: c.Metadata.ObjectType,
+			ValidFrom:      c.Metadata.ValidFrom,
+			ObjectType:     c.Metadata.ObjectType,
+			CanBeAnnotated: c.CanBeAnnotated(),
 		},
 		Data:           c.Data,
 		RelatedObjects: relatedObjects,
@@ -55,7 +56,7 @@ func (c ClientObjectDetail) MarshalJSON() ([]byte, error) {
 		c.Data = make(map[string]any)
 	}
 	return json.Marshal(struct {
-		Metadata       ClientObjectMetadata     `json:"metadata,omitzero"`
+		Metadata       ClientObjectMetadata     `json:"metadata"`
 		Data           map[string]any           `json:"data"`
 		RelatedObjects []RelatedObject          `json:"related_objects"`
 		Annotations    GroupedEntityAnnotations `json:"annotations,omitzero"`
@@ -81,8 +82,9 @@ func AdaptRelatedObjectDto(o models.RelatedObject) (RelatedObject, error) {
 }
 
 type ClientObjectMetadata struct {
-	ValidFrom  time.Time `json:"valid_from"`
-	ObjectType string    `json:"object_type"`
+	ValidFrom      *time.Time `json:"valid_from"`
+	ObjectType     string     `json:"object_type"`
+	CanBeAnnotated bool       `json:"can_be_annotated"`
 }
 
 type ClientDataListResponse struct {
