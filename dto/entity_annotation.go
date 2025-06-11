@@ -20,6 +20,8 @@ type EntityAnnotationDto struct {
 	Payload     any       `json:"payload"`
 	AnnotatedBy *string   `json:"annotated_by,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
+	ObjectType  string    `json:"object_type,"`
+	ObjectId    string    `json:"object_id"`
 }
 
 type EntityAnnotationForObjectsParams struct {
@@ -58,6 +60,8 @@ func AdaptEntityAnnotation(model models.EntityAnnotation) (EntityAnnotationDto, 
 		Payload:     payload,
 		AnnotatedBy: userId,
 		CreatedAt:   model.CreatedAt,
+		ObjectType:  model.ObjectType,
+		ObjectId:    model.ObjectId,
 	}, nil
 }
 
