@@ -82,11 +82,6 @@ type CaseUsecaseSanctionCheckRepository interface {
 		*models.SanctionCheckWithMatches, error)
 }
 
-type CaseUsecaseUserRepository interface {
-	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
-	ListUsers(ctx context.Context, exec repositories.Executor, organizationIDFilter *string) ([]models.User, error)
-}
-
 type webhookEventsUsecase interface {
 	CreateWebhookEvent(
 		ctx context.Context,
@@ -114,7 +109,6 @@ type CaseUseCase struct {
 	decisionRepository      repositories.DecisionRepository
 	inboxReader             inboxes.InboxReader
 	blobRepository          repositories.BlobRepository
-	userRepository          CaseUsecaseUserRepository
 	caseManagerBucketUrl    string
 	transactionFactory      executor_factory.TransactionFactory
 	executorFactory         executor_factory.ExecutorFactory
@@ -585,7 +579,7 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 		return err
 	}
 
-	assignee, err := usecase.userRepository.UserById(ctx, usecase.executorFactory.NewExecutor(), string(*req.AssigneeId))
+	assignee, err := usecase.repository.UserById(ctx, usecase.executorFactory.NewExecutor(), string(*req.AssigneeId))
 	if err != nil {
 		return errors.Wrap(err, "target user for assignment not found")
 	}
