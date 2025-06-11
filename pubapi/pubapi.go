@@ -1,16 +1,17 @@
 package pubapi
 
 import (
-	"net/url"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 )
 
 type Config struct {
-	MarbleAppUrl *url.URL
+	DefaultTimeout  time.Duration
+	DecisionTimeout time.Duration
 }
 
 func InitPublicApi() {
