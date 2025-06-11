@@ -623,7 +623,7 @@ func handleGetCaseDataForCopilot(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		caseId := c.Param("case_id")
 
-		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
+		uc := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
 
 		zipReader, err := uc.GetCaseDataZip(ctx, caseId)
 		if presentError(ctx, c, err) {
