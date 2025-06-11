@@ -109,6 +109,7 @@ type SanctionCheck struct {
 	Partial               bool
 	WhitelistedEntities   []string
 	ErrorCodes            []string
+	ErrorDetail           error
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
 }

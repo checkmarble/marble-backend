@@ -2,10 +2,14 @@ package evaluate_scenario
 
 import (
 	"context"
+	"fmt"
+	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
@@ -24,150 +28,227 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	iteration models.ScenarioIteration,
 	params ScenarioEvaluationParameters,
 	dataAccessor DataAccessor,
-) (
-	sanctionCheck []models.SanctionCheckWithMatches,
-	sanctionCheckErr error,
-) {
+) (sexecs []models.SanctionCheckWithMatches, serr error) {
 	// First, check if the sanction check should be performed
 	if len(iteration.SanctionCheckConfigs) == 0 {
 		return
 	}
 
-	for _, scc := range iteration.SanctionCheckConfigs {
-		scId := uuid.NewString()
-		start := time.Now()
+	var (
+		wg   sync.WaitGroup
+		lock sync.Mutex
 
-		if scc.TriggerRule != nil {
-			triggerEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
-				ctx,
-				nil,
-				*scc.TriggerRule,
-				params.Scenario.OrganizationId,
-				dataAccessor.ClientObject,
-				params.DataModel,
-			)
-			if err != nil {
-				return nil, errors.New("could not parse screening trigger condition AST expression")
-			}
-			passed, ok := triggerEvaluation.ReturnValue.(bool)
-			if !ok {
-				sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckTriggerRuleNotBoolean))
-				continue
-			} else if !passed {
-				sanctionCheck = append(sanctionCheck, outcomeNoHit(scc))
-				continue
-			}
-		}
+		screeningExecutions = make([]models.SanctionCheckWithMatches, len(iteration.SanctionCheckConfigs))
+		screeningErrors     = make([]error, 0, len(iteration.SanctionCheckConfigs))
+	)
 
-		queries := []models.OpenSanctionsCheckQuery{}
-		var err error
+	addScreeningResult := func(idx int, result models.SanctionCheckWithMatches) {
+		lock.Lock()
+		defer lock.Unlock()
 
-		if scc.Query != nil {
-			queries = []models.OpenSanctionsCheckQuery{
-				{
-					Type:    scc.EntityType,
-					Filters: models.OpenSanctionCheckFilter{},
-				},
-			}
+		screeningExecutions[idx] = result
+	}
 
-			for fieldName, fieldAst := range scc.Query {
-				inputAst, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
-					fieldAst, iteration.OrganizationId,
-					dataAccessor.ClientObject, dataAccessor.DataModel)
+	addScreeningError := func(scc models.SanctionCheckConfig, err error) {
+		lock.Lock()
+		defer lock.Unlock()
+
+		utils.LoggerFromContext(ctx).Error(fmt.Sprintf("screening execution returned some fatal errors: %s", err),
+			"sanction_check_config_id", scc.Id)
+
+		screeningErrors = append(screeningErrors, err)
+	}
+
+	for idx, scc := range iteration.SanctionCheckConfigs {
+		wg.Add(1)
+
+		go func(idx int, scc models.SanctionCheckConfig) {
+			defer func() {
+				if r := recover(); r != nil {
+					utils.LoggerFromContext(ctx).ErrorContext(ctx, fmt.Sprintf("recovered from panic during screening execution: '%s'. stacktrace from panic:", r))
+					utils.LogAndReportSentryError(ctx, errors.New(string(debug.Stack())))
+
+					serr = models.ErrPanicInScenarioEvalution
+				}
+
+				wg.Done()
+			}()
+
+			scId := uuid.NewString()
+			start := time.Now()
+
+			if scc.TriggerRule != nil {
+				triggerEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
+					ctx,
+					nil,
+					*scc.TriggerRule,
+					params.Scenario.OrganizationId,
+					dataAccessor.ClientObject,
+					params.DataModel,
+				)
 				if err != nil {
-					return nil, errors.New("could not parse screening counterparty name AST expression")
-				}
-
-				if inputAst.ReturnValue == nil {
-					sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty))
-					continue
-				}
-
-				input, ok := inputAst.ReturnValue.(string)
-				if !ok {
-					sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckFieldsNotString))
-				}
-				if input == "" {
-					sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty))
-					continue
-				}
-
-				queries[0].Filters[fieldName] = []string{input}
-			}
-
-			if queries, err = e.preprocess(ctx, scId, queries, iteration, scc); err != nil {
-				return nil, errors.Wrap(err, "could not evaluate sanction check name")
-			}
-		}
-
-		if len(queries) == 0 {
-			sanctionCheck = append(sanctionCheck, outcomeNoHit(scc))
-			continue
-		}
-
-		var uniqueCounterpartyIdentifier *string
-
-		query := models.OpenSanctionsQuery{
-			Config:  scc,
-			Queries: queries,
-		}
-
-		if scc.CounterpartyIdExpression != nil {
-			counterpartyIdResult, err := e.evaluateAstExpression.EvaluateAstExpression(
-				ctx,
-				nil,
-				*scc.CounterpartyIdExpression,
-				params.Scenario.OrganizationId,
-				dataAccessor.ClientObject,
-				params.DataModel,
-			)
-			if err != nil {
-				return nil, errors.New("could not parse screening counterparty ID AST expression")
-			}
-
-			counterpartyId, ok := counterpartyIdResult.ReturnValue.(string)
-			if counterpartyIdResult.ReturnValue == nil || !ok {
-				sanctionCheck = append(sanctionCheck, outcomeError(scc, ErrSanctionCheckCounterpartyIdNotString))
-				return
-			}
-
-			if trimmed := strings.TrimSpace(counterpartyId); trimmed != "" {
-				uniqueCounterpartyIdentifier = &counterpartyId
-
-				whitelistCount, err := e.evalSanctionCheckUsecase.CountWhitelistsForCounterpartyId(
-					ctx, iteration.OrganizationId, *uniqueCounterpartyIdentifier)
-				if err != nil {
-					sanctionCheckErr = errors.Wrap(err, "could not retrieve whitelist count")
+					addScreeningError(scc, errors.New("could not parse screening trigger condition AST expression"))
 					return
 				}
 
-				query.LimitIncrease = whitelistCount
-			}
-		}
+				passed, ok := triggerEvaluation.ReturnValue.(bool)
 
-		result, err := e.evalSanctionCheckUsecase.Execute(ctx, params.Scenario.OrganizationId, query)
-		if err != nil {
-			sanctionCheckErr = errors.Wrap(err, "could not perform sanction check")
-			return
-		}
-
-		if uniqueCounterpartyIdentifier != nil {
-			for idx := range result.Matches {
-				result.Matches[idx].UniqueCounterpartyIdentifier = uniqueCounterpartyIdentifier
+				if !ok {
+					addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckTriggerRuleNotBoolean, nil))
+					return
+				}
+				if !passed {
+					addScreeningResult(idx, outcomeNoHit(scc))
+					return
+				}
 			}
 
-			result, err = e.evalSanctionCheckUsecase.FilterOutWhitelistedMatches(ctx,
-				params.Scenario.OrganizationId, result, *uniqueCounterpartyIdentifier)
-			if err != nil {
+			var (
+				queries []models.OpenSanctionsCheckQuery
+				err     error
+			)
+
+			if scc.Query != nil {
+				queries = []models.OpenSanctionsCheckQuery{
+					{
+						Type:    scc.EntityType,
+						Filters: models.OpenSanctionCheckFilter{},
+					},
+				}
+
+				for fieldName, fieldAst := range scc.Query {
+					inputAst, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
+						fieldAst, iteration.OrganizationId,
+						dataAccessor.ClientObject, dataAccessor.DataModel)
+					if err != nil {
+						addScreeningError(scc, errors.New("could not parse screening counterparty name AST expression"))
+						return
+					}
+
+					if inputAst.ReturnValue == nil {
+						addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty, nil))
+						return
+					}
+
+					input, ok := inputAst.ReturnValue.(string)
+					if !ok {
+						addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckFieldsNotString, nil))
+						return
+					}
+					if input == "" {
+						addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty, nil))
+						return
+					}
+
+					queries[0].Filters[fieldName] = []string{input}
+				}
+
+				if queries, err = e.preprocess(ctx, scId, queries, iteration, scc); err != nil {
+					// TODO: what to do here?
+					addScreeningError(scc, errors.Wrap(err, "could not apply preprocessing steps"))
+					// addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckPreprocessingFailed, errors.Wrap(err, "could not apply preprocessing steps")))
+					return
+				}
+			}
+
+			if len(queries) == 0 {
+				addScreeningResult(idx, outcomeNoHit(scc))
 				return
 			}
+
+			var uniqueCounterpartyIdentifier *string
+
+			query := models.OpenSanctionsQuery{
+				Config:  scc,
+				Queries: queries,
+			}
+
+			if scc.CounterpartyIdExpression != nil {
+				counterpartyIdResult, err := e.evaluateAstExpression.EvaluateAstExpression(
+					ctx,
+					nil,
+					*scc.CounterpartyIdExpression,
+					params.Scenario.OrganizationId,
+					dataAccessor.ClientObject,
+					params.DataModel,
+				)
+				if err != nil {
+					addScreeningError(scc, errors.New("could not parse screening counterparty ID AST expression"))
+					return
+				}
+
+				counterpartyId, ok := counterpartyIdResult.ReturnValue.(string)
+				if counterpartyIdResult.ReturnValue == nil || !ok {
+					addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckCounterpartyIdNotString, nil))
+					return
+				}
+
+				if trimmed := strings.TrimSpace(counterpartyId); trimmed != "" {
+					uniqueCounterpartyIdentifier = &counterpartyId
+
+					whitelistCount, err := e.evalSanctionCheckUsecase.CountWhitelistsForCounterpartyId(
+						ctx, iteration.OrganizationId, *uniqueCounterpartyIdentifier)
+					if err != nil {
+						addScreeningError(scc, errors.Wrap(err, "could not retrieve whitelist count"))
+						return
+					}
+
+					query.LimitIncrease = whitelistCount
+				}
+			}
+
+			result, err := e.evalSanctionCheckUsecase.Execute(ctx, params.Scenario.OrganizationId, query)
+			if err != nil {
+				addScreeningError(scc, errors.Wrap(err, "could not perform sanction check"))
+				return
+			}
+
+			if uniqueCounterpartyIdentifier != nil {
+				for idx := range result.Matches {
+					result.Matches[idx].UniqueCounterpartyIdentifier = uniqueCounterpartyIdentifier
+				}
+
+				result, err = e.evalSanctionCheckUsecase.FilterOutWhitelistedMatches(ctx,
+					params.Scenario.OrganizationId, result, *uniqueCounterpartyIdentifier)
+				if err != nil {
+					return
+				}
+			}
+
+			result.Id = scId
+			result.SanctionCheckConfigId = scc.Id
+			result.Duration = time.Since(start)
+
+			addScreeningResult(idx, result)
+		}(idx, scc)
+	}
+
+	wg.Wait()
+
+	if serr != nil {
+		return
+	}
+
+	if len(screeningErrors) > 0 {
+		serr = errors.Join(screeningErrors...)
+		return
+	}
+
+	sexecs = screeningExecutions
+
+	for _, sce := range sexecs {
+		if sce.Status == models.SanctionStatusError {
+			errStr := ""
+			if sce.ErrorDetail != nil {
+				errStr = sce.ErrorDetail.Error()
+			}
+
+			utils.LoggerFromContext(ctx).Error("screening execution returned some errors",
+				"sanction_check_config_id", sce.SanctionCheckConfigId,
+				"sanction_check_id", sce.Id,
+				"error_codes", sce.ErrorCodes,
+				"error", errStr)
 		}
-
-		result.Id = scId
-		result.SanctionCheckConfigId = scc.Id
-		result.Duration = time.Since(start)
-
-		sanctionCheck = append(sanctionCheck, result)
 	}
 
 	return
@@ -215,12 +296,13 @@ func outcomeNoHit(scc models.SanctionCheckConfig) models.SanctionCheckWithMatche
 	}
 }
 
-func outcomeError(scc models.SanctionCheckConfig, err string) models.SanctionCheckWithMatches {
+func outcomeError(scc models.SanctionCheckConfig, code string, err error) models.SanctionCheckWithMatches {
 	return models.SanctionCheckWithMatches{
 		SanctionCheck: models.SanctionCheck{
 			SanctionCheckConfigId: scc.Id,
 			Status:                models.SanctionStatusError,
-			ErrorCodes:            []string{err},
+			ErrorCodes:            []string{code},
+			ErrorDetail:           err,
 		},
 	}
 }

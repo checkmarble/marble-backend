@@ -116,10 +116,11 @@ func TestSanctionCheckSkippedWhenTriggerRuleFalse(t *testing.T) {
 		}},
 	}
 
-	_, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
+	sce, err := eval.evaluateSanctionCheck(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
 	assert.NoError(t, err)
+	assert.Equal(t, models.SanctionStatusNoHit, sce[0].Status)
 }
 
 func TestSanctionCheckErrorWhenNameQueryNotString(t *testing.T) {
