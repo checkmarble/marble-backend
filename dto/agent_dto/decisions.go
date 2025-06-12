@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -16,10 +17,18 @@ type DecisionRule struct {
 	Evaluation    *ast.NodeEvaluationWithDefinitionDto `json:"evaluation,omitempty"`
 }
 
-func AcaptDecisionRule(rule models.RuleExecution, ruleDef models.Rule) DecisionRule {
+func AcaptDecisionRule(rule models.RuleExecution, ruleDefs []models.Rule) DecisionRule {
 	var eval *ast.NodeEvaluationWithDefinitionDto
-	if ruleDef.FormulaAstExpression != nil && rule.Evaluation != nil {
-		eval = utils.Ptr(ast.MergeAstTrees(*ruleDef.FormulaAstExpression, *rule.Evaluation))
+	var thisRuleDef *models.Rule
+	for _, ruleDef := range ruleDefs {
+		if ruleDef.Id == rule.Rule.Id {
+			thisRuleDef = &ruleDef
+			break
+		}
+	}
+
+	if thisRuleDef != nil && thisRuleDef.FormulaAstExpression != nil && rule.Evaluation != nil {
+		eval = utils.Ptr(ast.MergeAstTrees(*thisRuleDef.FormulaAstExpression, *rule.Evaluation))
 	}
 	return DecisionRule{
 		Name:          rule.Rule.Name,
@@ -46,7 +55,7 @@ type Decision struct {
 	Rules             []DecisionRule   `json:"rules"`
 }
 
-func AdaptDecision(decision models.Decision, rules []DecisionRule) Decision {
+func AdaptDecision(decision models.Decision, ruleExecutions []models.RuleExecution, rules []models.Rule) Decision {
 	return Decision{
 		CreatedAt:         decision.CreatedAt,
 		TriggerObject:     decision.ClientObject.Data,
@@ -58,6 +67,8 @@ func AdaptDecision(decision models.Decision, rules []DecisionRule) Decision {
 			Version:     decision.ScenarioVersion,
 		},
 		Score: decision.Score,
-		Rules: rules,
+		Rules: pure_utils.Map(ruleExecutions, func(ruleExec models.RuleExecution) DecisionRule {
+			return AcaptDecisionRule(ruleExec, rules)
+		}),
 	}
 }
