@@ -1,11 +1,16 @@
 package api
 
-import "time"
+import (
+	"time"
+
+	"github.com/checkmarble/marble-backend/infra"
+)
 
 type Configuration struct {
 	Env                 string
 	AppName             string
 	Port                string
+	MarbleApiUrl        string
 	MarbleAppUrl        string
 	MarbleBackofficeUrl string
 	RequestLoggingLevel string
@@ -15,4 +20,18 @@ type Configuration struct {
 	BatchTimeout        time.Duration
 	DecisionTimeout     time.Duration
 	DefaultTimeout      time.Duration
+
+	FirebaseConfig FirebaseConfig
+	MetabaseConfig infra.MetabaseConfiguration
+}
+
+type FirebaseConfig struct {
+	EmulatorHost string
+	ProjectId    string
+	ApiKey       string
+	AuthDomain   string
+}
+
+func (cfg FirebaseConfig) IsEmulator() bool {
+	return cfg.EmulatorHost != ""
 }
