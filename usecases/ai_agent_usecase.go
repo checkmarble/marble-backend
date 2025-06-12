@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
@@ -141,14 +142,17 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 		return nil, errors.Wrap(err, "could not adapt pivot objects to DTOs")
 	}
 
-	relatedCases := make([]agent_dto.CaseWithDecisions, 0, 10)
+	relatedDataPerClient := make(map[string]agent_dto.CasePivotObjectData)
+
 	for _, pivotObject := range pivotObjects {
+		var pivotObjectData agent_dto.CasePivotObjectData
+
 		previousCases, err := uc.repository.GetCasesWithPivotValue(ctx, exec,
 			c.OrganizationId, pivotObject.PivotValue)
 		if err != nil {
 			return nil, err
 		}
-
+		relatedCases := make([]agent_dto.CaseWithDecisions, 0, 10)
 		for _, previousCase := range previousCases {
 			if previousCase.Id == c.Id {
 				// skip the current case, we don't want to include it in the related cases
@@ -170,6 +174,9 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 			relatedCases = append(relatedCases, agent_dto.AdaptCaseWithDecisionsDto(
 				previousCase, tags, inboxes, nil, users))
 		}
+		pivotObjectData.RelatedCases = relatedCases
+
+		relatedDataPerClient[pivotObject.PivotObjectName+"_"+pivotObject.PivotValue] = pivotObjectData
 	}
 
 	pr, pw := io.Pipe()
@@ -180,7 +187,6 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 		"decisions.json":     decisionDtos,
 		"data_model.json":    agent_dto.AdaptDataModelDto(dataModel),
 		"pivot_objects.json": pivotObjectDtos,
-		"related_cases.json": relatedCases,
 	}
 
 	// Start writing zip archive in a goroutine
@@ -204,6 +210,32 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 			}
 			if err := json.NewEncoder(f).Encode(data); err != nil {
 				pw.CloseWithError(errors.Wrapf(err, "could not write %s to zip", fileName))
+				return
+			}
+		}
+
+		_, err := zipw.Create("related_data/")
+		if err != nil {
+			pw.CloseWithError(errors.Wrap(err, "could not create related_data/ folder in zip"))
+			return
+		}
+
+		for pivotObjectStr, data := range relatedDataPerClient {
+			pivotObjectFolder := fmt.Sprintf("related_data/%s/", pivotObjectStr)
+			_, err := zipw.Create(pivotObjectFolder)
+			if err != nil {
+				pw.CloseWithError(errors.Wrapf(err, "could not create %s folder in zip", pivotObjectStr))
+				return
+			}
+
+			fileStr := pivotObjectFolder + "related_cases.json"
+			f, err := zipw.Create(fileStr)
+			if err != nil {
+				pw.CloseWithError(errors.Wrapf(err, "could not create %s in zip", fileStr))
+				return
+			}
+			if err := json.NewEncoder(f).Encode(data.RelatedCases); err != nil {
+				pw.CloseWithError(errors.Wrapf(err, "could not write %s to zip", fileStr))
 				return
 			}
 		}
