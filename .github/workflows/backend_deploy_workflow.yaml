@@ -51,10 +51,10 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
-      - name: Check if image exists (for prod deployments)
+      - name: Check if image exists (for production deployments)
         id: check_image
         run: |
-          if [[ "${{ inputs.environment }}" == "production" ]] || [[ "${{ inputs.environment }}" == "prod" ]]; then
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
             echo "Checking if image already exists for production deployment..."
             # For production, check if an image exists with the commit hash as tag
             COMMIT_HASH=$(git rev-parse HEAD)
@@ -74,11 +74,6 @@ jobs:
             echo "should_build=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Set deployment image
-        id: deployment_image
-        run: |
-          echo "DEPLOY_IMAGE=${{ env.IMAGE }}" >> "$GITHUB_OUTPUT"
-
       - name: Extract version from tag
         id: version
         run: echo "MARBLE_VERSION=$(git describe --tags)" >> "$GITHUB_OUTPUT"
@@ -90,7 +85,7 @@ jobs:
           COMMIT_HASH=$(git rev-parse HEAD)
           COMMIT_IMAGE="europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${COMMIT_HASH}"
 
-          if [[ "${{ inputs.environment }}" == "production" ]] || [[ "${{ inputs.environment }}" == "prod" ]]; then
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
             # For production, only tag with the version
             echo "IMAGE_TAGS=${{ env.IMAGE }}" >> "$GITHUB_OUTPUT"
           else
@@ -108,7 +103,7 @@ jobs:
             SEGMENT_WRITE_KEY=${{ secrets.segment_write_key_opensource }}
           tags: ${{ steps.tags.outputs.IMAGE_TAGS }}
 
-      - name: Tag existing image with version (for prod reuse)
+      - name: Tag existing image with version (for production deployment reuse)
         if: steps.check_image.outputs.should_build == 'false'
         run: |
           echo "Retagging existing image ${{ steps.check_image.outputs.existing_image }} as ${{ env.IMAGE }}"
@@ -123,7 +118,7 @@ jobs:
         run: |
           gcloud run jobs deploy migrations \
             --quiet \
-            --image=${{ steps.deployment_image.outputs.DEPLOY_IMAGE }} \
+            --image=${{ env.IMAGE }} \
             --region="europe-west1" \
             --execute-now \
             --wait
@@ -132,12 +127,12 @@ jobs:
         run: |
           gcloud run deploy marble-backend \
             --quiet \
-            --image=${{ steps.deployment_image.outputs.DEPLOY_IMAGE }} \
+            --image=${{ env.IMAGE }} \
             --region="europe-west1"
 
       - name: Deploy execute async worker service
         run: |
           gcloud run deploy marble-backend-worker \
             --quiet \
-            --image=${{ steps.deployment_image.outputs.DEPLOY_IMAGE }} \
+            --image=${{ env.IMAGE }} \
             --region="europe-west1"
