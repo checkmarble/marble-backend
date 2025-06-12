@@ -110,3 +110,8 @@ type CaseWithDecisions struct {
 	Case
 	Decisions []Decision `json:"decisions"`
 }
+
+type CasePivotObjectData struct {
+	IngestedData map[string]any      `json:"ingested_data"`
+	RelatedCases []CaseWithDecisions `json:"related_cases"`
+}
