@@ -16,6 +16,13 @@ type User struct {
 	AiAssistEnabled bool
 }
 
+func (u User) FullName() string {
+	if u.FirstName == "" && u.LastName == "" {
+		return ""
+	}
+	return u.FirstName + " " + u.LastName
+}
+
 type CreateUser struct {
 	Email          string
 	Role           Role
