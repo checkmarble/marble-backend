@@ -105,6 +105,9 @@ func AdaptPivotObjectDto(p models.PivotObject) (PivotObject, error) {
 }
 
 func WriteClientDataToCsv(objects []models.ClientObjectDetail, w *csv.Writer) error {
+	if len(objects) == 0 {
+		return nil
+	}
 	// write header
 	keys := make([]string, 0, len(objects[0].Data))
 	for key := range objects[0].Data {
