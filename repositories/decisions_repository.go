@@ -1010,7 +1010,8 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 		).
 		Prefix(")").
 		From("pending_decisions d").
-		LeftJoin("decision_rules dr on dr.decision_id = d.id")
+		LeftJoin("decision_rules dr on dr.decision_id = d.id").
+		OrderBy("d.created_at, d.id")
 
 	cb := func(row pgx.CollectableRow) (models.OffloadableDecisionRule, error) {
 		dbRow, err := pgx.RowToStructByName[dbmodels.DbOffloadableDecisionRule](row)
