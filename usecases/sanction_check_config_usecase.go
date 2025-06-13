@@ -43,10 +43,10 @@ func (uc SanctionCheckUsecase) CreateSanctionCheckConfig(ctx context.Context, it
 	}
 
 	if scCfg.Query != nil {
-		for _, v := range scCfg.Query {
+		for field, v := range scCfg.Query {
 			if v.Function != ast.FUNC_STRING_CONCAT {
-				return models.SanctionCheckConfig{}, errors.New(
-					"query field filters must be a StringConcat")
+				return models.SanctionCheckConfig{}, fmt.Errorf(
+					"query field '%s' is not a StringConcat", field)
 			}
 		}
 	}
@@ -100,9 +100,11 @@ func (uc SanctionCheckUsecase) UpdateSanctionCheckConfig(ctx context.Context,
 	}
 
 	if scCfg.Query != nil {
-		if scCfg.Query != nil && scCfg.Query["name"].Function != ast.FUNC_STRING_CONCAT {
-			return models.SanctionCheckConfig{}, errors.New(
-				"query name filter must be a StringConcat")
+		for field, v := range scCfg.Query {
+			if v.Function != ast.FUNC_STRING_CONCAT {
+				return models.SanctionCheckConfig{}, fmt.Errorf(
+					"query filter '%s' must be a StringConcat", field)
+			}
 		}
 	}
 
