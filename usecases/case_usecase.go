@@ -401,9 +401,17 @@ func (usecase *CaseUseCase) UpdateCase(
 			return models.Case{}, err
 		}
 
-		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
-			return models.Case{}, err
+		switch updateCaseAttributes.Status {
+		case "":
+			if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+				return models.Case{}, err
+			}
+		default:
+			if err := usecase.PerformCaseActionSideEffectsWithoutStatusChange(ctx, tx, c); err != nil {
+				return models.Case{}, err
+			}
 		}
+
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, updateCaseAttributes.Id, userId); err != nil {
 			return models.Case{}, err
 		}
@@ -1613,11 +1621,23 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 	})
 }
 
-func (uc *CaseUseCase) PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error {
+func (uc *CaseUseCase) PerformCaseActionSideEffectsWithoutStatusChange(ctx context.Context, tx repositories.Transaction, c models.Case) error {
 	if userId := uc.enforceSecurity.UserId(); userId != nil && c.AssignedTo == nil {
 		if err := uc.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
 			return err
 		}
+	}
+
+	if err := uc.repository.UnboostCase(ctx, tx, c.Id); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (uc *CaseUseCase) PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error {
+	if err := uc.PerformCaseActionSideEffectsWithoutStatusChange(ctx, tx, c); err != nil {
+		return err
 	}
 
 	if c.Status == models.CasePending {
@@ -1626,10 +1646,6 @@ func (uc *CaseUseCase) PerformCaseActionSideEffects(ctx context.Context, tx repo
 		if err := uc.repository.UpdateCase(ctx, tx, update); err != nil {
 			return err
 		}
-	}
-
-	if err := uc.repository.UnboostCase(ctx, tx, c.Id); err != nil {
-		return err
 	}
 
 	return nil
