@@ -3,6 +3,7 @@ package usecases
 import (
 	"archive/zip"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -38,6 +39,12 @@ type AiAgentUsecaseIngestedDataReader interface {
 		organizationId string,
 		values []models.PivotDataWithCount,
 	) ([]models.PivotObject, error)
+	ReadIngestedClientObjects(
+		ctx context.Context,
+		orgId string,
+		objectType string,
+		input models.ClientDataListRequestBody,
+	) (objects []models.ClientObjectDetail, pagination models.ClientDataListPagination, err error)
 }
 
 type AiAgentUsecaseDataModelUsecase interface {
@@ -145,7 +152,10 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 	relatedDataPerClient := make(map[string]agent_dto.CasePivotObjectData)
 
 	for _, pivotObject := range pivotObjects {
-		var pivotObjectData agent_dto.CasePivotObjectData
+		pivotObjectData := agent_dto.CasePivotObjectData{
+			IngestedData: make(map[string][]models.ClientObjectDetail, 10),
+			RelatedCases: make([]agent_dto.CaseWithDecisions, 0, 10),
+		}
 
 		previousCases, err := uc.repository.GetCasesWithPivotValue(ctx, exec,
 			c.OrganizationId, pivotObject.PivotValue)
@@ -175,6 +185,39 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 				previousCase, tags, inboxes, nil, users))
 		}
 		pivotObjectData.RelatedCases = relatedCases
+
+		navigationOptions := dataModel.Tables[pivotObject.PivotObjectName].NavigationOptions
+		for _, navOption := range navigationOptions {
+			if _, found := pivotObjectData.IngestedData[navOption.TargetTableName]; found {
+				// If we already have data for this target table, skip it
+				continue
+			}
+			sourceFieldValue, ok := pivotObject.PivotObjectData.Data[navOption.SourceFieldName]
+			if !ok {
+				continue
+			}
+			sourceFieldValueStr, ok := sourceFieldValue.(string)
+			if !ok {
+				continue
+			}
+			if navOption.Status == models.IndexStatusValid {
+				objects, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(ctx,
+					c.OrganizationId, navOption.TargetTableName, models.ClientDataListRequestBody{
+						ExplorationOptions: models.ExplorationOptions{
+							SourceTableName:   pivotObject.PivotObjectName,
+							FilterFieldName:   navOption.FilterFieldName,
+							FilterFieldValue:  models.NewStringOrNumberFromString(sourceFieldValueStr),
+							OrderingFieldName: navOption.OrderingFieldName,
+						},
+						Limit: 1000,
+					})
+				if err != nil {
+					return nil, errors.Wrapf(err, "could not read ingested client objects for %s with value %s",
+						pivotObject.PivotObjectName, sourceFieldValueStr)
+				}
+				pivotObjectData.IngestedData[navOption.TargetTableName] = objects
+			}
+		}
 
 		relatedDataPerClient[pivotObject.PivotObjectName+"_"+pivotObject.PivotValue] = pivotObjectData
 	}
@@ -214,19 +257,8 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 			}
 		}
 
-		_, err := zipw.Create("related_data/")
-		if err != nil {
-			pw.CloseWithError(errors.Wrap(err, "could not create related_data/ folder in zip"))
-			return
-		}
-
 		for pivotObjectStr, data := range relatedDataPerClient {
 			pivotObjectFolder := fmt.Sprintf("related_data/%s/", pivotObjectStr)
-			_, err := zipw.Create(pivotObjectFolder)
-			if err != nil {
-				pw.CloseWithError(errors.Wrapf(err, "could not create %s folder in zip", pivotObjectStr))
-				return
-			}
 
 			fileStr := pivotObjectFolder + "related_cases.json"
 			f, err := zipw.Create(fileStr)
@@ -237,6 +269,20 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 			if err := json.NewEncoder(f).Encode(data.RelatedCases); err != nil {
 				pw.CloseWithError(errors.Wrapf(err, "could not write %s to zip", fileStr))
 				return
+			}
+
+			for tableName, objects := range data.IngestedData {
+				fileStr := pivotObjectFolder + tableName + ".csv"
+				f, err := zipw.Create(fileStr)
+				if err != nil {
+					pw.CloseWithError(errors.Wrapf(err, "could not create %s in zip", fileStr))
+					return
+				}
+				csvFile := csv.NewWriter(f)
+				if err := agent_dto.WriteClientDataToCsv(objects, csvFile); err != nil {
+					pw.CloseWithError(errors.Wrapf(err, "could not write %s to zip", fileStr))
+					return
+				}
 			}
 		}
 	}()

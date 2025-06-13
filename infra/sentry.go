@@ -40,7 +40,7 @@ func SetupSentry(dsn, env, apiVersion string) {
 				// We do NOT want to send the request body to Sentry
 				event.Request.Data = ""
 			}
-			if hint != nil && event != nil && len(event.Exception) > 0 {
+			if hint != nil && hint.OriginalException != nil && event != nil && len(event.Exception) > 0 {
 				originalErr := errors.UnwrapAll(hint.OriginalException)
 				event.Exception[len(event.Exception)-1].Type = originalErr.Error()
 			}
