@@ -227,7 +227,12 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 		updateFields = true
 	}
 	if cfg.CounterpartyIdExpression != nil {
-		sql = sql.Set("counterparty_id_expression", counterpartyIdExpr)
+		switch cfg.CounterpartyIdExpression.Function {
+		case ast.FUNC_UNDEFINED:
+			sql = sql.Set("counterparty_id_expression", nil)
+		default:
+			sql = sql.Set("counterparty_id_expression", counterpartyIdExpr)
+		}
 		updateFields = true
 	}
 	if cfg.ForcedOutcome != nil {
