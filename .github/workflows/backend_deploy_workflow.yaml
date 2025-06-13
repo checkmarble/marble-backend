@@ -51,18 +51,63 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
+      - name: Check if image exists (for production deployments)
+        id: check_image
+        run: |
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
+            echo "Checking if image already exists for production deployment..."
+            # For production, check if an image exists with the commit hash as tag
+            COMMIT_HASH=$(git rev-parse HEAD)
+            COMMIT_IMAGE="europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${COMMIT_HASH}"
+            echo "Looking for existing image: ${COMMIT_IMAGE}"
+
+            if docker manifest inspect ${COMMIT_IMAGE} > /dev/null 2>&1; then
+              echo "✅ Image with commit hash ${COMMIT_HASH} already exists, will reuse it"
+              echo "existing_image=${COMMIT_IMAGE}" >> "$GITHUB_OUTPUT"
+              echo "should_build=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "❌ No image found for commit hash ${COMMIT_HASH}, will build new image with tag ${{ inputs.version }}"
+              echo "should_build=true" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "Non-production deployment, will build image"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Extract version from tag
         id: version
         run: echo "MARBLE_VERSION=$(git describe --tags)" >> "$GITHUB_OUTPUT"
 
+      - name: Prepare image tags
+        if: steps.check_image.outputs.should_build == 'true'
+        id: tags
+        run: |
+          COMMIT_HASH=$(git rev-parse HEAD)
+          COMMIT_IMAGE="europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${COMMIT_HASH}"
+
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
+            # For production, only tag with the version
+            echo "IMAGE_TAGS=${{ env.IMAGE }}" >> "$GITHUB_OUTPUT"
+          else
+            # For staging, tag with both version (latest) and commit hash
+            echo "IMAGE_TAGS=${{ env.IMAGE }},$COMMIT_IMAGE" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push
+        if: steps.check_image.outputs.should_build == 'true'
         uses: docker/build-push-action@v5
         with:
           push: true
           build-args: |
             MARBLE_VERSION=${{ steps.version.outputs.MARBLE_VERSION }}
             SEGMENT_WRITE_KEY=${{ secrets.segment_write_key_opensource }}
-          tags: ${{ env.IMAGE }}
+          tags: ${{ steps.tags.outputs.IMAGE_TAGS }}
+
+      - name: Tag existing image with version (for production deployment reuse)
+        if: steps.check_image.outputs.should_build == 'false'
+        run: |
+          echo "Retagging existing image ${{ steps.check_image.outputs.existing_image }} as ${{ env.IMAGE }}"
+          docker buildx imagetools create --tag ${{ env.IMAGE }} ${{ steps.check_image.outputs.existing_image }}
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v2"
@@ -71,7 +116,7 @@ jobs:
 
       - name: Deploy migration job
         run: |
-          gcloud beta run jobs deploy migrations \
+          gcloud run jobs deploy migrations \
             --quiet \
             --image=${{ env.IMAGE }} \
             --region="europe-west1" \
@@ -85,30 +130,9 @@ jobs:
             --image=${{ env.IMAGE }} \
             --region="europe-west1"
 
-      - name: Deploy execute scheduled scenario job
-        run: |
-          gcloud beta run jobs deploy scheduled-executer \
-            --quiet \
-            --image=${{ env.IMAGE }} \
-            --region="europe-west1"
-
       - name: Deploy execute async worker service
         run: |
-          gcloud beta run deploy marble-backend-worker \
+          gcloud run deploy marble-backend-worker \
             --quiet \
             --image=${{ env.IMAGE }} \
             --region="europe-west1"
-
-      - name: Deploy data ingestion job
-        run: |
-          gcloud beta run jobs deploy data-ingestion \
-            --quiet \
-            --image=${{ env.IMAGE }} \
-            --region="europe-west1" \
-
-      - name: Deploy webhook retry
-        run: |
-          gcloud beta run jobs deploy retry-webhooks \
-            --quiet \
-            --image=${{ env.IMAGE }} \
-            --region="europe-west1" \
