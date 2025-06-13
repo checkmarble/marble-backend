@@ -272,6 +272,9 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 			}
 
 			for tableName, objects := range data.IngestedData {
+				if len(objects) == 0 {
+					continue
+				}
 				fileStr := pivotObjectFolder + tableName + ".csv"
 				f, err := zipw.Create(fileStr)
 				if err != nil {
