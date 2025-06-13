@@ -201,10 +201,21 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 		updateFields = true
 	}
 	if cfg.Threshold != nil {
-		sql = sql.Set("threshold", cfg.Threshold)
+		switch *cfg.Threshold {
+		case 0:
+			sql = sql.Set("threshold", nil)
+		default:
+			sql = sql.Set("threshold", cfg.Threshold)
+		}
+		updateFields = true
 	}
 	if cfg.TriggerRule != nil {
-		sql = sql.Set("trigger_rule", triggerRule)
+		switch cfg.TriggerRule.Function {
+		case ast.FUNC_UNDEFINED:
+			sql = sql.Set("trigger_rule", nil)
+		default:
+			sql = sql.Set("trigger_rule", triggerRule)
+		}
 		updateFields = true
 	}
 	if cfg.Query != nil {
