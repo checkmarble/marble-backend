@@ -156,7 +156,7 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 			if err != nil {
 				return nil, err
 			}
-			if scenarioAndIteration.Iteration.SanctionCheckConfig != nil {
+			if len(scenarioAndIteration.Iteration.SanctionCheckConfigs) > 0 {
 				featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId, nil)
 				if err != nil {
 					return nil, err

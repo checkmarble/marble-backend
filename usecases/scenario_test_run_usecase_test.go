@@ -93,7 +93,7 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		input.CreateDbInput(liveVersionID)).Return(nil)
 	suite.repository.On("ListRunningTestRun", suite.ctx, suite.transaction,
 		suite.organizationId).Return(nil, nil)
-	suite.sanctionCheckConfig.On("GetSanctionCheckConfig", suite.ctx, suite.transaction,
+	suite.sanctionCheckConfig.On("ListSanctionCheckConfigs", suite.ctx, suite.transaction,
 		input.PhantomIterationId).Return(nil, nil)
 
 	suite.clientDbIndexEditor.On("CreateIndexesAsyncForScenarioWithCallback", suite.ctx,

@@ -1,10 +1,13 @@
 package models
 
 import (
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/hashicorp/go-set/v2"
 )
 
 type ScenarioIteration struct {
@@ -16,7 +19,7 @@ type ScenarioIteration struct {
 	UpdatedAt                     time.Time
 	TriggerConditionAstExpression *ast.Node
 	Rules                         []Rule
-	SanctionCheckConfig           *SanctionCheckConfig
+	SanctionCheckConfigs          []SanctionCheckConfig
 	ScoreReviewThreshold          *int
 	ScoreBlockAndReviewThreshold  *int
 	ScoreDeclineThreshold         *int
@@ -55,24 +58,100 @@ type UpdateScenarioIterationBody struct {
 }
 
 type SanctionCheckConfig struct {
+	Id                       string
 	StableId                 string
+	ScenarioIterationId      string
 	Name                     string
 	Description              string
 	RuleGroup                *string
 	Datasets                 []string
 	TriggerRule              *ast.Node
-	Query                    *SanctionCheckConfigQuery
+	EntityType               string
+	Query                    map[string]ast.Node
+	Threshold                *int
 	ForcedOutcome            Outcome
 	CounterpartyIdExpression *ast.Node
+	Preprocessing            SanctionCheckConfigPreprocessing
+}
+
+type SanctionCheckConfigPreprocessing struct {
+	UseNer        bool   `json:"use_ner,omitempty"`
+	SkipIfUnder   int    `json:"skip_if_under,omitempty"`
+	RemoveNumbers bool   `json:"remove_numbers,omitempty"`
+	IgnoreListId  string `json:"ignore_list_id,omitempty"`
+}
+
+func (cfg SanctionCheckConfigPreprocessing) equal(other SanctionCheckConfigPreprocessing) bool {
+	if cfg.UseNer != other.UseNer {
+		return false
+	}
+	if cfg.SkipIfUnder != other.SkipIfUnder {
+		return false
+	}
+	if cfg.RemoveNumbers != other.RemoveNumbers {
+		return false
+	}
+	if cfg.IgnoreListId != other.IgnoreListId {
+		return false
+	}
+	return true
 }
 
 func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
+	if scc.StableId != other.StableId {
+		return false
+	}
+
 	if !pure_utils.ContainsSameElements(scc.Datasets, other.Datasets) {
 		return false
 	}
 
-	if !scc.Query.equal(other.Query) {
+	if scc.EntityType != other.EntityType {
 		return false
+	}
+
+	if (scc.Threshold == nil && other.Threshold != nil) || (scc.Threshold != nil && other.Threshold == nil) {
+		return false
+	}
+	if scc.Threshold != nil && other.Threshold != nil {
+		if scc.Threshold != other.Threshold {
+			return false
+		}
+	}
+
+	if (scc.TriggerRule == nil && other.TriggerRule != nil) || (scc.TriggerRule != nil && other.TriggerRule == nil) {
+		return false
+	}
+	if scc.TriggerRule != nil && other.TriggerRule != nil {
+		if scc.TriggerRule.Hash() != other.TriggerRule.Hash() {
+			return false
+		}
+	}
+
+	if (scc.CounterpartyIdExpression == nil && other.CounterpartyIdExpression != nil) || (scc.CounterpartyIdExpression != nil && other.CounterpartyIdExpression == nil) {
+		return false
+	}
+	if scc.CounterpartyIdExpression != nil && other.CounterpartyIdExpression != nil {
+		if scc.CounterpartyIdExpression.Hash() != other.CounterpartyIdExpression.Hash() {
+			return false
+		}
+	}
+
+	if !scc.Preprocessing.equal(other.Preprocessing) {
+		return false
+	}
+
+	// If the queries do not target the same fields, we are not equal
+	if !set.From(slices.Collect(maps.Keys(other.Query))).Equal(set.From(slices.Collect(maps.Keys(scc.Query)))) {
+		return false
+	}
+
+	for field, query := range scc.Query {
+		otherQuery := other.Query[field]
+
+		if query.Hash() != otherQuery.Hash() {
+			return false
+		}
 	}
 
 	if scc.ForcedOutcome != other.ForcedOutcome {
@@ -88,28 +167,17 @@ type SanctionCheckOutcome struct {
 }
 
 type UpdateSanctionCheckConfigInput struct {
+	Id                       string
 	StableId                 *string
 	Name                     *string
 	Description              *string
 	RuleGroup                *string
 	Datasets                 []string
+	Threshold                *int
 	TriggerRule              *ast.Node
-	Query                    *SanctionCheckConfigQuery
+	EntityType               *string
+	Query                    map[string]ast.Node
 	CounterpartyIdExpression *ast.Node
 	ForcedOutcome            *Outcome
-}
-
-type SanctionCheckConfigQuery struct {
-	Name  *ast.Node
-	Label *ast.Node
-}
-
-func (sccq *SanctionCheckConfigQuery) equal(other *SanctionCheckConfigQuery) bool {
-	if sccq == nil && other == nil {
-		return true
-	}
-	if sccq != nil && other == nil || sccq == nil && other != nil {
-		return false
-	}
-	return sccq.Name.Hash() == other.Name.Hash()
+	Preprocessing            *SanctionCheckConfigPreprocessing
 }

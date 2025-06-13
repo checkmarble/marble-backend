@@ -94,22 +94,24 @@ func (scs SanctionCheckMatchStatus) String() string {
 }
 
 type SanctionCheck struct {
-	Id                  string
-	DecisionId          string
-	Status              SanctionCheckStatus
-	Config              SanctionCheckConfigRef
-	Datasets            []string
-	SearchInput         json.RawMessage
-	OrgConfig           OrganizationOpenSanctionsConfig
-	IsManual            bool
-	IsArchived          bool
-	InitialHasMatches   bool
-	RequestedBy         *string
-	Partial             bool
-	WhitelistedEntities []string
-	ErrorCodes          []string
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	Id                    string
+	DecisionId            string
+	SanctionCheckConfigId string
+	Status                SanctionCheckStatus
+	Config                SanctionCheckConfigRef
+	Datasets              []string
+	SearchInput           json.RawMessage
+	OrgConfig             OrganizationOpenSanctionsConfig
+	IsManual              bool
+	IsArchived            bool
+	InitialHasMatches     bool
+	RequestedBy           *string
+	Partial               bool
+	WhitelistedEntities   []string
+	ErrorCodes            []string
+	ErrorDetail           error
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 type SanctionCheckConfigRef struct {
@@ -117,8 +119,9 @@ type SanctionCheckConfigRef struct {
 }
 type SanctionCheckWithMatches struct {
 	SanctionCheck
-	Matches []SanctionCheckMatch
-	Count   int
+	Matches            []SanctionCheckMatch
+	Count              int
+	EffectiveThreshold int
 
 	Duration                time.Duration
 	NameRecognitionDuration time.Duration
@@ -130,6 +133,7 @@ type SanctionRawSearchResponseWithMatches struct {
 	WhitelistedEntities []string
 	Partial             bool
 	ErrorCodes          []string
+	EffectiveThreshold  int
 
 	Matches []SanctionCheckMatch
 	Count   int
@@ -138,18 +142,20 @@ type SanctionRawSearchResponseWithMatches struct {
 func (s SanctionRawSearchResponseWithMatches) AdaptSanctionCheckFromSearchResponse(query OpenSanctionsQuery) SanctionCheckWithMatches {
 	sanctionCheck := SanctionCheckWithMatches{
 		SanctionCheck: SanctionCheck{
-			Datasets:            query.Config.Datasets,
-			OrgConfig:           query.OrgConfig,
-			SearchInput:         s.SearchInput,
-			Partial:             s.Partial,
-			InitialHasMatches:   s.InitialHasMatches,
-			WhitelistedEntities: s.WhitelistedEntities,
-			ErrorCodes:          s.ErrorCodes,
-			CreatedAt:           time.Now(),
-			UpdatedAt:           time.Now(),
+			SanctionCheckConfigId: query.Config.Id,
+			Datasets:              query.Config.Datasets,
+			OrgConfig:             query.OrgConfig,
+			SearchInput:           s.SearchInput,
+			Partial:               s.Partial,
+			InitialHasMatches:     s.InitialHasMatches,
+			WhitelistedEntities:   s.WhitelistedEntities,
+			ErrorCodes:            s.ErrorCodes,
+			CreatedAt:             time.Now(),
+			UpdatedAt:             time.Now(),
 		},
-		Matches: s.Matches,
-		Count:   s.Count,
+		Matches:            s.Matches,
+		EffectiveThreshold: s.EffectiveThreshold,
+		Count:              s.Count,
 	}
 	sanctionCheck.Status = sanctionCheck.InitialStatusFromMatches()
 	return sanctionCheck
@@ -187,9 +193,10 @@ type SanctionCheckMatchUpdate struct {
 }
 
 type SanctionCheckRefineRequest struct {
-	DecisionId string
-	Type       string
-	Query      OpenSanctionCheckFilter
+	DecisionId      string
+	SanctionCheckId string
+	Type            string
+	Query           OpenSanctionCheckFilter
 }
 
 type SanctionCheckMatchComment struct {

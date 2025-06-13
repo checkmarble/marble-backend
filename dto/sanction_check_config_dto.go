@@ -1,30 +1,41 @@
 package dto
 
 import (
+	"slices"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
 
 type SanctionCheckConfig struct {
-	Name                     *string                   `json:"name"`
-	Description              *string                   `json:"description"`
-	RuleGroup                *string                   `json:"rule_group,omitempty"`
-	Datasets                 []string                  `json:"datasets,omitempty"`
-	ForcedOutcome            *string                   `json:"forced_outcome,omitempty"`
-	TriggerRule              *NodeDto                  `json:"trigger_rule"`
-	Query                    *SanctionCheckConfigQuery `json:"query"`
-	CounterpartyIdExpression *NodeDto                  `json:"counterparty_id_expression"`
+	Id                       string                                   `json:"id"`
+	Name                     *string                                  `json:"name"`
+	Description              *string                                  `json:"description"`
+	RuleGroup                *string                                  `json:"rule_group,omitempty"`
+	Datasets                 []string                                 `json:"datasets,omitempty"`
+	Threshold                *int                                     `json:"threshold,omitempty" binding:"omitempty,min=0,max=100"`
+	ForcedOutcome            *string                                  `json:"forced_outcome,omitempty"`
+	TriggerRule              *NodeDto                                 `json:"trigger_rule"`
+	EntityType               *string                                  `json:"entity_type" binding:"omitempty,oneof=Thing Person Organization Vehicle"`
+	Query                    map[string]NodeDto                       `json:"query"`
+	CounterpartyIdExpression *NodeDto                                 `json:"counterparty_id_expression"`
+	Preprocessing            *models.SanctionCheckConfigPreprocessing `json:"preprocessing,omitzero"`
 }
 
 func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckConfig, error) {
 	config := SanctionCheckConfig{
+		Id:            model.Id,
 		Name:          &model.Name,
 		Description:   &model.Description,
 		RuleGroup:     model.RuleGroup,
 		Datasets:      model.Datasets,
+		Threshold:     model.Threshold,
 		ForcedOutcome: utils.Ptr(model.ForcedOutcome.String()),
+		EntityType:    &model.EntityType,
+		Preprocessing: &model.Preprocessing,
 	}
 
 	if model.TriggerRule != nil {
@@ -37,12 +48,11 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 	}
 
 	if model.Query != nil {
-		query, err := AdaptSanctionCheckConfigQuery(*model.Query)
+		query, err := pure_utils.MapValuesErr(model.Query, AdaptSanctionCheckConfigQuery)
 		if err != nil {
 			return SanctionCheckConfig{}, err
 		}
-
-		config.Query = &query
+		config.Query = query
 	}
 
 	if model.CounterpartyIdExpression != nil {
@@ -59,10 +69,14 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 
 func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSanctionCheckConfigInput, error) {
 	config := models.UpdateSanctionCheckConfigInput{
-		Name:        dto.Name,
-		Description: dto.Description,
-		RuleGroup:   dto.RuleGroup,
-		Datasets:    dto.Datasets,
+		Id:            dto.Id,
+		Name:          dto.Name,
+		Description:   dto.Description,
+		RuleGroup:     dto.RuleGroup,
+		Datasets:      dto.Datasets,
+		Threshold:     dto.Threshold,
+		EntityType:    dto.EntityType,
+		Preprocessing: dto.Preprocessing,
 	}
 	if dto.ForcedOutcome != nil {
 		config.ForcedOutcome = utils.Ptr(models.OutcomeFrom(*dto.ForcedOutcome))
@@ -80,7 +94,7 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 	}
 
 	if dto.Query != nil {
-		query, err := AdaptSanctionCheckConfigQueryDto(*dto.Query)
+		query, err := AdaptSanctionCheckConfigQueryDto(dto.Query)
 		if err != nil {
 			return models.UpdateSanctionCheckConfigInput{}, errors.Wrap(
 				models.BadParameterError,
@@ -88,7 +102,7 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 			)
 		}
 
-		config.Query = &query
+		config.Query = query
 	}
 
 	if dto.CounterpartyIdExpression != nil {
@@ -111,68 +125,40 @@ type SanctionCheckConfigQuery struct {
 	Label *NodeDto `json:"label,omitempty"`
 }
 
-func AdaptSanctionCheckConfigQuery(model models.SanctionCheckConfigQuery) (SanctionCheckConfigQuery, error) {
-	dto := SanctionCheckConfigQuery{
-		Name:  nil,
-		Label: nil,
+func AdaptSanctionCheckConfigQuery(model ast.Node) (NodeDto, error) {
+	nameAst, err := AdaptNodeDto(model)
+	if err != nil {
+		return NodeDto{}, err
 	}
 
-	if model.Name != nil {
-		nameAst, err := AdaptNodeDto(*model.Name)
-		if err != nil {
-			return SanctionCheckConfigQuery{}, err
-		}
-
-		dto.Name = &nameAst
-	}
-
-	if model.Label != nil {
-		// For backward compatibility, we always assume this is a string out of StringConcat.
-		// It used to be a single payload field, so if we are in that case, we wrap it in StringConcat.
-		if model.Label.Function != ast.FUNC_STRING_CONCAT {
-			model.Label = &ast.Node{
-				Function: ast.FUNC_STRING_CONCAT,
-				Children: []ast.Node{*model.Label},
-				NamedChildren: map[string]ast.Node{
-					"with_separator": {Constant: true},
-				},
-			}
-		}
-
-		labelAst, err := AdaptNodeDto(*model.Label)
-		if err != nil {
-			return SanctionCheckConfigQuery{}, err
-		}
-
-		dto.Label = &labelAst
-	}
-
-	return dto, nil
+	return nameAst, nil
 }
 
-func AdaptSanctionCheckConfigQueryDto(dto SanctionCheckConfigQuery) (models.SanctionCheckConfigQuery, error) {
-	model := models.SanctionCheckConfigQuery{
-		Name:  nil,
-		Label: nil,
+func AdaptSanctionCheckConfigQueryDto(dto map[string]NodeDto) (map[string]ast.Node, error) {
+	return pure_utils.MapValuesErr(dto, AdaptASTNode)
+}
+
+func (scc SanctionCheckConfig) ValidateOpenSanctionsQuery() error {
+	entityType := utils.Or(scc.EntityType, "Thing")
+
+	if (scc.EntityType == nil && scc.Query != nil) || (scc.EntityType != nil && scc.Query == nil) {
+		return errors.Wrapf(models.BadParameterError, "entity_type and query must be specified together")
 	}
 
-	if dto.Name != nil {
-		nameAst, err := AdaptASTNode(*dto.Name)
-		if err != nil {
-			return models.SanctionCheckConfigQuery{}, err
+	if scc.Preprocessing != nil && entityType != "Thing" && scc.Preprocessing.UseNer {
+		return errors.Wrapf(models.BadParameterError, "can only use NER preprocessing when using entity type 'Thing'")
+	}
+
+	allowedFields, ok := OpenSanctionsValidFieldsPerClass[entityType]
+	if !ok {
+		return errors.Wrapf(models.BadParameterError, "invalid OpenSanctions entity class '%s'", entityType)
+	}
+
+	for field := range scc.Query {
+		if !slices.Contains(allowedFields, field) {
+			return errors.Wrapf(models.BadParameterError, "invalid field '%s' for OpenSanctions entity class '%s'", field, entityType)
 		}
-
-		model.Name = &nameAst
 	}
 
-	if dto.Label != nil {
-		labelAst, err := AdaptASTNode(*dto.Label)
-		if err != nil {
-			return models.SanctionCheckConfigQuery{}, err
-		}
-
-		model.Label = &labelAst
-	}
-
-	return model, nil
+	return nil
 }

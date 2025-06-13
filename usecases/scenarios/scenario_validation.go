@@ -37,10 +37,17 @@ func ScenarioValidationToError(validation models.ScenarioValidation) error {
 
 	errs = append(errs, pure_utils.Map(validation.Decision.Errors, toError)...)
 
-	errs = append(errs, pure_utils.Map(validation.SanctionCheck.TriggerRule.Errors, toError)...)
-	errs = append(errs, validation.SanctionCheck.TriggerRule.TriggerEvaluation.FlattenErrors()...)
-	errs = append(errs, validation.SanctionCheck.Query.RuleEvaluation.FlattenErrors()...)
-	errs = append(errs, validation.SanctionCheck.CounterpartyIdExpression.RuleEvaluation.FlattenErrors()...)
+	for _, sc := range validation.SanctionCheck {
+		errs = append(errs, pure_utils.Map(sc.TriggerRule.Errors, toError)...)
+		errs = append(errs, sc.TriggerRule.TriggerEvaluation.FlattenErrors()...)
+		errs = append(errs, sc.Query.RuleEvaluation.FlattenErrors()...)
+
+		for _, fieldError := range sc.QueryFields {
+			errs = append(errs, pure_utils.Map(fieldError.Errors, toError)...)
+		}
+
+		errs = append(errs, sc.CounterpartyIdExpression.RuleEvaluation.FlattenErrors()...)
+	}
 
 	return errors.Join(errs...)
 }
@@ -122,13 +129,17 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 	}
 
 	// Validate sanction check trigger and rule
-	if iteration.SanctionCheckConfig != nil {
-		if iteration.SanctionCheckConfig.TriggerRule != nil {
+	result.SanctionCheck = make([]models.SanctionCheckConfigValidation, len(iteration.SanctionCheckConfigs))
+
+	for idx, scc := range iteration.SanctionCheckConfigs {
+		scResult := models.NewSanctionCheckValidation()
+
+		if scc.TriggerRule != nil {
 			triggerRuleEvaluation, _ := ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-				*iteration.SanctionCheckConfig.TriggerRule)
+				*scc.TriggerRule)
 			if _, ok := triggerRuleEvaluation.ReturnValue.(bool); !ok {
-				result.SanctionCheck.TriggerRule.Errors = append(
-					result.SanctionCheck.TriggerRule.Errors, models.ScenarioValidationError{
+				scResult.TriggerRule.Errors = append(
+					scResult.TriggerRule.Errors, models.ScenarioValidationError{
 						Error: errors.Wrap(models.BadParameterError,
 							"sanction check trigger formula does not return a boolean"),
 						Code: models.FormulaMustReturnBoolean,
@@ -138,61 +149,37 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 
 		queryValidation := models.NewRuleValidation()
 
-		if iteration.SanctionCheckConfig.Query == nil {
+		if scc.Query == nil || len(scc.Query) == 0 {
 			queryValidation.Errors = append(queryValidation.Errors, models.ScenarioValidationError{
 				Error: errors.Wrap(models.BadParameterError,
 					"sanction check does not have a query formula"),
 				Code: models.RuleFormulaRequired,
 			})
 		} else {
-			isSpecified := func(a *ast.Node) bool {
-				return a != nil
-			}
+			providedFields := 0
 
-			isNameProvided, isLabelProvided := false, false
-
-			if isSpecified(iteration.SanctionCheckConfig.Query.Name) {
+			for field, fieldAst := range scc.Query {
 				queryNameValidation := models.NewRuleValidation()
-				isNameProvided = true
+				providedFields += 1
 
-				queryNameValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-					*iteration.SanctionCheckConfig.Query.Name)
+				queryNameValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, fieldAst)
 
 				if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(string); !ok {
 					queryNameValidation.Errors = append(
 						queryNameValidation.Errors, models.ScenarioValidationError{
-							Error: errors.Wrap(models.BadParameterError,
-								"sanction check namefilter does not return a string"),
+							Error: errors.Wrapf(models.BadParameterError,
+								"sanction check field filter '%s' does not return a string", field),
 							Code: models.FormulaMustReturnString,
 						})
 				}
 
-				result.SanctionCheck.QueryName = queryNameValidation
+				scResult.QueryFields[field] = queryNameValidation
 			}
 
-			if isSpecified(iteration.SanctionCheckConfig.Query.Label) {
-				queryLabelValidation := models.NewRuleValidation()
-				isLabelProvided = true
-
-				queryLabelValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-					*iteration.SanctionCheckConfig.Query.Label)
-
-				if _, ok := queryLabelValidation.RuleEvaluation.ReturnValue.(string); !ok {
-					queryLabelValidation.Errors = append(
-						queryLabelValidation.Errors, models.ScenarioValidationError{
-							Error: errors.Wrap(models.BadParameterError,
-								"sanction check label filter does not return a string"),
-							Code: models.FormulaMustReturnString,
-						})
-				}
-
-				result.SanctionCheck.QueryLabel = queryLabelValidation
-			}
-
-			if !isNameProvided && !isLabelProvided {
+			if providedFields == 0 {
 				queryValidation.Errors = append(queryValidation.Errors, models.ScenarioValidationError{
 					Error: errors.Wrap(models.BadParameterError,
-						"at least one of name or label filter must be provided"),
+						"at least one field filter must be provided"),
 					Code: models.RuleFormulaRequired,
 				})
 			}
@@ -200,9 +187,9 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 
 		counterpartyIdValidation := models.NewRuleValidation()
 
-		if iteration.SanctionCheckConfig.CounterpartyIdExpression != nil {
+		if scc.CounterpartyIdExpression != nil {
 			counterpartyIdValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
-				*iteration.SanctionCheckConfig.CounterpartyIdExpression)
+				*scc.CounterpartyIdExpression)
 
 			if _, ok := counterpartyIdValidation.RuleEvaluation.ReturnValue.(string); !ok {
 				counterpartyIdValidation.Errors = append(
@@ -214,8 +201,10 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 			}
 		}
 
-		result.SanctionCheck.Query = queryValidation
-		result.SanctionCheck.CounterpartyIdExpression = counterpartyIdValidation
+		scResult.Query = queryValidation
+		scResult.CounterpartyIdExpression = counterpartyIdValidation
+
+		result.SanctionCheck[idx] = scResult
 	}
 
 	return result

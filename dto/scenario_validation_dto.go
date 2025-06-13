@@ -38,18 +38,17 @@ type decisionValidationDto struct {
 }
 
 type sanctionCheckConfigValidationDto struct {
-	Trigger                  triggerValidationDto `json:"trigger"`
-	Query                    ruleValidationDto    `json:"query"`
-	QueryName                ruleValidationDto    `json:"query_name"`
-	QueryLabel               ruleValidationDto    `json:"query_label"`
-	CounterpartyIdExpression ruleValidationDto    `json:"counterparty_id_expression"`
+	Trigger                  triggerValidationDto         `json:"trigger"`
+	Query                    ruleValidationDto            `json:"query"`
+	QueryFields              map[string]ruleValidationDto `json:"query_fields"`
+	CounterpartyIdExpression ruleValidationDto            `json:"counterparty_id_expression"`
 }
 
 type ScenarioValidationDto struct {
-	Trigger             triggerValidationDto             `json:"trigger"`
-	Rules               rulesValidationDto               `json:"rules"`
-	SanctionCheckConfig sanctionCheckConfigValidationDto `json:"sanction_check_config"`
-	Decision            decisionValidationDto            `json:"decision"`
+	Trigger             triggerValidationDto               `json:"trigger"`
+	Rules               rulesValidationDto                 `json:"rules"`
+	SanctionCheckConfig []sanctionCheckConfigValidationDto `json:"sanction_check_config"`
+	Decision            decisionValidationDto              `json:"decision"`
 }
 
 func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationDto {
@@ -67,28 +66,28 @@ func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationD
 				}
 			}),
 		},
-		SanctionCheckConfig: sanctionCheckConfigValidationDto{
-			Trigger: triggerValidationDto{
-				Errors:            pure_utils.Map(s.SanctionCheck.TriggerRule.Errors, AdaptScenarioValidationErrorDto),
-				TriggerEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.TriggerRule.TriggerEvaluation),
-			},
-			Query: ruleValidationDto{
-				Errors:         pure_utils.Map(s.SanctionCheck.Query.Errors, AdaptScenarioValidationErrorDto),
-				RuleEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.Query.RuleEvaluation),
-			},
-			QueryName: ruleValidationDto{
-				Errors:         pure_utils.Map(s.SanctionCheck.QueryName.Errors, AdaptScenarioValidationErrorDto),
-				RuleEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.QueryName.RuleEvaluation),
-			},
-			QueryLabel: ruleValidationDto{
-				Errors:         pure_utils.Map(s.SanctionCheck.QueryLabel.Errors, AdaptScenarioValidationErrorDto),
-				RuleEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.QueryLabel.RuleEvaluation),
-			},
-			CounterpartyIdExpression: ruleValidationDto{
-				Errors:         pure_utils.Map(s.SanctionCheck.CounterpartyIdExpression.Errors, AdaptScenarioValidationErrorDto),
-				RuleEvaluation: ast.AdaptNodeEvaluationDto(s.SanctionCheck.CounterpartyIdExpression.RuleEvaluation),
-			},
-		},
+		SanctionCheckConfig: pure_utils.Map(s.SanctionCheck, func(sc models.SanctionCheckConfigValidation) sanctionCheckConfigValidationDto {
+			return sanctionCheckConfigValidationDto{
+				Trigger: triggerValidationDto{
+					Errors:            pure_utils.Map(sc.TriggerRule.Errors, AdaptScenarioValidationErrorDto),
+					TriggerEvaluation: ast.AdaptNodeEvaluationDto(sc.TriggerRule.TriggerEvaluation),
+				},
+				Query: ruleValidationDto{
+					Errors:         pure_utils.Map(sc.Query.Errors, AdaptScenarioValidationErrorDto),
+					RuleEvaluation: ast.AdaptNodeEvaluationDto(sc.Query.RuleEvaluation),
+				},
+				QueryFields: pure_utils.MapValues(sc.QueryFields, func(e models.RuleValidation) ruleValidationDto {
+					return ruleValidationDto{
+						Errors:         pure_utils.Map(e.Errors, AdaptScenarioValidationErrorDto),
+						RuleEvaluation: ast.AdaptNodeEvaluationDto(e.RuleEvaluation),
+					}
+				}),
+				CounterpartyIdExpression: ruleValidationDto{
+					Errors:         pure_utils.Map(sc.CounterpartyIdExpression.Errors, AdaptScenarioValidationErrorDto),
+					RuleEvaluation: ast.AdaptNodeEvaluationDto(sc.CounterpartyIdExpression.RuleEvaluation),
+				},
+			}
+		}),
 		Decision: decisionValidationDto{
 			Errors: pure_utils.Map(s.Decision.Errors, AdaptScenarioValidationErrorDto),
 		},
