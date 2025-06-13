@@ -1,7 +1,10 @@
 package agent_dto
 
 import (
+	"encoding/csv"
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -99,4 +102,44 @@ func AdaptPivotObjectDto(p models.PivotObject) (PivotObject, error) {
 		PivotObjectData:   pivotObjectData,
 		NumberOfDecisions: p.NumberOfDecisions,
 	}, nil
+}
+
+func WriteClientDataToCsv(objects []models.ClientObjectDetail, w *csv.Writer) error {
+	// write header
+	keys := make([]string, 0, len(objects[0].Data))
+	for key := range objects[0].Data {
+		keys = append(keys, key)
+	}
+	if err := w.Write(keys); err != nil {
+		return err
+	}
+
+	for _, obj := range objects {
+		row := make([]string, len(keys))
+		for i, key := range keys {
+			if value, ok := obj.Data[key]; ok {
+				timestampVal, ok := value.(time.Time)
+				if ok {
+					row[i] = timestampVal.Format(time.RFC3339)
+				} else if value == nil {
+					row[i] = ""
+				} else {
+					row[i] = fmt.Sprintf("%v", value)
+				}
+			} else {
+				row[i] = ""
+			}
+		}
+		if err := w.Write(row); err != nil {
+			return err
+		}
+
+	}
+	w.Flush()
+	err := w.Error()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

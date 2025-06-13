@@ -74,6 +74,14 @@ type StringOrNumber struct {
 	FloatValue  *float64
 }
 
+func NewStringOrNumberFromString(value string) StringOrNumber {
+	return StringOrNumber{StringValue: &value}
+}
+
+func NewStringOrNumberFromFloat(value float64) StringOrNumber {
+	return StringOrNumber{FloatValue: &value}
+}
+
 type ClientDataListPagination struct {
 	NextCursorId *string
 	HasNextPage  bool
