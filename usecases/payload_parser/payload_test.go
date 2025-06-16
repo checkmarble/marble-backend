@@ -1,6 +1,7 @@
 package payload_parser
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -254,7 +255,7 @@ func TestParser_ParsePayload(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewParser()
 
-			out, err := p.ParsePayload(tt.table, tt.input)
+			out, err := p.ParsePayload(context.TODO(), tt.table, tt.input)
 			var validationErrors models.IngestionValidationErrors
 			var otherErr error
 			if !errors.As(err, &validationErrors) {

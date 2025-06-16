@@ -74,16 +74,16 @@ func (usecase *IngestionUseCase) IngestObject(
 	tables := dataModel.Tables
 	table, ok := tables[objectType]
 	if !ok {
-		return 0, errors.Wrapf(
+		return 0, errors.WithDetailf(
 			models.NotFoundError,
 			"table %s not found in data model in IngestObject", objectType,
 		)
 	}
 
 	parser := payload_parser.NewParser(parserOpts...)
-	payload, err := parser.ParsePayload(table, objectBody)
+	payload, err := parser.ParsePayload(ctx, table, objectBody)
 	if err != nil {
-		return 0, errors.Wrap(err, "error parsing payload in decision usecase validate payload")
+		return 0, errors.WithDetail(err, "error parsing payload in decision usecase validate payload")
 	}
 
 	var nb int
@@ -138,7 +138,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 			"error unmarshalling objectBody in IngestObjects")
 	}
 	if len(rawMessages) > usecase.batchIngestionMaxSize {
-		return 0, errors.Wrap(models.BadParameterError, "too many objects in the batch")
+		return 0, errors.WithDetail(models.BadParameterError, "too many objects in the batch")
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
@@ -149,7 +149,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	table, ok := dataModel.Tables[objectType]
 	if !ok {
-		return 0, errors.Wrapf(
+		return 0, errors.WithDetailf(
 			models.NotFoundError,
 			"table %s not found in data model in IngestObjects", objectType,
 		)
@@ -160,21 +160,21 @@ func (usecase *IngestionUseCase) IngestObjects(
 	parser := payload_parser.NewParser(parserOpts...)
 	validationErrorsGroup := make(models.IngestionValidationErrors)
 	for _, rawMsg := range rawMessages {
-		payload, err := parser.ParsePayload(table, rawMsg)
+		payload, err := parser.ParsePayload(ctx, table, rawMsg)
 		var validationErrors models.IngestionValidationErrors
 		if errors.As(err, &validationErrors) {
 			objectId, errMap := validationErrors.GetSomeItem()
 			validationErrorsGroup[objectId] = errMap
 			continue
 		} else if err != nil {
-			return 0, errors.Wrapf(
+			return 0, errors.WithDetailf(
 				models.BadParameterError,
 				"Error while validating payload in IngestObjects: %v", err,
 			)
 		}
 		objectId := payload.Data["object_id"].(string)
 		if _, ok := objectIds[objectId]; ok {
-			return 0, errors.Wrapf(models.BadParameterError,
+			return 0, errors.WithDetailf(models.BadParameterError,
 				"duplicate object_id %s in the batch", objectId)
 		}
 		objectIds[objectId] = struct{}{}

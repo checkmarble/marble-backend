@@ -1,6 +1,7 @@
 package payload_parser
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -9,13 +10,15 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type fieldParser map[models.DataType]func(result gjson.Result) (any, error)
 
 type Parser struct {
-	parsers    fieldParser
-	allowPatch bool
+	parsers               fieldParser
+	allowPatch            bool
+	disallowUnknownFields bool
 }
 
 var (
@@ -27,6 +30,7 @@ var (
 	errIsInvalidBoolean   = fmt.Errorf("is not a valid boolean")
 	errIsInvalidString    = fmt.Errorf("is not a valid string")
 	errIsInvalidDataType  = fmt.Errorf("invalid type used in parser")
+	errUnknownField       = errors.New("field does not exist in data model")
 )
 
 func addError(errorsContainer models.IngestionValidationErrors, objectId string, name string, err error) {
@@ -36,7 +40,7 @@ func addError(errorsContainer models.IngestionValidationErrors, objectId string,
 	errorsContainer[objectId][name] = err.Error()
 }
 
-func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, error) {
+func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []byte) (models.ClientObject, error) {
 	if !gjson.ValidBytes(json) {
 		return models.ClientObject{}, errors.Join(models.BadParameterError, errIsInvalidJSON)
 	}
@@ -87,6 +91,26 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 			out[name] = val
 		}
 	}
+
+	extraFields := make([]string, 0)
+
+	for field := range result.Map() {
+		if _, ok := table.Fields[field]; !ok {
+			extraFields = append(extraFields, field)
+
+			if p.disallowUnknownFields {
+				addError(allErrors, objectId, field, errUnknownField)
+			}
+		}
+	}
+
+	if !p.disallowUnknownFields && len(extraFields) > 0 {
+		utils.LoggerFromContext(ctx).WarnContext(ctx, "object was ingested with extra unknown fields",
+			"object_type", table.Name,
+			"object_id", objectId,
+			"fields", extraFields)
+	}
+
 	if len(allErrors) > 0 {
 		return models.ClientObject{}, allErrors
 	}
@@ -98,7 +122,8 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 }
 
 type parserOpts struct {
-	allowPatch bool
+	allowPatch            bool
+	disallowUnknownFields bool
 }
 
 type ParserOpt func(*parserOpts)
@@ -106,6 +131,18 @@ type ParserOpt func(*parserOpts)
 func WithAllowPatch() ParserOpt {
 	return func(o *parserOpts) {
 		o.allowPatch = true
+	}
+}
+
+func WithAllowedPatch(allowed bool) ParserOpt {
+	return func(o *parserOpts) {
+		o.allowPatch = allowed
+	}
+}
+
+func DisallowUnknownFields() ParserOpt {
+	return func(o *parserOpts) {
+		o.disallowUnknownFields = true
 	}
 }
 
@@ -157,7 +194,8 @@ func NewParser(opts ...ParserOpt) *Parser {
 	}
 
 	return &Parser{
-		parsers:    parsers,
-		allowPatch: options.allowPatch,
+		parsers:               parsers,
+		allowPatch:            options.allowPatch,
+		disallowUnknownFields: options.disallowUnknownFields,
 	}
 }
