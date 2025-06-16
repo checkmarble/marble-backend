@@ -99,3 +99,16 @@ type ExplorationOptions struct {
 	FilterFieldValue  StringOrNumber
 	OrderingFieldName string
 }
+
+const (
+	FieldStatisticTypeUuid = "uuid"
+)
+
+type FieldStatistics struct {
+	FieldName string
+	Histogram []string
+
+	Type      DataType
+	Format    string
+	MaxLength int
+}

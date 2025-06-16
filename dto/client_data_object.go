@@ -89,6 +89,7 @@ type ClientObjectMetadata struct {
 
 type ClientDataListResponse struct {
 	Data       []ClientObjectDetail     `json:"data"`
+	Metadata   ClientDataListMetadata   `json:"metadata"`
 	Pagination ClientDataListPagination `json:"pagination"`
 }
 
@@ -98,11 +99,37 @@ func (c ClientDataListResponse) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(struct {
 		Data       []ClientObjectDetail     `json:"data"`
+		Metadata   ClientDataListMetadata   `json:"metadata"`
 		Pagination ClientDataListPagination `json:"pagination"`
 	}{
 		Data:       c.Data,
+		Metadata:   c.Metadata,
 		Pagination: c.Pagination,
 	})
+}
+
+type ClientDataListMetadata struct {
+	FieldStatistics map[string]ClientDataListFieldStatistic `json:"field_statistics"`
+}
+
+type ClientDataListFieldStatistic struct {
+	Type      string `json:"type"`
+	Format    string `json:"format,omitempty"`
+	MaxLength int    `json:"max_length,omitempty"`
+}
+
+func AdaptClientDataListFieldStatistics(stats []models.FieldStatistics) map[string]ClientDataListFieldStatistic {
+	out := make(map[string]ClientDataListFieldStatistic, len(stats))
+
+	for _, s := range stats {
+		out[s.FieldName] = ClientDataListFieldStatistic{
+			Type:      s.Type.String(),
+			Format:    s.Format,
+			MaxLength: s.MaxLength,
+		}
+	}
+
+	return out
 }
 
 type ClientDataListPagination struct {
