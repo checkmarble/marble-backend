@@ -60,7 +60,7 @@ func handleReadClientDataAsList(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestedDataReaderUsecase()
 
-		clientObjects, nextPagination, err := usecase.ReadIngestedClientObjects(ctx, orgId,
+		clientObjects, fieldStats, nextPagination, err := usecase.ReadIngestedClientObjects(ctx, orgId,
 			objectType, dto.AdaptClientDataListRequestBody(input))
 		if presentError(ctx, c, err) {
 			return
@@ -71,7 +71,10 @@ func handleReadClientDataAsList(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, dto.ClientDataListResponse{
-			Data:       clientObjectDtos,
+			Data: clientObjectDtos,
+			Metadata: dto.ClientDataListMetadata{
+				FieldStatistics: dto.AdaptClientDataListFieldStatistics(fieldStats),
+			},
 			Pagination: dto.AdaptClientDataListPaginationDto(nextPagination),
 		})
 	}

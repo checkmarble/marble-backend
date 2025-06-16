@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
@@ -9,7 +10,12 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/pkg/errors"
+)
+
+var (
+	NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
 )
 
 type ingestedDataReaderClientDbRepository interface {
@@ -28,6 +34,7 @@ type ingestedDataReaderClientDbRepository interface {
 		uniqueFieldValue string,
 		uniqueFieldName string,
 	) ([]models.DataModelObject, error)
+	GatherFieldStatistics(ctx context.Context, exec repositories.Executor, table models.Table) ([]models.FieldStatistics, error)
 }
 
 type ingestedDataReaderRepository interface {
@@ -284,7 +291,7 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 	orgId string,
 	objectType string,
 	input models.ClientDataListRequestBody,
-) (objects []models.ClientObjectDetail, pagination models.ClientDataListPagination, err error) {
+) (objects []models.ClientObjectDetail, fieldStats []models.FieldStatistics, pagination models.ClientDataListPagination, err error) {
 	dataModel, err := usecase.dataModelUsecase.GetDataModel(ctx, orgId, models.DataModelReadOptions{
 		IncludeNavigationOptions: true,
 	})
@@ -363,13 +370,26 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 		return
 	}
 
+	fieldStatsCacheKey := fmt.Sprintf("%s-%s", orgId, targetTable.Name)
+
+	if cache, ok := NAVIGATION_FIELD_STATS_CACHE.Get(fieldStatsCacheKey); ok {
+		fieldStats = cache
+	} else {
+		fieldStats, err = usecase.clientDbRepository.GatherFieldStatistics(ctx, db, targetTable)
+		if err != nil {
+			return
+		}
+
+		NAVIGATION_FIELD_STATS_CACHE.Add(fieldStatsCacheKey, fieldStats)
+	}
+
 	rawObjects, err := usecase.clientDbRepository.ListIngestedObjects(ctx, db, targetTable,
 		input.ExplorationOptions, input.CursorId, input.Limit+1)
 	if err != nil {
 		return
 	}
 	if len(rawObjects) == 0 {
-		return nil, models.ClientDataListPagination{
+		return nil, nil, models.ClientDataListPagination{
 			HasNextPage: false,
 		}, nil
 	}
@@ -421,7 +441,7 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 		objects = append(objects, clientObject)
 	}
 
-	return objects, pagination, nil
+	return objects, fieldStats, pagination, nil
 }
 
 func allParentTables(dataModel models.DataModel, tableName string) []string {

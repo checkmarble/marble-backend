@@ -44,7 +44,7 @@ type AiAgentUsecaseIngestedDataReader interface {
 		orgId string,
 		objectType string,
 		input models.ClientDataListRequestBody,
-	) (objects []models.ClientObjectDetail, pagination models.ClientDataListPagination, err error)
+	) (objects []models.ClientObjectDetail, fieldStats []models.FieldStatistics, pagination models.ClientDataListPagination, err error)
 }
 
 type AiAgentUsecaseDataModelUsecase interface {
@@ -201,7 +201,7 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 				continue
 			}
 			if navOption.Status == models.IndexStatusValid {
-				objects, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(ctx,
+				objects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(ctx,
 					c.OrganizationId, navOption.TargetTableName, models.ClientDataListRequestBody{
 						ExplorationOptions: models.ExplorationOptions{
 							SourceTableName:   pivotObject.PivotObjectName,

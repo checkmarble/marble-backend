@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -51,6 +52,7 @@ type IngestedDataReadRepository interface {
 		cursorId *string,
 		limit int,
 	) ([]models.DataModelObject, error)
+	GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table) ([]models.FieldStatistics, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -503,7 +505,7 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 			// - amount by which the trigram similarity is boosted: 0.05 times a factor, that is maximal when strings are the shortest (6 chars => 0.25 score bump)
 			//   and maximal when strings are just below the boost threshold (10 chars => 0.05 score bump)
 			condition := fmt.Sprintf(`
-			CASE 
+			CASE
 				WHEN GREATEST(LENGTH(%s), LENGTH(?)) < 6 THEN 1.0 - (levenshtein(%s, ?)::float / GREATEST(LENGTH(%s), LENGTH(?)))
 				WHEN GREATEST(LENGTH(%s), LENGTH(?)) < 11 THEN LEAST(1.0, SIMILARITY(%s, ?) + 0.05 * (11 - LEAST(1, LENGTH(%s), LENGTH(?))))
 				ELSE SIMILARITY(%s, ?)
@@ -622,4 +624,83 @@ func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 
 		return ingestedObject, nil
 	})
+}
+
+func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table) ([]models.FieldStatistics, error) {
+	q := NewQueryBuilder().
+		Select("attname", "most_common_vals", "histogram_bounds").
+		From("pg_stats").
+		Where(squirrel.And{
+			squirrel.Eq{
+				"schemaname": exec.DatabaseSchema().Schema,
+				"tablename":  table.Name,
+			},
+			squirrel.NotEq{
+				"attname": []string{"id", "valid_from", "valid_until"},
+			},
+		})
+
+	fieldStats, err := SqlToListOfRow(ctx, exec, q, func(row pgx.CollectableRow) (models.FieldStatistics, error) {
+		var (
+			colname      string
+			commonValues []string
+			histogram    []string
+		)
+
+		if err := row.Scan(&colname, &commonValues, &histogram); err != nil {
+			return models.FieldStatistics{}, err
+		}
+
+		// Use most_common_vals if we don't have a histogram, which can happen on low-cardinality datasets
+		values := histogram
+		if histogram == nil {
+			values = commonValues
+		}
+
+		return models.FieldStatistics{
+			FieldName: colname,
+			Type:      table.Fields[colname].DataType,
+			Histogram: values,
+		}, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	for idx, fs := range fieldStats {
+		switch fs.Type {
+		case models.String, models.Int, models.Float:
+			maxLength := 0
+			isNotUuid := fs.Type != models.String
+
+			for _, value := range fs.Histogram {
+				length := len(value)
+				maxLength = max(maxLength, length)
+
+				switch length {
+				case 0:
+					// Do not try to determine format if empty
+
+				case 36:
+					if !isNotUuid {
+						if _, err := uuid.Parse(value); err != nil {
+							isNotUuid = true
+						}
+					}
+
+				default:
+					isNotUuid = true
+				}
+			}
+
+			fieldStats[idx].MaxLength = maxLength
+
+			if !isNotUuid {
+				fieldStats[idx].Format = models.FieldStatisticTypeUuid
+			}
+		}
+	}
+
+	return fieldStats, nil
 }
