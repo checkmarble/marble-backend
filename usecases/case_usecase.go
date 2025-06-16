@@ -1392,20 +1392,6 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 		return models.Case{}, err
 	}
 
-	if input.ReviewStatus == models.ReviewStatusApprove {
-		sanctionChecks, err := usecase.sanctionCheckRepository.ListSanctionChecksForDecision(ctx, exec, decisions[0].DecisionId, false)
-		if err != nil {
-			return models.Case{}, errors.Wrap(err, "could not retrieve sanction check")
-		}
-
-		for _, sc := range sanctionChecks {
-			if sc.Status != models.SanctionStatusNoHit && sc.Status != models.SanctionStatusError {
-				return models.Case{}, errors.Wrap(models.BadParameterError,
-					"cannot approve a decision with possible sanction hits")
-			}
-		}
-	}
-
 	webhookEventId := uuid.NewString()
 	c, err = executor_factory.TransactionReturnValue(
 		ctx,
