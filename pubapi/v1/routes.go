@@ -15,6 +15,11 @@ func Routes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gin.Ha
 		root := authed.Group("/", pubapi.TimeoutMiddleware(conf.DefaultTimeout))
 		decision := authed.Group("/", pubapi.TimeoutMiddleware(conf.DecisionTimeout))
 
+		root.POST("/ingest/:objectType", HandleIngestObject(uc, false))
+		root.PATCH("/ingest/:objectType", HandleIngestObject(uc, false))
+		root.POST("/ingest/:objectType/batch", HandleIngestObject(uc, true))
+		root.PATCH("/ingest/:objectType/batch", HandleIngestObject(uc, true))
+
 		root.GET("/decisions", HandleListDecisions(uc))
 		root.GET("/decisions/:decisionId", HandleGetDecision(uc))
 		root.POST("/decisions/:decisionId/snooze", HandleSnoozeRule(uc))

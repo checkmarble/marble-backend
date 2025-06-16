@@ -805,7 +805,7 @@ func (usecase DecisionUsecase) validatePayload(
 	}
 
 	parser := payload_parser.NewParser()
-	payload, err = parser.ParsePayload(table, rawPayload)
+	payload, err = parser.ParsePayload(ctx, table, rawPayload)
 	if err != nil {
 		err = errors.Wrap(err, "error parsing payload in decision usecase validate payload")
 		return

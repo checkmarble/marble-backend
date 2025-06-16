@@ -615,7 +615,7 @@ func createAndTestDecision(
 	expectedScore int,
 ) models.DecisionWithRuleExecutions {
 	parser := payload_parser.NewParser()
-	transactionPayload, err := parser.ParsePayload(table, transactionPayloadJson)
+	transactionPayload, err := parser.ParsePayload(ctx, table, transactionPayloadJson)
 	if err != nil {
 		assert.FailNow(t, "Could not parse payload", err)
 	}
