@@ -24,7 +24,8 @@ jobs:
     name: Build and deploy back-end
     environment: ${{ inputs.environment }}
     env:
-      IMAGE: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${{ inputs.version }}
+      VERSION_IMAGE: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${{ inputs.version }}
+      COMMIT_IMAGE: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${{ github.sha }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -42,7 +43,7 @@ jobs:
           token_format: access_token
           project_id: ${{ vars.GCP_PROJECT_ID }}
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER_ID }}
-          service_account: ${{ vars.SERVICE_ACCOUNT_EMAIL}}
+          service_account: ${{ vars.SERVICE_ACCOUNT_EMAIL }}
 
       - name: Login to Google Artifact Registry
         uses: docker/login-action@v3
@@ -54,44 +55,19 @@ jobs:
       - name: Check if image exists (for production deployments)
         id: check_image
         run: |
-          if [[ "${{ inputs.environment }}" == "production" ]]; then
-            echo "Checking if image already exists for production deployment..."
-            # For production, check if an image exists with the commit hash as tag
-            COMMIT_HASH=$(git rev-parse HEAD)
-            COMMIT_IMAGE="europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${COMMIT_HASH}"
-            echo "Looking for existing image: ${COMMIT_IMAGE}"
+          echo "Looking for existing image: ${{ env.COMMIT_IMAGE }}"
 
-            if docker manifest inspect ${COMMIT_IMAGE} > /dev/null 2>&1; then
-              echo "✅ Image with commit hash ${COMMIT_HASH} already exists, will reuse it"
-              echo "existing_image=${COMMIT_IMAGE}" >> "$GITHUB_OUTPUT"
-              echo "should_build=false" >> "$GITHUB_OUTPUT"
-            else
-              echo "❌ No image found for commit hash ${COMMIT_HASH}, will build new image with tag ${{ inputs.version }}"
-              echo "should_build=true" >> "$GITHUB_OUTPUT"
-            fi
+          if docker manifest inspect ${{ env.COMMIT_IMAGE }} > /dev/null 2>&1; then
+            echo "✅ Image with commit hash ${{ github.sha }} already exists, will reuse it"
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
           else
-            echo "Non-production deployment, will build image"
+            echo "❌ No image found for commit hash ${{ github.sha }}, build a new one"
             echo "should_build=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract version from tag
         id: version
         run: echo "MARBLE_VERSION=$(git describe --tags)" >> "$GITHUB_OUTPUT"
-
-      - name: Prepare image tags
-        if: steps.check_image.outputs.should_build == 'true'
-        id: tags
-        run: |
-          COMMIT_HASH=$(git rev-parse HEAD)
-          COMMIT_IMAGE="europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${COMMIT_HASH}"
-
-          if [[ "${{ inputs.environment }}" == "production" ]]; then
-            # For production, only tag with the version
-            echo "IMAGE_TAGS=${{ env.IMAGE }}" >> "$GITHUB_OUTPUT"
-          else
-            # For staging, tag with both version (latest) and commit hash
-            echo "IMAGE_TAGS=${{ env.IMAGE }},$COMMIT_IMAGE" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Build and push
         if: steps.check_image.outputs.should_build == 'true'
@@ -101,15 +77,14 @@ jobs:
           build-args: |
             MARBLE_VERSION=${{ steps.version.outputs.MARBLE_VERSION }}
             SEGMENT_WRITE_KEY=${{ secrets.segment_write_key_opensource }}
-          tags: ${{ steps.tags.outputs.IMAGE_TAGS }}
+          tags: ${{ env.COMMIT_IMAGE }}
 
-      - name: Tag existing image with version (for production deployment reuse)
-        if: steps.check_image.outputs.should_build == 'false'
+      - name: Tag existing image with version
         run: |
-          echo "Retagging existing image ${{ steps.check_image.outputs.existing_image }} as ${{ env.IMAGE }}"
-          docker buildx imagetools create --tag ${{ env.IMAGE }} ${{ steps.check_image.outputs.existing_image }}
+          echo "Retagging existing image ${{ env.COMMIT_IMAGE }} as ${{ env.VERSION_IMAGE }}"
+          docker buildx imagetools create --tag ${{ env.VERSION_IMAGE }} ${{ env.COMMIT_IMAGE }}
 
-      - name: "Set up Cloud SDK"
+      - name: Set up Cloud SDK
         uses: "google-github-actions/setup-gcloud@v2"
         with:
           install_components: beta
@@ -118,7 +93,7 @@ jobs:
         run: |
           gcloud run jobs deploy migrations \
             --quiet \
-            --image=${{ env.IMAGE }} \
+            --image=${{ env.VERSION_IMAGE }} \
             --region="europe-west1" \
             --execute-now \
             --wait
@@ -127,12 +102,12 @@ jobs:
         run: |
           gcloud run deploy marble-backend \
             --quiet \
-            --image=${{ env.IMAGE }} \
+            --image=${{ env.VERSION_IMAGE }} \
             --region="europe-west1"
 
       - name: Deploy execute async worker service
         run: |
           gcloud run deploy marble-backend-worker \
             --quiet \
-            --image=${{ env.IMAGE }} \
+            --image=${{ env.VERSION_IMAGE }} \
             --region="europe-west1"
