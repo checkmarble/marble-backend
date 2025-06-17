@@ -14,7 +14,7 @@ import (
 )
 
 type GetInboxIdUriInput struct {
-	InboxId models.UnmarshallingUuid `uri:"inbox_id" binding:"required"`
+	InboxId dto.UnmarshallingUuid `uri:"inbox_id" binding:"required"`
 }
 
 func handleGetInboxById(uc usecases.Usecases) func(c *gin.Context) {
@@ -192,7 +192,7 @@ func handleDeleteInbox(uc usecases.Usecases) func(c *gin.Context) {
 }
 
 type GetInboxUserInput struct {
-	Id models.UnmarshallingUuid `uri:"inbox_user_id" binding:"required"`
+	Id dto.UnmarshallingUuid `uri:"inbox_user_id" binding:"required"`
 }
 
 func handleGetInboxUserById(uc usecases.Usecases) func(c *gin.Context) {
@@ -248,7 +248,7 @@ func handleListInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
 
 type CreateInboxUserInput struct {
 	Uri struct {
-		InboxId models.UnmarshallingUuid `uri:"inbox_id" binding:"required"`
+		InboxId dto.UnmarshallingUuid `uri:"inbox_id" binding:"required"`
 	}
 	Body struct {
 		UserId uuid.UUID `json:"user_id" binding:"required"`
