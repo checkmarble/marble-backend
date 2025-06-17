@@ -25,7 +25,6 @@ var (
 		"South America":  "sa",
 		"United Nations": "un",
 		"Other":          "other",
-		"Internal":       "internal",
 	}
 )
 
@@ -156,10 +155,6 @@ func regionCodeFromName(code string) string {
 }
 
 func regionFromDatasetName(name string, tags *set.Set[string]) (string, string) {
-	if !tags.Contains("default") {
-		return "internal", "Internal"
-	}
-
 	cc := ""
 
 	if strings.HasPrefix(name, "ext") && len(name) >= 6 && isDatasetSeparator(name[3]) {
