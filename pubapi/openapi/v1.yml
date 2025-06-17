@@ -159,7 +159,7 @@ paths:
                   - $ref: "#/components/schemas/BaseResponse"
                   - $ref: "#/components/schemas/BasePagination"
                   - type: object
-                    required: true
+                    required: [metadata]
                     properties:
                       metadata:
                         required:
@@ -236,7 +236,7 @@ paths:
                   - $ref: "#/components/schemas/BaseResponse"
                   - $ref: "#/components/schemas/BasePagination"
                   - type: object
-                    required: true
+                    required: [metadata]
                     properties:
                       metadata:
                         required:
@@ -615,7 +615,7 @@ paths:
         "422":
           $ref: "#/components/responses/422"
 
-  /screening/whitelist:
+  /screening/whitelists:
     post:
       operationId: addScreeningWhitelist
       tags:
@@ -1044,6 +1044,9 @@ components:
                   Thing:
                     name: Jean-Baptiste Zorg
           additionalProperties: true
+        partial:
+          description: Whether there were more matches than considered within `match_count`
+          type: boolean
         match_count:
           description: Number of matches for the query
           type: integer
