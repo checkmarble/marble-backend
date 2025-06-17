@@ -104,19 +104,6 @@ type CreateCaseCommentBody struct {
 	Comment string `json:"comment" binding:"required"`
 }
 
-// type UnmarshallingUuid struct {
-// 	uuid.UUID
-// }
-
-// func (u *UnmarshallingUuid) UnmarshalParam(param string) error {
-// 	parsed, err := uuid.Parse(param)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	u.UUID = parsed
-// 	return nil
-// }
-
 type CaseFilters struct {
 	EndDate         time.Time     `form:"end_date"`
 	InboxIds        []string      `form:"inbox_id[]"`

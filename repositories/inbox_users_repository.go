@@ -5,9 +5,9 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/google/uuid" // Ensure this import is present
 
 	"github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 )
 
 func selectInboxUsers() squirrel.SelectBuilder {

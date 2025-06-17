@@ -14,7 +14,7 @@ import (
 )
 
 type GetInboxIdUriInput struct {
-	InboxId string `uri:"inbox_id" binding:"required,uuid"`
+	InboxId models.UnmarshallingUuid `uri:"inbox_id" binding:"required"`
 }
 
 func handleGetInboxById(uc usecases.Usecases) func(c *gin.Context) {
@@ -26,14 +26,8 @@ func handleGetInboxById(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		inboxId, err := uuid.Parse(getInboxInput.InboxId)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inbox, err := usecase.GetInboxById(ctx, inboxId)
+		inbox, err := usecase.GetInboxById(ctx, getInboxInput.InboxId.Uuid())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -53,14 +47,8 @@ func handleGetInboxMetadataById(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		inboxId, err := uuid.Parse(getInboxInput.InboxId)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inbox, err := usecase.GetInboxMetadataById(ctx, inboxId)
+		inbox, err := usecase.GetInboxMetadataById(ctx, getInboxInput.InboxId.Uuid())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -123,7 +111,7 @@ func handleListInboxesMetadata(uc usecases.Usecases) func(c *gin.Context) {
 
 type CreateInboxInput struct {
 	Name              string     `json:"name" binding:"required"`
-	EscalationInboxId *uuid.UUID `json:"escalation_inbox_id" binding:"omitempty,uuid"`
+	EscalationInboxId *uuid.UUID `json:"escalation_inbox_id" binding:"omitempty"`
 }
 
 func handlePostInbox(uc usecases.Usecases) func(c *gin.Context) {
@@ -165,15 +153,9 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		inboxId, err := uuid.Parse(getInboxInput.InboxId)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-
 		var data struct {
 			Name              string     `json:"name" binding:"required"`
-			EscalationInboxId *uuid.UUID `json:"escalation_inbox_id" binding:"omitempty,uuid"`
+			EscalationInboxId *uuid.UUID `json:"escalation_inbox_id" binding:"omitempty"`
 		}
 		if err := c.ShouldBind(&data); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -181,7 +163,7 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inbox, err := usecase.UpdateInbox(ctx, inboxId, data.Name, data.EscalationInboxId)
+		inbox, err := usecase.UpdateInbox(ctx, getInboxInput.InboxId.Uuid(), data.Name, data.EscalationInboxId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -199,14 +181,8 @@ func handleDeleteInbox(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		inboxId, err := uuid.Parse(getInboxInput.InboxId)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		err = usecase.DeleteInbox(ctx, inboxId)
+		err := usecase.DeleteInbox(ctx, getInboxInput.InboxId.Uuid())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -216,7 +192,7 @@ func handleDeleteInbox(uc usecases.Usecases) func(c *gin.Context) {
 }
 
 type GetInboxUserInput struct {
-	Id string `uri:"inbox_user_id" binding:"required,uuid"`
+	Id models.UnmarshallingUuid `uri:"inbox_user_id" binding:"required"`
 }
 
 func handleGetInboxUserById(uc usecases.Usecases) func(c *gin.Context) {
@@ -228,14 +204,8 @@ func handleGetInboxUserById(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		inboxUserId, err := uuid.Parse(getInboxUserInput.Id)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxUser, err := usecase.GetInboxUserById(ctx, inboxUserId)
+		inboxUser, err := usecase.GetInboxUserById(ctx, getInboxUserInput.Id.Uuid())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -266,14 +236,8 @@ func handleListInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		inboxId, err := uuid.Parse(listInboxUserInput.InboxId)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxUsers, err := usecase.ListInboxUsers(ctx, inboxId)
+		inboxUsers, err := usecase.ListInboxUsers(ctx, listInboxUserInput.InboxId.Uuid())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -284,10 +248,10 @@ func handleListInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
 
 type CreateInboxUserInput struct {
 	Uri struct {
-		InboxId string `uri:"inbox_id" binding:"required,uuid"`
+		InboxId models.UnmarshallingUuid `uri:"inbox_id" binding:"required"`
 	}
 	Body struct {
-		UserId uuid.UUID `json:"user_id" binding:"required,uuid"`
+		UserId uuid.UUID `json:"user_id" binding:"required"`
 		Role   string    `json:"role" binding:"required"`
 	}
 }
@@ -307,15 +271,9 @@ func handlePostInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		inboxId, err := uuid.Parse(input.Uri.InboxId)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inboxUser, err := usecase.CreateInboxUser(ctx, models.CreateInboxUserInput{
-			InboxId: inboxId,
+			InboxId: input.Uri.InboxId.Uuid(),
 			UserId:  input.Body.UserId,
 			Role:    models.InboxUserRole(input.Body.Role),
 		})
@@ -344,14 +302,8 @@ func handlePatchInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		inboxUserId, err := uuid.Parse(getInboxUserInput.Id)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxUser, err := usecase.UpdateInboxUser(ctx, inboxUserId, models.InboxUserRole(data.Role))
+		inboxUser, err := usecase.UpdateInboxUser(ctx, getInboxUserInput.Id.Uuid(), models.InboxUserRole(data.Role))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -369,14 +321,8 @@ func handleDeleteInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		inboxUserId, err := uuid.Parse(getInboxUserInput.Id)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		err = usecase.DeleteInboxUser(ctx, inboxUserId)
+		err := usecase.DeleteInboxUser(ctx, getInboxUserInput.Id.Uuid())
 		if presentError(ctx, c, err) {
 			return
 		}
