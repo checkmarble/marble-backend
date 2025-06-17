@@ -3,12 +3,14 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -182,8 +184,7 @@ func handleDeleteDataModel(uc usecases.Usecases) func(c *gin.Context) {
 		c.Status(http.StatusNoContent)
 	}
 }
-
-func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
+func legacy_handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
@@ -201,8 +202,51 @@ func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		openapi := dto.OpenAPIFromDataModel(dataModel)
+		openapi := dto.LegacyOpenAPIFromDataModel(dataModel)
 		c.JSON(http.StatusOK, openapi)
+	}
+}
+
+func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		if c.Param("version") == "" || c.Param("version") == "v0" {
+			legacy_handleGetOpenAPI(uc)(c)
+			return
+		}
+
+		ctx := c.Request.Context()
+
+		if !regexp.MustCompile(`^v[0-9\.]+$`).Match([]byte(c.Param("version"))) {
+			presentError(ctx, c, errors.Wrap(models.NotFoundError, "invalid version string"))
+			return
+		}
+
+		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		openapi, err := pubapi.GetOpenApiForVersion(c.Param("version"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
+		dataModel, err := usecase.GetDataModel(ctx, organizationID, models.DataModelReadOptions{
+			IncludeEnums:              false,
+			IncludeNavigationOptions:  false,
+			IncludeUnicityConstraints: false,
+		})
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		spec, err := dto.OpenAPIFromDataModel(dataModel, openapi)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, spec)
 	}
 }
 
