@@ -4,8 +4,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/cockroachdb/errors"
@@ -73,12 +75,31 @@ func (g ExecutorGetter) Transaction(
 		return errors.Wrap(err, "Error getting pool and schema")
 	}
 
-	err = pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
-		return fn(&PgTx{
-			databaseSchema: databaseSchema,
-			tx:             tx,
+	execInTransaction := func() error {
+		return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+			return fn(&PgTx{
+				databaseSchema: databaseSchema,
+				tx:             tx,
+			})
 		})
-	})
+	}
+	// Retry retryable commit errors once, immediately after failure.
+	err = retry.Do(execInTransaction,
+		retry.Attempts(1),
+		retry.LastErrorOnly(true),
+		retry.RetryIf(func(err error) bool {
+			return IsDeadlockError(err) || IsSerializationFailureError(err)
+		}),
+		retry.OnRetry(func(_ uint, err error) {
+			logger := utils.LoggerFromContext(ctx).With("database_schema", databaseSchema.Schema)
+			switch {
+			case IsDeadlockError(err):
+				logger.WarnContext(ctx, "Deadlock detected, retrying transaction")
+			case IsSerializationFailureError(err):
+				logger.WarnContext(ctx, "Serialization failure detected, retrying transaction")
+			}
+		}),
+	)
 
 	return errors.Wrap(err, "Error executing transaction")
 }

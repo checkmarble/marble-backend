@@ -407,13 +407,9 @@ func (usecase *CaseUseCase) UpdateCase(
 				return models.Case{}, err
 			}
 		default:
-			if err := usecase.PerformCaseActionSideEffectsWithoutStatusChange(ctx, tx, c); err != nil {
+			if err := usecase.performCaseActionSideEffectsWithoutStatusChange(ctx, tx, c); err != nil {
 				return models.Case{}, err
 			}
-		}
-
-		if err := usecase.createCaseContributorIfNotExist(ctx, tx, updateCaseAttributes.Id, userId); err != nil {
-			return models.Case{}, err
 		}
 
 		if err := usecase.updateCaseCreateEvents(ctx, tx, updateCaseAttributes, c, userId); err != nil {
@@ -754,7 +750,8 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseId, userId); err != nil {
+
+		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
 			return models.Case{}, err
 		}
 
@@ -810,10 +807,6 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 			return models.Case{}, err
 		}
 		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
-			return models.Case{}, err
-		}
-
-		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseCommentAttributes.Id, userId); err != nil {
 			return models.Case{}, err
 		}
 
@@ -916,9 +909,6 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 			NewValue:      &newValue,
 		})
 		if err != nil {
-			return models.Case{}, err
-		}
-		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseTagAttributes.CaseId, userId); err != nil {
 			return models.Case{}, err
 		}
 
@@ -1143,10 +1133,6 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 	err = usecase.transactionFactory.Transaction(ctx, func(
 		tx repositories.Transaction,
 	) error {
-		if err := usecase.createCaseContributorIfNotExist(ctx, tx, input.CaseId, userId); err != nil {
-			return err
-		}
-
 		for _, uploadedFile := range uploadedFilesMetadata {
 			newCaseFileId := uuid.NewString()
 			if err := usecase.repository.CreateDbCaseFile(
@@ -1175,6 +1161,10 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 			if err != nil {
 				return err
 			}
+		}
+
+		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+			return err
 		}
 
 		// Create a single webhook event for the case
@@ -1332,12 +1322,6 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 	}
 	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return err
-	}
-
-	if input.UserId != nil {
-		if err := usecase.createCaseContributorIfNotExist(ctx, tx, input.CaseId, *input.UserId); err != nil {
-			return err
-		}
 	}
 
 	if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
@@ -1621,8 +1605,9 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 	})
 }
 
-func (uc *CaseUseCase) PerformCaseActionSideEffectsWithoutStatusChange(ctx context.Context, tx repositories.Transaction, c models.Case) error {
-	if userId := uc.enforceSecurity.UserId(); userId != nil && c.AssignedTo == nil {
+func (uc *CaseUseCase) performCaseActionSideEffectsWithoutStatusChange(ctx context.Context, tx repositories.Transaction, c models.Case) error {
+	userId := uc.enforceSecurity.UserId()
+	if userId != nil && c.AssignedTo == nil {
 		if err := uc.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
 			return err
 		}
@@ -1632,20 +1617,30 @@ func (uc *CaseUseCase) PerformCaseActionSideEffectsWithoutStatusChange(ctx conte
 		return err
 	}
 
+	// ⚠️ This should be done after any updates to the case (within this function and any calling functions) to avoid
+	// deadlocks, though deadlocks are also retried by the transaction factory for safety. This also means that the side
+	// effects should be called after all the "main" updates ⚠️
+	if userId != nil {
+		err := uc.createCaseContributorIfNotExist(ctx, tx, c.Id, *userId)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func (uc *CaseUseCase) PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error {
-	if err := uc.PerformCaseActionSideEffectsWithoutStatusChange(ctx, tx, c); err != nil {
-		return err
-	}
-
 	if c.Status == models.CasePending {
 		update := models.UpdateCaseAttributes{Id: c.Id, Status: models.CaseInvestigating}
 
 		if err := uc.repository.UpdateCase(ctx, tx, update); err != nil {
 			return err
 		}
+	}
+
+	if err := uc.performCaseActionSideEffectsWithoutStatusChange(ctx, tx, c); err != nil {
+		return err
 	}
 
 	return nil
