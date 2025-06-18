@@ -130,6 +130,9 @@ begin
 end
 $$ language plpgsql;
 
+delete from sanction_checks sc
+where not exists (select 1 from decisions d where d.id = sc.decision_id);
+
 alter table sanction_check_configs
     alter column config_version set not null;
 
