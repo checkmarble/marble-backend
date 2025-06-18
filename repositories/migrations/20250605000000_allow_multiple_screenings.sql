@@ -14,6 +14,9 @@ alter table sanction_checks
     add constraint fk_sanction_check_config
         foreign key (sanction_check_config_id) references sanction_check_configs (id);
 
+delete from sanction_checks sc
+where not exists (select 1 from decisions d where d.id = sc.decision_id);
+
 with mapping as (
     select decision_id, scc.id as config_id
     from sanction_checks sc
@@ -129,9 +132,6 @@ begin
     end loop;
 end
 $$ language plpgsql;
-
-delete from sanction_checks sc
-where not exists (select 1 from decisions d where d.id = sc.decision_id);
 
 alter table sanction_check_configs
     alter column config_version set not null;
