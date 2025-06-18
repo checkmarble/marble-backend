@@ -115,6 +115,13 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 			return AdaptFieldValidationError(verr)
 		})
 
+	// Special case of the input JSON being plain invalid.
+	// This includes having a trailing comma.
+	case *json.SyntaxError:
+		resp.Error.status = http.StatusBadRequest
+		resp.Error.Code = ErrInvalidPayload.Error()
+		resp.Error.Messages = []string{"invalid JSON syntax"}
+
 	// Special case when the validation error comes from the JSON itself not unmarshaling.
 	// Turns these:
 	//   - json: cannot unmarshal string into Go struct field .age of type int
