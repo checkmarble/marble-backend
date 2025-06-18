@@ -40,6 +40,7 @@ func ScenarioValidationToError(validation models.ScenarioValidation) error {
 	for _, sc := range validation.SanctionCheck {
 		errs = append(errs, pure_utils.Map(sc.TriggerRule.Errors, toError)...)
 		errs = append(errs, sc.TriggerRule.TriggerEvaluation.FlattenErrors()...)
+		errs = append(errs, pure_utils.Map(sc.Query.Errors, toError)...)
 		errs = append(errs, sc.Query.RuleEvaluation.FlattenErrors()...)
 
 		for _, fieldError := range sc.QueryFields {

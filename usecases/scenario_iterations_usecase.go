@@ -298,6 +298,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 						CounterpartyIdExpression: scc.CounterpartyIdExpression,
 						Query:                    scc.Query,
 						ForcedOutcome:            &scc.ForcedOutcome,
+						ConfigVersion:            scc.ConfigVersion,
 					}
 				})
 

@@ -29,6 +29,7 @@ type Usecases struct {
 	hasConvoyServerSetup        bool
 	hasMetabaseSetup            bool
 	hasOpensanctionsSetup       bool
+	hasNameRecognizerSetup      bool
 	hasTestMode                 bool
 	license                     models.LicenseValidation
 }
@@ -107,6 +108,14 @@ func WithOpensanctions(isSet bool) Option {
 	}
 }
 
+func WithNameRecognition(isSet bool) Option {
+	return func(o *options) {
+		if isSet {
+			o.hasNameRecognitionSetup = true
+		}
+	}
+}
+
 func WithTestMode(activated bool) Option {
 	return func(o *options) {
 		o.hasTestMode = true
@@ -125,6 +134,7 @@ type options struct {
 	hasConvoyServerSetup        bool
 	hasMetabaseSetup            bool
 	hasOpensanctionsSetup       bool
+	hasNameRecognitionSetup     bool
 	hasTestMode                 bool
 }
 
@@ -145,6 +155,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		hasConvoyServerSetup:        o.hasConvoyServerSetup,
 		hasMetabaseSetup:            o.hasMetabaseSetup,
 		hasOpensanctionsSetup:       o.hasOpensanctionsSetup,
+		hasNameRecognizerSetup:      o.hasNameRecognitionSetup,
 		hasTestMode:                 o.hasTestMode,
 	}
 }

@@ -625,6 +625,7 @@ func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.Featur
 		usecases.Usecases.hasConvoyServerSetup,
 		usecases.Usecases.hasMetabaseSetup,
 		usecases.Usecases.hasOpensanctionsSetup,
+		usecases.Usecases.hasNameRecognizerSetup,
 		usecases.Usecases.hasTestMode,
 	)
 }
