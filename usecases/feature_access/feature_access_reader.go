@@ -35,6 +35,7 @@ func NewFeatureAccessReader(
 	hasConvoyServerSetup bool,
 	hasMetabaseSetup bool,
 	hasOpensanctionsSetup bool,
+	hasNameRecognitionSetup bool,
 	hasTestMode bool,
 ) FeatureAccessReader {
 	return FeatureAccessReader{
@@ -43,9 +44,10 @@ func NewFeatureAccessReader(
 		executorFactory: executorFactory,
 		license:         license,
 		featuresConfiguration: models.FeaturesConfiguration{
-			Webhooks:  hasConvoyServerSetup,
-			Sanctions: hasOpensanctionsSetup,
-			Analytics: hasMetabaseSetup,
+			Webhooks:        hasConvoyServerSetup,
+			Sanctions:       hasOpensanctionsSetup,
+			NameRecognition: hasNameRecognitionSetup,
+			Analytics:       hasMetabaseSetup,
 		},
 		hasTestMode: hasTestMode,
 	}

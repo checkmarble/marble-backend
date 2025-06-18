@@ -138,9 +138,6 @@ alter table sanction_check_configs
 -- +goose Down
 -- +goose StatementBegin
 
-alter table sanction_checks
-    drop column sanction_check_config_id;
-
 -- For the DOWN migration, we have three situations:
 --  - Configs that used to be a merged name AND label, which we are going to merge into the name row.
 --  - Configs that were only one of name or label. We transform the AST into {"name":} or {"label":}.
@@ -170,19 +167,30 @@ begin
     where config_version = 'v1_label_only';
 
     for iteration_config in iteration_configs loop
-    update sanction_check_configs
-    set query = iteration_config.query
-    where
-        id = iteration_config.initial_id and
-        scenario_iteration_id = iteration_config.scenario_iteration_id;
+        update sanction_check_configs
+        set query = iteration_config.query
+        where
+            id = iteration_config.initial_id and
+            scenario_iteration_id = iteration_config.scenario_iteration_id;
 
-    delete from sanction_check_configs
-    where
-        (config_version = 'v2') or
-        (id <> iteration_config.initial_id and scenario_iteration_id = iteration_config.scenario_iteration_id);
+        delete from sanction_checks sc
+        using sanction_check_configs scc
+        where
+            scc.id = sc.sanction_check_config_id and
+            (scc.config_version = 'v2' or
+            scc.id <> iteration_config.initial_id and scc.scenario_iteration_id = iteration_config.scenario_iteration_id);
+
+        delete from sanction_check_configs
+        where
+            (config_version = 'v2') or
+            (id <> iteration_config.initial_id and scenario_iteration_id = iteration_config.scenario_iteration_id);
     end loop;
+
 end
 $$ language plpgsql;
+
+alter table sanction_checks
+    drop column sanction_check_config_id;
 
 alter table sanction_check_configs
     drop column preprocessing,

@@ -97,3 +97,7 @@ func (os OpenSanctions) Credentials() string {
 func (os OpenSanctions) NameRecognition() *NameRecognitionProvider {
 	return os.nameRecognition
 }
+
+func (ner OpenSanctions) IsNameRecognitionSet() bool {
+	return ner.nameRecognition != nil && ner.nameRecognition.ApiUrl != ""
+}

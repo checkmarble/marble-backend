@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -144,10 +145,13 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, sanctionChe
 	performed := false
 
 	for _, query := range queries {
-		matches, err := e.nameRecognizer.PerformNameRecognition(ctx, query.GetName())
+		nerCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+
+		matches, err := e.nameRecognizer.PerformNameRecognition(nerCtx, query.GetName())
 		if err != nil {
-			return out, errors.Wrap(err,
-				"could not perform name recognition on label")
+			utils.LoggerFromContext(ctx).Warn("screening preprocessing: name entity recognition returned an error, using initial query", "error", err.Error())
+			return queries, nil
 		}
 
 		if len(matches) == 0 {
@@ -171,6 +175,9 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, sanctionChe
 					Type:    "Organization",
 					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
 				})
+
+			default:
+				out = append(out, query)
 			}
 		}
 	}

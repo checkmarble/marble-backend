@@ -5,17 +5,18 @@ import (
 )
 
 type OrganizationFeatureAccess struct {
-	Id             string
-	OrganizationId string
-	TestRun        FeatureAccess
-	Workflows      FeatureAccess
-	Webhooks       FeatureAccess
-	RuleSnoozes    FeatureAccess
-	Roles          FeatureAccess
-	Analytics      FeatureAccess
-	Sanctions      FeatureAccess
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	Id              string
+	OrganizationId  string
+	TestRun         FeatureAccess
+	Workflows       FeatureAccess
+	Webhooks        FeatureAccess
+	RuleSnoozes     FeatureAccess
+	Roles           FeatureAccess
+	Analytics       FeatureAccess
+	Sanctions       FeatureAccess
+	NameRecognition FeatureAccess
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 
 	// user-scoped, temporarily at least
 	AiAssist FeatureAccess
@@ -43,6 +44,9 @@ func (o OrganizationFeatureAccess) WithTestMode() OrganizationFeatureAccess {
 	if o.Sanctions == Restricted {
 		o.Sanctions = Test
 	}
+	if o.NameRecognition == Restricted {
+		o.NameRecognition = Test
+	}
 	return o
 }
 
@@ -62,9 +66,10 @@ type UpdateOrganizationFeatureAccessInput struct {
 }
 
 type FeaturesConfiguration struct {
-	Webhooks  bool
-	Sanctions bool
-	Analytics bool
+	Webhooks        bool
+	Sanctions       bool
+	NameRecognition bool
+	Analytics       bool
 }
 
 func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
@@ -74,12 +79,13 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	user *User,
 ) OrganizationFeatureAccess {
 	o := OrganizationFeatureAccess{
-		Id:             f.Id,
-		OrganizationId: f.OrganizationId,
-		TestRun:        f.TestRun,
-		Sanctions:      f.Sanctions,
-		CreatedAt:      f.CreatedAt,
-		UpdatedAt:      f.UpdatedAt,
+		Id:              f.Id,
+		OrganizationId:  f.OrganizationId,
+		TestRun:         f.TestRun,
+		Sanctions:       f.Sanctions,
+		NameRecognition: f.Sanctions,
+		CreatedAt:       f.CreatedAt,
+		UpdatedAt:       f.UpdatedAt,
 	}
 
 	// First, set the feature accesses to "allowed" if the license allows it
@@ -105,6 +111,7 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	}
 	if !l.Sanctions {
 		o.Sanctions = Restricted
+		o.NameRecognition = Restricted
 	}
 
 	// as an exception, if test mode is enambled (if the app is running with the firebase auth emulator), set all the features to "test"
@@ -121,6 +128,9 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	}
 	if o.Sanctions.IsAllowed() && !c.Sanctions {
 		o.Sanctions = MissingConfiguration
+	}
+	if o.NameRecognition.IsAllowed() && !c.NameRecognition {
+		o.NameRecognition = MissingConfiguration
 	}
 
 	if user != nil && user.AiAssistEnabled {

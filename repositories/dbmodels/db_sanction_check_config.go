@@ -47,6 +47,7 @@ func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckCo
 		Threshold:           db.Threshold,
 		ForcedOutcome:       models.OutcomeFrom(db.ForcedOutcome),
 		Preprocessing:       db.Preprocessing,
+		ConfigVersion:       db.ConfigVersion,
 	}
 
 	if db.TriggerRule != nil {

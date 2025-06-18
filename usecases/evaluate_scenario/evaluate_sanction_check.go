@@ -144,9 +144,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				}
 
 				if queries, err = e.preprocess(ctx, scId, queries, iteration, scc); err != nil {
-					// TODO: what to do here?
-					addScreeningError(scc, errors.Wrap(err, "could not apply preprocessing steps"))
-					// addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckPreprocessingFailed, errors.Wrap(err, "could not apply preprocessing steps")))
+					addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty, nil))
 					return
 				}
 			}
@@ -243,7 +241,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				errStr = sce.ErrorDetail.Error()
 			}
 
-			utils.LoggerFromContext(ctx).Error("screening execution returned some errors",
+			utils.LoggerFromContext(ctx).Warn("screening execution returned some errors",
 				"sanction_check_config_id", sce.SanctionCheckConfigId,
 				"sanction_check_id", sce.Id,
 				"error_codes", sce.ErrorCodes,

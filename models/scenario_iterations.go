@@ -72,6 +72,7 @@ type SanctionCheckConfig struct {
 	ForcedOutcome            Outcome
 	CounterpartyIdExpression *ast.Node
 	Preprocessing            SanctionCheckConfigPreprocessing
+	ConfigVersion            string
 }
 
 type SanctionCheckConfigPreprocessing struct {
@@ -180,4 +181,5 @@ type UpdateSanctionCheckConfigInput struct {
 	CounterpartyIdExpression *ast.Node
 	ForcedOutcome            *Outcome
 	Preprocessing            *SanctionCheckConfigPreprocessing
+	ConfigVersion            string
 }

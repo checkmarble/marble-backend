@@ -94,6 +94,11 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 		forcedOutcome = *cfg.ForcedOutcome
 	}
 
+	configVersion := "v2"
+	if cfg.ConfigVersion != "" {
+		configVersion = cfg.ConfigVersion
+	}
+
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
 		Columns(
@@ -125,7 +130,7 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 			query,
 			counterpartyIdExpr,
 			utils.Or(cfg.Preprocessing, models.SanctionCheckConfigPreprocessing{}),
-			"v2",
+			configVersion,
 		).
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
 

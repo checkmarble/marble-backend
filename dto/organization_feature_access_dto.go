@@ -6,13 +6,14 @@ import (
 )
 
 type APIOrganizationFeatureAccess struct {
-	TestRun     string `json:"test_run"`
-	Workflows   string `json:"workflows"`
-	Webhooks    string `json:"webhooks"`
-	RuleSnoozes string `json:"rule_snoozes"`
-	Roles       string `json:"roles"`
-	Analytics   string `json:"analytics"`
-	Sanctions   string `json:"sanctions"`
+	TestRun         string `json:"test_run"`
+	Workflows       string `json:"workflows"`
+	Webhooks        string `json:"webhooks"`
+	RuleSnoozes     string `json:"rule_snoozes"`
+	Roles           string `json:"roles"`
+	Analytics       string `json:"analytics"`
+	Sanctions       string `json:"sanctions"`
+	NameRecognition string `json:"name_recognition"`
 
 	// user-scoped - temporarly at least
 	AiAssist string `json:"ai_assist"`
@@ -20,14 +21,15 @@ type APIOrganizationFeatureAccess struct {
 
 func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOrganizationFeatureAccess {
 	return APIOrganizationFeatureAccess{
-		TestRun:     f.TestRun.String(),
-		Workflows:   f.Workflows.String(),
-		Webhooks:    f.Webhooks.String(),
-		RuleSnoozes: f.RuleSnoozes.String(),
-		Roles:       f.Roles.String(),
-		Analytics:   f.Analytics.String(),
-		Sanctions:   f.Sanctions.String(),
-		AiAssist:    f.AiAssist.String(),
+		TestRun:         f.TestRun.String(),
+		Workflows:       f.Workflows.String(),
+		Webhooks:        f.Webhooks.String(),
+		RuleSnoozes:     f.RuleSnoozes.String(),
+		Roles:           f.Roles.String(),
+		Analytics:       f.Analytics.String(),
+		Sanctions:       f.Sanctions.String(),
+		NameRecognition: f.NameRecognition.String(),
+		AiAssist:        f.AiAssist.String(),
 	}
 }
 
