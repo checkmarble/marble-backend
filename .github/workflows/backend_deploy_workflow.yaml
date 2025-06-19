@@ -61,7 +61,7 @@ jobs:
             echo "✅ Image with commit hash ${{ github.sha }} already exists, will reuse it"
             echo "should_build=false" >> "$GITHUB_OUTPUT"
           else
-            echo "❌ No image found for commit hash ${{ github.sha }}, build a new one"
+            echo "No image found for commit hash ${{ github.sha }}, build a new one"
             echo "should_build=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -86,8 +86,6 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: "google-github-actions/setup-gcloud@v2"
-        with:
-          install_components: beta
 
       - name: Deploy migration job
         run: |
