@@ -16,23 +16,24 @@ var (
 )
 
 type DBScreening struct {
-	Id                  string          `db:"id"`
-	DecisionId          string          `db:"decision_id"`
-	ScreeningConfigId   string          `db:"sanction_check_config_id"`
-	Status              string          `db:"status"`
-	SearchInput         json.RawMessage `db:"search_input"`
-	SearchDatasets      []string        `db:"search_datasets"`
-	MatchThreshold      int             `db:"match_threshold"`
-	MatchLimit          int             `db:"match_limit"`
-	IsManual            bool            `db:"is_manual"`
-	RequestedBy         *string         `db:"requested_by"`
-	IsPartial           bool            `db:"is_partial"`
-	IsArchived          bool            `db:"is_archived"`
-	InitialHasMatches   bool            `db:"initial_has_matches"`
-	WhitelistedEntities []string        `db:"whitelisted_entities"`
-	ErrorCodes          []string        `db:"error_codes"`
-	CreatedAt           time.Time       `db:"created_at"`
-	UpdatedAt           time.Time       `db:"updated_at"`
+	Id                  string                           `db:"id"`
+	DecisionId          string                           `db:"decision_id"`
+	ScreeningConfigId   string                           `db:"sanction_check_config_id"`
+	Status              string                           `db:"status"`
+	SearchInput         json.RawMessage                  `db:"search_input"`
+	InitialQuery        []models.OpenSanctionsCheckQuery `db:"initial_query"`
+	SearchDatasets      []string                         `db:"search_datasets"`
+	MatchThreshold      int                              `db:"match_threshold"`
+	MatchLimit          int                              `db:"match_limit"`
+	IsManual            bool                             `db:"is_manual"`
+	RequestedBy         *string                          `db:"requested_by"`
+	IsPartial           bool                             `db:"is_partial"`
+	IsArchived          bool                             `db:"is_archived"`
+	InitialHasMatches   bool                             `db:"initial_has_matches"`
+	WhitelistedEntities []string                         `db:"whitelisted_entities"`
+	ErrorCodes          []string                         `db:"error_codes"`
+	CreatedAt           time.Time                        `db:"created_at"`
+	UpdatedAt           time.Time                        `db:"updated_at"`
 }
 
 type DBScreeningWithMatches struct {
@@ -52,6 +53,7 @@ func AdaptScreening(dto DBScreening) (models.Screening, error) {
 		ScreeningConfigId:   dto.ScreeningConfigId,
 		Datasets:            dto.SearchDatasets,
 		SearchInput:         dto.SearchInput,
+		InitialQuery:        dto.InitialQuery,
 		OrgConfig:           cfg,
 		Partial:             dto.IsPartial,
 		Status:              models.ScreeningStatusFrom(dto.Status),
