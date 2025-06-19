@@ -16,16 +16,17 @@ var (
 )
 
 type ScreeningDto struct {
-	Id          string                `json:"id"`
-	Config      ScreeningConfigRefDto `json:"config"`
-	Status      string                `json:"status"`
-	Request     *ScreeningRequestDto  `json:"request"`
-	Partial     bool                  `json:"partial"`
-	Count       int                   `json:"count"`
-	IsManual    bool                  `json:"is_manual"`
-	RequestedBy *string               `json:"requested_by,omitempty"`
-	Matches     []ScreeningMatchDto   `json:"matches"`
-	ErrorCodes  []string              `json:"error_codes,omitempty"`
+	Id           string                           `json:"id"`
+	Config       ScreeningConfigRefDto            `json:"config"`
+	Status       string                           `json:"status"`
+	Request      *ScreeningRequestDto             `json:"request"`
+	InitialQuery []models.OpenSanctionsCheckQuery `json:"initial_query"`
+	Partial      bool                             `json:"partial"`
+	Count        int                              `json:"count"`
+	IsManual     bool                             `json:"is_manual"`
+	RequestedBy  *string                          `json:"requested_by,omitempty"`
+	Matches      []ScreeningMatchDto              `json:"matches"`
+	ErrorCodes   []string                         `json:"error_codes,omitempty"`
 }
 
 type ScreeningConfigRefDto struct {
@@ -60,6 +61,9 @@ func AdaptScreeningDto(m models.ScreeningWithMatches) ScreeningDto {
 			Threshold:   m.OrgConfig.MatchThreshold,
 			SearchInput: m.SearchInput,
 		}
+	}
+	if m.Screening.InitialQuery != nil {
+		screening.InitialQuery = m.InitialQuery
 	}
 
 	return screening

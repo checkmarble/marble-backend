@@ -3,6 +3,7 @@ package evaluate_scenario
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/mohae/deepcopy"
 )
 
 const (
@@ -103,12 +105,13 @@ func (e ScenarioEvaluator) evaluateScreening(
 			}
 
 			var (
-				queries []models.OpenSanctionsCheckQuery
-				err     error
+				queries                 []models.OpenSanctionsCheckQuery
+				queriesBeforeProcessing []models.OpenSanctionsCheckQuery
+				err                     error
 			)
 
 			if scc.Query != nil {
-				queries = []models.OpenSanctionsCheckQuery{
+				queriesBeforeProcessing = []models.OpenSanctionsCheckQuery{
 					{
 						Type:    scc.EntityType,
 						Filters: models.OpenSanctionsFilter{},
@@ -139,10 +142,10 @@ func (e ScenarioEvaluator) evaluateScreening(
 						return
 					}
 
-					queries[0].Filters[fieldName] = []string{input}
+					queriesBeforeProcessing[0].Filters[fieldName] = []string{input}
 				}
 
-				if queries, err = e.preprocess(ctx, scId, queries, iteration, scc); err != nil {
+				if queries, err = e.preprocess(ctx, scId, queriesBeforeProcessing, iteration, scc); err != nil {
 					addScreeningResult(idx, outcomeError(scc, ErrScreeningAllFieldsNullOrEmpty, nil))
 					return
 				}
@@ -158,6 +161,10 @@ func (e ScenarioEvaluator) evaluateScreening(
 			query := models.OpenSanctionsQuery{
 				Config:  scc,
 				Queries: queries,
+			}
+
+			if !reflect.DeepEqual(queries, queriesBeforeProcessing) {
+				query.InitialQuery = queriesBeforeProcessing
 			}
 
 			if scc.CounterpartyIdExpression != nil {
@@ -260,7 +267,7 @@ func (e ScenarioEvaluator) preprocess(
 ) ([]models.OpenSanctionsCheckQuery, error) {
 	var err error
 
-	out := append(make([]models.OpenSanctionsCheckQuery, 0, len(queries)), queries...)
+	out := deepcopy.Copy(queries).([]models.OpenSanctionsCheckQuery)
 
 	steps := []ScreeningPreprocessor{
 		SkipIfUnder,

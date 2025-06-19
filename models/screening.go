@@ -101,6 +101,7 @@ type Screening struct {
 	Config              ScreeningConfigRef
 	Datasets            []string
 	SearchInput         json.RawMessage
+	InitialQuery        []OpenSanctionsCheckQuery
 	OrgConfig           OrganizationOpenSanctionsConfig
 	IsManual            bool
 	IsArchived          bool
@@ -146,6 +147,7 @@ func (s ScreeningRawSearchResponseWithMatches) AdaptScreeningFromSearchResponse(
 			Datasets:            query.Config.Datasets,
 			OrgConfig:           query.OrgConfig,
 			SearchInput:         s.SearchInput,
+			InitialQuery:        query.InitialQuery,
 			Partial:             s.Partial,
 			InitialHasMatches:   s.InitialHasMatches,
 			WhitelistedEntities: s.WhitelistedEntities,

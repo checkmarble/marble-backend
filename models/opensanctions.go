@@ -35,13 +35,14 @@ type OpenSanctionsQuery struct {
 	EffectiveThreshold int
 	LimitIncrease      int
 	Queries            []OpenSanctionsCheckQuery
+	InitialQuery       []OpenSanctionsCheckQuery
 	Config             ScreeningConfig
 	OrgConfig          OrganizationOpenSanctionsConfig
 }
 
 type OpenSanctionsCheckQuery struct {
-	Type    string
-	Filters OpenSanctionsFilter
+	Type    string              `json:"schema"`     //nolint:tagliatelle
+	Filters OpenSanctionsFilter `json:"properties"` //nolint:tagliatelle
 }
 
 func (q OpenSanctionsCheckQuery) GetName() string {

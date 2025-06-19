@@ -259,6 +259,7 @@ func TestScreeningCalledWithNameRecognizedLabel(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
+			EntityType:    "Thing",
 			Query:         map[string]ast.Node{"name": {Constant: "dinner with joe finnigan"}},
 			Preprocessing: models.ScreeningConfigPreprocessing{UseNer: true},
 		}},
@@ -279,6 +280,9 @@ func TestScreeningCalledWithNameRecognizedLabel(t *testing.T) {
 					"name": []string{"ACME Inc."},
 				},
 			},
+		},
+		InitialQuery: []models.OpenSanctionsCheckQuery{
+			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"dinner with joe finnigan"}}},
 		},
 	}
 
@@ -336,6 +340,7 @@ func TestScreeningCalledWithNumbersPreprocessing(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
+			EntityType:    "Thing",
 			Query:         map[string]ast.Node{"name": {Constant: "din2ner 123 with 4 joe fi4n5n65i8gan"}},
 			Preprocessing: models.ScreeningConfigPreprocessing{UseNer: true, RemoveNumbers: true},
 		}},
@@ -350,6 +355,9 @@ func TestScreeningCalledWithNumbersPreprocessing(t *testing.T) {
 					"name": []string{"joe finnigan"},
 				},
 			},
+		},
+		InitialQuery: []models.OpenSanctionsCheckQuery{
+			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"din2ner 123 with 4 joe fi4n5n65i8gan"}}},
 		},
 	}
 
@@ -401,6 +409,7 @@ func TestScreeningWithLengthPreprocessing(t *testing.T) {
 	iteration = models.ScenarioIteration{
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
+			EntityType:    "Thing",
 			Query:         map[string]ast.Node{"name": {Constant: "constant"}},
 			Preprocessing: models.ScreeningConfigPreprocessing{SkipIfUnder: 10},
 		}},
@@ -427,6 +436,7 @@ func TestScreeningWithPreNerLengthPreprocessing(t *testing.T) {
 	iteration := models.ScenarioIteration{
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
+			EntityType:    "Thing",
 			Query:         map[string]ast.Node{"name": {Constant: "short"}},
 			Preprocessing: models.ScreeningConfigPreprocessing{SkipIfUnder: 10, UseNer: true},
 		}},
@@ -475,6 +485,9 @@ func TestScreeningWithListPreprocessing(t *testing.T) {
 				},
 			},
 		},
+		InitialQuery: []models.OpenSanctionsCheckQuery{
+			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"This Contains Forbidden Words"}}},
+		},
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
@@ -502,6 +515,7 @@ func TestScreeningWithAllPreprocessing(t *testing.T) {
 		ScreeningConfigs: []models.ScreeningConfig{
 			{
 				TriggerRule: &ast.Node{Constant: true},
+				EntityType:  "Thing",
 				Query:       map[string]ast.Node{"name": {Constant: "does not matter"}},
 				Preprocessing: models.ScreeningConfigPreprocessing{
 					UseNer:        true,
@@ -538,6 +552,9 @@ func TestScreeningWithAllPreprocessing(t *testing.T) {
 					"name": []string{"ACME Inc."},
 				},
 			},
+		},
+		InitialQuery: []models.OpenSanctionsCheckQuery{
+			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"does not matter"}}},
 		},
 	}
 
