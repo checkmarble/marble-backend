@@ -293,11 +293,13 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 						Name:                     &scc.Name,
 						Description:              &scc.Description,
 						RuleGroup:                scc.RuleGroup,
+						EntityType:               &scc.EntityType,
 						Datasets:                 scc.Datasets,
 						TriggerRule:              scc.TriggerRule,
 						CounterpartyIdExpression: scc.CounterpartyIdExpression,
 						Query:                    scc.Query,
 						ForcedOutcome:            &scc.ForcedOutcome,
+						Preprocessing:            &scc.Preprocessing,
 						ConfigVersion:            scc.ConfigVersion,
 					}
 				})
