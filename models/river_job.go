@@ -37,6 +37,12 @@ type IndexCleanupArgs struct {
 
 func (IndexCleanupArgs) Kind() string { return "index_cleanup" }
 
+type IndexDeletionArgs struct {
+	OrgId string `json:"org_id"`
+}
+
+func (IndexDeletionArgs) Kind() string { return "index_deletion" }
+
 type TestRunSummaryArgs struct {
 	OrgId string `json:"org_id"`
 }
