@@ -108,7 +108,7 @@ type OpenSanctionsUpstreamDatasetFreshness struct {
 	LastExport time.Time `json:"last_export"`
 }
 
-func AdaptSanctionCheckDataset(model models.OpenSanctionsDatasetFreshness) OpenSanctionsDatasetFreshness {
+func AdaptScreeningDataset(model models.OpenSanctionsDatasetFreshness) OpenSanctionsDatasetFreshness {
 	return OpenSanctionsDatasetFreshness{
 		Upstream: OpenSanctionsUpstreamDatasetFreshness{
 			Version:    model.Upstream.Version,

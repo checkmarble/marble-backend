@@ -23,7 +23,7 @@ type ScenarioTestrunTestSuite struct {
 	repository            *mocks.ScenarioTestrunRepository
 	clientDbIndexEditor   *mocks.ClientDbIndexEditor
 	featureAccessReader   *mocks.FeatureAccessReader
-	sanctionCheckConfig   *mocks.SanctionCheckConfigRepository
+	screeningConfig       *mocks.ScreeningConfigRepository
 	organizationId        string
 	scenarioId            string
 	scenarioPublicationId string
@@ -38,7 +38,7 @@ func (suite *ScenarioTestrunTestSuite) SetupTest() {
 	suite.scenarioRepository = new(mocks.ScenarioRepository)
 	suite.repository = new(mocks.ScenarioTestrunRepository)
 	suite.featureAccessReader = new(mocks.FeatureAccessReader)
-	suite.sanctionCheckConfig = new(mocks.SanctionCheckConfigRepository)
+	suite.screeningConfig = new(mocks.ScreeningConfigRepository)
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
 	suite.scenarioId = "c5968ff7-6142-4623-a6b3-1539f345e5fa"
 	suite.scenarioPublicationId = "c1c005f5-a920-4f92-aee1-f5007f2ad8c1"
@@ -48,14 +48,14 @@ func (suite *ScenarioTestrunTestSuite) SetupTest() {
 
 func (suite *ScenarioTestrunTestSuite) makeUsecase() *ScenarioTestRunUsecase {
 	return &ScenarioTestRunUsecase{
-		transactionFactory:            suite.transactionFactory,
-		executorFactory:               suite.executorFactory,
-		enforceSecurity:               suite.enforceSecurity,
-		repository:                    suite.repository,
-		scenarioRepository:            suite.scenarioRepository,
-		clientDbIndexEditor:           suite.clientDbIndexEditor,
-		featureAccessReader:           suite.featureAccessReader,
-		sanctionCheckConfigRepository: suite.sanctionCheckConfig,
+		transactionFactory:        suite.transactionFactory,
+		executorFactory:           suite.executorFactory,
+		enforceSecurity:           suite.enforceSecurity,
+		repository:                suite.repository,
+		scenarioRepository:        suite.scenarioRepository,
+		clientDbIndexEditor:       suite.clientDbIndexEditor,
+		featureAccessReader:       suite.featureAccessReader,
+		screeningConfigRepository: suite.screeningConfig,
 	}
 }
 
@@ -93,7 +93,7 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		input.CreateDbInput(liveVersionID)).Return(nil)
 	suite.repository.On("ListRunningTestRun", suite.ctx, suite.transaction,
 		suite.organizationId).Return(nil, nil)
-	suite.sanctionCheckConfig.On("ListSanctionCheckConfigs", suite.ctx, suite.transaction,
+	suite.screeningConfig.On("ListScreeningConfigs", suite.ctx, suite.transaction,
 		input.PhantomIterationId).Return(nil, nil)
 
 	suite.clientDbIndexEditor.On("CreateIndexesAsyncForScenarioWithCallback", suite.ctx,

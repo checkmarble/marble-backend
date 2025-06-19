@@ -20,14 +20,14 @@ type TestRunEvaluator interface {
 		triggerPassed bool, se models.ScenarioExecution, err error)
 }
 
-type PhantomDecisionUsecaseSanctionCheckRepository interface {
-	InsertSanctionCheck(
+type PhantomDecisionUsecaseScreeningRepository interface {
+	InsertScreening(
 		ctx context.Context,
 		exec repositories.Executor,
 		phantomDecisionId string,
-		sanctionCheck models.SanctionCheckWithMatches,
+		screening models.ScreeningWithMatches,
 		storeMatches bool,
-	) (models.SanctionCheckWithMatches, error)
+	) (models.ScreeningWithMatches, error)
 }
 
 type StoreTestRunRepository interface {
@@ -47,7 +47,7 @@ type PhantomDecisionUsecase struct {
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 	repository         StoreTestRunRepository
-	externalRepository PhantomDecisionUsecaseSanctionCheckRepository
+	externalRepository PhantomDecisionUsecaseScreeningRepository
 	scenarioEvaluator  TestRunEvaluator
 }
 
@@ -56,7 +56,7 @@ func NewPhantomDecisionUseCase(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
 	repository StoreTestRunRepository,
-	extRepo PhantomDecisionUsecaseSanctionCheckRepository,
+	extRepo PhantomDecisionUsecaseScreeningRepository,
 	scenarioEvaluator TestRunEvaluator,
 ) PhantomDecisionUsecase {
 	return PhantomDecisionUsecase{
@@ -123,11 +123,11 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 				return err
 			}
 
-			if len(phantomDecision.SanctionCheckExecutions) > 0 {
+			if len(phantomDecision.ScreeningExecutions) > 0 {
 				// We don't need to store the matches in the case of a phantom decision
 				// because we are only interested in statistics on the sanction check status
-				for _, sce := range phantomDecision.SanctionCheckExecutions {
-					_, err := usecase.externalRepository.InsertSanctionCheck(
+				for _, sce := range phantomDecision.ScreeningExecutions {
+					_, err := usecase.externalRepository.InsertScreening(
 						ctx,
 						tx,
 						phantomDecision.PhantomDecisionId,

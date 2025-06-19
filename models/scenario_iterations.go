@@ -19,7 +19,7 @@ type ScenarioIteration struct {
 	UpdatedAt                     time.Time
 	TriggerConditionAstExpression *ast.Node
 	Rules                         []Rule
-	SanctionCheckConfigs          []SanctionCheckConfig
+	ScreeningConfigs              []ScreeningConfig
 	ScoreReviewThreshold          *int
 	ScoreBlockAndReviewThreshold  *int
 	ScoreDeclineThreshold         *int
@@ -57,7 +57,7 @@ type UpdateScenarioIterationBody struct {
 	Schedule                      *string
 }
 
-type SanctionCheckConfig struct {
+type ScreeningConfig struct {
 	Id                       string
 	StableId                 string
 	ScenarioIterationId      string
@@ -71,18 +71,18 @@ type SanctionCheckConfig struct {
 	Threshold                *int
 	ForcedOutcome            Outcome
 	CounterpartyIdExpression *ast.Node
-	Preprocessing            SanctionCheckConfigPreprocessing
+	Preprocessing            ScreeningConfigPreprocessing
 	ConfigVersion            string
 }
 
-type SanctionCheckConfigPreprocessing struct {
+type ScreeningConfigPreprocessing struct {
 	UseNer        bool   `json:"use_ner,omitempty"`
 	SkipIfUnder   int    `json:"skip_if_under,omitempty"`
 	RemoveNumbers bool   `json:"remove_numbers,omitempty"`
 	IgnoreListId  string `json:"ignore_list_id,omitempty"`
 }
 
-func (cfg SanctionCheckConfigPreprocessing) equal(other SanctionCheckConfigPreprocessing) bool {
+func (cfg ScreeningConfigPreprocessing) equal(other ScreeningConfigPreprocessing) bool {
 	if cfg.UseNer != other.UseNer {
 		return false
 	}
@@ -98,7 +98,7 @@ func (cfg SanctionCheckConfigPreprocessing) equal(other SanctionCheckConfigPrepr
 	return true
 }
 
-func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
+func (scc ScreeningConfig) HasSameQuery(other ScreeningConfig) bool {
 	if scc.StableId != other.StableId {
 		return false
 	}
@@ -162,12 +162,12 @@ func (scc SanctionCheckConfig) HasSameQuery(other SanctionCheckConfig) bool {
 	return true
 }
 
-type SanctionCheckOutcome struct {
+type ScreeningOutcome struct {
 	ForceOutcome  Outcome
 	ScoreModifier int
 }
 
-type UpdateSanctionCheckConfigInput struct {
+type UpdateScreeningConfigInput struct {
 	Id                       string
 	StableId                 *string
 	Name                     *string
@@ -180,6 +180,6 @@ type UpdateSanctionCheckConfigInput struct {
 	Query                    map[string]ast.Node
 	CounterpartyIdExpression *ast.Node
 	ForcedOutcome            *Outcome
-	Preprocessing            *SanctionCheckConfigPreprocessing
+	Preprocessing            *ScreeningConfigPreprocessing
 	ConfigVersion            string
 }

@@ -16,34 +16,34 @@ type OpenSanctionsProvider interface {
 	IsSelfHosted(context.Context) bool
 }
 
-type SanctionCheckRepository interface {
-	GetSanctionCheck(ctx context.Context, exec repositories.Executor, id string) (models.SanctionCheckWithMatches, error)
+type ScreeningRepository interface {
+	GetScreening(ctx context.Context, exec repositories.Executor, id string) (models.ScreeningWithMatches, error)
 }
 
-type SanctionCheckUsecase interface {
-	EnrichMatchWithoutAuthorization(ctx context.Context, matchId string) (models.SanctionCheckMatch, error)
+type ScreeningUsecase interface {
+	EnrichMatchWithoutAuthorization(ctx context.Context, matchId string) (models.ScreeningMatch, error)
 }
 
 type MatchEnrichmentWorker struct {
 	river.WorkerDefaults[models.MatchEnrichmentArgs]
 
-	executorFactory      executor_factory.ExecutorFactory
-	openSanctionsConfig  OpenSanctionsProvider
-	sanctionCheckUsecase SanctionCheckUsecase
-	repository           SanctionCheckRepository
+	executorFactory     executor_factory.ExecutorFactory
+	openSanctionsConfig OpenSanctionsProvider
+	screeningUsecase    ScreeningUsecase
+	repository          ScreeningRepository
 }
 
 func NewMatchEnrichmentWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	openSanctionsProvider OpenSanctionsProvider,
-	sanctionCheckUsecase SanctionCheckUsecase,
-	repository SanctionCheckRepository,
+	screeningUsecase ScreeningUsecase,
+	repository ScreeningRepository,
 ) MatchEnrichmentWorker {
 	return MatchEnrichmentWorker{
-		executorFactory:      executorFactory,
-		openSanctionsConfig:  openSanctionsProvider,
-		sanctionCheckUsecase: sanctionCheckUsecase,
-		repository:           repository,
+		executorFactory:     executorFactory,
+		openSanctionsConfig: openSanctionsProvider,
+		screeningUsecase:    screeningUsecase,
+		repository:          repository,
 	}
 }
 
@@ -61,7 +61,7 @@ func (w *MatchEnrichmentWorker) Work(ctx context.Context, job *river.Job[models.
 
 	var errs error
 
-	scc, err := w.repository.GetSanctionCheck(ctx, w.executorFactory.NewExecutor(), job.Args.SanctionCheckId)
+	scc, err := w.repository.GetScreening(ctx, w.executorFactory.NewExecutor(), job.Args.ScreeningId)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (w *MatchEnrichmentWorker) Work(ctx context.Context, job *river.Job[models.
 			continue
 		}
 
-		if _, err := w.sanctionCheckUsecase.EnrichMatchWithoutAuthorization(ctx, match.Id); err != nil {
+		if _, err := w.screeningUsecase.EnrichMatchWithoutAuthorization(ctx, match.Id); err != nil {
 			errs = errors.Join(errs, err)
 		}
 	}

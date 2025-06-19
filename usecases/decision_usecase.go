@@ -81,16 +81,16 @@ type ScenarioEvaluator interface {
 		triggerPassed bool, se models.ScenarioExecution, err error)
 }
 
-type decisionUsecaseSanctionCheckWriter interface {
-	ListSanctionChecksForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
-		initialOnly bool) ([]models.SanctionCheckWithMatches, error)
-	InsertSanctionCheck(
+type decisionUsecaseScreeningWriter interface {
+	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
+		initialOnly bool) ([]models.ScreeningWithMatches, error)
+	InsertScreening(
 		ctx context.Context,
 		exec repositories.Executor,
 		decisionId string,
-		sc models.SanctionCheckWithMatches,
+		sc models.ScreeningWithMatches,
 		storeMatches bool,
-	) (models.SanctionCheckWithMatches, error)
+	) (models.ScreeningWithMatches, error)
 }
 
 type DecisionUsecase struct {
@@ -100,7 +100,7 @@ type DecisionUsecase struct {
 	executorFactory           executor_factory.ExecutorFactory
 	dataModelRepository       repositories.DataModelRepository
 	repository                DecisionUsecaseRepository
-	sanctionCheckRepository   decisionUsecaseSanctionCheckWriter
+	screeningRepository       decisionUsecaseScreeningWriter
 	scenarioTestRunRepository repositories.ScenarioTestRunRepository
 	decisionWorkflows         decisionWorkflowsUsecase
 	offloadedReader           OffloadedReader
@@ -127,18 +127,18 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
-	scs, err := usecase.sanctionCheckRepository.ListSanctionChecksForDecision(ctx,
+	scs, err := usecase.screeningRepository.ListScreeningsForDecision(ctx,
 		usecase.executorFactory.NewExecutor(), decision.DecisionId, false)
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
-	decision.SanctionCheckExecutions = make([]models.SanctionCheckWithMatches, len(scs))
+	decision.ScreeningExecutions = make([]models.ScreeningWithMatches, len(scs))
 
 	for idx, sc := range scs {
-		decision.SanctionCheckExecutions[idx] = models.SanctionCheckWithMatches{
-			SanctionCheck: sc.SanctionCheck,
-			Count:         len(sc.Matches),
+		decision.ScreeningExecutions[idx] = models.ScreeningWithMatches{
+			Screening: sc.Screening,
+			Count:     len(sc.Matches),
 		}
 	}
 
@@ -464,13 +464,13 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
-		var scs []models.SanctionCheckWithMatches
+		var scs []models.ScreeningWithMatches
 
-		if len(decision.SanctionCheckExecutions) > 0 {
-			scs = make([]models.SanctionCheckWithMatches, len(decision.SanctionCheckExecutions))
+		if len(decision.ScreeningExecutions) > 0 {
+			scs = make([]models.ScreeningWithMatches, len(decision.ScreeningExecutions))
 
-			for idx, sce := range decision.SanctionCheckExecutions {
-				sc, err := usecase.sanctionCheckRepository.InsertSanctionCheck(ctx, tx, decision.DecisionId, sce, true)
+			for idx, sce := range decision.ScreeningExecutions {
+				sc, err := usecase.screeningRepository.InsertScreening(ctx, tx, decision.DecisionId, sce, true)
 				if err != nil {
 					return models.DecisionWithRuleExecutions{},
 						errors.Wrap(err, "could not store sanction check execution")
@@ -489,7 +489,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 				}
 			}
 
-			decision.SanctionCheckExecutions = scs
+			decision.ScreeningExecutions = scs
 		}
 
 		if params.WithDecisionWebhooks {
@@ -523,7 +523,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			if err != nil {
 				return models.DecisionWithRuleExecutions{}, err
 			}
-			dec.SanctionCheckExecutions = scs
+			dec.ScreeningExecutions = scs
 			return dec, nil
 		}
 
@@ -670,11 +670,11 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}
 
-			if item.decision.SanctionCheckExecutions != nil {
-				var sc models.SanctionCheckWithMatches
+			if item.decision.ScreeningExecutions != nil {
+				var sc models.ScreeningWithMatches
 
-				for _, sce := range item.decision.SanctionCheckExecutions {
-					sc, err = usecase.sanctionCheckRepository.InsertSanctionCheck(
+				for _, sce := range item.decision.ScreeningExecutions {
+					sc, err = usecase.screeningRepository.InsertScreening(
 						ctx, tx, item.decision.DecisionId, sce, true)
 					if err != nil {
 						return nil, errors.Wrap(err, "could not store sanction check execution")
@@ -768,9 +768,9 @@ func (usecase *DecisionUsecase) executeTestRun(
 		TriggerObjectTable: triggerObjectTable,
 	}
 	if scenarioExecution != nil {
-		evaluationParameters.CachedSanctionCheck = pure_utils.MapSliceToMap(
-			scenarioExecution.SanctionCheckExecutions,
-			func(scm models.SanctionCheckWithMatches) (string, models.SanctionCheckWithMatches) {
+		evaluationParameters.CachedScreenings = pure_utils.MapSliceToMap(
+			scenarioExecution.ScreeningExecutions,
+			func(scm models.ScreeningWithMatches) (string, models.ScreeningWithMatches) {
 				return scenarioExecution.ScenarioIterationId, scm
 			},
 		)

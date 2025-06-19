@@ -70,10 +70,10 @@ type CaseUseCaseRepository interface {
 	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
 }
 
-type CaseUsecaseSanctionCheckRepository interface {
-	GetActiveSanctionCheckForDecision(ctx context.Context, exec repositories.Executor, sanctionCheckId string) (
-		models.SanctionCheckWithMatches, error)
-	ListSanctionChecksForDecision(ctx context.Context, exec repositories.Executor, decisionId string, initialOnly bool) ([]models.SanctionCheckWithMatches, error)
+type CaseUsecaseScreeningRepository interface {
+	GetActiveScreeningForDecision(ctx context.Context, exec repositories.Executor, screeningId string) (
+		models.ScreeningWithMatches, error)
+	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string, initialOnly bool) ([]models.ScreeningWithMatches, error)
 }
 
 type webhookEventsUsecase interface {
@@ -94,17 +94,17 @@ type caseUsecaseIngestedDataReader interface {
 }
 
 type CaseUseCase struct {
-	enforceSecurity         security.EnforceSecurityCase
-	repository              CaseUseCaseRepository
-	decisionRepository      repositories.DecisionRepository
-	inboxReader             inboxes.InboxReader
-	blobRepository          repositories.BlobRepository
-	caseManagerBucketUrl    string
-	transactionFactory      executor_factory.TransactionFactory
-	executorFactory         executor_factory.ExecutorFactory
-	webhookEventsUsecase    webhookEventsUsecase
-	sanctionCheckRepository CaseUsecaseSanctionCheckRepository
-	ingestedDataReader      caseUsecaseIngestedDataReader
+	enforceSecurity      security.EnforceSecurityCase
+	repository           CaseUseCaseRepository
+	decisionRepository   repositories.DecisionRepository
+	inboxReader          inboxes.InboxReader
+	blobRepository       repositories.BlobRepository
+	caseManagerBucketUrl string
+	transactionFactory   executor_factory.TransactionFactory
+	executorFactory      executor_factory.ExecutorFactory
+	webhookEventsUsecase webhookEventsUsecase
+	screeningRepository  CaseUsecaseScreeningRepository
+	ingestedDataReader   caseUsecaseIngestedDataReader
 }
 
 func (usecase *CaseUseCase) ListCases(

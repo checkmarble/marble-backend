@@ -20,33 +20,33 @@ import (
 	"github.com/hashicorp/go-set/v2"
 )
 
-type SanctionCheckEnforceSecurityScenario interface {
+type ScreeningEnforceSecurityScenario interface {
 	UpdateScenario(models.Scenario) error
 }
 
-type SanctionCheckEnforceSecurityDecision interface {
+type ScreeningEnforceSecurityDecision interface {
 	ReadDecision(models.Decision) error
 }
 
-type SanctionCheckEnforceSecurityCase interface {
+type ScreeningEnforceSecurityCase interface {
 	ReadOrUpdateCase(models.CaseMetadata, []uuid.UUID) error
 }
 
-type SanctionCheckEnforceSecurity interface {
+type ScreeningEnforceSecurity interface {
 	ReadWhitelist(context.Context) error
 	WriteWhitelist(context.Context) error
 	PerformFreeformSearch(context.Context) error
 }
 
-type SanctionCheckProvider interface {
+type ScreeningProvider interface {
 	IsSelfHosted(ctx context.Context) bool
 	GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error)
 	GetLatestLocalDataset(context.Context) (models.OpenSanctionsDatasetFreshness, error)
-	Search(context.Context, models.OpenSanctionsQuery) (models.SanctionRawSearchResponseWithMatches, error)
-	EnrichMatch(ctx context.Context, match models.SanctionCheckMatch) ([]byte, error)
+	Search(context.Context, models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error)
+	EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error)
 }
 
-type SanctionCheckInboxReader interface {
+type ScreeningInboxReader interface {
 	ListInboxes(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -55,54 +55,54 @@ type SanctionCheckInboxReader interface {
 	) ([]models.Inbox, error)
 }
 
-type SanctionCheckRepository interface {
-	GetActiveSanctionCheckForDecision(context.Context, repositories.Executor, string) (
-		models.SanctionCheckWithMatches, error)
-	ListSanctionChecksForDecision(ctx context.Context, exec repositories.Executor, decisionId string, initialOnly bool) (
-		[]models.SanctionCheckWithMatches, error)
-	GetSanctionCheck(context.Context, repositories.Executor, string) (models.SanctionCheckWithMatches, error)
-	GetSanctionCheckWithoutMatches(context.Context, repositories.Executor, string) (models.SanctionCheck, error)
-	ArchiveSanctionCheck(context.Context, repositories.Executor, string) error
-	InsertSanctionCheck(
+type ScreeningRepository interface {
+	GetActiveScreeningForDecision(context.Context, repositories.Executor, string) (
+		models.ScreeningWithMatches, error)
+	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string, initialOnly bool) (
+		[]models.ScreeningWithMatches, error)
+	GetScreening(context.Context, repositories.Executor, string) (models.ScreeningWithMatches, error)
+	GetScreeningWithoutMatches(context.Context, repositories.Executor, string) (models.Screening, error)
+	ArchiveScreening(context.Context, repositories.Executor, string) error
+	InsertScreening(
 		ctx context.Context,
 		exec repositories.Executor,
 		decisionid string,
-		sc models.SanctionCheckWithMatches,
+		sc models.ScreeningWithMatches,
 		storeMatches bool,
-	) (models.SanctionCheckWithMatches, error)
-	UpdateSanctionCheckStatus(ctx context.Context, exec repositories.Executor, id string,
-		status models.SanctionCheckStatus) error
+	) (models.ScreeningWithMatches, error)
+	UpdateScreeningStatus(ctx context.Context, exec repositories.Executor, id string,
+		status models.ScreeningStatus) error
 
-	ListSanctionCheckMatches(ctx context.Context, exec repositories.Executor, sanctionCheckId string) (
-		[]models.SanctionCheckMatch, error)
-	GetSanctionCheckMatch(ctx context.Context, exec repositories.Executor, matchId string) (models.SanctionCheckMatch, error)
-	UpdateSanctionCheckMatchStatus(ctx context.Context, exec repositories.Executor,
-		match models.SanctionCheckMatch, update models.SanctionCheckMatchUpdate) (models.SanctionCheckMatch, error)
-	ListSanctionCheckCommentsByIds(ctx context.Context, exec repositories.Executor, ids []string) (
-		[]models.SanctionCheckMatchComment, error)
-	AddSanctionCheckMatchComment(ctx context.Context, exec repositories.Executor,
-		comment models.SanctionCheckMatchComment) (models.SanctionCheckMatchComment, error)
-	CreateSanctionCheckFile(ctx context.Context, exec repositories.Executor,
-		input models.SanctionCheckFileInput) (models.SanctionCheckFile, error)
-	GetSanctionCheckFile(ctx context.Context, exec repositories.Executor, matchId, fileId string) (models.SanctionCheckFile, error)
-	ListSanctionCheckFiles(ctx context.Context, exec repositories.Executor, matchId string) ([]models.SanctionCheckFile, error)
-	CopySanctionCheckFiles(ctx context.Context, exec repositories.Executor,
-		sanctionCheckId, newSanctionCheckId string) error
-	AddSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
+	ListScreeningMatches(ctx context.Context, exec repositories.Executor, screeningId string) (
+		[]models.ScreeningMatch, error)
+	GetScreeningMatch(ctx context.Context, exec repositories.Executor, matchId string) (models.ScreeningMatch, error)
+	UpdateScreeningMatchStatus(ctx context.Context, exec repositories.Executor,
+		match models.ScreeningMatch, update models.ScreeningMatchUpdate) (models.ScreeningMatch, error)
+	ListScreeningCommentsByIds(ctx context.Context, exec repositories.Executor, ids []string) (
+		[]models.ScreeningMatchComment, error)
+	AddScreeningMatchComment(ctx context.Context, exec repositories.Executor,
+		comment models.ScreeningMatchComment) (models.ScreeningMatchComment, error)
+	CreateScreeningFile(ctx context.Context, exec repositories.Executor,
+		input models.ScreeningFileInput) (models.ScreeningFile, error)
+	GetScreeningFile(ctx context.Context, exec repositories.Executor, matchId, fileId string) (models.ScreeningFile, error)
+	ListScreeningFiles(ctx context.Context, exec repositories.Executor, matchId string) ([]models.ScreeningFile, error)
+	CopyScreeningFiles(ctx context.Context, exec repositories.Executor,
+		screeningId, newScreeningId string) error
+	AddScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
 		orgId, counterpartyId string, entityId string, reviewerId *models.UserId) error
-	DeleteSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
+	DeleteScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
 		orgId string, counterpartyId *string, entityId string, reviewerId *models.UserId) error
-	SearchSanctionCheckMatchWhitelist(ctx context.Context, exec repositories.Executor,
-		orgId string, counterpartyId, entityId *string) ([]models.SanctionCheckWhitelist, error)
-	IsSanctionCheckMatchWhitelisted(ctx context.Context, exec repositories.Executor,
-		orgId, counterpartyId string, entityId []string) ([]models.SanctionCheckWhitelist, error)
+	SearchScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
+		orgId string, counterpartyId, entityId *string) ([]models.ScreeningWhitelist, error)
+	IsScreeningMatchWhitelisted(ctx context.Context, exec repositories.Executor,
+		orgId, counterpartyId string, entityId []string) ([]models.ScreeningWhitelist, error)
 	CountWhitelistsForCounterpartyId(ctx context.Context, exec repositories.Executor,
 		orgId, counterpartyId string) (int, error)
-	UpdateSanctionCheckMatchPayload(ctx context.Context, exec repositories.Executor,
-		match models.SanctionCheckMatch, newPayload []byte) (models.SanctionCheckMatch, error)
+	UpdateScreeningMatchPayload(ctx context.Context, exec repositories.Executor,
+		match models.ScreeningMatch, newPayload []byte) (models.ScreeningMatch, error)
 }
 
-type SanctionsCheckUsecaseExternalRepository interface {
+type ScreeningUsecaseExternalRepository interface {
 	CreateCaseEvent(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -112,30 +112,30 @@ type SanctionsCheckUsecaseExternalRepository interface {
 	DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error)
 }
 
-type SanctionCheckOrganizationRepository interface {
+type ScreeningOrganizationRepository interface {
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
 }
 
-type SanctionCheckCaseUsecase interface {
+type ScreeningCaseUsecase interface {
 	PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error
 }
 
-type SanctionCheckUsecase struct {
-	enforceSecurityScenario SanctionCheckEnforceSecurityScenario
-	enforceSecurityDecision SanctionCheckEnforceSecurityDecision
-	enforceSecurityCase     SanctionCheckEnforceSecurityCase
-	enforceSecurity         SanctionCheckEnforceSecurity
+type ScreeningUsecase struct {
+	enforceSecurityScenario ScreeningEnforceSecurityScenario
+	enforceSecurityDecision ScreeningEnforceSecurityDecision
+	enforceSecurityCase     ScreeningEnforceSecurityCase
+	enforceSecurity         ScreeningEnforceSecurity
 
-	caseUsecase                   SanctionCheckCaseUsecase
-	organizationRepository        SanctionCheckOrganizationRepository
-	externalRepository            SanctionsCheckUsecaseExternalRepository
-	sanctionCheckConfigRepository SanctionCheckConfigRepository
-	taskQueueRepository           repositories.TaskQueueRepository
-	repository                    SanctionCheckRepository
+	caseUsecase               ScreeningCaseUsecase
+	organizationRepository    ScreeningOrganizationRepository
+	externalRepository        ScreeningUsecaseExternalRepository
+	screeningConfigRepository ScreeningConfigRepository
+	taskQueueRepository       repositories.TaskQueueRepository
+	repository                ScreeningRepository
 
-	inboxReader           SanctionCheckInboxReader
+	inboxReader           ScreeningInboxReader
 	scenarioFetcher       scenarios.ScenarioFetcher
-	openSanctionsProvider SanctionCheckProvider
+	openSanctionsProvider ScreeningProvider
 	blobBucketUrl         string
 	blobRepository        repositories.BlobRepository
 
@@ -143,46 +143,46 @@ type SanctionCheckUsecase struct {
 	transactionFactory executor_factory.TransactionFactory
 }
 
-func (uc SanctionCheckUsecase) CheckDatasetFreshness(ctx context.Context) (models.OpenSanctionsDatasetFreshness, error) {
+func (uc ScreeningUsecase) CheckDatasetFreshness(ctx context.Context) (models.OpenSanctionsDatasetFreshness, error) {
 	return uc.openSanctionsProvider.GetLatestLocalDataset(ctx)
 }
 
-func (uc SanctionCheckUsecase) GetDatasetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
+func (uc ScreeningUsecase) GetDatasetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
 	return uc.openSanctionsProvider.GetCatalog(ctx)
 }
 
-func (uc SanctionCheckUsecase) GetSanctionCheck(ctx context.Context, id string) (models.SanctionCheckWithMatches, error) {
-	sc, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), id)
+func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.ScreeningWithMatches, error) {
+	sc, err := uc.repository.GetScreening(ctx, uc.executorFactory.NewExecutor(), id)
 	if err != nil {
-		return models.SanctionCheckWithMatches{},
+		return models.ScreeningWithMatches{},
 			errors.Wrap(err, "could not retrieve sanction check")
 	}
 
 	decisions, err := uc.externalRepository.DecisionsById(ctx, uc.executorFactory.NewExecutor(), []string{sc.DecisionId})
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 	if len(decisions) == 0 {
-		return models.SanctionCheckWithMatches{},
+		return models.ScreeningWithMatches{},
 			errors.WithDetail(models.NotFoundError, "requested decision does not exist")
 	}
 
 	if decisions[0].Case == nil {
 		if err := uc.enforceSecurityDecision.ReadDecision(decisions[0]); err != nil {
-			return models.SanctionCheckWithMatches{}, err
+			return models.ScreeningWithMatches{}, err
 		}
 	} else {
 		if _, err = uc.enforceCanReadOrUpdateCase(ctx, decisions[0].DecisionId); err != nil {
-			return models.SanctionCheckWithMatches{}, err
+			return models.ScreeningWithMatches{}, err
 		}
 	}
 
 	return sc, nil
 }
 
-func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionId string,
+func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string,
 	initialOnly bool,
-) ([]models.SanctionCheckWithMatches, error) {
+) ([]models.ScreeningWithMatches, error) {
 	exec := uc.executorFactory.NewExecutor()
 	decisions, err := uc.externalRepository.DecisionsById(ctx, exec, []string{decisionId})
 	if err != nil {
@@ -202,29 +202,29 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 		}
 	}
 
-	scs, err := uc.repository.ListSanctionChecksForDecision(ctx, exec, decisions[0].DecisionId, initialOnly)
+	scs, err := uc.repository.ListScreeningsForDecision(ctx, exec, decisions[0].DecisionId, initialOnly)
 	if err != nil {
 		return nil, err
 	}
 
-	sccs, err := uc.sanctionCheckConfigRepository.ListSanctionCheckConfigs(ctx,
+	sccs, err := uc.screeningConfigRepository.ListScreeningConfigs(ctx,
 		uc.executorFactory.NewExecutor(), decisions[0].ScenarioIterationId)
 	if err != nil {
 		return nil, err
 	}
 
 	matchIds := set.New[string](0)
-	matchIdToMatch := make(map[string]*models.SanctionCheckMatch)
+	matchIdToMatch := make(map[string]*models.ScreeningMatch)
 
 	var (
-		sanctionCheckConfig models.SanctionCheckConfig
-		found               bool
+		screeningConfig models.ScreeningConfig
+		found           bool
 	)
 
 	for sidx, sc := range scs {
 		for _, scc := range sccs {
-			if sc.SanctionCheckConfigId == scc.Id {
-				sanctionCheckConfig = scc
+			if sc.ScreeningConfigId == scc.Id {
+				screeningConfig = scc
 				found = true
 				break
 			}
@@ -234,8 +234,8 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 			return nil, errors.New("could not find sanction check config for match")
 		}
 
-		scs[sidx].Config = models.SanctionCheckConfigRef{
-			Name: sanctionCheckConfig.Name,
+		scs[sidx].Config = models.ScreeningConfigRef{
+			Name: screeningConfig.Name,
 		}
 
 		for midx, match := range sc.Matches {
@@ -244,7 +244,7 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 		}
 	}
 
-	comments, err := uc.repository.ListSanctionCheckCommentsByIds(ctx,
+	comments, err := uc.repository.ListScreeningCommentsByIds(ctx,
 		uc.executorFactory.NewExecutor(), matchIds.Slice())
 	if err != nil {
 		return nil, err
@@ -260,15 +260,15 @@ func (uc SanctionCheckUsecase) ListSanctionChecks(ctx context.Context, decisionI
 	return scs, nil
 }
 
-func (uc SanctionCheckUsecase) Execute(
+func (uc ScreeningUsecase) Execute(
 	ctx context.Context,
 	orgId string,
 	query models.OpenSanctionsQuery,
-) (models.SanctionCheckWithMatches, error) {
+) (models.ScreeningWithMatches, error) {
 	org, err := uc.organizationRepository.GetOrganizationById(ctx,
 		uc.executorFactory.NewExecutor(), orgId)
 	if err != nil {
-		return models.SanctionCheckWithMatches{},
+		return models.ScreeningWithMatches{},
 			errors.Wrap(err, "could not retrieve organization")
 	}
 
@@ -276,24 +276,24 @@ func (uc SanctionCheckUsecase) Execute(
 
 	matches, err := uc.openSanctionsProvider.Search(ctx, query)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
-	return matches.AdaptSanctionCheckFromSearchResponse(query), nil
+	return matches.AdaptScreeningFromSearchResponse(query), nil
 }
 
-func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.SanctionCheckRefineRequest,
+func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRefineRequest,
 	requestedBy *models.UserId,
-) (models.SanctionCheckWithMatches, error) {
-	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.SanctionCheckId)
+) (models.ScreeningWithMatches, error) {
+	decision, sc, err := uc.enforceCanRefineScreening(ctx, refine.ScreeningId)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
-	scc, err := uc.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
-		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId, sc.SanctionCheckConfigId)
+	scc, err := uc.screeningConfigRepository.GetScreeningConfig(ctx,
+		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId, sc.ScreeningConfigId)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
 	query := models.OpenSanctionsQuery{
@@ -303,9 +303,9 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 		Queries:      models.AdaptRefineRequestToMatchable(refine),
 	}
 
-	sanctionCheck, err := uc.Execute(ctx, decision.OrganizationId, query)
+	screening, err := uc.Execute(ctx, decision.OrganizationId, query)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
 	var requester *string
@@ -314,58 +314,58 @@ func (uc SanctionCheckUsecase) Refine(ctx context.Context, refine models.Sanctio
 		requester = utils.Ptr(string(*requestedBy))
 	}
 
-	sanctionCheck.IsManual = true
-	sanctionCheck.RequestedBy = requester
+	screening.IsManual = true
+	screening.RequestedBy = requester
 
-	sanctionCheck, err = executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
+	screening, err = executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
-	) (models.SanctionCheckWithMatches, error) {
-		oldSanctionCheck, err := uc.repository.GetActiveSanctionCheckForDecision(ctx, tx, sc.Id)
+	) (models.ScreeningWithMatches, error) {
+		oldScreening, err := uc.repository.GetActiveScreeningForDecision(ctx, tx, sc.Id)
 		if err != nil {
-			return models.SanctionCheckWithMatches{}, err
+			return models.ScreeningWithMatches{}, err
 		}
 
-		if err := uc.repository.ArchiveSanctionCheck(ctx, tx, sc.Id); err != nil {
-			return models.SanctionCheckWithMatches{}, err
+		if err := uc.repository.ArchiveScreening(ctx, tx, sc.Id); err != nil {
+			return models.ScreeningWithMatches{}, err
 		}
 
-		if sanctionCheck, err = uc.repository.InsertSanctionCheck(ctx, tx,
-			decision.DecisionId, sanctionCheck, true); err != nil {
-			return models.SanctionCheckWithMatches{}, err
+		if screening, err = uc.repository.InsertScreening(ctx, tx,
+			decision.DecisionId, screening, true); err != nil {
+			return models.ScreeningWithMatches{}, err
 		}
 
 		if uc.openSanctionsProvider.IsSelfHosted(ctx) {
 			if err := uc.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx,
-				decision.OrganizationId, sanctionCheck.Id); err != nil {
+				decision.OrganizationId, screening.Id); err != nil {
 				utils.LogAndReportSentryError(ctx, errors.Wrap(err,
 					"could not enqueue sanction check for refinement"))
 			}
 		}
 
-		if err := uc.repository.CopySanctionCheckFiles(ctx, tx, oldSanctionCheck.Id, sanctionCheck.Id); err != nil {
-			return sanctionCheck, errors.Wrap(err,
+		if err := uc.repository.CopyScreeningFiles(ctx, tx, oldScreening.Id, screening.Id); err != nil {
+			return screening, errors.Wrap(err,
 				"could not copy sanction check uploaded files for refinement")
 		}
 
-		return sanctionCheck, err
+		return screening, err
 	})
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
-	return sanctionCheck, nil
+	return screening, nil
 }
 
-func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.SanctionCheckRefineRequest) (models.SanctionCheckWithMatches, error) {
-	decision, sc, err := uc.enforceCanRefineSanctionCheck(ctx, refine.SanctionCheckId)
+func (uc ScreeningUsecase) Search(ctx context.Context, refine models.ScreeningRefineRequest) (models.ScreeningWithMatches, error) {
+	decision, sc, err := uc.enforceCanRefineScreening(ctx, refine.ScreeningId)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
-	scc, err := uc.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
-		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId, sc.SanctionCheckConfigId)
+	scc, err := uc.screeningConfigRepository.GetScreeningConfig(ctx,
+		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId, sc.ScreeningConfigId)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
 	query := models.OpenSanctionsQuery{
@@ -375,21 +375,21 @@ func (uc SanctionCheckUsecase) Search(ctx context.Context, refine models.Sanctio
 		Queries:      models.AdaptRefineRequestToMatchable(refine),
 	}
 
-	sanctionCheck, err := uc.Execute(ctx, decision.OrganizationId, query)
+	screening, err := uc.Execute(ctx, decision.OrganizationId, query)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
-	return sanctionCheck, nil
+	return screening, nil
 }
 
-func (uc SanctionCheckUsecase) FreeformSearch(ctx context.Context,
+func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	orgId string,
-	scc models.SanctionCheckConfig,
-	refine models.SanctionCheckRefineRequest,
-) (models.SanctionCheckWithMatches, error) {
+	scc models.ScreeningConfig,
+	refine models.ScreeningRefineRequest,
+) (models.ScreeningWithMatches, error) {
 	if err := uc.enforceSecurity.PerformFreeformSearch(ctx); err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
 	query := models.OpenSanctionsQuery{
@@ -398,31 +398,31 @@ func (uc SanctionCheckUsecase) FreeformSearch(ctx context.Context,
 		Queries:      models.AdaptRefineRequestToMatchable(refine),
 	}
 
-	sanctionCheck, err := uc.Execute(ctx, orgId, query)
+	screening, err := uc.Execute(ctx, orgId, query)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
-	return sanctionCheck, nil
+	return screening, nil
 }
 
-func (uc SanctionCheckUsecase) FilterOutWhitelistedMatches(ctx context.Context, orgId string,
-	sanctionCheck models.SanctionCheckWithMatches, counterpartyId string,
-) (models.SanctionCheckWithMatches, error) {
-	matchesSet := set.From(pure_utils.FlatMap(sanctionCheck.Matches, func(m models.SanctionCheckMatch) []string {
+func (uc ScreeningUsecase) FilterOutWhitelistedMatches(ctx context.Context, orgId string,
+	screening models.ScreeningWithMatches, counterpartyId string,
+) (models.ScreeningWithMatches, error) {
+	matchesSet := set.From(pure_utils.FlatMap(screening.Matches, func(m models.ScreeningMatch) []string {
 		return append(m.Referents, m.EntityId)
 	}))
 
-	whitelists, err := uc.repository.IsSanctionCheckMatchWhitelisted(ctx,
+	whitelists, err := uc.repository.IsScreeningMatchWhitelisted(ctx,
 		uc.executorFactory.NewExecutor(), orgId, counterpartyId, matchesSet.Slice())
 	if err != nil {
-		return sanctionCheck, err
+		return screening, err
 	}
 
-	matchesAfterWhitelisting := make([]models.SanctionCheckMatch, 0, len(sanctionCheck.Matches))
+	matchesAfterWhitelisting := make([]models.ScreeningMatch, 0, len(screening.Matches))
 
-	for _, match := range sanctionCheck.Matches {
-		isWhitelisted := slices.ContainsFunc(whitelists, func(w models.SanctionCheckWhitelist) bool {
+	for _, match := range screening.Matches {
+		isWhitelisted := slices.ContainsFunc(whitelists, func(w models.ScreeningWhitelist) bool {
 			if match.EntityId == w.EntityId {
 				return true
 			}
@@ -440,40 +440,40 @@ func (uc SanctionCheckUsecase) FilterOutWhitelistedMatches(ctx context.Context, 
 	if len(whitelists) > 0 {
 		utils.LoggerFromContext(ctx).InfoContext(ctx,
 			"filtered out sanction check matches that were whitelisted", "before",
-			len(sanctionCheck.Matches), "whitelisted", len(whitelists), "after", len(matchesAfterWhitelisting))
+			len(screening.Matches), "whitelisted", len(whitelists), "after", len(matchesAfterWhitelisting))
 
-		whitelisted := pure_utils.Map(whitelists, func(w models.SanctionCheckWhitelist) string {
+		whitelisted := pure_utils.Map(whitelists, func(w models.ScreeningWhitelist) string {
 			return w.EntityId
 		})
 
-		sanctionCheck.WhitelistedEntities = whitelisted
+		screening.WhitelistedEntities = whitelisted
 	}
 
-	sanctionCheck.Matches = matchesAfterWhitelisting
-	sanctionCheck.Count = len(sanctionCheck.Matches)
+	screening.Matches = matchesAfterWhitelisting
+	screening.Count = len(screening.Matches)
 
-	if sanctionCheck.Count == 0 {
-		sanctionCheck.Status = models.SanctionStatusNoHit
+	if screening.Count == 0 {
+		screening.Status = models.ScreeningStatusNoHit
 	}
 
-	return sanctionCheck, nil
+	return screening, nil
 }
 
-func (uc SanctionCheckUsecase) CountWhitelistsForCounterpartyId(ctx context.Context, orgId, counterpartyId string) (int, error) {
+func (uc ScreeningUsecase) CountWhitelistsForCounterpartyId(ctx context.Context, orgId, counterpartyId string) (int, error) {
 	return uc.repository.CountWhitelistsForCounterpartyId(ctx, uc.executorFactory.NewExecutor(), orgId, counterpartyId)
 }
 
-func (uc SanctionCheckUsecase) UpdateMatchStatus(
+func (uc ScreeningUsecase) UpdateMatchStatus(
 	ctx context.Context,
-	update models.SanctionCheckMatchUpdate,
-) (models.SanctionCheckMatch, error) {
-	data, err := uc.enforceCanReadOrUpdateSanctionCheckMatch(ctx, update.MatchId)
+	update models.ScreeningMatchUpdate,
+) (models.ScreeningMatch, error) {
+	data, err := uc.enforceCanReadOrUpdateScreeningMatch(ctx, update.MatchId)
 	if err != nil {
-		return models.SanctionCheckMatch{}, err
+		return models.ScreeningMatch{}, err
 	}
 
-	if update.Status != models.SanctionMatchStatusConfirmedHit &&
-		update.Status != models.SanctionMatchStatusNoHit {
+	if update.Status != models.ScreeningMatchStatusConfirmedHit &&
+		update.Status != models.ScreeningMatchStatusNoHit {
 		return data.match, errors.Wrap(models.BadParameterError,
 			"invalid status received for sanction check match, should be 'confirmed_hit' or 'no_hit'")
 	}
@@ -483,23 +483,23 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 			"this sanction is not pending review")
 	}
 
-	if data.match.Status != models.SanctionMatchStatusPending {
+	if data.match.Status != models.ScreeningMatchStatusPending {
 		return data.match, errors.WithDetail(models.UnprocessableEntityError, "this match is not pending review")
 	}
 
-	var updatedMatch models.SanctionCheckMatch
+	var updatedMatch models.ScreeningMatch
 	err = uc.transactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Transaction) error {
-			allMatches, err := uc.repository.ListSanctionCheckMatches(ctx, tx, data.sanction.Id)
+			allMatches, err := uc.repository.ListScreeningMatches(ctx, tx, data.sanction.Id)
 			if err != nil {
 				return err
 			}
-			pendingMatchesExcludingThis := utils.Filter(allMatches, func(m models.SanctionCheckMatch) bool {
-				return m.Id != data.match.Id && m.Status == models.SanctionMatchStatusPending
+			pendingMatchesExcludingThis := utils.Filter(allMatches, func(m models.ScreeningMatch) bool {
+				return m.Id != data.match.Id && m.Status == models.ScreeningMatchStatusPending
 			})
 
-			updatedMatch, err = uc.repository.UpdateSanctionCheckMatchStatus(ctx, tx, data.match, update)
+			updatedMatch, err = uc.repository.UpdateScreeningMatchStatus(ctx, tx, data.match, update)
 			if err != nil {
 				return err
 			}
@@ -511,7 +511,7 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 				}
 
 				// For now, there can be only one comment, added while reviewing, so we can directly add it.
-				updatedMatch.Comments = []models.SanctionCheckMatchComment{comment}
+				updatedMatch.Comments = []models.ScreeningMatchComment{comment}
 			}
 
 			if data.decision.Case != nil {
@@ -521,11 +521,11 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 			}
 
 			// If the match is confirmed, all other pending matches should be set to "skipped" and the sanction check to "confirmed_hit"
-			if update.Status == models.SanctionMatchStatusConfirmedHit {
+			if update.Status == models.ScreeningMatchStatusConfirmedHit {
 				for _, m := range pendingMatchesExcludingThis {
-					_, err = uc.repository.UpdateSanctionCheckMatchStatus(ctx, tx, m, models.SanctionCheckMatchUpdate{
+					_, err = uc.repository.UpdateScreeningMatchStatus(ctx, tx, m, models.ScreeningMatchUpdate{
 						MatchId:    m.Id,
-						Status:     models.SanctionMatchStatusSkipped,
+						Status:     models.ScreeningMatchStatusSkipped,
 						ReviewerId: update.ReviewerId,
 					})
 					if err != nil {
@@ -534,7 +534,7 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 
 				}
 
-				err = uc.repository.UpdateSanctionCheckStatus(ctx, tx, data.sanction.Id, models.SanctionStatusConfirmedHit)
+				err = uc.repository.UpdateScreeningStatus(ctx, tx, data.sanction.Id, models.ScreeningStatusConfirmedHit)
 				if err != nil {
 					return err
 				}
@@ -549,10 +549,10 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 					err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 						CaseId:       data.decision.Case.Id,
 						UserId:       reviewerId,
-						EventType:    models.SanctionCheckReviewed,
+						EventType:    models.ScreeningReviewed,
 						ResourceId:   &data.decision.DecisionId,
 						ResourceType: utils.Ptr(models.DecisionResourceType),
-						NewValue:     utils.Ptr(models.SanctionMatchStatusConfirmedHit.String()),
+						NewValue:     utils.Ptr(models.ScreeningMatchStatusConfirmedHit.String()),
 					})
 					if err != nil {
 						return err
@@ -561,9 +561,9 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 			}
 
 			// else, if it is the last match pending and it is not a hit, the sanction check should be set to "no_hit"
-			if update.Status == models.SanctionMatchStatusNoHit && len(pendingMatchesExcludingThis) == 0 {
-				err = uc.repository.UpdateSanctionCheckStatus(ctx, tx,
-					data.sanction.Id, models.SanctionStatusNoHit)
+			if update.Status == models.ScreeningMatchStatusNoHit && len(pendingMatchesExcludingThis) == 0 {
+				err = uc.repository.UpdateScreeningStatus(ctx, tx,
+					data.sanction.Id, models.ScreeningStatusNoHit)
 				if err != nil {
 					return err
 				}
@@ -578,10 +578,10 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 					err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 						CaseId:       data.decision.Case.Id,
 						UserId:       reviewerId,
-						EventType:    models.SanctionCheckReviewed,
+						EventType:    models.ScreeningReviewed,
 						ResourceId:   &data.decision.DecisionId,
 						ResourceType: utils.Ptr(models.DecisionResourceType),
-						NewValue:     utils.Ptr(models.SanctionMatchStatusNoHit.String()),
+						NewValue:     utils.Ptr(models.ScreeningMatchStatusNoHit.String()),
 					})
 					if err != nil {
 						return err
@@ -589,7 +589,7 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 				}
 			}
 
-			if update.Status == models.SanctionMatchStatusNoHit && update.Whitelist &&
+			if update.Status == models.ScreeningMatchStatusNoHit && update.Whitelist &&
 				data.match.UniqueCounterpartyIdentifier != nil {
 				if err := uc.CreateWhitelist(ctx, tx,
 					data.decision.OrganizationId, *data.match.UniqueCounterpartyIdentifier,
@@ -605,7 +605,7 @@ func (uc SanctionCheckUsecase) UpdateMatchStatus(
 	return updatedMatch, err
 }
 
-func (uc SanctionCheckUsecase) CreateWhitelist(ctx context.Context, exec repositories.Executor,
+func (uc ScreeningUsecase) CreateWhitelist(ctx context.Context, exec repositories.Executor,
 	orgId, counterpartyId, entityId string, reviewerId *models.UserId,
 ) error {
 	if err := uc.enforceSecurity.WriteWhitelist(ctx); err != nil {
@@ -616,14 +616,14 @@ func (uc SanctionCheckUsecase) CreateWhitelist(ctx context.Context, exec reposit
 		exec = uc.executorFactory.NewExecutor()
 	}
 
-	if err := uc.repository.AddSanctionCheckMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId, reviewerId); err != nil {
+	if err := uc.repository.AddScreeningMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId, reviewerId); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (uc SanctionCheckUsecase) DeleteWhitelist(ctx context.Context, exec repositories.Executor,
+func (uc ScreeningUsecase) DeleteWhitelist(ctx context.Context, exec repositories.Executor,
 	orgId string, counterpartyId *string, entityId string, reviewerId *models.UserId,
 ) error {
 	if err := uc.enforceSecurity.WriteWhitelist(ctx); err != nil {
@@ -634,16 +634,16 @@ func (uc SanctionCheckUsecase) DeleteWhitelist(ctx context.Context, exec reposit
 		exec = uc.executorFactory.NewExecutor()
 	}
 
-	if err := uc.repository.DeleteSanctionCheckMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId, reviewerId); err != nil {
+	if err := uc.repository.DeleteScreeningMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId, reviewerId); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (uc SanctionCheckUsecase) SearchWhitelist(ctx context.Context, exec repositories.Executor,
+func (uc ScreeningUsecase) SearchWhitelist(ctx context.Context, exec repositories.Executor,
 	orgId string, counterpartyId, entityId *string, reviewerId *models.UserId,
-) ([]models.SanctionCheckWhitelist, error) {
+) ([]models.ScreeningWhitelist, error) {
 	if err := uc.enforceSecurity.ReadWhitelist(ctx); err != nil {
 		return nil, err
 	}
@@ -652,7 +652,7 @@ func (uc SanctionCheckUsecase) SearchWhitelist(ctx context.Context, exec reposit
 		exec = uc.executorFactory.NewExecutor()
 	}
 
-	whitelists, err := uc.repository.SearchSanctionCheckMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId)
+	whitelists, err := uc.repository.SearchScreeningMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId)
 	if err != nil {
 		return nil, err
 	}
@@ -660,64 +660,64 @@ func (uc SanctionCheckUsecase) SearchWhitelist(ctx context.Context, exec reposit
 	return whitelists, nil
 }
 
-func (uc SanctionCheckUsecase) MatchAddComment(ctx context.Context, matchId string,
-	comment models.SanctionCheckMatchComment,
-) (models.SanctionCheckMatchComment, error) {
-	if _, err := uc.enforceCanReadOrUpdateSanctionCheckMatch(ctx, matchId); err != nil {
-		return models.SanctionCheckMatchComment{}, err
+func (uc ScreeningUsecase) MatchAddComment(ctx context.Context, matchId string,
+	comment models.ScreeningMatchComment,
+) (models.ScreeningMatchComment, error) {
+	if _, err := uc.enforceCanReadOrUpdateScreeningMatch(ctx, matchId); err != nil {
+		return models.ScreeningMatchComment{}, err
 	}
 
-	return uc.repository.AddSanctionCheckMatchComment(ctx, uc.executorFactory.NewExecutor(), comment)
+	return uc.repository.AddScreeningMatchComment(ctx, uc.executorFactory.NewExecutor(), comment)
 }
 
-func (uc SanctionCheckUsecase) EnrichMatch(ctx context.Context, matchId string) (models.SanctionCheckMatch, error) {
-	if _, err := uc.enforceCanReadOrUpdateSanctionCheckMatch(ctx, matchId); err != nil {
-		return models.SanctionCheckMatch{}, err
+func (uc ScreeningUsecase) EnrichMatch(ctx context.Context, matchId string) (models.ScreeningMatch, error) {
+	if _, err := uc.enforceCanReadOrUpdateScreeningMatch(ctx, matchId); err != nil {
+		return models.ScreeningMatch{}, err
 	}
 
 	return uc.EnrichMatchWithoutAuthorization(ctx, matchId)
 }
 
-func (uc SanctionCheckUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, matchId string) (models.SanctionCheckMatch, error) {
-	match, err := uc.repository.GetSanctionCheckMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
+func (uc ScreeningUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, matchId string) (models.ScreeningMatch, error) {
+	match, err := uc.repository.GetScreeningMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
 	if err != nil {
-		return models.SanctionCheckMatch{}, err
+		return models.ScreeningMatch{}, err
 	}
 
 	if match.Enriched {
-		return models.SanctionCheckMatch{}, errors.WithDetail(models.UnprocessableEntityError,
+		return models.ScreeningMatch{}, errors.WithDetail(models.UnprocessableEntityError,
 			"this sanction check match was already enriched")
 	}
 
 	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, match)
 	if err != nil {
-		return models.SanctionCheckMatch{}, err
+		return models.ScreeningMatch{}, err
 	}
 
 	mergedPayload, err := mergePayloads(match.Payload, newPayload)
 	if err != nil {
-		return models.SanctionCheckMatch{}, errors.Wrap(err,
+		return models.ScreeningMatch{}, errors.Wrap(err,
 			"could not merge payloads for match enrichment")
 	}
 
-	newMatch, err := uc.repository.UpdateSanctionCheckMatchPayload(ctx,
+	newMatch, err := uc.repository.UpdateScreeningMatchPayload(ctx,
 		uc.executorFactory.NewExecutor(), match, mergedPayload)
 	if err != nil {
-		return models.SanctionCheckMatch{}, err
+		return models.ScreeningMatch{}, err
 	}
 
 	return newMatch, nil
 }
 
-func (uc SanctionCheckUsecase) GetEntity(ctx context.Context, entityId string) ([]byte, error) {
-	return uc.openSanctionsProvider.EnrichMatch(ctx, models.SanctionCheckMatch{EntityId: entityId})
+func (uc ScreeningUsecase) GetEntity(ctx context.Context, entityId string) ([]byte, error) {
+	return uc.openSanctionsProvider.EnrichMatch(ctx, models.ScreeningMatch{EntityId: entityId})
 }
 
-func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Credentials,
-	sanctionCheckId string, files []multipart.FileHeader,
-) ([]models.SanctionCheckFile, error) {
-	sc, err := uc.repository.GetActiveSanctionCheckForDecision(ctx,
-		uc.executorFactory.NewExecutor(), sanctionCheckId)
+func (uc ScreeningUsecase) CreateFiles(ctx context.Context, creds models.Credentials,
+	screeningId string, files []multipart.FileHeader,
+) ([]models.ScreeningFile, error) {
+	sc, err := uc.repository.GetActiveScreeningForDecision(ctx,
+		uc.executorFactory.NewExecutor(), screeningId)
 	if err != nil {
 		return nil, err
 	}
@@ -742,7 +742,7 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 
 	for _, fileHeader := range files {
 		newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, sc.Id, uuid.NewString())
-		err = writeSanctionCheckFileToBlobStorage(ctx, uc.blobRepository, uc.blobBucketUrl, fileHeader, newFileReference)
+		err = writeScreeningFileToBlobStorage(ctx, uc.blobRepository, uc.blobBucketUrl, fileHeader, newFileReference)
 		if err != nil {
 			break
 		}
@@ -769,18 +769,18 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 		return nil, err
 	}
 
-	uploadedFiles := make([]models.SanctionCheckFile, len(metadata))
+	uploadedFiles := make([]models.ScreeningFile, len(metadata))
 
 	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		for idx, uploadedFile := range metadata {
-			file, err := uc.repository.CreateSanctionCheckFile(
+			file, err := uc.repository.CreateScreeningFile(
 				ctx,
 				tx,
-				models.SanctionCheckFileInput{
-					BucketName:      uc.blobBucketUrl,
-					SanctionCheckId: sc.Id,
-					FileName:        uploadedFile.fileName,
-					FileReference:   uploadedFile.fileReference,
+				models.ScreeningFileInput{
+					BucketName:    uc.blobBucketUrl,
+					ScreeningId:   sc.Id,
+					FileName:      uploadedFile.fileName,
+					FileReference: uploadedFile.fileReference,
 				},
 			)
 			if err != nil {
@@ -804,9 +804,9 @@ func (uc SanctionCheckUsecase) CreateFiles(ctx context.Context, creds models.Cre
 	return uploadedFiles, nil
 }
 
-func (uc SanctionCheckUsecase) ListFiles(ctx context.Context, sanctionCheckId string) ([]models.SanctionCheckFile, error) {
-	sc, err := uc.repository.GetActiveSanctionCheckForDecision(ctx,
-		uc.executorFactory.NewExecutor(), sanctionCheckId)
+func (uc ScreeningUsecase) ListFiles(ctx context.Context, screeningId string) ([]models.ScreeningFile, error) {
+	sc, err := uc.repository.GetActiveScreeningForDecision(ctx,
+		uc.executorFactory.NewExecutor(), screeningId)
 	if err != nil {
 		return nil, err
 	}
@@ -815,7 +815,7 @@ func (uc SanctionCheckUsecase) ListFiles(ctx context.Context, sanctionCheckId st
 		return nil, err
 	}
 
-	files, err := uc.repository.ListSanctionCheckFiles(ctx, uc.executorFactory.NewExecutor(), sc.Id)
+	files, err := uc.repository.ListScreeningFiles(ctx, uc.executorFactory.NewExecutor(), sc.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -823,8 +823,8 @@ func (uc SanctionCheckUsecase) ListFiles(ctx context.Context, sanctionCheckId st
 	return files, nil
 }
 
-func (uc SanctionCheckUsecase) GetFileDownloadUrl(ctx context.Context, sanctionCheckId, fileId string) (string, error) {
-	sc, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), sanctionCheckId)
+func (uc ScreeningUsecase) GetFileDownloadUrl(ctx context.Context, screeningId, fileId string) (string, error) {
+	sc, err := uc.repository.GetScreening(ctx, uc.executorFactory.NewExecutor(), screeningId)
 	if err != nil {
 		return "", err
 	}
@@ -833,7 +833,7 @@ func (uc SanctionCheckUsecase) GetFileDownloadUrl(ctx context.Context, sanctionC
 		return "", err
 	}
 
-	file, err := uc.repository.GetSanctionCheckFile(ctx, uc.executorFactory.NewExecutor(), sc.Id, fileId)
+	file, err := uc.repository.GetScreeningFile(ctx, uc.executorFactory.NewExecutor(), sc.Id, fileId)
 	if err != nil {
 		return "", err
 	}
@@ -841,7 +841,7 @@ func (uc SanctionCheckUsecase) GetFileDownloadUrl(ctx context.Context, sanctionC
 	return uc.blobRepository.GenerateSignedUrl(ctx, uc.blobBucketUrl, file.FileReference)
 }
 
-func writeSanctionCheckFileToBlobStorage(ctx context.Context,
+func writeScreeningFileToBlobStorage(ctx context.Context,
 	blobRepository repositories.BlobRepository, bucketUrl string,
 	fileHeader multipart.FileHeader, newFileReference string,
 ) error {
@@ -867,7 +867,7 @@ func writeSanctionCheckFileToBlobStorage(ctx context.Context,
 
 // Helper functions for enforcing permissions on sanction check actions go below
 
-func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decisionId string) (models.Decision, error) {
+func (uc ScreeningUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decisionId string) (models.Decision, error) {
 	creds, _ := utils.CredentialsFromCtx(ctx)
 
 	exec := uc.executorFactory.NewExecutor()
@@ -904,13 +904,13 @@ func (uc SanctionCheckUsecase) enforceCanReadOrUpdateCase(ctx context.Context, d
 	return decision[0], nil
 }
 
-func (uc SanctionCheckUsecase) enforceCanRefineSanctionCheck(
+func (uc ScreeningUsecase) enforceCanRefineScreening(
 	ctx context.Context,
-	sanctionCheckId string,
-) (models.Decision, models.SanctionCheckWithMatches, error) {
-	sc, err := uc.repository.GetSanctionCheck(ctx, uc.executorFactory.NewExecutor(), sanctionCheckId)
+	screeningId string,
+) (models.Decision, models.ScreeningWithMatches, error) {
+	sc, err := uc.repository.GetScreening(ctx, uc.executorFactory.NewExecutor(), screeningId)
 	if err != nil {
-		return models.Decision{}, models.SanctionCheckWithMatches{},
+		return models.Decision{}, models.ScreeningWithMatches{},
 			errors.WithDetail(err, "sanction check does not exist")
 	}
 
@@ -922,46 +922,46 @@ func (uc SanctionCheckUsecase) enforceCanRefineSanctionCheck(
 
 	decision, err := uc.enforceCanReadOrUpdateCase(ctx, sc.DecisionId)
 	if err != nil {
-		return models.Decision{}, models.SanctionCheckWithMatches{}, err
+		return models.Decision{}, models.ScreeningWithMatches{}, err
 	}
 
 	return decision, sc, nil
 }
 
-type sanctionCheckContextData struct {
+type screeningContextData struct {
 	decision models.Decision
-	sanction models.SanctionCheck
-	match    models.SanctionCheckMatch
+	sanction models.Screening
+	match    models.ScreeningMatch
 }
 
-func (uc SanctionCheckUsecase) enforceCanReadOrUpdateSanctionCheckMatch(
+func (uc ScreeningUsecase) enforceCanReadOrUpdateScreeningMatch(
 	ctx context.Context,
 	matchId string,
-) (sanctionCheckContextData, error) {
-	match, err := uc.repository.GetSanctionCheckMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
+) (screeningContextData, error) {
+	match, err := uc.repository.GetScreeningMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
 	if err != nil {
-		return sanctionCheckContextData{}, err
+		return screeningContextData{}, err
 	}
 
-	sanctionCheck, err := uc.repository.GetSanctionCheckWithoutMatches(ctx,
-		uc.executorFactory.NewExecutor(), match.SanctionCheckId)
+	screening, err := uc.repository.GetScreeningWithoutMatches(ctx,
+		uc.executorFactory.NewExecutor(), match.ScreeningId)
 	if err != nil {
-		return sanctionCheckContextData{}, err
+		return screeningContextData{}, err
 	}
 
-	if sanctionCheck.IsArchived {
-		return sanctionCheckContextData{}, errors.WithDetail(models.UnprocessableEntityError,
+	if screening.IsArchived {
+		return screeningContextData{}, errors.WithDetail(models.UnprocessableEntityError,
 			"sanction check was refined and cannot be reviewed")
 	}
 
-	dec, err := uc.enforceCanReadOrUpdateCase(ctx, sanctionCheck.DecisionId)
+	dec, err := uc.enforceCanReadOrUpdateCase(ctx, screening.DecisionId)
 	if err != nil {
-		return sanctionCheckContextData{}, err
+		return screeningContextData{}, err
 	}
 
-	return sanctionCheckContextData{
+	return screeningContextData{
 		decision: dec,
-		sanction: sanctionCheck,
+		sanction: screening,
 		match:    match,
 	}, nil
 }

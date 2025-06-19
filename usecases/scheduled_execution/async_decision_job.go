@@ -82,14 +82,14 @@ type ScenarioEvaluator interface {
 		triggerPassed bool, se models.ScenarioExecution, err error)
 }
 
-type decisionWorkerSanctionCheckWriter interface {
-	InsertSanctionCheck(
+type decisionWorkerScreeningWriter interface {
+	InsertScreening(
 		ctx context.Context,
 		exec repositories.Executor,
 		decisionid string,
-		sc models.SanctionCheckWithMatches,
+		sc models.ScreeningWithMatches,
 		storeMatches bool,
-	) (models.SanctionCheckWithMatches, error)
+	) (models.ScreeningWithMatches, error)
 }
 
 type AsyncDecisionWorker struct {
@@ -106,7 +106,7 @@ type AsyncDecisionWorker struct {
 	scenarioFetcher            scenarios.ScenarioFetcher
 	phantomDecision            decision_phantom.PhantomDecisionUsecase
 	scenarioEvaluator          ScenarioEvaluator
-	sanctionCheckRepository    decisionWorkerSanctionCheckWriter
+	screeningRepository        decisionWorkerScreeningWriter
 }
 
 func NewAsyncDecisionWorker(
@@ -121,7 +121,7 @@ func NewAsyncDecisionWorker(
 	scenarioFetcher scenarios.ScenarioFetcher,
 	phantom decision_phantom.PhantomDecisionUsecase,
 	scenarioEvaluator ScenarioEvaluator,
-	sanctionCheckRepository decisionWorkerSanctionCheckWriter,
+	screeningRepository decisionWorkerScreeningWriter,
 ) AsyncDecisionWorker {
 	return AsyncDecisionWorker{
 		repository:                 repository,
@@ -135,7 +135,7 @@ func NewAsyncDecisionWorker(
 		scenarioFetcher:            scenarioFetcher,
 		phantomDecision:            phantom,
 		scenarioEvaluator:          scenarioEvaluator,
-		sanctionCheckRepository:    sanctionCheckRepository,
+		screeningRepository:        screeningRepository,
 	}
 }
 
@@ -300,9 +300,9 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	executeTestRun := func(se *models.ScenarioExecution) {
 		evaluationParameters.TargetIterationId = nil
 		if se != nil {
-			evaluationParameters.CachedSanctionCheck = pure_utils.MapSliceToMap(
-				se.SanctionCheckExecutions,
-				func(scm models.SanctionCheckWithMatches) (string, models.SanctionCheckWithMatches) {
+			evaluationParameters.CachedScreenings = pure_utils.MapSliceToMap(
+				se.ScreeningExecutions,
+				func(scm models.ScreeningWithMatches) (string, models.ScreeningWithMatches) {
 					return se.ScenarioIterationId, scm
 				},
 			)
@@ -374,9 +374,9 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 			"steps", scenarioExecution.ExecutionMetrics.Steps)
 	}
 
-	if decision.SanctionCheckExecutions != nil {
-		for _, sce := range decision.SanctionCheckExecutions {
-			_, err := w.sanctionCheckRepository.InsertSanctionCheck(ctx, tx,
+	if decision.ScreeningExecutions != nil {
+		for _, sce := range decision.ScreeningExecutions {
+			_, err := w.screeningRepository.InsertScreening(ctx, tx,
 				decision.DecisionId, sce, true)
 			if err != nil {
 				return false, nil, nil, errors.Wrap(err,

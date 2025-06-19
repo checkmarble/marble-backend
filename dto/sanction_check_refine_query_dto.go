@@ -64,8 +64,8 @@ type RefineQueryVehicle struct {
 	RegistrationNumber string `json:"registrationNumber"` //nolint:tagliatelle
 }
 
-func AdaptRefineQueryDto(dto RefineQueryDto) models.OpenSanctionCheckFilter {
-	filter := models.OpenSanctionCheckFilter{}
+func AdaptRefineQueryDto(dto RefineQueryDto) models.OpenSanctionsFilter {
+	filter := models.OpenSanctionsFilter{}
 
 	assign := func(queryField, value string) {
 		if value != "" {

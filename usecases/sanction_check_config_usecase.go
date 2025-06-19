@@ -11,41 +11,41 @@ import (
 	"github.com/pkg/errors"
 )
 
-type SanctionCheckConfigRepository interface {
-	ListSanctionCheckConfigs(ctx context.Context, exec repositories.Executor,
-		scenarioIterationId string) ([]models.SanctionCheckConfig, error)
-	GetSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
-		scenarioIterationId, id string) (models.SanctionCheckConfig, error)
-	CreateSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
-		scenarioIterationId string, sanctionCheckConfig models.UpdateSanctionCheckConfigInput) (models.SanctionCheckConfig, error)
-	UpdateSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
-		scenarioIterationId, sanctionCheckId string, sanctionCheckConfig models.UpdateSanctionCheckConfigInput) (models.SanctionCheckConfig, error)
-	DeleteSanctionCheckConfig(ctx context.Context, exec repositories.Executor, iterationId, configId string) error
+type ScreeningConfigRepository interface {
+	ListScreeningConfigs(ctx context.Context, exec repositories.Executor,
+		scenarioIterationId string) ([]models.ScreeningConfig, error)
+	GetScreeningConfig(ctx context.Context, exec repositories.Executor,
+		scenarioIterationId, id string) (models.ScreeningConfig, error)
+	CreateScreeningConfig(ctx context.Context, exec repositories.Executor,
+		scenarioIterationId string, screeningConfig models.UpdateScreeningConfigInput) (models.ScreeningConfig, error)
+	UpdateScreeningConfig(ctx context.Context, exec repositories.Executor,
+		scenarioIterationId, screeningId string, screeningConfig models.UpdateScreeningConfigInput) (models.ScreeningConfig, error)
+	DeleteScreeningConfig(ctx context.Context, exec repositories.Executor, iterationId, configId string) error
 }
 
-func (uc SanctionCheckUsecase) CreateSanctionCheckConfig(ctx context.Context, iterationId string,
-	scCfg models.UpdateSanctionCheckConfigInput,
-) (models.SanctionCheckConfig, error) {
+func (uc ScreeningUsecase) CreateScreeningConfig(ctx context.Context, iterationId string,
+	scCfg models.UpdateScreeningConfigInput,
+) (models.ScreeningConfig, error) {
 	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx,
 		uc.executorFactory.NewExecutor(), iterationId)
 	if err != nil {
-		return models.SanctionCheckConfig{}, errors.Wrap(err,
+		return models.ScreeningConfig{}, errors.Wrap(err,
 			"could not find provided scenario iteration")
 	}
 
 	if err := uc.enforceSecurityScenario.UpdateScenario(scenarioAndIteration.Scenario); err != nil {
-		return models.SanctionCheckConfig{}, err
+		return models.ScreeningConfig{}, err
 	}
 
 	if scenarioAndIteration.Iteration.Version != nil {
-		return models.SanctionCheckConfig{}, errors.Wrap(models.ErrScenarioIterationNotDraft,
+		return models.ScreeningConfig{}, errors.Wrap(models.ErrScenarioIterationNotDraft,
 			fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id))
 	}
 
 	if scCfg.Query != nil {
 		for field, v := range scCfg.Query {
 			if v.Function != ast.FUNC_STRING_CONCAT {
-				return models.SanctionCheckConfig{}, fmt.Errorf(
+				return models.ScreeningConfig{}, fmt.Errorf(
 					"query field '%s' is not a StringConcat", field)
 			}
 		}
@@ -53,42 +53,42 @@ func (uc SanctionCheckUsecase) CreateSanctionCheckConfig(ctx context.Context, it
 
 	if scCfg.ForcedOutcome != nil &&
 		!slices.Contains(models.ValidForcedOutcome, *scCfg.ForcedOutcome) {
-		return models.SanctionCheckConfig{}, errors.Wrap(models.BadParameterError,
+		return models.ScreeningConfig{}, errors.Wrap(models.BadParameterError,
 			"sanction check config: invalid forced outcome")
 	}
 
-	scc, err := uc.sanctionCheckConfigRepository.CreateSanctionCheckConfig(ctx, uc.executorFactory.NewExecutor(),
+	scc, err := uc.screeningConfigRepository.CreateScreeningConfig(ctx, uc.executorFactory.NewExecutor(),
 		iterationId, scCfg)
 	if err != nil {
-		return models.SanctionCheckConfig{}, err
+		return models.ScreeningConfig{}, err
 	}
 
 	return scc, nil
 }
 
-func (uc SanctionCheckUsecase) UpdateSanctionCheckConfig(ctx context.Context,
-	iterationId, sanctionCheckId string,
-	scCfg models.UpdateSanctionCheckConfigInput,
-) (models.SanctionCheckConfig, error) {
+func (uc ScreeningUsecase) UpdateScreeningConfig(ctx context.Context,
+	iterationId, screeningId string,
+	scCfg models.UpdateScreeningConfigInput,
+) (models.ScreeningConfig, error) {
 	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx,
 		uc.executorFactory.NewExecutor(), iterationId)
 	if err != nil {
-		return models.SanctionCheckConfig{}, errors.Wrap(err,
+		return models.ScreeningConfig{}, errors.Wrap(err,
 			"could not find provided scenario iteration")
 	}
 
 	if err := uc.enforceSecurityScenario.UpdateScenario(scenarioAndIteration.Scenario); err != nil {
-		return models.SanctionCheckConfig{}, err
+		return models.ScreeningConfig{}, err
 	}
 
 	if scenarioAndIteration.Iteration.Version != nil {
-		return models.SanctionCheckConfig{}, errors.Wrap(models.ErrScenarioIterationNotDraft,
+		return models.ScreeningConfig{}, errors.Wrap(models.ErrScenarioIterationNotDraft,
 			fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id))
 	}
 
-	currentScc, err := uc.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, uc.executorFactory.NewExecutor(), iterationId, sanctionCheckId)
+	currentScc, err := uc.screeningConfigRepository.GetScreeningConfig(ctx, uc.executorFactory.NewExecutor(), iterationId, screeningId)
 	if err != nil {
-		return models.SanctionCheckConfig{}, err
+		return models.ScreeningConfig{}, err
 	}
 
 	if scCfg.EntityType != nil && *scCfg.EntityType != "Thing" {
@@ -102,7 +102,7 @@ func (uc SanctionCheckUsecase) UpdateSanctionCheckConfig(ctx context.Context,
 	if scCfg.Query != nil {
 		for field, v := range scCfg.Query {
 			if v.Function != ast.FUNC_STRING_CONCAT {
-				return models.SanctionCheckConfig{}, fmt.Errorf(
+				return models.ScreeningConfig{}, fmt.Errorf(
 					"query filter '%s' must be a StringConcat", field)
 			}
 		}
@@ -110,20 +110,20 @@ func (uc SanctionCheckUsecase) UpdateSanctionCheckConfig(ctx context.Context,
 
 	if scCfg.ForcedOutcome != nil &&
 		!slices.Contains(models.ValidForcedOutcome, *scCfg.ForcedOutcome) {
-		return models.SanctionCheckConfig{}, errors.Wrap(models.BadParameterError,
+		return models.ScreeningConfig{}, errors.Wrap(models.BadParameterError,
 			"sanction check config: invalid forced outcome")
 	}
 
-	scc, err := uc.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(ctx, uc.executorFactory.NewExecutor(),
-		iterationId, sanctionCheckId, scCfg)
+	scc, err := uc.screeningConfigRepository.UpdateScreeningConfig(ctx, uc.executorFactory.NewExecutor(),
+		iterationId, screeningId, scCfg)
 	if err != nil {
-		return models.SanctionCheckConfig{}, err
+		return models.ScreeningConfig{}, err
 	}
 
 	return scc, nil
 }
 
-func (uc SanctionCheckUsecase) DeleteSanctionCheckConfig(ctx context.Context, iterationId, configId string) error {
+func (uc ScreeningUsecase) DeleteScreeningConfig(ctx context.Context, iterationId, configId string) error {
 	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx,
 		uc.executorFactory.NewExecutor(), iterationId)
 	if err != nil {
@@ -139,6 +139,6 @@ func (uc SanctionCheckUsecase) DeleteSanctionCheckConfig(ctx context.Context, it
 			fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id))
 	}
 
-	return uc.sanctionCheckConfigRepository.DeleteSanctionCheckConfig(ctx,
+	return uc.screeningConfigRepository.DeleteScreeningConfig(ctx,
 		uc.executorFactory.NewExecutor(), iterationId, configId)
 }

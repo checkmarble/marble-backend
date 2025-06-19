@@ -7,26 +7,26 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-type DBSanctionCheckFile struct {
-	Id              string    `db:"id"`
-	SanctionCheckId string    `db:"sanction_check_id"`
-	BucketName      string    `db:"bucket_name"`
-	FileReference   string    `db:"file_reference"`
-	FileName        string    `db:"file_name"`
-	CreatedAt       time.Time `db:"created_at"`
+type DBScreeningFile struct {
+	Id            string    `db:"id"`
+	ScreeningId   string    `db:"sanction_check_id"`
+	BucketName    string    `db:"bucket_name"`
+	FileReference string    `db:"file_reference"`
+	FileName      string    `db:"file_name"`
+	CreatedAt     time.Time `db:"created_at"`
 }
 
-const TABLE_SANCTION_CHECK_FILES = "sanction_check_files"
+const TABLE_SCREENING_FILES = "sanction_check_files"
 
-var SelectSanctionCheckFileColumn = utils.ColumnList[DBSanctionCheckFile]()
+var SelectScreeningFileColumn = utils.ColumnList[DBScreeningFile]()
 
-func AdaptSanctionCheckFile(db DBSanctionCheckFile) (models.SanctionCheckFile, error) {
-	return models.SanctionCheckFile{
-		Id:              db.Id,
-		SanctionCheckId: db.SanctionCheckId,
-		CreatedAt:       db.CreatedAt,
-		BucketName:      db.BucketName,
-		FileName:        db.FileName,
-		FileReference:   db.FileReference,
+func AdaptScreeningFile(db DBScreeningFile) (models.ScreeningFile, error) {
+	return models.ScreeningFile{
+		Id:            db.Id,
+		ScreeningId:   db.ScreeningId,
+		CreatedAt:     db.CreatedAt,
+		BucketName:    db.BucketName,
+		FileName:      db.FileName,
+		FileReference: db.FileReference,
 	}, nil
 }

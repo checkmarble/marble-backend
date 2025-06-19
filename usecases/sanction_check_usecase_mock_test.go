@@ -9,29 +9,29 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type sanctionCheckEnforcerMock struct{}
+type screeningEnforcerMock struct{}
 
-func (sanctionCheckEnforcerMock) ReadDecision(models.Decision) error {
+func (screeningEnforcerMock) ReadDecision(models.Decision) error {
 	return nil
 }
 
-func (sanctionCheckEnforcerMock) ReadOrUpdateCase(models.CaseMetadata, []uuid.UUID) error {
+func (screeningEnforcerMock) ReadOrUpdateCase(models.CaseMetadata, []uuid.UUID) error {
 	return nil
 }
 
-type SanctionCheckCaseUsecaseMock struct {
+type ScreeningCaseUsecaseMock struct {
 	mock.Mock
 }
 
-func (m *SanctionCheckCaseUsecaseMock) PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error {
+func (m *ScreeningCaseUsecaseMock) PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error {
 	args := m.Called(ctx, tx, c)
 
 	return args.Error(0)
 }
 
-type sanctionCheckRepositoryMock struct{}
+type screeningRepositoryMock struct{}
 
-func (sanctionCheckRepositoryMock) GetOrganizationById(ctx context.Context,
+func (screeningRepositoryMock) GetOrganizationById(ctx context.Context,
 	exec repositories.Executor, organizationId string,
 ) (models.Organization, error) {
 	return models.Organization{
@@ -44,7 +44,7 @@ func (sanctionCheckRepositoryMock) GetOrganizationById(ctx context.Context,
 	}, nil
 }
 
-func (sanctionCheckRepositoryMock) CreateCaseEvent(
+func (screeningRepositoryMock) CreateCaseEvent(
 	ctx context.Context,
 	exec repositories.Executor,
 	createCaseEventAttributes models.CreateCaseEventAttributes,
@@ -52,11 +52,11 @@ func (sanctionCheckRepositoryMock) CreateCaseEvent(
 	return nil
 }
 
-func (sanctionCheckRepositoryMock) CreateCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) error {
+func (screeningRepositoryMock) CreateCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) error {
 	return nil
 }
 
-func (sanctionCheckRepositoryMock) DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error) {
+func (screeningRepositoryMock) DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error) {
 	decisions := []models.Decision{
 		{
 			OrganizationId: "orgid",
@@ -68,7 +68,7 @@ func (sanctionCheckRepositoryMock) DecisionsById(ctx context.Context, exec repos
 	return decisions, nil
 }
 
-func (sanctionCheckRepositoryMock) ListInboxes(
+func (screeningRepositoryMock) ListInboxes(
 	ctx context.Context,
 	exec repositories.Executor,
 	organizationId string,

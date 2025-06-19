@@ -32,7 +32,7 @@ type RuleUsecaseRepository interface {
 		iterationId string,
 		begin, end time.Time,
 	) ([]models.RuleExecutionStat, error)
-	SanctionCheckExecutionStats(
+	ScreeningExecutionStats(
 		ctx context.Context,
 		exec repositories.Executor,
 		organizationId string,

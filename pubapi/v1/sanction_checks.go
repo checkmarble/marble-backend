@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func HandleListSanctionChecks(uc usecases.Usecases) gin.HandlerFunc {
+func HandleListScreenings(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		decisionId, err := pubapi.UuidParam(c, "decisionId")
 		if err != nil {
@@ -24,13 +24,13 @@ func HandleListSanctionChecks(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
-		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+		screeningUsecase := uc.NewScreeningUsecase()
 
 		if !pubapi.CheckFeatureAccess(c, uc) {
 			return
 		}
 
-		sc, err := sanctionCheckUsecase.ListSanctionChecks(c.Request.Context(), decisionId.String(), false)
+		sc, err := screeningUsecase.ListScreenings(c.Request.Context(), decisionId.String(), false)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -42,18 +42,18 @@ func HandleListSanctionChecks(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		pubapi.
-			NewResponse(pure_utils.Map(sc, dto.AdaptSanctionCheck(true))).
+			NewResponse(pure_utils.Map(sc, dto.AdaptScreening(true))).
 			WithLink(pubapi.LinkDecisions, gin.H{"id": decisionId.String()}).
 			Serve(c)
 	}
 }
 
-type UpdateSanctionCheckMatchStatusParams struct {
+type UpdateScreeningMatchStatusParams struct {
 	Status    string `json:"status" binding:"required,oneof=no_hit confirmed_hit"`
 	Whitelist bool   `json:"whitelist" binding:"excluded_unless=Status no_hit"`
 }
 
-func HandleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) gin.HandlerFunc {
+func HandleUpdateScreeningMatchStatus(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		matchId, err := pubapi.UuidParam(c, "matchId")
 		if err != nil {
@@ -61,7 +61,7 @@ func HandleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) gin.HandlerFunc 
 			return
 		}
 
-		var params UpdateSanctionCheckMatchStatusParams
+		var params UpdateScreeningMatchStatusParams
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
@@ -69,11 +69,11 @@ func HandleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) gin.HandlerFunc 
 		}
 
 		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
-		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+		screeningUsecase := uc.NewScreeningUsecase()
 
-		match, err := sanctionCheckUsecase.UpdateMatchStatus(c.Request.Context(), models.SanctionCheckMatchUpdate{
+		match, err := screeningUsecase.UpdateMatchStatus(c.Request.Context(), models.ScreeningMatchUpdate{
 			MatchId:   matchId.String(),
-			Status:    models.SanctionCheckMatchStatusFrom(params.Status),
+			Status:    models.ScreeningMatchStatusFrom(params.Status),
 			Whitelist: params.Whitelist,
 		})
 		if err != nil {
@@ -82,15 +82,15 @@ func HandleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) gin.HandlerFunc 
 		}
 
 		pubapi.
-			NewResponse(dto.AdaptSanctionCheckMatch(match)).
-			WithLink(pubapi.LinkSanctionChecks, gin.H{"id": match.SanctionCheckId}).
+			NewResponse(dto.AdaptScreeningMatch(match)).
+			WithLink(pubapi.LinkScreenings, gin.H{"id": match.ScreeningId}).
 			Serve(c)
 	}
 }
 
-func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc {
+func HandleRefineScreening(uc usecases.Usecases, write bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		sanctionCheckId, err := pubapi.UuidParam(c, "screeningId")
+		screeningId, err := pubapi.UuidParam(c, "screeningId")
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -111,53 +111,53 @@ func HandleRefineSanctionCheck(uc usecases.Usecases, write bool) gin.HandlerFunc
 		}
 
 		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
-		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+		screeningUsecase := uc.NewScreeningUsecase()
 
-		sanctionCheck, err := sanctionCheckUsecase.GetSanctionCheck(c.Request.Context(), sanctionCheckId.String())
+		screening, err := screeningUsecase.GetScreening(c.Request.Context(), screeningId.String())
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		refineQuery := models.SanctionCheckRefineRequest{
-			DecisionId: sanctionCheck.DecisionId,
+		refineQuery := models.ScreeningRefineRequest{
+			DecisionId: screening.DecisionId,
 			Type:       params.Type(),
 			Query:      gdto.AdaptRefineQueryDto(params),
 		}
 
 		switch write {
 		case true:
-			sanctionCheck, err := sanctionCheckUsecase.Refine(c.Request.Context(), refineQuery, nil)
+			screening, err := screeningUsecase.Refine(c.Request.Context(), refineQuery, nil)
 			if err != nil {
 				pubapi.NewErrorResponse().WithError(err).Serve(c)
 				return
 			}
 
 			pubapi.
-				NewResponse(dto.AdaptSanctionCheck(true)(sanctionCheck)).
-				WithLink(pubapi.LinkDecisions, gin.H{pubapi.LinkDecisions: sanctionCheck.DecisionId}).
+				NewResponse(dto.AdaptScreening(true)(screening)).
+				WithLink(pubapi.LinkDecisions, gin.H{pubapi.LinkDecisions: screening.DecisionId}).
 				Serve(c)
 
 		case false:
-			sanctionCheck, err := sanctionCheckUsecase.Search(c.Request.Context(), refineQuery)
+			screening, err := screeningUsecase.Search(c.Request.Context(), refineQuery)
 			if err != nil {
 				pubapi.NewErrorResponse().WithError(err).Serve(c)
 				return
 			}
 
-			matchPayload := func(m models.SanctionCheckMatch) json.RawMessage {
+			matchPayload := func(m models.ScreeningMatch) json.RawMessage {
 				return m.Payload
 			}
 
 			pubapi.
-				NewResponse(pure_utils.Map(sanctionCheck.Matches, matchPayload)).
-				WithLink(pubapi.LinkDecisions, gin.H{pubapi.LinkDecisions: sanctionCheck.DecisionId}).
+				NewResponse(pure_utils.Map(screening.Matches, matchPayload)).
+				WithLink(pubapi.LinkDecisions, gin.H{pubapi.LinkDecisions: screening.DecisionId}).
 				Serve(c)
 		}
 	}
 }
 
-func HandleSanctionFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
+func HandleScreeningFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
@@ -180,39 +180,39 @@ func HandleSanctionFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
-		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+		screeningUsecase := uc.NewScreeningUsecase()
 
-		refineQuery := models.SanctionCheckRefineRequest{
+		refineQuery := models.ScreeningRefineRequest{
 			Type:  params.Type(),
 			Query: gdto.AdaptRefineQueryDto(params),
 		}
 
-		sanctionCheck, err := sanctionCheckUsecase.FreeformSearch(c.Request.Context(),
-			orgId, models.SanctionCheckConfig{}, refineQuery)
+		screening, err := screeningUsecase.FreeformSearch(c.Request.Context(),
+			orgId, models.ScreeningConfig{}, refineQuery)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		matchPayload := func(m models.SanctionCheckMatch) json.RawMessage {
+		matchPayload := func(m models.ScreeningMatch) json.RawMessage {
 			return m.Payload
 		}
 
 		pubapi.
-			NewResponse(pure_utils.Map(sanctionCheck.Matches, matchPayload)).
+			NewResponse(pure_utils.Map(screening.Matches, matchPayload)).
 			Serve(c)
 	}
 }
 
-func HandleGetSanctionCheckEntity(uc usecases.Usecases) gin.HandlerFunc {
+func HandleGetScreeningEntity(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		entityId := c.Param("entityId")
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
-		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+		screeningUsecase := uc.NewScreeningUsecase()
 
-		entity, err := sanctionCheckUsecase.GetEntity(ctx, entityId)
+		entity, err := screeningUsecase.GetEntity(ctx, entityId)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -244,9 +244,9 @@ func HandleAddWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
-		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+		screeningUsecase := uc.NewScreeningUsecase()
 
-		if err := sanctionCheckUsecase.CreateWhitelist(ctx, nil, orgId,
+		if err := screeningUsecase.CreateWhitelist(ctx, nil, orgId,
 			params.Counterparty, params.EntityId, nil); err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -278,9 +278,9 @@ func HandleDeleteWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
-		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+		screeningUsecase := uc.NewScreeningUsecase()
 
-		if err := sanctionCheckUsecase.DeleteWhitelist(ctx, nil, orgId,
+		if err := screeningUsecase.DeleteWhitelist(ctx, nil, orgId,
 			params.Counterparty, params.EntityId, nil); err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -320,9 +320,9 @@ func HandleSearchWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
-		sanctionCheckUsecase := uc.NewSanctionCheckUsecase()
+		screeningUsecase := uc.NewScreeningUsecase()
 
-		whitelists, err := sanctionCheckUsecase.SearchWhitelist(ctx, nil,
+		whitelists, err := screeningUsecase.SearchWhitelist(ctx, nil,
 			orgId, params.Counterparty, params.EntityId, nil)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
@@ -330,7 +330,7 @@ func HandleSearchWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		pubapi.
-			NewResponse(pure_utils.Map(whitelists, dto.AdaptSanctionCheckWhitelist)).
+			NewResponse(pure_utils.Map(whitelists, dto.AdaptScreeningWhitelist)).
 			Serve(c)
 	}
 }

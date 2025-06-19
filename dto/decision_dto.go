@@ -98,7 +98,7 @@ type DecisionRule struct {
 	RuleEvaluation *ast.NodeEvaluationDto `json:"rule_evaluation,omitempty"`
 }
 
-type DecisionSanctionCheck struct {
+type DecisionScreening struct {
 	Id      string `json:"id"`
 	Status  string `json:"status"`
 	Partial bool   `json:"partial"`
@@ -140,8 +140,8 @@ type Decision struct {
 
 type DecisionWithRules struct {
 	Decision
-	Rules          []DecisionRule          `json:"rules"`
-	SanctionChecks []DecisionSanctionCheck `json:"sanction_checks,omitempty"`
+	Rules      []DecisionRule      `json:"rules"`
+	Screenings []DecisionScreening `json:"sanction_checks,omitempty"` //nolint:tagliatelle
 }
 
 func NewDecisionDto(decision models.Decision, marbleAppUrl *url.URL) Decision {
@@ -206,11 +206,11 @@ func NewDecisionWithRuleDto(decision models.DecisionWithRuleExecutions, marbleAp
 		decisionDto.Rules[i] = NewDecisionRuleDto(ruleExecution, withRuleExecution)
 	}
 
-	if decision.SanctionCheckExecutions != nil {
-		decisionDto.SanctionChecks = make([]DecisionSanctionCheck, len(decision.SanctionCheckExecutions))
+	if decision.ScreeningExecutions != nil {
+		decisionDto.Screenings = make([]DecisionScreening, len(decision.ScreeningExecutions))
 
-		for idx, sce := range decision.SanctionCheckExecutions {
-			decisionDto.SanctionChecks[idx] = DecisionSanctionCheck{
+		for idx, sce := range decision.ScreeningExecutions {
+			decisionDto.Screenings[idx] = DecisionScreening{
 				Id:      sce.Id,
 				Status:  sce.Status.String(),
 				Partial: sce.Partial,

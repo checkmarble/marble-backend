@@ -21,14 +21,14 @@ type TestRunUsecaseFeatureAccessReader interface {
 }
 
 type ScenarioTestRunUsecase struct {
-	transactionFactory            executor_factory.TransactionFactory
-	executorFactory               executor_factory.ExecutorFactory
-	enforceSecurity               security.EnforceSecurityTestRun
-	repository                    repositories.ScenarioTestRunRepository
-	scenarioRepository            repositories.ScenarioUsecaseRepository
-	clientDbIndexEditor           clientDbIndexEditor
-	featureAccessReader           TestRunUsecaseFeatureAccessReader
-	sanctionCheckConfigRepository SanctionCheckConfigRepository
+	transactionFactory        executor_factory.TransactionFactory
+	executorFactory           executor_factory.ExecutorFactory
+	enforceSecurity           security.EnforceSecurityTestRun
+	repository                repositories.ScenarioTestRunRepository
+	scenarioRepository        repositories.ScenarioUsecaseRepository
+	clientDbIndexEditor       clientDbIndexEditor
+	featureAccessReader       TestRunUsecaseFeatureAccessReader
+	screeningConfigRepository ScreeningConfigRepository
 }
 
 func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
@@ -54,7 +54,7 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
 	}
 
-	sccs, err := usecase.sanctionCheckConfigRepository.ListSanctionCheckConfigs(ctx, exec, input.PhantomIterationId)
+	sccs, err := usecase.screeningConfigRepository.ListScreeningConfigs(ctx, exec, input.PhantomIterationId)
 	if err != nil {
 		return models.ScenarioTestRun{}, err
 	}

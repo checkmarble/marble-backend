@@ -111,14 +111,14 @@ func (repo *MarbleDbRepository) UpdateOrganization(ctx context.Context, exec Exe
 			*updateOrganization.DefaultScenarioTimezone)
 		hasUpdates = true
 	}
-	if updateOrganization.SanctionCheckConfig.MatchThreshold != nil {
+	if updateOrganization.ScreeningConfig.MatchThreshold != nil {
 		updateRequest = updateRequest.Set("sanctions_threshold",
-			*updateOrganization.SanctionCheckConfig.MatchThreshold)
+			*updateOrganization.ScreeningConfig.MatchThreshold)
 		hasUpdates = true
 	}
-	if updateOrganization.SanctionCheckConfig.MatchLimit != nil {
+	if updateOrganization.ScreeningConfig.MatchLimit != nil {
 		updateRequest = updateRequest.Set("sanctions_limit",
-			*updateOrganization.SanctionCheckConfig.MatchLimit)
+			*updateOrganization.ScreeningConfig.MatchLimit)
 		hasUpdates = true
 	}
 

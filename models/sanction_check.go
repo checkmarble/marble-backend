@@ -5,121 +5,121 @@ import (
 	"time"
 )
 
-type SanctionCheckStatus int
+type ScreeningStatus int
 
 const (
-	SanctionStatusConfirmedHit SanctionCheckStatus = iota
-	SanctionStatusNoHit
-	SanctionStatusInReview
-	SanctionStatusError
-	SanctionStatusUnknown
+	ScreeningStatusConfirmedHit ScreeningStatus = iota
+	ScreeningStatusNoHit
+	ScreeningStatusInReview
+	ScreeningStatusError
+	ScreeningStatusUnknown
 )
 
-func SanctionCheckStatusFrom(s string) SanctionCheckStatus {
+func ScreeningStatusFrom(s string) ScreeningStatus {
 	switch s {
 	case "confirmed_hit":
-		return SanctionStatusConfirmedHit
+		return ScreeningStatusConfirmedHit
 	case "no_hit":
-		return SanctionStatusNoHit
+		return ScreeningStatusNoHit
 	case "in_review":
-		return SanctionStatusInReview
+		return ScreeningStatusInReview
 	case "error":
-		return SanctionStatusError
+		return ScreeningStatusError
 	}
 
-	return SanctionStatusUnknown
+	return ScreeningStatusUnknown
 }
 
-func (scs SanctionCheckStatus) String() string {
+func (scs ScreeningStatus) String() string {
 	switch scs {
-	case SanctionStatusConfirmedHit:
+	case ScreeningStatusConfirmedHit:
 		return "confirmed_hit"
-	case SanctionStatusNoHit:
+	case ScreeningStatusNoHit:
 		return "no_hit"
-	case SanctionStatusInReview:
+	case ScreeningStatusInReview:
 		return "in_review"
-	case SanctionStatusError:
+	case ScreeningStatusError:
 		return "error"
 	}
 
 	return "unknown"
 }
 
-func (scs SanctionCheckStatus) IsReviewable() bool {
-	return scs == SanctionStatusInReview
+func (scs ScreeningStatus) IsReviewable() bool {
+	return scs == ScreeningStatusInReview
 }
 
-func (scs SanctionCheckStatus) IsRefinable() bool {
-	return scs == SanctionStatusInReview || scs == SanctionStatusError
+func (scs ScreeningStatus) IsRefinable() bool {
+	return scs == ScreeningStatusInReview || scs == ScreeningStatusError
 }
 
-type SanctionCheckMatchStatus int
+type ScreeningMatchStatus int
 
 const (
-	SanctionMatchStatusConfirmedHit SanctionCheckMatchStatus = iota
-	SanctionMatchStatusNoHit
-	SanctionMatchStatusPending
-	SanctionMatchStatusSkipped
-	SanctionMatchStatusUnknown
+	ScreeningMatchStatusConfirmedHit ScreeningMatchStatus = iota
+	ScreeningMatchStatusNoHit
+	ScreeningMatchStatusPending
+	ScreeningMatchStatusSkipped
+	ScreeningMatchStatusUnknown
 )
 
-func SanctionCheckMatchStatusFrom(s string) SanctionCheckMatchStatus {
+func ScreeningMatchStatusFrom(s string) ScreeningMatchStatus {
 	switch s {
 	case "confirmed_hit":
-		return SanctionMatchStatusConfirmedHit
+		return ScreeningMatchStatusConfirmedHit
 	case "no_hit":
-		return SanctionMatchStatusNoHit
+		return ScreeningMatchStatusNoHit
 	case "pending":
-		return SanctionMatchStatusPending
+		return ScreeningMatchStatusPending
 	case "skipped":
-		return SanctionMatchStatusSkipped
+		return ScreeningMatchStatusSkipped
 	}
 
-	return SanctionMatchStatusUnknown
+	return ScreeningMatchStatusUnknown
 }
 
-func (scs SanctionCheckMatchStatus) String() string {
+func (scs ScreeningMatchStatus) String() string {
 	switch scs {
-	case SanctionMatchStatusConfirmedHit:
+	case ScreeningMatchStatusConfirmedHit:
 		return "confirmed_hit"
-	case SanctionMatchStatusNoHit:
+	case ScreeningMatchStatusNoHit:
 		return "no_hit"
-	case SanctionMatchStatusPending:
+	case ScreeningMatchStatusPending:
 		return "pending"
-	case SanctionMatchStatusSkipped:
+	case ScreeningMatchStatusSkipped:
 		return "skipped"
 	}
 
 	return "unknown"
 }
 
-type SanctionCheck struct {
-	Id                    string
-	DecisionId            string
-	SanctionCheckConfigId string
-	Status                SanctionCheckStatus
-	Config                SanctionCheckConfigRef
-	Datasets              []string
-	SearchInput           json.RawMessage
-	OrgConfig             OrganizationOpenSanctionsConfig
-	IsManual              bool
-	IsArchived            bool
-	InitialHasMatches     bool
-	RequestedBy           *string
-	Partial               bool
-	WhitelistedEntities   []string
-	ErrorCodes            []string
-	ErrorDetail           error
-	CreatedAt             time.Time
-	UpdatedAt             time.Time
+type Screening struct {
+	Id                  string
+	DecisionId          string
+	ScreeningConfigId   string
+	Status              ScreeningStatus
+	Config              ScreeningConfigRef
+	Datasets            []string
+	SearchInput         json.RawMessage
+	OrgConfig           OrganizationOpenSanctionsConfig
+	IsManual            bool
+	IsArchived          bool
+	InitialHasMatches   bool
+	RequestedBy         *string
+	Partial             bool
+	WhitelistedEntities []string
+	ErrorCodes          []string
+	ErrorDetail         error
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
-type SanctionCheckConfigRef struct {
+type ScreeningConfigRef struct {
 	Name string
 }
-type SanctionCheckWithMatches struct {
-	SanctionCheck
-	Matches            []SanctionCheckMatch
+type ScreeningWithMatches struct {
+	Screening
+	Matches            []ScreeningMatch
 	Count              int
 	EffectiveThreshold int
 
@@ -127,7 +127,7 @@ type SanctionCheckWithMatches struct {
 	NameRecognitionDuration time.Duration
 }
 
-type SanctionRawSearchResponseWithMatches struct {
+type ScreeningRawSearchResponseWithMatches struct {
 	SearchInput         json.RawMessage
 	InitialHasMatches   bool
 	WhitelistedEntities []string
@@ -135,71 +135,71 @@ type SanctionRawSearchResponseWithMatches struct {
 	ErrorCodes          []string
 	EffectiveThreshold  int
 
-	Matches []SanctionCheckMatch
+	Matches []ScreeningMatch
 	Count   int
 }
 
-func (s SanctionRawSearchResponseWithMatches) AdaptSanctionCheckFromSearchResponse(query OpenSanctionsQuery) SanctionCheckWithMatches {
-	sanctionCheck := SanctionCheckWithMatches{
-		SanctionCheck: SanctionCheck{
-			SanctionCheckConfigId: query.Config.Id,
-			Datasets:              query.Config.Datasets,
-			OrgConfig:             query.OrgConfig,
-			SearchInput:           s.SearchInput,
-			Partial:               s.Partial,
-			InitialHasMatches:     s.InitialHasMatches,
-			WhitelistedEntities:   s.WhitelistedEntities,
-			ErrorCodes:            s.ErrorCodes,
-			CreatedAt:             time.Now(),
-			UpdatedAt:             time.Now(),
+func (s ScreeningRawSearchResponseWithMatches) AdaptScreeningFromSearchResponse(query OpenSanctionsQuery) ScreeningWithMatches {
+	screening := ScreeningWithMatches{
+		Screening: Screening{
+			ScreeningConfigId:   query.Config.Id,
+			Datasets:            query.Config.Datasets,
+			OrgConfig:           query.OrgConfig,
+			SearchInput:         s.SearchInput,
+			Partial:             s.Partial,
+			InitialHasMatches:   s.InitialHasMatches,
+			WhitelistedEntities: s.WhitelistedEntities,
+			ErrorCodes:          s.ErrorCodes,
+			CreatedAt:           time.Now(),
+			UpdatedAt:           time.Now(),
 		},
 		Matches:            s.Matches,
 		EffectiveThreshold: s.EffectiveThreshold,
 		Count:              s.Count,
 	}
-	sanctionCheck.Status = sanctionCheck.InitialStatusFromMatches()
-	return sanctionCheck
+	screening.Status = screening.InitialStatusFromMatches()
+	return screening
 }
 
-func (s SanctionCheckWithMatches) InitialStatusFromMatches() SanctionCheckStatus {
+func (s ScreeningWithMatches) InitialStatusFromMatches() ScreeningStatus {
 	if len(s.Matches) == 0 {
-		return SanctionStatusNoHit
+		return ScreeningStatusNoHit
 	}
 
-	return SanctionStatusInReview
+	return ScreeningStatusInReview
 }
 
-type SanctionCheckMatch struct {
+type ScreeningMatch struct {
 	Id                           string
 	IsMatch                      bool
-	SanctionCheckId              string
+	ScreeningId                  string
 	EntityId                     string
 	Referents                    []string
-	Status                       SanctionCheckMatchStatus
+	Status                       ScreeningMatchStatus
 	QueryIds                     []string
 	UniqueCounterpartyIdentifier *string
 	Payload                      []byte
 	Enriched                     bool
 	ReviewedBy                   *string
-	Comments                     []SanctionCheckMatchComment
+	Comments                     []ScreeningMatchComment
 }
 
-type SanctionCheckMatchUpdate struct {
+type ScreeningMatchUpdate struct {
 	MatchId    string
 	ReviewerId *UserId
-	Status     SanctionCheckMatchStatus
-	Comment    *SanctionCheckMatchComment
+	Status     ScreeningMatchStatus
+	Comment    *ScreeningMatchComment
 	Whitelist  bool
 }
 
-type SanctionCheckRefineRequest struct {
-	DecisionId      string
-	SanctionCheckId string
-	Type            string
-	Query           OpenSanctionCheckFilter
+type ScreeningRefineRequest struct {
+	DecisionId  string
+	ScreeningId string
+	Type        string
+	Query       OpenSanctionsFilter
 }
 
-type SanctionCheckMatchComment struct {
+type ScreeningMatchComment struct {
 	Id          string
 	MatchId     string
 	CommenterId UserId
@@ -207,23 +207,23 @@ type SanctionCheckMatchComment struct {
 	CreatedAt   time.Time
 }
 
-type SanctionCheckFile struct {
-	Id              string
-	SanctionCheckId string
-	BucketName      string
-	FileReference   string
-	FileName        string
-	CreatedAt       time.Time
+type ScreeningFile struct {
+	Id            string
+	ScreeningId   string
+	BucketName    string
+	FileReference string
+	FileName      string
+	CreatedAt     time.Time
 }
 
-type SanctionCheckFileInput struct {
-	SanctionCheckId string
-	BucketName      string
-	FileReference   string
-	FileName        string
+type ScreeningFileInput struct {
+	ScreeningId   string
+	BucketName    string
+	FileReference string
+	FileName      string
 }
 
-type SanctionCheckWhitelist struct {
+type ScreeningWhitelist struct {
 	Id             string
 	OrgId          string
 	CounterpartyId string

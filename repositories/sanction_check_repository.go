@@ -11,44 +11,44 @@ import (
 	"github.com/google/uuid"
 )
 
-func (*MarbleDbRepository) GetActiveSanctionCheckForDecision(
+func (*MarbleDbRepository) GetActiveScreeningForDecision(
 	ctx context.Context,
 	exec Executor,
-	sanctionCheckId string,
-) (models.SanctionCheckWithMatches, error) {
+	screeningId string,
+) (models.ScreeningWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
-	sql := selectSanctionChecksWithMatches().
+	sql := selectScreeningsWithMatches().
 		Where(squirrel.Eq{
-			"sc.id": sanctionCheckId,
+			"sc.id": screeningId,
 		})
 
-	askedFor, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckWithMatches)
+	askedFor, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningWithMatches)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 	if !askedFor.IsArchived {
 		return askedFor, nil
 	}
 
-	sql = selectSanctionChecksWithMatches().
+	sql = selectScreeningsWithMatches().
 		Where(squirrel.Eq{
 			"sc.decision_id":              askedFor.DecisionId,
-			"sc.sanction_check_config_id": askedFor.SanctionCheckConfigId,
+			"sc.sanction_check_config_id": askedFor.ScreeningConfigId,
 			"sc.is_archived":              false,
 		})
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckWithMatches)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningWithMatches)
 }
 
-func (*MarbleDbRepository) ListSanctionChecksForDecision(
+func (*MarbleDbRepository) ListScreeningsForDecision(
 	ctx context.Context,
 	exec Executor,
 	decisionId string,
 	initialOnly bool,
-) ([]models.SanctionCheckWithMatches, error) {
+) ([]models.ScreeningWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -61,53 +61,53 @@ func (*MarbleDbRepository) ListSanctionChecksForDecision(
 		filters["sc.is_archived"] = false
 	}
 
-	sql := selectSanctionChecksWithMatches().
+	sql := selectScreeningsWithMatches().
 		Where(filters)
 
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckWithMatches)
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreeningWithMatches)
 }
 
-func (*MarbleDbRepository) GetSanctionCheck(ctx context.Context, exec Executor, id string) (models.SanctionCheckWithMatches, error) {
+func (*MarbleDbRepository) GetScreening(ctx context.Context, exec Executor, id string) (models.ScreeningWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
-	sql := selectSanctionChecksWithMatches().
+	sql := selectScreeningsWithMatches().
 		Where(squirrel.Eq{"sc.id": id})
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckWithMatches)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningWithMatches)
 }
 
-func (*MarbleDbRepository) GetSanctionCheckWithoutMatches(ctx context.Context, exec Executor, id string) (models.SanctionCheck, error) {
+func (*MarbleDbRepository) GetScreeningWithoutMatches(ctx context.Context, exec Executor, id string) (models.Screening, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheck{}, err
+		return models.Screening{}, err
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.SelectSanctionChecksColumn...).
-		From(dbmodels.TABLE_SANCTION_CHECKS).
+		Select(dbmodels.SelectScreeningColumn...).
+		From(dbmodels.TABLE_SCREENINGS).
 		Where(squirrel.Eq{"id": id})
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreening)
 }
 
-func selectSanctionChecksWithMatches() squirrel.SelectBuilder {
+func selectScreeningsWithMatches() squirrel.SelectBuilder {
 	return NewQueryBuilder().
-		Select(columnsNames("sc", dbmodels.SelectSanctionChecksColumn)...).
+		Select(columnsNames("sc", dbmodels.SelectScreeningColumn)...).
 		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s) ORDER BY array_position(array['confirmed_hit', 'pending', 'no_hit', 'skipped'], scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL) AS matches",
-			strings.Join(columnsNames("scm", dbmodels.SelectSanctionCheckMatchesColumn), ","))).
-		From(dbmodels.TABLE_SANCTION_CHECKS + " AS sc").
-		LeftJoin(dbmodels.TABLE_SANCTION_CHECK_MATCHES + " AS scm ON sc.id = scm.sanction_check_id").
+			strings.Join(columnsNames("scm", dbmodels.SelectScreeningMatchesColumn), ","))).
+		From(dbmodels.TABLE_SCREENINGS + " AS sc").
+		LeftJoin(dbmodels.TABLE_SCREENING_MATCHES + " AS scm ON sc.id = scm.sanction_check_id").
 		GroupBy("sc.id")
 }
 
-func (*MarbleDbRepository) ArchiveSanctionCheck(ctx context.Context, exec Executor, id string) error {
+func (*MarbleDbRepository) ArchiveScreening(ctx context.Context, exec Executor, id string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
 	sql := NewQueryBuilder().
-		Update(dbmodels.TABLE_SANCTION_CHECKS).
+		Update(dbmodels.TABLE_SCREENINGS).
 		Set("is_archived", true).
 		Where(
 			squirrel.Eq{"id": id, "is_archived": false},
@@ -116,8 +116,8 @@ func (*MarbleDbRepository) ArchiveSanctionCheck(ctx context.Context, exec Execut
 	return ExecBuilder(ctx, exec, sql)
 }
 
-func (*MarbleDbRepository) UpdateSanctionCheckStatus(ctx context.Context, exec Executor, id string,
-	status models.SanctionCheckStatus,
+func (*MarbleDbRepository) UpdateScreeningStatus(ctx context.Context, exec Executor, id string,
+	status models.ScreeningStatus,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -127,110 +127,110 @@ func (*MarbleDbRepository) UpdateSanctionCheckStatus(ctx context.Context, exec E
 		ctx,
 		exec,
 		NewQueryBuilder().
-			Update(dbmodels.TABLE_SANCTION_CHECKS).
+			Update(dbmodels.TABLE_SCREENINGS).
 			Set("status", status.String()).
 			Set("updated_at", "NOW()").
 			Where(squirrel.Eq{"id": id}),
 	)
 }
 
-func (*MarbleDbRepository) UpdateSanctionCheckMatchPayload(ctx context.Context, exec Executor,
-	match models.SanctionCheckMatch, newPayload []byte,
-) (models.SanctionCheckMatch, error) {
+func (*MarbleDbRepository) UpdateScreeningMatchPayload(ctx context.Context, exec Executor,
+	match models.ScreeningMatch, newPayload []byte,
+) (models.ScreeningMatch, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckMatch{}, err
+		return models.ScreeningMatch{}, err
 	}
 
 	sql := NewQueryBuilder().
-		Update(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
+		Update(dbmodels.TABLE_SCREENING_MATCHES).
 		Set("payload", newPayload).
 		Set("enriched", true).
 		Set("updated_at", "NOW()").
 		Where(squirrel.Eq{"id": match.Id}).Suffix(fmt.Sprintf("RETURNING %s",
-		strings.Join(dbmodels.SelectSanctionCheckMatchesColumn, ",")))
+		strings.Join(dbmodels.SelectScreeningMatchesColumn, ",")))
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningMatch)
 }
 
-func (*MarbleDbRepository) ListSanctionCheckMatches(
+func (*MarbleDbRepository) ListScreeningMatches(
 	ctx context.Context,
 	exec Executor,
-	sanctionCheckId string,
-) ([]models.SanctionCheckMatch, error) {
+	screeningId string,
+) ([]models.ScreeningMatch, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.SelectSanctionCheckMatchesColumn...).
-		From(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
-		Where(squirrel.Eq{"sanction_check_id": sanctionCheckId})
+		Select(dbmodels.SelectScreeningMatchesColumn...).
+		From(dbmodels.TABLE_SCREENING_MATCHES).
+		Where(squirrel.Eq{"sanction_check_id": screeningId})
 
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreeningMatch)
 }
 
-func (*MarbleDbRepository) GetSanctionCheckMatch(ctx context.Context, exec Executor,
+func (*MarbleDbRepository) GetScreeningMatch(ctx context.Context, exec Executor,
 	matchId string,
-) (models.SanctionCheckMatch, error) {
+) (models.ScreeningMatch, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckMatch{}, err
+		return models.ScreeningMatch{}, err
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.SelectSanctionCheckMatchesColumn...).
-		From(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
+		Select(dbmodels.SelectScreeningMatchesColumn...).
+		From(dbmodels.TABLE_SCREENING_MATCHES).
 		Where(squirrel.Eq{"id": matchId})
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningMatch)
 }
 
-func (*MarbleDbRepository) UpdateSanctionCheckMatchStatus(
+func (*MarbleDbRepository) UpdateScreeningMatchStatus(
 	ctx context.Context,
 	exec Executor,
-	match models.SanctionCheckMatch,
-	update models.SanctionCheckMatchUpdate,
-) (models.SanctionCheckMatch, error) {
+	match models.ScreeningMatch,
+	update models.ScreeningMatchUpdate,
+) (models.ScreeningMatch, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckMatch{}, err
+		return models.ScreeningMatch{}, err
 	}
 
 	sql := NewQueryBuilder().
-		Update(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
+		Update(dbmodels.TABLE_SCREENING_MATCHES).
 		SetMap(map[string]any{
 			"status":      update.Status,
 			"reviewed_by": update.ReviewerId,
 			"updated_at":  "NOW()",
 		}).
 		Where(squirrel.Eq{"id": match.Id}).
-		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionCheckMatchesColumn, ",")))
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningMatchesColumn, ",")))
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatch)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningMatch)
 }
 
-func (*MarbleDbRepository) InsertSanctionCheck(
+func (*MarbleDbRepository) InsertScreening(
 	ctx context.Context,
 	exec Executor,
 	decisionId string,
-	sanctionCheck models.SanctionCheckWithMatches,
+	screening models.ScreeningWithMatches,
 	storeMatches bool,
-) (models.SanctionCheckWithMatches, error) {
+) (models.ScreeningWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return sanctionCheck, err
+		return screening, err
 	}
 
-	scId := sanctionCheck.Id
+	scId := screening.Id
 	if scId == "" {
 		scId = uuid.NewString()
 	}
 
 	whitelistedEntities := make([]string, 0)
 
-	if sanctionCheck.WhitelistedEntities != nil {
-		whitelistedEntities = sanctionCheck.WhitelistedEntities
+	if screening.WhitelistedEntities != nil {
+		whitelistedEntities = screening.WhitelistedEntities
 	}
 
 	sql := NewQueryBuilder().
-		Insert(dbmodels.TABLE_SANCTION_CHECKS).Columns(
+		Insert(dbmodels.TABLE_SCREENINGS).Columns(
 		"id",
 		"decision_id",
 		"sanction_check_config_id",
@@ -248,41 +248,41 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 	).Values(
 		scId,
 		decisionId,
-		sanctionCheck.SanctionCheckConfigId,
-		sanctionCheck.SearchInput,
-		sanctionCheck.Datasets,
-		sanctionCheck.EffectiveThreshold,
-		sanctionCheck.OrgConfig.MatchLimit,
-		sanctionCheck.Partial,
-		sanctionCheck.IsManual,
-		sanctionCheck.InitialHasMatches,
+		screening.ScreeningConfigId,
+		screening.SearchInput,
+		screening.Datasets,
+		screening.EffectiveThreshold,
+		screening.OrgConfig.MatchLimit,
+		screening.Partial,
+		screening.IsManual,
+		screening.InitialHasMatches,
 		whitelistedEntities,
-		sanctionCheck.RequestedBy,
-		sanctionCheck.Status.String(),
-		sanctionCheck.ErrorCodes,
-	).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionChecksColumn, ",")))
+		screening.RequestedBy,
+		screening.Status.String(),
+		screening.ErrorCodes,
+	).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningColumn, ",")))
 
-	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheck)
+	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptScreening)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
-	withMatches := models.SanctionCheckWithMatches{SanctionCheck: result}
-	if !storeMatches || len(sanctionCheck.Matches) == 0 {
+	withMatches := models.ScreeningWithMatches{Screening: result}
+	if !storeMatches || len(screening.Matches) == 0 {
 		return withMatches, nil
 	}
 
-	matchSql := NewQueryBuilder().Insert(dbmodels.TABLE_SANCTION_CHECK_MATCHES).
+	matchSql := NewQueryBuilder().Insert(dbmodels.TABLE_SCREENING_MATCHES).
 		Columns("sanction_check_id", "opensanction_entity_id", "query_ids", "payload", "counterparty_id").
-		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionCheckMatchesColumn, ",")))
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningMatchesColumn, ",")))
 
-	for _, match := range sanctionCheck.Matches {
+	for _, match := range screening.Matches {
 		matchSql = matchSql.Values(result.Id, match.EntityId, match.QueryIds, match.Payload, match.UniqueCounterpartyIdentifier)
 	}
 
-	matches, err := SqlToListOfModels(ctx, exec, matchSql, dbmodels.AdaptSanctionCheckMatch)
+	matches, err := SqlToListOfModels(ctx, exec, matchSql, dbmodels.AdaptScreeningMatch)
 	if err != nil {
-		return models.SanctionCheckWithMatches{}, err
+		return models.ScreeningWithMatches{}, err
 	}
 
 	withMatches.Count = len(matches)
@@ -291,42 +291,42 @@ func (*MarbleDbRepository) InsertSanctionCheck(
 	return withMatches, nil
 }
 
-func (*MarbleDbRepository) ListSanctionCheckCommentsByIds(ctx context.Context, exec Executor, ids []string) ([]models.SanctionCheckMatchComment, error) {
+func (*MarbleDbRepository) ListScreeningCommentsByIds(ctx context.Context, exec Executor, ids []string) ([]models.ScreeningMatchComment, error) {
 	sql := NewQueryBuilder().
-		Select(dbmodels.SelectSanctionCheckMatchCommentsColumn...).
-		From(dbmodels.TABLE_SANCTION_CHECK_MATCH_COMMENTS).
+		Select(dbmodels.SelectScreeningMatchCommentsColumn...).
+		From(dbmodels.TABLE_SCREENING_MATCH_COMMENTS).
 		Where("sanction_check_match_id = ANY(?)", ids)
 
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatchComment)
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreeningMatchComment)
 }
 
-func (*MarbleDbRepository) AddSanctionCheckMatchComment(ctx context.Context,
-	exec Executor, comment models.SanctionCheckMatchComment,
-) (models.SanctionCheckMatchComment, error) {
+func (*MarbleDbRepository) AddScreeningMatchComment(ctx context.Context,
+	exec Executor, comment models.ScreeningMatchComment,
+) (models.ScreeningMatchComment, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckMatchComment{}, err
+		return models.ScreeningMatchComment{}, err
 	}
 
 	sql := NewQueryBuilder().
-		Insert(dbmodels.TABLE_SANCTION_CHECK_MATCH_COMMENTS).
+		Insert(dbmodels.TABLE_SCREENING_MATCH_COMMENTS).
 		Columns("sanction_check_match_id", "commented_by", "comment").
 		Values(comment.MatchId, comment.CommenterId, comment.Comment).
-		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionCheckMatchCommentsColumn, ",")))
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningMatchCommentsColumn, ",")))
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckMatchComment)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningMatchComment)
 }
 
-func (repo *MarbleDbRepository) CreateSanctionCheckFile(ctx context.Context, exec Executor,
-	input models.SanctionCheckFileInput,
-) (models.SanctionCheckFile, error) {
+func (repo *MarbleDbRepository) CreateScreeningFile(ctx context.Context, exec Executor,
+	input models.ScreeningFileInput,
+) (models.ScreeningFile, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckFile{}, err
+		return models.ScreeningFile{}, err
 	}
 
 	file, err := SqlToModel(
 		ctx,
 		exec,
-		NewQueryBuilder().Insert(dbmodels.TABLE_SANCTION_CHECK_FILES).
+		NewQueryBuilder().Insert(dbmodels.TABLE_SCREENING_FILES).
 			Columns(
 				"bucket_name",
 				"sanction_check_id",
@@ -335,20 +335,20 @@ func (repo *MarbleDbRepository) CreateSanctionCheckFile(ctx context.Context, exe
 			).
 			Values(
 				input.BucketName,
-				input.SanctionCheckId,
+				input.ScreeningId,
 				input.FileName,
 				input.FileReference,
 			).
-			Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectSanctionCheckFileColumn, ","))),
-		dbmodels.AdaptSanctionCheckFile,
+			Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningFileColumn, ","))),
+		dbmodels.AdaptScreeningFile,
 	)
 
 	return file, err
 }
 
-func (repo *MarbleDbRepository) ListSanctionCheckFiles(ctx context.Context, exec Executor,
-	sanctionCheckId string,
-) ([]models.SanctionCheckFile, error) {
+func (repo *MarbleDbRepository) ListScreeningFiles(ctx context.Context, exec Executor,
+	screeningId string,
+) ([]models.ScreeningFile, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -356,47 +356,47 @@ func (repo *MarbleDbRepository) ListSanctionCheckFiles(ctx context.Context, exec
 	files, err := SqlToListOfModels(
 		ctx,
 		exec,
-		NewQueryBuilder().Select(dbmodels.SelectSanctionCheckFileColumn...).
-			From(dbmodels.TABLE_SANCTION_CHECK_FILES).
-			Where(squirrel.Eq{"sanction_check_id": sanctionCheckId}),
-		dbmodels.AdaptSanctionCheckFile,
+		NewQueryBuilder().Select(dbmodels.SelectScreeningFileColumn...).
+			From(dbmodels.TABLE_SCREENING_FILES).
+			Where(squirrel.Eq{"sanction_check_id": screeningId}),
+		dbmodels.AdaptScreeningFile,
 	)
 
 	return files, err
 }
 
-func (repo *MarbleDbRepository) GetSanctionCheckFile(ctx context.Context, exec Executor,
-	sanctionCheckId, fileId string,
-) (models.SanctionCheckFile, error) {
+func (repo *MarbleDbRepository) GetScreeningFile(ctx context.Context, exec Executor,
+	screeningId, fileId string,
+) (models.ScreeningFile, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckFile{}, err
+		return models.ScreeningFile{}, err
 	}
 
 	file, err := SqlToModel(
 		ctx,
 		exec,
-		NewQueryBuilder().Select(dbmodels.SelectSanctionCheckFileColumn...).
-			From(dbmodels.TABLE_SANCTION_CHECK_FILES).
-			Where(squirrel.Eq{"sanction_check_id": sanctionCheckId, "id": fileId}),
-		dbmodels.AdaptSanctionCheckFile,
+		NewQueryBuilder().Select(dbmodels.SelectScreeningFileColumn...).
+			From(dbmodels.TABLE_SCREENING_FILES).
+			Where(squirrel.Eq{"sanction_check_id": screeningId, "id": fileId}),
+		dbmodels.AdaptScreeningFile,
 	)
 
 	return file, err
 }
 
-func (repo *MarbleDbRepository) CopySanctionCheckFiles(ctx context.Context, exec Executor, sanctionCheckId, newSanctionCheckId string) error {
+func (repo *MarbleDbRepository) CopyScreeningFiles(ctx context.Context, exec Executor, screeningId, newScreeningId string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
 	sql := NewQueryBuilder().
-		Insert(dbmodels.TABLE_SANCTION_CHECK_FILES).
+		Insert(dbmodels.TABLE_SCREENING_FILES).
 		Columns("bucket_name", "file_reference", "file_name", "sanction_check_id").
 		Select(squirrel.
 			Select("bucket_name", "file_reference", "file_name").
-			Column("?", newSanctionCheckId).
-			From(dbmodels.TABLE_SANCTION_CHECK_FILES).
-			Where(squirrel.Eq{"sanction_check_id": sanctionCheckId}))
+			Column("?", newScreeningId).
+			From(dbmodels.TABLE_SCREENING_FILES).
+			Where(squirrel.Eq{"sanction_check_id": screeningId}))
 
 	if err := ExecBuilder(ctx, exec, sql); err != nil {
 		return err
@@ -414,7 +414,7 @@ func (repo *MarbleDbRepository) CountWhitelistsForCounterpartyId(ctx context.Con
 
 	query := NewQueryBuilder().
 		Select("COUNT(*)").
-		From(dbmodels.TABLE_SANCTION_CHECK_WHITELISTS).
+		From(dbmodels.TABLE_SCREENING_WHITELISTS).
 		Where(squirrel.And{
 			squirrel.Eq{
 				"org_id":          orgId,

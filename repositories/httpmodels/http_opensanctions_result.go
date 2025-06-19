@@ -29,9 +29,9 @@ type HTTPOpenSanctionResultResult struct {
 	} `json:"properties"`
 }
 
-func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsResult) (models.SanctionRawSearchResponseWithMatches, error) {
+func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsResult) (models.ScreeningRawSearchResponseWithMatches, error) {
 	partial := false
-	matches := make(map[string]models.SanctionCheckMatch)
+	matches := make(map[string]models.ScreeningMatch)
 	matchToQueryId := make(map[string][]string)
 
 	for queryId, resp := range result.Responses {
@@ -41,7 +41,7 @@ func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsRes
 			var parsed HTTPOpenSanctionResultResult
 
 			if err := json.NewDecoder(bytes.NewReader(match)).Decode(&parsed); err != nil {
-				return models.SanctionRawSearchResponseWithMatches{}, err
+				return models.ScreeningRawSearchResponseWithMatches{}, err
 			}
 
 			if !parsed.Match {
@@ -51,7 +51,7 @@ func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsRes
 			matchCount += 1
 
 			if _, ok := matches[parsed.Id]; !ok {
-				entity := models.SanctionCheckMatch{
+				entity := models.ScreeningMatch{
 					IsMatch:   parsed.Match,
 					Payload:   match,
 					EntityId:  parsed.Id,
@@ -77,7 +77,7 @@ func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsRes
 		}
 	}
 
-	output := models.SanctionRawSearchResponseWithMatches{
+	output := models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       query,
 		Partial:           partial,
 		InitialHasMatches: len(matches) > 0,

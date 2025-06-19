@@ -37,7 +37,7 @@ type RulesRepository interface {
 		testRunId string,
 		begin, end time.Time,
 	) ([]models.RuleExecutionStat, error)
-	SanctionCheckExecutionStats(
+	ScreeningExecutionStats(
 		ctx context.Context,
 		exec repositories.Executor,
 		organizationId string,
@@ -158,13 +158,13 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 				return err
 			}
 
-			liveSanctionCheckStats, err := w.repository.SanctionCheckExecutionStats(
+			liveScreeningStats, err := w.repository.ScreeningExecutionStats(
 				ctx, tx, job.Args.OrgId, testRun.ScenarioLiveIterationId, then, windowBound, "decisions")
 			if err != nil {
 				return err
 			}
 
-			phantomSanctionChecksStats, err := w.repository.SanctionCheckExecutionStats(
+			phantomScreeningStats, err := w.repository.ScreeningExecutionStats(
 				ctx, tx, job.Args.OrgId, testRun.ScenarioIterationId, then, windowBound, "phantom_decisions")
 			if err != nil {
 				return err
@@ -180,7 +180,7 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 			savedNewData := false
 
 			for _, results := range [][]models.RuleExecutionStat{
-				liveStats, phantomStats, liveSanctionCheckStats, phantomSanctionChecksStats,
+				liveStats, phantomStats, liveScreeningStats, phantomScreeningStats,
 			} {
 				for _, stat := range results {
 					savedNewData = true

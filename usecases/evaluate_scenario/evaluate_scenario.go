@@ -37,18 +37,18 @@ const (
 )
 
 type ScenarioEvaluationParameters struct {
-	Scenario            models.Scenario
-	TargetIterationId   *string
-	ClientObject        models.ClientObject
-	DataModel           models.DataModel
-	Pivot               *models.Pivot
-	CachedSanctionCheck map[string]models.SanctionCheckWithMatches
+	Scenario          models.Scenario
+	TargetIterationId *string
+	ClientObject      models.ClientObject
+	DataModel         models.DataModel
+	Pivot             *models.Pivot
+	CachedScreenings  map[string]models.ScreeningWithMatches
 }
 
-type EvalSanctionCheckUsecase interface {
-	Execute(context.Context, string, models.OpenSanctionsQuery) (models.SanctionCheckWithMatches, error)
-	FilterOutWhitelistedMatches(context.Context, string, models.SanctionCheckWithMatches,
-		string) (models.SanctionCheckWithMatches, error)
+type EvalScreeningUsecase interface {
+	Execute(context.Context, string, models.OpenSanctionsQuery) (models.ScreeningWithMatches, error)
+	FilterOutWhitelistedMatches(context.Context, string, models.ScreeningWithMatches,
+		string) (models.ScreeningWithMatches, error)
 	CountWhitelistsForCounterpartyId(context.Context, string, string) (int, error)
 }
 
@@ -86,23 +86,23 @@ type EvaluateAstExpression interface {
 }
 
 type ScenarioEvaluator struct {
-	evalScenarioRepository            repositories.EvalScenarioRepository
-	evalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
-	evalSanctionCheckUsecase          EvalSanctionCheckUsecase
-	scenarioTestRunRepository         repositories.ScenarioTestRunRepository
-	scenarioRepository                repositories.ScenarioUsecaseRepository
-	executorFactory                   executor_factory.ExecutorFactory
-	ingestedDataReadRepository        repositories.IngestedDataReadRepository
-	evaluateAstExpression             EvaluateAstExpression
-	snoozeReader                      SnoozesForDecisionReader
-	featureAccessReader               ScenarioEvaluatorFeatureAccessReader
-	nameRecognizer                    EvalNameRecognitionRepository
+	evalScenarioRepository        repositories.EvalScenarioRepository
+	evalScreeningConfigRepository repositories.EvalScreeningConfigRepository
+	evalScreeningUsecase          EvalScreeningUsecase
+	scenarioTestRunRepository     repositories.ScenarioTestRunRepository
+	scenarioRepository            repositories.ScenarioUsecaseRepository
+	executorFactory               executor_factory.ExecutorFactory
+	ingestedDataReadRepository    repositories.IngestedDataReadRepository
+	evaluateAstExpression         EvaluateAstExpression
+	snoozeReader                  SnoozesForDecisionReader
+	featureAccessReader           ScenarioEvaluatorFeatureAccessReader
+	nameRecognizer                EvalNameRecognitionRepository
 }
 
 func NewScenarioEvaluator(
 	evalScenarioRepository repositories.EvalScenarioRepository,
-	evalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository,
-	evalSanctionCheckUsecase EvalSanctionCheckUsecase,
+	evalScreeningConfigRepository repositories.EvalScreeningConfigRepository,
+	evalScreeningUsecase EvalScreeningUsecase,
 	scenarioTestRunRepository repositories.ScenarioTestRunRepository,
 	scenarioRepository repositories.ScenarioUsecaseRepository,
 	executorFactory executor_factory.ExecutorFactory,
@@ -113,17 +113,17 @@ func NewScenarioEvaluator(
 	nameRecognitionRepository repositories.NameRecognitionRepository,
 ) ScenarioEvaluator {
 	return ScenarioEvaluator{
-		evalScenarioRepository:            evalScenarioRepository,
-		evalSanctionCheckConfigRepository: evalSanctionCheckConfigRepository,
-		evalSanctionCheckUsecase:          evalSanctionCheckUsecase,
-		scenarioTestRunRepository:         scenarioTestRunRepository,
-		scenarioRepository:                scenarioRepository,
-		executorFactory:                   executorFactory,
-		ingestedDataReadRepository:        ingestedDataReadRepository,
-		evaluateAstExpression:             evaluateAstExpression,
-		snoozeReader:                      snoozeReader,
-		featureAccessReader:               featureAccessReader,
-		nameRecognizer:                    nameRecognitionRepository,
+		evalScenarioRepository:        evalScenarioRepository,
+		evalScreeningConfigRepository: evalScreeningConfigRepository,
+		evalScreeningUsecase:          evalScreeningUsecase,
+		scenarioTestRunRepository:     scenarioTestRunRepository,
+		scenarioRepository:            scenarioRepository,
+		executorFactory:               executorFactory,
+		ingestedDataReadRepository:    ingestedDataReadRepository,
+		evaluateAstExpression:         evaluateAstExpression,
+		snoozeReader:                  snoozeReader,
+		featureAccessReader:           featureAccessReader,
+		nameRecognizer:                nameRecognitionRepository,
 	}
 }
 
@@ -220,22 +220,22 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	var outcome models.Outcome
 
-	sanctionCheckExecutions, err :=
-		e.evaluateSanctionCheck(ctx, iteration, params, dataAccessor)
+	screeningExecutions, err :=
+		e.evaluateScreening(ctx, iteration, params, dataAccessor)
 	if err != nil {
 		return false, models.ScenarioExecution{},
 			errors.Wrap(err, "could not perform sanction check")
 	}
 
-	for idx, sce := range sanctionCheckExecutions {
-		if sce.Count > 0 && iteration.SanctionCheckConfigs[idx].ForcedOutcome.Priority() > outcome.Priority() {
-			outcome = iteration.SanctionCheckConfigs[idx].ForcedOutcome
+	for idx, sce := range screeningExecutions {
+		if sce.Count > 0 && iteration.ScreeningConfigs[idx].ForcedOutcome.Priority() > outcome.Priority() {
+			outcome = iteration.ScreeningConfigs[idx].ForcedOutcome
 		}
 	}
 
 	// We only go through the nominal score classifier if no sanction check returned any match (either no_hit or error)
-	if !slices.ContainsFunc(sanctionCheckExecutions, func(e models.SanctionCheckWithMatches) bool {
-		return e.Status != models.SanctionStatusNoHit && e.Status != models.SanctionStatusError
+	if !slices.ContainsFunc(screeningExecutions, func(e models.ScreeningWithMatches) bool {
+		return e.Status != models.ScreeningStatusNoHit && e.Status != models.ScreeningStatusError
 	}) {
 		if score >= *iteration.ScoreDeclineThreshold {
 			outcome = models.Decline
@@ -250,16 +250,16 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	// Build ScenarioExecution as result
 	se := models.ScenarioExecution{
-		ScenarioId:              params.Scenario.Id,
-		ScenarioIterationId:     iteration.Id,
-		ScenarioName:            params.Scenario.Name,
-		ScenarioDescription:     params.Scenario.Description,
-		ScenarioVersion:         *iteration.Version,
-		RuleExecutions:          ruleExecutions,
-		SanctionCheckExecutions: sanctionCheckExecutions,
-		Score:                   score,
-		Outcome:                 outcome,
-		OrganizationId:          params.Scenario.OrganizationId,
+		ScenarioId:          params.Scenario.Id,
+		ScenarioIterationId: iteration.Id,
+		ScenarioName:        params.Scenario.Name,
+		ScenarioDescription: params.Scenario.Description,
+		ScenarioVersion:     *iteration.Version,
+		RuleExecutions:      ruleExecutions,
+		ScreeningExecutions: screeningExecutions,
+		Score:               score,
+		Outcome:             outcome,
+		OrganizationId:      params.Scenario.OrganizationId,
 	}
 	if params.Pivot != nil {
 		se.PivotId = &params.Pivot.Id
@@ -282,12 +282,12 @@ func (e ScenarioEvaluator) processScenarioIteration(
 	stepDurations[LogEvaluationDurationKey] = elapsed.Milliseconds()
 	stepDurations[LogRulesDurationKey] = rulesDuration.Milliseconds()
 
-	for idx := range sanctionCheckExecutions {
-		stepDurations[LogScreeningDurationKey] = sanctionCheckExecutions[idx].Duration.Milliseconds()
+	for idx := range screeningExecutions {
+		stepDurations[LogScreeningDurationKey] = screeningExecutions[idx].Duration.Milliseconds()
 
-		if sanctionCheckExecutions[idx].NameRecognitionDuration != 0 {
+		if screeningExecutions[idx].NameRecognitionDuration != 0 {
 			stepDurations[LogNerDurationKey] =
-				sanctionCheckExecutions[idx].NameRecognitionDuration.Milliseconds()
+				screeningExecutions[idx].NameRecognitionDuration.Milliseconds()
 		}
 	}
 
@@ -349,9 +349,9 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 
 	// If the live version had a sanction check executed, and if it has the same configuration (except for the trigger rule),
 	// we just reuse the cached sanction check execution to avoid another (possibly paid) call to the sanction check service.
-	copiedSanctionCheck := make([]models.SanctionCheckWithMatches, 0)
+	copiedScreening := make([]models.ScreeningWithMatches, 0)
 
-	sccs, err := e.evalSanctionCheckConfigRepository.ListSanctionCheckConfigs(ctx, exec, testRunIteration.Id)
+	sccs, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, testRunIteration.Id)
 	if err != nil {
 		return false, se, errors.Wrap(err,
 			"error getting sanction check config from scenario iteration")
@@ -360,7 +360,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	sccsToRun := slices.Clone(sccs)
 
 	if len(sccs) > 0 {
-		liveVersionSccs, err := e.evalSanctionCheckConfigRepository.ListSanctionCheckConfigs(
+		liveVersionSccs, err := e.evalScreeningConfigRepository.ListScreeningConfigs(
 			ctx, exec, testruns[0].ScenarioLiveIterationId)
 		if err != nil {
 			return false, se, err
@@ -369,9 +369,9 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		for _, testVersionScc := range sccs {
 			for _, liveVersionScc := range liveVersionSccs {
 				if testVersionScc.StableId == liveVersionScc.StableId {
-					if cached, ok := params.CachedSanctionCheck[liveVersionScc.ScenarioIterationId]; ok {
+					if cached, ok := params.CachedScreenings[liveVersionScc.ScenarioIterationId]; ok {
 						if liveVersionScc.HasSameQuery(testVersionScc) {
-							copiedSanctionCheck = append(copiedSanctionCheck, cached)
+							copiedScreening = append(copiedScreening, cached)
 							sccsToRun = slices.Delete(sccsToRun, 0, 1)
 							break
 						}
@@ -381,14 +381,14 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		}
 	}
 
-	testRunIteration.SanctionCheckConfigs = sccsToRun
+	testRunIteration.ScreeningConfigs = sccsToRun
 
 	triggerPassed, se, err = e.processScenarioIteration(ctx, params, testRunIteration, start, exec)
 	if err != nil {
 		return false, se, err
 	}
-	if len(copiedSanctionCheck) > 0 {
-		se.SanctionCheckExecutions = append(se.SanctionCheckExecutions, copiedSanctionCheck...)
+	if len(copiedScreening) > 0 {
+		se.ScreeningExecutions = append(se.ScreeningExecutions, copiedScreening...)
 	}
 	se.TestRunId = testruns[0].Id
 	return triggerPassed, se, nil
@@ -445,12 +445,12 @@ func (e ScenarioEvaluator) EvalScenario(
 			"error getting scenario iteration in EvalScenario")
 	}
 
-	scc, err := e.evalSanctionCheckConfigRepository.ListSanctionCheckConfigs(ctx, exec, versionToRun.Id)
+	scc, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, versionToRun.Id)
 	if err != nil {
 		return false, models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting sanction check config from scenario iteration")
 	}
-	versionToRun.SanctionCheckConfigs = scc
+	versionToRun.ScreeningConfigs = scc
 	if len(scc) > 0 {
 		featureAccess, err := e.featureAccessReader.GetOrganizationFeatureAccess(ctx, params.Scenario.OrganizationId, nil)
 		if err != nil {

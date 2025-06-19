@@ -8,79 +8,79 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const TABLE_SANCTION_CHECKS = "sanction_checks"
+const TABLE_SCREENINGS = "sanction_checks"
 
 var (
-	SelectSanctionChecksColumn            = utils.ColumnList[DBSanctionCheck]()
-	SelectSanctionChecksWithMatchesColumn = utils.ColumnList[DBSanctionCheckWithMatches]()
+	SelectScreeningColumn            = utils.ColumnList[DBScreening]()
+	SelectScreeningWithMatchesColumn = utils.ColumnList[DBScreeningWithMatches]()
 )
 
-type DBSanctionCheck struct {
-	Id                    string          `db:"id"`
-	DecisionId            string          `db:"decision_id"`
-	SanctionCheckConfigId string          `db:"sanction_check_config_id"`
-	Status                string          `db:"status"`
-	SearchInput           json.RawMessage `db:"search_input"`
-	SearchDatasets        []string        `db:"search_datasets"`
-	MatchThreshold        int             `db:"match_threshold"`
-	MatchLimit            int             `db:"match_limit"`
-	IsManual              bool            `db:"is_manual"`
-	RequestedBy           *string         `db:"requested_by"`
-	IsPartial             bool            `db:"is_partial"`
-	IsArchived            bool            `db:"is_archived"`
-	InitialHasMatches     bool            `db:"initial_has_matches"`
-	WhitelistedEntities   []string        `db:"whitelisted_entities"`
-	ErrorCodes            []string        `db:"error_codes"`
-	CreatedAt             time.Time       `db:"created_at"`
-	UpdatedAt             time.Time       `db:"updated_at"`
+type DBScreening struct {
+	Id                  string          `db:"id"`
+	DecisionId          string          `db:"decision_id"`
+	ScreeningConfigId   string          `db:"sanction_check_config_id"`
+	Status              string          `db:"status"`
+	SearchInput         json.RawMessage `db:"search_input"`
+	SearchDatasets      []string        `db:"search_datasets"`
+	MatchThreshold      int             `db:"match_threshold"`
+	MatchLimit          int             `db:"match_limit"`
+	IsManual            bool            `db:"is_manual"`
+	RequestedBy         *string         `db:"requested_by"`
+	IsPartial           bool            `db:"is_partial"`
+	IsArchived          bool            `db:"is_archived"`
+	InitialHasMatches   bool            `db:"initial_has_matches"`
+	WhitelistedEntities []string        `db:"whitelisted_entities"`
+	ErrorCodes          []string        `db:"error_codes"`
+	CreatedAt           time.Time       `db:"created_at"`
+	UpdatedAt           time.Time       `db:"updated_at"`
 }
 
-type DBSanctionCheckWithMatches struct {
-	DBSanctionCheck
-	Matches []DBSanctionCheckMatch `db:"matches"`
+type DBScreeningWithMatches struct {
+	DBScreening
+	Matches []DBScreeningMatch `db:"matches"`
 }
 
-func AdaptSanctionCheck(dto DBSanctionCheck) (models.SanctionCheck, error) {
+func AdaptScreening(dto DBScreening) (models.Screening, error) {
 	cfg := models.OrganizationOpenSanctionsConfig{
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
 	}
 
-	return models.SanctionCheck{
-		Id:                    dto.Id,
-		DecisionId:            dto.DecisionId,
-		SanctionCheckConfigId: dto.SanctionCheckConfigId,
-		Datasets:              dto.SearchDatasets,
-		SearchInput:           dto.SearchInput,
-		OrgConfig:             cfg,
-		Partial:               dto.IsPartial,
-		Status:                models.SanctionCheckStatusFrom(dto.Status),
-		IsManual:              dto.IsManual,
-		IsArchived:            dto.IsArchived,
-		InitialHasMatches:     dto.InitialHasMatches,
-		WhitelistedEntities:   dto.WhitelistedEntities,
-		RequestedBy:           dto.RequestedBy,
-		ErrorCodes:            dto.ErrorCodes,
-		CreatedAt:             dto.CreatedAt,
-		UpdatedAt:             dto.UpdatedAt,
+	return models.Screening{
+		Id:                  dto.Id,
+		DecisionId:          dto.DecisionId,
+		ScreeningConfigId:   dto.ScreeningConfigId,
+		Datasets:            dto.SearchDatasets,
+		SearchInput:         dto.SearchInput,
+		OrgConfig:           cfg,
+		Partial:             dto.IsPartial,
+		Status:              models.ScreeningStatusFrom(dto.Status),
+		IsManual:            dto.IsManual,
+		IsArchived:          dto.IsArchived,
+		InitialHasMatches:   dto.InitialHasMatches,
+		WhitelistedEntities: dto.WhitelistedEntities,
+		RequestedBy:         dto.RequestedBy,
+		ErrorCodes:          dto.ErrorCodes,
+		CreatedAt:           dto.CreatedAt,
+		UpdatedAt:           dto.UpdatedAt,
 	}, nil
 }
 
-func AdaptSanctionCheckWithMatches(dto DBSanctionCheckWithMatches) (models.SanctionCheckWithMatches, error) {
-	matches := make([]models.SanctionCheckMatch, 0, len(dto.Matches))
+func AdaptScreeningWithMatches(dto DBScreeningWithMatches) (models.ScreeningWithMatches, error) {
+	matches := make([]models.ScreeningMatch, 0, len(dto.Matches))
 	for _, match := range dto.Matches {
-		m, err := AdaptSanctionCheckMatch(match)
+		m, err := AdaptScreeningMatch(match)
 		if err != nil {
-			return models.SanctionCheckWithMatches{}, err
+			return models.ScreeningWithMatches{}, err
 		}
 
 		matches = append(matches, m)
 	}
 
-	sc, _ := AdaptSanctionCheck(dto.DBSanctionCheck)
-	return models.SanctionCheckWithMatches{
-		SanctionCheck: sc,
-		Matches:       matches,
-		Count:         len(matches),
+	sc, _ := AdaptScreening(dto.DBScreening)
+	return models.ScreeningWithMatches{
+		Screening: sc,
+		Matches:   matches,
+		Count:     len(matches),
 	}, nil
 }

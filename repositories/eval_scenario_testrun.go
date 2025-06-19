@@ -10,6 +10,6 @@ type EvalScenarioRepository interface {
 	GetScenarioIteration(ctx context.Context, exec Executor, scenarioIterationId string) (models.ScenarioIteration, error)
 }
 
-type EvalSanctionCheckConfigRepository interface {
-	ListSanctionCheckConfigs(ctx context.Context, exec Executor, scenarioIterationId string) ([]models.SanctionCheckConfig, error)
+type EvalScreeningConfigRepository interface {
+	ListScreeningConfigs(ctx context.Context, exec Executor, scenarioIterationId string) ([]models.ScreeningConfig, error)
 }

@@ -16,52 +16,52 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func (repo *MarbleDbRepository) ListSanctionCheckConfigs(
+func (repo *MarbleDbRepository) ListScreeningConfigs(
 	ctx context.Context,
 	exec Executor,
 	scenarioIterationId string,
-) ([]models.SanctionCheckConfig, error) {
+) ([]models.ScreeningConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.SanctionCheckConfigColumnList...).
-		From(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
+		Select(dbmodels.ScreeningConfigColumnList...).
+		From(dbmodels.TABLE_SCREENING_CONFIGS).
 		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationId})
 
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreeningConfig)
 }
 
-func (repo *MarbleDbRepository) GetSanctionCheckConfig(
+func (repo *MarbleDbRepository) GetScreeningConfig(
 	ctx context.Context,
 	exec Executor,
-	scenarioIterationId, sanctionCheckConfigId string,
-) (models.SanctionCheckConfig, error) {
+	scenarioIterationId, screeningConfigId string,
+) (models.ScreeningConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckConfig{}, err
+		return models.ScreeningConfig{}, err
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.SanctionCheckConfigColumnList...).
-		From(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
-		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationId, "id": sanctionCheckConfigId})
+		Select(dbmodels.ScreeningConfigColumnList...).
+		From(dbmodels.TABLE_SCREENING_CONFIGS).
+		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationId, "id": screeningConfigId})
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningConfig)
 }
 
-func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, exec Executor,
-	scenarioIterationId string, cfg models.UpdateSanctionCheckConfigInput,
-) (models.SanctionCheckConfig, error) {
+func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec Executor,
+	scenarioIterationId string, cfg models.UpdateScreeningConfigInput,
+) (models.ScreeningConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckConfig{}, err
+		return models.ScreeningConfig{}, err
 	}
 
 	var triggerRule *[]byte
 	if cfg.TriggerRule != nil && cfg.TriggerRule.Function != ast.FUNC_UNDEFINED {
 		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.TriggerRule)
 		if err != nil {
-			return models.SanctionCheckConfig{}, errors.Wrap(err,
+			return models.ScreeningConfig{}, errors.Wrap(err,
 				"could not serialize sanction check trigger rule")
 		}
 
@@ -73,7 +73,7 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 	if cfg.Query != nil {
 		ser, err := pure_utils.MapValuesErr(cfg.Query, dto.AdaptNodeDto)
 		if err != nil {
-			return models.SanctionCheckConfig{}, err
+			return models.ScreeningConfig{}, err
 		}
 		query = ser
 	}
@@ -83,7 +83,7 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 	if cfg.CounterpartyIdExpression != nil {
 		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.CounterpartyIdExpression)
 		if err != nil {
-			return models.SanctionCheckConfig{}, err
+			return models.ScreeningConfig{}, err
 		}
 
 		counterpartyIdExpr = astJson
@@ -100,7 +100,7 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 	}
 
 	sql := NewQueryBuilder().
-		Insert(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
+		Insert(dbmodels.TABLE_SCREENING_CONFIGS).
 		Columns(
 			"stable_id",
 			"scenario_iteration_id",
@@ -129,26 +129,26 @@ func (repo *MarbleDbRepository) CreateSanctionCheckConfig(ctx context.Context, e
 			utils.Or(cfg.EntityType, "Thing"),
 			query,
 			counterpartyIdExpr,
-			utils.Or(cfg.Preprocessing, models.SanctionCheckConfigPreprocessing{}),
+			utils.Or(cfg.Preprocessing, models.ScreeningConfigPreprocessing{}),
 			configVersion,
 		).
-		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.ScreeningConfigColumnList, ",")))
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningConfig)
 }
 
-func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, exec Executor,
-	scenarioIterationId string, id string, cfg models.UpdateSanctionCheckConfigInput,
-) (models.SanctionCheckConfig, error) {
+func (repo *MarbleDbRepository) UpdateScreeningConfig(ctx context.Context, exec Executor,
+	scenarioIterationId string, id string, cfg models.UpdateScreeningConfigInput,
+) (models.ScreeningConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.SanctionCheckConfig{}, err
+		return models.ScreeningConfig{}, err
 	}
 
 	var triggerRule *[]byte
 	if cfg.TriggerRule != nil && cfg.TriggerRule.Function != ast.FUNC_UNDEFINED {
 		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.TriggerRule)
 		if err != nil {
-			return models.SanctionCheckConfig{}, errors.Wrap(err,
+			return models.ScreeningConfig{}, errors.Wrap(err,
 				"could not serialize sanction check trigger rule")
 		}
 
@@ -160,7 +160,7 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 	if cfg.Query != nil {
 		ser, err := pure_utils.MapValuesErr(cfg.Query, dto.AdaptNodeDto)
 		if err != nil {
-			return models.SanctionCheckConfig{}, err
+			return models.ScreeningConfig{}, err
 		}
 		query = ser
 	}
@@ -170,7 +170,7 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 	if cfg.CounterpartyIdExpression != nil {
 		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.CounterpartyIdExpression)
 		if err != nil {
-			return models.SanctionCheckConfig{}, err
+			return models.ScreeningConfig{}, err
 		}
 
 		counterpartyIdExpr = astJson
@@ -182,9 +182,9 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 	}
 
 	sql := NewQueryBuilder().
-		Update(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
+		Update(dbmodels.TABLE_SCREENING_CONFIGS).
 		Where(squirrel.Eq{"id": id}).
-		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SanctionCheckConfigColumnList, ","))).
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.ScreeningConfigColumnList, ","))).
 		Set("updated_at", time.Now())
 
 	updateFields := false
@@ -250,15 +250,15 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 	}
 
 	if !updateFields {
-		return repo.GetSanctionCheckConfig(ctx, exec, scenarioIterationId, id)
+		return repo.GetScreeningConfig(ctx, exec, scenarioIterationId, id)
 	}
 
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningConfig)
 }
 
-func (repo *MarbleDbRepository) DeleteSanctionCheckConfig(ctx context.Context, exec Executor, scenarioIterationId, configId string) error {
+func (repo *MarbleDbRepository) DeleteScreeningConfig(ctx context.Context, exec Executor, scenarioIterationId, configId string) error {
 	sql := NewQueryBuilder().
-		Delete(dbmodels.TABLE_SANCTION_CHECK_CONFIGS).
+		Delete(dbmodels.TABLE_SCREENING_CONFIGS).
 		Where(squirrel.Eq{
 			"scenario_iteration_id": scenarioIterationId,
 			"id":                    configId,

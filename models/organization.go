@@ -42,7 +42,7 @@ type CreateOrganizationInput struct {
 type UpdateOrganizationInput struct {
 	Id                      string
 	DefaultScenarioTimezone *string
-	SanctionCheckConfig     OrganizationOpenSanctionsConfigUpdateInput
+	ScreeningConfig         OrganizationOpenSanctionsConfigUpdateInput
 }
 
 type SeedOrgConfiguration struct {
