@@ -9,7 +9,7 @@ import (
 	"github.com/gavv/httpexpect/v2"
 )
 
-func sanctionChecks(t *testing.T, e *httpexpect.Expect) {
+func screenings(t *testing.T, e *httpexpect.Expect) {
 	e.GET("/decisions/nouuid/screenings").Expect().
 		Status(http.StatusBadRequest).
 		JSON().
@@ -53,7 +53,7 @@ func sanctionChecks(t *testing.T, e *httpexpect.Expect) {
 		})
 
 	e.POST("/screening/matches/11111111-1111-1111-1111-111111111111").
-		WithJSON(api.UpdateSanctionCheckMatchStatusParams{Status: "no_hit"}).
+		WithJSON(api.UpdateScreeningMatchStatusParams{Status: "no_hit"}).
 		Expect().
 		Status(http.StatusOK).
 		JSON().Path("$.data").Object().
@@ -61,12 +61,12 @@ func sanctionChecks(t *testing.T, e *httpexpect.Expect) {
 		HasValue("status", "no_hit")
 
 	e.POST("/screening/matches/11111111-1111-1111-1111-111111111111").
-		WithJSON(api.UpdateSanctionCheckMatchStatusParams{Status: "invalid"}).
+		WithJSON(api.UpdateScreeningMatchStatusParams{Status: "invalid"}).
 		Expect().
 		Status(http.StatusBadRequest)
 
 	e.POST("/screening/matches/22222222-2222-2222-2222-222222222222").
-		WithJSON(api.UpdateSanctionCheckMatchStatusParams{Status: "no_hit"}).
+		WithJSON(api.UpdateScreeningMatchStatusParams{Status: "no_hit"}).
 		Expect().
 		Status(http.StatusUnprocessableEntity).
 		JSON().Path("$.error.messages").Array().

@@ -30,24 +30,24 @@ func (s *ScenarioFetcherRepositoryMock) GetScenarioIteration(ctx context.Context
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }
 
-func (s *ScenarioFetcherRepositoryMock) ListSanctionCheckConfigs(ctx context.Context,
+func (s *ScenarioFetcherRepositoryMock) ListScreeningConfigs(ctx context.Context,
 	exec repositories.Executor, scenarioIterationId string,
-) ([]models.SanctionCheckConfig, error) {
+) ([]models.ScreeningConfig, error) {
 	args := s.Called(exec, scenarioIterationId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]models.SanctionCheckConfig), args.Error(1)
+	return args.Get(0).([]models.ScreeningConfig), args.Error(1)
 }
 
-func (s *ScenarioFetcherRepositoryMock) GetSanctionCheckConfig(ctx context.Context,
-	exec repositories.Executor, scenarioIterationId, sanctionCheckId string,
-) (models.SanctionCheckConfig, error) {
+func (s *ScenarioFetcherRepositoryMock) GetScreeningConfig(ctx context.Context,
+	exec repositories.Executor, scenarioIterationId, screeningId string,
+) (models.ScreeningConfig, error) {
 	args := s.Called(exec, scenarioIterationId)
 	if args.Get(0) == nil {
-		return models.SanctionCheckConfig{}, args.Error(1)
+		return models.ScreeningConfig{}, args.Error(1)
 	}
-	return args.Get(0).(models.SanctionCheckConfig), args.Error(1)
+	return args.Get(0).(models.ScreeningConfig), args.Error(1)
 }
 
 func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
@@ -65,7 +65,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 	repo := new(ScenarioFetcherRepositoryMock)
 	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
 	repo.On("GetScenarioById", mt, scenario.Id).Return(scenario, nil)
-	repo.On("ListSanctionCheckConfigs", mt, scenarioIteration.Id).Return(nil, nil)
+	repo.On("ListScreeningConfigs", mt, scenarioIteration.Id).Return(nil, nil)
 
 	fetcher := ScenarioFetcher{
 		Repository: repo,
@@ -82,15 +82,15 @@ func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
-func TestScenarioFetcher_FetchScenarioAndIteration_withSanctionCheck(t *testing.T) {
+func TestScenarioFetcher_FetchScenarioAndIteration_withScreening(t *testing.T) {
 	scenario := models.Scenario{
 		Id: "scenario_id",
 	}
 
 	scenarioIteration := models.ScenarioIteration{
-		Id:                   "scenario_iteration_id",
-		ScenarioId:           "scenario_id",
-		SanctionCheckConfigs: []models.SanctionCheckConfig{},
+		Id:               "scenario_iteration_id",
+		ScenarioId:       "scenario_id",
+		ScreeningConfigs: []models.ScreeningConfig{},
 	}
 
 	mt := new(mocks.Executor)
@@ -98,7 +98,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration_withSanctionCheck(t *testing.
 	repo := new(ScenarioFetcherRepositoryMock)
 	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
 	repo.On("GetScenarioById", mt, scenario.Id).Return(scenario, nil)
-	repo.On("ListSanctionCheckConfigs", mt, scenarioIteration.Id).Return([]models.SanctionCheckConfig{}, nil)
+	repo.On("ListScreeningConfigs", mt, scenarioIteration.Id).Return([]models.ScreeningConfig{}, nil)
 
 	fetcher := ScenarioFetcher{
 		Repository: repo,
@@ -148,7 +148,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioById_error(t *test
 	repo := new(ScenarioFetcherRepositoryMock)
 	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
 	repo.On("GetScenarioById", mt, scenario.Id).Return(scenario, assert.AnError)
-	repo.On("ListSanctionCheckConfigs", mt, scenarioIteration.Id).Return(nil, nil)
+	repo.On("ListScreeningConfigs", mt, scenarioIteration.Id).Return(nil, nil)
 
 	fetcher := ScenarioFetcher{
 		Repository: repo,

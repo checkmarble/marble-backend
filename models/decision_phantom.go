@@ -15,27 +15,27 @@ type CreatePhantomDecisionInput struct {
 }
 
 type PhantomDecision struct {
-	PhantomDecisionId       string
-	CreatedAt               time.Time
-	OrganizationId          string
-	Outcome                 Outcome
-	ScenarioId              string
-	ScenarioIterationId     string
-	Score                   int
-	RuleExecutions          []RuleExecution
-	SanctionCheckExecutions []SanctionCheckWithMatches
+	PhantomDecisionId   string
+	CreatedAt           time.Time
+	OrganizationId      string
+	Outcome             Outcome
+	ScenarioId          string
+	ScenarioIterationId string
+	Score               int
+	RuleExecutions      []RuleExecution
+	ScreeningExecutions []ScreeningWithMatches
 }
 
 func AdaptScenarExecToPhantomDecision(scenarioExecution ScenarioExecution) PhantomDecision {
 	return PhantomDecision{
-		PhantomDecisionId:       uuid.Must(uuid.NewV7()).String(),
-		CreatedAt:               time.Now(),
-		OrganizationId:          scenarioExecution.OrganizationId,
-		Outcome:                 scenarioExecution.Outcome,
-		ScenarioId:              scenarioExecution.ScenarioId,
-		ScenarioIterationId:     scenarioExecution.ScenarioIterationId,
-		Score:                   scenarioExecution.Score,
-		RuleExecutions:          scenarioExecution.RuleExecutions,
-		SanctionCheckExecutions: scenarioExecution.SanctionCheckExecutions,
+		PhantomDecisionId:   uuid.Must(uuid.NewV7()).String(),
+		CreatedAt:           time.Now(),
+		OrganizationId:      scenarioExecution.OrganizationId,
+		Outcome:             scenarioExecution.Outcome,
+		ScenarioId:          scenarioExecution.ScenarioId,
+		ScenarioIterationId: scenarioExecution.ScenarioIterationId,
+		Score:               scenarioExecution.Score,
+		RuleExecutions:      scenarioExecution.RuleExecutions,
+		ScreeningExecutions: scenarioExecution.ScreeningExecutions,
 	}
 }

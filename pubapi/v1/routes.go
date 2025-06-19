@@ -23,19 +23,19 @@ func Routes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gin.Ha
 		root.GET("/decisions", HandleListDecisions(uc))
 		root.GET("/decisions/:decisionId", HandleGetDecision(uc))
 		root.POST("/decisions/:decisionId/snooze", HandleSnoozeRule(uc))
-		root.GET("/decisions/:decisionId/screenings", HandleListSanctionChecks(uc))
+		root.GET("/decisions/:decisionId/screenings", HandleListScreenings(uc))
 
 		decision.POST("/decisions", HandleCreateDecision(uc))
 		decision.POST("/decisions/all", HandleCreateAllDecisions(uc))
 
 		root.GET("/batch-executions", HandleListBatchExecutions(uc))
 
-		root.POST("/screening/:screeningId/refine", HandleRefineSanctionCheck(uc, true))
-		root.POST("/screening/:screeningId/search", HandleRefineSanctionCheck(uc, false))
-		root.POST("/screening/search", HandleSanctionFreeformSearch(uc))
+		root.POST("/screening/:screeningId/refine", HandleRefineScreening(uc, true))
+		root.POST("/screening/:screeningId/search", HandleRefineScreening(uc, false))
+		root.POST("/screening/search", HandleScreeningFreeformSearch(uc))
 
-		root.GET("/screening/entities/:entityId", HandleGetSanctionCheckEntity(uc))
-		root.POST("/screening/matches/:matchId", HandleUpdateSanctionCheckMatchStatus(uc))
+		root.GET("/screening/entities/:entityId", HandleGetScreeningEntity(uc))
+		root.POST("/screening/matches/:matchId", HandleUpdateScreeningMatchStatus(uc))
 
 		root.POST("/screening/whitelists/search", HandleSearchWhitelist(uc))
 		root.POST("/screening/whitelists", HandleAddWhitelist(uc))

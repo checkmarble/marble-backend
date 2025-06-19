@@ -10,23 +10,23 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-type SanctionCheckConfig struct {
-	Id                       string                                   `json:"id"`
-	Name                     *string                                  `json:"name"`
-	Description              *string                                  `json:"description"`
-	RuleGroup                *string                                  `json:"rule_group,omitempty"`
-	Datasets                 []string                                 `json:"datasets,omitempty"`
-	Threshold                *int                                     `json:"threshold,omitempty" binding:"omitempty,min=0,max=100"`
-	ForcedOutcome            *string                                  `json:"forced_outcome,omitempty"`
-	TriggerRule              *NodeDto                                 `json:"trigger_rule"`
-	EntityType               *string                                  `json:"entity_type" binding:"omitempty,oneof=Thing Person Organization Vehicle"`
-	Query                    map[string]NodeDto                       `json:"query"`
-	CounterpartyIdExpression *NodeDto                                 `json:"counterparty_id_expression"`
-	Preprocessing            *models.SanctionCheckConfigPreprocessing `json:"preprocessing,omitzero"`
+type ScreeningConfig struct {
+	Id                       string                               `json:"id"`
+	Name                     *string                              `json:"name"`
+	Description              *string                              `json:"description"`
+	RuleGroup                *string                              `json:"rule_group,omitempty"`
+	Datasets                 []string                             `json:"datasets,omitempty"`
+	Threshold                *int                                 `json:"threshold,omitempty" binding:"omitempty,min=0,max=100"`
+	ForcedOutcome            *string                              `json:"forced_outcome,omitempty"`
+	TriggerRule              *NodeDto                             `json:"trigger_rule"`
+	EntityType               *string                              `json:"entity_type" binding:"omitempty,oneof=Thing Person Organization Vehicle"`
+	Query                    map[string]NodeDto                   `json:"query"`
+	CounterpartyIdExpression *NodeDto                             `json:"counterparty_id_expression"`
+	Preprocessing            *models.ScreeningConfigPreprocessing `json:"preprocessing,omitzero"`
 }
 
-func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckConfig, error) {
-	config := SanctionCheckConfig{
+func AdaptScreeningConfig(model models.ScreeningConfig) (ScreeningConfig, error) {
+	config := ScreeningConfig{
 		Id:            model.Id,
 		Name:          &model.Name,
 		Description:   &model.Description,
@@ -41,16 +41,16 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 	if model.TriggerRule != nil {
 		nodeDto, err := AdaptNodeDto(*model.TriggerRule)
 		if err != nil {
-			return SanctionCheckConfig{}, nil
+			return ScreeningConfig{}, nil
 		}
 
 		config.TriggerRule = &nodeDto
 	}
 
 	if model.Query != nil {
-		query, err := pure_utils.MapValuesErr(model.Query, AdaptSanctionCheckConfigQuery)
+		query, err := pure_utils.MapValuesErr(model.Query, AdaptScreeningConfigQuery)
 		if err != nil {
-			return SanctionCheckConfig{}, err
+			return ScreeningConfig{}, err
 		}
 		config.Query = query
 	}
@@ -58,7 +58,7 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 	if model.CounterpartyIdExpression != nil {
 		counterpartyIdExpr, err := AdaptNodeDto(*model.CounterpartyIdExpression)
 		if err != nil {
-			return SanctionCheckConfig{}, err
+			return ScreeningConfig{}, err
 		}
 
 		config.CounterpartyIdExpression = &counterpartyIdExpr
@@ -67,8 +67,8 @@ func AdaptSanctionCheckConfig(model models.SanctionCheckConfig) (SanctionCheckCo
 	return config, nil
 }
 
-func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSanctionCheckConfigInput, error) {
-	config := models.UpdateSanctionCheckConfigInput{
+func AdaptScreeningConfigInputDto(dto ScreeningConfig) (models.UpdateScreeningConfigInput, error) {
+	config := models.UpdateScreeningConfigInput{
 		Id:            dto.Id,
 		Name:          dto.Name,
 		Description:   dto.Description,
@@ -85,7 +85,7 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 	if dto.TriggerRule != nil {
 		astRule, err := AdaptASTNode(*dto.TriggerRule)
 		if err != nil {
-			return models.UpdateSanctionCheckConfigInput{}, errors.Wrap(
+			return models.UpdateScreeningConfigInput{}, errors.Wrap(
 				models.BadParameterError,
 				"invalid trigger",
 			)
@@ -94,9 +94,9 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 	}
 
 	if dto.Query != nil {
-		query, err := AdaptSanctionCheckConfigQueryDto(dto.Query)
+		query, err := AdaptScreeningConfigQueryDto(dto.Query)
 		if err != nil {
-			return models.UpdateSanctionCheckConfigInput{}, errors.Wrap(
+			return models.UpdateScreeningConfigInput{}, errors.Wrap(
 				models.BadParameterError,
 				"invalid query",
 			)
@@ -108,7 +108,7 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 	if dto.CounterpartyIdExpression != nil {
 		counterpartyIdExpr, err := AdaptASTNode(*dto.CounterpartyIdExpression)
 		if err != nil {
-			return models.UpdateSanctionCheckConfigInput{}, errors.Wrap(
+			return models.UpdateScreeningConfigInput{}, errors.Wrap(
 				models.BadParameterError,
 				"invalid query",
 			)
@@ -120,12 +120,12 @@ func AdaptSanctionCheckConfigInputDto(dto SanctionCheckConfig) (models.UpdateSan
 	return config, nil
 }
 
-type SanctionCheckConfigQuery struct {
+type ScreeningConfigQuery struct {
 	Name  *NodeDto `json:"name,omitempty"`
 	Label *NodeDto `json:"label,omitempty"`
 }
 
-func AdaptSanctionCheckConfigQuery(model ast.Node) (NodeDto, error) {
+func AdaptScreeningConfigQuery(model ast.Node) (NodeDto, error) {
 	nameAst, err := AdaptNodeDto(model)
 	if err != nil {
 		return NodeDto{}, err
@@ -134,11 +134,11 @@ func AdaptSanctionCheckConfigQuery(model ast.Node) (NodeDto, error) {
 	return nameAst, nil
 }
 
-func AdaptSanctionCheckConfigQueryDto(dto map[string]NodeDto) (map[string]ast.Node, error) {
+func AdaptScreeningConfigQueryDto(dto map[string]NodeDto) (map[string]ast.Node, error) {
 	return pure_utils.MapValuesErr(dto, AdaptASTNode)
 }
 
-func (scc SanctionCheckConfig) ValidateOpenSanctionsQuery() error {
+func (scc ScreeningConfig) ValidateOpenSanctionsQuery() error {
 	entityType := utils.Or(scc.EntityType, "Thing")
 
 	if (scc.EntityType == nil && scc.Query != nil) || (scc.EntityType != nil && scc.Query == nil) {

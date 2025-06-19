@@ -29,13 +29,13 @@ func TestOpenSanctionsSelfHostedApi(t *testing.T) {
 	defer gock.Off()
 
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "", "")
-	cfg := models.SanctionCheckConfig{}
+	cfg := models.ScreeningConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
-				Filters: models.OpenSanctionCheckFilter{
+				Filters: models.OpenSanctionsFilter{
 					"name": []string{"bob"},
 				},
 			},
@@ -57,13 +57,13 @@ func TestOpenSanctionsSelfHostedAndApiKey(t *testing.T) {
 	defer gock.Off()
 
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "", "abcdef")
-	cfg := models.SanctionCheckConfig{}
+	cfg := models.ScreeningConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
-				Filters: models.OpenSanctionCheckFilter{
+				Filters: models.OpenSanctionsFilter{
 					"name": []string{"bob"},
 				},
 			},
@@ -86,13 +86,13 @@ func TestOpenSanctionsSaaSAndApiKey(t *testing.T) {
 	defer gock.Off()
 
 	repo := getMockedOpenSanctionsRepository("", "", "abcdef")
-	cfg := models.SanctionCheckConfig{}
+	cfg := models.ScreeningConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
-				Filters: models.OpenSanctionCheckFilter{
+				Filters: models.OpenSanctionsFilter{
 					"name": []string{"bob"},
 				},
 			},
@@ -115,13 +115,13 @@ func TestOpenSanctionsSelfHostedAndBearerToken(t *testing.T) {
 	defer gock.Off()
 
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "bearer", "abcdef")
-	cfg := models.SanctionCheckConfig{}
+	cfg := models.ScreeningConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
-				Filters: models.OpenSanctionCheckFilter{
+				Filters: models.OpenSanctionsFilter{
 					"name": []string{"bob"},
 				},
 			},
@@ -144,13 +144,13 @@ func TestOpenSanctionsSelfHostedAndBasicAuth(t *testing.T) {
 	defer gock.Off()
 
 	repo := getMockedOpenSanctionsRepository("https://yente.local", "basic", "abcdef:helloworld")
-	cfg := models.SanctionCheckConfig{}
+	cfg := models.ScreeningConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
-				Filters: models.OpenSanctionCheckFilter{
+				Filters: models.OpenSanctionsFilter{
 					"name": []string{"bob"},
 				},
 			},
@@ -173,13 +173,13 @@ func TestOpenSanctionsError(t *testing.T) {
 	defer gock.Off()
 
 	repo := getMockedOpenSanctionsRepository("", "", "")
-	cfg := models.SanctionCheckConfig{}
+	cfg := models.ScreeningConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
-				Filters: models.OpenSanctionCheckFilter{
+				Filters: models.OpenSanctionsFilter{
 					"name": []string{"bob"},
 				},
 			},
@@ -201,13 +201,13 @@ func TestOpenSanctionsSuccessfulPartialResponse(t *testing.T) {
 	defer gock.Off()
 
 	repo := getMockedOpenSanctionsRepository("", "", "")
-	cfg := models.SanctionCheckConfig{}
+	cfg := models.ScreeningConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
-				Filters: models.OpenSanctionCheckFilter{
+				Filters: models.OpenSanctionsFilter{
 					"name": []string{"bob"},
 				},
 			},
@@ -235,13 +235,13 @@ func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 	defer gock.Off()
 
 	repo := getMockedOpenSanctionsRepository("", "", "")
-	cfg := models.SanctionCheckConfig{}
+	cfg := models.ScreeningConfig{}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
-				Filters: models.OpenSanctionCheckFilter{
+				Filters: models.OpenSanctionsFilter{
 					"name": []string{"bob"},
 				},
 			},
@@ -276,13 +276,13 @@ func TestOpenSanctionsSuccessfulFullResponseWithThresholdOverride(t *testing.T) 
 	defer gock.Off()
 
 	repo := getMockedOpenSanctionsRepository("", "", "")
-	cfg := models.SanctionCheckConfig{Threshold: utils.Ptr(30)}
+	cfg := models.ScreeningConfig{Threshold: utils.Ptr(30)}
 	query := models.OpenSanctionsQuery{
 		Config: cfg,
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type: "Thing",
-				Filters: models.OpenSanctionCheckFilter{
+				Filters: models.OpenSanctionsFilter{
 					"name": []string{"bob"},
 				},
 			},

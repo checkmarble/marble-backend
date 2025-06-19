@@ -7,9 +7,9 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const TABLE_SANCTION_CHECK_WHITELISTS = "sanction_check_whitelists"
+const TABLE_SCREENING_WHITELISTS = "sanction_check_whitelists"
 
-type DBSanctionCheckWhitelists struct {
+type DBScreeningWhitelists struct {
 	Id             string    `db:"id"`
 	OrgId          string    `db:"org_id"`
 	CounterpartyId string    `db:"counterparty_id"`
@@ -18,10 +18,10 @@ type DBSanctionCheckWhitelists struct {
 	CreatedAt      time.Time `db:"created_at"`
 }
 
-var SanctionCheckWhitelistColumnList = utils.ColumnList[DBSanctionCheckWhitelists]()
+var ScreeningWhitelistColumnList = utils.ColumnList[DBScreeningWhitelists]()
 
-func AdaptSanctionCheckWhitelist(db DBSanctionCheckWhitelists) (models.SanctionCheckWhitelist, error) {
-	return models.SanctionCheckWhitelist{
+func AdaptScreeningWhitelist(db DBScreeningWhitelists) (models.ScreeningWhitelist, error) {
+	return models.ScreeningWhitelist{
 		Id:             db.Id,
 		OrgId:          db.OrgId,
 		CounterpartyId: db.CounterpartyId,

@@ -18,13 +18,13 @@ import (
 type ScreeningPreprocessor func(
 	ctx context.Context,
 	e ScenarioEvaluator,
-	sanctionCheckId string,
+	screeningId string,
 	queries []models.OpenSanctionsCheckQuery,
 	iteration models.ScenarioIteration,
-	scc models.SanctionCheckConfig,
+	scc models.ScreeningConfig,
 ) ([]models.OpenSanctionsCheckQuery, error)
 
-func SkipIfUnder(ctx context.Context, e ScenarioEvaluator, sanctionCheckId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.SanctionCheckConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func SkipIfUnder(ctx context.Context, e ScenarioEvaluator, screeningId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.ScreeningConfig) ([]models.OpenSanctionsCheckQuery, error) {
 	if scc.Preprocessing.SkipIfUnder == 0 {
 		return queries, nil
 	}
@@ -43,14 +43,14 @@ func SkipIfUnder(ctx context.Context, e ScenarioEvaluator, sanctionCheckId strin
 
 	if skipped > 0 {
 		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: skipped %d queries", skipped),
-			"sanction_check_id", sanctionCheckId,
+			"sanction_check_id", screeningId,
 			"step", "skip_if_under")
 	}
 
 	return out, nil
 }
 
-func RemoveNumbers(ctx context.Context, e ScenarioEvaluator, sanctionCheckId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.SanctionCheckConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func RemoveNumbers(ctx context.Context, e ScenarioEvaluator, screeningId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.ScreeningConfig) ([]models.OpenSanctionsCheckQuery, error) {
 	if !scc.Preprocessing.RemoveNumbers {
 		return queries, nil
 	}
@@ -77,14 +77,14 @@ func RemoveNumbers(ctx context.Context, e ScenarioEvaluator, sanctionCheckId str
 
 	if removed > 0 {
 		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: removed %d characters", removed),
-			"sanction_check_id", sanctionCheckId,
+			"sanction_check_id", screeningId,
 			"step", "remove_numbers")
 	}
 
 	return out, nil
 }
 
-func IgnoreList(ctx context.Context, e ScenarioEvaluator, sanctionCheckId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.SanctionCheckConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func IgnoreList(ctx context.Context, e ScenarioEvaluator, screeningId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.ScreeningConfig) ([]models.OpenSanctionsCheckQuery, error) {
 	if scc.Preprocessing.IgnoreListId == "" {
 		return queries, nil
 	}
@@ -126,14 +126,14 @@ func IgnoreList(ctx context.Context, e ScenarioEvaluator, sanctionCheckId string
 
 	if removed > 0 {
 		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: removed %d words", removed),
-			"sanction_check_id", sanctionCheckId,
+			"sanction_check_id", screeningId,
 			"step", "ignore_list")
 	}
 
 	return out, nil
 }
 
-func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, sanctionCheckId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.SanctionCheckConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.ScreeningConfig) ([]models.OpenSanctionsCheckQuery, error) {
 	if !scc.Preprocessing.UseNer {
 		return queries, nil
 	}
@@ -167,13 +167,13 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, sanctionChe
 			case "Person":
 				out = append(out, models.OpenSanctionsCheckQuery{
 					Type:    "Person",
-					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
+					Filters: models.OpenSanctionsFilter{"name": []string{match.Text}},
 				})
 
 			case "Company", "Organization":
 				out = append(out, models.OpenSanctionsCheckQuery{
 					Type:    "Organization",
-					Filters: models.OpenSanctionCheckFilter{"name": []string{match.Text}},
+					Filters: models.OpenSanctionsFilter{"name": []string{match.Text}},
 				})
 
 			default:
@@ -184,7 +184,7 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, sanctionChe
 
 	if performed {
 		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: turned %d queries into %d", len(queries), len(out)),
-			"sanction_check_id", sanctionCheckId,
+			"sanction_check_id", screeningId,
 			"step", "ner",
 			"out", pure_utils.Map(queries, func(q models.OpenSanctionsCheckQuery) string {
 				return q.Type

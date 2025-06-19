@@ -36,7 +36,7 @@ const (
 	SarDeleted            CaseEventType = "sar_deleted"
 	SarStatusChanged      CaseEventType = "sar_status_changed"
 	SarFileUploaded       CaseEventType = "sar_file_uploaded"
-	SanctionCheckReviewed CaseEventType = "sanction_check_reviewed"
+	ScreeningReviewed     CaseEventType = "sanction_check_reviewed"
 	DecisionAdded         CaseEventType = "decision_added"
 	DecisionReviewed      CaseEventType = "decision_reviewed"
 	CaseSnoozed           CaseEventType = "case_snoozed"

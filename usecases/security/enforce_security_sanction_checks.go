@@ -6,7 +6,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-type EnforceSecuritySanctionCheck interface {
+type EnforceSecurityScreening interface {
 	EnforceSecurity
 
 	ReadWhitelist(ctx context.Context) error

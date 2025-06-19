@@ -37,7 +37,7 @@ func ScenarioValidationToError(validation models.ScenarioValidation) error {
 
 	errs = append(errs, pure_utils.Map(validation.Decision.Errors, toError)...)
 
-	for _, sc := range validation.SanctionCheck {
+	for _, sc := range validation.Screenings {
 		errs = append(errs, pure_utils.Map(sc.TriggerRule.Errors, toError)...)
 		errs = append(errs, sc.TriggerRule.TriggerEvaluation.FlattenErrors()...)
 		errs = append(errs, pure_utils.Map(sc.Query.Errors, toError)...)
@@ -130,10 +130,10 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 	}
 
 	// Validate sanction check trigger and rule
-	result.SanctionCheck = make([]models.SanctionCheckConfigValidation, len(iteration.SanctionCheckConfigs))
+	result.Screenings = make([]models.ScreeningConfigValidation, len(iteration.ScreeningConfigs))
 
-	for idx, scc := range iteration.SanctionCheckConfigs {
-		scResult := models.NewSanctionCheckValidation()
+	for idx, scc := range iteration.ScreeningConfigs {
+		scResult := models.NewScreeningValidation()
 
 		if scc.TriggerRule != nil {
 			triggerRuleEvaluation, _ := ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment,
@@ -205,7 +205,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 		scResult.Query = queryValidation
 		scResult.CounterpartyIdExpression = counterpartyIdValidation
 
-		result.SanctionCheck[idx] = scResult
+		result.Screenings[idx] = scResult
 	}
 
 	return result

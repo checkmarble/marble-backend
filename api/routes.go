@@ -101,9 +101,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/scenario-iterations/:iteration_id", tom, handleGetScenarioIteration(uc))
 	router.POST("/scenario-iterations/:iteration_id", tom, handleCreateDraftFromIteration(uc))
 	router.PATCH("/scenario-iterations/:iteration_id", tom, handleUpdateScenarioIteration(uc))
-	router.POST("/scenario-iterations/:iteration_id/sanction-check", tom, handleCreateSanctionCheckConfig(uc))
-	router.PATCH("/scenario-iterations/:iteration_id/sanction-check/:config_id", tom, handleUpdateSanctionCheckConfig(uc))
-	router.DELETE("/scenario-iterations/:iteration_id/sanction-check/:config_id", tom, handleDeleteSanctionCheckConfig(uc))
+	router.POST("/scenario-iterations/:iteration_id/sanction-check", tom, handleCreateScreeningConfig(uc))
+	router.PATCH("/scenario-iterations/:iteration_id/sanction-check/:config_id", tom, handleUpdateScreeningCheckConfig(uc))
+	router.DELETE("/scenario-iterations/:iteration_id/sanction-check/:config_id", tom, handleDeleteScreeningConfig(uc))
 	router.POST("/scenario-iterations/:iteration_id/validate", tom, handleValidateScenarioIteration(uc))
 	router.POST("/scenario-iterations/:iteration_id/commit",
 		tom,
@@ -117,19 +117,19 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/scenario-iteration-rules/:rule_id", tom, handleUpdateRule(uc))
 	router.DELETE("/scenario-iteration-rules/:rule_id", tom, handleDeleteRule(uc))
 
-	router.GET("/sanction-checks/freshness", tom, handleSanctionCheckDatasetFreshness(uc))
-	router.GET("/sanction-checks/datasets", tom, handleSanctionCheckDatasetCatalog(uc))
-	router.GET("/sanction-checks", tom, handleListSanctionChecks(uc))
-	router.POST("/sanction-checks/refine", tom, handleRefineSanctionCheck(uc))
-	router.POST("/sanction-checks/search", tom, handleSearchSanctionCheck(uc))
-	router.POST("/sanction-checks/:sanctionCheckId/files", tom,
-		handleUploadSanctionCheckMatchFile(uc))
-	router.GET("/sanction-checks/:sanctionCheckId/files", tom,
-		handleListSanctionCheckMatchFiles(uc))
-	router.GET("/sanction-checks/:sanctionCheckId/files/:fileId", tom,
-		handleDownloadSanctionCheckMatchFile(uc))
-	router.PATCH("/sanction-checks/matches/:id", tom, handleUpdateSanctionCheckMatchStatus(uc))
-	router.POST("/sanction-checks/matches/:id/enrich", tom, handleEnrichSanctionCheckMatch(uc))
+	router.GET("/sanction-checks/freshness", tom, handleScreeningDatasetFreshness(uc))
+	router.GET("/sanction-checks/datasets", tom, handleScreeningDatasetCatalog(uc))
+	router.GET("/sanction-checks", tom, handleListScreenings(uc))
+	router.POST("/sanction-checks/refine", tom, handleRefineScreening(uc))
+	router.POST("/sanction-checks/search", tom, handleSearchScreening(uc))
+	router.POST("/sanction-checks/:screeningId/files", tom,
+		handleUploadScreeningMatchFile(uc))
+	router.GET("/sanction-checks/:screeningId/files", tom,
+		handleListScreeningMatchFiles(uc))
+	router.GET("/sanction-checks/:screeningId/files/:fileId", tom,
+		handleDownloadScreeningMatchFile(uc))
+	router.PATCH("/sanction-checks/matches/:id", tom, handleUpdateScreeningMatchStatus(uc))
+	router.POST("/sanction-checks/matches/:id/enrich", tom, handleEnrichScreeningMatch(uc))
 
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))

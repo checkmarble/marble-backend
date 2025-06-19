@@ -82,12 +82,12 @@ func handleCreateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCreateSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateScreeningConfig(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		iterationId := c.Param("iteration_id")
 		ctx := c.Request.Context()
 
-		var input dto.SanctionCheckConfig
+		var input dto.ScreeningConfig
 
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -99,22 +99,22 @@ func handleCreateSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) 
 			return
 		}
 
-		config, err := dto.AdaptSanctionCheckConfigInputDto(input)
+		config, err := dto.AdaptScreeningConfigInputDto(input)
 
 		if presentError(ctx, c, err) {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
-		scc, err := uc.CreateSanctionCheckConfig(ctx, iterationId, config)
+		scc, err := uc.CreateScreeningConfig(ctx, iterationId, config)
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		output, err := dto.AdaptSanctionCheckConfig(scc)
+		output, err := dto.AdaptScreeningConfig(scc)
 
 		if presentError(ctx, c, err) {
 			return
@@ -124,13 +124,13 @@ func handleCreateSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) 
 	}
 }
 
-func handleUpdateSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateScreeningCheckConfig(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		iterationId := c.Param("iteration_id")
-		sanctionCheckConfigId := c.Param("config_id")
+		screeningConfigId := c.Param("config_id")
 		ctx := c.Request.Context()
 
-		var input dto.SanctionCheckConfig
+		var input dto.ScreeningConfig
 
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -141,22 +141,22 @@ func handleUpdateSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) 
 			return
 		}
 
-		config, err := dto.AdaptSanctionCheckConfigInputDto(input)
+		config, err := dto.AdaptScreeningConfigInputDto(input)
 
 		if presentError(ctx, c, err) {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
-		scc, err := uc.UpdateSanctionCheckConfig(ctx, iterationId, sanctionCheckConfigId, config)
+		scc, err := uc.UpdateScreeningConfig(ctx, iterationId, screeningConfigId, config)
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		output, err := dto.AdaptSanctionCheckConfig(scc)
+		output, err := dto.AdaptScreeningConfig(scc)
 
 		if presentError(ctx, c, err) {
 			return
@@ -166,14 +166,14 @@ func handleUpdateSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) 
 	}
 }
 
-func handleDeleteSanctionCheckConfig(uc usecases.Usecases) func(c *gin.Context) {
+func handleDeleteScreeningConfig(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		iterationId := c.Param("iteration_id")
 		configId := c.Param("config_id")
 		ctx := c.Request.Context()
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
-		if presentError(ctx, c, uc.DeleteSanctionCheckConfig(ctx, iterationId, configId)) {
+		if presentError(ctx, c, uc.DeleteScreeningConfig(ctx, iterationId, configId)) {
 			return
 		}
 

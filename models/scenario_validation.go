@@ -77,7 +77,7 @@ type decisionValidation struct {
 	Errors []ScenarioValidationError
 }
 
-type SanctionCheckConfigValidation struct {
+type ScreeningConfigValidation struct {
 	TriggerRule              triggerValidation
 	Query                    RuleValidation
 	QueryFields              map[string]RuleValidation
@@ -85,11 +85,11 @@ type SanctionCheckConfigValidation struct {
 }
 
 type ScenarioValidation struct {
-	Errors        []ScenarioValidationError
-	Trigger       triggerValidation
-	Rules         rulesValidation
-	SanctionCheck []SanctionCheckConfigValidation
-	Decision      decisionValidation
+	Errors     []ScenarioValidationError
+	Trigger    triggerValidation
+	Rules      rulesValidation
+	Screenings []ScreeningConfigValidation
+	Decision   decisionValidation
 }
 
 func NewScenarioValidation() ScenarioValidation {
@@ -102,15 +102,15 @@ func NewScenarioValidation() ScenarioValidation {
 			Errors: make([]ScenarioValidationError, 0),
 			Rules:  make(map[string]RuleValidation),
 		},
-		SanctionCheck: []SanctionCheckConfigValidation{},
+		Screenings: []ScreeningConfigValidation{},
 		Decision: decisionValidation{
 			Errors: make([]ScenarioValidationError, 0),
 		},
 	}
 }
 
-func NewSanctionCheckValidation() SanctionCheckConfigValidation {
-	return SanctionCheckConfigValidation{
+func NewScreeningValidation() ScreeningConfigValidation {
+	return ScreeningConfigValidation{
 		TriggerRule: triggerValidation{
 			Errors: make([]ScenarioValidationError, 0),
 		},

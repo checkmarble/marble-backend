@@ -89,9 +89,9 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 		}
 	}
 
-	if organization.SanctionCheckConfig.MatchThreshold != nil {
-		if *organization.SanctionCheckConfig.MatchThreshold < 0 ||
-			*organization.SanctionCheckConfig.MatchThreshold > 100 {
+	if organization.ScreeningConfig.MatchThreshold != nil {
+		if *organization.ScreeningConfig.MatchThreshold < 0 ||
+			*organization.ScreeningConfig.MatchThreshold > 100 {
 			return models.Organization{}, errors.Wrapf(models.BadParameterError,
 				"threshold should be between 0 and 100")
 		}

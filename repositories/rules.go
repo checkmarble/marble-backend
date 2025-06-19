@@ -140,7 +140,7 @@ func (repo *MarbleDbRepository) PhanomRulesExecutionStats(
 	)
 }
 
-func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
+func (repo *MarbleDbRepository) ScreeningExecutionStats(
 	ctx context.Context,
 	exec Executor,
 	organizationId string,
@@ -159,7 +159,7 @@ func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
 	case "phantom_decisions":
 		baseTable = "phantom_decisions"
 	default:
-		return nil, errors.Newf("invalid base table in SanctionCheckExecutionStats: %s", base)
+		return nil, errors.Newf("invalid base table in ScreeningExecutionStats: %s", base)
 	}
 
 	sqlVersion := "SELECT version FROM scenario_iterations WHERE id = $1"
@@ -169,10 +169,10 @@ func (repo *MarbleDbRepository) SanctionCheckExecutionStats(
 		return nil, err
 	}
 
-	sanctionCheckRuleName := "SELECT stable_id, name FROM sanction_check_configs WHERE scenario_iteration_id = $1"
+	screeningRuleName := "SELECT stable_id, name FROM sanction_check_configs WHERE scenario_iteration_id = $1"
 	var stableId string
 	var name string
-	err = exec.QueryRow(ctx, sanctionCheckRuleName, iterationId).Scan(&stableId, &name)
+	err = exec.QueryRow(ctx, screeningRuleName, iterationId).Scan(&stableId, &name)
 	// All iterations don't have a sanction check config enabled. If there is none, just early exit
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

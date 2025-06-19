@@ -21,7 +21,7 @@ type Decision struct {
 	Scenario         DecisionScenario `json:"scenario"`
 	Score            int              `json:"score"`
 	Rules            []DecisionRule   `json:"rules,omitzero"`
-	Screenings       []SanctionCheck  `json:"screenings,omitzero"`
+	Screenings       []Screening      `json:"screenings,omitzero"`
 }
 
 type DecisionScenario struct {
@@ -43,7 +43,7 @@ type DecisionRuleError struct {
 	Message string `json:"message"`
 }
 
-func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, sanctionCheck []models.SanctionCheckWithMatches) func(models.Decision) Decision {
+func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, screening []models.ScreeningWithMatches) func(models.Decision) Decision {
 	return func(model models.Decision) Decision {
 		d := Decision{
 			Id:               model.DecisionId,
@@ -66,14 +66,14 @@ func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, san
 
 		if includeRules {
 			d.Rules = []DecisionRule{}
-			d.Screenings = []SanctionCheck{}
+			d.Screenings = []Screening{}
 
 			if ruleExecutions != nil {
 				d.Rules = pure_utils.Map(ruleExecutions, AdaptDecisionRule)
 			}
 
-			if sanctionCheck != nil {
-				d.Screenings = pure_utils.Map(sanctionCheck, AdaptSanctionCheck(false))
+			if screening != nil {
+				d.Screenings = pure_utils.Map(screening, AdaptScreening(false))
 			}
 		}
 

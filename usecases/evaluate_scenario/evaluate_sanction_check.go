@@ -15,22 +15,21 @@ import (
 )
 
 const (
-	// ErrSanctionCheckInvalidAst              = "invalid_ast"
-	ErrSanctionCheckTriggerRuleNotBoolean   = "trigger_rule_not_boolean"
-	ErrSanctionCheckCounterpartyIdNotString = "counterparty_id_not_string"
-	ErrSanctionCheckAllFieldsNullOrEmpty    = "all_fields_null_or_empty"
-	ErrSanctionCheckFieldsNotString         = "fields_not_string"
-	ErrSanctionCheckPreprocessingFailed     = "preprocessing_failed"
+	ErrScreeningTriggerRuleNotBoolean   = "trigger_rule_not_boolean"
+	ErrScreeningCounterpartyIdNotString = "counterparty_id_not_string"
+	ErrScreeningAllFieldsNullOrEmpty    = "all_fields_null_or_empty"
+	ErrScreeningFieldsNotString         = "fields_not_string"
+	ErrScreeningPreprocessingFailed     = "preprocessing_failed"
 )
 
-func (e ScenarioEvaluator) evaluateSanctionCheck(
+func (e ScenarioEvaluator) evaluateScreening(
 	ctx context.Context,
 	iteration models.ScenarioIteration,
 	params ScenarioEvaluationParameters,
 	dataAccessor DataAccessor,
-) (sexecs []models.SanctionCheckWithMatches, serr error) {
+) (sexecs []models.ScreeningWithMatches, serr error) {
 	// First, check if the sanction check should be performed
-	if len(iteration.SanctionCheckConfigs) == 0 {
+	if len(iteration.ScreeningConfigs) == 0 {
 		return
 	}
 
@@ -38,18 +37,18 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		wg   sync.WaitGroup
 		lock sync.Mutex
 
-		screeningExecutions = make([]models.SanctionCheckWithMatches, len(iteration.SanctionCheckConfigs))
-		screeningErrors     = make([]error, 0, len(iteration.SanctionCheckConfigs))
+		screeningExecutions = make([]models.ScreeningWithMatches, len(iteration.ScreeningConfigs))
+		screeningErrors     = make([]error, 0, len(iteration.ScreeningConfigs))
 	)
 
-	addScreeningResult := func(idx int, result models.SanctionCheckWithMatches) {
+	addScreeningResult := func(idx int, result models.ScreeningWithMatches) {
 		lock.Lock()
 		defer lock.Unlock()
 
 		screeningExecutions[idx] = result
 	}
 
-	addScreeningError := func(scc models.SanctionCheckConfig, err error) {
+	addScreeningError := func(scc models.ScreeningConfig, err error) {
 		lock.Lock()
 		defer lock.Unlock()
 
@@ -59,10 +58,10 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 		screeningErrors = append(screeningErrors, err)
 	}
 
-	for idx, scc := range iteration.SanctionCheckConfigs {
+	for idx, scc := range iteration.ScreeningConfigs {
 		wg.Add(1)
 
-		go func(idx int, scc models.SanctionCheckConfig) {
+		go func(idx int, scc models.ScreeningConfig) {
 			defer func() {
 				if r := recover(); r != nil {
 					utils.LoggerFromContext(ctx).ErrorContext(ctx, fmt.Sprintf("recovered from panic during screening execution: '%s'. stacktrace from panic:", r))
@@ -94,7 +93,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				passed, ok := triggerEvaluation.ReturnValue.(bool)
 
 				if !ok {
-					addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckTriggerRuleNotBoolean, nil))
+					addScreeningResult(idx, outcomeError(scc, ErrScreeningTriggerRuleNotBoolean, nil))
 					return
 				}
 				if !passed {
@@ -112,7 +111,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				queries = []models.OpenSanctionsCheckQuery{
 					{
 						Type:    scc.EntityType,
-						Filters: models.OpenSanctionCheckFilter{},
+						Filters: models.OpenSanctionsFilter{},
 					},
 				}
 
@@ -126,17 +125,17 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 					}
 
 					if inputAst.ReturnValue == nil {
-						addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty, nil))
+						addScreeningResult(idx, outcomeError(scc, ErrScreeningAllFieldsNullOrEmpty, nil))
 						return
 					}
 
 					input, ok := inputAst.ReturnValue.(string)
 					if !ok {
-						addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckFieldsNotString, nil))
+						addScreeningResult(idx, outcomeError(scc, ErrScreeningFieldsNotString, nil))
 						return
 					}
 					if input == "" {
-						addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty, nil))
+						addScreeningResult(idx, outcomeError(scc, ErrScreeningAllFieldsNullOrEmpty, nil))
 						return
 					}
 
@@ -144,7 +143,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				}
 
 				if queries, err = e.preprocess(ctx, scId, queries, iteration, scc); err != nil {
-					addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckAllFieldsNullOrEmpty, nil))
+					addScreeningResult(idx, outcomeError(scc, ErrScreeningAllFieldsNullOrEmpty, nil))
 					return
 				}
 			}
@@ -177,14 +176,14 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 
 				counterpartyId, ok := counterpartyIdResult.ReturnValue.(string)
 				if counterpartyIdResult.ReturnValue == nil || !ok {
-					addScreeningResult(idx, outcomeError(scc, ErrSanctionCheckCounterpartyIdNotString, nil))
+					addScreeningResult(idx, outcomeError(scc, ErrScreeningCounterpartyIdNotString, nil))
 					return
 				}
 
 				if trimmed := strings.TrimSpace(counterpartyId); trimmed != "" {
 					uniqueCounterpartyIdentifier = &counterpartyId
 
-					whitelistCount, err := e.evalSanctionCheckUsecase.CountWhitelistsForCounterpartyId(
+					whitelistCount, err := e.evalScreeningUsecase.CountWhitelistsForCounterpartyId(
 						ctx, iteration.OrganizationId, *uniqueCounterpartyIdentifier)
 					if err != nil {
 						addScreeningError(scc, errors.Wrap(err, "could not retrieve whitelist count"))
@@ -195,7 +194,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 				}
 			}
 
-			result, err := e.evalSanctionCheckUsecase.Execute(ctx, params.Scenario.OrganizationId, query)
+			result, err := e.evalScreeningUsecase.Execute(ctx, params.Scenario.OrganizationId, query)
 			if err != nil {
 				addScreeningError(scc, errors.Wrap(err, "could not perform sanction check"))
 				return
@@ -206,7 +205,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 					result.Matches[idx].UniqueCounterpartyIdentifier = uniqueCounterpartyIdentifier
 				}
 
-				result, err = e.evalSanctionCheckUsecase.FilterOutWhitelistedMatches(ctx,
+				result, err = e.evalScreeningUsecase.FilterOutWhitelistedMatches(ctx,
 					params.Scenario.OrganizationId, result, *uniqueCounterpartyIdentifier)
 				if err != nil {
 					return
@@ -214,7 +213,7 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 			}
 
 			result.Id = scId
-			result.SanctionCheckConfigId = scc.Id
+			result.ScreeningConfigId = scc.Id
 			result.Duration = time.Since(start)
 
 			addScreeningResult(idx, result)
@@ -235,14 +234,14 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 	sexecs = screeningExecutions
 
 	for _, sce := range sexecs {
-		if sce.Status == models.SanctionStatusError {
+		if sce.Status == models.ScreeningStatusError {
 			errStr := ""
 			if sce.ErrorDetail != nil {
 				errStr = sce.ErrorDetail.Error()
 			}
 
 			utils.LoggerFromContext(ctx).Warn("screening execution returned some errors",
-				"sanction_check_config_id", sce.SanctionCheckConfigId,
+				"sanction_check_config_id", sce.ScreeningConfigId,
 				"sanction_check_id", sce.Id,
 				"error_codes", sce.ErrorCodes,
 				"error", errStr)
@@ -254,10 +253,10 @@ func (e ScenarioEvaluator) evaluateSanctionCheck(
 
 func (e ScenarioEvaluator) preprocess(
 	ctx context.Context,
-	sanctionCheckId string,
+	screeningId string,
 	queries []models.OpenSanctionsCheckQuery,
 	iteration models.ScenarioIteration,
-	scc models.SanctionCheckConfig,
+	scc models.ScreeningConfig,
 ) ([]models.OpenSanctionsCheckQuery, error) {
 	var err error
 
@@ -272,7 +271,7 @@ func (e ScenarioEvaluator) preprocess(
 	}
 
 	for _, step := range steps {
-		if out, err = step(ctx, e, sanctionCheckId, out, iteration, scc); err != nil {
+		if out, err = step(ctx, e, screeningId, out, iteration, scc); err != nil {
 			return nil, err
 		}
 
@@ -284,23 +283,23 @@ func (e ScenarioEvaluator) preprocess(
 	return out, nil
 }
 
-func outcomeNoHit(scc models.SanctionCheckConfig) models.SanctionCheckWithMatches {
-	return models.SanctionCheckWithMatches{
-		SanctionCheck: models.SanctionCheck{
-			SanctionCheckConfigId: scc.Id,
-			Status:                models.SanctionStatusNoHit,
-			ErrorCodes:            []string{ErrSanctionCheckAllFieldsNullOrEmpty},
+func outcomeNoHit(scc models.ScreeningConfig) models.ScreeningWithMatches {
+	return models.ScreeningWithMatches{
+		Screening: models.Screening{
+			ScreeningConfigId: scc.Id,
+			Status:            models.ScreeningStatusNoHit,
+			ErrorCodes:        []string{ErrScreeningAllFieldsNullOrEmpty},
 		},
 	}
 }
 
-func outcomeError(scc models.SanctionCheckConfig, code string, err error) models.SanctionCheckWithMatches {
-	return models.SanctionCheckWithMatches{
-		SanctionCheck: models.SanctionCheck{
-			SanctionCheckConfigId: scc.Id,
-			Status:                models.SanctionStatusError,
-			ErrorCodes:            []string{code},
-			ErrorDetail:           err,
+func outcomeError(scc models.ScreeningConfig, code string, err error) models.ScreeningWithMatches {
+	return models.ScreeningWithMatches{
+		Screening: models.Screening{
+			ScreeningConfigId: scc.Id,
+			Status:            models.ScreeningStatusError,
+			ErrorCodes:        []string{code},
+			ErrorDetail:       err,
 		},
 	}
 }

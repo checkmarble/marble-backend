@@ -17,7 +17,7 @@ func TestOpenSanctionsAbstractTypeMapping(t *testing.T) {
 	}
 
 	for _, tt := range tts {
-		req := SanctionCheckRefineRequest{Type: tt.kind, Query: OpenSanctionCheckFilter{
+		req := ScreeningRefineRequest{Type: tt.kind, Query: OpenSanctionsFilter{
 			"name": []string{"value"},
 		}}
 

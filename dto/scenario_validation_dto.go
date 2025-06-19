@@ -37,7 +37,7 @@ type decisionValidationDto struct {
 	Errors []ScenarioValidationErrorDto `json:"errors"`
 }
 
-type sanctionCheckConfigValidationDto struct {
+type screeningConfigValidationDto struct {
 	Trigger                  triggerValidationDto         `json:"trigger"`
 	Query                    ruleValidationDto            `json:"query"`
 	QueryFields              map[string]ruleValidationDto `json:"query_fields"`
@@ -45,10 +45,10 @@ type sanctionCheckConfigValidationDto struct {
 }
 
 type ScenarioValidationDto struct {
-	Trigger             triggerValidationDto               `json:"trigger"`
-	Rules               rulesValidationDto                 `json:"rules"`
-	SanctionCheckConfig []sanctionCheckConfigValidationDto `json:"sanction_check_config"`
-	Decision            decisionValidationDto              `json:"decision"`
+	Trigger          triggerValidationDto           `json:"trigger"`
+	Rules            rulesValidationDto             `json:"rules"`
+	ScreeningConfigs []screeningConfigValidationDto `json:"sanction_check_config"` //nolint:tagliatelle
+	Decision         decisionValidationDto          `json:"decision"`
 }
 
 func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationDto {
@@ -66,8 +66,8 @@ func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationD
 				}
 			}),
 		},
-		SanctionCheckConfig: pure_utils.Map(s.SanctionCheck, func(sc models.SanctionCheckConfigValidation) sanctionCheckConfigValidationDto {
-			return sanctionCheckConfigValidationDto{
+		ScreeningConfigs: pure_utils.Map(s.Screenings, func(sc models.ScreeningConfigValidation) screeningConfigValidationDto {
+			return screeningConfigValidationDto{
 				Trigger: triggerValidationDto{
 					Errors:            pure_utils.Map(sc.TriggerRule.Errors, AdaptScenarioValidationErrorDto),
 					TriggerEvaluation: ast.AdaptNodeEvaluationDto(sc.TriggerRule.TriggerEvaluation),

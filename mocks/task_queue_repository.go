@@ -56,8 +56,8 @@ func (m *TaskQueueRepository) EnqueueCreateIndexTask(
 func (m *TaskQueueRepository) EnqueueMatchEnrichmentTask(
 	ctx context.Context,
 	organizationId string,
-	sanctionCheckId string,
+	screeningId string,
 ) error {
-	args := m.Called(ctx, organizationId, sanctionCheckId)
+	args := m.Called(ctx, organizationId, screeningId)
 	return args.Error(0)
 }

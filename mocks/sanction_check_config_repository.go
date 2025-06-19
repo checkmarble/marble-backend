@@ -8,57 +8,57 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type SanctionCheckConfigRepository struct {
+type ScreeningConfigRepository struct {
 	mock.Mock
 }
 
-func (r *SanctionCheckConfigRepository) ListSanctionCheckConfigs(
+func (r *ScreeningConfigRepository) ListScreeningConfigs(
 	ctx context.Context,
 	exec repositories.Executor,
 	scenarioIterationId string,
-) ([]models.SanctionCheckConfig, error) {
+) ([]models.ScreeningConfig, error) {
 	args := r.Called(ctx, exec, scenarioIterationId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]models.SanctionCheckConfig), args.Error(1)
+	return args.Get(0).([]models.ScreeningConfig), args.Error(1)
 }
 
-func (r *SanctionCheckConfigRepository) GetSanctionCheckConfig(
+func (r *ScreeningConfigRepository) GetScreeningConfig(
 	ctx context.Context,
 	exec repositories.Executor,
 	scenarioIterationId string,
-	sanctionCheckId string,
-) (models.SanctionCheckConfig, error) {
-	args := r.Called(ctx, exec, scenarioIterationId, sanctionCheckId)
+	screeningId string,
+) (models.ScreeningConfig, error) {
+	args := r.Called(ctx, exec, scenarioIterationId, screeningId)
 	if args.Get(0) == nil {
-		return models.SanctionCheckConfig{}, args.Error(1)
+		return models.ScreeningConfig{}, args.Error(1)
 	}
-	return args.Get(0).(models.SanctionCheckConfig), args.Error(1)
+	return args.Get(0).(models.ScreeningConfig), args.Error(1)
 }
 
-func (r *SanctionCheckConfigRepository) CreateSanctionCheckConfig(
+func (r *ScreeningConfigRepository) CreateScreeningConfig(
 	ctx context.Context,
 	exec repositories.Executor,
 	scenarioIterationId string,
-	sanctionCheckConfig models.UpdateSanctionCheckConfigInput,
-) (models.SanctionCheckConfig, error) {
-	args := r.Called(ctx, exec, scenarioIterationId, sanctionCheckConfig)
-	return args.Get(0).(models.SanctionCheckConfig), args.Error(1)
+	screeningConfig models.UpdateScreeningConfigInput,
+) (models.ScreeningConfig, error) {
+	args := r.Called(ctx, exec, scenarioIterationId, screeningConfig)
+	return args.Get(0).(models.ScreeningConfig), args.Error(1)
 }
 
-func (r *SanctionCheckConfigRepository) UpdateSanctionCheckConfig(
+func (r *ScreeningConfigRepository) UpdateScreeningConfig(
 	ctx context.Context,
 	exec repositories.Executor,
 	scenarioIterationId string,
-	sanctionCheckId string,
-	sanctionCheckConfig models.UpdateSanctionCheckConfigInput,
-) (models.SanctionCheckConfig, error) {
-	args := r.Called(ctx, exec, scenarioIterationId, sanctionCheckId, sanctionCheckConfig)
-	return args.Get(0).(models.SanctionCheckConfig), args.Error(1)
+	screeningId string,
+	screeningConfig models.UpdateScreeningConfigInput,
+) (models.ScreeningConfig, error) {
+	args := r.Called(ctx, exec, scenarioIterationId, screeningId, screeningConfig)
+	return args.Get(0).(models.ScreeningConfig), args.Error(1)
 }
 
-func (r *SanctionCheckConfigRepository) DeleteSanctionCheckConfig(
+func (r *ScreeningConfigRepository) DeleteScreeningConfig(
 	ctx context.Context,
 	exec repositories.Executor,
 	scenarioIterationId, configId string,

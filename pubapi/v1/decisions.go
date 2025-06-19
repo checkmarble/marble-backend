@@ -95,7 +95,7 @@ func HandleGetDecision(uc usecases.Usecases) gin.HandlerFunc {
 
 		pubapi.
 			NewResponse(dto.AdaptDecision(true, decision.RuleExecutions,
-				decision.SanctionCheckExecutions)(decision.Decision)).
+				decision.ScreeningExecutions)(decision.Decision)).
 			Serve(c)
 	}
 }
@@ -182,7 +182,7 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 
 		pubapi.
 			NewResponse([]dto.Decision{dto.AdaptDecision(true, decision.RuleExecutions,
-				decision.SanctionCheckExecutions)(decision.Decision)}).
+				decision.ScreeningExecutions)(decision.Decision)}).
 			WithMetadata(dto.AdaptDecisionsMetadata(stats)).
 			Serve(c)
 	}
@@ -226,7 +226,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		dtos := pure_utils.Map(decisions, func(d models.DecisionWithRuleExecutions) dto.Decision {
-			return dto.AdaptDecision(true, d.RuleExecutions, d.SanctionCheckExecutions)(d.Decision)
+			return dto.AdaptDecision(true, d.RuleExecutions, d.ScreeningExecutions)(d.Decision)
 		})
 
 		stats := gdto.AdaptDecisionsMetadata(decisions, skipped)

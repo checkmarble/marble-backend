@@ -12,8 +12,8 @@ type DBOrganizationResult struct {
 	TransferCheckScenarioId    *string `db:"transfer_check_scenario_id"`
 	UseMarbleDbSchemaAsDefault bool    `db:"use_marble_db_schema_as_default"`
 	DefaultScenarioTimezone    *string `db:"default_scenario_timezone"`
-	SanctionCheckThreshold     int     `db:"sanctions_threshold"`
-	SanctionCheckLimit         int     `db:"sanctions_limit"`
+	ScreeningThreshold         int     `db:"sanctions_threshold"`
+	ScreeningLimit             int     `db:"sanctions_limit"`
 }
 
 const TABLE_ORGANIZATION = "organizations"
@@ -28,8 +28,8 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 		UseMarbleDbSchemaAsDefault: db.UseMarbleDbSchemaAsDefault,
 		DefaultScenarioTimezone:    db.DefaultScenarioTimezone,
 		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{
-			MatchThreshold: db.SanctionCheckThreshold,
-			MatchLimit:     db.SanctionCheckLimit,
+			MatchThreshold: db.ScreeningThreshold,
+			MatchLimit:     db.ScreeningLimit,
 		},
 	}, nil
 }

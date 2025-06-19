@@ -40,8 +40,8 @@ type openSanctionsRequest struct {
 }
 
 type openSanctionsRequestQuery struct {
-	Schema     string                         `json:"schema"`
-	Properties models.OpenSanctionCheckFilter `json:"properties"`
+	Schema     string                     `json:"schema"`
+	Properties models.OpenSanctionsFilter `json:"properties"`
 }
 
 func (repo OpenSanctionsRepository) IsSelfHosted(ctx context.Context) bool {
@@ -230,10 +230,10 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (
 	return dataset, nil
 }
 
-func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.OpenSanctionsQuery) (models.SanctionRawSearchResponseWithMatches, error) {
+func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error) {
 	req, rawQuery, err := repo.searchRequest(ctx, &query)
 	if err != nil {
-		return models.SanctionRawSearchResponseWithMatches{}, err
+		return models.ScreeningRawSearchResponseWithMatches{}, err
 	}
 
 	utils.LoggerFromContext(ctx).InfoContext(ctx, "sending sanction check query")
@@ -241,41 +241,41 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 
 	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
-		return models.SanctionRawSearchResponseWithMatches{},
+		return models.ScreeningRawSearchResponseWithMatches{},
 			errors.Wrap(err, "could not perform sanction check")
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return models.SanctionRawSearchResponseWithMatches{}, fmt.Errorf(
+		return models.ScreeningRawSearchResponseWithMatches{}, fmt.Errorf(
 			"sanction check API returned status %d", resp.StatusCode)
 	}
 
 	var matches httpmodels.HTTPOpenSanctionsResult
 
 	if err := json.NewDecoder(resp.Body).Decode(&matches); err != nil {
-		return models.SanctionRawSearchResponseWithMatches{}, errors.Wrap(err,
+		return models.ScreeningRawSearchResponseWithMatches{}, errors.Wrap(err,
 			"could not parse sanction check response")
 	}
 
-	sanctionCheck, err := httpmodels.AdaptOpenSanctionsResult(rawQuery, matches)
+	screening, err := httpmodels.AdaptOpenSanctionsResult(rawQuery, matches)
 	if err != nil {
-		return sanctionCheck, err
+		return screening, err
 	}
 
 	utils.LoggerFromContext(ctx).
-		InfoContext(ctx, "got successful sanction check response",
+		InfoContext(ctx, "got successful screening response",
 			"duration", time.Since(startedAt).Milliseconds(),
-			"matches", len(sanctionCheck.Matches),
-			"partial", sanctionCheck.Partial)
+			"matches", len(screening.Matches),
+			"partial", screening.Partial)
 
-	sanctionCheck.EffectiveThreshold = query.EffectiveThreshold
+	screening.EffectiveThreshold = query.EffectiveThreshold
 
-	return sanctionCheck, err
+	return screening, err
 }
 
-func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match models.SanctionCheckMatch) ([]byte, error) {
+func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error) {
 	requestUrl := fmt.Sprintf("%s/entities/%s", repo.opensanctions.Host(), match.EntityId)
 
 	if qs := repo.buildQueryString(nil, nil); len(qs) > 0 {
@@ -363,7 +363,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 	return req, rawQuery.Bytes(), err
 }
 
-func (repo OpenSanctionsRepository) buildQueryString(cfg *models.SanctionCheckConfig, query *models.OpenSanctionsQuery) url.Values {
+func (repo OpenSanctionsRepository) buildQueryString(cfg *models.ScreeningConfig, query *models.OpenSanctionsQuery) url.Values {
 	qs := url.Values{}
 
 	if repo.opensanctions.AuthMethod() == infra.OPEN_SANCTIONS_AUTH_SAAS &&

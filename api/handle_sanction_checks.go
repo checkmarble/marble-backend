@@ -13,10 +13,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleSanctionCheckDatasetFreshness(uc usecases.Usecases) func(c *gin.Context) {
+func handleScreeningDatasetFreshness(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
 		dataset, err := uc.CheckDatasetFreshness(ctx)
 		if err != nil {
@@ -27,14 +27,14 @@ func handleSanctionCheckDatasetFreshness(uc usecases.Usecases) func(c *gin.Conte
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptSanctionCheckDataset(dataset))
+		c.JSON(http.StatusOK, dto.AdaptScreeningDataset(dataset))
 	}
 }
 
-func handleSanctionCheckDatasetCatalog(uc usecases.Usecases) func(c *gin.Context) {
+func handleScreeningDatasetCatalog(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
 		catalog, err := uc.GetDatasetCatalog(ctx)
 
@@ -46,7 +46,7 @@ func handleSanctionCheckDatasetCatalog(uc usecases.Usecases) func(c *gin.Context
 	}
 }
 
-func handleListSanctionChecks(uc usecases.Usecases) func(c *gin.Context) {
+func handleListScreenings(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		decisionId := c.Query("decision_id")
@@ -57,23 +57,23 @@ func handleListSanctionChecks(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
-		sanctionChecks, err := uc.ListSanctionChecks(ctx, decisionId, initialOnly)
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+		screenings, err := uc.ListScreenings(ctx, decisionId, initialOnly)
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(sanctionChecks, dto.AdaptSanctionCheckDto))
+		c.JSON(http.StatusOK, pure_utils.Map(screenings, dto.AdaptScreeningDto))
 	}
 }
 
-func handleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpdateScreeningMatchStatus(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		matchId := c.Param("id")
 
-		var payload dto.SanctionCheckMatchUpdateDto
+		var payload dto.ScreeningMatchUpdateDto
 
 		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
 			return
@@ -86,13 +86,13 @@ func handleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) func(c *gin.Cont
 			return
 		}
 
-		update, err := dto.AdaptSanctionCheckMatchUpdateInputDto(matchId, creds.ActorIdentity.UserId, payload)
+		update, err := dto.AdaptScreeningMatchUpdateInputDto(matchId, creds.ActorIdentity.UserId, payload)
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
 		match, err := uc.UpdateMatchStatus(ctx, update)
 
@@ -100,14 +100,14 @@ func handleUpdateSanctionCheckMatchStatus(uc usecases.Usecases) func(c *gin.Cont
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptSanctionCheckMatchDto(match))
+		c.JSON(http.StatusOK, dto.AdaptScreeningMatchDto(match))
 	}
 }
 
-func handleUploadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Context) {
+func handleUploadScreeningMatchFile(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		matchId := c.Param("sanctionCheckId")
+		screeningId := c.Param("screeningId")
 
 		var form FileForm
 
@@ -123,44 +123,44 @@ func handleUploadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Contex
 			return
 		}
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
-		files, err := uc.CreateFiles(ctx, creds, matchId, form.Files)
-
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		c.JSON(http.StatusCreated, pure_utils.Map(files, dto.AdaptSanctionCheckFileDto))
-	}
-}
-
-func handleListSanctionCheckMatchFiles(uc usecases.Usecases) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		sanctionCheckId := c.Param("sanctionCheckId")
-
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
-
-		files, err := uc.ListFiles(ctx, sanctionCheckId)
+		files, err := uc.CreateFiles(ctx, creds, screeningId, form.Files)
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(files, dto.AdaptSanctionCheckFileDto))
+		c.JSON(http.StatusCreated, pure_utils.Map(files, dto.AdaptScreeningFileDto))
 	}
 }
 
-func handleDownloadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Context) {
+func handleListScreeningMatchFiles(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		sanctionCheckId := c.Param("sanctionCheckId")
+		screeningId := c.Param("screeningId")
+
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+
+		files, err := uc.ListFiles(ctx, screeningId)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(files, dto.AdaptScreeningFileDto))
+	}
+}
+
+func handleDownloadScreeningMatchFile(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		screeningId := c.Param("screeningId")
 		fileId := c.Param("fileId")
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
-		url, err := uc.GetFileDownloadUrl(ctx, sanctionCheckId, fileId)
+		url, err := uc.GetFileDownloadUrl(ctx, screeningId, fileId)
 
 		if presentError(ctx, c, err) {
 			return
@@ -171,12 +171,12 @@ func handleDownloadSanctionCheckMatchFile(uc usecases.Usecases) func(c *gin.Cont
 }
 
 //nolint:unused
-func handleCreateSanctionCheckMatchComment(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateScreeningMatchComment(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		matchId := c.Param("id")
 
-		var payload dto.SanctionCheckMatchCommentDto
+		var payload dto.ScreeningMatchCommentDto
 
 		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
 			return
@@ -189,8 +189,8 @@ func handleCreateSanctionCheckMatchComment(uc usecases.Usecases) func(c *gin.Con
 			return
 		}
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
-		comment, err := dto.AdaptSanctionCheckMatchCommentInputDto(matchId, creds.ActorIdentity.UserId, payload)
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+		comment, err := dto.AdaptScreeningMatchCommentInputDto(matchId, creds.ActorIdentity.UserId, payload)
 
 		if presentError(ctx, c, err) {
 			return
@@ -202,15 +202,15 @@ func handleCreateSanctionCheckMatchComment(uc usecases.Usecases) func(c *gin.Con
 			return
 		}
 
-		c.JSON(http.StatusCreated, dto.AdaptSanctionCheckMatchCommentDto(comment))
+		c.JSON(http.StatusCreated, dto.AdaptScreeningMatchCommentDto(comment))
 	}
 }
 
-func handleRefineSanctionCheck(uc usecases.Usecases) func(c *gin.Context) {
+func handleRefineScreening(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		var payload dto.SanctionCheckRefineDto
+		var payload dto.ScreeningRefineDto
 
 		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
 			return
@@ -223,54 +223,54 @@ func handleRefineSanctionCheck(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
-		sanctionCheck, err := uc.Refine(ctx, dto.AdaptSanctionCheckRefineDto(payload), &creds.ActorIdentity.UserId)
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+		screening, err := uc.Refine(ctx, dto.AdaptScreeningRefineDto(payload), &creds.ActorIdentity.UserId)
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptSanctionCheckDto(sanctionCheck))
+		c.JSON(http.StatusOK, dto.AdaptScreeningDto(screening))
 	}
 }
 
-func handleSearchSanctionCheck(uc usecases.Usecases) func(c *gin.Context) {
+func handleSearchScreening(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		var payload dto.SanctionCheckRefineDto
+		var payload dto.ScreeningRefineDto
 
 		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
 			return
 		}
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
-		sanctionCheck, err := uc.Search(ctx, dto.AdaptSanctionCheckRefineDto(payload))
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+		screening, err := uc.Search(ctx, dto.AdaptScreeningRefineDto(payload))
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(dto.AdaptSanctionCheckDto(sanctionCheck).Matches, func(
-			match dto.SanctionCheckMatchDto,
+		c.JSON(http.StatusOK, pure_utils.Map(dto.AdaptScreeningDto(screening).Matches, func(
+			match dto.ScreeningMatchDto,
 		) json.RawMessage {
 			return match.Payload
 		}))
 	}
 }
 
-func handleEnrichSanctionCheckMatch(uc usecases.Usecases) func(c *gin.Context) {
+func handleEnrichScreeningMatch(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		matchId := c.Param("id")
 
-		uc := usecasesWithCreds(ctx, uc).NewSanctionCheckUsecase()
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 		newMatch, err := uc.EnrichMatch(ctx, matchId)
 
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptSanctionCheckMatchDto(newMatch))
+		c.JSON(http.StatusOK, dto.AdaptScreeningMatchDto(newMatch))
 	}
 }

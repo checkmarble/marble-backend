@@ -35,13 +35,13 @@ type OpenSanctionsQuery struct {
 	EffectiveThreshold int
 	LimitIncrease      int
 	Queries            []OpenSanctionsCheckQuery
-	Config             SanctionCheckConfig
+	Config             ScreeningConfig
 	OrgConfig          OrganizationOpenSanctionsConfig
 }
 
 type OpenSanctionsCheckQuery struct {
 	Type    string
-	Filters OpenSanctionCheckFilter
+	Filters OpenSanctionsFilter
 }
 
 func (q OpenSanctionsCheckQuery) GetName() string {
@@ -72,13 +72,13 @@ func (q OpenSanctionsCheckQuery) String() string {
 	return fmt.Sprintf("%s (%s)", q.Type, m)
 }
 
-type OpenSanctionCheckFilter map[string][]string
+type OpenSanctionsFilter map[string][]string
 
 var OPEN_SANCTIONS_ABSTRACT_TYPES_MAPPING = map[string][]string{
 	"Vehicle": {"Airplane", "Vessel"},
 }
 
-func AdaptRefineRequestToMatchable(refine SanctionCheckRefineRequest) []OpenSanctionsCheckQuery {
+func AdaptRefineRequestToMatchable(refine ScreeningRefineRequest) []OpenSanctionsCheckQuery {
 	switch mappings, abstract := OPEN_SANCTIONS_ABSTRACT_TYPES_MAPPING[refine.Type]; abstract {
 	case true:
 		return pure_utils.Map(mappings, func(m string) OpenSanctionsCheckQuery {

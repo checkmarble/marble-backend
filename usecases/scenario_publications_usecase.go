@@ -53,7 +53,7 @@ type PublicationUsecaseFeatureAccessReader interface {
 	) (models.OrganizationFeatureAccess, error)
 }
 
-type SanctionCheckRequirementChecker interface {
+type ScreeningRequirementChecker interface {
 	IsConfigured(context.Context) (bool, error)
 }
 
@@ -67,7 +67,7 @@ type ScenarioPublicationUsecase struct {
 	scenarioPublisher              ScenarioPublisher
 	clientDbIndexEditor            clientDbIndexEditor
 	featureAccessReader            PublicationUsecaseFeatureAccessReader
-	sanctionCheckRequirements      SanctionCheckRequirementChecker
+	screeningRequirements          ScreeningRequirementChecker
 }
 
 func NewScenarioPublicationUsecase(
@@ -80,7 +80,7 @@ func NewScenarioPublicationUsecase(
 	scenarioPublisher ScenarioPublisher,
 	clientDbIndexEditor clientDbIndexEditor,
 	featureAccessReader PublicationUsecaseFeatureAccessReader,
-	sanctionCheckRequirements SanctionCheckRequirementChecker,
+	screeningRequirements ScreeningRequirementChecker,
 ) *ScenarioPublicationUsecase {
 	return &ScenarioPublicationUsecase{
 		transactionFactory:             transactionFactory,
@@ -92,7 +92,7 @@ func NewScenarioPublicationUsecase(
 		scenarioPublisher:              scenarioPublisher,
 		clientDbIndexEditor:            clientDbIndexEditor,
 		featureAccessReader:            featureAccessReader,
-		sanctionCheckRequirements:      sanctionCheckRequirements,
+		screeningRequirements:          screeningRequirements,
 	}
 }
 
@@ -156,7 +156,7 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 			if err != nil {
 				return nil, err
 			}
-			if len(scenarioAndIteration.Iteration.SanctionCheckConfigs) > 0 {
+			if len(scenarioAndIteration.Iteration.ScreeningConfigs) > 0 {
 				featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId, nil)
 				if err != nil {
 					return nil, err
@@ -166,7 +166,7 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 						"Sanction check feature access is missing: status is %s", featureAccess.Sanctions)
 				}
 
-				if isConfigured, err := usecase.sanctionCheckRequirements.IsConfigured(ctx); !isConfigured {
+				if isConfigured, err := usecase.screeningRequirements.IsConfigured(ctx); !isConfigured {
 					return nil, err
 				}
 			}

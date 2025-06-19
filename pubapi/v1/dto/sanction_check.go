@@ -8,29 +8,29 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
-type SanctionCheck struct {
+type Screening struct {
 	Id      string          `json:"id"`
 	Status  string          `json:"status"`
 	Query   json.RawMessage `json:"query"`
 	Partial bool            `json:"partial"`
 
-	MatchCount int                  `json:"match_count"`
-	Matches    []SanctionCheckMatch `json:"matches,omitzero"`
+	MatchCount int              `json:"match_count"`
+	Matches    []ScreeningMatch `json:"matches,omitzero"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type SanctionCheckMatch struct {
+type ScreeningMatch struct {
 	Id      string          `json:"id"`
 	Queries []string        `json:"queries"`
 	Status  string          `json:"status"`
 	Payload json.RawMessage `json:"payload"`
 }
 
-func AdaptSanctionCheck(includeMatches bool) func(models.SanctionCheckWithMatches) SanctionCheck {
-	return func(model models.SanctionCheckWithMatches) SanctionCheck {
-		sc := SanctionCheck{
+func AdaptScreening(includeMatches bool) func(models.ScreeningWithMatches) Screening {
+	return func(model models.ScreeningWithMatches) Screening {
+		sc := Screening{
 			Id:         model.Id,
 			Status:     model.Status.String(),
 			Query:      model.SearchInput,
@@ -41,10 +41,10 @@ func AdaptSanctionCheck(includeMatches bool) func(models.SanctionCheckWithMatche
 		}
 
 		if includeMatches {
-			sc.Matches = []SanctionCheckMatch{}
+			sc.Matches = []ScreeningMatch{}
 
 			if model.Matches != nil {
-				sc.Matches = pure_utils.Map(model.Matches, AdaptSanctionCheckMatch)
+				sc.Matches = pure_utils.Map(model.Matches, AdaptScreeningMatch)
 			}
 		}
 
@@ -52,8 +52,8 @@ func AdaptSanctionCheck(includeMatches bool) func(models.SanctionCheckWithMatche
 	}
 }
 
-func AdaptSanctionCheckMatch(model models.SanctionCheckMatch) SanctionCheckMatch {
-	return SanctionCheckMatch{
+func AdaptScreeningMatch(model models.ScreeningMatch) ScreeningMatch {
+	return ScreeningMatch{
 		Id:      model.Id,
 		Queries: model.QueryIds,
 		Status:  model.Status.String(),
@@ -61,14 +61,14 @@ func AdaptSanctionCheckMatch(model models.SanctionCheckMatch) SanctionCheckMatch
 	}
 }
 
-type SanctionCheckWhitelist struct {
+type ScreeningWhitelist struct {
 	Counterparty string    `json:"counterparty"`
 	EntityId     string    `json:"entity_id"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-func AdaptSanctionCheckWhitelist(model models.SanctionCheckWhitelist) SanctionCheckWhitelist {
-	return SanctionCheckWhitelist{
+func AdaptScreeningWhitelist(model models.ScreeningWhitelist) ScreeningWhitelist {
+	return ScreeningWhitelist{
 		Counterparty: model.CounterpartyId,
 		EntityId:     model.EntityId,
 		CreatedAt:    model.CreatedAt,
