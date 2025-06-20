@@ -16,8 +16,10 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"google.golang.org/genai"
 )
 
 type AiAgentUsecaseRepository interface {
@@ -81,158 +83,19 @@ func NewAiAgentUsecase(
 }
 
 func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.Reader, error) {
-	exec := uc.executorFactory.NewExecutor()
-	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
+	caseDtos, relatedDataPerClient, err := uc.getCaseData(ctx, caseId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not get case data")
 	}
-
-	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, c.OrganizationId, false)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list available inboxes in usecase")
-	}
-	availableInboxIds := make([]uuid.UUID, len(inboxes))
-	for i, inbox := range inboxes {
-		availableInboxIds[i] = inbox.Id
-	}
-
-	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
-		return nil, err
-	}
-
-	tags, err := uc.repository.ListOrganizationTags(ctx, exec, c.OrganizationId, models.TagTargetCase, false)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve tags for case")
-	}
-	caseEvents, err := uc.repository.ListCaseEvents(ctx, exec, caseId)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve case events")
-	}
-	users, err := uc.repository.ListUsers(ctx, exec, &c.OrganizationId)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve users for case events")
-	}
-	caseEventsDto := make([]agent_dto.CaseEvent, len(caseEvents))
-	for i := range caseEvents {
-		caseEventsDto[i] = agent_dto.AdaptCaseEventDto(caseEvents[i], users)
-	}
-
-	decisions, err := uc.repository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve case decisions")
-	}
-	decisionDtos := make([]agent_dto.Decision, len(decisions))
-	for i := range decisions {
-		rules, err := uc.repository.ListRulesByIterationId(ctx, exec,
-			decisions[i].Decision.ScenarioIterationId)
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not retrieve rules for decision %s", decisions[i].DecisionId)
-		}
-		decisionDtos[i] = agent_dto.AdaptDecision(decisions[i].Decision, decisions[i].RuleExecutions, rules)
-	}
-
-	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, c.OrganizationId, models.DataModelReadOptions{
-		IncludeEnums: true, IncludeNavigationOptions: true,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve data model")
-	}
-
-	pivotValues, err := uc.repository.DecisionPivotValuesByCase(ctx, exec, caseId)
-	if err != nil {
-		return nil, err
-	}
-	pivotObjects, err := uc.ingestedDataReader.ReadPivotObjectsFromValues(ctx, c.OrganizationId, pivotValues)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not read pivot objects from values")
-	}
-	pivotObjectDtos, err := pure_utils.MapErr(pivotObjects, agent_dto.AdaptPivotObjectDto)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not adapt pivot objects to DTOs")
-	}
-
-	relatedDataPerClient := make(map[string]agent_dto.CasePivotObjectData)
-
-	for _, pivotObject := range pivotObjects {
-		pivotObjectData := agent_dto.CasePivotObjectData{
-			IngestedData: make(map[string][]models.ClientObjectDetail, 10),
-			RelatedCases: make([]agent_dto.CaseWithDecisions, 0, 10),
-		}
-
-		previousCases, err := uc.repository.GetCasesWithPivotValue(ctx, exec,
-			c.OrganizationId, pivotObject.PivotValue)
-		if err != nil {
-			return nil, err
-		}
-		relatedCases := make([]agent_dto.CaseWithDecisions, 0, 10)
-		for _, previousCase := range previousCases {
-			if previousCase.Id == c.Id {
-				// skip the current case, we don't want to include it in the related cases
-				continue
-			}
-
-			decisions, err := uc.repository.DecisionsByCaseId(ctx, exec, c.OrganizationId, previousCase.Id)
-			if err != nil {
-				return nil, errors.Wrapf(err, "could not retrieve decisions for previous case %s", previousCase.Id)
-			}
-			previousCase.Decisions = decisions
-			events, err := uc.repository.ListCaseEvents(ctx, exec, previousCase.Id)
-			if err != nil {
-				return nil, err
-			}
-			previousCase.Events = events
-
-			// don't add rules executions because we don't care for previous cases rule exec details
-			relatedCases = append(relatedCases, agent_dto.AdaptCaseWithDecisionsDto(
-				previousCase, tags, inboxes, nil, users))
-		}
-		pivotObjectData.RelatedCases = relatedCases
-
-		navigationOptions := dataModel.Tables[pivotObject.PivotObjectName].NavigationOptions
-		for _, navOption := range navigationOptions {
-			if _, found := pivotObjectData.IngestedData[navOption.TargetTableName]; found {
-				// If we already have data for this target table, skip it
-				continue
-			}
-			sourceFieldValue, ok := pivotObject.PivotObjectData.Data[navOption.SourceFieldName]
-			if !ok {
-				continue
-			}
-			sourceFieldValueStr, ok := sourceFieldValue.(string)
-			if !ok {
-				continue
-			}
-			if navOption.Status == models.IndexStatusValid {
-				objects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(ctx,
-					c.OrganizationId, navOption.TargetTableName, models.ClientDataListRequestBody{
-						ExplorationOptions: models.ExplorationOptions{
-							SourceTableName:   pivotObject.PivotObjectName,
-							FilterFieldName:   navOption.FilterFieldName,
-							FilterFieldValue:  models.NewStringOrNumberFromString(sourceFieldValueStr),
-							OrderingFieldName: navOption.OrderingFieldName,
-						},
-						Limit: 1000,
-					})
-				if err != nil {
-					return nil, errors.Wrapf(err, "could not read ingested client objects for %s with value %s",
-						pivotObject.PivotObjectName, sourceFieldValueStr)
-				}
-				pivotObjectData.IngestedData[navOption.TargetTableName] = objects
-			}
-		}
-
-		relatedDataPerClient[pivotObject.PivotObjectName+"_"+pivotObject.PivotValue] = pivotObjectData
+	writeMap := map[string]any{
+		"case.json":          caseDtos.case_,
+		"case_events.json":   caseDtos.events,
+		"decisions.json":     caseDtos.decisions,
+		"data_model.json":    caseDtos.dataModel,
+		"pivot_objects.json": caseDtos.pivotData,
 	}
 
 	pr, pw := io.Pipe()
-
-	writeMap := map[string]any{
-		"case.json":          agent_dto.AdaptCaseDto(c, tags, inboxes, users),
-		"case_events.json":   caseEventsDto,
-		"decisions.json":     decisionDtos,
-		"data_model.json":    agent_dto.AdaptDataModelDto(dataModel),
-		"pivot_objects.json": pivotObjectDtos,
-	}
 
 	// Start writing zip archive in a goroutine
 	go func() {
@@ -293,4 +156,195 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 	}()
 
 	return pr, nil
+}
+
+func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (string, error) {
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		Location: "europe-west1",
+		Backend:  genai.BackendVertexAI,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "could not create GenAI client")
+	}
+
+	result, err := client.Models.GenerateContent(ctx,
+		"gemini-2.0-flash",
+		genai.Text("Tell me about New York?"),
+		&genai.GenerateContentConfig{
+			Tools: []*genai.Tool{
+				{GoogleSearch: &genai.GoogleSearch{}},
+			},
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+	if len(result.Candidates) == 0 {
+		return "", errors.New("no response from GenAI")
+	}
+	return result.Candidates[0].Content.Parts[0].Text, nil
+}
+
+func (uc AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseData, map[string]agent_dto.CasePivotObjectData, error) {
+	exec := uc.executorFactory.NewExecutor()
+	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
+	if err != nil {
+		return caseData{}, nil, err
+	}
+
+	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, c.OrganizationId, false)
+	if err != nil {
+		return caseData{}, nil, errors.Wrap(err, "failed to list available inboxes in usecase")
+	}
+	availableInboxIds := make([]uuid.UUID, len(inboxes))
+	for i, inbox := range inboxes {
+		availableInboxIds[i] = inbox.Id
+	}
+
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+		return caseData{}, nil, err
+	}
+
+	tags, err := uc.repository.ListOrganizationTags(ctx, exec, c.OrganizationId, models.TagTargetCase, false)
+	if err != nil {
+		return caseData{}, nil, errors.Wrap(err, "could not retrieve tags for case")
+	}
+	caseEvents, err := uc.repository.ListCaseEvents(ctx, exec, caseId)
+	if err != nil {
+		return caseData{}, nil, errors.Wrap(err, "could not retrieve case events")
+	}
+	users, err := uc.repository.ListUsers(ctx, exec, &c.OrganizationId)
+	if err != nil {
+		return caseData{}, nil, errors.Wrap(err, "could not retrieve users for case events")
+	}
+	caseEventsDto := make([]agent_dto.CaseEvent, len(caseEvents))
+	for i := range caseEvents {
+		caseEventsDto[i] = agent_dto.AdaptCaseEventDto(caseEvents[i], users)
+	}
+
+	decisions, err := uc.repository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
+	if err != nil {
+		return caseData{}, nil, errors.Wrap(err, "could not retrieve case decisions")
+	}
+	decisionDtos := make([]agent_dto.Decision, len(decisions))
+	for i := range decisions {
+		rules, err := uc.repository.ListRulesByIterationId(ctx, exec,
+			decisions[i].Decision.ScenarioIterationId)
+		if err != nil {
+			return caseData{}, nil, errors.Wrapf(err,
+				"could not retrieve rules for decision %s", decisions[i].DecisionId)
+		}
+		decisionDtos[i] = agent_dto.AdaptDecision(decisions[i].Decision, decisions[i].RuleExecutions, rules)
+	}
+
+	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, c.OrganizationId, models.DataModelReadOptions{
+		IncludeEnums: true, IncludeNavigationOptions: true,
+	})
+	if err != nil {
+		return caseData{}, nil, errors.Wrap(err, "could not retrieve data model")
+	}
+
+	pivotValues, err := uc.repository.DecisionPivotValuesByCase(ctx, exec, caseId)
+	if err != nil {
+		return caseData{}, nil, err
+	}
+	pivotObjects, err := uc.ingestedDataReader.ReadPivotObjectsFromValues(ctx, c.OrganizationId, pivotValues)
+	if err != nil {
+		return caseData{}, nil, errors.Wrap(err, "could not read pivot objects from values")
+	}
+	pivotObjectDtos, err := pure_utils.MapErr(pivotObjects, agent_dto.AdaptPivotObjectDto)
+	if err != nil {
+		return caseData{}, nil, errors.Wrap(err, "could not adapt pivot objects to DTOs")
+	}
+
+	relatedDataPerClient := make(map[string]agent_dto.CasePivotObjectData)
+
+	for _, pivotObject := range pivotObjects {
+		pivotObjectData := agent_dto.CasePivotObjectData{
+			IngestedData: make(map[string][]models.ClientObjectDetail, 10),
+			RelatedCases: make([]agent_dto.CaseWithDecisions, 0, 10),
+		}
+
+		previousCases, err := uc.repository.GetCasesWithPivotValue(ctx, exec,
+			c.OrganizationId, pivotObject.PivotValue)
+		if err != nil {
+			return caseData{}, nil, err
+		}
+		relatedCases := make([]agent_dto.CaseWithDecisions, 0, 10)
+		for _, previousCase := range previousCases {
+			if previousCase.Id == c.Id {
+				// skip the current case, we don't want to include it in the related cases
+				continue
+			}
+
+			decisions, err := uc.repository.DecisionsByCaseId(ctx, exec, c.OrganizationId, previousCase.Id)
+			if err != nil {
+				return caseData{}, nil, errors.Wrapf(err,
+					"could not retrieve decisions for previous case %s", previousCase.Id)
+			}
+			previousCase.Decisions = decisions
+			events, err := uc.repository.ListCaseEvents(ctx, exec, previousCase.Id)
+			if err != nil {
+				return caseData{}, nil, err
+			}
+			previousCase.Events = events
+
+			// don't add rules executions because we don't care for previous cases rule exec details
+			relatedCases = append(relatedCases, agent_dto.AdaptCaseWithDecisionsDto(
+				previousCase, tags, inboxes, nil, users))
+		}
+		pivotObjectData.RelatedCases = relatedCases
+
+		navigationOptions := dataModel.Tables[pivotObject.PivotObjectName].NavigationOptions
+		for _, navOption := range navigationOptions {
+			if _, found := pivotObjectData.IngestedData[navOption.TargetTableName]; found {
+				// If we already have data for this target table, skip it
+				continue
+			}
+			sourceFieldValue, ok := pivotObject.PivotObjectData.Data[navOption.SourceFieldName]
+			if !ok {
+				continue
+			}
+			sourceFieldValueStr, ok := sourceFieldValue.(string)
+			if !ok {
+				continue
+			}
+			if navOption.Status == models.IndexStatusValid {
+				objects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(ctx,
+					c.OrganizationId, navOption.TargetTableName, models.ClientDataListRequestBody{
+						ExplorationOptions: models.ExplorationOptions{
+							SourceTableName:   pivotObject.PivotObjectName,
+							FilterFieldName:   navOption.FilterFieldName,
+							FilterFieldValue:  models.NewStringOrNumberFromString(sourceFieldValueStr),
+							OrderingFieldName: navOption.OrderingFieldName,
+						},
+						Limit: 1000,
+					})
+				if err != nil {
+					return caseData{}, nil, errors.Wrapf(err,
+						"could not read ingested client objects for %s with value %s",
+						pivotObject.PivotObjectName, sourceFieldValueStr)
+				}
+				pivotObjectData.IngestedData[navOption.TargetTableName] = objects
+			}
+		}
+
+		relatedDataPerClient[pivotObject.PivotObjectName+"_"+pivotObject.PivotValue] = pivotObjectData
+	}
+
+	return caseData{
+		case_:     agent_dto.AdaptCaseDto(c, tags, inboxes, users),
+		events:    caseEventsDto,
+		decisions: decisionDtos,
+		dataModel: agent_dto.AdaptDataModelDto(dataModel),
+		pivotData: pivotObjectDtos,
+	}, relatedDataPerClient, nil
+}
+
+type caseData struct {
+	case_     agent_dto.Case
+	events    []agent_dto.CaseEvent
+	decisions []agent_dto.Decision
+	dataModel agent_dto.DataModel
+	pivotData []agent_dto.PivotObject
 }
