@@ -53,7 +53,7 @@ func GetOpenApiForVersion(version string) (*openapi3.T, error) {
 
 	jsonSpec, err := json.Marshal(yamlSpec)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not convet OpenAPI YAML to JSON")
+		return nil, errors.Wrap(err, "could not convert OpenAPI YAML to JSON")
 	}
 
 	spec, err := openapi3.NewLoader().LoadFromData(jsonSpec)
