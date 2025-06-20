@@ -25,14 +25,14 @@ import (
 )
 
 type decisionWorkflowsUsecase interface {
-	AutomaticDecisionToCase(
+	ProcessDecisionWorkflows(
 		ctx context.Context,
 		tx repositories.Transaction,
+		rules []models.Workflow,
 		scenario models.Scenario,
 		decision models.DecisionWithRuleExecutions,
 		params evaluate_scenario.ScenarioEvaluationParameters,
-		webhookEventId string,
-	) (bool, error)
+	) (models.WorkflowExecution, error)
 }
 
 type webhookEventsUsecase interface {
@@ -75,6 +75,7 @@ type asyncDecisionWorkerRepository interface {
 		exec repositories.Executor,
 		updateScheduledEx models.UpdateScheduledExecutionStatusInput,
 	) (executed bool, err error)
+	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId string) ([]models.Workflow, error)
 }
 
 type ScenarioEvaluator interface {
@@ -396,16 +397,19 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	}
 	sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 
-	caseWebhookEventId := uuid.NewString()
-	webhookEventCreated, err := w.decisionWorkflows.AutomaticDecisionToCase(ctx, tx, scenario,
-		decision, evaluationParameters, caseWebhookEventId)
+	workflowRules, err := w.repository.ListWorkflowsForScenario(ctx, tx, scenario.Id)
 	if err != nil {
 		return false, nil, nil, err
 	}
 
-	if webhookEventCreated {
-		sendWebhookEventId = append(sendWebhookEventId, caseWebhookEventId)
+	workflowExecutions, err := w.decisionWorkflows.ProcessDecisionWorkflows(ctx, tx,
+		workflowRules, scenario, decision, evaluationParameters)
+
+	if err != nil {
+		return false, nil, nil, err
 	}
+
+	sendWebhookEventId = append(sendWebhookEventId, workflowExecutions.WebhookIds...)
 
 	err = w.repository.UpdateDecisionToCreateStatus(ctx, tx, args.DecisionToCreateId, models.DecisionToCreateStatusCreated)
 	if err != nil {

@@ -23,6 +23,7 @@ type ScenarioUsecase struct {
 	executorFactory     executor_factory.ExecutorFactory
 	enforceSecurity     security.EnforceSecurityScenario
 	repository          repositories.ScenarioUsecaseRepository
+	workflowRepository  workflowRepository
 }
 
 func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationId string) ([]models.Scenario, error) {
