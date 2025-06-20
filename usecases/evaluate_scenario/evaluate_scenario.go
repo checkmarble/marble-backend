@@ -720,17 +720,18 @@ func (e ScenarioEvaluator) EvalCaseName(
 	ctx context.Context,
 	params ScenarioEvaluationParameters,
 	scenario models.Scenario,
+	titleTemplate *ast.Node,
 ) (out string, err error) {
 	out = fmt.Sprintf("Case for %s: %s", scenario.TriggerObjectType, params.ClientObject.Data["object_id"])
 
-	if scenario.DecisionToCaseNameTemplate == nil {
+	if titleTemplate == nil {
 		return
 	}
 
 	caseNameEvaluation, err := e.evaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		nil,
-		*scenario.DecisionToCaseNameTemplate,
+		*titleTemplate,
 		params.Scenario.OrganizationId,
 		params.ClientObject,
 		params.DataModel,
