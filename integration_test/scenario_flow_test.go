@@ -15,7 +15,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
@@ -407,15 +406,30 @@ func setupScenarioAndPublish(
 	}
 	fmt.Printf("Updated scenario iteration %+v\n", scenarioIteration)
 
-	workflowType := models.WorkflowAddToCaseIfPossible
-	_, err = scenarioUsecase.UpdateScenario(ctx, models.UpdateScenarioInput{
-		Id:                         scenarioId,
-		DecisionToCaseOutcomes:     []models.Outcome{models.Decline, models.Review},
-		DecisionToCaseInboxId:      pure_utils.NullFrom(inboxId),
-		DecisionToCaseWorkflowType: &workflowType,
+	rule, err := scenarioUsecase.CreateWorkflowRule(ctx, models.WorkflowRule{
+		ScenarioId: scenarioId,
+		Name:       "First rule",
 	})
 	if err != nil {
-		assert.FailNow(t, "Failed to create workflow on scenario", err)
+		assert.FailNow(t, "Could not create workflow rule", err)
+	}
+
+	_, err = scenarioUsecase.CreateWorkflowCondition(ctx, organizationId, models.WorkflowCondition{
+		RuleId:   rule.Id,
+		Function: "if_outcome_in",
+		Params:   []byte(`["decline", "review"]`),
+	})
+	if err != nil {
+		assert.FailNow(t, "Could not create workflow condition", err)
+	}
+
+	_, err = scenarioUsecase.CreateWorkflowAction(ctx, organizationId, models.WorkflowAction{
+		RuleId: rule.Id,
+		Action: models.WorkflowAddToCaseIfPossible,
+		Params: fmt.Appendf(nil, `{"inbox_id": "%s"}`, inboxId),
+	})
+	if err != nil {
+		assert.FailNow(t, "Could not create workflow action", err)
 	}
 
 	return scenarioId, scenarioIterationId
