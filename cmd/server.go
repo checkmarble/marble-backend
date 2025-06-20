@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os/signal"
@@ -22,10 +23,14 @@ import (
 )
 
 func RunServer(config CompiledConfig) error {
+	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
+	ctx := utils.StoreLoggerInContext(context.Background(), logger)
+
 	// This is where we read the environment variables and set up the configuration for the application.
 	apiConfig := api.Configuration{
 		Env:                 utils.GetEnv("ENV", "development"),
 		AppName:             "marble-backend",
+		MarbleApiUrl:        utils.GetEnv("MARBLE_API_URL", ""),
 		MarbleAppUrl:        utils.GetEnv("MARBLE_APP_URL", ""),
 		MarbleBackofficeUrl: utils.GetEnv("MARBLE_BACKOFFICE_URL", ""),
 		Port:                utils.GetRequiredEnv[string]("PORT"),
@@ -36,15 +41,36 @@ func RunServer(config CompiledConfig) error {
 		BatchTimeout:        time.Duration(utils.GetEnv("BATCH_TIMEOUT_SECOND", 55)) * time.Second,
 		DecisionTimeout:     time.Duration(utils.GetEnv("DECISION_TIMEOUT_SECOND", 10)) * time.Second,
 		DefaultTimeout:      time.Duration(utils.GetEnv("DEFAULT_TIMEOUT_SECOND", 5)) * time.Second,
+
+		MetabaseConfig: infra.MetabaseConfiguration{
+			SiteUrl:             utils.GetEnv("METABASE_SITE_URL", ""),
+			JwtSigningKey:       []byte(utils.GetEnv("METABASE_JWT_SIGNING_KEY", "")),
+			TokenLifetimeMinute: utils.GetEnv("METABASE_TOKEN_LIFETIME_MINUTE", 10),
+			Resources: map[models.EmbeddingType]int{
+				models.GlobalDashboard: utils.GetEnv("METABASE_GLOBAL_DASHBOARD_ID", 0),
+			},
+		},
+		FirebaseConfig: api.FirebaseConfig{
+			ProjectId:    utils.GetEnv("FIREBASE_PROJECT_ID", ""),
+			EmulatorHost: utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
+			ApiKey:       utils.GetEnv("FIREBASE_API_KEY", ""),
+			AuthDomain:   utils.GetEnv("FIREBASE_AUTH_DOMAIN", ""),
+		},
 	}
 	if apiConfig.DisableSegment {
 		apiConfig.SegmentWriteKey = ""
 	}
-	gcpConfig := infra.GcpConfig{
-		EnableTracing:                utils.GetEnv("ENABLE_GCP_TRACING", false),
-		ProjectId:                    utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		GoogleApplicationCredentials: utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
+
+	gcpConfig, err := infra.NewGcpConfig(
+		ctx,
+		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
+		utils.GetEnv("ENABLE_GCP_TRACING", false),
+	)
+	if err != nil {
+		return err
 	}
+
 	pgConfig := infra.PgConfig{
 		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:           utils.GetEnv("PG_DATABASE", "marble"),
@@ -55,14 +81,6 @@ func RunServer(config CompiledConfig) error {
 		MaxPoolConnections: utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
 		ClientDbConfigFile: utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
 		SslMode:            utils.GetEnv("PG_SSL_MODE", "prefer"),
-	}
-	metabaseConfig := infra.MetabaseConfiguration{
-		SiteUrl:             utils.GetEnv("METABASE_SITE_URL", ""),
-		JwtSigningKey:       []byte(utils.GetEnv("METABASE_JWT_SIGNING_KEY", "")),
-		TokenLifetimeMinute: utils.GetEnv("METABASE_TOKEN_LIFETIME_MINUTE", 10),
-		Resources: map[models.EmbeddingType]int{
-			models.GlobalDashboard: utils.GetEnv("METABASE_GLOBAL_DASHBOARD_ID", 0),
-		},
 	}
 	convoyConfiguration := infra.ConvoyConfiguration{
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
@@ -116,11 +134,33 @@ func RunServer(config CompiledConfig) error {
 		firebaseEmulatorHost:             utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
 	}
 
-	logger := utils.NewLogger(serverConfig.loggingFormat)
-
-	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
 	license := infra.VerifyLicense(licenseConfig)
+
+	logger.Info("successfully authenticated in GCP", "principal", gcpConfig.PrincipalEmail, "project", gcpConfig.ProjectId)
+
+	if apiConfig.FirebaseConfig.ProjectId == "" {
+		logger.Info("FIREBASE_PROJECT_ID was not provided, falling back to Google Cloud project", "project", gcpConfig.ProjectId)
+
+		apiConfig.FirebaseConfig.ProjectId = gcpConfig.ProjectId
+	}
+
+	if !apiConfig.FirebaseConfig.IsEmulator() {
+		if apiConfig.FirebaseConfig.ApiKey == "" {
+			logger.Warn("no FIREBASE_API_KEY specified, this will be an error in the future")
+		}
+
+		if apiConfig.FirebaseConfig.AuthDomain == "" {
+			logger.Warn(fmt.Sprintf("no FIREBASE_AUTH_DOMAIN specified, defaulting to %s", apiConfig.FirebaseConfig.AuthDomain))
+
+			apiConfig.FirebaseConfig.AuthDomain = fmt.Sprintf("%s.firebaseapp.com", apiConfig.FirebaseConfig.ProjectId)
+		}
+	} else {
+		// The auth domain, when using the emulator, is always the emulator host itself
+		apiConfig.FirebaseConfig.AuthDomain = apiConfig.FirebaseConfig.EmulatorHost
+	}
+
+	logger.Info("firebase project configured", "project", apiConfig.FirebaseConfig.ProjectId)
 
 	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env, config.Version)
 	defer sentry.Flush(3 * time.Second)
@@ -155,8 +195,8 @@ func RunServer(config CompiledConfig) error {
 
 	repositories := repositories.NewRepositories(
 		pool,
-		gcpConfig.GoogleApplicationCredentials,
-		repositories.WithMetabase(infra.InitializeMetabase(metabaseConfig)),
+		gcpConfig,
+		repositories.WithMetabase(infra.InitializeMetabase(apiConfig.MetabaseConfig)),
 		repositories.WithTransferCheckEnrichmentBucket(serverConfig.transferCheckEnrichmentBucketUrl),
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(convoyConfiguration),
@@ -176,7 +216,7 @@ func RunServer(config CompiledConfig) error {
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
-		usecases.WithMetabase(metabaseConfig.SiteUrl),
+		usecases.WithMetabase(apiConfig.MetabaseConfig.SiteUrl),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
 		usecases.WithTestMode(serverConfig.firebaseEmulatorHost != ""),
