@@ -2,11 +2,14 @@ package usecases
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
+	"os"
 
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -167,14 +170,43 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 		return "", errors.Wrap(err, "could not create GenAI client")
 	}
 
+	caseDtos, relatedDataPerClient, err := uc.getCaseData(ctx, caseId)
+	if err != nil {
+		return "", errors.Wrap(err, "could not get case data")
+	}
+
+	file, err := os.Open("prompts/case_review/case_review.md")
+	if err != nil {
+		return "", errors.Wrap(err, "could not open case review prompt file")
+	}
+	defer file.Close()
+
+	promptBytes, err := io.ReadAll(file)
+	if err != nil {
+		return "", errors.Wrap(err, "could not read case review prompt file")
+	}
+	promptText := string(promptBytes)
+
+	t := template.Must(template.New("case_review").Parse(promptText))
+
+	var buf bytes.Buffer
+	err = t.Execute(&buf, map[string]any{
+		"case_detail":        caseDtos.case_,
+		"case_events":        caseDtos.events,
+		"decisions":          caseDtos.decisions,
+		"data_model_summary": caseDtos.dataModel,
+		"pivot_objects":      caseDtos.pivotData,
+		"previous_cases":     relatedDataPerClient,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "could not execute case review template")
+	}
+	promptText = buf.String()
+
 	result, err := client.Models.GenerateContent(ctx,
 		"gemini-2.0-flash",
-		genai.Text("Tell me about New York?"),
-		&genai.GenerateContentConfig{
-			Tools: []*genai.Tool{
-				{GoogleSearch: &genai.GoogleSearch{}},
-			},
-		},
+		genai.Text(promptText),
+		&genai.GenerateContentConfig{},
 	)
 	if err != nil {
 		return "", err

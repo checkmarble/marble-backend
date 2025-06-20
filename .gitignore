@@ -60,3 +60,5 @@ e2e_test
 .idea
 .vscode/mise-tools/
 __debug_bin*
+
+prompts
