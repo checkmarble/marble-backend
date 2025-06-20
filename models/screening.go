@@ -193,7 +193,6 @@ type ScreeningMatchUpdate struct {
 }
 
 type ScreeningRefineRequest struct {
-	DecisionId  string
 	ScreeningId string
 	Type        string
 	Query       OpenSanctionsFilter

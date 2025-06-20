@@ -120,9 +120,9 @@ func HandleRefineScreening(uc usecases.Usecases, write bool) gin.HandlerFunc {
 		}
 
 		refineQuery := models.ScreeningRefineRequest{
-			DecisionId: screening.DecisionId,
-			Type:       params.Type(),
-			Query:      gdto.AdaptRefineQueryDto(params),
+			ScreeningId: screening.Id,
+			Type:        params.Type(),
+			Query:       gdto.AdaptRefineQueryDto(params),
 		}
 
 		switch write {
