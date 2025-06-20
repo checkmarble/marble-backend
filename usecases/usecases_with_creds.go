@@ -202,6 +202,7 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 		executorFactory:     usecases.NewExecutorFactory(),
 		enforceSecurity:     usecases.NewEnforceScenarioSecurity(),
 		repository:          &usecases.Repositories.MarbleDbRepository,
+		workflowRepository:  &usecases.Repositories.MarbleDbRepository,
 	}
 }
 

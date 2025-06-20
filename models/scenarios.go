@@ -22,6 +22,17 @@ var ValidWorkflowTypes = []WorkflowType{
 	WorkflowAddToCaseIfPossible,
 }
 
+func WorkflowTypeFromString(s string) WorkflowType {
+	switch s {
+	case "ADD_TO_CASE_IF_POSSIBLE":
+		return WorkflowAddToCaseIfPossible
+	case "CREATE_CASE":
+		return WorkflowCreateCase
+	default:
+		return WorkflowDisabled
+	}
+}
+
 type Scenario struct {
 	Id                         string
 	CreatedAt                  time.Time
