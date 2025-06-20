@@ -49,7 +49,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		}
 
 		pubapi.InitPublicApi()
-		pubapiv1.Routes(cfg, r.Group("/v1beta"), auth.AuthedBy(utils.PublicApiKey, utils.BearerToken), uc)
+		pubapiv1.Routes(cfg, r.Group("/v1beta"),
+			auth.AuthedBy(utils.PublicApiKey, utils.BearerToken), uc)
 	}
 
 	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey))
@@ -223,6 +224,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/cases/:case_id/escalate", tom, handleEscalateCase(uc))
 
 	router.GET("/cases/:case_id/data_for_investigation", timeoutMiddleware(conf.BatchTimeout), handleGetCaseDataForCopilot(uc))
+	router.POST("cases/:case_id/review", timeoutMiddleware(conf.BatchTimeout), handleCreateCaseReview(uc))
 
 	router.GET("/inboxes/:inbox_id", tom, handleGetInboxById(uc))
 	router.GET("/inboxes/:inbox_id/metadata", tom, handleGetInboxMetadataById(uc))
