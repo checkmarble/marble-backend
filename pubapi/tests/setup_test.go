@@ -27,6 +27,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-testfixtures/testfixtures/v3"
 	"github.com/pressly/goose/v3"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -130,10 +132,16 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 		t.Fatal(err)
 	}
 
+	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	deps := api.InitDependencies(ctx, cfg, pool, key, nil)
-	openSanctions := infra.InitializeOpenSanctions(http.DefaultClient, " ", " ", " ")
+	openSanctions := infra.InitializeOpenSanctions(http.DefaultClient, "http://screening", " ", " ")
 	repos := repositories.NewRepositories(pool, "",
-		repositories.WithOpenSanctions(openSanctions))
+		repositories.WithOpenSanctions(openSanctions),
+		repositories.WithRiverClient(riverClient))
 	uc := usecases.NewUsecases(repos, usecases.WithLicense(models.NewFullLicense()), usecases.WithOpensanctions(true))
 	router := api.InitRouterMiddlewares(ctx, cfg, true, nil, infra.TelemetryRessources{})
 
