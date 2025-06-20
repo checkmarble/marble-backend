@@ -2,6 +2,7 @@ package dto
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
@@ -111,6 +112,8 @@ func objectSchema(isPatch bool, fields openapi3.Schemas, required []string) open
 	if isPatch {
 		required = []string{"object_id", "updated_at"}
 	}
+
+	slices.Sort(required)
 
 	return openapi3.Schema{
 		Type:       &openapi3.Types{openapi3.TypeObject},
