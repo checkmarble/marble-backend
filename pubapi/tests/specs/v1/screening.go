@@ -5,8 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	gdto "github.com/checkmarble/marble-backend/dto"
 	api "github.com/checkmarble/marble-backend/pubapi/v1"
 	"github.com/gavv/httpexpect/v2"
+	"github.com/h2non/gock"
 )
 
 func screenings(t *testing.T, e *httpexpect.Expect) {
@@ -52,6 +54,71 @@ func screenings(t *testing.T, e *httpexpect.Expect) {
 			return strings.Contains(value.String().Raw(), "does not have a sanction check")
 		})
 
+	gock.New("http://screening/match").
+		Persist().
+		Reply(http.StatusOK).
+		BodyString(`{
+				"responses": {
+					"out":{
+						"total": { "value": 1 },
+						"results":[
+							{
+								"id":"ID",
+								"referents": ["a", "b"],
+								"match": true,
+								"schema": "Person",
+								"datasets": ["one", "two"],
+								"properties": {
+									"name": ["Bob Joe"]
+								}
+							},
+							{
+								"id":"ID",
+								"referents": ["a", "b"],
+								"match": false,
+								"schema": "Person",
+								"datasets": ["one", "two"],
+								"properties": {
+									"name": ["Not A Match"]
+								}
+							}
+						]
+					}
+				}
+			}`)
+
+	{
+		matches := e.POST("/screening/search").
+			WithJSON(gdto.RefineQueryDto{Thing: &gdto.RefineQueryBase{Name: "test"}}).
+			Expect().
+			Status(http.StatusOK).
+			JSON().Path("$.data").Array()
+
+		matches.Length().IsEqual(1)
+
+		match := matches.Value(0).Object()
+		match.HasValue("id", "ID")
+		match.HasValue("referents", []string{"a", "b"})
+		match.HasValue("datasets", []string{"one", "two"})
+		match.Path("$.properties").Object().HasValue("name", []string{"Bob Joe"})
+	}
+
+	{
+		matches := e.POST("/screening/11111111-1111-1111-1111-111111111111/search").
+			WithJSON(gdto.RefineQueryDto{Thing: &gdto.RefineQueryBase{Name: "test"}}).
+			Expect().
+			Status(http.StatusOK).
+			JSON().Path("$.data").Array()
+
+		matches.Length().IsEqual(1)
+
+		match := matches.Value(0).Object()
+		match.HasValue("id", "ID")
+		match.HasValue("referents", []string{"a", "b"})
+		match.HasValue("datasets", []string{"one", "two"})
+		match.Path("$.properties").Object().HasValue("name", []string{"Bob Joe"})
+	}
+
 	e.POST("/screening/matches/11111111-1111-1111-1111-111111111111").
 		WithJSON(api.UpdateScreeningMatchStatusParams{Status: "no_hit"}).
 		Expect().
@@ -73,4 +140,34 @@ func screenings(t *testing.T, e *httpexpect.Expect) {
 		Find(func(index int, value *httpexpect.Value) bool {
 			return strings.Contains(value.String().Raw(), "not pending review")
 		})
+
+	{
+		matches := e.POST("/screening/22222222-2222-2222-2222-222222222222/refine").
+			WithJSON(gdto.RefineQueryDto{Thing: &gdto.RefineQueryBase{Name: "test"}}).
+			Expect().
+			Status(http.StatusOK).
+			JSON().Path("$.data.matches").Array()
+
+		matches.Length().IsEqual(1)
+
+		match := matches.Value(0).Object().Path("$.payload").Object()
+		match.HasValue("id", "ID")
+		match.HasValue("referents", []string{"a", "b"})
+		match.HasValue("datasets", []string{"one", "two"})
+		match.Path("$.properties").Object().HasValue("name", []string{"Bob Joe"})
+
+		out := e.GET("/decisions/11111111-1111-1111-1111-111111111111/screenings").Expect().
+			Status(http.StatusOK).
+			JSON().Path("$.data[1]").
+			Object()
+
+		out.HasValue("status", "in_review")
+
+		matches = out.Value("matches").Array()
+		matches.Length().IsEqual(1)
+
+		match = matches.Value(0).Object().Path("$.payload").Object()
+		match.HasValue("id", "ID")
+	}
+
 }
