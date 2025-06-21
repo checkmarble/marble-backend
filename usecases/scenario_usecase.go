@@ -16,6 +16,16 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+type workflowRepository interface {
+	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId string) ([]models.Workflow, error)
+	GetWorkflowRule(ctx context.Context, exec repositories.Executor, id string) (models.WorkflowRule, error)
+	GetWorkflowCondition(ctx context.Context, exec repositories.Executor, id string) (models.WorkflowCondition, error)
+	GetWorkflowAction(ctx context.Context, exec repositories.Executor, id string) (models.WorkflowAction, error)
+	InsertWorkflowRule(ctx context.Context, exec repositories.Executor, rule models.WorkflowRule) (models.WorkflowRule, error)
+	InsertWorkflowCondition(ctx context.Context, exec repositories.Executor, rule models.WorkflowCondition) (models.WorkflowCondition, error)
+	InsertWorkflowAction(ctx context.Context, exec repositories.Executor, rule models.WorkflowAction) (models.WorkflowAction, error)
+}
+
 type ScenarioUsecase struct {
 	transactionFactory  executor_factory.TransactionFactory
 	scenarioFetcher     scenarios.ScenarioFetcher
@@ -23,6 +33,7 @@ type ScenarioUsecase struct {
 	executorFactory     executor_factory.ExecutorFactory
 	enforceSecurity     security.EnforceSecurityScenario
 	repository          repositories.ScenarioUsecaseRepository
+	workflowRepository  workflowRepository
 }
 
 func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationId string) ([]models.Scenario, error) {
@@ -197,4 +208,73 @@ func (usecase *ScenarioUsecase) CreateScenario(
 		"scenario_id": createdScenario.Id,
 	})
 	return createdScenario, nil
+}
+
+func (uc *ScenarioUsecase) ListWorkflowsForScenario(ctx context.Context, scenarioId string) ([]models.Workflow, error) {
+	exec := uc.executorFactory.NewExecutor()
+
+	if err := uc.enforceSecurity.ListScenarios(uc.enforceSecurity.OrgId()); err != nil {
+		return nil, err
+	}
+
+	rules, err := uc.workflowRepository.ListWorkflowsForScenario(ctx, exec, scenarioId)
+	if err != nil {
+		return nil, err
+	}
+
+	return rules, nil
+}
+
+func (uc *ScenarioUsecase) CreateWorkflowRule(ctx context.Context, orgId string, rule models.WorkflowRule) (models.WorkflowRule, error) {
+	exec := uc.executorFactory.NewExecutor()
+
+	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	if err != nil {
+		return models.WorkflowRule{}, err
+	}
+
+	if err := uc.enforceSecurity.PublishScenario(scenario); err != nil {
+		return models.WorkflowRule{}, err
+	}
+
+	return uc.workflowRepository.InsertWorkflowRule(ctx, uc.executorFactory.NewExecutor(), rule)
+}
+
+func (uc *ScenarioUsecase) CreateWorkflowCondition(ctx context.Context, orgId string, cond models.WorkflowCondition) (models.WorkflowCondition, error) {
+	exec := uc.executorFactory.NewExecutor()
+
+	rule, err := uc.workflowRepository.GetWorkflowRule(ctx, exec, cond.RuleId)
+	if err != nil {
+		return models.WorkflowCondition{}, err
+	}
+
+	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	if err != nil {
+		return models.WorkflowCondition{}, err
+	}
+
+	if err := uc.enforceSecurity.PublishScenario(scenario); err != nil {
+		return models.WorkflowCondition{}, err
+	}
+
+	return uc.workflowRepository.InsertWorkflowCondition(ctx, exec, cond)
+}
+func (uc *ScenarioUsecase) CreateWorkflowAction(ctx context.Context, orgId string, action models.WorkflowAction) (models.WorkflowAction, error) {
+	exec := uc.executorFactory.NewExecutor()
+
+	rule, err := uc.workflowRepository.GetWorkflowRule(ctx, exec, action.RuleId)
+	if err != nil {
+		return models.WorkflowAction{}, err
+	}
+
+	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	if err != nil {
+		return models.WorkflowAction{}, err
+	}
+
+	if err := uc.enforceSecurity.PublishScenario(scenario); err != nil {
+		return models.WorkflowAction{}, err
+	}
+
+	return uc.workflowRepository.InsertWorkflowAction(ctx, exec, action)
 }

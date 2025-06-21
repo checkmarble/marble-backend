@@ -287,4 +287,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.DELETE("/webhooks/:webhook_id", tom, handleDeleteWebhook(uc))
 
 	router.GET("/rule-snoozes/:rule_snooze_id", tom, handleGetSnoozesById(uc))
+
+	router.GET("/workflows/:scenarioId", tom, handleListWorkflowsForScenario(uc))
 }
