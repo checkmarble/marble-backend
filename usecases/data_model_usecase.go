@@ -33,13 +33,19 @@ type dataModelUsecaseIndexEditor interface {
 	) error
 }
 
+type dataModelUsecaseIngestedDataReadRepo interface {
+	GatherFieldStatistics(ctx context.Context, exec repositories.Executor, table models.Table,
+		orgId string) ([]models.FieldStatistics, error)
+}
+
 type DataModelUseCase struct {
-	clientDbIndexEditor          dataModelUsecaseIndexEditor
-	dataModelRepository          repositories.DataModelRepository
-	enforceSecurity              security.EnforceSecurityOrganization
-	executorFactory              executor_factory.ExecutorFactory
-	organizationSchemaRepository repositories.OrganizationSchemaRepository
-	transactionFactory           executor_factory.TransactionFactory
+	clientDbIndexEditor           dataModelUsecaseIndexEditor
+	dataModelRepository           repositories.DataModelRepository
+	enforceSecurity               security.EnforceSecurityOrganization
+	executorFactory               executor_factory.ExecutorFactory
+	organizationSchemaRepository  repositories.OrganizationSchemaRepository
+	transactionFactory            executor_factory.TransactionFactory
+	dataModelIngestedDataReadRepo dataModelUsecaseIngestedDataReadRepo
 }
 
 var (
@@ -87,6 +93,20 @@ func (usecase DataModelUseCase) GetDataModel(
 			return models.DataModel{}, err
 		}
 		dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
+	}
+
+	if options.IncludeSamples {
+		db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationID)
+		if err != nil {
+			return models.DataModel{}, err
+		}
+		for tableName, table := range dataModel.Tables {
+			fieldStats, err := usecase.dataModelIngestedDataReadRepo.GatherFieldStatistics(ctx, db, table, organizationID)
+			if err != nil {
+				return models.DataModel{}, err
+			}
+			dataModel.Tables[tableName] = table.WithFieldStatistics(fieldStats)
+		}
 	}
 
 	return dataModel, nil

@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"time"
 
@@ -10,12 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/pkg/errors"
-)
-
-var (
-	NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
 )
 
 type ingestedDataReaderClientDbRepository interface {
@@ -34,7 +28,8 @@ type ingestedDataReaderClientDbRepository interface {
 		uniqueFieldValue string,
 		uniqueFieldName string,
 	) ([]models.DataModelObject, error)
-	GatherFieldStatistics(ctx context.Context, exec repositories.Executor, table models.Table) ([]models.FieldStatistics, error)
+	GatherFieldStatistics(ctx context.Context, exec repositories.Executor, table models.Table,
+		orgId string) ([]models.FieldStatistics, error)
 }
 
 type ingestedDataReaderRepository interface {
@@ -370,17 +365,9 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 		return
 	}
 
-	fieldStatsCacheKey := fmt.Sprintf("%s-%s", orgId, targetTable.Name)
-
-	if cache, ok := NAVIGATION_FIELD_STATS_CACHE.Get(fieldStatsCacheKey); ok {
-		fieldStats = cache
-	} else {
-		fieldStats, err = usecase.clientDbRepository.GatherFieldStatistics(ctx, db, targetTable)
-		if err != nil {
-			return
-		}
-
-		NAVIGATION_FIELD_STATS_CACHE.Add(fieldStatsCacheKey, fieldStats)
+	fieldStats, err = usecase.clientDbRepository.GatherFieldStatistics(ctx, db, targetTable, orgId)
+	if err != nil {
+		return
 	}
 
 	rawObjects, err := usecase.clientDbRepository.ListIngestedObjects(ctx, db, targetTable,
