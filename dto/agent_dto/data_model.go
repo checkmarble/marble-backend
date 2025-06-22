@@ -13,11 +13,14 @@ type LinkToSingle struct {
 }
 
 type Field struct {
-	DataType    string `json:"data_type"`
-	Description string `json:"description"`
-	IsEnum      bool   `json:"is_enum"`
-	Name        string `json:"name"`
-	EnumSample  []any  `json:"enum_sample,omitempty"`
+	DataType    string   `json:"data_type"`
+	Description string   `json:"description"`
+	IsEnum      bool     `json:"is_enum"`
+	Name        string   `json:"name"`
+	EnumSample  []any    `json:"enum_sample,omitempty"`
+	Histogram   []string `json:"histogram,omitempty"`
+	Format      string   `json:"format,omitempty"`
+	MaxLength   int      `json:"max_length,omitempty"`
 }
 
 type Table struct {
@@ -45,6 +48,9 @@ func adaptDataModelField(field models.Field) Field {
 		IsEnum:      field.IsEnum,
 		Name:        field.Name,
 		EnumSample:  field.Values,
+		Histogram:   field.FieldStatistics.Histogram,
+		Format:      field.FieldStatistics.Format,
+		MaxLength:   field.FieldStatistics.MaxLength,
 	}
 }
 

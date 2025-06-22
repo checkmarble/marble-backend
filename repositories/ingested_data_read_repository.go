@@ -4,15 +4,19 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 )
+
+var NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
 
 type IngestedDataReadRepository interface {
 	GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error)
@@ -52,7 +56,7 @@ type IngestedDataReadRepository interface {
 		cursorId *string,
 		limit int,
 	) ([]models.DataModelObject, error)
-	GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table) ([]models.FieldStatistics, error)
+	GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table, orgId string) ([]models.FieldStatistics, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -626,7 +630,14 @@ func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 	})
 }
 
-func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table) ([]models.FieldStatistics, error) {
+func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Context,
+	exec Executor, table models.Table, orgId string,
+) ([]models.FieldStatistics, error) {
+	fieldStatsCacheKey := fmt.Sprintf("%s-%s", orgId, table.Name)
+	if cache, ok := NAVIGATION_FIELD_STATS_CACHE.Get(fieldStatsCacheKey); ok {
+		return cache, nil
+	}
+
 	q := NewQueryBuilder().
 		Select("attname", "most_common_vals", "histogram_bounds").
 		From("pg_stats").
@@ -663,7 +674,6 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 			Histogram: values,
 		}, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -702,5 +712,6 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 		}
 	}
 
+	NAVIGATION_FIELD_STATS_CACHE.Add(fieldStatsCacheKey, fieldStats)
 	return fieldStats, nil
 }

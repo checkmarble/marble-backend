@@ -161,6 +161,20 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 	return pr, nil
 }
 
+func readPrompt(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not open prompt file %s", path)
+	}
+	defer file.Close()
+
+	promptBytes, err := io.ReadAll(file)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not read prompt file %s", path)
+	}
+	return string(promptBytes), nil
+}
+
 func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (string, error) {
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
 		Location: "europe-west1",
@@ -175,37 +189,24 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 		return "", errors.Wrap(err, "could not get case data")
 	}
 
-	file, err := os.Open("prompts/case_review/case_review.md")
+	dataModelSummaryPrompt, err := readPrompt("prompts/case_review/data_model_summary.md")
 	if err != nil {
-		return "", errors.Wrap(err, "could not open case review prompt file")
+		return "", err
 	}
-	defer file.Close()
 
-	promptBytes, err := io.ReadAll(file)
-	if err != nil {
-		return "", errors.Wrap(err, "could not read case review prompt file")
-	}
-	promptText := string(promptBytes)
-
-	t := template.Must(template.New("case_review").Parse(promptText))
-
+	tDataModel := template.Must(template.New("data_model").Parse(dataModelSummaryPrompt))
 	var buf bytes.Buffer
-	err = t.Execute(&buf, map[string]any{
-		"case_detail":        caseDtos.case_,
-		"case_events":        caseDtos.events,
-		"decisions":          caseDtos.decisions,
-		"data_model_summary": caseDtos.dataModel,
-		"pivot_objects":      caseDtos.pivotData,
-		"previous_cases":     relatedDataPerClient,
+	err = tDataModel.Execute(&buf, map[string]any{
+		"data_model": caseDtos.dataModel,
 	})
 	if err != nil {
-		return "", errors.Wrap(err, "could not execute case review template")
+		return "", errors.Wrap(err, "could not execute data model summary template")
 	}
-	promptText = buf.String()
+	dataModelSummaryPrompt = buf.String()
 
 	result, err := client.Models.GenerateContent(ctx,
 		"gemini-2.0-flash",
-		genai.Text(promptText),
+		genai.Text(dataModelSummaryPrompt),
 		&genai.GenerateContentConfig{},
 	)
 	if err != nil {
@@ -214,6 +215,42 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 	if len(result.Candidates) == 0 {
 		return "", errors.New("no response from GenAI")
 	}
+	dataModelSummary := result.Candidates[0].Content.Parts[0].Text
+	fmt.Println("Data Model Summary:", dataModelSummary)
+
+	caseReviewPrompt, err := readPrompt("prompts/case_review/case_review.md")
+	if err != nil {
+		return "", err
+	}
+
+	tCaseReview := template.Must(template.New("case_review").Parse(caseReviewPrompt))
+
+	err = tCaseReview.Execute(&buf, map[string]any{
+		"case_detail":        caseDtos.case_,
+		"case_events":        caseDtos.events,
+		"decisions":          caseDtos.decisions,
+		"data_model_summary": dataModelSummary,
+		"pivot_objects":      caseDtos.pivotData,
+		"previous_cases":     relatedDataPerClient,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "could not execute case review template")
+	}
+	caseReviewPrompt = buf.String()
+
+	result, err = client.Models.GenerateContent(ctx,
+		"gemini-2.0-flash",
+		genai.Text(caseReviewPrompt),
+		&genai.GenerateContentConfig{},
+	)
+	if err != nil {
+		return "", err
+	}
+	if len(result.Candidates) == 0 {
+		return "", errors.New("no response from GenAI")
+	}
+
+	fmt.Println("Case Review:", result.Candidates[0].Content.Parts[0].Text)
 	return result.Candidates[0].Content.Parts[0].Text, nil
 }
 
