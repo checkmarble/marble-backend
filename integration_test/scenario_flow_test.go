@@ -414,16 +414,16 @@ func setupScenarioAndPublish(
 		assert.FailNow(t, "Could not create workflow rule", err)
 	}
 
-	_, err = scenarioUsecase.CreateWorkflowCondition(ctx, organizationId, models.WorkflowCondition{
+	_, err = scenarioUsecase.CreateWorkflowCondition(ctx, models.WorkflowCondition{
 		RuleId:   rule.Id,
-		Function: "if_outcome_in",
+		Function: models.WorkflowConditionIfOutcomeIn,
 		Params:   []byte(`["decline", "review"]`),
 	})
 	if err != nil {
 		assert.FailNow(t, "Could not create workflow condition", err)
 	}
 
-	_, err = scenarioUsecase.CreateWorkflowAction(ctx, organizationId, models.WorkflowAction{
+	_, err = scenarioUsecase.CreateWorkflowAction(ctx, models.WorkflowAction{
 		RuleId: rule.Id,
 		Action: models.WorkflowAddToCaseIfPossible,
 		Params: fmt.Appendf(nil, `{"inbox_id": "%s"}`, inboxId),
