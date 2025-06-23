@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/pkg/errors"
 )
@@ -15,9 +16,10 @@ type DecisionWorkflowRule struct {
 }
 
 type DecisionWorkflowRequest struct {
-	Scenario models.Scenario
-	Decision models.DecisionWithRuleExecutions
-	Params   evaluate_scenario.ScenarioEvaluationParameters
+	Scenario    models.Scenario
+	Decision    models.DecisionWithRuleExecutions
+	Params      evaluate_scenario.ScenarioEvaluationParameters
+	EvaluateAst ast_eval.EvaluateAstExpression
 }
 
 func (d DecisionsWorkflows) ProcessDecisionWorkflows(
@@ -29,9 +31,10 @@ func (d DecisionsWorkflows) ProcessDecisionWorkflows(
 	evalParams evaluate_scenario.ScenarioEvaluationParameters,
 ) (models.WorkflowExecution, error) {
 	req := DecisionWorkflowRequest{
-		Scenario: scenario,
-		Decision: decision,
-		Params:   evalParams,
+		Scenario:    scenario,
+		Decision:    decision,
+		Params:      evalParams,
+		EvaluateAst: d.astEvaluator,
 	}
 
 	var matchingRule *models.Workflow
