@@ -14,9 +14,9 @@ func TestBuildRefineQuery(t *testing.T) {
 		output      models.OpenSanctionsFilter
 	}{
 		{
-			`{"Person":{"name":"bob","idNumber":"123"}}`,
+			`{"Person":{"name":"bob","passportNumber":"123"}}`,
 			"Person",
-			models.OpenSanctionsFilter{"name": []string{"bob"}, "idNumber": []string{"123"}},
+			models.OpenSanctionsFilter{"name": []string{"bob"}, "passportNumber": []string{"123"}},
 		},
 		{
 			`{"organization":{"name":"acme","registrationNumber":"123","country":"uk"}}`,

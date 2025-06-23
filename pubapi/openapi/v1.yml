@@ -1154,7 +1154,7 @@ components:
               type: string
             birthDate:
               type: string
-            idNumber:
+            passportNumber:
               type: string
             address:
               type: string
