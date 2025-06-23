@@ -191,6 +191,7 @@ func (usecases *UsecasesWithCreds) NewDecisionWorkflows() decision_workflows.Dec
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewWebhookEventsUsecase(),
 		usecases.NewScenarioEvaluator(),
+		usecases.NewEvaluateAstExpression(),
 	)
 }
 

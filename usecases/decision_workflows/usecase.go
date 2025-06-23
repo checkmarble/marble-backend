@@ -6,6 +6,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 )
 
@@ -57,6 +58,7 @@ type DecisionsWorkflows struct {
 	caseEditor          caseEditor
 	caseNameEvaluator   CaseNameEvaluator
 	webhookEventCreator webhookEventCreator
+	astEvaluator        ast_eval.EvaluateAstExpression
 }
 
 func NewDecisionWorkflows(
@@ -64,11 +66,13 @@ func NewDecisionWorkflows(
 	repository caseAndDecisionRepository,
 	webhookEventCreator webhookEventCreator,
 	caseNameEvaluator CaseNameEvaluator,
+	astEvaluator ast_eval.EvaluateAstExpression,
 ) DecisionsWorkflows {
 	return DecisionsWorkflows{
 		caseEditor:          caseEditor,
 		repository:          repository,
 		webhookEventCreator: webhookEventCreator,
 		caseNameEvaluator:   caseNameEvaluator,
+		astEvaluator:        astEvaluator,
 	}
 }
