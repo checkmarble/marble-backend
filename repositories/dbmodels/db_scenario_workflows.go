@@ -69,7 +69,7 @@ func AdaptWorkflowCondition(db DbWorkflowCondition) (models.WorkflowCondition, e
 	return models.WorkflowCondition{
 		Id:        db.Id,
 		RuleId:    db.RuleId,
-		Function:  db.Function,
+		Function:  models.WorkflowConditionFromString(db.Function),
 		Params:    db.Params,
 		CreatedAt: db.CreatedAt,
 		UpdatedAt: db.UpdatedAt,

@@ -62,7 +62,7 @@ func (repo *MarbleDbRepository) GetWorkflowAction(ctx context.Context, exec Exec
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.WorkflowConditionColumns...).
+		Select(dbmodels.WorkflowActionColumns...).
 		From(dbmodels.TABLE_WORKFLOW_ACTIONS).
 		Where("id = ?", id)
 
@@ -97,11 +97,22 @@ func (repo *MarbleDbRepository) UpdateWorkflowRule(ctx context.Context, exec Exe
 		SetMap(map[string]any{
 			"name": rule.Name,
 		}).
-		Where("scenario_id = ?", rule.ScenarioId).
 		Where("id = ?", rule.Id).
 		Suffix("returning *")
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowRule)
+}
+
+func (repo *MarbleDbRepository) DeleteWorkflowRule(ctx context.Context, exec Executor, ruleId string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Delete(dbmodels.TABLE_WORKFLOW_RULES).
+		Where("id = ?", ruleId)
+
+	return ExecBuilder(ctx, exec, sql)
 }
 
 func (repo *MarbleDbRepository) InsertWorkflowCondition(ctx context.Context, exec Executor, cond models.WorkflowCondition) (models.WorkflowCondition, error) {
@@ -122,6 +133,37 @@ func (repo *MarbleDbRepository) InsertWorkflowCondition(ctx context.Context, exe
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowCondition)
 }
 
+func (repo *MarbleDbRepository) UpdateWorkflowCondition(ctx context.Context, exec Executor, rule models.WorkflowCondition) (models.WorkflowCondition, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.WorkflowCondition{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_WORKFLOW_CONDITIONS).
+		SetMap(map[string]any{
+			"function": rule.Function,
+			"params":   rule.Params,
+		}).
+		Where("rule_id = ?", rule.RuleId).
+		Where("id = ?", rule.Id).
+		Suffix("returning *")
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowCondition)
+}
+
+func (repo *MarbleDbRepository) DeleteWorkflowCondition(ctx context.Context, exec Executor, ruleId, conditionId string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Delete(dbmodels.TABLE_WORKFLOW_CONDITIONS).
+		Where("rule_id = ?", ruleId).
+		Where("id = ?", conditionId)
+
+	return ExecBuilder(ctx, exec, sql)
+}
+
 func (repo *MarbleDbRepository) InsertWorkflowAction(ctx context.Context, exec Executor, action models.WorkflowAction) (models.WorkflowAction, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.WorkflowAction{}, err
@@ -138,6 +180,37 @@ func (repo *MarbleDbRepository) InsertWorkflowAction(ctx context.Context, exec E
 		Suffix("returning *")
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowAction)
+}
+
+func (repo *MarbleDbRepository) UpdateWorkflowAction(ctx context.Context, exec Executor, rule models.WorkflowAction) (models.WorkflowAction, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.WorkflowAction{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_WORKFLOW_ACTIONS).
+		SetMap(map[string]any{
+			"action": rule.Action,
+			"params": rule.Params,
+		}).
+		Where("rule_id = ?", rule.RuleId).
+		Where("id = ?", rule.Id).
+		Suffix("returning *")
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowAction)
+}
+
+func (repo *MarbleDbRepository) DeleteWorkflowAction(ctx context.Context, exec Executor, ruleId, actionId string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Delete(dbmodels.TABLE_WORKFLOW_ACTIONS).
+		Where("rule_id = ?", ruleId).
+		Where("id = ?", actionId)
+
+	return ExecBuilder(ctx, exec, sql)
 }
 
 func (repo *MarbleDbRepository) ReorderWorkflowRules(ctx context.Context, exec Executor, scenarioId string, ids []uuid.UUID) error {
