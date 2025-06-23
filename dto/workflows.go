@@ -35,6 +35,14 @@ type PostWorkflowConditionDto struct {
 	Params   json.RawMessage              `json:"params"`
 }
 
+type WorkflowConditionRuleHitParams struct {
+	RuleId string `json:"rule_id" binding:"required,uuid"`
+}
+
+type WorkflowConditionEvaluatesParams struct {
+	Expression NodeDto `json:"expression" binding:"required"`
+}
+
 type WorkflowActionDto struct {
 	Id     string          `json:"id"`
 	Action string          `json:"action"`
@@ -90,7 +98,7 @@ func ValidateWorkflowCondition(cond PostWorkflowConditionDto) error {
 		if cond.Params != nil {
 			return errors.Wrapf(models.BadParameterError, "workflow condition %s does not take parameters", cond.Function)
 		}
-	case models.WorkflowConditionIfOutcomeIn:
+	case models.WorkflowConditionOutcomeIn:
 		if err := json.Unmarshal(cond.Params, new([]string)); err != nil {
 			return errors.Join(models.BadParameterError, json.Unmarshal(cond.Params, new([]string)))
 		}
