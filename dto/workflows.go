@@ -5,6 +5,9 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/cockroachdb/errors"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 )
 
 type WorkflowRuleDto struct {
@@ -12,20 +15,35 @@ type WorkflowRuleDto struct {
 	Name string `json:"name"`
 }
 
-type PostWorkflowRuleDto struct {
+type CreateWorkflowRuleDto struct {
+	ScenarioId string `json:"scenario_id" binding:"required,uuid"`
+	Name       string `json:"name" binding:"required"`
+}
+
+type UpdateWorkflowRuleDto struct {
 	Name string `json:"name" binding:"required"`
 }
 
 type WorkflowConditionDto struct {
-	Id       string          `json:"id"`
-	Function string          `json:"function"`
-	Params   json.RawMessage `json:"params"`
+	Id       string                       `json:"id"`
+	Function models.WorkflowConditionType `json:"function"`
+	Params   json.RawMessage              `json:"params,omitempty"`
+}
+
+type PostWorkflowConditionDto struct {
+	Function models.WorkflowConditionType `json:"function" binding:"required"`
+	Params   json.RawMessage              `json:"params"`
 }
 
 type WorkflowActionDto struct {
 	Id     string          `json:"id"`
 	Action string          `json:"action"`
-	Params json.RawMessage `json:"params"`
+	Params json.RawMessage `json:"params,omitempty"`
+}
+
+type PostWorkflowActionDto struct {
+	Action models.WorkflowType `json:"action" binding:"required"`
+	Params json.RawMessage     `json:"params"`
 }
 
 type WorkflowDto struct {
@@ -64,4 +82,39 @@ func AdaptWorkflowAction(m models.WorkflowAction) WorkflowActionDto {
 		Action: string(m.Action),
 		Params: m.Params,
 	}
+}
+
+func ValidateWorkflowCondition(cond PostWorkflowConditionDto) error {
+	switch cond.Function {
+	case models.WorkflowConditionAlways, models.WorkflowConditionNever:
+		if cond.Params != nil {
+			return errors.Wrapf(models.BadParameterError, "workflow condition %s does not take parameters", cond.Function)
+		}
+	case models.WorkflowConditionIfOutcomeIn:
+		if err := json.Unmarshal(cond.Params, new([]string)); err != nil {
+			return errors.Join(models.BadParameterError, json.Unmarshal(cond.Params, new([]string)))
+		}
+	default:
+		return errors.Wrapf(models.BadParameterError, "unknown workflow condition type: %s", cond.Function)
+	}
+
+	return nil
+}
+
+func ValidateWorkflowAction(cond PostWorkflowActionDto) error {
+	switch cond.Action {
+	case models.WorkflowCreateCase, models.WorkflowAddToCaseIfPossible:
+		var params models.WorkflowCaseParams
+
+		if err := json.Unmarshal(cond.Params, &params); err != nil {
+			return errors.Join(models.BadParameterError, json.Unmarshal(cond.Params, new(models.WorkflowCaseParams)))
+		}
+		if err := binding.Validator.Engine().(*validator.Validate).Struct(params); err != nil {
+			return errors.Join(models.BadParameterError, err)
+		}
+	default:
+		return errors.Wrapf(models.BadParameterError, "unknown workflow action type: %s", cond.Action)
+	}
+
+	return nil
 }

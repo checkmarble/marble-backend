@@ -19,10 +19,6 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	evalParams evaluate_scenario.ScenarioEvaluationParameters,
 	action models.WorkflowActionSpec[models.WorkflowCaseParams],
 ) (models.WorkflowExecution, error) {
-	if action.Params.InboxId == nil {
-		return models.WorkflowExecution{}, nil
-	}
-
 	webhookEventId := uuid.NewString()
 
 	createNewCaseForDecision := func(ctx context.Context) (models.WorkflowExecution, error) {
@@ -86,7 +82,7 @@ func automaticCreateCaseAttributes(
 ) models.CreateCaseAttributes {
 	return models.CreateCaseAttributes{
 		DecisionIds:    []string{decision.DecisionId.String()},
-		InboxId:        *action.Params.InboxId,
+		InboxId:        action.Params.InboxId,
 		Name:           name,
 		OrganizationId: scenario.OrganizationId,
 	}
@@ -104,7 +100,7 @@ func (d DecisionsWorkflows) addToOpenCase(
 	}
 
 	eligibleCases, err := d.repository.SelectCasesWithPivot(ctx, tx, models.DecisionWorkflowFilters{
-		InboxId:        *action.Params.InboxId,
+		InboxId:        action.Params.InboxId,
 		OrganizationId: scenario.OrganizationId,
 		PivotValue:     *decision.PivotValue,
 	})

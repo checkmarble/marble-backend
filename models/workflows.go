@@ -26,10 +26,40 @@ type WorkflowRule struct {
 	UpdatedAt *time.Time
 }
 
+type WorkflowConditionType string
+
+const (
+	WorkflowConditionUnknown     WorkflowConditionType = "unknown"
+	WorkflowConditionAlways                            = "always"
+	WorkflowConditionNever                             = "never"
+	WorkflowConditionIfOutcomeIn                       = "if_outcome_in"
+)
+
+var (
+	ValidWorkflowConditions = []WorkflowConditionType{
+		WorkflowConditionAlways,
+		WorkflowConditionNever,
+		WorkflowConditionIfOutcomeIn,
+	}
+)
+
+func WorkflowConditionFromString(s string) WorkflowConditionType {
+	switch s {
+	case WorkflowConditionAlways:
+		return WorkflowConditionAlways
+	case WorkflowConditionNever:
+		return WorkflowConditionNever
+	case WorkflowConditionIfOutcomeIn:
+		return WorkflowConditionIfOutcomeIn
+	default:
+		return WorkflowConditionUnknown
+	}
+}
+
 type WorkflowCondition struct {
 	Id       string
 	RuleId   string
-	Function string
+	Function WorkflowConditionType
 	Params   json.RawMessage
 
 	CreatedAt time.Time
@@ -67,8 +97,8 @@ type WorkflowActionSpec[T any] struct {
 }
 
 type WorkflowCaseParams struct {
-	InboxId       *uuid.UUID `json:"inbox_id"`
-	TitleTemplate *ast.Node  `json:"title_template"`
+	InboxId       uuid.UUID `json:"inbox_id" binding:"required,uuid"`
+	TitleTemplate *ast.Node `json:"title_template"`
 }
 
 type WorkflowExecution struct {
