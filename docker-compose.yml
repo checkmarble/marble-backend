@@ -1,7 +1,7 @@
 services:
   db:
     container_name: postgres
-    image: postgres:16
+    image: postgres:17
     shm_size: 1g
     restart: always
     environment:
