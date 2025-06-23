@@ -29,17 +29,20 @@ type WorkflowRule struct {
 type WorkflowConditionType string
 
 const (
-	WorkflowConditionUnknown     WorkflowConditionType = "unknown"
-	WorkflowConditionAlways                            = "always"
-	WorkflowConditionNever                             = "never"
-	WorkflowConditionIfOutcomeIn                       = "if_outcome_in"
+	WorkflowConditionUnknown   WorkflowConditionType = "unknown"
+	WorkflowConditionAlways                          = "always"
+	WorkflowConditionNever                           = "never"
+	WorkflowConditionOutcomeIn                       = "outcome_in"
+	WorkflowConditionRuleHit                         = "rule_hit"
+	WorkflowPayloadEvaluates                         = "payload_evaluates"
 )
 
 var (
 	ValidWorkflowConditions = []WorkflowConditionType{
 		WorkflowConditionAlways,
 		WorkflowConditionNever,
-		WorkflowConditionIfOutcomeIn,
+		WorkflowConditionOutcomeIn,
+		WorkflowConditionRuleHit,
 	}
 )
 
@@ -49,8 +52,12 @@ func WorkflowConditionFromString(s string) WorkflowConditionType {
 		return WorkflowConditionAlways
 	case WorkflowConditionNever:
 		return WorkflowConditionNever
-	case WorkflowConditionIfOutcomeIn:
-		return WorkflowConditionIfOutcomeIn
+	case WorkflowConditionOutcomeIn:
+		return WorkflowConditionOutcomeIn
+	case WorkflowConditionRuleHit:
+		return WorkflowConditionRuleHit
+	case WorkflowPayloadEvaluates:
+		return WorkflowPayloadEvaluates
 	default:
 		return WorkflowConditionUnknown
 	}

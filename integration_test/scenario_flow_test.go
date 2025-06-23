@@ -416,7 +416,7 @@ func setupScenarioAndPublish(
 
 	_, err = scenarioUsecase.CreateWorkflowCondition(ctx, models.WorkflowCondition{
 		RuleId:   rule.Id,
-		Function: models.WorkflowConditionIfOutcomeIn,
+		Function: models.WorkflowConditionOutcomeIn,
 		Params:   []byte(`["decline", "review"]`),
 	})
 	if err != nil {
