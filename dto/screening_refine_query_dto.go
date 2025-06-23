@@ -6,14 +6,12 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-var (
-	OpenSanctionsValidFieldsPerClass = map[string][]string{
-		"Thing":        {"name"},
-		"Person":       {"name", "birthDate", "nationality", "idNumber", "address"},
-		"Organization": {"name", "country", "registrationNumber", "address"},
-		"Vehicle":      {"name", "registrationNumber"},
-	}
-)
+var OpenSanctionsValidFieldsPerClass = map[string][]string{
+	"Thing":        {"name"},
+	"Person":       {"name", "birthDate", "nationality", "passportNumber", "address"},
+	"Organization": {"name", "country", "registrationNumber", "address"},
+	"Vehicle":      {"name", "registrationNumber"},
+}
 
 type RefineQueryDto struct {
 	Thing        *RefineQueryBase         `json:"Thing,omitempty" binding:"required_without_all=Person Organization Vehicle,excluded_with=Person Organization Vehicle"` //nolint:tagliatelle
@@ -44,10 +42,10 @@ func (q RefineQueryBase) GetName() string { return q.Name }
 type RefineQueryPerson struct {
 	RefineQueryBase
 
-	BirthDate   string `json:"birthDate"` //nolint:tagliatelle
-	Nationality string `json:"nationality"`
-	IdNumber    string `json:"idNumber"` //nolint:tagliatelle
-	Address     string `json:"address"`
+	BirthDate      string `json:"birthDate"` //nolint:tagliatelle
+	Nationality    string `json:"nationality"`
+	PassportNumber string `json:"passportNumber"` //nolint:tagliatelle
+	Address        string `json:"address"`
 }
 
 type RefineQueryOrganization struct {
@@ -80,7 +78,7 @@ func AdaptRefineQueryDto(dto RefineQueryDto) models.OpenSanctionsFilter {
 		assign("name", dto.Person.Name)
 		assign("birthDate", dto.Person.BirthDate)
 		assign("nationality", dto.Person.Nationality)
-		assign("idNumber", dto.Person.IdNumber)
+		assign("passportNumber", dto.Person.PassportNumber)
 		assign("address", dto.Person.Address)
 	case dto.Organization != nil:
 		assign("name", dto.Organization.Name)
