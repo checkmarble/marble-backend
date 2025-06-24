@@ -49,16 +49,22 @@ type DecisionScenario struct {
 }
 
 type Decision struct {
-	CreatedAt         time.Time        `json:"created_at"`
-	TriggerObject     map[string]any   `json:"trigger_object"`
-	TriggerObjectType string           `json:"trigger_object_type"`
-	Outcome           string           `json:"outcome"`
-	Scenario          DecisionScenario `json:"scenario"`
-	Score             int              `json:"score"`
-	Rules             []DecisionRule   `json:"rules"`
+	CreatedAt         time.Time                     `json:"created_at"`
+	TriggerObject     map[string]any                `json:"trigger_object"`
+	TriggerObjectType string                        `json:"trigger_object_type"`
+	Outcome           string                        `json:"outcome"`
+	Scenario          DecisionScenario              `json:"scenario"`
+	Score             int                           `json:"score"`
+	Rules             []DecisionRule                `json:"rules"`
+	Screenings        []models.ScreeningWithMatches `json:"screenings"`
 }
 
-func AdaptDecision(decision models.Decision, scenario models.ScenarioIteration, ruleExecutions []models.RuleExecution, rules []models.Rule,
+func AdaptDecision(
+	decision models.Decision,
+	scenario models.ScenarioIteration,
+	ruleExecutions []models.RuleExecution,
+	rules []models.Rule,
+	screenings []models.ScreeningWithMatches,
 ) Decision {
 	return Decision{
 		CreatedAt:         decision.CreatedAt,
@@ -77,5 +83,6 @@ func AdaptDecision(decision models.Decision, scenario models.ScenarioIteration, 
 		Rules: pure_utils.Map(ruleExecutions, func(ruleExec models.RuleExecution) DecisionRule {
 			return AcaptDecisionRule(ruleExec, rules)
 		}),
+		Screenings: screenings,
 	}
 }
