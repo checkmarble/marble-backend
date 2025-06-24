@@ -191,9 +191,18 @@ func generateContent(
 		return "", err
 	}
 
+	marshalledMap := make(map[string]string)
+	for k, v := range data {
+		b, err := json.Marshal(v)
+		if err != nil {
+			return "", errors.Wrapf(err, "could not marshal %s", k)
+		}
+		marshalledMap[k] = string(b)
+	}
+
 	t := template.Must(template.New(promptPath).Parse(prompt))
 	buf := bytes.Buffer{}
-	err = t.Execute(&buf, data)
+	err = t.Execute(&buf, marshalledMap)
 	if err != nil {
 		return "", errors.Wrap(err, "could not execute template")
 	}
@@ -211,7 +220,23 @@ func generateContent(
 	if len(result.Candidates) == 0 {
 		return "", errors.New("no response from GenAI")
 	}
-	return result.Candidates[0].Content.Parts[0].Text, nil
+	logger := utils.LoggerFromContext(ctx)
+	onlyTextParts := make([]string, 0, len(result.Candidates[0].Content.Parts))
+	for _, part := range result.Candidates[0].Content.Parts {
+		if part.Text != "" {
+			onlyTextParts = append(onlyTextParts, part.Text)
+		}
+	}
+	logger.InfoContext(ctx, "content detail",
+		"prompt", promptPath,
+		"len", len(result.Candidates[0].Content.Parts),
+		"len_filtered_text", len(onlyTextParts),
+	)
+	gatherText := ""
+	for _, t := range onlyTextParts {
+		gatherText += t
+	}
+	return gatherText, nil
 }
 
 func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (string, error) {
