@@ -51,7 +51,7 @@ func screenings(t *testing.T, e *httpexpect.Expect) {
 		Status(http.StatusNotFound).
 		JSON().Path("$.error.messages").Array().
 		Find(func(index int, value *httpexpect.Value) bool {
-			return strings.Contains(value.String().Raw(), "does not have a sanction check")
+			return strings.Contains(value.String().Raw(), "does not have a screening")
 		})
 
 	gock.New("http://screening/match").
@@ -169,5 +169,4 @@ func screenings(t *testing.T, e *httpexpect.Expect) {
 		match = matches.Value(0).Object().Path("$.payload").Object()
 		match.HasValue("id", "ID")
 	}
-
 }

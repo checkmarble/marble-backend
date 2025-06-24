@@ -98,7 +98,7 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 		usecase.executorFactory.NewExecutor(), si.Id)
 	if err != nil {
 		return models.ScenarioIteration{}, errors.Wrap(err,
-			"could not retrieve sanction check config while getting scenario iteration")
+			"could not retrieve screening config while getting scenario iteration")
 	}
 	si.ScreeningConfigs = scc
 
@@ -216,7 +216,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 			screeningConfigs, err := usecase.screeningConfigRepository.ListScreeningConfigs(ctx, tx, si.Id)
 			if err != nil {
 				return models.ScenarioIteration{}, errors.Wrap(err,
-					"could not retrieve sanction check config while creating draft")
+					"could not retrieve screening config while creating draft")
 			}
 
 			iterations, err := usecase.repository.ListScenarioIterations(
@@ -308,7 +308,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 					if _, err := usecase.screeningConfigRepository.CreateScreeningConfig(
 						ctx, tx, newScenarioIteration.Id, scc); err != nil {
 						return models.ScenarioIteration{}, errors.Wrap(err,
-							"could not duplicate sanction check config for new iteration")
+							"could not duplicate screening config for new iteration")
 					}
 				}
 			}

@@ -30,7 +30,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 	params ScenarioEvaluationParameters,
 	dataAccessor DataAccessor,
 ) (sexecs []models.ScreeningWithMatches, serr error) {
-	// First, check if the sanction check should be performed
+	// First, check if the screening should be performed
 	if len(iteration.ScreeningConfigs) == 0 {
 		return
 	}
@@ -54,7 +54,8 @@ func (e ScenarioEvaluator) evaluateScreening(
 		lock.Lock()
 		defer lock.Unlock()
 
-		utils.LoggerFromContext(ctx).Error(fmt.Sprintf("screening execution returned some fatal errors: %s", err),
+		utils.LoggerFromContext(ctx).Error(fmt.Sprintf(
+			"screening execution returned some fatal errors: %s", err),
 			"sanction_check_config_id", scc.Id)
 
 		screeningErrors = append(screeningErrors, err)
@@ -66,7 +67,8 @@ func (e ScenarioEvaluator) evaluateScreening(
 		go func(idx int, scc models.ScreeningConfig) {
 			defer func() {
 				if r := recover(); r != nil {
-					utils.LoggerFromContext(ctx).ErrorContext(ctx, fmt.Sprintf("recovered from panic during screening execution: '%s'. stacktrace from panic:", r))
+					utils.LoggerFromContext(ctx).ErrorContext(ctx,
+						fmt.Sprintf("recovered from panic during screening execution: '%s'. stacktrace from panic:", r))
 					utils.LogAndReportSentryError(ctx, errors.New(string(debug.Stack())))
 
 					serr = models.ErrPanicInScenarioEvalution
@@ -95,7 +97,8 @@ func (e ScenarioEvaluator) evaluateScreening(
 				passed, ok := triggerEvaluation.ReturnValue.(bool)
 
 				if !ok {
-					addScreeningResult(idx, outcomeError(scc, ErrScreeningTriggerRuleNotBoolean, nil))
+					addScreeningResult(idx, outcomeError(scc,
+						ErrScreeningTriggerRuleNotBoolean, nil))
 					return
 				}
 				if !passed {
@@ -183,7 +186,8 @@ func (e ScenarioEvaluator) evaluateScreening(
 
 				counterpartyId, ok := counterpartyIdResult.ReturnValue.(string)
 				if counterpartyIdResult.ReturnValue == nil || !ok {
-					addScreeningResult(idx, outcomeError(scc, ErrScreeningCounterpartyIdNotString, nil))
+					addScreeningResult(idx, outcomeError(scc,
+						ErrScreeningCounterpartyIdNotString, nil))
 					return
 				}
 
@@ -203,7 +207,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 
 			result, err := e.evalScreeningUsecase.Execute(ctx, params.Scenario.OrganizationId, query)
 			if err != nil {
-				addScreeningError(scc, errors.Wrap(err, "could not perform sanction check"))
+				addScreeningError(scc, errors.Wrap(err, "could not perform screening"))
 				return
 			}
 
