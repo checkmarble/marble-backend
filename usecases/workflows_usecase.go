@@ -2,12 +2,27 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
+	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
+
+type WorkflowUsecase struct {
+	executorFactory    executor_factory.ExecutorFactory
+	enforceSecurity    security.EnforceSecurityScenario
+	repository         workflowRepository
+	scenarioRepository repositories.ScenarioUsecaseRepository
+
+	validateScenarioAst scenarios.ValidateScenarioAst
+}
 
 type workflowRepository interface {
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId string) ([]models.Workflow, error)
@@ -26,14 +41,14 @@ type workflowRepository interface {
 	ReorderWorkflowRules(ctx context.Context, exec repositories.Executor, scenarioId string, ids []uuid.UUID) error
 }
 
-func (uc *ScenarioUsecase) ListWorkflowsForScenario(ctx context.Context, scenarioId string) ([]models.Workflow, error) {
+func (uc *WorkflowUsecase) ListWorkflowsForScenario(ctx context.Context, scenarioId string) ([]models.Workflow, error) {
 	exec := uc.executorFactory.NewExecutor()
 
 	if err := uc.enforceSecurity.ListScenarios(uc.enforceSecurity.OrgId()); err != nil {
 		return nil, err
 	}
 
-	rules, err := uc.workflowRepository.ListWorkflowsForScenario(ctx, exec, scenarioId)
+	rules, err := uc.repository.ListWorkflowsForScenario(ctx, exec, scenarioId)
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +56,10 @@ func (uc *ScenarioUsecase) ListWorkflowsForScenario(ctx context.Context, scenari
 	return rules, nil
 }
 
-func (uc *ScenarioUsecase) CreateWorkflowRule(ctx context.Context, rule models.WorkflowRule) (models.WorkflowRule, error) {
+func (uc *WorkflowUsecase) CreateWorkflowRule(ctx context.Context, rule models.WorkflowRule) (models.WorkflowRule, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, rule.ScenarioId)
 	if err != nil {
 		return models.WorkflowRule{}, err
 	}
@@ -53,18 +68,18 @@ func (uc *ScenarioUsecase) CreateWorkflowRule(ctx context.Context, rule models.W
 		return models.WorkflowRule{}, err
 	}
 
-	return uc.workflowRepository.InsertWorkflowRule(ctx, exec, rule)
+	return uc.repository.InsertWorkflowRule(ctx, exec, rule)
 }
 
-func (uc *ScenarioUsecase) UpdateWorkflowRule(ctx context.Context, ruleUpdate models.WorkflowRule) (models.WorkflowRule, error) {
+func (uc *WorkflowUsecase) UpdateWorkflowRule(ctx context.Context, ruleUpdate models.WorkflowRule) (models.WorkflowRule, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	rule, err := uc.workflowRepository.GetWorkflowRule(ctx, exec, ruleUpdate.Id)
+	rule, err := uc.repository.GetWorkflowRule(ctx, exec, ruleUpdate.Id)
 	if err != nil {
 		return models.WorkflowRule{}, err
 	}
 
-	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, rule.ScenarioId)
 	if err != nil {
 		return models.WorkflowRule{}, err
 	}
@@ -73,18 +88,18 @@ func (uc *ScenarioUsecase) UpdateWorkflowRule(ctx context.Context, ruleUpdate mo
 		return models.WorkflowRule{}, err
 	}
 
-	return uc.workflowRepository.UpdateWorkflowRule(ctx, exec, ruleUpdate)
+	return uc.repository.UpdateWorkflowRule(ctx, exec, ruleUpdate)
 }
 
-func (uc *ScenarioUsecase) DeleteWorkflowRule(ctx context.Context, ruleId string) error {
+func (uc *WorkflowUsecase) DeleteWorkflowRule(ctx context.Context, ruleId string) error {
 	exec := uc.executorFactory.NewExecutor()
 
-	rule, err := uc.workflowRepository.GetWorkflowRule(ctx, exec, ruleId)
+	rule, err := uc.repository.GetWorkflowRule(ctx, exec, ruleId)
 	if err != nil {
 		return err
 	}
 
-	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, rule.ScenarioId)
 	if err != nil {
 		return err
 	}
@@ -93,19 +108,23 @@ func (uc *ScenarioUsecase) DeleteWorkflowRule(ctx context.Context, ruleId string
 		return err
 	}
 
-	return uc.workflowRepository.DeleteWorkflowRule(ctx, exec, ruleId)
+	return uc.repository.DeleteWorkflowRule(ctx, exec, ruleId)
 }
 
-func (uc *ScenarioUsecase) CreateWorkflowCondition(ctx context.Context, cond models.WorkflowCondition) (models.WorkflowCondition, error) {
+func (uc *WorkflowUsecase) CreateWorkflowCondition(ctx context.Context, cond models.WorkflowCondition) (models.WorkflowCondition, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	rule, err := uc.workflowRepository.GetWorkflowRule(ctx, exec, cond.RuleId)
+	rule, err := uc.repository.GetWorkflowRule(ctx, exec, cond.RuleId)
 	if err != nil {
 		return models.WorkflowCondition{}, err
 	}
 
-	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, rule.ScenarioId)
 	if err != nil {
+		return models.WorkflowCondition{}, err
+	}
+
+	if err := uc.ValidateWorkflowCondition(ctx, scenario, cond); err != nil {
 		return models.WorkflowCondition{}, err
 	}
 
@@ -113,13 +132,13 @@ func (uc *ScenarioUsecase) CreateWorkflowCondition(ctx context.Context, cond mod
 		return models.WorkflowCondition{}, err
 	}
 
-	return uc.workflowRepository.InsertWorkflowCondition(ctx, exec, cond)
+	return uc.repository.InsertWorkflowCondition(ctx, exec, cond)
 }
 
-func (uc *ScenarioUsecase) UpdateWorkflowCondition(ctx context.Context, cond models.WorkflowCondition) (models.WorkflowCondition, error) {
+func (uc *WorkflowUsecase) UpdateWorkflowCondition(ctx context.Context, cond models.WorkflowCondition) (models.WorkflowCondition, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	rule, err := uc.workflowRepository.GetWorkflowRule(ctx, exec, cond.RuleId)
+	rule, err := uc.repository.GetWorkflowRule(ctx, exec, cond.RuleId)
 	if err != nil {
 		return models.WorkflowCondition{}, err
 	}
@@ -127,8 +146,12 @@ func (uc *ScenarioUsecase) UpdateWorkflowCondition(ctx context.Context, cond mod
 		return models.WorkflowCondition{}, errors.Wrap(models.NotFoundError, "could not find condition linked to rule")
 	}
 
-	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, rule.ScenarioId)
 	if err != nil {
+		return models.WorkflowCondition{}, err
+	}
+
+	if err := uc.ValidateWorkflowCondition(ctx, scenario, cond); err != nil {
 		return models.WorkflowCondition{}, err
 	}
 
@@ -136,18 +159,18 @@ func (uc *ScenarioUsecase) UpdateWorkflowCondition(ctx context.Context, cond mod
 		return models.WorkflowCondition{}, err
 	}
 
-	return uc.workflowRepository.UpdateWorkflowCondition(ctx, exec, cond)
+	return uc.repository.UpdateWorkflowCondition(ctx, exec, cond)
 }
 
-func (uc *ScenarioUsecase) DeleteWorkflowCondition(ctx context.Context, ruleId, conditionId string) error {
+func (uc *WorkflowUsecase) DeleteWorkflowCondition(ctx context.Context, ruleId, conditionId string) error {
 	exec := uc.executorFactory.NewExecutor()
 
-	condition, err := uc.workflowRepository.GetWorkflowCondition(ctx, exec, conditionId)
+	condition, err := uc.repository.GetWorkflowCondition(ctx, exec, conditionId)
 	if err != nil {
 		return err
 	}
 
-	rule, err := uc.workflowRepository.GetWorkflowRule(ctx, exec, condition.RuleId)
+	rule, err := uc.repository.GetWorkflowRule(ctx, exec, condition.RuleId)
 	if err != nil {
 		return err
 	}
@@ -155,7 +178,7 @@ func (uc *ScenarioUsecase) DeleteWorkflowCondition(ctx context.Context, ruleId, 
 		return errors.Wrap(models.NotFoundError, "could not find condition linked to rule")
 	}
 
-	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, rule.ScenarioId)
 	if err != nil {
 		return err
 	}
@@ -164,18 +187,18 @@ func (uc *ScenarioUsecase) DeleteWorkflowCondition(ctx context.Context, ruleId, 
 		return err
 	}
 
-	return uc.workflowRepository.DeleteWorkflowCondition(ctx, exec, ruleId, conditionId)
+	return uc.repository.DeleteWorkflowCondition(ctx, exec, ruleId, conditionId)
 }
 
-func (uc *ScenarioUsecase) CreateWorkflowAction(ctx context.Context, action models.WorkflowAction) (models.WorkflowAction, error) {
+func (uc *WorkflowUsecase) CreateWorkflowAction(ctx context.Context, action models.WorkflowAction) (models.WorkflowAction, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	rule, err := uc.workflowRepository.GetWorkflowRule(ctx, exec, action.RuleId)
+	rule, err := uc.repository.GetWorkflowRule(ctx, exec, action.RuleId)
 	if err != nil {
 		return models.WorkflowAction{}, err
 	}
 
-	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, rule.ScenarioId)
 	if err != nil {
 		return models.WorkflowAction{}, err
 	}
@@ -184,13 +207,13 @@ func (uc *ScenarioUsecase) CreateWorkflowAction(ctx context.Context, action mode
 		return models.WorkflowAction{}, err
 	}
 
-	return uc.workflowRepository.InsertWorkflowAction(ctx, exec, action)
+	return uc.repository.InsertWorkflowAction(ctx, exec, action)
 }
 
-func (uc *ScenarioUsecase) UpdateWorkflowAction(ctx context.Context, action models.WorkflowAction) (models.WorkflowAction, error) {
+func (uc *WorkflowUsecase) UpdateWorkflowAction(ctx context.Context, action models.WorkflowAction) (models.WorkflowAction, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	rule, err := uc.workflowRepository.GetWorkflowRule(ctx, exec, action.RuleId)
+	rule, err := uc.repository.GetWorkflowRule(ctx, exec, action.RuleId)
 	if err != nil {
 		return models.WorkflowAction{}, err
 	}
@@ -198,7 +221,7 @@ func (uc *ScenarioUsecase) UpdateWorkflowAction(ctx context.Context, action mode
 		return models.WorkflowAction{}, errors.Wrap(models.NotFoundError, "could not find condition linked to rule")
 	}
 
-	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, rule.ScenarioId)
 	if err != nil {
 		return models.WorkflowAction{}, err
 	}
@@ -207,18 +230,18 @@ func (uc *ScenarioUsecase) UpdateWorkflowAction(ctx context.Context, action mode
 		return models.WorkflowAction{}, err
 	}
 
-	return uc.workflowRepository.UpdateWorkflowAction(ctx, exec, action)
+	return uc.repository.UpdateWorkflowAction(ctx, exec, action)
 }
 
-func (uc *ScenarioUsecase) DeleteWorkflowAction(ctx context.Context, ruleId, actionId string) error {
+func (uc *WorkflowUsecase) DeleteWorkflowAction(ctx context.Context, ruleId, actionId string) error {
 	exec := uc.executorFactory.NewExecutor()
 
-	condition, err := uc.workflowRepository.GetWorkflowAction(ctx, exec, actionId)
+	condition, err := uc.repository.GetWorkflowAction(ctx, exec, actionId)
 	if err != nil {
 		return err
 	}
 
-	rule, err := uc.workflowRepository.GetWorkflowRule(ctx, exec, condition.RuleId)
+	rule, err := uc.repository.GetWorkflowRule(ctx, exec, condition.RuleId)
 	if err != nil {
 		return err
 	}
@@ -226,7 +249,7 @@ func (uc *ScenarioUsecase) DeleteWorkflowAction(ctx context.Context, ruleId, act
 		return errors.Wrap(models.NotFoundError, "could not find condition linked to rule")
 	}
 
-	scenario, err := uc.repository.GetScenarioById(ctx, exec, rule.ScenarioId)
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, rule.ScenarioId)
 	if err != nil {
 		return err
 	}
@@ -235,13 +258,13 @@ func (uc *ScenarioUsecase) DeleteWorkflowAction(ctx context.Context, ruleId, act
 		return err
 	}
 
-	return uc.workflowRepository.DeleteWorkflowAction(ctx, exec, ruleId, actionId)
+	return uc.repository.DeleteWorkflowAction(ctx, exec, ruleId, actionId)
 }
 
-func (uc *ScenarioUsecase) ReorderWorkflowRules(ctx context.Context, scenarioId string, ids []uuid.UUID) error {
+func (uc *WorkflowUsecase) ReorderWorkflowRules(ctx context.Context, scenarioId string, ids []uuid.UUID) error {
 	exec := uc.executorFactory.NewExecutor()
 
-	scenario, err := uc.repository.GetScenarioById(ctx, exec, scenarioId)
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, scenarioId)
 	if err != nil {
 		return err
 	}
@@ -250,5 +273,52 @@ func (uc *ScenarioUsecase) ReorderWorkflowRules(ctx context.Context, scenarioId 
 		return err
 	}
 
-	return uc.workflowRepository.ReorderWorkflowRules(ctx, exec, scenarioId, ids)
+	return uc.repository.ReorderWorkflowRules(ctx, exec, scenarioId, ids)
+}
+
+func (uc *WorkflowUsecase) ValidateWorkflowCondition(ctx context.Context, scenario models.Scenario, cond models.WorkflowCondition) error {
+	switch cond.Function {
+	case
+		models.WorkflowConditionAlways,
+		models.WorkflowConditionNever:
+
+		if cond.Params != nil {
+			return errors.Wrapf(models.BadParameterError, "workflow condition %s does not take parameters", cond.Function)
+		}
+	case models.WorkflowConditionOutcomeIn:
+		if err := json.Unmarshal(cond.Params, new([]string)); err != nil {
+			return errors.Join(models.BadParameterError, err)
+		}
+	case models.WorkflowConditionRuleHit:
+		if err := json.Unmarshal(cond.Params, new(dto.WorkflowConditionRuleHitParams)); err != nil {
+			return errors.Join(models.BadParameterError, err)
+		}
+	case models.WorkflowConditionScreeningHit:
+		if err := json.Unmarshal(cond.Params, new(dto.WorkflowConditionScreeningHitParams)); err != nil {
+			return errors.Join(models.BadParameterError, err)
+		}
+	case models.WorkflowPayloadEvaluates:
+		var params dto.WorkflowConditionEvaluatesParams
+
+		if err := json.Unmarshal(cond.Params, &params); err != nil {
+			return errors.Join(models.BadParameterError, err)
+		}
+
+		astNode, err := dto.AdaptASTNode(params.Expression)
+		if err != nil {
+			return errors.Join(models.BadParameterError, err)
+		}
+
+		validation := uc.validateScenarioAst.Validate(ctx, scenario, &astNode, "bool")
+
+		if len(validation.Errors) > 0 {
+			return errors.Wrap(errors.Join(
+				pure_utils.Map(validation.Errors, func(e models.ScenarioValidationError) error { return e.Error })...),
+				"invalid AST in field 'expression'")
+		}
+	default:
+		return errors.Wrapf(models.BadParameterError, "unknown workflow condition type: %s", cond.Function)
+	}
+
+	return nil
 }

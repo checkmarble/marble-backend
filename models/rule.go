@@ -22,7 +22,7 @@ type Rule struct {
 	CreatedAt            time.Time
 	RuleGroup            string
 	SnoozeGroupId        *string
-	StableRuleId         *string
+	StableRuleId         string
 }
 
 type CreateRuleInput struct {
@@ -36,7 +36,7 @@ type CreateRuleInput struct {
 	ScoreModifier        int
 	RuleGroup            string
 	SnoozeGroupId        *string
-	StableRuleId         *string
+	StableRuleId         string
 }
 
 type UpdateRuleInput struct {
