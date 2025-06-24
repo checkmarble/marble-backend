@@ -38,6 +38,8 @@ type AiAgentUsecaseRepository interface {
 	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId string,
 		target models.TagTarget, withCaseCount bool) ([]models.Tag, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
+	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
+		initialOnly bool) ([]models.ScreeningWithMatches, error)
 }
 
 type AiAgentUsecaseIngestedDataReader interface {
@@ -393,7 +395,13 @@ func (uc AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseDa
 			return caseData{}, nil, errors.Wrapf(err,
 				"could not retrieve rules for decision %s", decisions[i].DecisionId)
 		}
-		decisionDtos[i] = agent_dto.AdaptDecision(decisions[i].Decision, iteration, decisions[i].RuleExecutions, rules)
+		screenings, err := uc.repository.ListScreeningsForDecision(ctx, exec, decisions[i].DecisionId, true)
+		if err != nil {
+			return caseData{}, nil, errors.Wrapf(err,
+				"could not retrieve screenings for decision %s", decisions[i].DecisionId)
+		}
+		decisionDtos[i] = agent_dto.AdaptDecision(decisions[i].Decision, iteration,
+			decisions[i].RuleExecutions, rules, screenings)
 	}
 
 	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, c.OrganizationId, models.DataModelReadOptions{
@@ -449,10 +457,19 @@ func (uc AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseDa
 			previousCase.Events = events
 
 			// don't add rule executions because we don't care for previous cases rule exec details
-			rc, err := agent_dto.AdaptCaseWithDecisionsDto(previousCase, tags, inboxes,
-				nil, users, func(scenarioIterationId string) (models.ScenarioIteration, error) {
+			rc, err := agent_dto.AdaptCaseWithDecisionsDto(
+				previousCase,
+				tags,
+				inboxes,
+				nil,
+				users,
+				func(scenarioIterationId string) (models.ScenarioIteration, error) {
 					return uc.repository.GetScenarioIteration(ctx, exec, scenarioIterationId)
-				})
+				},
+				func(decisionId string) ([]models.ScreeningWithMatches, error) {
+					return uc.repository.ListScreeningsForDecision(ctx, exec, decisionId, true)
+				},
+			)
 			if err != nil {
 				return caseData{}, nil, errors.Wrapf(err,
 					"could not adapt case with decisions for previous case %s", previousCase.Id)
