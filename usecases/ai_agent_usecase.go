@@ -176,6 +176,42 @@ func readPrompt(path string) (string, error) {
 	return string(promptBytes), nil
 }
 
+func generateContent(
+	ctx context.Context,
+	client *genai.Client,
+	promptPath string,
+	data map[string]any,
+	model string,
+	tools []*genai.Tool,
+) (string, error) {
+	prompt, err := readPrompt(promptPath)
+	if err != nil {
+		return "", err
+	}
+
+	t := template.Must(template.New(promptPath).Parse(prompt))
+	buf := bytes.Buffer{}
+	err = t.Execute(&buf, data)
+	if err != nil {
+		return "", errors.Wrap(err, "could not execute template")
+	}
+	prompt = buf.String()
+	result, err := client.Models.GenerateContent(ctx,
+		model,
+		genai.Text(prompt),
+		&genai.GenerateContentConfig{
+			Tools: tools,
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+	if len(result.Candidates) == 0 {
+		return "", errors.New("no response from GenAI")
+	}
+	return result.Candidates[0].Content.Parts[0].Text, nil
+}
+
 func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (string, error) {
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
 		Location: "europe-west1",
@@ -198,177 +234,108 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 		clientActivityDescription = "placeholder"
 	}
 
-	dataModelSummaryPrompt, err := readPrompt("prompts/case_review/data_model_summary.md")
-	if err != nil {
-		return "", err
-	}
-
-	tDataModel := template.Must(template.New("data_model").Parse(dataModelSummaryPrompt))
-	buf := bytes.Buffer{}
-	err = tDataModel.Execute(&buf, map[string]any{
-		"data_model": caseDtos.dataModel,
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "could not execute data model summary template")
-	}
-	dataModelSummaryPrompt = buf.String()
-	result, err := client.Models.GenerateContent(ctx,
+	dataModelSummary, err := generateContent(ctx,
+		client,
+		"prompts/case_review/data_model_summary.md",
+		map[string]any{
+			"data_model": caseDtos.dataModel,
+		},
 		"gemini-2.0-flash",
-		genai.Text(dataModelSummaryPrompt),
-		&genai.GenerateContentConfig{},
+		nil,
 	)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "could not generate data model summary")
 	}
-	if len(result.Candidates) == 0 {
-		return "", errors.New("no response from GenAI")
-	}
-	dataModelSummary := result.Candidates[0].Content.Parts[0].Text
 	fmt.Println("-------------------------------- Data model summary --------------------------------")
 	fmt.Println("Data Model Summary:", dataModelSummary)
 
-	rulesReviewPrompt, err := readPrompt("prompts/case_review/rule_definitions.md")
-	if err != nil {
-		return "", err
-	}
-	tRulesReview := template.Must(template.New("rules_review").Parse(rulesReviewPrompt))
-	buf = bytes.Buffer{}
-	err = tRulesReview.Execute(&buf, map[string]any{
-		"decisions":            caseDtos.decisions,
-		"activity_description": clientActivityDescription,
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "could not execute rules review template")
-	}
-	rulesReviewPrompt = buf.String()
-	result, err = client.Models.GenerateContent(ctx,
+	rulesDefinitionsReview, err := generateContent(ctx,
+		client,
+		"prompts/case_review/rule_definitions.md",
+		map[string]any{
+			"decisions":            caseDtos.decisions,
+			"activity_description": clientActivityDescription,
+		},
 		"gemini-2.0-flash",
-		genai.Text(rulesReviewPrompt),
-		&genai.GenerateContentConfig{
-			Tools: []*genai.Tool{
-				{GoogleSearch: &genai.GoogleSearch{}},
-			},
+		[]*genai.Tool{
+			{GoogleSearch: &genai.GoogleSearch{}},
 		},
 	)
 	if err != nil {
-		return "", err
-	}
-	if len(result.Candidates) == 0 {
-		return "", errors.New("no response from GenAI")
+		return "", errors.Wrap(err, "could not generate rules definitions review")
 	}
 	fmt.Println("-------------------------------- Rules definitions review --------------------------------")
-	rulesDefinitionsReview := result.Candidates[0].Content.Parts[0].Text
 	fmt.Println("Rules Review:", rulesDefinitionsReview)
 
-	ruleThresholdsPrompt, err := readPrompt("prompts/case_review/rule_threshold_values.md")
-	if err != nil {
-		return "", err
-	}
-	tRuleThresholds := template.Must(template.New("rule_threshold_values").Parse(ruleThresholdsPrompt))
-	buf = bytes.Buffer{}
-	err = tRuleThresholds.Execute(&buf, map[string]any{
-		"decisions": caseDtos.decisions,
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "could not execute rule thresholds template")
-	}
-	ruleThresholdsPrompt = buf.String()
-	result, err = client.Models.GenerateContent(ctx,
+	ruleThresholds, err := generateContent(ctx,
+		client,
+		"prompts/case_review/rule_threshold_values.md",
+		map[string]any{
+			"decisions": caseDtos.decisions,
+		},
 		"gemini-2.0-flash",
-		genai.Text(ruleThresholdsPrompt),
-		&genai.GenerateContentConfig{},
+		nil,
 	)
 	if err != nil {
-		return "", err
-	}
-	if len(result.Candidates) == 0 {
-		return "", errors.New("no response from GenAI")
+		return "", errors.Wrap(err, "could not generate rule thresholds")
 	}
 	fmt.Println("-------------------------------- Rule thresholds --------------------------------")
-	ruleThresholds := result.Candidates[0].Content.Parts[0].Text
 	fmt.Println("Rule Thresholds:", ruleThresholds)
 
 	// Finally, we can generate the case review
-	caseReviewPrompt, err := readPrompt("prompts/case_review/case_review.md")
-	if err != nil {
-		return "", err
-	}
-	tCaseReview := template.Must(template.New("case_review").Parse(caseReviewPrompt))
-	buf = bytes.Buffer{}
-	err = tCaseReview.Execute(&buf, map[string]any{
-		"case_detail":        caseDtos.case_,
-		"case_events":        caseDtos.events,
-		"decisions":          caseDtos.decisions,
-		"data_model_summary": dataModelSummary,
-		"pivot_objects":      caseDtos.pivotData,
-		"previous_cases":     relatedDataPerClient,
-		"rules_summary":      rulesDefinitionsReview,
-		"rule_thresholds":    ruleThresholds,
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "could not execute case review template")
-	}
-	caseReviewPrompt = buf.String()
-
-	result, err = client.Models.GenerateContent(ctx,
+	caseReview, err := generateContent(
+		ctx,
+		client,
+		"prompts/case_review/case_review.md",
+		map[string]any{
+			"case_detail":        caseDtos.case_,
+			"case_events":        caseDtos.events,
+			"decisions":          caseDtos.decisions,
+			"data_model_summary": dataModelSummary,
+			"pivot_objects":      caseDtos.pivotData,
+			"previous_cases":     relatedDataPerClient,
+			"rules_summary":      rulesDefinitionsReview,
+			"rule_thresholds":    ruleThresholds,
+		},
 		"gemini-2.0-flash",
-		genai.Text(caseReviewPrompt),
-		&genai.GenerateContentConfig{
-			Tools: []*genai.Tool{
-				{GoogleSearch: &genai.GoogleSearch{}},
-			},
+		[]*genai.Tool{
+			{GoogleSearch: &genai.GoogleSearch{}},
 		},
 	)
 	if err != nil {
-		return "", err
-	}
-	if len(result.Candidates) == 0 {
-		return "", errors.New("no response from GenAI")
+		return "", errors.Wrap(err, "could not generate case review")
 	}
 	fmt.Println("-------------------------------- Full Case Review --------------------------------")
-	caseReview := result.Candidates[0].Content.Parts[0].Text
 	fmt.Println("Case Review:", caseReview)
 
-	sanityCheckPrompt, err := readPrompt("prompts/case_review/sanity_check.md")
-	if err != nil {
-		return "", err
-	}
-	tSanityCheck := template.Must(template.New("sanity_check").Parse(sanityCheckPrompt))
-	buf = bytes.Buffer{}
-	err = tSanityCheck.Execute(&buf, map[string]any{
-		"case_detail":        caseDtos.case_,
-		"case_events":        caseDtos.events,
-		"decisions":          caseDtos.decisions,
-		"data_model_summary": dataModelSummary,
-		"pivot_objects":      caseDtos.pivotData,
-		"previous_cases":     relatedDataPerClient,
-		"rules_summary":      rulesDefinitionsReview,
-		"rule_thresholds":    ruleThresholds,
-		"case_review":        caseReview,
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "could not execute sanity check template")
-	}
-	sanityCheckPrompt = buf.String()
-
-	result, err = client.Models.GenerateContent(ctx,
+	// Finally, sanity check the resulting case review using a judgement prompt
+	sanityCheck, err := generateContent(ctx,
+		client,
+		"prompts/case_review/sanity_check.md",
+		map[string]any{
+			"case_detail":        caseDtos.case_,
+			"case_events":        caseDtos.events,
+			"decisions":          caseDtos.decisions,
+			"data_model_summary": dataModelSummary,
+			"pivot_objects":      caseDtos.pivotData,
+			"previous_cases":     relatedDataPerClient,
+			"rules_summary":      rulesDefinitionsReview,
+			"rule_thresholds":    ruleThresholds,
+			"case_review":        caseReview,
+		},
 		"gemini-2.0-flash",
-		genai.Text(sanityCheckPrompt),
-		&genai.GenerateContentConfig{},
+		nil,
 	)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "could not generate sanity check")
 	}
-	if len(result.Candidates) == 0 {
-		return "", errors.New("no response from GenAI")
-	}
-	sanityCheck := result.Candidates[0].Content.Parts[0].Text
-	ok := "ko"
+	fmt.Println("-------------------------------- Sanity Check --------------------------------")
+	fmt.Println("Sanity Check:", sanityCheck)
+
 	if len(sanityCheck) > 1 && sanityCheck[:2] == "ok" {
-		ok = "ok"
 		return caseReview, nil
 	}
-	return fmt.Sprintf("Review is %s: original review:%s\nsanity check output:%s", ok, caseReview, sanityCheck), nil
+	return fmt.Sprintf("Review is ko: original review:%s\nsanity check output:%s", caseReview, sanityCheck), nil
 }
 
 func (uc AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseData, map[string]agent_dto.CasePivotObjectData, error) {
