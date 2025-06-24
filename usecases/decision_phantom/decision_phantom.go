@@ -125,7 +125,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 
 			if len(phantomDecision.ScreeningExecutions) > 0 {
 				// We don't need to store the matches in the case of a phantom decision
-				// because we are only interested in statistics on the sanction check status
+				// because we are only interested in statistics on the screening status
 				for _, sce := range phantomDecision.ScreeningExecutions {
 					_, err := usecase.externalRepository.InsertScreening(
 						ctx,
@@ -134,7 +134,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 						sce,
 						false)
 					if err != nil {
-						return errors.Wrap(err, "could not store sanction check execution")
+						return errors.Wrap(err, "could not store screening execution")
 					}
 				}
 			}

@@ -129,7 +129,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 		}
 	}
 
-	// Validate sanction check trigger and rule
+	// Validate screening trigger and rule
 	result.Screenings = make([]models.ScreeningConfigValidation, len(iteration.ScreeningConfigs))
 
 	for idx, scc := range iteration.ScreeningConfigs {
@@ -142,7 +142,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 				scResult.TriggerRule.Errors = append(
 					scResult.TriggerRule.Errors, models.ScenarioValidationError{
 						Error: errors.Wrap(models.BadParameterError,
-							"sanction check trigger formula does not return a boolean"),
+							"screening trigger formula does not return a boolean"),
 						Code: models.FormulaMustReturnBoolean,
 					})
 			}
@@ -153,7 +153,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 		if scc.Query == nil || len(scc.Query) == 0 {
 			queryValidation.Errors = append(queryValidation.Errors, models.ScenarioValidationError{
 				Error: errors.Wrap(models.BadParameterError,
-					"sanction check does not have a query formula"),
+					"screening does not have a query formula"),
 				Code: models.RuleFormulaRequired,
 			})
 		} else {
@@ -163,13 +163,14 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 				queryNameValidation := models.NewRuleValidation()
 				providedFields += 1
 
-				queryNameValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, fieldAst)
+				queryNameValidation.RuleEvaluation, _ =
+					ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, fieldAst)
 
 				if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(string); !ok {
 					queryNameValidation.Errors = append(
 						queryNameValidation.Errors, models.ScenarioValidationError{
 							Error: errors.Wrapf(models.BadParameterError,
-								"sanction check field filter '%s' does not return a string", field),
+								"screening field filter '%s' does not return a string", field),
 							Code: models.FormulaMustReturnString,
 						})
 				}
@@ -196,7 +197,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 				counterpartyIdValidation.Errors = append(
 					counterpartyIdValidation.Errors, models.ScenarioValidationError{
 						Error: errors.Wrap(models.BadParameterError,
-							"sanction check counterparty ID expression does not return a string"),
+							"screening counterparty ID expression does not return a string"),
 						Code: models.FormulaMustReturnString,
 					})
 			}

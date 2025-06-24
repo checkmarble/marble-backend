@@ -54,7 +54,7 @@ func (uc ScreeningUsecase) CreateScreeningConfig(ctx context.Context, iterationI
 	if scCfg.ForcedOutcome != nil &&
 		!slices.Contains(models.ValidForcedOutcome, *scCfg.ForcedOutcome) {
 		return models.ScreeningConfig{}, errors.Wrap(models.BadParameterError,
-			"sanction check config: invalid forced outcome")
+			"screening config: invalid forced outcome")
 	}
 
 	scc, err := uc.screeningConfigRepository.CreateScreeningConfig(ctx, uc.executorFactory.NewExecutor(),
@@ -86,7 +86,8 @@ func (uc ScreeningUsecase) UpdateScreeningConfig(ctx context.Context,
 			fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id))
 	}
 
-	currentScc, err := uc.screeningConfigRepository.GetScreeningConfig(ctx, uc.executorFactory.NewExecutor(), iterationId, screeningId)
+	currentScc, err := uc.screeningConfigRepository.GetScreeningConfig(ctx,
+		uc.executorFactory.NewExecutor(), iterationId, screeningId)
 	if err != nil {
 		return models.ScreeningConfig{}, err
 	}
@@ -111,7 +112,7 @@ func (uc ScreeningUsecase) UpdateScreeningConfig(ctx context.Context,
 	if scCfg.ForcedOutcome != nil &&
 		!slices.Contains(models.ValidForcedOutcome, *scCfg.ForcedOutcome) {
 		return models.ScreeningConfig{}, errors.Wrap(models.BadParameterError,
-			"sanction check config: invalid forced outcome")
+			"screening config: invalid forced outcome")
 	}
 
 	scc, err := uc.screeningConfigRepository.UpdateScreeningConfig(ctx, uc.executorFactory.NewExecutor(),

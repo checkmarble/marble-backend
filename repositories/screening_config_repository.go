@@ -62,7 +62,7 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.TriggerRule)
 		if err != nil {
 			return models.ScreeningConfig{}, errors.Wrap(err,
-				"could not serialize sanction check trigger rule")
+				"could not serialize screening trigger rule")
 		}
 
 		triggerRule = astJson
@@ -149,7 +149,7 @@ func (repo *MarbleDbRepository) UpdateScreeningConfig(ctx context.Context, exec 
 		astJson, err := dbmodels.SerializeFormulaAstExpression(cfg.TriggerRule)
 		if err != nil {
 			return models.ScreeningConfig{}, errors.Wrap(err,
-				"could not serialize sanction check trigger rule")
+				"could not serialize screening trigger rule")
 		}
 
 		triggerRule = astJson

@@ -173,14 +173,14 @@ func (repo *MarbleDbRepository) ScreeningExecutionStats(
 	var stableId string
 	var name string
 	err = exec.QueryRow(ctx, screeningRuleName, iterationId).Scan(&stableId, &name)
-	// All iterations don't have a sanction check config enabled. If there is none, just early exit
+	// All iterations don't have a screening config enabled. If there is none, just early exit
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	// gathers statistics based on the initial sanction check match for each decision (is_manual = false) and
+	// gathers statistics based on the initial screening match for each decision (is_manual = false) and
 	// based on the initial status (has matches to review or none)
 	query := NewQueryBuilder().
 		Select("CASE WHEN sc.initial_has_matches THEN 'hit' ELSE 'no_hit' END AS outcome, COUNT(*) as total").

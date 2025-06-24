@@ -220,11 +220,10 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	var outcome models.Outcome
 
-	screeningExecutions, err :=
-		e.evaluateScreening(ctx, iteration, params, dataAccessor)
+	screeningExecutions, err := e.evaluateScreening(ctx, iteration, params, dataAccessor)
 	if err != nil {
 		return false, models.ScenarioExecution{},
-			errors.Wrap(err, "could not perform sanction check")
+			errors.Wrap(err, "could not perform screening")
 	}
 
 	for idx, sce := range screeningExecutions {
@@ -233,7 +232,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		}
 	}
 
-	// We only go through the nominal score classifier if no sanction check returned any match (either no_hit or error)
+	// We only go through the nominal score classifier if no screening returned any match (either no_hit or error)
 	if !slices.ContainsFunc(screeningExecutions, func(e models.ScreeningWithMatches) bool {
 		return e.Status != models.ScreeningStatusNoHit && e.Status != models.ScreeningStatusError
 	}) {
@@ -347,14 +346,14 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		return false, se, err
 	}
 
-	// If the live version had a sanction check executed, and if it has the same configuration (except for the trigger rule),
-	// we just reuse the cached sanction check execution to avoid another (possibly paid) call to the sanction check service.
+	// If the live version had a screening executed, and if it has the same configuration (except for the trigger rule),
+	// we just reuse the cached screening execution to avoid another (possibly paid) call to the screening service.
 	copiedScreening := make([]models.ScreeningWithMatches, 0)
 
 	sccs, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, testRunIteration.Id)
 	if err != nil {
 		return false, se, errors.Wrap(err,
-			"error getting sanction check config from scenario iteration")
+			"error getting screening config from scenario iteration")
 	}
 
 	sccsToRun := slices.Clone(sccs)
@@ -448,7 +447,7 @@ func (e ScenarioEvaluator) EvalScenario(
 	scc, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, versionToRun.Id)
 	if err != nil {
 		return false, models.ScenarioExecution{}, errors.Wrap(err,
-			"error getting sanction check config from scenario iteration")
+			"error getting screening config from scenario iteration")
 	}
 	versionToRun.ScreeningConfigs = scc
 	if len(scc) > 0 {
@@ -458,7 +457,7 @@ func (e ScenarioEvaluator) EvalScenario(
 		}
 		if !featureAccess.Sanctions.IsAllowed() {
 			return false, models.ScenarioExecution{}, errors.Wrapf(models.ForbiddenError,
-				"Sanction check feature access is missing: status is %s", featureAccess.Sanctions)
+				"screening feature access is missing: status is %s", featureAccess.Sanctions)
 		}
 	}
 
