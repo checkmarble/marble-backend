@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
 )
 
@@ -30,6 +31,8 @@ func (d DecisionsWorkflows) ProcessDecisionWorkflows(
 	decision models.DecisionWithRuleExecutions,
 	evalParams evaluate_scenario.ScenarioEvaluationParameters,
 ) (models.WorkflowExecution, error) {
+	logger := utils.LoggerFromContext(ctx)
+
 	req := DecisionWorkflowRequest{
 		Scenario:    scenario,
 		Decision:    decision,
@@ -47,7 +50,17 @@ Rule:
 				return models.WorkflowExecution{}, errors.Wrap(err, "could not evaluate workflow condition")
 			}
 
-			if !fn(ctx, req) {
+			result, err := fn(ctx, req)
+			if err != nil {
+				logger.Warn("error while executing workflow condition",
+					"decision", decision.Decision,
+					"condition", cond.Id,
+					"error", err.Error())
+
+				return models.WorkflowExecution{}, err
+			}
+
+			if !result {
 				continue Rule
 			}
 		}

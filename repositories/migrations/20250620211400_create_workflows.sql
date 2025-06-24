@@ -74,6 +74,13 @@ begin
   end loop;
 end $$;
 
+update scenario_iteration_rules
+set stable_rule_id = gen_random_uuid()
+where stable_rule_id is null;
+
+alter table scenario_iteration_rules
+alter column stable_rule_id set not null;
+
 -- +goose StatementEnd
 
 -- +goose Down
