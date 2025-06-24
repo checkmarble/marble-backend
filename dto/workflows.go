@@ -39,6 +39,10 @@ type WorkflowConditionRuleHitParams struct {
 	RuleId string `json:"rule_id" binding:"required,uuid"`
 }
 
+type WorkflowConditionScreeningHitParams struct {
+	ScreeningId string `json:"screening_id" binding:"required,uuid"`
+}
+
 type WorkflowConditionEvaluatesParams struct {
 	Expression NodeDto `json:"expression" binding:"required"`
 }
@@ -90,23 +94,6 @@ func AdaptWorkflowAction(m models.WorkflowAction) WorkflowActionDto {
 		Action: string(m.Action),
 		Params: m.Params,
 	}
-}
-
-func ValidateWorkflowCondition(cond PostWorkflowConditionDto) error {
-	switch cond.Function {
-	case models.WorkflowConditionAlways, models.WorkflowConditionNever:
-		if cond.Params != nil {
-			return errors.Wrapf(models.BadParameterError, "workflow condition %s does not take parameters", cond.Function)
-		}
-	case models.WorkflowConditionOutcomeIn:
-		if err := json.Unmarshal(cond.Params, new([]string)); err != nil {
-			return errors.Join(models.BadParameterError, json.Unmarshal(cond.Params, new([]string)))
-		}
-	default:
-		return errors.Wrapf(models.BadParameterError, "unknown workflow condition type: %s", cond.Function)
-	}
-
-	return nil
 }
 
 func ValidateWorkflowAction(cond PostWorkflowActionDto) error {

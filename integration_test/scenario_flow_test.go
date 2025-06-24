@@ -281,6 +281,7 @@ func setupScenarioAndPublish(
 ) (scenarioId, scenarioIterationId string) {
 	// Create a new empty scenario
 	scenarioUsecase := usecasesWithCreds.NewScenarioUsecase()
+	workflowUsecase := usecasesWithCreds.NewWorkflowUsecase()
 	scenario, err := scenarioUsecase.CreateScenario(ctx, models.CreateScenarioInput{
 		Name:              "Test scenario",
 		Description:       "Test scenario description",
@@ -406,7 +407,7 @@ func setupScenarioAndPublish(
 	}
 	fmt.Printf("Updated scenario iteration %+v\n", scenarioIteration)
 
-	rule, err := scenarioUsecase.CreateWorkflowRule(ctx, models.WorkflowRule{
+	rule, err := workflowUsecase.CreateWorkflowRule(ctx, models.WorkflowRule{
 		ScenarioId: scenarioId,
 		Name:       "First rule",
 	})
@@ -414,7 +415,7 @@ func setupScenarioAndPublish(
 		assert.FailNow(t, "Could not create workflow rule", err)
 	}
 
-	_, err = scenarioUsecase.CreateWorkflowCondition(ctx, models.WorkflowCondition{
+	_, err = workflowUsecase.CreateWorkflowCondition(ctx, models.WorkflowCondition{
 		RuleId:   rule.Id,
 		Function: models.WorkflowConditionOutcomeIn,
 		Params:   []byte(`["decline", "review"]`),
@@ -423,7 +424,7 @@ func setupScenarioAndPublish(
 		assert.FailNow(t, "Could not create workflow condition", err)
 	}
 
-	_, err = scenarioUsecase.CreateWorkflowAction(ctx, models.WorkflowAction{
+	_, err = workflowUsecase.CreateWorkflowAction(ctx, models.WorkflowAction{
 		RuleId: rule.Id,
 		Action: models.WorkflowAddToCaseIfPossible,
 		Params: fmt.Appendf(nil, `{"inbox_id": "%s"}`, inboxId),
@@ -707,6 +708,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 100,
 			Name:          "Check on account name",
 			Description:   "Check on account name",
+			StableRuleId:  uuid.NewString(),
 		},
 		{
 			FormulaAstExpression: &ast.Node{
@@ -746,6 +748,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 10,
 			Name:          "Check on aggregated value",
 			Description:   "Check on aggregated value",
+			StableRuleId:  uuid.NewString(),
 		},
 		{
 			FormulaAstExpression: &ast.Node{
@@ -767,6 +770,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 1,
 			Name:          "Fuzzy match on name",
 			Description:   "Fuzzy match on name",
+			StableRuleId:  uuid.NewString(),
 		},
 	}
 }
