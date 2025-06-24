@@ -336,7 +336,7 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 
 		if uc.openSanctionsProvider.IsSelfHosted(ctx) {
 			if err := uc.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx,
-				decision.OrganizationId, screening.Id); err != nil {
+				tx, decision.OrganizationId, screening.Id); err != nil {
 				utils.LogAndReportSentryError(ctx, errors.Wrap(err,
 					"could not enqueue sanction check for refinement"))
 			}
