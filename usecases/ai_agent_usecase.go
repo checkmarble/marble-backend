@@ -37,6 +37,7 @@ type AiAgentUsecaseRepository interface {
 		orgId, pivotValue string) ([]models.Case, error)
 	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId string,
 		target models.TagTarget, withCaseCount bool) ([]models.Tag, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
 }
 
 type AiAgentUsecaseIngestedDataReader interface {
@@ -203,7 +204,7 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 	}
 
 	tDataModel := template.Must(template.New("data_model").Parse(dataModelSummaryPrompt))
-	var buf bytes.Buffer
+	buf := bytes.Buffer{}
 	err = tDataModel.Execute(&buf, map[string]any{
 		"data_model": caseDtos.dataModel,
 	})
@@ -231,6 +232,7 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 		return "", err
 	}
 	tRulesReview := template.Must(template.New("rules_review").Parse(rulesReviewPrompt))
+	buf = bytes.Buffer{}
 	err = tRulesReview.Execute(&buf, map[string]any{
 		"decisions":            caseDtos.decisions,
 		"activity_description": clientActivityDescription,
@@ -263,6 +265,7 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 		return "", err
 	}
 	tRuleThresholds := template.Must(template.New("rule_threshold_values").Parse(ruleThresholdsPrompt))
+	buf = bytes.Buffer{}
 	err = tRuleThresholds.Execute(&buf, map[string]any{
 		"decisions": caseDtos.decisions,
 	})
@@ -291,6 +294,7 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 		return "", err
 	}
 	tCaseReview := template.Must(template.New("case_review").Parse(caseReviewPrompt))
+	buf = bytes.Buffer{}
 	err = tCaseReview.Execute(&buf, map[string]any{
 		"case_detail":        caseDtos.case_,
 		"case_events":        caseDtos.events,
@@ -330,6 +334,7 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 		return "", err
 	}
 	tSanityCheck := template.Must(template.New("sanity_check").Parse(sanityCheckPrompt))
+	buf = bytes.Buffer{}
 	err = tSanityCheck.Execute(&buf, map[string]any{
 		"case_detail":        caseDtos.case_,
 		"case_events":        caseDtos.events,
@@ -409,13 +414,19 @@ func (uc AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseDa
 	}
 	decisionDtos := make([]agent_dto.Decision, len(decisions))
 	for i := range decisions {
+		iteration, err := uc.repository.GetScenarioIteration(ctx, exec,
+			decisions[i].Decision.ScenarioIterationId)
+		if err != nil {
+			return caseData{}, nil, errors.Wrapf(err,
+				"could not retrieve scenario for decision %s", decisions[i].DecisionId)
+		}
 		rules, err := uc.repository.ListRulesByIterationId(ctx, exec,
 			decisions[i].Decision.ScenarioIterationId)
 		if err != nil {
 			return caseData{}, nil, errors.Wrapf(err,
 				"could not retrieve rules for decision %s", decisions[i].DecisionId)
 		}
-		decisionDtos[i] = agent_dto.AdaptDecision(decisions[i].Decision, decisions[i].RuleExecutions, rules)
+		decisionDtos[i] = agent_dto.AdaptDecision(decisions[i].Decision, iteration, decisions[i].RuleExecutions, rules)
 	}
 
 	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, c.OrganizationId, models.DataModelReadOptions{
@@ -470,9 +481,16 @@ func (uc AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseDa
 			}
 			previousCase.Events = events
 
-			// don't add rules executions because we don't care for previous cases rule exec details
-			relatedCases = append(relatedCases, agent_dto.AdaptCaseWithDecisionsDto(
-				previousCase, tags, inboxes, nil, users))
+			// don't add rule executions because we don't care for previous cases rule exec details
+			rc, err := agent_dto.AdaptCaseWithDecisionsDto(previousCase, tags, inboxes,
+				nil, users, func(scenarioIterationId string) (models.ScenarioIteration, error) {
+					return uc.repository.GetScenarioIteration(ctx, exec, scenarioIterationId)
+				})
+			if err != nil {
+				return caseData{}, nil, errors.Wrapf(err,
+					"could not adapt case with decisions for previous case %s", previousCase.Id)
+			}
+			relatedCases = append(relatedCases, rc)
 		}
 		pivotObjectData.RelatedCases = relatedCases
 
