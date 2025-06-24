@@ -163,7 +163,7 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 				}
 				if !featureAccess.Sanctions.IsAllowed() {
 					return nil, errors.Wrapf(models.ForbiddenError,
-						"Sanction check feature access is missing: status is %s", featureAccess.Sanctions)
+						"screening feature access is missing: status is %s", featureAccess.Sanctions)
 				}
 
 				if isConfigured, err := usecase.screeningRequirements.IsConfigured(ctx); !isConfigured {

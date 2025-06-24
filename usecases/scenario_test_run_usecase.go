@@ -65,7 +65,7 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 		}
 		if !featureAccess.Sanctions.IsAllowed() {
 			return models.ScenarioTestRun{}, errors.Wrapf(models.ForbiddenError,
-				"Sanction check feature access is missing: status is %s", featureAccess.Sanctions)
+				"screening feature access is missing: status is %s", featureAccess.Sanctions)
 		}
 	}
 

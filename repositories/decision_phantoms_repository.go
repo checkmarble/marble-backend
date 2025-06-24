@@ -61,7 +61,7 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 		return err
 	}
 
-	// It's possible that a scenario has no rules, just a sanction check config
+	// It's possible that a scenario has no rules, just a screening config
 	if len(decision.RuleExecutions) == 0 {
 		return nil
 	}

@@ -236,27 +236,27 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 		return models.ScreeningRawSearchResponseWithMatches{}, err
 	}
 
-	utils.LoggerFromContext(ctx).InfoContext(ctx, "sending sanction check query")
+	utils.LoggerFromContext(ctx).InfoContext(ctx, "sending screening query")
 	startedAt := time.Now()
 
 	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
 		return models.ScreeningRawSearchResponseWithMatches{},
-			errors.Wrap(err, "could not perform sanction check")
+			errors.Wrap(err, "could not perform screening")
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return models.ScreeningRawSearchResponseWithMatches{}, fmt.Errorf(
-			"sanction check API returned status %d", resp.StatusCode)
+			"screening API returned status %d", resp.StatusCode)
 	}
 
 	var matches httpmodels.HTTPOpenSanctionsResult
 
 	if err := json.NewDecoder(resp.Body).Decode(&matches); err != nil {
 		return models.ScreeningRawSearchResponseWithMatches{}, errors.Wrap(err,
-			"could not parse sanction check response")
+			"could not parse screening response")
 	}
 
 	screening, err := httpmodels.AdaptOpenSanctionsResult(rawQuery, matches)
@@ -292,7 +292,7 @@ func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match model
 	resp, err := repo.opensanctions.Client().Do(req)
 	if err != nil {
 		return nil,
-			errors.Wrap(err, "could not enrich sanction check match")
+			errors.Wrap(err, "could not enrich screening match")
 	}
 
 	defer resp.Body.Close()
@@ -303,14 +303,14 @@ func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match model
 		}
 
 		return nil, fmt.Errorf(
-			"sanction check API returned status %d on enrichment", resp.StatusCode)
+			"screening API returned status %d on enrichment", resp.StatusCode)
 	}
 
 	var newMatch json.RawMessage
 
 	if err := json.NewDecoder(resp.Body).Decode(&newMatch); err != nil {
 		return nil, errors.Wrap(err,
-			"could not parse sanction check response")
+			"could not parse screening response")
 	}
 
 	return newMatch, nil

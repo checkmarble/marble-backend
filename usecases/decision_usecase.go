@@ -473,7 +473,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 				sc, err := usecase.screeningRepository.InsertScreening(ctx, tx, decision.DecisionId, sce, true)
 				if err != nil {
 					return models.DecisionWithRuleExecutions{},
-						errors.Wrap(err, "could not store sanction check execution")
+						errors.Wrap(err, "could not store screening execution")
 				}
 
 				scs[idx] = sc
@@ -484,7 +484,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 					if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
 						ctx, tx, input.OrganizationId, sc.Id); err != nil {
 						utils.LogAndReportSentryError(ctx, errors.Wrap(err,
-							"could not enqueue sanction check for refinement"))
+							"could not enqueue screening for refinement"))
 					}
 				}
 			}
@@ -677,7 +677,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 					sc, err = usecase.screeningRepository.InsertScreening(
 						ctx, tx, item.decision.DecisionId, sce, true)
 					if err != nil {
-						return nil, errors.Wrap(err, "could not store sanction check execution")
+						return nil, errors.Wrap(err, "could not store screening execution")
 					}
 				}
 
@@ -685,7 +685,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 					if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
 						ctx, tx, input.OrganizationId, sc.Id); err != nil {
 						utils.LogAndReportSentryError(ctx, errors.Wrap(err,
-							"could not enqueue sanction check for refinement"))
+							"could not enqueue screening for refinement"))
 					}
 				}
 			}

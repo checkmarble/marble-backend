@@ -58,7 +58,7 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		sccs, err := pure_utils.MapErr(si.ScreeningConfigs, AdaptScreeningConfig)
 		if err != nil {
 			return ScenarioIterationWithBodyDto{},
-				errors.Wrap(err, "could not parse the sanction check trigger rule")
+				errors.Wrap(err, "could not parse the screening trigger rule")
 		}
 
 		body.ScreeningConfigs = sccs

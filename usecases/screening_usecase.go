@@ -155,7 +155,7 @@ func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.
 	sc, err := uc.repository.GetScreening(ctx, uc.executorFactory.NewExecutor(), id)
 	if err != nil {
 		return models.ScreeningWithMatches{},
-			errors.Wrap(err, "could not retrieve sanction check")
+			errors.Wrap(err, "could not retrieve screening")
 	}
 
 	decisions, err := uc.externalRepository.DecisionsById(ctx, uc.executorFactory.NewExecutor(), []string{sc.DecisionId})
@@ -231,7 +231,7 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 		}
 
 		if !found {
-			return nil, errors.New("could not find sanction check config for match")
+			return nil, errors.New("could not find screening config for match")
 		}
 
 		scs[sidx].Config = models.ScreeningConfigRef{
@@ -338,13 +338,13 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 			if err := uc.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx,
 				tx, decision.OrganizationId, screening.Id); err != nil {
 				utils.LogAndReportSentryError(ctx, errors.Wrap(err,
-					"could not enqueue sanction check for refinement"))
+					"could not enqueue screening for refinement"))
 			}
 		}
 
 		if err := uc.repository.CopyScreeningFiles(ctx, tx, oldScreening.Id, screening.Id); err != nil {
 			return screening, errors.Wrap(err,
-				"could not copy sanction check uploaded files for refinement")
+				"could not copy screening uploaded files for refinement")
 		}
 
 		return screening, err
@@ -439,7 +439,7 @@ func (uc ScreeningUsecase) FilterOutWhitelistedMatches(ctx context.Context, orgI
 
 	if len(whitelists) > 0 {
 		utils.LoggerFromContext(ctx).InfoContext(ctx,
-			"filtered out sanction check matches that were whitelisted", "before",
+			"filtered out screening matches that were whitelisted", "before",
 			len(screening.Matches), "whitelisted", len(whitelists), "after", len(matchesAfterWhitelisting))
 
 		whitelisted := pure_utils.Map(whitelists, func(w models.ScreeningWhitelist) string {
@@ -475,7 +475,7 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 	if update.Status != models.ScreeningMatchStatusConfirmedHit &&
 		update.Status != models.ScreeningMatchStatusNoHit {
 		return data.match, errors.Wrap(models.BadParameterError,
-			"invalid status received for sanction check match, should be 'confirmed_hit' or 'no_hit'")
+			"invalid status received for screening match, should be 'confirmed_hit' or 'no_hit'")
 	}
 
 	if !data.sanction.Status.IsReviewable() {
@@ -520,7 +520,7 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 				}
 			}
 
-			// If the match is confirmed, all other pending matches should be set to "skipped" and the sanction check to "confirmed_hit"
+			// If the match is confirmed, all other pending matches should be set to "skipped" and the screening to "confirmed_hit"
 			if update.Status == models.ScreeningMatchStatusConfirmedHit {
 				for _, m := range pendingMatchesExcludingThis {
 					_, err = uc.repository.UpdateScreeningMatchStatus(ctx, tx, m, models.ScreeningMatchUpdate{
@@ -560,7 +560,7 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 				}
 			}
 
-			// else, if it is the last match pending and it is not a hit, the sanction check should be set to "no_hit"
+			// else, if it is the last match pending and it is not a hit, the screening should be set to "no_hit"
 			if update.Status == models.ScreeningMatchStatusNoHit && len(pendingMatchesExcludingThis) == 0 {
 				err = uc.repository.UpdateScreeningStatus(ctx, tx,
 					data.sanction.Id, models.ScreeningStatusNoHit)
@@ -686,7 +686,7 @@ func (uc ScreeningUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, 
 
 	if match.Enriched {
 		return models.ScreeningMatch{}, errors.WithDetail(models.UnprocessableEntityError,
-			"this sanction check match was already enriched")
+			"this screening match was already enriched")
 	}
 
 	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, match)
@@ -792,7 +792,7 @@ func (uc ScreeningUsecase) CreateFiles(ctx context.Context, creds models.Credent
 
 		if err := uc.externalRepository.CreateCaseContributor(ctx, tx, match.Case.Id,
 			string(creds.ActorIdentity.UserId)); err != nil {
-			return errors.Wrap(err, "could not create case contributor for sanction check file upload")
+			return errors.Wrap(err, "could not create case contributor for screening file upload")
 		}
 
 		return nil
@@ -865,7 +865,7 @@ func writeScreeningFileToBlobStorage(ctx context.Context,
 	return nil
 }
 
-// Helper functions for enforcing permissions on sanction check actions go below
+// Helper functions for enforcing permissions on screening actions go below
 
 func (uc ScreeningUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decisionId string) (models.Decision, error) {
 	creds, _ := utils.CredentialsFromCtx(ctx)
@@ -877,13 +877,13 @@ func (uc ScreeningUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decis
 	}
 	if len(decision) == 0 {
 		return models.Decision{}, errors.Wrap(models.NotFoundError,
-			"could not find the decision linked to the sanction check")
+			"could not find the decision linked to the screening")
 	}
 
 	if creds.Role != models.API_CLIENT {
 		if decision[0].Case == nil {
 			return decision[0], errors.Wrap(models.UnprocessableEntityError,
-				"this sanction check is not linked to a case")
+				"this screening is not linked to a case")
 		}
 
 		inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, decision[0].OrganizationId, false)
@@ -911,7 +911,7 @@ func (uc ScreeningUsecase) enforceCanRefineScreening(
 	sc, err := uc.repository.GetScreening(ctx, uc.executorFactory.NewExecutor(), screeningId)
 	if err != nil {
 		return models.Decision{}, models.ScreeningWithMatches{},
-			errors.WithDetail(err, "sanction check does not exist")
+			errors.WithDetail(err, "screening does not exist")
 	}
 
 	if !sc.Status.IsRefinable() {
@@ -951,7 +951,7 @@ func (uc ScreeningUsecase) enforceCanReadOrUpdateScreeningMatch(
 
 	if screening.IsArchived {
 		return screeningContextData{}, errors.WithDetail(models.UnprocessableEntityError,
-			"sanction check was refined and cannot be reviewed")
+			"screening was refined and cannot be reviewed")
 	}
 
 	dec, err := uc.enforceCanReadOrUpdateCase(ctx, screening.DecisionId)

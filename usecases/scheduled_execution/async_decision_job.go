@@ -380,7 +380,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 				decision.DecisionId, sce, true)
 			if err != nil {
 				return false, nil, nil, errors.Wrap(err,
-					"could not store sanction check execution")
+					"could not store screening execution")
 			}
 		}
 	}

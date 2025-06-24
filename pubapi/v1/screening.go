@@ -37,7 +37,7 @@ func HandleListScreenings(uc usecases.Usecases) gin.HandlerFunc {
 		}
 		if len(sc) == 0 {
 			pubapi.NewErrorResponse().WithError(errors.WithDetail(models.NotFoundError,
-				"this decision does not have a sanction check")).Serve(c)
+				"this decision does not have a screening")).Serve(c)
 			return
 		}
 
