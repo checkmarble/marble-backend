@@ -489,6 +489,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 				}
 
 				scs[idx] = sc
+				scs[idx].Config = sce.Config
 			}
 
 			if usecase.openSanctionsRepository.IsSelfHosted(ctx) {

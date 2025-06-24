@@ -17,9 +17,9 @@ func handleListWorkflowsForScenario(uc usecases.Usecases) func(c *gin.Context) {
 		scenarioId := c.Param("scenarioId")
 
 		uc := usecasesWithCreds(ctx, uc)
-		scenarioUsecase := uc.NewScenarioUsecase()
+		workflowUsecase := uc.NewWorkflowUsecase()
 
-		rules, err := scenarioUsecase.ListWorkflowsForScenario(ctx, scenarioId)
+		rules, err := workflowUsecase.ListWorkflowsForScenario(ctx, scenarioId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -40,14 +40,14 @@ func handleCreateWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		uc := usecasesWithCreds(ctx, uc)
-		scenarioUsecase := uc.NewScenarioUsecase()
+		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowRule{
 			ScenarioId: payload.ScenarioId,
 			Name:       payload.Name,
 		}
 
-		rule, err := scenarioUsecase.CreateWorkflowRule(ctx, params)
+		rule, err := workflowUsecase.CreateWorkflowRule(ctx, params)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -69,14 +69,14 @@ func handleUpdateWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		uc := usecasesWithCreds(ctx, uc)
-		scenarioUsecase := uc.NewScenarioUsecase()
+		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowRule{
 			Id:   ruleId,
 			Name: payload.Name,
 		}
 
-		rule, err := scenarioUsecase.UpdateWorkflowRule(ctx, params)
+		rule, err := workflowUsecase.UpdateWorkflowRule(ctx, params)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -91,9 +91,9 @@ func handleDeleteWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 		ruleId := c.Param("ruleId")
 
 		uc := usecasesWithCreds(ctx, uc)
-		scenarioUsecase := uc.NewScenarioUsecase()
+		workflowUsecase := uc.NewWorkflowUsecase()
 
-		if err := scenarioUsecase.DeleteWorkflowRule(ctx, ruleId); presentError(ctx, c, err) {
+		if err := workflowUsecase.DeleteWorkflowRule(ctx, ruleId); presentError(ctx, c, err) {
 			return
 		}
 
@@ -112,13 +112,9 @@ func handleCreateWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		if err := dto.ValidateWorkflowCondition(payload); presentError(ctx, c, err) {
-			c.Status(http.StatusBadRequest)
-			return
-		}
 
 		uc := usecasesWithCreds(ctx, uc)
-		scenarioUsecase := uc.NewScenarioUsecase()
+		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowCondition{
 			RuleId:   ruleId,
@@ -126,7 +122,7 @@ func handleCreateWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 			Params:   payload.Params,
 		}
 
-		condition, err := scenarioUsecase.CreateWorkflowCondition(ctx, params)
+		condition, err := workflowUsecase.CreateWorkflowCondition(ctx, params)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -147,13 +143,9 @@ func handleUpdateWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		if err := dto.ValidateWorkflowCondition(payload); presentError(ctx, c, err) {
-			c.Status(http.StatusBadRequest)
-			return
-		}
 
 		uc := usecasesWithCreds(ctx, uc)
-		scenarioUsecase := uc.NewScenarioUsecase()
+		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowCondition{
 			Id:       conditionId,
@@ -162,7 +154,7 @@ func handleUpdateWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 			Params:   payload.Params,
 		}
 
-		condition, err := scenarioUsecase.UpdateWorkflowCondition(ctx, params)
+		condition, err := workflowUsecase.UpdateWorkflowCondition(ctx, params)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -178,9 +170,9 @@ func handleDeleteWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 		conditionId := c.Param("conditionId")
 
 		uc := usecasesWithCreds(ctx, uc)
-		scenarioUsecase := uc.NewScenarioUsecase()
+		workflowUsecase := uc.NewWorkflowUsecase()
 
-		if err := scenarioUsecase.DeleteWorkflowCondition(ctx, ruleId, conditionId); presentError(ctx, c, err) {
+		if err := workflowUsecase.DeleteWorkflowCondition(ctx, ruleId, conditionId); presentError(ctx, c, err) {
 			return
 		}
 
@@ -204,7 +196,7 @@ func handleCreateWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		uc := usecasesWithCreds(ctx, uc)
-		scenarioUsecase := uc.NewScenarioUsecase()
+		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowAction{
 			RuleId: ruleId,
@@ -212,7 +204,7 @@ func handleCreateWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 			Params: payload.Params,
 		}
 
-		action, err := scenarioUsecase.CreateWorkflowAction(ctx, params)
+		action, err := workflowUsecase.CreateWorkflowAction(ctx, params)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -238,7 +230,7 @@ func handleUpdateWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		uc := usecasesWithCreds(ctx, uc)
-		scenarioUsecase := uc.NewScenarioUsecase()
+		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowAction{
 			Id:     actionId,
@@ -247,7 +239,7 @@ func handleUpdateWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 			Params: payload.Params,
 		}
 
-		action, err := scenarioUsecase.UpdateWorkflowAction(ctx, params)
+		action, err := workflowUsecase.UpdateWorkflowAction(ctx, params)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -262,9 +254,9 @@ func handleDeleteWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 		actionId := c.Param("actionId")
 
 		uc := usecasesWithCreds(ctx, uc)
-		scenarioUsecase := uc.NewScenarioUsecase()
+		workflowUsecase := uc.NewWorkflowUsecase()
 
-		if err := scenarioUsecase.DeleteWorkflowAction(ctx, ruleId, actionId); presentError(ctx, c, err) {
+		if err := workflowUsecase.DeleteWorkflowAction(ctx, ruleId, actionId); presentError(ctx, c, err) {
 			return
 		}
 
@@ -284,9 +276,9 @@ func handleReorderWorkflowRules(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		uc := usecasesWithCreds(ctx, uc)
-		scenarioUsecase := uc.NewScenarioUsecase()
+		workflowUsecase := uc.NewWorkflowUsecase()
 
-		if err := scenarioUsecase.ReorderWorkflowRules(ctx, scenarioId, ids); presentError(ctx, c, err) {
+		if err := workflowUsecase.ReorderWorkflowRules(ctx, scenarioId, ids); presentError(ctx, c, err) {
 			return
 		}
 

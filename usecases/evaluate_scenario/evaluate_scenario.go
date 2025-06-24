@@ -285,10 +285,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 	elapsed := time.Since(start)
 
 	ruleDurations := pure_utils.MapSliceToMap(ruleExecutions, func(exec models.RuleExecution) (string, int64) {
-		id := exec.Rule.Id
-		if exec.Rule.StableRuleId != nil {
-			id = *exec.Rule.StableRuleId
-		}
+		id := exec.Rule.StableRuleId
 
 		return id, exec.Duration.Milliseconds()
 	})

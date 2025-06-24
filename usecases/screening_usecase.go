@@ -236,7 +236,9 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 		}
 
 		scs[sidx].Config = models.ScreeningConfigRef{
-			Name: screeningConfig.Name,
+			Id:       screeningConfig.Id,
+			StableId: screeningConfig.StableId,
+			Name:     screeningConfig.Name,
 		}
 
 		for midx, match := range sc.Matches {

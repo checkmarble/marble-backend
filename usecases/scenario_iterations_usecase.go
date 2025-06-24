@@ -6,7 +6,6 @@ import (
 
 	"github.com/adhocore/gronx"
 	"github.com/cockroachdb/errors"
-	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -259,19 +258,6 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 					RuleGroup:            rule.RuleGroup,
 					SnoozeGroupId:        rule.SnoozeGroupId,
 					StableRuleId:         rule.StableRuleId,
-				}
-
-				// old rules may not have a stableGroupId. If so, when creating a new draft, we create new stable rule ids
-				// for the new draft rules, and backfill them on the version from which the draft is created.
-				// TODO: later, when we are confident no more iterations are being created from old versions, we could backfill
-				// random stable group ids on old rules and make the field not null.
-				if rule.StableRuleId == nil {
-					newId := uuid.NewString()
-					createScenarioIterationInput.Body.Rules[i].StableRuleId = &newId
-					stableRuleGroupsToUpdate = append(stableRuleGroupsToUpdate, models.UpdateRuleInput{
-						Id:           rule.Id,
-						StableRuleId: &newId,
-					})
 				}
 			}
 			for _, updateOldRule := range stableRuleGroupsToUpdate {

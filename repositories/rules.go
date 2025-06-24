@@ -254,10 +254,10 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, exec Executor, 
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
+
 	for i := range rules {
-		if rules[i].StableRuleId == nil {
-			newId := uuid.NewString()
-			rules[i].StableRuleId = &newId
+		if rules[i].StableRuleId == "" {
+			rules[i].StableRuleId = uuid.NewString()
 		}
 	}
 

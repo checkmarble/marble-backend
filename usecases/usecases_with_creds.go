@@ -207,6 +207,16 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewWorkflowUsecase() WorkflowUsecase {
+	return WorkflowUsecase{
+		executorFactory:     usecases.NewExecutorFactory(),
+		enforceSecurity:     usecases.NewEnforceScenarioSecurity(),
+		repository:          &usecases.Repositories.MarbleDbRepository,
+		scenarioRepository:  &usecases.Repositories.MarbleDbRepository,
+		validateScenarioAst: usecases.NewValidateScenarioAst(),
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterationUsecase {
 	return ScenarioIterationUsecase{
 		repository:                &usecases.Repositories.MarbleDbRepository,

@@ -116,7 +116,9 @@ type Screening struct {
 }
 
 type ScreeningConfigRef struct {
-	Name string
+	Id       string
+	StableId string
+	Name     string
 }
 
 type ScreeningWithMatches struct {
@@ -144,7 +146,12 @@ type ScreeningRawSearchResponseWithMatches struct {
 func (s ScreeningRawSearchResponseWithMatches) AdaptScreeningFromSearchResponse(query OpenSanctionsQuery) ScreeningWithMatches {
 	screening := ScreeningWithMatches{
 		Screening: Screening{
-			ScreeningConfigId:   query.Config.Id,
+			ScreeningConfigId: query.Config.Id,
+			Config: ScreeningConfigRef{
+				Id:       query.Config.Id,
+				StableId: query.Config.StableId,
+				Name:     query.Config.Name,
+			},
 			Datasets:            query.Config.Datasets,
 			OrgConfig:           query.OrgConfig,
 			SearchInput:         s.SearchInput,

@@ -10,7 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
-type DecisionWorkflowsCondition func(context.Context, DecisionWorkflowRequest) bool
+type DecisionWorkflowsCondition func(context.Context, DecisionWorkflowRequest) (bool, error)
 
 func CreateFunction(condition models.WorkflowCondition) (DecisionWorkflowsCondition, error) {
 	switch condition.Function {
@@ -25,7 +25,7 @@ func CreateFunction(condition models.WorkflowCondition) (DecisionWorkflowsCondit
 			return never, err
 		}
 
-		return ifOutcomeIn(params), nil
+		return outcomeIn(params), nil
 	case models.WorkflowConditionRuleHit:
 		var params dto.WorkflowConditionRuleHitParams
 
@@ -33,7 +33,15 @@ func CreateFunction(condition models.WorkflowCondition) (DecisionWorkflowsCondit
 			return never, err
 		}
 
-		return ifRuleHit(params.RuleId), nil
+		return ruleHit(params.RuleId), nil
+	case models.WorkflowConditionScreeningHit:
+		var params dto.WorkflowConditionScreeningHitParams
+
+		if err := json.Unmarshal(condition.Params, &params); err != nil {
+			return never, err
+		}
+
+		return screeningHit(params.ScreeningId), nil
 	case models.WorkflowPayloadEvaluates:
 		var params dto.WorkflowConditionEvaluatesParams
 
@@ -52,46 +60,58 @@ func CreateFunction(condition models.WorkflowCondition) (DecisionWorkflowsCondit
 	}
 }
 
-func always(ctx context.Context, req DecisionWorkflowRequest) bool {
-	return true
+func always(ctx context.Context, req DecisionWorkflowRequest) (bool, error) {
+	return true, nil
 }
 
-func never(ctx context.Context, req DecisionWorkflowRequest) bool {
-	return false
+func never(ctx context.Context, req DecisionWorkflowRequest) (bool, error) {
+	return false, nil
 }
 
-func ifOutcomeIn(outcomes []string) DecisionWorkflowsCondition {
-	return func(ctx context.Context, req DecisionWorkflowRequest) bool {
-		return slices.Contains(outcomes, req.Decision.Outcome.String())
+func outcomeIn(outcomes []string) DecisionWorkflowsCondition {
+	return func(ctx context.Context, req DecisionWorkflowRequest) (bool, error) {
+		return slices.Contains(outcomes, req.Decision.Outcome.String()), nil
 	}
 }
 
-func ifRuleHit(ruleId string) DecisionWorkflowsCondition {
-	return func(ctx context.Context, req DecisionWorkflowRequest) bool {
+func ruleHit(ruleId string) DecisionWorkflowsCondition {
+	return func(ctx context.Context, req DecisionWorkflowRequest) (bool, error) {
 		for _, ruleExec := range req.Decision.RuleExecutions {
-			if ruleExec.Rule.StableRuleId != nil && *ruleExec.Rule.StableRuleId == ruleId && ruleExec.Outcome == "hit" {
-				return true
+			if ruleExec.Rule.StableRuleId == ruleId && ruleExec.Outcome == "hit" {
+				return true, nil
 			}
 		}
 
-		return false
+		return false, nil
+	}
+}
+
+func screeningHit(screeningId string) DecisionWorkflowsCondition {
+	return func(_ context.Context, req DecisionWorkflowRequest) (bool, error) {
+		for _, screeningExec := range req.Decision.ScreeningExecutions {
+			if screeningExec.Config.StableId == screeningId && screeningExec.Status == models.ScreeningStatusConfirmedHit {
+				return true, nil
+			}
+		}
+
+		return false, nil
 	}
 }
 
 func payloadEvaluates(astNode ast.Node) DecisionWorkflowsCondition {
-	return func(ctx context.Context, req DecisionWorkflowRequest) bool {
+	return func(ctx context.Context, req DecisionWorkflowRequest) (bool, error) {
 		eval, err := req.EvaluateAst.EvaluateAstExpression(ctx, nil, astNode, req.Scenario.OrganizationId, req.Params.ClientObject, req.Params.DataModel)
 		if err != nil {
-			return false
+			return false, err
 		}
 		if len(eval.Errors) > 0 {
-			return false
+			return false, nil
 		}
 		ret, ok := eval.ReturnValue.(bool)
 		if !ok {
-			return false
+			return false, ast.ErrArgumentMustBeBool
 		}
 
-		return ret
+		return ret, nil
 	}
 }
