@@ -97,13 +97,20 @@ func AdaptCaseWithDecisionsDto(
 	inboxes []models.Inbox,
 	rules []models.Rule,
 	users []models.User,
-) CaseWithDecisions {
-	return CaseWithDecisions{
-		Case: AdaptCaseDto(c, tags, inboxes, users),
-		Decisions: pure_utils.Map(c.Decisions, func(d models.DecisionWithRuleExecutions) Decision {
-			return AdaptDecision(d.Decision, d.RuleExecutions, rules)
-		}),
+	getScenarioIteration func(scenarioIterationId string) (models.ScenarioIteration, error),
+) (CaseWithDecisions, error) {
+	decisions := make([]Decision, len(c.Decisions))
+	for i := range c.Decisions {
+		iteration, err := getScenarioIteration(c.Decisions[i].ScenarioIterationId)
+		if err != nil {
+			return CaseWithDecisions{}, err
+		}
+		decisions[i] = AdaptDecision(c.Decisions[i].Decision, iteration, c.Decisions[i].RuleExecutions, rules)
 	}
+	return CaseWithDecisions{
+		Case:      AdaptCaseDto(c, tags, inboxes, users),
+		Decisions: decisions,
+	}, nil
 }
 
 type CaseWithDecisions struct {

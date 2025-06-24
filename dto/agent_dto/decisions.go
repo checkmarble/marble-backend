@@ -40,9 +40,12 @@ func AcaptDecisionRule(rule models.RuleExecution, ruleDefs []models.Rule) Decisi
 }
 
 type DecisionScenario struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Version     int    `json:"version"`
+	Name                    string `json:"name"`
+	Description             string `json:"description"`
+	Version                 int    `json:"version"`
+	ReviewThreshold         *int   `json:"review_threshold"`
+	BlockAndReviewThreshold *int   `json:"block_and_review_threshold"`
+	DeclineThreshold        *int   `json:"decline_threshold"`
 }
 
 type Decision struct {
@@ -55,16 +58,20 @@ type Decision struct {
 	Rules             []DecisionRule   `json:"rules"`
 }
 
-func AdaptDecision(decision models.Decision, ruleExecutions []models.RuleExecution, rules []models.Rule) Decision {
+func AdaptDecision(decision models.Decision, scenario models.ScenarioIteration, ruleExecutions []models.RuleExecution, rules []models.Rule,
+) Decision {
 	return Decision{
 		CreatedAt:         decision.CreatedAt,
 		TriggerObject:     decision.ClientObject.Data,
 		TriggerObjectType: decision.ClientObject.TableName,
 		Outcome:           decision.Outcome.String(),
 		Scenario: DecisionScenario{
-			Name:        decision.ScenarioName,
-			Description: decision.ScenarioDescription,
-			Version:     decision.ScenarioVersion,
+			Name:                    decision.ScenarioName,
+			Description:             decision.ScenarioDescription,
+			Version:                 decision.ScenarioVersion,
+			ReviewThreshold:         scenario.ScoreReviewThreshold,
+			BlockAndReviewThreshold: scenario.ScoreBlockAndReviewThreshold,
+			DeclineThreshold:        scenario.ScoreDeclineThreshold,
 		},
 		Score: decision.Score,
 		Rules: pure_utils.Map(ruleExecutions, func(ruleExec models.RuleExecution) DecisionRule {
