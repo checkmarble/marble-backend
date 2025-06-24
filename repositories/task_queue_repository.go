@@ -47,6 +47,7 @@ type TaskQueueRepository interface {
 	) error
 	EnqueueMatchEnrichmentTask(
 		ctx context.Context,
+		tx Transaction,
 		organizationId string,
 		screeningId string,
 	) error
@@ -176,11 +177,13 @@ func (r riverRepository) EnqueueCreateIndexTask(
 
 func (r riverRepository) EnqueueMatchEnrichmentTask(
 	ctx context.Context,
+	tx Transaction,
 	organizationId string,
 	screeningId string,
 ) error {
-	res, err := r.client.Insert(
+	res, err := r.client.InsertTx(
 		ctx,
+		tx.RawTx(),
 		models.MatchEnrichmentArgs{
 			OrgId:       organizationId,
 			ScreeningId: screeningId,
