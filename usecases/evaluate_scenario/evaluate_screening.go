@@ -299,7 +299,7 @@ func outcomeNoHit(scc models.ScreeningConfig) models.ScreeningWithMatches {
 		Screening: models.Screening{
 			ScreeningConfigId: scc.Id,
 			Status:            models.ScreeningStatusNoHit,
-			ErrorCodes:        []string{ErrScreeningAllFieldsNullOrEmpty},
+			ErrorCodes:        nil,
 		},
 	}
 }
