@@ -205,7 +205,7 @@ func (uc *AiAgentUsecase) generateContent(
 	client *genai.Client,
 	promptPath string,
 	data map[string]any,
-	tools []*genai.Tool,
+	generateContentConfig *genai.GenerateContentConfig,
 ) (string, error) {
 	prompt, err := readPrompt(promptPath)
 	if err != nil {
@@ -245,9 +245,7 @@ func (uc *AiAgentUsecase) generateContent(
 	result, err := client.Models.GenerateContent(ctx,
 		model,
 		genai.Text(prompt),
-		&genai.GenerateContentConfig{
-			Tools: tools,
-		},
+		generateContentConfig,
 	)
 	if err != nil {
 		return "", err
@@ -299,7 +297,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		map[string]any{
 			"data_model": caseDtos.dataModel,
 		},
-		nil,
+		&genai.GenerateContentConfig{},
 	)
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate data model summary")
@@ -314,8 +312,10 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 			"decisions":            caseDtos.decisions,
 			"activity_description": clientActivityDescription,
 		},
-		[]*genai.Tool{
-			{GoogleSearch: &genai.GoogleSearch{}},
+		&genai.GenerateContentConfig{
+			Tools: []*genai.Tool{
+				{GoogleSearch: &genai.GoogleSearch{}},
+			},
 		},
 	)
 	if err != nil {
@@ -330,7 +330,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		map[string]any{
 			"decisions": caseDtos.decisions,
 		},
-		nil,
+		&genai.GenerateContentConfig{},
 	)
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate rule thresholds")
@@ -353,8 +353,10 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 			"rules_summary":      rulesDefinitionsReview,
 			"rule_thresholds":    ruleThresholds,
 		},
-		[]*genai.Tool{
-			{GoogleSearch: &genai.GoogleSearch{}},
+		&genai.GenerateContentConfig{
+			Tools: []*genai.Tool{
+				{GoogleSearch: &genai.GoogleSearch{}},
+			},
 		},
 	)
 	if err != nil {
@@ -378,7 +380,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 			"rule_thresholds":    ruleThresholds,
 			"case_review":        caseReview,
 		},
-		nil,
+		&genai.GenerateContentConfig{},
 	)
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate sanity check")
