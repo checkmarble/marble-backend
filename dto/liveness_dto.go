@@ -12,19 +12,12 @@ type LivenessStatusResponse struct {
 type LivenessItemStatusResponse struct {
 	Name   string `json:"name"`
 	IsLive bool   `json:"is_live"`
-	Error  string `json:"error"`
 }
 
 func AdaptLivenessItemStatus(status models.LivenessItemStatus) LivenessItemStatusResponse {
-	var errorMessage string
-	if status.Error != nil {
-		errorMessage = status.Error.Error()
-	}
-
 	return LivenessItemStatusResponse{
 		Name:   string(status.Name),
 		IsLive: status.IsLive,
-		Error:  errorMessage,
 	}
 }
 

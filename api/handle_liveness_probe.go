@@ -15,7 +15,6 @@ func handleLivenessProbe(uc usecases.Usecases) func(c *gin.Context) {
 		status := usecase.Liveness(ctx)
 
 		if !status.IsLive() {
-			// Keep the same status code as before, need to check if we can use a different one
 			c.JSON(http.StatusInternalServerError, dto.AdaptLivenessStatus(status))
 			return
 		}
