@@ -178,18 +178,31 @@ func readPrompt(path string) (string, error) {
 	return string(promptBytes), nil
 }
 
-func generateContent(
+func (uc AiAgentUsecase) generateContent(
 	ctx context.Context,
 	client *genai.Client,
 	promptPath string,
 	data map[string]any,
-	model string,
 	tools []*genai.Tool,
 ) (string, error) {
 	prompt, err := readPrompt(promptPath)
 	if err != nil {
 		return "", err
 	}
+
+	// Load model configuration on each call
+	modelConfig, err := models.LoadAiAgentModelConfig("prompts/ai_agent_models.json")
+	if err != nil {
+		return "", errors.Wrap(err, "could not load AI agent model configuration")
+	}
+
+	// Get the appropriate model for this prompt
+	model := modelConfig.GetModelForPrompt(promptPath)
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.InfoContext(ctx, "using model for prompt",
+		"prompt", promptPath,
+		"model", model)
 
 	marshalledMap := make(map[string]string)
 	for k, v := range data {
@@ -220,7 +233,6 @@ func generateContent(
 	if len(result.Candidates) == 0 {
 		return "", errors.New("no response from GenAI")
 	}
-	logger := utils.LoggerFromContext(ctx)
 	onlyTextParts := make([]string, 0, len(result.Candidates[0].Content.Parts))
 	for _, part := range result.Candidates[0].Content.Parts {
 		if part.Text != "" {
@@ -229,6 +241,7 @@ func generateContent(
 	}
 	logger.InfoContext(ctx, "content detail",
 		"prompt", promptPath,
+		"model", model,
 		"len", len(result.Candidates[0].Content.Parts),
 		"len_filtered_text", len(onlyTextParts),
 	)
@@ -261,13 +274,12 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 		clientActivityDescription = "placeholder"
 	}
 
-	dataModelSummary, err := generateContent(ctx,
+	dataModelSummary, err := uc.generateContent(ctx,
 		client,
 		"prompts/case_review/data_model_summary.md",
 		map[string]any{
 			"data_model": caseDtos.dataModel,
 		},
-		"gemini-2.0-flash",
 		nil,
 	)
 	if err != nil {
@@ -276,14 +288,13 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 	fmt.Println("-------------------------------- Data model summary --------------------------------")
 	fmt.Println("Data Model Summary:", dataModelSummary)
 
-	rulesDefinitionsReview, err := generateContent(ctx,
+	rulesDefinitionsReview, err := uc.generateContent(ctx,
 		client,
 		"prompts/case_review/rule_definitions.md",
 		map[string]any{
 			"decisions":            caseDtos.decisions,
 			"activity_description": clientActivityDescription,
 		},
-		"gemini-2.0-flash",
 		[]*genai.Tool{
 			{GoogleSearch: &genai.GoogleSearch{}},
 		},
@@ -294,13 +305,12 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 	fmt.Println("-------------------------------- Rules definitions review --------------------------------")
 	fmt.Println("Rules Review:", rulesDefinitionsReview)
 
-	ruleThresholds, err := generateContent(ctx,
+	ruleThresholds, err := uc.generateContent(ctx,
 		client,
 		"prompts/case_review/rule_threshold_values.md",
 		map[string]any{
 			"decisions": caseDtos.decisions,
 		},
-		"gemini-2.0-flash",
 		nil,
 	)
 	if err != nil {
@@ -310,7 +320,7 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 	fmt.Println("Rule Thresholds:", ruleThresholds)
 
 	// Finally, we can generate the case review
-	caseReview, err := generateContent(
+	caseReview, err := uc.generateContent(
 		ctx,
 		client,
 		"prompts/case_review/case_review.md",
@@ -324,7 +334,6 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 			"rules_summary":      rulesDefinitionsReview,
 			"rule_thresholds":    ruleThresholds,
 		},
-		"gemini-2.0-flash",
 		[]*genai.Tool{
 			{GoogleSearch: &genai.GoogleSearch{}},
 		},
@@ -336,7 +345,7 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 	fmt.Println("Case Review:", caseReview)
 
 	// Finally, sanity check the resulting case review using a judgement prompt
-	sanityCheck, err := generateContent(ctx,
+	sanityCheck, err := uc.generateContent(ctx,
 		client,
 		"prompts/case_review/sanity_check.md",
 		map[string]any{
@@ -350,7 +359,6 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 			"rule_thresholds":    ruleThresholds,
 			"case_review":        caseReview,
 		},
-		"gemini-2.0-flash",
 		nil,
 	)
 	if err != nil {
