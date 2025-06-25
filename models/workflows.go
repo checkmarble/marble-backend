@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
@@ -17,8 +16,8 @@ type Workflow struct {
 }
 
 type WorkflowRule struct {
-	Id         string
-	ScenarioId string
+	Id         uuid.UUID
+	ScenarioId uuid.UUID
 	Name       string
 	Priority   int
 
@@ -29,13 +28,12 @@ type WorkflowRule struct {
 type WorkflowConditionType string
 
 const (
-	WorkflowConditionUnknown      WorkflowConditionType = "unknown"
-	WorkflowConditionAlways                             = "always"
-	WorkflowConditionNever                              = "never"
-	WorkflowConditionOutcomeIn                          = "outcome_in"
-	WorkflowConditionRuleHit                            = "rule_hit"
-	WorkflowConditionScreeningHit                       = "screening_hit"
-	WorkflowPayloadEvaluates                            = "payload_evaluates"
+	WorkflowConditionUnknown   WorkflowConditionType = "unknown"
+	WorkflowConditionAlways                          = "always"
+	WorkflowConditionNever                           = "never"
+	WorkflowConditionOutcomeIn                       = "outcome_in"
+	WorkflowConditionRuleHit                         = "rule_hit"
+	WorkflowPayloadEvaluates                         = "payload_evaluates"
 )
 
 var (
@@ -59,16 +57,14 @@ func WorkflowConditionFromString(s string) WorkflowConditionType {
 		return WorkflowConditionRuleHit
 	case WorkflowPayloadEvaluates:
 		return WorkflowPayloadEvaluates
-	case WorkflowConditionScreeningHit:
-		return WorkflowConditionScreeningHit
 	default:
 		return WorkflowConditionUnknown
 	}
 }
 
 type WorkflowCondition struct {
-	Id       string
-	RuleId   string
+	Id       uuid.UUID
+	RuleId   uuid.UUID
 	Function WorkflowConditionType
 	Params   json.RawMessage
 
@@ -77,8 +73,8 @@ type WorkflowCondition struct {
 }
 
 type WorkflowAction struct {
-	Id     string
-	RuleId string
+	Id     uuid.UUID
+	RuleId uuid.UUID
 	Action WorkflowType
 	Params json.RawMessage
 
@@ -104,12 +100,6 @@ func ParseWorkflowAction[T any](action WorkflowAction) (WorkflowActionSpec[T], e
 type WorkflowActionSpec[T any] struct {
 	Action WorkflowType
 	Params T
-}
-
-type WorkflowCaseParams struct {
-	InboxId       uuid.UUID `json:"inbox_id" binding:"required,uuid"`
-	AnyInbox      bool      `json:"any_inbox"`
-	TitleTemplate *ast.Node `json:"title_template"`
 }
 
 type WorkflowExecution struct {

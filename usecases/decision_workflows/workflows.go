@@ -3,6 +3,7 @@ package decision_workflows
 import (
 	"context"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
@@ -77,7 +78,7 @@ Rule:
 		for _, action := range matchingRule.Actions {
 			switch action.Action {
 			case models.WorkflowCreateCase, models.WorkflowAddToCaseIfPossible:
-				params, err := models.ParseWorkflowAction[models.WorkflowCaseParams](action)
+				params, err := models.ParseWorkflowAction[dto.WorkflowActionCaseParams](action)
 				if err != nil {
 					return models.WorkflowExecution{}, errors.Wrap(err, "could not unmarshal workflow action parameters")
 				}

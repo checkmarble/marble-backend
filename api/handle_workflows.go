@@ -11,15 +11,30 @@ import (
 	"github.com/google/uuid"
 )
 
+type ScenarioWorkflowParams struct {
+	ScenarioId dto.UriUuid `uri:"scenarioId"`
+}
+
+type WorkflowRuleParams struct {
+	RuleId dto.UriUuid `uri:"ruleId"`
+	Id     dto.UriUuid `uri:"id"`
+}
+
 func handleListWorkflowsForScenario(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		scenarioId := c.Param("scenarioId")
+
+		var uri ScenarioWorkflowParams
+
+		if err := c.ShouldBindUri(&uri); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 
 		uc := usecasesWithCreds(ctx, uc)
 		workflowUsecase := uc.NewWorkflowUsecase()
 
-		rules, err := workflowUsecase.ListWorkflowsForScenario(ctx, scenarioId)
+		rules, err := workflowUsecase.ListWorkflowsForScenario(ctx, uri.ScenarioId.Uuid())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -59,10 +74,16 @@ func handleCreateWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 func handleUpdateWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ruleId := c.Param("ruleId")
 
-		var payload dto.UpdateWorkflowRuleDto
+		var (
+			uri     WorkflowRuleParams
+			payload dto.UpdateWorkflowRuleDto
+		)
 
+		if err := c.ShouldBindUri(&uri); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 		if err := c.ShouldBindJSON(&payload); presentError(ctx, c, err) {
 			c.Status(http.StatusBadRequest)
 			return
@@ -72,7 +93,7 @@ func handleUpdateWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowRule{
-			Id:   ruleId,
+			Id:   uri.RuleId.Uuid(),
 			Name: payload.Name,
 		}
 
@@ -88,12 +109,18 @@ func handleUpdateWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 func handleDeleteWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ruleId := c.Param("ruleId")
+
+		var uri WorkflowRuleParams
+
+		if err := c.ShouldBindUri(&uri); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 
 		uc := usecasesWithCreds(ctx, uc)
 		workflowUsecase := uc.NewWorkflowUsecase()
 
-		if err := workflowUsecase.DeleteWorkflowRule(ctx, ruleId); presentError(ctx, c, err) {
+		if err := workflowUsecase.DeleteWorkflowRule(ctx, uri.RuleId.Uuid()); presentError(ctx, c, err) {
 			return
 		}
 
@@ -104,11 +131,17 @@ func handleDeleteWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 func handleCreateWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ruleId := c.Param("ruleId")
 
-		var payload dto.PostWorkflowConditionDto
+		var (
+			uri     WorkflowRuleParams
+			payload dto.PostWorkflowConditionDto
+		)
 
 		if err := c.ShouldBindJSON(&payload); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		if err := c.ShouldBindUri(&uri); presentError(ctx, c, err) {
 			c.Status(http.StatusBadRequest)
 			return
 		}
@@ -117,7 +150,7 @@ func handleCreateWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowCondition{
-			RuleId:   ruleId,
+			RuleId:   uri.RuleId.Uuid(),
 			Function: payload.Function,
 			Params:   payload.Params,
 		}
@@ -134,11 +167,16 @@ func handleCreateWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 func handleUpdateWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ruleId := c.Param("ruleId")
-		conditionId := c.Param("conditionId")
 
-		var payload dto.PostWorkflowConditionDto
+		var (
+			uri     WorkflowRuleParams
+			payload dto.PostWorkflowConditionDto
+		)
 
+		if err := c.ShouldBindUri(&uri); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 		if err := c.ShouldBindJSON(&payload); presentError(ctx, c, err) {
 			c.Status(http.StatusBadRequest)
 			return
@@ -148,8 +186,8 @@ func handleUpdateWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowCondition{
-			Id:       conditionId,
-			RuleId:   ruleId,
+			Id:       uri.Id.Uuid(),
+			RuleId:   uri.RuleId.Uuid(),
 			Function: payload.Function,
 			Params:   payload.Params,
 		}
@@ -166,13 +204,18 @@ func handleUpdateWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 func handleDeleteWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ruleId := c.Param("ruleId")
-		conditionId := c.Param("conditionId")
+
+		var uri WorkflowRuleParams
+
+		if err := c.ShouldBindUri(&uri); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 
 		uc := usecasesWithCreds(ctx, uc)
 		workflowUsecase := uc.NewWorkflowUsecase()
 
-		if err := workflowUsecase.DeleteWorkflowCondition(ctx, ruleId, conditionId); presentError(ctx, c, err) {
+		if err := workflowUsecase.DeleteWorkflowCondition(ctx, uri.RuleId.Uuid(), uri.Id.Uuid()); presentError(ctx, c, err) {
 			return
 		}
 
@@ -183,15 +226,17 @@ func handleDeleteWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 func handleCreateWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ruleId := c.Param("ruleId")
 
-		var payload dto.PostWorkflowActionDto
+		var (
+			uri     WorkflowRuleParams
+			payload dto.PostWorkflowActionDto
+		)
 
-		if err := c.ShouldBindJSON(&payload); presentError(ctx, c, err) {
+		if err := c.ShouldBindUri(&uri); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
 			return
 		}
-		if err := dto.ValidateWorkflowAction(payload); presentError(ctx, c, err) {
-			c.Status(http.StatusBadRequest)
+		if err := c.ShouldBindJSON(&payload); presentError(ctx, c, err) {
 			return
 		}
 
@@ -199,7 +244,7 @@ func handleCreateWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowAction{
-			RuleId: ruleId,
+			RuleId: uri.RuleId.Uuid(),
 			Action: payload.Action,
 			Params: payload.Params,
 		}
@@ -216,16 +261,17 @@ func handleCreateWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 func handleUpdateWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ruleId := c.Param("ruleId")
-		actionId := c.Param("actionId")
 
-		var payload dto.PostWorkflowActionDto
+		var (
+			uri     WorkflowRuleParams
+			payload dto.PostWorkflowActionDto
+		)
 
-		if err := c.ShouldBindJSON(&payload); presentError(ctx, c, err) {
+		if err := c.ShouldBindUri(&uri); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
 			return
 		}
-		if err := dto.ValidateWorkflowAction(payload); presentError(ctx, c, err) {
-			c.Status(http.StatusBadRequest)
+		if err := c.ShouldBindJSON(&payload); presentError(ctx, c, err) {
 			return
 		}
 
@@ -233,8 +279,8 @@ func handleUpdateWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowAction{
-			Id:     actionId,
-			RuleId: ruleId,
+			Id:     uri.Id.Uuid(),
+			RuleId: uri.RuleId.Uuid(),
 			Action: payload.Action,
 			Params: payload.Params,
 		}
@@ -247,16 +293,22 @@ func handleUpdateWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusCreated, dto.AdaptWorkflowAction(action))
 	}
 }
+
 func handleDeleteWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ruleId := c.Param("ruleId")
-		actionId := c.Param("actionId")
+
+		var uri WorkflowRuleParams
+
+		if err := c.ShouldBindUri(&uri); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 
 		uc := usecasesWithCreds(ctx, uc)
 		workflowUsecase := uc.NewWorkflowUsecase()
 
-		if err := workflowUsecase.DeleteWorkflowAction(ctx, ruleId, actionId); presentError(ctx, c, err) {
+		if err := workflowUsecase.DeleteWorkflowAction(ctx, uri.RuleId.Uuid(), uri.Id.Uuid()); presentError(ctx, c, err) {
 			return
 		}
 
@@ -267,10 +319,16 @@ func handleDeleteWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 func handleReorderWorkflowRules(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		scenarioId := c.Param("scenarioId")
 
-		var ids []uuid.UUID
+		var (
+			uri ScenarioWorkflowParams
+			ids []uuid.UUID
+		)
 
+		if err := c.ShouldBindUri(&uri); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 		if err := c.ShouldBindJSON(&ids); presentError(ctx, c, err) {
 			return
 		}
@@ -278,7 +336,7 @@ func handleReorderWorkflowRules(uc usecases.Usecases) func(c *gin.Context) {
 		uc := usecasesWithCreds(ctx, uc)
 		workflowUsecase := uc.NewWorkflowUsecase()
 
-		if err := workflowUsecase.ReorderWorkflowRules(ctx, scenarioId, ids); presentError(ctx, c, err) {
+		if err := workflowUsecase.ReorderWorkflowRules(ctx, uri.ScenarioId.Uuid(), ids); presentError(ctx, c, err) {
 			return
 		}
 

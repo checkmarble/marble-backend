@@ -63,7 +63,7 @@ type DecisionUsecaseRepository interface {
 	GetSummarizedDecisionStatForTestRun(ctx context.Context, exec repositories.Executor,
 		testRunId string) ([]models.DecisionsByVersionByOutcome, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
-	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId string) ([]models.Workflow, error)
+	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
 }
 
 type decisionWorkflowsUsecase interface {
@@ -518,7 +518,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 		}
 
-		workflowRules, err := usecase.repository.ListWorkflowsForScenario(ctx, exec, scenario.Id)
+		workflowRules, err := usecase.repository.ListWorkflowsForScenario(ctx, exec, uuid.MustParse(scenario.Id))
 		if err != nil {
 			return models.DecisionWithRuleExecutions{}, err
 		}
@@ -745,7 +745,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				Pivot:        pivot,
 			}
 
-			workflowRules, err := usecase.repository.ListWorkflowsForScenario(ctx, exec, item.scenario.Id)
+			workflowRules, err := usecase.repository.ListWorkflowsForScenario(ctx, exec, uuid.MustParse(item.scenario.Id))
 			if err != nil {
 				return nil, err
 			}

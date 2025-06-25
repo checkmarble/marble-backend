@@ -56,7 +56,7 @@ begin
 
     if workflow.decision_to_case_outcomes is not null then
       insert into scenario_workflow_conditions (rule_id, function, params)
-      values (current_rule_id, 'if_outcome_in', array_to_json(workflow.decision_to_case_outcomes)::jsonb);
+      values (current_rule_id, 'outcome_in', array_to_json(workflow.decision_to_case_outcomes)::jsonb);
     else
       insert into scenario_workflow_conditions (rule_id, function, params)
       values (current_rule_id, 'always', null);
