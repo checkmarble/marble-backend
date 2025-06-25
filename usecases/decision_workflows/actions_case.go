@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/google/uuid"
@@ -17,12 +19,23 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
 	evalParams evaluate_scenario.ScenarioEvaluationParameters,
-	action models.WorkflowActionSpec[models.WorkflowCaseParams],
+	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
 ) (models.WorkflowExecution, error) {
 	webhookEventId := uuid.NewString()
 
 	createNewCaseForDecision := func(ctx context.Context) (models.WorkflowExecution, error) {
-		caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, evalParams, scenario, action.Params.TitleTemplate)
+		var titleTemplateAst *ast.Node
+
+		if action.Params.TitleTemplate != nil {
+			astNode, err := dto.AdaptASTNode(*action.Params.TitleTemplate)
+			if err != nil {
+				return models.WorkflowExecution{}, err
+			}
+
+			titleTemplateAst = &astNode
+		}
+
+		caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, evalParams, scenario, titleTemplateAst)
 		if err != nil {
 			return models.WorkflowExecution{}, errors.Wrap(err, "error creating case for decision")
 		}
@@ -77,7 +90,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 func automaticCreateCaseAttributes(
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
-	action models.WorkflowActionSpec[models.WorkflowCaseParams],
+	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
 	name string,
 ) models.CreateCaseAttributes {
 	return models.CreateCaseAttributes{
@@ -93,7 +106,7 @@ func (d DecisionsWorkflows) addToOpenCase(
 	tx repositories.Transaction,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
-	action models.WorkflowActionSpec[models.WorkflowCaseParams],
+	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
 ) (models.CaseMetadata, bool, error) {
 	if decision.PivotValue == nil {
 		return models.CaseMetadata{}, false, nil
