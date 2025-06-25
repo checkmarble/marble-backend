@@ -190,10 +190,17 @@ func (usecases *Usecases) NewVersionUsecase() VersionUsecase {
 
 func (usecases *Usecases) NewLivenessUsecase() LivenessUsecase {
 	return LivenessUsecase{
+		executorFactory:    usecases.NewExecutorFactory(),
+		livenessRepository: &usecases.Repositories.MarbleDbRepository,
+	}
+}
+
+func (usecases *Usecases) NewHealthUsecase() HealthUsecase {
+	return HealthUsecase{
 		executorFactory:         usecases.NewExecutorFactory(),
-		livenessRepository:      &usecases.Repositories.MarbleDbRepository,
-		openSanctionsRepository: &usecases.Repositories.OpenSanctionsRepository,
+		healthRepository:        &usecases.Repositories.MarbleDbRepository,
 		hasOpensanctionsSetup:   usecases.hasOpensanctionsSetup,
+		openSanctionsRepository: &usecases.Repositories.OpenSanctionsRepository,
 	}
 }
 
