@@ -208,7 +208,7 @@ type DecisionListPage struct {
 const DecisionSortingCreatedAt SortingField = SortingFieldCreatedAt
 
 type DecisionWorkflowFilters struct {
-	InboxId        uuid.UUID
+	InboxId        *uuid.UUID
 	OrganizationId string
 	PivotValue     string
 }

@@ -99,11 +99,16 @@ func (d DecisionsWorkflows) addToOpenCase(
 		return models.CaseMetadata{}, false, nil
 	}
 
-	eligibleCases, err := d.repository.SelectCasesWithPivot(ctx, tx, models.DecisionWorkflowFilters{
-		InboxId:        action.Params.InboxId,
+	filters := models.DecisionWorkflowFilters{
 		OrganizationId: scenario.OrganizationId,
 		PivotValue:     *decision.PivotValue,
-	})
+	}
+
+	if !action.Params.AnyInbox {
+		filters.InboxId = &action.Params.InboxId
+	}
+
+	eligibleCases, err := d.repository.SelectCasesWithPivot(ctx, tx, filters)
 	if err != nil {
 		return models.CaseMetadata{}, false, errors.Wrap(err, "error selecting cases with pivot")
 	}

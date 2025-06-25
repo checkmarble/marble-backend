@@ -3,7 +3,9 @@ package repositories
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -18,17 +20,22 @@ func (repo *MarbleDbRepository) SelectCasesWithPivot(
 
 	// Both sides of the query should be ordered by case_id so that a merge join is possible
 	// NB: may select a snoozed case, in which case adding the decision will automatically unsnooze it.
-	query := `SELECT c.id, c.status, c.created_at, c.org_id
-	FROM cases AS c
-	INNER JOIN (
-		SELECT DISTINCT case_id FROM decisions WHERE org_id = $1 AND pivot_value = $3 AND case_id IS NOT NULL ORDER BY case_id
-		) AS d ON c.id = d.case_id
-	WHERE c.org_id = $1 
-		AND c.status IN ('pending', 'investigating')
-		AND c.inbox_id = $2
-	`
+	sql := NewQueryBuilder().
+		Select(columnsNames("c", []string{"id", "status", "created_at", "org_id"})...).
+		From(dbmodels.TABLE_CASES+" c").
+		InnerJoin("(select distinct case_id from decisions where org_id = ? and pivot_value = ? and case_id is not null order by case_id) d on c.id = d.case_id", filters.OrganizationId, filters.PivotValue).
+		Where(squirrel.Eq{
+			"c.org_id": filters.OrganizationId,
+			"c.status": []string{"pending", "investigating"},
+		})
 
-	rows, err := exec.Query(ctx, query, filters.OrganizationId, filters.InboxId, filters.PivotValue)
+	if filters.InboxId != nil {
+		sql = sql.Where("c.inbox_id = ?", filters.InboxId)
+	}
+
+	query, args, _ := sql.ToSql()
+
+	rows, err := exec.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
