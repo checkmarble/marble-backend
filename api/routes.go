@@ -49,7 +49,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		}
 
 		pubapi.InitPublicApi()
-		pubapiv1.Routes(cfg, r.Group("/v1beta"), auth.AuthedBy(utils.PublicApiKey, utils.BearerToken), uc)
+		pubapiv1.Routes(cfg, r.Group("/v1beta"),
+			auth.AuthedBy(utils.PublicApiKey, utils.BearerToken), uc)
 	}
 
 	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey))
