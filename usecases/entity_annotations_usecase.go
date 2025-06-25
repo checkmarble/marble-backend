@@ -38,8 +38,10 @@ type EntityAnnotationRepository interface {
 }
 
 type EntityAnnotationCaseUsecase interface {
-	AttachAnnotation(ctx context.Context, tx repositories.Transaction, annotationId string, annotationReq models.CreateEntityAnnotationRequest) error
-	AttachAnnotationFiles(ctx context.Context, tx repositories.Transaction, annotationId string, annotationReq models.CreateEntityAnnotationRequest, files []models.EntityAnnotationFilePayloadFile) error
+	AttachAnnotation(ctx context.Context, tx repositories.Transaction, annotationId string,
+		annotationReq models.CreateEntityAnnotationRequest) error
+	AttachAnnotationFiles(ctx context.Context, tx repositories.Transaction, annotationId string,
+		annotationReq models.CreateEntityAnnotationRequest, files []models.EntityAnnotationFilePayloadFile) error
 }
 
 type TagRepository interface {
@@ -69,13 +71,14 @@ func (uc EntityAnnotationUsecase) List(ctx context.Context, req models.EntityAnn
 
 	return uc.repository.GetEntityAnnotations(ctx, uc.executorFactory.NewExecutor(), req)
 }
-func (uc EntityAnnotationUsecase) Get(ctx context.Context, orgId, id string) (models.EntityAnnotation, error) {
-	annotations, err := uc.repository.GetEntityAnnotationById(ctx, uc.executorFactory.NewExecutor(), models.AnnotationByIdRequest{
-		OrgId:          orgId,
-		AnnotationId:   id,
-		IncludeDeleted: true,
-	})
 
+func (uc EntityAnnotationUsecase) Get(ctx context.Context, orgId, id string) (models.EntityAnnotation, error) {
+	annotations, err := uc.repository.GetEntityAnnotationById(ctx,
+		uc.executorFactory.NewExecutor(), models.AnnotationByIdRequest{
+			OrgId:          orgId,
+			AnnotationId:   id,
+			IncludeDeleted: true,
+		})
 	if err != nil {
 		return models.EntityAnnotation{}, err
 	}
@@ -115,7 +118,9 @@ func (uc EntityAnnotationUsecase) Attach(ctx context.Context,
 		return models.EntityAnnotation{}, err
 	}
 
-	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.EntityAnnotation, error) {
+	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
+		tx repositories.Transaction,
+	) (models.EntityAnnotation, error) {
 		annotation, err := uc.repository.CreateEntityAnnotation(ctx, uc.executorFactory.NewExecutor(), req)
 		if err != nil {
 			return models.EntityAnnotation{}, err
@@ -160,7 +165,9 @@ func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
 		return nil, errors.Wrap(models.BadParameterError, "could not understand request")
 	}
 
-	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) ([]models.EntityAnnotation, error) {
+	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
+		tx repositories.Transaction,
+	) ([]models.EntityAnnotation, error) {
 		annotations := make([]models.EntityAnnotation, len(metadata))
 
 		for idx, file := range metadata {
@@ -178,7 +185,8 @@ func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
 			}
 
 			if req.CaseId != nil {
-				if err := uc.caseUsecase.AttachAnnotationFiles(ctx, tx, annotation.Id, req, metadata); err != nil {
+				if err := uc.caseUsecase.AttachAnnotationFiles(ctx, tx,
+					annotation.Id, req, metadata); err != nil {
 					return nil, err
 				}
 			}
@@ -232,20 +240,20 @@ func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId, object
 		return err
 	}
 
-	table, ok := dataModel.Tables[objectType]
+	_, ok := dataModel.Tables[objectType]
 	if !ok {
 		return errors.Wrap(models.NotFoundError, "unknown object type")
 	}
 
-	db, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
-	if err != nil {
-		return err
-	}
+	// db, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if objects, err := uc.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table,
-		objectId); err != nil || len(objects) == 0 {
-		return errors.Wrap(models.NotFoundError, "unknown object")
-	}
+	// if objects, err := uc.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table,
+	// 	objectId); err != nil || len(objects) == 0 {
+	// 	return errors.Wrap(models.NotFoundError, "unknown object")
+	// }
 
 	return nil
 }
