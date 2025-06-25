@@ -408,7 +408,7 @@ func setupScenarioAndPublish(
 	fmt.Printf("Updated scenario iteration %+v\n", scenarioIteration)
 
 	rule, err := workflowUsecase.CreateWorkflowRule(ctx, models.WorkflowRule{
-		ScenarioId: scenarioId,
+		ScenarioId: uuid.MustParse(scenarioId),
 		Name:       "First rule",
 	})
 	if err != nil {

@@ -9,15 +9,15 @@ import (
 	"github.com/google/uuid"
 )
 
-func (repo *MarbleDbRepository) ListWorkflowsForScenario(ctx context.Context, exec Executor, scenarioId string) ([]models.Workflow, error) {
+func (repo *MarbleDbRepository) ListWorkflowsForScenario(ctx context.Context, exec Executor, scenarioId uuid.UUID) ([]models.Workflow, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	sql := NewQueryBuilder().
 		Select(columnsNames("r", dbmodels.WorkflowRuleColumns)...).
-		Column("array_agg(row(c.*)) filter (where c.id is not null) as conditions").
-		Column("array_agg(row(a.*)) filter (where a.id is not null) as actions").
+		Column("array_agg(distinct row(c.*)) filter (where c.id is not null) as conditions").
+		Column("array_agg(distinct row(a.*)) filter (where a.id is not null) as actions").
 		From(dbmodels.TABLE_WORKFLOW_RULES + " r").
 		LeftJoin(dbmodels.TABLE_WORKFLOW_CONDITIONS + " c on c.rule_id = r.id").
 		LeftJoin(dbmodels.TABLE_WORKFLOW_ACTIONS + " a on a.rule_id = r.id").
@@ -30,7 +30,7 @@ func (repo *MarbleDbRepository) ListWorkflowsForScenario(ctx context.Context, ex
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptWorkflowRuleWithConditions)
 }
 
-func (repo *MarbleDbRepository) GetWorkflowRule(ctx context.Context, exec Executor, id string) (models.WorkflowRule, error) {
+func (repo *MarbleDbRepository) GetWorkflowRule(ctx context.Context, exec Executor, id uuid.UUID) (models.WorkflowRule, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.WorkflowRule{}, err
 	}
@@ -43,7 +43,7 @@ func (repo *MarbleDbRepository) GetWorkflowRule(ctx context.Context, exec Execut
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowRule)
 }
 
-func (repo *MarbleDbRepository) GetWorkflowCondition(ctx context.Context, exec Executor, id string) (models.WorkflowCondition, error) {
+func (repo *MarbleDbRepository) GetWorkflowCondition(ctx context.Context, exec Executor, id uuid.UUID) (models.WorkflowCondition, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.WorkflowCondition{}, err
 	}
@@ -56,7 +56,7 @@ func (repo *MarbleDbRepository) GetWorkflowCondition(ctx context.Context, exec E
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowCondition)
 }
 
-func (repo *MarbleDbRepository) GetWorkflowAction(ctx context.Context, exec Executor, id string) (models.WorkflowAction, error) {
+func (repo *MarbleDbRepository) GetWorkflowAction(ctx context.Context, exec Executor, id uuid.UUID) (models.WorkflowAction, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.WorkflowAction{}, err
 	}
@@ -103,7 +103,7 @@ func (repo *MarbleDbRepository) UpdateWorkflowRule(ctx context.Context, exec Exe
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowRule)
 }
 
-func (repo *MarbleDbRepository) DeleteWorkflowRule(ctx context.Context, exec Executor, ruleId string) error {
+func (repo *MarbleDbRepository) DeleteWorkflowRule(ctx context.Context, exec Executor, ruleId uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (repo *MarbleDbRepository) UpdateWorkflowCondition(ctx context.Context, exe
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowCondition)
 }
 
-func (repo *MarbleDbRepository) DeleteWorkflowCondition(ctx context.Context, exec Executor, ruleId, conditionId string) error {
+func (repo *MarbleDbRepository) DeleteWorkflowCondition(ctx context.Context, exec Executor, ruleId, conditionId uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func (repo *MarbleDbRepository) UpdateWorkflowAction(ctx context.Context, exec E
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowAction)
 }
 
-func (repo *MarbleDbRepository) DeleteWorkflowAction(ctx context.Context, exec Executor, ruleId, actionId string) error {
+func (repo *MarbleDbRepository) DeleteWorkflowAction(ctx context.Context, exec Executor, ruleId, actionId uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -213,7 +213,7 @@ func (repo *MarbleDbRepository) DeleteWorkflowAction(ctx context.Context, exec E
 	return ExecBuilder(ctx, exec, sql)
 }
 
-func (repo *MarbleDbRepository) ReorderWorkflowRules(ctx context.Context, exec Executor, scenarioId string, ids []uuid.UUID) error {
+func (repo *MarbleDbRepository) ReorderWorkflowRules(ctx context.Context, exec Executor, scenarioId uuid.UUID, ids []uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
