@@ -26,6 +26,7 @@ import (
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/go-testfixtures/testfixtures/v3"
+	"github.com/h2non/gock"
 	"github.com/pressly/goose/v3"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
@@ -139,6 +140,11 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 
 	deps := api.InitDependencies(ctx, cfg, pool, key, nil)
 	openSanctions := infra.InitializeOpenSanctions(http.DefaultClient, "http://screening", " ", " ")
+	// Mock the readyz endpoint to simulate a healthy screening service in tests
+	gock.New("http://screening/readyz").
+		Persist().
+		Reply(http.StatusOK)
+
 	repos := repositories.NewRepositories(pool, "",
 		repositories.WithOpenSanctions(openSanctions),
 		repositories.WithRiverClient(riverClient))
