@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/google/uuid"
 )
 
 type DecisionWorkflowsCondition func(context.Context, DecisionWorkflowRequest) (bool, error)
@@ -34,14 +35,6 @@ func CreateFunction(condition models.WorkflowCondition) (DecisionWorkflowsCondit
 		}
 
 		return ruleHit(params.RuleId), nil
-	case models.WorkflowConditionScreeningHit:
-		var params dto.WorkflowConditionScreeningHitParams
-
-		if err := json.Unmarshal(condition.Params, &params); err != nil {
-			return never, err
-		}
-
-		return screeningHit(params.ScreeningId), nil
 	case models.WorkflowPayloadEvaluates:
 		var params dto.WorkflowConditionEvaluatesParams
 
@@ -74,22 +67,15 @@ func outcomeIn(outcomes []string) DecisionWorkflowsCondition {
 	}
 }
 
-func ruleHit(ruleId string) DecisionWorkflowsCondition {
+func ruleHit(ruleId uuid.UUID) DecisionWorkflowsCondition {
 	return func(ctx context.Context, req DecisionWorkflowRequest) (bool, error) {
 		for _, ruleExec := range req.Decision.RuleExecutions {
-			if ruleExec.Rule.StableRuleId == ruleId && ruleExec.Outcome == "hit" {
+			if ruleExec.Rule.StableRuleId == ruleId.String() && ruleExec.Outcome == "hit" {
 				return true, nil
 			}
 		}
-
-		return false, nil
-	}
-}
-
-func screeningHit(screeningId string) DecisionWorkflowsCondition {
-	return func(_ context.Context, req DecisionWorkflowRequest) (bool, error) {
 		for _, screeningExec := range req.Decision.ScreeningExecutions {
-			if screeningExec.Config.StableId == screeningId && screeningExec.Status == models.ScreeningStatusConfirmedHit {
+			if screeningExec.Config.StableId == ruleId.String() && screeningExec.Status == models.ScreeningStatusConfirmedHit {
 				return true, nil
 			}
 		}

@@ -7,13 +7,14 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type DbWorkflowRule struct {
-	Id         string `db:"id"`
-	ScenarioId string `db:"scenario_id"`
-	Name       string `db:"name"`
-	Priority   int    `db:"priority"`
+	Id         uuid.UUID `db:"id"`
+	ScenarioId uuid.UUID `db:"scenario_id"`
+	Name       string    `db:"name"`
+	Priority   int       `db:"priority"`
 
 	CreatedAt time.Time  `db:"created_at"`
 	UpdatedAt *time.Time `db:"updated_at"`
@@ -27,8 +28,8 @@ type DbWorkflowRuleWithConditions struct {
 }
 
 type DbWorkflowCondition struct {
-	Id       string          `db:"id"`
-	RuleId   string          `db:"rule_id"`
+	Id       uuid.UUID       `db:"id"`
+	RuleId   uuid.UUID       `db:"rule_id"`
 	Function string          `db:"function"`
 	Params   json.RawMessage `db:"params"`
 
@@ -37,8 +38,8 @@ type DbWorkflowCondition struct {
 }
 
 type DbWorkflowAction struct {
-	Id     string          `db:"id"`
-	RuleId string          `db:"rule_id"`
+	Id     uuid.UUID       `db:"id"`
+	RuleId uuid.UUID       `db:"rule_id"`
 	Action string          `db:"action"`
 	Params json.RawMessage `db:"params"`
 

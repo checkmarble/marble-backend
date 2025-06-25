@@ -5,19 +5,17 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/cockroachdb/errors"
-	"github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 )
 
 type WorkflowRuleDto struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+	Id   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
 
 type CreateWorkflowRuleDto struct {
-	ScenarioId string `json:"scenario_id" binding:"required,uuid"`
-	Name       string `json:"name" binding:"required"`
+	ScenarioId uuid.UUID `json:"scenario_id" binding:"required,uuid"`
+	Name       string    `json:"name" binding:"required"`
 }
 
 type UpdateWorkflowRuleDto struct {
@@ -25,7 +23,7 @@ type UpdateWorkflowRuleDto struct {
 }
 
 type WorkflowConditionDto struct {
-	Id       string                       `json:"id"`
+	Id       uuid.UUID                    `json:"id"`
 	Function models.WorkflowConditionType `json:"function"`
 	Params   json.RawMessage              `json:"params,omitempty"`
 }
@@ -36,11 +34,11 @@ type PostWorkflowConditionDto struct {
 }
 
 type WorkflowConditionRuleHitParams struct {
-	RuleId string `json:"rule_id" binding:"required,uuid"`
+	RuleId uuid.UUID `json:"rule_id" binding:"required,uuid"`
 }
 
 type WorkflowConditionScreeningHitParams struct {
-	ScreeningId string `json:"screening_id" binding:"required,uuid"`
+	ScreeningId uuid.UUID `json:"screening_id" binding:"required,uuid"`
 }
 
 type WorkflowConditionEvaluatesParams struct {
@@ -48,7 +46,7 @@ type WorkflowConditionEvaluatesParams struct {
 }
 
 type WorkflowActionDto struct {
-	Id     string          `json:"id"`
+	Id     uuid.UUID       `json:"id"`
 	Action string          `json:"action"`
 	Params json.RawMessage `json:"params,omitempty"`
 }
@@ -56,6 +54,12 @@ type WorkflowActionDto struct {
 type PostWorkflowActionDto struct {
 	Action models.WorkflowType `json:"action" binding:"required"`
 	Params json.RawMessage     `json:"params"`
+}
+
+type WorkflowActionCaseParams struct {
+	InboxId       uuid.UUID `json:"inbox_id" binding:"required,uuid"`
+	AnyInbox      bool      `json:"any_inbox"`
+	TitleTemplate *NodeDto  `json:"title_template"`
 }
 
 type WorkflowDto struct {
@@ -94,22 +98,4 @@ func AdaptWorkflowAction(m models.WorkflowAction) WorkflowActionDto {
 		Action: string(m.Action),
 		Params: m.Params,
 	}
-}
-
-func ValidateWorkflowAction(cond PostWorkflowActionDto) error {
-	switch cond.Action {
-	case models.WorkflowCreateCase, models.WorkflowAddToCaseIfPossible:
-		var params models.WorkflowCaseParams
-
-		if err := json.Unmarshal(cond.Params, &params); err != nil {
-			return errors.Join(models.BadParameterError, json.Unmarshal(cond.Params, new(models.WorkflowCaseParams)))
-		}
-		if err := binding.Validator.Engine().(*validator.Validate).Struct(params); err != nil {
-			return errors.Join(models.BadParameterError, err)
-		}
-	default:
-		return errors.Wrapf(models.BadParameterError, "unknown workflow action type: %s", cond.Action)
-	}
-
-	return nil
 }
