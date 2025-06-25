@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -68,6 +69,10 @@ type AiAgentUsecase struct {
 	executorFactory    executor_factory.ExecutorFactory
 	ingestedDataReader AiAgentUsecaseIngestedDataReader
 	dataModelUsecase   AiAgentUsecaseDataModelUsecase
+
+	client    *genai.Client
+	mu        sync.Mutex
+	gcpRegion string
 }
 
 func NewAiAgentUsecase(
@@ -85,10 +90,27 @@ func NewAiAgentUsecase(
 		executorFactory:    executorFactory,
 		ingestedDataReader: ingestedDataReader,
 		dataModelUsecase:   dataModelUsecase,
+		gcpRegion:          utils.GetEnv("GCP_REGION", "europe-west1"),
 	}
 }
 
-func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.Reader, error) {
+func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*genai.Client, error) {
+	uc.mu.Lock()
+	defer uc.mu.Unlock()
+	var err error
+	if uc.client == nil {
+		uc.client, err = genai.NewClient(ctx, &genai.ClientConfig{
+			Location: uc.gcpRegion,
+			Backend:  genai.BackendVertexAI,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create GenAI client")
+		}
+	}
+	return uc.client, nil
+}
+
+func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.Reader, error) {
 	caseDtos, relatedDataPerClient, err := uc.getCaseData(ctx, caseId)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get case data")
@@ -178,7 +200,7 @@ func readPrompt(path string) (string, error) {
 	return string(promptBytes), nil
 }
 
-func (uc AiAgentUsecase) generateContent(
+func (uc *AiAgentUsecase) generateContent(
 	ctx context.Context,
 	client *genai.Client,
 	promptPath string,
@@ -252,11 +274,8 @@ func (uc AiAgentUsecase) generateContent(
 	return gatherText, nil
 }
 
-func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (string, error) {
-	client, err := genai.NewClient(ctx, &genai.ClientConfig{
-		Location: "europe-west1",
-		Backend:  genai.BackendVertexAI,
-	})
+func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (string, error) {
+	client, err := uc.GetClient(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "could not create GenAI client")
 	}
@@ -373,7 +392,7 @@ func (uc AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (s
 	return fmt.Sprintf("Review is ko: original review:%s\nsanity check output:%s", caseReview, sanityCheck), nil
 }
 
-func (uc AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseData, map[string]agent_dto.CasePivotObjectData, error) {
+func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseData, map[string]agent_dto.CasePivotObjectData, error) {
 	exec := uc.executorFactory.NewExecutor()
 	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
 	if err != nil {
