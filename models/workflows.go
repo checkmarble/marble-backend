@@ -108,6 +108,7 @@ type WorkflowActionSpec[T any] struct {
 
 type WorkflowCaseParams struct {
 	InboxId       uuid.UUID `json:"inbox_id" binding:"required,uuid"`
+	AnyInbox      bool      `json:"any_inbox"`
 	TitleTemplate *ast.Node `json:"title_template"`
 }
 
