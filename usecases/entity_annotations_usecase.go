@@ -65,7 +65,7 @@ type EntityAnnotationUsecase struct {
 }
 
 func (uc EntityAnnotationUsecase) List(ctx context.Context, req models.EntityAnnotationRequest) ([]models.EntityAnnotation, error) {
-	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType, req.ObjectId); err != nil {
+	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType); err != nil {
 		return nil, errors.Wrap(models.NotFoundError, err.Error())
 	}
 
@@ -92,10 +92,8 @@ func (uc EntityAnnotationUsecase) Get(ctx context.Context, orgId, id string) (mo
 func (uc EntityAnnotationUsecase) ListForObjects(ctx context.Context,
 	req models.EntityAnnotationRequestForObjects,
 ) (map[string][]models.EntityAnnotation, error) {
-	for _, objectId := range req.ObjectIds {
-		if err := uc.checkObject(ctx, req.OrgId, req.ObjectType, objectId); err != nil {
-			return nil, errors.Wrap(models.NotFoundError, err.Error())
-		}
+	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType); err != nil {
+		return nil, errors.Wrap(models.NotFoundError, err.Error())
 	}
 
 	return uc.repository.GetEntityAnnotationsForObjects(ctx, uc.executorFactory.NewExecutor(), req)
@@ -110,7 +108,7 @@ func (uc EntityAnnotationUsecase) ListForCase(ctx context.Context,
 func (uc EntityAnnotationUsecase) Attach(ctx context.Context,
 	req models.CreateEntityAnnotationRequest,
 ) (models.EntityAnnotation, error) {
-	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType, req.ObjectId); err != nil {
+	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType); err != nil {
 		return models.EntityAnnotation{}, errors.Wrap(models.NotFoundError, err.Error())
 	}
 
@@ -140,7 +138,7 @@ func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
 	req models.CreateEntityAnnotationRequest,
 	files []multipart.FileHeader,
 ) ([]models.EntityAnnotation, error) {
-	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType, req.ObjectId); err != nil {
+	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType); err != nil {
 		return nil, errors.Wrap(models.NotFoundError, err.Error())
 	}
 
@@ -234,26 +232,17 @@ func (uc EntityAnnotationUsecase) DeleteAnnotation(ctx context.Context,
 	return uc.repository.DeleteEntityAnnotation(ctx, uc.executorFactory.NewExecutor(), req)
 }
 
-func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId, objectType, objectId string) error {
+// checkObject validates that the given object type exists in the organization's data model.
+// Returns an error if the object type is not found.
+func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId, objectType string) error {
 	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, uc.executorFactory.NewExecutor(), orgId, false)
 	if err != nil {
 		return err
 	}
 
-	_, ok := dataModel.Tables[objectType]
-	if !ok {
+	if _, exists := dataModel.Tables[objectType]; !exists {
 		return errors.Wrap(models.NotFoundError, "unknown object type")
 	}
-
-	// db, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if objects, err := uc.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table,
-	// 	objectId); err != nil || len(objects) == 0 {
-	// 	return errors.Wrap(models.NotFoundError, "unknown object")
-	// }
 
 	return nil
 }
