@@ -55,6 +55,7 @@ type IngestedDataReadRepository interface {
 		params models.ExplorationOptions,
 		cursorId *string,
 		limit int,
+		fieldsToRead ...string,
 	) ([]models.DataModelObject, error)
 	GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table, orgId string) ([]models.FieldStatistics, error)
 }
@@ -535,13 +536,25 @@ func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 	params models.ExplorationOptions,
 	cursorId *string,
 	limit int,
+	fieldsToRead ...string,
 ) ([]models.DataModelObject, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	tableColumnNames := models.ColumnNames(table)
-	columnNames := append(tableColumnNames, "valid_from")
+	columnNames := make([]string, 0, len(tableColumnNames))
+	if fieldsToRead != nil {
+		columnNames = append(columnNames, fieldsToRead...)
+		// object_id is always read, even if not explicitly requested, because it is needed in the reader usecase to build the model and the cursor
+		if !slices.Contains(tableColumnNames, "object_id") {
+			columnNames = append(columnNames, "object_id")
+		}
+	} else {
+		columnNames = tableColumnNames
+	}
+	columnNames = append(columnNames, "valid_from")
+
 	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
 	filterFieldName := pgIdentifierWithSchema(exec, table.Name,
 		params.FilterFieldName)

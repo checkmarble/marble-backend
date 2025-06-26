@@ -20,7 +20,7 @@ func LoadAiAgentModelConfig(configPath string) (*AiAgentModelConfig, error) {
 	if configPath == "" {
 		// Return default configuration if no path is provided
 		return &AiAgentModelConfig{
-			DefaultModel: "gemini-2.5-flash-lite-preview-06-17",
+			DefaultModel: "gemini-2.5-flash",
 			PromptModels: make(map[string]string),
 		}, nil
 	}
@@ -38,7 +38,7 @@ func LoadAiAgentModelConfig(configPath string) (*AiAgentModelConfig, error) {
 
 	// Set default model if not specified
 	if config.DefaultModel == "" {
-		config.DefaultModel = "gemini-2.5-flash-lite-preview-06-17"
+		config.DefaultModel = "gemini-2.5-flash"
 	}
 
 	// Initialize maps if they're nil
