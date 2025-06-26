@@ -286,12 +286,13 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 
 func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
 	return DataModelUseCase{
-		clientDbIndexEditor:          usecases.NewClientDbIndexEditor(),
-		dataModelRepository:          usecases.Repositories.MarbleDbRepository,
-		enforceSecurity:              usecases.NewEnforceOrganizationSecurity(),
-		executorFactory:              usecases.NewExecutorFactory(),
-		organizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
-		transactionFactory:           usecases.NewTransactionFactory(),
+		clientDbIndexEditor:           usecases.NewClientDbIndexEditor(),
+		dataModelRepository:           usecases.Repositories.MarbleDbRepository,
+		enforceSecurity:               usecases.NewEnforceOrganizationSecurity(),
+		executorFactory:               usecases.NewExecutorFactory(),
+		organizationSchemaRepository:  usecases.Repositories.OrganizationSchemaRepository,
+		transactionFactory:            usecases.NewTransactionFactory(),
+		dataModelIngestedDataReadRepo: usecases.Repositories.IngestedDataReadRepository,
 	}
 }
 
