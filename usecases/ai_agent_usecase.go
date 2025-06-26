@@ -26,6 +26,8 @@ import (
 	"google.golang.org/genai"
 )
 
+const HIGH_NB_ROWS_THRESHOLD = 0
+
 type AiAgentUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
@@ -54,6 +56,7 @@ type AiAgentUsecaseIngestedDataReader interface {
 		orgId string,
 		objectType string,
 		input models.ClientDataListRequestBody,
+		fieldsToRead ...string,
 	) (objects []models.ClientObjectDetail, fieldStats []models.FieldStatistics,
 		pagination models.ClientDataListPagination, err error)
 }
@@ -90,7 +93,7 @@ func NewAiAgentUsecase(
 		executorFactory:    executorFactory,
 		ingestedDataReader: ingestedDataReader,
 		dataModelUsecase:   dataModelUsecase,
-		gcpRegion:          utils.GetEnv("GCP_REGION", "europe-west1"),
+		gcpRegion:          utils.GetEnv("GCP_REGION", "global"),
 	}
 }
 
@@ -165,7 +168,7 @@ func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io
 			}
 
 			for tableName, objects := range data.IngestedData {
-				if len(objects) == 0 {
+				if len(objects.Data) == 0 {
 					continue
 				}
 				fileStr := pivotObjectFolder + tableName + ".csv"
@@ -175,7 +178,7 @@ func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io
 					return
 				}
 				csvFile := csv.NewWriter(f)
-				if err := agent_dto.WriteClientDataToCsv(objects, csvFile); err != nil {
+				if err := agent_dto.WriteClientDataToCsv(objects.Data, csvFile); err != nil {
 					pw.CloseWithError(errors.Wrapf(err, "could not write %s to zip", fileStr))
 					return
 				}
@@ -200,22 +203,25 @@ func readPrompt(path string) (string, error) {
 	return string(promptBytes), nil
 }
 
+// Mutates the input (variadic)previousContents by appending the new input content and any genereated output, and returns them for convenience.
+// "previous" returned by the method can be reused as input for the next call to generateContent in order to continue the conversation.
 func (uc *AiAgentUsecase) generateContent(
 	ctx context.Context,
 	client *genai.Client,
 	promptPath string,
 	data map[string]any,
 	generateContentConfig *genai.GenerateContentConfig,
-) (string, error) {
+	previousContents ...*genai.Content,
+) (output string, previous []*genai.Content, err error) {
 	prompt, err := readPrompt(promptPath)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	// Load model configuration on each call
 	modelConfig, err := models.LoadAiAgentModelConfig("prompts/ai_agent_models.json")
 	if err != nil {
-		return "", errors.Wrap(err, "could not load AI agent model configuration")
+		return "", nil, errors.Wrap(err, "could not load AI agent model configuration")
 	}
 
 	// Get the appropriate model for this prompt
@@ -230,29 +236,37 @@ func (uc *AiAgentUsecase) generateContent(
 	for k, v := range data {
 		b, err := json.Marshal(v)
 		if err != nil {
-			return "", errors.Wrapf(err, "could not marshal %s", k)
+			return "", nil, errors.Wrapf(err, "could not marshal %s", k)
 		}
 		marshalledMap[k] = string(b)
 	}
 
-	t := template.Must(template.New(promptPath).Parse(prompt))
+	t, err := template.New(promptPath).Parse(prompt)
+	if err != nil {
+		return "", nil, errors.Wrapf(err, "could not parse template %s", promptPath)
+	}
 	buf := bytes.Buffer{}
 	err = t.Execute(&buf, marshalledMap)
 	if err != nil {
-		return "", errors.Wrap(err, "could not execute template")
+		return "", nil, errors.Wrap(err, "could not execute template")
 	}
 	prompt = buf.String()
-	result, err := client.Models.GenerateContent(ctx,
+	result, err := client.Models.GenerateContent(
+		ctx,
 		model,
-		genai.Text(prompt),
+		append(previousContents, genai.Text(prompt)...),
 		generateContentConfig,
 	)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if len(result.Candidates) == 0 {
-		return "", errors.New("no response from GenAI")
+		return "", nil, errors.New("no response from GenAI")
 	}
+	if result.Candidates[0].Content == nil {
+		return "", nil, errors.New("no content in response from GenAI")
+	}
+
 	onlyTextParts := make([]string, 0, len(result.Candidates[0].Content.Parts))
 	for _, part := range result.Candidates[0].Content.Parts {
 		if part.Text != "" {
@@ -265,11 +279,21 @@ func (uc *AiAgentUsecase) generateContent(
 		"len", len(result.Candidates[0].Content.Parts),
 		"len_filtered_text", len(onlyTextParts),
 	)
+	previous = append(previousContents, result.Candidates[0].Content)
 	gatherText := ""
 	for _, t := range onlyTextParts {
 		gatherText += t
 	}
-	return gatherText, nil
+	return gatherText, previous, nil
+}
+
+func someClientDataTables(relatedDataPerClient map[string]agent_dto.CasePivotObjectData) (string, map[string]agent_dto.IngestedDataResult) {
+	for k, v := range relatedDataPerClient {
+		if len(v.IngestedData) > 0 {
+			return k, v.IngestedData
+		}
+	}
+	return "", nil
 }
 
 func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (string, error) {
@@ -291,7 +315,8 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		clientActivityDescription = "placeholder"
 	}
 
-	dataModelSummary, err := uc.generateContent(ctx,
+	// Data model summary
+	dataModelSummary, previousContents, err := uc.generateContent(ctx,
 		client,
 		"prompts/case_review/data_model_summary.md",
 		map[string]any{
@@ -305,7 +330,84 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	fmt.Println("-------------------------------- Data model summary --------------------------------")
 	fmt.Println("Data Model Summary:", dataModelSummary)
 
-	rulesDefinitionsReview, err := uc.generateContent(ctx,
+	// Data model object field read options
+	// Here, we implicitly distinguish between "transaction" tables (based on the presence of "many" rows for a given customer)
+	// and other tables (where we can afford to read all fields)
+	customerKey, objectTables := someClientDataTables(relatedDataPerClient)
+	if objectTables != nil {
+		transactionsTableNames := make([]string, 0, len(objectTables))
+		tableFields := make(map[string][]string)
+		for tableName, objects := range objectTables {
+			if len(objects.Data) > HIGH_NB_ROWS_THRESHOLD {
+				transactionsTableNames = append(transactionsTableNames, tableName)
+				tableFields[tableName] = make([]string, 0, len(objects.Data[0].Data))
+				for fieldName := range objects.Data[0].Data {
+					tableFields[tableName] = append(tableFields[tableName], fieldName)
+				}
+			}
+		}
+
+		properties := make(map[string]*genai.Schema, len(tableFields))
+		for tableName, fields := range tableFields {
+			properties[tableName] = &genai.Schema{
+				Type:  "array",
+				Items: &genai.Schema{Type: "string", Enum: fields},
+			}
+		}
+		dataModelObjectFieldReadOptions, _, err := uc.generateContent(
+			ctx,
+			client,
+			"prompts/case_review/data_model_object_field_read_options.md",
+			map[string]any{
+				"data_model_table_names": transactionsTableNames,
+			},
+			&genai.GenerateContentConfig{
+				ResponseMIMEType: "application/json",
+				ResponseSchema: &genai.Schema{
+					Type:        "object",
+					Description: "List of fields, on a table per table basis, that should be read from ingested data for high-volume tables and considered for transaction analysis",
+					Properties:  properties,
+				},
+			},
+			previousContents...,
+		)
+		if err != nil {
+			return "", errors.Wrap(err, "could not generate data model object field read options")
+		}
+		fmt.Println("-------------------------------- Data model object field read options --------------------------------")
+		fmt.Println("Data Model Object Field Read Options:", dataModelObjectFieldReadOptions)
+		fieldsToReadPerTable := make(map[string][]string)
+		if err := json.Unmarshal([]byte(dataModelObjectFieldReadOptions), &fieldsToReadPerTable); err != nil {
+			return "", errors.Wrap(err, "could not unmarshal data model object field read options")
+		}
+		fmt.Println("-------------------------------- Fields to read per table --------------------------------")
+		fmt.Println("Unmarshalled fields to read per table:", fieldsToReadPerTable)
+		for tableName, fieldsToRead := range fieldsToReadPerTable {
+			// Reuse original read options, just adapt the number of rows to read and the fields to consider
+			fieldFilteredObjects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(
+				ctx,
+				caseDtos.organizationId,
+				tableName,
+				models.ClientDataListRequestBody{
+					ExplorationOptions: objectTables[tableName].ReadOptions,
+					Limit:              500,
+				},
+				fieldsToRead...,
+			)
+			if err != nil {
+				return "", errors.Wrapf(err, "could not read ingested client objects for %s", tableName)
+			}
+			// then, update the ingested data for this pivot object/table combination with the new filtered data
+			relatedDataPerClient[customerKey].IngestedData[tableName] = agent_dto.IngestedDataResult{
+				Data:        fieldFilteredObjects,
+				ReadOptions: objectTables[tableName].ReadOptions,
+			}
+		}
+
+	}
+
+	// Rules definitions review
+	rulesDefinitionsReview, _, err := uc.generateContent(ctx,
 		client,
 		"prompts/case_review/rule_definitions.md",
 		map[string]any{
@@ -324,7 +426,8 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	fmt.Println("-------------------------------- Rules definitions review --------------------------------")
 	fmt.Println("Rules Review:", rulesDefinitionsReview)
 
-	ruleThresholds, err := uc.generateContent(ctx,
+	// Rule thresholds
+	ruleThresholds, _, err := uc.generateContent(ctx,
 		client,
 		"prompts/case_review/rule_threshold_values.md",
 		map[string]any{
@@ -339,7 +442,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	fmt.Println("Rule Thresholds:", ruleThresholds)
 
 	// Finally, we can generate the case review
-	caseReview, err := uc.generateContent(
+	caseReview, _, err := uc.generateContent(
 		ctx,
 		client,
 		"prompts/case_review/case_review.md",
@@ -366,7 +469,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	fmt.Println("Case Review:", caseReview)
 
 	// Finally, sanity check the resulting case review using a judgement prompt
-	sanityCheck, err := uc.generateContent(ctx,
+	sanityCheck, _, err := uc.generateContent(ctx,
 		client,
 		"prompts/case_review/sanity_check.md",
 		map[string]any{
@@ -482,7 +585,7 @@ func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseD
 
 	for _, pivotObject := range pivotObjects {
 		pivotObjectData := agent_dto.CasePivotObjectData{
-			IngestedData: make(map[string][]models.ClientObjectDetail, 10),
+			IngestedData: make(map[string]agent_dto.IngestedDataResult, 10),
 			RelatedCases: make([]agent_dto.CaseWithDecisions, 0, 10),
 		}
 
@@ -547,22 +650,26 @@ func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseD
 				continue
 			}
 			if navOption.Status == models.IndexStatusValid {
+				readOptions := models.ExplorationOptions{
+					SourceTableName:   pivotObject.PivotObjectName,
+					FilterFieldName:   navOption.FilterFieldName,
+					FilterFieldValue:  models.NewStringOrNumberFromString(sourceFieldValueStr),
+					OrderingFieldName: navOption.OrderingFieldName,
+				}
 				objects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(ctx,
 					c.OrganizationId, navOption.TargetTableName, models.ClientDataListRequestBody{
-						ExplorationOptions: models.ExplorationOptions{
-							SourceTableName:   pivotObject.PivotObjectName,
-							FilterFieldName:   navOption.FilterFieldName,
-							FilterFieldValue:  models.NewStringOrNumberFromString(sourceFieldValueStr),
-							OrderingFieldName: navOption.OrderingFieldName,
-						},
-						Limit: 1000,
+						ExplorationOptions: readOptions,
+						Limit:              1000,
 					})
 				if err != nil {
 					return caseData{}, nil, errors.Wrapf(err,
 						"could not read ingested client objects for %s with value %s",
 						pivotObject.PivotObjectName, sourceFieldValueStr)
 				}
-				pivotObjectData.IngestedData[navOption.TargetTableName] = objects
+				pivotObjectData.IngestedData[navOption.TargetTableName] = agent_dto.IngestedDataResult{
+					Data:        objects,
+					ReadOptions: readOptions,
+				}
 			}
 		}
 

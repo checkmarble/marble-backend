@@ -20,6 +20,7 @@ type ingestedDataReaderClientDbRepository interface {
 		params models.ExplorationOptions,
 		cursorId *string,
 		limit int,
+		fieldsToRead ...string,
 	) ([]models.DataModelObject, error)
 	QueryIngestedObjectByUniqueField(
 		ctx context.Context,
@@ -288,6 +289,7 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 	orgId string,
 	objectType string,
 	input models.ClientDataListRequestBody,
+	fieldsToRead ...string,
 ) (objects []models.ClientObjectDetail, fieldStats []models.FieldStatistics, pagination models.ClientDataListPagination, err error) {
 	dataModel, err := usecase.dataModelUsecase.GetDataModel(ctx, orgId, models.DataModelReadOptions{
 		IncludeNavigationOptions: true,

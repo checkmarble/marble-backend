@@ -124,7 +124,12 @@ type CaseWithDecisions struct {
 	Decisions []Decision `json:"decisions"`
 }
 
+type IngestedDataResult struct {
+	Data        []models.ClientObjectDetail `json:"data"`
+	ReadOptions models.ExplorationOptions   `json:"-"`
+}
+
 type CasePivotObjectData struct {
-	IngestedData map[string][]models.ClientObjectDetail `json:"ingested_data"`
-	RelatedCases []CaseWithDecisions                    `json:"related_cases"`
+	IngestedData map[string]IngestedDataResult `json:"ingested_data"`
+	RelatedCases []CaseWithDecisions           `json:"related_cases"`
 }
