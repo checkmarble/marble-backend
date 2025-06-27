@@ -1,6 +1,7 @@
 package agent_dto
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -48,15 +49,63 @@ type DecisionScenario struct {
 	DeclineThreshold        *int   `json:"decline_threshold"`
 }
 
+type Screening struct {
+	Status         string          `json:"status"`
+	Datasets       []string        `json:"datasets"`
+	SearchInput    json.RawMessage `json:"search_input"`
+	IsManual       bool            `json:"is_manual_refined_search"` //nolint:tagliatelle
+	PartialResults bool            `json:"partial_results"`
+	ErrorCodes     []string        `json:"error_codes"`
+}
+
+type ScreeningMatch struct {
+	IsMatch bool   `json:"is_match"`
+	Status  string `json:"status"`
+	Payload []byte `json:"payload"`
+}
+
+type ScreeningWithMatches struct {
+	Screening
+	Matches []ScreeningMatch `json:"matches"`
+	Count   int              `json:"count"`
+}
+
+func AdaptScreeningMatch(match models.ScreeningMatch) ScreeningMatch {
+	return ScreeningMatch{
+		IsMatch: match.IsMatch,
+		Status:  match.Status.String(),
+		Payload: match.Payload,
+	}
+}
+
+func AdaptScreening(screening models.Screening) Screening {
+	return Screening{
+		Status:         screening.Status.String(),
+		Datasets:       screening.Datasets,
+		SearchInput:    screening.SearchInput,
+		IsManual:       screening.IsManual,
+		PartialResults: screening.Partial,
+		ErrorCodes:     screening.ErrorCodes,
+	}
+}
+
+func AdaptScreeningWithMatches(screening models.ScreeningWithMatches) ScreeningWithMatches {
+	return ScreeningWithMatches{
+		Screening: AdaptScreening(screening.Screening),
+		Matches:   pure_utils.Map(screening.Matches, AdaptScreeningMatch),
+		Count:     screening.Count,
+	}
+}
+
 type Decision struct {
-	CreatedAt         time.Time                     `json:"created_at"`
-	TriggerObject     map[string]any                `json:"trigger_object"`
-	TriggerObjectType string                        `json:"trigger_object_type"`
-	Outcome           string                        `json:"outcome"`
-	Scenario          DecisionScenario              `json:"scenario"`
-	Score             int                           `json:"score"`
-	Rules             []DecisionRule                `json:"rules"`
-	Screenings        []models.ScreeningWithMatches `json:"screenings"`
+	CreatedAt         time.Time              `json:"created_at"`
+	TriggerObject     map[string]any         `json:"trigger_object"`
+	TriggerObjectType string                 `json:"trigger_object_type"`
+	Outcome           string                 `json:"outcome"`
+	Scenario          DecisionScenario       `json:"scenario"`
+	Score             int                    `json:"score"`
+	Rules             []DecisionRule         `json:"rules"`
+	Screenings        []ScreeningWithMatches `json:"screenings"`
 }
 
 func AdaptDecision(
@@ -83,6 +132,6 @@ func AdaptDecision(
 		Rules: pure_utils.Map(ruleExecutions, func(ruleExec models.RuleExecution) DecisionRule {
 			return AcaptDecisionRule(ruleExec, rules)
 		}),
-		Screenings: screenings,
+		Screenings: pure_utils.Map(screenings, AdaptScreeningWithMatches),
 	}
 }

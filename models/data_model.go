@@ -109,6 +109,14 @@ type Table struct {
 	NavigationOptions []NavigationOption
 }
 
+func (t Table) FieldNames() []string {
+	fieldNames := make([]string, 0, len(t.Fields))
+	for fieldName := range t.Fields {
+		fieldNames = append(fieldNames, fieldName)
+	}
+	return fieldNames
+}
+
 func (t Table) Copy() Table {
 	fields := make(map[string]Field)
 	for k, v := range t.Fields {
