@@ -14,9 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
-)
+var NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
 
 type ingestedDataReaderClientDbRepository interface {
 	ListIngestedObjects(
@@ -236,6 +234,21 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 		return pivotObject, nil
 	}
 
+	// Annotations don't depend on the existence of the pivot object in IngestedData, so we can get them first
+	// to enrich the pivot object data
+	annotations, err := usecase.repository.GetEntityAnnotations(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		models.EntityAnnotationRequest{
+			OrgId:      organizationId,
+			ObjectType: pivotObject.PivotObjectName,
+			ObjectId:   pivotObject.PivotObjectId,
+		})
+	if err != nil {
+		return models.PivotObject{}, err
+	}
+	pivotObject.PivotObjectData.Annotations = models.GroupAnnotationsByType(annotations)
+
 	objectDataSlice, err := usecase.GetIngestedObject(
 		ctx,
 		organizationId,
@@ -257,19 +270,6 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	pivotObject.PivotObjectData.Data = objectData.Data
 	pivotObject.PivotObjectData.Metadata = objectData.Metadata
 	pivotObject.IsIngested = true
-
-	annotations, err := usecase.repository.GetEntityAnnotations(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		models.EntityAnnotationRequest{
-			OrgId:      organizationId,
-			ObjectType: pivotObject.PivotObjectName,
-			ObjectId:   pivotObject.PivotObjectId,
-		})
-	if err != nil {
-		return models.PivotObject{}, err
-	}
-	pivotObject.PivotObjectData.Annotations = models.GroupAnnotationsByType(annotations)
 
 	// Enriches the pivot object with one level of related objects (fiend objects that are linked to the pivot object, without further recursion)
 	pivotObject.PivotObjectData, err = usecase.enrichClientDataObjectWithRelatedObjectsData(
