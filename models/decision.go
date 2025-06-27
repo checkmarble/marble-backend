@@ -14,22 +14,22 @@ const (
 
 // Decision models
 type Decision struct {
-	DecisionId           string
-	OrganizationId       string
+	DecisionId           uuid.UUID
+	OrganizationId       uuid.UUID
 	Case                 *Case
 	CreatedAt            time.Time
 	ClientObject         ClientObject
 	Outcome              Outcome
-	PivotId              *string
+	PivotId              *uuid.UUID
 	PivotValue           *string
 	ReviewStatus         *string
-	ScenarioId           string
+	ScenarioId           uuid.UUID
 	ScenarioName         string
 	ScenarioDescription  string
 	ScenarioVersion      int
 	Score                int
 	ScheduledExecutionId *string
-	ScenarioIterationId  string
+	ScenarioIterationId  uuid.UUID
 }
 
 const (
@@ -41,8 +41,8 @@ const (
 var ValidReviewStatuses = []string{ReviewStatusPending, ReviewStatusDecline, ReviewStatusApprove}
 
 type DecisionCore struct {
-	DecisionId     string
-	OrganizationId string
+	DecisionId     uuid.UUID
+	OrganizationId uuid.UUID
 	CreatedAt      time.Time
 	Score          int
 }
@@ -66,18 +66,18 @@ type DecisionWithRank struct {
 }
 
 type ScenarioExecution struct {
-	ScenarioId          string
-	ScenarioIterationId string
+	ScenarioId          uuid.UUID
+	ScenarioIterationId uuid.UUID
 	ScenarioName        string
 	ScenarioDescription string
 	ScenarioVersion     int
-	PivotId             *string
+	PivotId             *uuid.UUID
 	PivotValue          *string
 	RuleExecutions      []RuleExecution
 	ScreeningExecutions []ScreeningWithMatches
 	Score               int
 	Outcome             Outcome
-	OrganizationId      string
+	OrganizationId      uuid.UUID
 	TestRunId           string
 
 	ExecutionMetrics *ScenarioExecutionMetrics
@@ -117,7 +117,7 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 
 	return DecisionWithRuleExecutions{
 		Decision: Decision{
-			DecisionId:           uuid.Must(uuid.NewV7()).String(),
+			DecisionId:           uuid.Must(uuid.NewV7()),
 			CreatedAt:            time.Now(),
 			ClientObject:         clientObject,
 			Outcome:              scenarioExecution.Outcome,
@@ -186,7 +186,7 @@ type DecisionFilters struct {
 	Outcomes              []Outcome
 	PivotValue            *string
 	ReviewStatuses        []string
-	ScenarioIds           []string
+	ScenarioIds           []uuid.UUID
 	ScheduledExecutionIds []string
 	StartDate             time.Time
 	TriggerObjects        []string

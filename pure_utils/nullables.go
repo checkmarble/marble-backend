@@ -45,3 +45,14 @@ func NullFrom[T any](u T) Null[T] {
 		Set:   true,
 	}
 }
+
+func NullFromPtr[T any](u *T) Null[T] {
+	if u == nil {
+		return Null[T]{Valid: false, Set: true}
+	}
+	return Null[T]{
+		value: *u,
+		Valid: true,
+		Set:   true,
+	}
+}

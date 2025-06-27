@@ -202,7 +202,7 @@ func (repo *MarbleDbRepository) DecisionsWithRuleExecutionsByIds(
 
 			return dbmodels.AdaptDecisionWithRuleExecutions(
 				db.DbDecision,
-				rules[db.DbDecision.Id],
+				rules[db.DbDecision.Id.String()],
 				decisionCase,
 			), nil
 		},
@@ -867,7 +867,7 @@ func (repo *MarbleDbRepository) channelOfDecisions(
 			rules, err := repo.rulesOfDecisionsBatch(
 				ctx,
 				exec,
-				pure_utils.Map(dbDecisions, func(d dbmodels.DbDecision) string { return d.Id }),
+				pure_utils.Map(dbDecisions, func(d dbmodels.DbDecision) string { return d.Id.String() }),
 			)
 			if err != nil {
 				allErrors = append(allErrors, err)

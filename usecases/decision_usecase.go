@@ -123,12 +123,12 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	}
 
 	if err := usecase.offloadedReader.MutateWithOffloadedDecisionRules(ctx,
-		decision.OrganizationId, decision); err != nil {
+		decision.OrganizationId.String(), decision); err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
 	scs, err := usecase.screeningRepository.ListScreeningsForDecision(ctx,
-		usecase.executorFactory.NewExecutor(), decision.DecisionId, false)
+		usecase.executorFactory.NewExecutor(), decision.DecisionId.String(), false)
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
@@ -195,6 +195,11 @@ func (usecase *DecisionUsecase) ListDecisionsWithIndexes(
 	paginationAndSortingWithOneMore := paginationAndSorting
 	paginationAndSortingWithOneMore.Limit++
 
+	scenarioIds, err := utils.ParseSliceUUID(filters.ScenarioIds)
+	if err != nil {
+		return models.DecisionListPageWithIndexes{}, err
+	}
+
 	decisions, err := usecase.repository.DecisionsOfOrganizationWithRank(
 		ctx,
 		usecase.executorFactory.NewExecutor(),
@@ -208,7 +213,7 @@ func (usecase *DecisionUsecase) ListDecisionsWithIndexes(
 			Outcomes:              outcomes,
 			PivotValue:            filters.PivotValue,
 			ReviewStatuses:        filters.ReviewStatuses,
-			ScenarioIds:           filters.ScenarioIds,
+			ScenarioIds:           scenarioIds,
 			ScheduledExecutionIds: filters.ScheduledExecutionIds,
 			StartDate:             filters.StartDate,
 			TriggerObjects:        triggerObjectTypes,
@@ -278,6 +283,10 @@ func (usecase *DecisionUsecase) ListDecisions(
 	paginationAndSortingWithOneMore := paginationAndSorting
 	paginationAndSortingWithOneMore.Limit++
 
+	scenarioIds, err := utils.ParseSliceUUID(filters.ScenarioIds)
+	if err != nil {
+		return models.DecisionListPage{}, err
+	}
 	decisions, err := usecase.repository.DecisionsOfOrganization(
 		ctx,
 		usecase.executorFactory.NewExecutor(),
@@ -291,7 +300,7 @@ func (usecase *DecisionUsecase) ListDecisions(
 			Outcomes:              outcomes,
 			PivotValue:            filters.PivotValue,
 			ReviewStatuses:        filters.ReviewStatuses,
-			ScenarioIds:           filters.ScenarioIds,
+			ScenarioIds:           scenarioIds,
 			ScheduledExecutionIds: filters.ScheduledExecutionIds,
 			StartDate:             filters.StartDate,
 			TriggerObjects:        triggerObjectTypes,
@@ -458,7 +467,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			tx,
 			decision,
 			input.OrganizationId,
-			decision.DecisionId,
+			decision.DecisionId.String(),
 		); err != nil {
 			return models.DecisionWithRuleExecutions{},
 				fmt.Errorf("error storing decision: %w", err)
@@ -470,7 +479,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 			scs = make([]models.ScreeningWithMatches, len(decision.ScreeningExecutions))
 
 			for idx, sce := range decision.ScreeningExecutions {
-				sc, err := usecase.screeningRepository.InsertScreening(ctx, tx, decision.DecisionId, sce, true)
+				sc, err := usecase.screeningRepository.InsertScreening(ctx, tx,
+					decision.DecisionId.String(), sce, true)
 				if err != nil {
 					return models.DecisionWithRuleExecutions{},
 						errors.Wrap(err, "could not store screening execution")
@@ -496,8 +506,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 			webhookEventId := uuid.NewString()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
-				OrganizationId: decision.OrganizationId,
-				EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId),
+				OrganizationId: decision.OrganizationId.String(),
+				EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId.String()),
 			})
 			if err != nil {
 				return models.DecisionWithRuleExecutions{}, err
@@ -519,7 +529,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		if addedToCase {
 			sendWebhookEventId = append(sendWebhookEventId, caseWebhookEventId)
 
-			dec, err := usecase.repository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId)
+			dec, err := usecase.repository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId.String())
 			if err != nil {
 				return models.DecisionWithRuleExecutions{}, err
 			}
@@ -658,14 +668,14 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	) ([]models.DecisionWithRuleExecutions, error) {
 		var ids []string
 		for _, item := range items {
-			ids = append(ids, item.decision.DecisionId)
+			ids = append(ids, item.decision.DecisionId.String())
 			storageStart := time.Now()
 			if err = usecase.repository.StoreDecision(
 				ctx,
 				tx,
 				item.decision,
 				input.OrganizationId,
-				item.decision.DecisionId,
+				item.decision.DecisionId.String(),
 			); err != nil {
 				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}
@@ -675,7 +685,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 				for _, sce := range item.decision.ScreeningExecutions {
 					sc, err = usecase.screeningRepository.InsertScreening(
-						ctx, tx, item.decision.DecisionId, sce, true)
+						ctx, tx, item.decision.DecisionId.String(), sce, true)
 					if err != nil {
 						return nil, errors.Wrap(err, "could not store screening execution")
 					}
@@ -712,8 +722,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			webhookEventId := uuid.NewString()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
-				OrganizationId: item.decision.OrganizationId,
-				EventContent:   models.NewWebhookEventDecisionCreated(item.decision.DecisionId),
+				OrganizationId: item.decision.OrganizationId.String(),
+				EventContent:   models.NewWebhookEventDecisionCreated(item.decision.DecisionId.String()),
 			})
 			if err != nil {
 				return nil, err
@@ -771,7 +781,7 @@ func (usecase *DecisionUsecase) executeTestRun(
 		evaluationParameters.CachedScreenings = pure_utils.MapSliceToMap(
 			scenarioExecution.ScreeningExecutions,
 			func(scm models.ScreeningWithMatches) (string, models.ScreeningWithMatches) {
-				return scenarioExecution.ScenarioIterationId, scm
+				return scenarioExecution.ScenarioIterationId.String(), scm
 			},
 		)
 	}

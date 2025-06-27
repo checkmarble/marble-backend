@@ -111,11 +111,11 @@ func AdaptCaseWithDecisionsDto(
 ) (CaseWithDecisions, error) {
 	decisions := make([]Decision, len(c.Decisions))
 	for i := range c.Decisions {
-		iteration, err := getScenarioIteration(c.Decisions[i].ScenarioIterationId)
+		iteration, err := getScenarioIteration(c.Decisions[i].ScenarioIterationId.String())
 		if err != nil {
 			return CaseWithDecisions{}, err
 		}
-		screenings, err := getScreenings(c.Decisions[i].DecisionId)
+		screenings, err := getScreenings(c.Decisions[i].DecisionId.String())
 		if err != nil {
 			return CaseWithDecisions{}, err
 		}

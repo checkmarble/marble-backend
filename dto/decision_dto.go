@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 )
 
@@ -111,20 +112,20 @@ type ErrorDto struct {
 }
 
 type DecisionScenario struct {
-	Id                  string `json:"id"`
-	Name                string `json:"name"`
-	Description         string `json:"description"`
-	ScenarioIterationId string `json:"scenario_iteration_id"`
-	Version             int    `json:"version"`
+	Id                  uuid.UUID `json:"id"`
+	Name                string    `json:"name"`
+	Description         string    `json:"description"`
+	ScenarioIterationId uuid.UUID `json:"scenario_iteration_id"`
+	Version             int       `json:"version"`
 }
 
 type PivotValue struct {
 	PivotValue null.String `json:"pivot_value"`
-	PivotId    null.String `json:"pivot_id"`
+	PivotId    *uuid.UUID  `json:"pivot_id"`
 }
 
 type Decision struct {
-	Id                   string           `json:"id"`
+	Id                   uuid.UUID        `json:"id"`
 	AppLink              null.String      `json:"app_link"`
 	Case                 *APICase         `json:"case,omitempty"`
 	CreatedAt            time.Time        `json:"created_at"`
@@ -147,7 +148,7 @@ type DecisionWithRules struct {
 func NewDecisionDto(decision models.Decision, marbleAppUrl *url.URL) Decision {
 	decisionDto := Decision{
 		Id:                decision.DecisionId,
-		AppLink:           toDecisionUrl(marbleAppUrl, decision.DecisionId),
+		AppLink:           toDecisionUrl(marbleAppUrl, decision.DecisionId.String()),
 		CreatedAt:         decision.CreatedAt,
 		TriggerObjectType: decision.ClientObject.TableName,
 		TriggerObject:     decision.ClientObject.Data,
@@ -172,7 +173,7 @@ func NewDecisionDto(decision models.Decision, marbleAppUrl *url.URL) Decision {
 
 	if decision.PivotValue != nil {
 		decisionDto.PivotValues = append(decisionDto.PivotValues, PivotValue{
-			PivotId:    null.StringFromPtr(decision.PivotId),
+			PivotId:    decision.PivotId,
 			PivotValue: null.StringFromPtr(decision.PivotValue),
 		})
 	}

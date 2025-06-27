@@ -30,10 +30,10 @@ func AdaptScenarExecToPhantomDecision(scenarioExecution ScenarioExecution) Phant
 	return PhantomDecision{
 		PhantomDecisionId:   uuid.Must(uuid.NewV7()).String(),
 		CreatedAt:           time.Now(),
-		OrganizationId:      scenarioExecution.OrganizationId,
+		OrganizationId:      scenarioExecution.OrganizationId.String(),
 		Outcome:             scenarioExecution.Outcome,
-		ScenarioId:          scenarioExecution.ScenarioId,
-		ScenarioIterationId: scenarioExecution.ScenarioIterationId,
+		ScenarioId:          scenarioExecution.ScenarioId.String(),
+		ScenarioIterationId: scenarioExecution.ScenarioIterationId.String(),
 		Score:               scenarioExecution.Score,
 		RuleExecutions:      scenarioExecution.RuleExecutions,
 		ScreeningExecutions: scenarioExecution.ScreeningExecutions,
