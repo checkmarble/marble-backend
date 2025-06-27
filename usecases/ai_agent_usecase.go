@@ -155,7 +155,7 @@ func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io
 			}
 		}
 
-		for pivotObjectStr, data := range relatedDataPerClient {
+		for pivotObjectStr, data := range relatedDataPerClient.Data {
 			pivotObjectFolder := fmt.Sprintf("related_data/%s/", pivotObjectStr)
 
 			fileStr := pivotObjectFolder + "related_cases.json"
@@ -236,11 +236,18 @@ func (uc *AiAgentUsecase) generateContent(
 
 	marshalledMap := make(map[string]string)
 	for k, v := range data {
-		b, err := json.Marshal(v)
-		if err != nil {
-			return "", nil, errors.Wrapf(err, "could not marshal %s", k)
+		if printer, ok := v.(agent_dto.AgentPrinter); ok {
+			marshalledMap[k], err = printer.PrintForAgent()
+			if err != nil {
+				return "", nil, errors.Wrapf(err, "could not print %s", k)
+			}
+		} else {
+			b, err := json.Marshal(v)
+			if err != nil {
+				return "", nil, errors.Wrapf(err, "could not marshal %s", k)
+			}
+			marshalledMap[k] = string(b)
 		}
-		marshalledMap[k] = string(b)
 	}
 
 	t, err := template.New(promptPath).Parse(prompt)
@@ -328,7 +335,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	// and other tables (where we can afford to read all fields)
 	var fieldsToReadPerTable map[string][]string
 	allPresentTables := make(map[string]bool)
-	for _, clientData := range relatedDataPerClient {
+	for _, clientData := range relatedDataPerClient.Data {
 		for tableName := range clientData.IngestedData {
 			allPresentTables[tableName] = true
 		}
@@ -337,13 +344,13 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	tablesWithLargRowNbs := make(map[string][]string)
 	allTables := caseData.dataModel.Tables
 	for tableName := range allPresentTables {
-		if someClientHasManyRowsForTable(relatedDataPerClient, tableName) {
+		if someClientHasManyRowsForTable(relatedDataPerClient.Data, tableName) {
 			tablesWithLargRowNbs[tableName] = allTables[tableName].FieldNames()
 		}
 	}
 	tableNamesWithLargRowNbs := pure_utils.Keys(tablesWithLargRowNbs)
 
-	for customerKey, clientData := range relatedDataPerClient {
+	for customerKey, clientData := range relatedDataPerClient.Data {
 		objectTables := clientData.IngestedData
 		if objectTables != nil {
 			// generate the map of fields to read for every table, but only once.
@@ -399,7 +406,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 					return "", errors.Wrapf(err, "could not read ingested client objects for %s", tableName)
 				}
 				// then, update the ingested data for this pivot object/table combination with the new filtered data
-				relatedDataPerClient[customerKey].IngestedData[tableName] = agent_dto.IngestedDataResult{
+				relatedDataPerClient.Data[customerKey].IngestedData[tableName] = agent_dto.IngestedDataResult{
 					Data:        fieldFilteredObjects,
 					ReadOptions: objectTables[tableName].ReadOptions,
 				}
@@ -524,16 +531,17 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	return fmt.Sprintf("Review is ko: original review:%s\nsanity check output:%s", caseReview, sanityCheckOutput.Justification), nil
 }
 
-func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseData, map[string]agent_dto.CasePivotObjectData, error) {
+func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseData, agent_dto.CasePivotDataByPivot, error) {
 	exec := uc.executorFactory.NewExecutor()
 	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
 	if err != nil {
-		return caseData{}, nil, err
+		return caseData{}, agent_dto.CasePivotDataByPivot{}, err
 	}
 
 	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, c.OrganizationId, false)
 	if err != nil {
-		return caseData{}, nil, errors.Wrap(err, "failed to list available inboxes in usecase")
+		return caseData{}, agent_dto.CasePivotDataByPivot{},
+			errors.Wrap(err, "failed to list available inboxes in usecase")
 	}
 	availableInboxIds := make([]uuid.UUID, len(inboxes))
 	for i, inbox := range inboxes {
@@ -541,20 +549,23 @@ func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseD
 	}
 
 	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
-		return caseData{}, nil, err
+		return caseData{}, agent_dto.CasePivotDataByPivot{}, err
 	}
 
 	tags, err := uc.repository.ListOrganizationTags(ctx, exec, c.OrganizationId, models.TagTargetCase, false)
 	if err != nil {
-		return caseData{}, nil, errors.Wrap(err, "could not retrieve tags for case")
+		return caseData{}, agent_dto.CasePivotDataByPivot{},
+			errors.Wrap(err, "could not retrieve tags for case")
 	}
 	caseEvents, err := uc.repository.ListCaseEvents(ctx, exec, caseId)
 	if err != nil {
-		return caseData{}, nil, errors.Wrap(err, "could not retrieve case events")
+		return caseData{}, agent_dto.CasePivotDataByPivot{},
+			errors.Wrap(err, "could not retrieve case events")
 	}
 	users, err := uc.repository.ListUsers(ctx, exec, &c.OrganizationId)
 	if err != nil {
-		return caseData{}, nil, errors.Wrap(err, "could not retrieve users for case events")
+		return caseData{}, agent_dto.CasePivotDataByPivot{},
+			errors.Wrap(err, "could not retrieve users for case events")
 	}
 	caseEventsDto := make([]agent_dto.CaseEvent, len(caseEvents))
 	for i := range caseEvents {
@@ -563,25 +574,26 @@ func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseD
 
 	decisions, err := uc.repository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
 	if err != nil {
-		return caseData{}, nil, errors.Wrap(err, "could not retrieve case decisions")
+		return caseData{}, agent_dto.CasePivotDataByPivot{},
+			errors.Wrap(err, "could not retrieve case decisions")
 	}
 	decisionDtos := make([]agent_dto.Decision, len(decisions))
 	for i := range decisions {
 		iteration, err := uc.repository.GetScenarioIteration(ctx, exec,
 			decisions[i].Decision.ScenarioIterationId)
 		if err != nil {
-			return caseData{}, nil, errors.Wrapf(err,
+			return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 				"could not retrieve scenario for decision %s", decisions[i].DecisionId)
 		}
 		rules, err := uc.repository.ListRulesByIterationId(ctx, exec,
 			decisions[i].Decision.ScenarioIterationId)
 		if err != nil {
-			return caseData{}, nil, errors.Wrapf(err,
+			return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 				"could not retrieve rules for decision %s", decisions[i].DecisionId)
 		}
 		screenings, err := uc.repository.ListScreeningsForDecision(ctx, exec, decisions[i].DecisionId, true)
 		if err != nil {
-			return caseData{}, nil, errors.Wrapf(err,
+			return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 				"could not retrieve screenings for decision %s", decisions[i].DecisionId)
 		}
 		decisionDtos[i] = agent_dto.AdaptDecision(decisions[i].Decision, iteration,
@@ -592,23 +604,28 @@ func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseD
 		IncludeEnums: true, IncludeNavigationOptions: true,
 	})
 	if err != nil {
-		return caseData{}, nil, errors.Wrap(err, "could not retrieve data model")
+		return caseData{}, agent_dto.CasePivotDataByPivot{},
+			errors.Wrap(err, "could not retrieve data model")
 	}
 
 	pivotValues, err := uc.repository.DecisionPivotValuesByCase(ctx, exec, caseId)
 	if err != nil {
-		return caseData{}, nil, err
+		return caseData{}, agent_dto.CasePivotDataByPivot{}, err
 	}
 	pivotObjects, err := uc.ingestedDataReader.ReadPivotObjectsFromValues(ctx, c.OrganizationId, pivotValues)
 	if err != nil {
-		return caseData{}, nil, errors.Wrap(err, "could not read pivot objects from values")
+		return caseData{}, agent_dto.CasePivotDataByPivot{},
+			errors.Wrap(err, "could not read pivot objects from values")
 	}
 	pivotObjectDtos, err := pure_utils.MapErr(pivotObjects, agent_dto.AdaptPivotObjectDto)
 	if err != nil {
-		return caseData{}, nil, errors.Wrap(err, "could not adapt pivot objects to DTOs")
+		return caseData{}, agent_dto.CasePivotDataByPivot{},
+			errors.Wrap(err, "could not adapt pivot objects to DTOs")
 	}
 
-	relatedDataPerClient := make(map[string]agent_dto.CasePivotObjectData)
+	relatedDataPerClient := agent_dto.CasePivotDataByPivot{
+		Data: make(map[string]agent_dto.CasePivotObjectData),
+	}
 
 	for _, pivotObject := range pivotObjects {
 		pivotObjectData := agent_dto.CasePivotObjectData{
@@ -619,7 +636,7 @@ func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseD
 		previousCases, err := uc.repository.GetCasesWithPivotValue(ctx, exec,
 			c.OrganizationId, pivotObject.PivotValue)
 		if err != nil {
-			return caseData{}, nil, err
+			return caseData{}, agent_dto.CasePivotDataByPivot{}, err
 		}
 		relatedCases := make([]agent_dto.CaseWithDecisions, 0, 10)
 		for _, previousCase := range previousCases {
@@ -630,13 +647,13 @@ func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseD
 
 			decisions, err := uc.repository.DecisionsByCaseId(ctx, exec, c.OrganizationId, previousCase.Id)
 			if err != nil {
-				return caseData{}, nil, errors.Wrapf(err,
+				return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 					"could not retrieve decisions for previous case %s", previousCase.Id)
 			}
 			previousCase.Decisions = decisions
 			events, err := uc.repository.ListCaseEvents(ctx, exec, previousCase.Id)
 			if err != nil {
-				return caseData{}, nil, err
+				return caseData{}, agent_dto.CasePivotDataByPivot{}, err
 			}
 			previousCase.Events = events
 
@@ -655,7 +672,7 @@ func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseD
 				},
 			)
 			if err != nil {
-				return caseData{}, nil, errors.Wrapf(err,
+				return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 					"could not adapt case with decisions for previous case %s", previousCase.Id)
 			}
 			relatedCases = append(relatedCases, rc)
@@ -689,7 +706,7 @@ func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseD
 						Limit:              1000,
 					})
 				if err != nil {
-					return caseData{}, nil, errors.Wrapf(err,
+					return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 						"could not read ingested client objects for %s with value %s",
 						pivotObject.PivotObjectName, sourceFieldValueStr)
 				}
@@ -700,7 +717,7 @@ func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseD
 			}
 		}
 
-		relatedDataPerClient[pivotObject.PivotObjectName+"_"+pivotObject.PivotValue] = pivotObjectData
+		relatedDataPerClient.Data[pivotObject.PivotObjectName+"_"+pivotObject.PivotValue] = pivotObjectData
 	}
 
 	return caseData{

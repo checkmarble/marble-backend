@@ -59,9 +59,9 @@ type Screening struct {
 }
 
 type ScreeningMatch struct {
-	IsMatch bool   `json:"is_match"`
-	Status  string `json:"status"`
-	Payload []byte `json:"payload"`
+	IsMatch bool            `json:"is_match"`
+	Status  string          `json:"status"`
+	Payload json.RawMessage `json:"payload"`
 }
 
 type ScreeningWithMatches struct {
