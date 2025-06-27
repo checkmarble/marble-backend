@@ -31,3 +31,7 @@ func ParseSliceUUID(slice []string) ([]uuid.UUID, error) {
 	}
 	return parsed, nil
 }
+
+func TextToUUID(text string) uuid.UUID {
+	return uuid.NewSHA1(uuid.NameSpaceURL, []byte(text))
+}

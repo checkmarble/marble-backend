@@ -124,7 +124,7 @@ func (uc AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.
 	decisionDtos := make([]agent_dto.Decision, len(decisions))
 	for i := range decisions {
 		rules, err := uc.repository.ListRulesByIterationId(ctx, exec,
-			decisions[i].Decision.ScenarioIterationId)
+			decisions[i].Decision.ScenarioIterationId.String())
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not retrieve rules for decision %s", decisions[i].DecisionId)
 		}

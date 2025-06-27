@@ -14,9 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
-)
+var NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
 
 type ingestedDataReaderClientDbRepository interface {
 	ListIngestedObjects(
@@ -165,7 +163,7 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 			lastField := dataModel.AllFieldsAsMap()[lastLink.ParentFieldId]
 			fieldName = lastField.Name
 		}
-		mapOfPivotDetail[pivot.Id] = pivotObjectDetail{
+		mapOfPivotDetail[pivot.Id.String()] = pivotObjectDetail{
 			pivotTable: pivot.PivotTable,
 			pivotField: fieldName,
 			pivotType:  t,

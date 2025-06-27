@@ -7,6 +7,7 @@ import (
 	gdto "github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 const (
@@ -41,7 +42,7 @@ func (p ListDecisionsParams) ToFilters() gdto.DecisionFilters {
 	}
 
 	if !utils.NilOrZero(p.ScenarioId) {
-		filters.ScenarioIds = []string{*p.ScenarioId}
+		filters.ScenarioIds = []uuid.UUID{uuid.MustParse(*p.ScenarioId)}
 	}
 	if !utils.NilOrZero(p.BatchExecutionId) {
 		filters.ScheduledExecutionIds = []string{*p.BatchExecutionId}
