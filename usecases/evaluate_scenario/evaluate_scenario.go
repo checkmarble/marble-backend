@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
@@ -247,10 +248,26 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		}
 	}
 
+	scenarioID, err := uuid.Parse(params.Scenario.Id)
+	if err != nil {
+		return false, models.ScenarioExecution{}, errors.Wrap(err,
+			"error parsing scenario id in EvalScenario")
+	}
+	scenarioIterationID, err := uuid.Parse(iteration.Id)
+	if err != nil {
+		return false, models.ScenarioExecution{}, errors.Wrap(err,
+			"error parsing scenario iteration id in EvalScenario")
+	}
+	organizationID, err := uuid.Parse(params.Scenario.OrganizationId)
+	if err != nil {
+		return false, models.ScenarioExecution{}, errors.Wrap(err,
+			"error parsing organization id in EvalScenario")
+	}
+
 	// Build ScenarioExecution as result
 	se := models.ScenarioExecution{
-		ScenarioId:          params.Scenario.Id,
-		ScenarioIterationId: iteration.Id,
+		ScenarioId:          scenarioID,
+		ScenarioIterationId: scenarioIterationID,
 		ScenarioName:        params.Scenario.Name,
 		ScenarioDescription: params.Scenario.Description,
 		ScenarioVersion:     *iteration.Version,
@@ -258,7 +275,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		ScreeningExecutions: screeningExecutions,
 		Score:               score,
 		Outcome:             outcome,
-		OrganizationId:      params.Scenario.OrganizationId,
+		OrganizationId:      organizationID,
 	}
 	if params.Pivot != nil {
 		se.PivotId = &params.Pivot.Id

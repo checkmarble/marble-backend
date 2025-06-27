@@ -172,7 +172,7 @@ func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.
 			return models.ScreeningWithMatches{}, err
 		}
 	} else {
-		if _, err = uc.enforceCanReadOrUpdateCase(ctx, decisions[0].DecisionId); err != nil {
+		if _, err = uc.enforceCanReadOrUpdateCase(ctx, decisions[0].DecisionId.String()); err != nil {
 			return models.ScreeningWithMatches{}, err
 		}
 	}
@@ -197,18 +197,19 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 			return nil, err
 		}
 	} else {
-		if _, err = uc.enforceCanReadOrUpdateCase(ctx, decisions[0].DecisionId); err != nil {
+		if _, err = uc.enforceCanReadOrUpdateCase(ctx, decisions[0].DecisionId.String()); err != nil {
 			return nil, err
 		}
 	}
 
-	scs, err := uc.repository.ListScreeningsForDecision(ctx, exec, decisions[0].DecisionId, initialOnly)
+	scs, err := uc.repository.ListScreeningsForDecision(ctx, exec,
+		decisions[0].DecisionId.String(), initialOnly)
 	if err != nil {
 		return nil, err
 	}
 
 	sccs, err := uc.screeningConfigRepository.ListScreeningConfigs(ctx,
-		uc.executorFactory.NewExecutor(), decisions[0].ScenarioIterationId)
+		uc.executorFactory.NewExecutor(), decisions[0].ScenarioIterationId.String())
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +292,7 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 	}
 
 	scc, err := uc.screeningConfigRepository.GetScreeningConfig(ctx,
-		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId, sc.ScreeningConfigId)
+		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId.String(), sc.ScreeningConfigId)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -303,7 +304,7 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 		Queries:      models.AdaptRefineRequestToMatchable(refine),
 	}
 
-	screening, err := uc.Execute(ctx, decision.OrganizationId, query)
+	screening, err := uc.Execute(ctx, decision.OrganizationId.String(), query)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -330,13 +331,13 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 		}
 
 		if screening, err = uc.repository.InsertScreening(ctx, tx,
-			decision.DecisionId, screening, true); err != nil {
+			decision.DecisionId.String(), screening, true); err != nil {
 			return models.ScreeningWithMatches{}, err
 		}
 
 		if uc.openSanctionsProvider.IsSelfHosted(ctx) {
 			if err := uc.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx,
-				tx, decision.OrganizationId, screening.Id); err != nil {
+				tx, decision.OrganizationId.String(), screening.Id); err != nil {
 				utils.LogAndReportSentryError(ctx, errors.Wrap(err,
 					"could not enqueue screening for refinement"))
 			}
@@ -363,7 +364,7 @@ func (uc ScreeningUsecase) Search(ctx context.Context, refine models.ScreeningRe
 	}
 
 	scc, err := uc.screeningConfigRepository.GetScreeningConfig(ctx,
-		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId, sc.ScreeningConfigId)
+		uc.executorFactory.NewExecutor(), decision.ScenarioIterationId.String(), sc.ScreeningConfigId)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -375,7 +376,7 @@ func (uc ScreeningUsecase) Search(ctx context.Context, refine models.ScreeningRe
 		Queries:      models.AdaptRefineRequestToMatchable(refine),
 	}
 
-	screening, err := uc.Execute(ctx, decision.OrganizationId, query)
+	screening, err := uc.Execute(ctx, decision.OrganizationId.String(), query)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -550,7 +551,7 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 						CaseId:       data.decision.Case.Id,
 						UserId:       reviewerId,
 						EventType:    models.ScreeningReviewed,
-						ResourceId:   &data.decision.DecisionId,
+						ResourceId:   utils.Ptr(data.decision.DecisionId.String()),
 						ResourceType: utils.Ptr(models.DecisionResourceType),
 						NewValue:     utils.Ptr(models.ScreeningMatchStatusConfirmedHit.String()),
 					})
@@ -579,7 +580,7 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 						CaseId:       data.decision.Case.Id,
 						UserId:       reviewerId,
 						EventType:    models.ScreeningReviewed,
-						ResourceId:   &data.decision.DecisionId,
+						ResourceId:   utils.Ptr(data.decision.DecisionId.String()),
 						ResourceType: utils.Ptr(models.DecisionResourceType),
 						NewValue:     utils.Ptr(models.ScreeningMatchStatusNoHit.String()),
 					})
@@ -592,7 +593,8 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 			if update.Status == models.ScreeningMatchStatusNoHit && update.Whitelist &&
 				data.match.UniqueCounterpartyIdentifier != nil {
 				if err := uc.CreateWhitelist(ctx, tx,
-					data.decision.OrganizationId, *data.match.UniqueCounterpartyIdentifier,
+					data.decision.OrganizationId.String(),
+					*data.match.UniqueCounterpartyIdentifier,
 					data.match.EntityId, update.ReviewerId); err != nil {
 					return errors.Wrap(err, "could not whitelist match")
 				}
@@ -886,7 +888,8 @@ func (uc ScreeningUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decis
 				"this screening is not linked to a case")
 		}
 
-		inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, decision[0].OrganizationId, false)
+		inboxes, err := uc.inboxReader.ListInboxes(ctx, exec,
+			decision[0].OrganizationId.String(), false)
 		if err != nil {
 			return models.Decision{}, errors.Wrap(err,
 				"could not retrieve organization inboxes")

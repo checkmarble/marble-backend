@@ -143,7 +143,7 @@ func automaticCreateCaseAttributes(
 	name string,
 ) models.CreateCaseAttributes {
 	return models.CreateCaseAttributes{
-		DecisionIds:    []string{decision.DecisionId},
+		DecisionIds:    []string{decision.DecisionId.String()},
 		InboxId:        *scenario.DecisionToCaseInboxId,
 		Name:           name,
 		OrganizationId: scenario.OrganizationId,
@@ -195,7 +195,7 @@ func (d DecisionsWorkflows) addToOpenCase(
 		}
 		bestMatchCase = findBestMatchCase(cases)
 	}
-	err = d.caseEditor.UpdateDecisionsWithEvents(ctx, tx, bestMatchCase.Id, "", []string{decision.DecisionId})
+	err = d.caseEditor.UpdateDecisionsWithEvents(ctx, tx, bestMatchCase.Id, "", []string{decision.DecisionId.String()})
 	if err != nil {
 		return models.CaseMetadata{}, false, errors.Wrap(err, "error updating case")
 	}

@@ -40,11 +40,14 @@ func HandleListDecisions(uc usecases.Usecases) gin.HandlerFunc {
 
 		if !p.StartDate.IsZero() && !p.EndDate.IsZero() {
 			if time.Time(p.StartDate).After(time.Time(p.EndDate)) {
-				pubapi.NewErrorResponse().WithError(errors.WithDetail(pubapi.ErrInvalidPayload, "end date should be after start date")).Serve(c)
+				pubapi.NewErrorResponse().WithError(errors.WithDetail(
+					pubapi.ErrInvalidPayload, "end date should be after start date")).Serve(c)
 				return
 			}
 			if time.Time(p.StartDate).Before(time.Time(p.EndDate).Add(-params.MAX_DECISIONS_DATE_RANGE)) {
-				pubapi.NewErrorResponse().WithError(errors.WithDetailf(pubapi.ErrInvalidPayload, "start and end date must be at most %.0f days apart", params.MAX_DECISIONS_DATE_RANGE.Hours()/24)).Serve(c)
+				pubapi.NewErrorResponse().WithError(errors.WithDetailf(
+					pubapi.ErrInvalidPayload, "start and end date must be at most %.0f days apart",
+					params.MAX_DECISIONS_DATE_RANGE.Hours()/24)).Serve(c)
 				return
 			}
 		}
@@ -64,7 +67,7 @@ func HandleListDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		nextPageId := ""
 
 		if len(decisions.Decisions) > 0 {
-			nextPageId = decisions.Decisions[len(decisions.Decisions)-1].DecisionId
+			nextPageId = decisions.Decisions[len(decisions.Decisions)-1].DecisionId.String()
 		}
 
 		pubapi.
@@ -229,7 +232,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		var screeningErr error
 
 		dtos := pure_utils.Map(decisions, func(d models.DecisionWithRuleExecutions) dto.Decision {
-			screenings, err := screeningUsecase.ListScreenings(ctx, d.DecisionId, false)
+			screenings, err := screeningUsecase.ListScreenings(ctx, d.DecisionId.String(), false)
 			if err != nil {
 				screeningErr = errors.Join(screeningErr, err)
 			}

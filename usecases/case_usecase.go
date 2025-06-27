@@ -73,7 +73,8 @@ type CaseUseCaseRepository interface {
 type CaseUsecaseScreeningRepository interface {
 	GetActiveScreeningForDecision(ctx context.Context, exec repositories.Executor, screeningId string) (
 		models.ScreeningWithMatches, error)
-	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string, initialOnly bool) ([]models.ScreeningWithMatches, error)
+	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
+		initialOnly bool) ([]models.ScreeningWithMatches, error)
 }
 
 type webhookEventsUsecase interface {
@@ -1424,7 +1425,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: c.OrganizationId,
-				EventContent:   models.NewWebhookEventDecisionReviewed(c, decision.DecisionId),
+				EventContent:   models.NewWebhookEventDecisionReviewed(c, decision.DecisionId.String()),
 			})
 			if err != nil {
 				return models.Case{}, err
