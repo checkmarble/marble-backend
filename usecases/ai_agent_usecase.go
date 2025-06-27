@@ -26,7 +26,7 @@ import (
 	"google.golang.org/genai"
 )
 
-const HIGH_NB_ROWS_THRESHOLD = 0
+const HIGH_NB_ROWS_THRESHOLD = 100
 
 type AiAgentUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
@@ -93,7 +93,9 @@ func NewAiAgentUsecase(
 		executorFactory:    executorFactory,
 		ingestedDataReader: ingestedDataReader,
 		dataModelUsecase:   dataModelUsecase,
-		gcpRegion:          utils.GetEnv("GCP_REGION", "global"),
+
+		// Some models are only available in the "global" region. Choose a proper region in production.
+		gcpRegion: utils.GetEnv("VERTEX_AI_GCP_REGION", "global"),
 	}
 }
 
