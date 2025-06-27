@@ -12,4 +12,6 @@ jobs:
       contents: read
       pull-requests: read
       checks: write
+    secrets:
+      README_API_KEY: ${{ secrets.README_API_KEY }}
     uses: ./.github/workflows/backend_test_workflow.yaml
