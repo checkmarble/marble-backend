@@ -1,0 +1,174 @@
+paths:
+  /ingest/{objectType}:
+    post:
+      operationId: ingestObject
+      tags:
+        - Ingestion
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Ingest a new object from the data model
+      description: |
+        Not that unknown fields (not part of the data model) are now forbidden and will be rejected.
+      parameters:
+        - name: objectType
+          in: path
+          description: Name of the object type used for ingestion
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required:
+                - object_id
+                - updated_at
+              properties:
+                object_id:
+                  description: Client side ID of the object to ingest
+                  type: string
+                updated_at:
+                  description: Date the object was last updated
+                  type: string
+                  format: date-time
+      responses:
+        "200":
+          description: No new object was ingested
+        "201":
+          description: The object was successfully ingested
+        "400":
+          $ref: "#/components/responses/400"
+
+    patch:
+      operationId: ingestPatchObject
+      tags:
+        - Ingestion
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Ingest (upsert) a new version of an object from the data model
+      description: |
+        Not that unknown fields (not part of the data model) are now forbidden and will be rejected.
+      parameters:
+        - name: objectType
+          in: path
+          description: Name of the object type used for ingestion
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required:
+                - object_id
+                - updated_at
+              properties:
+                object_id:
+                  description: Client side ID of the object to ingest
+                  type: string
+                updated_at:
+                  description: Date the object was last updated
+                  type: string
+                  format: date-time
+      responses:
+        "200":
+          description: No new object was ingested
+        "201":
+          description: The object was successfully ingested
+        "400":
+          $ref: "#/components/responses/400"
+
+  /ingest/{objectType}/batch:
+    post:
+      operationId: ingestObjectBatch
+      tags:
+        - Ingestion
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Ingest an array of objects from the data model
+      description: |
+        Not that unknown fields (not part of the data model) are now forbidden and will be rejected.
+      parameters:
+        - name: objectType
+          in: path
+          description: Name of the object type used for ingestion
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+                required:
+                  - object_id
+                  - updated_at
+                properties:
+                  object_id:
+                    description: Client side ID of the object to ingest
+                    type: string
+                  updated_at:
+                    description: Date the object was last updated
+                    type: string
+                    format: date-time
+      responses:
+        "200":
+          description: No new object was ingested
+        "201":
+          description: The object was successfully ingested
+        "400":
+          $ref: "#/components/responses/400"
+
+    patch:
+      operationId: ingestPatchObjectBatch
+      tags:
+        - Ingestion
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Ingest (upsert) an array of new versions of objects from the data model
+      description: |
+        Not that unknown fields (not part of the data model) are now forbidden and will be rejected.
+      parameters:
+        - name: objectType
+          in: path
+          description: Name of the object type used for ingestion
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+                required:
+                  - object_id
+                  - updated_at
+                properties:
+                  object_id:
+                    description: Client side ID of the object to ingest
+                    type: string
+                  updated_at:
+                    description: Date the object was last updated
+                    type: string
+                    format: date-time
+      responses:
+        "200":
+          description: No new object was ingested
+        "201":
+          description: The object was successfully ingested
+        "400":
+          $ref: "#/components/responses/400"
