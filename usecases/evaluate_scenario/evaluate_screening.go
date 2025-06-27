@@ -102,7 +102,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 					return
 				}
 				if !passed {
-					addScreeningResult(idx, outcomeNoHit(scc))
+					addScreeningResult(idx, outcomeNoHit(scc, nil))
 					return
 				}
 			}
@@ -155,7 +155,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 			}
 
 			if len(queries) == 0 {
-				addScreeningResult(idx, outcomeNoHit(scc))
+				addScreeningResult(idx, outcomeNoHit(scc, queriesBeforeProcessing))
 				return
 			}
 
@@ -294,10 +294,11 @@ func (e ScenarioEvaluator) preprocess(
 	return out, nil
 }
 
-func outcomeNoHit(scc models.ScreeningConfig) models.ScreeningWithMatches {
+func outcomeNoHit(scc models.ScreeningConfig, initialQuery []models.OpenSanctionsCheckQuery) models.ScreeningWithMatches {
 	return models.ScreeningWithMatches{
 		Screening: models.Screening{
 			ScreeningConfigId: scc.Id,
+			InitialQuery:      initialQuery,
 			Status:            models.ScreeningStatusNoHit,
 			ErrorCodes:        nil,
 		},
