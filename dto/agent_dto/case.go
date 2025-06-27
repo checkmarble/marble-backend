@@ -1,6 +1,10 @@
 package agent_dto
 
 import (
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -125,11 +129,68 @@ type CaseWithDecisions struct {
 }
 
 type IngestedDataResult struct {
-	Data        []models.ClientObjectDetail `json:"data"`
-	ReadOptions models.ExplorationOptions   `json:"-"`
+	Data        []models.ClientObjectDetail
+	ReadOptions models.ExplorationOptions
+}
+
+func (i IngestedDataResult) PrintForAgent() (string, error) {
+	stringBuilder := strings.Builder{}
+	csvWriter := csv.NewWriter(&stringBuilder)
+
+	err := WriteClientDataToCsv(i.Data, csvWriter)
+	if err != nil {
+		return "", err
+	}
+	csvWriter.Flush()
+	return stringBuilder.String(), nil
 }
 
 type CasePivotObjectData struct {
 	IngestedData map[string]IngestedDataResult `json:"ingested_data"`
 	RelatedCases []CaseWithDecisions           `json:"related_cases"`
+}
+
+func (c CasePivotObjectData) PrintForAgent() (string, error) {
+	stringBuilder := strings.Builder{}
+
+	for key, value := range c.IngestedData {
+		ingestedDataFormatted, err := value.PrintForAgent()
+		if err != nil {
+			return "", err
+		}
+		stringBuilder.WriteString(fmt.Sprintf("table %s as csv: %s\n", key, ingestedDataFormatted))
+	}
+
+	for _, relatedCase := range c.RelatedCases {
+		relatedCaseFormatted, err := json.Marshal(relatedCase)
+		if err != nil {
+			return "", err
+		}
+		stringBuilder.WriteString("related case:")
+		_, err = stringBuilder.Write(relatedCaseFormatted)
+		if err != nil {
+			return "", err
+		}
+		stringBuilder.WriteString("\n")
+	}
+
+	return stringBuilder.String(), nil
+}
+
+type CasePivotDataByPivot struct {
+	Data map[string]CasePivotObjectData `json:"data"`
+}
+
+func (c CasePivotDataByPivot) PrintForAgent() (string, error) {
+	stringBuilder := strings.Builder{}
+
+	for key, value := range c.Data {
+		ingestedDataFormatted, err := value.PrintForAgent()
+		if err != nil {
+			return "", err
+		}
+		stringBuilder.WriteString(fmt.Sprintf("pivot object %s: %s\n", key, ingestedDataFormatted))
+	}
+
+	return stringBuilder.String(), nil
 }
