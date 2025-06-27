@@ -26,7 +26,7 @@ import (
 	"google.golang.org/genai"
 )
 
-const HIGH_NB_ROWS_THRESHOLD = 100
+const HIGH_NB_ROWS_THRESHOLD = 0
 
 type AiAgentUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
@@ -289,28 +289,19 @@ func (uc *AiAgentUsecase) generateContent(
 	return gatherText, previous, nil
 }
 
-func someClientDataTables(relatedDataPerClient map[string]agent_dto.CasePivotObjectData) (string, map[string]agent_dto.IngestedDataResult) {
-	for k, v := range relatedDataPerClient {
-		if len(v.IngestedData) > 0 {
-			return k, v.IngestedData
-		}
-	}
-	return "", nil
-}
-
 func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (string, error) {
 	client, err := uc.GetClient(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "could not create GenAI client")
 	}
 
-	caseDtos, relatedDataPerClient, err := uc.getCaseData(ctx, caseId)
+	caseData, relatedDataPerClient, err := uc.getCaseData(ctx, caseId)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get case data")
 	}
 
 	var clientActivityDescription string
-	clientActivityDescription, err = readPrompt(fmt.Sprintf("prompts/org_desc/%s.md", caseDtos.organizationId))
+	clientActivityDescription, err = readPrompt(fmt.Sprintf("prompts/org_desc/%s.md", caseData.organizationId))
 	if err != nil {
 		logger := utils.LoggerFromContext(ctx)
 		logger.ErrorContext(ctx, "could not read organization description", "error", err)
@@ -322,7 +313,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		client,
 		"prompts/case_review/data_model_summary.md",
 		map[string]any{
-			"data_model": caseDtos.dataModel,
+			"data_model": caseData.dataModelDto,
 		},
 		&genai.GenerateContentConfig{},
 	)
@@ -335,77 +326,86 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	// Data model object field read options
 	// Here, we implicitly distinguish between "transaction" tables (based on the presence of "many" rows for a given customer)
 	// and other tables (where we can afford to read all fields)
-	customerKey, objectTables := someClientDataTables(relatedDataPerClient)
-	if objectTables != nil {
-		transactionsTableNames := make([]string, 0, len(objectTables))
-		tableFields := make(map[string][]string)
-		for tableName, objects := range objectTables {
-			if len(objects.Data) > HIGH_NB_ROWS_THRESHOLD {
-				transactionsTableNames = append(transactionsTableNames, tableName)
-				tableFields[tableName] = make([]string, 0, len(objects.Data[0].Data))
-				for fieldName := range objects.Data[0].Data {
-					tableFields[tableName] = append(tableFields[tableName], fieldName)
+	var fieldsToReadPerTable map[string][]string
+	allPresentTables := make(map[string]bool)
+	for _, clientData := range relatedDataPerClient {
+		for tableName := range clientData.IngestedData {
+			allPresentTables[tableName] = true
+		}
+	}
+
+	tablesWithLargRowNbs := make(map[string][]string)
+	allTables := caseData.dataModel.Tables
+	for tableName := range allPresentTables {
+		if someClientHasManyRowsForTable(relatedDataPerClient, tableName) {
+			tablesWithLargRowNbs[tableName] = allTables[tableName].FieldNames()
+		}
+	}
+	tableNamesWithLargRowNbs := pure_utils.Keys(tablesWithLargRowNbs)
+
+	for customerKey, clientData := range relatedDataPerClient {
+		objectTables := clientData.IngestedData
+		if objectTables != nil {
+			// generate the map of fields to read for every table, but only once.
+			if fieldsToReadPerTable == nil {
+				properties := make(map[string]*genai.Schema, len(tablesWithLargRowNbs))
+				for tableName, fields := range tablesWithLargRowNbs {
+					properties[tableName] = &genai.Schema{
+						Type:  "array",
+						Items: &genai.Schema{Type: "string", Enum: fields},
+					}
+				}
+				dataModelObjectFieldReadOptions, _, err := uc.generateContent(
+					ctx,
+					client,
+					"prompts/case_review/data_model_object_field_read_options.md",
+					map[string]any{
+						"data_model_table_names": tableNamesWithLargRowNbs,
+					},
+					&genai.GenerateContentConfig{
+						ResponseMIMEType: "application/json",
+						ResponseSchema: &genai.Schema{
+							Type:        "object",
+							Description: "List of fields, on a table per table basis, that should be read from ingested data for high-volume tables and considered for transaction analysis",
+							Properties:  properties,
+						},
+					},
+					previousContents...,
+				)
+				if err != nil {
+					return "", errors.Wrap(err, "could not generate data model object field read options")
+				}
+				fmt.Println("-------------------------------- Data model object field read options --------------------------------")
+				fmt.Println("Data Model Object Field Read Options:", dataModelObjectFieldReadOptions)
+				fieldsToReadPerTable = make(map[string][]string)
+				if err := json.Unmarshal([]byte(dataModelObjectFieldReadOptions), &fieldsToReadPerTable); err != nil {
+					return "", errors.Wrap(err, "could not unmarshal data model object field read options")
 				}
 			}
-		}
 
-		properties := make(map[string]*genai.Schema, len(tableFields))
-		for tableName, fields := range tableFields {
-			properties[tableName] = &genai.Schema{
-				Type:  "array",
-				Items: &genai.Schema{Type: "string", Enum: fields},
+			for tableName, fieldsToRead := range fieldsToReadPerTable {
+				// Reuse original read options, just adapt the number of rows to read and the fields to consider
+				fieldFilteredObjects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(
+					ctx,
+					caseData.organizationId,
+					tableName,
+					models.ClientDataListRequestBody{
+						ExplorationOptions: objectTables[tableName].ReadOptions,
+						Limit:              500,
+					},
+					fieldsToRead...,
+				)
+				if err != nil {
+					return "", errors.Wrapf(err, "could not read ingested client objects for %s", tableName)
+				}
+				// then, update the ingested data for this pivot object/table combination with the new filtered data
+				relatedDataPerClient[customerKey].IngestedData[tableName] = agent_dto.IngestedDataResult{
+					Data:        fieldFilteredObjects,
+					ReadOptions: objectTables[tableName].ReadOptions,
+				}
 			}
-		}
-		dataModelObjectFieldReadOptions, _, err := uc.generateContent(
-			ctx,
-			client,
-			"prompts/case_review/data_model_object_field_read_options.md",
-			map[string]any{
-				"data_model_table_names": transactionsTableNames,
-			},
-			&genai.GenerateContentConfig{
-				ResponseMIMEType: "application/json",
-				ResponseSchema: &genai.Schema{
-					Type:        "object",
-					Description: "List of fields, on a table per table basis, that should be read from ingested data for high-volume tables and considered for transaction analysis",
-					Properties:  properties,
-				},
-			},
-			previousContents...,
-		)
-		if err != nil {
-			return "", errors.Wrap(err, "could not generate data model object field read options")
-		}
-		fmt.Println("-------------------------------- Data model object field read options --------------------------------")
-		fmt.Println("Data Model Object Field Read Options:", dataModelObjectFieldReadOptions)
-		fieldsToReadPerTable := make(map[string][]string)
-		if err := json.Unmarshal([]byte(dataModelObjectFieldReadOptions), &fieldsToReadPerTable); err != nil {
-			return "", errors.Wrap(err, "could not unmarshal data model object field read options")
-		}
-		fmt.Println("-------------------------------- Fields to read per table --------------------------------")
-		fmt.Println("Unmarshalled fields to read per table:", fieldsToReadPerTable)
-		for tableName, fieldsToRead := range fieldsToReadPerTable {
-			// Reuse original read options, just adapt the number of rows to read and the fields to consider
-			fieldFilteredObjects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(
-				ctx,
-				caseDtos.organizationId,
-				tableName,
-				models.ClientDataListRequestBody{
-					ExplorationOptions: objectTables[tableName].ReadOptions,
-					Limit:              500,
-				},
-				fieldsToRead...,
-			)
-			if err != nil {
-				return "", errors.Wrapf(err, "could not read ingested client objects for %s", tableName)
-			}
-			// then, update the ingested data for this pivot object/table combination with the new filtered data
-			relatedDataPerClient[customerKey].IngestedData[tableName] = agent_dto.IngestedDataResult{
-				Data:        fieldFilteredObjects,
-				ReadOptions: objectTables[tableName].ReadOptions,
-			}
-		}
 
+		}
 	}
 
 	// Rules definitions review
@@ -413,7 +413,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		client,
 		"prompts/case_review/rule_definitions.md",
 		map[string]any{
-			"decisions":            caseDtos.decisions,
+			"decisions":            caseData.decisions,
 			"activity_description": clientActivityDescription,
 		},
 		&genai.GenerateContentConfig{
@@ -433,7 +433,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		client,
 		"prompts/case_review/rule_threshold_values.md",
 		map[string]any{
-			"decisions": caseDtos.decisions,
+			"decisions": caseData.decisions,
 		},
 		&genai.GenerateContentConfig{},
 	)
@@ -449,11 +449,11 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		client,
 		"prompts/case_review/case_review.md",
 		map[string]any{
-			"case_detail":        caseDtos.case_,
-			"case_events":        caseDtos.events,
-			"decisions":          caseDtos.decisions,
+			"case_detail":        caseData.case_,
+			"case_events":        caseData.events,
+			"decisions":          caseData.decisions,
 			"data_model_summary": dataModelSummary,
-			"pivot_objects":      caseDtos.pivotData,
+			"pivot_objects":      caseData.pivotData,
 			"previous_cases":     relatedDataPerClient,
 			"rules_summary":      rulesDefinitionsReview,
 			"rule_thresholds":    ruleThresholds,
@@ -475,17 +475,34 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		client,
 		"prompts/case_review/sanity_check.md",
 		map[string]any{
-			"case_detail":        caseDtos.case_,
-			"case_events":        caseDtos.events,
-			"decisions":          caseDtos.decisions,
+			"case_detail":        caseData.case_,
+			"case_events":        caseData.events,
+			"decisions":          caseData.decisions,
 			"data_model_summary": dataModelSummary,
-			"pivot_objects":      caseDtos.pivotData,
+			"pivot_objects":      caseData.pivotData,
 			"previous_cases":     relatedDataPerClient,
 			"rules_summary":      rulesDefinitionsReview,
 			"rule_thresholds":    ruleThresholds,
 			"case_review":        caseReview,
 		},
-		&genai.GenerateContentConfig{},
+		&genai.GenerateContentConfig{
+			ResponseMIMEType: "application/json",
+			ResponseSchema: &genai.Schema{
+				Type:        "object",
+				Description: "Output of the sanity check and detailed justification",
+				Properties: map[string]*genai.Schema{
+					"ok": {
+						Type:        "boolean",
+						Description: "Whether the case review is ok or not",
+					},
+					"justification": {
+						Type:        "string",
+						Description: "Detailed justification for the sanity check, only in the case of a negative answer",
+					},
+				},
+				Required: []string{"ok"},
+			},
+		},
 	)
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate sanity check")
@@ -493,10 +510,18 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	fmt.Println("-------------------------------- Sanity Check --------------------------------")
 	fmt.Println("Sanity Check:", sanityCheck)
 
-	if len(sanityCheck) > 1 && sanityCheck[:2] == "ok" {
+	var sanityCheckOutput struct {
+		Ok            bool   `json:"ok"`
+		Justification string `json:"justification"`
+	}
+	if err := json.Unmarshal([]byte(sanityCheck), &sanityCheckOutput); err != nil {
+		return "", errors.Wrap(err, "could not unmarshal sanity check")
+	}
+
+	if sanityCheckOutput.Ok {
 		return caseReview, nil
 	}
-	return fmt.Sprintf("Review is ko: original review:%s\nsanity check output:%s", caseReview, sanityCheck), nil
+	return fmt.Sprintf("Review is ko: original review:%s\nsanity check output:%s", caseReview, sanityCheckOutput.Justification), nil
 }
 
 func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseData, map[string]agent_dto.CasePivotObjectData, error) {
@@ -682,7 +707,8 @@ func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseD
 		case_:          agent_dto.AdaptCaseDto(c, tags, inboxes, users),
 		events:         caseEventsDto,
 		decisions:      decisionDtos,
-		dataModel:      agent_dto.AdaptDataModelDto(dataModel),
+		dataModelDto:   agent_dto.AdaptDataModelDto(dataModel),
+		dataModel:      dataModel,
 		pivotData:      pivotObjectDtos,
 		organizationId: c.OrganizationId,
 	}, relatedDataPerClient, nil
@@ -692,7 +718,17 @@ type caseData struct {
 	case_          agent_dto.Case
 	events         []agent_dto.CaseEvent
 	decisions      []agent_dto.Decision
-	dataModel      agent_dto.DataModel
+	dataModelDto   agent_dto.DataModel
+	dataModel      models.DataModel
 	pivotData      []agent_dto.PivotObject
 	organizationId string
+}
+
+func someClientHasManyRowsForTable(relatedDataPerClient map[string]agent_dto.CasePivotObjectData, tableName string) bool {
+	for _, clientData := range relatedDataPerClient {
+		if clientData.IngestedData[tableName].Data != nil {
+			return len(clientData.IngestedData[tableName].Data) > HIGH_NB_ROWS_THRESHOLD
+		}
+	}
+	return false
 }
