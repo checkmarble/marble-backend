@@ -163,7 +163,7 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 			lastField := dataModel.AllFieldsAsMap()[lastLink.ParentFieldId]
 			fieldName = lastField.Name
 		}
-		mapOfPivotDetail[pivot.Id] = pivotObjectDetail{
+		mapOfPivotDetail[pivot.Id.String()] = pivotObjectDetail{
 			pivotTable: pivot.PivotTable,
 			pivotField: fieldName,
 			pivotType:  t,

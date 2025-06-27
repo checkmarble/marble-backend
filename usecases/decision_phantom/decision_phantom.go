@@ -94,9 +94,10 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 	if !triggerPassed {
 		return false, models.PhantomDecision{}, nil
 	}
-	if testRunScenarioExecution.ScenarioId == "" {
-		return false, models.PhantomDecision{}, nil
-	}
+	// NOTE: ScenarioID can not be empty based on the definition of the struct
+	// if testRunScenarioExecution.ScenarioId == "" {
+	// 	return false, models.PhantomDecision{}, nil
+	// }
 
 	phantomDecision := models.AdaptScenarExecToPhantomDecision(testRunScenarioExecution)
 	for i := range phantomDecision.RuleExecutions {

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type ScheduledExecution struct {
@@ -20,7 +21,7 @@ func AdaptScheduledExecution(model models.ScheduledExecution) ScheduledExecution
 	return ScheduledExecution{
 		Id: model.Id,
 		Scenario: DecisionScenario{
-			Id:          model.ScenarioId,
+			Id:          uuid.MustParse(model.ScenarioId),
 			IterationId: model.ScenarioIterationId,
 			Version:     model.ScenarioVersion,
 		},

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
@@ -249,8 +250,8 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	// Build ScenarioExecution as result
 	se := models.ScenarioExecution{
-		ScenarioId:          params.Scenario.Id,
-		ScenarioIterationId: iteration.Id,
+		ScenarioId:          uuid.Must(uuid.Parse(params.Scenario.Id)),
+		ScenarioIterationId: uuid.Must(uuid.Parse(iteration.Id)),
 		ScenarioName:        params.Scenario.Name,
 		ScenarioDescription: params.Scenario.Description,
 		ScenarioVersion:     *iteration.Version,
@@ -258,7 +259,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		ScreeningExecutions: screeningExecutions,
 		Score:               score,
 		Outcome:             outcome,
-		OrganizationId:      params.Scenario.OrganizationId,
+		OrganizationId:      uuid.Must(uuid.Parse(params.Scenario.OrganizationId)),
 	}
 	if params.Pivot != nil {
 		se.PivotId = &params.Pivot.Id

@@ -39,7 +39,7 @@ func (exporter *ExportScheduleExecution) ExportDecisions(
 	var number_of_exported_decisions int
 
 	for decision := range decisionChan {
-		if decision.OrganizationId != organizationId {
+		if decision.OrganizationId.String() != organizationId {
 			allErrors = append(
 				allErrors,
 				errors.Wrap(models.ForbiddenError, "decision does not belong to the organization"),

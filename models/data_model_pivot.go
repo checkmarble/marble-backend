@@ -6,10 +6,11 @@ import (
 
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type PivotMetadata struct {
-	Id             string
+	Id             uuid.UUID
 	CreatedAt      time.Time
 	OrganizationId string
 
@@ -19,7 +20,7 @@ type PivotMetadata struct {
 }
 
 type Pivot struct {
-	Id             string
+	Id             uuid.UUID
 	CreatedAt      time.Time
 	OrganizationId string
 

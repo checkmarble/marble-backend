@@ -274,7 +274,7 @@ func handleListCaseDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c
 		nextCursorId := ""
 
 		if len(decisions) > 0 {
-			nextCursorId = decisions[len(decisions)-1].DecisionId
+			nextCursorId = decisions[len(decisions)-1].DecisionId.String()
 		}
 
 		c.JSON(http.StatusOK, dto.CaseDecisionListDto{

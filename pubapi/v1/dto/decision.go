@@ -8,10 +8,11 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type Decision struct {
-	Id               string           `json:"id"`
+	Id               uuid.UUID        `json:"id"`
 	BatchExecutionId *string          `json:"batch_execution_id,omitempty"`
 	Case             *Case            `json:"case,omitempty"`
 	CreatedAt        time.Time        `json:"created_at"`
@@ -25,13 +26,13 @@ type Decision struct {
 }
 
 type DecisionScenario struct {
-	Id          string `json:"id"`
-	IterationId string `json:"iteration_id"`
-	Version     string `json:"version"`
+	Id          uuid.UUID `json:"id"`
+	IterationId string    `json:"iteration_id"`
+	Version     string    `json:"version"`
 }
 
 type DecisionRule struct {
-	Id            string             `json:"id"`
+	Id            uuid.UUID          `json:"id"`
 	Name          string             `json:"name"`
 	Outcome       string             `json:"outcome"`
 	ScoreModifier int                `json:"score_modifier"`
@@ -43,7 +44,9 @@ type DecisionRuleError struct {
 	Message string `json:"message"`
 }
 
-func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, screening []models.ScreeningWithMatches) func(models.Decision) Decision {
+func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution,
+	screening []models.ScreeningWithMatches,
+) func(models.Decision) Decision {
 	return func(model models.Decision) Decision {
 		d := Decision{
 			Id:               model.DecisionId,
@@ -55,7 +58,7 @@ func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, scr
 			BatchExecutionId: model.ScheduledExecutionId,
 			Scenario: DecisionScenario{
 				Id:          model.ScenarioId,
-				IterationId: model.ScenarioIterationId,
+				IterationId: model.ScenarioIterationId.String(),
 				Version:     fmt.Sprintf("%d", model.ScenarioVersion),
 			},
 		}
@@ -92,7 +95,7 @@ func AdaptDecisionRule(rule models.RuleExecution) DecisionRule {
 	}
 
 	out := DecisionRule{
-		Id:            rule.Rule.Id,
+		Id:            uuid.MustParse(rule.Rule.Id),
 		Name:          rule.Rule.Name,
 		Outcome:       rule.Outcome,
 		ScoreModifier: rule.ResultScoreModifier,
