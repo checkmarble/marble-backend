@@ -19,6 +19,10 @@ tags:
     description: Routes for decisions
   - name: Screening
     description: Routes for screening
+  - name: Batch executions
+    description: Routes for batch executions
+  - name: Ingestion
+    description: Generic ingestion endpoints
 paths:
   /decisions:
     get:

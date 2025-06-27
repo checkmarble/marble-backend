@@ -109,3 +109,16 @@ jobs:
             --quiet \
             --image=${{ env.VERSION_IMAGE }} \
             --region="europe-west1"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: Generate Marble API OpenAPI
+        run: go run pubapi/openapi/generate.go v1 > /tmp/marble-api-v1.yml
+
+      - name: Run `openapi:validate` command 🚀
+        uses: readmeio/rdme@v9
+        with:
+          rdme: openapi --version=v1.0.0 /tmp/marble-api-v1.yml
