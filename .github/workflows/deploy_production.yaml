@@ -28,3 +28,23 @@ jobs:
       version: ${{ github.ref_name }}
     secrets:
       segment_write_key_opensource: ${{ secrets.SEGMENT_WRITE_KEY_OPENSOURCE }}
+
+  publish_readme:
+    needs: test_backend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download OpenAPI specification artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: marble-api-openapi
+          path: /tmp/openapis
+          retention-days: 1
+
+      - name: Publish Marble API OpenAPI
+        uses: readmeio/rdme@v10
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        with:
+          rdme: openapi upload --version=v1.0.0 --slug=marble-api /tmp/openapis/marble-api-v1.yml

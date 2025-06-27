@@ -1,6 +1,9 @@
 name: Test back-end
 
-on: [workflow_call]
+on:
+  workflow_call:
+    secrets:
+      README_API_KEY:
 
 permissions:
   contents: read
@@ -30,3 +33,13 @@ jobs:
 
       - name: Test
         run: go test ./...
+
+      - name: Generate Marble API OpenAPI
+        run: go run pubapi/openapi/generate.go v1 > /tmp/marble-api-v1.yml
+
+      - name: Upload OpenAPI specifications as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: marble-api-openapi
+          path: /tmp/marble-api-*.yml
+          retention-days: 1
