@@ -30,3 +30,27 @@ jobs:
 
       - name: Test
         run: go test ./...
+
+      - name: Generate Marble API OpenAPI
+        run: go run pubapi/openapi/generate.go v1 > /tmp/marble-api-v1.yml
+
+      - name: Upload OpenAPI specifications as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: marble-api-openapi
+          path: /tmp/marble-api-*.yml
+          retention-days: 1
+
+      # TODO: Move that to the production deploy job
+
+      - name: Upload OpenAPI specifications as artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: marble-api-openapi
+          path: /tmp/openapis
+          retention-days: 1
+
+      - name: Publish Marble API OpenAPI
+        uses: readmeio/rdme@v9 # Deprecated, v10 requires a Readme upgrade
+        with:
+          rdme: openapi --version=v1.0.0 /tmp/openapis/marble-api-v1.yml
