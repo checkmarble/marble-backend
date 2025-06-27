@@ -4,10 +4,11 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type Pivot struct {
-	Id        string    `json:"id"`
+	Id        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 
 	BaseTable    string `json:"base_table"`

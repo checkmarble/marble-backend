@@ -5,11 +5,12 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type DbPivot struct {
-	Id             string      `db:"id"`
+	Id             uuid.UUID   `db:"id"`
 	BaseTableId    string      `db:"base_table_id"`
 	CreatedAt      time.Time   `db:"created_at"`
 	FieldId        pgtype.Text `db:"field_id"`

@@ -8,10 +8,11 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type Decision struct {
-	Id               string           `json:"id"`
+	Id               uuid.UUID        `json:"id"`
 	BatchExecutionId *string          `json:"batch_execution_id,omitempty"`
 	Case             *Case            `json:"case,omitempty"`
 	CreatedAt        time.Time        `json:"created_at"`
@@ -43,7 +44,9 @@ type DecisionRuleError struct {
 	Message string `json:"message"`
 }
 
-func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, screening []models.ScreeningWithMatches) func(models.Decision) Decision {
+func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution,
+	screening []models.ScreeningWithMatches,
+) func(models.Decision) Decision {
 	return func(model models.Decision) Decision {
 		d := Decision{
 			Id:               model.DecisionId,
@@ -54,8 +57,8 @@ func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution, scr
 			Score:            model.Score,
 			BatchExecutionId: model.ScheduledExecutionId,
 			Scenario: DecisionScenario{
-				Id:          model.ScenarioId,
-				IterationId: model.ScenarioIterationId,
+				Id:          model.ScenarioId.String(),
+				IterationId: model.ScenarioIterationId.String(),
 				Version:     fmt.Sprintf("%d", model.ScenarioVersion),
 			},
 		}
