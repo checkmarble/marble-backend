@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -301,8 +302,19 @@ func (uc *WorkflowUsecase) ValidateWorkflowCondition(ctx context.Context, scenar
 			return errors.Wrapf(models.BadParameterError, "workflow condition %s does not take parameters", cond.Function)
 		}
 	case models.WorkflowConditionOutcomeIn:
-		if err := json.Unmarshal(cond.Params, new([]string)); err != nil {
+		var params []string
+
+		if err := json.Unmarshal(cond.Params, &params); err != nil {
 			return errors.Wrap(models.BadParameterError, err.Error())
+		}
+
+		if len(params) == 0 {
+			return errors.Wrap(models.BadParameterError, "at least one outcome must be provided")
+		}
+		for _, outcome := range params {
+			if models.OutcomeFrom(outcome) == models.UnknownOutcome {
+				return errors.Wrap(models.BadParameterError, fmt.Sprintf("invalid outcome '%s'", outcome))
+			}
 		}
 	case models.WorkflowConditionRuleHit:
 		var params dto.WorkflowConditionRuleHitParams
