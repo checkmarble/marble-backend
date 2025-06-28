@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"github.com/segmentio/analytics-go/v3"
 	"github.com/stretchr/testify/assert"
@@ -186,6 +187,7 @@ func getRulesForBatchTest() []models.CreateRuleInput {
 			ScoreModifier: 100,
 			Name:          "Rule that hits",
 			Description:   "Rule that hits",
+			StableRuleId:  uuid.NewString(),
 		},
 	}
 }
