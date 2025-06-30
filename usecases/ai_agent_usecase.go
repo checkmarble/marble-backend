@@ -210,6 +210,7 @@ func readPrompt(path string) (string, error) {
 func (uc *AiAgentUsecase) generateContent(
 	ctx context.Context,
 	client *genai.Client,
+	organizationId string,
 	promptPath string,
 	data map[string]any,
 	generateContentConfig *genai.GenerateContentConfig,
@@ -259,6 +260,9 @@ func (uc *AiAgentUsecase) generateContent(
 	if err != nil {
 		return "", nil, errors.Wrap(err, "could not execute template")
 	}
+
+	// set the organization id in the labels for billing attribution
+	generateContentConfig.Labels["organization_id"] = organizationId
 	prompt = buf.String()
 	result, err := client.Models.GenerateContent(
 		ctx,
@@ -318,6 +322,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	// Data model summary
 	dataModelSummary, previousContents, err := uc.generateContent(ctx,
 		client,
+		caseData.organizationId,
 		"prompts/case_review/data_model_summary.md",
 		map[string]any{
 			"data_model": caseData.dataModelDto,
@@ -365,6 +370,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 				dataModelObjectFieldReadOptions, _, err := uc.generateContent(
 					ctx,
 					client,
+					caseData.organizationId,
 					"prompts/case_review/data_model_object_field_read_options.md",
 					map[string]any{
 						"data_model_table_names": tableNamesWithLargRowNbs,
@@ -418,6 +424,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	// Rules definitions review
 	rulesDefinitionsReview, _, err := uc.generateContent(ctx,
 		client,
+		caseData.organizationId,
 		"prompts/case_review/rule_definitions.md",
 		map[string]any{
 			"decisions":            caseData.decisions,
@@ -438,6 +445,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	// Rule thresholds
 	ruleThresholds, _, err := uc.generateContent(ctx,
 		client,
+		caseData.organizationId,
 		"prompts/case_review/rule_threshold_values.md",
 		map[string]any{
 			"decisions": caseData.decisions,
@@ -454,6 +462,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	caseReview, _, err := uc.generateContent(
 		ctx,
 		client,
+		caseData.organizationId,
 		"prompts/case_review/case_review.md",
 		map[string]any{
 			"case_detail":        caseData.case_,
@@ -480,6 +489,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	// Finally, sanity check the resulting case review using a judgement prompt
 	sanityCheck, _, err := uc.generateContent(ctx,
 		client,
+		caseData.organizationId,
 		"prompts/case_review/sanity_check.md",
 		map[string]any{
 			"case_detail":        caseData.case_,
