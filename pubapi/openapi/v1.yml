@@ -19,6 +19,10 @@ tags:
     description: Routes for decisions
   - name: Screening
     description: Routes for screening
+  - name: Batch executions
+    description: Routes for batch executions
+  - name: Ingestion
+    description: Generic ingestion endpoints
 paths:
   /decisions:
     get:
@@ -104,7 +108,7 @@ paths:
         - $ref: "#/components/parameters/offset_id"
       responses:
         "200":
-          description: Screening results from the search
+          description: List of decisions
           content:
             application/json:
               schema:
@@ -136,12 +140,13 @@ paths:
             schema:
               type: object
               required:
-                - trigger_object_type
+                - scenario_id
                 - trigger_object
               properties:
-                trigger_object_type:
-                  description: Type of the trigger object that is passed in
+                scenario_id:
+                  description: ID of the scenario to run
                   type: string
+                  format: uuid
                 trigger_object:
                   description: The object on which to make a decision
                   type: object
@@ -151,7 +156,7 @@ paths:
                     - updated_at
       responses:
         "200":
-          description: Screening results from the search
+          description: A decision was successfully created
           content:
             application/json:
               schema:
@@ -212,13 +217,12 @@ paths:
             schema:
               type: object
               required:
-                - scenario_id
+                - trigger_object_type
                 - trigger_object
               properties:
-                scenario_id:
-                  description: ID of the scenario to run
+                trigger_object_type:
+                  description: Type of the trigger object that is passed in
                   type: string
-                  format: uuid
                 trigger_object:
                   description: The object on which to make a decision
                   type: object
@@ -228,7 +232,7 @@ paths:
                     - updated_at
       responses:
         "200":
-          description: Screening results from the search
+          description: Between 0 and N decisions were created
           content:
             application/json:
               schema:
@@ -292,7 +296,7 @@ paths:
             format: uuid
       responses:
         "200":
-          description: Screening results from the search
+          description: Details of decision
           content:
             application/json:
               schema:
@@ -443,7 +447,7 @@ paths:
       description: |
         Replace a screening result with refined results.
 
-        This endpoint will replace the provided screening result for the provided decision with one containing the result of the included query.
+        This endpoint will replace the provided screening result with one containing the result of the included query.
       parameters:
         - name: screeningId
           in: path
@@ -591,9 +595,7 @@ paths:
                     - no_hit
                     - confirmed_hit
                 whitelist:
-                  description:
-                    Whether to whitelist the "no_hit" status to prevent
-                    triggering the match in the future
+                  description: Whether to whitelist the "no_hit" status to prevent triggering the match in the future
                   type: boolean
                   default: false
       responses:
