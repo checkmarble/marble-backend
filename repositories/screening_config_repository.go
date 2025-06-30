@@ -16,6 +16,10 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+const (
+	DEFAULT_SCREENING_LIMIT = 10
+)
+
 func (repo *MarbleDbRepository) ListScreeningConfigs(
 	ctx context.Context,
 	exec Executor,

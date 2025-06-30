@@ -79,10 +79,12 @@ func (repo *MarbleDbRepository) CreateOrganization(
 			Columns(
 				"id",
 				"name",
+				"sanctions_limit",
 			).
 			Values(
 				newOrganizationId,
 				name,
+				DEFAULT_SCREENING_LIMIT,
 			),
 	)
 	if err != nil {
