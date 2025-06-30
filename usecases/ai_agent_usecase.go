@@ -116,7 +116,7 @@ func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*genai.Client, error) 
 }
 
 func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.Reader, error) {
-	caseDtos, relatedDataPerClient, err := uc.getCaseData(ctx, caseId)
+	caseDtos, relatedDataPerClient, err := uc.getCaseDataWithPermissions(ctx, caseId)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get case data")
 	}
@@ -215,16 +215,16 @@ func (uc *AiAgentUsecase) generateContent(
 	data map[string]any,
 	generateContentConfig *genai.GenerateContentConfig,
 	previousContents ...*genai.Content,
-) (output string, previous []*genai.Content, err error) {
+) (out GenerateContentResult, err error) {
 	prompt, err := readPrompt(promptPath)
 	if err != nil {
-		return "", nil, err
+		return out, err
 	}
 
 	// Load model configuration on each call
 	modelConfig, err := models.LoadAiAgentModelConfig("prompts/ai_agent_models.json")
 	if err != nil {
-		return "", nil, errors.Wrap(err, "could not load AI agent model configuration")
+		return out, errors.Wrap(err, "could not load AI agent model configuration")
 	}
 
 	// Get the appropriate model for this prompt
@@ -240,12 +240,12 @@ func (uc *AiAgentUsecase) generateContent(
 		if printer, ok := v.(agent_dto.AgentPrinter); ok {
 			marshalledMap[k], err = printer.PrintForAgent()
 			if err != nil {
-				return "", nil, errors.Wrapf(err, "could not print %s", k)
+				return out, errors.Wrapf(err, "could not print %s", k)
 			}
 		} else {
 			b, err := json.Marshal(v)
 			if err != nil {
-				return "", nil, errors.Wrapf(err, "could not marshal %s", k)
+				return out, errors.Wrapf(err, "could not marshal %s", k)
 			}
 			marshalledMap[k] = string(b)
 		}
@@ -253,15 +253,18 @@ func (uc *AiAgentUsecase) generateContent(
 
 	t, err := template.New(promptPath).Parse(prompt)
 	if err != nil {
-		return "", nil, errors.Wrapf(err, "could not parse template %s", promptPath)
+		return out, errors.Wrapf(err, "could not parse template %s", promptPath)
 	}
 	buf := bytes.Buffer{}
 	err = t.Execute(&buf, marshalledMap)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "could not execute template")
+		return out, errors.Wrap(err, "could not execute template")
 	}
 
 	// set the organization id in the labels for billing attribution
+	if generateContentConfig.Labels == nil {
+		generateContentConfig.Labels = make(map[string]string)
+	}
 	generateContentConfig.Labels["organization_id"] = organizationId
 	prompt = buf.String()
 	result, err := client.Models.GenerateContent(
@@ -271,33 +274,57 @@ func (uc *AiAgentUsecase) generateContent(
 		generateContentConfig,
 	)
 	if err != nil {
-		return "", nil, err
+		return out, err
 	}
 	if len(result.Candidates) == 0 {
-		return "", nil, errors.New("no response from GenAI")
+		return out, errors.New("no response from GenAI")
 	}
 	if result.Candidates[0].Content == nil {
-		return "", nil, errors.New("no content in response from GenAI")
+		return out, errors.New("no content in response from GenAI")
 	}
 
 	onlyTextParts := make([]string, 0, len(result.Candidates[0].Content.Parts))
 	for _, part := range result.Candidates[0].Content.Parts {
-		if part.Text != "" {
+		if !part.Thought && part.Text != "" {
 			onlyTextParts = append(onlyTextParts, part.Text)
 		}
 	}
+	thinkingTextParts := make([]string, 0, len(result.Candidates[0].Content.Parts))
+	for _, part := range result.Candidates[0].Content.Parts {
+		if part.Thought && part.Text != "" {
+			thinkingTextParts = append(thinkingTextParts, part.Text)
+		}
+	}
+
 	logger.InfoContext(ctx, "content detail",
 		"prompt", promptPath,
 		"model", model,
 		"len", len(result.Candidates[0].Content.Parts),
 		"len_filtered_text", len(onlyTextParts),
+		"len_thinking_text", len(thinkingTextParts),
 	)
-	previous = append(previousContents, result.Candidates[0].Content)
+
+	previous := append(previousContents, result.Candidates[0].Content)
 	gatherText := ""
 	for _, t := range onlyTextParts {
 		gatherText += t
 	}
-	return gatherText, previous, nil
+	gatherThought := ""
+	for _, t := range thinkingTextParts {
+		gatherThought += t
+	}
+
+	return GenerateContentResult{
+		Text:     gatherText,
+		Thought:  gatherThought,
+		Previous: previous,
+	}, nil
+}
+
+type GenerateContentResult struct {
+	Text     string
+	Thought  string
+	Previous []*genai.Content
 }
 
 func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (string, error) {
@@ -306,7 +333,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		return "", errors.Wrap(err, "could not create GenAI client")
 	}
 
-	caseData, relatedDataPerClient, err := uc.getCaseData(ctx, caseId)
+	caseData, relatedDataPerClient, err := uc.getCaseDataWithPermissions(ctx, caseId)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get case data")
 	}
@@ -320,7 +347,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	}
 
 	// Data model summary
-	dataModelSummary, previousContents, err := uc.generateContent(ctx,
+	dataModelSummaryResult, err := uc.generateContent(ctx,
 		client,
 		caseData.organizationId,
 		"prompts/case_review/data_model_summary.md",
@@ -332,8 +359,15 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate data model summary")
 	}
-	fmt.Println("-------------------------------- Data model summary --------------------------------")
-	fmt.Println("Data Model Summary:", dataModelSummary)
+	dataModelSummary := dataModelSummaryResult.Text
+	previousContents := dataModelSummaryResult.Previous
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "================================ Data model summary ================================")
+	logger.DebugContext(ctx, "Data model summary: "+dataModelSummary)
+	if dataModelSummaryResult.Thought != "" {
+		logger.DebugContext(ctx, "Data model summary thought: "+dataModelSummaryResult.Thought)
+	}
 
 	// Data model object field read options
 	// Here, we implicitly distinguish between "transaction" tables (based on the presence of "many" rows for a given customer)
@@ -367,7 +401,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 						Items: &genai.Schema{Type: "string", Enum: fields},
 					}
 				}
-				dataModelObjectFieldReadOptions, _, err := uc.generateContent(
+				dataModelObjectFieldReadOptionsResult, err := uc.generateContent(
 					ctx,
 					client,
 					caseData.organizationId,
@@ -388,8 +422,13 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 				if err != nil {
 					return "", errors.Wrap(err, "could not generate data model object field read options")
 				}
-				fmt.Println("-------------------------------- Data model object field read options --------------------------------")
-				fmt.Println("Data Model Object Field Read Options:", dataModelObjectFieldReadOptions)
+				dataModelObjectFieldReadOptions := dataModelObjectFieldReadOptionsResult.Text
+				logger.DebugContext(ctx, "================================ Data model object field read options ================================")
+				logger.DebugContext(ctx, "Data model object field read options: "+dataModelObjectFieldReadOptions)
+				if dataModelObjectFieldReadOptionsResult.Thought != "" {
+					logger.DebugContext(ctx, "Data model object field read options thought: "+
+						dataModelObjectFieldReadOptionsResult.Thought)
+				}
 				fieldsToReadPerTable = make(map[string][]string)
 				if err := json.Unmarshal([]byte(dataModelObjectFieldReadOptions), &fieldsToReadPerTable); err != nil {
 					return "", errors.Wrap(err, "could not unmarshal data model object field read options")
@@ -422,7 +461,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	}
 
 	// Rules definitions review
-	rulesDefinitionsReview, _, err := uc.generateContent(ctx,
+	rulesDefinitionsReviewResult, err := uc.generateContent(ctx,
 		client,
 		caseData.organizationId,
 		"prompts/case_review/rule_definitions.md",
@@ -436,14 +475,18 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 			},
 		},
 	)
+	rulesDefinitionsReview := rulesDefinitionsReviewResult.Text
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate rules definitions review")
 	}
-	fmt.Println("-------------------------------- Rules definitions review --------------------------------")
-	fmt.Println("Rules Review:", rulesDefinitionsReview)
+	logger.DebugContext(ctx, "================================ Rules definitions review ================================")
+	logger.DebugContext(ctx, "Rules definitions review: "+rulesDefinitionsReview)
+	if rulesDefinitionsReviewResult.Thought != "" {
+		logger.DebugContext(ctx, "Rules definitions review thought: "+rulesDefinitionsReviewResult.Thought)
+	}
 
 	// Rule thresholds
-	ruleThresholds, _, err := uc.generateContent(ctx,
+	ruleThresholdsResult, err := uc.generateContent(ctx,
 		client,
 		caseData.organizationId,
 		"prompts/case_review/rule_threshold_values.md",
@@ -452,14 +495,18 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		},
 		&genai.GenerateContentConfig{},
 	)
+	ruleThresholds := ruleThresholdsResult.Text
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate rule thresholds")
 	}
-	fmt.Println("-------------------------------- Rule thresholds --------------------------------")
-	fmt.Println("Rule Thresholds:", ruleThresholds)
+	logger.DebugContext(ctx, "================================ Rule thresholds ================================")
+	logger.DebugContext(ctx, "Rule thresholds: "+ruleThresholds)
+	if ruleThresholdsResult.Thought != "" {
+		logger.DebugContext(ctx, "Rule thresholds thought: "+ruleThresholdsResult.Thought)
+	}
 
 	// Finally, we can generate the case review
-	caseReview, _, err := uc.generateContent(
+	caseReviewResult, err := uc.generateContent(
 		ctx,
 		client,
 		caseData.organizationId,
@@ -480,14 +527,18 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 			},
 		},
 	)
+	caseReview := caseReviewResult.Text
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate case review")
 	}
-	fmt.Println("-------------------------------- Full Case Review --------------------------------")
-	fmt.Println("Case Review:", caseReview)
+	logger.DebugContext(ctx, "================================ Full case review ================================")
+	logger.DebugContext(ctx, "Full case review: "+caseReview)
+	if caseReviewResult.Thought != "" {
+		logger.DebugContext(ctx, "Full case review thought: "+caseReviewResult.Thought)
+	}
 
 	// Finally, sanity check the resulting case review using a judgement prompt
-	sanityCheck, _, err := uc.generateContent(ctx,
+	sanityCheckResult, err := uc.generateContent(ctx,
 		client,
 		caseData.organizationId,
 		"prompts/case_review/sanity_check.md",
@@ -521,17 +572,21 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 			},
 		},
 	)
+	sanityCheck := sanityCheckResult.Text
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate sanity check")
 	}
-	fmt.Println("-------------------------------- Sanity Check --------------------------------")
-	fmt.Println("Sanity Check:", sanityCheck)
+	logger.DebugContext(ctx, "================================ Sanity check ================================")
+	logger.DebugContext(ctx, "Sanity check: "+sanityCheck)
+	if sanityCheckResult.Thought != "" {
+		logger.DebugContext(ctx, "Sanity check thought: "+sanityCheckResult.Thought)
+	}
 
 	var sanityCheckOutput struct {
 		Ok            bool   `json:"ok"`
 		Justification string `json:"justification"`
 	}
-	if err := json.Unmarshal([]byte(sanityCheck), &sanityCheckOutput); err != nil {
+	if err := json.Unmarshal([]byte(sanityCheckResult.Text), &sanityCheckOutput); err != nil {
 		return "", errors.Wrap(err, "could not unmarshal sanity check")
 	}
 
@@ -541,7 +596,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	return fmt.Sprintf("Review is ko: original review:%s\nsanity check output:%s", caseReview, sanityCheckOutput.Justification), nil
 }
 
-func (uc *AiAgentUsecase) getCaseData(ctx context.Context, caseId string) (caseData, agent_dto.CasePivotDataByPivot, error) {
+func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId string) (caseData, agent_dto.CasePivotDataByPivot, error) {
 	exec := uc.executorFactory.NewExecutor()
 	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
 	if err != nil {
