@@ -327,15 +327,15 @@ type GenerateContentResult struct {
 	Previous []*genai.Content
 }
 
-func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (string, error) {
+func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (models.CaseReview, error) {
 	client, err := uc.GetClient(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "could not create GenAI client")
+		return models.CaseReview{}, errors.Wrap(err, "could not create GenAI client")
 	}
 
 	caseData, relatedDataPerClient, err := uc.getCaseDataWithPermissions(ctx, caseId)
 	if err != nil {
-		return "", errors.Wrap(err, "could not get case data")
+		return models.CaseReview{}, errors.Wrap(err, "could not get case data")
 	}
 
 	var clientActivityDescription string
@@ -357,7 +357,8 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		&genai.GenerateContentConfig{},
 	)
 	if err != nil {
-		return "", errors.Wrap(err, "could not generate data model summary")
+		return models.CaseReview{}, errors.Wrap(err,
+			"could not generate data model summary")
 	}
 	dataModelSummary := dataModelSummaryResult.Text
 	previousContents := dataModelSummaryResult.Previous
@@ -420,7 +421,8 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 					previousContents...,
 				)
 				if err != nil {
-					return "", errors.Wrap(err, "could not generate data model object field read options")
+					return models.CaseReview{}, errors.Wrap(err,
+						"could not generate data model object field read options")
 				}
 				dataModelObjectFieldReadOptions := dataModelObjectFieldReadOptionsResult.Text
 				logger.DebugContext(ctx, "================================ Data model object field read options ================================")
@@ -431,7 +433,8 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 				}
 				fieldsToReadPerTable = make(map[string][]string)
 				if err := json.Unmarshal([]byte(dataModelObjectFieldReadOptions), &fieldsToReadPerTable); err != nil {
-					return "", errors.Wrap(err, "could not unmarshal data model object field read options")
+					return models.CaseReview{}, errors.Wrap(err,
+						"could not unmarshal data model object field read options")
 				}
 			}
 
@@ -448,7 +451,8 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 					fieldsToRead...,
 				)
 				if err != nil {
-					return "", errors.Wrapf(err, "could not read ingested client objects for %s", tableName)
+					return models.CaseReview{}, errors.Wrapf(err,
+						"could not read ingested client objects for %s", tableName)
 				}
 				// then, update the ingested data for this pivot object/table combination with the new filtered data
 				relatedDataPerClient.Data[customerKey].IngestedData[tableName] = agent_dto.IngestedDataResult{
@@ -477,7 +481,8 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	)
 	rulesDefinitionsReview := rulesDefinitionsReviewResult.Text
 	if err != nil {
-		return "", errors.Wrap(err, "could not generate rules definitions review")
+		return models.CaseReview{}, errors.Wrap(err,
+			"could not generate rules definitions review")
 	}
 	logger.DebugContext(ctx, "================================ Rules definitions review ================================")
 	logger.DebugContext(ctx, "Rules definitions review: "+rulesDefinitionsReview)
@@ -497,7 +502,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	)
 	ruleThresholds := ruleThresholdsResult.Text
 	if err != nil {
-		return "", errors.Wrap(err, "could not generate rule thresholds")
+		return models.CaseReview{}, errors.Wrap(err, "could not generate rule thresholds")
 	}
 	logger.DebugContext(ctx, "================================ Rule thresholds ================================")
 	logger.DebugContext(ctx, "Rule thresholds: "+ruleThresholds)
@@ -529,7 +534,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	)
 	caseReview := caseReviewResult.Text
 	if err != nil {
-		return "", errors.Wrap(err, "could not generate case review")
+		return models.CaseReview{}, errors.Wrap(err, "could not generate case review")
 	}
 	logger.DebugContext(ctx, "================================ Full case review ================================")
 	logger.DebugContext(ctx, "Full case review: "+caseReview)
@@ -574,7 +579,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	)
 	sanityCheck := sanityCheckResult.Text
 	if err != nil {
-		return "", errors.Wrap(err, "could not generate sanity check")
+		return models.CaseReview{}, errors.Wrap(err, "could not generate sanity check")
 	}
 	logger.DebugContext(ctx, "================================ Sanity check ================================")
 	logger.DebugContext(ctx, "Sanity check: "+sanityCheck)
@@ -587,13 +592,22 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		Justification string `json:"justification"`
 	}
 	if err := json.Unmarshal([]byte(sanityCheckResult.Text), &sanityCheckOutput); err != nil {
-		return "", errors.Wrap(err, "could not unmarshal sanity check")
+		return models.CaseReview{}, errors.Wrap(err, "could not unmarshal sanity check")
 	}
 
 	if sanityCheckOutput.Ok {
-		return caseReview, nil
+		return models.CaseReview{
+			Ok:      sanityCheckOutput.Ok,
+			Output:  caseReviewResult.Text,
+			Thought: caseReviewResult.Thought,
+		}, nil
 	}
-	return fmt.Sprintf("Review is ko: original review:%s\nsanity check output:%s", caseReview, sanityCheckOutput.Justification), nil
+	return models.CaseReview{
+		Ok:          false,
+		Output:      caseReview,
+		SanityCheck: sanityCheckResult.Text,
+		Thought:     sanityCheckResult.Thought,
+	}, nil
 }
 
 func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId string) (caseData, agent_dto.CasePivotDataByPivot, error) {

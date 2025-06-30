@@ -656,6 +656,11 @@ func handleCreateCaseReview(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"review": review})
+		c.JSON(http.StatusOK, dto.CaseReview{
+			Ok:          review.Ok,
+			Output:      review.Output,
+			SanityCheck: review.SanityCheck,
+			Thought:     review.Thought,
+		})
 	}
 }
