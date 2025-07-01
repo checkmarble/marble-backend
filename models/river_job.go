@@ -61,3 +61,7 @@ type OffloadingArgs struct {
 }
 
 func (OffloadingArgs) Kind() string { return "offloading" }
+
+type MetricsCollectionArgs struct{}
+
+func (MetricsCollectionArgs) Kind() string { return "metrics_collection" }
