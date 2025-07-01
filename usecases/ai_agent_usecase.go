@@ -346,6 +346,14 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		clientActivityDescription = "placeholder"
 	}
 
+	systemInstruction, err := readPrompt("prompts/system.md")
+	if err != nil {
+		logger := utils.LoggerFromContext(ctx)
+		logger.ErrorContext(ctx, "could not read system instruction", "error", err)
+		systemInstruction = "You are a compliance officer or fraud analyst. You are given a case and you need to review it step by step. Reply factually to instructions in markdown format."
+	}
+	systemInstructionContent := genai.Text(systemInstruction)[0]
+
 	// Data model summary
 	dataModelSummaryResult, err := uc.generateContent(ctx,
 		client,
@@ -354,7 +362,9 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		map[string]any{
 			"data_model": caseData.dataModelDto,
 		},
-		&genai.GenerateContentConfig{},
+		&genai.GenerateContentConfig{
+			SystemInstruction: systemInstructionContent,
+		},
 	)
 	if err != nil {
 		return models.CaseReview{}, errors.Wrap(err,
@@ -411,7 +421,8 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 						"data_model_table_names": tableNamesWithLargRowNbs,
 					},
 					&genai.GenerateContentConfig{
-						ResponseMIMEType: "application/json",
+						ResponseMIMEType:  "application/json",
+						SystemInstruction: systemInstructionContent,
 						ResponseSchema: &genai.Schema{
 							Type:        "object",
 							Description: "List of fields, on a table per table basis, that should be read from ingested data for high-volume tables and considered for transaction analysis",
@@ -477,6 +488,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 			Tools: []*genai.Tool{
 				{GoogleSearch: &genai.GoogleSearch{}},
 			},
+			SystemInstruction: systemInstructionContent,
 		},
 	)
 	rulesDefinitionsReview := rulesDefinitionsReviewResult.Text
@@ -498,7 +510,9 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		map[string]any{
 			"decisions": caseData.decisions,
 		},
-		&genai.GenerateContentConfig{},
+		&genai.GenerateContentConfig{
+			SystemInstruction: systemInstructionContent,
+		},
 	)
 	ruleThresholds := ruleThresholdsResult.Text
 	if err != nil {
@@ -530,6 +544,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 			Tools: []*genai.Tool{
 				{GoogleSearch: &genai.GoogleSearch{}},
 			},
+			SystemInstruction: systemInstructionContent,
 		},
 	)
 	caseReview := caseReviewResult.Text
@@ -575,6 +590,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 				},
 				Required: []string{"ok"},
 			},
+			SystemInstruction: systemInstructionContent,
 		},
 	)
 	sanityCheck := sanityCheckResult.Text

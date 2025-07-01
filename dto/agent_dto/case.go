@@ -38,7 +38,9 @@ func AdaptCaseDto(c models.Case, tags []models.Tag, inboxes []models.Inbox, user
 		InboxName: inboxName,
 		Name:      c.Name,
 		Status:    c.Status.EnrichedStatus(c.SnoozedUntil, c.Boost),
-		Outcome:   string(c.Outcome),
+		// TODO: Commented out for now because we don't want the AI agent to "cheat" by using the real outcome
+		// while we iterate on the prompts. Final behavior may change but is still undetermined.
+		// Outcome:   string(c.Outcome),
 		Tags: pure_utils.Map(c.Tags, func(t models.CaseTag) string {
 			for _, tag := range tags {
 				if tag.Id == t.TagId {
@@ -86,10 +88,13 @@ func AdaptCaseEventDto(caseEvent models.CaseEvent, users []models.User) CaseEven
 		}
 	}
 	return CaseEvent{
-		UserName:       userName,
-		CreatedAt:      caseEvent.CreatedAt,
-		EventType:      string(caseEvent.EventType),
-		AdditionalNote: caseEvent.AdditionalNote,
+		UserName:  userName,
+		CreatedAt: caseEvent.CreatedAt,
+		EventType: string(caseEvent.EventType),
+		// TODO: Commented out for now because we don't want the AI agent to "cheat" by using the human review to generate a review
+		// while we iterate on the prompts. Final behavior may change but is still undetermined.
+		// AdditionalNote: caseEvent.AdditionalNote,
+		AdditionalNote: "Redacted",
 		NewValue:       caseEvent.NewValue,
 		ResourceType:   string(caseEvent.ResourceType),
 	}
