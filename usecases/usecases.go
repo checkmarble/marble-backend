@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
@@ -340,5 +341,13 @@ func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx]) 
 		usecases.NewExecutorFactory(),
 		&usecases.Repositories.MarbleDbRepository,
 		riverClient,
+	)
+}
+
+func (usecases *Usecases) NewMetricsCollectionWorker() scheduled_execution.MetricCollectionWorker {
+	return scheduled_execution.NewMetricCollectionWorker(
+		usecases.NewExecutorFactory(),
+		&usecases.Repositories.MarbleDbRepository,
+		metrics_collection.NewCollectorV1(),
 	)
 }
