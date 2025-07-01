@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/cockroachdb/errors"
@@ -154,11 +155,16 @@ func RunTaskQueue(apiVersion string) error {
 		return err
 	}
 
+	queues["global"] = river.QueueConfig{
+		MaxWorkers: 2,
+	}
+
 	// Periodics always contain the per-org tasks retrieved above. Add other, non-organization-scoped periodics below
 	periodics := append(
 		orgPeriodics,
 		[]*river.PeriodicJob{
 			// Add periodic jobs here
+			scheduled_execution.NewMetricsCollectionPeriodicJob(),
 		}...,
 	)
 
@@ -204,6 +210,7 @@ func RunTaskQueue(apiVersion string) error {
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
 	}
+	river.AddWorker(workers, uc.NewMetricsCollectionWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
