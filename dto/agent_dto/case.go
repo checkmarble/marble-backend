@@ -1,6 +1,10 @@
 package agent_dto
 
 import (
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -34,7 +38,9 @@ func AdaptCaseDto(c models.Case, tags []models.Tag, inboxes []models.Inbox, user
 		InboxName: inboxName,
 		Name:      c.Name,
 		Status:    c.Status.EnrichedStatus(c.SnoozedUntil, c.Boost),
-		Outcome:   string(c.Outcome),
+		// TODO: Commented out for now because we don't want the AI agent to "cheat" by using the real outcome
+		// while we iterate on the prompts. Final behavior may change but is still undetermined.
+		// Outcome:   string(c.Outcome),
 		Tags: pure_utils.Map(c.Tags, func(t models.CaseTag) string {
 			for _, tag := range tags {
 				if tag.Id == t.TagId {
@@ -82,10 +88,13 @@ func AdaptCaseEventDto(caseEvent models.CaseEvent, users []models.User) CaseEven
 		}
 	}
 	return CaseEvent{
-		UserName:       userName,
-		CreatedAt:      caseEvent.CreatedAt,
-		EventType:      string(caseEvent.EventType),
-		AdditionalNote: caseEvent.AdditionalNote,
+		UserName:  userName,
+		CreatedAt: caseEvent.CreatedAt,
+		EventType: string(caseEvent.EventType),
+		// TODO: Commented out for now because we don't want the AI agent to "cheat" by using the human review to generate a review
+		// while we iterate on the prompts. Final behavior may change but is still undetermined.
+		// AdditionalNote: caseEvent.AdditionalNote,
+		AdditionalNote: "Redacted",
 		NewValue:       caseEvent.NewValue,
 		ResourceType:   string(caseEvent.ResourceType),
 	}
@@ -97,13 +106,26 @@ func AdaptCaseWithDecisionsDto(
 	inboxes []models.Inbox,
 	rules []models.Rule,
 	users []models.User,
-) CaseWithDecisions {
-	return CaseWithDecisions{
-		Case: AdaptCaseDto(c, tags, inboxes, users),
-		Decisions: pure_utils.Map(c.Decisions, func(d models.DecisionWithRuleExecutions) Decision {
-			return AdaptDecision(d.Decision, d.RuleExecutions, rules)
-		}),
+	getScenarioIteration func(scenarioIterationId string) (models.ScenarioIteration, error),
+	getScreenings func(decisionId string) ([]models.ScreeningWithMatches, error),
+) (CaseWithDecisions, error) {
+	decisions := make([]Decision, len(c.Decisions))
+	for i := range c.Decisions {
+		iteration, err := getScenarioIteration(c.Decisions[i].ScenarioIterationId)
+		if err != nil {
+			return CaseWithDecisions{}, err
+		}
+		screenings, err := getScreenings(c.Decisions[i].DecisionId)
+		if err != nil {
+			return CaseWithDecisions{}, err
+		}
+		decisions[i] = AdaptDecision(c.Decisions[i].Decision, iteration,
+			c.Decisions[i].RuleExecutions, rules, screenings)
 	}
+	return CaseWithDecisions{
+		Case:      AdaptCaseDto(c, tags, inboxes, users),
+		Decisions: decisions,
+	}, nil
 }
 
 type CaseWithDecisions struct {
@@ -111,7 +133,69 @@ type CaseWithDecisions struct {
 	Decisions []Decision `json:"decisions"`
 }
 
+type IngestedDataResult struct {
+	Data        []models.ClientObjectDetail
+	ReadOptions models.ExplorationOptions
+}
+
+func (i IngestedDataResult) PrintForAgent() (string, error) {
+	stringBuilder := strings.Builder{}
+	csvWriter := csv.NewWriter(&stringBuilder)
+
+	err := WriteClientDataToCsv(i.Data, csvWriter)
+	if err != nil {
+		return "", err
+	}
+	csvWriter.Flush()
+	return stringBuilder.String(), nil
+}
+
 type CasePivotObjectData struct {
-	IngestedData map[string][]models.ClientObjectDetail `json:"ingested_data"`
-	RelatedCases []CaseWithDecisions                    `json:"related_cases"`
+	IngestedData map[string]IngestedDataResult `json:"ingested_data"`
+	RelatedCases []CaseWithDecisions           `json:"related_cases"`
+}
+
+func (c CasePivotObjectData) PrintForAgent() (string, error) {
+	stringBuilder := strings.Builder{}
+
+	for key, value := range c.IngestedData {
+		ingestedDataFormatted, err := value.PrintForAgent()
+		if err != nil {
+			return "", err
+		}
+		stringBuilder.WriteString(fmt.Sprintf("table %s as csv: %s\n", key, ingestedDataFormatted))
+	}
+
+	for _, relatedCase := range c.RelatedCases {
+		relatedCaseFormatted, err := json.Marshal(relatedCase)
+		if err != nil {
+			return "", err
+		}
+		stringBuilder.WriteString("related case:")
+		_, err = stringBuilder.Write(relatedCaseFormatted)
+		if err != nil {
+			return "", err
+		}
+		stringBuilder.WriteString("\n")
+	}
+
+	return stringBuilder.String(), nil
+}
+
+type CasePivotDataByPivot struct {
+	Data map[string]CasePivotObjectData `json:"data"`
+}
+
+func (c CasePivotDataByPivot) PrintForAgent() (string, error) {
+	stringBuilder := strings.Builder{}
+
+	for key, value := range c.Data {
+		ingestedDataFormatted, err := value.PrintForAgent()
+		if err != nil {
+			return "", err
+		}
+		stringBuilder.WriteString(fmt.Sprintf("pivot object %s: %s\n", key, ingestedDataFormatted))
+	}
+
+	return stringBuilder.String(), nil
 }

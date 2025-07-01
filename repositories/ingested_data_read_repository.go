@@ -4,15 +4,19 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 )
+
+var NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
 
 type IngestedDataReadRepository interface {
 	GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error)
@@ -51,8 +55,9 @@ type IngestedDataReadRepository interface {
 		params models.ExplorationOptions,
 		cursorId *string,
 		limit int,
+		fieldsToRead ...string,
 	) ([]models.DataModelObject, error)
-	GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table) ([]models.FieldStatistics, error)
+	GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table, orgId string) ([]models.FieldStatistics, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -531,13 +536,25 @@ func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 	params models.ExplorationOptions,
 	cursorId *string,
 	limit int,
+	fieldsToRead ...string,
 ) ([]models.DataModelObject, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	tableColumnNames := models.ColumnNames(table)
-	columnNames := append(tableColumnNames, "valid_from")
+	columnNames := make([]string, 0, len(tableColumnNames))
+	if fieldsToRead != nil {
+		columnNames = append(columnNames, fieldsToRead...)
+		// object_id is always read, even if not explicitly requested, because it is needed in the reader usecase to build the model and the cursor
+		if !slices.Contains(tableColumnNames, "object_id") {
+			columnNames = append(columnNames, "object_id")
+		}
+	} else {
+		columnNames = tableColumnNames
+	}
+	columnNames = append(columnNames, "valid_from")
+
 	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
 	filterFieldName := pgIdentifierWithSchema(exec, table.Name,
 		params.FilterFieldName)
@@ -626,7 +643,14 @@ func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 	})
 }
 
-func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table) ([]models.FieldStatistics, error) {
+func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Context,
+	exec Executor, table models.Table, orgId string,
+) ([]models.FieldStatistics, error) {
+	fieldStatsCacheKey := fmt.Sprintf("%s-%s", orgId, table.Name)
+	if cache, ok := NAVIGATION_FIELD_STATS_CACHE.Get(fieldStatsCacheKey); ok {
+		return cache, nil
+	}
+
 	q := NewQueryBuilder().
 		Select("attname", "most_common_vals", "histogram_bounds").
 		From("pg_stats").
@@ -663,7 +687,6 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 			Histogram: values,
 		}, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -702,5 +725,6 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 		}
 	}
 
+	NAVIGATION_FIELD_STATS_CACHE.Add(fieldStatsCacheKey, fieldStats)
 	return fieldStats, nil
 }

@@ -109,6 +109,14 @@ type Table struct {
 	NavigationOptions []NavigationOption
 }
 
+func (t Table) FieldNames() []string {
+	fieldNames := make([]string, 0, len(t.Fields))
+	for fieldName := range t.Fields {
+		fieldNames = append(fieldNames, fieldName)
+	}
+	return fieldNames
+}
+
 func (t Table) Copy() Table {
 	fields := make(map[string]Field)
 	for k, v := range t.Fields {
@@ -151,6 +159,17 @@ func ColumnNames(table Table) []string {
 	return columnNames
 }
 
+func (t Table) WithFieldStatistics(fieldStats []FieldStatistics) Table {
+	// This method mutates the table to add sample values to the fields that have them
+	for _, fieldStat := range fieldStats {
+		if field, ok := t.Fields[fieldStat.FieldName]; ok {
+			field.FieldStatistics = fieldStat
+			t.Fields[fieldStat.FieldName] = field
+		}
+	}
+	return t
+}
+
 // ///////////////////////////////
 // Data Type
 // ///////////////////////////////
@@ -164,6 +183,7 @@ type Field struct {
 	Nullable          bool
 	TableId           string
 	Values            []any
+	FieldStatistics   FieldStatistics
 	UnicityConstraint UnicityConstraint
 }
 
@@ -400,7 +420,7 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 	return dm
 }
 
-// Controls hwo the data model should be read. This allows us to specify what level of detail is needed on the returned data model, allowing to bypass some
+// Controls how the data model should be read. This allows us to specify what level of detail is needed on the returned data model, allowing to bypass some
 // possibly expensive queries where only a partial data model is useful, while still factorizing the data model reading code in just one usecase method.
 type DataModelReadOptions struct {
 	// Controls whether the returned data model should include a sample of the enum values that have been seen, for fields that are flagged as enum.
@@ -413,6 +433,9 @@ type DataModelReadOptions struct {
 
 	// Controls whether the returned data model should include information on fields marked as unique. If false, all fields will appear as having no unicity constraint.
 	IncludeUnicityConstraints bool
+
+	// Controls where sample data from the pg table statistics should be included in the data model.
+	IncludeSamples bool
 }
 
 // ///////////////////////////////

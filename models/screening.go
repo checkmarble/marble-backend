@@ -118,6 +118,7 @@ type Screening struct {
 type ScreeningConfigRef struct {
 	Name string
 }
+
 type ScreeningWithMatches struct {
 	Screening
 	Matches            []ScreeningMatch

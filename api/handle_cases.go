@@ -644,3 +644,23 @@ func handleGetCaseDataForCopilot(uc usecases.Usecases) func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	}
 }
+
+func handleCreateCaseReview(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+
+		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
+		review, err := usecase.CreateCaseReview(ctx, caseId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.CaseReview{
+			Ok:          review.Ok,
+			Output:      review.Output,
+			SanityCheck: review.SanityCheck,
+			Thought:     review.Thought,
+		})
+	}
+}
