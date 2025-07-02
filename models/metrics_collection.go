@@ -10,7 +10,7 @@ type MetricData struct {
 	Name           string // Can be int, string, float, etc.
 	Value          any
 	Timestamp      time.Time
-	OrganizationID *uuid.UUID // Only for org-specific metrics
+	OrganizationID *string    // Only for org-specific metrics
 	From           *time.Time // Optional start time for time range metrics
 	To             *time.Time // Optional end time for time range metrics
 }
@@ -19,6 +19,7 @@ type MetricsPayload struct {
 	CollectionID uuid.UUID // Unique ID for this collection run, could be use as idempotency key
 	Timestamp    time.Time
 	Metrics      []MetricData
+	Version      string
 }
 
 func NewGlobalMetric(name string, value any, from, to *time.Time) MetricData {
@@ -31,7 +32,7 @@ func NewGlobalMetric(name string, value any, from, to *time.Time) MetricData {
 	}
 }
 
-func NewOrganizationMetric(name string, value any, orgID uuid.UUID, from, to *time.Time) MetricData {
+func NewOrganizationMetric(name string, value any, orgID string, from, to *time.Time) MetricData {
 	return MetricData{
 		Name:           name,
 		Value:          value,
