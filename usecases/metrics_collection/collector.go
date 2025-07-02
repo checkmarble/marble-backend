@@ -1,40 +1,53 @@
 package metrics_collection
 
-import "context"
+import (
+	"context"
+
+	"github.com/checkmarble/marble-backend/models"
+)
 
 // GlobalCollector is a collector that is not specific to an organization.
 // It is used to collect metrics that are not specific to an organization.
 // For example, the app version, the number of users
 type GlobalCollector interface {
 	Name() string
-	Collect(ctx context.Context) ([]MetricData, error)
+	Collect(ctx context.Context) ([]models.MetricData, error)
 }
 
 // Collector is a collector that is specific to an organization.
 type Collector interface {
 	Name() string
-	Collect(ctx context.Context, orgId string) ([]MetricData, error)
+	Collect(ctx context.Context, orgId string) ([]models.MetricData, error)
 }
 
 type Collectors struct {
-	Version          string
-	GlobalCollectors []GlobalCollector
-	Collectors       []Collector
+	version          string
+	globalCollectors []GlobalCollector
+	collectors       []Collector
 }
 
 func (c Collectors) GetGlobalCollectors() []GlobalCollector {
-	return c.GlobalCollectors
+	return c.globalCollectors
 }
 
 func (c Collectors) GetCollectors() []Collector {
-	return c.Collectors
+	return c.collectors
 }
 
-func NewCollectorV1() Collectors {
+func (c Collectors) GetVersion() string {
+	return c.version
+}
+
+// Use version to track the version of the collectors, could be used to track changes
+// and tell the server which collectors is used by the client
+func NewCollectorsV1() Collectors {
 	return Collectors{
-		Version: "v1",
-		Collectors: []Collector{
-			NewStubCollector(),
+		version: "v1",
+		collectors: []Collector{
+			NewStubOrganizationCollector(),
+		},
+		globalCollectors: []GlobalCollector{
+			NewStubGlobalCollector(),
 		},
 	}
 }
