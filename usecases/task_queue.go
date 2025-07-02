@@ -19,7 +19,9 @@ import (
 )
 
 const (
-	numberWorkersPerQueue = 5
+	numberWorkersPerQueue       = 5
+	globalQueueName             = "global"
+	numberWorkersForGlobalQueue = 1
 )
 
 type TaskQueueWorker struct {
@@ -136,6 +138,11 @@ func (w *TaskQueueWorker) removeQueuesFromMissingOrgs(ctx context.Context,
 			continue
 		}
 
+		// Ignore global queue
+		if q.Name == globalQueueName {
+			continue
+		}
+
 		if _, ok := orgMap[q.Name]; !ok {
 			logger.InfoContext(ctx, fmt.Sprintf("pausing queue for missing organization `%s`", q.Name))
 
@@ -178,4 +185,12 @@ func QueuesFromOrgs(ctx context.Context, orgsRepo repositories.OrganizationRepos
 	}
 
 	return queues, periodics, nil
+}
+
+func QueuesGlobal() map[string]river.QueueConfig {
+	queues := make(map[string]river.QueueConfig, 1)
+	queues[globalQueueName] = river.QueueConfig{
+		MaxWorkers: numberWorkersForGlobalQueue,
+	}
+	return queues
 }
