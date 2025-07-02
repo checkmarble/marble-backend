@@ -345,9 +345,11 @@ func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx]) 
 }
 
 func (usecases *Usecases) NewMetricsCollectionWorker() scheduled_execution.MetricCollectionWorker {
+	// TODO: Replace NewCollectorsTestV1 with NewCollectorsV1 when we have a real collector
 	return scheduled_execution.NewMetricCollectionWorker(
-		usecases.NewExecutorFactory(),
-		&usecases.Repositories.MarbleDbRepository,
-		metrics_collection.NewCollectorsV1(),
+		metrics_collection.NewCollectorsTestV1(
+			usecases.NewExecutorFactory(),
+			&usecases.Repositories.MarbleDbRepository,
+		),
 	)
 }
