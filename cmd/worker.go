@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"os/signal"
@@ -155,9 +156,8 @@ func RunTaskQueue(apiVersion string) error {
 		return err
 	}
 
-	queues["global"] = river.QueueConfig{
-		MaxWorkers: 2,
-	}
+	// Add the global queue
+	maps.Copy(queues, usecases.QueuesGlobal())
 
 	// Periodics always contain the per-org tasks retrieved above. Add other, non-organization-scoped periodics below
 	periodics := append(
