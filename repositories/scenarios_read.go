@@ -86,6 +86,36 @@ func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, exec Execu
 // It obviously returns the actual live iterations, but also one previous version and all next versions.
 // For example, if a scenario has a live iteration of 10, but has iterations from 1 to 13, this will returns
 // iterations 9 to 13.
+//
+// The final query looks like this (useful for debugging):
+/*
+	with live as (
+		select scenario_id, si.id as live_id str.scenario_iteration_id as test_run_id, version, si.updated_at
+		from scenario_iterations si
+		inner join scenarios s on s.live_scenario_iteration_id = si.id
+		left join scenario_test_run str ON str.live_scenario_iteration_id = s.live_scenario_iteration_id and str.status = 'up'
+		where si.org_id = '<org_id>')
+	select
+		si.id,
+		si.org_id,
+		si.scenario_id,
+		si.version,
+		si.created_at,
+		si.updated_at,
+		si.score_review_threshold,
+		si.score_block_and_review_threshold,
+		si.score_reject_threshold,
+		si.trigger_condition_ast_expression,
+		si.deleted_at,
+		si.schedule,
+		l.test_run_id,
+		array_agg(row(sir.id,sir.org_id,sir.scenario_iteration_id,sir.display_order,sir.name,sir.description,sir.score_modifier,sir.formula_ast_expression,sir.created_at,sir.deleted_at,sir.rule_group,sir.snooze_group_id,sir.stable_rule_id)) filter (where sir.id is not null) as rules
+	from scenario_iterations si
+	inner join live l on l.scenario_id = si.scenario_id or l.test_run_id = si.id
+	left join scenario_iteration_rules AS sir on sir.scenario_iteration_id = si.id
+	where si.version is not null and (si.id = l.live_id or si.version >= l.version or si.updated_at > l.updated_at or si.id = l.test_run_id)
+	group by si.id, l.test_run_id;
+*/
 func (repo *MarbleDbRepository) ListLiveIterationsAndNeighbors(ctx context.Context,
 	exec Executor, orgId string,
 ) ([]models.ScenarioIteration, error) {
@@ -94,9 +124,10 @@ func (repo *MarbleDbRepository) ListLiveIterationsAndNeighbors(ctx context.Conte
 	}
 
 	liveCte := NewQueryBuilder().
-		Select("scenario_id", "version").
+		Select("scenario_id", "si.id as live_id", "str.scenario_iteration_id as test_run_id", "version").
 		From(dbmodels.TABLE_SCENARIO_ITERATIONS + " si").
 		InnerJoin("scenarios s on s.live_scenario_iteration_id = si.id").
+		LeftJoin("scenario_test_run str on str.live_scenario_iteration_id = s.live_scenario_iteration_id and str.status = 'up'").
 		Where(squirrel.Eq{"si.org_id": orgId}).Prefix("with live as(").Suffix(")")
 
 	sql := NewQueryBuilder().
@@ -113,7 +144,7 @@ func (repo *MarbleDbRepository) ListLiveIterationsAndNeighbors(ctx context.Conte
 		LeftJoin(dbmodels.TABLE_RULES + " AS sir ON sir.scenario_iteration_id = si.id").
 		Where(squirrel.And{
 			squirrel.NotEq{"si.version": nil},
-			squirrel.Expr("si.version >= l.version - 1"),
+			squirrel.Expr("si.id = l.live_id or si.version >= l.version - 1 or si.id = l.test_run_id"),
 		}).
 		GroupBy("si.id")
 
