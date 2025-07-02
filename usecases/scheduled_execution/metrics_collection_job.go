@@ -2,7 +2,7 @@ package scheduled_execution
 
 import (
 	"context"
-	"maps"
+	"slices"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
 
@@ -17,7 +18,7 @@ import (
 const METRICS_COLLECTION_WORKER_INTERVAL = 10 * time.Second // Run every minute for testing
 
 type MetricsCollectionUsecase interface {
-	CollectMetrics(ctx context.Context) (map[string]any, error)
+	CollectMetrics(ctx context.Context) (models.MetricsPayload, error)
 }
 
 func NewMetricsCollectionPeriodicJob() *river.PeriodicJob {
@@ -72,63 +73,67 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 
 	// TODO: Store or send the metrics somewhere
 	// For now, just log the number of metrics collected
-	logger.InfoContext(ctx, "Metric collection completed", "metrics_count", len(metrics))
+	logger.InfoContext(ctx, "Metric collection completed", "metrics_count", len(metrics.Metrics))
 
 	return nil
 }
 
-func (w *MetricCollectionWorker) collectMetrics(ctx context.Context) (map[string]any, error) {
-	metrics := make(map[string]any)
+func (w *MetricCollectionWorker) collectMetrics(ctx context.Context) (models.MetricsPayload, error) {
+	metrics := make([]models.MetricData, 0)
 
 	// Collect global metrics
 	globalMetrics, err := w.collectGlobalMetrics(ctx)
 	if err != nil {
-		return nil, err
+		return models.MetricsPayload{}, err
 	}
-	maps.Copy(metrics, globalMetrics)
+	metrics = slices.Concat(metrics, globalMetrics)
 
 	// Collect organization-specific metrics
 	orgMetrics, err := w.collectOrganizationMetrics(ctx)
 	if err != nil {
-		return nil, err
+		return models.MetricsPayload{}, err
 	}
-	maps.Copy(metrics, orgMetrics)
+	metrics = slices.Concat(metrics, orgMetrics)
 
-	return metrics, nil
+	payload := models.MetricsPayload{
+		CollectionID: uuid.New(),
+		Timestamp:    time.Now(),
+		Metrics:      metrics,
+		Version:      w.collectors.GetVersion(),
+	}
+
+	return payload, nil
 }
 
-func (w *MetricCollectionWorker) collectGlobalMetrics(ctx context.Context) (map[string]any, error) {
-	metrics := make(map[string]any)
+func (w *MetricCollectionWorker) collectGlobalMetrics(ctx context.Context) ([]models.MetricData, error) {
+	metrics := make([]models.MetricData, 0)
 
 	for _, collector := range w.collectors.GetGlobalCollectors() {
 		value, err := collector.Collect(ctx)
 		if err != nil {
-			return nil, err
+			return []models.MetricData{}, err
 		}
-		metrics[collector.Name()] = value
+		metrics = slices.Concat(metrics, value)
 	}
 
 	return metrics, nil
 }
 
-func (w *MetricCollectionWorker) collectOrganizationMetrics(ctx context.Context) (map[string]any, error) {
-	metrics := make(map[string]any)
+func (w *MetricCollectionWorker) collectOrganizationMetrics(ctx context.Context) ([]models.MetricData, error) {
+	metrics := make([]models.MetricData, 0)
 
 	orgs, err := w.getListOfOrganizations(ctx)
 	if err != nil {
-		return nil, err
+		return []models.MetricData{}, err
 	}
 
 	for _, org := range orgs {
 		for _, collector := range w.collectors.GetCollectors() {
 			value, err := collector.Collect(ctx, org.Id)
 			if err != nil {
-				return nil, err
+				return []models.MetricData{}, err
 			}
-			// Use a composite key to avoid conflicts between organizations
-			// TODO: Store the organization ID in the metrics attributes
-			key := collector.Name() + "_" + org.Id
-			metrics[key] = value
+			metrics = slices.Concat(metrics, value)
 		}
 	}
 
@@ -138,7 +143,7 @@ func (w *MetricCollectionWorker) collectOrganizationMetrics(ctx context.Context)
 func (w *MetricCollectionWorker) getListOfOrganizations(ctx context.Context) ([]models.Organization, error) {
 	orgs, err := w.organizationRepository.AllOrganizations(ctx, w.executorFactory.NewExecutor())
 	if err != nil {
-		return nil, err
+		return []models.Organization{}, err
 	}
 	return orgs, nil
 }
