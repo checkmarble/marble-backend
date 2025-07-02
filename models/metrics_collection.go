@@ -24,7 +24,7 @@ type MetricData struct {
 	Frequency      MetricCollectionFrequency
 }
 
-type MetricsPayload struct {
+type MetricsCollection struct {
 	CollectionID uuid.UUID // Unique ID for this collection run, could be use as idempotency key
 	Timestamp    time.Time
 	Metrics      []MetricData
