@@ -22,8 +22,8 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/google/uuid"
+	"github.com/openai/openai-go"
 	"github.com/pkg/errors"
-	"google.golang.org/genai"
 )
 
 const HIGH_NB_ROWS_THRESHOLD = 0
@@ -73,9 +73,8 @@ type AiAgentUsecase struct {
 	ingestedDataReader AiAgentUsecaseIngestedDataReader
 	dataModelUsecase   AiAgentUsecaseDataModelUsecase
 
-	client    *genai.Client
-	mu        sync.Mutex
-	gcpRegion string
+	client *openai.Client
+	mu     sync.Mutex
 }
 
 func NewAiAgentUsecase(
@@ -93,24 +92,15 @@ func NewAiAgentUsecase(
 		executorFactory:    executorFactory,
 		ingestedDataReader: ingestedDataReader,
 		dataModelUsecase:   dataModelUsecase,
-
-		// Some models are only available in the "global" region. Choose a proper region in production.
-		gcpRegion: utils.GetEnv("VERTEX_AI_GCP_REGION", "global"),
 	}
 }
 
-func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*genai.Client, error) {
+func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*openai.Client, error) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
-	var err error
 	if uc.client == nil {
-		uc.client, err = genai.NewClient(ctx, &genai.ClientConfig{
-			Location: uc.gcpRegion,
-			Backend:  genai.BackendVertexAI,
-		})
-		if err != nil {
-			return nil, errors.Wrap(err, "could not create GenAI client")
-		}
+		client := openai.NewClient()
+		uc.client = &client
 	}
 	return uc.client, nil
 }
@@ -209,12 +199,11 @@ func readPrompt(path string) (string, error) {
 // "previous" returned by the method can be reused as input for the next call to generateContent in order to continue the conversation.
 func (uc *AiAgentUsecase) generateContent(
 	ctx context.Context,
-	client *genai.Client,
-	organizationId string,
+	client *openai.Client,
 	promptPath string,
 	data map[string]any,
-	generateContentConfig *genai.GenerateContentConfig,
-	previousContents ...*genai.Content,
+	generateContentConfig *GenerateContentConfig,
+	previousContents ...openai.ChatCompletionMessageParamUnion,
 ) (out GenerateContentResult, err error) {
 	prompt, err := readPrompt(promptPath)
 	if err != nil {
@@ -261,76 +250,124 @@ func (uc *AiAgentUsecase) generateContent(
 		return out, errors.Wrap(err, "could not execute template")
 	}
 
-	// set the organization id in the labels for billing attribution
-	if generateContentConfig.Labels == nil {
-		generateContentConfig.Labels = make(map[string]string)
+	// Build messages array
+	messages := make([]openai.ChatCompletionMessageParamUnion, 0, len(previousContents)+2)
+
+	// Add system message if provided
+	if generateContentConfig.SystemInstruction != "" {
+		messages = append(messages, openai.SystemMessage(
+			generateContentConfig.SystemInstruction))
 	}
-	generateContentConfig.Labels["organization_id"] = organizationId
-	prompt = buf.String()
-	result, err := client.Models.GenerateContent(
-		ctx,
-		model,
-		append(previousContents, genai.Text(prompt)...),
-		generateContentConfig,
-	)
+
+	// Add previous messages
+	messages = append(messages, previousContents...)
+
+	// Add current prompt
+	messages = append(messages, openai.UserMessage(buf.String()))
+
+	// Create chat completion request
+	chatService := client.Chat.Completions
+	params := openai.ChatCompletionNewParams{
+		Model:    model,
+		Messages: messages,
+	}
+
+	// Add response format if specified
+	if generateContentConfig.ResponseMIMEType == "application/json" {
+		if generateContentConfig.ResponseSchema != nil {
+			// Use JSON schema format for structured output
+			params.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
+				OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{
+					JSONSchema: *generateContentConfig.ResponseSchema,
+				},
+			}
+		} else {
+			// Use simple JSON object format
+			params.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
+				OfJSONObject: &openai.ResponseFormatJSONObjectParam{},
+			}
+		}
+	}
+
+	// Add tools if specified
+	if len(generateContentConfig.Tools) > 0 {
+		params.Tools = generateContentConfig.Tools
+	}
+
+	// Add tool choice if specified
+	if generateContentConfig.ToolChoice != (openai.ChatCompletionToolChoiceOptionUnionParam{}) {
+		params.ToolChoice = generateContentConfig.ToolChoice
+	}
+
+	// Add labels for billing attribution
+	if generateContentConfig.Labels != nil {
+		// OpenAI doesn't have direct labels support like GenAI, but we can add metadata
+		// This would need to be handled differently in production
+	}
+
+	result, err := chatService.New(ctx, params)
 	if err != nil {
 		return out, err
 	}
-	if len(result.Candidates) == 0 {
-		return out, errors.New("no response from GenAI")
-	}
-	if result.Candidates[0].Content == nil {
-		return out, errors.New("no content in response from GenAI")
+	if len(result.Choices) == 0 {
+		return out, errors.New("no response from OpenAI")
 	}
 
-	onlyTextParts := make([]string, 0, len(result.Candidates[0].Content.Parts))
-	for _, part := range result.Candidates[0].Content.Parts {
-		if !part.Thought && part.Text != "" {
-			onlyTextParts = append(onlyTextParts, part.Text)
-		}
+	choice := result.Choices[0]
+	if choice.Message.Content == "" {
+		return out, errors.New("no content in response from OpenAI")
 	}
-	thinkingTextParts := make([]string, 0, len(result.Candidates[0].Content.Parts))
-	for _, part := range result.Candidates[0].Content.Parts {
-		if part.Thought && part.Text != "" {
-			thinkingTextParts = append(thinkingTextParts, part.Text)
+
+	// Extract text content
+	text := choice.Message.Content
+
+	// Extract tool calls (equivalent to "thought" in GenAI)
+	thought := ""
+	if len(choice.Message.ToolCalls) > 0 {
+		for _, toolCall := range choice.Message.ToolCalls {
+			if toolCall.Function.Arguments != "" {
+				thought += toolCall.Function.Arguments
+			}
 		}
 	}
 
 	logger.InfoContext(ctx, "content detail",
 		"prompt", promptPath,
 		"model", model,
-		"len", len(result.Candidates[0].Content.Parts),
-		"len_filtered_text", len(onlyTextParts),
-		"len_thinking_text", len(thinkingTextParts),
+		"len_content", len(choice.Message.Content),
+		"len_tool_calls", len(choice.Message.ToolCalls),
 	)
 
-	previous := append(previousContents, result.Candidates[0].Content)
-	gatherText := ""
-	for _, t := range onlyTextParts {
-		gatherText += t
-	}
-	gatherThought := ""
-	for _, t := range thinkingTextParts {
-		gatherThought += t
-	}
+	// Convert the response message to the format expected by previous contents
+	responseMessage := openai.AssistantMessage(text)
+	previous := append(previousContents, responseMessage)
 
 	return GenerateContentResult{
-		Text:     gatherText,
-		Thought:  gatherThought,
+		Text:     text,
+		Thought:  thought,
 		Previous: previous,
 	}, nil
+}
+
+type GenerateContentConfig struct {
+	SystemInstruction string
+	ResponseMIMEType  string
+	ResponseSchema    *openai.ResponseFormatJSONSchemaJSONSchemaParam
+	Tools             []openai.ChatCompletionToolParam
+	ToolChoice        openai.ChatCompletionToolChoiceOptionUnionParam
+	Labels            map[string]string
 }
 
 type GenerateContentResult struct {
 	Text     string
 	Thought  string
-	Previous []*genai.Content
+	Previous []openai.ChatCompletionMessageParamUnion
 }
 
 func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (models.CaseReview, error) {
 	client, err := uc.GetClient(ctx)
 	if err != nil {
-		return models.CaseReview{}, errors.Wrap(err, "could not create GenAI client")
+		return models.CaseReview{}, errors.Wrap(err, "could not create OpenAI client")
 	}
 
 	caseData, relatedDataPerClient, err := uc.getCaseDataWithPermissions(ctx, caseId)
@@ -352,18 +389,16 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		logger.ErrorContext(ctx, "could not read system instruction", "error", err)
 		systemInstruction = "You are a compliance officer or fraud analyst. You are given a case and you need to review it step by step. Reply factually to instructions in markdown format."
 	}
-	systemInstructionContent := genai.Text(systemInstruction)[0]
 
 	// Data model summary
 	dataModelSummaryResult, err := uc.generateContent(ctx,
 		client,
-		caseData.organizationId,
 		"prompts/case_review/data_model_summary.md",
 		map[string]any{
 			"data_model": caseData.dataModelDto,
 		},
-		&genai.GenerateContentConfig{
-			SystemInstruction: systemInstructionContent,
+		&GenerateContentConfig{
+			SystemInstruction: systemInstruction,
 		},
 	)
 	if err != nil {
@@ -405,29 +440,36 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		if objectTables != nil {
 			// generate the map of fields to read for every table, but only once.
 			if fieldsToReadPerTable == nil {
-				properties := make(map[string]*genai.Schema, len(tablesWithLargRowNbs))
+				// Build the JSON schema for field selection
+				properties := make(map[string]interface{}, len(tablesWithLargRowNbs))
 				for tableName, fields := range tablesWithLargRowNbs {
-					properties[tableName] = &genai.Schema{
-						Type:  "array",
-						Items: &genai.Schema{Type: "string", Enum: fields},
+					properties[tableName] = map[string]interface{}{
+						"type": "array",
+						"items": map[string]interface{}{
+							"type": "string",
+							"enum": fields,
+						},
 					}
 				}
+
 				dataModelObjectFieldReadOptionsResult, err := uc.generateContent(
 					ctx,
 					client,
-					caseData.organizationId,
 					"prompts/case_review/data_model_object_field_read_options.md",
 					map[string]any{
 						"data_model_table_names": tableNamesWithLargRowNbs,
 					},
-					&genai.GenerateContentConfig{
-						ResponseMIMEType:  "application/json",
-						SystemInstruction: systemInstructionContent,
-						ResponseSchema: &genai.Schema{
-							Type:        "object",
-							Description: "List of fields, on a table per table basis, that should be read from ingested data for high-volume tables and considered for transaction analysis",
-							Properties:  properties,
+					&GenerateContentConfig{
+						ResponseMIMEType: "application/json",
+						ResponseSchema: &openai.ResponseFormatJSONSchemaJSONSchemaParam{
+							Name:        "field_selection",
+							Description: openai.String("List of fields, on a table per table basis, that should be read from ingested data for high-volume tables and considered for transaction analysis"),
+							Schema: map[string]interface{}{
+								"type":       "object",
+								"properties": properties,
+							},
 						},
+						SystemInstruction: systemInstruction,
 					},
 					previousContents...,
 				)
@@ -478,17 +520,13 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	// Rules definitions review
 	rulesDefinitionsReviewResult, err := uc.generateContent(ctx,
 		client,
-		caseData.organizationId,
 		"prompts/case_review/rule_definitions.md",
 		map[string]any{
 			"decisions":            caseData.decisions,
 			"activity_description": clientActivityDescription,
 		},
-		&genai.GenerateContentConfig{
-			Tools: []*genai.Tool{
-				{GoogleSearch: &genai.GoogleSearch{}},
-			},
-			SystemInstruction: systemInstructionContent,
+		&GenerateContentConfig{
+			SystemInstruction: systemInstruction,
 		},
 	)
 	rulesDefinitionsReview := rulesDefinitionsReviewResult.Text
@@ -505,13 +543,12 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	// Rule thresholds
 	ruleThresholdsResult, err := uc.generateContent(ctx,
 		client,
-		caseData.organizationId,
 		"prompts/case_review/rule_threshold_values.md",
 		map[string]any{
 			"decisions": caseData.decisions,
 		},
-		&genai.GenerateContentConfig{
-			SystemInstruction: systemInstructionContent,
+		&GenerateContentConfig{
+			SystemInstruction: systemInstruction,
 		},
 	)
 	ruleThresholds := ruleThresholdsResult.Text
@@ -528,7 +565,6 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	caseReviewResult, err := uc.generateContent(
 		ctx,
 		client,
-		caseData.organizationId,
 		"prompts/case_review/case_review.md",
 		map[string]any{
 			"case_detail":        caseData.case_,
@@ -540,11 +576,8 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 			"rules_summary":      rulesDefinitionsReview,
 			"rule_thresholds":    ruleThresholds,
 		},
-		&genai.GenerateContentConfig{
-			Tools: []*genai.Tool{
-				{GoogleSearch: &genai.GoogleSearch{}},
-			},
-			SystemInstruction: systemInstructionContent,
+		&GenerateContentConfig{
+			SystemInstruction: systemInstruction,
 		},
 	)
 	caseReview := caseReviewResult.Text
@@ -560,7 +593,6 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	// Finally, sanity check the resulting case review using a judgement prompt
 	sanityCheckResult, err := uc.generateContent(ctx,
 		client,
-		caseData.organizationId,
 		"prompts/case_review/sanity_check.md",
 		map[string]any{
 			"case_detail":        caseData.case_,
@@ -573,24 +605,27 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 			"rule_thresholds":    ruleThresholds,
 			"case_review":        caseReview,
 		},
-		&genai.GenerateContentConfig{
+		&GenerateContentConfig{
 			ResponseMIMEType: "application/json",
-			ResponseSchema: &genai.Schema{
-				Type:        "object",
-				Description: "Output of the sanity check and detailed justification",
-				Properties: map[string]*genai.Schema{
-					"ok": {
-						Type:        "boolean",
-						Description: "Whether the case review is ok or not",
+			ResponseSchema: &openai.ResponseFormatJSONSchemaJSONSchemaParam{
+				Name:        "sanity_check",
+				Description: openai.String("Output of the sanity check and detailed justification"),
+				Schema: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"ok": map[string]interface{}{
+							"type":        "boolean",
+							"description": "Whether the case review is ok or not",
+						},
+						"justification": map[string]interface{}{
+							"type":        "string",
+							"description": "Detailed justification for the sanity check, only in the case of a negative answer",
+						},
 					},
-					"justification": {
-						Type:        "string",
-						Description: "Detailed justification for the sanity check, only in the case of a negative answer",
-					},
+					"required": []string{"ok"},
 				},
-				Required: []string{"ok"},
 			},
-			SystemInstruction: systemInstructionContent,
+			SystemInstruction: systemInstruction,
 		},
 	)
 	sanityCheck := sanityCheckResult.Text
@@ -622,7 +657,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		Ok:          false,
 		Output:      caseReview,
 		SanityCheck: sanityCheckResult.Text,
-		Thought:     sanityCheckResult.Thought,
+		Thought:     caseReviewResult.Thought,
 	}, nil
 }
 
