@@ -2,6 +2,7 @@ package metrics_collection
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 )
@@ -10,14 +11,12 @@ import (
 // It is used to collect metrics that are not specific to an organization.
 // For example, the app version, the number of users
 type GlobalCollector interface {
-	Name() string
-	Collect(ctx context.Context) ([]models.MetricData, error)
+	Collect(ctx context.Context, from time.Time, to time.Time) ([]models.MetricData, error)
 }
 
 // Collector is a collector that is specific to an organization.
 type Collector interface {
-	Name() string
-	Collect(ctx context.Context, orgId string) ([]models.MetricData, error)
+	Collect(ctx context.Context, orgId string, from time.Time, to time.Time) ([]models.MetricData, error)
 }
 
 type Collectors struct {
