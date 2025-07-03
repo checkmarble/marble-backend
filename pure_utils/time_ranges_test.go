@@ -158,46 +158,32 @@ func TestSplitTimeRangeByFrequency_Monthly(t *testing.T) {
 }
 
 func TestSplitTimeRangeByFrequency_EdgeCases(t *testing.T) {
-	tests := []struct {
-		name      string
-		from      time.Time
-		to        time.Time
-		frequency Frequency
-		expected  []TimeRange
-	}{
-		{
-			name:      "from after to",
-			from:      time.Date(2023, 1, 20, 10, 0, 0, 0, time.UTC),
-			to:        time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC),
-			frequency: FrequencyDaily,
-			expected: []TimeRange{
-				{
-					From: time.Date(2023, 1, 20, 10, 0, 0, 0, time.UTC),
-					To:   time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC),
-				},
-			},
-		},
-		{
-			name:      "from equal to to",
-			from:      time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC),
-			to:        time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC),
-			frequency: FrequencyDaily,
-			expected: []TimeRange{
-				{
-					From: time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC),
-					To:   time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC),
-				},
-			},
-		},
-	}
+	t.Run("from after to", func(t *testing.T) {
+		from := time.Date(2023, 1, 20, 10, 0, 0, 0, time.UTC)
+		to := time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := SplitTimeRangeByFrequency(tt.from, tt.to, tt.frequency)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+		result, err := SplitTimeRangeByFrequency(from, to, FrequencyDaily)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "from time is after to time")
+	})
+
+	t.Run("from equal to to", func(t *testing.T) {
+		from := time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC)
+		to := time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC)
+
+		result, err := SplitTimeRangeByFrequency(from, to, FrequencyDaily)
+		require.NoError(t, err)
+
+		expected := []TimeRange{
+			{
+				From: time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC),
+				To:   time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC),
+			},
+		}
+		assert.Equal(t, expected, result)
+	})
 }
 
 func TestSplitTimeRangeByFrequency_UnknownFrequency(t *testing.T) {
