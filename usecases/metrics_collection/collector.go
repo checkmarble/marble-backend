@@ -122,6 +122,7 @@ func (c Collectors) getListOfOrganizations(ctx context.Context) ([]models.Organi
 func NewCollectorsTestV1(
 	executorFactory executor_factory.ExecutorFactory,
 	organizationRepository OrganizationRepository,
+	apiVersion string,
 ) Collectors {
 	return Collectors{
 		version: "test-v1",
@@ -130,6 +131,8 @@ func NewCollectorsTestV1(
 		},
 		globalCollectors: []GlobalCollector{
 			NewStubGlobalCollector(),
+			NewLicenseKeyCollector(),
+			NewAppVersionCollector(apiVersion),
 		},
 		executorFactory:        executorFactory,
 		organizationRepository: organizationRepository,
