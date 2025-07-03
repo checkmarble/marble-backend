@@ -196,6 +196,7 @@ func RunTaskQueue(apiVersion string) error {
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
+		usecases.WithApiVersion(apiVersion),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
