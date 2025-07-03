@@ -54,8 +54,8 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset, tags *e
 	}
 
 	for _, dataset := range datasets {
-		if dataset.Load && dataset.IndexVersion != nil {
-			findLoadedDatasets(loadedDatasets, set.New[string](0), datasetMap, &dataset)
+		if dataset.Load {
+			findLoadedDatasets(dataset.IndexVersion != nil, loadedDatasets, set.New[string](0), datasetMap, &dataset)
 		}
 	}
 
@@ -98,7 +98,7 @@ func findDatasets(sections map[string]*models.OpenSanctionsCatalogSection,
 			continue
 		}
 
-		regionCode, regionName := regionFromDatasetName(dataset.Name, tags)
+		regionCode, regionName := regionFromDatasetName(dataset.Name)
 
 		if _, ok := sections[regionCode]; !ok {
 			sections[regionCode] = &models.OpenSanctionsCatalogSection{
@@ -124,21 +124,23 @@ func findDatasets(sections map[string]*models.OpenSanctionsCatalogSection,
 	}
 }
 
-func findLoadedDatasets(loaded map[string]*set.Set[string], parents *set.Set[string],
+func findLoadedDatasets(isParentLoaded bool, loaded map[string]*set.Set[string], parents *set.Set[string],
 	datasets map[string]*HTTPOpenSanctionCatalogDataset, current *HTTPOpenSanctionCatalogDataset,
 ) {
 	parents = parents.Copy()
 	parents.Insert(current.Name)
 
-	if _, ok := loaded[current.Name]; ok {
-		loaded[current.Name].InsertSet(parents)
-	} else {
-		loaded[current.Name] = parents
+	if isParentLoaded {
+		if _, ok := loaded[current.Name]; ok {
+			loaded[current.Name].InsertSet(parents)
+		} else {
+			loaded[current.Name] = parents
+		}
 	}
 
 	for _, child := range current.Children {
 		if childDataset, ok := datasets[child]; ok {
-			findLoadedDatasets(loaded, parents, datasets, childDataset)
+			findLoadedDatasets(isParentLoaded || current.IndexVersion != nil, loaded, parents, datasets, childDataset)
 		}
 	}
 }
@@ -154,7 +156,7 @@ func regionCodeFromName(code string) string {
 	return "other"
 }
 
-func regionFromDatasetName(name string, tags *set.Set[string]) (string, string) {
+func regionFromDatasetName(name string) (string, string) {
 	cc := ""
 
 	if strings.HasPrefix(name, "ext") && len(name) >= 6 && isDatasetSeparator(name[3]) {
