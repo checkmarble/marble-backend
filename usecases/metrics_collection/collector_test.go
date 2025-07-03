@@ -373,11 +373,11 @@ func TestNewCollectorsTestV1(t *testing.T) {
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 
 	// Execute
-	collectors := NewCollectorsTestV1(mockExecutorFactory, mockOrgRepo)
+	collectors := NewCollectorsTestV1(mockExecutorFactory, mockOrgRepo, "ApiVersionTest")
 
 	// Assert
 	assert.Equal(t, "test-v1", collectors.version)
-	assert.Len(t, collectors.globalCollectors, 1)
+	assert.Len(t, collectors.globalCollectors, 3)
 	assert.Len(t, collectors.collectors, 1)
 	assert.Equal(t, mockOrgRepo, collectors.organizationRepository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
