@@ -51,16 +51,15 @@ func SplitTimeRangeByFrequency(from, to time.Time, frequency Frequency) ([]TimeR
 	return ranges, nil
 }
 
+// getNextPeriodBoundary returns the start of the next calendar period based on the given frequency.
+// For daily frequency, it returns the next day at 00:00:00.
+// For monthly frequency, it returns the first day of the next month at 00:00:00.
 func getNextPeriodBoundary(current time.Time, frequency Frequency) (time.Time, error) {
 	switch frequency {
 	case FrequencyDaily:
-		// Next day at midnight (e.g., Jan 15 14:30 → Jan 16 00:00)
-		next := current.AddDate(0, 0, 1) // Add 1 day
-		return time.Date(next.Year(), next.Month(), next.Day(), 0, 0, 0, 0, current.Location()), nil
+		return time.Date(current.Year(), current.Month(), current.Day()+1, 0, 0, 0, 0, current.Location()), nil
 	case FrequencyMonthly:
-		// First day of next month at midnight (e.g., Jan 15 → Feb 1 00:00)
-		next := current.AddDate(0, 1, 0) // Add 1 month
-		return time.Date(next.Year(), next.Month(), 1, 0, 0, 0, 0, current.Location()), nil
+		return time.Date(current.Year(), current.Month()+1, 1, 0, 0, 0, 0, current.Location()), nil
 	default:
 		return time.Time{}, fmt.Errorf("unsupported frequency: %s", frequency)
 	}
