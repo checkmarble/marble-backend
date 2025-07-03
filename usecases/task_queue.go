@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -19,14 +20,13 @@ import (
 )
 
 const (
-	numberWorkersPerQueue       = 5
-	globalQueueName             = "global"
-	numberWorkersForGlobalQueue = 1
+	numberWorkersPerQueue = 5
 )
 
 type TaskQueueWorker struct {
 	executorFactory executor_factory.ExecutorFactory
 	orgRepository   repositories.OrganizationRepository
+	queueWhitelist  []string
 	riverClient     *river.Client[pgx.Tx]
 	mu              *sync.Mutex
 }
@@ -34,11 +34,13 @@ type TaskQueueWorker struct {
 func NewTaskQueueWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	orgRepository repositories.OrganizationRepository,
+	queueWhitelist []string,
 	riverClient *river.Client[pgx.Tx],
 ) *TaskQueueWorker {
 	return &TaskQueueWorker{
 		executorFactory: executorFactory,
 		orgRepository:   orgRepository,
+		queueWhitelist:  queueWhitelist,
 		riverClient:     riverClient,
 		mu:              &sync.Mutex{},
 	}
@@ -138,8 +140,8 @@ func (w *TaskQueueWorker) removeQueuesFromMissingOrgs(ctx context.Context,
 			continue
 		}
 
-		// Ignore global queue
-		if q.Name == globalQueueName {
+		// Ignore whitelisted queues
+		if slices.Contains(w.queueWhitelist, q.Name) {
 			continue
 		}
 
@@ -187,10 +189,10 @@ func QueuesFromOrgs(ctx context.Context, orgsRepo repositories.OrganizationRepos
 	return queues, periodics, nil
 }
 
-func QueuesGlobal() map[string]river.QueueConfig {
+func QueueMetrics() map[string]river.QueueConfig {
 	queues := make(map[string]river.QueueConfig, 1)
-	queues[globalQueueName] = river.QueueConfig{
-		MaxWorkers: numberWorkersForGlobalQueue,
+	queues["metrics"] = river.QueueConfig{
+		MaxWorkers: 1,
 	}
 	return queues
 }
