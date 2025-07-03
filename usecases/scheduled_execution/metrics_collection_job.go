@@ -52,7 +52,7 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Starting metrics collection job")
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	// Take a watermark for the "from" time
 	// TODO: Get the from time from watermark or a default value if not exists (-> create a function for this)
