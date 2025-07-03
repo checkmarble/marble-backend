@@ -2,9 +2,12 @@ package scheduled_execution
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/riverqueue/river"
 )
@@ -32,17 +35,33 @@ type MetricsCollectionUsecase interface {
 	CollectMetrics(ctx context.Context, from time.Time, to time.Time) (models.MetricsCollection, error)
 }
 
+type WatermarkRepository interface {
+	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *string,
+		watermarkType models.WatermarkType) (*models.Watermark, error)
+	SaveWatermark(ctx context.Context, tx repositories.Transaction,
+		orgId *string, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params *json.RawMessage) error
+}
+
 type MetricCollectionWorker struct {
 	river.WorkerDefaults[models.MetricsCollectionArgs]
 
-	collectors MetricsCollectionUsecase
+	collectors         MetricsCollectionUsecase
+	repository         WatermarkRepository
+	executorFactory    executor_factory.ExecutorFactory
+	transactionFactory executor_factory.TransactionFactory
 }
 
 func NewMetricCollectionWorker(
 	collectors MetricsCollectionUsecase,
+	repository WatermarkRepository,
+	executorFactory executor_factory.ExecutorFactory,
+	transactionFactory executor_factory.TransactionFactory,
 ) MetricCollectionWorker {
 	return MetricCollectionWorker{
-		collectors: collectors,
+		collectors:         collectors,
+		repository:         repository,
+		executorFactory:    executorFactory,
+		transactionFactory: transactionFactory,
 	}
 }
 
@@ -55,8 +74,8 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 	now := time.Now().UTC()
 
 	// Take a watermark for the "from" time
-	// TODO: Get the from time from watermark or a default value if not exists (-> create a function for this)
-	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	from := w.getFromTime(ctx).UTC()
+	logger.DebugContext(ctx, "Collecting metrics from", "from", from)
 
 	// Create the metric collection usecase
 	metricsCollection, err := w.collectors.CollectMetrics(ctx, from, now)
@@ -69,10 +88,31 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 
 	// TODO: Update the watermarks with now value
 	logger.DebugContext(ctx, "Updating watermarks", "new_timestamp", now)
+	if err := w.saveWatermark(ctx, now); err != nil {
+		logger.ErrorContext(ctx, "Failed to save watermark", "error", err)
+		return err
+	}
 
 	// TODO: Store or send the metrics somewhere
 	// For now, just log the number of metrics collected
 	logger.DebugContext(ctx, "Metric collection completed", "metrics_count", len(metricsCollection.Metrics))
 
 	return nil
+}
+
+// Get the from time from the watermark table, always return a Time in UTC
+func (w MetricCollectionWorker) getFromTime(ctx context.Context) time.Time {
+	exec := w.executorFactory.NewExecutor()
+	watermark, err := w.repository.GetWatermark(ctx, exec, nil, models.WatermarkTypeMetrics)
+	if err != nil || watermark == nil || watermark.WatermarkTime.IsZero() {
+		return time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+
+	return watermark.WatermarkTime
+}
+
+func (w MetricCollectionWorker) saveWatermark(ctx context.Context, newWatermarkTime time.Time) error {
+	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return w.repository.SaveWatermark(ctx, tx, nil, models.WatermarkTypeMetrics, nil, newWatermarkTime, nil)
+	})
 }
