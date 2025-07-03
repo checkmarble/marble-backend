@@ -294,6 +294,21 @@ func TestGetNextPeriodBoundary_Monthly(t *testing.T) {
 			current:  time.Date(2023, 11, 30, 23, 59, 59, 0, time.UTC),
 			expected: time.Date(2023, 12, 1, 0, 0, 0, 0, time.UTC),
 		},
+		{
+			name:     "january 31st to february 1st",
+			current:  time.Date(2025, 1, 31, 23, 59, 59, 0, time.UTC),
+			expected: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:     "july 31st to august 1st",
+			current:  time.Date(2025, 7, 31, 23, 59, 59, 0, time.UTC),
+			expected: time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:     "february 29th to march 1st",
+			current:  time.Date(2024, 2, 29, 19, 19, 19, 0, time.UTC),
+			expected: time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC),
+		},
 	}
 
 	for _, tt := range tests {
