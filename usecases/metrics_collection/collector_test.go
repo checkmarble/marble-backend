@@ -3,7 +3,6 @@ package metrics_collection
 import (
 	"context"
 	"errors"
-	"slices"
 	"testing"
 	"time"
 
@@ -120,17 +119,9 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	assert.Len(t, result.Metrics, 3)
 
 	// Verify metrics content
-	assert.True(t, slices.ContainsFunc(result.Metrics, func(m models.MetricData) bool {
-		return m.OrganizationID == nil && m.Name == "global_metric"
-	}), "Should contain global metric")
-
-	assert.True(t, slices.ContainsFunc(result.Metrics, func(m models.MetricData) bool {
-		return m.OrganizationID != nil && *m.OrganizationID == "org1"
-	}), "Should contain org1 metric")
-
-	assert.True(t, slices.ContainsFunc(result.Metrics, func(m models.MetricData) bool {
-		return m.OrganizationID != nil && *m.OrganizationID == "org2"
-	}), "Should contain org2 metric")
+	assert.Contains(t, result.Metrics, globalMetrics[0], "Should contain global metric")
+	assert.Contains(t, result.Metrics, org1Metrics[0], "Should contain org1 metric")
+	assert.Contains(t, result.Metrics, org2Metrics[0], "Should contain org2 metric")
 
 	// Verify all mocks were called as expected
 	mockOrgRepo.AssertExpectations(t)
@@ -270,13 +261,8 @@ func TestCollectors_CollectMetrics_OrgCollectorError(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result.Metrics, 2) // 1 global + 1 org2 metric
 
-	assert.True(t, slices.ContainsFunc(result.Metrics, func(m models.MetricData) bool {
-		return m.OrganizationID == nil && m.Name == "global_metric"
-	}), "Should contain global metric")
-
-	assert.True(t, slices.ContainsFunc(result.Metrics, func(m models.MetricData) bool {
-		return m.OrganizationID != nil && *m.OrganizationID == "org2"
-	}), "Should contain org2 metric")
+	assert.Contains(t, result.Metrics, globalMetrics[0], "Should contain global metric")
+	assert.Contains(t, result.Metrics, org2Metrics[0], "Should contain org2 metric")
 
 	mockOrgRepo.AssertExpectations(t)
 	mockGlobalCollector.AssertExpectations(t)
