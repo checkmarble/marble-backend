@@ -142,7 +142,7 @@ type OffloadDecisionRuleRequest struct {
 	OrgId        string
 	DeleteBefore time.Time
 	BatchSize    int
-	Watermark    *OffloadingWatermark
+	Watermark    *Watermark
 }
 
 type OffloadableDecisionRule struct {
