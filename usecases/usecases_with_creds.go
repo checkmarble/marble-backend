@@ -191,6 +191,7 @@ func (usecases *UsecasesWithCreds) NewDecisionWorkflows() decision_workflows.Dec
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewWebhookEventsUsecase(),
 		usecases.NewScenarioEvaluator(),
+		usecases.NewEvaluateAstExpression(),
 	)
 }
 
@@ -202,6 +203,17 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 		executorFactory:     usecases.NewExecutorFactory(),
 		enforceSecurity:     usecases.NewEnforceScenarioSecurity(),
 		repository:          &usecases.Repositories.MarbleDbRepository,
+		workflowRepository:  &usecases.Repositories.MarbleDbRepository,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewWorkflowUsecase() WorkflowUsecase {
+	return WorkflowUsecase{
+		executorFactory:     usecases.NewExecutorFactory(),
+		enforceSecurity:     usecases.NewEnforceScenarioSecurity(),
+		repository:          &usecases.Repositories.MarbleDbRepository,
+		scenarioRepository:  &usecases.Repositories.MarbleDbRepository,
+		validateScenarioAst: usecases.NewValidateScenarioAst(),
 	}
 }
 
