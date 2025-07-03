@@ -17,7 +17,7 @@ func NewMetricsCollectionPeriodicJob() *river.PeriodicJob {
 		river.PeriodicInterval(METRICS_COLLECTION_WORKER_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.MetricsCollectionArgs{}, &river.InsertOpts{
-				Queue: "global",
+				Queue: "metrics",
 				UniqueOpts: river.UniqueOpts{
 					ByQueue:  true,
 					ByPeriod: METRICS_COLLECTION_WORKER_INTERVAL,

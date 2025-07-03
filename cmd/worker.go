@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
 
@@ -156,8 +157,13 @@ func RunTaskQueue(apiVersion string) error {
 		return err
 	}
 
-	// Add the global queue
-	maps.Copy(queues, usecases.QueuesGlobal())
+	// For non-org queues
+	nonOrgQueues := make(map[string]river.QueueConfig)
+	maps.Copy(nonOrgQueues, usecases.QueueMetrics())
+	queueWhitelist := slices.Collect(maps.Keys(nonOrgQueues))
+
+	// Add the metrics queue
+	maps.Copy(queues, nonOrgQueues)
 
 	// Periodics always contain the per-org tasks retrieved above. Add other, non-organization-scoped periodics below
 	periodics := append(
@@ -233,7 +239,7 @@ func RunTaskQueue(apiVersion string) error {
 	logger.InfoContext(ctx, "starting worker", slog.String("version", apiVersion))
 
 	// Asynchronously keep the task queue workers up to date with the orgs in the database
-	taskQueueWorker := uc.NewTaskQueueWorker(riverClient)
+	taskQueueWorker := uc.NewTaskQueueWorker(riverClient, queueWhitelist)
 	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx)
 
 	// Start the cron jobs using the old entrypoint.

@@ -336,10 +336,11 @@ func (usecases *Usecases) NewLicenseUsecase() PublicLicenseUseCase {
 	)
 }
 
-func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx]) *TaskQueueWorker {
+func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx], queueWhitelist []string) *TaskQueueWorker {
 	return NewTaskQueueWorker(
 		usecases.NewExecutorFactory(),
 		&usecases.Repositories.MarbleDbRepository,
+		queueWhitelist,
 		riverClient,
 	)
 }
