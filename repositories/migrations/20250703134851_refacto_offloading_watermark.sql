@@ -1,8 +1,12 @@
 -- +goose Up
 -- +goose StatementBegin
 
+-- Lock the table to prevent concurrent access during the migration
+LOCK TABLE offloading_watermarks IN EXCLUSIVE MODE;
+
 -- Create the new watermarks table with the updated schema
 CREATE TABLE watermarks (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
     org_id UUID,
     type TEXT NOT NULL,
     watermark_time TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -10,12 +14,17 @@ CREATE TABLE watermarks (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     params JSONB,
-    
-    PRIMARY KEY (org_id, type),
+
+    PRIMARY KEY (id),
+    -- Unique constraint for org-specific watermarks, org_id null is not taken into account
+    CONSTRAINT uq_watermarks_org_id_type UNIQUE (org_id, type),
     CONSTRAINT fk_watermarks_org_id
         FOREIGN KEY (org_id) REFERENCES organizations (id)
         ON DELETE CASCADE
 );
+
+-- Separate unique constraint for global watermarks (org_id IS NULL)
+CREATE UNIQUE INDEX uq_watermarks_global_type ON watermarks (type) WHERE org_id IS NULL;
 
 -- Migrate existing data from offloading_watermarks to watermarks
 INSERT INTO watermarks (org_id, type, watermark_time, watermark_id, created_at, updated_at, params)
@@ -36,6 +45,9 @@ DROP TABLE offloading_watermarks;
 
 -- +goose Down
 -- +goose StatementBegin
+
+-- Lock the table to prevent concurrent access during the migration
+LOCK TABLE watermarks IN EXCLUSIVE MODE;
 
 -- Recreate the old offloading_watermarks table
 CREATE TABLE offloading_watermarks (
@@ -63,7 +75,7 @@ SELECT
     created_at,
     updated_at
 FROM watermarks
-WHERE type = 'decision_rules';
+WHERE type = 'decision_rules' AND org_id IS NOT NULL;
 
 -- Drop the new table
 DROP TABLE watermarks;
