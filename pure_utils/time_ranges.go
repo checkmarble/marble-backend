@@ -21,15 +21,23 @@ type TimeRange struct {
 
 // SplitTimeRangeByFrequency splits a time range based on frequency using calendar boundaries
 func SplitTimeRangeByFrequency(from, to time.Time, frequency Frequency) ([]TimeRange, error) {
-	// NOTE: Should return an error in this case?
-	if from.After(to) || from.Equal(to) {
+	// If the from time is after the to time, return an error
+	if from.After(to) {
+		return nil, fmt.Errorf("from time is after to time")
+	}
+
+	// If the from time is equal to the to time, return a single period
+	if from.Equal(to) {
 		return []TimeRange{{From: from, To: to}}, nil
 	}
 
-	// Always split into individual periods aligned to calendar boundaries
+	// Split into individual periods aligned to calendar boundaries
 	var ranges []TimeRange
 	current := from
 
+	// Protect against infinite loops, 1000 iterations represents 1000 days, 1000 months (83 years), etc.
+	maxIterations := 1000
+	iteration := 0
 	for current.Before(to) {
 		periodEnd, err := getNextPeriodBoundary(current, frequency)
 		if err != nil {
@@ -46,6 +54,10 @@ func SplitTimeRangeByFrequency(from, to time.Time, frequency Frequency) ([]TimeR
 		})
 
 		current = periodEnd
+		iteration++
+		if iteration > maxIterations {
+			return nil, fmt.Errorf("max iterations reached")
+		}
 	}
 
 	return ranges, nil
