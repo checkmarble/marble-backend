@@ -20,9 +20,10 @@ import (
 type offloadingRepository interface {
 	GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId, outcome string, createdAt time.Time) string
 
-	GetOffloadingWatermark(ctx context.Context, exec repositories.Executor, orgId, table string) (*models.OffloadingWatermark, error)
-	SaveOffloadingWatermark(ctx context.Context, tx repositories.Transaction,
-		orgId, table, watermarkId string, watermarkTime time.Time) error
+	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *string,
+		watermarkType models.WatermarkType) (*models.Watermark, error)
+	SaveWatermark(ctx context.Context, tx repositories.Transaction,
+		orgId *string, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params *json.RawMessage) error
 
 	GetOffloadableDecisionRules(ctx context.Context, exec repositories.Executor,
 		req models.OffloadDecisionRuleRequest) (<-chan repositories.ModelResult[models.OffloadableDecisionRule], error)
@@ -90,7 +91,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 	timeout := time.After(w.config.JobInterval - grace)
 
 	for {
-		wm, err := w.repository.GetOffloadingWatermark(ctx, exec, job.Args.OrgId, "decision_rules")
+		wm, err := w.repository.GetWatermark(ctx, exec, &job.Args.OrgId, models.WatermarkTypeDecisionRules)
 		if err != nil {
 			return err
 		}
@@ -179,8 +180,15 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 					if err := w.repository.RemoveDecisionRulePayload(ctx, tx, offloadedIds); err != nil {
 						return err
 					}
-					if err := w.repository.SaveOffloadingWatermark(ctx, tx, job.Args.OrgId,
-						"decision_rules", rule.DecisionId, rule.CreatedAt); err != nil {
+					if err := w.repository.SaveWatermark(
+						ctx,
+						tx,
+						&job.Args.OrgId,
+						models.WatermarkTypeDecisionRules,
+						&rule.DecisionId,
+						rule.CreatedAt,
+						nil,
+					); err != nil {
 						return err
 					}
 
@@ -209,8 +217,9 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 				if err := w.repository.RemoveDecisionRulePayload(ctx, tx, remainingItems); err != nil {
 					return err
 				}
-				if err := w.repository.SaveOffloadingWatermark(ctx, tx, job.Args.OrgId, "decision_rules",
-					lastOfBatch.DecisionId, lastOfBatch.CreatedAt); err != nil {
+				if err := w.repository.SaveWatermark(ctx, tx,
+					&job.Args.OrgId, models.WatermarkTypeDecisionRules,
+					&lastOfBatch.DecisionId, lastOfBatch.CreatedAt, nil); err != nil {
 					return err
 				}
 
