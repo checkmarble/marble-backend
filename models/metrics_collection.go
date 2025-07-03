@@ -15,8 +15,8 @@ const (
 )
 
 type MetricData struct {
-	Name           string // Can be int, string, float, etc.
-	Value          any
+	Name           string
+	Value          any // Can be int, string, float, etc.
 	Timestamp      time.Time
 	OrganizationID *string    // Only for org-specific metrics
 	From           *time.Time // Optional start time for time range metrics

@@ -353,5 +353,8 @@ func (usecases *Usecases) NewMetricsCollectionWorker() scheduled_execution.Metri
 			&usecases.Repositories.MarbleDbRepository,
 			usecases.apiVersion,
 		),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
 	)
 }
