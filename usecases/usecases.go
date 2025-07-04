@@ -369,6 +369,6 @@ func (usecases *Usecases) NewMetricsCollectionWorker() scheduled_execution.Metri
 	)
 }
 
-func (usecases *Usecases) NewMetricsIngestionUsecase() MetricIngestionUsecase {
-	return NewMetricIngestionUsecase()
+func (usecases *Usecases) NewMetricsIngestionUsecase() MetricsIngestionUsecase {
+	return NewMetricsIngestionUsecase()
 }

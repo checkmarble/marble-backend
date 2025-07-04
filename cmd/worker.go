@@ -103,7 +103,7 @@ func RunTaskQueue(apiVersion string) error {
 	metricCollectionConfig := infra.MetricCollectionConfig{
 		Enabled:             utils.GetEnv("METRICS_COLLECTION_ENABLED", true),
 		JobInterval:         utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
-		MetricsIngestionUrl: utils.GetEnv("METRICS_INGESTION_URL", ""),
+		MetricsIngestionURL: utils.GetEnv("METRICS_INGESTION_URL", ""),
 	}
 	if err := metricCollectionConfig.Validate(); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
