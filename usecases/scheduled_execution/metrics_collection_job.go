@@ -39,7 +39,7 @@ type WatermarkRepository interface {
 	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *string,
 		watermarkType models.WatermarkType) (*models.Watermark, error)
 	SaveWatermark(ctx context.Context, tx repositories.Transaction,
-		orgId *string, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params *json.RawMessage) error
+		orgId *string, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params json.RawMessage) error
 }
 
 type MetricCollectionWorker struct {
@@ -86,7 +86,6 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 
 	logger.DebugContext(ctx, "Collected metrics", "metrics", metricsCollection)
 
-	// TODO: Update the watermarks with now value
 	logger.DebugContext(ctx, "Updating watermarks", "new_timestamp", now)
 	if err := w.saveWatermark(ctx, now); err != nil {
 		logger.ErrorContext(ctx, "Failed to save watermark", "error", err)
