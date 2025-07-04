@@ -1,15 +1,20 @@
 package scheduled_execution
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
 	"time"
 
+	"github.com/avast/retry-go/v4"
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/riverqueue/river"
 )
 
@@ -47,6 +52,7 @@ type MetricCollectionWorker struct {
 	repository         WatermarkRepository
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
+	config             infra.MetricCollectionConfig
 }
 
 func NewMetricCollectionWorker(
@@ -54,12 +60,14 @@ func NewMetricCollectionWorker(
 	repository WatermarkRepository,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	config infra.MetricCollectionConfig,
 ) MetricCollectionWorker {
 	return MetricCollectionWorker{
 		collectors:         collectors,
 		repository:         repository,
 		executorFactory:    executorFactory,
 		transactionFactory: transactionFactory,
+		config:             config,
 	}
 }
 
@@ -83,6 +91,12 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 	}
 
 	logger.DebugContext(ctx, "Collected metrics", "metrics", metricsCollection)
+
+	logger.DebugContext(ctx, "Sending metrics to ingestion", "metrics", metricsCollection)
+	if err := w.sendMetricsToIngestion(metricsCollection); err != nil {
+		logger.WarnContext(ctx, "Failed to send metrics to ingestion", "error", err)
+		return err
+	}
 
 	logger.DebugContext(ctx, "Updating watermarks", "new_timestamp", now)
 	if err := w.saveWatermark(ctx, now); err != nil {
@@ -112,4 +126,37 @@ func (w MetricCollectionWorker) saveWatermark(ctx context.Context, newWatermarkT
 	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		return w.repository.SaveWatermark(ctx, tx, nil, models.WatermarkTypeMetrics, nil, newWatermarkTime, nil)
 	})
+}
+
+func (w MetricCollectionWorker) sendMetricsToIngestion(metricsCollection models.MetricsCollection) error {
+	err := retry.Do(
+		func() error {
+			return w._sendMetricsToIngestion(dto.AdaptMetricsCollectionDto(metricsCollection))
+		},
+		retry.Attempts(3),
+		retry.LastErrorOnly(true),
+		retry.Delay(100*time.Millisecond),
+	)
+
+	return err
+}
+
+func (w MetricCollectionWorker) _sendMetricsToIngestion(metricsCollectionDto dto.MetricsCollectionDto) error {
+	jsonData, err := json.Marshal(metricsCollectionDto)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(
+		w.config.MetricsIngestionUrl,
+		"application/json",
+		bytes.NewBuffer(jsonData),
+	)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.Newf("unexpected status code from ingestion: %d", resp.StatusCode)
+	}
+	return nil
 }
