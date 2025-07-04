@@ -8,13 +8,13 @@ import (
 	"github.com/google/uuid"
 )
 
-type MetricIngestionUsecase struct{}
+type MetricsIngestionUsecase struct{}
 
-func NewMetricIngestionUsecase() MetricIngestionUsecase {
-	return MetricIngestionUsecase{}
+func NewMetricsIngestionUsecase() MetricsIngestionUsecase {
+	return MetricsIngestionUsecase{}
 }
 
-func (u *MetricIngestionUsecase) IngestMetrics(ctx context.Context, metrics models.MetricsCollection) error {
+func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, metrics models.MetricsCollection) error {
 	logger := utils.LoggerFromContext(ctx)
 
 	// Check if the collection is already ingested
@@ -36,12 +36,12 @@ func (u *MetricIngestionUsecase) IngestMetrics(ctx context.Context, metrics mode
 	return nil
 }
 
-func (u *MetricIngestionUsecase) isCollectionAlreadyIngested(_ context.Context, _ uuid.UUID) (bool, error) {
+func (u *MetricsIngestionUsecase) isCollectionAlreadyIngested(_ context.Context, _ uuid.UUID) (bool, error) {
 	// TODO: Implement the logic to check if the collection is already ingested
 	return false, nil
 }
 
-func (u *MetricIngestionUsecase) ingestCollection(ctx context.Context, collection models.MetricsCollection) error {
+func (u *MetricsIngestionUsecase) ingestCollection(ctx context.Context, collection models.MetricsCollection) error {
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Ingesting collection", "collection", collection)
 
