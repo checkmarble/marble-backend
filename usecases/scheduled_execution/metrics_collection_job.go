@@ -93,7 +93,7 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 	logger.DebugContext(ctx, "Collected metrics", "metrics", metricsCollection)
 
 	logger.DebugContext(ctx, "Sending metrics to ingestion", "metrics", metricsCollection)
-	if err := w.sendMetricsToIngestion(metricsCollection); err != nil {
+	if err := w.sendMetricsToIngestion(ctx, metricsCollection); err != nil {
 		logger.WarnContext(ctx, "Failed to send metrics to ingestion", "error", err)
 		return err
 	}
@@ -128,35 +128,37 @@ func (w MetricCollectionWorker) saveWatermark(ctx context.Context, newWatermarkT
 	})
 }
 
-func (w MetricCollectionWorker) sendMetricsToIngestion(metricsCollection models.MetricsCollection) error {
+func (w MetricCollectionWorker) sendMetricsToIngestion(ctx context.Context, metricsCollection models.MetricsCollection) error {
+	f := func() error {
+		metricsCollectionDto := dto.AdaptMetricsCollectionDto(metricsCollection)
+		jsonData, err := json.Marshal(metricsCollectionDto)
+		if err != nil {
+			return err
+		}
+
+		request, err := http.NewRequestWithContext(ctx, "POST",
+			w.config.MetricsIngestionURL, bytes.NewBuffer(jsonData))
+		if err != nil {
+			return err
+		}
+		request.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(request)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return errors.Newf("unexpected status code from ingestion: %d", resp.StatusCode)
+		}
+		return nil
+	}
+
 	err := retry.Do(
-		func() error {
-			return w._sendMetricsToIngestion(dto.AdaptMetricsCollectionDto(metricsCollection))
-		},
+		f,
 		retry.Attempts(3),
 		retry.LastErrorOnly(true),
 		retry.Delay(100*time.Millisecond),
 	)
 
 	return err
-}
-
-func (w MetricCollectionWorker) _sendMetricsToIngestion(metricsCollectionDto dto.MetricsCollectionDto) error {
-	jsonData, err := json.Marshal(metricsCollectionDto)
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.Post(
-		w.config.MetricsIngestionUrl,
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return errors.Newf("unexpected status code from ingestion: %d", resp.StatusCode)
-	}
-	return nil
 }
