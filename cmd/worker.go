@@ -100,6 +100,11 @@ func RunTaskQueue(apiVersion string) error {
 
 	offloadingConfig.ValidateAndFix(ctx)
 
+	metricCollectionConfig := infra.MetricCollectionConfig{
+		Enabled:     utils.GetEnv("METRICS_COLLECTION_ENABLED", true),
+		JobInterval: utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
+	}
+
 	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env, apiVersion)
 	defer sentry.Flush(3 * time.Second)
 
@@ -157,10 +162,17 @@ func RunTaskQueue(apiVersion string) error {
 		return err
 	}
 
-	// For non-org queues
+	// For non-org
 	nonOrgQueues := make(map[string]river.QueueConfig)
-	maps.Copy(nonOrgQueues, usecases.QueueMetrics())
-	queueWhitelist := slices.Collect(maps.Keys(nonOrgQueues))
+	queueWhitelist := []string{}
+	globalPeriodics := []*river.PeriodicJob{}
+
+	if metricCollectionConfig.Enabled {
+		maps.Copy(nonOrgQueues, usecases.QueueMetrics())
+		queueWhitelist = append(queueWhitelist, slices.Collect(maps.Keys(nonOrgQueues))...)
+		globalPeriodics = append(globalPeriodics,
+			scheduled_execution.NewMetricsCollectionPeriodicJob(metricCollectionConfig))
+	}
 
 	// Add the metrics queue
 	maps.Copy(queues, nonOrgQueues)
@@ -168,10 +180,7 @@ func RunTaskQueue(apiVersion string) error {
 	// Periodics always contain the per-org tasks retrieved above. Add other, non-organization-scoped periodics below
 	periodics := append(
 		orgPeriodics,
-		[]*river.PeriodicJob{
-			// Add periodic jobs here
-			scheduled_execution.NewMetricsCollectionPeriodicJob(),
-		}...,
+		globalPeriodics...,
 	)
 
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
@@ -216,7 +225,9 @@ func RunTaskQueue(apiVersion string) error {
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
 	}
-	river.AddWorker(workers, uc.NewMetricsCollectionWorker())
+	if metricCollectionConfig.Enabled {
+		river.AddWorker(workers, uc.NewMetricsCollectionWorker())
+	}
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
