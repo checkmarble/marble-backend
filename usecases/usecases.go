@@ -33,6 +33,7 @@ type Usecases struct {
 	hasNameRecognizerSetup      bool
 	hasTestMode                 bool
 	license                     models.LicenseValidation
+	metricsCollectionConfig     infra.MetricCollectionConfig
 }
 
 type Option func(*options)
@@ -123,6 +124,12 @@ func WithTestMode(activated bool) Option {
 	}
 }
 
+func WithMetricsCollectionConfig(config infra.MetricCollectionConfig) Option {
+	return func(o *options) {
+		o.metricsCollectionConfig = config
+	}
+}
+
 type options struct {
 	apiVersion                  string
 	batchIngestionMaxSize       int
@@ -137,6 +144,7 @@ type options struct {
 	hasOpensanctionsSetup       bool
 	hasNameRecognitionSetup     bool
 	hasTestMode                 bool
+	metricsCollectionConfig     infra.MetricCollectionConfig
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -158,6 +166,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		hasOpensanctionsSetup:       o.hasOpensanctionsSetup,
 		hasNameRecognizerSetup:      o.hasNameRecognitionSetup,
 		hasTestMode:                 o.hasTestMode,
+		metricsCollectionConfig:     o.metricsCollectionConfig,
 	}
 }
 
@@ -356,5 +365,10 @@ func (usecases *Usecases) NewMetricsCollectionWorker() scheduled_execution.Metri
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		usecases.metricsCollectionConfig,
 	)
+}
+
+func (usecases *Usecases) NewMetricsIngestionUsecase() MetricIngestionUsecase {
+	return NewMetricIngestionUsecase()
 }
