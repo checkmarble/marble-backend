@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
@@ -335,10 +336,25 @@ func (usecases *Usecases) NewLicenseUsecase() PublicLicenseUseCase {
 	)
 }
 
-func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx]) *TaskQueueWorker {
+func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx], queueWhitelist []string) *TaskQueueWorker {
 	return NewTaskQueueWorker(
 		usecases.NewExecutorFactory(),
 		&usecases.Repositories.MarbleDbRepository,
+		queueWhitelist,
 		riverClient,
+	)
+}
+
+func (usecases *Usecases) NewMetricsCollectionWorker() scheduled_execution.MetricCollectionWorker {
+	// TODO: Replace NewCollectorsTestV1 with NewCollectorsV1 when we have a real collector
+	return scheduled_execution.NewMetricCollectionWorker(
+		metrics_collection.NewCollectorsTestV1(
+			usecases.NewExecutorFactory(),
+			&usecases.Repositories.MarbleDbRepository,
+			usecases.apiVersion,
+		),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
 	)
 }

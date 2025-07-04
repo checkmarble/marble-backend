@@ -14,7 +14,12 @@ import (
 
 type offloadableRepository interface {
 	GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId, outcome string, createdAt time.Time) string
-	GetOffloadingWatermark(ctx context.Context, exec repositories.Executor, orgId, table string) (*models.OffloadingWatermark, error)
+	GetWatermark(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId *string,
+		watermarkType models.WatermarkType,
+	) (*models.Watermark, error)
 }
 
 type OffloadedReader struct {
@@ -27,8 +32,8 @@ type OffloadedReader struct {
 func (uc OffloadedReader) MutateWithOffloadedDecisionRules(ctx context.Context, orgId string,
 	decision models.DecisionWithRuleExecutions,
 ) error {
-	offloadingWatermark, err := uc.repository.GetOffloadingWatermark(ctx,
-		uc.executorFactory.NewExecutor(), orgId, "decision_rules")
+	offloadingWatermark, err := uc.repository.GetWatermark(ctx,
+		uc.executorFactory.NewExecutor(), &orgId, models.WatermarkTypeDecisionRules)
 	if err != nil {
 		return err
 	}

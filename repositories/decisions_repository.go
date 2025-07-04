@@ -980,10 +980,14 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 	}
 
 	if req.Watermark == nil {
-		req.Watermark = &models.OffloadingWatermark{
+		req.Watermark = &models.Watermark{
 			WatermarkTime: time.Time{},
-			WatermarkId:   uuid.UUID{}.String(),
+			WatermarkId:   utils.Ptr(uuid.UUID{}.String()),
 		}
+	}
+
+	if req.Watermark.WatermarkId == nil {
+		return nil, errors.New("watermark id is required")
 	}
 
 	sql := NewQueryBuilder().
@@ -1003,7 +1007,7 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 				Where(squirrel.And{
 					squirrel.Eq{"org_id": req.OrgId},
 					squirrel.Lt{"created_at": req.DeleteBefore},
-					squirrel.Expr("(created_at, id) > (?, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId),
+					squirrel.Expr("(created_at, id) > (?, ?)", req.Watermark.WatermarkTime, *req.Watermark.WatermarkId),
 				}).
 				OrderBy("created_at, id").
 				Limit(uint64(req.BatchSize)),
