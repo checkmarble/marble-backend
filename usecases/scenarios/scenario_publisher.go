@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -166,4 +167,13 @@ func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
 	}
 
 	return scenarioPublication, nil
+}
+
+func (publisher ScenarioPublisher) SaveScenarioPreparationAction(ctx context.Context, exec repositories.Executor, orgId, scenarioId, iterationId string) error {
+	return publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, exec, models.CreateScenarioPublicationInput{
+		OrganizationId:      orgId,
+		ScenarioId:          scenarioId,
+		ScenarioIterationId: iterationId,
+		PublicationAction:   models.Prepare,
+	}, uuid.NewString())
 }

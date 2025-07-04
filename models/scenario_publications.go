@@ -21,6 +21,7 @@ type PublicationAction int
 const (
 	Publish PublicationAction = iota
 	Unpublish
+	Prepare
 	UnknownPublicationAction
 )
 
@@ -31,6 +32,8 @@ func (o PublicationAction) String() string {
 		return "publish"
 	case Unpublish:
 		return "unpublish"
+	case Prepare:
+		return "prepare"
 	}
 	return "unknown"
 }
@@ -42,6 +45,8 @@ func PublicationActionFrom(s string) PublicationAction {
 		return Publish
 	case "unpublish":
 		return Unpublish
+	case "prepare":
+		return Prepare
 	case "unknown":
 		return UnknownPublicationAction
 	}
