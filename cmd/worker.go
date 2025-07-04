@@ -101,8 +101,13 @@ func RunTaskQueue(apiVersion string) error {
 	offloadingConfig.ValidateAndFix(ctx)
 
 	metricCollectionConfig := infra.MetricCollectionConfig{
-		Enabled:     utils.GetEnv("METRICS_COLLECTION_ENABLED", true),
-		JobInterval: utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
+		Enabled:             utils.GetEnv("METRICS_COLLECTION_ENABLED", true),
+		JobInterval:         utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
+		MetricsIngestionUrl: utils.GetEnv("METRICS_INGESTION_URL", ""),
+	}
+	if err := metricCollectionConfig.Validate(); err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
 	}
 
 	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env, apiVersion)
@@ -164,17 +169,15 @@ func RunTaskQueue(apiVersion string) error {
 
 	// For non-org
 	nonOrgQueues := make(map[string]river.QueueConfig)
-	queueWhitelist := []string{}
 	globalPeriodics := []*river.PeriodicJob{}
 
 	if metricCollectionConfig.Enabled {
-		maps.Copy(nonOrgQueues, usecases.QueueMetrics())
-		queueWhitelist = append(queueWhitelist, slices.Collect(maps.Keys(nonOrgQueues))...)
+		metricQueue := usecases.QueueMetrics()
+		maps.Copy(nonOrgQueues, metricQueue)
 		globalPeriodics = append(globalPeriodics,
 			scheduled_execution.NewMetricsCollectionPeriodicJob(metricCollectionConfig))
 	}
 
-	// Add the metrics queue
 	maps.Copy(queues, nonOrgQueues)
 
 	// Periodics always contain the per-org tasks retrieved above. Add other, non-organization-scoped periodics below
@@ -204,6 +207,13 @@ func RunTaskQueue(apiVersion string) error {
 		return err
 	}
 
+	for _, queue := range slices.Collect(maps.Keys(nonOrgQueues)) {
+		if err := riverClient.QueueResume(ctx, queue, &river.QueuePauseOpts{}); err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+			return err
+		}
+	}
+
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
 		usecases.WithOffloading(offloadingConfig),
@@ -212,6 +222,7 @@ func RunTaskQueue(apiVersion string) error {
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithApiVersion(apiVersion),
+		usecases.WithMetricsCollectionConfig(metricCollectionConfig),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
@@ -250,7 +261,9 @@ func RunTaskQueue(apiVersion string) error {
 	logger.InfoContext(ctx, "starting worker", slog.String("version", apiVersion))
 
 	// Asynchronously keep the task queue workers up to date with the orgs in the database
-	taskQueueWorker := uc.NewTaskQueueWorker(riverClient, queueWhitelist)
+	taskQueueWorker := uc.NewTaskQueueWorker(riverClient,
+		slices.Collect(maps.Keys(nonOrgQueues)),
+	)
 	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx)
 
 	// Start the cron jobs using the old entrypoint.
