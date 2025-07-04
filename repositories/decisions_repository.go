@@ -986,7 +986,6 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 		}
 	}
 
-	// HELP: Not sure about raising the error here
 	if req.Watermark.WatermarkId == nil {
 		return nil, errors.New("watermark id is required")
 	}
