@@ -32,6 +32,25 @@ type ConcreteIndex struct {
 	Status    IndexStatus
 }
 
+func (i ConcreteIndex) IsSubset(rhs ConcreteIndex) bool {
+	if i.TableName != rhs.TableName {
+		return false
+	}
+	if len(i.Indexed) > len(rhs.Indexed) {
+		return false
+	}
+	if !slices.Equal(i.Indexed, rhs.Indexed[:len(i.Indexed)]) {
+		return false
+	}
+	for _, inc := range i.Included {
+		if !slices.Contains(rhs.Included, inc) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Custom marshaller to ensure the name is initialized before marshaling
 func (i ConcreteIndex) MarshalJSON() ([]byte, error) {
 	// Ensure the name is initialized before marshaling

@@ -19,7 +19,7 @@ import (
 
 const (
 	INDEX_DELETION_WORKER_INTERVAL = 5 * time.Second
-	INDEX_DELETION_DRY_RUN         = true
+	INDEX_DELETION_DRY_RUN         = false
 )
 
 var (
@@ -48,7 +48,7 @@ func NewIndexDeletionPeriodicJob(orgId string) *river.PeriodicJob {
 }
 
 type indexDeletionIndexEditor interface {
-	GetRequiredIndices(ctx context.Context, organizationId string) (toCreate []models.ConcreteIndex, err error)
+	GetRequiredIndices(ctx context.Context, organizationId string) (toCreate []models.AggregateQueryFamily, err error)
 }
 
 type IndexDeletionWorker struct {
@@ -84,16 +84,50 @@ func (w *IndexDeletionWorker) Work(ctx context.Context, job *river.Job[models.In
 		return err
 	}
 
-	requiredIndices, err := w.indexRepo.GetRequiredIndices(ctx, job.Args.OrgId)
+	requiredFamilies, err := w.indexRepo.GetRequiredIndices(ctx, job.Args.OrgId)
 	if err != nil {
 		return err
 	}
 
 	errs := make(map[string]error)
+	requiredIndices := make([]models.ConcreteIndex, 0)
 
-IndexLoop:
+Indices:
+	// Here, we look for any index that fulfills at least one scenario requirement.
+	// Indices that do not fulfill any requirements are obsolete and will be candidates for deletion.
 	for _, index := range validIndices {
-		// We omit fixed indices that are not created to help aggregate queries.
+		for _, req := range requiredFamilies {
+			for _, fm := range req.ToIndexFamilies().Slice() {
+				if index.Covers(fm) {
+					requiredIndices = append(requiredIndices, index)
+					continue Indices
+				}
+			}
+		}
+	}
+
+	optimalIndices := make([]models.ConcreteIndex, 0)
+
+RemoveSubsumedIndices:
+	// Optional: from the set of indices fulfilling requirements, select only the largest one.
+	// We do this by comparing indices in a cartesian product and only adding those that are not
+	// a subset of another index.
+	for _, lhs := range requiredIndices {
+		for _, rhs := range requiredIndices {
+			if lhs.Name() == rhs.Name() {
+				continue
+			}
+
+			if lhs.IsSubset(rhs) {
+				continue RemoveSubsumedIndices
+			}
+		}
+
+		optimalIndices = append(optimalIndices, lhs)
+	}
+
+IndexDeletion:
+	for _, index := range validIndices {
 		if !strings.HasPrefix(index.Name(), "idx_") {
 			continue
 		}
@@ -104,9 +138,9 @@ IndexLoop:
 			continue
 		}
 
-		for _, req := range requiredIndices {
-			if req.Equal(index) {
-				continue IndexLoop
+		for _, optimalIndex := range optimalIndices {
+			if optimalIndex.Equal(index) {
+				continue IndexDeletion
 			}
 		}
 

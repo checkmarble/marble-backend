@@ -27,6 +27,7 @@ type ScenarioPublisher interface {
 		scenarioAndIteration models.ScenarioAndIteration,
 		publicationAction models.PublicationAction,
 	) ([]models.ScenarioPublication, error)
+	SaveScenarioPreparationAction(ctx context.Context, exec repositories.Executor, orgId, scenarioId, iterationId string) error
 }
 
 type clientDbIndexEditor interface {
@@ -43,7 +44,7 @@ type clientDbIndexEditor interface {
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, organizationId string, index models.UnicityIndex) error
 	CreateUniqueIndexAsync(ctx context.Context, organizationId string, index models.UnicityIndex) error
 	DeleteUniqueIndex(ctx context.Context, organizationId string, index models.UnicityIndex) error
-	GetRequiredIndices(ctx context.Context, organizationId string) (required []models.ConcreteIndex, err error)
+	GetRequiredIndices(ctx context.Context, organizationId string) (required []models.AggregateQueryFamily, err error)
 }
 
 type PublicationUsecaseFeatureAccessReader interface {
@@ -218,6 +219,13 @@ func (usecase *ScenarioPublicationUsecase) StartPublicationPreparation(
 	organizationId string,
 	scenarioIterationId string,
 ) error {
+	exec := usecase.executorFactory.NewExecutor()
+
+	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, scenarioIterationId)
+	if err != nil {
+		return err
+	}
+
 	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(ctx, organizationId, scenarioIterationId)
 	if err != nil {
 		return errors.Wrap(err, "Error while fetching indexes to create in StartPublicationPreparation")
@@ -229,6 +237,10 @@ func (usecase *ScenarioPublicationUsecase) StartPublicationPreparation(
 
 	if numPending > 0 {
 		return models.ErrDataPreparationServiceUnavailable
+	}
+
+	if err := usecase.scenarioPublisher.SaveScenarioPreparationAction(ctx, exec, organizationId, scenarioAndIteration.Scenario.Id, scenarioIterationId); err != nil {
+		return err
 	}
 
 	if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx,
