@@ -38,5 +38,5 @@ type Watermark struct {
 	WatermarkId   *string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
-	Params        *json.RawMessage
+	Params        json.RawMessage
 }
