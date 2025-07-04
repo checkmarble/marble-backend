@@ -36,6 +36,31 @@ func indexesToCreateFromScenarioIterations(
 	return indexesToCreateFromQueryFamilies(queryFamilies, existingIndexes), nil
 }
 
+func indexFamiliesToCreateFromScenarioIterations(
+	ctx context.Context,
+	scenarioIterations []models.ScenarioIteration,
+	existingIndexes []models.ConcreteIndex,
+) ([]models.AggregateQueryFamily, error) {
+	var asts []ast.Node
+	for _, i := range scenarioIterations {
+		if i.TriggerConditionAstExpression != nil {
+			asts = append(asts, *i.TriggerConditionAstExpression)
+		}
+		for _, r := range i.Rules {
+			if r.FormulaAstExpression != nil {
+				asts = append(asts, *r.FormulaAstExpression)
+			}
+		}
+	}
+
+	queryFamilies, err := extractQueryFamiliesFromAstSlice(ctx, asts)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error extracting query families from scenario iterations")
+	}
+
+	return queryFamilies.Slice(), nil
+}
+
 // simple utility function using extractQueryFamiliesFromAst above
 func extractQueryFamiliesFromAstSlice(ctx context.Context, nodes []ast.Node) (*set.HashSet[models.AggregateQueryFamily, string], error) {
 	families := set.NewHashSet[models.AggregateQueryFamily](0)

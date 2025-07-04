@@ -22,3 +22,9 @@ func (m *ScenarioPublisher) PublishOrUnpublishIteration(
 	args := m.Called(ctx, tx, scenarioAndIteration, publicationAction)
 	return args.Get(0).([]models.ScenarioPublication), args.Error(1)
 }
+
+func (m *ScenarioPublisher) SaveScenarioPreparationAction(ctx context.Context, exec repositories.Executor, orgId, scenarioId, iterationId string) error {
+	args := m.Called(ctx, exec, orgId, scenarioId, iterationId)
+
+	return args.Error(0)
+}

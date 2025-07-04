@@ -117,14 +117,14 @@ func (editor ClientDbIndexEditor) GetIndexesToCreate(
 func (editor ClientDbIndexEditor) GetRequiredIndices(
 	ctx context.Context,
 	organizationId string,
-) (required []models.ConcreteIndex, err error) {
+) (required []models.AggregateQueryFamily, err error) {
 	exec := editor.executorFactory.NewExecutor()
 	iterations, err := editor.scenarioFetcher.ListLiveIterationsAndNeighbors(ctx, exec, organizationId)
 	if err != nil {
 		return required, err
 	}
 
-	required, err = indexesToCreateFromScenarioIterations(
+	required, err = indexFamiliesToCreateFromScenarioIterations(
 		ctx,
 		iterations,
 		[]models.ConcreteIndex{},
