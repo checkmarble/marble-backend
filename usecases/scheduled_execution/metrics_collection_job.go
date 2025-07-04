@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -12,18 +13,15 @@ import (
 	"github.com/riverqueue/river"
 )
 
-// const METRIC_COLLECTION_WORKER_INTERVAL = 24 * time.Hour // Run daily
-const METRICS_COLLECTION_WORKER_INTERVAL = 10 * time.Second // Run every minute for testing
-
-func NewMetricsCollectionPeriodicJob() *river.PeriodicJob {
+func NewMetricsCollectionPeriodicJob(config infra.MetricCollectionConfig) *river.PeriodicJob {
 	return river.NewPeriodicJob(
-		river.PeriodicInterval(METRICS_COLLECTION_WORKER_INTERVAL),
+		river.PeriodicInterval(config.JobInterval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.MetricsCollectionArgs{}, &river.InsertOpts{
 				Queue: "metrics",
 				UniqueOpts: river.UniqueOpts{
 					ByQueue:  true,
-					ByPeriod: METRICS_COLLECTION_WORKER_INTERVAL,
+					ByPeriod: config.JobInterval,
 				},
 			}
 		},
