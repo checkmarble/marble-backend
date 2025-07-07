@@ -39,45 +39,23 @@ func (repo *MarbleDbRepository) SaveWatermark(ctx context.Context, tx Transactio
 		return err
 	}
 
-	updateSql := NewQueryBuilder().
-		Update(dbmodels.TABLE_WATERMARKS).
-		Set("watermark_time", watermarkTime).
-		Set("watermark_id", watermarkId).
-		Set("updated_at", time.Now()).
-		Set("params", params).
-		Where(squirrel.Eq{"type": watermarkType.String()})
+	sql := NewQueryBuilder().
+		Insert(dbmodels.TABLE_WATERMARKS).
+		Columns("org_id", "type", "watermark_time", "watermark_id", "created_at", "updated_at", "params").
+		Values(
+			orgId,
+			watermarkType.String(),
+			watermarkTime,
+			watermarkId,
+			time.Now(),
+			time.Now(),
+			params,
+		).
+		Suffix("on conflict (org_id, type) do update set").
+		Suffix("watermark_time = excluded.watermark_time,").
+		Suffix("watermark_id = excluded.watermark_id,").
+		Suffix("updated_at = excluded.updated_at,").
+		Suffix("params = excluded.params")
 
-	if orgId != nil {
-		updateSql = updateSql.Where(squirrel.Eq{"org_id": *orgId})
-	} else {
-		updateSql = updateSql.Where(squirrel.Eq{"org_id": nil})
-	}
-
-	sql, args, err := updateSql.ToSql()
-	if err != nil {
-		return err
-	}
-
-	result, err := tx.Exec(ctx, sql, args...)
-	if err != nil {
-		return err
-	}
-
-	if result.RowsAffected() == 0 {
-		insertSql := NewQueryBuilder().
-			Insert(dbmodels.TABLE_WATERMARKS).
-			Columns("org_id", "type", "watermark_time", "watermark_id", "created_at", "updated_at", "params").
-			Values(
-				orgId,
-				watermarkType.String(),
-				watermarkTime,
-				watermarkId,
-				time.Now(),
-				time.Now(),
-				params,
-			)
-		return ExecBuilder(ctx, tx, insertSql)
-	}
-
-	return nil
+	return ExecBuilder(ctx, tx, sql)
 }
