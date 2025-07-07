@@ -33,6 +33,7 @@ type Collectors struct {
 	globalCollectors []GlobalCollector
 	collectors       []Collector
 
+	licenseConfig          models.LicenseConfiguration
 	organizationRepository OrganizationRepository
 	executorFactory        executor_factory.ExecutorFactory
 }
@@ -59,6 +60,8 @@ func (c Collectors) CollectMetrics(ctx context.Context, from time.Time, to time.
 		Timestamp:    time.Now(),
 		Metrics:      metrics,
 		Version:      c.version,
+		LicenseKey:   c.GetLicenseKey(),
+		DeploymentID: c.GetDeploymentID(),
 	}
 
 	return payload, nil
@@ -117,12 +120,25 @@ func (c Collectors) getListOfOrganizations(ctx context.Context) ([]models.Organi
 	return orgs, nil
 }
 
+func (c Collectors) GetLicenseKey() *string {
+	if c.licenseConfig.LicenseKey == "" {
+		return nil
+	}
+	return &c.licenseConfig.LicenseKey
+}
+
+func (c Collectors) GetDeploymentID() uuid.UUID {
+	// TODO: Change by the real deployment ID, DeploymentID TBD
+	return uuid.MustParse("c08cce05-ed91-4941-b959-9849c0652640")
+}
+
 // Use version to track the version of the collectors, could be used to track changes
 // and tell the server which collectors is used by the client
 func NewCollectorsTestV1(
 	executorFactory executor_factory.ExecutorFactory,
 	organizationRepository OrganizationRepository,
 	apiVersion string,
+	licenseConfig models.LicenseConfiguration,
 ) Collectors {
 	return Collectors{
 		version: "test-v1",
@@ -135,5 +151,6 @@ func NewCollectorsTestV1(
 		},
 		executorFactory:        executorFactory,
 		organizationRepository: organizationRepository,
+		licenseConfig:          licenseConfig,
 	}
 }

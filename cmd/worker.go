@@ -237,7 +237,7 @@ func RunTaskQueue(apiVersion string) error {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
 	}
 	if metricCollectionConfig.Enabled {
-		river.AddWorker(workers, uc.NewMetricsCollectionWorker())
+		river.AddWorker(workers, uc.NewMetricsCollectionWorker(licenseConfig))
 	}
 
 	if err := riverClient.Start(ctx); err != nil {
