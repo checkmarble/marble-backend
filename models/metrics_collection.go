@@ -16,7 +16,8 @@ const (
 
 type MetricData struct {
 	Name           string
-	Value          any // Can be int, string, float, etc.
+	Numeric        *float64
+	Text           *string
 	Timestamp      time.Time
 	OrganizationID *string    // Only for org-specific metrics
 	From           *time.Time // Optional start time for time range metrics
@@ -31,10 +32,11 @@ type MetricsCollection struct {
 	Version      string
 }
 
-func NewGlobalMetric(name string, value any, from, to *time.Time, frequency MetricCollectionFrequency) MetricData {
+func NewGlobalMetric(name string, numeric *float64, text *string, from, to *time.Time, frequency MetricCollectionFrequency) MetricData {
 	return MetricData{
 		Name:      name,
-		Value:     value,
+		Numeric:   numeric,
+		Text:      text,
 		Timestamp: time.Now(),
 		From:      from,
 		To:        to,
@@ -42,10 +44,13 @@ func NewGlobalMetric(name string, value any, from, to *time.Time, frequency Metr
 	}
 }
 
-func NewOrganizationMetric(name string, value any, orgID string, from, to *time.Time, frequency MetricCollectionFrequency) MetricData {
+func NewOrganizationMetric(name string, numeric *float64, text *string, orgID string,
+	from, to *time.Time, frequency MetricCollectionFrequency,
+) MetricData {
 	return MetricData{
 		Name:           name,
-		Value:          value,
+		Numeric:        numeric,
+		Text:           text,
 		Timestamp:      time.Now(),
 		OrganizationID: &orgID,
 		From:           from,
