@@ -131,7 +131,6 @@ func NewCollectorsTestV1(
 		},
 		globalCollectors: []GlobalCollector{
 			NewStubGlobalCollector(),
-			NewLicenseKeyCollector(),
 			NewAppVersionCollector(apiVersion),
 		},
 		executorFactory:        executorFactory,

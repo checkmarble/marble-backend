@@ -11,6 +11,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 // Implement Collector interface for stub organization collector
@@ -25,9 +26,9 @@ func (c StubOrganizationCollector) Collect(ctx context.Context, orgId string, fr
 
 	// Simple instant metrics
 	metrics = append(metrics,
-		models.NewOrganizationMetric("stub_info", "STUB_VALUE", orgId, &from, &to,
+		models.NewOrganizationMetric("stub_info", nil, utils.Ptr("STUB_VALUE"), orgId, &from, &to,
 			models.MetricCollectionFrequencyInstant),
-		models.NewOrganizationMetric("stub_counter", 42, orgId, &from, &to,
+		models.NewOrganizationMetric("stub_counter", utils.Ptr(float64(42)), nil, orgId, &from, &to,
 			models.MetricCollectionFrequencyInstant),
 	)
 
@@ -52,7 +53,8 @@ func (c StubGlobalCollector) Collect(ctx context.Context, from time.Time, to tim
 	}
 	metrics := make([]models.MetricData, len(periods))
 	for i, period := range periods {
-		metrics[i] = models.NewGlobalMetric("stub_global", fmt.Sprintf("STUB_VALUE_%d", i), &period.From, &period.To, c.frequency)
+		metrics[i] = models.NewGlobalMetric("stub_global", nil,
+			utils.Ptr(fmt.Sprintf("STUB_VALUE_%d", i)), &period.From, &period.To, c.frequency)
 	}
 	return metrics, nil
 }
