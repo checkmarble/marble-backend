@@ -16,6 +16,7 @@ func handleMetricsIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		var metricsCollectionDto dto.MetricsCollectionDto
 		if err := c.ShouldBindJSON(&metricsCollectionDto); err != nil {
 			c.Status(http.StatusBadRequest)
+			logger.WarnContext(c.Request.Context(), "Failed to bind metrics collection", "error", err)
 			return
 		}
 

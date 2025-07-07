@@ -34,6 +34,8 @@ type MetricsCollectionDto struct {
 	Timestamp    time.Time       `json:"timestamp" binding:"required"`
 	Metrics      []MetricDataDto `json:"metrics" binding:"required"`
 	Version      string          `json:"version" binding:"required"`
+	DeploymentID uuid.UUID       `json:"deployment_id" binding:"required"`
+	LicenseKey   *string         `json:"license_key,omitempty"`
 }
 
 func AdaptMetricDataDto(metricData models.MetricData) MetricDataDto {
@@ -55,6 +57,8 @@ func AdaptMetricsCollectionDto(metricsCollection models.MetricsCollection) Metri
 		Timestamp:    metricsCollection.Timestamp,
 		Metrics:      pure_utils.Map(metricsCollection.Metrics, AdaptMetricDataDto),
 		Version:      metricsCollection.Version,
+		DeploymentID: metricsCollection.DeploymentID,
+		LicenseKey:   metricsCollection.LicenseKey,
 	}
 }
 
@@ -77,5 +81,7 @@ func AdaptMetricsCollection(metricsCollectionDto MetricsCollectionDto) models.Me
 		Timestamp:    metricsCollectionDto.Timestamp,
 		Metrics:      pure_utils.Map(metricsCollectionDto.Metrics, AdaptMetricData),
 		Version:      metricsCollectionDto.Version,
+		DeploymentID: metricsCollectionDto.DeploymentID,
+		LicenseKey:   metricsCollectionDto.LicenseKey,
 	}
 }
