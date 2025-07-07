@@ -6,6 +6,7 @@ create table scenario_workflow_rules (
     scenario_id uuid not null,
     name text not null,
     priority int not null default 99,
+    fallthrough bool default false,
     created_at timestamp with time zone default now(),
     updated_at timestamp with time zone,
 

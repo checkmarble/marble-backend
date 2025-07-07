@@ -58,8 +58,9 @@ func handleCreateWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowRule{
-			ScenarioId: payload.ScenarioId,
-			Name:       payload.Name,
+			ScenarioId:  payload.ScenarioId,
+			Name:        payload.Name,
+			Fallthrough: *payload.Fallthrough,
 		}
 
 		rule, err := workflowUsecase.CreateWorkflowRule(ctx, params)
@@ -93,8 +94,9 @@ func handleUpdateWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 		workflowUsecase := uc.NewWorkflowUsecase()
 
 		params := models.WorkflowRule{
-			Id:   uri.RuleId.Uuid(),
-			Name: payload.Name,
+			Id:          uri.RuleId.Uuid(),
+			Name:        payload.Name,
+			Fallthrough: *payload.Fallthrough,
 		}
 
 		rule, err := workflowUsecase.UpdateWorkflowRule(ctx, params)
@@ -102,7 +104,7 @@ func handleUpdateWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusCreated, dto.AdaptWorkflowRule(rule))
+		c.JSON(http.StatusOK, dto.AdaptWorkflowRule(rule))
 	}
 }
 
@@ -197,7 +199,7 @@ func handleUpdateWorkflowCondition(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusCreated, dto.AdaptWorkflowCondition(condition))
+		c.JSON(http.StatusOK, dto.AdaptWorkflowCondition(condition))
 	}
 }
 
@@ -290,7 +292,7 @@ func handleUpdateWorkflowAction(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusCreated, dto.AdaptWorkflowAction(action))
+		c.JSON(http.StatusOK, dto.AdaptWorkflowAction(action))
 	}
 }
 
