@@ -7,10 +7,18 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-type MetricsIngestionUsecase struct{}
+type MetricsIngestionRepository interface {
+	TestConnection(ctx context.Context) error
+}
 
-func NewMetricsIngestionUsecase() MetricsIngestionUsecase {
-	return MetricsIngestionUsecase{}
+type MetricsIngestionUsecase struct {
+	repository MetricsIngestionRepository
+}
+
+func NewMetricsIngestionUsecase(repository MetricsIngestionRepository) MetricsIngestionUsecase {
+	return MetricsIngestionUsecase{
+		repository: repository,
+	}
 }
 
 func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, metrics models.MetricsCollection) error {
@@ -28,6 +36,10 @@ func (u *MetricsIngestionUsecase) ingestCollection(ctx context.Context, collecti
 	logger.DebugContext(ctx, "Ingesting collection", "collection", collection)
 
 	// TODO: Implement the ingestion logic
+	err := u.repository.TestConnection(ctx)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -359,7 +359,7 @@ func TestNewCollectorsTestV1(t *testing.T) {
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 
 	// Execute
-	collectors := NewCollectorsTestV1(mockExecutorFactory, mockOrgRepo, "ApiVersionTest")
+	collectors := NewCollectorsTestV1(mockExecutorFactory, mockOrgRepo, "ApiVersionTest", models.LicenseConfiguration{})
 
 	// Assert
 	assert.Equal(t, "test-v1", collectors.version)
