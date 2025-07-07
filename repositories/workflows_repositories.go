@@ -76,11 +76,12 @@ func (repo *MarbleDbRepository) InsertWorkflowRule(ctx context.Context, exec Exe
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_WORKFLOW_RULES).
-		Columns("scenario_id", "name", "priority").
+		Columns("scenario_id", "name", "priority", "fallthrough").
 		Values(
 			rule.ScenarioId,
 			rule.Name,
 			squirrel.Expr("(select coalesce(max(priority), 0) + 1 from "+dbmodels.TABLE_WORKFLOW_RULES+" where scenario_id = ?)", rule.ScenarioId),
+			rule.Fallthrough,
 		).
 		Suffix("returning *")
 
@@ -95,7 +96,8 @@ func (repo *MarbleDbRepository) UpdateWorkflowRule(ctx context.Context, exec Exe
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_WORKFLOW_RULES).
 		SetMap(map[string]any{
-			"name": rule.Name,
+			"name":        rule.Name,
+			"fallthrough": rule.Fallthrough,
 		}).
 		Where("id = ?", rule.Id).
 		Suffix("returning *")
