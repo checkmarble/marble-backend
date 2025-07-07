@@ -110,6 +110,10 @@ func RunServer(config CompiledConfig) error {
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
+	bigQueryConfig := infra.BigQueryConfig{
+		ProjectID: utils.GetEnv("BIGQUERY_PROJECT_ID", ""),
+	}
+
 	serverConfig := struct {
 		batchIngestionMaxSize            int
 		caseManagerBucket                string
@@ -193,6 +197,13 @@ func RunServer(config CompiledConfig) error {
 		return err
 	}
 
+	bigQueryClient, err := infra.NewBigQueryClient(ctx, bigQueryConfig)
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
+	}
+	defer bigQueryClient.Close()
+
 	repositories := repositories.NewRepositories(
 		pool,
 		gcpConfig,
@@ -206,6 +217,7 @@ func RunServer(config CompiledConfig) error {
 		repositories.WithClientDbConfig(clientDbConfig),
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 		repositories.WithRiverClient(riverClient),
+		repositories.WithBigQueryClient(bigQueryClient),
 	)
 
 	uc := usecases.NewUsecases(repositories,
@@ -245,7 +257,8 @@ func RunServer(config CompiledConfig) error {
 
 	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
 
-	router := api.InitRouterMiddlewares(ctx, apiConfig, apiConfig.DisableSegment, deps.SegmentClient, telemetryRessources)
+	router := api.InitRouterMiddlewares(ctx, apiConfig, apiConfig.DisableSegment,
+		deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, uc, deps.Authentication, deps.TokenHandler, logger)
 
 	notify, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)

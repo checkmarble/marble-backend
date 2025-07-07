@@ -21,6 +21,7 @@ type options struct {
 	openSanctions                 infra.OpenSanctions
 	riverClient                   *river.Client[pgx.Tx]
 	tp                            trace.TracerProvider
+	bigQueryClient                *infra.BigQueryClient
 }
 
 type Option func(*options)
@@ -76,6 +77,12 @@ func WithTracerProvider(tp trace.TracerProvider) Option {
 	}
 }
 
+func WithBigQueryClient(bigQueryClient *infra.BigQueryClient) Option {
+	return func(o *options) {
+		o.bigQueryClient = bigQueryClient
+	}
+}
+
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
 	ConvoyRepository                  ConvoyRepository
@@ -94,6 +101,7 @@ type Repositories struct {
 	TransferCheckEnrichmentRepository *TransferCheckEnrichmentRepository
 	TaskQueueRepository               TaskQueueRepository
 	ScenarioTestrunRepository         ScenarioTestRunRepository
+	MetricsIngestionRepository        MetricsIngestionRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -146,6 +154,7 @@ func NewRepositories(
 			blobRepository,
 			options.transfercheckEnrichmentBucket,
 		),
-		TaskQueueRepository: NewTaskQueueRepository(options.riverClient),
+		TaskQueueRepository:        NewTaskQueueRepository(options.riverClient),
+		MetricsIngestionRepository: NewMetricsIngestionRepository(options.bigQueryClient),
 	}
 }
