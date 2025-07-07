@@ -16,10 +16,11 @@ type Workflow struct {
 }
 
 type WorkflowRule struct {
-	Id         uuid.UUID
-	ScenarioId uuid.UUID
-	Name       string
-	Priority   int
+	Id          uuid.UUID
+	ScenarioId  uuid.UUID
+	Name        string
+	Priority    int
+	Fallthrough bool
 
 	CreatedAt time.Time
 	UpdatedAt *time.Time

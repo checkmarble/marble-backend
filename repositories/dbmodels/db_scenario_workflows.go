@@ -11,10 +11,11 @@ import (
 )
 
 type DbWorkflowRule struct {
-	Id         uuid.UUID `db:"id"`
-	ScenarioId uuid.UUID `db:"scenario_id"`
-	Name       string    `db:"name"`
-	Priority   int       `db:"priority"`
+	Id          uuid.UUID `db:"id"`
+	ScenarioId  uuid.UUID `db:"scenario_id"`
+	Name        string    `db:"name"`
+	Priority    int       `db:"priority"`
+	Fallthrough bool      `db:"fallthrough"`
 
 	CreatedAt time.Time  `db:"created_at"`
 	UpdatedAt *time.Time `db:"updated_at"`
@@ -57,12 +58,13 @@ var WorkflowActionColumns = utils.ColumnList[DbWorkflowAction]()
 
 func AdaptWorkflowRule(db DbWorkflowRule) (models.WorkflowRule, error) {
 	return models.WorkflowRule{
-		Id:         db.Id,
-		ScenarioId: db.ScenarioId,
-		Name:       db.Name,
-		Priority:   db.Priority,
-		CreatedAt:  db.CreatedAt,
-		UpdatedAt:  db.UpdatedAt,
+		Id:          db.Id,
+		ScenarioId:  db.ScenarioId,
+		Name:        db.Name,
+		Priority:    db.Priority,
+		Fallthrough: db.Fallthrough,
+		CreatedAt:   db.CreatedAt,
+		UpdatedAt:   db.UpdatedAt,
 	}, nil
 }
 

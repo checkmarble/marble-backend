@@ -9,17 +9,20 @@ import (
 )
 
 type WorkflowRuleDto struct {
-	Id   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
+	Id          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Fallthrough bool      `json:"fallthrough"`
 }
 
 type CreateWorkflowRuleDto struct {
-	ScenarioId uuid.UUID `json:"scenario_id" binding:"required,uuid"`
-	Name       string    `json:"name" binding:"required"`
+	ScenarioId  uuid.UUID `json:"scenario_id" binding:"required,uuid"`
+	Name        string    `json:"name" binding:"required"`
+	Fallthrough *bool     `json:"fallthrough" binding:"required"`
 }
 
 type UpdateWorkflowRuleDto struct {
-	Name string `json:"name" binding:"required"`
+	Name        string `json:"name" binding:"required"`
+	Fallthrough *bool  `json:"fallthrough" binding:"required"`
 }
 
 type WorkflowConditionDto struct {
@@ -79,8 +82,9 @@ func AdaptWorkflow(m models.Workflow) WorkflowDto {
 
 func AdaptWorkflowRule(m models.WorkflowRule) WorkflowRuleDto {
 	return WorkflowRuleDto{
-		Id:   m.Id,
-		Name: m.Name,
+		Id:          m.Id,
+		Name:        m.Name,
+		Fallthrough: m.Fallthrough,
 	}
 }
 

@@ -41,7 +41,7 @@ func (d DecisionsWorkflows) ProcessDecisionWorkflows(
 		EvaluateAst: d.astEvaluator,
 	}
 
-	var matchingRule *models.Workflow
+	var matchingRules []models.Workflow
 
 Rule:
 	for _, rule := range rules {
@@ -66,30 +66,36 @@ Rule:
 			}
 		}
 
-		matchingRule = &rule
-		break
+		matchingRules = append(matchingRules, rule)
+
+		if !rule.Fallthrough {
+			break
+		}
 	}
 
 	performed := models.WorkflowExecution{
 		WebhookIds: make([]string, 0),
 	}
 
-	if matchingRule != nil {
-		for _, action := range matchingRule.Actions {
+	for _, rule := range matchingRules {
+		for _, action := range rule.Actions {
 			switch action.Action {
 			case models.WorkflowCreateCase, models.WorkflowAddToCaseIfPossible:
-				params, err := models.ParseWorkflowAction[dto.WorkflowActionCaseParams](action)
-				if err != nil {
-					return models.WorkflowExecution{}, errors.Wrap(err, "could not unmarshal workflow action parameters")
-				}
+				// Skip if a previous executed action already added the decision to a case.
+				if !performed.AddedToCase {
+					params, err := models.ParseWorkflowAction[dto.WorkflowActionCaseParams](action)
+					if err != nil {
+						return models.WorkflowExecution{}, errors.Wrap(err, "could not unmarshal workflow action parameters")
+					}
 
-				exec, err := d.AutomaticDecisionToCase(ctx, tx, scenario, decision, evalParams, params)
-				if err != nil {
-					return models.WorkflowExecution{}, errors.Wrap(err, "error while executing workflow action")
-				}
+					exec, err := d.AutomaticDecisionToCase(ctx, tx, scenario, decision, evalParams, params)
+					if err != nil {
+						return models.WorkflowExecution{}, errors.Wrap(err, "error while executing workflow action")
+					}
 
-				performed.AddedToCase = performed.AddedToCase || exec.AddedToCase
-				performed.WebhookIds = append(performed.WebhookIds, exec.WebhookIds...)
+					performed.AddedToCase = performed.AddedToCase || exec.AddedToCase
+					performed.WebhookIds = append(performed.WebhookIds, exec.WebhookIds...)
+				}
 			}
 		}
 	}
