@@ -131,16 +131,18 @@ func (w MetricCollectionWorker) saveWatermark(ctx context.Context, newWatermarkT
 func (w MetricCollectionWorker) sendMetricsToIngestion(ctx context.Context, metricsCollection models.MetricsCollection) error {
 	f := func() error {
 		metricsCollectionDto := dto.AdaptMetricsCollectionDto(metricsCollection)
-		jsonData, err := json.Marshal(metricsCollectionDto)
+
+		var body bytes.Buffer
+		if err := json.NewEncoder(&body).Encode(metricsCollectionDto); err != nil {
+			return err
+		}
+
+		request, err := http.NewRequestWithContext(ctx, http.MethodPost,
+			w.config.MetricsIngestionURL, &body)
 		if err != nil {
 			return err
 		}
 
-		request, err := http.NewRequestWithContext(ctx, "POST",
-			w.config.MetricsIngestionURL, bytes.NewBuffer(jsonData))
-		if err != nil {
-			return err
-		}
 		request.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(request)
 		if err != nil {
