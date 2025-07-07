@@ -16,15 +16,12 @@ CREATE TABLE watermarks (
     params JSONB,
 
     PRIMARY KEY (id),
-    -- Unique constraint for org-specific watermarks, org_id null is not taken into account
-    CONSTRAINT uq_watermarks_org_id_type UNIQUE (org_id, type),
+    -- Unique constraint treating NULL values as distinct (prevents multiple NULL org_id with same type)
+    CONSTRAINT uq_watermarks_org_id_type UNIQUE NULLS NOT DISTINCT (org_id, type),
     CONSTRAINT fk_watermarks_org_id
         FOREIGN KEY (org_id) REFERENCES organizations (id)
         ON DELETE CASCADE
 );
-
--- Separate unique constraint for global watermarks (org_id IS NULL)
-CREATE UNIQUE INDEX uq_watermarks_global_type ON watermarks (type) WHERE org_id IS NULL;
 
 -- Migrate existing data from offloading_watermarks to watermarks
 INSERT INTO watermarks (org_id, type, watermark_time, watermark_id, created_at, updated_at, params)
