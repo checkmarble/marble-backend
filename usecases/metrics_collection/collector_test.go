@@ -79,17 +79,17 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 
 	// Expected metrics
 	globalMetrics := []models.MetricData{
-		models.NewGlobalMetric("global_metric", "value1", &from, &to,
+		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), &from, &to,
 			models.MetricCollectionFrequencyMonthly),
 	}
 
 	org1Metrics := []models.MetricData{
-		models.NewOrganizationMetric("org_metric", 42, "org1", &from, &to,
+		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(42)), nil, "org1", &from, &to,
 			models.MetricCollectionFrequencyInstant),
 	}
 
 	org2Metrics := []models.MetricData{
-		models.NewOrganizationMetric("org_metric", 24, "org2", &from, &to,
+		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(24)), nil, "org2", &from, &to,
 			models.MetricCollectionFrequencyInstant),
 	}
 
@@ -145,7 +145,7 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	}
 
 	org1Metrics := []models.MetricData{
-		models.NewOrganizationMetric("org_metric", 42, "org1", &from, &to,
+		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(42)), nil, "org1", &from, &to,
 			models.MetricCollectionFrequencyInstant),
 	}
 
@@ -186,7 +186,7 @@ func TestCollectors_CollectMetrics_OrganizationRepositoryError(t *testing.T) {
 	mockGlobalCollector := new(MockGlobalCollector)
 
 	globalMetrics := []models.MetricData{
-		models.NewGlobalMetric("global_metric", "value1", &from, &to,
+		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), &from, &to,
 			models.MetricCollectionFrequencyMonthly),
 	}
 
@@ -231,12 +231,12 @@ func TestCollectors_CollectMetrics_OrgCollectorError(t *testing.T) {
 	}
 
 	globalMetrics := []models.MetricData{
-		models.NewGlobalMetric("global_metric", "value1", &from, &to,
+		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), &from, &to,
 			models.MetricCollectionFrequencyMonthly),
 	}
 
 	org2Metrics := []models.MetricData{
-		models.NewOrganizationMetric("org_metric", 24, "org2", &from, &to,
+		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(24)), nil, "org2", &from, &to,
 			models.MetricCollectionFrequencyInstant),
 	}
 
@@ -281,7 +281,7 @@ func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 	mockOrgCollector := new(MockCollector)
 
 	globalMetrics := []models.MetricData{
-		models.NewGlobalMetric("global_metric", "value1", &from, &to,
+		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), &from, &to,
 			models.MetricCollectionFrequencyMonthly),
 	}
 
@@ -363,7 +363,7 @@ func TestNewCollectorsTestV1(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, "test-v1", collectors.version)
-	assert.Len(t, collectors.globalCollectors, 3)
+	assert.Len(t, collectors.globalCollectors, 2)
 	assert.Len(t, collectors.collectors, 1)
 	assert.Equal(t, mockOrgRepo, collectors.organizationRepository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)

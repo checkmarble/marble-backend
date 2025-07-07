@@ -16,9 +16,11 @@ const (
 	MetricCollectionFrequencyMonthlyDto MetricCollectionFrequencyDto = "monthly"
 )
 
+// Be careful when changing this struct, it is used as input and output in the API.
 type MetricDataDto struct {
 	Name           string                       `json:"name" binding:"required"`
-	Value          any                          `json:"value" binding:"required"`
+	Numeric        *float64                     `json:"numeric,omitempty"`
+	Text           *string                      `json:"text,omitempty"`
 	Timestamp      time.Time                    `json:"timestamp" binding:"required"`
 	OrganizationID *string                      `json:"organization_id,omitempty"`
 	From           *time.Time                   `json:"from,omitempty"`
@@ -26,6 +28,7 @@ type MetricDataDto struct {
 	Frequency      MetricCollectionFrequencyDto `json:"frequency" binding:"required"`
 }
 
+// Be careful when changing this struct, it is used as input and output in the API.
 type MetricsCollectionDto struct {
 	CollectionID uuid.UUID       `json:"collection_id" binding:"required"`
 	Timestamp    time.Time       `json:"timestamp" binding:"required"`
@@ -36,7 +39,8 @@ type MetricsCollectionDto struct {
 func AdaptMetricDataDto(metricData models.MetricData) MetricDataDto {
 	return MetricDataDto{
 		Name:           metricData.Name,
-		Value:          metricData.Value,
+		Numeric:        metricData.Numeric,
+		Text:           metricData.Text,
 		Timestamp:      metricData.Timestamp,
 		OrganizationID: metricData.OrganizationID,
 		From:           metricData.From,
@@ -57,7 +61,8 @@ func AdaptMetricsCollectionDto(metricsCollection models.MetricsCollection) Metri
 func AdaptMetricData(metricDataDto MetricDataDto) models.MetricData {
 	return models.MetricData{
 		Name:           metricDataDto.Name,
-		Value:          metricDataDto.Value,
+		Numeric:        metricDataDto.Numeric,
+		Text:           metricDataDto.Text,
 		Timestamp:      metricDataDto.Timestamp,
 		OrganizationID: metricDataDto.OrganizationID,
 		From:           metricDataDto.From,
