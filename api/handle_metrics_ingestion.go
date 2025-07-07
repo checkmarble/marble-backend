@@ -15,10 +15,7 @@ func handleMetricsIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		logger := utils.LoggerFromContext(c.Request.Context())
 		var metricsCollectionDto dto.MetricsCollectionDto
 		if err := c.ShouldBindJSON(&metricsCollectionDto); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "Invalid request body",
-				"details": err.Error(),
-			})
+			c.Status(http.StatusBadRequest)
 			return
 		}
 
