@@ -19,11 +19,6 @@ func handleMetricsIngestion(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		// Debug log the body
-		logger.DebugContext(c.Request.Context(), "Metrics collection received",
-			"metrics_collection", metricsCollectionDto,
-		)
-
 		metricsCollection := dto.AdaptMetricsCollection(metricsCollectionDto)
 
 		usecase := uc.NewMetricsIngestionUsecase()
