@@ -207,8 +207,8 @@ func RunTaskQueue(apiVersion string) error {
 		return err
 	}
 
-	for _, queue := range slices.Collect(maps.Keys(nonOrgQueues)) {
-		if err := riverClient.QueueResume(ctx, queue, &river.QueuePauseOpts{}); err != nil {
+	for k := range nonOrgQueues {
+		if err := riverClient.QueueResume(ctx, k, &river.QueuePauseOpts{}); err != nil {
 			utils.LogAndReportSentryError(ctx, err)
 			return err
 		}
