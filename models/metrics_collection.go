@@ -30,6 +30,8 @@ type MetricsCollection struct {
 	Timestamp    time.Time
 	Metrics      []MetricData
 	Version      string
+	DeploymentID uuid.UUID
+	LicenseKey   *string
 }
 
 func NewGlobalMetric(name string, numeric *float64, text *string, from, to *time.Time, frequency MetricCollectionFrequency) MetricData {
