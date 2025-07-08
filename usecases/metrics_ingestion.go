@@ -28,8 +28,8 @@ func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, collection 
 
 	err := u.repository.SendMetrics(ctx, collection)
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to send metrics to BigQuery", "error", err)
-		return fmt.Errorf("failed to send metrics to BigQuery: %w", err)
+		logger.ErrorContext(ctx, "Failed to send metrics to BigQuery", "error", err.Error())
+		return fmt.Errorf("failed to send metrics to BigQuery: %s", err.Error())
 	}
 
 	return nil

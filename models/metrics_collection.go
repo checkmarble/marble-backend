@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
 
@@ -51,31 +52,9 @@ type MetricEventRow struct {
 func AdaptMetricsCollection(metricsCollection MetricsCollection) []*MetricEventRow {
 	metricEventRows := make([]*MetricEventRow, 0, len(metricsCollection.Metrics))
 
-	licenseKey := bigquery.NullString{}
-	if metricsCollection.LicenseKey != nil {
-		licenseKey.StringVal = *metricsCollection.LicenseKey
-		licenseKey.Valid = true
-	}
+	licenseKey := pure_utils.NullStringFromPtr(metricsCollection.LicenseKey)
 
 	for _, metric := range metricsCollection.Metrics {
-		orgID := bigquery.NullString{}
-		if metric.OrganizationID != nil {
-			orgID.StringVal = *metric.OrganizationID
-			orgID.Valid = true
-		}
-
-		counter := bigquery.NullFloat64{}
-		if metric.Numeric != nil {
-			counter.Float64 = *metric.Numeric
-			counter.Valid = true
-		}
-
-		text := bigquery.NullString{}
-		if metric.Text != nil {
-			text.StringVal = *metric.Text
-			text.Valid = true
-		}
-
 		startTime := metricsCollection.Timestamp
 		if metric.From != nil {
 			startTime = *metric.From
@@ -91,11 +70,11 @@ func AdaptMetricsCollection(metricsCollection MetricsCollection) []*MetricEventR
 			EndTime:      endTime,
 			DeploymentID: metricsCollection.DeploymentID,
 			LicenseKey:   licenseKey,
-			OrgID:        orgID,
+			OrgID:        pure_utils.NullStringFromPtr(metric.OrganizationID),
 			EventType:    metric.Name,
-			Counter:      counter,
+			Counter:      pure_utils.NullFloat64FromPtr(metric.Numeric),
 			Gauge:        bigquery.NullFloat64{},
-			Text:         text,
+			Text:         pure_utils.NullStringFromPtr(metric.Text),
 		})
 	}
 
