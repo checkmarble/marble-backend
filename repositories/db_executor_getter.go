@@ -77,6 +77,10 @@ func (g ExecutorGetter) Transaction(
 
 	execInTransaction := func() error {
 		return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+			if _, err := InjectDbSessionConfig(ctx, tx); err != nil {
+				return err
+			}
+
 			return fn(&PgTx{
 				databaseSchema: databaseSchema,
 				tx:             tx,
