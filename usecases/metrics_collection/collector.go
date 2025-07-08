@@ -12,7 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
-type OrganizationRepository interface {
+type CollectorRepository interface {
+	DecisionCollectorRepository
 	AllOrganizations(ctx context.Context, exec repositories.Executor) ([]models.Organization, error)
 }
 
@@ -25,7 +26,7 @@ type GlobalCollector interface {
 
 // Collector is a collector that is specific to an organization.
 type Collector interface {
-	Collect(ctx context.Context, orgId string, from time.Time, to time.Time) ([]models.MetricData, error)
+	Collect(ctx context.Context, orgIds []string, from time.Time, to time.Time) ([]models.MetricData, error)
 }
 
 type Collectors struct {
@@ -34,7 +35,7 @@ type Collectors struct {
 	collectors       []Collector
 
 	licenseConfig          models.LicenseConfiguration
-	organizationRepository OrganizationRepository
+	organizationRepository CollectorRepository
 	executorFactory        executor_factory.ExecutorFactory
 }
 
@@ -95,16 +96,18 @@ func (c Collectors) collectOrganizationMetrics(ctx context.Context, from time.Ti
 	if err != nil {
 		return []models.MetricData{}, err
 	}
+	orgIds := make([]string, len(orgs))
+	for i, org := range orgs {
+		orgIds[i] = org.Id
+	}
 
-	for _, org := range orgs {
-		for _, collector := range c.collectors {
-			value, err := collector.Collect(ctx, org.Id, from, to)
-			if err != nil {
-				logger.WarnContext(ctx, "Failed to collect organization metrics", "error", err)
-				continue
-			}
-			metrics = slices.Concat(metrics, value)
+	for _, collector := range c.collectors {
+		value, err := collector.Collect(ctx, orgIds, from, to)
+		if err != nil {
+			logger.WarnContext(ctx, "Failed to collect organization metrics", "error", err)
+			continue
 		}
+		metrics = slices.Concat(metrics, value)
 	}
 
 	return metrics, nil
@@ -136,21 +139,20 @@ func (c Collectors) GetDeploymentID() uuid.UUID {
 // and tell the server which collectors is used by the client
 func NewCollectorsTestV1(
 	executorFactory executor_factory.ExecutorFactory,
-	organizationRepository OrganizationRepository,
+	collectorRepository CollectorRepository,
 	apiVersion string,
 	licenseConfig models.LicenseConfiguration,
 ) Collectors {
 	return Collectors{
 		version: "test-v1",
 		collectors: []Collector{
-			NewStubOrganizationCollector(),
+			NewDecisionCollector(collectorRepository, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{
-			NewStubGlobalCollector(),
 			NewAppVersionCollector(apiVersion),
 		},
 		executorFactory:        executorFactory,
-		organizationRepository: organizationRepository,
+		organizationRepository: collectorRepository,
 		licenseConfig:          licenseConfig,
 	}
 }
