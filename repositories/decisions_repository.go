@@ -1041,3 +1041,51 @@ func (repo *MarbleDbRepository) RemoveDecisionRulePayload(ctx context.Context, t
 
 	return ExecBuilder(ctx, tx, sql)
 }
+
+// Counts the number of decisions for each orgId in the given time range
+func (repo *MarbleDbRepository) CountDecisions(ctx context.Context, exec Executor, orgIds []string, from, to time.Time) (map[string]int, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return map[string]int{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id, count(*) as count").
+		From(dbmodels.TABLE_DECISIONS).
+		Where(squirrel.Eq{"org_id": orgIds}).
+		Where(squirrel.GtOrEq{"created_at": from}).
+		Where(squirrel.Lt{"created_at": to}).
+		GroupBy("org_id")
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return map[string]int{}, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return map[string]int{}, err
+	}
+	defer rows.Close()
+
+	counts := make(map[string]int)
+	for rows.Next() {
+		var orgId string
+		var count int
+		if err := rows.Scan(&orgId, &count); err != nil {
+			return map[string]int{}, err
+		}
+		counts[orgId] = count
+	}
+
+	// If the orgIds are not in the counts, the count will be 0
+	countsMap := make(map[string]int, len(orgIds))
+	for _, orgId := range orgIds {
+		if count, exists := counts[orgId]; exists {
+			countsMap[orgId] = count
+		} else {
+			countsMap[orgId] = 0
+		}
+	}
+
+	return countsMap, nil
+}

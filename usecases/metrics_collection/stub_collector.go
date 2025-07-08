@@ -21,16 +21,18 @@ func NewStubOrganizationCollector() Collector {
 	return StubOrganizationCollector{}
 }
 
-func (c StubOrganizationCollector) Collect(ctx context.Context, orgId string, from time.Time, to time.Time) ([]models.MetricData, error) {
+func (c StubOrganizationCollector) Collect(ctx context.Context, orgIds []string, from time.Time, to time.Time) ([]models.MetricData, error) {
 	var metrics []models.MetricData
 
 	// Simple instant metrics
-	metrics = append(metrics,
-		models.NewOrganizationMetric("stub_info", nil, utils.Ptr("STUB_VALUE"), orgId, &from, &to,
-			models.MetricCollectionFrequencyInstant),
-		models.NewOrganizationMetric("stub_counter", utils.Ptr(float64(42)), nil, orgId, &from, &to,
-			models.MetricCollectionFrequencyInstant),
-	)
+	for _, orgId := range orgIds {
+		metrics = append(metrics,
+			models.NewOrganizationMetric("stub_info", nil, utils.Ptr("STUB_VALUE"), orgId, &from, &to,
+				models.MetricCollectionFrequencyInstant),
+			models.NewOrganizationMetric("stub_counter", utils.Ptr(float64(42)), nil, orgId, &from, &to,
+				models.MetricCollectionFrequencyInstant),
+		)
+	}
 
 	return metrics, nil
 }

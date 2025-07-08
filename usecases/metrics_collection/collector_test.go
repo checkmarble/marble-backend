@@ -17,15 +17,22 @@ import (
 )
 
 // Mock implementations for testing
-type MockOrganizationRepository struct {
+type MockCollectorRepository struct {
 	mock.Mock
 }
 
-func (m *MockOrganizationRepository) AllOrganizations(ctx context.Context,
+func (m *MockCollectorRepository) AllOrganizations(ctx context.Context,
 	exec repositories.Executor,
 ) ([]models.Organization, error) {
 	args := m.Called(ctx, exec)
 	return args.Get(0).([]models.Organization), args.Error(1)
+}
+
+func (m *MockCollectorRepository) CountDecisions(ctx context.Context, exec repositories.Executor, orgIds []string,
+	from, to time.Time,
+) (map[string]int, error) {
+	args := m.Called(ctx, exec, orgIds, from, to)
+	return args.Get(0).(map[string]int), args.Error(1)
 }
 
 type MockGlobalCollector struct {
@@ -41,8 +48,8 @@ type MockCollector struct {
 	mock.Mock
 }
 
-func (m *MockCollector) Collect(ctx context.Context, orgId string, from time.Time, to time.Time) ([]models.MetricData, error) {
-	args := m.Called(ctx, orgId, from, to)
+func (m *MockCollector) Collect(ctx context.Context, orgIds []string, from time.Time, to time.Time) ([]models.MetricData, error) {
+	args := m.Called(ctx, orgIds, from, to)
 	return args.Get(0).([]models.MetricData), args.Error(1)
 }
 
@@ -66,7 +73,7 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
 
-	mockOrgRepo := new(MockOrganizationRepository)
+	mockOrgRepo := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
@@ -96,8 +103,9 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	// Setup expectations
 	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return(globalMetrics, nil)
-	mockOrgCollector.On("Collect", ctx, "org1", from, to).Return(org1Metrics, nil)
-	mockOrgCollector.On("Collect", ctx, "org2", from, to).Return(org2Metrics, nil)
+	mockOrgCollector.On("Collect", ctx, []string{"org1", "org2"}, from, to).Return([]models.MetricData{
+		org1Metrics[0], org2Metrics[0],
+	}, nil)
 
 	collectors := Collectors{
 		version:                "test-v1",
@@ -135,7 +143,7 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
 
-	mockOrgRepo := new(MockOrganizationRepository)
+	mockOrgRepo := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
@@ -152,7 +160,9 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	// Setup expectations - global collector fails, but org collector succeeds
 	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return([]models.MetricData{}, errors.New("global collector error"))
-	mockOrgCollector.On("Collect", ctx, "org1", from, to).Return(org1Metrics, nil)
+	mockOrgCollector.On("Collect", ctx, []string{"org1"}, from, to).Return([]models.MetricData{
+		org1Metrics[0],
+	}, nil)
 
 	collectors := Collectors{
 		version:                "test-v1",
@@ -181,7 +191,7 @@ func TestCollectors_CollectMetrics_OrganizationRepositoryError(t *testing.T) {
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
 
-	mockOrgRepo := new(MockOrganizationRepository)
+	mockOrgRepo := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 
@@ -214,68 +224,13 @@ func TestCollectors_CollectMetrics_OrganizationRepositoryError(t *testing.T) {
 	mockGlobalCollector.AssertExpectations(t)
 }
 
-func TestCollectors_CollectMetrics_OrgCollectorError(t *testing.T) {
-	// Setup
-	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
-	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
-
-	mockOrgRepo := new(MockOrganizationRepository)
-	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
-	mockGlobalCollector := new(MockGlobalCollector)
-	mockOrgCollector := new(MockCollector)
-
-	orgs := []models.Organization{
-		{Id: "org1", Name: "Organization 1"},
-		{Id: "org2", Name: "Organization 2"},
-	}
-
-	globalMetrics := []models.MetricData{
-		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), &from, &to,
-			models.MetricCollectionFrequencyMonthly),
-	}
-
-	org2Metrics := []models.MetricData{
-		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(24)), nil, "org2", &from, &to,
-			models.MetricCollectionFrequencyInstant),
-	}
-
-	// Setup expectations - org1 collector fails, org2 succeeds
-	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
-	mockGlobalCollector.On("Collect", ctx, from, to).Return(globalMetrics, nil)
-	mockOrgCollector.On("Collect", ctx, "org1", from, to).Return([]models.MetricData{}, errors.New("org1 collector error"))
-	mockOrgCollector.On("Collect", ctx, "org2", from, to).Return(org2Metrics, nil)
-
-	collectors := Collectors{
-		version:                "test-v1",
-		globalCollectors:       []GlobalCollector{mockGlobalCollector},
-		collectors:             []Collector{mockOrgCollector},
-		organizationRepository: mockOrgRepo,
-		executorFactory:        mockExecutorFactory,
-	}
-
-	// Execute
-	result, err := collectors.CollectMetrics(ctx, from, to)
-
-	// Assert - should succeed with global + org2 metrics (org1 skipped due to error)
-	require.NoError(t, err)
-	assert.Len(t, result.Metrics, 2) // 1 global + 1 org2 metric
-
-	assert.Contains(t, result.Metrics, globalMetrics[0], "Should contain global metric")
-	assert.Contains(t, result.Metrics, org2Metrics[0], "Should contain org2 metric")
-
-	mockOrgRepo.AssertExpectations(t)
-	mockGlobalCollector.AssertExpectations(t)
-	mockOrgCollector.AssertExpectations(t)
-}
-
 func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 	// Setup
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
 
-	mockOrgRepo := new(MockOrganizationRepository)
+	mockOrgRepo := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
@@ -288,6 +243,7 @@ func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 	// Setup expectations - no organizations
 	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return([]models.Organization{}, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return(globalMetrics, nil)
+	mockOrgCollector.On("Collect", ctx, []string{}, from, to).Return([]models.MetricData{}, nil)
 	// mockOrgCollector should not be called since there are no organizations
 
 	collectors := Collectors{
@@ -317,7 +273,7 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
 
-	mockOrgRepo := new(MockOrganizationRepository)
+	mockOrgRepo := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
@@ -329,7 +285,7 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 	// Setup expectations - collectors return empty results
 	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return([]models.MetricData{}, nil)
-	mockOrgCollector.On("Collect", ctx, "org1", from, to).Return([]models.MetricData{}, nil)
+	mockOrgCollector.On("Collect", ctx, []string{"org1"}, from, to).Return([]models.MetricData{}, nil)
 
 	collectors := Collectors{
 		version:                "test-v1",
@@ -355,7 +311,7 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 
 func TestNewCollectorsTestV1(t *testing.T) {
 	// Setup
-	mockOrgRepo := new(MockOrganizationRepository)
+	mockOrgRepo := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 
 	// Execute
@@ -363,15 +319,15 @@ func TestNewCollectorsTestV1(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, "test-v1", collectors.version)
-	assert.Len(t, collectors.globalCollectors, 2)
+	assert.Len(t, collectors.globalCollectors, 1)
 	assert.Len(t, collectors.collectors, 1)
 	assert.Equal(t, mockOrgRepo, collectors.organizationRepository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
 
 	// Verify the collectors are of the expected stub types
-	_, isStubGlobal := collectors.globalCollectors[0].(StubGlobalCollector)
-	assert.True(t, isStubGlobal, "Should contain StubGlobalCollector")
+	_, isAppVersionCollector := collectors.globalCollectors[0].(AppVersionCollector)
+	assert.True(t, isAppVersionCollector, "Should contain AppVersionCollector")
 
-	_, isStubOrg := collectors.collectors[0].(StubOrganizationCollector)
-	assert.True(t, isStubOrg, "Should contain StubOrganizationCollector")
+	_, isDecisionCollector := collectors.collectors[0].(DecisionCollector)
+	assert.True(t, isDecisionCollector, "Should contain DecisionCollector")
 }
