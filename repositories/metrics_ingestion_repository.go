@@ -47,3 +47,25 @@ func (repo MetricsIngestionRepository) TestConnection(ctx context.Context) error
 	logger.InfoContext(ctx, "BigQuery connection test successful", "result", row[0])
 	return nil
 }
+
+func (repo MetricsIngestionRepository) SendMetrics(ctx context.Context, metrics models.MetricsCollection) error {
+	logger := utils.LoggerFromContext(ctx)
+
+	logger.DebugContext(ctx, "Sending metrics to BigQuery",
+		"collection_id", metrics.CollectionID,
+		"metrics_count", len(metrics.Metrics),
+	)
+
+	table := repo.bqClient.Client.Dataset("metrics").Table("events")
+	inserter := table.Inserter()
+
+	metricEventRows := models.AdaptMetricsCollection(metrics)
+
+	err := inserter.Put(ctx, metricEventRows)
+	if err != nil {
+		logger.ErrorContext(ctx, "Failed to send metrics to BigQuery", "error", err)
+		return fmt.Errorf("failed to send metrics to BigQuery: %w", err)
+	}
+
+	return nil
+}
