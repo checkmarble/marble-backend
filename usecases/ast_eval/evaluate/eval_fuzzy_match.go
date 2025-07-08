@@ -29,6 +29,10 @@ func (fuzzyMatcher FuzzyMatch) Evaluate(ctx context.Context, arguments ast.Argum
 	right, errRight := adaptArgumentToString(rightAny)
 	algorithm, algorithmErr := AdaptNamedArgument(arguments.NamedArgs, "algorithm", adaptArgumentToString)
 
+	if errors.Is(errLeft, ast.ErrArgumentRequired) || errors.Is(errRight, ast.ErrArgumentRequired) {
+		return nil, nil
+	}
+
 	errs := MakeAdaptedArgsErrors([]error{errLeft, errRight, algorithmErr})
 	if len(errs) > 0 {
 		return nil, errs
@@ -48,6 +52,9 @@ func (fuzzyMatcher FuzzyMatchAnyOf) Evaluate(ctx context.Context, arguments ast.
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function FuzzyMatchAnyOf"))
+	}
+	if leftAny == nil || rightAny == nil {
+		return nil, nil
 	}
 
 	left, errLeft := adaptArgumentToString(leftAny)
