@@ -9,7 +9,7 @@ paths:
         - ApiKeyAuth: []
       summary: Ingest a new object from the data model
       description: |
-        Not that unknown fields (not part of the data model) are now forbidden and will be rejected.
+        Note that unknown fields (not part of the data model) are forbidden and will be rejected.
       parameters:
         - name: objectType
           in: path
@@ -51,7 +51,7 @@ paths:
         - ApiKeyAuth: []
       summary: Ingest (upsert) a new version of an object from the data model
       description: |
-        Not that unknown fields (not part of the data model) are now forbidden and will be rejected.
+        Note that unknown fields (not part of the data model) are forbidden and will be rejected.
       parameters:
         - name: objectType
           in: path
@@ -94,7 +94,7 @@ paths:
         - ApiKeyAuth: []
       summary: Ingest an array of objects from the data model
       description: |
-        Not that unknown fields (not part of the data model) are now forbidden and will be rejected.
+        Note that unknown fields (not part of the data model) are forbidden and will be rejected.
       parameters:
         - name: objectType
           in: path
@@ -138,7 +138,7 @@ paths:
         - ApiKeyAuth: []
       summary: Ingest (upsert) an array of new versions of objects from the data model
       description: |
-        Not that unknown fields (not part of the data model) are now forbidden and will be rejected.
+        Note that unknown fields (not part of the data model) are forbidden and will be rejected.
       parameters:
         - name: objectType
           in: path
