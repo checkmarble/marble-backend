@@ -2,13 +2,14 @@ package usecases
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 type MetricsIngestionRepository interface {
-	TestConnection(ctx context.Context) error
+	SendMetrics(ctx context.Context, collection models.MetricsCollection) error
 }
 
 type MetricsIngestionUsecase struct {
@@ -21,24 +22,14 @@ func NewMetricsIngestionUsecase(repository MetricsIngestionRepository) MetricsIn
 	}
 }
 
-func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, metrics models.MetricsCollection) error {
-	// Ingest the collection
-	err := u.ingestCollection(ctx, metrics)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (u *MetricsIngestionUsecase) ingestCollection(ctx context.Context, collection models.MetricsCollection) error {
+func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, collection models.MetricsCollection) error {
 	logger := utils.LoggerFromContext(ctx)
-	logger.DebugContext(ctx, "Ingesting collection", "collection", collection)
+	logger.DebugContext(ctx, "Sending metrics to BigQuery", "collection", collection)
 
-	// TODO: Implement the ingestion logic
-	err := u.repository.TestConnection(ctx)
+	err := u.repository.SendMetrics(ctx, collection)
 	if err != nil {
-		return err
+		logger.ErrorContext(ctx, "Failed to send metrics to BigQuery", "error", err)
+		return fmt.Errorf("failed to send metrics to BigQuery: %w", err)
 	}
 
 	return nil

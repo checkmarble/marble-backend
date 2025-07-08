@@ -20,9 +20,8 @@ type HealthUsecase struct {
 	executorFactory  executor_factory.ExecutorFactory
 	healthRepository healthRepository
 
-	openSanctionsRepository    OpenSanctionsHealthRepository
-	hasOpensanctionsSetup      bool
-	metricsIngestionRepository MetricsIngestionRepository
+	openSanctionsRepository OpenSanctionsHealthRepository
+	hasOpensanctionsSetup   bool
 }
 
 func (u *HealthUsecase) GetHealthStatus(ctx context.Context) models.HealthStatus {
@@ -43,13 +42,6 @@ func (u *HealthUsecase) GetHealthStatus(ctx context.Context) models.HealthStatus
 			Status: ok && err == nil,
 		})
 	}
-
-	// Check BigQuery health
-	err = u.metricsIngestionRepository.TestConnection(ctx)
-	statuses = append(statuses, models.HealthItemStatus{
-		Name:   models.BigQueryHealthItemName,
-		Status: err == nil,
-	})
 
 	return models.HealthStatus{
 		Statuses: statuses,
