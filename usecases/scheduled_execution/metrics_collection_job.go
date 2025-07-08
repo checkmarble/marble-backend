@@ -30,7 +30,8 @@ func NewMetricsCollectionPeriodicJob(config infra.MetricCollectionConfig) *river
 				},
 			}
 		},
-		&river.PeriodicJobOpts{RunOnStart: false},
+		// TODO: RunOnstart should be false for production
+		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 
