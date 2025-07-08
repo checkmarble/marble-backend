@@ -87,7 +87,7 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 	// Create the metric collection usecase
 	metricsCollection, err := w.collectors.CollectMetrics(ctx, from, now)
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to collect metrics", "error", err)
+		logger.ErrorContext(ctx, "Failed to collect metrics", "error", err.Error())
 		return err
 	}
 
@@ -95,13 +95,13 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 
 	logger.DebugContext(ctx, "Sending metrics to ingestion", "metrics", metricsCollection)
 	if err := w.sendMetricsToIngestion(ctx, metricsCollection); err != nil {
-		logger.WarnContext(ctx, "Failed to send metrics to ingestion", "error", err)
+		logger.WarnContext(ctx, "Failed to send metrics to ingestion", "error", err.Error())
 		return err
 	}
 
 	logger.DebugContext(ctx, "Updating watermarks", "new_timestamp", now)
 	if err := w.saveWatermark(ctx, now); err != nil {
-		logger.ErrorContext(ctx, "Failed to save watermark", "error", err)
+		logger.ErrorContext(ctx, "Failed to save watermark", "error", err.Error())
 		return err
 	}
 
