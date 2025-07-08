@@ -35,6 +35,20 @@ func TestFuzzyMatch(t *testing.T) {
 			algo: "bag_of_words_similarity",
 			want: 65,
 		},
+		{
+			name:   "with nulls left",
+			args:   []any{nil, "any string"},
+			algo:   "bag_of_words_similarity",
+			want:   nil,
+			errors: nil,
+		},
+		{
+			name:   "with nulls right",
+			args:   []any{"any string", nil},
+			algo:   "bag_of_words_similarity",
+			want:   nil,
+			errors: nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -80,6 +94,20 @@ func TestFuzzyMatchAnyOf(t *testing.T) {
 			args:   []any{"old mc donald had a farm", "old mc donald may have had a farm"},
 			algo:   "unknown",
 			errors: []error{errors.New("arguments must be a list")},
+		},
+		{
+			name:   "with nulls left",
+			args:   []any{nil, "any string"},
+			algo:   "bag_of_words_similarity",
+			want:   nil,
+			errors: nil,
+		},
+		{
+			name:   "with nulls right",
+			args:   []any{"any string", nil},
+			algo:   "bag_of_words_similarity",
+			want:   nil,
+			errors: nil,
 		},
 	}
 
