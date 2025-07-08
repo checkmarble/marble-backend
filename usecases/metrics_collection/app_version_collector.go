@@ -18,10 +18,10 @@ func NewAppVersionCollector(apiVersion string) GlobalCollector {
 	}
 }
 
-func (c AppVersionCollector) Collect(ctx context.Context, _ time.Time, _ time.Time) ([]models.MetricData, error) {
+func (c AppVersionCollector) Collect(ctx context.Context, from time.Time, to time.Time) ([]models.MetricData, error) {
 	metrics := make([]models.MetricData, 0)
 
-	metrics = append(metrics, models.NewGlobalMetric("app_version", nil, &c.apiVersion, nil, nil,
+	metrics = append(metrics, models.NewGlobalMetric("app_version", nil, &c.apiVersion, &from, &to,
 		models.MetricCollectionFrequencyInstant))
 
 	return metrics, nil
