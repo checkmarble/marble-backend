@@ -2,7 +2,6 @@ package infra
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -17,8 +16,7 @@ import (
 )
 
 const (
-	LICENSE_SERVER_URL             = "https://api.checkmarble.com/validate-license/"
-	GOOGLE_METADATA_URL_PROJECT_ID = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
+	LICENSE_SERVER_URL = "https://api.checkmarble.com/validate-license/"
 )
 
 var marbleSaasProjectIds = []string{"marble-prod-1", "tokyo-country-381508"}
@@ -27,17 +25,7 @@ var marbleSaasProjectIds = []string{"marble-prod-1", "tokyo-country-381508"}
 // the license or reading the GCP project id
 func VerifyLicense(config models.LicenseConfiguration) models.LicenseValidation {
 	if config.LicenseKey == "" {
-		var projectId string
-		err := retry.Do(
-			func() error {
-				var err error
-				projectId, err = getProjectIdFromMetadataServer()
-				return err
-			},
-			retry.Attempts(3),
-			retry.LastErrorOnly(true),
-			retry.Delay(100*time.Millisecond),
-		)
+		projectId, err := GetProjectId()
 		isWhitelisted := slices.Contains(marbleSaasProjectIds, projectId)
 		if config.KillIfReadLicenseError && (err != nil || !isWhitelisted) {
 			log.Fatalln("License key or project id not found, exiting")
@@ -93,33 +81,4 @@ func readLicenseFromLicenseServer(licenseKey string) (models.LicenseValidation, 
 	}
 
 	return dto.AdaptLicenseValidation(licenseValidationDto), nil
-}
-
-func getProjectIdFromMetadataServer() (string, error) {
-	req, err := http.NewRequest("GET", GOOGLE_METADATA_URL_PROJECT_ID, nil)
-	if err != nil {
-		// error should never happen (error constructing request only expected on wrong http method)
-		return "", err
-	}
-	req.Header.Add("Metadata-Flavor", "Google")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		// expected error outside of a GCP VM (the url is a google internal url)
-		// here we do the approximation to not retry if the connection to the metadata server fails in a GCP environment
-		fmt.Println("Could not connect to google cloud metadata server")
-		return "", nil
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			// at this point this would be an unexpected error, if it happens we should retry it
-			return "", err
-		}
-		return string(body), nil
-	}
-
-	// at this point this would be an unexpected error, if it happens we should retry it
-	return "", errors.Newf("unexpected status code from google cloud metadata server: %d", resp.StatusCode)
 }
