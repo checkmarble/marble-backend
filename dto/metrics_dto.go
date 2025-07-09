@@ -8,24 +8,15 @@ import (
 	"github.com/google/uuid"
 )
 
-type MetricCollectionFrequencyDto string
-
-const (
-	MetricCollectionFrequencyInstantDto MetricCollectionFrequencyDto = "instant"
-	MetricCollectionFrequencyDailyDto   MetricCollectionFrequencyDto = "daily"
-	MetricCollectionFrequencyMonthlyDto MetricCollectionFrequencyDto = "monthly"
-)
-
 // Be careful when changing this struct, it is used as input and output in the API.
 type MetricDataDto struct {
-	Name           string                       `json:"name" binding:"required"`
-	Numeric        *float64                     `json:"numeric,omitempty"`
-	Text           *string                      `json:"text,omitempty"`
-	Timestamp      time.Time                    `json:"timestamp" binding:"required"`
-	OrganizationID *string                      `json:"organization_id,omitempty"`
-	From           *time.Time                   `json:"from,omitempty"`
-	To             *time.Time                   `json:"to,omitempty"`
-	Frequency      MetricCollectionFrequencyDto `json:"frequency" binding:"required"`
+	Name           string     `json:"name" binding:"required"`
+	Numeric        *float64   `json:"numeric,omitempty"`
+	Text           *string    `json:"text,omitempty"`
+	Timestamp      time.Time  `json:"timestamp" binding:"required"`
+	OrganizationID *string    `json:"organization_id,omitempty"`
+	From           *time.Time `json:"from,omitempty"`
+	To             *time.Time `json:"to,omitempty"`
 }
 
 // Be careful when changing this struct, it is used as input and output in the API.
@@ -47,7 +38,6 @@ func AdaptMetricDataDto(metricData models.MetricData) MetricDataDto {
 		OrganizationID: metricData.OrganizationID,
 		From:           metricData.From,
 		To:             metricData.To,
-		Frequency:      MetricCollectionFrequencyDto(metricData.Frequency),
 	}
 }
 
@@ -71,7 +61,6 @@ func AdaptMetricData(metricDataDto MetricDataDto) models.MetricData {
 		OrganizationID: metricDataDto.OrganizationID,
 		From:           metricDataDto.From,
 		To:             metricDataDto.To,
-		Frequency:      models.MetricCollectionFrequency(metricDataDto.Frequency),
 	}
 }
 

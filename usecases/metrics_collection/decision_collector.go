@@ -26,7 +26,6 @@ type DecisionCollector struct {
 	decisionRepository DecisionCollectorRepository
 
 	executorFactory executor_factory.ExecutorFactory
-	frequency       models.MetricCollectionFrequency
 }
 
 func NewDecisionCollector(decisionRepository DecisionCollectorRepository,
@@ -35,12 +34,11 @@ func NewDecisionCollector(decisionRepository DecisionCollectorRepository,
 	return DecisionCollector{
 		decisionRepository: decisionRepository,
 		executorFactory:    executorFactory,
-		frequency:          models.MetricCollectionFrequencyDaily,
 	}
 }
 
 func (c DecisionCollector) Collect(ctx context.Context, orgIds []string, from, to time.Time) ([]models.MetricData, error) {
-	periods, err := pure_utils.SplitTimeRangeByFrequency(from, to, pure_utils.Frequency(c.frequency))
+	periods, err := pure_utils.SplitTimeRangeByFrequency(from, to, pure_utils.FrequencyDaily)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +54,7 @@ func (c DecisionCollector) Collect(ctx context.Context, orgIds []string, from, t
 
 		for orgId, count := range orgDecisionCounts {
 			metrics = append(metrics, models.NewOrganizationMetric(DecisionMetricName,
-				utils.Ptr(float64(count)), nil, orgId, &period.From, &period.To,
-				c.frequency),
+				utils.Ptr(float64(count)), nil, orgId, &period.From, &period.To),
 			)
 		}
 	}
