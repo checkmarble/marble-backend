@@ -258,12 +258,6 @@ func (repo *CustomListRepositoryPostgresql) AddCustomListValue(
 		return err
 	}
 
-	if userId != nil {
-		if err := setCurrentUserIdContext(ctx, exec, userId); err != nil {
-			return err
-		}
-	}
-
 	err := ExecBuilder(
 		ctx,
 		exec,
@@ -296,12 +290,6 @@ func (repo *CustomListRepositoryPostgresql) BatchInsertCustomListValues(
 		return nil
 	}
 
-	if userId != nil {
-		if err := setCurrentUserIdContext(ctx, exec, userId); err != nil {
-			return err
-		}
-	}
-
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CUSTOM_LIST_VALUE).
 		Columns(
 			"id",
@@ -331,12 +319,6 @@ func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(
 		return err
 	}
 
-	if userId != nil {
-		if err := setCurrentUserIdContext(ctx, exec, userId); err != nil {
-			return err
-		}
-	}
-
 	deleteRequest := NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)
 
 	deleteRequest = deleteRequest.Set("deleted_at", squirrel.Expr("NOW()"))
@@ -357,12 +339,6 @@ func (repo *CustomListRepositoryPostgresql) BatchDeleteCustomListValues(
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
-	}
-
-	if userId != nil {
-		if err := setCurrentUserIdContext(ctx, exec, userId); err != nil {
-			return err
-		}
 	}
 
 	deleteRequest := NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)
