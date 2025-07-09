@@ -1,7 +1,11 @@
 package models
 
+import "github.com/google/uuid"
+
 type Organization struct {
 	Id string
+
+	PublicId uuid.UUID
 
 	// Name of the organization. Because this can be used to map to the organization's ingested data schema, it is unique and immutable.
 	Name string
