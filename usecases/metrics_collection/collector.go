@@ -14,6 +14,7 @@ import (
 
 type CollectorRepository interface {
 	DecisionCollectorRepository
+	CaseCollectorRepository
 	AllOrganizations(ctx context.Context, exec repositories.Executor) ([]models.Organization, error)
 }
 
@@ -147,6 +148,7 @@ func NewCollectorsTestV1(
 		version: "test-v1",
 		collectors: []Collector{
 			NewDecisionCollector(collectorRepository, executorFactory),
+			NewCaseCollector(collectorRepository, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),

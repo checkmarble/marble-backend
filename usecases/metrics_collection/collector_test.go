@@ -35,6 +35,13 @@ func (m *MockCollectorRepository) CountDecisions(ctx context.Context, exec repos
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
+func (m *MockCollectorRepository) CountCases(ctx context.Context, exec repositories.Executor, orgIds []string,
+	from, to time.Time,
+) (map[string]int, error) {
+	args := m.Called(ctx, exec, orgIds, from, to)
+	return args.Get(0).(map[string]int), args.Error(1)
+}
+
 type MockGlobalCollector struct {
 	mock.Mock
 }
@@ -320,7 +327,7 @@ func TestNewCollectorsTestV1(t *testing.T) {
 	// Assert
 	assert.Equal(t, "test-v1", collectors.version)
 	assert.Len(t, collectors.globalCollectors, 1)
-	assert.Len(t, collectors.collectors, 1)
+	assert.Len(t, collectors.collectors, 2)
 	assert.Equal(t, mockOrgRepo, collectors.organizationRepository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
 
