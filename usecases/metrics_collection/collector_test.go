@@ -93,18 +93,15 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 
 	// Expected metrics
 	globalMetrics := []models.MetricData{
-		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), &from, &to,
-			models.MetricCollectionFrequencyMonthly),
+		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), &from, &to),
 	}
 
 	org1Metrics := []models.MetricData{
-		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(42)), nil, "org1", &from, &to,
-			models.MetricCollectionFrequencyInstant),
+		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(42)), nil, "org1", &from, &to),
 	}
 
 	org2Metrics := []models.MetricData{
-		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(24)), nil, "org2", &from, &to,
-			models.MetricCollectionFrequencyInstant),
+		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(24)), nil, "org2", &from, &to),
 	}
 
 	// Setup expectations
@@ -160,8 +157,7 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	}
 
 	org1Metrics := []models.MetricData{
-		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(42)), nil, "org1", &from, &to,
-			models.MetricCollectionFrequencyInstant),
+		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(42)), nil, "org1", &from, &to),
 	}
 
 	// Setup expectations - global collector fails, but org collector succeeds
@@ -203,8 +199,7 @@ func TestCollectors_CollectMetrics_OrganizationRepositoryError(t *testing.T) {
 	mockGlobalCollector := new(MockGlobalCollector)
 
 	globalMetrics := []models.MetricData{
-		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), &from, &to,
-			models.MetricCollectionFrequencyMonthly),
+		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), &from, &to),
 	}
 
 	// Setup expectations - org repo fails
@@ -243,8 +238,7 @@ func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 	mockOrgCollector := new(MockCollector)
 
 	globalMetrics := []models.MetricData{
-		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), &from, &to,
-			models.MetricCollectionFrequencyMonthly),
+		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), &from, &to),
 	}
 
 	// Setup expectations - no organizations

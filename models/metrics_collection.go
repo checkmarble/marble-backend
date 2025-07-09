@@ -8,14 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type MetricCollectionFrequency string
-
-const (
-	MetricCollectionFrequencyInstant MetricCollectionFrequency = "instant"
-	MetricCollectionFrequencyDaily   MetricCollectionFrequency = "daily"
-	MetricCollectionFrequencyMonthly MetricCollectionFrequency = "monthly"
-)
-
 type MetricData struct {
 	Name           string
 	Numeric        *float64
@@ -24,7 +16,6 @@ type MetricData struct {
 	OrganizationID *string    // Only for org-specific metrics
 	From           *time.Time // Optional start time for time range metrics
 	To             *time.Time // Optional end time for time range metrics
-	Frequency      MetricCollectionFrequency
 }
 
 type MetricsCollection struct {
@@ -81,7 +72,7 @@ func AdaptMetricsCollection(metricsCollection MetricsCollection) []*MetricEventR
 	return metricEventRows
 }
 
-func NewGlobalMetric(name string, numeric *float64, text *string, from, to *time.Time, frequency MetricCollectionFrequency) MetricData {
+func NewGlobalMetric(name string, numeric *float64, text *string, from, to *time.Time) MetricData {
 	return MetricData{
 		Name:      name,
 		Numeric:   numeric,
@@ -89,12 +80,11 @@ func NewGlobalMetric(name string, numeric *float64, text *string, from, to *time
 		Timestamp: time.Now(),
 		From:      from,
 		To:        to,
-		Frequency: frequency,
 	}
 }
 
 func NewOrganizationMetric(name string, numeric *float64, text *string, orgID string,
-	from, to *time.Time, frequency MetricCollectionFrequency,
+	from, to *time.Time,
 ) MetricData {
 	return MetricData{
 		Name:           name,
@@ -104,6 +94,5 @@ func NewOrganizationMetric(name string, numeric *float64, text *string, orgID st
 		OrganizationID: &orgID,
 		From:           from,
 		To:             to,
-		Frequency:      frequency,
 	}
 }
