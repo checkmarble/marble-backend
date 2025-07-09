@@ -371,5 +371,9 @@ func (usecases *Usecases) NewMetricsCollectionWorker(licenseConfiguration models
 }
 
 func (usecases *Usecases) NewMetricsIngestionUsecase() MetricsIngestionUsecase {
-	return NewMetricsIngestionUsecase(usecases.Repositories.MetricsIngestionRepository)
+	return NewMetricsIngestionUsecase(
+		usecases.Repositories.MetricsIngestionRepository,
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+	)
 }
