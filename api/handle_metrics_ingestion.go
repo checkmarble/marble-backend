@@ -30,11 +30,6 @@ func handleMetricsIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		// Success response
-		c.JSON(http.StatusOK, gin.H{
-			"status":        "success",
-			"message":       "Metrics collection processed successfully",
-			"collection_id": metricsCollection.CollectionID,
-			"metrics_count": len(metricsCollection.Metrics),
-		})
+		c.Status(http.StatusOK)
 	}
 }
