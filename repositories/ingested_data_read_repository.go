@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 var NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
@@ -651,6 +653,13 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 		return cache, nil
 	}
 
+	fieldStatsMap := pure_utils.MapKeyValue(table.Fields, func(f string, v models.Field) (string, *models.FieldStatistics) {
+		return f, &models.FieldStatistics{
+			FieldName: f,
+			Type:      v.DataType,
+		}
+	})
+
 	q := NewQueryBuilder().
 		Select("attname", "most_common_vals", "histogram_bounds").
 		From("pg_stats").
@@ -664,7 +673,7 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 			},
 		})
 
-	fieldStats, err := SqlToListOfRow(ctx, exec, q, func(row pgx.CollectableRow) (models.FieldStatistics, error) {
+	err := ForEachRow(ctx, exec, q, func(row pgx.CollectableRow) error {
 		var (
 			colname      string
 			commonValues []string
@@ -672,7 +681,7 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 		)
 
 		if err := row.Scan(&colname, &commonValues, &histogram); err != nil {
-			return models.FieldStatistics{}, err
+			return err
 		}
 
 		// Use most_common_vals if we don't have a histogram, which can happen on low-cardinality datasets
@@ -681,21 +690,27 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 			values = commonValues
 		}
 
-		return models.FieldStatistics{
-			FieldName: colname,
-			Type:      table.Fields[colname].DataType,
-			Histogram: values,
-		}, nil
+		if _, ok := fieldStatsMap[colname]; ok {
+			fieldStatsMap[colname].Histogram = values
+		}
+
+		return nil
 	})
+
 	if err != nil {
 		return nil, err
 	}
+
+	fieldStats := pure_utils.Map(slices.Collect(maps.Values(fieldStatsMap)), func(f *models.FieldStatistics) models.FieldStatistics {
+		// SAFETY: those are statically assign above, and cannot be nil
+		return *f
+	})
 
 	for idx, fs := range fieldStats {
 		switch fs.Type {
 		case models.String, models.Int, models.Float:
 			maxLength := 0
-			isNotUuid := fs.Type != models.String
+			isUuid := false
 
 			for _, value := range fs.Histogram {
 				length := len(value)
@@ -706,20 +721,17 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 					// Do not try to determine format if empty
 
 				case 36:
-					if !isNotUuid {
-						if _, err := uuid.Parse(value); err != nil {
-							isNotUuid = true
+					if fs.Type == models.String && !isUuid {
+						if _, err := uuid.Parse(value); err == nil {
+							isUuid = true
 						}
 					}
-
-				default:
-					isNotUuid = true
 				}
 			}
 
 			fieldStats[idx].MaxLength = maxLength
 
-			if !isNotUuid {
+			if isUuid {
 				fieldStats[idx].Format = models.FieldStatisticTypeUuid
 			}
 		}
