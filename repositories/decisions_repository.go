@@ -1056,33 +1056,32 @@ func (repo *MarbleDbRepository) CountDecisions(ctx context.Context, exec Executo
 		Where(squirrel.Lt{"created_at": to}).
 		GroupBy("org_id")
 
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return map[string]int{}, err
+	type orgCount struct {
+		OrgId string
+		Count int
 	}
 
-	rows, err := exec.Query(ctx, sql, args...)
-	if err != nil {
-		return map[string]int{}, err
-	}
-	defer rows.Close()
-
-	counts := make(map[string]int)
-	for rows.Next() {
-		var orgId string
-		var count int
-		if err := rows.Scan(&orgId, &count); err != nil {
-			return map[string]int{}, err
+	counts, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (orgCount, error) {
+		var result orgCount
+		err := row.Scan(&result.OrgId, &result.Count)
+		if err != nil {
+			return orgCount{}, err
 		}
-		counts[orgId] = count
+		return result, nil
+	})
+	if err != nil {
+		return map[string]int{}, err
 	}
 
-	// If the orgIds are not in the counts, the count will be 0
+	// Convert to map and ensure all orgIds are present (with 0 count if not found)
 	countsMap := make(map[string]int, len(orgIds))
+	// First, populate with actual counts
+	for _, count := range counts {
+		countsMap[count.OrgId] = count.Count
+	}
+	// Then, ensure all requested orgIds are present (with 0 if not found)
 	for _, orgId := range orgIds {
-		if count, exists := counts[orgId]; exists {
-			countsMap[orgId] = count
-		} else {
+		if _, exists := countsMap[orgId]; !exists {
 			countsMap[orgId] = 0
 		}
 	}

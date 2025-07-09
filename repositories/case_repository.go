@@ -533,3 +533,48 @@ func (repo *MarbleDbRepository) GetNextCase(ctx context.Context, exec Executor, 
 
 	return nextCaseId, nil
 }
+
+// Count the number of cases for each organization in the given time range, return a map of orgId to count
+// From date is inclusive, to date is exclusive
+func (repo *MarbleDbRepository) CountCases(ctx context.Context, exec Executor, orgIds []string, from, to time.Time) (map[string]int, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id, count(*) as count").
+		From(dbmodels.TABLE_CASES).
+		Where(squirrel.Eq{"org_id": orgIds}).
+		Where(squirrel.GtOrEq{"created_at": from}).
+		Where(squirrel.Lt{"created_at": to}).
+		GroupBy("org_id")
+
+	type orgCount struct {
+		OrgId string
+		Count int
+	}
+
+	counts, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (orgCount, error) {
+		var result orgCount
+		err := row.Scan(&result.OrgId, &result.Count)
+		if err != nil {
+			return orgCount{}, err
+		}
+		return result, nil
+	})
+	if err != nil {
+		return map[string]int{}, err
+	}
+
+	countsMap := make(map[string]int, len(orgIds))
+	// Initialize all orgIds with 0 count
+	for _, orgId := range orgIds {
+		countsMap[orgId] = 0
+	}
+	// Override with actual counts
+	for _, count := range counts {
+		countsMap[count.OrgId] = count.Count
+	}
+
+	return countsMap, nil
+}
