@@ -3,6 +3,7 @@ module github.com/checkmarble/marble-backend
 go 1.24.1
 
 require (
+	cloud.google.com/go/iam v1.2.1
 	cloud.google.com/go/storage v1.43.0
 	firebase.google.com/go/v4 v4.14.1
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.24.0
@@ -36,6 +37,7 @@ require (
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/oapi-codegen/oapi-codegen/v2 v2.3.0
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/openai/openai-go v1.8.2
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/pashagolub/pgxmock/v4 v4.4.0
 	github.com/pkg/errors v0.9.1
@@ -61,7 +63,6 @@ require (
 	golang.org/x/text v0.26.0
 	golang.org/x/time v0.7.0
 	google.golang.org/api v0.203.0
-	google.golang.org/genai v1.12.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.1
 )
@@ -73,7 +74,6 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.4 // indirect
 	cloud.google.com/go/compute/metadata v0.5.2 // indirect
 	cloud.google.com/go/firestore v1.17.0 // indirect
-	cloud.google.com/go/iam v1.2.1 // indirect
 	cloud.google.com/go/longrunning v0.6.1 // indirect
 	cloud.google.com/go/monitoring v1.21.1 // indirect
 	cloud.google.com/go/spanner v1.73.0 // indirect
@@ -204,7 +204,6 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
-	github.com/openai/openai-go v1.8.2 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/opencontainers/runc v1.1.14 // indirect
