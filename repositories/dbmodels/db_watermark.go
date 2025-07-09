@@ -15,7 +15,7 @@ type DbWatermark struct {
 	Type          string          `db:"type"`
 	WatermarkTime time.Time       `db:"watermark_time"`
 	WatermarkId   *string         `db:"watermark_id"`
-	CreatedAt     time.Time       `db:"created_at"` //nolint:tagliatelle
+	CreatedAt     time.Time       `db:"created_at"`
 	UpdatedAt     time.Time       `db:"updated_at"`
 	Params        json.RawMessage `db:"params"`
 }

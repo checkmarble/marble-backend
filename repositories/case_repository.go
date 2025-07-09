@@ -566,15 +566,17 @@ func (repo *MarbleDbRepository) CountCases(ctx context.Context, exec Executor, o
 		return map[string]int{}, err
 	}
 
-	countsMap := make(map[string]int, len(orgIds))
-	// Initialize all orgIds with 0 count
-	for _, orgId := range orgIds {
-		countsMap[orgId] = 0
-	}
-	// Override with actual counts
+	result := make(map[string]int, len(orgIds))
 	for _, count := range counts {
-		countsMap[count.OrgId] = count.Count
+		result[count.OrgId] = count.Count
 	}
 
-	return countsMap, nil
+	// Set 0 for org IDs which don't have any cases
+	for _, orgId := range orgIds {
+		if _, exists := result[orgId]; !exists {
+			result[orgId] = 0
+		}
+	}
+
+	return result, nil
 }
