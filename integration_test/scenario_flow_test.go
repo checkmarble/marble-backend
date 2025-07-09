@@ -15,7 +15,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
@@ -282,6 +281,7 @@ func setupScenarioAndPublish(
 ) (scenarioId, scenarioIterationId string) {
 	// Create a new empty scenario
 	scenarioUsecase := usecasesWithCreds.NewScenarioUsecase()
+	workflowUsecase := usecasesWithCreds.NewWorkflowUsecase()
 	scenario, err := scenarioUsecase.CreateScenario(ctx, models.CreateScenarioInput{
 		Name:              "Test scenario",
 		Description:       "Test scenario description",
@@ -407,15 +407,30 @@ func setupScenarioAndPublish(
 	}
 	fmt.Printf("Updated scenario iteration %+v\n", scenarioIteration)
 
-	workflowType := models.WorkflowAddToCaseIfPossible
-	_, err = scenarioUsecase.UpdateScenario(ctx, models.UpdateScenarioInput{
-		Id:                         scenarioId,
-		DecisionToCaseOutcomes:     []models.Outcome{models.Decline, models.Review},
-		DecisionToCaseInboxId:      pure_utils.NullFrom(inboxId),
-		DecisionToCaseWorkflowType: &workflowType,
+	rule, err := workflowUsecase.CreateWorkflowRule(ctx, models.WorkflowRule{
+		ScenarioId: uuid.MustParse(scenarioId),
+		Name:       "First rule",
 	})
 	if err != nil {
-		assert.FailNow(t, "Failed to create workflow on scenario", err)
+		assert.FailNow(t, "Could not create workflow rule", err)
+	}
+
+	_, err = workflowUsecase.CreateWorkflowCondition(ctx, models.WorkflowCondition{
+		RuleId:   rule.Id,
+		Function: models.WorkflowConditionOutcomeIn,
+		Params:   []byte(`["decline", "review"]`),
+	})
+	if err != nil {
+		assert.FailNow(t, "Could not create workflow condition", err)
+	}
+
+	_, err = workflowUsecase.CreateWorkflowAction(ctx, models.WorkflowAction{
+		RuleId: rule.Id,
+		Action: models.WorkflowAddToCaseIfPossible,
+		Params: fmt.Appendf(nil, `{"inbox_id": "%s"}`, inboxId),
+	})
+	if err != nil {
+		assert.FailNow(t, "Could not create workflow action", err)
 	}
 
 	return scenarioId, scenarioIterationId
@@ -693,6 +708,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 100,
 			Name:          "Check on account name",
 			Description:   "Check on account name",
+			StableRuleId:  uuid.NewString(),
 		},
 		{
 			FormulaAstExpression: &ast.Node{
@@ -732,6 +748,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 10,
 			Name:          "Check on aggregated value",
 			Description:   "Check on aggregated value",
+			StableRuleId:  uuid.NewString(),
 		},
 		{
 			FormulaAstExpression: &ast.Node{
@@ -753,6 +770,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 1,
 			Name:          "Fuzzy match on name",
 			Description:   "Fuzzy match on name",
+			StableRuleId:  uuid.NewString(),
 		},
 	}
 }

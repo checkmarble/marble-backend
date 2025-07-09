@@ -3,103 +3,47 @@ package decision_workflows
 import (
 	"context"
 	"fmt"
-	"slices"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
-
-type caseEditor interface {
-	CreateCase(
-		ctx context.Context,
-		tx repositories.Transaction,
-		userId string,
-		createCaseAttributes models.CreateCaseAttributes,
-		fromEndUser bool,
-	) (models.Case, error)
-	UpdateDecisionsWithEvents(
-		ctx context.Context,
-		exec repositories.Executor,
-		caseId, userId string,
-		decisionIdsToAdd []string,
-	) error
-}
-
-type caseAndDecisionRepository interface {
-	SelectCasesWithPivot(
-		ctx context.Context,
-		exec repositories.Executor,
-		filters models.DecisionWorkflowFilters,
-	) ([]models.CaseMetadata, error)
-	CountDecisionsByCaseIds(
-		ctx context.Context,
-		exec repositories.Executor,
-		organizationId string,
-		caseIds []string,
-	) (map[string]int, error)
-}
-
-type webhookEventCreator interface {
-	CreateWebhookEvent(
-		ctx context.Context,
-		tx repositories.Transaction,
-		create models.WebhookEventCreate,
-	) error
-}
-
-type CaseNameEvaluator interface {
-	EvalCaseName(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters,
-		scenario models.Scenario) (string, error)
-}
-
-type DecisionsWorkflows struct {
-	caseEditor          caseEditor
-	repository          caseAndDecisionRepository
-	webhookEventCreator webhookEventCreator
-	caseNameEvaluator   CaseNameEvaluator
-}
-
-func NewDecisionWorkflows(
-	caseEditor caseEditor,
-	repository caseAndDecisionRepository,
-	webhookEventCreator webhookEventCreator,
-	caseNameEvaluator CaseNameEvaluator,
-) DecisionsWorkflows {
-	return DecisionsWorkflows{
-		caseEditor:          caseEditor,
-		repository:          repository,
-		webhookEventCreator: webhookEventCreator,
-		caseNameEvaluator:   caseNameEvaluator,
-	}
-}
 
 func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	ctx context.Context,
 	tx repositories.Transaction,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
-	params evaluate_scenario.ScenarioEvaluationParameters,
-	webhookEventId string,
-) (addedToCase bool, err error) {
-	if scenario.DecisionToCaseWorkflowType == models.WorkflowDisabled ||
-		scenario.DecisionToCaseOutcomes == nil ||
-		!slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) ||
-		scenario.DecisionToCaseInboxId == nil {
-		return false, nil
-	}
+	evalParams evaluate_scenario.ScenarioEvaluationParameters,
+	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
+) (models.WorkflowExecution, error) {
+	webhookEventId := uuid.NewString()
 
-	createNewCaseForDecision := func(ctx context.Context) (bool, error) {
-		caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, params, scenario)
-		if err != nil {
-			return false, errors.Wrap(err, "error creating case for decision")
+	createNewCaseForDecision := func(ctx context.Context) (models.WorkflowExecution, error) {
+		var titleTemplateAst *ast.Node
+
+		if action.Params.TitleTemplate != nil {
+			astNode, err := dto.AdaptASTNode(*action.Params.TitleTemplate)
+			if err != nil {
+				return models.WorkflowExecution{}, err
+			}
+
+			titleTemplateAst = &astNode
 		}
 
-		input := automaticCreateCaseAttributes(scenario, decision, caseName)
+		caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, evalParams, scenario, titleTemplateAst)
+		if err != nil {
+			return models.WorkflowExecution{}, errors.Wrap(err, "error creating case for decision")
+		}
+
+		input := automaticCreateCaseAttributes(scenario, decision, action, caseName)
 		newCase, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
 		if err != nil {
-			return false, errors.Wrap(err, "error creating case for decision")
+			return models.WorkflowExecution{}, errors.Wrap(err, "error creating case for decision")
 		}
 
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
@@ -107,16 +51,19 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			OrganizationId: newCase.OrganizationId,
 			EventContent:   models.NewWebhookEventCaseCreatedWorkflow(newCase.GetMetadata()),
 		})
-		return true, err
+		return models.WorkflowExecution{
+			WebhookIds:  []string{webhookEventId},
+			AddedToCase: true,
+		}, err
 	}
 
-	switch scenario.DecisionToCaseWorkflowType {
+	switch action.Action {
 	case models.WorkflowCreateCase:
 		return createNewCaseForDecision(ctx)
 	case models.WorkflowAddToCaseIfPossible:
-		matchedCase, added, err := d.addToOpenCase(ctx, tx, scenario, decision)
+		matchedCase, added, err := d.addToOpenCase(ctx, tx, scenario, decision, action)
 		if err != nil {
-			return false, errors.Wrap(err, "error adding decision to open case")
+			return models.WorkflowExecution{}, errors.Wrap(err, "error adding decision to open case")
 		}
 		if !added {
 			return createNewCaseForDecision(ctx)
@@ -128,23 +75,27 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(matchedCase),
 		})
 		if err != nil {
-			return false, err
+			return models.WorkflowExecution{}, err
 		}
 
-		return true, nil
+		return models.WorkflowExecution{
+			AddedToCase: true,
+			WebhookIds:  []string{webhookEventId},
+		}, nil
 	default:
-		return false, errors.New(fmt.Sprintf("unknown workflow type: %s", scenario.DecisionToCaseWorkflowType))
+		return models.WorkflowExecution{}, errors.New(fmt.Sprintf("unknown workflow type: %s", action.Action))
 	}
 }
 
 func automaticCreateCaseAttributes(
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
+	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
 	name string,
 ) models.CreateCaseAttributes {
 	return models.CreateCaseAttributes{
 		DecisionIds:    []string{decision.DecisionId},
-		InboxId:        *scenario.DecisionToCaseInboxId,
+		InboxId:        action.Params.InboxId,
 		Name:           name,
 		OrganizationId: scenario.OrganizationId,
 	}
@@ -155,16 +106,22 @@ func (d DecisionsWorkflows) addToOpenCase(
 	tx repositories.Transaction,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
+	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
 ) (models.CaseMetadata, bool, error) {
 	if decision.PivotValue == nil {
 		return models.CaseMetadata{}, false, nil
 	}
 
-	eligibleCases, err := d.repository.SelectCasesWithPivot(ctx, tx, models.DecisionWorkflowFilters{
-		InboxId:        *scenario.DecisionToCaseInboxId,
+	filters := models.DecisionWorkflowFilters{
 		OrganizationId: scenario.OrganizationId,
 		PivotValue:     *decision.PivotValue,
-	})
+	}
+
+	if !action.Params.AnyInbox {
+		filters.InboxId = &action.Params.InboxId
+	}
+
+	eligibleCases, err := d.repository.SelectCasesWithPivot(ctx, tx, filters)
 	if err != nil {
 		return models.CaseMetadata{}, false, errors.Wrap(err, "error selecting cases with pivot")
 	}
