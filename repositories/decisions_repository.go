@@ -1073,18 +1073,17 @@ func (repo *MarbleDbRepository) CountDecisions(ctx context.Context, exec Executo
 		return map[string]int{}, err
 	}
 
-	// Convert to map and ensure all orgIds are present (with 0 count if not found)
-	countsMap := make(map[string]int, len(orgIds))
-	// First, populate with actual counts
+	result := make(map[string]int, len(orgIds))
 	for _, count := range counts {
-		countsMap[count.OrgId] = count.Count
+		result[count.OrgId] = count.Count
 	}
-	// Then, ensure all requested orgIds are present (with 0 if not found)
+
+	// Set 0 for org IDs which don't have any decisions
 	for _, orgId := range orgIds {
-		if _, exists := countsMap[orgId]; !exists {
-			countsMap[orgId] = 0
+		if _, exists := result[orgId]; !exists {
+			result[orgId] = 0
 		}
 	}
 
-	return countsMap, nil
+	return result, nil
 }
