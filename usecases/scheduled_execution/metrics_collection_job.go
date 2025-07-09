@@ -28,6 +28,7 @@ func NewMetricsCollectionPeriodicJob(config infra.MetricCollectionConfig) *river
 					ByQueue:  true,
 					ByPeriod: config.JobInterval,
 				},
+				MaxAttempts: 1, // No retries
 			}
 		},
 		// TODO: RunOnstart should be false for production
@@ -130,38 +131,49 @@ func (w MetricCollectionWorker) saveWatermark(ctx context.Context, newWatermarkT
 }
 
 func (w MetricCollectionWorker) sendMetricsToIngestion(ctx context.Context, metricsCollection models.MetricsCollection) error {
+	var lastStatusCode int
 	f := func() error {
-		metricsCollectionDto := dto.AdaptMetricsCollectionDto(metricsCollection)
-
-		var body bytes.Buffer
-		if err := json.NewEncoder(&body).Encode(metricsCollectionDto); err != nil {
-			return err
-		}
-
-		request, err := http.NewRequestWithContext(ctx, http.MethodPost,
-			w.config.MetricsIngestionURL, &body)
-		if err != nil {
-			return err
-		}
-
-		request.Header.Set("Content-Type", "application/json")
-		resp, err := http.DefaultClient.Do(request)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			return errors.Newf("unexpected status code from ingestion: %d", resp.StatusCode)
-		}
-		return nil
+		statusCode, err := w.doHTTPRequest(ctx, metricsCollection)
+		lastStatusCode = statusCode
+		return err
 	}
 
-	err := retry.Do(
+	return retry.Do(
 		f,
 		retry.Attempts(3),
 		retry.LastErrorOnly(true),
 		retry.Delay(100*time.Millisecond),
+		retry.RetryIf(func(err error) bool {
+			// Don't retry on 401 Unauthorized errors in case of error
+			return err != nil && lastStatusCode != http.StatusUnauthorized
+		}),
 	)
+}
 
-	return err
+// Return the status code and the error
+// Send 0 if no status code is returned
+func (w MetricCollectionWorker) doHTTPRequest(ctx context.Context, metricsCollection models.MetricsCollection) (int, error) {
+	metricsCollectionDto := dto.AdaptMetricsCollectionDto(metricsCollection)
+
+	var body bytes.Buffer
+	if err := json.NewEncoder(&body).Encode(metricsCollectionDto); err != nil {
+		return 0, err
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		w.config.MetricsIngestionURL, &body)
+	if err != nil {
+		return 0, err
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return resp.StatusCode, errors.Newf("unexpected status code from ingestion: %d", resp.StatusCode)
+	}
+	return resp.StatusCode, nil
 }
