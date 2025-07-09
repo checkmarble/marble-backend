@@ -73,12 +73,11 @@ func (c Collectors) CollectMetrics(ctx context.Context, from time.Time, to time.
 // If a collector fails, it will log a warning and continue to the next collector (don't fail the whole function)
 func (c Collectors) collectGlobalMetrics(ctx context.Context, from time.Time, to time.Time) ([]models.MetricData, error) {
 	metrics := []models.MetricData{}
-	logger := utils.LoggerFromContext(ctx)
 
 	for _, collector := range c.globalCollectors {
 		value, err := collector.Collect(ctx, from, to)
 		if err != nil {
-			logger.WarnContext(ctx, "Failed to collect global metrics", "error", err)
+			utils.LogAndReportSentryError(ctx, err)
 			continue
 		}
 		metrics = slices.Concat(metrics, value)
@@ -115,7 +114,6 @@ func (c Collectors) collectOrganizationMetrics(ctx context.Context, from time.Ti
 }
 
 // Fetches all organizations from the database
-// NOTE: Add caching to avoid fetching the same organizations every time (but how can we invalidate the cache?)
 func (c Collectors) getListOfOrganizations(ctx context.Context) ([]models.Organization, error) {
 	orgs, err := c.organizationRepository.AllOrganizations(ctx, c.executorFactory.NewExecutor())
 	if err != nil {
