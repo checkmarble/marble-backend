@@ -26,7 +26,6 @@ type CaseCollector struct {
 	caseRepository CaseCollectorRepository
 
 	executorFactory executor_factory.ExecutorFactory
-	frequency       models.MetricCollectionFrequency
 }
 
 func NewCaseCollector(caseRepository CaseCollectorRepository,
@@ -35,12 +34,11 @@ func NewCaseCollector(caseRepository CaseCollectorRepository,
 	return CaseCollector{
 		caseRepository:  caseRepository,
 		executorFactory: executorFactory,
-		frequency:       models.MetricCollectionFrequencyDaily,
 	}
 }
 
 func (c CaseCollector) Collect(ctx context.Context, orgIds []string, from, to time.Time) ([]models.MetricData, error) {
-	periods, err := pure_utils.SplitTimeRangeByFrequency(from, to, pure_utils.Frequency(c.frequency))
+	periods, err := pure_utils.SplitTimeRangeByFrequency(from, to, pure_utils.FrequencyDaily)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +54,7 @@ func (c CaseCollector) Collect(ctx context.Context, orgIds []string, from, to ti
 
 		for orgId, count := range orgCaseCounts {
 			metrics = append(metrics, models.NewOrganizationMetric(CaseMetricName,
-				utils.Ptr(float64(count)), nil, orgId, &period.From, &period.To,
-				c.frequency),
+				utils.Ptr(float64(count)), nil, orgId, &period.From, &period.To),
 			)
 		}
 	}

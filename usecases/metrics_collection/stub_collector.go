@@ -27,10 +27,8 @@ func (c StubOrganizationCollector) Collect(ctx context.Context, orgIds []string,
 	// Simple instant metrics
 	for _, orgId := range orgIds {
 		metrics = append(metrics,
-			models.NewOrganizationMetric("stub_info", nil, utils.Ptr("STUB_VALUE"), orgId, &from, &to,
-				models.MetricCollectionFrequencyInstant),
-			models.NewOrganizationMetric("stub_counter", utils.Ptr(float64(42)), nil, orgId, &from, &to,
-				models.MetricCollectionFrequencyInstant),
+			models.NewOrganizationMetric("stub_info", nil, utils.Ptr("STUB_VALUE"), orgId, &from, &to),
+			models.NewOrganizationMetric("stub_counter", utils.Ptr(float64(42)), nil, orgId, &from, &to),
 		)
 	}
 
@@ -38,14 +36,10 @@ func (c StubOrganizationCollector) Collect(ctx context.Context, orgIds []string,
 }
 
 // Implement GlobalCollector interface for stub global collector
-type StubGlobalCollector struct {
-	frequency models.MetricCollectionFrequency
-}
+type StubGlobalCollector struct{}
 
 func NewStubGlobalCollector() GlobalCollector {
-	return StubGlobalCollector{
-		frequency: models.MetricCollectionFrequencyMonthly,
-	}
+	return StubGlobalCollector{}
 }
 
 func (c StubGlobalCollector) Collect(ctx context.Context, from time.Time, to time.Time) ([]models.MetricData, error) {
@@ -56,7 +50,7 @@ func (c StubGlobalCollector) Collect(ctx context.Context, from time.Time, to tim
 	metrics := make([]models.MetricData, len(periods))
 	for i, period := range periods {
 		metrics[i] = models.NewGlobalMetric("stub_global", nil,
-			utils.Ptr(fmt.Sprintf("STUB_VALUE_%d", i)), &period.From, &period.To, c.frequency)
+			utils.Ptr(fmt.Sprintf("STUB_VALUE_%d", i)), &period.From, &period.To)
 	}
 	return metrics, nil
 }
