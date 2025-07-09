@@ -101,14 +101,10 @@ func RunTaskQueue(apiVersion string) error {
 	offloadingConfig.ValidateAndFix(ctx)
 
 	metricCollectionConfig := infra.MetricCollectionConfig{
-		Enabled:             utils.GetEnv("METRICS_COLLECTION_ENABLED", true),
-		JobInterval:         utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
-		MetricsIngestionURL: utils.GetEnv("METRICS_INGESTION_URL", ""),
+		Enabled:     utils.GetEnv("METRICS_COLLECTION_ENABLED", true),
+		JobInterval: utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
 	}
-	if err := metricCollectionConfig.Validate(); err != nil {
-		utils.LogAndReportSentryError(ctx, err)
-		return err
-	}
+	metricCollectionConfig.Configure()
 
 	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env, apiVersion)
 	defer sentry.Flush(3 * time.Second)
