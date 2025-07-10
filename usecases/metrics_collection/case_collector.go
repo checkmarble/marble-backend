@@ -54,7 +54,7 @@ func (c CaseCollector) Collect(ctx context.Context, orgIds []string, from, to ti
 
 		for orgId, count := range orgCaseCounts {
 			metrics = append(metrics, models.NewOrganizationMetric(CaseMetricName,
-				utils.Ptr(float64(count)), nil, orgId, &period.From, &period.To),
+				utils.Ptr(float64(count)), nil, orgId, period.From, period.To),
 			)
 		}
 	}
