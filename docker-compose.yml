@@ -52,6 +52,7 @@ services:
 
 volumes:
   postgres-db:
+    name: marble-backend-postgres-db
     driver: local
   es:
     driver: local
