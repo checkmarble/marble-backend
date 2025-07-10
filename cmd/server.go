@@ -111,7 +111,9 @@ func RunServer(config CompiledConfig) error {
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
 	bigQueryConfig := infra.BigQueryConfig{
-		ProjectID: utils.GetEnv("BIGQUERY_PROJECT_ID", ""),
+		ProjectID:      utils.GetEnv("BIGQUERY_PROJECT_ID", ""),
+		MetricsDataset: utils.GetEnv("BIGQUERY_METRICS_DATASET", infra.MetricsDataset),
+		MetricsTable:   utils.GetEnv("BIGQUERY_METRICS_TABLE", infra.MetricsTable),
 	}
 
 	serverConfig := struct {

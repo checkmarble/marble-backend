@@ -1,3 +1,17 @@
+// Provide a BigQuery client to send data to BigQuery.
+// Usage:
+// config := infra.BigQueryConfig{
+// 	ProjectID: "your-project-id",
+// 	MetricsDataset: "your-metrics-dataset",
+// 	MetricsTable:   "your-metrics-table",
+// }
+// bigQueryClient, err := infra.NewBigQueryClient(ctx, config)
+// if err != nil {
+// 	return err
+// }
+// defer bigQueryClient.Close()
+// ...
+
 package infra
 
 import (
@@ -6,13 +20,23 @@ import (
 	"cloud.google.com/go/bigquery"
 )
 
+// Could be moved to a config file
+const (
+	MetricsDataset = "metrics"
+	MetricsTable   = "events"
+)
+
 type BigQueryConfig struct {
 	ProjectID string
+
+	// For metrics
+	MetricsDataset string
+	MetricsTable   string
 }
 
 type BigQueryClient struct {
 	Client *bigquery.Client
-	config BigQueryConfig
+	Config BigQueryConfig
 }
 
 func NewBigQueryClient(ctx context.Context, config BigQueryConfig) (*BigQueryClient, error) {
@@ -23,7 +47,7 @@ func NewBigQueryClient(ctx context.Context, config BigQueryConfig) (*BigQueryCli
 
 	return &BigQueryClient{
 		Client: client,
-		config: config,
+		Config: config,
 	}, nil
 }
 
