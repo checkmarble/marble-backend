@@ -52,25 +52,11 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
-      - name: Check if image exists (for production deployments)
-        id: check_image
-        run: |
-          echo "Looking for existing image: ${{ env.COMMIT_IMAGE }}"
-
-          if docker manifest inspect ${{ env.COMMIT_IMAGE }} > /dev/null 2>&1; then
-            echo "✅ Image with commit hash ${{ github.sha }} already exists, will reuse it"
-            echo "should_build=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "No image found for commit hash ${{ github.sha }}, build a new one"
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Extract version from tag
         id: version
         run: echo "MARBLE_VERSION=$(git describe --tags)" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
-        if: steps.check_image.outputs.should_build == 'true'
         uses: docker/build-push-action@v5
         with:
           push: true
