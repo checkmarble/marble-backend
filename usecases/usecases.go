@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
@@ -32,6 +33,7 @@ type Usecases struct {
 	hasNameRecognizerSetup      bool
 	hasTestMode                 bool
 	license                     models.LicenseValidation
+	metricsCollectionConfig     infra.MetricCollectionConfig
 }
 
 type Option func(*options)
@@ -122,6 +124,12 @@ func WithTestMode(activated bool) Option {
 	}
 }
 
+func WithMetricsCollectionConfig(config infra.MetricCollectionConfig) Option {
+	return func(o *options) {
+		o.metricsCollectionConfig = config
+	}
+}
+
 type options struct {
 	apiVersion                  string
 	batchIngestionMaxSize       int
@@ -136,6 +144,7 @@ type options struct {
 	hasOpensanctionsSetup       bool
 	hasNameRecognitionSetup     bool
 	hasTestMode                 bool
+	metricsCollectionConfig     infra.MetricCollectionConfig
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -157,6 +166,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		hasOpensanctionsSetup:       o.hasOpensanctionsSetup,
 		hasNameRecognizerSetup:      o.hasNameRecognitionSetup,
 		hasTestMode:                 o.hasTestMode,
+		metricsCollectionConfig:     o.metricsCollectionConfig,
 	}
 }
 
@@ -335,10 +345,35 @@ func (usecases *Usecases) NewLicenseUsecase() PublicLicenseUseCase {
 	)
 }
 
-func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx]) *TaskQueueWorker {
+func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx], queueWhitelist []string) *TaskQueueWorker {
 	return NewTaskQueueWorker(
 		usecases.NewExecutorFactory(),
 		&usecases.Repositories.MarbleDbRepository,
+		queueWhitelist,
 		riverClient,
+	)
+}
+
+func (usecases *Usecases) NewMetricsCollectionWorker(licenseConfiguration models.LicenseConfiguration) scheduled_execution.MetricCollectionWorker {
+	// TODO: Replace NewCollectorsTestV1 with NewCollectorsV1 when we have a real collector
+	return scheduled_execution.NewMetricCollectionWorker(
+		metrics_collection.NewCollectorsTestV1(
+			usecases.NewExecutorFactory(),
+			&usecases.Repositories.MarbleDbRepository,
+			usecases.apiVersion,
+			licenseConfiguration,
+		),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.metricsCollectionConfig,
+	)
+}
+
+func (usecases *Usecases) NewMetricsIngestionUsecase() MetricsIngestionUsecase {
+	return NewMetricsIngestionUsecase(
+		usecases.Repositories.MetricsIngestionRepository,
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
 	)
 }

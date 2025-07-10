@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -25,6 +26,7 @@ const (
 type TaskQueueWorker struct {
 	executorFactory executor_factory.ExecutorFactory
 	orgRepository   repositories.OrganizationRepository
+	queueWhitelist  []string
 	riverClient     *river.Client[pgx.Tx]
 	mu              *sync.Mutex
 }
@@ -32,11 +34,13 @@ type TaskQueueWorker struct {
 func NewTaskQueueWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	orgRepository repositories.OrganizationRepository,
+	queueWhitelist []string,
 	riverClient *river.Client[pgx.Tx],
 ) *TaskQueueWorker {
 	return &TaskQueueWorker{
 		executorFactory: executorFactory,
 		orgRepository:   orgRepository,
+		queueWhitelist:  queueWhitelist,
 		riverClient:     riverClient,
 		mu:              &sync.Mutex{},
 	}
@@ -136,6 +140,11 @@ func (w *TaskQueueWorker) removeQueuesFromMissingOrgs(ctx context.Context,
 			continue
 		}
 
+		// Ignore whitelisted queues
+		if slices.Contains(w.queueWhitelist, q.Name) {
+			continue
+		}
+
 		if _, ok := orgMap[q.Name]; !ok {
 			logger.InfoContext(ctx, fmt.Sprintf("pausing queue for missing organization `%s`", q.Name))
 
@@ -177,4 +186,12 @@ func QueuesFromOrgs(ctx context.Context, orgsRepo repositories.OrganizationRepos
 	}
 
 	return queues, periodics, nil
+}
+
+func QueueMetrics() map[string]river.QueueConfig {
+	queues := make(map[string]river.QueueConfig, 1)
+	queues["metrics"] = river.QueueConfig{
+		MaxWorkers: 1,
+	}
+	return queues
 }

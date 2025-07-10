@@ -3,9 +3,11 @@ package cmd
 import (
 	"context"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/cockroachdb/errors"
@@ -97,6 +100,12 @@ func RunTaskQueue(apiVersion string) error {
 
 	offloadingConfig.ValidateAndFix(ctx)
 
+	metricCollectionConfig := infra.MetricCollectionConfig{
+		Enabled:     utils.GetEnv("METRICS_COLLECTION_ENABLED", true),
+		JobInterval: utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
+	}
+	metricCollectionConfig.Configure()
+
 	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env, apiVersion)
 	defer sentry.Flush(3 * time.Second)
 
@@ -154,12 +163,23 @@ func RunTaskQueue(apiVersion string) error {
 		return err
 	}
 
+	// For non-org
+	nonOrgQueues := make(map[string]river.QueueConfig)
+	globalPeriodics := []*river.PeriodicJob{}
+
+	if metricCollectionConfig.Enabled {
+		metricQueue := usecases.QueueMetrics()
+		maps.Copy(nonOrgQueues, metricQueue)
+		globalPeriodics = append(globalPeriodics,
+			scheduled_execution.NewMetricsCollectionPeriodicJob(metricCollectionConfig))
+	}
+
+	maps.Copy(queues, nonOrgQueues)
+
 	// Periodics always contain the per-org tasks retrieved above. Add other, non-organization-scoped periodics below
 	periodics := append(
 		orgPeriodics,
-		[]*river.PeriodicJob{
-			// Add periodic jobs here
-		}...,
+		globalPeriodics...,
 	)
 
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
@@ -183,6 +203,18 @@ func RunTaskQueue(apiVersion string) error {
 		return err
 	}
 
+	// Resume all queues defined in nonOrgQueues if exists
+	// In case the queues was paused by the RefreshQueuesFromOrgIds function if the function is not correctly configured
+	for k := range nonOrgQueues {
+		_, err := riverClient.QueueGet(ctx, k)
+		if err != nil && !errors.Is(err, river.ErrNotFound) {
+			if err := riverClient.QueueResume(ctx, k, &river.QueuePauseOpts{}); err != nil {
+				utils.LogAndReportSentryError(ctx, err)
+				return err
+			}
+		}
+	}
+
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
 		usecases.WithOffloading(offloadingConfig),
@@ -190,6 +222,8 @@ func RunTaskQueue(apiVersion string) error {
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
+		usecases.WithApiVersion(apiVersion),
+		usecases.WithMetricsCollectionConfig(metricCollectionConfig),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
@@ -202,6 +236,9 @@ func RunTaskQueue(apiVersion string) error {
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
+	}
+	if metricCollectionConfig.Enabled {
+		river.AddWorker(workers, uc.NewMetricsCollectionWorker(licenseConfig))
 	}
 
 	if err := riverClient.Start(ctx); err != nil {
@@ -225,7 +262,9 @@ func RunTaskQueue(apiVersion string) error {
 	logger.InfoContext(ctx, "starting worker", slog.String("version", apiVersion))
 
 	// Asynchronously keep the task queue workers up to date with the orgs in the database
-	taskQueueWorker := uc.NewTaskQueueWorker(riverClient)
+	taskQueueWorker := uc.NewTaskQueueWorker(riverClient,
+		slices.Collect(maps.Keys(nonOrgQueues)),
+	)
 	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx)
 
 	// Start the cron jobs using the old entrypoint.

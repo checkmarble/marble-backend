@@ -980,10 +980,14 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 	}
 
 	if req.Watermark == nil {
-		req.Watermark = &models.OffloadingWatermark{
+		req.Watermark = &models.Watermark{
 			WatermarkTime: time.Time{},
-			WatermarkId:   uuid.UUID{}.String(),
+			WatermarkId:   utils.Ptr(uuid.UUID{}.String()),
 		}
+	}
+
+	if req.Watermark.WatermarkId == nil {
+		return nil, errors.New("watermark id is required")
 	}
 
 	sql := NewQueryBuilder().
@@ -1003,7 +1007,7 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 				Where(squirrel.And{
 					squirrel.Eq{"org_id": req.OrgId},
 					squirrel.Lt{"created_at": req.DeleteBefore},
-					squirrel.Expr("(created_at, id) > (?, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId),
+					squirrel.Expr("(created_at, id) > (?, ?)", req.Watermark.WatermarkTime, *req.Watermark.WatermarkId),
 				}).
 				OrderBy("created_at, id").
 				Limit(uint64(req.BatchSize)),
@@ -1036,4 +1040,50 @@ func (repo *MarbleDbRepository) RemoveDecisionRulePayload(ctx context.Context, t
 		Where(squirrel.Eq{"id": ids})
 
 	return ExecBuilder(ctx, tx, sql)
+}
+
+// Counts the number of decisions for each orgId in the given time range
+func (repo *MarbleDbRepository) CountDecisions(ctx context.Context, exec Executor, orgIds []string, from, to time.Time) (map[string]int, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return map[string]int{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id, count(*) as count").
+		From(dbmodels.TABLE_DECISIONS).
+		Where(squirrel.Eq{"org_id": orgIds}).
+		Where(squirrel.GtOrEq{"created_at": from}).
+		Where(squirrel.Lt{"created_at": to}).
+		GroupBy("org_id")
+
+	type orgCount struct {
+		OrgId string
+		Count int
+	}
+
+	counts, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (orgCount, error) {
+		var result orgCount
+		err := row.Scan(&result.OrgId, &result.Count)
+		if err != nil {
+			return orgCount{}, err
+		}
+		return result, nil
+	})
+	if err != nil {
+		return map[string]int{}, err
+	}
+
+	result := make(map[string]int, len(orgIds))
+	for _, count := range counts {
+		result[count.OrgId] = count.Count
+	}
+
+	// Set 0 for org IDs which don't have any decisions
+	for _, orgId := range orgIds {
+		if _, exists := result[orgId]; !exists {
+			result[orgId] = 0
+		}
+	}
+
+	return result, nil
 }
