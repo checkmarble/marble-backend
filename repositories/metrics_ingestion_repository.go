@@ -56,7 +56,7 @@ func (repo MetricsIngestionRepository) SendMetrics(ctx context.Context, metrics 
 		"metrics_count", len(metrics.Metrics),
 	)
 
-	table := repo.bqClient.Client.Dataset("metrics").Table("events")
+	table := repo.bqClient.Client.Dataset(repo.bqClient.Config.MetricsDataset).Table(repo.bqClient.Config.MetricsTable)
 	inserter := table.Inserter()
 
 	metricEventRows := models.AdaptMetricsCollection(metrics)
