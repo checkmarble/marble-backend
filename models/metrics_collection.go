@@ -43,7 +43,7 @@ type MetricEventRow struct {
 func AdaptMetricsCollection(metricsCollection MetricsCollection) []*MetricEventRow {
 	metricEventRows := make([]*MetricEventRow, 0, len(metricsCollection.Metrics))
 
-	licenseKey := pure_utils.NullStringFromPtr(metricsCollection.LicenseKey)
+	licenseKey := pure_utils.BQNullStringFromPtr(metricsCollection.LicenseKey)
 
 	for _, metric := range metricsCollection.Metrics {
 		startTime := metricsCollection.Timestamp
@@ -61,11 +61,11 @@ func AdaptMetricsCollection(metricsCollection MetricsCollection) []*MetricEventR
 			EndTime:      endTime,
 			DeploymentID: metricsCollection.DeploymentID,
 			LicenseKey:   licenseKey,
-			OrgID:        pure_utils.NullStringFromPtr(metric.OrganizationID),
+			OrgID:        pure_utils.BQNullStringFromPtr(metric.OrganizationID),
 			EventType:    metric.Name,
-			Counter:      pure_utils.NullFloat64FromPtr(metric.Numeric),
+			Counter:      pure_utils.BQNullFloat64FromPtr(metric.Numeric),
 			Gauge:        bigquery.NullFloat64{},
-			Text:         pure_utils.NullStringFromPtr(metric.Text),
+			Text:         pure_utils.BQNullStringFromPtr(metric.Text),
 		})
 	}
 
