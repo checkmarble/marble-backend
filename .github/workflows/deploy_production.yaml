@@ -40,7 +40,6 @@ jobs:
         with:
           name: marble-api-openapi
           path: /tmp/openapis
-          retention-days: 1
 
       - name: Publish Marble API OpenAPI
         uses: readmeio/rdme@v10
