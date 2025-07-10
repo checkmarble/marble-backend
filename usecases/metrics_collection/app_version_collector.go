@@ -21,7 +21,7 @@ func NewAppVersionCollector(apiVersion string) GlobalCollector {
 func (c AppVersionCollector) Collect(ctx context.Context, from time.Time, to time.Time) ([]models.MetricData, error) {
 	metrics := make([]models.MetricData, 0)
 
-	metrics = append(metrics, models.NewGlobalMetric("app_version", nil, &c.apiVersion, &from, &to))
+	metrics = append(metrics, models.NewGlobalMetric("app_version", nil, &c.apiVersion, from, to))
 
 	return metrics, nil
 }

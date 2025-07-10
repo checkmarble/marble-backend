@@ -10,13 +10,13 @@ import (
 
 // Be careful when changing this struct, it is used as input and output in the API.
 type MetricDataDto struct {
-	Name           string     `json:"name" binding:"required"`
-	Numeric        *float64   `json:"numeric,omitempty"`
-	Text           *string    `json:"text,omitempty"`
-	Timestamp      time.Time  `json:"timestamp" binding:"required"`
-	OrganizationID *string    `json:"organization_id,omitempty"`
-	From           *time.Time `json:"from,omitempty"`
-	To             *time.Time `json:"to,omitempty"`
+	Name           string    `json:"name" binding:"required"`
+	Numeric        *float64  `json:"numeric,omitempty"`
+	Text           *string   `json:"text,omitempty"`
+	Timestamp      time.Time `json:"timestamp" binding:"required"`
+	OrganizationID *string   `json:"organization_id,omitempty"`
+	From           time.Time `json:"from" binding:"required"`
+	To             time.Time `json:"to" binding:"required"`
 }
 
 // Be careful when changing this struct, it is used as input and output in the API.

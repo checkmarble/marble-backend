@@ -54,7 +54,7 @@ func (c DecisionCollector) Collect(ctx context.Context, orgIds []string, from, t
 
 		for orgId, count := range orgDecisionCounts {
 			metrics = append(metrics, models.NewOrganizationMetric(DecisionMetricName,
-				utils.Ptr(float64(count)), nil, orgId, &period.From, &period.To),
+				utils.Ptr(float64(count)), nil, orgId, period.From, period.To),
 			)
 		}
 	}

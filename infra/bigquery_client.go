@@ -23,7 +23,7 @@ import (
 // Could be moved to a config file
 const (
 	MetricsDataset = "metrics"
-	MetricsTable   = "events"
+	MetricsTable   = "metrics_raw"
 )
 
 type BigQueryConfig struct {
