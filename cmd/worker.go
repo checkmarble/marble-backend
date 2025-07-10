@@ -203,10 +203,15 @@ func RunTaskQueue(apiVersion string) error {
 		return err
 	}
 
+	// Resume all queues defined in nonOrgQueues if exists
+	// In case the queues was paused by the RefreshQueuesFromOrgIds function if the function is not correctly configured
 	for k := range nonOrgQueues {
-		if err := riverClient.QueueResume(ctx, k, &river.QueuePauseOpts{}); err != nil {
-			utils.LogAndReportSentryError(ctx, err)
-			return err
+		_, err := riverClient.QueueGet(ctx, k)
+		if err != nil && !errors.Is(err, river.ErrNotFound) {
+			if err := riverClient.QueueResume(ctx, k, &river.QueuePauseOpts{}); err != nil {
+				utils.LogAndReportSentryError(ctx, err)
+				return err
+			}
 		}
 	}
 

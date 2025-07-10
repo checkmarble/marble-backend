@@ -13,9 +13,9 @@ type MetricData struct {
 	Numeric        *float64
 	Text           *string
 	Timestamp      time.Time
-	OrganizationID *string    // Only for org-specific metrics
-	From           *time.Time // Optional start time for time range metrics
-	To             *time.Time // Optional end time for time range metrics
+	OrganizationID *string // Only for org-specific metrics
+	From           time.Time
+	To             time.Time
 }
 
 type MetricsCollection struct {
@@ -25,54 +25,46 @@ type MetricsCollection struct {
 	Version      string
 	DeploymentID uuid.UUID
 	LicenseKey   *string
+	LicenseName  *string
 }
 
 // Bigquery schema for metrics
 type MetricEventRow struct {
-	StartTime    time.Time            `bigquery:"start_time"`
-	EndTime      time.Time            `bigquery:"end_time"`
-	DeploymentID uuid.UUID            `bigquery:"deployment_id"`
-	LicenseKey   bigquery.NullString  `bigquery:"license_key"`
-	OrgID        bigquery.NullString  `bigquery:"org_id"`
-	EventType    string               `bigquery:"event_type"`
-	Counter      bigquery.NullFloat64 `bigquery:"counter"`
-	Gauge        bigquery.NullFloat64 `bigquery:"gauge"`
-	Text         bigquery.NullString  `bigquery:"text"`
+	StartTime      time.Time            `bigquery:"start_time"`
+	EndTime        time.Time            `bigquery:"end_time"`
+	DeploymentID   uuid.UUID            `bigquery:"deployment_id"`
+	LicenseKey     bigquery.NullString  `bigquery:"license_key"`
+	LicenseKeyName bigquery.NullString  `bigquery:"license_key_name"`
+	OrgID          bigquery.NullString  `bigquery:"org_id"`
+	EventType      string               `bigquery:"event_type"`
+	Value          bigquery.NullFloat64 `bigquery:"value"`
+	Text           bigquery.NullString  `bigquery:"text"`
 }
 
 func AdaptMetricsCollection(metricsCollection MetricsCollection) []*MetricEventRow {
 	metricEventRows := make([]*MetricEventRow, 0, len(metricsCollection.Metrics))
 
 	licenseKey := pure_utils.BQNullStringFromPtr(metricsCollection.LicenseKey)
+	licenseKeyName := pure_utils.BQNullStringFromPtr(metricsCollection.LicenseName)
 
 	for _, metric := range metricsCollection.Metrics {
-		startTime := metricsCollection.Timestamp
-		if metric.From != nil {
-			startTime = *metric.From
-		}
-
-		endTime := metricsCollection.Timestamp
-		if metric.To != nil {
-			endTime = *metric.To
-		}
-
 		metricEventRows = append(metricEventRows, &MetricEventRow{
-			StartTime:    startTime,
-			EndTime:      endTime,
-			DeploymentID: metricsCollection.DeploymentID,
-			LicenseKey:   licenseKey,
-			OrgID:        pure_utils.BQNullStringFromPtr(metric.OrganizationID),
-			EventType:    metric.Name,
-			Counter:      pure_utils.BQNullFloat64FromPtr(metric.Numeric),
-			Gauge:        bigquery.NullFloat64{},
-			Text:         pure_utils.BQNullStringFromPtr(metric.Text),
+			StartTime:      metric.From,
+			EndTime:        metric.To,
+			DeploymentID:   metricsCollection.DeploymentID,
+			LicenseKey:     licenseKey,
+			LicenseKeyName: licenseKeyName,
+			OrgID:          pure_utils.BQNullStringFromPtr(metric.OrganizationID),
+			EventType:      metric.Name,
+			Value:          pure_utils.BQNullFloat64FromPtr(metric.Numeric),
+			Text:           pure_utils.BQNullStringFromPtr(metric.Text),
 		})
 	}
 
 	return metricEventRows
 }
 
-func NewGlobalMetric(name string, numeric *float64, text *string, from, to *time.Time) MetricData {
+func NewGlobalMetric(name string, numeric *float64, text *string, from, to time.Time) MetricData {
 	return MetricData{
 		Name:      name,
 		Numeric:   numeric,
@@ -84,7 +76,7 @@ func NewGlobalMetric(name string, numeric *float64, text *string, from, to *time
 }
 
 func NewOrganizationMetric(name string, numeric *float64, text *string, orgID string,
-	from, to *time.Time,
+	from, to time.Time,
 ) MetricData {
 	return MetricData{
 		Name:           name,

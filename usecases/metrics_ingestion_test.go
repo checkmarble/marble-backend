@@ -42,6 +42,7 @@ type MetricsIngestionUsecaseTestSuite struct {
 	executor          *mocks.Executor
 
 	licenseKey      string
+	licenseName     string
 	repositoryError error
 	licenseError    error
 }
@@ -53,6 +54,7 @@ func (suite *MetricsIngestionUsecaseTestSuite) SetupTest() {
 	suite.executor = new(mocks.Executor)
 
 	suite.licenseKey = "test-license-key"
+	suite.licenseName = "test-org"
 	suite.repositoryError = errors.New("repository error")
 	suite.licenseError = errors.New("license error")
 }
@@ -68,13 +70,16 @@ func (suite *MetricsIngestionUsecaseTestSuite) makeUsecase() *MetricsIngestionUs
 func (suite *MetricsIngestionUsecaseTestSuite) Test_IngestMetrics_WithValidLicense() {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("test"))
 	collection := models.MetricsCollection{
-		LicenseKey: &suite.licenseKey,
-		Metrics:    []models.MetricData{},
+		LicenseKey:  &suite.licenseKey,
+		LicenseName: &suite.licenseName,
+		Metrics:     []models.MetricData{},
 	}
 
 	suite.executorFactory.On("NewExecutor").Return(suite.executor)
 	suite.licenseRepository.On("GetLicenseByKey", ctx, suite.executor, suite.licenseKey).
-		Return(models.License{}, nil)
+		Return(models.License{
+			OrganizationName: suite.licenseName,
+		}, nil)
 	suite.metricRepository.On("SendMetrics", ctx, collection).Return(nil)
 
 	err := suite.makeUsecase().IngestMetrics(ctx, collection)

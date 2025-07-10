@@ -37,15 +37,15 @@ func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, collection 
 
 	if collection.LicenseKey != nil {
 		logger.DebugContext(ctx, "Checking license")
-		err := u.validateLicense(ctx, *collection.LicenseKey)
+		license, err := u.validateLicense(ctx, *collection.LicenseKey)
 		if err != nil {
 			logger.ErrorContext(ctx, "Failed to validate license", "error", err.Error())
 			return errors.Wrap(models.UnAuthorizedError, "invalid license")
 		}
+		collection.LicenseName = &license.OrganizationName
 	}
 
-	logger.DebugContext(ctx, "Sending metrics to BigQuery", "collection", collection)
-
+	logger.DebugContext(ctx, "Sending metrics to BigQuery")
 	err := u.metricRepository.SendMetrics(ctx, collection)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to send metrics to BigQuery", "error", err.Error())
@@ -56,10 +56,10 @@ func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, collection 
 }
 
 // Only check if the license exists
-func (u *MetricsIngestionUsecase) validateLicense(ctx context.Context, licenseKey string) error {
+func (u *MetricsIngestionUsecase) validateLicense(ctx context.Context, licenseKey string) (models.License, error) {
 	logger := utils.LoggerFromContext(ctx)
 
-	_, err := u.licenseRepository.GetLicenseByKey(ctx,
+	license, err := u.licenseRepository.GetLicenseByKey(ctx,
 		u.executorFactory.NewExecutor(), licenseKey)
 	if err != nil {
 		if !errors.Is(err, models.NotFoundError) {
@@ -67,7 +67,7 @@ func (u *MetricsIngestionUsecase) validateLicense(ctx context.Context, licenseKe
 		}
 
 		logger.WarnContext(ctx, "Invalid license", "license", licenseKey)
-		return errors.Wrap(models.UnAuthorizedError, "invalid license")
+		return models.License{}, errors.Wrap(models.UnAuthorizedError, "invalid license")
 	}
-	return nil
+	return license, nil
 }
