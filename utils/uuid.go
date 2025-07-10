@@ -32,6 +32,14 @@ func ParseSliceUUID(slice []string) ([]uuid.UUID, error) {
 	return parsed, nil
 }
 
+// TextToUUID is a function that converts a text to a UUID.
+// The function is deterministic, so calling it several times with the same text will return the same UUID.
+// It simplifies test writing by simplifying the creation of UUIDs and expected values.
+// Usage:
+//
+//	uuid := utils.TextToUUID("organization-panoramix")
+//	uuid2 := utils.TextToUUID("organization-panoramix")
+//	assert.Equal(t, uuid, uuid2) // ✅ equal
 func TextToUUID(text string) uuid.UUID {
 	return uuid.NewSHA1(uuid.NameSpaceURL, []byte(text))
 }
