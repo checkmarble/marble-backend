@@ -115,7 +115,7 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForDecision(ctx context.Context, d
 		return models.SnoozesOfDecision{}, err
 	}
 
-	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId)
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId.String())
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
@@ -192,7 +192,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 		return models.SnoozesOfDecision{}, err
 	}
 
-	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId)
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId.String())
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
@@ -299,7 +299,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 
 	usecase.webhooksSender.SendWebhookEventAsync(ctx, webhookEventId)
 
-	return models.NewSnoozesOfDecision(decision.DecisionId, snoozes, it), nil
+	return models.NewSnoozesOfDecision(decision.DecisionId.String(), snoozes, it), nil
 }
 
 func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
@@ -338,7 +338,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 		return models.SnoozesOfDecision{}, err
 	}
 
-	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId)
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId.String())
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
@@ -428,7 +428,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 
 	usecase.webhooksSender.SendWebhookEventAsync(ctx, webhookEventId)
 
-	return models.NewSnoozesOfDecision(decision.DecisionId, snoozes, it), nil
+	return models.NewSnoozesOfDecision(decision.DecisionId.String(), snoozes, it), nil
 }
 
 func (usecase RuleSnoozeUsecase) ActiveSnoozesForScenarioIteration(ctx context.Context, iterationId string) (models.SnoozesOfIteration, error) {

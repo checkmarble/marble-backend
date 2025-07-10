@@ -303,7 +303,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 			evaluationParameters.CachedScreenings = pure_utils.MapSliceToMap(
 				se.ScreeningExecutions,
 				func(scm models.ScreeningWithMatches) (string, models.ScreeningWithMatches) {
-					return se.ScenarioIterationId, scm
+					return se.ScenarioIterationId.String(), scm
 				},
 			)
 		}
@@ -350,7 +350,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		tx,
 		decision,
 		scenario.OrganizationId,
-		decision.DecisionId,
+		decision.DecisionId.String(),
 	)
 	if err != nil {
 		return false, nil, nil, errors.Wrapf(err, "error storing decision in AsyncDecisionWorker %s", scenario.Id)
@@ -377,7 +377,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	if decision.ScreeningExecutions != nil {
 		for _, sce := range decision.ScreeningExecutions {
 			_, err := w.screeningRepository.InsertScreening(ctx, tx,
-				decision.DecisionId, sce, true)
+				decision.DecisionId.String(), sce, true)
 			if err != nil {
 				return false, nil, nil, errors.Wrap(err,
 					"could not store screening execution")
@@ -388,8 +388,8 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	webhookEventId := uuid.NewString()
 	err = w.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 		Id:             webhookEventId,
-		OrganizationId: decision.OrganizationId,
-		EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId),
+		OrganizationId: decision.OrganizationId.String(),
+		EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId.String()),
 	})
 	if err != nil {
 		return false, nil, nil, err

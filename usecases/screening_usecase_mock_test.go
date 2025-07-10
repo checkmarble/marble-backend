@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
@@ -59,9 +60,10 @@ func (screeningRepositoryMock) CreateCaseContributor(ctx context.Context, exec r
 func (screeningRepositoryMock) DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error) {
 	decisions := []models.Decision{
 		{
-			OrganizationId: "orgid",
-			DecisionId:     "decisionid",
-			Case:           &models.Case{},
+			OrganizationId:      utils.TextToUUID("orgid"),
+			DecisionId:          utils.TextToUUID("decisionid"),
+			ScenarioIterationId: utils.TextToUUID("scenario-iteration-id"),
+			Case:                &models.Case{},
 		},
 	}
 

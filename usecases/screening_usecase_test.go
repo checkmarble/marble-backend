@@ -85,7 +85,7 @@ func TestListScreeningOnDecision(t *testing.T) {
 		WHERE sc.decision_id = $1 AND sc.is_archived = $2
 		GROUP BY sc.id
 	`)).
-		WithArgs("decisionid", false).
+		WithArgs(utils.TextToUUID("decisionid").String(), false).
 		WillReturnRows(
 			pgxmock.NewRows(dbmodels.SelectScreeningWithMatchesColumn).
 				AddRow(mockScRow...),
@@ -93,7 +93,7 @@ func TestListScreeningOnDecision(t *testing.T) {
 
 	exec.Mock.
 		ExpectQuery(`SELECT id, .+ FROM sanction_check_configs WHERE scenario_iteration_id = \$1`).
-		WithArgs("").
+		WithArgs(utils.TextToUUID("scenario-iteration-id").String()).
 		WillReturnRows(
 			pgxmock.NewRows(dbmodels.ScreeningConfigColumnList).
 				AddRow(mockSccRow...),
@@ -106,7 +106,7 @@ func TestListScreeningOnDecision(t *testing.T) {
 				AddRows(mockCommentsRows...),
 		)
 
-	scs, err := uc.ListScreenings(context.TODO(), "decisionid", false)
+	scs, err := uc.ListScreenings(context.TODO(), utils.TextToUUID("decisionid").String(), false)
 
 	assert.NoError(t, exec.Mock.ExpectationsWereMet())
 	assert.NoError(t, err)

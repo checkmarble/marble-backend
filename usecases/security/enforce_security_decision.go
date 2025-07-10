@@ -22,7 +22,7 @@ type EnforceSecurityDecisionImpl struct {
 func (e *EnforceSecurityDecisionImpl) ReadDecision(decision models.Decision) error {
 	return errors.Join(
 		e.Permission(models.DECISION_READ),
-		e.ReadOrganization(decision.OrganizationId),
+		e.ReadOrganization(decision.OrganizationId.String()),
 	)
 }
 
