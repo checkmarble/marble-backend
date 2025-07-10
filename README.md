@@ -164,7 +164,7 @@ Recommended settings are in the `.vscode/.user-settings.sample.json` file. Cherr
 
 ### How to reset the DB ?
 
-`docker volume rm marble-backend_postgres-db` deletes the PG volume, useful to reset the app to a known state
+`docker volume rm marble-backend-postgres-db` deletes the PG volume, useful to reset the app to a known state
 
 In practice, this single-line will delete the stack and create a new one:
-`docker compose down && docker volume rm marble-backend_postgres-db && docker compose up -d`
+`docker compose down && docker volume rm marble-backend-postgres-db && docker compose up -d`
