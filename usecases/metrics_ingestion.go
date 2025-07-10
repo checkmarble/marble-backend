@@ -45,11 +45,10 @@ func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, collection 
 		collection.LicenseName = &license.OrganizationName
 	}
 
-	logger.DebugContext(ctx, "Sending metrics to BigQuery")
 	err := u.metricRepository.SendMetrics(ctx, collection)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to send metrics to BigQuery", "error", err.Error())
-		return fmt.Errorf("failed to send metrics to BigQuery: %s", err.Error())
+		return fmt.Errorf("failed to send metrics to BigQuery: %w", err)
 	}
 
 	return nil
