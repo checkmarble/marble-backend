@@ -5,6 +5,7 @@ type Identity struct {
 	Email      string
 	FirstName  string
 	LastName   string
+	ApiKeyId   string
 	ApiKeyName string
 }
 
@@ -29,13 +30,14 @@ func NewCredentialWithUser(user User) Credentials {
 	}
 }
 
-func NewCredentialWithApiKey(organizationId string, partnerId *string, role Role, apiKeyName string) Credentials {
+func NewCredentialWithApiKey(key ApiKey, apiKeyName string) Credentials {
 	return Credentials{
 		ActorIdentity: Identity{
+			ApiKeyId:   key.Id,
 			ApiKeyName: apiKeyName,
 		},
-		OrganizationId: organizationId,
-		PartnerId:      partnerId,
-		Role:           role,
+		OrganizationId: key.OrganizationId,
+		PartnerId:      key.PartnerId,
+		Role:           key.Role,
 	}
 }

@@ -28,14 +28,26 @@ func (e PgExecutor) DatabaseSchema() models.DatabaseSchema {
 }
 
 func (e PgExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	if tag, err := injectDbSessionConfig(ctx, e.exec); err != nil {
+		return tag, err
+	}
+
 	return e.exec.Exec(ctx, sql, args...)
 }
 
 func (e PgExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	if _, err := injectDbSessionConfig(ctx, e.exec); err != nil {
+		return nil, err
+	}
+
 	return e.exec.Query(ctx, sql, args...)
 }
 
 func (e PgExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	if _, err := injectDbSessionConfig(ctx, e.exec); err != nil {
+		return errorRow{err}
+	}
+
 	return e.exec.QueryRow(ctx, sql, args...)
 }
 

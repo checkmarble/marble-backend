@@ -33,6 +33,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		OrganizationId: "organization_id",
 		Role:           models.ADMIN,
 		ActorIdentity: models.Identity{
+			ApiKeyId:   "api_key_id",
 			ApiKeyName: "Api key abc*** of organization",
 		},
 	}
