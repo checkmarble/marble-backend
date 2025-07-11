@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	INDEX_DELETION_WORKER_INTERVAL = 5 * time.Second
-	INDEX_DELETION_DRY_RUN         = false
+	INDEX_DELETION_WORKER_INTERVAL = 30 * time.Minute
+	INDEX_DELETION_DRY_RUN         = true
 )
 
 var (
