@@ -21,3 +21,10 @@ func (m *ScenarioFetcher) FetchScenarioAndIteration(
 	args := m.Called(ctx, exec, scenarioIterationId)
 	return args.Get(0).(models.ScenarioAndIteration), args.Error(1)
 }
+
+func (m *ScenarioFetcher) ListLiveIterationsAndNeighbors(ctx context.Context,
+	exec repositories.Executor, orgId string,
+) ([]models.ScenarioIteration, error) {
+	args := m.Called(ctx, exec, orgId)
+	return []models.ScenarioIteration{}, args.Error(1)
+}

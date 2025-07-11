@@ -130,7 +130,7 @@ func (m *IngestedDataIndexesRepository) ListInvalidIndices(
 	return args.Get(0).([]string), args.Error(1)
 }
 
-func (m *IngestedDataIndexesRepository) DeleteInvalidIndex(
+func (m *IngestedDataIndexesRepository) DeleteIndex(
 	ctx context.Context,
 	exec repositories.Executor,
 	indexName string,

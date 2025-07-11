@@ -8,6 +8,7 @@ import (
 )
 
 type ScenarioFetcherRepository interface {
+	ListLiveIterationsAndNeighbors(ctx context.Context, exec repositories.Executor, orgId string) ([]models.ScenarioIteration, error)
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
 		models.ScenarioIteration, error,
@@ -42,6 +43,17 @@ func (fetcher ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context,
 	}
 
 	return result, err
+}
+
+func (fetcher ScenarioFetcher) ListLiveIterationsAndNeighbors(ctx context.Context,
+	exec repositories.Executor, orgId string,
+) ([]models.ScenarioIteration, error) {
+	iterations, err := fetcher.Repository.ListLiveIterationsAndNeighbors(ctx, exec, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	return iterations, err
 }
 
 func (fetcher ScenarioFetcher) FetchScenario(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error) {
