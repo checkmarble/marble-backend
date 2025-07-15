@@ -28,14 +28,14 @@ func (m *MockCollectorRepository) AllOrganizations(ctx context.Context,
 	return args.Get(0).([]models.Organization), args.Error(1)
 }
 
-func (m *MockCollectorRepository) CountDecisions(ctx context.Context, exec repositories.Executor, orgIds []string,
+func (m *MockCollectorRepository) CountDecisionsByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
 	from, to time.Time,
 ) (map[string]int, error) {
 	args := m.Called(ctx, exec, orgIds, from, to)
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
-func (m *MockCollectorRepository) CountCases(ctx context.Context, exec repositories.Executor, orgIds []string,
+func (m *MockCollectorRepository) CountCasesByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
 	from, to time.Time,
 ) (map[string]int, error) {
 	args := m.Called(ctx, exec, orgIds, from, to)

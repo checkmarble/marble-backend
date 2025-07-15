@@ -204,16 +204,10 @@ func RunTaskQueue(apiVersion string) error {
 		return err
 	}
 
-	// Resume all queues defined in nonOrgQueues if exists
-	// In case the queues was paused by the RefreshQueuesFromOrgIds function if the function is not correctly configured
-	for k := range nonOrgQueues {
-		_, err := riverClient.QueueGet(ctx, k)
-		if err != nil && !errors.Is(err, river.ErrNotFound) {
-			if err := riverClient.QueueResume(ctx, k, &river.QueuePauseOpts{}); err != nil {
-				utils.LogAndReportSentryError(ctx, err)
-				return err
-			}
-		}
+	// Ensure that all global queues are active.
+	if err := ensureGlobalQueuesAreActive(ctx, riverClient, nonOrgQueues); err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
 	}
 
 	uc := usecases.NewUsecases(repositories,
@@ -334,4 +328,33 @@ func cleanStop(ctx context.Context, sigintOrTerm chan os.Signal, riverClient *ri
 		panic(err)
 	}
 	// hard stop succeeded
+}
+
+// Ensure that all global queues are active.
+// In normal case, the queues are already active.
+func ensureGlobalQueuesAreActive(ctx context.Context, riverClient *river.Client[pgx.Tx],
+	nonOrgQueues map[string]river.QueueConfig,
+) error {
+	logger := utils.LoggerFromContext(ctx)
+
+	for queueName := range nonOrgQueues {
+		queueState, err := riverClient.QueueGet(ctx, queueName)
+		if err != nil {
+			if errors.Is(err, river.ErrNotFound) {
+				// Queue will be created when River starts, skip
+				continue
+			}
+			return err
+		}
+
+		// If the queue exists and is paused, resume it
+		if queueState.PausedAt != nil {
+			logger.InfoContext(ctx, "Resuming global queue at startup", "queue", queueName)
+			if err := riverClient.QueueResume(ctx, queueName, &river.QueuePauseOpts{}); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

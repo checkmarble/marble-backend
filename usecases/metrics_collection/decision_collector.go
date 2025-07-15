@@ -12,7 +12,7 @@ import (
 )
 
 type DecisionCollectorRepository interface {
-	CountDecisions(ctx context.Context, exec repositories.Executor, orgIds []string,
+	CountDecisionsByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
 		from, to time.Time) (map[string]int, error)
 }
 
@@ -42,7 +42,7 @@ func (c DecisionCollector) Collect(ctx context.Context, orgIds []string, from, t
 	metrics := make([]models.MetricData, 0, len(orgIds)*len(periods))
 
 	for _, period := range periods {
-		orgDecisionCounts, err := c.decisionRepository.CountDecisions(ctx,
+		orgDecisionCounts, err := c.decisionRepository.CountDecisionsByOrg(ctx,
 			c.executorFactory.NewExecutor(), orgIds, period.From, period.To)
 		if err != nil {
 			return nil, err

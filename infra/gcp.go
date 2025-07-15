@@ -38,9 +38,12 @@ func GetProjectId() (string, error) {
 		retry.LastErrorOnly(true),
 		retry.Delay(100*time.Millisecond),
 	)
+	if err != nil {
+		return "", err
+	}
 
 	PROJECT_ID_CACHE.Add(PROJECT_ID_KEY, projectId)
-	return projectId, err
+	return projectId, nil
 }
 
 func getProjectIdFromMetadataServer() (string, error) {

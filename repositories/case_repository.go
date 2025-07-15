@@ -536,7 +536,9 @@ func (repo *MarbleDbRepository) GetNextCase(ctx context.Context, exec Executor, 
 
 // Count the number of cases for each organization in the given time range, return a map of orgId to count
 // From date is inclusive, to date is exclusive
-func (repo *MarbleDbRepository) CountCases(ctx context.Context, exec Executor, orgIds []string, from, to time.Time) (map[string]int, error) {
+func (repo *MarbleDbRepository) CountCasesByOrg(ctx context.Context, exec Executor,
+	orgIds []string, from, to time.Time,
+) (map[string]int, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
