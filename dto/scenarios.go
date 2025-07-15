@@ -101,3 +101,19 @@ func AdaptUpdateScenarioInput(scenarioId string, input UpdateScenarioBody) model
 	}
 	return parsedInput
 }
+
+type ScenarioRuleLatestVersion struct {
+	Type          string `json:"type"`
+	StableId      string `json:"stable_id"`
+	Name          string `json:"name"`
+	LatestVersion string `json:"latest_version"`
+}
+
+func AdaptScenarioRuleLatestVersion(rule models.ScenarioRuleLatestVersion) ScenarioRuleLatestVersion {
+	return ScenarioRuleLatestVersion{
+		Type:          rule.Type,
+		StableId:      rule.StableId,
+		Name:          rule.Name,
+		LatestVersion: rule.LatestVersion,
+	}
+}

@@ -41,3 +41,13 @@ func (s *ScenarioRepository) UpdateScenario(ctx context.Context, exec repositori
 	args := s.Called(exec, scenario)
 	return args.Error(0)
 }
+
+func (s *ScenarioRepository) ListScenarioLatestRuleVersions(ctx context.Context, exec repositories.Executor, scenarioId string) ([]models.ScenarioRuleLatestVersion, error) {
+	args := s.Called(ctx, exec, scenarioId)
+
+	if args.Error(1) != nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]models.ScenarioRuleLatestVersion), nil
+}

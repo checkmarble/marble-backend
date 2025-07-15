@@ -380,6 +380,8 @@ func (uc *WorkflowUsecase) ValidateWorkflowAction(ctx context.Context, scenario 
 					"invalid AST in field 'title_template'")
 			}
 		}
+	case models.WorkflowDisabled:
+		return nil
 	default:
 		return errors.Wrapf(models.BadParameterError, "unknown workflow action type: %s", cond.Action)
 	}
