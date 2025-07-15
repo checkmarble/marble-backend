@@ -21,6 +21,13 @@ type MockCollectorRepository struct {
 	mock.Mock
 }
 
+type MockDecisionCollectorRepository struct {
+	mock.Mock
+}
+type MockCaseCollectorRepository struct {
+	mock.Mock
+}
+
 func (m *MockCollectorRepository) AllOrganizations(ctx context.Context,
 	exec repositories.Executor,
 ) ([]models.Organization, error) {
@@ -28,14 +35,14 @@ func (m *MockCollectorRepository) AllOrganizations(ctx context.Context,
 	return args.Get(0).([]models.Organization), args.Error(1)
 }
 
-func (m *MockCollectorRepository) CountDecisionsByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
+func (m *MockDecisionCollectorRepository) CountDecisionsByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
 	from, to time.Time,
 ) (map[string]int, error) {
 	args := m.Called(ctx, exec, orgIds, from, to)
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
-func (m *MockCollectorRepository) CountCasesByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
+func (m *MockCaseCollectorRepository) CountCasesByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
 	from, to time.Time,
 ) (map[string]int, error) {
 	args := m.Called(ctx, exec, orgIds, from, to)
@@ -310,16 +317,19 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 	mockOrgCollector.AssertExpectations(t)
 }
 
-func TestNewCollectorsTestV1(t *testing.T) {
+func TestNewCollectorsV1(t *testing.T) {
 	// Setup
 	mockOrgRepo := new(MockCollectorRepository)
+	mockDecisionRepo := new(MockDecisionCollectorRepository)
+	mockCaseRepo := new(MockCaseCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 
 	// Execute
-	collectors := NewCollectorsTestV1(mockExecutorFactory, mockOrgRepo, "ApiVersionTest", models.LicenseConfiguration{})
+	collectors := NewCollectorsV1(mockExecutorFactory, mockOrgRepo, mockDecisionRepo,
+		mockCaseRepo, "ApiVersionTest", models.LicenseConfiguration{})
 
 	// Assert
-	assert.Equal(t, "test-v1", collectors.version)
+	assert.Equal(t, "v1", collectors.version)
 	assert.Len(t, collectors.globalCollectors, 1)
 	assert.Len(t, collectors.collectors, 2)
 	assert.Equal(t, mockOrgRepo, collectors.organizationRepository)

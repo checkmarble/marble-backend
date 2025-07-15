@@ -136,7 +136,7 @@ func (c Collectors) GetDeploymentID() uuid.UUID {
 
 // Use version to track the version of the collectors, could be used to track changes
 // and tell the server which collectors is used by the client
-func NewCollectorsTestV1(
+func NewCollectorsV1(
 	executorFactory executor_factory.ExecutorFactory,
 	collectorRepository CollectorRepository,
 	decisionRepository DecisionCollectorRepository,
@@ -145,7 +145,7 @@ func NewCollectorsTestV1(
 	licenseConfig models.LicenseConfiguration,
 ) Collectors {
 	return Collectors{
-		version: "test-v1",
+		version: "v1",
 		collectors: []Collector{
 			NewDecisionCollector(decisionRepository, executorFactory),
 			NewCaseCollector(caseRepository, executorFactory),
