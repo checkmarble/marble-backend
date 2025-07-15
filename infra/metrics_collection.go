@@ -10,12 +10,14 @@ type MetricCollectionConfig struct {
 	MetricsIngestionURL string
 }
 
-// TODO: Before deploying in production, change the default url to the production url
-const DEFAULT_METRICS_INGESTION_URL = "http://localhost:8080/metrics"
+const (
+	PROD_METRICS_INGESTION_URL    = "https://api.checkmarble.com/metrics"
+	STAGING_METRICS_INGESTION_URL = "https://api.staging.checkmarble.com/metrics"
+)
 
 var PROJECT_ID_TO_URL = map[string]string{
-	"marble-prod-1":        "https://api.checkmarble.com/metrics",
-	"tokyo-country-381508": "https://api.staging.checkmarble.com/metrics",
+	"marble-prod-1":        PROD_METRICS_INGESTION_URL,
+	"tokyo-country-381508": STAGING_METRICS_INGESTION_URL,
 }
 
 // If metrics collection is enabled, build the metrics ingestion url from the project id
@@ -24,10 +26,13 @@ func (cfg *MetricCollectionConfig) Configure() {
 		return
 	}
 
-	// Build the MetricsIngestionURL from the project id
-	projectId, _ := GetProjectId()
-	cfg.MetricsIngestionURL = DEFAULT_METRICS_INGESTION_URL
-	if url, ok := PROJECT_ID_TO_URL[projectId]; ok {
-		cfg.MetricsIngestionURL = url
+	if cfg.MetricsIngestionURL == "" {
+		// Build the MetricsIngestionURL from the project id
+		// Use the production url by default
+		projectId, _ := GetProjectId()
+		cfg.MetricsIngestionURL = PROD_METRICS_INGESTION_URL
+		if url, ok := PROJECT_ID_TO_URL[projectId]; ok {
+			cfg.MetricsIngestionURL = url
+		}
 	}
 }
