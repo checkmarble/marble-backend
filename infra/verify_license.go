@@ -19,14 +19,12 @@ const (
 	LICENSE_SERVER_URL = "https://api.checkmarble.com/validate-license/"
 )
 
-var marbleSaasProjectIds = []string{"marble-prod-1", "tokyo-country-381508"}
-
 // If config.KillIfReadLicenseError is true, the program will exit if there is an unexpected error while verifying
 // the license or reading the GCP project id
 func VerifyLicense(config models.LicenseConfiguration) models.LicenseValidation {
 	if config.LicenseKey == "" {
 		projectId, err := GetProjectId()
-		isWhitelisted := slices.Contains(marbleSaasProjectIds, projectId)
+		isWhitelisted := slices.Contains(MarbleSaasProjectIds, projectId)
 		if config.KillIfReadLicenseError && (err != nil || !isWhitelisted) {
 			log.Fatalln("License key or project id not found, exiting")
 		}
