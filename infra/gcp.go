@@ -19,6 +19,8 @@ const (
 // Store the project id which should not change during the lifetime of the application
 var PROJECT_ID_CACHE = expirable.NewLRU[string, string](1, nil, 0)
 
+var MarbleSaasProjectIds = []string{"marble-prod-1", "tokyo-country-381508"}
+
 func GetProjectId() (string, error) {
 	if projectId, exists := PROJECT_ID_CACHE.Get(PROJECT_ID_KEY); exists {
 		return projectId, nil

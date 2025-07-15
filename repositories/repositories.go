@@ -21,7 +21,7 @@ type options struct {
 	openSanctions                 infra.OpenSanctions
 	riverClient                   *river.Client[pgx.Tx]
 	tp                            trace.TracerProvider
-	bigQueryClient                *infra.BigQueryClient
+	bigQueryInfra                 *infra.BigQueryInfra
 }
 
 type Option func(*options)
@@ -77,9 +77,9 @@ func WithTracerProvider(tp trace.TracerProvider) Option {
 	}
 }
 
-func WithBigQueryClient(bigQueryClient *infra.BigQueryClient) Option {
+func WithBigQueryInfra(bigQueryInfra *infra.BigQueryInfra) Option {
 	return func(o *options) {
-		o.bigQueryClient = bigQueryClient
+		o.bigQueryInfra = bigQueryInfra
 	}
 }
 
@@ -155,6 +155,6 @@ func NewRepositories(
 			options.transfercheckEnrichmentBucket,
 		),
 		TaskQueueRepository:        NewTaskQueueRepository(options.riverClient),
-		MetricsIngestionRepository: NewMetricsIngestionRepository(options.bigQueryClient),
+		MetricsIngestionRepository: NewMetricsIngestionRepository(options.bigQueryInfra),
 	}
 }

@@ -199,12 +199,11 @@ func RunServer(config CompiledConfig) error {
 		return err
 	}
 
-	bigQueryClient, err := infra.NewBigQueryClient(ctx, bigQueryConfig)
+	bigQueryInfra, err := infra.InitializeBigQueryInfra(ctx, bigQueryConfig)
 	if err != nil {
-		utils.LogAndReportSentryError(ctx, err)
-		return err
+		logger.Info("bigquery infra not initialized", "error", err)
 	}
-	defer bigQueryClient.Close()
+	defer bigQueryInfra.Close()
 
 	repositories := repositories.NewRepositories(
 		pool,
@@ -219,7 +218,7 @@ func RunServer(config CompiledConfig) error {
 		repositories.WithClientDbConfig(clientDbConfig),
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 		repositories.WithRiverClient(riverClient),
-		repositories.WithBigQueryClient(bigQueryClient),
+		repositories.WithBigQueryInfra(bigQueryInfra),
 	)
 
 	uc := usecases.NewUsecases(repositories,

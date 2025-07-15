@@ -33,8 +33,6 @@ func NewMetricsIngestionUsecase(
 }
 
 func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, collection models.MetricsCollection) error {
-	logger := utils.LoggerFromContext(ctx)
-
 	if collection.LicenseKey != nil {
 		license, err := u.validateLicense(ctx, *collection.LicenseKey)
 		if err != nil {
@@ -46,7 +44,6 @@ func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, collection 
 
 	err := u.metricRepository.SendMetrics(ctx, collection)
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to send metrics to BigQuery", "error", err.Error())
 		return fmt.Errorf("failed to send metrics to BigQuery: %w", err)
 	}
 
