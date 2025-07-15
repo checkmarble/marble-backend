@@ -11,10 +11,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const (
-	CaseMetricName = "cases.count"
-)
-
 type CaseCollectorRepository interface {
 	CountCases(ctx context.Context, exec repositories.Executor, orgIds []string,
 		from, to time.Time) (map[string]int, error)
@@ -53,7 +49,7 @@ func (c CaseCollector) Collect(ctx context.Context, orgIds []string, from, to ti
 		}
 
 		for orgId, count := range orgCaseCounts {
-			metrics = append(metrics, models.NewOrganizationMetric(CaseMetricName,
+			metrics = append(metrics, models.NewOrganizationMetric(CaseCountMetricName,
 				utils.Ptr(float64(count)), nil, orgId, period.From, period.To),
 			)
 		}
