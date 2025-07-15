@@ -11,10 +11,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const (
-	DecisionMetricName = "decisions.count"
-)
-
 type DecisionCollectorRepository interface {
 	CountDecisions(ctx context.Context, exec repositories.Executor, orgIds []string,
 		from, to time.Time) (map[string]int, error)
@@ -53,7 +49,7 @@ func (c DecisionCollector) Collect(ctx context.Context, orgIds []string, from, t
 		}
 
 		for orgId, count := range orgDecisionCounts {
-			metrics = append(metrics, models.NewOrganizationMetric(DecisionMetricName,
+			metrics = append(metrics, models.NewOrganizationMetric(DecisionCountMetricName,
 				utils.Ptr(float64(count)), nil, orgId, period.From, period.To),
 			)
 		}
