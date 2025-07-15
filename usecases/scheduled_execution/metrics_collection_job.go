@@ -31,8 +31,7 @@ func NewMetricsCollectionPeriodicJob(config infra.MetricCollectionConfig) *river
 				MaxAttempts: 1, // No retries
 			}
 		},
-		// TODO: RunOnstart should be false for production
-		&river.PeriodicJobOpts{RunOnStart: true},
+		&river.PeriodicJobOpts{RunOnStart: false},
 	)
 }
 
@@ -125,49 +124,40 @@ func (w MetricCollectionWorker) saveWatermark(ctx context.Context, newWatermarkT
 }
 
 func (w MetricCollectionWorker) sendMetricsToIngestion(ctx context.Context, metricsCollection models.MetricsCollection) error {
-	var lastStatusCode int
-	f := func() error {
-		statusCode, err := w.doHTTPRequest(ctx, metricsCollection)
-		lastStatusCode = statusCode
-		return err
-	}
-
 	return retry.Do(
-		f,
+		func() error {
+			return w.doHTTPRequest(ctx, metricsCollection)
+		},
 		retry.Attempts(3),
 		retry.LastErrorOnly(true),
 		retry.Delay(100*time.Millisecond),
-		retry.RetryIf(func(err error) bool {
-			// Don't retry on 401 Unauthorized errors in case of error
-			return err != nil && lastStatusCode != http.StatusUnauthorized
-		}),
 	)
 }
 
 // Return the status code and the error
 // Send 0 if no status code is returned
-func (w MetricCollectionWorker) doHTTPRequest(ctx context.Context, metricsCollection models.MetricsCollection) (int, error) {
+func (w MetricCollectionWorker) doHTTPRequest(ctx context.Context, metricsCollection models.MetricsCollection) error {
 	metricsCollectionDto := dto.AdaptMetricsCollectionDto(metricsCollection)
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(metricsCollectionDto); err != nil {
-		return 0, err
+		return err
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		w.config.MetricsIngestionURL, &body)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	request.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
-		return 0, err
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return resp.StatusCode, errors.Newf("unexpected status code from ingestion: %d", resp.StatusCode)
+		return errors.Newf("unexpected status code from ingestion: %d", resp.StatusCode)
 	}
-	return resp.StatusCode, nil
+	return nil
 }

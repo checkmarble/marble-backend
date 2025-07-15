@@ -36,13 +36,12 @@ func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, collection 
 	logger := utils.LoggerFromContext(ctx)
 
 	if collection.LicenseKey != nil {
-		logger.DebugContext(ctx, "Checking license")
 		license, err := u.validateLicense(ctx, *collection.LicenseKey)
 		if err != nil {
-			logger.ErrorContext(ctx, "Failed to validate license", "error", err.Error())
-			return errors.Wrap(models.UnAuthorizedError, "invalid license")
+			collection.LicenseKey = nil
+		} else {
+			collection.LicenseName = &license.OrganizationName
 		}
-		collection.LicenseName = &license.OrganizationName
 	}
 
 	err := u.metricRepository.SendMetrics(ctx, collection)
@@ -65,8 +64,8 @@ func (u *MetricsIngestionUsecase) validateLicense(ctx context.Context, licenseKe
 			utils.LogAndReportSentryError(ctx, err)
 		}
 
-		logger.WarnContext(ctx, "Invalid license", "license", licenseKey)
-		return models.License{}, errors.Wrap(models.UnAuthorizedError, "invalid license")
+		logger.InfoContext(ctx, "Invalid license fetched in metrics collection", "license", licenseKey)
+		return models.License{}, errors.New("invalid license")
 	}
 	return license, nil
 }

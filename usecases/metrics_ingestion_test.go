@@ -97,12 +97,16 @@ func (suite *MetricsIngestionUsecaseTestSuite) Test_IngestMetrics_WithInvalidLic
 	suite.executorFactory.On("NewExecutor").Return(suite.executor)
 	suite.licenseRepository.On("GetLicenseByKey", ctx, suite.executor, suite.licenseKey).
 		Return(models.License{}, models.NotFoundError)
+	suite.metricRepository.On("SendMetrics", ctx, mock.MatchedBy(func(c models.MetricsCollection) bool {
+		// Verify that the collection passed to SendMetrics has no license info
+		return c.LicenseKey == nil && c.LicenseName == nil
+	})).Return(nil)
 
 	err := suite.makeUsecase().IngestMetrics(ctx, collection)
 
-	suite.ErrorIs(err, models.UnAuthorizedError)
-	// Verify again after the call that SendMetrics was never called
-	suite.metricRepository.AssertNotCalled(suite.T(), "SendMetrics")
+	suite.NoError(err)
+	// Note: We don't check collection.LicenseKey and collection.LicenseName here
+	// because the method modifies a copy of the struct, not the original
 }
 
 func (suite *MetricsIngestionUsecaseTestSuite) Test_IngestMetrics_WithoutLicense() {
