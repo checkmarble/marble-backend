@@ -157,3 +157,20 @@ func validateScenarioAst(uc usecases.Usecases) func(c *gin.Context) {
 		})
 	}
 }
+
+func listLatestScenarioRules(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		scenarioId := c.Param("scenario_id")
+
+		scenarioUsecase := usecasesWithCreds(ctx, uc).NewScenarioUsecase()
+
+		rules, err := scenarioUsecase.ListLatestRules(ctx, scenarioId)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(rules, dto.AdaptScenarioRuleLatestVersion))
+	}
+}

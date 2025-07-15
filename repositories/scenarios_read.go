@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/Masterminds/squirrel"
 )
@@ -27,6 +28,7 @@ type ScenarioUsecaseRepository interface {
 		exec Executor,
 		scenario models.UpdateScenarioInput,
 	) error
+	ListScenarioLatestRuleVersions(ctx context.Context, exec Executor, scenarioId string) ([]models.ScenarioRuleLatestVersion, error)
 }
 
 func selectScenarios() squirrel.SelectBuilder {
@@ -178,4 +180,57 @@ func (repo *MarbleDbRepository) ListLiveIterationsAndNeighbors(ctx context.Conte
 		GroupBy("si.id")
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScenarioIterationWithRules)
+}
+
+func (repo *MarbleDbRepository) ListScenarioLatestRuleVersions(ctx context.Context, exec Executor, scenarioId string) ([]models.ScenarioRuleLatestVersion, error) {
+	sql := `
+		select type, stable_rule_id, name, version
+		from (
+			select
+				rank() over (partition by sir.stable_rule_id order by si.version desc) as rank,
+				'rule' as type,
+				sir.stable_rule_id,
+				sir.name,
+				si.version
+			from scenario_iteration_rules sir
+			inner join scenario_iterations si on si.id = sir.scenario_iteration_id
+			where si.scenario_id = $1
+			union all
+			select
+				rank() over (partition by scc.stable_id order by si.version desc) as rank,
+				'screening' as type,
+				scc.stable_id,
+				scc.name,
+				si.version
+			from sanction_check_configs scc
+			inner join scenario_iterations si on si.id = scc.scenario_iteration_id
+			where si.scenario_id = $2
+		) rules
+		where rules.rank = 1
+		order by rules.version desc, rules.name asc
+	`
+
+	rows, err := exec.Query(ctx, sql, scenarioId, scenarioId)
+	if err != nil {
+		return nil, err
+	}
+
+	rules := make([]models.ScenarioRuleLatestVersion, 0)
+
+	for rows.Next() {
+		rule, err := pgx.RowToStructByName[dbmodels.DBScenarioRuleLatestVersion](rows)
+
+		if err != nil {
+			return nil, err
+		}
+
+		rules = append(rules, models.ScenarioRuleLatestVersion{
+			Type:          rule.Type,
+			StableId:      rule.StableRuleId,
+			Name:          rule.Name,
+			LatestVersion: rule.Version,
+		})
+	}
+
+	return rules, nil
 }

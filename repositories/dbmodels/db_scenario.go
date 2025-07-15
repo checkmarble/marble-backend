@@ -58,3 +58,10 @@ func AdaptScenario(dto DBScenario) (models.Scenario, error) {
 
 	return scenario, nil
 }
+
+type DBScenarioRuleLatestVersion struct {
+	Type         string `db:"type"`
+	StableRuleId string `db:"stable_rule_id"`
+	Name         string `db:"name"`
+	Version      string `db:"version"`
+}

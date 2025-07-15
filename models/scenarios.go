@@ -72,3 +72,10 @@ type ScenarioAndIteration struct {
 	Scenario  Scenario
 	Iteration ScenarioIteration
 }
+
+type ScenarioRuleLatestVersion struct {
+	Type          string
+	StableId      string
+	Name          string
+	LatestVersion string
+}
