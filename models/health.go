@@ -5,7 +5,6 @@ type HealthItemName string
 const (
 	DatabaseHealthItemName      HealthItemName = "database"
 	OpenSanctionsHealthItemName HealthItemName = "open_sanctions"
-	BigQueryHealthItemName      HealthItemName = "bigquery"
 )
 
 type HealthItemStatus struct {
