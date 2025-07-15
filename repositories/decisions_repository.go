@@ -1043,7 +1043,9 @@ func (repo *MarbleDbRepository) RemoveDecisionRulePayload(ctx context.Context, t
 }
 
 // Counts the number of decisions for each orgId in the given time range
-func (repo *MarbleDbRepository) CountDecisions(ctx context.Context, exec Executor, orgIds []string, from, to time.Time) (map[string]int, error) {
+func (repo *MarbleDbRepository) CountDecisionsByOrg(ctx context.Context, exec Executor,
+	orgIds []string, from, to time.Time,
+) (map[string]int, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return map[string]int{}, err
 	}

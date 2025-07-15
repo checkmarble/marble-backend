@@ -12,7 +12,7 @@ import (
 )
 
 type CaseCollectorRepository interface {
-	CountCases(ctx context.Context, exec repositories.Executor, orgIds []string,
+	CountCasesByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
 		from, to time.Time) (map[string]int, error)
 }
 
@@ -42,7 +42,7 @@ func (c CaseCollector) Collect(ctx context.Context, orgIds []string, from, to ti
 	metrics := make([]models.MetricData, 0, len(orgIds)*len(periods))
 
 	for _, period := range periods {
-		orgCaseCounts, err := c.caseRepository.CountCases(ctx,
+		orgCaseCounts, err := c.caseRepository.CountCasesByOrg(ctx,
 			c.executorFactory.NewExecutor(), orgIds, period.From, period.To)
 		if err != nil {
 			return nil, err

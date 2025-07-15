@@ -360,6 +360,8 @@ func (usecases *Usecases) NewMetricsCollectionWorker(licenseConfiguration models
 		metrics_collection.NewCollectorsTestV1(
 			usecases.NewExecutorFactory(),
 			&usecases.Repositories.MarbleDbRepository,
+			&usecases.Repositories.MarbleDbRepository,
+			&usecases.Repositories.MarbleDbRepository,
 			usecases.apiVersion,
 			licenseConfiguration,
 		),

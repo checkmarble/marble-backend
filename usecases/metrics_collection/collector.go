@@ -13,8 +13,6 @@ import (
 )
 
 type CollectorRepository interface {
-	DecisionCollectorRepository
-	CaseCollectorRepository
 	AllOrganizations(ctx context.Context, exec repositories.Executor) ([]models.Organization, error)
 }
 
@@ -37,6 +35,8 @@ type Collectors struct {
 
 	licenseConfig          models.LicenseConfiguration
 	organizationRepository CollectorRepository
+	decisionRepository     DecisionCollectorRepository
+	caseRepository         CaseCollectorRepository
 	executorFactory        executor_factory.ExecutorFactory
 }
 
@@ -139,20 +139,24 @@ func (c Collectors) GetDeploymentID() uuid.UUID {
 func NewCollectorsTestV1(
 	executorFactory executor_factory.ExecutorFactory,
 	collectorRepository CollectorRepository,
+	decisionRepository DecisionCollectorRepository,
+	caseRepository CaseCollectorRepository,
 	apiVersion string,
 	licenseConfig models.LicenseConfiguration,
 ) Collectors {
 	return Collectors{
 		version: "test-v1",
 		collectors: []Collector{
-			NewDecisionCollector(collectorRepository, executorFactory),
-			NewCaseCollector(collectorRepository, executorFactory),
+			NewDecisionCollector(decisionRepository, executorFactory),
+			NewCaseCollector(caseRepository, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),
 		},
 		executorFactory:        executorFactory,
-		organizationRepository: collectorRepository,
 		licenseConfig:          licenseConfig,
+		organizationRepository: collectorRepository,
+		decisionRepository:     decisionRepository,
+		caseRepository:         caseRepository,
 	}
 }
