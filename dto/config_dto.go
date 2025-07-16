@@ -21,11 +21,12 @@ func (s NullString) MarshalJSON() ([]byte, error) {
 }
 
 type ConfigDto struct {
-	Version  string            `json:"version"`
-	Status   ConfigStatusDto   `json:"status"`
-	Urls     ConfigUrlsDto     `json:"urls"`
-	Auth     ConfigAuthDto     `json:"auth"`
-	Features ConfigFeaturesDto `json:"features"`
+	Version         string            `json:"version"`
+	Status          ConfigStatusDto   `json:"status"`
+	Urls            ConfigUrlsDto     `json:"urls"`
+	Auth            ConfigAuthDto     `json:"auth"`
+	Features        ConfigFeaturesDto `json:"features"`
+	IsManagedMarble bool              `json:"is_managed_marble"`
 }
 
 type ConfigStatusDto struct {

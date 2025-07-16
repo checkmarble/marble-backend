@@ -65,6 +65,7 @@ type LicenseEntitlements struct {
 type LicenseValidation struct {
 	LicenseValidationCode
 	LicenseEntitlements
+	IsManagedMarble bool
 }
 
 func NewFullLicense() LicenseValidation {

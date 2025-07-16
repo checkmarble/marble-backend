@@ -172,3 +172,7 @@ func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licens
 func (usecase *PublicLicenseUseCase) HasSsoEnabled() bool {
 	return usecase.license.Sso
 }
+
+func (usecase *PublicLicenseUseCase) IsManagedMarble() bool {
+	return usecase.license.IsManagedMarble
+}
