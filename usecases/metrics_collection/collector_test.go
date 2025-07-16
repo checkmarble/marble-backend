@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,9 @@ type MockDecisionCollectorRepository struct {
 	mock.Mock
 }
 type MockCaseCollectorRepository struct {
+	mock.Mock
+}
+type MockMetadataRepository struct {
 	mock.Mock
 }
 
@@ -47,6 +51,13 @@ func (m *MockCaseCollectorRepository) CountCasesByOrg(ctx context.Context, exec 
 ) (map[string]int, error) {
 	args := m.Called(ctx, exec, orgIds, from, to)
 	return args.Get(0).(map[string]int), args.Error(1)
+}
+
+func (m *MockMetadataRepository) GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID,
+	key models.MetadataKey,
+) (models.Metadata, error) {
+	args := m.Called(ctx, exec, orgID, key)
+	return args.Get(0).(models.Metadata), args.Error(1)
 }
 
 type MockGlobalCollector struct {
@@ -91,6 +102,7 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
+	mockMetadataRepo := new(MockMetadataRepository)
 
 	// Test organizations
 	orgs := []models.Organization{
@@ -117,13 +129,18 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	mockOrgCollector.On("Collect", ctx, []string{"org1", "org2"}, from, to).Return([]models.MetricData{
 		org1Metrics[0], org2Metrics[0],
 	}, nil)
-
+	deploymentID := uuid.New()
+	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
+		models.MetadataKeyDeploymentID).Return(models.Metadata{
+		Value: deploymentID.String(),
+	}, nil)
 	collectors := Collectors{
 		version:                "test-v1",
 		globalCollectors:       []GlobalCollector{mockGlobalCollector},
 		collectors:             []Collector{mockOrgCollector},
 		organizationRepository: mockOrgRepo,
 		executorFactory:        mockExecutorFactory,
+		metadataRepository:     mockMetadataRepo,
 	}
 
 	// Execute
@@ -133,7 +150,7 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "test-v1", result.Version)
 	assert.NotEmpty(t, result.CollectionID)
-
+	assert.Equal(t, deploymentID, result.DeploymentID)
 	// Should have 3 metrics total (1 global + 2 org metrics)
 	assert.Len(t, result.Metrics, 3)
 
@@ -146,6 +163,7 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	mockOrgRepo.AssertExpectations(t)
 	mockGlobalCollector.AssertExpectations(t)
 	mockOrgCollector.AssertExpectations(t)
+	mockMetadataRepo.AssertExpectations(t)
 }
 
 func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
@@ -158,7 +176,7 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
-
+	mockMetadataRepo := new(MockMetadataRepository)
 	orgs := []models.Organization{
 		{Id: "org1", Name: "Organization 1"},
 	}
@@ -173,6 +191,10 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	mockOrgCollector.On("Collect", ctx, []string{"org1"}, from, to).Return([]models.MetricData{
 		org1Metrics[0],
 	}, nil)
+	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
+		models.MetadataKeyDeploymentID).Return(models.Metadata{
+		Value: uuid.New().String(),
+	}, nil)
 
 	collectors := Collectors{
 		version:                "test-v1",
@@ -180,6 +202,7 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 		collectors:             []Collector{mockOrgCollector},
 		organizationRepository: mockOrgRepo,
 		executorFactory:        mockExecutorFactory,
+		metadataRepository:     mockMetadataRepo,
 	}
 
 	// Execute
@@ -204,7 +227,7 @@ func TestCollectors_CollectMetrics_OrganizationRepositoryError(t *testing.T) {
 	mockOrgRepo := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
-
+	mockMetadataRepo := new(MockMetadataRepository)
 	globalMetrics := []models.MetricData{
 		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), from, to),
 	}
@@ -212,6 +235,10 @@ func TestCollectors_CollectMetrics_OrganizationRepositoryError(t *testing.T) {
 	// Setup expectations - org repo fails
 	mockGlobalCollector.On("Collect", ctx, from, to).Return(globalMetrics, nil)
 	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return([]models.Organization{}, errors.New("database error"))
+	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
+		models.MetadataKeyDeploymentID).Return(models.Metadata{
+		Value: uuid.New().String(),
+	}, nil)
 
 	collectors := Collectors{
 		version:                "test-v1",
@@ -219,6 +246,7 @@ func TestCollectors_CollectMetrics_OrganizationRepositoryError(t *testing.T) {
 		collectors:             []Collector{},
 		organizationRepository: mockOrgRepo,
 		executorFactory:        mockExecutorFactory,
+		metadataRepository:     mockMetadataRepo,
 	}
 
 	// Execute
@@ -243,7 +271,7 @@ func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
-
+	mockMetadataRepo := new(MockMetadataRepository)
 	globalMetrics := []models.MetricData{
 		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), from, to),
 	}
@@ -260,6 +288,7 @@ func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 		collectors:             []Collector{mockOrgCollector},
 		organizationRepository: mockOrgRepo,
 		executorFactory:        mockExecutorFactory,
+		metadataRepository:     mockMetadataRepo,
 	}
 
 	// Execute
@@ -285,7 +314,7 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
-
+	mockMetadataRepo := new(MockMetadataRepository)
 	orgs := []models.Organization{
 		{Id: "org1", Name: "Organization 1"},
 	}
@@ -294,6 +323,10 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return([]models.MetricData{}, nil)
 	mockOrgCollector.On("Collect", ctx, []string{"org1"}, from, to).Return([]models.MetricData{}, nil)
+	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
+		models.MetadataKeyDeploymentID).Return(models.Metadata{
+		Value: uuid.New().String(),
+	}, nil)
 
 	collectors := Collectors{
 		version:                "test-v1",
@@ -301,6 +334,7 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 		collectors:             []Collector{mockOrgCollector},
 		organizationRepository: mockOrgRepo,
 		executorFactory:        mockExecutorFactory,
+		metadataRepository:     mockMetadataRepo,
 	}
 
 	// Execute
@@ -322,11 +356,12 @@ func TestNewCollectorsV1(t *testing.T) {
 	mockOrgRepo := new(MockCollectorRepository)
 	mockDecisionRepo := new(MockDecisionCollectorRepository)
 	mockCaseRepo := new(MockCaseCollectorRepository)
+	mockMetadataRepo := new(MockMetadataRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 
 	// Execute
 	collectors := NewCollectorsV1(mockExecutorFactory, mockOrgRepo, mockDecisionRepo,
-		mockCaseRepo, "ApiVersionTest", models.LicenseConfiguration{})
+		mockCaseRepo, mockMetadataRepo, "ApiVersionTest", models.LicenseConfiguration{})
 
 	// Assert
 	assert.Equal(t, "v1", collectors.version)

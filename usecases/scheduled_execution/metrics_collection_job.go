@@ -134,8 +134,6 @@ func (w MetricCollectionWorker) sendMetricsToIngestion(ctx context.Context, metr
 	)
 }
 
-// Return the status code and the error
-// Send 0 if no status code is returned
 func (w MetricCollectionWorker) doHTTPRequest(ctx context.Context, metricsCollection models.MetricsCollection) error {
 	metricsCollectionDto := dto.AdaptMetricsCollectionDto(metricsCollection)
 
