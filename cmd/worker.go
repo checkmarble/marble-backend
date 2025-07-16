@@ -104,6 +104,7 @@ func RunTaskQueue(apiVersion string) error {
 		Enabled:             utils.GetEnv("METRICS_COLLECTION_ENABLED", true),
 		JobInterval:         utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
 		MetricsIngestionURL: utils.GetEnv("METRICS_INGESTION_URL", ""),
+		FallbackDuration:    utils.GetEnvDuration("METRICS_FALLBACK_DURATION", 30*24*time.Hour),
 	}
 	metricCollectionConfig.Configure()
 

@@ -8,6 +8,7 @@ type MetricCollectionConfig struct {
 	Enabled             bool
 	JobInterval         time.Duration
 	MetricsIngestionURL string
+	FallbackDuration    time.Duration
 }
 
 const (
