@@ -81,25 +81,25 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 	now := time.Now().UTC()
 
 	// Take a watermark for the "from" time
-	from := w.getFromTime(ctx).UTC()
+	from := w.getFromTime(ctx, w.config.FallbackDuration).UTC()
 
 	logger.DebugContext(ctx, "Collecting metrics from", "from", from)
 	// Create the metric collection usecase
 	metricsCollection, err := w.collectors.CollectMetrics(ctx, from, now)
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to collect metrics", "error", err.Error())
+		utils.LogAndReportSentryError(ctx, err)
 		return err
 	}
 
 	logger.DebugContext(ctx, "Sending metrics to ingestion")
 	if err := w.sendMetricsToIngestion(ctx, metricsCollection); err != nil {
-		logger.WarnContext(ctx, "Failed to send metrics to ingestion", "error", err.Error())
+		utils.LogAndReportSentryError(ctx, err)
 		return err
 	}
 
 	logger.DebugContext(ctx, "Updating watermarks", "new_timestamp", now)
 	if err := w.saveWatermark(ctx, now); err != nil {
-		logger.ErrorContext(ctx, "Failed to save watermark", "error", err.Error())
+		utils.LogAndReportSentryError(ctx, err)
 		return err
 	}
 
@@ -107,12 +107,12 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 }
 
 // Get the from time from the watermark table, always return a Time in UTC
-// In case there is no watermark, collect metrics from the last 3 months
-func (w MetricCollectionWorker) getFromTime(ctx context.Context) time.Time {
+// In case there is no watermark, collect metrics from the last fallbackDuration defined in the config
+func (w MetricCollectionWorker) getFromTime(ctx context.Context, fallbackDuration time.Duration) time.Time {
 	exec := w.executorFactory.NewExecutor()
 	watermark, err := w.repository.GetWatermark(ctx, exec, nil, models.WatermarkTypeMetrics)
 	if err != nil || watermark == nil || watermark.WatermarkTime.IsZero() {
-		return time.Now().UTC().AddDate(0, -3, 0)
+		return time.Now().UTC().Add(-fallbackDuration)
 	}
 	return watermark.WatermarkTime
 }
