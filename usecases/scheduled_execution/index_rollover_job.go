@@ -144,7 +144,7 @@ IndexDeletion:
 			}
 		}
 
-		logger.Debug(fmt.Sprintf("index %s.%s.%s is candidate for deletion", exec.DatabaseSchema().Schema, index.TableName, index.Name()),
+		logger.DebugContext(ctx, fmt.Sprintf("index %s.%s.%s is candidate for deletion", exec.DatabaseSchema().Schema, index.TableName, index.Name()),
 			"schema", exec.DatabaseSchema().Schema,
 			"table", index.TableName,
 			"index", index.Name(),
@@ -155,7 +155,7 @@ IndexDeletion:
 
 			switch err {
 			case nil:
-				logger.Info(fmt.Sprintf("index %s.%s.%s was deleted successfully", exec.DatabaseSchema().Schema, index.TableName, index.Name()),
+				logger.InfoContext(ctx, fmt.Sprintf("index %s.%s.%s was deleted successfully", exec.DatabaseSchema().Schema, index.TableName, index.Name()),
 					"schema", exec.DatabaseSchema().Schema,
 					"table", index.TableName,
 					"index", index.Name())
@@ -166,11 +166,19 @@ IndexDeletion:
 	}
 
 	if len(errs) > 0 {
-		logger.Error("some indices failed to be deleted",
+		var errorPick error
+
+		logger.ErrorContext(ctx, "some indices failed to be deleted",
 			"indices", slices.Collect(maps.Keys(errs)),
 			"errors", pure_utils.Map(slices.Collect(maps.Values(errs)), func(err error) string {
+				if errorPick == nil {
+					errorPick = err
+				}
+
 				return err.Error()
 			}))
+
+		utils.LogAndReportSentryError(ctx, errorPick)
 
 		return errors.New("could not delete all outdated indices")
 	}
