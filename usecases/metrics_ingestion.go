@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -44,7 +43,7 @@ func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, collection 
 
 	err := u.metricRepository.SendMetrics(ctx, collection)
 	if err != nil {
-		return fmt.Errorf("failed to send metrics to BigQuery: %w", err)
+		return err
 	}
 
 	return nil

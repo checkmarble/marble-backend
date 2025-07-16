@@ -2,10 +2,10 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories/bqmodels"
 	"github.com/cockroachdb/errors"
 )
 
@@ -25,10 +25,10 @@ func (repo MetricsIngestionRepository) SendMetrics(ctx context.Context, metrics 
 	}
 
 	inserter := repo.bqInfra.MetricsTable.Inserter()
-	metricEventRows := models.AdaptMetricsCollection(metrics)
+	metricEventRows := bqmodels.AdaptMetricsCollection(metrics)
 	err := inserter.Put(ctx, metricEventRows)
 	if err != nil {
-		return fmt.Errorf("failed to send metrics to BigQuery: %w", err)
+		return err
 	}
 
 	return nil

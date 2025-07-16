@@ -211,7 +211,7 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	// Assert - should succeed but only have org metrics
 	require.NoError(t, err)
 	assert.Len(t, result.Metrics, 1)
-	assert.Equal(t, "org1", *result.Metrics[0].OrganizationID)
+	assert.Equal(t, "org1", *result.Metrics[0].OrgID)
 
 	mockOrgRepo.AssertExpectations(t)
 	mockGlobalCollector.AssertExpectations(t)
@@ -297,7 +297,7 @@ func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 	// Assert - should only have global metrics
 	require.NoError(t, err)
 	assert.Len(t, result.Metrics, 1)
-	assert.Nil(t, result.Metrics[0].OrganizationID)
+	assert.Nil(t, result.Metrics[0].OrgID)
 
 	mockOrgRepo.AssertExpectations(t)
 	mockGlobalCollector.AssertExpectations(t)
