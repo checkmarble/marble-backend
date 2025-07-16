@@ -43,7 +43,9 @@ func VerifyLicense(config models.LicenseConfiguration) models.LicenseValidation 
 			log.Fatalln("License key or project id not found, exiting")
 		}
 		if isWhitelisted {
-			return models.NewFullLicense()
+			fullLicense := models.NewFullLicense()
+			fullLicense.IsManagedMarble = true
+			return fullLicense
 		}
 		return models.NewNotFoundLicense()
 	}

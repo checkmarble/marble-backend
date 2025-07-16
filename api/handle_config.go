@@ -31,7 +31,8 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 		}
 
 		out := dto.ConfigDto{
-			Version: versionUsecase.ApiVersion,
+			Version:         versionUsecase.ApiVersion,
+			IsManagedMarble: licenseUsecase.IsManagedMarble(),
 			Status: dto.ConfigStatusDto{
 				Migrations: migrationsRunForOrgs && migrationsRunForUsers,
 				HasOrg:     hasAnOrganization,
