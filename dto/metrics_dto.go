@@ -10,13 +10,13 @@ import (
 
 // Be careful when changing this struct, it is used as input and output in the API.
 type MetricDataDto struct {
-	Name           string    `json:"name" binding:"required"`
-	Numeric        *float64  `json:"numeric,omitempty"`
-	Text           *string   `json:"text,omitempty"`
-	Timestamp      time.Time `json:"timestamp" binding:"required"`
-	OrganizationID *string   `json:"organization_id,omitempty"`
-	From           time.Time `json:"from" binding:"required"`
-	To             time.Time `json:"to" binding:"required"`
+	Name      string    `json:"name" binding:"required"`
+	Numeric   *float64  `json:"numeric,omitempty"`
+	Text      *string   `json:"text,omitempty"`
+	Timestamp time.Time `json:"timestamp" binding:"required"`
+	OrgID     *string   `json:"org_id,omitempty"`
+	From      time.Time `json:"from" binding:"required"`
+	To        time.Time `json:"to" binding:"required"`
 }
 
 // Be careful when changing this struct, it is used as input and output in the API.
@@ -31,13 +31,13 @@ type MetricsCollectionDto struct {
 
 func AdaptMetricDataDto(metricData models.MetricData) MetricDataDto {
 	return MetricDataDto{
-		Name:           metricData.Name,
-		Numeric:        metricData.Numeric,
-		Text:           metricData.Text,
-		Timestamp:      metricData.Timestamp,
-		OrganizationID: metricData.OrganizationID,
-		From:           metricData.From,
-		To:             metricData.To,
+		Name:      metricData.Name,
+		Numeric:   metricData.Numeric,
+		Text:      metricData.Text,
+		Timestamp: metricData.Timestamp,
+		OrgID:     metricData.OrgID,
+		From:      metricData.From,
+		To:        metricData.To,
 	}
 }
 
@@ -54,13 +54,13 @@ func AdaptMetricsCollectionDto(metricsCollection models.MetricsCollection) Metri
 
 func AdaptMetricData(metricDataDto MetricDataDto) models.MetricData {
 	return models.MetricData{
-		Name:           metricDataDto.Name,
-		Numeric:        metricDataDto.Numeric,
-		Text:           metricDataDto.Text,
-		Timestamp:      metricDataDto.Timestamp,
-		OrganizationID: metricDataDto.OrganizationID,
-		From:           metricDataDto.From,
-		To:             metricDataDto.To,
+		Name:      metricDataDto.Name,
+		Numeric:   metricDataDto.Numeric,
+		Text:      metricDataDto.Text,
+		Timestamp: metricDataDto.Timestamp,
+		OrgID:     metricDataDto.OrgID,
+		From:      metricDataDto.From,
+		To:        metricDataDto.To,
 	}
 }
 
