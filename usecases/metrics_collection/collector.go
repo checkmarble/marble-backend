@@ -10,6 +10,11 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
+	"github.com/hashicorp/golang-lru/v2/expirable"
+)
+
+const (
+	DeploymentIDCacheKey = "metadata_deployment_id"
 )
 
 type CollectorRepository interface {
@@ -28,6 +33,13 @@ type Collector interface {
 	Collect(ctx context.Context, orgIds []string, from time.Time, to time.Time) ([]models.MetricData, error)
 }
 
+type MetadataRepository interface {
+	GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID,
+		key models.MetadataKey) (models.Metadata, error)
+}
+
+var DeploymentIDCache = expirable.NewLRU[string, uuid.UUID](1, nil, 0)
+
 type Collectors struct {
 	version          string
 	globalCollectors []GlobalCollector
@@ -37,6 +49,7 @@ type Collectors struct {
 	organizationRepository CollectorRepository
 	decisionRepository     DecisionCollectorRepository
 	caseRepository         CaseCollectorRepository
+	metadataRepository     MetadataRepository
 	executorFactory        executor_factory.ExecutorFactory
 }
 
@@ -57,13 +70,18 @@ func (c Collectors) CollectMetrics(ctx context.Context, from time.Time, to time.
 	}
 	metrics = slices.Concat(metrics, orgMetrics)
 
+	deploymentID, err := c.GetDeploymentID(ctx)
+	if err != nil {
+		return models.MetricsCollection{}, err
+	}
+
 	payload := models.MetricsCollection{
 		CollectionID: uuid.New(),
 		Timestamp:    time.Now(),
 		Metrics:      metrics,
 		Version:      c.version,
 		LicenseKey:   c.GetLicenseKey(),
-		DeploymentID: c.GetDeploymentID(),
+		DeploymentID: deploymentID,
 	}
 
 	return payload, nil
@@ -129,9 +147,21 @@ func (c Collectors) GetLicenseKey() *string {
 	return &c.licenseConfig.LicenseKey
 }
 
-func (c Collectors) GetDeploymentID() uuid.UUID {
-	// TODO: Change by the real deployment ID, DeploymentID TBD
-	return uuid.MustParse("c08cce05-ed91-4941-b959-9849c0652640")
+func (c Collectors) GetDeploymentID(ctx context.Context) (uuid.UUID, error) {
+	if deploymentID, exists := DeploymentIDCache.Get(DeploymentIDCacheKey); exists {
+		return deploymentID, nil
+	}
+
+	metadata, err := c.metadataRepository.GetMetadata(ctx, c.executorFactory.NewExecutor(), nil, models.MetadataKeyDeploymentID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	deploymentID, err := uuid.Parse(metadata.Value)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	DeploymentIDCache.Add(DeploymentIDCacheKey, deploymentID)
+	return deploymentID, nil
 }
 
 // Use version to track the version of the collectors, could be used to track changes
@@ -141,6 +171,7 @@ func NewCollectorsV1(
 	collectorRepository CollectorRepository,
 	decisionRepository DecisionCollectorRepository,
 	caseRepository CaseCollectorRepository,
+	metadataRepository MetadataRepository,
 	apiVersion string,
 	licenseConfig models.LicenseConfiguration,
 ) Collectors {
@@ -158,5 +189,6 @@ func NewCollectorsV1(
 		organizationRepository: collectorRepository,
 		decisionRepository:     decisionRepository,
 		caseRepository:         caseRepository,
+		metadataRepository:     metadataRepository,
 	}
 }
