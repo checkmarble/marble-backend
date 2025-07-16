@@ -82,11 +82,10 @@ func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, exec Execu
 	)
 }
 
-// ListLiveIterationsAndNeighbors returns a list of scenario iterations, whatever the scenarios is,
-// that may considered live-adjacent.
-// It obviously returns the actual live iterations, but also one previous version and all next versions.
-// For example, if a scenario has a live iteration of 10, but has iterations from 1 to 13, this will returns
-// iterations 9 to 13.
+// ListLiveIterationsAndNeighbors returns a list of scenario iterations,
+// whatever the scenarios is, that may considered live-adjacent. It returns the
+// live iterations and all iterations that were live within a time period before
+// the current time.
 //
 // The final query looks like this (useful for debugging):
 /*
@@ -111,7 +110,7 @@ func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, exec Execu
 	    where
 	      org_id = '<org_id>' and
 	      publication_action in ('publish', 'prepare') and
-	      created_at > now() - interval '1 hour'
+	      created_at > now() - interval '72 hour'
 	  )
 	select
 	  si.*
@@ -156,10 +155,10 @@ func (repo *MarbleDbRepository) ListLiveIterationsAndNeighbors(ctx context.Conte
 					Where(squirrel.And{
 						squirrel.Eq{
 							"org_id":             orgId,
-							"publication_action": []string{models.Prepare.String(), models.Publish.String()},
+							"publication_action": []string{models.Prepare.String(), models.Publish.String(), models.Unpublish.String()},
 						},
 						squirrel.Gt{
-							"created_at": time.Now().Add(-time.Hour),
+							"created_at": time.Now().Add(-3 * 24 * time.Hour),
 						},
 					})
 			})

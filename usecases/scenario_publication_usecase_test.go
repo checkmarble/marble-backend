@@ -446,6 +446,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparation
 
 // StartPublicationPreparation
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparation_none_to_create() {
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction, suite.iterationId).
+		Return(suite.scenarioAndIteration, nil)
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId,
 		suite.iterationId).Return([]models.ConcreteIndex{}, 0, nil)
 
@@ -457,6 +460,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparation_preparation_already_in_progress() {
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction, suite.iterationId).
+		Return(suite.scenarioAndIteration, nil)
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId,
 		suite.iterationId).Return([]models.ConcreteIndex{
 		{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
@@ -470,6 +476,11 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparation_preparation_nominal() {
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction, suite.iterationId).
+		Return(suite.scenarioAndIteration, nil)
+	suite.scenarioPublisher.On("SaveScenarioPreparationAction", suite.ctx, suite.transaction, suite.organizationId, suite.scenario.Id, suite.iterationId).
+		Return(nil)
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId,
 		suite.iterationId).Return([]models.ConcreteIndex{
 		{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
@@ -490,6 +501,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparation_get_error() {
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction, suite.iterationId).
+		Return(suite.scenarioAndIteration, nil)
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, suite.iterationId).Return(
 		[]models.ConcreteIndex{}, 0, suite.repositoryError)
 
