@@ -72,6 +72,10 @@ func NewMetricCollectionWorker(
 	}
 }
 
+func (w MetricCollectionWorker) Timeout(job *river.Job[models.MetricsCollectionArgs]) time.Duration {
+	return time.Minute
+}
+
 // Work executes the metrics collection job by collecting both global and organization-specific metrics
 // from a time range defined by watermarks, then updates the watermark to track progress
 func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.MetricsCollectionArgs]) error {
