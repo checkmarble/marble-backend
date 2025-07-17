@@ -23,7 +23,7 @@ import (
 
 // Could be moved to a config file
 const (
-	MetricsDataset = "metrics"
+	MetricsDataset = "marble_metrics"
 	MetricsTable   = "metrics_raw"
 )
 
