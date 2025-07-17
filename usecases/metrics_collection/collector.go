@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 )
@@ -35,7 +36,7 @@ type Collector interface {
 
 type MetadataRepository interface {
 	GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID,
-		key models.MetadataKey) (models.Metadata, error)
+		key models.MetadataKey) (*models.Metadata, error)
 }
 
 var DeploymentIDCache = expirable.NewLRU[string, uuid.UUID](1, nil, 0)
@@ -155,6 +156,9 @@ func (c Collectors) GetDeploymentID(ctx context.Context) (uuid.UUID, error) {
 	metadata, err := c.metadataRepository.GetMetadata(ctx, c.executorFactory.NewExecutor(), nil, models.MetadataKeyDeploymentID)
 	if err != nil {
 		return uuid.Nil, err
+	}
+	if metadata == nil {
+		return uuid.Nil, errors.Wrap(models.NotFoundError, "deployment ID not found")
 	}
 	deploymentID, err := uuid.Parse(metadata.Value)
 	if err != nil {

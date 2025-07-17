@@ -15,9 +15,9 @@ func selectMetadata() squirrel.SelectBuilder {
 		From(dbmodels.TABLE_METADATA)
 }
 
-func (repo *MarbleDbRepository) GetMetadata(ctx context.Context, exec Executor, orgID *uuid.UUID, key models.MetadataKey) (models.Metadata, error) {
+func (repo *MarbleDbRepository) GetMetadata(ctx context.Context, exec Executor, orgID *uuid.UUID, key models.MetadataKey) (*models.Metadata, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.Metadata{}, err
+		return nil, err
 	}
 
 	query := selectMetadata().Where(squirrel.Eq{"key": string(key)})
@@ -28,7 +28,7 @@ func (repo *MarbleDbRepository) GetMetadata(ctx context.Context, exec Executor, 
 		query = query.Where(squirrel.Eq{"org_id": nil})
 	}
 
-	return SqlToModel(
+	return SqlToOptionalModel(
 		ctx,
 		exec,
 		query,

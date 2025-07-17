@@ -22,7 +22,7 @@ type offloadingRepository interface {
 
 	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *string,
 		watermarkType models.WatermarkType) (*models.Watermark, error)
-	SaveWatermark(ctx context.Context, tx repositories.Transaction,
+	SaveWatermark(ctx context.Context, exec repositories.Executor,
 		orgId *string, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params json.RawMessage) error
 
 	GetOffloadableDecisionRules(ctx context.Context, exec repositories.Executor,

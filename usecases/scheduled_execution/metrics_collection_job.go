@@ -42,7 +42,7 @@ type MetricsCollectionUsecase interface {
 type WatermarkRepository interface {
 	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *string,
 		watermarkType models.WatermarkType) (*models.Watermark, error)
-	SaveWatermark(ctx context.Context, tx repositories.Transaction,
+	SaveWatermark(ctx context.Context, exec repositories.Executor,
 		orgId *string, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params json.RawMessage) error
 }
 
@@ -87,19 +87,17 @@ func (w MetricCollectionWorker) Work(ctx context.Context, job *river.Job[models.
 	// Create the metric collection usecase
 	metricsCollection, err := w.collectors.CollectMetrics(ctx, from, now)
 	if err != nil {
-		utils.LogAndReportSentryError(ctx, err)
 		return err
 	}
 
 	logger.DebugContext(ctx, "Sending metrics to ingestion")
 	if err := w.sendMetricsToIngestion(ctx, metricsCollection); err != nil {
-		utils.LogAndReportSentryError(ctx, err)
 		return err
 	}
 
 	logger.DebugContext(ctx, "Updating watermarks", "new_timestamp", now)
-	if err := w.saveWatermark(ctx, now); err != nil {
-		utils.LogAndReportSentryError(ctx, err)
+	if err := w.repository.SaveWatermark(ctx, w.executorFactory.NewExecutor(), nil,
+		models.WatermarkTypeMetrics, nil, now, nil); err != nil {
 		return err
 	}
 
@@ -115,12 +113,6 @@ func (w MetricCollectionWorker) getFromTime(ctx context.Context, fallbackDuratio
 		return time.Now().UTC().Add(-fallbackDuration)
 	}
 	return watermark.WatermarkTime
-}
-
-func (w MetricCollectionWorker) saveWatermark(ctx context.Context, newWatermarkTime time.Time) error {
-	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return w.repository.SaveWatermark(ctx, tx, nil, models.WatermarkTypeMetrics, nil, newWatermarkTime, nil)
-	})
 }
 
 func (w MetricCollectionWorker) sendMetricsToIngestion(ctx context.Context, metricsCollection models.MetricsCollection) error {

@@ -331,8 +331,10 @@ func cleanStop(ctx context.Context, sigintOrTerm chan os.Signal, riverClient *ri
 	// hard stop succeeded
 }
 
-// Ensure that all global queues are active.
-// In normal case, the queues are already active.
+// Ensure that all global queues are active in river DB, i.e. not paused. This function is more a safety net.
+// River stores the state of the queues in the DB. If a queue exists but is paused, River client will not resume it
+// We have some function which can pause queues, so we need to ensure that all global queues are active
+// cf: riverClient.QueueResume and riverClient.QueuePause
 func ensureGlobalQueuesAreActive(ctx context.Context, riverClient *river.Client[pgx.Tx],
 	nonOrgQueues map[string]river.QueueConfig,
 ) error {
