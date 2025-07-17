@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -44,6 +45,14 @@ func GetProjectId() (string, error) {
 
 	projectIdCache.Add(PROJECT_ID_KEY, projectId)
 	return projectId, nil
+}
+
+func IsMarbleSaasProject() bool {
+	projectId, err := GetProjectId()
+	if err != nil {
+		return false
+	}
+	return slices.Contains(MarbleSaasProjectIds, projectId)
 }
 
 func getProjectIdFromMetadataServer() (string, error) {

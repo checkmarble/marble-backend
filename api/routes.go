@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/pubapi"
 	pubapiv1 "github.com/checkmarble/marble-backend/pubapi/v1"
 	"github.com/checkmarble/marble-backend/utils"
@@ -42,8 +43,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	r.GET("/is-sso-available", tom, handleIsSSOEnabled(uc))
 	r.GET("/signup-status", tom, handleSignupStatus(uc))
 
-	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
-	r.POST("/metrics", tom, handleMetricsIngestion(uc))
+	if infra.IsMarbleSaasProject() {
+		r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
+		r.POST("/metrics", tom, handleMetricsIngestion(uc))
+	}
 
 	// Public API initialization
 	{

@@ -5,7 +5,7 @@ import (
 )
 
 type MetricCollectionConfig struct {
-	Enabled             bool
+	Disabled            bool
 	JobInterval         time.Duration
 	MetricsIngestionURL string
 	FallbackDuration    time.Duration
@@ -23,7 +23,7 @@ var PROJECT_ID_TO_URL = map[string]string{
 
 // If metrics collection is enabled, build the metrics ingestion url from the project id
 func (cfg *MetricCollectionConfig) Configure() {
-	if !cfg.Enabled {
+	if cfg.Disabled {
 		return
 	}
 
