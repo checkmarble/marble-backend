@@ -55,9 +55,9 @@ func (m *MockCaseCollectorRepository) CountCasesByOrg(ctx context.Context, exec 
 
 func (m *MockMetadataRepository) GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID,
 	key models.MetadataKey,
-) (models.Metadata, error) {
+) (*models.Metadata, error) {
 	args := m.Called(ctx, exec, orgID, key)
-	return args.Get(0).(models.Metadata), args.Error(1)
+	return args.Get(0).(*models.Metadata), args.Error(1)
 }
 
 type MockGlobalCollector struct {
@@ -131,7 +131,7 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	}, nil)
 	deploymentID := uuid.New()
 	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
-		models.MetadataKeyDeploymentID).Return(models.Metadata{
+		models.MetadataKeyDeploymentID).Return(&models.Metadata{
 		Value: deploymentID.String(),
 	}, nil)
 	collectors := Collectors{
@@ -192,7 +192,7 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 		org1Metrics[0],
 	}, nil)
 	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
-		models.MetadataKeyDeploymentID).Return(models.Metadata{
+		models.MetadataKeyDeploymentID).Return(&models.Metadata{
 		Value: uuid.New().String(),
 	}, nil)
 
@@ -236,7 +236,7 @@ func TestCollectors_CollectMetrics_OrganizationRepositoryError(t *testing.T) {
 	mockGlobalCollector.On("Collect", ctx, from, to).Return(globalMetrics, nil)
 	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return([]models.Organization{}, errors.New("database error"))
 	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
-		models.MetadataKeyDeploymentID).Return(models.Metadata{
+		models.MetadataKeyDeploymentID).Return(&models.Metadata{
 		Value: uuid.New().String(),
 	}, nil)
 
@@ -324,7 +324,7 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 	mockGlobalCollector.On("Collect", ctx, from, to).Return([]models.MetricData{}, nil)
 	mockOrgCollector.On("Collect", ctx, []string{"org1"}, from, to).Return([]models.MetricData{}, nil)
 	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
-		models.MetadataKeyDeploymentID).Return(models.Metadata{
+		models.MetadataKeyDeploymentID).Return(&models.Metadata{
 		Value: uuid.New().String(),
 	}, nil)
 

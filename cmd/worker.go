@@ -101,7 +101,7 @@ func RunTaskQueue(apiVersion string) error {
 	offloadingConfig.ValidateAndFix(ctx)
 
 	metricCollectionConfig := infra.MetricCollectionConfig{
-		Enabled:             utils.GetEnv("METRICS_COLLECTION_ENABLED", true),
+		Disabled:            utils.GetEnv("DISABLED_TELEMETRY", false),
 		JobInterval:         utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
 		MetricsIngestionURL: utils.GetEnv("METRICS_INGESTION_URL", ""),
 		FallbackDuration:    utils.GetEnvDuration("METRICS_FALLBACK_DURATION", 30*24*time.Hour),
@@ -169,7 +169,7 @@ func RunTaskQueue(apiVersion string) error {
 	nonOrgQueues := make(map[string]river.QueueConfig)
 	globalPeriodics := []*river.PeriodicJob{}
 
-	if metricCollectionConfig.Enabled {
+	if !metricCollectionConfig.Disabled {
 		metricQueue := usecases.QueueMetrics()
 		maps.Copy(nonOrgQueues, metricQueue)
 		globalPeriodics = append(globalPeriodics,
@@ -234,7 +234,7 @@ func RunTaskQueue(apiVersion string) error {
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
 	}
-	if metricCollectionConfig.Enabled {
+	if !metricCollectionConfig.Disabled {
 		river.AddWorker(workers, uc.NewMetricsCollectionWorker(licenseConfig))
 	}
 

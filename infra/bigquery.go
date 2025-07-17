@@ -16,7 +16,6 @@ package infra
 
 import (
 	"context"
-	"slices"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/cockroachdb/errors"
@@ -41,13 +40,8 @@ type BigQueryConfig struct {
 }
 
 func InitializeBigQueryInfra(ctx context.Context, config BigQueryConfig) (*BigQueryInfra, error) {
-	projectId, err := GetProjectId()
-	if err != nil {
-		return nil, err
-	}
-
 	// Init BigQuery client only for marble saas projects
-	if !slices.Contains(MarbleSaasProjectIds, projectId) {
+	if !IsMarbleSaasProject() {
 		return nil, errors.New("project id is not a marble saas project")
 	}
 
