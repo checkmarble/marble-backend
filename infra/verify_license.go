@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"slices"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -23,12 +22,11 @@ const (
 // the license or reading the GCP project id
 func VerifyLicense(config models.LicenseConfiguration) models.LicenseValidation {
 	if config.LicenseKey == "" {
-		projectId, err := GetProjectId()
-		isWhitelisted := slices.Contains(MarbleSaasProjectIds, projectId)
-		if config.KillIfReadLicenseError && (err != nil || !isWhitelisted) {
+		isMarbleSaasProject := IsMarbleSaasProject()
+		if config.KillIfReadLicenseError && !isMarbleSaasProject {
 			log.Fatalln("License key or project id not found, exiting")
 		}
-		if isWhitelisted {
+		if isMarbleSaasProject {
 			fullLicense := models.NewFullLicense()
 			fullLicense.IsManagedMarble = true
 			return fullLicense
