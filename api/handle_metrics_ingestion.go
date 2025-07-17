@@ -25,7 +25,6 @@ func handleMetricsIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := uc.NewMetricsIngestionUsecase()
 		err := usecase.IngestMetrics(c.Request.Context(), metricsCollection)
 		if presentError(c.Request.Context(), c, err) {
-			logger.WarnContext(c.Request.Context(), "Failed to ingest metrics", "error", err.Error())
 			return
 		}
 

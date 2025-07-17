@@ -32,10 +32,17 @@ func NewMetricsIngestionUsecase(
 }
 
 func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, collection models.MetricsCollection) error {
+	logger := utils.LoggerFromContext(ctx)
 	if collection.LicenseKey != nil {
-		license, err := u.validateLicense(ctx, *collection.LicenseKey)
+		license, err := u.licenseRepository.GetLicenseByKey(ctx,
+			u.executorFactory.NewExecutor(), *collection.LicenseKey)
 		if err != nil {
+			if !errors.Is(err, models.NotFoundError) {
+				return errors.Wrap(err, "Error fetching license")
+			}
+			logger.DebugContext(ctx, "License not found, don't link to license")
 			collection.LicenseKey = nil
+			collection.LicenseName = nil
 		} else {
 			collection.LicenseName = &license.OrganizationName
 		}
@@ -47,21 +54,4 @@ func (u *MetricsIngestionUsecase) IngestMetrics(ctx context.Context, collection 
 	}
 
 	return nil
-}
-
-// Only check if the license exists
-func (u *MetricsIngestionUsecase) validateLicense(ctx context.Context, licenseKey string) (models.License, error) {
-	logger := utils.LoggerFromContext(ctx)
-
-	license, err := u.licenseRepository.GetLicenseByKey(ctx,
-		u.executorFactory.NewExecutor(), licenseKey)
-	if err != nil {
-		if !errors.Is(err, models.NotFoundError) {
-			utils.LogAndReportSentryError(ctx, err)
-		}
-
-		logger.InfoContext(ctx, "Invalid license fetched in metrics collection", "license", licenseKey)
-		return models.License{}, errors.New("invalid license")
-	}
-	return license, nil
 }

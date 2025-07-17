@@ -32,10 +32,10 @@ func (repo *MarbleDbRepository) GetWatermark(ctx context.Context, exec Executor,
 	return SqlToOptionalModel(ctx, exec, sql, dbmodels.AdaptWatermark)
 }
 
-func (repo *MarbleDbRepository) SaveWatermark(ctx context.Context, tx Transaction,
+func (repo *MarbleDbRepository) SaveWatermark(ctx context.Context, exec Executor,
 	orgId *string, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params json.RawMessage,
 ) error {
-	if err := validateMarbleDbExecutor(tx); err != nil {
+	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
@@ -57,5 +57,5 @@ func (repo *MarbleDbRepository) SaveWatermark(ctx context.Context, tx Transactio
 		Suffix("updated_at = excluded.updated_at,").
 		Suffix("params = excluded.params")
 
-	return ExecBuilder(ctx, tx, sql)
+	return ExecBuilder(ctx, exec, sql)
 }
