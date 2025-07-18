@@ -31,6 +31,9 @@ type MockCaseCollectorRepository struct {
 type MockMetadataRepository struct {
 	mock.Mock
 }
+type MockScreeningCollectorRepository struct {
+	mock.Mock
+}
 
 func (m *MockCollectorRepository) AllOrganizations(ctx context.Context,
 	exec repositories.Executor,
@@ -47,6 +50,13 @@ func (m *MockDecisionCollectorRepository) CountDecisionsByOrg(ctx context.Contex
 }
 
 func (m *MockCaseCollectorRepository) CountCasesByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
+	from, to time.Time,
+) (map[string]int, error) {
+	args := m.Called(ctx, exec, orgIds, from, to)
+	return args.Get(0).(map[string]int), args.Error(1)
+}
+
+func (m *MockScreeningCollectorRepository) CountScreeningsByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
 	from, to time.Time,
 ) (map[string]int, error) {
 	args := m.Called(ctx, exec, orgIds, from, to)
@@ -356,17 +366,18 @@ func TestNewCollectorsV1(t *testing.T) {
 	mockOrgRepo := new(MockCollectorRepository)
 	mockDecisionRepo := new(MockDecisionCollectorRepository)
 	mockCaseRepo := new(MockCaseCollectorRepository)
+	mockScreeningRepo := new(MockScreeningCollectorRepository)
 	mockMetadataRepo := new(MockMetadataRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 
 	// Execute
 	collectors := NewCollectorsV1(mockExecutorFactory, mockOrgRepo, mockDecisionRepo,
-		mockCaseRepo, mockMetadataRepo, "ApiVersionTest", models.LicenseConfiguration{})
+		mockCaseRepo, mockMetadataRepo, mockScreeningRepo, "ApiVersionTest", models.LicenseConfiguration{})
 
 	// Assert
 	assert.Equal(t, "v1", collectors.version)
 	assert.Len(t, collectors.globalCollectors, 1)
-	assert.Len(t, collectors.collectors, 2)
+	assert.Len(t, collectors.collectors, 3)
 	assert.Equal(t, mockOrgRepo, collectors.organizationRepository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
 
@@ -376,4 +387,10 @@ func TestNewCollectorsV1(t *testing.T) {
 
 	_, isDecisionCollector := collectors.collectors[0].(DecisionCollector)
 	assert.True(t, isDecisionCollector, "Should contain DecisionCollector")
+
+	_, isCaseCollector := collectors.collectors[1].(CaseCollector)
+	assert.True(t, isCaseCollector, "Should contain CaseCollector")
+
+	_, isScreeningCollector := collectors.collectors[2].(ScreeningCollector)
+	assert.True(t, isScreeningCollector, "Should contain ScreeningCollector")
 }
