@@ -61,3 +61,9 @@ type OffloadingArgs struct {
 }
 
 func (OffloadingArgs) Kind() string { return "offloading" }
+
+type CaseReviewArgs struct {
+	CaseId string `json:"case_id"`
+}
+
+func (CaseReviewArgs) Kind() string { return "case_review" }

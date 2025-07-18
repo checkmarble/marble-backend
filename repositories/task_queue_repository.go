@@ -51,6 +51,12 @@ type TaskQueueRepository interface {
 		organizationId string,
 		screeningId string,
 	) error
+	EnqueueCaseReviewTask(
+		ctx context.Context,
+		tx Transaction,
+		organizationId string,
+		caseId string,
+	) error
 }
 
 type riverRepository struct {
@@ -199,5 +205,30 @@ func (r riverRepository) EnqueueMatchEnrichmentTask(
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued scheduled execution match enrichment task", "job_id", res.Job.ID)
 
+	return nil
+}
+
+func (r riverRepository) EnqueueCaseReviewTask(
+	ctx context.Context,
+	tx Transaction,
+	organizationId string,
+	caseId string,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.CaseReviewArgs{
+			CaseId: caseId,
+		},
+		&river.InsertOpts{
+			Queue: organizationId,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued case review task", "job_id", res.Job.ID)
 	return nil
 }

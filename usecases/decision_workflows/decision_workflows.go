@@ -54,24 +54,36 @@ type CaseNameEvaluator interface {
 		scenario models.Scenario) (string, error)
 }
 
+type taskQueueRepository interface {
+	EnqueueCaseReviewTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId string,
+		caseId string,
+	) error
+}
+
 type DecisionsWorkflows struct {
 	caseEditor          caseEditor
-	repository          caseAndDecisionRepository
-	webhookEventCreator webhookEventCreator
 	caseNameEvaluator   CaseNameEvaluator
+	repository          caseAndDecisionRepository
+	taskQueueRepository taskQueueRepository
+	webhookEventCreator webhookEventCreator
 }
 
 func NewDecisionWorkflows(
 	caseEditor caseEditor,
-	repository caseAndDecisionRepository,
-	webhookEventCreator webhookEventCreator,
 	caseNameEvaluator CaseNameEvaluator,
+	repository caseAndDecisionRepository,
+	taskQueueRepository taskQueueRepository,
+	webhookEventCreator webhookEventCreator,
 ) DecisionsWorkflows {
 	return DecisionsWorkflows{
 		caseEditor:          caseEditor,
-		repository:          repository,
-		webhookEventCreator: webhookEventCreator,
 		caseNameEvaluator:   caseNameEvaluator,
+		repository:          repository,
+		taskQueueRepository: taskQueueRepository,
+		webhookEventCreator: webhookEventCreator,
 	}
 }
 
@@ -107,7 +119,16 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			OrganizationId: newCase.OrganizationId,
 			EventContent:   models.NewWebhookEventCaseCreatedWorkflow(newCase.GetMetadata()),
 		})
-		return true, err
+		if err != nil {
+			return false, errors.Wrap(err, "error creating webhook event")
+		}
+
+		err = d.taskQueueRepository.EnqueueCaseReviewTask(ctx, tx, newCase.OrganizationId, newCase.Id)
+		if err != nil {
+			return false, errors.Wrap(err, "error enqueuing case review task")
+		}
+
+		return true, nil
 	}
 
 	switch scenario.DecisionToCaseWorkflowType {
