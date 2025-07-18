@@ -62,3 +62,13 @@ func (m *TaskQueueRepository) EnqueueMatchEnrichmentTask(
 	args := m.Called(ctx, tx, organizationId, screeningId)
 	return args.Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueCaseReviewTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId string,
+	caseId string,
+) error {
+	args := m.Called(ctx, tx, organizationId, caseId)
+	return args.Error(0)
+}

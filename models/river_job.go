@@ -65,3 +65,9 @@ func (OffloadingArgs) Kind() string { return "offloading" }
 type MetricsCollectionArgs struct{}
 
 func (MetricsCollectionArgs) Kind() string { return "metrics_collection" }
+
+type CaseReviewArgs struct {
+	CaseId string `json:"case_id"`
+}
+
+func (CaseReviewArgs) Kind() string { return "case_review" }

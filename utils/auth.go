@@ -9,9 +9,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/checkmarble/marble-backend/models"
+
+	"github.com/gin-gonic/gin"
 )
 
 type AuthType int

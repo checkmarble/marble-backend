@@ -51,10 +51,19 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			OrganizationId: newCase.OrganizationId,
 			EventContent:   models.NewWebhookEventCaseCreatedWorkflow(newCase.GetMetadata()),
 		})
+		if err != nil {
+			return models.WorkflowExecution{}, errors.Wrap(err, "error creating webhook event")
+		}
+
+		err = d.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, newCase.OrganizationId, newCase.Id)
+		if err != nil {
+			return models.WorkflowExecution{}, errors.Wrap(err, "error enqueuing case review task")
+		}
+
 		return models.WorkflowExecution{
-			WebhookIds:  []string{webhookEventId},
 			AddedToCase: true,
-		}, err
+			WebhookIds:  []string{webhookEventId},
+		}, nil
 	}
 
 	switch action.Action {
@@ -83,7 +92,8 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			WebhookIds:  []string{webhookEventId},
 		}, nil
 	default:
-		return models.WorkflowExecution{}, errors.New(fmt.Sprintf("unknown workflow type: %s", action.Action))
+		return models.WorkflowExecution{}, errors.New(
+			fmt.Sprintf("unknown workflow type: %s", action.Action))
 	}
 }
 
