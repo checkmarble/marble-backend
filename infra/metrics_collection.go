@@ -7,7 +7,7 @@ import (
 type MetricCollectionConfig struct {
 	Disabled            bool
 	JobInterval         time.Duration
-	MetricsIngestionURL string
+	MetricsIngestionURL string // Build from environment, call Configure() to set it
 	FallbackDuration    time.Duration
 }
 
@@ -21,19 +21,11 @@ var PROJECT_ID_TO_URL = map[string]string{
 	"tokyo-country-381508": STAGING_METRICS_INGESTION_URL,
 }
 
-// If metrics collection is enabled, build the metrics ingestion url from the project id
+// Build the metrics ingestion url from the Project ID, use the production url by default
 func (cfg *MetricCollectionConfig) Configure() {
-	if cfg.Disabled {
-		return
-	}
-
-	if cfg.MetricsIngestionURL == "" {
-		// Build the MetricsIngestionURL from the project id
-		// Use the production url by default
-		projectId, _ := GetProjectId()
-		cfg.MetricsIngestionURL = PROD_METRICS_INGESTION_URL
-		if url, ok := PROJECT_ID_TO_URL[projectId]; ok {
-			cfg.MetricsIngestionURL = url
-		}
+	projectId, _ := GetProjectId()
+	cfg.MetricsIngestionURL = PROD_METRICS_INGESTION_URL
+	if url, ok := PROJECT_ID_TO_URL[projectId]; ok {
+		cfg.MetricsIngestionURL = url
 	}
 }
