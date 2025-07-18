@@ -7,13 +7,13 @@ import (
 )
 
 type MetricData struct {
-	Name      string
-	Numeric   *float64
-	Text      *string
-	Timestamp time.Time
-	OrgID     *string // Only for org-specific metrics
-	From      time.Time
-	To        time.Time
+	Name        string
+	Numeric     *float64
+	Text        *string
+	Timestamp   time.Time
+	PublicOrgID *uuid.UUID // Only for org-specific metrics, use the public id of the org
+	From        time.Time
+	To          time.Time
 }
 
 type MetricsCollection struct {
@@ -37,16 +37,18 @@ func NewGlobalMetric(name string, numeric *float64, text *string, from, to time.
 	}
 }
 
-func NewOrganizationMetric(name string, numeric *float64, text *string, orgID string,
+// Create a new organization metric
+// Use the public id of the org to identify the org and not the internal ID
+func NewOrganizationMetric(name string, numeric *float64, text *string, publicOrgId uuid.UUID,
 	from, to time.Time,
 ) MetricData {
 	return MetricData{
-		Name:      name,
-		Numeric:   numeric,
-		Text:      text,
-		Timestamp: time.Now(),
-		OrgID:     &orgID,
-		From:      from,
-		To:        to,
+		Name:        name,
+		Numeric:     numeric,
+		Text:        text,
+		Timestamp:   time.Now(),
+		PublicOrgID: &publicOrgId,
+		From:        from,
+		To:          to,
 	}
 }

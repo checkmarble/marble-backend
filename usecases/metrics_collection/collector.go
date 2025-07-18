@@ -31,7 +31,7 @@ type GlobalCollector interface {
 
 // Collector is a collector that is specific to an organization.
 type Collector interface {
-	Collect(ctx context.Context, orgIds []string, from time.Time, to time.Time) ([]models.MetricData, error)
+	Collect(ctx context.Context, orgs []models.Organization, from time.Time, to time.Time) ([]models.MetricData, error)
 }
 
 type MetadataRepository interface {
@@ -115,13 +115,9 @@ func (c Collectors) collectOrganizationMetrics(ctx context.Context, from time.Ti
 	if err != nil {
 		return []models.MetricData{}, err
 	}
-	orgIds := make([]string, len(orgs))
-	for i, org := range orgs {
-		orgIds[i] = org.Id
-	}
 
 	for _, collector := range c.collectors {
-		value, err := collector.Collect(ctx, orgIds, from, to)
+		value, err := collector.Collect(ctx, orgs, from, to)
 		if err != nil {
 			logger.WarnContext(ctx, "Failed to collect organization metrics", "error", err)
 			continue
