@@ -1,7 +1,8 @@
 package metrics_collection
 
 const (
-	CaseCountMetricName     = "cases.count"
-	AppVersionMetricName    = "app_version"
-	DecisionCountMetricName = "decisions.count"
+	AppVersionMetricName     = "app_version"
+	CaseCountMetricName      = "cases.count"
+	DecisionCountMetricName  = "decisions.count"
+	ScreeningCountMetricName = "screenings.count"
 )
