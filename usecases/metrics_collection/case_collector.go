@@ -33,11 +33,13 @@ func NewCaseCollector(caseRepository CaseCollectorRepository,
 	}
 }
 
-func (c CaseCollector) Collect(ctx context.Context, orgIds []string, from, to time.Time) ([]models.MetricData, error) {
+func (c CaseCollector) Collect(ctx context.Context, orgs []models.Organization, from, to time.Time) ([]models.MetricData, error) {
 	periods, err := pure_utils.SplitTimeRangeByFrequency(from, to, pure_utils.FrequencyDaily)
 	if err != nil {
 		return nil, err
 	}
+
+	orgIds, orgMap := getOrgIDlistAndPublicIdMap(orgs)
 
 	metrics := make([]models.MetricData, 0, len(orgIds)*len(periods))
 
@@ -50,7 +52,7 @@ func (c CaseCollector) Collect(ctx context.Context, orgIds []string, from, to ti
 
 		for orgId, count := range orgCaseCounts {
 			metrics = append(metrics, models.NewOrganizationMetric(CaseCountMetricName,
-				utils.Ptr(float64(count)), nil, orgId, period.From, period.To),
+				utils.Ptr(float64(count)), nil, orgMap[orgId], period.From, period.To),
 			)
 		}
 	}

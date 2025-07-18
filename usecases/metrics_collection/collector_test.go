@@ -73,8 +73,8 @@ type MockCollector struct {
 	mock.Mock
 }
 
-func (m *MockCollector) Collect(ctx context.Context, orgIds []string, from time.Time, to time.Time) ([]models.MetricData, error) {
-	args := m.Called(ctx, orgIds, from, to)
+func (m *MockCollector) Collect(ctx context.Context, orgs []models.Organization, from time.Time, to time.Time) ([]models.MetricData, error) {
+	args := m.Called(ctx, orgs, from, to)
 	return args.Get(0).([]models.MetricData), args.Error(1)
 }
 
@@ -106,8 +106,8 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 
 	// Test organizations
 	orgs := []models.Organization{
-		{Id: "org1", Name: "Organization 1"},
-		{Id: "org2", Name: "Organization 2"},
+		{Id: "org1", Name: "Organization 1", PublicId: utils.TextToUUID("org1")},
+		{Id: "org2", Name: "Organization 2", PublicId: utils.TextToUUID("org2")},
 	}
 
 	// Expected metrics
@@ -116,17 +116,17 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	}
 
 	org1Metrics := []models.MetricData{
-		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(42)), nil, "org1", from, to),
+		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(42)), nil, utils.TextToUUID("org1"), from, to),
 	}
 
 	org2Metrics := []models.MetricData{
-		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(24)), nil, "org2", from, to),
+		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(24)), nil, utils.TextToUUID("org2"), from, to),
 	}
 
 	// Setup expectations
 	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return(globalMetrics, nil)
-	mockOrgCollector.On("Collect", ctx, []string{"org1", "org2"}, from, to).Return([]models.MetricData{
+	mockOrgCollector.On("Collect", ctx, orgs, from, to).Return([]models.MetricData{
 		org1Metrics[0], org2Metrics[0],
 	}, nil)
 	deploymentID := uuid.New()
@@ -178,17 +178,17 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	mockOrgCollector := new(MockCollector)
 	mockMetadataRepo := new(MockMetadataRepository)
 	orgs := []models.Organization{
-		{Id: "org1", Name: "Organization 1"},
+		{Id: "org1", Name: "Organization 1", PublicId: utils.TextToUUID("org1")},
 	}
 
 	org1Metrics := []models.MetricData{
-		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(42)), nil, "org1", from, to),
+		models.NewOrganizationMetric("org_metric", utils.Ptr(float64(42)), nil, utils.TextToUUID("org1"), from, to),
 	}
 
 	// Setup expectations - global collector fails, but org collector succeeds
 	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return([]models.MetricData{}, errors.New("global collector error"))
-	mockOrgCollector.On("Collect", ctx, []string{"org1"}, from, to).Return([]models.MetricData{
+	mockOrgCollector.On("Collect", ctx, orgs, from, to).Return([]models.MetricData{
 		org1Metrics[0],
 	}, nil)
 	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
@@ -211,7 +211,7 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	// Assert - should succeed but only have org metrics
 	require.NoError(t, err)
 	assert.Len(t, result.Metrics, 1)
-	assert.Equal(t, "org1", *result.Metrics[0].OrgID)
+	assert.Equal(t, utils.TextToUUID("org1"), *result.Metrics[0].PublicOrgID)
 
 	mockOrgRepo.AssertExpectations(t)
 	mockGlobalCollector.AssertExpectations(t)
@@ -279,7 +279,7 @@ func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 	// Setup expectations - no organizations
 	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return([]models.Organization{}, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return(globalMetrics, nil)
-	mockOrgCollector.On("Collect", ctx, []string{}, from, to).Return([]models.MetricData{}, nil)
+	mockOrgCollector.On("Collect", ctx, []models.Organization{}, from, to).Return([]models.MetricData{}, nil)
 	// mockOrgCollector should not be called since there are no organizations
 
 	collectors := Collectors{
@@ -297,7 +297,7 @@ func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 	// Assert - should only have global metrics
 	require.NoError(t, err)
 	assert.Len(t, result.Metrics, 1)
-	assert.Nil(t, result.Metrics[0].OrgID)
+	assert.Nil(t, result.Metrics[0].PublicOrgID)
 
 	mockOrgRepo.AssertExpectations(t)
 	mockGlobalCollector.AssertExpectations(t)
@@ -316,13 +316,13 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 	mockOrgCollector := new(MockCollector)
 	mockMetadataRepo := new(MockMetadataRepository)
 	orgs := []models.Organization{
-		{Id: "org1", Name: "Organization 1"},
+		{Id: "org1", Name: "Organization 1", PublicId: utils.TextToUUID("org1")},
 	}
 
 	// Setup expectations - collectors return empty results
 	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return([]models.MetricData{}, nil)
-	mockOrgCollector.On("Collect", ctx, []string{"org1"}, from, to).Return([]models.MetricData{}, nil)
+	mockOrgCollector.On("Collect", ctx, orgs, from, to).Return([]models.MetricData{}, nil)
 	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
 		Value: uuid.New().String(),
