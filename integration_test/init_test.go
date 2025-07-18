@@ -16,10 +16,12 @@ import (
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/jobs"
+	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/firebase"
@@ -148,10 +150,14 @@ func TestMain(m *testing.M) {
 		repositories.WithRiverClient(riverClient),
 	)
 
+	firebaseAdminClient := &mocks.FirebaseAdminClient{}
+	firebaseAdminClient.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
 	testUsecases = usecases.NewUsecases(repos,
 		usecases.WithLicense(models.NewFullLicense()),
 		usecases.WithIngestionBucketUrl("file://./tempFiles?create_dir=true"),
 		usecases.WithCaseManagerBucketUrl("file://./tempFiles?create_dir=true"),
+		usecases.WithFirebaseAdmin(firebaseAdminClient),
 	)
 
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases)
@@ -177,8 +183,10 @@ func TestMain(m *testing.M) {
 		DecisionTimeout:     10 * time.Second,
 		DefaultTimeout:      5 * time.Second,
 	}
+
 	tokenVerifier := infra.NewMockedFirebaseTokenVerifier()
 	firebaseClient := firebase.New(tokenVerifier)
+
 	deps := api.InitDependencies(ctx, apiConfig, dbPool, privateKey, tokenVerifier)
 
 	telemetryRessources, _ := infra.InitTelemetry(infra.TelemetryConfiguration{Enabled: false}, "")

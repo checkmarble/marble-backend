@@ -137,7 +137,7 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 		t.Fatal(err)
 	}
 
-	deps := api.InitDependencies(ctx, cfg, pool, key, nil)
+	deps := api.InitDependencies(ctx, cfg, pool, key, nil, nil, nil)
 	openSanctions := infra.InitializeOpenSanctions(http.DefaultClient, "http://screening", " ", " ")
 	repos := repositories.NewRepositories(pool, infra.GcpConfig{},
 		repositories.WithOpenSanctions(openSanctions),

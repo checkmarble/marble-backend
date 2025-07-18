@@ -225,6 +225,8 @@ func RunServer(config CompiledConfig) error {
 		repositories.WithBigQueryInfra(bigQueryInfra),
 	)
 
+	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
+
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithApiVersion(config.Version),
 		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),
@@ -237,6 +239,7 @@ func RunServer(config CompiledConfig) error {
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
 		usecases.WithTestMode(serverConfig.firebaseEmulatorHost != ""),
+		usecases.WithFirebaseAdmin(deps.FirebaseAdmin),
 	)
 
 	////////////////////////////////////////////////////////////
@@ -259,8 +262,6 @@ func RunServer(config CompiledConfig) error {
 			return err
 		}
 	}
-
-	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
 
 	router := api.InitRouterMiddlewares(ctx, apiConfig, apiConfig.DisableSegment,
 		deps.SegmentClient, telemetryRessources)
