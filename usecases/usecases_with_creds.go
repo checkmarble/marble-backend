@@ -1,7 +1,10 @@
 package usecases
 
 import (
+	"time"
+
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
@@ -192,6 +195,7 @@ func (usecases *UsecasesWithCreds) NewDecisionWorkflows() decision_workflows.Dec
 		usecases.NewWebhookEventsUsecase(),
 		usecases.NewScenarioEvaluator(),
 		usecases.NewEvaluateAstExpression(),
+		usecases.Repositories.TaskQueueRepository,
 	)
 }
 
@@ -680,8 +684,8 @@ func (usecases *UsecasesWithCreds) NewEntityAnnotationUsecase() EntityAnnotation
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewAiAgentUsecase() AiAgentUsecase {
-	return NewAiAgentUsecase(
+func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
+	return ai_agent.NewAiAgentUsecase(
 		usecases.NewEnforceCaseSecurity(),
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewInboxReader(),
@@ -689,4 +693,16 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() AiAgentUsecase {
 		usecases.NewIngestedDataReaderUsecase(),
 		usecases.NewDataModelUseCase(),
 	)
+}
+
+func (usecases *UsecasesWithCreds) NewCaseReviewWorker(timeout time.Duration) *ai_agent.CaseReviewWorker {
+	w := ai_agent.NewCaseReviewWorker(
+		usecases.Repositories.BlobRepository,
+		usecases.caseManagerBucketUrl,
+		utils.Ptr(usecases.NewAiAgentUsecase()),
+		usecases.NewExecutorFactory(),
+		&usecases.Repositories.MarbleDbRepository,
+		timeout,
+	)
+	return &w
 }

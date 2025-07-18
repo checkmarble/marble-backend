@@ -74,6 +74,7 @@ func RunTaskQueue(apiVersion string) error {
 		loggingFormat               string
 		sentryDsn                   string
 		cloudRunProbePort           string
+		caseReviewTimeout           time.Duration
 	}{
 		appName:                     "marble-backend",
 		env:                         utils.GetEnv("ENV", "development"),
@@ -82,6 +83,7 @@ func RunTaskQueue(apiVersion string) error {
 		loggingFormat:               utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:                   utils.GetEnv("SENTRY_DSN", ""),
 		cloudRunProbePort:           utils.GetEnv("CLOUD_RUN_PROBE_PORT", ""),
+		caseReviewTimeout:           utils.GetEnvDuration("AI_CASE_REVIEW_TIMEOUT", 5*time.Minute),
 	}
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
@@ -229,6 +231,7 @@ func RunTaskQueue(apiVersion string) error {
 	river.AddWorker(workers, adminUc.NewIndexDeletionWorker())
 	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
+	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())

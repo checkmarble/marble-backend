@@ -53,12 +53,22 @@ type CaseNameEvaluator interface {
 		scenario models.Scenario, titleTemplate *ast.Node) (string, error)
 }
 
+type caseReviewTaskEnqueuer interface {
+	EnqueueCaseReviewTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId string,
+		caseId string,
+	) error
+}
+
 type DecisionsWorkflows struct {
-	repository          caseAndDecisionRepository
-	caseEditor          caseEditor
-	caseNameEvaluator   CaseNameEvaluator
-	webhookEventCreator webhookEventCreator
-	astEvaluator        ast_eval.EvaluateAstExpression
+	repository             caseAndDecisionRepository
+	caseEditor             caseEditor
+	caseNameEvaluator      CaseNameEvaluator
+	webhookEventCreator    webhookEventCreator
+	astEvaluator           ast_eval.EvaluateAstExpression
+	caseReviewTaskEnqueuer caseReviewTaskEnqueuer
 }
 
 func NewDecisionWorkflows(
@@ -67,12 +77,14 @@ func NewDecisionWorkflows(
 	webhookEventCreator webhookEventCreator,
 	caseNameEvaluator CaseNameEvaluator,
 	astEvaluator ast_eval.EvaluateAstExpression,
+	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
 ) DecisionsWorkflows {
 	return DecisionsWorkflows{
-		caseEditor:          caseEditor,
-		repository:          repository,
-		webhookEventCreator: webhookEventCreator,
-		caseNameEvaluator:   caseNameEvaluator,
-		astEvaluator:        astEvaluator,
+		caseEditor:             caseEditor,
+		repository:             repository,
+		webhookEventCreator:    webhookEventCreator,
+		caseNameEvaluator:      caseNameEvaluator,
+		astEvaluator:           astEvaluator,
+		caseReviewTaskEnqueuer: caseReviewTaskEnqueuer,
 	}
 }
