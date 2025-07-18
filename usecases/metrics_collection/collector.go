@@ -48,8 +48,6 @@ type Collectors struct {
 
 	licenseConfig          models.LicenseConfiguration
 	organizationRepository CollectorRepository
-	decisionRepository     DecisionCollectorRepository
-	caseRepository         CaseCollectorRepository
 	metadataRepository     MetadataRepository
 	executorFactory        executor_factory.ExecutorFactory
 }
@@ -172,6 +170,7 @@ func NewCollectorsV1(
 	decisionRepository DecisionCollectorRepository,
 	caseRepository CaseCollectorRepository,
 	metadataRepository MetadataRepository,
+	screeningRepository ScreeningCollectorRepository,
 	apiVersion string,
 	licenseConfig models.LicenseConfiguration,
 ) Collectors {
@@ -180,6 +179,7 @@ func NewCollectorsV1(
 		collectors: []Collector{
 			NewDecisionCollector(decisionRepository, executorFactory),
 			NewCaseCollector(caseRepository, executorFactory),
+			NewScreeningCollector(screeningRepository, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),
@@ -187,8 +187,6 @@ func NewCollectorsV1(
 		executorFactory:        executorFactory,
 		licenseConfig:          licenseConfig,
 		organizationRepository: collectorRepository,
-		decisionRepository:     decisionRepository,
-		caseRepository:         caseRepository,
 		metadataRepository:     metadataRepository,
 	}
 }
