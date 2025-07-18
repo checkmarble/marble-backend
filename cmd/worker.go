@@ -101,10 +101,9 @@ func RunTaskQueue(apiVersion string) error {
 	offloadingConfig.ValidateAndFix(ctx)
 
 	metricCollectionConfig := infra.MetricCollectionConfig{
-		Disabled:            utils.GetEnv("DISABLED_TELEMETRY", false),
-		JobInterval:         utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
-		MetricsIngestionURL: utils.GetEnv("METRICS_INGESTION_URL", ""),
-		FallbackDuration:    utils.GetEnvDuration("METRICS_FALLBACK_DURATION", 30*24*time.Hour),
+		Disabled:         utils.GetEnv("DISABLE_TELEMETRY", false),
+		JobInterval:      utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
+		FallbackDuration: utils.GetEnvDuration("METRICS_FALLBACK_DURATION", 30*24*time.Hour),
 	}
 	metricCollectionConfig.Configure()
 
