@@ -18,6 +18,7 @@ import (
 
 type dependencies struct {
 	Authentication utils.Authentication
+	FirebaseAdmin  firebase.Adminer
 	TokenHandler   TokenHandler
 	SegmentClient  analytics.Client
 }
@@ -35,9 +36,13 @@ func InitDependencies(
 ) dependencies {
 	database := postgres.New(dbPool)
 
+	var firebaseAdmin firebase.Adminer
+
 	if len(optTokenVerifier) == 0 {
-		optTokenVerifier = append(optTokenVerifier,
-			infra.InitializeFirebase(ctx, conf.FirebaseConfig.ProjectId))
+		firebaseApp := infra.InitializeFirebase(ctx, conf.FirebaseConfig.ProjectId)
+
+		optTokenVerifier = append(optTokenVerifier, firebaseApp)
+		firebaseAdmin = firebase.NewAdminClient(conf.FirebaseConfig.ApiKey, firebaseApp)
 	}
 
 	firebaseClient := firebase.New(optTokenVerifier[0])
@@ -51,6 +56,7 @@ func InitDependencies(
 
 	return dependencies{
 		Authentication: utils.NewAuthentication(tokenValidator),
+		FirebaseAdmin:  firebaseAdmin,
 		SegmentClient:  segmentClient,
 		TokenHandler:   NewTokenHandler(tokenGenerator),
 	}

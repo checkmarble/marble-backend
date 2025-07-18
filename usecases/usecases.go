@@ -5,6 +5,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -34,6 +35,7 @@ type Usecases struct {
 	hasTestMode                 bool
 	license                     models.LicenseValidation
 	metricsCollectionConfig     infra.MetricCollectionConfig
+	firebaseAdmin               firebase.Adminer
 }
 
 type Option func(*options)
@@ -124,6 +126,12 @@ func WithTestMode(activated bool) Option {
 	}
 }
 
+func WithFirebaseAdmin(client firebase.Adminer) Option {
+	return func(o *options) {
+		o.firebaseClient = client
+	}
+}
+
 func WithMetricsCollectionConfig(config infra.MetricCollectionConfig) Option {
 	return func(o *options) {
 		o.metricsCollectionConfig = config
@@ -145,6 +153,7 @@ type options struct {
 	hasNameRecognitionSetup     bool
 	hasTestMode                 bool
 	metricsCollectionConfig     infra.MetricCollectionConfig
+	firebaseClient              firebase.Adminer
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -167,6 +176,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		hasNameRecognizerSetup:      o.hasNameRecognitionSetup,
 		hasTestMode:                 o.hasTestMode,
 		metricsCollectionConfig:     o.metricsCollectionConfig,
+		firebaseAdmin:               o.firebaseClient,
 	}
 }
 

@@ -6,10 +6,12 @@ require (
 	cloud.google.com/go/bigquery v1.69.0
 	cloud.google.com/go/iam v1.5.2
 	cloud.google.com/go/storage v1.53.0
+	firebase.google.com/go v3.13.0+incompatible
 	firebase.google.com/go/v4 v4.14.1
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.24.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.48.0
 	github.com/Masterminds/squirrel v1.5.4
+	github.com/TwiN/deepmerge v0.2.2
 	github.com/adhocore/gronx v1.8.1
 	github.com/adrg/strutil v0.3.1
 	github.com/avast/retry-go/v4 v4.6.0
@@ -95,7 +97,6 @@ require (
 	github.com/MicahParks/keyfunc v1.9.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
-	github.com/TwiN/deepmerge v0.2.2 // indirect
 	github.com/TylerBrock/colorjson v0.0.0-20200706003622-8a50f05110d2 // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
@@ -263,6 +264,7 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
+	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/appengine/v2 v2.0.6 // indirect
 	google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250505200425-f936aa4a68b2 // indirect
