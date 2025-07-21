@@ -378,16 +378,11 @@ func (usecases *Usecases) NewMetricsCollectionWorker(licenseConfiguration models
 		metrics_collection.NewCollectorsV1(
 			usecases.NewExecutorFactory(),
 			&usecases.Repositories.MarbleDbRepository,
-			&usecases.Repositories.MarbleDbRepository,
-			&usecases.Repositories.MarbleDbRepository,
-			&usecases.Repositories.MarbleDbRepository,
-			&usecases.Repositories.MarbleDbRepository,
 			usecases.apiVersion,
 			licenseConfiguration,
 		),
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
-		usecases.NewTransactionFactory(),
 		usecases.metricsCollectionConfig,
 	)
 }

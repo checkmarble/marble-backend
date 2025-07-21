@@ -49,26 +49,23 @@ type WatermarkRepository interface {
 type MetricCollectionWorker struct {
 	river.WorkerDefaults[models.MetricsCollectionArgs]
 
-	collectors         MetricsCollectionUsecase
-	repository         WatermarkRepository
-	executorFactory    executor_factory.ExecutorFactory
-	transactionFactory executor_factory.TransactionFactory
-	config             infra.MetricCollectionConfig
+	collectors      MetricsCollectionUsecase
+	repository      WatermarkRepository
+	executorFactory executor_factory.ExecutorFactory
+	config          infra.MetricCollectionConfig
 }
 
 func NewMetricCollectionWorker(
 	collectors MetricsCollectionUsecase,
 	repository WatermarkRepository,
 	executorFactory executor_factory.ExecutorFactory,
-	transactionFactory executor_factory.TransactionFactory,
 	config infra.MetricCollectionConfig,
 ) MetricCollectionWorker {
 	return MetricCollectionWorker{
-		collectors:         collectors,
-		repository:         repository,
-		executorFactory:    executorFactory,
-		transactionFactory: transactionFactory,
-		config:             config,
+		collectors:      collectors,
+		repository:      repository,
+		executorFactory: executorFactory,
+		config:          config,
 	}
 }
 
