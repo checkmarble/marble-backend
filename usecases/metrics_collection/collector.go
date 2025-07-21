@@ -28,7 +28,6 @@ type CollectorRepository interface {
 }
 
 // GlobalCollector is a collector that is not specific to an organization.
-// It is used to collect metrics that are not specific to an organization.
 // For example, the app version, the number of users
 type GlobalCollector interface {
 	Collect(ctx context.Context, from time.Time, to time.Time) ([]models.MetricData, error)
