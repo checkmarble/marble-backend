@@ -19,6 +19,7 @@ type Inbox struct {
 	OrganizationId    string
 	Status            InboxStatus
 	EscalationInboxId *uuid.UUID
+	AutoAssignEnabled bool
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	InboxUsers        []InboxUser
