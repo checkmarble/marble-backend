@@ -16,6 +16,7 @@ type DBOrganizationResult struct {
 	DefaultScenarioTimezone *string   `db:"default_scenario_timezone"`
 	ScreeningThreshold      int       `db:"sanctions_threshold"`
 	ScreeningLimit          int       `db:"sanctions_limit"`
+	AutoAssignQueueLimit    int       `db:"auto_assign_queue_limit"`
 }
 
 const TABLE_ORGANIZATION = "organizations"
@@ -34,5 +35,6 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 			MatchThreshold: db.ScreeningThreshold,
 			MatchLimit:     db.ScreeningLimit,
 		},
+		AutoAssignQueueLimit: db.AutoAssignQueueLimit,
 	}, nil
 }

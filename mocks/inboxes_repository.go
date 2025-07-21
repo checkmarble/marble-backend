@@ -31,8 +31,8 @@ func (r *InboxRepository) CreateInbox(ctx context.Context, exec repositories.Exe
 	return args.Error(0)
 }
 
-func (r *InboxRepository) UpdateInbox(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID, name string, escalationInboxId *uuid.UUID) error {
-	args := r.Called(exec, inboxId, name, escalationInboxId)
+func (r *InboxRepository) UpdateInbox(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID, name string, escalationInboxId *uuid.UUID, autoAssignEnabled bool) error {
+	args := r.Called(exec, inboxId, name, escalationInboxId, autoAssignEnabled)
 	return args.Error(0)
 }
 
@@ -67,8 +67,8 @@ func (repo *InboxRepository) CreateInboxUser(ctx context.Context, exec repositor
 	return args.Error(0)
 }
 
-func (repo *InboxRepository) UpdateInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID, role models.InboxUserRole) error {
-	args := repo.Called(exec, inboxUserId, role)
+func (repo *InboxRepository) UpdateInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID, role models.InboxUserRole, autoAssignable bool) error {
+	args := repo.Called(exec, inboxUserId, role, autoAssignable)
 	return args.Error(0)
 }
 

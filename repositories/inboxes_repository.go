@@ -94,7 +94,7 @@ func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, exec Executor, 
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, inboxId uuid.UUID, name string, escalationInboxId *uuid.UUID) error {
+func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, inboxId uuid.UUID, name string, escalationInboxId *uuid.UUID, autoAssignEnabled bool) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -106,6 +106,7 @@ func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, 
 			Set("name", name).
 			Set("updated_at", squirrel.Expr("NOW()")).
 			Set("escalation_inbox_id", escalationInboxId).
+			Set("auto_assign_enabled", autoAssignEnabled).
 			Where(squirrel.Eq{"id": inboxId}),
 	)
 	return err
