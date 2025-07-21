@@ -20,6 +20,11 @@ const (
 
 type CollectorRepository interface {
 	AllOrganizations(ctx context.Context, exec repositories.Executor) ([]models.Organization, error)
+	GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID,
+		key models.MetadataKey) (*models.Metadata, error)
+	CaseCollectorRepository
+	DecisionCollectorRepository
+	ScreeningCollectorRepository
 }
 
 // GlobalCollector is a collector that is not specific to an organization.
@@ -34,11 +39,6 @@ type Collector interface {
 	Collect(ctx context.Context, orgs []models.Organization, from time.Time, to time.Time) ([]models.MetricData, error)
 }
 
-type MetadataRepository interface {
-	GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID,
-		key models.MetadataKey) (*models.Metadata, error)
-}
-
 var DeploymentIDCache = expirable.NewLRU[string, uuid.UUID](1, nil, 0)
 
 type Collectors struct {
@@ -46,10 +46,9 @@ type Collectors struct {
 	globalCollectors []GlobalCollector
 	collectors       []Collector
 
-	licenseConfig          models.LicenseConfiguration
-	organizationRepository CollectorRepository
-	metadataRepository     MetadataRepository
-	executorFactory        executor_factory.ExecutorFactory
+	licenseConfig   models.LicenseConfiguration
+	repository      CollectorRepository
+	executorFactory executor_factory.ExecutorFactory
 }
 
 func (c Collectors) CollectMetrics(ctx context.Context, from time.Time, to time.Time) (models.MetricsCollection, error) {
@@ -128,7 +127,7 @@ func (c Collectors) collectOrganizationMetrics(ctx context.Context, from time.Ti
 
 // Fetches all organizations from the database
 func (c Collectors) getListOfOrganizations(ctx context.Context) ([]models.Organization, error) {
-	orgs, err := c.organizationRepository.AllOrganizations(ctx, c.executorFactory.NewExecutor())
+	orgs, err := c.repository.AllOrganizations(ctx, c.executorFactory.NewExecutor())
 	if err != nil {
 		return []models.Organization{}, err
 	}
@@ -147,7 +146,7 @@ func (c Collectors) GetDeploymentID(ctx context.Context) (uuid.UUID, error) {
 		return deploymentID, nil
 	}
 
-	metadata, err := c.metadataRepository.GetMetadata(ctx, c.executorFactory.NewExecutor(), nil, models.MetadataKeyDeploymentID)
+	metadata, err := c.repository.GetMetadata(ctx, c.executorFactory.NewExecutor(), nil, models.MetadataKeyDeploymentID)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -166,27 +165,22 @@ func (c Collectors) GetDeploymentID(ctx context.Context) (uuid.UUID, error) {
 // and tell the server which collectors is used by the client
 func NewCollectorsV1(
 	executorFactory executor_factory.ExecutorFactory,
-	collectorRepository CollectorRepository,
-	decisionRepository DecisionCollectorRepository,
-	caseRepository CaseCollectorRepository,
-	metadataRepository MetadataRepository,
-	screeningRepository ScreeningCollectorRepository,
+	repository CollectorRepository,
 	apiVersion string,
 	licenseConfig models.LicenseConfiguration,
 ) Collectors {
 	return Collectors{
 		version: "v1",
 		collectors: []Collector{
-			NewDecisionCollector(decisionRepository, executorFactory),
-			NewCaseCollector(caseRepository, executorFactory),
-			NewScreeningCollector(screeningRepository, executorFactory),
+			NewDecisionCollector(repository, executorFactory),
+			NewCaseCollector(repository, executorFactory),
+			NewScreeningCollector(repository, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),
 		},
-		executorFactory:        executorFactory,
-		licenseConfig:          licenseConfig,
-		organizationRepository: collectorRepository,
-		metadataRepository:     metadataRepository,
+		executorFactory: executorFactory,
+		licenseConfig:   licenseConfig,
+		repository:      repository,
 	}
 }
