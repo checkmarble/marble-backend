@@ -453,12 +453,13 @@ func (repo *MarbleDbRepository) CountScreeningsByOrg(ctx context.Context, exec E
 	}
 
 	query := NewQueryBuilder().
-		Select("org_id, count(*) as count").
-		From(dbmodels.TABLE_SCREENINGS).
+		Select("d.org_id, count(*) as count").
+		From(dbmodels.TABLE_SCREENINGS + " AS sc").
+		Join(dbmodels.TABLE_DECISIONS + " AS d ON d.id = sc.decision_id").
 		Where(squirrel.Eq{"org_id": orgIds}).
 		Where(squirrel.GtOrEq{"created_at": from}).
 		Where(squirrel.Lt{"created_at": to}).
-		GroupBy("org_id")
+		GroupBy("d.org_id")
 
 	type orgCount struct {
 		OrgId string
