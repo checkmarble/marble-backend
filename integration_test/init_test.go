@@ -159,6 +159,7 @@ func TestMain(m *testing.M) {
 	river.AddWorker(workers, adminUc.NewNewAsyncScheduledExecWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
+	river.AddWorker(workers, adminUc.NewCaseReviewWorker(10*time.Second))
 
 	if err := riverClient.Start(ctx); err != nil {
 		log.Fatalln("Could not start river client:", err)
@@ -181,7 +182,8 @@ func TestMain(m *testing.M) {
 	deps := api.InitDependencies(ctx, apiConfig, dbPool, privateKey, tokenVerifier)
 
 	telemetryRessources, _ := infra.InitTelemetry(infra.TelemetryConfiguration{Enabled: false}, "")
-	router := api.InitRouterMiddlewares(ctx, apiConfig, apiConfig.DisableSegment, deps.SegmentClient, telemetryRessources)
+	router := api.InitRouterMiddlewares(ctx, apiConfig, apiConfig.DisableSegment,
+		deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, testUsecases,
 		deps.Authentication, deps.TokenHandler, logger, api.WithLocalTest(true))
 

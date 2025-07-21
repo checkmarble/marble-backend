@@ -37,14 +37,12 @@ const (
 	WorkflowPayloadEvaluates                         = "payload_evaluates"
 )
 
-var (
-	ValidWorkflowConditions = []WorkflowConditionType{
-		WorkflowConditionAlways,
-		WorkflowConditionNever,
-		WorkflowConditionOutcomeIn,
-		WorkflowConditionRuleHit,
-	}
-)
+var ValidWorkflowConditions = []WorkflowConditionType{
+	WorkflowConditionAlways,
+	WorkflowConditionNever,
+	WorkflowConditionOutcomeIn,
+	WorkflowConditionRuleHit,
+}
 
 func WorkflowConditionFromString(s string) WorkflowConditionType {
 	switch s {
