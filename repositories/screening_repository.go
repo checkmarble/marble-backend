@@ -10,7 +10,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 func (*MarbleDbRepository) GetActiveScreeningForDecision(
@@ -453,42 +452,12 @@ func (repo *MarbleDbRepository) CountScreeningsByOrg(ctx context.Context, exec E
 	}
 
 	query := NewQueryBuilder().
-		Select("d.org_id, count(*) as count").
-		From(dbmodels.TABLE_SCREENINGS + " AS sc").
-		Join(dbmodels.TABLE_DECISIONS + " AS d ON d.id = sc.decision_id").
-		Where(squirrel.Eq{"d.org_id": orgIds}).
-		Where(squirrel.GtOrEq{"sc.created_at": from}).
-		Where(squirrel.Lt{"sc.created_at": to}).
-		GroupBy("d.org_id")
+		Select("org_id, count(*) as count").
+		From(dbmodels.TABLE_SCREENINGS).
+		Where(squirrel.Eq{"org_id": orgIds}).
+		Where(squirrel.GtOrEq{"created_at": from}).
+		Where(squirrel.Lt{"created_at": to}).
+		GroupBy("org_id")
 
-	type orgCount struct {
-		OrgId string
-		Count int
-	}
-
-	counts, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (orgCount, error) {
-		var result orgCount
-		err := row.Scan(&result.OrgId, &result.Count)
-		if err != nil {
-			return orgCount{}, err
-		}
-		return result, nil
-	})
-	if err != nil {
-		return map[string]int{}, err
-	}
-
-	result := make(map[string]int, len(orgIds))
-	for _, count := range counts {
-		result[count.OrgId] = count.Count
-	}
-
-	// Set 0 for org IDs which don't have any screenings
-	for _, orgId := range orgIds {
-		if _, exists := result[orgId]; !exists {
-			result[orgId] = 0
-		}
-	}
-
-	return result, nil
+	return countByHelper(ctx, exec, query, orgIds)
 }
