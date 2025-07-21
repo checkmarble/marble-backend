@@ -9,8 +9,8 @@ create table
     file_reference text not null,
     reaction text,
     dto_version text not null,
-    created_at timestamp with time zone,
-    updated_at timestamp with time zone,
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now(),
     constraint fk_case_id foreign key (case_id) references cases (id) on delete cascade,
     constraint status_check check (status in ('pending', 'completed', 'failed')),
     constraint reaction_check check (reaction in ('ok', 'ko'))
