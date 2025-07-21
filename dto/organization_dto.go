@@ -10,6 +10,7 @@ type APIOrganization struct {
 	DefaultScenarioTimezone *string `json:"default_scenario_timezone"`
 	SanctionsThreshold      int     `json:"sanctions_threshold"`
 	SanctionsLimit          int     `json:"sanctions_limit"`
+	AutoAssignQueueLimit    int     `json:"auto_assign_queue_limit"`
 }
 
 func AdaptOrganizationDto(org models.Organization) APIOrganization {
@@ -19,6 +20,7 @@ func AdaptOrganizationDto(org models.Organization) APIOrganization {
 		DefaultScenarioTimezone: org.DefaultScenarioTimezone,
 		SanctionsThreshold:      org.OpenSanctionsConfig.MatchThreshold,
 		SanctionsLimit:          org.OpenSanctionsConfig.MatchLimit,
+		AutoAssignQueueLimit:    org.AutoAssignQueueLimit,
 	}
 }
 
@@ -31,4 +33,5 @@ type UpdateOrganizationBodyDto struct {
 	DefaultScenarioTimezone *string `json:"default_scenario_timezone,omitempty"`
 	SanctionsThreshold      *int    `json:"sanctions_threshold,omitempty"`
 	SanctionsLimit          *int    `json:"sanctions_limit,omitempty"`
+	AutoAssignQueueLimit    *int    `json:"auto_assign_queue_limit,omitempty"`
 }

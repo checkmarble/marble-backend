@@ -83,7 +83,7 @@ func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, exec Execut
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Executor, inboxUserId uuid.UUID, role models.InboxUserRole) error {
+func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Executor, inboxUserId uuid.UUID, role models.InboxUserRole, autoAssignable bool) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -93,6 +93,7 @@ func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Execut
 		exec,
 		NewQueryBuilder().Update(dbmodels.TABLE_INBOX_USERS).
 			Set("role", role).
+			Set("auto_assignable", autoAssignable).
 			Set("updated_at", "NOW()").
 			Where(squirrel.Eq{"id": inboxUserId}),
 	)

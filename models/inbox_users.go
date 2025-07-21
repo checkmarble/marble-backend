@@ -14,6 +14,7 @@ type InboxUser struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	Role           InboxUserRole
+	AutoAssignable bool
 }
 
 type CreateInboxUserInput struct {

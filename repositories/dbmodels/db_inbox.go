@@ -11,13 +11,14 @@ import (
 // Inboxes
 
 type DBInbox struct {
-	Id                uuid.UUID `db:"id"`
-	OrganizationId    string    `db:"organization_id"`
-	CreatedAt         time.Time `db:"created_at"`
-	UpdatedAt         time.Time `db:"updated_at"`
-	Name              string    `db:"name"`
-	Status            string    `db:"status"`
+	Id                uuid.UUID  `db:"id"`
+	OrganizationId    string     `db:"organization_id"`
+	CreatedAt         time.Time  `db:"created_at"`
+	UpdatedAt         time.Time  `db:"updated_at"`
+	Name              string     `db:"name"`
+	Status            string     `db:"status"`
 	EscalationInboxId *uuid.UUID `db:"escalation_inbox_id"`
+	AutoAssignEnabled bool       `db:"auto_assign_enabled"`
 }
 
 const TABLE_INBOXES = "inboxes"
@@ -33,18 +34,20 @@ func AdaptInbox(db DBInbox) (models.Inbox, error) {
 		Name:              db.Name,
 		Status:            models.InboxStatus(db.Status),
 		EscalationInboxId: db.EscalationInboxId,
+		AutoAssignEnabled: db.AutoAssignEnabled,
 	}, nil
 }
 
 // Inbox users
 
 type DBInboxUser struct {
-	Id        uuid.UUID `db:"id"`
-	InboxId   uuid.UUID `db:"inbox_id"`
-	UserId    uuid.UUID `db:"user_id"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-	Role      string    `db:"role"`
+	Id             uuid.UUID `db:"id"`
+	InboxId        uuid.UUID `db:"inbox_id"`
+	UserId         uuid.UUID `db:"user_id"`
+	CreatedAt      time.Time `db:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at"`
+	Role           string    `db:"role"`
+	AutoAssignable bool      `db:"auto_assignable"`
 }
 
 type DBInboxUserWithOrgId struct {
@@ -61,12 +64,13 @@ var (
 
 func AdaptInboxUser(db DBInboxUser) (models.InboxUser, error) {
 	return models.InboxUser{
-		Id:        db.Id,
-		InboxId:   db.InboxId,
-		UserId:    db.UserId,
-		CreatedAt: db.CreatedAt,
-		UpdatedAt: db.UpdatedAt,
-		Role:      models.InboxUserRole(db.Role),
+		Id:             db.Id,
+		InboxId:        db.InboxId,
+		UserId:         db.UserId,
+		CreatedAt:      db.CreatedAt,
+		UpdatedAt:      db.UpdatedAt,
+		Role:           models.InboxUserRole(db.Role),
+		AutoAssignable: db.AutoAssignable,
 	}, nil
 }
 

@@ -21,7 +21,8 @@ type Organization struct {
 	// Temporary simple flag before we activate more fine-grained workflows based on organization and inbox.
 	AiCaseReviewEnabled bool
 
-	OpenSanctionsConfig OrganizationOpenSanctionsConfig
+	OpenSanctionsConfig  OrganizationOpenSanctionsConfig
+	AutoAssignQueueLimit int
 }
 
 // TODO: Add other organization-level configuration options
@@ -43,6 +44,7 @@ type UpdateOrganizationInput struct {
 	Id                      string
 	DefaultScenarioTimezone *string
 	ScreeningConfig         OrganizationOpenSanctionsConfigUpdateInput
+	AutoAssignQueueLimit    *int
 }
 
 type SeedOrgConfiguration struct {
