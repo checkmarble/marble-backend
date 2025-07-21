@@ -2,6 +2,7 @@ package dbmodels
 
 import (
 	"encoding/json"
+	"slices"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -105,6 +106,13 @@ func AdaptWorkflowRuleWithConditions(db DbWorkflowRuleWithConditions) (models.Wo
 	if err != nil {
 		return models.Workflow{}, err
 	}
+
+	slices.SortFunc(conditions, func(lhs, rhs models.WorkflowCondition) int {
+		return lhs.CreatedAt.Compare(rhs.CreatedAt)
+	})
+	slices.SortFunc(actions, func(lhs, rhs models.WorkflowAction) int {
+		return lhs.CreatedAt.Compare(rhs.CreatedAt)
+	})
 
 	return models.Workflow{
 		WorkflowRule: rule,
