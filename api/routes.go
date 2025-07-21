@@ -315,4 +315,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/workflows/rule/:ruleId/action", tom, handleCreateWorkflowAction(uc))
 	router.PUT("/workflows/rule/:ruleId/action/:id", tom, handleUpdateWorkflowAction(uc))
 	router.DELETE("/workflows/rule/:ruleId/action/:id", tom, handleDeleteWorkflowAction(uc))
+
+	router.GET("/settings/me/unavailable", tom, handleGetUnavailability(uc))
+	router.POST("/settings/me/unavailable", tom, handleSetUnavailability(uc))
+	router.DELETE("/settings/me/unavailable", tom, handleDeleteUnavailability(uc))
 }
