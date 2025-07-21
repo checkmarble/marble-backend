@@ -711,3 +711,11 @@ func (usecases *UsecasesWithCreds) NewCaseReviewWorker(timeout time.Duration) *a
 	)
 	return &w
 }
+
+func (uc *UsecasesWithCreds) NewUserSettingsUsecase() UserSettingsUsecase {
+	return UserSettingsUsecase{
+		executorFactory: uc.NewExecutorFactory(),
+		enforceSecurity: uc.NewEnforceSecurity(),
+		repository:      &uc.Repositories.MarbleDbRepository,
+	}
+}
