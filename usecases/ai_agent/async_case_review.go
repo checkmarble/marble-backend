@@ -16,15 +16,20 @@ import (
 )
 
 type CaseReviewUsecase interface {
-	CreateCaseReview(ctx context.Context, caseId string) (models.AiCaseReview, error)
+	CreateCaseReview(ctx context.Context, caseId string) (agent_dto.AiCaseReviewDto, error)
 }
 
-type caseReviewRepository interface {
+type caseReviewFileRepository interface {
 	CreateCaseReviewFile(
 		ctx context.Context,
 		exec repositories.Executor,
 		caseReview models.AiCaseReviewFile,
 	) error
+	ListCaseReviewFiles(
+		ctx context.Context,
+		exec repositories.Executor,
+		caseId uuid.UUID,
+	) ([]models.AiCaseReviewFile, error)
 }
 
 type CaseReviewWorker struct {
@@ -33,7 +38,7 @@ type CaseReviewWorker struct {
 	blobRepository    repositories.BlobRepository
 	caseReviewUsecase CaseReviewUsecase
 	executorFactory   executor_factory.ExecutorFactory
-	repository        caseReviewRepository
+	repository        caseReviewFileRepository
 	timeout           time.Duration
 	bucketUrl         string
 }
@@ -43,7 +48,7 @@ func NewCaseReviewWorker(
 	bucketUrl string,
 	caseReviewUsecase CaseReviewUsecase,
 	executorFactory executor_factory.ExecutorFactory,
-	repository caseReviewRepository,
+	repository caseReviewFileRepository,
 	timeout time.Duration,
 ) CaseReviewWorker {
 	return CaseReviewWorker{
@@ -66,8 +71,6 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		return errors.Wrap(err, "Error while generating case review")
 	}
 
-	crDto := agent_dto.AdaptCaseReviewV1(cr)
-
 	id := uuid.Must(uuid.NewV7())
 	fileRef := fmt.Sprintf("ai_case_reviews/%s/%s.json", job.Args.CaseId, id)
 	stream, err := w.blobRepository.OpenStream(ctx, w.bucketUrl, fileRef, fileRef)
@@ -76,7 +79,7 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 	}
 	defer stream.Close()
 
-	err = json.NewEncoder(stream).Encode(crDto)
+	err = json.NewEncoder(stream).Encode(cr)
 	if err != nil {
 		return errors.Wrap(err, "Error while encoding case review")
 	}

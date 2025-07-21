@@ -3,8 +3,10 @@ package repositories
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 )
 
 func (r *MarbleDbRepository) CreateCaseReviewFile(
@@ -38,4 +40,32 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 			),
 	)
 	return err
+}
+
+func (r *MarbleDbRepository) ListCaseReviewFiles(
+	ctx context.Context,
+	exec Executor,
+	caseId uuid.UUID,
+) ([]models.AiCaseReviewFile, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.AiCaseReviewFileFields...).
+		From(dbmodels.TABLE_AI_CASE_REVIEW_FILES).
+		Where(squirrel.Eq{
+			"case_id": caseId,
+			"status":  models.AiCaseReviewFileStatusCompleted.String(),
+		}).
+		OrderBy("created_at DESC")
+
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		query,
+		func(dbModel dbmodels.AiCaseReviewFile) (models.AiCaseReviewFile, error) {
+			return dbmodels.AdaptAiCaseReviewFile(dbModel), nil
+		},
+	)
 }

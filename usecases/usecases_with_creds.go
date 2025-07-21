@@ -692,6 +692,8 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		usecases.NewExecutorFactory(),
 		usecases.NewIngestedDataReaderUsecase(),
 		usecases.NewDataModelUseCase(),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.BlobRepository,
 	)
 }
 

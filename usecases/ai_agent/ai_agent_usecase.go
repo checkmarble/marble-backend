@@ -66,12 +66,14 @@ type AiAgentUsecaseDataModelUsecase interface {
 }
 
 type AiAgentUsecase struct {
-	enforceSecurity    security.EnforceSecurityCase
-	repository         AiAgentUsecaseRepository
-	inboxReader        inboxes.InboxReader
-	executorFactory    executor_factory.ExecutorFactory
-	ingestedDataReader AiAgentUsecaseIngestedDataReader
-	dataModelUsecase   AiAgentUsecaseDataModelUsecase
+	enforceSecurity          security.EnforceSecurityCase
+	repository               AiAgentUsecaseRepository
+	inboxReader              inboxes.InboxReader
+	executorFactory          executor_factory.ExecutorFactory
+	ingestedDataReader       AiAgentUsecaseIngestedDataReader
+	dataModelUsecase         AiAgentUsecaseDataModelUsecase
+	caseReviewFileRepository caseReviewFileRepository
+	blobRepository           repositories.BlobRepository
 
 	client *openai.Client
 	mu     sync.Mutex
@@ -84,14 +86,18 @@ func NewAiAgentUsecase(
 	executorFactory executor_factory.ExecutorFactory,
 	ingestedDataReader AiAgentUsecaseIngestedDataReader,
 	dataModelUsecase AiAgentUsecaseDataModelUsecase,
+	caseReviewFileRepository caseReviewFileRepository,
+	blobRepository repositories.BlobRepository,
 ) AiAgentUsecase {
 	return AiAgentUsecase{
-		enforceSecurity:    enforceSecurity,
-		repository:         repository,
-		inboxReader:        inboxReader,
-		executorFactory:    executorFactory,
-		ingestedDataReader: ingestedDataReader,
-		dataModelUsecase:   dataModelUsecase,
+		enforceSecurity:          enforceSecurity,
+		repository:               repository,
+		inboxReader:              inboxReader,
+		executorFactory:          executorFactory,
+		ingestedDataReader:       ingestedDataReader,
+		dataModelUsecase:         dataModelUsecase,
+		caseReviewFileRepository: caseReviewFileRepository,
+		blobRepository:           blobRepository,
 	}
 }
 
@@ -364,15 +370,71 @@ type GenerateContentResult struct {
 	Previous []openai.ChatCompletionMessageParamUnion
 }
 
-func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (models.AiCaseReview, error) {
+// returns a slice of 0 or 1 case review dto, the most recent one.
+func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewDto, error) {
+	exec := uc.executorFactory.NewExecutor()
+	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
+	if err != nil {
+		return nil, err
+	}
+
+	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, c.OrganizationId, false)
+	if err != nil {
+		return nil,
+			errors.Wrap(err, "failed to list available inboxes in AiAgentUsecase")
+	}
+	availableInboxIds := make([]uuid.UUID, len(inboxes))
+	for i, inbox := range inboxes {
+		availableInboxIds[i] = inbox.Id
+	}
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+		return nil, err
+	}
+
+	caseIdUuid, err := uuid.Parse(caseId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not parse case id")
+	}
+	existingCaseReviewFiles, err := uc.caseReviewFileRepository.ListCaseReviewFiles(ctx, exec, caseIdUuid)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not list case review files")
+	}
+
+	if len(existingCaseReviewFiles) == 0 {
+		return nil, nil
+	}
+
+	blob, err := uc.blobRepository.GetBlob(ctx, existingCaseReviewFiles[0].BucketName,
+		existingCaseReviewFiles[0].FileReference)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get case review file")
+	}
+	reviewDto, err := agent_dto.UnmarshalCaseReviewDto(
+		existingCaseReviewFiles[0].DtoVersion, blob.ReadCloser)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not unmarshal case review file")
+	}
+
+	return []agent_dto.AiCaseReviewDto{reviewDto}, nil
+}
+
+func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (agent_dto.AiCaseReviewDto, error) {
+	existingReviewDtos, err := uc.getMostRecentCaseReview(ctx, caseId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get case reviews")
+	}
+	if len(existingReviewDtos) > 0 {
+		return existingReviewDtos[0], nil
+	}
+
 	client, err := uc.GetClient(ctx)
 	if err != nil {
-		return models.AiCaseReview{}, errors.Wrap(err, "could not create OpenAI client")
+		return nil, errors.Wrap(err, "could not create OpenAI client")
 	}
 
 	caseData, relatedDataPerClient, err := uc.getCaseDataWithPermissions(ctx, caseId)
 	if err != nil {
-		return models.AiCaseReview{}, errors.Wrap(err, "could not get case data")
+		return nil, errors.Wrap(err, "could not get case data")
 	}
 
 	var clientActivityDescription string
@@ -402,7 +464,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		},
 	)
 	if err != nil {
-		return models.AiCaseReview{}, errors.Wrap(err,
+		return nil, errors.Wrap(err,
 			"could not generate data model summary")
 	}
 	dataModelSummary := dataModelSummaryResult.Text
@@ -474,7 +536,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 					previousContents...,
 				)
 				if err != nil {
-					return models.AiCaseReview{}, errors.Wrap(err,
+					return nil, errors.Wrap(err,
 						"could not generate data model object field read options")
 				}
 				dataModelObjectFieldReadOptions := dataModelObjectFieldReadOptionsResult.Text
@@ -486,7 +548,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 				}
 				fieldsToReadPerTable = make(map[string][]string)
 				if err := json.Unmarshal([]byte(dataModelObjectFieldReadOptions), &fieldsToReadPerTable); err != nil {
-					return models.AiCaseReview{}, errors.Wrap(err,
+					return nil, errors.Wrap(err,
 						"could not unmarshal data model object field read options")
 				}
 			}
@@ -504,7 +566,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 					fieldsToRead...,
 				)
 				if err != nil {
-					return models.AiCaseReview{}, errors.Wrapf(err,
+					return nil, errors.Wrapf(err,
 						"could not read ingested client objects for %s", tableName)
 				}
 				// then, update the ingested data for this pivot object/table combination with the new filtered data
@@ -531,7 +593,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	)
 	rulesDefinitionsReview := rulesDefinitionsReviewResult.Text
 	if err != nil {
-		return models.AiCaseReview{}, errors.Wrap(err,
+		return nil, errors.Wrap(err,
 			"could not generate rules definitions review")
 	}
 	logger.DebugContext(ctx, "================================ Rules definitions review ================================")
@@ -553,7 +615,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	)
 	ruleThresholds := ruleThresholdsResult.Text
 	if err != nil {
-		return models.AiCaseReview{}, errors.Wrap(err, "could not generate rule thresholds")
+		return nil, errors.Wrap(err, "could not generate rule thresholds")
 	}
 	logger.DebugContext(ctx, "================================ Rule thresholds ================================")
 	logger.DebugContext(ctx, "Rule thresholds: "+ruleThresholds)
@@ -582,7 +644,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	)
 	caseReview := caseReviewResult.Text
 	if err != nil {
-		return models.AiCaseReview{}, errors.Wrap(err, "could not generate case review")
+		return nil, errors.Wrap(err, "could not generate case review")
 	}
 	logger.DebugContext(ctx, "================================ Full case review ================================")
 	logger.DebugContext(ctx, "Full case review: "+caseReview)
@@ -630,7 +692,7 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 	)
 	sanityCheck := sanityCheckResult.Text
 	if err != nil {
-		return models.AiCaseReview{}, errors.Wrap(err, "could not generate sanity check")
+		return nil, errors.Wrap(err, "could not generate sanity check")
 	}
 	logger.DebugContext(ctx, "================================ Sanity check ================================")
 	logger.DebugContext(ctx, "Sanity check: "+sanityCheck)
@@ -643,17 +705,17 @@ func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (
 		Justification string `json:"justification"`
 	}
 	if err := json.Unmarshal([]byte(sanityCheckResult.Text), &sanityCheckOutput); err != nil {
-		return models.AiCaseReview{}, errors.Wrap(err, "could not unmarshal sanity check")
+		return nil, errors.Wrap(err, "could not unmarshal sanity check")
 	}
 
 	if sanityCheckOutput.Ok {
-		return models.AiCaseReview{
+		return agent_dto.CaseReviewV1{
 			Ok:      sanityCheckOutput.Ok,
 			Output:  caseReviewResult.Text,
 			Thought: caseReviewResult.Thought,
 		}, nil
 	}
-	return models.AiCaseReview{
+	return agent_dto.CaseReviewV1{
 		Ok:          false,
 		Output:      caseReview,
 		SanityCheck: sanityCheckResult.Text,
