@@ -22,19 +22,6 @@ type MockCollectorRepository struct {
 	mock.Mock
 }
 
-type MockDecisionCollectorRepository struct {
-	mock.Mock
-}
-type MockCaseCollectorRepository struct {
-	mock.Mock
-}
-type MockMetadataRepository struct {
-	mock.Mock
-}
-type MockScreeningCollectorRepository struct {
-	mock.Mock
-}
-
 func (m *MockCollectorRepository) AllOrganizations(ctx context.Context,
 	exec repositories.Executor,
 ) ([]models.Organization, error) {
@@ -42,28 +29,28 @@ func (m *MockCollectorRepository) AllOrganizations(ctx context.Context,
 	return args.Get(0).([]models.Organization), args.Error(1)
 }
 
-func (m *MockDecisionCollectorRepository) CountDecisionsByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
+func (m *MockCollectorRepository) CountDecisionsByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
 	from, to time.Time,
 ) (map[string]int, error) {
 	args := m.Called(ctx, exec, orgIds, from, to)
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
-func (m *MockCaseCollectorRepository) CountCasesByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
+func (m *MockCollectorRepository) CountCasesByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
 	from, to time.Time,
 ) (map[string]int, error) {
 	args := m.Called(ctx, exec, orgIds, from, to)
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
-func (m *MockScreeningCollectorRepository) CountScreeningsByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
+func (m *MockCollectorRepository) CountScreeningsByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
 	from, to time.Time,
 ) (map[string]int, error) {
 	args := m.Called(ctx, exec, orgIds, from, to)
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
-func (m *MockMetadataRepository) GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID,
+func (m *MockCollectorRepository) GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID,
 	key models.MetadataKey,
 ) (*models.Metadata, error) {
 	args := m.Called(ctx, exec, orgID, key)
@@ -103,16 +90,18 @@ func (m *MockCollector) Collect(ctx context.Context, orgs []models.Organization,
 // 5. The result contains the expected CollectionID and Version
 // 6. No errors occur during the collection process
 func TestCollectors_CollectMetrics_Success(t *testing.T) {
+	// Clear cache after test to ensure clean state for subsequent tests
+	t.Cleanup(DeploymentIDCache.Purge)
+
 	// Setup
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
 
-	mockOrgRepo := new(MockCollectorRepository)
+	mockCollectorRepository := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
-	mockMetadataRepo := new(MockMetadataRepository)
 
 	// Test organizations
 	orgs := []models.Organization{
@@ -134,23 +123,22 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	}
 
 	// Setup expectations
-	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
+	mockCollectorRepository.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return(globalMetrics, nil)
 	mockOrgCollector.On("Collect", ctx, orgs, from, to).Return([]models.MetricData{
 		org1Metrics[0], org2Metrics[0],
 	}, nil)
 	deploymentID := uuid.New()
-	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
+	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
 		Value: deploymentID.String(),
 	}, nil)
 	collectors := Collectors{
-		version:                "test-v1",
-		globalCollectors:       []GlobalCollector{mockGlobalCollector},
-		collectors:             []Collector{mockOrgCollector},
-		organizationRepository: mockOrgRepo,
-		executorFactory:        mockExecutorFactory,
-		metadataRepository:     mockMetadataRepo,
+		version:          "test-v1",
+		globalCollectors: []GlobalCollector{mockGlobalCollector},
+		collectors:       []Collector{mockOrgCollector},
+		repository:       mockCollectorRepository,
+		executorFactory:  mockExecutorFactory,
 	}
 
 	// Execute
@@ -170,23 +158,24 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	assert.Contains(t, result.Metrics, org2Metrics[0], "Should contain org2 metric")
 
 	// Verify all mocks were called as expected
-	mockOrgRepo.AssertExpectations(t)
+	mockCollectorRepository.AssertExpectations(t)
 	mockGlobalCollector.AssertExpectations(t)
 	mockOrgCollector.AssertExpectations(t)
-	mockMetadataRepo.AssertExpectations(t)
 }
 
 func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
+	// Clear cache after test to ensure clean state for subsequent tests
+	t.Cleanup(DeploymentIDCache.Purge)
+
 	// Setup
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
 
-	mockOrgRepo := new(MockCollectorRepository)
+	mockCollectorRepository := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
-	mockMetadataRepo := new(MockMetadataRepository)
 	orgs := []models.Organization{
 		{Id: "org1", Name: "Organization 1", PublicId: utils.TextToUUID("org1")},
 	}
@@ -196,23 +185,22 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	}
 
 	// Setup expectations - global collector fails, but org collector succeeds
-	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
+	mockCollectorRepository.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return([]models.MetricData{}, errors.New("global collector error"))
 	mockOrgCollector.On("Collect", ctx, orgs, from, to).Return([]models.MetricData{
 		org1Metrics[0],
 	}, nil)
-	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
+	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
 		Value: uuid.New().String(),
 	}, nil)
 
 	collectors := Collectors{
-		version:                "test-v1",
-		globalCollectors:       []GlobalCollector{mockGlobalCollector},
-		collectors:             []Collector{mockOrgCollector},
-		organizationRepository: mockOrgRepo,
-		executorFactory:        mockExecutorFactory,
-		metadataRepository:     mockMetadataRepo,
+		version:          "test-v1",
+		globalCollectors: []GlobalCollector{mockGlobalCollector},
+		collectors:       []Collector{mockOrgCollector},
+		repository:       mockCollectorRepository,
+		executorFactory:  mockExecutorFactory,
 	}
 
 	// Execute
@@ -223,40 +211,39 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	assert.Len(t, result.Metrics, 1)
 	assert.Equal(t, utils.TextToUUID("org1"), *result.Metrics[0].PublicOrgID)
 
-	mockOrgRepo.AssertExpectations(t)
+	mockCollectorRepository.AssertExpectations(t)
 	mockGlobalCollector.AssertExpectations(t)
 	mockOrgCollector.AssertExpectations(t)
 }
 
 func TestCollectors_CollectMetrics_OrganizationRepositoryError(t *testing.T) {
+	// Clear cache after test to ensure clean state for subsequent tests
+	t.Cleanup(DeploymentIDCache.Purge)
+
 	// Setup
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
 
-	mockOrgRepo := new(MockCollectorRepository)
+	mockCollectorRepository := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
-	mockMetadataRepo := new(MockMetadataRepository)
 	globalMetrics := []models.MetricData{
 		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), from, to),
 	}
 
 	// Setup expectations - org repo fails
 	mockGlobalCollector.On("Collect", ctx, from, to).Return(globalMetrics, nil)
-	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return([]models.Organization{}, errors.New("database error"))
-	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
-		models.MetadataKeyDeploymentID).Return(&models.Metadata{
-		Value: uuid.New().String(),
-	}, nil)
+	mockCollectorRepository.On("AllOrganizations", ctx, mock.Anything).Return(
+		[]models.Organization{}, errors.New("database error"))
+	// Note: GetMetadata is not called because the method returns early due to AllOrganizations error
 
 	collectors := Collectors{
-		version:                "test-v1",
-		globalCollectors:       []GlobalCollector{mockGlobalCollector},
-		collectors:             []Collector{},
-		organizationRepository: mockOrgRepo,
-		executorFactory:        mockExecutorFactory,
-		metadataRepository:     mockMetadataRepo,
+		version:          "test-v1",
+		globalCollectors: []GlobalCollector{mockGlobalCollector},
+		collectors:       []Collector{},
+		repository:       mockCollectorRepository,
+		executorFactory:  mockExecutorFactory,
 	}
 
 	// Execute
@@ -267,38 +254,43 @@ func TestCollectors_CollectMetrics_OrganizationRepositoryError(t *testing.T) {
 	assert.Contains(t, err.Error(), "database error")
 	assert.Empty(t, result.Metrics)
 
-	mockOrgRepo.AssertExpectations(t)
+	mockCollectorRepository.AssertExpectations(t)
 	mockGlobalCollector.AssertExpectations(t)
 }
 
 func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
+	// Clear cache after test to ensure clean state for subsequent tests
+	t.Cleanup(DeploymentIDCache.Purge)
+
 	// Setup
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
 
-	mockOrgRepo := new(MockCollectorRepository)
+	mockCollectorRepository := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
-	mockMetadataRepo := new(MockMetadataRepository)
 	globalMetrics := []models.MetricData{
 		models.NewGlobalMetric("global_metric", nil, utils.Ptr("value1"), from, to),
 	}
 
 	// Setup expectations - no organizations
-	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return([]models.Organization{}, nil)
+	mockCollectorRepository.On("AllOrganizations", ctx, mock.Anything).Return([]models.Organization{}, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return(globalMetrics, nil)
 	mockOrgCollector.On("Collect", ctx, []models.Organization{}, from, to).Return([]models.MetricData{}, nil)
+	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
+		models.MetadataKeyDeploymentID).Return(&models.Metadata{
+		Value: uuid.New().String(),
+	}, nil)
 	// mockOrgCollector should not be called since there are no organizations
 
 	collectors := Collectors{
-		version:                "test-v1",
-		globalCollectors:       []GlobalCollector{mockGlobalCollector},
-		collectors:             []Collector{mockOrgCollector},
-		organizationRepository: mockOrgRepo,
-		executorFactory:        mockExecutorFactory,
-		metadataRepository:     mockMetadataRepo,
+		version:          "test-v1",
+		globalCollectors: []GlobalCollector{mockGlobalCollector},
+		collectors:       []Collector{mockOrgCollector},
+		repository:       mockCollectorRepository,
+		executorFactory:  mockExecutorFactory,
 	}
 
 	// Execute
@@ -309,42 +301,43 @@ func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 	assert.Len(t, result.Metrics, 1)
 	assert.Nil(t, result.Metrics[0].PublicOrgID)
 
-	mockOrgRepo.AssertExpectations(t)
+	mockCollectorRepository.AssertExpectations(t)
 	mockGlobalCollector.AssertExpectations(t)
 	// mockOrgCollector should not have been called
 }
 
 func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
+	// Clear cache after test to ensure clean state for subsequent tests
+	t.Cleanup(DeploymentIDCache.Purge)
+
 	// Setup
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
 
-	mockOrgRepo := new(MockCollectorRepository)
+	mockCollectorRepository := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
-	mockMetadataRepo := new(MockMetadataRepository)
 	orgs := []models.Organization{
 		{Id: "org1", Name: "Organization 1", PublicId: utils.TextToUUID("org1")},
 	}
 
 	// Setup expectations - collectors return empty results
-	mockOrgRepo.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
+	mockCollectorRepository.On("AllOrganizations", ctx, mock.Anything).Return(orgs, nil)
 	mockGlobalCollector.On("Collect", ctx, from, to).Return([]models.MetricData{}, nil)
 	mockOrgCollector.On("Collect", ctx, orgs, from, to).Return([]models.MetricData{}, nil)
-	mockMetadataRepo.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
+	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
 		Value: uuid.New().String(),
 	}, nil)
 
 	collectors := Collectors{
-		version:                "test-v1",
-		globalCollectors:       []GlobalCollector{mockGlobalCollector},
-		collectors:             []Collector{mockOrgCollector},
-		organizationRepository: mockOrgRepo,
-		executorFactory:        mockExecutorFactory,
-		metadataRepository:     mockMetadataRepo,
+		version:          "test-v1",
+		globalCollectors: []GlobalCollector{mockGlobalCollector},
+		collectors:       []Collector{mockOrgCollector},
+		repository:       mockCollectorRepository,
+		executorFactory:  mockExecutorFactory,
 	}
 
 	// Execute
@@ -356,29 +349,27 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 	assert.Equal(t, "test-v1", result.Version)
 	assert.NotEmpty(t, result.CollectionID)
 
-	mockOrgRepo.AssertExpectations(t)
+	mockCollectorRepository.AssertExpectations(t)
 	mockGlobalCollector.AssertExpectations(t)
 	mockOrgCollector.AssertExpectations(t)
 }
 
 func TestNewCollectorsV1(t *testing.T) {
+	// Clear cache after test to ensure clean state for subsequent tests
+	t.Cleanup(DeploymentIDCache.Purge)
+
 	// Setup
-	mockOrgRepo := new(MockCollectorRepository)
-	mockDecisionRepo := new(MockDecisionCollectorRepository)
-	mockCaseRepo := new(MockCaseCollectorRepository)
-	mockScreeningRepo := new(MockScreeningCollectorRepository)
-	mockMetadataRepo := new(MockMetadataRepository)
+	mockRepository := new(MockCollectorRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 
 	// Execute
-	collectors := NewCollectorsV1(mockExecutorFactory, mockOrgRepo, mockDecisionRepo,
-		mockCaseRepo, mockMetadataRepo, mockScreeningRepo, "ApiVersionTest", models.LicenseConfiguration{})
+	collectors := NewCollectorsV1(mockExecutorFactory, mockRepository, "ApiVersionTest", models.LicenseConfiguration{})
 
 	// Assert
 	assert.Equal(t, "v1", collectors.version)
 	assert.Len(t, collectors.globalCollectors, 1)
 	assert.Len(t, collectors.collectors, 3)
-	assert.Equal(t, mockOrgRepo, collectors.organizationRepository)
+	assert.Equal(t, mockRepository, collectors.repository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
 
 	// Verify the collectors are of the expected stub types
