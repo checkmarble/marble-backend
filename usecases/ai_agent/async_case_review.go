@@ -16,7 +16,7 @@ import (
 )
 
 type CaseReviewUsecase interface {
-	CreateCaseReview(ctx context.Context, caseId string) (agent_dto.AiCaseReviewDto, error)
+	CreateCaseReviewSync(ctx context.Context, caseId string) (agent_dto.AiCaseReviewDto, error)
 }
 
 type caseReviewFileRepository interface {
@@ -66,7 +66,7 @@ func (w *CaseReviewWorker) Timeout(job *river.Job[models.CaseReviewArgs]) time.D
 }
 
 func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseReviewArgs]) error {
-	cr, err := w.caseReviewUsecase.CreateCaseReview(ctx, job.Args.CaseId)
+	cr, err := w.caseReviewUsecase.CreateCaseReviewSync(ctx, job.Args.CaseId)
 	if err != nil {
 		return errors.Wrap(err, "Error while generating case review")
 	}

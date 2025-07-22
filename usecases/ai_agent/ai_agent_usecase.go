@@ -65,15 +65,26 @@ type AiAgentUsecaseDataModelUsecase interface {
 	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions) (models.DataModel, error)
 }
 
+type caseReviewTaskEnqueuer interface {
+	EnqueueCaseReviewTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId string,
+		caseId string,
+	) error
+}
+
 type AiAgentUsecase struct {
 	enforceSecurity          security.EnforceSecurityCase
 	repository               AiAgentUsecaseRepository
 	inboxReader              inboxes.InboxReader
 	executorFactory          executor_factory.ExecutorFactory
+	transactionFactory       executor_factory.TransactionFactory
 	ingestedDataReader       AiAgentUsecaseIngestedDataReader
 	dataModelUsecase         AiAgentUsecaseDataModelUsecase
 	caseReviewFileRepository caseReviewFileRepository
 	blobRepository           repositories.BlobRepository
+	caseReviewTaskEnqueuer   caseReviewTaskEnqueuer
 
 	client *openai.Client
 	mu     sync.Mutex
@@ -88,6 +99,8 @@ func NewAiAgentUsecase(
 	dataModelUsecase AiAgentUsecaseDataModelUsecase,
 	caseReviewFileRepository caseReviewFileRepository,
 	blobRepository repositories.BlobRepository,
+	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
+	transactionFactory executor_factory.TransactionFactory,
 ) AiAgentUsecase {
 	return AiAgentUsecase{
 		enforceSecurity:          enforceSecurity,
@@ -98,6 +111,8 @@ func NewAiAgentUsecase(
 		dataModelUsecase:         dataModelUsecase,
 		caseReviewFileRepository: caseReviewFileRepository,
 		blobRepository:           blobRepository,
+		caseReviewTaskEnqueuer:   caseReviewTaskEnqueuer,
+		transactionFactory:       transactionFactory,
 	}
 }
 
@@ -370,17 +385,16 @@ type GenerateContentResult struct {
 	Previous []openai.ChatCompletionMessageParamUnion
 }
 
-// returns a slice of 0 or 1 case review dto, the most recent one.
-func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewDto, error) {
+func (uc *AiAgentUsecase) getCaseWithPermissions(ctx context.Context, caseId string) (models.Case, error) {
 	exec := uc.executorFactory.NewExecutor()
 	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
 	if err != nil {
-		return nil, err
+		return models.Case{}, err
 	}
 
 	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, c.OrganizationId, false)
 	if err != nil {
-		return nil,
+		return models.Case{},
 			errors.Wrap(err, "failed to list available inboxes in AiAgentUsecase")
 	}
 	availableInboxIds := make([]uuid.UUID, len(inboxes))
@@ -388,7 +402,17 @@ func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId st
 		availableInboxIds[i] = inbox.Id
 	}
 	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
-		return nil, err
+		return models.Case{}, err
+	}
+	return c, nil
+}
+
+// returns a slice of 0 or 1 case review dto, the most recent one.
+func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewDto, error) {
+	exec := uc.executorFactory.NewExecutor()
+	_, err := uc.getCaseWithPermissions(ctx, caseId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get case with permissions")
 	}
 
 	caseIdUuid, err := uuid.Parse(caseId)
@@ -418,7 +442,37 @@ func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId st
 	return []agent_dto.AiCaseReviewDto{reviewDto}, nil
 }
 
-func (uc *AiAgentUsecase) CreateCaseReview(ctx context.Context, caseId string) (agent_dto.AiCaseReviewDto, error) {
+// Returns a slice of 0 or 1 case review dto, the most recent one.
+func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewDto, error) {
+	_, err := uc.getCaseWithPermissions(ctx, caseId)
+	if err != nil {
+		return nil, err
+	}
+
+	existingReviewDtos, err := uc.getMostRecentCaseReview(ctx, caseId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not list case review dtos")
+	}
+
+	if len(existingReviewDtos) == 0 {
+		return make([]agent_dto.AiCaseReviewDto, 0), nil
+	}
+
+	return existingReviewDtos[:1], nil
+}
+
+func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId string) error {
+	c, err := uc.getCaseWithPermissions(ctx, caseId)
+	if err != nil {
+		return err
+	}
+
+	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return uc.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, c.OrganizationId, caseId)
+	})
+}
+
+func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId string) (agent_dto.AiCaseReviewDto, error) {
 	existingReviewDtos, err := uc.getMostRecentCaseReview(ctx, caseId)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get case reviews")
