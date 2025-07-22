@@ -384,6 +384,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		screeningRepository:  &usecases.Repositories.MarbleDbRepository,
 		ingestedDataReader:   usecases.NewIngestedDataReaderUsecase(),
 		taskQueueRepository:  usecases.Repositories.TaskQueueRepository,
+		featureAccessReader:  usecases.NewFeatureAccessReader(),
 	}
 }
 
@@ -637,6 +638,7 @@ func (usecases UsecasesWithCreds) NewOffloadingWorker() *scheduled_execution.Off
 
 func (usecases UsecasesWithCreds) NewAutoAssignmentWorker() *scheduled_execution.AutoAssignmentWorker {
 	return scheduled_execution.NewAutoAssignmentWorker(
+		usecases.NewFeatureAccessReader(),
 		usecases.Usecases.NewAutoAssignmentUsecase(),
 	)
 }

@@ -20,6 +20,7 @@ type LicenseEntitlements struct {
 	RuleSnoozes    bool `json:"rule_snoozes"`
 	TestRun        bool `json:"test_run"`
 	Sanctions      bool `json:"sanctions"`
+	AutoAssignment bool `json:"auto_assignment"`
 }
 
 func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) LicenseEntitlements {
@@ -33,6 +34,7 @@ func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) Li
 		RuleSnoozes:    licenseEntitlements.RuleSnoozes,
 		TestRun:        licenseEntitlements.TestRun,
 		Sanctions:      licenseEntitlements.Sanctions,
+		AutoAssignment: licenseEntitlements.AutoAssignment,
 	}
 }
 
