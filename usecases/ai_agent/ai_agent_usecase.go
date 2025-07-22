@@ -433,6 +433,8 @@ func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId st
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get case review file")
 	}
+	defer blob.ReadCloser.Close()
+
 	reviewDto, err := agent_dto.UnmarshalCaseReviewDto(
 		existingCaseReviewFiles[0].DtoVersion, blob.ReadCloser)
 	if err != nil {
@@ -473,14 +475,6 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 }
 
 func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId string) (agent_dto.AiCaseReviewDto, error) {
-	existingReviewDtos, err := uc.getMostRecentCaseReview(ctx, caseId)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get case reviews")
-	}
-	if len(existingReviewDtos) > 0 {
-		return existingReviewDtos[0], nil
-	}
-
 	client, err := uc.GetClient(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create OpenAI client")
