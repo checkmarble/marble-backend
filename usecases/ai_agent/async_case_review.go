@@ -60,7 +60,7 @@ func NewCaseReviewWorker(
 ) CaseReviewWorker {
 	return CaseReviewWorker{
 		blobRepository:    blobRepository,
-		bucketUrl:         "file://./tempFiles/case-manager-bucket?create_dir=true",
+		bucketUrl:         bucketUrl,
 		caseReviewUsecase: caseReviewUsecase,
 		executorFactory:   executorFactory,
 		repository:        repository,

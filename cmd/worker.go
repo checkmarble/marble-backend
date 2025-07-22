@@ -75,6 +75,7 @@ func RunTaskQueue(apiVersion string) error {
 		sentryDsn                   string
 		cloudRunProbePort           string
 		caseReviewTimeout           time.Duration
+		caseManagerBucket           string
 	}{
 		appName:                     "marble-backend",
 		env:                         utils.GetEnv("ENV", "development"),
@@ -84,6 +85,7 @@ func RunTaskQueue(apiVersion string) error {
 		sentryDsn:                   utils.GetEnv("SENTRY_DSN", ""),
 		cloudRunProbePort:           utils.GetEnv("CLOUD_RUN_PROBE_PORT", ""),
 		caseReviewTimeout:           utils.GetEnvDuration("AI_CASE_REVIEW_TIMEOUT", 5*time.Minute),
+		caseManagerBucket:           utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 	}
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
@@ -221,6 +223,7 @@ func RunTaskQueue(apiVersion string) error {
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithApiVersion(apiVersion),
 		usecases.WithMetricsCollectionConfig(metricCollectionConfig),
+		usecases.WithCaseManagerBucketUrl(workerConfig.caseManagerBucket),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
