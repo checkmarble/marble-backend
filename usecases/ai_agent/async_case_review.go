@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
@@ -19,7 +20,7 @@ type CaseReviewUsecase interface {
 	CreateCaseReviewSync(ctx context.Context, caseId string) (agent_dto.AiCaseReviewDto, error)
 }
 
-type caseReviewFileRepository interface {
+type caseReviewWorkerRepository interface {
 	CreateCaseReviewFile(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -30,6 +31,12 @@ type caseReviewFileRepository interface {
 		exec repositories.Executor,
 		caseId uuid.UUID,
 	) ([]models.AiCaseReviewFile, error)
+	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
+	GetOrganizationById(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+	) (models.Organization, error)
 }
 
 type CaseReviewWorker struct {
@@ -38,7 +45,7 @@ type CaseReviewWorker struct {
 	blobRepository    repositories.BlobRepository
 	caseReviewUsecase CaseReviewUsecase
 	executorFactory   executor_factory.ExecutorFactory
-	repository        caseReviewFileRepository
+	repository        caseReviewWorkerRepository
 	timeout           time.Duration
 	bucketUrl         string
 }
@@ -48,7 +55,7 @@ func NewCaseReviewWorker(
 	bucketUrl string,
 	caseReviewUsecase CaseReviewUsecase,
 	executorFactory executor_factory.ExecutorFactory,
-	repository caseReviewFileRepository,
+	repository caseReviewWorkerRepository,
 	timeout time.Duration,
 ) CaseReviewWorker {
 	return CaseReviewWorker{
@@ -66,10 +73,27 @@ func (w *CaseReviewWorker) Timeout(job *river.Job[models.CaseReviewArgs]) time.D
 }
 
 func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseReviewArgs]) error {
+	logger := utils.LoggerFromContext(ctx)
+	c, err := w.repository.GetCaseById(ctx, w.executorFactory.NewExecutor(), job.Args.CaseId)
+	if err != nil {
+		return errors.Wrap(err, "Error while getting case")
+	}
+
+	org, err := w.repository.GetOrganizationById(ctx, w.executorFactory.NewExecutor(), c.OrganizationId)
+	if err != nil {
+		return errors.Wrap(err, "Error while getting organization")
+	}
+
+	if !org.AiCaseReviewEnabled {
+		logger.DebugContext(ctx, "AI case review is not enabled for organization", "organization_id", c.OrganizationId)
+		return nil
+	}
+
 	cr, err := w.caseReviewUsecase.CreateCaseReviewSync(ctx, job.Args.CaseId)
 	if err != nil {
 		return errors.Wrap(err, "Error while generating case review")
 	}
+	logger.DebugContext(ctx, "Finished generating case review", "case_id", job.Args.CaseId)
 
 	id := uuid.Must(uuid.NewV7())
 	fileRef := fmt.Sprintf("ai_case_reviews/%s/%s.json", job.Args.CaseId, id)
@@ -96,5 +120,10 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		BucketName:    w.bucketUrl,
 		FileReference: fileRef,
 	})
-	return err
+	if err != nil {
+		return errors.Wrap(err, "Error while creating case review file")
+	}
+	logger.DebugContext(ctx, "Finished creating case review file", "case_id", job.Args.CaseId)
+
+	return nil
 }
