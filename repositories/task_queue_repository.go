@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
@@ -60,7 +61,7 @@ type TaskQueueRepository interface {
 	EnqueueAutoAssignmentTask(
 		ctx context.Context,
 		tx Transaction,
-		orgId, inboxId string,
+		orgId string, inboxId uuid.UUID,
 	) error
 }
 
@@ -241,7 +242,7 @@ func (r riverRepository) EnqueueCaseReviewTask(
 func (r riverRepository) EnqueueAutoAssignmentTask(
 	ctx context.Context,
 	tx Transaction,
-	orgId, inboxId string,
+	orgId string, inboxId uuid.UUID,
 ) error {
 	res, err := r.client.InsertTx(
 		ctx,

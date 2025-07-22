@@ -6,10 +6,11 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
-func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exec Executor, inboxId string) ([]models.UserWithCaseCount, error) {
+func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exec Executor, orgId string, inboxId uuid.UUID, limit int) ([]models.UserWithCaseCount, error) {
 	sql := `
 		select u.*, count(*) filter (where c.id is not null) as case_count
 		from inbox_users iu
@@ -55,10 +56,14 @@ func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exe
 		users = append(users, user)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return users, nil
 }
 
-func (repo *MarbleDbRepository) FindAssignableCases(ctx context.Context, exec Executor, inboxId string, limit int) ([]models.Case, error) {
+func (repo *MarbleDbRepository) FindAssignableCases(ctx context.Context, exec Executor, inboxId uuid.UUID, limit int) ([]models.Case, error) {
 	sql := NewQueryBuilder().
 		Select(dbmodels.SelectCaseColumn...).
 		From(dbmodels.TABLE_CASES).

@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -16,8 +17,8 @@ type autoAssignmentCaseRepository interface {
 }
 
 type autoAssignmentRepository interface {
-	FindAutoAssignableUsers(ctx context.Context, exec repositories.Executor, inboxId string) ([]models.UserWithCaseCount, error)
-	FindAssignableCases(ctx context.Context, exec repositories.Executor, inboxId string, limit int) ([]models.Case, error)
+	FindAutoAssignableUsers(ctx context.Context, exec repositories.Executor, orgId string, inboxId uuid.UUID, limit int) ([]models.UserWithCaseCount, error)
+	FindAssignableCases(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID, limit int) ([]models.Case, error)
 }
 
 type autoAssignmentOrgRepository interface {
@@ -32,7 +33,7 @@ type AutoAssignmentUsecase struct {
 	repository         autoAssignmentRepository
 }
 
-func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId, inboxId string) error {
+func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId string, inboxId uuid.UUID) error {
 	logger := utils.LoggerFromContext(ctx)
 
 	org, err := uc.orgRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId)
