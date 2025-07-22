@@ -57,6 +57,11 @@ type TaskQueueRepository interface {
 		organizationId string,
 		caseId string,
 	) error
+	EnqueueAutoAssignmentTask(
+		ctx context.Context,
+		tx Transaction,
+		orgId, inboxId string,
+	) error
 }
 
 type riverRepository struct {
@@ -230,5 +235,31 @@ func (r riverRepository) EnqueueCaseReviewTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued case review task", "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueAutoAssignmentTask(
+	ctx context.Context,
+	tx Transaction,
+	orgId, inboxId string,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.AutoAssignmentArgs{
+			OrgId:   orgId,
+			InboxId: inboxId,
+		},
+		&river.InsertOpts{
+			Queue: orgId,
+		})
+
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued scheduled execution for case auto-assignment", "job_id", res.Job.ID)
+
 	return nil
 }

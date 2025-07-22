@@ -382,6 +382,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		webhookEventsUsecase: usecases.NewWebhookEventsUsecase(),
 		screeningRepository:  &usecases.Repositories.MarbleDbRepository,
 		ingestedDataReader:   usecases.NewIngestedDataReaderUsecase(),
+		taskQueueRepository:  usecases.Repositories.TaskQueueRepository,
 	}
 }
 
@@ -630,6 +631,12 @@ func (usecases UsecasesWithCreds) NewOffloadingWorker() *scheduled_execution.Off
 		usecases.Repositories.BlobRepository,
 		usecases.offloadingBucketUrl,
 		usecases.offloadingConfig,
+	)
+}
+
+func (usecases UsecasesWithCreds) NewAutoAssignmentWorker() *scheduled_execution.AutoAssignmentWorker {
+	return scheduled_execution.NewAutoAssignmentWorker(
+		usecases.Usecases.NewAutoAssignmentUsecase(),
 	)
 }
 

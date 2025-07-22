@@ -235,6 +235,7 @@ func RunTaskQueue(apiVersion string) error {
 	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
+	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
