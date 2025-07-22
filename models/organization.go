@@ -17,13 +17,9 @@ type Organization struct {
 	// Uses a IANA timezone validated with the go time std lib. "UTC" is used if not set.
 	DefaultScenarioTimezone *string
 
-	// Flagged to use the main marble db (in a separate schema) for ingested data of the company,
-	// even if a default external DB is configured in the CLIENT_DB_CONFIG_FILE.
-	// Not relevant for on-premise users.
-	// This can be deprecated later when all demo orgs created before this feature have been deleted or graduated
-	// to a separate DB.
-	// TODO: clean this up when it's no longuer used.
-	UseMarbleDbSchemaAsDefault bool
+	// Flag to enable AI case review.
+	// Temporary simple flag before we activate more fine-grained workflows based on organization and inbox.
+	AiCaseReviewEnabled bool
 
 	OpenSanctionsConfig OrganizationOpenSanctionsConfig
 }

@@ -82,7 +82,7 @@ type AiAgentUsecase struct {
 	transactionFactory       executor_factory.TransactionFactory
 	ingestedDataReader       AiAgentUsecaseIngestedDataReader
 	dataModelUsecase         AiAgentUsecaseDataModelUsecase
-	caseReviewFileRepository caseReviewFileRepository
+	caseReviewFileRepository caseReviewWorkerRepository
 	blobRepository           repositories.BlobRepository
 	caseReviewTaskEnqueuer   caseReviewTaskEnqueuer
 
@@ -97,7 +97,7 @@ func NewAiAgentUsecase(
 	executorFactory executor_factory.ExecutorFactory,
 	ingestedDataReader AiAgentUsecaseIngestedDataReader,
 	dataModelUsecase AiAgentUsecaseDataModelUsecase,
-	caseReviewFileRepository caseReviewFileRepository,
+	caseReviewFileRepository caseReviewWorkerRepository,
 	blobRepository repositories.BlobRepository,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
 	transactionFactory executor_factory.TransactionFactory,
