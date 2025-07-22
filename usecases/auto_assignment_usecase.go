@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -17,8 +18,9 @@ type autoAssignmentCaseRepository interface {
 }
 
 type autoAssignmentRepository interface {
-	FindAutoAssignableUsers(ctx context.Context, exec repositories.Executor, orgId string, inboxId uuid.UUID, limit int) ([]models.UserWithCaseCount, error)
-	FindAssignableCases(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID, limit int) ([]models.Case, error)
+	FindAutoAssignableUsers(ctx context.Context, exec repositories.Executor, orgId string, limit int) ([]models.UserWithCaseCount, error)
+	FindNextAutoAssignableUserForInbox(ctx context.Context, exec repositories.Executor, orgId string, inboxId uuid.UUID, limit int) (*models.User, error)
+	FindAutoAssignableCases(ctx context.Context, exec repositories.Executor, limit int) ([]models.Case, error)
 }
 
 type autoAssignmentOrgRepository interface {
@@ -41,7 +43,8 @@ func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId strin
 		return errors.Wrap(err, "could not retrieve organization settings")
 	}
 
-	assignableUsers, err := uc.repository.FindAutoAssignableUsers(ctx, uc.executorFactory.NewExecutor(), orgId, inboxId, org.AutoAssignQueueLimit)
+	// Find maximum slots across inboxes (to limit how many cases to consider).
+	assignableUsers, err := uc.repository.FindAutoAssignableUsers(ctx, uc.executorFactory.NewExecutor(), orgId, org.AutoAssignQueueLimit)
 	if err != nil {
 		return errors.Wrap(err, "could not find assignable users")
 	}
@@ -55,31 +58,34 @@ func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId strin
 		return nil
 	}
 
-	cases, err := uc.repository.FindAssignableCases(ctx, uc.executorFactory.NewExecutor(), inboxId, slots)
+	logger.DebugContext(ctx, fmt.Sprintf("case auto-assignment: found %d empty queue slots", slots))
+
+	cases, err := uc.repository.FindAutoAssignableCases(ctx, uc.executorFactory.NewExecutor(), slots)
 	if err != nil {
 		return errors.Wrap(err, "could not find assignable cases")
 	}
 
-	for _, c := range cases {
-		var (
-			minAssigned *models.UserWithCaseCount
-		)
+	logger.DebugContext(ctx, fmt.Sprintf("case auto-assignment: found %d auto-assignable cases", len(cases)))
 
-		for idx := range assignableUsers {
-			if minAssigned == nil || assignableUsers[idx].CaseCount < minAssigned.CaseCount {
-				minAssigned = &assignableUsers[idx]
-			}
+	for _, c := range cases {
+		// Look for the user with the least number of assigned cases in the case's inbox
+		user, err := uc.repository.FindNextAutoAssignableUserForInbox(ctx, uc.executorFactory.NewExecutor(), c.OrganizationId, c.InboxId, org.AutoAssignQueueLimit)
+		if err != nil {
+			return err
+		}
+
+		// If no rows are returned, it means all users in that inbox's rotation are at capacity
+		if user == nil {
+			continue
 		}
 
 		logger.DebugContext(ctx, "auto-assigning case to user",
 			"case_id", c.Id,
-			"user_id", minAssigned.UserId)
+			"user_id", user.UserId)
 
-		if err := uc.assignCase(ctx, c, minAssigned.User); err != nil {
+		if err := uc.assignCase(ctx, c, *user); err != nil {
 			return errors.Wrap(err, "could not assign case")
 		}
-
-		minAssigned.CaseCount += 1
 	}
 
 	return nil
