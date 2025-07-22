@@ -22,7 +22,7 @@ create table user_unavailabilities (
     constraint fk_user_id foreign key (user_id) references users (id) on delete cascade
 );
 
-create index idx_user_avail_org_id_dates on user_unavailabilities (org_id, user_id, from_date, to_date);
+create index idx_user_avail_org_id_dates on user_unavailabilities (org_id, user_id, from_date, until_date);
 
 -- +goose Down
 

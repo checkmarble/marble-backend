@@ -71,3 +71,10 @@ type CaseReviewArgs struct {
 }
 
 func (CaseReviewArgs) Kind() string { return "case_review" }
+
+type AutoAssignmentArgs struct {
+	OrgId   string `json:"org_id"`
+	InboxId string `json:"inbox_id"`
+}
+
+func (AutoAssignmentArgs) Kind() string { return "auto_assignment" }

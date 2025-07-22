@@ -106,6 +106,7 @@ type CaseUseCase struct {
 	webhookEventsUsecase webhookEventsUsecase
 	screeningRepository  CaseUsecaseScreeningRepository
 	ingestedDataReader   caseUsecaseIngestedDataReader
+	taskQueueRepository  repositories.TaskQueueRepository
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -252,6 +253,17 @@ func (usecase *CaseUseCase) CreateCase(
 	err := usecase.repository.CreateCase(ctx, tx, createCaseAttributes, newCaseId)
 	if err != nil {
 		return models.Case{}, err
+	}
+
+	inbox, err := usecase.inboxReader.GetInboxById(ctx, createCaseAttributes.InboxId)
+	if err != nil {
+		return models.Case{}, errors.Wrap(err, "could not read inbox")
+	}
+
+	if inbox.AutoAssignEnabled {
+		if err := usecase.taskQueueRepository.EnqueueAutoAssignmentTask(ctx, tx, createCaseAttributes.OrganizationId, createCaseAttributes.InboxId.String()); err != nil {
+			return models.Case{}, errors.Wrap(err, "could not enqueue auto-assignment job")
+		}
 	}
 
 	if fromEndUser {
@@ -406,6 +418,19 @@ func (usecase *CaseUseCase) UpdateCase(
 		default:
 			if err := usecase.performCaseActionSideEffectsWithoutStatusChange(ctx, tx, c); err != nil {
 				return models.Case{}, err
+			}
+
+			if updateCaseAttributes.Status == models.CaseClosed {
+				inbox, err := usecase.inboxReader.GetInboxById(ctx, c.InboxId)
+				if err != nil {
+					return models.Case{}, errors.Wrap(err, "could not read inbox")
+				}
+
+				if inbox.AutoAssignEnabled {
+					if err := usecase.taskQueueRepository.EnqueueAutoAssignmentTask(ctx, tx, c.OrganizationId, c.InboxId.String()); err != nil {
+						return models.Case{}, errors.Wrap(err, "could not enqueue auto-assignment job")
+					}
+				}
 			}
 		}
 
