@@ -211,6 +211,7 @@ func (*MarbleDbRepository) InsertScreening(
 	ctx context.Context,
 	exec Executor,
 	decisionId string,
+	orgId string,
 	screening models.ScreeningWithMatches,
 	storeMatches bool,
 ) (models.ScreeningWithMatches, error) {
@@ -233,6 +234,7 @@ func (*MarbleDbRepository) InsertScreening(
 		Insert(dbmodels.TABLE_SCREENINGS).Columns(
 		"id",
 		"decision_id",
+		"org_id",
 		"sanction_check_config_id",
 		"search_input",
 		"initial_query",
@@ -249,6 +251,7 @@ func (*MarbleDbRepository) InsertScreening(
 	).Values(
 		scId,
 		decisionId,
+		orgId,
 		screening.ScreeningConfigId,
 		screening.SearchInput,
 		screening.InitialQuery,

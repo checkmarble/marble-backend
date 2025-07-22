@@ -67,6 +67,7 @@ type ScreeningRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		decisionid string,
+		orgId string,
 		sc models.ScreeningWithMatches,
 		storeMatches bool,
 	) (models.ScreeningWithMatches, error)
@@ -333,7 +334,7 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 		}
 
 		if screening, err = uc.repository.InsertScreening(ctx, tx,
-			decision.DecisionId.String(), screening, true); err != nil {
+			decision.DecisionId.String(), decision.OrganizationId.String(), screening, true); err != nil {
 			return models.ScreeningWithMatches{}, err
 		}
 

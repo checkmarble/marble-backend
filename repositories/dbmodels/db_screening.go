@@ -18,6 +18,7 @@ var (
 type DBScreening struct {
 	Id                  string                           `db:"id"`
 	DecisionId          string                           `db:"decision_id"`
+	OrgId               *string                          `db:"org_id"`
 	ScreeningConfigId   string                           `db:"sanction_check_config_id"`
 	Status              string                           `db:"status"`
 	SearchInput         json.RawMessage                  `db:"search_input"`
@@ -50,6 +51,7 @@ func AdaptScreening(dto DBScreening) (models.Screening, error) {
 	return models.Screening{
 		Id:                  dto.Id,
 		DecisionId:          dto.DecisionId,
+		OrgId:               dto.OrgId,
 		ScreeningConfigId:   dto.ScreeningConfigId,
 		Datasets:            dto.SearchDatasets,
 		SearchInput:         dto.SearchInput,

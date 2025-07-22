@@ -25,6 +25,7 @@ type PhantomDecisionUsecaseScreeningRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		phantomDecisionId string,
+		orgId string,
 		screening models.ScreeningWithMatches,
 		storeMatches bool,
 	) (models.ScreeningWithMatches, error)
@@ -128,6 +129,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 						ctx,
 						tx,
 						phantomDecision.PhantomDecisionId,
+						input.OrganizationId,
 						sce,
 						false)
 					if err != nil {
