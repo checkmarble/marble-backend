@@ -45,6 +45,10 @@ func (d DecisionsWorkflows) ProcessDecisionWorkflows(
 
 Rule:
 	for _, rule := range rules {
+		if len(rule.Conditions) == 0 {
+			continue
+		}
+
 		for _, cond := range rule.Conditions {
 			fn, err := CreateFunction(cond)
 			if err != nil {
