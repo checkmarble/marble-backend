@@ -154,9 +154,9 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		var data struct {
-			Name              string     `json:"name" binding:"required"`
-			EscalationInboxId *uuid.UUID `json:"escalation_inbox_id" binding:"omitempty"`
-			AutoAssignEnabled bool       `json:"auto_assign_enabled"`
+			Name              *string    `json:"name"`
+			EscalationInboxId *uuid.UUID `json:"escalation_inbox_id" binding:"omitempty,uuid"`
+			AutoAssignEnabled *bool      `json:"auto_assign_enabled"`
 		}
 		if err := c.ShouldBind(&data); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -296,16 +296,22 @@ func handlePatchInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		var data struct {
-			Role           string `json:"role" binding:"required"`
-			AutoAssignable bool   `json:"auto_assignable"`
+			Role           *string `json:"role"`
+			AutoAssignable *bool   `json:"auto_assignable"`
 		}
 		if err := c.ShouldBind(&data); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
+		var role *models.InboxUserRole
+
+		if data.Role != nil {
+			role = utils.Ptr(models.InboxUserRole(*data.Role))
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxUser, err := usecase.UpdateInboxUser(ctx, getInboxUserInput.Id.Uuid(), models.InboxUserRole(data.Role), data.AutoAssignable)
+		inboxUser, err := usecase.UpdateInboxUser(ctx, getInboxUserInput.Id.Uuid(), role, data.AutoAssignable)
 		if presentError(ctx, c, err) {
 			return
 		}

@@ -83,21 +83,31 @@ func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, exec Execut
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Executor, inboxUserId uuid.UUID, role models.InboxUserRole, autoAssignable bool) error {
+func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Executor, inboxUserId uuid.UUID, role *models.InboxUserRole, autoAssignable *bool) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
-	err := ExecBuilder(
-		ctx,
-		exec,
-		NewQueryBuilder().Update(dbmodels.TABLE_INBOX_USERS).
-			Set("role", role).
-			Set("auto_assignable", autoAssignable).
-			Set("updated_at", "NOW()").
-			Where(squirrel.Eq{"id": inboxUserId}),
-	)
-	return err
+	sql := NewQueryBuilder().Update(dbmodels.TABLE_INBOX_USERS).
+		Set("updated_at", "NOW()").
+		Where(squirrel.Eq{"id": inboxUserId})
+
+	hasUpdates := false
+
+	if role != nil {
+		sql = sql.Set("role", *role)
+		hasUpdates = true
+	}
+	if autoAssignable != nil {
+		sql = sql.Set("auto_assignable", *autoAssignable)
+		hasUpdates = true
+	}
+
+	if !hasUpdates {
+		return nil
+	}
+
+	return ExecBuilder(ctx, exec, sql)
 }
 
 func (repo *MarbleDbRepository) DeleteInboxUser(ctx context.Context, exec Executor, inboxUserId uuid.UUID) error {

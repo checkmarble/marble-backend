@@ -94,22 +94,35 @@ func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, exec Executor, 
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, inboxId uuid.UUID, name string, escalationInboxId *uuid.UUID, autoAssignEnabled bool) error {
+func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, inboxId uuid.UUID, name *string, escalationInboxId *uuid.UUID, autoAssignEnabled *bool) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
-	err := ExecBuilder(
-		ctx,
-		exec,
-		NewQueryBuilder().Update(dbmodels.TABLE_INBOXES).
-			Set("name", name).
-			Set("updated_at", squirrel.Expr("NOW()")).
-			Set("escalation_inbox_id", escalationInboxId).
-			Set("auto_assign_enabled", autoAssignEnabled).
-			Where(squirrel.Eq{"id": inboxId}),
-	)
-	return err
+	sql := NewQueryBuilder().Update(dbmodels.TABLE_INBOXES).
+		Set("updated_at", squirrel.Expr("NOW()")).
+		Where(squirrel.Eq{"id": inboxId})
+
+	hasUpdates := false
+
+	if name != nil {
+		sql = sql.Set("name", *name)
+		hasUpdates = true
+	}
+	if escalationInboxId != nil {
+		sql = sql.Set("escalation_inbox_id", *escalationInboxId)
+		hasUpdates = true
+	}
+	if autoAssignEnabled != nil {
+		sql = sql.Set("auto_assign_enabled", *autoAssignEnabled)
+		hasUpdates = true
+	}
+
+	if !hasUpdates {
+		return nil
+	}
+
+	return ExecBuilder(ctx, exec, sql)
 }
 
 func (repo *MarbleDbRepository) SoftDeleteInbox(ctx context.Context, exec Executor, inboxId uuid.UUID) error {
