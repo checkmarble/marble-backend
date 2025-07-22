@@ -74,7 +74,6 @@ type decisionWorkflowsUsecase interface {
 		scenario models.Scenario,
 		decision models.DecisionWithRuleExecutions,
 		params evaluate_scenario.ScenarioEvaluationParameters,
-
 	) (models.WorkflowExecution, error)
 }
 
@@ -90,6 +89,7 @@ type decisionUsecaseScreeningWriter interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		decisionId string,
+		orgId string,
 		sc models.ScreeningWithMatches,
 		storeMatches bool,
 	) (models.ScreeningWithMatches, error)
@@ -482,7 +482,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 			for idx, sce := range decision.ScreeningExecutions {
 				sc, err := usecase.screeningRepository.InsertScreening(ctx, tx,
-					decision.DecisionId.String(), sce, true)
+					decision.DecisionId.String(), decision.OrganizationId.String(), sce, true)
 				if err != nil {
 					return models.DecisionWithRuleExecutions{},
 						errors.Wrap(err, "could not store screening execution")
@@ -525,9 +525,9 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 		workflowExecutions, err := usecase.decisionWorkflows.ProcessDecisionWorkflows(ctx, tx,
 			workflowRules, scenario, decision, evaluationParameters)
-
 		if err != nil {
-			utils.LoggerFromContext(ctx).Warn("could not execute decision workflows", "error", err.Error(), "decision", decision.DecisionId)
+			utils.LoggerFromContext(ctx).Warn("could not execute decision workflows",
+				"error", err.Error(), "decision", decision.DecisionId)
 		}
 
 		sendWebhookEventId = append(sendWebhookEventId, workflowExecutions.WebhookIds...)
@@ -691,7 +691,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 				for _, sce := range item.decision.ScreeningExecutions {
 					sc, err = usecase.screeningRepository.InsertScreening(
-						ctx, tx, item.decision.DecisionId.String(), sce, true)
+						ctx, tx, item.decision.DecisionId.String(),
+						item.decision.OrganizationId.String(), sce, true)
 					if err != nil {
 						return nil, errors.Wrap(err, "could not store screening execution")
 					}
@@ -752,9 +753,9 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 			workflowExecutions, err := usecase.decisionWorkflows.ProcessDecisionWorkflows(ctx, tx,
 				workflowRules, item.scenario, item.decision, evaluationParameters)
-
 			if err != nil {
-				utils.LoggerFromContext(ctx).Warn("could not execute decision workflows", "error", err.Error(), "decision", item.decision.DecisionId)
+				utils.LoggerFromContext(ctx).Warn("could not execute decision workflows",
+					"error", err.Error(), "decision", item.decision.DecisionId)
 			}
 
 			sendWebhookEventIds = append(sendWebhookEventIds, workflowExecutions.WebhookIds...)

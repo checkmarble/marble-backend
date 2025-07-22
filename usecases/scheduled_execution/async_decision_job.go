@@ -88,6 +88,7 @@ type decisionWorkerScreeningWriter interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		decisionid string,
+		orgId string,
 		sc models.ScreeningWithMatches,
 		storeMatches bool,
 	) (models.ScreeningWithMatches, error)
@@ -378,7 +379,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	if decision.ScreeningExecutions != nil {
 		for _, sce := range decision.ScreeningExecutions {
 			_, err := w.screeningRepository.InsertScreening(ctx, tx,
-				decision.DecisionId.String(), sce, true)
+				decision.DecisionId.String(), decision.OrganizationId.String(), sce, true)
 			if err != nil {
 				return false, nil, nil, errors.Wrap(err,
 					"could not store screening execution")
@@ -404,7 +405,6 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 
 	workflowExecutions, err := w.decisionWorkflows.ProcessDecisionWorkflows(ctx, tx,
 		workflowRules, scenario, decision, evaluationParameters)
-
 	if err != nil {
 		return false, nil, nil, err
 	}
