@@ -1,5 +1,7 @@
 package models
 
+import "github.com/google/uuid"
+
 // run async decision job
 type AsyncDecisionArgs struct {
 	DecisionToCreateId   string `json:"decision_to_create_id"`
@@ -73,8 +75,8 @@ type CaseReviewArgs struct {
 func (CaseReviewArgs) Kind() string { return "case_review" }
 
 type AutoAssignmentArgs struct {
-	OrgId   string `json:"org_id"`
-	InboxId string `json:"inbox_id"`
+	OrgId   string    `json:"org_id"`
+	InboxId uuid.UUID `json:"inbox_id"`
 }
 
 func (AutoAssignmentArgs) Kind() string { return "auto_assignment" }

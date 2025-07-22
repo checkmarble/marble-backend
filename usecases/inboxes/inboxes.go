@@ -46,6 +46,16 @@ func (i *InboxReader) GetInboxById(ctx context.Context, inboxId uuid.UUID) (mode
 	return inbox, err
 }
 
+// We do not check for permissions here, since this is partly going to be executed through headless actions.
+func (i *InboxReader) GetAutoAssignmentEnabled(ctx context.Context, inboxId uuid.UUID) (bool, error) {
+	inbox, err := i.InboxRepository.GetInboxById(ctx, i.ExecutorFactory.NewExecutor(), inboxId)
+	if err != nil {
+		return false, err
+	}
+
+	return inbox.AutoAssignEnabled, nil
+}
+
 func (i *InboxReader) GetEscalationInboxMetadata(ctx context.Context, inboxId uuid.UUID) (models.InboxMetadata, error) {
 	inbox, err := i.InboxRepository.GetInboxById(ctx, i.ExecutorFactory.NewExecutor(), inboxId)
 	if err != nil {

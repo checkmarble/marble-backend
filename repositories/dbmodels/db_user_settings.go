@@ -9,13 +9,13 @@ import (
 )
 
 type DbUserUnavailability struct {
-	Id        uuid.UUID  `db:"id"`
-	OrgId     uuid.UUID  `db:"org_id"`
-	UserId    uuid.UUID  `db:"user_id"`
-	FromDate  time.Time  `db:"from_date"`
-	UntilDate time.Time  `db:"until_date"`
-	CreatedAt time.Time  `db:"created_at"`
-	UpdatedAt *time.Time `db:"updated_at"`
+	Id        uuid.UUID `db:"id"`
+	OrgId     uuid.UUID `db:"org_id"`
+	UserId    uuid.UUID `db:"user_id"`
+	FromDate  time.Time `db:"from_date"`
+	UntilDate time.Time `db:"until_date"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
 const TABLE_USER_UNAVAILABILITIES = "user_unavailabilities"

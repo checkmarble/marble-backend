@@ -15,6 +15,7 @@ type OrganizationFeatureAccess struct {
 	Analytics       FeatureAccess
 	Sanctions       FeatureAccess
 	NameRecognition FeatureAccess
+	AutoAssignment  FeatureAccess
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 
@@ -46,6 +47,9 @@ func (o OrganizationFeatureAccess) WithTestMode() OrganizationFeatureAccess {
 	}
 	if o.NameRecognition == Restricted {
 		o.NameRecognition = Test
+	}
+	if o.AutoAssignment == Restricted {
+		o.AutoAssignment = Test
 	}
 	return o
 }
@@ -103,6 +107,9 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	}
 	if l.UserRoles {
 		o.Roles = Allowed
+	}
+	if l.AutoAssignment {
+		o.AutoAssignment = Allowed
 	}
 
 	// remove the feature accesses that are not allowed by the license
