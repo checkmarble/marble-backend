@@ -25,7 +25,7 @@ var PROJECT_ID_TO_URL = map[string]string{
 
 // Build the metrics ingestion url from the Project ID, use the production url by default
 func (cfg *MetricCollectionConfig) Configure(licenseConfig models.LicenseConfiguration) {
-	// If the license key is set, can't disable metrics collection
+	// If the license key is set, metrics collection cannot be disabled
 	if licenseConfig.LicenseKey != "" {
 		cfg.Disabled = false
 	}
