@@ -96,7 +96,7 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 	logger.DebugContext(ctx, "Finished generating case review", "case_id", job.Args.CaseId)
 
 	id := uuid.Must(uuid.NewV7())
-	fileRef := fmt.Sprintf("ai_case_reviews/%s/%s.json", job.Args.CaseId, id)
+	fileRef := fmt.Sprintf("ai_case_reviews/final/%s/%s.json", job.Args.CaseId, id)
 	stream, err := w.blobRepository.OpenStream(ctx, w.bucketUrl, fileRef, fileRef)
 	if err != nil {
 		return errors.Wrap(err, "Error while opening stream")
