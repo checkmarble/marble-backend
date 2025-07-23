@@ -2,6 +2,8 @@ package infra
 
 import (
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 type MetricCollectionConfig struct {
@@ -22,7 +24,12 @@ var PROJECT_ID_TO_URL = map[string]string{
 }
 
 // Build the metrics ingestion url from the Project ID, use the production url by default
-func (cfg *MetricCollectionConfig) Configure() {
+func (cfg *MetricCollectionConfig) Configure(licenseConfig models.LicenseConfiguration) {
+	// If the license key is set, can't disable metrics collection
+	if licenseConfig.LicenseKey != "" {
+		cfg.Disabled = false
+	}
+
 	projectId, _ := GetProjectId()
 	cfg.MetricsIngestionURL = PROD_METRICS_INGESTION_URL
 	if url, ok := PROJECT_ID_TO_URL[projectId]; ok {

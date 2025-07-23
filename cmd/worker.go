@@ -109,7 +109,7 @@ func RunTaskQueue(apiVersion string) error {
 		JobInterval:      utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
 		FallbackDuration: utils.GetEnvDuration("METRICS_FALLBACK_DURATION", 30*24*time.Hour),
 	}
-	metricCollectionConfig.Configure()
+	metricCollectionConfig.Configure(licenseConfig)
 
 	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env, apiVersion)
 	defer sentry.Flush(3 * time.Second)
