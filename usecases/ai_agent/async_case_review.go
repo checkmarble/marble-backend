@@ -24,13 +24,13 @@ type caseReviewWorkerRepository interface {
 	CreateCaseReviewFile(
 		ctx context.Context,
 		exec repositories.Executor,
-		caseReview models.AiCaseReviewFile,
+		caseReview models.AiCaseReview,
 	) error
 	ListCaseReviewFiles(
 		ctx context.Context,
 		exec repositories.Executor,
 		caseId uuid.UUID,
-	) ([]models.AiCaseReviewFile, error)
+	) ([]models.AiCaseReview, error)
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 	GetOrganizationById(
 		ctx context.Context,
@@ -113,10 +113,10 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		return errors.Wrap(err, "Error while parsing case id")
 	}
 
-	err = w.repository.CreateCaseReviewFile(ctx, w.executorFactory.NewExecutor(), models.AiCaseReviewFile{
+	err = w.repository.CreateCaseReviewFile(ctx, w.executorFactory.NewExecutor(), models.AiCaseReview{
 		ID:            id,
 		CaseID:        caseId,
-		Status:        models.AiCaseReviewFileStatusCompleted.String(),
+		Status:        models.AiCaseReviewStatusCompleted.String(),
 		BucketName:    w.bucketUrl,
 		FileReference: fileRef,
 	})

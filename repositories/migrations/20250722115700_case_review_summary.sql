@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 create table
-  ai_case_review_files (
+  ai_case_reviews (
     id uuid primary key default gen_random_uuid (),
     case_id uuid not null,
     status text not null,
@@ -22,7 +22,7 @@ ADD COLUMN ai_case_review_enabled boolean not null default false;
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
-drop table ai_case_review_files;
+drop table ai_case_reviews;
 
 ALTER TABLE organizations
 DROP COLUMN IF EXISTS ai_case_review_enabled;
