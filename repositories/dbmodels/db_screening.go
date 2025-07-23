@@ -18,7 +18,7 @@ var (
 type DBScreening struct {
 	Id                  string                           `db:"id"`
 	DecisionId          string                           `db:"decision_id"`
-	OrgId               *string                          `db:"org_id"`
+	OrgId               string                           `db:"org_id"`
 	ScreeningConfigId   string                           `db:"sanction_check_config_id"`
 	Status              string                           `db:"status"`
 	SearchInput         json.RawMessage                  `db:"search_input"`
