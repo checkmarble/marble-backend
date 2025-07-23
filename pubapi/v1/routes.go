@@ -6,8 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Routes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
-	unauthed.GET("/-/version", handleVersion)
+func Routes(conf pubapi.Config, version string, unauthed *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
+	unauthed.GET("/-/version", handleVersion(version))
 
 	authed := unauthed.Group("/", authMiddleware)
 
@@ -43,6 +43,12 @@ func Routes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gin.Ha
 	}
 }
 
-func handleVersion(c *gin.Context) {
-	pubapi.NewResponse(gin.H{"version": "v1beta"}).Serve(c)
+func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
+	// New, future v1 endpoints go here.
+}
+
+func handleVersion(version string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		pubapi.NewResponse(gin.H{"version": version}).Serve(c)
+	}
 }
