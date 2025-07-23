@@ -44,7 +44,7 @@ func (c AdminClient) CreateUser(ctx context.Context, email, name string) error {
 			return nil
 		}
 
-		utils.LoggerFromContext(ctx).WarnContext(ctx, fmt.Sprintf("could not create firebase user %s, your administrator will need to create it manually", email),
+		utils.LoggerFromContext(ctx).WarnContext(ctx, fmt.Sprintf("could not create firebase user %s, your administrator will need to create it manually: %s", email, err.Error()),
 			"email", email)
 
 		return nil
