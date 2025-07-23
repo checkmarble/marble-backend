@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type AiCaseReviewFile struct {
+type AiCaseReview struct {
 	ID     uuid.UUID `db:"id"`
 	CaseID uuid.UUID `db:"case_id"`
 
@@ -21,12 +21,12 @@ type AiCaseReviewFile struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-const TABLE_AI_CASE_REVIEW_FILES = "ai_case_review_files"
+const TABLE_AI_CASE_REVIEWS = "ai_case_reviews"
 
-var AiCaseReviewFileFields = utils.ColumnList[AiCaseReviewFile]()
+var AiCaseReviewFields = utils.ColumnList[AiCaseReview]()
 
-func AdaptAiCaseReviewFile(dbModel AiCaseReviewFile) models.AiCaseReviewFile {
-	return models.AiCaseReviewFile{
+func AdaptAiCaseReview(dbModel AiCaseReview) models.AiCaseReview {
+	return models.AiCaseReview{
 		ID:            dbModel.ID,
 		CaseID:        dbModel.CaseID,
 		Status:        dbModel.Status,

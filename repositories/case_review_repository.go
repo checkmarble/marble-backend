@@ -12,7 +12,7 @@ import (
 func (r *MarbleDbRepository) CreateCaseReviewFile(
 	ctx context.Context,
 	exec Executor,
-	caseReview models.AiCaseReviewFile,
+	caseReview models.AiCaseReview,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -21,7 +21,7 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 	err := ExecBuilder(
 		ctx,
 		exec,
-		NewQueryBuilder().Insert(dbmodels.TABLE_AI_CASE_REVIEW_FILES).
+		NewQueryBuilder().Insert(dbmodels.TABLE_AI_CASE_REVIEWS).
 			Columns(
 				"id",
 				"case_id",
@@ -46,17 +46,17 @@ func (r *MarbleDbRepository) ListCaseReviewFiles(
 	ctx context.Context,
 	exec Executor,
 	caseId uuid.UUID,
-) ([]models.AiCaseReviewFile, error) {
+) ([]models.AiCaseReview, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	query := NewQueryBuilder().
-		Select(dbmodels.AiCaseReviewFileFields...).
-		From(dbmodels.TABLE_AI_CASE_REVIEW_FILES).
+		Select(dbmodels.AiCaseReviewFields...).
+		From(dbmodels.TABLE_AI_CASE_REVIEWS).
 		Where(squirrel.Eq{
 			"case_id": caseId,
-			"status":  models.AiCaseReviewFileStatusCompleted.String(),
+			"status":  models.AiCaseReviewStatusCompleted.String(),
 		}).
 		OrderBy("created_at DESC")
 
@@ -64,8 +64,8 @@ func (r *MarbleDbRepository) ListCaseReviewFiles(
 		ctx,
 		exec,
 		query,
-		func(dbModel dbmodels.AiCaseReviewFile) (models.AiCaseReviewFile, error) {
-			return dbmodels.AdaptAiCaseReviewFile(dbModel), nil
+		func(dbModel dbmodels.AiCaseReview) (models.AiCaseReview, error) {
+			return dbmodels.AdaptAiCaseReview(dbModel), nil
 		},
 	)
 }
