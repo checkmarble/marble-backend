@@ -13,26 +13,29 @@ import (
 
 func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exec Executor, orgId string, limit int) ([]models.UserWithCaseCount, error) {
 	sql := `
-		select u.*, count(distinct c.id) as case_count
+		select u.*, count(distinct c.id) filter (where c.status != 'closed') as case_count
 		from inbox_users iu
-		inner join users u on u.id = iu.user_id
+		inner join users u on
+		  u.organization_id = $1 and
+		  u.id = iu.user_id and
+		  u.deleted_at is null and
+		  iu.auto_assignable
 		left join cases c on c.assigned_to = u.id
 		where
-		  auto_assignable = true and
 		  not exists (
 		    select 1
 		    from user_unavailabilities uu
 		    where
-				uu.org_id = $1 and
+				uu.org_id = $2 and
 				uu.user_id = iu.user_id and
 				now() between uu.from_date and uu.until_date
 	  	  )
 		group by u.id
-		having count(distinct c.id) < $2
+		having count(distinct c.id) filter (where c.status != 'closed') < $3
 		order by case_count
 	`
 
-	rows, err := exec.Query(ctx, sql, orgId, limit)
+	rows, err := exec.Query(ctx, sql, orgId, orgId, limit)
 
 	if err != nil {
 		return nil, err
@@ -55,28 +58,31 @@ func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exe
 
 func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.Context, exec Executor, orgId string, inboxId uuid.UUID, limit int) (*models.User, error) {
 	sql := `
-		select u.*, count(*) filter (where c.id is not null) as case_count
+		select u.*, count(distinct c.id) filter (where c.status != 'closed') as case_count
 		from inbox_users iu
-		inner join users u on u.id = iu.user_id
+		inner join users u on
+		  u.organization_id = $1 and
+		  u.id = iu.user_id and
+		  u.deleted_at is null and
+		  iu.inbox_id = $2 and
+		  iu.auto_assignable
 		left join cases c on c.assigned_to = u.id
 		where
-		  iu.inbox_id = $1 and
-		  auto_assignable = true and
 		  not exists (
 		    select 1
 		    from user_unavailabilities uu
 		    where
-				uu.org_id = $2 and
+				uu.org_id = $3 and
 				uu.user_id = iu.user_id and
 				now() between uu.from_date and uu.until_date
 	  	  )
 		group by u.id
-		having count(*) filter (where c.id is not null) < $3
+		having count(distinct c.id) filter (where c.status != 'closed') < $4
 		order by case_count, id asc
 		limit 1
 	`
 
-	rows, err := exec.Query(ctx, sql, inboxId, orgId, limit)
+	rows, err := exec.Query(ctx, sql, orgId, inboxId, orgId, limit)
 	if err != nil {
 		return nil, err
 	}
