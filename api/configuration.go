@@ -20,6 +20,7 @@ type Configuration struct {
 	BatchTimeout        time.Duration
 	DecisionTimeout     time.Duration
 	DefaultTimeout      time.Duration
+	AnalyticsTimeout    time.Duration
 
 	FirebaseConfig FirebaseConfig
 	MetabaseConfig infra.MetabaseConfiguration
