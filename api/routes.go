@@ -330,3 +330,39 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/settings/ai", tom, HandleGetAiSettingForOrganization(uc))
 	router.PUT("/settings/ai", tom, HandlePutAiSettingForOrganization(uc))
 }
+
+func addAnalyticsRoutes(r *gin.Engine, uc usecases.Usecases, auth utils.Authentication) {
+	tom := timeoutMiddleware(15 * time.Second)
+
+	router := r.Use(
+		auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
+	)
+
+	router.GET("/-/analytics", tom, func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		type query struct {
+			OrgId string    `form:"org_id"`
+			Start time.Time `form:"start"`
+			End   time.Time `form:"end"`
+		}
+
+		var q query
+
+		if err := c.ShouldBindQuery(&q); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		uc := uc.NewDummyAnalyticsUsecase()
+		results, err := uc.Do(c.Request.Context(), q.OrgId, q.Start, q.End)
+
+		if presentError(ctx, c, err) {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		c.JSON(http.StatusOK, results)
+	})
+
+}
