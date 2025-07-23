@@ -32,5 +32,6 @@ alter table licenses
 alter table organizations drop column auto_assign_queue_limit;
 alter table inboxes drop column auto_assign_enabled;
 alter table inbox_users drop column auto_assignable;
+alter table licenses drop column auto_assignment;
 
 drop table user_unavailabilities;
