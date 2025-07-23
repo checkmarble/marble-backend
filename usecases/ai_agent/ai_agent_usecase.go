@@ -766,7 +766,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	return agent_dto.CaseReviewV1{
 		Ok:          false,
 		Output:      caseReview,
-		SanityCheck: sanityCheckResult.Text,
+		SanityCheck: sanityCheckOutput.Justification,
 		Thought:     caseReviewResult.Thought,
 	}, nil
 }
