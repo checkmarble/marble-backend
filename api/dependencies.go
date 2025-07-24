@@ -42,7 +42,7 @@ func InitDependencies(
 		firebaseApp := infra.InitializeFirebase(ctx, conf.FirebaseConfig.ProjectId)
 
 		optTokenVerifier = append(optTokenVerifier, firebaseApp)
-		firebaseAdmin = firebase.NewAdminClient(conf.FirebaseConfig.ApiKey, firebaseApp)
+		firebaseAdmin = firebase.NewAdminClient(conf.FirebaseConfig.ApiKey, firebaseApp, conf.MarbleAppUrl)
 	}
 
 	firebaseClient := firebase.New(optTokenVerifier[0])

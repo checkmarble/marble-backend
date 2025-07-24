@@ -18,14 +18,16 @@ type Adminer interface {
 }
 
 type AdminClient struct {
-	apiKey string
-	client *auth.Client
+	apiKey       string
+	client       *auth.Client
+	marbleAppUrl string
 }
 
-func NewAdminClient(apiKey string, client *auth.Client) *AdminClient {
+func NewAdminClient(apiKey string, client *auth.Client, marbleAppUrl string) *AdminClient {
 	return &AdminClient{
-		apiKey: apiKey,
-		client: client,
+		apiKey:       apiKey,
+		client:       client,
+		marbleAppUrl: marbleAppUrl,
 	}
 }
 
@@ -85,6 +87,7 @@ func (c AdminClient) SendPasswordResetEmail(ctx context.Context, user *auth.User
 	if err != nil {
 		return errors.Wrap(err, "could not create password reset request")
 	}
+	req.Header.Set("referer", c.marbleAppUrl)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
