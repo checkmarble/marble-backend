@@ -147,6 +147,7 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 				WithScenarioPermissionCheck: true,
 				WithDecisionWebhooks:        true,
 				WithRuleExecutionDetails:    true,
+				WithDisallowUnknownFields:   true,
 			},
 		)
 		if err != nil {
@@ -218,6 +219,12 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 				OrganizationId:     orgId,
 				TriggerObjectTable: payload.TriggerObjectType,
 				PayloadRaw:         payload.TriggerObject,
+			},
+			models.CreateDecisionParams{
+				WithScenarioPermissionCheck: true,
+				WithDecisionWebhooks:        true,
+				WithRuleExecutionDetails:    true,
+				WithDisallowUnknownFields:   true,
 			},
 		)
 		if err != nil {
