@@ -1058,34 +1058,5 @@ func (repo *MarbleDbRepository) CountDecisionsByOrg(ctx context.Context, exec Ex
 		Where(squirrel.Lt{"created_at": to}).
 		GroupBy("org_id")
 
-	type orgCount struct {
-		OrgId string
-		Count int
-	}
-
-	counts, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (orgCount, error) {
-		var result orgCount
-		err := row.Scan(&result.OrgId, &result.Count)
-		if err != nil {
-			return orgCount{}, err
-		}
-		return result, nil
-	})
-	if err != nil {
-		return map[string]int{}, err
-	}
-
-	result := make(map[string]int, len(orgIds))
-	for _, count := range counts {
-		result[count.OrgId] = count.Count
-	}
-
-	// Set 0 for org IDs which don't have any decisions
-	for _, orgId := range orgIds {
-		if _, exists := result[orgId]; !exists {
-			result[orgId] = 0
-		}
-	}
-
-	return result, nil
+	return countByHelper(ctx, exec, query, orgIds)
 }

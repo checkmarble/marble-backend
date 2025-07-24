@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -441,4 +442,22 @@ func (repo *MarbleDbRepository) CountWhitelistsForCounterpartyId(ctx context.Con
 	}
 
 	return count, nil
+}
+
+func (repo *MarbleDbRepository) CountScreeningsByOrg(ctx context.Context, exec Executor,
+	orgIds []string, from, to time.Time,
+) (map[string]int, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id, count(*) as count").
+		From(dbmodels.TABLE_SCREENINGS).
+		Where(squirrel.Eq{"org_id": orgIds}).
+		Where(squirrel.GtOrEq{"created_at": from}).
+		Where(squirrel.Lt{"created_at": to}).
+		GroupBy("org_id")
+
+	return countByHelper(ctx, exec, query, orgIds)
 }
