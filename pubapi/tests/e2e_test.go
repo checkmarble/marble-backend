@@ -12,7 +12,7 @@ import (
 )
 
 func TestPublicApi(t *testing.T) {
-	for _, version := range []string{"v1beta"} {
+	for _, version := range []string{"v1beta", "v1"} {
 		t.Run(fmt.Sprintf("Public API %s integration tests", version), func(it *testing.T) {
 			ctx := context.Background()
 			ctx = utils.StoreLoggerInContext(ctx, slog.New(slog.DiscardHandler))

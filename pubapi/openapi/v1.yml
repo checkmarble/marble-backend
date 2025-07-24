@@ -13,7 +13,7 @@ x-readme:
     - go
     - ruby
 servers:
-  - url: https://api.checkmarble.com/v1beta
+  - url: https://api.checkmarble.com/v1
 tags:
   - name: Decisions
     description: Routes for decisions
@@ -814,6 +814,8 @@ components:
       schema:
         type: integer
         minimum: 1
+        maximum: 100
+
     order:
       name: order
       description: Sort direction for items
