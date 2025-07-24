@@ -176,6 +176,7 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c 
 				PayloadRaw:         requestData.TriggerObject,
 				TriggerObjectTable: requestData.ObjectType,
 			},
+			models.CreateDecisionParams{},
 		)
 		if presentIngestionValidationError(c, err) || presentError(ctx, c, err) {
 			return

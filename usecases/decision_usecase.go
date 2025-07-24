@@ -416,6 +416,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		input.TriggerObjectTable,
 		input.ClientObject,
 		input.PayloadRaw,
+		params.WithDisallowUnknownFields,
 	)
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{}, err
@@ -581,6 +582,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 func (usecase *DecisionUsecase) CreateAllDecisions(
 	ctx context.Context,
 	input models.CreateAllDecisionsInput,
+	params models.CreateDecisionParams,
 ) (decisions []models.DecisionWithRuleExecutions, nbSkipped int, err error) {
 	decisionStart := time.Now()
 	exec := usecase.executorFactory.NewExecutor()
@@ -598,6 +600,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		input.TriggerObjectTable,
 		nil,
 		input.PayloadRaw,
+		params.WithDisallowUnknownFields,
 	)
 	if err != nil {
 		return nil, 0, err
@@ -820,6 +823,7 @@ func (usecase DecisionUsecase) validatePayload(
 	triggerObjectTable string,
 	clientObject *models.ClientObject,
 	rawPayload json.RawMessage,
+	disallowUnknownFields bool,
 ) (payload models.ClientObject, dataModel models.DataModel, err error) {
 	exec := usecase.executorFactory.NewExecutor()
 
@@ -852,6 +856,11 @@ func (usecase DecisionUsecase) validatePayload(
 	}
 
 	parser := payload_parser.NewParser()
+
+	if disallowUnknownFields {
+		parser = payload_parser.NewParser(payload_parser.DisallowUnknownFields())
+	}
+
 	payload, err = parser.ParsePayload(ctx, table, rawPayload)
 	if err != nil {
 		err = errors.Wrap(err, "error parsing payload in decision usecase validate payload")
