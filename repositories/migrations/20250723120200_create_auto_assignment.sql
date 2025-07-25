@@ -1,5 +1,11 @@
 -- +goose Up
 
+alter table licenses
+    add column auto_assignment bool not null default false;
+
+alter table organization_feature_access
+    add column case_auto_assign text not null default 'allowed';
+
 alter table organizations
     add column auto_assign_queue_limit int not null default 10;
 
@@ -23,9 +29,6 @@ create table user_unavailabilities (
 );
 
 create index idx_user_avail_org_id_dates on user_unavailabilities (org_id, user_id, from_date, until_date);
-
-alter table licenses
-    add column auto_assignment bool not null default false;
 
 -- +goose Down
 

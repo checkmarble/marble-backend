@@ -23,6 +23,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				OrganizationId: "org1",
 				TestRun:        Allowed,
 				Sanctions:      Allowed,
+				CaseAutoAssign: Allowed,
 			},
 			license: LicenseEntitlements{
 				Analytics:      true,
@@ -32,7 +33,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				UserRoles:      true,
 				TestRun:        true,
 				Sanctions:      true,
-				AutoAssignment: true,
+				CaseAutoAssign: true,
 			},
 			config: FeaturesConfiguration{
 				Webhooks:        true,
@@ -53,7 +54,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				RuleSnoozes:     Allowed,
 				Roles:           Allowed,
 				AiAssist:        Allowed,
-				AutoAssignment:  Allowed,
+				CaseAutoAssign:  Allowed,
 			},
 		},
 		{
@@ -63,6 +64,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				OrganizationId: "org2",
 				TestRun:        Allowed,
 				Sanctions:      Allowed,
+				CaseAutoAssign: Allowed,
 			},
 			license: LicenseEntitlements{
 				Analytics:   false,
@@ -92,7 +94,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				RuleSnoozes:     Allowed,
 				Roles:           Allowed,
 				AiAssist:        Allowed,
-				AutoAssignment:  Restricted,
+				CaseAutoAssign:  Restricted,
 			},
 		},
 		{
@@ -102,6 +104,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				OrganizationId: "org3",
 				TestRun:        Allowed,
 				Sanctions:      Allowed,
+				CaseAutoAssign: Allowed,
 			},
 			license: LicenseEntitlements{
 				Analytics:      true,
@@ -111,7 +114,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				UserRoles:      true,
 				TestRun:        true,
 				Sanctions:      true,
-				AutoAssignment: true,
+				CaseAutoAssign: true,
 			},
 			config: FeaturesConfiguration{
 				Webhooks:        false,
@@ -132,7 +135,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				RuleSnoozes:     Allowed,
 				Roles:           Allowed,
 				AiAssist:        Restricted,
-				AutoAssignment:  Allowed,
+				CaseAutoAssign:  Allowed,
 			},
 		},
 		{
@@ -142,6 +145,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				OrganizationId: "org4",
 				TestRun:        Restricted,
 				Sanctions:      Allowed,
+				CaseAutoAssign: Allowed,
 			},
 			license: LicenseEntitlements{
 				Analytics:      false,
@@ -151,7 +155,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				UserRoles:      true,
 				TestRun:        false,
 				Sanctions:      true,
-				AutoAssignment: false,
+				CaseAutoAssign: false,
 			},
 			config: FeaturesConfiguration{
 				Webhooks:        false,
@@ -173,7 +177,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				RuleSnoozes:     Allowed,
 				Roles:           Allowed,
 				AiAssist:        Restricted,
-				AutoAssignment:  Test,
+				CaseAutoAssign:  Test,
 			},
 		},
 	}
