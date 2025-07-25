@@ -14,6 +14,7 @@ type APIOrganizationFeatureAccess struct {
 	Analytics       string `json:"analytics"`
 	Sanctions       string `json:"sanctions"`
 	NameRecognition string `json:"name_recognition"`
+	CaseAutoAssign  string `json:"case_auto_assign"`
 
 	// user-scoped - temporarly at least
 	AiAssist string `json:"ai_assist"`
@@ -29,6 +30,7 @@ func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOr
 		Analytics:       f.Analytics.String(),
 		Sanctions:       f.Sanctions.String(),
 		NameRecognition: f.NameRecognition.String(),
+		CaseAutoAssign:  f.CaseAutoAssign.String(),
 		AiAssist:        f.AiAssist.String(),
 	}
 }
