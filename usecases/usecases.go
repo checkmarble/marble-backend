@@ -389,3 +389,13 @@ func (usecases *Usecases) NewMetricsIngestionUsecase() MetricsIngestionUsecase {
 		usecases.NewExecutorFactory(),
 	)
 }
+
+func (uc *Usecases) NewAutoAssignmentUsecase() AutoAssignmentUsecase {
+	return AutoAssignmentUsecase{
+		executorFactory:    uc.NewExecutorFactory(),
+		transactionFactory: uc.NewTransactionFactory(),
+		caseRepository:     &uc.Repositories.MarbleDbRepository,
+		orgRepository:      &uc.Repositories.MarbleDbRepository,
+		repository:         &uc.Repositories.MarbleDbRepository,
+	}
+}

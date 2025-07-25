@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
@@ -106,6 +107,8 @@ type CaseUseCase struct {
 	webhookEventsUsecase webhookEventsUsecase
 	screeningRepository  CaseUsecaseScreeningRepository
 	ingestedDataReader   caseUsecaseIngestedDataReader
+	taskQueueRepository  repositories.TaskQueueRepository
+	featureAccessReader  feature_access.FeatureAccessReader
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -252,6 +255,10 @@ func (usecase *CaseUseCase) CreateCase(
 	err := usecase.repository.CreateCase(ctx, tx, createCaseAttributes, newCaseId)
 	if err != nil {
 		return models.Case{}, err
+	}
+
+	if err := usecase.triggerAutoAssignment(ctx, tx, createCaseAttributes.OrganizationId, createCaseAttributes.InboxId); err != nil {
+		return models.Case{}, errors.Wrap(err, "could not trigger auto-assignment")
 	}
 
 	if fromEndUser {
@@ -406,6 +413,12 @@ func (usecase *CaseUseCase) UpdateCase(
 		default:
 			if err := usecase.performCaseActionSideEffectsWithoutStatusChange(ctx, tx, c); err != nil {
 				return models.Case{}, err
+			}
+
+			if updateCaseAttributes.Status == models.CaseClosed {
+				if err := usecase.triggerAutoAssignment(ctx, tx, c.OrganizationId, c.InboxId); err != nil {
+					return models.Case{}, errors.Wrap(err, "could not trigger auto-assignment")
+				}
 			}
 		}
 
@@ -1630,6 +1643,28 @@ func (uc *CaseUseCase) PerformCaseActionSideEffects(ctx context.Context, tx repo
 
 	if err := uc.performCaseActionSideEffectsWithoutStatusChange(ctx, tx, c); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (uc *CaseUseCase) triggerAutoAssignment(ctx context.Context, tx repositories.Transaction, orgId string, inboxId uuid.UUID) error {
+	features, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+	if err != nil {
+		return errors.Wrap(err, "could not check feature access")
+	}
+
+	if features.CaseAutoAssign.IsAllowed() {
+		enabled, err := uc.inboxReader.GetAutoAssignmentEnabled(ctx, inboxId)
+		if err != nil {
+			return errors.Wrap(err, "could not read inbox")
+		}
+
+		if enabled {
+			if err := uc.taskQueueRepository.EnqueueAutoAssignmentTask(ctx, tx, orgId, inboxId); err != nil {
+				return errors.Wrap(err, "could not enqueue auto-assignment job")
+			}
+		}
 	}
 
 	return nil

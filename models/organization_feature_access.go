@@ -15,6 +15,7 @@ type OrganizationFeatureAccess struct {
 	Analytics       FeatureAccess
 	Sanctions       FeatureAccess
 	NameRecognition FeatureAccess
+	CaseAutoAssign  FeatureAccess
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 
@@ -47,6 +48,9 @@ func (o OrganizationFeatureAccess) WithTestMode() OrganizationFeatureAccess {
 	if o.NameRecognition == Restricted {
 		o.NameRecognition = Test
 	}
+	if o.CaseAutoAssign == Restricted {
+		o.CaseAutoAssign = Test
+	}
 	return o
 }
 
@@ -55,6 +59,7 @@ type DbStoredOrganizationFeatureAccess struct {
 	OrganizationId string
 	TestRun        FeatureAccess
 	Sanctions      FeatureAccess
+	CaseAutoAssign FeatureAccess
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -84,6 +89,7 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 		TestRun:         f.TestRun,
 		Sanctions:       f.Sanctions,
 		NameRecognition: f.Sanctions,
+		CaseAutoAssign:  f.CaseAutoAssign,
 		CreatedAt:       f.CreatedAt,
 		UpdatedAt:       f.UpdatedAt,
 	}
@@ -112,6 +118,9 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	if !l.Sanctions {
 		o.Sanctions = Restricted
 		o.NameRecognition = Restricted
+	}
+	if !l.CaseAutoAssign {
+		o.CaseAutoAssign = Restricted
 	}
 
 	// as an exception, if test mode is enambled (if the app is running with the firebase auth emulator), set all the features to "test"

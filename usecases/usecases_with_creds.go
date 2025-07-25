@@ -383,6 +383,8 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		webhookEventsUsecase: usecases.NewWebhookEventsUsecase(),
 		screeningRepository:  &usecases.Repositories.MarbleDbRepository,
 		ingestedDataReader:   usecases.NewIngestedDataReaderUsecase(),
+		taskQueueRepository:  usecases.Repositories.TaskQueueRepository,
+		featureAccessReader:  usecases.NewFeatureAccessReader(),
 	}
 }
 
@@ -634,6 +636,13 @@ func (usecases UsecasesWithCreds) NewOffloadingWorker() *scheduled_execution.Off
 	)
 }
 
+func (usecases UsecasesWithCreds) NewAutoAssignmentWorker() *scheduled_execution.AutoAssignmentWorker {
+	return scheduled_execution.NewAutoAssignmentWorker(
+		usecases.NewFeatureAccessReader(),
+		usecases.Usecases.NewAutoAssignmentUsecase(),
+	)
+}
+
 func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataReaderUsecase {
 	return NewIngestedDataReaderUsecase(
 		usecases.Repositories.IngestedDataReadRepository,
@@ -710,4 +719,12 @@ func (usecases *UsecasesWithCreds) NewCaseReviewWorker(timeout time.Duration) *a
 		timeout,
 	)
 	return &w
+}
+
+func (uc *UsecasesWithCreds) NewUserSettingsUsecase() UserSettingsUsecase {
+	return UserSettingsUsecase{
+		executorFactory: uc.NewExecutorFactory(),
+		enforceSecurity: uc.NewEnforceSecurity(),
+		repository:      &uc.Repositories.MarbleDbRepository,
+	}
 }

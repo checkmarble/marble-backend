@@ -60,6 +60,7 @@ type LicenseEntitlements struct {
 	RuleSnoozes    bool
 	TestRun        bool
 	Sanctions      bool
+	CaseAutoAssign bool
 }
 
 type LicenseValidation struct {
@@ -81,6 +82,7 @@ func NewFullLicense() LicenseValidation {
 			RuleSnoozes:    true,
 			TestRun:        true,
 			Sanctions:      true,
+			CaseAutoAssign: true,
 		},
 	}
 }

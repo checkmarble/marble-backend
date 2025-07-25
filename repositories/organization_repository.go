@@ -121,6 +121,10 @@ func (repo *MarbleDbRepository) UpdateOrganization(ctx context.Context, exec Exe
 			*updateOrganization.ScreeningConfig.MatchLimit)
 		hasUpdates = true
 	}
+	if updateOrganization.AutoAssignQueueLimit != nil {
+		updateRequest = updateRequest.Set("auto_assign_queue_limit", updateOrganization.AutoAssignQueueLimit)
+		hasUpdates = true
+	}
 
 	if !hasUpdates {
 		return nil

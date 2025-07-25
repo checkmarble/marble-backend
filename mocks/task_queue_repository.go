@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -71,4 +72,12 @@ func (m *TaskQueueRepository) EnqueueCaseReviewTask(
 ) error {
 	args := m.Called(ctx, tx, organizationId, caseId)
 	return args.Error(0)
+}
+
+func (m *TaskQueueRepository) EnqueueAutoAssignmentTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	orgId string, inboxId uuid.UUID,
+) error {
+	return m.Called(ctx, tx, orgId, inboxId).Error(0)
 }
