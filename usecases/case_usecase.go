@@ -1654,7 +1654,7 @@ func (uc *CaseUseCase) triggerAutoAssignment(ctx context.Context, tx repositorie
 		return errors.Wrap(err, "could not check feature access")
 	}
 
-	if features.AutoAssignment.IsAllowed() {
+	if features.CaseAutoAssign.IsAllowed() {
 		enabled, err := uc.inboxReader.GetAutoAssignmentEnabled(ctx, inboxId)
 		if err != nil {
 			return errors.Wrap(err, "could not read inbox")

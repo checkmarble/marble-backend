@@ -32,7 +32,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				UserRoles:      true,
 				TestRun:        true,
 				Sanctions:      true,
-				AutoAssignment: true,
+				CaseAutoAssign: true,
 			},
 			config: FeaturesConfiguration{
 				Webhooks:        true,
@@ -53,7 +53,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				RuleSnoozes:     Allowed,
 				Roles:           Allowed,
 				AiAssist:        Allowed,
-				AutoAssignment:  Allowed,
+				CaseAutoAssign:  Allowed,
 			},
 		},
 		{
@@ -92,7 +92,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				RuleSnoozes:     Allowed,
 				Roles:           Allowed,
 				AiAssist:        Allowed,
-				AutoAssignment:  Restricted,
+				CaseAutoAssign:  Restricted,
 			},
 		},
 		{
@@ -111,7 +111,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				UserRoles:      true,
 				TestRun:        true,
 				Sanctions:      true,
-				AutoAssignment: true,
+				CaseAutoAssign: true,
 			},
 			config: FeaturesConfiguration{
 				Webhooks:        false,
@@ -132,7 +132,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				RuleSnoozes:     Allowed,
 				Roles:           Allowed,
 				AiAssist:        Restricted,
-				AutoAssignment:  Allowed,
+				CaseAutoAssign:  Allowed,
 			},
 		},
 		{
@@ -151,7 +151,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				UserRoles:      true,
 				TestRun:        false,
 				Sanctions:      true,
-				AutoAssignment: false,
+				CaseAutoAssign: false,
 			},
 			config: FeaturesConfiguration{
 				Webhooks:        false,
@@ -173,7 +173,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				RuleSnoozes:     Allowed,
 				Roles:           Allowed,
 				AiAssist:        Restricted,
-				AutoAssignment:  Test,
+				CaseAutoAssign:  Test,
 			},
 		},
 	}

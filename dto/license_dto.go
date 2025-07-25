@@ -34,7 +34,7 @@ func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) Li
 		RuleSnoozes:    licenseEntitlements.RuleSnoozes,
 		TestRun:        licenseEntitlements.TestRun,
 		Sanctions:      licenseEntitlements.Sanctions,
-		AutoAssignment: licenseEntitlements.AutoAssignment,
+		AutoAssignment: licenseEntitlements.CaseAutoAssign,
 	}
 }
 

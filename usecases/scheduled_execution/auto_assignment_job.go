@@ -34,7 +34,7 @@ func (w *AutoAssignmentWorker) Work(ctx context.Context, job *river.Job[models.A
 		return errors.Wrap(err, "could not check feature access")
 	}
 
-	if !features.AutoAssignment.IsAllowed() {
+	if !features.CaseAutoAssign.IsAllowed() {
 		return nil
 	}
 
