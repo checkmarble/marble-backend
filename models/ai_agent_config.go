@@ -16,11 +16,12 @@ type AiAgentModelConfig struct {
 }
 
 // LoadAiAgentModelConfig loads the AI agent model configuration from a JSON file
-func LoadAiAgentModelConfig(configPath string) (*AiAgentModelConfig, error) {
+// The default model is provided by the caller depends on the provider it uses
+func LoadAiAgentModelConfig(configPath string, defaultModel string) (*AiAgentModelConfig, error) {
 	if configPath == "" {
 		// Return default configuration if no path is provided
 		return &AiAgentModelConfig{
-			DefaultModel: "gpt-4o",
+			DefaultModel: defaultModel,
 			PromptModels: make(map[string]string),
 		}, nil
 	}
@@ -38,7 +39,7 @@ func LoadAiAgentModelConfig(configPath string) (*AiAgentModelConfig, error) {
 
 	// Set default model if not specified
 	if config.DefaultModel == "" {
-		config.DefaultModel = "gpt-4o"
+		config.DefaultModel = defaultModel
 	}
 
 	// Initialize maps if they're nil

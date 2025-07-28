@@ -706,6 +706,7 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		usecases.Repositories.BlobRepository,
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewTransactionFactory(),
+		usecases.aiAgentConfig,
 	)
 }
 
