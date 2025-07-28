@@ -20,7 +20,7 @@ type autoAssignmentCaseRepository interface {
 type autoAssignmentRepository interface {
 	FindAutoAssignableUsers(ctx context.Context, exec repositories.Executor, orgId string, limit int) ([]models.UserWithCaseCount, error)
 	FindNextAutoAssignableUserForInbox(ctx context.Context, exec repositories.Executor, orgId string, inboxId uuid.UUID, limit int) (*models.User, error)
-	FindAutoAssignableCases(ctx context.Context, exec repositories.Executor, limit int) ([]models.Case, error)
+	FindAutoAssignableCases(ctx context.Context, exec repositories.Executor, orgId string, limit int) ([]models.Case, error)
 }
 
 type autoAssignmentOrgRepository interface {
@@ -60,7 +60,7 @@ func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId strin
 
 	logger.DebugContext(ctx, fmt.Sprintf("case auto-assignment: found %d empty queue slots", slots))
 
-	cases, err := uc.repository.FindAutoAssignableCases(ctx, uc.executorFactory.NewExecutor(), slots)
+	cases, err := uc.repository.FindAutoAssignableCases(ctx, uc.executorFactory.NewExecutor(), orgId, slots)
 	if err != nil {
 		return errors.Wrap(err, "could not find assignable cases")
 	}
@@ -68,7 +68,7 @@ func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId strin
 	logger.DebugContext(ctx, fmt.Sprintf("case auto-assignment: found %d auto-assignable cases", len(cases)))
 
 	for _, c := range cases {
-		// Look for the user with the least number of assigned cases in the case's inbox
+		// Look for the user with the least number of assigned cases, who has access to the case's inbox
 		user, err := uc.repository.FindNextAutoAssignableUserForInbox(ctx, uc.executorFactory.NewExecutor(), c.OrganizationId, c.InboxId, org.AutoAssignQueueLimit)
 		if err != nil {
 			return err
