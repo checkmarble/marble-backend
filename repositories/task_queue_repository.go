@@ -252,7 +252,12 @@ func (r riverRepository) EnqueueAutoAssignmentTask(
 			InboxId: inboxId,
 		},
 		&river.InsertOpts{
-			Queue: orgId,
+			Queue:       orgId,
+			ScheduledAt: time.Now().Add(time.Minute),
+			UniqueOpts: river.UniqueOpts{
+				ByQueue:  true,
+				ByPeriod: 2 * time.Minute,
+			},
 		})
 
 	if err != nil {

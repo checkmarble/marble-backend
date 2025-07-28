@@ -11,31 +11,46 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// This SQL query and the one below basically do the following
+//   - For an organization;
+//   - Select all active users that:
+//   - Configured as part of a rotation
+//   - Have less than X active cases assigned to them (through the lateral subquery)
+//   - Are currently available (through the `not exists` subquery)
 func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exec Executor, orgId string, limit int) ([]models.UserWithCaseCount, error) {
 	sql := `
-		select u.*, count(distinct c.id) filter (where c.status != 'closed') as case_count
+		select u.*, count(distinct c.id) as case_count
 		from inbox_users iu
 		inner join users u on
 		  u.organization_id = $1 and
 		  u.id = iu.user_id and
 		  u.deleted_at is null and
 		  iu.auto_assignable
-		left join cases c on c.assigned_to = u.id
+		  left join lateral (
+		    select c.id
+		    from cases c
+		    where
+		  	  c.org_id = u.organization_id and
+		  	  c.assigned_to = u.id and
+		  	  c.status != 'closed' and
+		  	  coalesce(c.snoozed_until, to_timestamp(0)) < now()
+			  limit $2
+		  ) c on true
 		where
 		  not exists (
 		    select 1
 		    from user_unavailabilities uu
 		    where
-				uu.org_id = $2 and
+				uu.org_id = $1 and
 				uu.user_id = iu.user_id and
 				now() between uu.from_date and uu.until_date
 	  	  )
 		group by u.id
-		having count(distinct c.id) filter (where c.status != 'closed') < $3
+		having count(distinct c.id) < $2
 		order by case_count
 	`
 
-	rows, err := exec.Query(ctx, sql, orgId, orgId, limit)
+	rows, err := exec.Query(ctx, sql, orgId, limit)
 
 	if err != nil {
 		return nil, err
@@ -58,7 +73,7 @@ func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exe
 
 func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.Context, exec Executor, orgId string, inboxId uuid.UUID, limit int) (*models.User, error) {
 	sql := `
-		select u.*, count(distinct c.id) filter (where c.status != 'closed') as case_count
+		select u.*, count(distinct c.id) as case_count
 		from inbox_users iu
 		inner join users u on
 		  u.organization_id = $1 and
@@ -66,23 +81,32 @@ func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.C
 		  u.deleted_at is null and
 		  iu.inbox_id = $2 and
 		  iu.auto_assignable
-		left join cases c on c.assigned_to = u.id
+		left join lateral (
+		  select c.id
+		  from cases c
+		  where
+			c.org_id = u.organization_id and
+			c.assigned_to = u.id and
+			c.status != 'closed' and
+		    coalesce(c.snoozed_until, to_timestamp(0)) < now()
+		  limit $3
+		) c on true
 		where
 		  not exists (
 		    select 1
 		    from user_unavailabilities uu
 		    where
-				uu.org_id = $3 and
+				uu.org_id = $1 and
 				uu.user_id = iu.user_id and
 				now() between uu.from_date and uu.until_date
 	  	  )
 		group by u.id
-		having count(distinct c.id) filter (where c.status != 'closed') < $4
+		having count(distinct c.id) < $3
 		order by case_count, id asc
 		limit 1
 	`
 
-	rows, err := exec.Query(ctx, sql, orgId, inboxId, orgId, limit)
+	rows, err := exec.Query(ctx, sql, orgId, inboxId, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -100,16 +124,17 @@ func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.C
 	return &user.User, nil
 }
 
-func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exec Executor, limit int) ([]models.Case, error) {
+func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exec Executor, orgId string, limit int) ([]models.Case, error) {
 	sql := NewQueryBuilder().
 		Select(columnsNames("c", dbmodels.SelectCaseColumn)...).
 		From(dbmodels.TABLE_CASES+" c").
 		InnerJoin(dbmodels.TABLE_INBOXES+" i on i.id = c.inbox_id").
 		Where(squirrel.Eq{
-			"i.auto_assign_enabled": true,
+			"c.org_id":              orgId,
 			"c.assigned_to":         nil,
-			"c.snoozed_until":       nil,
+			"i.auto_assign_enabled": true,
 		}).
+		Where("coalesce(c.snoozed_until, to_timestamp(0)) < now()").
 		Where("c.status != ?", models.CaseClosed).
 		OrderBy("c.created_at").
 		Limit(uint64(limit))
