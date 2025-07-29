@@ -608,7 +608,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	if err != nil {
 		return nil, errors.Wrap(err, "could not prepare rules definitions review request")
 	}
-	requestRulesDefinitionsReview, err := llm_adapter.NewRequest[string]().
+	requestRulesDefinitionsReview, err := llm_adapter.NewUntypedRequest().
 		WithModel(modelRulesDefinitions).
 		WithInstruction(systemInstruction).
 		WithText(llm_adapter.RoleUser, promptRulesDefinitions).
@@ -634,7 +634,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	if err != nil {
 		return nil, errors.Wrap(err, "could not prepare rule thresholds request")
 	}
-	requestRuleThresholds, err := llm_adapter.NewRequest[string]().
+	requestRuleThresholds, err := llm_adapter.NewUntypedRequest().
 		WithModel(modelRuleThresholds).
 		WithInstruction(systemInstruction).
 		WithText(llm_adapter.RoleUser, promptRuleThresholds).
@@ -667,7 +667,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	if err != nil {
 		return nil, errors.Wrap(err, "could not prepare case review request")
 	}
-	requestCaseReview, err := llm_adapter.NewRequest[string]().
+	requestCaseReview, err := llm_adapter.NewUntypedRequest().
 		WithModel(modelCaseReview).
 		WithInstruction(systemInstruction).
 		WithText(llm_adapter.RoleUser, promptCaseReview).
