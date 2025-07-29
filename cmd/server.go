@@ -116,22 +116,6 @@ func RunServer(config CompiledConfig) error {
 		MetricsTable:   utils.GetEnv("BIGQUERY_METRICS_TABLE", infra.MetricsTable),
 	}
 
-	aiAgentConfig := infra.AIAgentConfiguration{
-		MainAgentProviderType: infra.AIAgentProviderTypeFromString(
-			utils.GetEnv("AI_AGENT_MAIN_AGENT_PROVIDER_TYPE", "openai"),
-		),
-		MainAgentURL:          utils.GetEnv("AI_AGENT_MAIN_AGENT_URL", ""),
-		MainAgentKey:          utils.GetEnv("AI_AGENT_MAIN_AGENT_KEY", ""),
-		MainAgentDefaultModel: utils.GetEnv("AI_AGENT_MAIN_AGENT_DEFAULT_MODEL", "gemini-2.5-flash"),
-		MainAgentBackend: infra.AIAgentProviderBackendFromString(
-			utils.GetEnv("AI_AGENT_MAIN_AGENT_BACKEND", ""),
-		),
-		MainAgentProject:  utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", ""),
-		MainAgentLocation: utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
-	}
-
-	logger.Info("ai agent config", "config", aiAgentConfig)
-
 	serverConfig := struct {
 		batchIngestionMaxSize            int
 		caseManagerBucket                string
@@ -256,7 +240,6 @@ func RunServer(config CompiledConfig) error {
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
 		usecases.WithTestMode(serverConfig.firebaseEmulatorHost != ""),
 		usecases.WithFirebaseAdmin(deps.FirebaseAdmin),
-		usecases.WithAIAgentConfig(aiAgentConfig),
 	)
 
 	////////////////////////////////////////////////////////////
