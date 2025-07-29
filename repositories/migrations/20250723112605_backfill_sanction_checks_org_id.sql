@@ -12,6 +12,11 @@ FROM orgs
 WHERE sanction_checks.sanction_check_config_id = orgs.scc_id
 AND sanction_checks.org_id IS NULL;
 
+ALTER TABLE sanction_checks ALTER COLUMN org_id SET NOT NULL;
+
 -- +goose StatementEnd
 
 -- +goose Down
+-- +goose StatementBegin
+ALTER TABLE sanction_checks ALTER COLUMN org_id DROP NOT NULL;
+-- +goose StatementEnd
