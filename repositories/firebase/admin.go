@@ -46,10 +46,11 @@ func (c AdminClient) CreateUser(ctx context.Context, email, name string) error {
 			return nil
 		}
 
-		utils.LoggerFromContext(ctx).WarnContext(ctx, fmt.Sprintf("could not create firebase user %s, your administrator will need to create it manually: %s", email, err.Error()),
+		utils.LoggerFromContext(ctx).WarnContext(ctx, fmt.Sprintf("could not create firebase user %s, your administrator will need to create it manually", email),
+			"error", err.Error(),
 			"email", email)
 
-		return nil
+		return err
 	}
 
 	utils.LoggerFromContext(ctx).InfoContext(ctx, fmt.Sprintf("firebase user created for user %s", user.Email),
@@ -69,9 +70,11 @@ func (c AdminClient) SendPasswordResetEmail(ctx context.Context, user *auth.User
 	payload := struct {
 		RequestType string `json:"requestType"` //nolint:tagliatelle
 		Email       string `json:"email"`
+		ContinueUrl string `json:"continueUrl"` //nolint:tagliatelle
 	}{
 		RequestType: "PASSWORD_RESET",
 		Email:       user.Email,
+		ContinueUrl: fmt.Sprintf("%s/sign-in-email?email=%s", c.marbleAppUrl, url.QueryEscape(user.Email)),
 	}
 
 	body, err := json.Marshal(payload)
@@ -79,10 +82,7 @@ func (c AdminClient) SendPasswordResetEmail(ctx context.Context, user *auth.User
 		return errors.Wrap(err, "could not create password reset request")
 	}
 
-	q := url.Values{}
-	q.Set("key", c.apiKey)
-
-	u := fmt.Sprintf("https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?%s", q.Encode())
+	u := fmt.Sprintf("https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=%s", url.QueryEscape(c.apiKey))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
 	if err != nil {
 		return errors.Wrap(err, "could not create password reset request")
