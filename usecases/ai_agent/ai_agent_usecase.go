@@ -95,7 +95,7 @@ type AiAgentUsecase struct {
 	mu         sync.Mutex
 }
 
-type CaseReviewResponseFormat struct {
+type sanityCheckOutput struct {
 	Ok            bool   `json:"ok" jsonschema_description:"Whether the case review is ok or not" jsonschema_required:"true"`
 	Justification string `json:"justification" jsonschema_description:"Detailed justification for the sanity check, only in the case of a negative answer" jsonschema_required:"false"`
 }
@@ -701,7 +701,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	if err != nil {
 		return nil, errors.Wrap(err, "could not prepare sanity check request")
 	}
-	requestSanityCheck, err := llm_adapter.NewRequest[CaseReviewResponseFormat]().
+	requestSanityCheck, err := llm_adapter.NewRequest[sanityCheckOutput]().
 		WithModel(modelSanityCheck).
 		WithInstruction(systemInstruction).
 		WithText(llm_adapter.RoleUser, promptSanityCheck).
