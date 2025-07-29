@@ -72,18 +72,22 @@ func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, exec Execut
 				"inbox_id",
 				"user_id",
 				"role",
+				"auto_assignable",
 			).
 			Values(
 				newInboxUserId,
 				input.InboxId,
 				input.UserId,
 				input.Role,
+				input.AutoAssignable,
 			),
 	)
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Executor, inboxUserId uuid.UUID, role *models.InboxUserRole, autoAssignable *bool) error {
+func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Executor,
+	inboxUserId uuid.UUID, role *models.InboxUserRole, autoAssignable *bool,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

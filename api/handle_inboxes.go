@@ -164,7 +164,8 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inbox, err := usecase.UpdateInbox(ctx, getInboxInput.InboxId.Uuid(), data.Name, data.EscalationInboxId, data.AutoAssignEnabled)
+		inbox, err := usecase.UpdateInbox(ctx, getInboxInput.InboxId.Uuid(), data.Name,
+			data.EscalationInboxId, data.AutoAssignEnabled)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -252,8 +253,9 @@ type CreateInboxUserInput struct {
 		InboxId dto.UriUuid `uri:"inbox_id" binding:"required"`
 	}
 	Body struct {
-		UserId uuid.UUID `json:"user_id" binding:"required"`
-		Role   string    `json:"role" binding:"required"`
+		UserId         uuid.UUID `json:"user_id" binding:"required"`
+		Role           string    `json:"role" binding:"required"`
+		AutoAssignable bool      `json:"auto_assignable"`
 	}
 }
 
@@ -274,9 +276,10 @@ func handlePostInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inboxUser, err := usecase.CreateInboxUser(ctx, models.CreateInboxUserInput{
-			InboxId: input.Uri.InboxId.Uuid(),
-			UserId:  input.Body.UserId,
-			Role:    models.InboxUserRole(input.Body.Role),
+			InboxId:        input.Uri.InboxId.Uuid(),
+			UserId:         input.Body.UserId,
+			Role:           models.InboxUserRole(input.Body.Role),
+			AutoAssignable: input.Body.AutoAssignable,
 		})
 		if presentError(ctx, c, err) {
 			return

@@ -18,9 +18,10 @@ type InboxUser struct {
 }
 
 type CreateInboxUserInput struct {
-	InboxId uuid.UUID
-	UserId  uuid.UUID
-	Role    InboxUserRole
+	InboxId        uuid.UUID
+	UserId         uuid.UUID
+	Role           InboxUserRole
+	AutoAssignable bool
 }
 
 type InboxUserRole string
