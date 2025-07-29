@@ -2,8 +2,6 @@ module github.com/checkmarble/marble-backend
 
 go 1.24.4
 
-toolchain go1.24.5
-
 require (
 	cloud.google.com/go/bigquery v1.69.0
 	cloud.google.com/go/iam v1.5.2
@@ -17,7 +15,7 @@ require (
 	github.com/adrg/strutil v0.3.1
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/biter777/countries v1.7.5
-	github.com/checkmarble/marble-llm-adapter v0.0.0-00010101000000-000000000000
+	github.com/checkmarble/llm-adapter v0.0.0-20250729112324-4bb3f0d138b1
 	github.com/cockroachdb/errors v1.12.0
 	github.com/exaring/otelpgx v0.6.1
 	github.com/gavv/httpexpect/v2 v2.16.0
@@ -283,5 +281,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	moul.io/http2curl/v2 v2.3.0 // indirect
 )
-
-replace github.com/checkmarble/marble-llm-adapter => ../../../llm-adapter

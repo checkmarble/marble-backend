@@ -23,9 +23,9 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/invopop/jsonschema"
 
-	llm_adapter "github.com/checkmarble/marble-llm-adapter"
-	"github.com/checkmarble/marble-llm-adapter/llms/aistudio"
-	"github.com/checkmarble/marble-llm-adapter/llms/openai"
+	llm_adapter "github.com/checkmarble/llm-adapter"
+	"github.com/checkmarble/llm-adapter/llms/aistudio"
+	"github.com/checkmarble/llm-adapter/llms/openai"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
