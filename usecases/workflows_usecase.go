@@ -30,6 +30,7 @@ type WorkflowUsecase struct {
 type workflowRepository interface {
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
 	GetWorkflowRule(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WorkflowRule, error)
+	GetWorkflowRuleDetails(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.Workflow, error)
 	GetWorkflowCondition(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WorkflowCondition, error)
 	GetWorkflowAction(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WorkflowAction, error)
 	InsertWorkflowRule(ctx context.Context, exec repositories.Executor, rule models.WorkflowRule) (models.WorkflowRule, error)
@@ -62,6 +63,17 @@ func (uc *WorkflowUsecase) ListWorkflowsForScenario(ctx context.Context, scenari
 	}
 
 	return rules, nil
+}
+
+func (uc *WorkflowUsecase) GetWorkflowRule(ctx context.Context, ruleId uuid.UUID) (models.Workflow, error) {
+	exec := uc.executorFactory.NewExecutor()
+
+	workflow, err := uc.repository.GetWorkflowRuleDetails(ctx, exec, ruleId)
+	if err != nil {
+		return models.Workflow{}, err
+	}
+
+	return workflow, nil
 }
 
 func (uc *WorkflowUsecase) CreateWorkflowRule(ctx context.Context, rule models.WorkflowRule) (models.WorkflowRule, error) {

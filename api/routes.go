@@ -309,6 +309,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/workflows/:scenarioId", tom, handleListWorkflowsForScenario(uc))
 	router.POST("/workflows/:scenarioId/reorder", tom, handleReorderWorkflowRules(uc))
 	router.POST("/workflows/rule", tom, handleCreateWorkflowRule(uc))
+	router.GET("/workflows/rule/:ruleId", tom, handleGetWorkflowRule(uc))
 	router.PUT("/workflows/rule/:ruleId", tom, handleUpdateWorkflowRule(uc))
 	router.DELETE("/workflows/rule/:ruleId", tom, handleDeleteWorkflowRule(uc))
 	router.POST("/workflows/rule/:ruleId/condition", tom, handleCreateWorkflowCondition(uc))
