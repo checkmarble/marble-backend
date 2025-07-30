@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -20,9 +21,12 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/invopop/jsonschema"
 
+	llm_adapter "github.com/checkmarble/llm-adapter"
+	"github.com/checkmarble/llm-adapter/llms/aistudio"
+	"github.com/checkmarble/llm-adapter/llms/openai"
 	"github.com/google/uuid"
-	"github.com/openai/openai-go"
 	"github.com/pkg/errors"
 )
 
@@ -85,9 +89,15 @@ type AiAgentUsecase struct {
 	caseReviewFileRepository caseReviewWorkerRepository
 	blobRepository           repositories.BlobRepository
 	caseReviewTaskEnqueuer   caseReviewTaskEnqueuer
+	config                   infra.AIAgentConfiguration
 
-	client *openai.Client
-	mu     sync.Mutex
+	llmAdapter *llm_adapter.LlmAdapter
+	mu         sync.Mutex
+}
+
+type sanityCheckOutput struct {
+	Ok            bool   `json:"ok" jsonschema_description:"Whether the case review is ok or not" jsonschema_required:"true"`
+	Justification string `json:"justification" jsonschema_description:"Detailed justification for the sanity check, only in the case of a negative answer" jsonschema_required:"false"`
 }
 
 func NewAiAgentUsecase(
@@ -101,6 +111,7 @@ func NewAiAgentUsecase(
 	blobRepository repositories.BlobRepository,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
 	transactionFactory executor_factory.TransactionFactory,
+	config infra.AIAgentConfiguration,
 ) AiAgentUsecase {
 	return AiAgentUsecase{
 		enforceSecurity:          enforceSecurity,
@@ -113,17 +124,80 @@ func NewAiAgentUsecase(
 		blobRepository:           blobRepository,
 		caseReviewTaskEnqueuer:   caseReviewTaskEnqueuer,
 		transactionFactory:       transactionFactory,
+		config:                   config,
 	}
 }
 
-func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*openai.Client, error) {
+func (uc *AiAgentUsecase) createOpenAIProvider() (llm_adapter.Llm, error) {
+	opts := []openai.Opt{}
+	if uc.config.MainAgentURL != "" {
+		opts = append(opts, openai.WithBaseUrl(uc.config.MainAgentURL))
+	}
+	if uc.config.MainAgentKey != "" {
+		opts = append(opts, openai.WithApiKey(uc.config.MainAgentKey))
+	}
+
+	provider, err := openai.New(opts...)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create OpenAI provider")
+	}
+	return provider, nil
+}
+
+func (uc *AiAgentUsecase) createAIStudioProvider() (llm_adapter.Llm, error) {
+	opts := []aistudio.Opt{
+		aistudio.WithBackend(uc.config.MainAgentBackend),
+	}
+
+	if uc.config.MainAgentKey != "" {
+		opts = append(opts, aistudio.WithApiKey(uc.config.MainAgentKey))
+	}
+	if uc.config.MainAgentProject != "" {
+		opts = append(opts, aistudio.WithProject(uc.config.MainAgentProject))
+	}
+	if uc.config.MainAgentLocation != "" {
+		opts = append(opts, aistudio.WithLocation(uc.config.MainAgentLocation))
+	}
+
+	provider, err := aistudio.New(opts...)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create AI Studio provider")
+	}
+	return provider, nil
+}
+
+func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*llm_adapter.LlmAdapter, error) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
-	if uc.client == nil {
-		client := openai.NewClient()
-		uc.client = &client
+
+	if uc.llmAdapter != nil {
+		return uc.llmAdapter, nil
 	}
-	return uc.client, nil
+
+	// Create provider based on config
+	var mainProvider llm_adapter.Llm
+	var err error
+
+	switch uc.config.MainAgentProviderType {
+	case infra.AIAgentProviderTypeOpenAI:
+		mainProvider, err = uc.createOpenAIProvider()
+	case infra.AIAgentProviderTypeAIStudio:
+		mainProvider, err = uc.createAIStudioProvider()
+	default:
+		return nil, errors.Errorf("unsupported provider type: %s", uc.config.MainAgentProviderType)
+	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create LLM provider")
+	}
+
+	adapter, err := llm_adapter.New(llm_adapter.WithProvider("main", mainProvider))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create LLM adapter")
+	}
+
+	uc.llmAdapter = adapter
+	return uc.llmAdapter, nil
 }
 
 func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.Reader, error) {
@@ -216,173 +290,54 @@ func readPrompt(path string) (string, error) {
 	return string(promptBytes), nil
 }
 
-// Mutates the input (variadic)previousContents by appending the new input content and any genereated output, and returns them for convenience.
-// "previous" returned by the method can be reused as input for the next call to generateContent in order to continue the conversation.
-func (uc *AiAgentUsecase) generateContent(
-	ctx context.Context,
-	client *openai.Client,
-	promptPath string,
-	data map[string]any,
-	generateContentConfig *GenerateContentConfig,
-	previousContents ...openai.ChatCompletionMessageParamUnion,
-) (out GenerateContentResult, err error) {
-	prompt, err := readPrompt(promptPath)
+// Prepare the request for the LLM, the prompt comes from a file and need to be templated.
+// The file contains some variables that are replaced by the data provided by the caller.
+func (uc *AiAgentUsecase) prepareRequest(promptPath string, data map[string]any) (model string, prompt string, err error) {
+	// Load prompt from file, do each time in case prompt configuration changes
+	promptContent, err := readPrompt(promptPath)
 	if err != nil {
-		return out, err
+		return "", "", errors.Wrap(err, "could not read prompt file")
 	}
 
 	// Load model configuration on each call
-	modelConfig, err := models.LoadAiAgentModelConfig("prompts/ai_agent_models.json")
+	// Give the possibility to change the prompt without reloading the application
+	modelConfig, err := models.LoadAiAgentModelConfig("prompts/ai_agent_models.json", uc.config.MainAgentDefaultModel)
 	if err != nil {
-		return out, errors.Wrap(err, "could not load AI agent model configuration")
+		return "", "", errors.Wrap(err, "could not load AI agent model configuration")
 	}
 
-	// Get the appropriate model for this prompt
-	model := modelConfig.GetModelForPrompt(promptPath)
+	model = modelConfig.GetModelForPrompt(promptPath)
 
-	logger := utils.LoggerFromContext(ctx)
-	logger.InfoContext(ctx, "using model for prompt",
-		"prompt", promptPath,
-		"model", model)
-
+	// Build the prompt message with the data
+	// Prepare the data for the template execution
 	marshalledMap := make(map[string]string)
 	for k, v := range data {
 		if printer, ok := v.(agent_dto.AgentPrinter); ok {
 			marshalledMap[k], err = printer.PrintForAgent()
 			if err != nil {
-				return out, errors.Wrapf(err, "could not print %s", k)
+				return "", "", errors.Wrapf(err, "could not print %s", k)
 			}
 		} else {
 			b, err := json.Marshal(v)
 			if err != nil {
-				return out, errors.Wrapf(err, "could not marshal %s", k)
+				return "", "", errors.Wrapf(err, "could not marshal %s", k)
 			}
 			marshalledMap[k] = string(b)
 		}
 	}
 
-	t, err := template.New(promptPath).Parse(prompt)
+	t, err := template.New(promptPath).Parse(promptContent)
 	if err != nil {
-		return out, errors.Wrapf(err, "could not parse template %s", promptPath)
+		return "", "", errors.Wrapf(err, "could not parse template %s", promptPath)
 	}
 	buf := bytes.Buffer{}
 	err = t.Execute(&buf, marshalledMap)
 	if err != nil {
-		return out, errors.Wrap(err, "could not execute template")
+		return "", "", errors.Wrap(err, "could not execute template")
 	}
+	prompt = buf.String()
 
-	// Build messages array
-	messages := make([]openai.ChatCompletionMessageParamUnion, 0, len(previousContents)+2)
-
-	// Add system message if provided
-	if generateContentConfig.SystemInstruction != "" {
-		messages = append(messages, openai.SystemMessage(
-			generateContentConfig.SystemInstruction))
-	}
-
-	// Add previous messages
-	messages = append(messages, previousContents...)
-
-	// Add current prompt
-	messages = append(messages, openai.UserMessage(buf.String()))
-
-	// Create chat completion request
-	chatService := client.Chat.Completions
-	params := openai.ChatCompletionNewParams{
-		Model:    model,
-		Messages: messages,
-	}
-
-	// Add response format if specified
-	if generateContentConfig.ResponseMIMEType == "application/json" {
-		if generateContentConfig.ResponseSchema != nil {
-			// Use JSON schema format for structured output
-			params.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
-				OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{
-					JSONSchema: *generateContentConfig.ResponseSchema,
-				},
-			}
-		} else {
-			// Use simple JSON object format
-			params.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
-				OfJSONObject: &openai.ResponseFormatJSONObjectParam{},
-			}
-		}
-	}
-
-	// Add tools if specified
-	if len(generateContentConfig.Tools) > 0 {
-		params.Tools = generateContentConfig.Tools
-	}
-
-	// Add tool choice if specified
-	if generateContentConfig.ToolChoice != (openai.ChatCompletionToolChoiceOptionUnionParam{}) {
-		params.ToolChoice = generateContentConfig.ToolChoice
-	}
-
-	// Add labels for billing attribution
-	if generateContentConfig.Labels != nil {
-		// OpenAI doesn't have direct labels support like GenAI, but we can add metadata
-		// This would need to be handled differently in production
-	}
-
-	result, err := chatService.New(ctx, params)
-	if err != nil {
-		return out, err
-	}
-	if len(result.Choices) == 0 {
-		return out, errors.New("no response from OpenAI")
-	}
-
-	choice := result.Choices[0]
-	if choice.Message.Content == "" {
-		return out, errors.New("no content in response from OpenAI")
-	}
-
-	// Extract text content
-	text := choice.Message.Content
-
-	// Extract tool calls (equivalent to "thought" in GenAI)
-	thought := ""
-	if len(choice.Message.ToolCalls) > 0 {
-		for _, toolCall := range choice.Message.ToolCalls {
-			if toolCall.Function.Arguments != "" {
-				thought += toolCall.Function.Arguments
-			}
-		}
-	}
-
-	logger.InfoContext(ctx, "content detail",
-		"prompt", promptPath,
-		"model", model,
-		"len_content", len(choice.Message.Content),
-		"len_tool_calls", len(choice.Message.ToolCalls),
-	)
-
-	// Convert the response message to the format expected by previous contents
-	responseMessage := openai.AssistantMessage(text)
-	previous := append(previousContents, responseMessage)
-
-	return GenerateContentResult{
-		Text:     text,
-		Thought:  thought,
-		Previous: previous,
-	}, nil
-}
-
-type GenerateContentConfig struct {
-	SystemInstruction string
-	ResponseMIMEType  string
-	ResponseSchema    *openai.ResponseFormatJSONSchemaJSONSchemaParam
-	Tools             []openai.ChatCompletionToolParam
-	ToolChoice        openai.ChatCompletionToolChoiceOptionUnionParam
-	Labels            map[string]string
-}
-
-type GenerateContentResult struct {
-	Text     string
-	Thought  string
-	Previous []openai.ChatCompletionMessageParamUnion
+	return model, prompt, nil
 }
 
 func (uc *AiAgentUsecase) getCaseWithPermissions(ctx context.Context, caseId string) (models.Case, error) {
@@ -474,10 +429,21 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 	})
 }
 
+// CreateCaseReviewSync performs a comprehensive AI-powered review of a case by analyzing
+// case data, related information, and generating structured insights through multiple
+// AI model interactions. The process involves several key steps:
+// 1. Initialize AI client and gather case data with security validation
+// 2. Generate data model summary to understand the case structure
+// 3. Determine optimal fields to read for large tables to manage data volume
+// 4. Analyze rule definitions and thresholds for context
+// 5. Generate the main case review with all available information
+// 6. Perform sanity check on the generated review for quality assurance
 func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId string) (agent_dto.AiCaseReviewDto, error) {
+	logger := utils.LoggerFromContext(ctx)
+
 	client, err := uc.GetClient(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create OpenAI client")
+		return nil, errors.Wrap(err, "could not create ai client")
 	}
 
 	caseData, relatedDataPerClient, err := uc.getCaseDataWithPermissions(ctx, caseId)
@@ -485,45 +451,49 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 		return nil, errors.Wrap(err, "could not get case data")
 	}
 
+	// Get Organization prompt from file if defined, this prompt gives more details about the organization
 	var clientActivityDescription string
 	clientActivityDescription, err = readPrompt(fmt.Sprintf("prompts/org_desc/%s.md", caseData.organizationId))
 	if err != nil {
-		logger := utils.LoggerFromContext(ctx)
-		logger.ErrorContext(ctx, "could not read organization description", "error", err)
+		logger.DebugContext(ctx, "could not read organization description", "error", err)
 		clientActivityDescription = "placeholder"
 	}
 
+	// Define the system instruction for prompt
 	systemInstruction, err := readPrompt("prompts/system.md")
 	if err != nil {
-		logger := utils.LoggerFromContext(ctx)
-		logger.ErrorContext(ctx, "could not read system instruction", "error", err)
+		logger.DebugContext(ctx, "could not read system instruction", "error", err)
 		systemInstruction = "You are a compliance officer or fraud analyst. You are given a case and you need to review it step by step. Reply factually to instructions in markdown format."
 	}
 
-	// Data model summary
-	dataModelSummaryResult, err := uc.generateContent(ctx,
-		client,
-		"prompts/case_review/data_model_summary.md",
-		map[string]any{
+	// Data model summary, create thread because the response will be used in next steps
+	modelDataModelSummary, promptDataModelSummary, err := uc.prepareRequest(
+		"prompts/case_review/data_model_summary.md", map[string]any{
 			"data_model": caseData.dataModelDto,
-		},
-		&GenerateContentConfig{
-			SystemInstruction: systemInstruction,
-		},
-	)
+		})
 	if err != nil {
-		return nil, errors.Wrap(err,
-			"could not generate data model summary")
+		return nil, errors.Wrap(err, "could not prepare data model summary request")
 	}
-	dataModelSummary := dataModelSummaryResult.Text
-	previousContents := dataModelSummaryResult.Previous
 
-	logger := utils.LoggerFromContext(ctx)
-	logger.DebugContext(ctx, "================================ Data model summary ================================")
-	logger.DebugContext(ctx, "Data model summary: "+dataModelSummary)
-	if dataModelSummaryResult.Thought != "" {
-		logger.DebugContext(ctx, "Data model summary thought: "+dataModelSummaryResult.Thought)
+	// Create the request with Thread for the next steps which needs the response
+	requestDataModelSummary, err := llm_adapter.NewUntypedRequest().
+		CreateThread().
+		WithModel(modelDataModelSummary).
+		WithInstruction(systemInstruction).
+		WithText(llm_adapter.RoleUser, promptDataModelSummary).
+		Do(ctx, client)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not generate data model summary")
 	}
+	defer requestDataModelSummary.ThreadId.Clear()
+
+	dataModelSummary, err := requestDataModelSummary.Get(0)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get data model summary")
+	}
+
+	logger.DebugContext(ctx, "================================ Data model summary ================================")
+	logger.DebugContext(ctx, "Data model summary", "response", dataModelSummary)
 
 	// Data model object field read options
 	// Here, we implicitly distinguish between "transaction" tables (based on the presence of "many" rows for a given customer)
@@ -550,55 +520,55 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 		if objectTables != nil {
 			// generate the map of fields to read for every table, but only once.
 			if fieldsToReadPerTable == nil {
-				// Build the JSON schema for field selection
-				properties := make(map[string]interface{}, len(tablesWithLargRowNbs))
+				props := jsonschema.NewProperties()
+
 				for tableName, fields := range tablesWithLargRowNbs {
-					properties[tableName] = map[string]interface{}{
-						"type": "array",
-						"items": map[string]interface{}{
-							"type": "string",
-							"enum": fields,
+					props.Set(tableName, &jsonschema.Schema{
+						Type: "array",
+						Items: &jsonschema.Schema{
+							Type: "string",
+							Enum: pure_utils.ToAnySlice(fields),
 						},
-					}
+					})
 				}
 
-				dataModelObjectFieldReadOptionsResult, err := uc.generateContent(
-					ctx,
-					client,
+				schema := jsonschema.Schema{
+					Type:       "object",
+					Properties: props,
+				}
+
+				modelDataModelObjectFieldReadOptions, promptDataModelObjectFieldReadOptions, err := uc.prepareRequest(
 					"prompts/case_review/data_model_object_field_read_options.md",
 					map[string]any{
 						"data_model_table_names": tableNamesWithLargRowNbs,
 					},
-					&GenerateContentConfig{
-						ResponseMIMEType: "application/json",
-						ResponseSchema: &openai.ResponseFormatJSONSchemaJSONSchemaParam{
-							Name:        "field_selection",
-							Description: openai.String("List of fields, on a table per table basis, that should be read from ingested data for high-volume tables and considered for transaction analysis"),
-							Schema: map[string]interface{}{
-								"type":       "object",
-								"properties": properties,
-							},
-						},
-						SystemInstruction: systemInstruction,
-					},
-					previousContents...,
 				)
 				if err != nil {
-					return nil, errors.Wrap(err,
-						"could not generate data model object field read options")
+					return nil, errors.Wrap(err, "could not prepare data model object field read options request")
 				}
-				dataModelObjectFieldReadOptions := dataModelObjectFieldReadOptionsResult.Text
+
+				requestDataModelObjectFieldReadOptions, err := llm_adapter.NewRequest[map[string][]string]().
+					OverrideResponseSchema(schema).
+					FromCandidate(requestDataModelSummary, 0).
+					WithModel(modelDataModelObjectFieldReadOptions).
+					WithInstruction(systemInstruction).
+					WithText(llm_adapter.RoleUser, promptDataModelObjectFieldReadOptions).
+					Do(ctx, client)
+				if err != nil {
+					return nil, errors.Wrap(err, "could not generate data model object field read options")
+				}
+
+				dataModelObjectFieldReadOptions, err :=
+					requestDataModelObjectFieldReadOptions.Get(0)
+				if err != nil {
+					return nil, errors.Wrap(err, "could not get data model object field read options")
+				}
+
 				logger.DebugContext(ctx, "================================ Data model object field read options ================================")
-				logger.DebugContext(ctx, "Data model object field read options: "+dataModelObjectFieldReadOptions)
-				if dataModelObjectFieldReadOptionsResult.Thought != "" {
-					logger.DebugContext(ctx, "Data model object field read options thought: "+
-						dataModelObjectFieldReadOptionsResult.Thought)
-				}
-				fieldsToReadPerTable = make(map[string][]string)
-				if err := json.Unmarshal([]byte(dataModelObjectFieldReadOptions), &fieldsToReadPerTable); err != nil {
-					return nil, errors.Wrap(err,
-						"could not unmarshal data model object field read options")
-				}
+				logger.DebugContext(ctx, "Data model object field read options",
+					"response", dataModelObjectFieldReadOptions)
+
+				fieldsToReadPerTable = dataModelObjectFieldReadOptions
 			}
 
 			for tableName, fieldsToRead := range fieldsToReadPerTable {
@@ -628,53 +598,60 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	}
 
 	// Rules definitions review
-	rulesDefinitionsReviewResult, err := uc.generateContent(ctx,
-		client,
+	modelRulesDefinitions, promptRulesDefinitions, err := uc.prepareRequest(
 		"prompts/case_review/rule_definitions.md",
 		map[string]any{
 			"decisions":            caseData.decisions,
 			"activity_description": clientActivityDescription,
 		},
-		&GenerateContentConfig{
-			SystemInstruction: systemInstruction,
-		},
 	)
-	rulesDefinitionsReview := rulesDefinitionsReviewResult.Text
 	if err != nil {
-		return nil, errors.Wrap(err,
-			"could not generate rules definitions review")
+		return nil, errors.Wrap(err, "could not prepare rules definitions review request")
 	}
-	logger.DebugContext(ctx, "================================ Rules definitions review ================================")
-	logger.DebugContext(ctx, "Rules definitions review: "+rulesDefinitionsReview)
-	if rulesDefinitionsReviewResult.Thought != "" {
-		logger.DebugContext(ctx, "Rules definitions review thought: "+rulesDefinitionsReviewResult.Thought)
+	requestRulesDefinitionsReview, err := llm_adapter.NewUntypedRequest().
+		WithModel(modelRulesDefinitions).
+		WithInstruction(systemInstruction).
+		WithText(llm_adapter.RoleUser, promptRulesDefinitions).
+		Do(ctx, client)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not generate rules definitions review")
+	}
+	rulesDefinitionsReview, err := requestRulesDefinitionsReview.Get(0)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get rules definitions review")
 	}
 
+	logger.DebugContext(ctx, "================================ Rules definitions review ================================")
+	logger.DebugContext(ctx, "Rules definitions review", "response", rulesDefinitionsReview)
+
 	// Rule thresholds
-	ruleThresholdsResult, err := uc.generateContent(ctx,
-		client,
+	modelRuleThresholds, promptRuleThresholds, err := uc.prepareRequest(
 		"prompts/case_review/rule_threshold_values.md",
 		map[string]any{
 			"decisions": caseData.decisions,
 		},
-		&GenerateContentConfig{
-			SystemInstruction: systemInstruction,
-		},
 	)
-	ruleThresholds := ruleThresholdsResult.Text
+	if err != nil {
+		return nil, errors.Wrap(err, "could not prepare rule thresholds request")
+	}
+	requestRuleThresholds, err := llm_adapter.NewUntypedRequest().
+		WithModel(modelRuleThresholds).
+		WithInstruction(systemInstruction).
+		WithText(llm_adapter.RoleUser, promptRuleThresholds).
+		Do(ctx, client)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not generate rule thresholds")
 	}
-	logger.DebugContext(ctx, "================================ Rule thresholds ================================")
-	logger.DebugContext(ctx, "Rule thresholds: "+ruleThresholds)
-	if ruleThresholdsResult.Thought != "" {
-		logger.DebugContext(ctx, "Rule thresholds thought: "+ruleThresholdsResult.Thought)
+	ruleThresholds, err := requestRuleThresholds.Get(0)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get rule thresholds")
 	}
 
+	logger.DebugContext(ctx, "================================ Rule thresholds ================================")
+	logger.DebugContext(ctx, "Rule thresholds", "response", ruleThresholds)
+
 	// Finally, we can generate the case review
-	caseReviewResult, err := uc.generateContent(
-		ctx,
-		client,
+	modelCaseReview, promptCaseReview, err := uc.prepareRequest(
 		"prompts/case_review/case_review.md",
 		map[string]any{
 			"case_detail":        caseData.case_,
@@ -686,23 +663,28 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 			"rules_summary":      rulesDefinitionsReview,
 			"rule_thresholds":    ruleThresholds,
 		},
-		&GenerateContentConfig{
-			SystemInstruction: systemInstruction,
-		},
 	)
-	caseReview := caseReviewResult.Text
+	if err != nil {
+		return nil, errors.Wrap(err, "could not prepare case review request")
+	}
+	requestCaseReview, err := llm_adapter.NewUntypedRequest().
+		WithModel(modelCaseReview).
+		WithInstruction(systemInstruction).
+		WithText(llm_adapter.RoleUser, promptCaseReview).
+		Do(ctx, client)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not generate case review")
 	}
-	logger.DebugContext(ctx, "================================ Full case review ================================")
-	logger.DebugContext(ctx, "Full case review: "+caseReview)
-	if caseReviewResult.Thought != "" {
-		logger.DebugContext(ctx, "Full case review thought: "+caseReviewResult.Thought)
+	caseReview, err := requestCaseReview.Get(0)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get case review")
 	}
 
+	logger.DebugContext(ctx, "================================ Full case review ================================")
+	logger.DebugContext(ctx, "Full case review", "response", caseReview)
+
 	// Finally, sanity check the resulting case review using a judgement prompt
-	sanityCheckResult, err := uc.generateContent(ctx,
-		client,
+	modelSanityCheck, promptSanityCheck, err := uc.prepareRequest(
 		"prompts/case_review/sanity_check.md",
 		map[string]any{
 			"case_detail":        caseData.case_,
@@ -715,59 +697,36 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 			"rule_thresholds":    ruleThresholds,
 			"case_review":        caseReview,
 		},
-		&GenerateContentConfig{
-			ResponseMIMEType: "application/json",
-			ResponseSchema: &openai.ResponseFormatJSONSchemaJSONSchemaParam{
-				Name:        "sanity_check",
-				Description: openai.String("Output of the sanity check and detailed justification"),
-				Schema: map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						"ok": map[string]interface{}{
-							"type":        "boolean",
-							"description": "Whether the case review is ok or not",
-						},
-						"justification": map[string]interface{}{
-							"type":        "string",
-							"description": "Detailed justification for the sanity check, only in the case of a negative answer",
-						},
-					},
-					"required": []string{"ok"},
-				},
-			},
-			SystemInstruction: systemInstruction,
-		},
 	)
-	sanityCheck := sanityCheckResult.Text
+	if err != nil {
+		return nil, errors.Wrap(err, "could not prepare sanity check request")
+	}
+	requestSanityCheck, err := llm_adapter.NewRequest[sanityCheckOutput]().
+		WithModel(modelSanityCheck).
+		WithInstruction(systemInstruction).
+		WithText(llm_adapter.RoleUser, promptSanityCheck).
+		Do(ctx, client)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not generate sanity check")
 	}
+	sanityCheck, err := requestSanityCheck.Get(0)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get sanity check")
+	}
+
 	logger.DebugContext(ctx, "================================ Sanity check ================================")
-	logger.DebugContext(ctx, "Sanity check: "+sanityCheck)
-	if sanityCheckResult.Thought != "" {
-		logger.DebugContext(ctx, "Sanity check thought: "+sanityCheckResult.Thought)
-	}
+	logger.DebugContext(ctx, "Sanity check", "response", sanityCheck)
 
-	var sanityCheckOutput struct {
-		Ok            bool   `json:"ok"`
-		Justification string `json:"justification"`
-	}
-	if err := json.Unmarshal([]byte(sanityCheckResult.Text), &sanityCheckOutput); err != nil {
-		return nil, errors.Wrap(err, "could not unmarshal sanity check")
-	}
-
-	if sanityCheckOutput.Ok {
+	if sanityCheck.Ok {
 		return agent_dto.CaseReviewV1{
-			Ok:      sanityCheckOutput.Ok,
-			Output:  caseReviewResult.Text,
-			Thought: caseReviewResult.Thought,
+			Ok:     sanityCheck.Ok,
+			Output: caseReview,
 		}, nil
 	}
 	return agent_dto.CaseReviewV1{
 		Ok:          false,
 		Output:      caseReview,
-		SanityCheck: sanityCheckOutput.Justification,
-		Thought:     caseReviewResult.Thought,
+		SanityCheck: sanityCheck.Justification,
 	}, nil
 }
 

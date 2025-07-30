@@ -11,6 +11,7 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/oauth2/v1"
+	"google.golang.org/genai"
 )
 
 const (
@@ -144,4 +145,46 @@ type ConvoyConfiguration struct {
 	APIUrl    string
 	ProjectID string
 	RateLimit int
+}
+
+type AIAgentProviderType string
+
+const (
+	AIAgentProviderTypeOpenAI   AIAgentProviderType = "openai"
+	AIAgentProviderTypeAIStudio AIAgentProviderType = "aistudio"
+	AIAgentProviderTypeUnknown  AIAgentProviderType = "unknown"
+)
+
+type AIAgentConfiguration struct {
+	MainAgentProviderType AIAgentProviderType
+	MainAgentURL          string
+	MainAgentKey          string
+	MainAgentDefaultModel string
+
+	// For AI Studio
+	MainAgentBackend  genai.Backend
+	MainAgentProject  string
+	MainAgentLocation string
+}
+
+func AIAgentProviderTypeFromString(providerType string) AIAgentProviderType {
+	switch providerType {
+	case "openai":
+		return AIAgentProviderTypeOpenAI
+	case "aistudio":
+		return AIAgentProviderTypeAIStudio
+	default:
+		return AIAgentProviderTypeUnknown
+	}
+}
+
+func AIAgentProviderBackendFromString(providerBackend string) genai.Backend {
+	switch providerBackend {
+	case "gemini":
+		return genai.BackendGeminiAPI
+	case "vertex":
+		return genai.BackendVertexAI
+	default:
+		return genai.BackendUnspecified
+	}
 }

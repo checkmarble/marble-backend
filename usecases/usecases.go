@@ -36,6 +36,7 @@ type Usecases struct {
 	license                     models.LicenseValidation
 	metricsCollectionConfig     infra.MetricCollectionConfig
 	firebaseAdmin               firebase.Adminer
+	aiAgentConfig               infra.AIAgentConfiguration
 }
 
 type Option func(*options)
@@ -138,6 +139,12 @@ func WithMetricsCollectionConfig(config infra.MetricCollectionConfig) Option {
 	}
 }
 
+func WithAIAgentConfig(config infra.AIAgentConfiguration) Option {
+	return func(o *options) {
+		o.aiAgentConfig = config
+	}
+}
+
 type options struct {
 	apiVersion                  string
 	batchIngestionMaxSize       int
@@ -154,6 +161,7 @@ type options struct {
 	hasTestMode                 bool
 	metricsCollectionConfig     infra.MetricCollectionConfig
 	firebaseClient              firebase.Adminer
+	aiAgentConfig               infra.AIAgentConfiguration
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -177,6 +185,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		hasTestMode:                 o.hasTestMode,
 		metricsCollectionConfig:     o.metricsCollectionConfig,
 		firebaseAdmin:               o.firebaseClient,
+		aiAgentConfig:               o.aiAgentConfig,
 	}
 }
 

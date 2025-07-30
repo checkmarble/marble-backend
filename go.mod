@@ -1,6 +1,6 @@
 module github.com/checkmarble/marble-backend
 
-go 1.24.1
+go 1.24.4
 
 require (
 	cloud.google.com/go/bigquery v1.69.0
@@ -15,7 +15,8 @@ require (
 	github.com/adrg/strutil v0.3.1
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/biter777/countries v1.7.5
-	github.com/cockroachdb/errors v1.11.3
+	github.com/checkmarble/llm-adapter v0.0.0-20250729112324-4bb3f0d138b1
+	github.com/cockroachdb/errors v1.12.0
 	github.com/exaring/otelpgx v0.6.1
 	github.com/gavv/httpexpect/v2 v2.16.0
 	github.com/getkin/kin-openapi v0.132.0
@@ -32,6 +33,7 @@ require (
 	github.com/h2non/gock v1.2.0
 	github.com/hashicorp/go-set/v2 v2.1.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
+	github.com/invopop/jsonschema v0.13.0
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/mitchellh/copystructure v1.2.0
@@ -39,7 +41,6 @@ require (
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/oapi-codegen/oapi-codegen/v2 v2.3.0
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/openai/openai-go v1.8.2
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/pashagolub/pgxmock/v4 v4.4.0
 	github.com/pkg/errors v0.9.1
@@ -65,6 +66,7 @@ require (
 	golang.org/x/text v0.26.0
 	golang.org/x/time v0.11.0
 	google.golang.org/api v0.232.0
+	google.golang.org/genai v1.15.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.1
 )
@@ -121,6 +123,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.3 // indirect
 	github.com/aws/smithy-go v1.20.3 // indirect
+	github.com/bahlo/generic-list-go v0.2.0 // indirect
+	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/bytedance/sonic v1.13.3 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
@@ -208,6 +212,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
+	github.com/openai/openai-go v1.9.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/opencontainers/runc v1.1.14 // indirect
@@ -221,6 +226,7 @@ require (
 	github.com/riverqueue/river/riverdriver v0.14.0 // indirect
 	github.com/riverqueue/river/rivershared v0.14.0 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
+	github.com/samber/lo v1.51.0 // indirect
 	github.com/sanity-io/litter v1.5.5 // indirect
 	github.com/segmentio/backo-go v1.1.0 // indirect
 	github.com/sergi/go-diff v1.0.0 // indirect
@@ -239,6 +245,7 @@ require (
 	github.com/ugorji/go/codec v1.2.14 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.52.0 // indirect
+	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
