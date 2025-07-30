@@ -29,10 +29,16 @@ import (
 
 func RunTaskQueue(apiVersion string) error {
 	// This is where we read the environment variables and set up the configuration for the application.
-	gcpConfig := infra.GcpConfig{
-		EnableTracing: utils.GetEnv("ENABLE_GCP_TRACING", false),
-		ProjectId:     utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+	gcpConfig, err := infra.NewGcpConfig(
+		context.Background(),
+		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
+		utils.GetEnv("ENABLE_GCP_TRACING", false),
+	)
+	if err != nil {
+		return err
 	}
+
 	pgConfig := infra.PgConfig{
 		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:           utils.GetEnv("PG_DATABASE", "marble"),
@@ -121,7 +127,7 @@ func RunTaskQueue(apiVersion string) error {
 		MainAgentBackend: infra.AIAgentProviderBackendFromString(
 			utils.GetEnv("AI_AGENT_MAIN_AGENT_BACKEND", ""),
 		),
-		MainAgentProject:  utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", ""),
+		MainAgentProject:  utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", gcpConfig.ProjectId),
 		MainAgentLocation: utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
 	}
 
