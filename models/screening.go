@@ -96,7 +96,7 @@ func (scs ScreeningMatchStatus) String() string {
 type Screening struct {
 	Id                  string
 	DecisionId          string
-	OrgId               *string
+	OrgId               string
 	ScreeningConfigId   string
 	Status              ScreeningStatus
 	Config              ScreeningConfigRef
