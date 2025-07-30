@@ -115,7 +115,9 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 	return inbox, nil
 }
 
-func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId uuid.UUID, name *string, escalationInboxId *uuid.UUID, autoAssignEnabled *bool) (models.Inbox, error) {
+func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId uuid.UUID, name *string,
+	escalationInboxId *uuid.UUID, autoAssignEnabled *bool,
+) (models.Inbox, error) {
 	inbox, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
@@ -134,7 +136,8 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId uuid.UUID,
 				return models.Inbox{}, err
 			}
 
-			if err := usecase.inboxRepository.UpdateInbox(ctx, tx, inboxId, name, escalationInboxId, autoAssignEnabled); err != nil {
+			if err := usecase.inboxRepository.UpdateInbox(ctx, tx, inboxId, name,
+				escalationInboxId, autoAssignEnabled); err != nil {
 				return models.Inbox{}, err
 			}
 
@@ -207,7 +210,9 @@ func (usecase *InboxUsecase) CreateInboxUser(ctx context.Context, input models.C
 	return usecase.inboxUsers.CreateInboxUser(ctx, input) // input already uses uuid.UUID for IDs from model changes
 }
 
-func (usecase *InboxUsecase) UpdateInboxUser(ctx context.Context, inboxUserId uuid.UUID, role *models.InboxUserRole, autoAssignable *bool) (models.InboxUser, error) {
+func (usecase *InboxUsecase) UpdateInboxUser(ctx context.Context, inboxUserId uuid.UUID,
+	role *models.InboxUserRole, autoAssignable *bool,
+) (models.InboxUser, error) {
 	return usecase.inboxUsers.UpdateInboxUser(ctx, inboxUserId, role, autoAssignable)
 }
 
