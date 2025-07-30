@@ -21,7 +21,8 @@ func TestPublicApi(t *testing.T) {
 			sock := setupApi(it, ctx, pg.MustConnectionString(ctx))
 
 			client(t, sock, "", "").GET("/liveness").Expect().Status(http.StatusOK)
-			client(t, sock, version, "invalidkey").GET("/example").Expect().Status(http.StatusUnauthorized)
+			client(t, sock, version, "invalidkey").GET("/decisions").Expect().Status(http.StatusUnauthorized)
+			client(t, sock, version, "invalidkey").GET("/nothere").Expect().Status(http.StatusNotFound)
 
 			v1.PublicApiV1(t, client(t, sock, version, "testapikey"))
 		})
