@@ -46,6 +46,13 @@ type Authentication struct {
 
 func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// If the middleware is executing, but no route was matched, we
+		// short-circuit with a 404.
+		if c.FullPath() == "" {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
 		ctx := c.Request.Context()
 
 		key := ""

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,9 +18,9 @@ type mockGenerator struct {
 	mock.Mock
 }
 
-func (m *mockGenerator) GenerateToken(ctx context.Context, key string, firebaseToken string) (string, time.Time, error) {
+func (m *mockGenerator) GenerateToken(ctx context.Context, key string, firebaseToken string) (models.Credentials, string, time.Time, error) {
 	args := m.Called(ctx, key, firebaseToken)
-	return args.String(0), args.Get(1).(time.Time), args.Error(2)
+	return models.Credentials{}, args.String(0), args.Get(1).(time.Time), args.Error(2)
 }
 
 func TestToken_GenerateToken(t *testing.T) {

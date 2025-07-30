@@ -62,7 +62,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 			tokenLifetime: 60 * time.Second,
 		}
 
-		receivedToken, expirationTime, err := generator.GenerateToken(ctx, key, "")
+		_, receivedToken, expirationTime, err := generator.GenerateToken(ctx, key, "")
 		assert.NoError(t, err)
 		assert.Equal(t, token, receivedToken)
 		assert.Equal(t, now.Add(60*time.Second), expirationTime)
@@ -80,7 +80,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 			repository: mockRepository,
 		}
 
-		_, _, err := generator.GenerateToken(ctx, key, "")
+		_, _, _, err := generator.GenerateToken(ctx, key, "")
 		assert.Error(t, err)
 
 		mockRepository.AssertExpectations(t)
@@ -97,7 +97,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 			repository: mockRepository,
 		}
 
-		_, _, err := generator.GenerateToken(ctx, key, "")
+		_, _, _, err := generator.GenerateToken(ctx, key, "")
 		assert.Error(t, err)
 
 		mockRepository.AssertExpectations(t)
@@ -128,7 +128,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 			tokenLifetime: 60 * time.Second,
 		}
 
-		receivedToken, expirationTime, err := generator.GenerateToken(ctx, key, "")
+		_, receivedToken, expirationTime, err := generator.GenerateToken(ctx, key, "")
 		assert.NoError(t, err)
 		assert.Equal(t, token, receivedToken)
 		assert.Equal(t, now.Add(60*time.Second), expirationTime)
@@ -183,7 +183,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			tokenLifetime: 60 * time.Second,
 		}
 
-		receivedToken, expirationTime, err := generator.GenerateToken(context.Background(), "", firebaseToken)
+		_, receivedToken, expirationTime, err := generator.GenerateToken(context.Background(), "", firebaseToken)
 		assert.NoError(t, err)
 		assert.Equal(t, token, receivedToken)
 		assert.Equal(t, now.Add(60*time.Second), expirationTime)
@@ -222,7 +222,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			tokenLifetime: 60 * time.Second,
 		}
 
-		receivedToken, expirationTime, err := generator.GenerateToken(context.Background(), "", firebaseToken)
+		_, receivedToken, expirationTime, err := generator.GenerateToken(context.Background(), "", firebaseToken)
 		assert.NoError(t, err)
 		assert.Equal(t, token, receivedToken)
 		assert.Equal(t, now.Add(60*time.Second), expirationTime)
@@ -240,7 +240,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			verifier: mockVerifier,
 		}
 
-		_, _, err := generator.GenerateToken(context.Background(), "", firebaseToken)
+		_, _, _, err := generator.GenerateToken(context.Background(), "", firebaseToken)
 		assert.Error(t, err)
 		mockVerifier.AssertExpectations(t)
 	})
@@ -259,7 +259,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			verifier:   mockVerifier,
 		}
 
-		_, _, err := generator.GenerateToken(context.Background(), "", firebaseToken)
+		_, _, _, err := generator.GenerateToken(context.Background(), "", firebaseToken)
 		assert.Error(t, err)
 		mockRepository.AssertExpectations(t)
 		mockVerifier.AssertExpectations(t)
@@ -293,7 +293,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			tokenLifetime: 60 * time.Second,
 		}
 
-		_, _, err := generator.GenerateToken(context.Background(), "", firebaseToken)
+		_, _, _, err := generator.GenerateToken(context.Background(), "", firebaseToken)
 		assert.Error(t, err)
 		mockRepository.AssertExpectations(t)
 		mockVerifier.AssertExpectations(t)

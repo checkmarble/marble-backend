@@ -35,10 +35,12 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		logger.Error("Failed to parse the Marble app URL environment variable. The decision page url passed in the decisions API response will be empty.", "url", conf.MarbleAppUrl)
 	}
 
+	ipWhitelister := uc.NewIpWhitelistUsecase()
+
 	r.GET("/liveness", tom, handleLivenessProbe(uc))
 	r.GET("/health", tom, handleHealth(uc))
 	r.GET("/version", tom, handleVersion(uc))
-	r.POST("/token", tom, tokenHandler.GenerateToken)
+	r.POST("/token", tom, ipWhitelister.Guard(usecases.IpWhitelistLogin), tokenHandler.GenerateToken)
 	r.GET("/config", tom, handleGetConfig(uc, conf))
 	r.GET("/is-sso-available", tom, handleIsSSOEnabled(uc))
 	r.GET("/signup-status", tom, handleSignupStatus(uc))
@@ -67,7 +69,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 			auth.AuthedBy(utils.PublicApiKey, utils.BearerToken), uc)
 	}
 
-	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey))
+	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey), ipWhitelister.Guard(usecases.IpWhitelistOther))
 
 	router.GET("/credentials", tom, handleGetCredentials())
 

@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -226,4 +227,13 @@ func (repo *MarbleDbRepository) HasOrganizations(ctx context.Context, exec Execu
 	}
 
 	return exists, nil
+}
+
+func (repo *MarbleDbRepository) GetOrganizationSubnets(ctx context.Context, exec Executor, orgId string) ([]net.IPNet, error) {
+	sql := NewQueryBuilder().
+		Select("whitelisted_subnets").
+		From(dbmodels.TABLE_ORGANIZATION).
+		Where("id = ?", orgId)
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptOrganizationWhitelistedSubnets)
 }

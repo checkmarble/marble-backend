@@ -1,6 +1,10 @@
 package models
 
-import "github.com/google/uuid"
+import (
+	"net"
+
+	"github.com/google/uuid"
+)
 
 type Organization struct {
 	Id string
@@ -9,6 +13,8 @@ type Organization struct {
 
 	// Name of the organization. Because this can be used to map to the organization's ingested data schema, it is unique and immutable.
 	Name string
+
+	WhitelistedSubnets []net.IPNet
 
 	// Scenario id user for transfercheck. Internal marble use only. On a regular org, this should be null.
 	TransferCheckScenarioId *string
