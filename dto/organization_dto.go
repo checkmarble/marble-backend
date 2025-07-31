@@ -1,6 +1,9 @@
 package dto
 
 import (
+	"encoding/json"
+	"net"
+
 	"github.com/checkmarble/marble-backend/models"
 )
 
@@ -34,4 +37,38 @@ type UpdateOrganizationBodyDto struct {
 	SanctionsThreshold      *int    `json:"sanctions_threshold,omitempty"`
 	SanctionsLimit          *int    `json:"sanctions_limit,omitempty"`
 	AutoAssignQueueLimit    *int    `json:"auto_assign_queue_limit,omitempty"`
+}
+
+type OrganizationSubnetsDto struct {
+	Subnets []SubnetDto `json:"subnets"`
+}
+
+func AdaptOrganizationSubnet(dto net.IPNet) SubnetDto {
+	return SubnetDto{dto}
+}
+
+type SubnetDto struct {
+	net.IPNet
+}
+
+func (s *SubnetDto) UnmarshalJSON(b []byte) error {
+	var cidr string
+
+	if err := json.Unmarshal(b, &cidr); err != nil {
+		return err
+	}
+
+	_, subnet, err := net.ParseCIDR(cidr)
+
+	if err != nil {
+		return err
+	}
+
+	*s = SubnetDto{*subnet}
+
+	return nil
+}
+
+func (s *SubnetDto) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
 }
