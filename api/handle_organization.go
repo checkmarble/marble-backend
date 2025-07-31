@@ -177,7 +177,7 @@ func handleUpdateOrganizationSubnets(uc usecases.Usecases) func(c *gin.Context) 
 		uc := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
 		subnets, err := uc.UpdateOrganizationSubnets(ctx, pure_utils.Map(subnetUpdate.Subnets, func(s dto.SubnetDto) net.IPNet { return s.IPNet }))
 
-		if err != nil && errors.Is(err, usecases.ErrUserOutsideOfNewWhitelist) {
+		if err != nil && errors.Is(err, usecases.ErrUserOutsideOfAllowedNetworks) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{
 				"error": "user must be within the new list of allowed networks",
 			})
