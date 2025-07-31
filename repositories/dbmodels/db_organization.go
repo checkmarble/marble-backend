@@ -13,7 +13,7 @@ type DBOrganizationResult struct {
 	PublicId                uuid.UUID   `db:"public_id"`
 	DeletedAt               *int        `db:"deleted_at"`
 	Name                    string      `db:"name"`
-	WhitelistedSubnets      []net.IPNet `db:"whitelisted_subnets"`
+	AllowedNetworks         []net.IPNet `db:"allowed_networks"`
 	TransferCheckScenarioId *string     `db:"transfer_check_scenario_id"`
 	AiCaseReviewEnabled     bool        `db:"ai_case_review_enabled"`
 	DefaultScenarioTimezone *string     `db:"default_scenario_timezone"`
@@ -31,7 +31,7 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 		Id:                      db.Id,
 		PublicId:                db.PublicId,
 		Name:                    db.Name,
-		WhitelistedSubnets:      db.WhitelistedSubnets,
+		WhitelistedSubnets:      db.AllowedNetworks,
 		TransferCheckScenarioId: db.TransferCheckScenarioId,
 		AiCaseReviewEnabled:     db.AiCaseReviewEnabled,
 		DefaultScenarioTimezone: db.DefaultScenarioTimezone,

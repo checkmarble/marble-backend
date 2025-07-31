@@ -244,8 +244,8 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	}
 }
 
-func (usecases *Usecases) NewIpWhitelistUsecase() IpWhitelistUsecase {
-	return IpWhitelistUsecase{
+func (usecases *Usecases) NewAllowedNetworksUsecase() AllowedNetworksUsecase {
+	return AllowedNetworksUsecase{
 		executorFactory: usecases.NewExecutorFactory(),
 		repository:      &usecases.Repositories.MarbleDbRepository,
 	}
