@@ -28,6 +28,7 @@ type OrganizationRepository interface {
 		updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
 	) error
 	HasOrganizations(ctx context.Context, exec Executor) (bool, error)
+	UpdateOrganizationSubnets(ctx context.Context, exec Executor, orgId string, subnets []net.IPNet) ([]net.IPNet, error)
 }
 
 func (repo *MarbleDbRepository) AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error) {
@@ -234,6 +235,16 @@ func (repo *MarbleDbRepository) GetOrganizationSubnets(ctx context.Context, exec
 		Select("whitelisted_subnets").
 		From(dbmodels.TABLE_ORGANIZATION).
 		Where("id = ?", orgId)
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptOrganizationWhitelistedSubnets)
+}
+
+func (m *MarbleDbRepository) UpdateOrganizationSubnets(ctx context.Context, exec Executor, orgId string, subnets []net.IPNet) ([]net.IPNet, error) {
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_ORGANIZATION).
+		Set("whitelisted_subnets", subnets).
+		Where("id = ?", orgId).
+		Suffix("returning whitelisted_subnets")
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptOrganizationWhitelistedSubnets)
 }
