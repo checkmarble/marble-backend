@@ -15,12 +15,20 @@ type AiCaseReviewDto interface {
 	aiCaseReviewDto()
 }
 
+type CaseReviewProof struct {
+	Id          string `json:"id"`
+	Type        string `json:"type"`
+	IsDataModel bool   `json:"is_data_model"`
+	Reason      string `json:"reason"`
+}
+
 type CaseReviewV1 struct {
-	Ok          bool   `json:"ok"`
-	Output      string `json:"output"`
-	SanityCheck string `json:"sanity_check"`
-	Thought     string `json:"thought"`
-	Version     string `json:"version"`
+	Ok          bool              `json:"ok"`
+	Output      string            `json:"output"`
+	SanityCheck string            `json:"sanity_check"`
+	Thought     string            `json:"thought"`
+	Version     string            `json:"version"`
+	Proofs      []CaseReviewProof `json:"proofs"`
 }
 
 func (c CaseReviewV1) aiCaseReviewDto() {}
