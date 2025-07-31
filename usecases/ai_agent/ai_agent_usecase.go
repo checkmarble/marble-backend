@@ -669,7 +669,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	}
 
 	type caseReviewOutput struct {
-		CaseReview string `json:"case_review" jsonschema_description:"The case review analysis including all the information needed to make a the review"`
+		CaseReview string `json:"case_review" jsonschema_description:"The case review analysis including all the information needed to make the review"`
 		Proofs     []struct {
 			Id          string `json:"id" jsonschema_description:"The id of the object used as proof, for organization data model you have an object_id"`
 			Type        string `json:"type" jsonschema_description:"The type of the object used as proof, could be decision or case, for data model from organization, take the trigger_object_type"`
