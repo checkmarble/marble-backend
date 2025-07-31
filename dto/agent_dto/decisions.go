@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type DecisionRule struct {
@@ -98,6 +99,7 @@ func AdaptScreeningWithMatches(screening models.ScreeningWithMatches) ScreeningW
 }
 
 type Decision struct {
+	Id                uuid.UUID              `json:"id"`
 	CreatedAt         time.Time              `json:"created_at"`
 	TriggerObject     map[string]any         `json:"trigger_object"`
 	TriggerObjectType string                 `json:"trigger_object_type"`
@@ -116,6 +118,7 @@ func AdaptDecision(
 	screenings []models.ScreeningWithMatches,
 ) Decision {
 	return Decision{
+		Id:                decision.DecisionId,
 		CreatedAt:         decision.CreatedAt,
 		TriggerObject:     decision.ClientObject.Data,
 		TriggerObjectType: decision.ClientObject.TableName,
