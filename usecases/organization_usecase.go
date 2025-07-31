@@ -172,7 +172,7 @@ func (usecase *OrganizationUseCase) UpdateOrganizationFeatureAccess(
 		usecase.executorFactory.NewExecutor(), featureAccess)
 }
 
-var ErrUserOutsideOfNewWhitelist = errors.New("user is outside of new IP whitelist")
+var ErrUserOutsideOfAllowedNetworks = errors.New("user is outside of new IP whitelist")
 
 func (uc OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context, subnets []net.IPNet) ([]net.IPNet, error) {
 	orgId := uc.enforceSecurity.OrgId()
@@ -197,11 +197,11 @@ func (uc OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context, sub
 			}
 		}
 		if !found {
-			return nil, ErrUserOutsideOfNewWhitelist
+			return nil, ErrUserOutsideOfAllowedNetworks
 		}
 	}
 
-	subnets, err = uc.organizationRepository.UpdateOrganizationSubnets(ctx, uc.executorFactory.NewExecutor(), orgId, subnets)
+	subnets, err = uc.organizationRepository.UpdateOrganizationAllowedNetworks(ctx, uc.executorFactory.NewExecutor(), orgId, subnets)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "could not update whitelisted subnets")

@@ -11,23 +11,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type IpWhitelistUse int
+type AllowedNetworksUse int
 
 const (
-	IpWhitelistLogin IpWhitelistUse = iota
-	IpWhitelistOther
+	AllowedNetworksLogin AllowedNetworksUse = iota
+	AllowedNetworksOther
 )
 
 type ipWhitelistRepository interface {
-	GetOrganizationSubnets(ctx context.Context, exec repositories.Executor, orgId string) ([]net.IPNet, error)
+	GetOrganizationAllowedNetworks(ctx context.Context, exec repositories.Executor, orgId string) ([]net.IPNet, error)
 }
 
-type IpWhitelistUsecase struct {
+type AllowedNetworksUsecase struct {
 	executorFactory executor_factory.ExecutorFactory
 	repository      ipWhitelistRepository
 }
 
-func (uc IpWhitelistUsecase) Guard(use IpWhitelistUse) gin.HandlerFunc {
+func (uc AllowedNetworksUsecase) Guard(use AllowedNetworksUse) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var buf *utils.BufferResponseWriter
 
@@ -37,7 +37,7 @@ func (uc IpWhitelistUsecase) Guard(use IpWhitelistUse) gin.HandlerFunc {
 		//
 		// We use a dummy writer in order to be able to intercept the reponse
 		// after it has been written.
-		if use == IpWhitelistLogin {
+		if use == AllowedNetworksLogin {
 			buf = utils.NewBufferResponseWriter(c)
 
 			c.Next()
@@ -63,19 +63,19 @@ func (uc IpWhitelistUsecase) Guard(use IpWhitelistUse) gin.HandlerFunc {
 		// Self-hosted users might not have set the header on their reverse
 		// proxy, so we fail open if it is not set.
 		if clientIp == nil {
-			if use == IpWhitelistLogin {
+			if use == AllowedNetworksLogin {
 				buf.Restore(c)
 			}
 
 			return
 		}
 
-		subnets, err := uc.repository.GetOrganizationSubnets(ctx, uc.executorFactory.NewExecutor(), creds.OrganizationId)
+		subnets, err := uc.repository.GetOrganizationAllowedNetworks(ctx, uc.executorFactory.NewExecutor(), creds.OrganizationId)
 
 		// TODO: here we might want to separate those two predicates, fail close
 		// on error but open on empty whitelist.
 		if err != nil || len(subnets) == 0 {
-			if use == IpWhitelistLogin {
+			if use == AllowedNetworksLogin {
 				buf.Restore(c)
 			}
 
@@ -88,7 +88,7 @@ func (uc IpWhitelistUsecase) Guard(use IpWhitelistUse) gin.HandlerFunc {
 
 				// If this was used for login, we have the response data in our
 				// temporary buffer, we restore it and copy the data over.
-				if use == IpWhitelistLogin {
+				if use == AllowedNetworksLogin {
 					buf.Restore(c)
 				}
 

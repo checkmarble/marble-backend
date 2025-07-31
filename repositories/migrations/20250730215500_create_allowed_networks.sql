@@ -1,9 +1,9 @@
 -- +goose Up
 
 alter table organizations
-    add column whitelisted_subnets cidr[];
+    add column allowed_networks cidr[];
 
 -- +goose Down
 
 alter table organizations
-    drop column whitelisted_subnets;
+    drop column allowed_networks;

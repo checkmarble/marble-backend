@@ -28,7 +28,7 @@ type OrganizationRepository interface {
 		updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
 	) error
 	HasOrganizations(ctx context.Context, exec Executor) (bool, error)
-	UpdateOrganizationSubnets(ctx context.Context, exec Executor, orgId string, subnets []net.IPNet) ([]net.IPNet, error)
+	UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string, subnets []net.IPNet) ([]net.IPNet, error)
 }
 
 func (repo *MarbleDbRepository) AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error) {
@@ -230,21 +230,21 @@ func (repo *MarbleDbRepository) HasOrganizations(ctx context.Context, exec Execu
 	return exists, nil
 }
 
-func (repo *MarbleDbRepository) GetOrganizationSubnets(ctx context.Context, exec Executor, orgId string) ([]net.IPNet, error) {
+func (repo *MarbleDbRepository) GetOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string) ([]net.IPNet, error) {
 	sql := NewQueryBuilder().
-		Select("whitelisted_subnets").
+		Select("allowed_networks").
 		From(dbmodels.TABLE_ORGANIZATION).
 		Where("id = ?", orgId)
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptOrganizationWhitelistedSubnets)
 }
 
-func (m *MarbleDbRepository) UpdateOrganizationSubnets(ctx context.Context, exec Executor, orgId string, subnets []net.IPNet) ([]net.IPNet, error) {
+func (m *MarbleDbRepository) UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string, subnets []net.IPNet) ([]net.IPNet, error) {
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_ORGANIZATION).
-		Set("whitelisted_subnets", subnets).
+		Set("allowed_networks", subnets).
 		Where("id = ?", orgId).
-		Suffix("returning whitelisted_subnets")
+		Suffix("returning allowed_networks")
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptOrganizationWhitelistedSubnets)
 }
