@@ -84,6 +84,8 @@ func (uc IpWhitelistUsecase) Guard(use IpWhitelistUse) gin.HandlerFunc {
 
 		for _, subnet := range subnets {
 			if subnet.Contains(clientIp) {
+				c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), utils.ContextKeyClientIp, clientIp))
+
 				// If this was used for login, we have the response data in our
 				// temporary buffer, we restore it and copy the data over.
 				if use == IpWhitelistLogin {

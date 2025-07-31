@@ -2,8 +2,10 @@ package api
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -158,5 +160,34 @@ func handlePatchOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Cont
 		}
 
 		c.Status(http.StatusNoContent)
+	}
+}
+
+func handleUpdateOrganizationSubnets(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var subnetUpdate dto.OrganizationSubnetsDto
+
+		if err := c.ShouldBindBodyWithJSON(&subnetUpdate); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
+		subnets, err := uc.UpdateOrganizationSubnets(ctx, pure_utils.Map(subnetUpdate.Subnets, func(s dto.SubnetDto) net.IPNet { return s.IPNet }))
+
+		if err != nil && errors.Is(err, usecases.ErrUserOutsideOfNewWhitelist) {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{
+				"error": "user must be within the new list of allowed networks",
+			})
+			return
+		}
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(subnets, dto.AdaptOrganizationSubnet))
 	}
 }

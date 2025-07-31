@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"net"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -9,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
 )
 
@@ -168,4 +170,42 @@ func (usecase *OrganizationUseCase) UpdateOrganizationFeatureAccess(
 	}
 	return usecase.organizationRepository.UpdateOrganizationFeatureAccess(ctx,
 		usecase.executorFactory.NewExecutor(), featureAccess)
+}
+
+var ErrUserOutsideOfNewWhitelist = errors.New("user is outside of new IP whitelist")
+
+func (uc OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context, subnets []net.IPNet) ([]net.IPNet, error) {
+	orgId := uc.enforceSecurity.OrgId()
+
+	org, err := uc.organizationRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId)
+	if err != nil {
+		return nil, err
+	}
+	if err := uc.enforceSecurity.EditOrganization(org); err != nil {
+		return nil, err
+	}
+
+	clientIp, ok := ctx.Value(utils.ContextKeyClientIp).(net.IP)
+
+	if ok {
+		found := false
+
+		for _, subnet := range subnets {
+			if subnet.Contains(clientIp) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, ErrUserOutsideOfNewWhitelist
+		}
+	}
+
+	subnets, err = uc.organizationRepository.UpdateOrganizationSubnets(ctx, uc.executorFactory.NewExecutor(), orgId, subnets)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "could not update whitelisted subnets")
+	}
+
+	return subnets, nil
 }
