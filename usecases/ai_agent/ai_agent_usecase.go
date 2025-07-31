@@ -669,12 +669,12 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	}
 
 	type caseReviewOutput struct {
-		CaseReview string `json:"case_review" jsonschema_description:"The case review analysis including all the information needed to make the review"`
+		CaseReview string `json:"case_review" jsonschema_description:"The case review report in markdown format"`
 		Proofs     []struct {
-			Id          string `json:"id" jsonschema_description:"The id of the object used as proof, for organization data model you have an object_id"`
-			Type        string `json:"type" jsonschema_description:"The type of the object used as proof, could be decision or case, for data model from organization, take the trigger_object_type"`
-			IsDataModel bool   `json:"is_data_model" jsonschema_description:"Whether the proof is from organization data model. Decision and case are not data model"`
-			Reason      string `json:"reason" jsonschema_description:"The reason of why this object was usefull for your review"`
+			Id          string `json:"id" jsonschema_description:"The ID of the object used as proof. For the organization data model, this is referred to as object_id."`
+			Type        string `json:"type" jsonschema_description:"The type of the object used as proof, could be decision or case. For the organization data model, this is referred to as trigger_object_type."`
+			IsDataModel bool   `json:"is_data_model" jsonschema_description:"Whether the proof object is from organization data model. Organization data model are described in data model summary"`
+			Reason      string `json:"reason" jsonschema_description:"The reason why this object was useful for your review"`
 		} `json:"proofs" jsonschema_description:"The proofs used to generate the case review"`
 	}
 
