@@ -667,7 +667,18 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	if err != nil {
 		return nil, errors.Wrap(err, "could not prepare case review request")
 	}
-	requestCaseReview, err := llm_adapter.NewUntypedRequest().
+
+	type caseReviewOutput struct {
+		CaseReview string `json:"case_review" jsonschema_description:"The case review report in markdown format"`
+		Proofs     []struct {
+			Id          string `json:"id" jsonschema_description:"The ID of the object used as proof. For the organization data model, this is referred to as object_id."`
+			Type        string `json:"type" jsonschema_description:"The type of the object used as proof, could be decision or case. For the organization data model, this is referred to as trigger_object_type."`
+			IsDataModel bool   `json:"is_data_model" jsonschema_description:"Whether the proof object is from organization data model. Organization data model are described in data model summary"`
+			Reason      string `json:"reason" jsonschema_description:"The reason why this object was useful for your review"`
+		} `json:"proofs" jsonschema_description:"The proofs used to generate the case review"`
+	}
+
+	requestCaseReview, err := llm_adapter.NewRequest[caseReviewOutput]().
 		WithModel(modelCaseReview).
 		WithInstruction(systemInstruction).
 		WithText(llm_adapter.RoleUser, promptCaseReview).
@@ -717,16 +728,27 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	logger.DebugContext(ctx, "================================ Sanity check ================================")
 	logger.DebugContext(ctx, "Sanity check", "response", sanityCheck)
 
+	proofs := make([]agent_dto.CaseReviewProof, len(caseReview.Proofs))
+	for i, proof := range caseReview.Proofs {
+		proofs[i] = agent_dto.CaseReviewProof{
+			Id:          proof.Id,
+			Type:        proof.Type,
+			IsDataModel: proof.IsDataModel,
+			Reason:      proof.Reason,
+		}
+	}
 	if sanityCheck.Ok {
 		return agent_dto.CaseReviewV1{
 			Ok:     sanityCheck.Ok,
-			Output: caseReview,
+			Output: caseReview.CaseReview,
+			Proofs: proofs,
 		}, nil
 	}
 	return agent_dto.CaseReviewV1{
 		Ok:          false,
-		Output:      caseReview,
+		Output:      caseReview.CaseReview,
 		SanityCheck: sanityCheck.Justification,
+		Proofs:      proofs,
 	}, nil
 }
 
