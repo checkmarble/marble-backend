@@ -44,9 +44,9 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 }
 
 type DbOrganizationWhitelistedSubnets struct {
-	WhitelistedSubnets []net.IPNet `db:"whitelisted_subnets"`
+	AllowedNetworks []net.IPNet `db:"allowed_networks"`
 }
 
 func AdaptOrganizationWhitelistedSubnets(db DbOrganizationWhitelistedSubnets) ([]net.IPNet, error) {
-	return db.WhitelistedSubnets, nil
+	return db.AllowedNetworks, nil
 }

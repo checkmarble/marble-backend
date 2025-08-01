@@ -70,6 +70,16 @@ func (uc AllowedNetworksUsecase) Guard(use AllowedNetworksUse) gin.HandlerFunc {
 			return
 		}
 
+		// TODO: we need to discuss about this: even when whitelisting is
+		// **not** enabled, this would set the IP from the headers in the logs.
+		// This could cause issues with some self-hosted users if they did not
+		// configure their reverse proxies (spoofable by the client).
+		//
+		// We have a bit of a chicken and egg problem here, we cannot trust the
+		// header until infrastructure is set, but we want to use the header to
+		// let the user configure the feature.
+		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), utils.ContextKeyClientIp, clientIp))
+
 		subnets, err := uc.repository.GetOrganizationAllowedNetworks(ctx, uc.executorFactory.NewExecutor(), creds.OrganizationId)
 
 		// TODO: here we might want to separate those two predicates, fail close
@@ -84,8 +94,6 @@ func (uc AllowedNetworksUsecase) Guard(use AllowedNetworksUse) gin.HandlerFunc {
 
 		for _, subnet := range subnets {
 			if subnet.Contains(clientIp) {
-				c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), utils.ContextKeyClientIp, clientIp))
-
 				// If this was used for login, we have the response data in our
 				// temporary buffer, we restore it and copy the data over.
 				if use == AllowedNetworksLogin {
@@ -100,6 +108,6 @@ func (uc AllowedNetworksUsecase) Guard(use AllowedNetworksUse) gin.HandlerFunc {
 			"ip", clientIp,
 			"subnets", subnets)
 
-		c.AbortWithStatus(http.StatusUnauthorized)
+		c.AbortWithStatus(http.StatusForbidden)
 	}
 }
