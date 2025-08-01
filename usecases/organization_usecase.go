@@ -172,7 +172,10 @@ func (usecase *OrganizationUseCase) UpdateOrganizationFeatureAccess(
 		usecase.executorFactory.NewExecutor(), featureAccess)
 }
 
-var ErrUserOutsideOfAllowedNetworks = errors.New("user is outside of new IP whitelist")
+var (
+	ErrClientOutsideOfAllowedNetworks = errors.New("client is outside of new IP whitelist")
+	ErrRealClientIpNotPresent         = errors.New("no value for client IP in x-real-ip header")
+)
 
 func (uc OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context, subnets []net.IPNet) ([]net.IPNet, error) {
 	orgId := uc.enforceSecurity.OrgId()
@@ -185,9 +188,13 @@ func (uc OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context, sub
 		return nil, err
 	}
 
-	clientIp, ok := ctx.Value(utils.ContextKeyClientIp).(net.IP)
+	if len(subnets) > 0 {
+		clientIp, ok := ctx.Value(utils.ContextKeyClientIp).(net.IP)
 
-	if ok {
+		if !ok {
+			return nil, ErrRealClientIpNotPresent
+		}
+
 		found := false
 
 		for _, subnet := range subnets {
@@ -197,7 +204,7 @@ func (uc OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context, sub
 			}
 		}
 		if !found {
-			return nil, ErrUserOutsideOfAllowedNetworks
+			return nil, ErrClientOutsideOfAllowedNetworks
 		}
 	}
 

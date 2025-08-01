@@ -101,7 +101,7 @@ func TestIpWhitelistForLoginRestricted(t *testing.T) {
 	e.ServeHTTP(wr, req)
 
 	assert.True(t, called)
-	assert.Equal(t, http.StatusUnauthorized, wr.Code)
+	assert.Equal(t, http.StatusForbidden, wr.Code)
 	assert.NotContains(t, wr.Body.String(), "OK")
 }
 
@@ -187,6 +187,6 @@ func TestIpWhitelistForEndpointRestricted(t *testing.T) {
 	e.ServeHTTP(wr, req)
 
 	assert.False(t, called)
-	assert.Equal(t, http.StatusUnauthorized, wr.Code)
+	assert.Equal(t, http.StatusForbidden, wr.Code)
 	assert.NotContains(t, wr.Body.String(), "OK")
 }
