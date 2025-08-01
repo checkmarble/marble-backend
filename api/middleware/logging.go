@@ -3,9 +3,11 @@ package middleware
 import (
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -65,7 +67,13 @@ func NewLogging(logger *slog.Logger, level string, options ...LoggerOption) gin.
 		stop := time.Since(start)
 		latency := stop.Milliseconds()
 		status := c.Writer.Status()
-		IP := c.ClientIP()
+
+		ip := c.ClientIP()
+
+		if proxiedIp, ok := c.Request.Context().Value(utils.ContextKeyClientIp).(net.IP); ok {
+			ip = proxiedIp.String()
+		}
+
 		userAgent := c.Request.UserAgent()
 		dataLength := c.Writer.Size()
 		if dataLength < 0 {
@@ -83,7 +91,7 @@ func NewLogging(logger *slog.Logger, level string, options ...LoggerOption) gin.
 		attributes := []slog.Attr{
 			slog.Int("status", status),
 			slog.Int64("latency", latency),
-			slog.String("client_ip", IP),
+			slog.String("client_ip", ip),
 			slog.String("method", c.Request.Method),
 			slog.String("path", path),
 			slog.Int("data_length", dataLength),
