@@ -244,6 +244,13 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	}
 }
 
+func (usecases *Usecases) NewAllowedNetworksUsecase() AllowedNetworksUsecase {
+	return AllowedNetworksUsecase{
+		executorFactory: usecases.NewExecutorFactory(),
+		repository:      &usecases.Repositories.MarbleDbRepository,
+	}
+}
+
 func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCreator {
 	return organization.OrganizationCreator{
 		CustomListRepository:   usecases.Repositories.CustomListRepository,

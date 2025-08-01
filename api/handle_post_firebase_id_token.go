@@ -14,7 +14,7 @@ import (
 )
 
 type tokenGenerator interface {
-	GenerateToken(ctx context.Context, key string, firebaseToken string) (string, time.Time, error)
+	GenerateToken(ctx context.Context, key string, firebaseToken string) (models.Credentials, string, time.Time, error)
 }
 
 type TokenHandler struct {
@@ -33,29 +33,33 @@ func (t *TokenHandler) GenerateToken(c *gin.Context) {
 	bearerToken, err := ParseAuthorizationBearerHeader(c.Request.Header)
 	if err != nil {
 		_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
-		c.Status(http.StatusBadRequest)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	marbleToken, expirationTime, err := t.generator.GenerateToken(ctx, key, bearerToken)
+	creds, marbleToken, expirationTime, err := t.generator.GenerateToken(ctx, key, bearerToken)
 	if err != nil {
 		utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not verify firebase token", "error", err)
 
 		_ = c.Error(fmt.Errorf("generator.GenerateToken error: %w", err))
 
 		if errors.Is(err, models.ErrUnknownUser) {
-			c.JSON(http.StatusUnauthorized, dto.APIErrorResponse{
+			c.AbortWithStatusJSON(http.StatusUnauthorized, dto.APIErrorResponse{
 				Message:   "Unknown user: ErrUnknownUser",
 				ErrorCode: dto.UnknownUser,
 			})
 			return
 		}
 
-		c.JSON(http.StatusUnauthorized, dto.APIErrorResponse{
+		c.AbortWithStatusJSON(http.StatusUnauthorized, dto.APIErrorResponse{
 			Message: "Authentication error",
 		})
 		return
 	}
+
+	newContext := context.WithValue(ctx, utils.ContextKeyCredentials, creds)
+
+	c.Request = c.Request.WithContext(newContext)
 
 	c.JSON(http.StatusOK, accessToken{
 		AccessToken: marbleToken,

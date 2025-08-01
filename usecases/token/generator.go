@@ -85,22 +85,22 @@ func (g *Generator) fromFirebaseToken(ctx context.Context, firebaseToken string)
 	return g.encodeToken(credentials)
 }
 
-func (g *Generator) GenerateToken(ctx context.Context, key string, firebaseToken string) (string, time.Time, error) {
+func (g *Generator) GenerateToken(ctx context.Context, key string, firebaseToken string) (models.Credentials, string, time.Time, error) {
 	// segment analytics events only for login by an end user with firebase
 	if key != "" {
 		token, expirationTime, _, err := g.FromAPIKey(ctx, key)
-		return token, expirationTime, err
+		return models.Credentials{}, token, expirationTime, err
 	}
 
 	token, expirationTime, credentials, err := g.fromFirebaseToken(ctx, firebaseToken)
 	if err != nil {
-		return "", time.Time{}, err
+		return models.Credentials{}, "", time.Time{}, err
 	}
 
 	if credentials.Role != models.MARBLE_ADMIN {
 		organization, err := g.repository.GetOrganizationByID(ctx, credentials.OrganizationId)
 		if err != nil {
-			return "", time.Time{}, fmt.Errorf("GetOrganizationByID error: %w", err)
+			return models.Credentials{}, "", time.Time{}, fmt.Errorf("GetOrganizationByID error: %w", err)
 		}
 
 		tracking.Identify(ctx, credentials.ActorIdentity.UserId, map[string]any{
@@ -115,7 +115,7 @@ func (g *Generator) GenerateToken(ctx context.Context, key string, firebaseToken
 			})
 	}
 
-	return token, expirationTime, nil
+	return credentials, token, expirationTime, nil
 }
 
 func NewGenerator(repository marbleRepository, encoder encoder, verifier firebaseTokenVerifier, tokenLifetime int) *Generator {
