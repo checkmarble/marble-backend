@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -113,6 +114,10 @@ func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.C
 
 	row, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbmodels.DbAssignableUserWithCaseCount])
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
