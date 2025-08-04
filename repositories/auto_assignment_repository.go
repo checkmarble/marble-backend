@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -130,19 +129,69 @@ func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.C
 }
 
 func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exec Executor, orgId string, limit int) ([]models.Case, error) {
-	sql := NewQueryBuilder().
-		Select(columnsNames("c", dbmodels.SelectCaseColumn)...).
-		From(dbmodels.TABLE_CASES+" c").
-		InnerJoin(dbmodels.TABLE_INBOXES+" i on i.id = c.inbox_id").
-		Where(squirrel.Eq{
-			"c.org_id":              orgId,
-			"c.assigned_to":         nil,
-			"i.auto_assign_enabled": true,
-		}).
-		Where("coalesce(c.snoozed_until, to_timestamp(0)) < now()").
-		Where("c.status != ?", models.CaseClosed).
-		OrderBy("c.created_at").
-		Limit(uint64(limit))
+	sql := `
+		with assignable_inboxes as (
+		  select distinct iu.inbox_id
+		  from inbox_users iu
+		  inner join users u on
+		    u.organization_id = $1 and
+		    u.id = iu.user_id and
+		    u.deleted_at is null and
+		    iu.auto_assignable
+		    left join lateral (
+		      select c.id
+		      from cases c
+		      where
+		        c.org_id = u.organization_id and
+		        c.assigned_to = u.id and
+		        c.status != 'closed' and
+		        coalesce(c.snoozed_until, to_timestamp(0)) < now()
+		      limit $2
+		    ) c on true
+		  where
+		    not exists (
+		      select 1
+		      from user_unavailabilities uu
+		      where
+		      uu.org_id = $1 and
+		      uu.user_id = iu.user_id and
+		      now() between uu.from_date and uu.until_date
+		      )
+		  group by iu.inbox_id
+		  having count(distinct c.id) < $2
+		)
+		select c.*
+		from assignable_inboxes ai
+		inner join inboxes i on i.id = ai.inbox_id and i.auto_assign_enabled
+		inner join lateral(
+		  select c.*
+		  from cases c
+		  where
+		    c.inbox_id = i.id and
+		    c.org_id = $1 and
+		    c.status != 'closed' and
+		    c.assigned_to is null
+		  limit $2
+		) c on true
+	`
 
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptCase)
+	rows, err := exec.Query(ctx, sql, orgId, limit)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	dbCases, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DBCase])
+	if err != nil {
+		return nil, err
+	}
+
+	cases, err := pure_utils.MapErr(dbCases, dbmodels.AdaptCase)
+	if err != nil {
+		return nil, err
+	}
+
+	return cases, nil
 }
