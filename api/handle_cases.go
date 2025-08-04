@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
@@ -666,6 +667,31 @@ func handleEnqueueCaseReview(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
 		err := usecase.EnqueueCreateCaseReview(ctx, caseId)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func handlePutCaseReview(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+
+		var feedback agent_dto.UpdateCaseReviewFeedbackDto
+		if err := c.ShouldBindJSON(&feedback); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		if err := feedback.Validate(); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
+		err := usecase.UpdateAiCaseReviewFeedback(ctx, caseId, feedback)
 		if presentError(ctx, c, err) {
 			return
 		}

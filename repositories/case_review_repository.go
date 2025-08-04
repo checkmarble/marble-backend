@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
@@ -29,6 +30,8 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 				"bucket_name",
 				"file_reference",
 				"dto_version",
+				"reaction",
+				"comment",
 			).
 			Values(
 				caseReview.ID,
@@ -37,6 +40,8 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 				caseReview.BucketName,
 				caseReview.FileReference,
 				"v1",
+				caseReview.Reaction,
+				caseReview.Comment,
 			),
 	)
 	return err
@@ -68,4 +73,35 @@ func (r *MarbleDbRepository) ListCaseReviewFiles(
 			return dbmodels.AdaptAiCaseReview(dbModel), nil
 		},
 	)
+}
+
+// For now, update the feedback for the most recent completed case review.
+func (r *MarbleDbRepository) UpdateAiCaseReviewFeedback(
+	ctx context.Context,
+	exec Executor,
+	caseId string,
+	feedback agent_dto.UpdateCaseReviewFeedbackDto,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_AI_CASE_REVIEWS).
+		Set("reaction", feedback.Reaction).
+		Set("comment", feedback.Comment).
+		Where(
+			"id = (SELECT id FROM ai_case_reviews WHERE case_id = ? AND status = ? ORDER BY created_at DESC LIMIT 1)",
+			caseId,
+			models.AiCaseReviewStatusCompleted.String(),
+		)
+
+	queryStr, args, err := query.ToSql()
+	if err != nil {
+		return err
+	}
+
+	exec.Exec(ctx, queryStr, args...)
+
+	return nil
 }

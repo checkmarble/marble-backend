@@ -15,6 +15,10 @@ type AiCaseReview struct {
 	DtoVersion    string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+
+	// Feedback
+	Reaction *AiCaseReviewReaction
+	Comment  *string
 }
 
 type AiCaseReviewStatus int
@@ -48,5 +52,34 @@ func AiCaseReviewStatusFromString(s string) AiCaseReviewStatus {
 		return AiCaseReviewStatusFailed
 	default:
 		return AiCaseReviewStatusUnknown
+	}
+}
+
+type AiCaseReviewReaction string
+
+const (
+	AiCaseReviewReactionUnknown AiCaseReviewReaction = "unknown"
+	AiCaseReviewReactionOk      AiCaseReviewReaction = "ok"
+	AiCaseReviewReactionKo      AiCaseReviewReaction = "ko"
+)
+
+func (r AiCaseReviewReaction) String() string {
+	switch r {
+	case AiCaseReviewReactionOk:
+		return "ok"
+	case AiCaseReviewReactionKo:
+		return "ko"
+	}
+	return "unknown"
+}
+
+func AiCaseReviewReactionFromString(s string) AiCaseReviewReaction {
+	switch s {
+	case "ok":
+		return AiCaseReviewReactionOk
+	case "ko":
+		return AiCaseReviewReactionKo
+	default:
+		return AiCaseReviewReactionUnknown
 	}
 }

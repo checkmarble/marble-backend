@@ -36,3 +36,22 @@ func UnmarshalCaseReviewDto(version string, payload io.Reader) (AiCaseReviewDto,
 
 	return nil, errors.New("unsupported version")
 }
+
+type AiCaseReviewWithFeedbackDto struct {
+	AiCaseReviewDto
+
+	Reaction *string `json:"reaction"`
+	Comment  *string `json:"comment"`
+}
+
+type UpdateCaseReviewFeedbackDto struct {
+	Reaction *string `json:"reaction"`
+	Comment  *string `json:"comment"`
+}
+
+func (dto UpdateCaseReviewFeedbackDto) Validate() error {
+	if dto.Reaction != nil && *dto.Reaction != "ok" && *dto.Reaction != "ko" {
+		return errors.New("invalid reaction")
+	}
+	return nil
+}

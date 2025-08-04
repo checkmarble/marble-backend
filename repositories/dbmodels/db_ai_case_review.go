@@ -19,6 +19,10 @@ type AiCaseReview struct {
 
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
+
+	// Feedback
+	Reaction *string `db:"reaction"`
+	Comment  *string `db:"comment"`
 }
 
 const TABLE_AI_CASE_REVIEWS = "ai_case_reviews"
@@ -26,6 +30,11 @@ const TABLE_AI_CASE_REVIEWS = "ai_case_reviews"
 var AiCaseReviewFields = utils.ColumnList[AiCaseReview]()
 
 func AdaptAiCaseReview(dbModel AiCaseReview) models.AiCaseReview {
+	var reaction *models.AiCaseReviewReaction
+	if dbModel.Reaction != nil {
+		reaction = utils.Ptr(models.AiCaseReviewReactionFromString(*dbModel.Reaction))
+	}
+
 	return models.AiCaseReview{
 		ID:            dbModel.ID,
 		CaseID:        dbModel.CaseID,
@@ -35,5 +44,7 @@ func AdaptAiCaseReview(dbModel AiCaseReview) models.AiCaseReview {
 		DtoVersion:    dbModel.DtoVersion,
 		CreatedAt:     dbModel.CreatedAt,
 		UpdatedAt:     dbModel.UpdatedAt,
+		Reaction:      reaction,
+		Comment:       dbModel.Comment,
 	}
 }
