@@ -37,12 +37,6 @@ type caseReviewWorkerRepository interface {
 		exec repositories.Executor,
 		organizationId string,
 	) (models.Organization, error)
-	UpdateAiCaseReviewFeedback(
-		ctx context.Context,
-		exec repositories.Executor,
-		caseId string,
-		feedback agent_dto.UpdateCaseReviewFeedbackDto,
-	) error
 }
 
 type CaseReviewWorker struct {

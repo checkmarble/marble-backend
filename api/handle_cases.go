@@ -674,27 +674,25 @@ func handleEnqueueCaseReview(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handlePutCaseReview(uc usecases.Usecases) func(c *gin.Context) {
+func handlePutCaseReviewFeedback(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		caseId := c.Param("case_id")
 
 		var feedback agent_dto.UpdateCaseReviewFeedbackDto
-		if err := c.ShouldBindJSON(&feedback); err != nil {
-			c.Status(http.StatusBadRequest)
+		if err := c.ShouldBindJSON(&feedback); presentError(ctx, c, err) {
 			return
 		}
-
 		if err := feedback.Validate(); err != nil {
-			c.Status(http.StatusBadRequest)
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		err := usecase.UpdateAiCaseReviewFeedback(ctx, caseId, feedback)
-		if presentError(ctx, c, err) {
+		if err := usecase.UpdateAiCaseReviewFeedback(ctx, caseId, feedback.Adapt()); presentError(ctx, c, err) {
 			return
 		}
+
 		c.Status(http.StatusNoContent)
 	}
 }

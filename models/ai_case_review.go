@@ -16,7 +16,10 @@ type AiCaseReview struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 
-	// Feedback
+	AiCaseReviewFeedback
+}
+
+type AiCaseReviewFeedback struct {
 	Reaction *AiCaseReviewReaction
 	Comment  *string
 }

@@ -44,7 +44,9 @@ func AdaptAiCaseReview(dbModel AiCaseReview) models.AiCaseReview {
 		DtoVersion:    dbModel.DtoVersion,
 		CreatedAt:     dbModel.CreatedAt,
 		UpdatedAt:     dbModel.UpdatedAt,
-		Reaction:      reaction,
-		Comment:       dbModel.Comment,
+		AiCaseReviewFeedback: models.AiCaseReviewFeedback{
+			Reaction: reaction,
+			Comment:  dbModel.Comment,
+		},
 	}
 }

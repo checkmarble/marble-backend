@@ -47,6 +47,12 @@ type AiAgentUsecaseRepository interface {
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
 	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
 		initialOnly bool) ([]models.ScreeningWithMatches, error)
+	UpdateAiCaseReviewFeedback(
+		ctx context.Context,
+		exec repositories.Executor,
+		caseId string,
+		feedback models.AiCaseReviewFeedback,
+	) error
 }
 
 type AiAgentUsecaseIngestedDataReader interface {
@@ -401,10 +407,20 @@ func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId st
 		reaction = utils.Ptr(existingCaseReviewFiles[0].Reaction.String())
 	}
 
+	// Not sure about this cast. Works for now but what if we add a new version?
+	reviewDtoV1, ok := reviewDto.(agent_dto.CaseReviewV1)
+	if !ok {
+		return nil, errors.New("could not cast case review dto to CaseReviewV1")
+	}
+
 	reviewWithFeedbackDto := agent_dto.AiCaseReviewWithFeedbackDto{
-		AiCaseReviewDto: reviewDto,
-		Reaction:        reaction,
-		Comment:         existingCaseReviewFiles[0].Comment,
+		Ok:          reviewDtoV1.Ok,
+		Output:      reviewDtoV1.Output,
+		SanityCheck: reviewDtoV1.SanityCheck,
+		Thought:     reviewDtoV1.Thought,
+		Version:     reviewDtoV1.Version,
+		Reaction:    reaction,
+		Comment:     existingCaseReviewFiles[0].Comment,
 	}
 
 	return []agent_dto.AiCaseReviewWithFeedbackDto{reviewWithFeedbackDto}, nil
@@ -960,7 +976,7 @@ func someClientHasManyRowsForTable(relatedDataPerClient map[string]agent_dto.Cas
 	return false
 }
 
-func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(ctx context.Context, caseId string, feedback agent_dto.UpdateCaseReviewFeedbackDto) error {
+func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(ctx context.Context, caseId string, feedback models.AiCaseReviewFeedback) error {
 	exec := uc.executorFactory.NewExecutor()
 
 	_, err := uc.getCaseWithPermissions(ctx, caseId)
@@ -968,10 +984,5 @@ func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(ctx context.Context, caseId
 		return err
 	}
 
-	err = uc.caseReviewFileRepository.UpdateAiCaseReviewFeedback(ctx, exec, caseId, feedback)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return uc.repository.UpdateAiCaseReviewFeedback(ctx, exec, caseId, feedback)
 }
