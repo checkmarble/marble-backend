@@ -173,6 +173,7 @@ func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exe
 		    c.assigned_to is null
 		  limit $2
 		) c on true
+		order by c.created_at asc
 	`
 
 	rows, err := exec.Query(ctx, sql, orgId, limit)
