@@ -21,7 +21,6 @@ type AiCaseReview struct {
 
 type AiCaseReviewFeedback struct {
 	Reaction *AiCaseReviewReaction
-	Comment  *string
 }
 
 type AiCaseReviewStatus int

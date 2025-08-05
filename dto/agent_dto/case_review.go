@@ -56,12 +56,10 @@ type AiCaseReviewWithFeedbackDto struct {
 	Version     string `json:"version"`
 
 	Reaction *string `json:"reaction"`
-	Comment  *string `json:"comment"`
 }
 
 type UpdateCaseReviewFeedbackDto struct {
 	Reaction *string `json:"reaction"`
-	Comment  *string `json:"comment"`
 }
 
 func (dto UpdateCaseReviewFeedbackDto) Validate() error {
@@ -79,6 +77,5 @@ func (dto UpdateCaseReviewFeedbackDto) Adapt() models.AiCaseReviewFeedback {
 
 	return models.AiCaseReviewFeedback{
 		Reaction: reaction,
-		Comment:  dto.Comment,
 	}
 }
