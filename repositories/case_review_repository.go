@@ -30,6 +30,8 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 				"bucket_name",
 				"file_reference",
 				"dto_version",
+				"reaction",
+				"comment",
 			).
 			Values(
 				caseReview.ID,
@@ -38,6 +40,8 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 				caseReview.BucketName,
 				caseReview.FileReference,
 				"v1",
+				caseReview.Reaction,
+				caseReview.Comment,
 			),
 	)
 	return err
@@ -91,4 +95,34 @@ func (r *MarbleDbRepository) CountAiCaseReviewsByOrg(
 		GroupBy("c.org_id")
 
 	return countByHelper(ctx, exec, query, orgIds)
+}
+
+// For now, update the feedback for the most recent completed case review.
+func (r *MarbleDbRepository) UpdateAiCaseReviewFeedback(
+	ctx context.Context,
+	exec Executor,
+	caseId string,
+	feedback models.AiCaseReviewFeedback,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_AI_CASE_REVIEWS).
+		Set("reaction", feedback.Reaction).
+		Set("comment", feedback.Comment).
+		Where(
+			"id = (SELECT id FROM ai_case_reviews WHERE case_id = ? AND status = ? ORDER BY created_at DESC LIMIT 1)",
+			caseId,
+			models.AiCaseReviewStatusCompleted.String(),
+		)
+
+	queryStr, args, err := query.ToSql()
+	if err != nil {
+		return err
+	}
+
+	_, err = exec.Exec(ctx, queryStr, args...)
+	return err
 }
