@@ -240,6 +240,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	router.GET("/cases/:case_id/data_for_investigation", timeoutMiddleware(conf.BatchTimeout), handleGetCaseDataForCopilot(uc))
 	router.GET("/cases/:case_id/review", tom, handleGetCaseReview(uc))
+	router.PUT("/cases/:case_id/review/feedback", tom, handlePutCaseReviewFeedback(uc))
 	router.POST("/cases/:case_id/review/enqueue", tom, handleEnqueueCaseReview(uc))
 
 	router.GET("/inboxes/:inbox_id", tom, handleGetInboxById(uc))

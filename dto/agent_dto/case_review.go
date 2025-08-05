@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 // ⚠️⚠️⚠️
@@ -43,4 +46,39 @@ func UnmarshalCaseReviewDto(version string, payload io.Reader) (AiCaseReviewDto,
 	}
 
 	return nil, errors.New("unsupported version")
+}
+
+type AiCaseReviewWithFeedbackDto struct {
+	Ok          bool   `json:"ok"`
+	Output      string `json:"output"`
+	SanityCheck string `json:"sanity_check"`
+	Thought     string `json:"thought"`
+	Version     string `json:"version"`
+
+	Reaction *string `json:"reaction"`
+	Comment  *string `json:"comment"`
+}
+
+type UpdateCaseReviewFeedbackDto struct {
+	Reaction *string `json:"reaction"`
+	Comment  *string `json:"comment"`
+}
+
+func (dto UpdateCaseReviewFeedbackDto) Validate() error {
+	if dto.Reaction != nil && *dto.Reaction != "ok" && *dto.Reaction != "ko" {
+		return errors.New("invalid reaction")
+	}
+	return nil
+}
+
+func (dto UpdateCaseReviewFeedbackDto) Adapt() models.AiCaseReviewFeedback {
+	var reaction *models.AiCaseReviewReaction
+	if dto.Reaction != nil {
+		reaction = utils.Ptr(models.AiCaseReviewReactionFromString(*dto.Reaction))
+	}
+
+	return models.AiCaseReviewFeedback{
+		Reaction: reaction,
+		Comment:  dto.Comment,
+	}
 }

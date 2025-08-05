@@ -47,6 +47,12 @@ type AiAgentUsecaseRepository interface {
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
 	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
 		initialOnly bool) ([]models.ScreeningWithMatches, error)
+	UpdateAiCaseReviewFeedback(
+		ctx context.Context,
+		exec repositories.Executor,
+		caseId string,
+		feedback models.AiCaseReviewFeedback,
+	) error
 }
 
 type AiAgentUsecaseIngestedDataReader interface {
@@ -363,7 +369,7 @@ func (uc *AiAgentUsecase) getCaseWithPermissions(ctx context.Context, caseId str
 }
 
 // returns a slice of 0 or 1 case review dto, the most recent one.
-func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewDto, error) {
+func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewWithFeedbackDto, error) {
 	exec := uc.executorFactory.NewExecutor()
 	_, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
@@ -396,11 +402,32 @@ func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId st
 		return nil, errors.Wrap(err, "could not unmarshal case review file")
 	}
 
-	return []agent_dto.AiCaseReviewDto{reviewDto}, nil
+	var reaction *string
+	if existingCaseReviewFiles[0].Reaction != nil {
+		reaction = utils.Ptr(existingCaseReviewFiles[0].Reaction.String())
+	}
+
+	// Not sure about this cast. Works for now but what if we add a new version?
+	reviewDtoV1, ok := reviewDto.(agent_dto.CaseReviewV1)
+	if !ok {
+		return nil, errors.New("could not cast case review dto to CaseReviewV1")
+	}
+
+	reviewWithFeedbackDto := agent_dto.AiCaseReviewWithFeedbackDto{
+		Ok:          reviewDtoV1.Ok,
+		Output:      reviewDtoV1.Output,
+		SanityCheck: reviewDtoV1.SanityCheck,
+		Thought:     reviewDtoV1.Thought,
+		Version:     reviewDtoV1.Version,
+		Reaction:    reaction,
+		Comment:     existingCaseReviewFiles[0].Comment,
+	}
+
+	return []agent_dto.AiCaseReviewWithFeedbackDto{reviewWithFeedbackDto}, nil
 }
 
 // Returns a slice of 0 or 1 case review dto, the most recent one.
-func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewDto, error) {
+func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewWithFeedbackDto, error) {
 	_, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
 		return nil, err
@@ -412,7 +439,7 @@ func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]a
 	}
 
 	if len(existingReviewDtos) == 0 {
-		return make([]agent_dto.AiCaseReviewDto, 0), nil
+		return make([]agent_dto.AiCaseReviewWithFeedbackDto, 0), nil
 	}
 
 	return existingReviewDtos[:1], nil
@@ -969,4 +996,15 @@ func someClientHasManyRowsForTable(relatedDataPerClient map[string]agent_dto.Cas
 		}
 	}
 	return false
+}
+
+func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(ctx context.Context, caseId string, feedback models.AiCaseReviewFeedback) error {
+	exec := uc.executorFactory.NewExecutor()
+
+	_, err := uc.getCaseWithPermissions(ctx, caseId)
+	if err != nil {
+		return err
+	}
+
+	return uc.repository.UpdateAiCaseReviewFeedback(ctx, exec, caseId, feedback)
 }
