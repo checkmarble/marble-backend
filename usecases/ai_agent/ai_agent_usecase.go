@@ -998,13 +998,27 @@ func someClientHasManyRowsForTable(relatedDataPerClient map[string]agent_dto.Cas
 	return false
 }
 
-func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(ctx context.Context, caseId string, feedback models.AiCaseReviewFeedback) error {
+func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(ctx context.Context, caseId string,
+	feedback models.AiCaseReviewFeedback,
+) (agent_dto.AiCaseReviewWithFeedbackDto, error) {
 	exec := uc.executorFactory.NewExecutor()
 
 	_, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
-		return err
+		return agent_dto.AiCaseReviewWithFeedbackDto{}, err
 	}
 
-	return uc.repository.UpdateAiCaseReviewFeedback(ctx, exec, caseId, feedback)
+	if err := uc.repository.UpdateAiCaseReviewFeedback(ctx, exec, caseId, feedback); err != nil {
+		return agent_dto.AiCaseReviewWithFeedbackDto{}, err
+	}
+
+	caseReview, err := uc.getMostRecentCaseReview(ctx, caseId)
+	if err != nil {
+		return agent_dto.AiCaseReviewWithFeedbackDto{}, err
+	}
+	if len(caseReview) == 0 {
+		return agent_dto.AiCaseReviewWithFeedbackDto{}, errors.New("no case review found")
+	}
+
+	return caseReview[0], nil
 }
