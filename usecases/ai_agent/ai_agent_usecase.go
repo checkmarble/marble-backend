@@ -420,7 +420,6 @@ func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId st
 		Thought:     reviewDtoV1.Thought,
 		Version:     reviewDtoV1.Version,
 		Reaction:    reaction,
-		Comment:     existingCaseReviewFiles[0].Comment,
 	}
 
 	return []agent_dto.AiCaseReviewWithFeedbackDto{reviewWithFeedbackDto}, nil

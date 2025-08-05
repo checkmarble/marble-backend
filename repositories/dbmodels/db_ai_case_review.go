@@ -20,9 +20,7 @@ type AiCaseReview struct {
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 
-	// Feedback
 	Reaction *string `db:"reaction"`
-	Comment  *string `db:"comment"`
 }
 
 const TABLE_AI_CASE_REVIEWS = "ai_case_reviews"
@@ -46,7 +44,6 @@ func AdaptAiCaseReview(dbModel AiCaseReview) models.AiCaseReview {
 		UpdatedAt:     dbModel.UpdatedAt,
 		AiCaseReviewFeedback: models.AiCaseReviewFeedback{
 			Reaction: reaction,
-			Comment:  dbModel.Comment,
 		},
 	}
 }

@@ -31,7 +31,6 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 				"file_reference",
 				"dto_version",
 				"reaction",
-				"comment",
 			).
 			Values(
 				caseReview.ID,
@@ -41,7 +40,6 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 				caseReview.FileReference,
 				"v1",
 				caseReview.Reaction,
-				caseReview.Comment,
 			),
 	)
 	return err
@@ -111,7 +109,6 @@ func (r *MarbleDbRepository) UpdateAiCaseReviewFeedback(
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_AI_CASE_REVIEWS).
 		Set("reaction", feedback.Reaction).
-		Set("comment", feedback.Comment).
 		Where(
 			"id = (SELECT id FROM ai_case_reviews WHERE case_id = ? AND status = ? ORDER BY created_at DESC LIMIT 1)",
 			caseId,
