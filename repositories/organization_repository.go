@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -27,6 +28,7 @@ type OrganizationRepository interface {
 		updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
 	) error
 	HasOrganizations(ctx context.Context, exec Executor) (bool, error)
+	UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string, subnets []net.IPNet) ([]net.IPNet, error)
 }
 
 func (repo *MarbleDbRepository) AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error) {
@@ -226,4 +228,23 @@ func (repo *MarbleDbRepository) HasOrganizations(ctx context.Context, exec Execu
 	}
 
 	return exists, nil
+}
+
+func (repo *MarbleDbRepository) GetOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string) ([]net.IPNet, error) {
+	sql := NewQueryBuilder().
+		Select("allowed_networks").
+		From(dbmodels.TABLE_ORGANIZATION).
+		Where("id = ?", orgId)
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptOrganizationWhitelistedSubnets)
+}
+
+func (m *MarbleDbRepository) UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string, subnets []net.IPNet) ([]net.IPNet, error) {
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_ORGANIZATION).
+		Set("allowed_networks", subnets).
+		Where("id = ?", orgId).
+		Suffix("returning allowed_networks")
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptOrganizationWhitelistedSubnets)
 }
