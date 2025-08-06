@@ -33,8 +33,8 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 				"reaction",
 			).
 			Values(
-				caseReview.ID,
-				caseReview.CaseID,
+				caseReview.Id,
+				caseReview.CaseId,
 				caseReview.Status,
 				caseReview.BucketName,
 				caseReview.FileReference,
@@ -68,7 +68,7 @@ func (r *MarbleDbRepository) ListCaseReviewFiles(
 		exec,
 		query,
 		func(dbModel dbmodels.AiCaseReview) (models.AiCaseReview, error) {
-			return dbmodels.AdaptAiCaseReview(dbModel), nil
+			return dbmodels.AdaptAiCaseReview(dbModel)
 		},
 	)
 }
@@ -99,7 +99,7 @@ func (r *MarbleDbRepository) CountAiCaseReviewsByOrg(
 func (r *MarbleDbRepository) UpdateAiCaseReviewFeedback(
 	ctx context.Context,
 	exec Executor,
-	caseId string,
+	reviewId uuid.UUID,
 	feedback models.AiCaseReviewFeedback,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -110,9 +110,9 @@ func (r *MarbleDbRepository) UpdateAiCaseReviewFeedback(
 		Update(dbmodels.TABLE_AI_CASE_REVIEWS).
 		Set("reaction", feedback.Reaction).
 		Where(
-			"id = (SELECT id FROM ai_case_reviews WHERE case_id = ? AND status = ? ORDER BY created_at DESC LIMIT 1)",
-			caseId,
-			models.AiCaseReviewStatusCompleted.String(),
+			squirrel.Eq{
+				"id": reviewId,
+			},
 		)
 
 	queryStr, args, err := query.ToSql()
@@ -122,4 +122,24 @@ func (r *MarbleDbRepository) UpdateAiCaseReviewFeedback(
 
 	_, err = exec.Exec(ctx, queryStr, args...)
 	return err
+}
+
+func (r *MarbleDbRepository) GetCaseReviewById(
+	ctx context.Context,
+	exec Executor,
+	reviewId uuid.UUID,
+) (models.AiCaseReview, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.AiCaseReview{}, err
+	}
+
+	return SqlToModel(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.AiCaseReviewFields...).
+			From(dbmodels.TABLE_AI_CASE_REVIEWS).
+			Where(squirrel.Eq{"id": reviewId}),
+		dbmodels.AdaptAiCaseReview,
+	)
 }

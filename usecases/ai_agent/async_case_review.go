@@ -114,8 +114,8 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 	}
 
 	err = w.repository.CreateCaseReviewFile(ctx, w.executorFactory.NewExecutor(), models.AiCaseReview{
-		ID:            id,
-		CaseID:        caseId,
+		Id:            id,
+		CaseId:        caseId,
 		Status:        models.AiCaseReviewStatusCompleted.String(),
 		BucketName:    w.bucketUrl,
 		FileReference: fileRef,

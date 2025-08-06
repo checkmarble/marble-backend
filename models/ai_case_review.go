@@ -7,8 +7,8 @@ import (
 )
 
 type AiCaseReview struct {
-	ID            uuid.UUID
-	CaseID        uuid.UUID
+	Id            uuid.UUID
+	CaseId        uuid.UUID
 	Status        string
 	BucketName    string
 	FileReference string
