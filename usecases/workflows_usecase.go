@@ -73,6 +73,15 @@ func (uc *WorkflowUsecase) GetWorkflowRule(ctx context.Context, ruleId uuid.UUID
 		return models.Workflow{}, err
 	}
 
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, workflow.ScenarioId.String())
+	if err != nil {
+		return models.Workflow{}, err
+	}
+
+	if err := uc.enforceSecurity.ReadScenario(scenario); err != nil {
+		return models.Workflow{}, err
+	}
+
 	return workflow, nil
 }
 
