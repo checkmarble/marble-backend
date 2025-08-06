@@ -107,6 +107,16 @@ type sanityCheckOutput struct {
 	Justification string `json:"justification" jsonschema_description:"Detailed justification for the sanity check, only in the case of a negative answer" jsonschema_required:"false"`
 }
 
+type caseReviewOutput struct {
+	CaseReview string `json:"case_review" jsonschema_description:"The case review report in markdown format"`
+	Proofs     []struct {
+		Id          string `json:"id" jsonschema_description:"The ID of the object used as proof. For the organization data model, this is referred to as object_id."`
+		Type        string `json:"type" jsonschema_description:"The type of the object used as proof, could be decision or case. For the organization data model, this is referred to as trigger_object_type."`
+		IsDataModel bool   `json:"is_data_model" jsonschema_description:"Whether the proof object is from organization data model. Organization data model are described in data model summary"`
+		Reason      string `json:"reason" jsonschema_description:"The reason why this object was useful for your review"`
+	} `json:"proofs" jsonschema_description:"The proofs used to generate the case review"`
+}
+
 func NewAiAgentUsecase(
 	enforceSecurity security.EnforceSecurityCase,
 	repository AiAgentUsecaseRepository,
@@ -369,18 +379,18 @@ func (uc *AiAgentUsecase) getCaseWithPermissions(ctx context.Context, caseId str
 	return c, nil
 }
 
-func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.UUID) (agent_dto.AiCaseReviewWithFeedbackDto, error) {
+func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.UUID) (agent_dto.AiCaseReviewOutputDto, error) {
 	exec := uc.executorFactory.NewExecutor()
 	review, err := uc.repository.GetCaseReviewById(ctx, exec, reviewId)
 	if err != nil {
-		return agent_dto.AiCaseReviewWithFeedbackDto{},
+		return agent_dto.AiCaseReviewOutputDto{},
 			errors.Wrap(err, "could not get case review by id")
 	}
 
 	blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName,
 		review.FileReference)
 	if err != nil {
-		return agent_dto.AiCaseReviewWithFeedbackDto{},
+		return agent_dto.AiCaseReviewOutputDto{},
 			errors.Wrap(err, "could not get case review file")
 	}
 	defer blob.ReadCloser.Close()
@@ -388,7 +398,7 @@ func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.U
 	reviewDto, err := agent_dto.UnmarshalCaseReviewDto(
 		review.DtoVersion, blob.ReadCloser)
 	if err != nil {
-		return agent_dto.AiCaseReviewWithFeedbackDto{},
+		return agent_dto.AiCaseReviewOutputDto{},
 			errors.Wrap(err, "could not unmarshal case review file")
 	}
 
@@ -397,26 +407,15 @@ func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.U
 		reaction = utils.Ptr(review.Reaction.String())
 	}
 
-	// Not sure about this cast. Works for now but what if we add a new version?
-	reviewDtoV1, ok := reviewDto.(agent_dto.CaseReviewV1)
-	if !ok {
-		return agent_dto.AiCaseReviewWithFeedbackDto{},
-			errors.New("could not cast case review dto to CaseReviewV1")
-	}
-
-	return agent_dto.AiCaseReviewWithFeedbackDto{
-		Id:          review.Id,
-		Ok:          reviewDtoV1.Ok,
-		Output:      reviewDtoV1.Output,
-		SanityCheck: reviewDtoV1.SanityCheck,
-		Thought:     reviewDtoV1.Thought,
-		Version:     reviewDtoV1.Version,
-		Reaction:    reaction,
+	return agent_dto.AiCaseReviewOutputDto{
+		Id:              review.Id,
+		Reaction:        reaction,
+		AiCaseReviewDto: reviewDto,
 	}, nil
 }
 
 // returns a slice of 0 or 1 case review dto, the most recent one.
-func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewWithFeedbackDto, error) {
+func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewOutputDto, error) {
 	exec := uc.executorFactory.NewExecutor()
 	_, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
@@ -441,11 +440,11 @@ func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId st
 		return nil, errors.Wrap(err, "could not get case review by id")
 	}
 
-	return []agent_dto.AiCaseReviewWithFeedbackDto{reviewWithFeedbackDto}, nil
+	return []agent_dto.AiCaseReviewOutputDto{reviewWithFeedbackDto}, nil
 }
 
 // Returns a slice of 0 or 1 case review dto, the most recent one.
-func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewWithFeedbackDto, error) {
+func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewOutputDto, error) {
 	_, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
 		return nil, err
@@ -457,21 +456,21 @@ func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]a
 	}
 
 	if len(existingReviewDtos) == 0 {
-		return make([]agent_dto.AiCaseReviewWithFeedbackDto, 0), nil
+		return make([]agent_dto.AiCaseReviewOutputDto, 0), nil
 	}
 
 	return existingReviewDtos[:1], nil
 }
 
-func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, reviewId uuid.UUID) (agent_dto.AiCaseReviewWithFeedbackDto, error) {
+func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, reviewId uuid.UUID) (agent_dto.AiCaseReviewOutputDto, error) {
 	_, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
-		return agent_dto.AiCaseReviewWithFeedbackDto{}, err
+		return agent_dto.AiCaseReviewOutputDto{}, err
 	}
 
 	reviewWithFeedbackDto, err := uc.getCaseReviewById(ctx, reviewId)
 	if err != nil {
-		return agent_dto.AiCaseReviewWithFeedbackDto{},
+		return agent_dto.AiCaseReviewOutputDto{},
 			errors.Wrap(err, "could not get case review by id")
 	}
 
@@ -726,16 +725,6 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not prepare case review request")
-	}
-
-	type caseReviewOutput struct {
-		CaseReview string `json:"case_review" jsonschema_description:"The case review report in markdown format"`
-		Proofs     []struct {
-			Id          string `json:"id" jsonschema_description:"The ID of the object used as proof. For the organization data model, this is referred to as object_id."`
-			Type        string `json:"type" jsonschema_description:"The type of the object used as proof, could be decision or case. For the organization data model, this is referred to as trigger_object_type."`
-			IsDataModel bool   `json:"is_data_model" jsonschema_description:"Whether the proof object is from organization data model. Organization data model are described in data model summary"`
-			Reason      string `json:"reason" jsonschema_description:"The reason why this object was useful for your review"`
-		} `json:"proofs" jsonschema_description:"The proofs used to generate the case review"`
 	}
 
 	requestCaseReview, err := llm_adapter.NewRequest[caseReviewOutput]().
@@ -1036,21 +1025,21 @@ func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(
 	caseId string,
 	reviewId uuid.UUID,
 	feedback models.AiCaseReviewFeedback,
-) (agent_dto.AiCaseReviewWithFeedbackDto, error) {
+) (agent_dto.AiCaseReviewOutputDto, error) {
 	exec := uc.executorFactory.NewExecutor()
 
 	_, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
-		return agent_dto.AiCaseReviewWithFeedbackDto{}, err
+		return agent_dto.AiCaseReviewOutputDto{}, err
 	}
 
 	if err := uc.repository.UpdateAiCaseReviewFeedback(ctx, exec, reviewId, feedback); err != nil {
-		return agent_dto.AiCaseReviewWithFeedbackDto{}, err
+		return agent_dto.AiCaseReviewOutputDto{}, err
 	}
 
 	caseReview, err := uc.getCaseReviewById(ctx, reviewId)
 	if err != nil {
-		return agent_dto.AiCaseReviewWithFeedbackDto{}, err
+		return agent_dto.AiCaseReviewOutputDto{}, err
 	}
 
 	return caseReview, nil
