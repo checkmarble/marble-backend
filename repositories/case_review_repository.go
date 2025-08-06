@@ -106,21 +106,15 @@ func (r *MarbleDbRepository) UpdateAiCaseReviewFeedback(
 		return err
 	}
 
-	query := NewQueryBuilder().
+	err := ExecBuilder(ctx, exec, NewQueryBuilder().
 		Update(dbmodels.TABLE_AI_CASE_REVIEWS).
 		Set("reaction", feedback.Reaction).
 		Where(
 			squirrel.Eq{
 				"id": reviewId,
 			},
-		)
-
-	queryStr, args, err := query.ToSql()
-	if err != nil {
-		return err
-	}
-
-	_, err = exec.Exec(ctx, queryStr, args...)
+		),
+	)
 	return err
 }
 
