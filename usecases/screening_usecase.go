@@ -565,7 +565,7 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 			}
 
 			// else, if it is the last match pending and it is not a hit, the screening should be set to "no_hit"
-			if update.Status == models.ScreeningMatchStatusNoHit && len(pendingMatchesExcludingThis) == 0 {
+			if !data.sanction.Partial && update.Status == models.ScreeningMatchStatusNoHit && len(pendingMatchesExcludingThis) == 0 {
 				err = uc.repository.UpdateScreeningStatus(ctx, tx,
 					data.sanction.Id, models.ScreeningStatusNoHit)
 				if err != nil {
