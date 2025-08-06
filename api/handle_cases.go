@@ -691,17 +691,16 @@ func handlePutCaseReviewFeedback(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		reviewIdUuid, err := uuid.Parse(reviewId)
-		if err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+		if presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error())) {
 			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		reviews, err := usecase.UpdateAiCaseReviewFeedback(ctx, caseId, reviewIdUuid, feedback.Adapt())
+		review, err := usecase.UpdateAiCaseReviewFeedback(ctx, caseId, reviewIdUuid, feedback.Adapt())
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, reviews)
+		c.JSON(http.StatusOK, review)
 	}
 }
