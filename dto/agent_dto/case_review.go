@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 // ⚠️⚠️⚠️
@@ -49,11 +50,12 @@ func UnmarshalCaseReviewDto(version string, payload io.Reader) (AiCaseReviewDto,
 }
 
 type AiCaseReviewWithFeedbackDto struct {
-	Ok          bool   `json:"ok"`
-	Output      string `json:"output"`
-	SanityCheck string `json:"sanity_check"`
-	Thought     string `json:"thought"`
-	Version     string `json:"version"`
+	Id          uuid.UUID `json:"id"`
+	Ok          bool      `json:"ok"`
+	Output      string    `json:"output"`
+	SanityCheck string    `json:"sanity_check"`
+	Thought     string    `json:"thought"`
+	Version     string    `json:"version"`
 
 	Reaction *string `json:"reaction"`
 }

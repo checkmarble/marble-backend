@@ -50,9 +50,10 @@ type AiAgentUsecaseRepository interface {
 	UpdateAiCaseReviewFeedback(
 		ctx context.Context,
 		exec repositories.Executor,
-		caseId string,
+		reviewId uuid.UUID,
 		feedback models.AiCaseReviewFeedback,
 	) error
+	GetCaseReviewById(ctx context.Context, exec repositories.Executor, reviewId uuid.UUID) (models.AiCaseReview, error)
 }
 
 type AiAgentUsecaseIngestedDataReader interface {
@@ -368,6 +369,52 @@ func (uc *AiAgentUsecase) getCaseWithPermissions(ctx context.Context, caseId str
 	return c, nil
 }
 
+func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.UUID) (agent_dto.AiCaseReviewWithFeedbackDto, error) {
+	exec := uc.executorFactory.NewExecutor()
+	review, err := uc.repository.GetCaseReviewById(ctx, exec, reviewId)
+	if err != nil {
+		return agent_dto.AiCaseReviewWithFeedbackDto{},
+			errors.Wrap(err, "could not get case review by id")
+	}
+
+	blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName,
+		review.FileReference)
+	if err != nil {
+		return agent_dto.AiCaseReviewWithFeedbackDto{},
+			errors.Wrap(err, "could not get case review file")
+	}
+	defer blob.ReadCloser.Close()
+
+	reviewDto, err := agent_dto.UnmarshalCaseReviewDto(
+		review.DtoVersion, blob.ReadCloser)
+	if err != nil {
+		return agent_dto.AiCaseReviewWithFeedbackDto{},
+			errors.Wrap(err, "could not unmarshal case review file")
+	}
+
+	var reaction *string
+	if review.Reaction != nil {
+		reaction = utils.Ptr(review.Reaction.String())
+	}
+
+	// Not sure about this cast. Works for now but what if we add a new version?
+	reviewDtoV1, ok := reviewDto.(agent_dto.CaseReviewV1)
+	if !ok {
+		return agent_dto.AiCaseReviewWithFeedbackDto{},
+			errors.New("could not cast case review dto to CaseReviewV1")
+	}
+
+	return agent_dto.AiCaseReviewWithFeedbackDto{
+		Id:          review.Id,
+		Ok:          reviewDtoV1.Ok,
+		Output:      reviewDtoV1.Output,
+		SanityCheck: reviewDtoV1.SanityCheck,
+		Thought:     reviewDtoV1.Thought,
+		Version:     reviewDtoV1.Version,
+		Reaction:    reaction,
+	}, nil
+}
+
 // returns a slice of 0 or 1 case review dto, the most recent one.
 func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId string) ([]agent_dto.AiCaseReviewWithFeedbackDto, error) {
 	exec := uc.executorFactory.NewExecutor()
@@ -389,37 +436,9 @@ func (uc *AiAgentUsecase) getMostRecentCaseReview(ctx context.Context, caseId st
 		return nil, nil
 	}
 
-	blob, err := uc.blobRepository.GetBlob(ctx, existingCaseReviewFiles[0].BucketName,
-		existingCaseReviewFiles[0].FileReference)
+	reviewWithFeedbackDto, err := uc.getCaseReviewById(ctx, existingCaseReviewFiles[0].Id)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get case review file")
-	}
-	defer blob.ReadCloser.Close()
-
-	reviewDto, err := agent_dto.UnmarshalCaseReviewDto(
-		existingCaseReviewFiles[0].DtoVersion, blob.ReadCloser)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not unmarshal case review file")
-	}
-
-	var reaction *string
-	if existingCaseReviewFiles[0].Reaction != nil {
-		reaction = utils.Ptr(existingCaseReviewFiles[0].Reaction.String())
-	}
-
-	// Not sure about this cast. Works for now but what if we add a new version?
-	reviewDtoV1, ok := reviewDto.(agent_dto.CaseReviewV1)
-	if !ok {
-		return nil, errors.New("could not cast case review dto to CaseReviewV1")
-	}
-
-	reviewWithFeedbackDto := agent_dto.AiCaseReviewWithFeedbackDto{
-		Ok:          reviewDtoV1.Ok,
-		Output:      reviewDtoV1.Output,
-		SanityCheck: reviewDtoV1.SanityCheck,
-		Thought:     reviewDtoV1.Thought,
-		Version:     reviewDtoV1.Version,
-		Reaction:    reaction,
+		return nil, errors.Wrap(err, "could not get case review by id")
 	}
 
 	return []agent_dto.AiCaseReviewWithFeedbackDto{reviewWithFeedbackDto}, nil
@@ -442,6 +461,21 @@ func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]a
 	}
 
 	return existingReviewDtos[:1], nil
+}
+
+func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, reviewId uuid.UUID) (agent_dto.AiCaseReviewWithFeedbackDto, error) {
+	_, err := uc.getCaseWithPermissions(ctx, caseId)
+	if err != nil {
+		return agent_dto.AiCaseReviewWithFeedbackDto{}, err
+	}
+
+	reviewWithFeedbackDto, err := uc.getCaseReviewById(ctx, reviewId)
+	if err != nil {
+		return agent_dto.AiCaseReviewWithFeedbackDto{},
+			errors.Wrap(err, "could not get case review by id")
+	}
+
+	return reviewWithFeedbackDto, nil
 }
 
 func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId string) error {
@@ -997,7 +1031,10 @@ func someClientHasManyRowsForTable(relatedDataPerClient map[string]agent_dto.Cas
 	return false
 }
 
-func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(ctx context.Context, caseId string,
+func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(
+	ctx context.Context,
+	caseId string,
+	reviewId uuid.UUID,
 	feedback models.AiCaseReviewFeedback,
 ) (agent_dto.AiCaseReviewWithFeedbackDto, error) {
 	exec := uc.executorFactory.NewExecutor()
@@ -1007,17 +1044,14 @@ func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(ctx context.Context, caseId
 		return agent_dto.AiCaseReviewWithFeedbackDto{}, err
 	}
 
-	if err := uc.repository.UpdateAiCaseReviewFeedback(ctx, exec, caseId, feedback); err != nil {
+	if err := uc.repository.UpdateAiCaseReviewFeedback(ctx, exec, reviewId, feedback); err != nil {
 		return agent_dto.AiCaseReviewWithFeedbackDto{}, err
 	}
 
-	caseReview, err := uc.getMostRecentCaseReview(ctx, caseId)
+	caseReview, err := uc.getCaseReviewById(ctx, reviewId)
 	if err != nil {
 		return agent_dto.AiCaseReviewWithFeedbackDto{}, err
 	}
-	if len(caseReview) == 0 {
-		return agent_dto.AiCaseReviewWithFeedbackDto{}, errors.New("no case review found")
-	}
 
-	return caseReview[0], nil
+	return caseReview, nil
 }

@@ -9,8 +9,8 @@ import (
 )
 
 type AiCaseReview struct {
-	ID     uuid.UUID `db:"id"`
-	CaseID uuid.UUID `db:"case_id"`
+	Id     uuid.UUID `db:"id"`
+	CaseId uuid.UUID `db:"case_id"`
 
 	Status        string `db:"status"`
 	BucketName    string `db:"bucket_name"`
@@ -27,15 +27,15 @@ const TABLE_AI_CASE_REVIEWS = "ai_case_reviews"
 
 var AiCaseReviewFields = utils.ColumnList[AiCaseReview]()
 
-func AdaptAiCaseReview(dbModel AiCaseReview) models.AiCaseReview {
+func AdaptAiCaseReview(dbModel AiCaseReview) (models.AiCaseReview, error) {
 	var reaction *models.AiCaseReviewReaction
 	if dbModel.Reaction != nil {
 		reaction = utils.Ptr(models.AiCaseReviewReactionFromString(*dbModel.Reaction))
 	}
 
 	return models.AiCaseReview{
-		ID:            dbModel.ID,
-		CaseID:        dbModel.CaseID,
+		Id:            dbModel.Id,
+		CaseId:        dbModel.CaseId,
 		Status:        dbModel.Status,
 		BucketName:    dbModel.BucketName,
 		FileReference: dbModel.FileReference,
@@ -45,5 +45,5 @@ func AdaptAiCaseReview(dbModel AiCaseReview) models.AiCaseReview {
 		AiCaseReviewFeedback: models.AiCaseReviewFeedback{
 			Reaction: reaction,
 		},
-	}
+	}, nil
 }
