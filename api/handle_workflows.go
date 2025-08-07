@@ -72,6 +72,29 @@ func handleCreateWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleGetWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var uri WorkflowRuleParams
+
+		if err := c.ShouldBindUri(&uri); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		workflowUsecase := uc.NewWorkflowUsecase()
+
+		workflow, err := workflowUsecase.GetWorkflowRule(ctx, uri.RuleId.Uuid())
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptWorkflow(workflow))
+	}
+}
+
 func handleUpdateWorkflowRule(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

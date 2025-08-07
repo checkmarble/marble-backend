@@ -43,6 +43,24 @@ func (repo *MarbleDbRepository) GetWorkflowRule(ctx context.Context, exec Execut
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowRule)
 }
 
+func (repo *MarbleDbRepository) GetWorkflowRuleDetails(ctx context.Context, exec Executor, id uuid.UUID) (models.Workflow, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.Workflow{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(columnsNames("r", dbmodels.WorkflowRuleColumns)...).
+		Column("array_agg(distinct row(c.*)) filter (where c.id is not null) as conditions").
+		Column("array_agg(distinct row(a.*)) filter (where a.id is not null) as actions").
+		From(dbmodels.TABLE_WORKFLOW_RULES + " r").
+		LeftJoin(dbmodels.TABLE_WORKFLOW_CONDITIONS + " c on c.rule_id = r.id").
+		LeftJoin(dbmodels.TABLE_WORKFLOW_ACTIONS + " a on a.rule_id = r.id").
+		Where(squirrel.Eq{"r.id": id}).
+		GroupBy("r.id")
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptWorkflowRuleWithConditions)
+}
+
 func (repo *MarbleDbRepository) GetWorkflowCondition(ctx context.Context, exec Executor, id uuid.UUID) (models.WorkflowCondition, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.WorkflowCondition{}, err
