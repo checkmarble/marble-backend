@@ -691,7 +691,8 @@ func handlePutCaseReviewFeedback(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		reviewIdUuid, err := uuid.Parse(reviewId)
-		if presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error())) {
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
