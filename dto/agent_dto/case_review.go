@@ -19,11 +19,30 @@ type AiCaseReviewDto interface {
 	aiCaseReviewDto()
 }
 
+type OriginName string
+
+const (
+	OriginNameDataModel OriginName = "data_model"
+	OriginNameInternal  OriginName = "internal"
+	OriginNameUnknown   OriginName = "unknown"
+)
+
 type CaseReviewProof struct {
-	Id          string `json:"id"`
-	Type        string `json:"type"`
-	IsDataModel bool   `json:"is_data_model"`
-	Reason      string `json:"reason"`
+	Id     string     `json:"id"`
+	Type   string     `json:"type"`
+	Origin OriginName `json:"origin"`
+	Reason string     `json:"reason"`
+}
+
+func OriginNameFromString(s string) OriginName {
+	switch s {
+	case "data_model":
+		return OriginNameDataModel
+	case "internal":
+		return OriginNameInternal
+	default:
+		return OriginNameUnknown
+	}
 }
 
 type CaseReviewV1 struct {
@@ -63,8 +82,10 @@ type UpdateCaseReviewFeedbackDto struct {
 }
 
 func (dto UpdateCaseReviewFeedbackDto) Validate() error {
-	if dto.Reaction != nil && *dto.Reaction != "ok" && *dto.Reaction != "ko" {
-		return errors.New("invalid reaction")
+	if dto.Reaction != nil {
+		if models.AiCaseReviewReactionFromString(*dto.Reaction) == models.AiCaseReviewReactionUnknown {
+			return errors.New("invalid reaction")
+		}
 	}
 	return nil
 }
