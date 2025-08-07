@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"reflect"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
@@ -51,73 +50,12 @@ func UnmarshalCaseReviewDto(version string, payload io.Reader) (AiCaseReviewDto,
 }
 
 // Extend the AiCaseReviewDto with the id and reaction fields for our API endpoints
-// Didn't add in aiCaseReviewDto to avoid adding none related fields of AI agent analysis, also aiCaseReviewDto is
-// stored in blob storage, so we don't need to add it here.
 type AiCaseReviewOutputDto struct {
 	Id       uuid.UUID `json:"id"`
 	Reaction *string   `json:"reaction"`
+	Version  string    `json:"version"`
 
-	AiCaseReviewDto
-}
-
-// Custom MarshalJSON to handle the id and reaction fields and merge them with the aiCaseReviewDto fields
-// Avoid having a AiCaseReviewDto field in the output and flatten the fields
-func (dto AiCaseReviewOutputDto) MarshalJSON() ([]byte, error) {
-	// Use reflection to automatically extract non-interface fields
-	result := make(map[string]interface{})
-
-	// Get the value and type of the struct
-	val := reflect.ValueOf(dto)
-	typ := reflect.TypeOf(dto)
-
-	// Iterate through all fields
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
-		fieldType := typ.Field(i)
-
-		// Skip the embedded AiCaseReviewDto interface field using type assertion
-		if _, ok := field.Interface().(AiCaseReviewDto); ok {
-			continue
-		}
-
-		// Get the JSON tag name, or use the field name if no tag
-		jsonTag := fieldType.Tag.Get("json")
-		if jsonTag == "" || jsonTag == "-" {
-			continue
-		}
-
-		// Handle comma-separated tags (e.g., "id,omitempty")
-		tagName := jsonTag
-		if commaIdx := len(jsonTag); commaIdx > 0 {
-			for j, char := range jsonTag {
-				if char == ',' {
-					tagName = jsonTag[:j]
-					break
-				}
-			}
-		}
-
-		// Add the field to our result map
-		result[tagName] = field.Interface()
-	}
-
-	// Marshal the embedded AiCaseReviewDto and merge its fields
-	reviewJSON, err := json.Marshal(dto.AiCaseReviewDto)
-	if err != nil {
-		return nil, err
-	}
-
-	var reviewMap map[string]interface{}
-	if err := json.Unmarshal(reviewJSON, &reviewMap); err != nil {
-		return nil, err
-	}
-
-	// Merge the review fields into the result map
-	for key, value := range reviewMap {
-		result[key] = value
-	}
-
-	return json.Marshal(result)
+	Review AiCaseReviewDto `json:"review"`
 }
 
 type UpdateCaseReviewFeedbackDto struct {

@@ -408,9 +408,10 @@ func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.U
 	}
 
 	return agent_dto.AiCaseReviewOutputDto{
-		Id:              review.Id,
-		Reaction:        reaction,
-		AiCaseReviewDto: reviewDto,
+		Id:       review.Id,
+		Reaction: reaction,
+		Version:  review.DtoVersion,
+		Review:   reviewDto,
 	}, nil
 }
 
