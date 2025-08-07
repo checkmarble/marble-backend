@@ -110,10 +110,10 @@ type sanityCheckOutput struct {
 type caseReviewOutput struct {
 	CaseReview string `json:"case_review" jsonschema_description:"The case review report in markdown format"`
 	Proofs     []struct {
-		Id          string `json:"id" jsonschema_description:"The ID of the object used as proof. For the organization data model, this is referred to as object_id."`
-		Type        string `json:"type" jsonschema_description:"The type of the object used as proof, could be decision or case. For the organization data model, this is referred to as trigger_object_type."`
-		IsDataModel bool   `json:"is_data_model" jsonschema_description:"Whether the proof object is from organization data model. Organization data model are described in data model summary"`
-		Reason      string `json:"reason" jsonschema_description:"The reason why this object was useful for your review"`
+		Id     string               `json:"id" jsonschema_description:"The ID of the object used as proof. For the organization data model, this is referred to as object_id."`
+		Type   string               `json:"type" jsonschema_description:"The type of the object used as proof, could be decision or case. For the organization data model, this is referred to as trigger_object_type."`
+		Origin agent_dto.OriginName `json:"origin" jsonschema_description:"The origin of the object used as proof, could be data_model or internal"`
+		Reason string               `json:"reason" jsonschema_description:"The reason why this object was useful for your review"`
 	} `json:"proofs" jsonschema_description:"The proofs used to generate the case review"`
 }
 
@@ -781,10 +781,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	proofs := make([]agent_dto.CaseReviewProof, len(caseReview.Proofs))
 	for i, proof := range caseReview.Proofs {
 		proofs[i] = agent_dto.CaseReviewProof{
-			Id:          proof.Id,
-			Type:        proof.Type,
-			IsDataModel: proof.IsDataModel,
-			Reason:      proof.Reason,
+			Id:     proof.Id,
+			Type:   proof.Type,
+			Origin: proof.Origin,
+			Reason: proof.Reason,
 		}
 	}
 	if sanityCheck.Ok {
