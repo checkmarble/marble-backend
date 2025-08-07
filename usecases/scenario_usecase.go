@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -72,40 +71,6 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 				return models.Scenario{}, err
 			}
 
-			// the DecisionToCaseInboxId and DecisionToCaseOutcomes settings are of higher criticity (they
-			// influence how decisions are treated) so require a higher permission to update
-			changeWorkflowSettings := scenarioInput.DecisionToCaseInboxId.Set ||
-				scenarioInput.DecisionToCaseOutcomes != nil ||
-				scenarioInput.DecisionToCaseWorkflowType != nil ||
-				scenarioInput.DecisionToCaseNameTemplate != nil
-			if changeWorkflowSettings {
-				if err := usecase.enforceSecurity.PublishScenario(scenario); err != nil {
-					return models.Scenario{}, err
-				}
-			}
-
-			if err := validateScenarioUpdate(scenario, scenarioInput); err != nil {
-				return models.Scenario{}, err
-			}
-
-			if scenarioInput.DecisionToCaseNameTemplate != nil {
-				validation, err := usecase.ValidateScenarioAst(ctx, scenarioInput.Id,
-					scenarioInput.DecisionToCaseNameTemplate, "string")
-				if err != nil {
-					return models.Scenario{}, err
-				}
-				if len(validation.Errors) > 0 || len(validation.Evaluation.FlattenErrors()) > 0 {
-					errs := append(
-						validation.Evaluation.FlattenErrors(),
-						pure_utils.Map(
-							validation.Errors, func(err models.ScenarioValidationError) error {
-								return err.Error
-							})...,
-					)
-					return models.Scenario{}, errors.Join(errs...)
-				}
-			}
-
 			err = usecase.repository.UpdateScenario(ctx, tx, scenarioInput)
 			if err != nil {
 				return models.Scenario{}, err
@@ -114,42 +79,6 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)
-}
-
-func validateScenarioUpdate(scenario models.Scenario, input models.UpdateScenarioInput) error {
-	// start by simple input sanity checks
-	for _, outcome := range input.DecisionToCaseOutcomes {
-		if !slices.Contains(models.ValidOutcomes, outcome) {
-			return errors.Wrapf(
-				models.BadParameterError,
-				"Invalid input outcome: %s", outcome)
-		}
-	}
-	workflowType := input.DecisionToCaseWorkflowType
-	if workflowType != nil && !slices.Contains(models.ValidWorkflowTypes, *workflowType) {
-		return errors.Wrapf(models.BadParameterError,
-			"Invalid input workflow type: %s", *workflowType)
-	}
-
-	// next compute the new scenario, after updates
-	if input.DecisionToCaseInboxId.Set {
-		scenario.DecisionToCaseInboxId = input.DecisionToCaseInboxId.Ptr()
-	}
-	if input.DecisionToCaseOutcomes != nil {
-		scenario.DecisionToCaseOutcomes = input.DecisionToCaseOutcomes
-	}
-	if input.DecisionToCaseWorkflowType != nil {
-		scenario.DecisionToCaseWorkflowType = *input.DecisionToCaseWorkflowType
-	}
-
-	// now validate that the new scenario is valid
-	if scenario.DecisionToCaseWorkflowType != models.WorkflowDisabled &&
-		(scenario.DecisionToCaseInboxId == nil || len(scenario.DecisionToCaseOutcomes) == 0) {
-		return errors.Wrap(models.BadParameterError,
-			"DecisionToCaseInboxId and DecisionToCaseOutcomes are required when DecisionToCaseWorkflowType is not DISABLED")
-	}
-
-	return nil
 }
 
 func (usecase *ScenarioUsecase) ValidateScenarioAst(ctx context.Context,

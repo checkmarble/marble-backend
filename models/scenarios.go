@@ -2,10 +2,6 @@ package models
 
 import (
 	"time"
-
-	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/google/uuid"
 )
 
 type WorkflowType string
@@ -34,17 +30,13 @@ func WorkflowTypeFromString(s string) WorkflowType {
 }
 
 type Scenario struct {
-	Id                         string
-	CreatedAt                  time.Time
-	DecisionToCaseOutcomes     []Outcome
-	DecisionToCaseInboxId      *uuid.UUID
-	DecisionToCaseWorkflowType WorkflowType
-	DecisionToCaseNameTemplate *ast.Node
-	Description                string
-	LiveVersionID              *string
-	Name                       string
-	OrganizationId             string
-	TriggerObjectType          string
+	Id                string
+	CreatedAt         time.Time
+	Description       string
+	LiveVersionID     *string
+	Name              string
+	OrganizationId    string
+	TriggerObjectType string
 }
 
 type CreateScenarioInput struct {
@@ -55,13 +47,9 @@ type CreateScenarioInput struct {
 }
 
 type UpdateScenarioInput struct {
-	Id                         string
-	DecisionToCaseOutcomes     []Outcome
-	DecisionToCaseInboxId      pure_utils.Null[uuid.UUID]
-	DecisionToCaseWorkflowType *WorkflowType
-	DecisionToCaseNameTemplate *ast.Node
-	Description                *string
-	Name                       *string
+	Id          string
+	Description *string
+	Name        *string
 }
 
 type ListAllScenariosFilters struct {
