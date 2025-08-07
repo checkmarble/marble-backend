@@ -157,7 +157,7 @@ func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exe
 		      uu.user_id = iu.user_id and
 		      now() between uu.from_date and uu.until_date
 		      )
-		  group by iu.inbox_id
+		  group by iu.inbox_id, u.id
 		  having count(distinct c.id) < $2
 		)
 		select c.*
@@ -173,6 +173,7 @@ func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exe
 		    c.assigned_to is null
 		  limit $2
 		) c on true
+		order by c.created_at asc
 	`
 
 	rows, err := exec.Query(ctx, sql, orgId, limit)
