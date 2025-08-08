@@ -27,6 +27,7 @@ type OpenSanctionsCatalogSection struct {
 type OpenSanctionsCatalogDataset struct {
 	Name  string
 	Title string
+	Tags  []string
 	Path  set.Set[string]
 }
 

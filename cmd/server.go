@@ -96,6 +96,10 @@ func RunServer(config CompiledConfig) error {
 		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
 	)
 
+	if scope := utils.GetEnv("OPENSANCTIONS_SCOPE", ""); scope != "" {
+		openSanctionsConfig.WithScope(scope)
+	}
+
 	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
 		openSanctionsConfig.WithNameRecognition(apiUrl,
 			utils.GetEnv("NAME_RECOGNITION_API_KEY", ""))

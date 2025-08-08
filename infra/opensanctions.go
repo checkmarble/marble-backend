@@ -22,6 +22,7 @@ type OpenSanctions struct {
 	host        string
 	authMethod  OpenSanctionsAuthMethod
 	credentials string
+	scope       string
 
 	nameRecognition *NameRecognitionProvider
 }
@@ -36,6 +37,7 @@ func InitializeOpenSanctions(client *http.Client, host, authMethod, creds string
 		client:      client,
 		host:        host,
 		credentials: creds,
+		scope:       "default",
 	}
 
 	if os.IsSelfHosted() {
@@ -46,6 +48,12 @@ func InitializeOpenSanctions(client *http.Client, host, authMethod, creds string
 			os.authMethod = OPEN_SANCTIONS_AUTH_BASIC
 		}
 	}
+
+	return os
+}
+
+func (os *OpenSanctions) WithScope(scope string) *OpenSanctions {
+	os.scope = scope
 
 	return os
 }
@@ -96,6 +104,10 @@ func (os OpenSanctions) Credentials() string {
 
 func (os OpenSanctions) NameRecognition() *NameRecognitionProvider {
 	return os.nameRecognition
+}
+
+func (os OpenSanctions) Scope() string {
+	return os.scope
 }
 
 func (ner OpenSanctions) IsNameRecognitionSet() bool {
