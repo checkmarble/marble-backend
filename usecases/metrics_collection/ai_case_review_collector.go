@@ -33,7 +33,7 @@ func NewAiCaseReviewCollector(aiCaseReviewRepository AiCaseReviewCollectorReposi
 	}
 }
 
-// Collect ai case reviews count by organization by daily frequency period
+// Collect AI case reviews count by organization by daily frequency period
 func (c AiCaseReviewCollector) Collect(ctx context.Context, orgs []models.Organization, from, to time.Time) ([]models.MetricData, error) {
 	periods, err := pure_utils.SplitTimeRangeByFrequency(from, to, pure_utils.FrequencyDaily)
 	if err != nil {
