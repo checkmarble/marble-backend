@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -51,27 +50,7 @@ func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, exec Executo
 		Where("id = ?", scenario.Id)
 
 	countApply := 0
-	if scenario.DecisionToCaseInboxId.Set {
-		sql = sql.Set("decision_to_case_inbox_id", scenario.DecisionToCaseInboxId.Value())
-		countApply++
-	}
-	if scenario.DecisionToCaseOutcomes != nil {
-		sql = sql.Set("decision_to_case_outcomes", scenario.DecisionToCaseOutcomes)
-		countApply++
-	}
-	if scenario.DecisionToCaseWorkflowType != nil {
-		sql = sql.Set("decision_to_case_workflow_type", scenario.DecisionToCaseWorkflowType)
-		countApply++
-	}
-	if scenario.DecisionToCaseNameTemplate != nil {
-		serializedAst, err := dbmodels.SerializeFormulaAstExpression(scenario.DecisionToCaseNameTemplate)
-		if err != nil {
-			return fmt.Errorf(
-				"unable to marshal ast expression: %w", err)
-		}
-		sql = sql.Set("decision_to_case_name_template", serializedAst)
-		countApply++
-	}
+
 	if scenario.Description != nil {
 		sql = sql.Set("description", scenario.Description)
 		countApply++
