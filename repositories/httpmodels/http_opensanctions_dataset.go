@@ -38,6 +38,7 @@ type HTTPOpenSanctionCatalogDataset struct {
 	Load         bool     `json:"load"`
 	IndexVersion *string  `json:"index_version"`
 	Children     []string `json:"children"`
+	Tags         []string `json:"tags"`
 }
 
 func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset, tags *expirable.LRU[string, []string]) models.OpenSanctionsCatalog {
@@ -119,6 +120,7 @@ func findDatasets(sections map[string]*models.OpenSanctionsCatalogSection,
 		sections[regionCode].Datasets = append(sections[regionCode].Datasets, models.OpenSanctionsCatalogDataset{
 			Name:  dataset.Name,
 			Title: dataset.Title,
+			Tags:  dataset.Tags,
 			Path:  *tags,
 		})
 	}

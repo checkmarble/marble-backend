@@ -57,10 +57,18 @@ func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsC
 		for idx, d := range s.Datasets {
 			var tag string
 
-			if tags, ok := model.Tags.Get(d.Name); ok {
-				for _, upstreamTag := range tags {
-					if t, ok := datasetTagMapping[upstreamTag]; ok {
-						tag = t
+			for _, upstreamTag := range d.Tags {
+				if t, ok := datasetTagMapping[upstreamTag]; ok {
+					tag = t
+				}
+			}
+
+			if tag == "" {
+				if tags, ok := model.Tags.Get(d.Name); ok {
+					for _, upstreamTag := range tags {
+						if t, ok := datasetTagMapping[upstreamTag]; ok {
+							tag = t
+						}
 					}
 				}
 			}
