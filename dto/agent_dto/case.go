@@ -13,6 +13,7 @@ import (
 )
 
 type Case struct {
+	Id           string      `json:"id"`
 	CreatedAt    time.Time   `json:"created_at"`
 	InboxName    string      `json:"inbox_name"`
 	Name         string      `json:"name"`
@@ -34,6 +35,7 @@ func AdaptCaseDto(c models.Case, tags []models.Tag, inboxes []models.Inbox, user
 		}
 	}
 	dto := Case{
+		Id:        c.Id,
 		CreatedAt: c.CreatedAt,
 		InboxName: inboxName,
 		Name:      c.Name,
@@ -93,10 +95,10 @@ func AdaptCaseEventDto(caseEvent models.CaseEvent, users []models.User) CaseEven
 		EventType: string(caseEvent.EventType),
 		// TODO: Commented out for now because we don't want the AI agent to "cheat" by using the human review to generate a review
 		// while we iterate on the prompts. Final behavior may change but is still undetermined.
-		// AdditionalNote: caseEvent.AdditionalNote,
-		AdditionalNote: "Redacted",
-		NewValue:       caseEvent.NewValue,
-		ResourceType:   string(caseEvent.ResourceType),
+		AdditionalNote: caseEvent.AdditionalNote,
+		// AdditionalNote: "Redacted",
+		NewValue:     caseEvent.NewValue,
+		ResourceType: string(caseEvent.ResourceType),
 	}
 }
 

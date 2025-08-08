@@ -14,8 +14,10 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
@@ -670,5 +672,36 @@ func handleEnqueueCaseReview(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		c.Status(http.StatusNoContent)
+	}
+}
+
+func handlePutCaseReviewFeedback(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+		reviewId := c.Param("review_id")
+
+		var feedback agent_dto.UpdateCaseReviewFeedbackDto
+		if err := c.ShouldBindJSON(&feedback); presentError(ctx, c, err) {
+			return
+		}
+		if err := feedback.Validate(); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		reviewIdUuid, err := uuid.Parse(reviewId)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
+		review, err := usecase.UpdateAiCaseReviewFeedback(ctx, caseId, reviewIdUuid, feedback.Adapt())
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, review)
 	}
 }
