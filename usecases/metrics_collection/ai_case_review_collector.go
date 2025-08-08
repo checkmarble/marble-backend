@@ -17,7 +17,7 @@ type AiCaseReviewCollectorRepository interface {
 }
 
 // Implement Collector interface for AI case review collector
-// This collector counts the number of ai case reviews made by an organization
+// This collector counts the number of AI case reviews made by an organization
 type AiCaseReviewCollector struct {
 	aiCaseReviewRepository AiCaseReviewCollectorRepository
 
