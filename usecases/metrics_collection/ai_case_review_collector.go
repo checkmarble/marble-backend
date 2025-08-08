@@ -16,7 +16,7 @@ type AiCaseReviewCollectorRepository interface {
 		from, to time.Time) (map[string]int, error)
 }
 
-// Implement Collector interface for ai case review collector
+// Implement Collector interface for AI case review collector
 // This collector counts the number of ai case reviews made by an organization
 type AiCaseReviewCollector struct {
 	aiCaseReviewRepository AiCaseReviewCollectorRepository
