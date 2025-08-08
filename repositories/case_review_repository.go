@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -68,4 +69,26 @@ func (r *MarbleDbRepository) ListCaseReviewFiles(
 			return dbmodels.AdaptAiCaseReview(dbModel), nil
 		},
 	)
+}
+
+func (r *MarbleDbRepository) CountAiCaseReviewsByOrg(
+	ctx context.Context,
+	exec Executor,
+	orgIds []string,
+	from, to time.Time,
+) (map[string]int, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("c.org_id, count(*) as count").
+		From(dbmodels.TABLE_AI_CASE_REVIEWS + " AS acr").
+		Join(dbmodels.TABLE_CASES + " AS c ON acr.case_id = c.id").
+		Where(squirrel.Eq{"c.org_id": orgIds}).
+		Where(squirrel.GtOrEq{"acr.created_at": from}).
+		Where(squirrel.Lt{"acr.created_at": to}).
+		GroupBy("c.org_id")
+
+	return countByHelper(ctx, exec, query, orgIds)
 }
