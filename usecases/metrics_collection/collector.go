@@ -25,6 +25,7 @@ type CollectorRepository interface {
 	CaseCollectorRepository
 	DecisionCollectorRepository
 	ScreeningCollectorRepository
+	AiCaseReviewCollectorRepository
 }
 
 // GlobalCollector is a collector that is not specific to an organization.
@@ -174,6 +175,7 @@ func NewCollectorsV1(
 			NewDecisionCollector(repository, executorFactory),
 			NewCaseCollector(repository, executorFactory),
 			NewScreeningCollector(repository, executorFactory),
+			NewAiCaseReviewCollector(repository, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),

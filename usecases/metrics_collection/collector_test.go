@@ -50,6 +50,13 @@ func (m *MockCollectorRepository) CountScreeningsByOrg(ctx context.Context, exec
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
+func (m *MockCollectorRepository) CountAiCaseReviewsByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
+	from, to time.Time,
+) (map[string]int, error) {
+	args := m.Called(ctx, exec, orgIds, from, to)
+	return args.Get(0).(map[string]int), args.Error(1)
+}
+
 func (m *MockCollectorRepository) GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID,
 	key models.MetadataKey,
 ) (*models.Metadata, error) {
@@ -368,7 +375,7 @@ func TestNewCollectorsV1(t *testing.T) {
 	// Assert
 	assert.Equal(t, "v1", collectors.version)
 	assert.Len(t, collectors.globalCollectors, 1)
-	assert.Len(t, collectors.collectors, 3)
+	assert.Len(t, collectors.collectors, 4)
 	assert.Equal(t, mockRepository, collectors.repository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
 
@@ -384,4 +391,7 @@ func TestNewCollectorsV1(t *testing.T) {
 
 	_, isScreeningCollector := collectors.collectors[2].(ScreeningCollector)
 	assert.True(t, isScreeningCollector, "Should contain ScreeningCollector")
+
+	_, isAiCaseReviewCollector := collectors.collectors[3].(AiCaseReviewCollector)
+	assert.True(t, isAiCaseReviewCollector, "Should contain AiCaseReviewCollector")
 }
