@@ -30,7 +30,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const HIGH_NB_ROWS_THRESHOLD = 0
+const HIGH_NB_ROWS_THRESHOLD = 100
 
 type AiAgentUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
