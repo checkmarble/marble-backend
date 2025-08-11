@@ -485,7 +485,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	if err != nil {
 		return nil, errors.Wrap(err, "could not generate data model summary")
 	}
-	defer requestDataModelSummary.ThreadId.Clear()
+	defer requestDataModelSummary.ThreadId.Close()
 
 	dataModelSummary, err := requestDataModelSummary.Get(0)
 	if err != nil {
