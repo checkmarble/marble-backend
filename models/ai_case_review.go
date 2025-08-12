@@ -7,14 +7,20 @@ import (
 )
 
 type AiCaseReview struct {
-	ID            uuid.UUID
-	CaseID        uuid.UUID
+	Id            uuid.UUID
+	CaseId        uuid.UUID
 	Status        string
 	BucketName    string
 	FileReference string
 	DtoVersion    string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+
+	AiCaseReviewFeedback
+}
+
+type AiCaseReviewFeedback struct {
+	Reaction *AiCaseReviewReaction
 }
 
 type AiCaseReviewStatus int
@@ -48,5 +54,34 @@ func AiCaseReviewStatusFromString(s string) AiCaseReviewStatus {
 		return AiCaseReviewStatusFailed
 	default:
 		return AiCaseReviewStatusUnknown
+	}
+}
+
+type AiCaseReviewReaction string
+
+const (
+	AiCaseReviewReactionUnknown AiCaseReviewReaction = "unknown"
+	AiCaseReviewReactionOk      AiCaseReviewReaction = "ok"
+	AiCaseReviewReactionKo      AiCaseReviewReaction = "ko"
+)
+
+func (r AiCaseReviewReaction) String() string {
+	switch r {
+	case AiCaseReviewReactionOk:
+		return "ok"
+	case AiCaseReviewReactionKo:
+		return "ko"
+	}
+	return "unknown"
+}
+
+func AiCaseReviewReactionFromString(s string) AiCaseReviewReaction {
+	switch s {
+	case "ok":
+		return AiCaseReviewReactionOk
+	case "ko":
+		return AiCaseReviewReactionKo
+	default:
+		return AiCaseReviewReactionUnknown
 	}
 }

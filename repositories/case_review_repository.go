@@ -30,14 +30,16 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 				"bucket_name",
 				"file_reference",
 				"dto_version",
+				"reaction",
 			).
 			Values(
-				caseReview.ID,
-				caseReview.CaseID,
+				caseReview.Id,
+				caseReview.CaseId,
 				caseReview.Status,
 				caseReview.BucketName,
 				caseReview.FileReference,
 				"v1",
+				caseReview.Reaction,
 			),
 	)
 	return err
@@ -66,7 +68,7 @@ func (r *MarbleDbRepository) ListCaseReviewFiles(
 		exec,
 		query,
 		func(dbModel dbmodels.AiCaseReview) (models.AiCaseReview, error) {
-			return dbmodels.AdaptAiCaseReview(dbModel), nil
+			return dbmodels.AdaptAiCaseReview(dbModel)
 		},
 	)
 }
@@ -91,4 +93,47 @@ func (r *MarbleDbRepository) CountAiCaseReviewsByOrg(
 		GroupBy("c.org_id")
 
 	return countByHelper(ctx, exec, query, orgIds)
+}
+
+// For now, update the feedback for the most recent completed case review.
+func (r *MarbleDbRepository) UpdateAiCaseReviewFeedback(
+	ctx context.Context,
+	exec Executor,
+	reviewId uuid.UUID,
+	feedback models.AiCaseReviewFeedback,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	err := ExecBuilder(ctx, exec, NewQueryBuilder().
+		Update(dbmodels.TABLE_AI_CASE_REVIEWS).
+		Set("reaction", feedback.Reaction).
+		Where(
+			squirrel.Eq{
+				"id": reviewId,
+			},
+		),
+	)
+	return err
+}
+
+func (r *MarbleDbRepository) GetCaseReviewById(
+	ctx context.Context,
+	exec Executor,
+	reviewId uuid.UUID,
+) (models.AiCaseReview, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.AiCaseReview{}, err
+	}
+
+	return SqlToModel(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.AiCaseReviewFields...).
+			From(dbmodels.TABLE_AI_CASE_REVIEWS).
+			Where(squirrel.Eq{"id": reviewId}),
+		dbmodels.AdaptAiCaseReview,
+	)
 }
