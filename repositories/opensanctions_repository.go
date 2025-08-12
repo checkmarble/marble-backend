@@ -239,7 +239,13 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 	utils.LoggerFromContext(ctx).InfoContext(ctx, "sending screening query")
 	startedAt := time.Now()
 
+	ctx, span := utils.OpenTelemetryTracerFromContext(ctx).Start(ctx, "yente-request")
+	defer span.End()
+
 	resp, err := repo.opensanctions.Client().Do(req)
+
+	span.End()
+
 	if err != nil {
 		return models.ScreeningRawSearchResponseWithMatches{},
 			errors.Wrap(err, "could not perform screening")
