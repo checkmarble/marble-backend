@@ -650,10 +650,14 @@ func handleGetCaseDataForCopilot(uc usecases.Usecases) func(c *gin.Context) {
 func handleGetCaseReview(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		caseId := c.Param("case_id")
+		caseId, err := uuid.Parse(c.Param("case_id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		reviews, err := usecase.GetCaseReview(ctx, caseId)
+		reviews, err := usecase.GetCaseReview(ctx, caseId.String())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -664,10 +668,14 @@ func handleGetCaseReview(uc usecases.Usecases) func(c *gin.Context) {
 func handleEnqueueCaseReview(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		caseId := c.Param("case_id")
+		caseId, err := uuid.Parse(c.Param("case_id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		err := usecase.EnqueueCreateCaseReview(ctx, caseId)
+		err = usecase.EnqueueCreateCaseReview(ctx, caseId.String())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -679,7 +687,11 @@ func handlePutCaseReviewFeedback(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		caseId := c.Param("case_id")
-		reviewId := c.Param("review_id")
+		reviewId, err := uuid.Parse(c.Param("review_id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
 
 		var feedback agent_dto.UpdateCaseReviewFeedbackDto
 		if err := c.ShouldBindJSON(&feedback); presentError(ctx, c, err) {
@@ -690,14 +702,8 @@ func handlePutCaseReviewFeedback(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		reviewIdUuid, err := uuid.Parse(reviewId)
-		if err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
-			return
-		}
-
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		review, err := usecase.UpdateAiCaseReviewFeedback(ctx, caseId, reviewIdUuid, feedback.Adapt())
+		review, err := usecase.UpdateAiCaseReviewFeedback(ctx, caseId, reviewId, feedback.Adapt())
 		if presentError(ctx, c, err) {
 			return
 		}

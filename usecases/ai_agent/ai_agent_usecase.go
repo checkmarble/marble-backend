@@ -81,7 +81,8 @@ type caseReviewTaskEnqueuer interface {
 		ctx context.Context,
 		tx repositories.Transaction,
 		organizationId string,
-		caseId string,
+		caseId uuid.UUID,
+		aiCaseReviewId uuid.UUID,
 	) error
 }
 
@@ -97,6 +98,7 @@ type AiAgentUsecase struct {
 	blobRepository           repositories.BlobRepository
 	caseReviewTaskEnqueuer   caseReviewTaskEnqueuer
 	config                   infra.AIAgentConfiguration
+	caseManagerBucketUrl     string
 
 	llmAdapter *llm_adapter.LlmAdapter
 	mu         sync.Mutex
@@ -129,6 +131,7 @@ func NewAiAgentUsecase(
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
 	transactionFactory executor_factory.TransactionFactory,
 	config infra.AIAgentConfiguration,
+	caseManagerBucketUrl string,
 ) AiAgentUsecase {
 	return AiAgentUsecase{
 		enforceSecurity:          enforceSecurity,
@@ -142,6 +145,7 @@ func NewAiAgentUsecase(
 		caseReviewTaskEnqueuer:   caseReviewTaskEnqueuer,
 		transactionFactory:       transactionFactory,
 		config:                   config,
+		caseManagerBucketUrl:     caseManagerBucketUrl,
 	}
 }
 
@@ -387,19 +391,21 @@ func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.U
 			errors.Wrap(err, "could not get case review by id")
 	}
 
-	blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName,
-		review.FileReference)
+	blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName, review.FileReference)
 	if err != nil {
 		return agent_dto.AiCaseReviewOutputDto{},
 			errors.Wrap(err, "could not get case review file")
 	}
 	defer blob.ReadCloser.Close()
 
-	reviewDto, err := agent_dto.UnmarshalCaseReviewDto(
-		review.DtoVersion, blob.ReadCloser)
-	if err != nil {
-		return agent_dto.AiCaseReviewOutputDto{},
-			errors.Wrap(err, "could not unmarshal case review file")
+	var reviewDto agent_dto.AiCaseReviewDto
+	if review.Status == models.AiCaseReviewStatusCompleted {
+		reviewDto, err = agent_dto.UnmarshalCaseReviewDto(
+			review.DtoVersion, blob.ReadCloser)
+		if err != nil {
+			return agent_dto.AiCaseReviewOutputDto{},
+				errors.Wrap(err, "could not unmarshal case review file")
+		}
 	}
 
 	var reaction *string
@@ -484,8 +490,22 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 		return err
 	}
 
+	caseIdUuid, err := uuid.Parse(caseId)
+	if err != nil {
+		return errors.Wrap(err, "could not parse case id")
+	}
+
+	aiCaseReview := models.NewAiCaseReview(caseIdUuid, uc.caseManagerBucketUrl)
+	err = uc.caseReviewFileRepository.CreateCaseReviewFile(ctx,
+		uc.executorFactory.NewExecutor(),
+		aiCaseReview,
+	)
+	if err != nil {
+		return errors.Wrap(err, "Error while creating case review file")
+	}
+
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return uc.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, c.OrganizationId, caseId)
+		return uc.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, c.OrganizationId, caseIdUuid, aiCaseReview.Id)
 	})
 }
 
@@ -609,9 +629,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 
 				requestDataModelObjectFieldReadOptions, err := llm_adapter.NewRequest[map[string][]string]().
 					OverrideResponseSchema(schema).
-					FromCandidate(requestDataModelSummary, 0).
+					// FromCandidate(requestDataModelSummary, 0).
 					WithModel(modelDataModelObjectFieldReadOptions).
 					WithInstruction(systemInstruction).
+					WithText(llm_adapter.RoleAi, dataModelSummary).
 					WithText(llm_adapter.RoleUser, promptDataModelObjectFieldReadOptions).
 					Do(ctx, client)
 				if err != nil {
