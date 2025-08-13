@@ -2,7 +2,9 @@ package infra
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -138,6 +140,34 @@ type TelemetryConfiguration struct {
 	Enabled         bool
 	ApplicationName string
 	ProjectID       string
+	SamplingMap     TelemetrySamplingMap
+}
+
+type TelemetrySamplingMap struct {
+	SpanNames map[string]float64 `json:"span_names"`
+}
+
+func NewTelemetrySamplingMap(ctx context.Context, path string) TelemetrySamplingMap {
+	m := TelemetrySamplingMap{
+		SpanNames: make(map[string]float64),
+	}
+
+	if path == "" {
+		return m
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		utils.LoggerFromContext(ctx).Warn(fmt.Sprintf("could not read otel sampling rates file: %s", err.Error()))
+		return m
+	}
+
+	if err := json.NewDecoder(f).Decode(&m); err != nil {
+		utils.LoggerFromContext(ctx).Warn(fmt.Sprintf("could not read otel sampling rates file: %s", err.Error()))
+		return m
+	}
+
+	return m
 }
 
 type ConvoyConfiguration struct {
