@@ -37,11 +37,7 @@ type PostWorkflowConditionDto struct {
 }
 
 type WorkflowConditionRuleHitParams struct {
-	RuleId uuid.UUID `json:"rule_id" binding:"required,uuid"`
-}
-
-type WorkflowConditionScreeningHitParams struct {
-	ScreeningId uuid.UUID `json:"screening_id" binding:"required,uuid"`
+	RuleId []uuid.UUID `json:"rule_id" binding:"required"`
 }
 
 type WorkflowConditionEvaluatesParams struct {

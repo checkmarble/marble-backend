@@ -67,16 +67,20 @@ func outcomeIn(outcomes []string) DecisionWorkflowsCondition {
 	}
 }
 
-func ruleHit(ruleId uuid.UUID) DecisionWorkflowsCondition {
+func ruleHit(ruleIds []uuid.UUID) DecisionWorkflowsCondition {
 	return func(ctx context.Context, req DecisionWorkflowRequest) (bool, error) {
 		for _, ruleExec := range req.Decision.RuleExecutions {
-			if ruleExec.Rule.StableRuleId == ruleId.String() && ruleExec.Outcome == "hit" {
-				return true, nil
+			for _, ruleId := range ruleIds {
+				if ruleExec.Rule.StableRuleId == ruleId.String() && ruleExec.Outcome == "hit" {
+					return true, nil
+				}
 			}
 		}
 		for _, screeningExec := range req.Decision.ScreeningExecutions {
-			if screeningExec.Config.StableId == ruleId.String() && screeningExec.Status == models.ScreeningStatusConfirmedHit {
-				return true, nil
+			for _, ruleId := range ruleIds {
+				if screeningExec.Config.StableId == ruleId.String() && screeningExec.Status == models.ScreeningStatusConfirmedHit {
+					return true, nil
+				}
 			}
 		}
 
