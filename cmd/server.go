@@ -131,6 +131,7 @@ func RunServer(config CompiledConfig) error {
 		sentryDsn                        string
 		transferCheckEnrichmentBucketUrl string
 		firebaseEmulatorHost             string
+		otelSamplingRates                string
 	}{
 		batchIngestionMaxSize:            utils.GetEnv("BATCH_INGESTION_MAX_SIZE", 0),
 		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
@@ -142,6 +143,7 @@ func RunServer(config CompiledConfig) error {
 		sentryDsn:                        utils.GetEnv("SENTRY_DSN", ""),
 		transferCheckEnrichmentBucketUrl: utils.GetEnv("TRANSFER_CHECK_ENRICHMENT_BUCKET_URL", ""), // required for transfercheck
 		firebaseEmulatorHost:             utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
+		otelSamplingRates:                utils.GetEnv("TRACING_SAMPLING_RATES", ""),
 	}
 
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
@@ -179,6 +181,7 @@ func RunServer(config CompiledConfig) error {
 		ApplicationName: apiConfig.AppName,
 		Enabled:         gcpConfig.EnableTracing,
 		ProjectID:       gcpConfig.ProjectId,
+		SamplingMap:     infra.NewTelemetrySamplingMap(ctx, serverConfig.otelSamplingRates),
 	}
 	telemetryRessources, err := infra.InitTelemetry(tracingConfig, config.Version)
 	if err != nil {

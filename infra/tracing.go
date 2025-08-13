@@ -60,7 +60,7 @@ func InitTelemetry(configuration TelemetryConfiguration, apiVersion string) (Tel
 	}
 
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(MarbleSampler{}),
+		sdktrace.WithSampler(MarbleSampler{SamplingMap: configuration.SamplingMap}),
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(res),
 	)
@@ -103,13 +103,15 @@ var (
 	}
 )
 
-type MarbleSampler struct{}
+type MarbleSampler struct {
+	SamplingMap TelemetrySamplingMap
+}
 
 func (MarbleSampler) Description() string {
 	return "marble-sampler"
 }
 
-func (MarbleSampler) ShouldSample(p sdktrace.SamplingParameters) sdktrace.SamplingResult {
+func (ms MarbleSampler) ShouldSample(p sdktrace.SamplingParameters) sdktrace.SamplingResult {
 	var (
 		kind     SpanKind
 		value    string
@@ -118,6 +120,12 @@ func (MarbleSampler) ShouldSample(p sdktrace.SamplingParameters) sdktrace.Sampli
 	)
 
 	psc := trace.SpanContextFromContext(p.ParentContext)
+
+	// This span should not be sampled if the parent is not. Except for the root
+	// span ID (the one that does not have a trace ID).
+	if psc.HasTraceID() && !psc.IsSampled() {
+		return sdktrace.NeverSample().ShouldSample(p)
+	}
 
 	for _, attr := range p.Attributes {
 		if attr.Key == semconv.HTTPRouteKey {
@@ -157,6 +165,11 @@ rates:
 		}
 
 	default:
+		if ratio, ok := ms.SamplingMap.SpanNames[p.Name]; ok {
+			prob = ratio
+			break rates
+		}
+
 		prob = 1.0
 	}
 
