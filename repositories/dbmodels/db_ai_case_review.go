@@ -12,10 +12,11 @@ type AiCaseReview struct {
 	Id     uuid.UUID `db:"id"`
 	CaseId uuid.UUID `db:"case_id"`
 
-	Status        string `db:"status"`
-	BucketName    string `db:"bucket_name"`
-	FileReference string `db:"file_reference"`
-	DtoVersion    string `db:"dto_version"`
+	Status            string `db:"status"`
+	FileReference     string `db:"file_reference"`
+	FileTempReference string `db:"file_temp_reference"`
+	BucketName        string `db:"bucket_name"`
+	DtoVersion        string `db:"dto_version"`
 
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
@@ -34,14 +35,15 @@ func AdaptAiCaseReview(dbModel AiCaseReview) (models.AiCaseReview, error) {
 	}
 
 	return models.AiCaseReview{
-		Id:            dbModel.Id,
-		CaseId:        dbModel.CaseId,
-		Status:        dbModel.Status,
-		BucketName:    dbModel.BucketName,
-		FileReference: dbModel.FileReference,
-		DtoVersion:    dbModel.DtoVersion,
-		CreatedAt:     dbModel.CreatedAt,
-		UpdatedAt:     dbModel.UpdatedAt,
+		Id:                dbModel.Id,
+		CaseId:            dbModel.CaseId,
+		Status:            models.AiCaseReviewStatusFromString(dbModel.Status),
+		BucketName:        dbModel.BucketName,
+		FileReference:     dbModel.FileReference,
+		FileTempReference: dbModel.FileTempReference,
+		DtoVersion:        dbModel.DtoVersion,
+		CreatedAt:         dbModel.CreatedAt,
+		UpdatedAt:         dbModel.UpdatedAt,
 		AiCaseReviewFeedback: models.AiCaseReviewFeedback{
 			Reaction: reaction,
 		},

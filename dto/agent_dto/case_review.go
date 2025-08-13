@@ -17,6 +17,7 @@ import (
 
 type AiCaseReviewDto interface {
 	aiCaseReviewDto()
+	GetVersion() string
 }
 
 type OriginName string
@@ -55,6 +56,10 @@ type CaseReviewV1 struct {
 }
 
 func (c CaseReviewV1) aiCaseReviewDto() {}
+
+func (c CaseReviewV1) GetVersion() string {
+	return "v1"
+}
 
 func UnmarshalCaseReviewDto(version string, payload io.Reader) (AiCaseReviewDto, error) {
 	switch version {

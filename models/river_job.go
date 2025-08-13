@@ -69,7 +69,8 @@ type MetricsCollectionArgs struct{}
 func (MetricsCollectionArgs) Kind() string { return "metrics_collection" }
 
 type CaseReviewArgs struct {
-	CaseId string `json:"case_id"`
+	CaseId         uuid.UUID `json:"case_id"`
+	AiCaseReviewId uuid.UUID `json:"ai_case_review_id"`
 }
 
 func (CaseReviewArgs) Kind() string { return "case_review" }
