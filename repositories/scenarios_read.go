@@ -195,6 +195,7 @@ func (repo *MarbleDbRepository) ListScenarioLatestRuleVersions(ctx context.Conte
 			from scenario_iteration_rules sir
 			inner join scenario_iterations si on si.id = sir.scenario_iteration_id
 			where si.scenario_id = $1
+			and si.version is not null
 			union all
 			select
 				rank() over (partition by scc.stable_id order by si.version desc) as rank,
@@ -205,6 +206,7 @@ func (repo *MarbleDbRepository) ListScenarioLatestRuleVersions(ctx context.Conte
 			from sanction_check_configs scc
 			inner join scenario_iterations si on si.id = scc.scenario_iteration_id
 			where si.scenario_id = $2
+			and si.version is not null
 		) rules
 		where rules.rank = 1
 		order by rules.version desc, rules.name asc
