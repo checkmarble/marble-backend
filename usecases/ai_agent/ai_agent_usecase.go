@@ -509,6 +509,17 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 	})
 }
 
+// Contains all results from the case review process
+// Update this struct during the process and expose this struct to the caller to save the results in case we need to resume it
+// Didn't include the sanity check output because it's the last step and we don't need to save it
+type CaseReviewContext struct {
+	dataModelSummary       *string
+	fieldsToReadPerTable   map[string][]string
+	rulesDefinitionsReview *string
+	ruleThresholds         *string
+	caseReview             *caseReviewOutput
+}
+
 // CreateCaseReviewSync performs a comprehensive AI-powered review of a case by analyzing
 // case data, related information, and generating structured insights through multiple
 // AI model interactions. The process involves several key steps:
@@ -518,8 +529,18 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 // 4. Analyze rule definitions and thresholds for context
 // 5. Generate the main case review with all available information
 // 6. Perform sanity check on the generated review for quality assurance
-func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId string) (agent_dto.AiCaseReviewDto, error) {
+// caseReviewContext can be provided to resume the process from a previous iteration, it will be updated in place
+// Depends on the context, the process can avoid calling some LLM calls
+func (uc *AiAgentUsecase) CreateCaseReviewSync(
+	ctx context.Context,
+	caseId string,
+	caseReviewContext *CaseReviewContext,
+) (agent_dto.AiCaseReviewDto, error) {
 	logger := utils.LoggerFromContext(ctx)
+
+	if caseReviewContext == nil {
+		caseReviewContext = &CaseReviewContext{}
+	}
 
 	client, err := uc.GetClient(ctx)
 	if err != nil {
@@ -546,39 +567,39 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 		systemInstruction = "You are a compliance officer or fraud analyst. You are given a case and you need to review it step by step. Reply factually to instructions in markdown format."
 	}
 
-	// Data model summary, create thread because the response will be used in next steps
-	modelDataModelSummary, promptDataModelSummary, err := uc.prepareRequest(
-		"prompts/case_review/data_model_summary.md", map[string]any{
-			"data_model": caseData.dataModelDto,
-		})
-	if err != nil {
-		return nil, errors.Wrap(err, "could not prepare data model summary request")
-	}
+	if caseReviewContext.dataModelSummary == nil {
+		// Data model summary, create thread because the response will be used in next steps
+		modelDataModelSummary, promptDataModelSummary, err := uc.prepareRequest(
+			"prompts/case_review/data_model_summary.md", map[string]any{
+				"data_model": caseData.dataModelDto,
+			})
+		if err != nil {
+			return nil, errors.Wrap(err, "could not prepare data model summary request")
+		}
 
-	// Create the request with Thread for the next steps which needs the response
-	requestDataModelSummary, err := llm_adapter.NewUntypedRequest().
-		CreateThread().
-		WithModel(modelDataModelSummary).
-		WithInstruction(systemInstruction).
-		WithText(llm_adapter.RoleUser, promptDataModelSummary).
-		Do(ctx, client)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not generate data model summary")
-	}
-	defer requestDataModelSummary.ThreadId.Clear()
+		// Create the request with Thread for the next steps which needs the response
+		requestDataModelSummary, err := llm_adapter.NewUntypedRequest().
+			WithModel(modelDataModelSummary).
+			WithInstruction(systemInstruction).
+			WithText(llm_adapter.RoleUser, promptDataModelSummary).
+			Do(ctx, client)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not generate data model summary")
+		}
 
-	dataModelSummary, err := requestDataModelSummary.Get(0)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get data model summary")
+		dataModelSummary, err := requestDataModelSummary.Get(0)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get data model summary")
+		}
+		caseReviewContext.dataModelSummary = &dataModelSummary
 	}
 
 	logger.DebugContext(ctx, "================================ Data model summary ================================")
-	logger.DebugContext(ctx, "Data model summary", "response", dataModelSummary)
+	logger.DebugContext(ctx, "Data model summary", "response", *caseReviewContext.dataModelSummary)
 
 	// Data model object field read options
 	// Here, we implicitly distinguish between "transaction" tables (based on the presence of "many" rows for a given customer)
 	// and other tables (where we can afford to read all fields)
-	var fieldsToReadPerTable map[string][]string
 	allPresentTables := make(map[string]bool)
 	for _, clientData := range relatedDataPerClient.Data {
 		for tableName := range clientData.IngestedData {
@@ -599,7 +620,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 		objectTables := clientData.IngestedData
 		if objectTables != nil {
 			// generate the map of fields to read for every table, but only once.
-			if fieldsToReadPerTable == nil {
+			if caseReviewContext.fieldsToReadPerTable == nil {
 				props := jsonschema.NewProperties()
 
 				for tableName, fields := range tablesWithLargRowNbs {
@@ -632,7 +653,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 					// FromCandidate(requestDataModelSummary, 0).
 					WithModel(modelDataModelObjectFieldReadOptions).
 					WithInstruction(systemInstruction).
-					WithText(llm_adapter.RoleAi, dataModelSummary).
+					WithText(llm_adapter.RoleAi, *caseReviewContext.dataModelSummary).
 					WithText(llm_adapter.RoleUser, promptDataModelObjectFieldReadOptions).
 					Do(ctx, client)
 				if err != nil {
@@ -649,10 +670,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 				logger.DebugContext(ctx, "Data model object field read options",
 					"response", dataModelObjectFieldReadOptions)
 
-				fieldsToReadPerTable = dataModelObjectFieldReadOptions
+				caseReviewContext.fieldsToReadPerTable = dataModelObjectFieldReadOptions
 			}
 
-			for tableName, fieldsToRead := range fieldsToReadPerTable {
+			for tableName, fieldsToRead := range caseReviewContext.fieldsToReadPerTable {
 				// Reuse original read options, just adapt the number of rows to read and the fields to consider
 				fieldFilteredObjects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(
 					ctx,
@@ -678,92 +699,100 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 		}
 	}
 
-	// Rules definitions review
-	modelRulesDefinitions, promptRulesDefinitions, err := uc.prepareRequest(
-		"prompts/case_review/rule_definitions.md",
-		map[string]any{
-			"decisions":            caseData.decisions,
-			"activity_description": clientActivityDescription,
-		},
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not prepare rules definitions review request")
+	if caseReviewContext.rulesDefinitionsReview == nil {
+		// Rules definitions review
+		modelRulesDefinitions, promptRulesDefinitions, err := uc.prepareRequest(
+			"prompts/case_review/rule_definitions.md",
+			map[string]any{
+				"decisions":            caseData.decisions,
+				"activity_description": clientActivityDescription,
+			},
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not prepare rules definitions review request")
+		}
+		requestRulesDefinitionsReview, err := llm_adapter.NewUntypedRequest().
+			WithModel(modelRulesDefinitions).
+			WithInstruction(systemInstruction).
+			WithText(llm_adapter.RoleUser, promptRulesDefinitions).
+			Do(ctx, client)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not generate rules definitions review")
+		}
+		rulesDefinitionsReview, err := requestRulesDefinitionsReview.Get(0)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get rules definitions review")
+		}
+		caseReviewContext.rulesDefinitionsReview = &rulesDefinitionsReview
 	}
-	requestRulesDefinitionsReview, err := llm_adapter.NewUntypedRequest().
-		WithModel(modelRulesDefinitions).
-		WithInstruction(systemInstruction).
-		WithText(llm_adapter.RoleUser, promptRulesDefinitions).
-		Do(ctx, client)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not generate rules definitions review")
-	}
-	rulesDefinitionsReview, err := requestRulesDefinitionsReview.Get(0)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get rules definitions review")
-	}
-
 	logger.DebugContext(ctx, "================================ Rules definitions review ================================")
-	logger.DebugContext(ctx, "Rules definitions review", "response", rulesDefinitionsReview)
+	logger.DebugContext(ctx, "Rules definitions review", "response",
+		*caseReviewContext.rulesDefinitionsReview)
 
 	// Rule thresholds
-	modelRuleThresholds, promptRuleThresholds, err := uc.prepareRequest(
-		"prompts/case_review/rule_threshold_values.md",
-		map[string]any{
-			"decisions": caseData.decisions,
-		},
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not prepare rule thresholds request")
-	}
-	requestRuleThresholds, err := llm_adapter.NewUntypedRequest().
-		WithModel(modelRuleThresholds).
-		WithInstruction(systemInstruction).
-		WithText(llm_adapter.RoleUser, promptRuleThresholds).
-		Do(ctx, client)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not generate rule thresholds")
-	}
-	ruleThresholds, err := requestRuleThresholds.Get(0)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get rule thresholds")
+	if caseReviewContext.ruleThresholds == nil {
+		modelRuleThresholds, promptRuleThresholds, err := uc.prepareRequest(
+			"prompts/case_review/rule_threshold_values.md",
+			map[string]any{
+				"decisions": caseData.decisions,
+			},
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not prepare rule thresholds request")
+		}
+		requestRuleThresholds, err := llm_adapter.NewUntypedRequest().
+			WithModel(modelRuleThresholds).
+			WithInstruction(systemInstruction).
+			WithText(llm_adapter.RoleUser, promptRuleThresholds).
+			Do(ctx, client)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not generate rule thresholds")
+		}
+		ruleThresholds, err := requestRuleThresholds.Get(0)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get rule thresholds")
+		}
+		caseReviewContext.ruleThresholds = &ruleThresholds
 	}
 
 	logger.DebugContext(ctx, "================================ Rule thresholds ================================")
-	logger.DebugContext(ctx, "Rule thresholds", "response", ruleThresholds)
+	logger.DebugContext(ctx, "Rule thresholds", "response", *caseReviewContext.ruleThresholds)
 
 	// Finally, we can generate the case review
-	modelCaseReview, promptCaseReview, err := uc.prepareRequest(
-		"prompts/case_review/case_review.md",
-		map[string]any{
-			"case_detail":        caseData.case_,
-			"case_events":        caseData.events,
-			"decisions":          caseData.decisions,
-			"data_model_summary": dataModelSummary,
-			"pivot_objects":      caseData.pivotData,
-			"previous_cases":     relatedDataPerClient,
-			"rules_summary":      rulesDefinitionsReview,
-			"rule_thresholds":    ruleThresholds,
-		},
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not prepare case review request")
-	}
+	if caseReviewContext.caseReview == nil {
+		modelCaseReview, promptCaseReview, err := uc.prepareRequest(
+			"prompts/case_review/case_review.md",
+			map[string]any{
+				"case_detail":        caseData.case_,
+				"case_events":        caseData.events,
+				"decisions":          caseData.decisions,
+				"data_model_summary": *caseReviewContext.dataModelSummary,
+				"pivot_objects":      caseData.pivotData,
+				"previous_cases":     relatedDataPerClient,
+				"rules_summary":      *caseReviewContext.rulesDefinitionsReview,
+				"rule_thresholds":    *caseReviewContext.ruleThresholds,
+			},
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not prepare case review request")
+		}
 
-	requestCaseReview, err := llm_adapter.NewRequest[caseReviewOutput]().
-		WithModel(modelCaseReview).
-		WithInstruction(systemInstruction).
-		WithText(llm_adapter.RoleUser, promptCaseReview).
-		Do(ctx, client)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not generate case review")
+		requestCaseReview, err := llm_adapter.NewRequest[caseReviewOutput]().
+			WithModel(modelCaseReview).
+			WithInstruction(systemInstruction).
+			WithText(llm_adapter.RoleUser, promptCaseReview).
+			Do(ctx, client)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not generate case review")
+		}
+		caseReview, err := requestCaseReview.Get(0)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get case review")
+		}
+		caseReviewContext.caseReview = &caseReview
 	}
-	caseReview, err := requestCaseReview.Get(0)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get case review")
-	}
-
 	logger.DebugContext(ctx, "================================ Full case review ================================")
-	logger.DebugContext(ctx, "Full case review", "response", caseReview)
+	logger.DebugContext(ctx, "Full case review", "response", *caseReviewContext.caseReview)
 
 	// Finally, sanity check the resulting case review using a judgement prompt
 	modelSanityCheck, promptSanityCheck, err := uc.prepareRequest(
@@ -772,12 +801,12 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 			"case_detail":        caseData.case_,
 			"case_events":        caseData.events,
 			"decisions":          caseData.decisions,
-			"data_model_summary": dataModelSummary,
+			"data_model_summary": *caseReviewContext.dataModelSummary,
 			"pivot_objects":      caseData.pivotData,
 			"previous_cases":     relatedDataPerClient,
-			"rules_summary":      rulesDefinitionsReview,
-			"rule_thresholds":    ruleThresholds,
-			"case_review":        caseReview,
+			"rules_summary":      *caseReviewContext.rulesDefinitionsReview,
+			"rule_thresholds":    *caseReviewContext.ruleThresholds,
+			"case_review":        *caseReviewContext.caseReview,
 		},
 	)
 	if err != nil {
@@ -799,8 +828,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	logger.DebugContext(ctx, "================================ Sanity check ================================")
 	logger.DebugContext(ctx, "Sanity check", "response", sanityCheck)
 
-	proofs := make([]agent_dto.CaseReviewProof, len(caseReview.Proofs))
-	for i, proof := range caseReview.Proofs {
+	proofs := make([]agent_dto.CaseReviewProof, len((*caseReviewContext.caseReview).Proofs))
+	for i, proof := range (*caseReviewContext.caseReview).Proofs {
 		proofs[i] = agent_dto.CaseReviewProof{
 			Id:     proof.Id,
 			Type:   proof.Type,
@@ -811,13 +840,13 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(ctx context.Context, caseId strin
 	if sanityCheck.Ok {
 		return agent_dto.CaseReviewV1{
 			Ok:     sanityCheck.Ok,
-			Output: caseReview.CaseReview,
+			Output: (*caseReviewContext.caseReview).CaseReview,
 			Proofs: proofs,
 		}, nil
 	}
 	return agent_dto.CaseReviewV1{
 		Ok:          false,
-		Output:      caseReview.CaseReview,
+		Output:      (*caseReviewContext.caseReview).CaseReview,
 		SanityCheck: sanityCheck.Justification,
 		Proofs:      proofs,
 	}, nil
