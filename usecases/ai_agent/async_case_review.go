@@ -106,48 +106,43 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		return errors.Wrap(err, "Error while getting case review file")
 	}
 
-	cr, err := w.caseReviewUsecase.CreateCaseReviewSync(ctx, job.Args.CaseId.String(), nil)
+	// Get case review temporary file
+	caseReviewContext, err := w.getPreviousCaseReviewContext(ctx, aiCaseReview)
 	if err != nil {
-		errUpdate := w.repository.UpdateCaseReviewFile(ctx, w.executorFactory.NewExecutor(),
-			aiCaseReview.Id, models.UpdateAiCaseReview{
-				Status: models.AiCaseReviewStatusFailed,
-			})
-		if errUpdate != nil {
-			return errors.Join(
-				errors.Wrap(errUpdate, "Error while updating case review file status"),
-				errors.Wrap(err, "Error while generating case review"))
-		}
-		return errors.Wrap(err, "Error while generating case review")
+		return errors.Wrap(err, "Error while getting previous case review context")
 	}
+
+	cr, err := w.caseReviewUsecase.CreateCaseReviewSync(ctx, job.Args.CaseId.String(), &caseReviewContext)
+	if err != nil {
+		return w.handleCreateCaseReviewSyncError(
+			ctx,
+			aiCaseReview,
+			&caseReviewContext,
+			errors.Wrap(err, "Error while generating case review"),
+		)
+	}
+
 	logger.DebugContext(ctx, "Finished generating case review", "case_id", job.Args.CaseId)
 
 	stream, err := w.blobRepository.OpenStream(ctx, w.bucketUrl, aiCaseReview.FileReference, aiCaseReview.FileReference)
 	if err != nil {
-		errUpdate := w.repository.UpdateCaseReviewFile(ctx, w.executorFactory.NewExecutor(),
-			aiCaseReview.Id, models.UpdateAiCaseReview{
-				Status: models.AiCaseReviewStatusFailed,
-			})
-		if errUpdate != nil {
-			return errors.Join(
-				errors.Wrap(errUpdate, "Error while updating case review file status"),
-				errors.Wrap(err, "Error while opening stream"))
-		}
-		return errors.Wrap(err, "Error while opening stream")
+		return w.handleCreateCaseReviewSyncError(
+			ctx,
+			aiCaseReview,
+			&caseReviewContext,
+			errors.Wrap(err, "Error while opening stream"),
+		)
 	}
 	defer stream.Close()
 
 	err = json.NewEncoder(stream).Encode(cr)
 	if err != nil {
-		errUpdate := w.repository.UpdateCaseReviewFile(ctx, w.executorFactory.NewExecutor(),
-			aiCaseReview.Id, models.UpdateAiCaseReview{
-				Status: models.AiCaseReviewStatusFailed,
-			})
-		if errUpdate != nil {
-			return errors.Join(
-				errors.Wrap(errUpdate, "Error while updating case review file status"),
-				errors.Wrap(err, "Error while encoding case review"))
-		}
-		return errors.Wrap(err, "Error while encoding case review")
+		return w.handleCreateCaseReviewSyncError(
+			ctx,
+			aiCaseReview,
+			&caseReviewContext,
+			errors.Wrap(err, "Error while encoding case review"),
+		)
 	}
 
 	err = w.repository.UpdateCaseReviewFile(ctx, w.executorFactory.NewExecutor(),
@@ -155,9 +150,76 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 			Status: models.AiCaseReviewStatusCompleted,
 		})
 	if err != nil {
-		return errors.Wrap(err, "Error while updating case review file status")
+		return w.handleCreateCaseReviewSyncError(
+			ctx,
+			aiCaseReview,
+			&caseReviewContext,
+			errors.Wrap(err, "Error while updating case review file status"),
+		)
 	}
 	logger.DebugContext(ctx, "Finished creating case review file", "case_id", job.Args.CaseId, "review_id", aiCaseReview.Id)
 
 	return nil
+}
+
+// handleCreateCaseReviewSyncError is a helper function to handle errors during the case review process
+// It stores the case review context into a blob and updates the case review file status to failed
+// It returns the original error
+func (w *CaseReviewWorker) handleCreateCaseReviewSyncError(
+	ctx context.Context,
+	aiCaseReview models.AiCaseReview,
+	caseReviewContext *CaseReviewContext,
+	err error,
+) error {
+	// Store the case review context into a blob
+	stream, errStream := w.blobRepository.OpenStream(ctx, w.bucketUrl,
+		aiCaseReview.FileTempReference, aiCaseReview.FileTempReference)
+	if errStream != nil {
+		return errors.Join(err, errors.Wrap(errStream, "Error while opening stream"))
+	}
+	defer stream.Close()
+
+	errEncode := json.NewEncoder(stream).Encode(caseReviewContext)
+	if errEncode != nil {
+		return errors.Join(
+			err,
+			errors.Wrap(errEncode, "Error while encoding case review context"),
+		)
+	}
+
+	errUpdate := w.repository.UpdateCaseReviewFile(ctx, w.executorFactory.NewExecutor(),
+		aiCaseReview.Id, models.UpdateAiCaseReview{
+			Status: models.AiCaseReviewStatusFailed,
+		})
+	if errUpdate != nil {
+		return errors.Join(
+			err,
+			errors.Wrap(errUpdate, "Error while updating case review file status"),
+		)
+	}
+
+	return err
+}
+
+// Get from blob the previous case review context if it exists
+// If not, return an empty case review context
+func (w *CaseReviewWorker) getPreviousCaseReviewContext(
+	ctx context.Context,
+	aiCaseReview models.AiCaseReview,
+) (CaseReviewContext, error) {
+	caseReviewContext := CaseReviewContext{}
+	caseReviewContextBlob, err := w.blobRepository.GetBlob(
+		ctx,
+		w.bucketUrl,
+		aiCaseReview.FileTempReference,
+	)
+	if err == nil {
+		defer caseReviewContextBlob.ReadCloser.Close()
+		err = json.NewDecoder(caseReviewContextBlob.ReadCloser).Decode(&caseReviewContext)
+		if err != nil {
+			return caseReviewContext, err
+		}
+	}
+
+	return caseReviewContext, nil
 }
