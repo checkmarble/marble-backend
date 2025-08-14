@@ -175,7 +175,8 @@ func (w *CaseReviewWorker) handleCreateCaseReviewSyncError(
 	stream, errStream := w.blobRepository.OpenStream(ctx, w.bucketUrl,
 		aiCaseReview.FileTempReference, aiCaseReview.FileTempReference)
 	if errStream != nil {
-		return errors.Join(err, errors.Wrap(errStream, "Error while opening temporary file stream"))
+		return errors.Join(err, errors.Wrap(errStream,
+			"Error while opening temporary file stream"))
 	}
 	defer stream.Close()
 
@@ -183,7 +184,7 @@ func (w *CaseReviewWorker) handleCreateCaseReviewSyncError(
 	if errEncode != nil {
 		return errors.Join(
 			err,
-			errors.Wrap(errEncode, "Error while encoding case review context"),
+			errors.Wrap(errEncode, "Error while encoding case review context to temporary file"),
 		)
 	}
 
