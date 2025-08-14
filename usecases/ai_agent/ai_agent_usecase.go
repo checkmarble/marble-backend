@@ -650,7 +650,6 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 				requestDataModelObjectFieldReadOptions, err := llm_adapter.NewRequest[map[string][]string]().
 					OverrideResponseSchema(schema).
-					// FromCandidate(requestDataModelSummary, 0).
 					WithModel(modelDataModelObjectFieldReadOptions).
 					WithInstruction(systemInstruction).
 					WithText(llm_adapter.RoleAi, *caseReviewContext.DataModelSummary).
