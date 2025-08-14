@@ -68,9 +68,10 @@ func (m *TaskQueueRepository) EnqueueCaseReviewTask(
 	ctx context.Context,
 	tx repositories.Transaction,
 	organizationId string,
-	caseId string,
+	caseId uuid.UUID,
+	aiCaseReviewId uuid.UUID,
 ) error {
-	args := m.Called(ctx, tx, organizationId, caseId)
+	args := m.Called(ctx, tx, organizationId, caseId, aiCaseReviewId)
 	return args.Error(0)
 }
 
