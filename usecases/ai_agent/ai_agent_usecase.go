@@ -513,11 +513,11 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 // Update this struct during the process and expose this struct to the caller to save the results in case we need to resume it
 // Didn't include the sanity check output because it's the last step and we don't need to save it
 type CaseReviewContext struct {
-	dataModelSummary       *string
-	fieldsToReadPerTable   map[string][]string
-	rulesDefinitionsReview *string
-	ruleThresholds         *string
-	caseReview             *caseReviewOutput
+	DataModelSummary       *string             `json:"data_model_summary"`
+	FieldsToReadPerTable   map[string][]string `json:"fields_to_read_per_table"`
+	RulesDefinitionsReview *string             `json:"rules_definitions_review"`
+	RuleThresholds         *string             `json:"rule_thresholds"`
+	CaseReview             *caseReviewOutput   `json:"case_review"`
 }
 
 // CreateCaseReviewSync performs a comprehensive AI-powered review of a case by analyzing
@@ -567,7 +567,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		systemInstruction = "You are a compliance officer or fraud analyst. You are given a case and you need to review it step by step. Reply factually to instructions in markdown format."
 	}
 
-	if caseReviewContext.dataModelSummary == nil {
+	if caseReviewContext.DataModelSummary == nil {
 		// Data model summary, create thread because the response will be used in next steps
 		modelDataModelSummary, promptDataModelSummary, err := uc.prepareRequest(
 			"prompts/case_review/data_model_summary.md", map[string]any{
@@ -591,11 +591,11 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not get data model summary")
 		}
-		caseReviewContext.dataModelSummary = &dataModelSummary
+		caseReviewContext.DataModelSummary = &dataModelSummary
 	}
 
 	logger.DebugContext(ctx, "================================ Data model summary ================================")
-	logger.DebugContext(ctx, "Data model summary", "response", *caseReviewContext.dataModelSummary)
+	logger.DebugContext(ctx, "Data model summary", "response", *caseReviewContext.DataModelSummary)
 
 	// Data model object field read options
 	// Here, we implicitly distinguish between "transaction" tables (based on the presence of "many" rows for a given customer)
@@ -620,7 +620,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		objectTables := clientData.IngestedData
 		if objectTables != nil {
 			// generate the map of fields to read for every table, but only once.
-			if caseReviewContext.fieldsToReadPerTable == nil {
+			if caseReviewContext.FieldsToReadPerTable == nil {
 				props := jsonschema.NewProperties()
 
 				for tableName, fields := range tablesWithLargRowNbs {
@@ -653,7 +653,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 					// FromCandidate(requestDataModelSummary, 0).
 					WithModel(modelDataModelObjectFieldReadOptions).
 					WithInstruction(systemInstruction).
-					WithText(llm_adapter.RoleAi, *caseReviewContext.dataModelSummary).
+					WithText(llm_adapter.RoleAi, *caseReviewContext.DataModelSummary).
 					WithText(llm_adapter.RoleUser, promptDataModelObjectFieldReadOptions).
 					Do(ctx, client)
 				if err != nil {
@@ -670,10 +670,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 				logger.DebugContext(ctx, "Data model object field read options",
 					"response", dataModelObjectFieldReadOptions)
 
-				caseReviewContext.fieldsToReadPerTable = dataModelObjectFieldReadOptions
+				caseReviewContext.FieldsToReadPerTable = dataModelObjectFieldReadOptions
 			}
 
-			for tableName, fieldsToRead := range caseReviewContext.fieldsToReadPerTable {
+			for tableName, fieldsToRead := range caseReviewContext.FieldsToReadPerTable {
 				// Reuse original read options, just adapt the number of rows to read and the fields to consider
 				fieldFilteredObjects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(
 					ctx,
@@ -699,7 +699,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		}
 	}
 
-	if caseReviewContext.rulesDefinitionsReview == nil {
+	if caseReviewContext.RulesDefinitionsReview == nil {
 		// Rules definitions review
 		modelRulesDefinitions, promptRulesDefinitions, err := uc.prepareRequest(
 			"prompts/case_review/rule_definitions.md",
@@ -723,14 +723,14 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not get rules definitions review")
 		}
-		caseReviewContext.rulesDefinitionsReview = &rulesDefinitionsReview
+		caseReviewContext.RulesDefinitionsReview = &rulesDefinitionsReview
 	}
 	logger.DebugContext(ctx, "================================ Rules definitions review ================================")
 	logger.DebugContext(ctx, "Rules definitions review", "response",
-		*caseReviewContext.rulesDefinitionsReview)
+		*caseReviewContext.RulesDefinitionsReview)
 
 	// Rule thresholds
-	if caseReviewContext.ruleThresholds == nil {
+	if caseReviewContext.RuleThresholds == nil {
 		modelRuleThresholds, promptRuleThresholds, err := uc.prepareRequest(
 			"prompts/case_review/rule_threshold_values.md",
 			map[string]any{
@@ -752,25 +752,25 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not get rule thresholds")
 		}
-		caseReviewContext.ruleThresholds = &ruleThresholds
+		caseReviewContext.RuleThresholds = &ruleThresholds
 	}
 
 	logger.DebugContext(ctx, "================================ Rule thresholds ================================")
-	logger.DebugContext(ctx, "Rule thresholds", "response", *caseReviewContext.ruleThresholds)
+	logger.DebugContext(ctx, "Rule thresholds", "response", *caseReviewContext.RuleThresholds)
 
 	// Finally, we can generate the case review
-	if caseReviewContext.caseReview == nil {
+	if caseReviewContext.CaseReview == nil {
 		modelCaseReview, promptCaseReview, err := uc.prepareRequest(
 			"prompts/case_review/case_review.md",
 			map[string]any{
 				"case_detail":        caseData.case_,
 				"case_events":        caseData.events,
 				"decisions":          caseData.decisions,
-				"data_model_summary": *caseReviewContext.dataModelSummary,
+				"data_model_summary": *caseReviewContext.DataModelSummary,
 				"pivot_objects":      caseData.pivotData,
 				"previous_cases":     relatedDataPerClient,
-				"rules_summary":      *caseReviewContext.rulesDefinitionsReview,
-				"rule_thresholds":    *caseReviewContext.ruleThresholds,
+				"rules_summary":      *caseReviewContext.RulesDefinitionsReview,
+				"rule_thresholds":    *caseReviewContext.RuleThresholds,
 			},
 		)
 		if err != nil {
@@ -789,10 +789,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not get case review")
 		}
-		caseReviewContext.caseReview = &caseReview
+		caseReviewContext.CaseReview = &caseReview
 	}
 	logger.DebugContext(ctx, "================================ Full case review ================================")
-	logger.DebugContext(ctx, "Full case review", "response", *caseReviewContext.caseReview)
+	logger.DebugContext(ctx, "Full case review", "response", *caseReviewContext.CaseReview)
 
 	// Finally, sanity check the resulting case review using a judgement prompt
 	modelSanityCheck, promptSanityCheck, err := uc.prepareRequest(
@@ -801,12 +801,12 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			"case_detail":        caseData.case_,
 			"case_events":        caseData.events,
 			"decisions":          caseData.decisions,
-			"data_model_summary": *caseReviewContext.dataModelSummary,
+			"data_model_summary": *caseReviewContext.DataModelSummary,
 			"pivot_objects":      caseData.pivotData,
 			"previous_cases":     relatedDataPerClient,
-			"rules_summary":      *caseReviewContext.rulesDefinitionsReview,
-			"rule_thresholds":    *caseReviewContext.ruleThresholds,
-			"case_review":        *caseReviewContext.caseReview,
+			"rules_summary":      *caseReviewContext.RulesDefinitionsReview,
+			"rule_thresholds":    *caseReviewContext.RuleThresholds,
+			"case_review":        *caseReviewContext.CaseReview,
 		},
 	)
 	if err != nil {
@@ -828,8 +828,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	logger.DebugContext(ctx, "================================ Sanity check ================================")
 	logger.DebugContext(ctx, "Sanity check", "response", sanityCheck)
 
-	proofs := make([]agent_dto.CaseReviewProof, len((*caseReviewContext.caseReview).Proofs))
-	for i, proof := range (*caseReviewContext.caseReview).Proofs {
+	proofs := make([]agent_dto.CaseReviewProof, len((*caseReviewContext.CaseReview).Proofs))
+	for i, proof := range (*caseReviewContext.CaseReview).Proofs {
 		proofs[i] = agent_dto.CaseReviewProof{
 			Id:     proof.Id,
 			Type:   proof.Type,
@@ -840,13 +840,13 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	if sanityCheck.Ok {
 		return agent_dto.CaseReviewV1{
 			Ok:     sanityCheck.Ok,
-			Output: (*caseReviewContext.caseReview).CaseReview,
+			Output: (*caseReviewContext.CaseReview).CaseReview,
 			Proofs: proofs,
 		}, nil
 	}
 	return agent_dto.CaseReviewV1{
 		Ok:          false,
-		Output:      (*caseReviewContext.caseReview).CaseReview,
+		Output:      (*caseReviewContext.CaseReview).CaseReview,
 		SanityCheck: sanityCheck.Justification,
 		Proofs:      proofs,
 	}, nil
