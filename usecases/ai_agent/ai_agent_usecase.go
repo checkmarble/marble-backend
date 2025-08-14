@@ -828,8 +828,9 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	logger.DebugContext(ctx, "================================ Sanity check ================================")
 	logger.DebugContext(ctx, "Sanity check", "response", sanityCheck)
 
-	proofs := make([]agent_dto.CaseReviewProof, len((*caseReviewContext.CaseReview).Proofs))
-	for i, proof := range (*caseReviewContext.CaseReview).Proofs {
+	caseReview := *caseReviewContext.CaseReview
+	proofs := make([]agent_dto.CaseReviewProof, len(caseReview.Proofs))
+	for i, proof := range caseReview.Proofs {
 		proofs[i] = agent_dto.CaseReviewProof{
 			Id:     proof.Id,
 			Type:   proof.Type,
@@ -840,13 +841,13 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	if sanityCheck.Ok {
 		return agent_dto.CaseReviewV1{
 			Ok:     sanityCheck.Ok,
-			Output: (*caseReviewContext.CaseReview).CaseReview,
+			Output: caseReview.CaseReview,
 			Proofs: proofs,
 		}, nil
 	}
 	return agent_dto.CaseReviewV1{
 		Ok:          false,
-		Output:      (*caseReviewContext.CaseReview).CaseReview,
+		Output:      caseReview.CaseReview,
 		SanityCheck: sanityCheck.Justification,
 		Proofs:      proofs,
 	}, nil
