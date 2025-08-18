@@ -15,6 +15,10 @@ import (
 // Be "new version", I mean anything that is a breaking change on the DTO, so adding fields is not a new version.
 // ⚠️⚠️⚠️
 
+const (
+	versionCaseReviewV1 = "v1"
+)
+
 type AiCaseReviewDto interface {
 	aiCaseReviewDto()
 	GetVersion() string
@@ -58,12 +62,12 @@ type CaseReviewV1 struct {
 func (c CaseReviewV1) aiCaseReviewDto() {}
 
 func (c CaseReviewV1) GetVersion() string {
-	return "v1"
+	return versionCaseReviewV1
 }
 
 func UnmarshalCaseReviewDto(version string, payload io.Reader) (AiCaseReviewDto, error) {
 	switch version {
-	case "v1":
+	case versionCaseReviewV1:
 		var dto CaseReviewV1
 		err := json.NewDecoder(payload).Decode(&dto)
 		dto.Version = version
