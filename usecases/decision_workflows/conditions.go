@@ -78,7 +78,7 @@ func ruleHit(ruleIds []uuid.UUID) DecisionWorkflowsCondition {
 		}
 		for _, screeningExec := range req.Decision.ScreeningExecutions {
 			for _, ruleId := range ruleIds {
-				if screeningExec.Config.StableId == ruleId.String() && screeningExec.Status == models.ScreeningStatusConfirmedHit {
+				if screeningExec.Config.StableId == ruleId.String() && (screeningExec.Status == models.ScreeningStatusInReview || screeningExec.Status == models.ScreeningStatusConfirmedHit) {
 					return true, nil
 				}
 			}
