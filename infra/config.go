@@ -140,6 +140,7 @@ type TelemetryConfiguration struct {
 	Enabled         bool
 	ApplicationName string
 	ProjectID       string
+	Exporter        string
 	SamplingMap     TelemetrySamplingMap
 }
 
