@@ -62,6 +62,11 @@ func UnmarshalCaseReviewDto(version string, payload io.Reader) (AiCaseReviewDto,
 		var dto CaseReviewV1
 		err := json.NewDecoder(payload).Decode(&dto)
 		dto.Version = version
+
+		if dto.Proofs == nil {
+			dto.Proofs = []CaseReviewProof{}
+		}
+
 		return dto, err
 	}
 
