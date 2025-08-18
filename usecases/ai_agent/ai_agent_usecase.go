@@ -32,6 +32,8 @@ import (
 
 const HIGH_NB_ROWS_THRESHOLD = 100
 
+var ErrAiCaseReviewNotEnabled = errors.New("AI case review is not enabled")
+
 type AiAgentUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
@@ -54,6 +56,7 @@ type AiAgentUsecaseRepository interface {
 		feedback models.AiCaseReviewFeedback,
 	) error
 	GetCaseReviewById(ctx context.Context, exec repositories.Executor, reviewId uuid.UUID) (models.AiCaseReview, error)
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
 }
 
 type AiAgentUsecaseIngestedDataReader interface {
@@ -484,10 +487,20 @@ func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, 
 	return reviewWithFeedbackDto, nil
 }
 
+// EnqueueCreateCaseReview enqueues a case review task for a given case.
+// It checks if the organization has AI case review enabled and returns an ErrAiCaseReviewNotEnabled error if not.
 func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId string) error {
 	c, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
 		return err
+	}
+
+	hasAiCaseReviewEnabled, err := uc.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
+	if err != nil {
+		return errors.Wrap(err, "error checking if AI case review is enabled")
+	}
+	if !hasAiCaseReviewEnabled {
+		return ErrAiCaseReviewNotEnabled
 	}
 
 	caseIdUuid, err := uuid.Parse(caseId)
@@ -1094,4 +1107,16 @@ func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(
 	}
 
 	return caseReview, nil
+}
+
+func (uc *AiAgentUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error) {
+	// Check if the organization has AI case review enabled, fetch the organization and check the flag
+	org, err := uc.repository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId)
+	if err != nil {
+		return false, err
+	}
+	if !org.AiCaseReviewEnabled {
+		return false, nil
+	}
+	return true, nil
 }

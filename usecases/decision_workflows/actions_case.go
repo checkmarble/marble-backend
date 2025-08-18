@@ -59,21 +59,29 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		if err != nil {
 			return models.WorkflowExecution{}, errors.Wrap(err, "error parsing case id")
 		}
-		aiCaseReview := models.NewAiCaseReview(caseId, d.caseManagerBucketUrl)
-		err = d.repository.CreateCaseReviewFile(ctx, tx, aiCaseReview)
+
+		hasAiCaseReviewEnabled, err := d.aiAgentUsecase.HasAiCaseReviewEnabled(ctx, newCase.OrganizationId)
 		if err != nil {
 			return models.WorkflowExecution{}, errors.Wrap(err,
-				"error creating case review file for enqueuing case review task")
+				"error checking if AI case review is enabled")
 		}
-		err = d.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(
-			ctx,
-			tx,
-			newCase.OrganizationId,
-			caseId,
-			aiCaseReview.Id,
-		)
-		if err != nil {
-			return models.WorkflowExecution{}, errors.Wrap(err, "error enqueuing case review task")
+		if hasAiCaseReviewEnabled {
+			aiCaseReview := models.NewAiCaseReview(caseId, d.caseManagerBucketUrl)
+			err = d.repository.CreateCaseReviewFile(ctx, tx, aiCaseReview)
+			if err != nil {
+				return models.WorkflowExecution{}, errors.Wrap(err,
+					"error creating case review file for enqueuing case review task")
+			}
+			err = d.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(
+				ctx,
+				tx,
+				newCase.OrganizationId,
+				caseId,
+				aiCaseReview.Id,
+			)
+			if err != nil {
+				return models.WorkflowExecution{}, errors.Wrap(err, "error enqueuing case review task")
+			}
 		}
 
 		return models.WorkflowExecution{

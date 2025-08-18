@@ -17,6 +17,7 @@ import (
 
 type CaseReviewUsecase interface {
 	CreateCaseReviewSync(ctx context.Context, caseId string, caseReviewContext *CaseReviewContext) (agent_dto.AiCaseReviewDto, error)
+	HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error)
 }
 
 type caseReviewWorkerRepository interface {
@@ -89,12 +90,12 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		return errors.Wrap(err, "Error while getting case")
 	}
 
-	// Check if the organization has AI case review enabled, fetch the organization and check the flag
-	org, err := w.repository.GetOrganizationById(ctx, w.executorFactory.NewExecutor(), c.OrganizationId)
+	// Check if the organization has AI case review enabled
+	hasAiCaseReviewEnabled, err := w.caseReviewUsecase.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
 	if err != nil {
-		return errors.Wrap(err, "Error while getting organization")
+		return errors.Wrap(err, "Error while checking if AI case review is enabled")
 	}
-	if !org.AiCaseReviewEnabled {
+	if !hasAiCaseReviewEnabled {
 		logger.DebugContext(ctx, "AI case review is not enabled for organization", "organization_id", c.OrganizationId)
 		return nil
 	}

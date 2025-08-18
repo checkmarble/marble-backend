@@ -21,6 +21,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -676,7 +677,12 @@ func handleEnqueueCaseReview(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
 		err = usecase.EnqueueCreateCaseReview(ctx, caseId.String())
-		if presentError(ctx, c, err) {
+		if err != nil {
+			if errors.Is(err, ai_agent.ErrAiCaseReviewNotEnabled) {
+				presentError(ctx, c, errors.Wrap(models.ForbiddenError, "AI case review is not enabled"))
+				return
+			}
+			presentError(ctx, c, err)
 			return
 		}
 		c.Status(http.StatusNoContent)

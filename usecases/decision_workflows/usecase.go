@@ -69,6 +69,10 @@ type caseReviewTaskEnqueuer interface {
 	) error
 }
 
+type aiAgentUsecase interface {
+	HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error)
+}
+
 type DecisionsWorkflows struct {
 	repository             caseAndDecisionRepository
 	caseEditor             caseEditor
@@ -77,6 +81,7 @@ type DecisionsWorkflows struct {
 	astEvaluator           ast_eval.EvaluateAstExpression
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer
 	caseManagerBucketUrl   string
+	aiAgentUsecase         aiAgentUsecase
 }
 
 func NewDecisionWorkflows(
@@ -87,6 +92,7 @@ func NewDecisionWorkflows(
 	astEvaluator ast_eval.EvaluateAstExpression,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
 	caseManagerBucketUrl string,
+	aiAgentUsecase aiAgentUsecase,
 ) DecisionsWorkflows {
 	return DecisionsWorkflows{
 		caseEditor:             caseEditor,
@@ -96,5 +102,6 @@ func NewDecisionWorkflows(
 		astEvaluator:           astEvaluator,
 		caseReviewTaskEnqueuer: caseReviewTaskEnqueuer,
 		caseManagerBucketUrl:   caseManagerBucketUrl,
+		aiAgentUsecase:         aiAgentUsecase,
 	}
 }

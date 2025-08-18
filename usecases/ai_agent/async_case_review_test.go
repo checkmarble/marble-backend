@@ -113,6 +113,11 @@ func (r *mockCaseReviewUsecase) CreateCaseReviewSync(ctx context.Context, caseId
 	return args.Get(0).(agent_dto.AiCaseReviewDto), args.Error(1)
 }
 
+func (r *mockCaseReviewUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error) {
+	args := r.Called(ctx, orgId)
+	return args.Bool(0), args.Error(1)
+}
+
 type mockCaseReviewWorkerRepository struct {
 	mock.Mock
 }
@@ -372,9 +377,6 @@ func TestWork_Success(t *testing.T) {
 	workerRepo.On("GetCaseById", ctx, mockExecutor, args.CaseId.String()).
 		Return(testCase, nil)
 
-	workerRepo.On("GetOrganizationById", ctx, mockExecutor, testCase.OrganizationId).
-		Return(org, nil)
-
 	workerRepo.On("GetCaseReviewById", ctx, mockExecutor, args.AiCaseReviewId).
 		Return(aiCaseReview, nil)
 
@@ -395,6 +397,10 @@ func TestWork_Success(t *testing.T) {
 	caseReviewUsecase.On("CreateCaseReviewSync", ctx, args.CaseId.String(),
 		mock.AnythingOfType("*ai_agent.CaseReviewContext")).
 		Return(expectedDto, nil)
+
+	// Mock HasAiCaseReviewEnabled to return true
+	caseReviewUsecase.On("HasAiCaseReviewEnabled", ctx, org.Id).
+		Return(true, nil)
 
 	// Mock blob storage for final result
 	mockWriter := newMockWriteCloser()
@@ -443,9 +449,6 @@ func TestWork_CreateCaseReviewSyncError(t *testing.T) {
 	workerRepo.On("GetCaseById", ctx, mockExecutor, args.CaseId.String()).
 		Return(testCase, nil)
 
-	workerRepo.On("GetOrganizationById", ctx, mockExecutor, testCase.OrganizationId).
-		Return(org, nil)
-
 	workerRepo.On("GetCaseReviewById", ctx, mockExecutor, args.AiCaseReviewId).
 		Return(aiCaseReview, nil)
 
@@ -466,6 +469,9 @@ func TestWork_CreateCaseReviewSyncError(t *testing.T) {
 	caseReviewUsecase.On("CreateCaseReviewSync", ctx, args.CaseId.String(),
 		mock.AnythingOfType("*ai_agent.CaseReviewContext")).
 		Return(nil, errors.New("AI service unavailable"))
+
+	caseReviewUsecase.On("HasAiCaseReviewEnabled", ctx, org.Id).
+		Return(true, nil)
 
 	// Mock blob storage for context save (during error handling)
 	mockWriter := newMockWriteCloser()
@@ -502,7 +508,7 @@ func TestWork_CreateCaseReviewSyncError(t *testing.T) {
 
 // TestWork_OrganizationNotEnabled tests that when AI case review is not enabled for the organization, the work completes without error
 func TestWork_OrganizationNotEnabled(t *testing.T) {
-	worker, _, _, workerRepo, executorFactory, mockExecutor := setupCaseReviewWorkerTest()
+	worker, _, caseReviewUsecase, workerRepo, executorFactory, mockExecutor := setupCaseReviewWorkerTest()
 	ctx := context.Background()
 
 	args, testCase, org, _ := createTestCaseReviewData()
@@ -518,8 +524,8 @@ func TestWork_OrganizationNotEnabled(t *testing.T) {
 	workerRepo.On("GetCaseById", ctx, mockExecutor, args.CaseId.String()).
 		Return(testCase, nil)
 
-	workerRepo.On("GetOrganizationById", ctx, mockExecutor, testCase.OrganizationId).
-		Return(org, nil)
+	caseReviewUsecase.On("HasAiCaseReviewEnabled", ctx, testCase.OrganizationId).
+		Return(false, nil)
 
 	// Call the method under test
 	err := worker.Work(ctx, job)
@@ -579,9 +585,6 @@ func TestWork_BlobStreamError(t *testing.T) {
 	workerRepo.On("GetCaseById", ctx, mockExecutor, args.CaseId.String()).
 		Return(testCase, nil)
 
-	workerRepo.On("GetOrganizationById", ctx, mockExecutor, testCase.OrganizationId).
-		Return(org, nil)
-
 	workerRepo.On("GetCaseReviewById", ctx, mockExecutor, args.AiCaseReviewId).
 		Return(aiCaseReview, nil)
 
@@ -598,6 +601,9 @@ func TestWork_BlobStreamError(t *testing.T) {
 	caseReviewUsecase.On("CreateCaseReviewSync", ctx, args.CaseId.String(),
 		mock.AnythingOfType("*ai_agent.CaseReviewContext")).
 		Return(expectedDto, nil)
+
+	caseReviewUsecase.On("HasAiCaseReviewEnabled", ctx, org.Id).
+		Return(true, nil)
 
 	// Mock blob storage failure for final result
 	blobRepo.On("OpenStream", ctx, "test-bucket-url", aiCaseReview.FileReference, aiCaseReview.FileReference).

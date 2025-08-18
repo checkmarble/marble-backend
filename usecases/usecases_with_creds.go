@@ -197,6 +197,7 @@ func (usecases *UsecasesWithCreds) NewDecisionWorkflows() decision_workflows.Dec
 		usecases.NewEvaluateAstExpression(),
 		usecases.Repositories.TaskQueueRepository,
 		usecases.caseManagerBucketUrl,
+		utils.Ptr(usecases.NewAiAgentUsecase()),
 	)
 }
 
