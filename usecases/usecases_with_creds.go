@@ -196,6 +196,8 @@ func (usecases *UsecasesWithCreds) NewDecisionWorkflows() decision_workflows.Dec
 		usecases.NewScenarioEvaluator(),
 		usecases.NewEvaluateAstExpression(),
 		usecases.Repositories.TaskQueueRepository,
+		usecases.caseManagerBucketUrl,
+		utils.Ptr(usecases.NewAiAgentUsecase()),
 	)
 }
 
@@ -707,6 +709,7 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewTransactionFactory(),
 		usecases.aiAgentConfig,
+		usecases.caseManagerBucketUrl, // TODO: I think we could avoid passing the caseManagerBucketURL here only for the creation of the model
 	)
 }
 

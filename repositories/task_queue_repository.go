@@ -56,7 +56,8 @@ type TaskQueueRepository interface {
 		ctx context.Context,
 		tx Transaction,
 		organizationId string,
-		caseId string,
+		caseId uuid.UUID,
+		aiCaseReviewId uuid.UUID,
 	) error
 	EnqueueAutoAssignmentTask(
 		ctx context.Context,
@@ -218,13 +219,15 @@ func (r riverRepository) EnqueueCaseReviewTask(
 	ctx context.Context,
 	tx Transaction,
 	organizationId string,
-	caseId string,
+	caseId uuid.UUID,
+	aiCaseReviewId uuid.UUID,
 ) error {
 	res, err := r.client.InsertTx(
 		ctx,
 		tx.RawTx(),
 		models.CaseReviewArgs{
-			CaseId: caseId,
+			CaseId:         caseId,
+			AiCaseReviewId: aiCaseReviewId,
 		},
 		&river.InsertOpts{
 			Queue: organizationId,
@@ -259,7 +262,6 @@ func (r riverRepository) EnqueueAutoAssignmentTask(
 				ByPeriod: 2 * time.Minute,
 			},
 		})
-
 	if err != nil {
 		return err
 	}

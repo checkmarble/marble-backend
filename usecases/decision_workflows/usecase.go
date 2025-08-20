@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
+	"github.com/google/uuid"
 )
 
 type caseEditor interface {
@@ -38,6 +39,11 @@ type caseAndDecisionRepository interface {
 		organizationId string,
 		caseIds []string,
 	) (map[string]int, error)
+	CreateCaseReviewFile(
+		ctx context.Context,
+		exec repositories.Executor,
+		aiCaseReview models.AiCaseReview,
+	) error
 }
 
 type webhookEventCreator interface {
@@ -58,8 +64,13 @@ type caseReviewTaskEnqueuer interface {
 		ctx context.Context,
 		tx repositories.Transaction,
 		organizationId string,
-		caseId string,
+		caseId uuid.UUID,
+		aiCaseReviewId uuid.UUID,
 	) error
+}
+
+type aiAgentUsecase interface {
+	HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error)
 }
 
 type DecisionsWorkflows struct {
@@ -69,6 +80,8 @@ type DecisionsWorkflows struct {
 	webhookEventCreator    webhookEventCreator
 	astEvaluator           ast_eval.EvaluateAstExpression
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer
+	caseManagerBucketUrl   string
+	aiAgentUsecase         aiAgentUsecase
 }
 
 func NewDecisionWorkflows(
@@ -78,6 +91,8 @@ func NewDecisionWorkflows(
 	caseNameEvaluator CaseNameEvaluator,
 	astEvaluator ast_eval.EvaluateAstExpression,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
+	caseManagerBucketUrl string,
+	aiAgentUsecase aiAgentUsecase,
 ) DecisionsWorkflows {
 	return DecisionsWorkflows{
 		caseEditor:             caseEditor,
@@ -86,5 +101,7 @@ func NewDecisionWorkflows(
 		caseNameEvaluator:      caseNameEvaluator,
 		astEvaluator:           astEvaluator,
 		caseReviewTaskEnqueuer: caseReviewTaskEnqueuer,
+		caseManagerBucketUrl:   caseManagerBucketUrl,
+		aiAgentUsecase:         aiAgentUsecase,
 	}
 }

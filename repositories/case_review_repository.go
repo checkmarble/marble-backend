@@ -29,6 +29,7 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 				"status",
 				"bucket_name",
 				"file_reference",
+				"file_temp_reference",
 				"dto_version",
 				"reaction",
 			).
@@ -38,11 +39,47 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 				caseReview.Status,
 				caseReview.BucketName,
 				caseReview.FileReference,
-				"v1",
+				caseReview.FileTempReference,
+				caseReview.DtoVersion,
 				caseReview.Reaction,
 			),
 	)
 	return err
+}
+
+func (r *MarbleDbRepository) UpdateCaseReviewFile(
+	ctx context.Context,
+	exec Executor,
+	caseReviewId uuid.UUID,
+	status models.UpdateAiCaseReview,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_AI_CASE_REVIEWS).
+		Set("status", status.Status.String()).
+		Where(squirrel.Eq{"id": caseReviewId})
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (r *MarbleDbRepository) GetCaseReviewFile(
+	ctx context.Context,
+	exec Executor,
+	aiCaseReviewId uuid.UUID,
+) (models.AiCaseReview, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.AiCaseReview{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.AiCaseReviewFields...).
+		From(dbmodels.TABLE_AI_CASE_REVIEWS).
+		Where(squirrel.Eq{"id": aiCaseReviewId})
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptAiCaseReview)
 }
 
 func (r *MarbleDbRepository) ListCaseReviewFiles(
