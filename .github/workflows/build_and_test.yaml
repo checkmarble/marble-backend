@@ -24,9 +24,10 @@ jobs:
           POSTGRES_DB: marble_test
         options: >-
           --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 3
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 10
+          --tmpfs /var/lib/postgresql/data
         ports:
           - 5432:5432
     
