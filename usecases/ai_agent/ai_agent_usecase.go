@@ -631,7 +631,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	for customerKey, clientData := range relatedDataPerClient.Data {
 		objectTables := clientData.IngestedData
-		if objectTables != nil {
+		if len(objectTables) > 0 {
 			// generate the map of fields to read for every table, but only once.
 			if caseReviewContext.FieldsToReadPerTable == nil {
 				props := jsonschema.NewProperties()
