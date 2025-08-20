@@ -7,7 +7,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   test_migration_ordering:
     name: Test migration ordering
     runs-on: ubuntu-latest
@@ -32,25 +31,36 @@ jobs:
           - 5432:5432
     
     steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: ./go.mod
 
-      - name: Checkout main branch
-        uses: actions/checkout@v4
+      - name: Cache Go modules and tools
+        uses: actions/cache@v4
         with:
-          ref: main
+          path: |
+            ~/go/pkg/mod
+            ~/go/bin
+          key: ${{ runner.os }}-go-tools-${{ hashFiles('**/go.mod') }}
+
+      - name: Install goose
+        run: |
+          if ! command -v goose &> /dev/null; then
+            go install github.com/pressly/goose/v3/cmd/goose@latest
+          fi
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           
       - name: Run migrations on main branch
         env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-          DB_NAME: marble_test
-          DB_SSL_MODE: disable
-        run: go run . --migrations
+          GOOSE_DRIVER: postgres
+          GOOSE_DBSTRING: host=localhost port=5432 user=postgres password=postgres dbname=marble_test sslmode=disable
+        run: goose -dir repositories/migrations up
 
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -59,13 +69,15 @@ jobs:
           
       - name: Run migrations on PR branch
         env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-          DB_NAME: marble_test
-          DB_SSL_MODE: disable
-        run: go run . --migrations
+          GOOSE_DRIVER: postgres
+          GOOSE_DBSTRING: host=localhost port=5432 user=postgres password=postgres dbname=marble_test sslmode=disable
+        run: |
+          echo "Running migrations on PR branch..."
+          goose -dir repositories/migrations up || {
+            echo "❌ Migration failed! This indicates migration ordering issues."
+            echo "Check if your new migrations can run after main branch migrations."
+            exit 1
+          }
 
   test_backend:
     permissions:
