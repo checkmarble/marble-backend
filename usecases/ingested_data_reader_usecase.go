@@ -309,7 +309,7 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 	sourceTable, ok := dataModel.Tables[explo.SourceTableName]
 	if !ok {
 		err = errors.Wrapf(models.NotFoundError,
-			"Table '%s' not found in ReadIngestedClientObjects", explo.SourceTableName)
+			"Source table '%s' not found in ReadIngestedClientObjects", explo.SourceTableName)
 		return
 	}
 	filterField, ok := targetTable.Fields[explo.FilterFieldName]
