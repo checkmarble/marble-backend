@@ -101,8 +101,13 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 	}
 
 	// Get the case review file object from the database
-	aiCaseReview, err := w.repository.GetCaseReviewById(ctx,
-		w.executorFactory.NewExecutor(), job.Args.AiCaseReviewId)
+	// aiCaseReview, err := w.repository.GetCaseReviewById(ctx,
+	// 	w.executorFactory.NewExecutor(), job.Args.AiCaseReviewId)
+	aiCaseReview, err := w.repository.GetCaseReviewById(
+		ctx,
+		w.executorFactory.NewExecutor(),
+		uuid.MustParse("0198d157-18cc-743d-8252-6479bfc78884"),
+	)
 	if err != nil {
 		return errors.Wrap(err, "Error while getting case review file")
 	}
