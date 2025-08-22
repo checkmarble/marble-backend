@@ -152,6 +152,11 @@ func NewAiAgentUsecase(
 	}
 }
 
+type customOrgInstructions struct {
+	Language  *string `json:"language"`
+	Structure *string `json:"structure"`
+}
+
 func (uc *AiAgentUsecase) createOpenAIProvider() (llm_adapter.Llm, error) {
 	opts := []openai.Opt{}
 	if uc.config.MainAgentURL != "" {
@@ -573,6 +578,20 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		clientActivityDescription = "placeholder"
 	}
 
+	// Prepare the custom org instructions
+	var customOrgInstructions customOrgInstructions
+	// Check if the organization has custom instructions by checking the file in prompts/org_custom_settings/*.json
+	customOrgInstructionsContent, err := readPrompt(
+		fmt.Sprintf("prompts/org_custom_settings/%s.json", caseData.organizationId),
+	)
+	if err != nil {
+		logger.DebugContext(ctx, "could not read organization custom instructions", "error", err)
+	}
+	err = json.Unmarshal([]byte(customOrgInstructionsContent), &customOrgInstructions)
+	if err != nil {
+		logger.DebugContext(ctx, "could not unmarshal organization custom instructions", "error", err)
+	}
+
 	// Define the system instruction for prompt
 	systemInstruction, err := readPrompt("prompts/system.md")
 	if err != nil {
@@ -842,6 +861,56 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	logger.DebugContext(ctx, "================================ Sanity check ================================")
 	logger.DebugContext(ctx, "Sanity check", "response", sanityCheck)
 
+	// Do custom language and structure instructions
+	var finalOutput string = caseReviewContext.CaseReview.CaseReview
+
+	var customLanguageInstruction string
+	var customStructureInstruction string
+	_, customLanguageInstruction, err = uc.prepareRequest(
+		"prompts/case_review/instruction_language.md",
+		map[string]any{
+			"language": pure_utils.BCP47ToEnglish(*customOrgInstructions.Language),
+		},
+	)
+	if err != nil {
+		logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
+		return nil, errors.Wrap(err, "could not read custom language prompt")
+	}
+	_, customStructureInstruction, err = uc.prepareRequest(
+		"prompts/case_review/instruction_structure.md",
+		map[string]any{
+			"structure": *customOrgInstructions.Structure,
+		},
+	)
+	if err != nil {
+		logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
+		return nil, errors.Wrap(err, "could not read custom language prompt")
+	}
+
+	customFormatRequest := llm_adapter.NewRequest[string]().
+		WithInstruction(systemInstruction).
+		WithInstruction("Without any other text, just return the analysis with instructions")
+	if customLanguageInstruction != "" {
+		customFormatRequest = customFormatRequest.WithInstruction(customLanguageInstruction)
+	}
+	if customStructureInstruction != "" {
+		customFormatRequest = customFormatRequest.WithInstruction(customStructureInstruction)
+	}
+	requestCustomFormat, err := customFormatRequest.WithModel("gemini-2.5-flash-lite").WithText(
+		llm_adapter.RoleUser, "caseReviewContext.CaseReview.CaseReview").Do(ctx, client)
+	if err != nil {
+		logger.DebugContext(ctx, "could not get custom format", "error", err)
+		return nil, errors.Wrap(err, "could not get custom format")
+	}
+	finalOutput, err = requestCustomFormat.Get(0)
+	if err != nil {
+		logger.DebugContext(ctx, "could not get custom format", "error", err)
+		return nil, errors.Wrap(err, "could not get custom format")
+	}
+
+	logger.DebugContext(ctx, "================================ Custom format ================================")
+	logger.DebugContext(ctx, "Custom format", "response", finalOutput)
+
 	caseReview := *caseReviewContext.CaseReview
 	proofs := make([]agent_dto.CaseReviewProof, len(caseReview.Proofs))
 	for i, proof := range caseReview.Proofs {
@@ -855,13 +924,13 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	if sanityCheck.Ok {
 		return agent_dto.CaseReviewV1{
 			Ok:     sanityCheck.Ok,
-			Output: caseReview.CaseReview,
+			Output: finalOutput,
 			Proofs: proofs,
 		}, nil
 	}
 	return agent_dto.CaseReviewV1{
 		Ok:          false,
-		Output:      caseReview.CaseReview,
+		Output:      finalOutput,
 		SanityCheck: sanityCheck.Justification,
 		Proofs:      proofs,
 	}, nil
