@@ -101,7 +101,8 @@ type AddDecisionToCaseBody struct {
 }
 
 type CreateCaseCommentBody struct {
-	Comment string `json:"comment" binding:"required"`
+	Comment  string `json:"comment" binding:"required"`
+	Unsnooze bool   `json:"unsnooze"`
 }
 
 type CaseFilters struct {

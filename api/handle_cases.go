@@ -355,6 +355,18 @@ func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
+
+		if data.Unsnooze {
+			req := models.CaseSnoozeRequest{
+				UserId: models.UserId(userId),
+				CaseId: caseInput.Id,
+			}
+			if err := usecase.Unsnooze(ctx, req); err != nil {
+				presentError(ctx, c, err)
+				return
+			}
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"case": dto.AdaptCaseWithDecisionsDto(inboxCase),
 		})
