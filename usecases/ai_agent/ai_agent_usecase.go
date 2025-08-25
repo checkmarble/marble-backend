@@ -527,6 +527,91 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 	})
 }
 
+// Get the organization description from files, default to placeholder if not found
+// Not all organizations have a description file
+func getOrganizationDescription(ctx context.Context, organizationId string) string {
+	logger := utils.LoggerFromContext(ctx)
+
+	clientActivityDescription, err := readPrompt(fmt.Sprintf("prompts/org_desc/%s.md", organizationId))
+	if err != nil {
+		logger.DebugContext(ctx, "could not read organization description", "error", err)
+		clientActivityDescription = "placeholder"
+	}
+
+	return clientActivityDescription
+}
+
+// Get the organization custom instructions from files, default to nil if not found
+// Not all organizations have custom instructions
+func getOrganizationCustomInstructions(ctx context.Context, organizationId string) customOrgInstructions {
+	logger := utils.LoggerFromContext(ctx)
+
+	file, err := os.Open(fmt.Sprintf("prompts/org_custom_instructions/%s.json", organizationId))
+	if err != nil {
+		logger.DebugContext(ctx, "could not open organization custom instructions file", "error", err)
+		return customOrgInstructions{}
+	}
+	defer file.Close()
+
+	promptBytes, err := io.ReadAll(file)
+	if err != nil {
+		logger.DebugContext(ctx, "could not read organization custom instructions file", "error", err)
+		return customOrgInstructions{}
+	}
+
+	var result customOrgInstructions
+	err = json.Unmarshal(promptBytes, &result)
+	if err != nil {
+		logger.DebugContext(ctx, "could not unmarshal organization custom instructions", "error", err)
+		return customOrgInstructions{}
+	}
+
+	return result
+}
+
+// Return a list of instructions to give to the LLM and the model to use for the prompt
+// NOTE: The model is given by `prepareRequest()`, we call it at most twice and the the last call will set the model
+func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Context,
+	customInstructions customOrgInstructions,
+) ([]string, string) {
+	logger := utils.LoggerFromContext(ctx)
+	instructions := []string{}
+	modelToUse := ""
+
+	if customInstructions.Language != nil {
+		model, customLanguagePrompt, err := uc.prepareRequest(
+			"prompts/case_review/instruction_language.md",
+			map[string]any{
+				"language": pure_utils.BCP47ToEnglish(*customInstructions.Language),
+			},
+		)
+		if err != nil {
+			logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
+		} else {
+			instructions = append(instructions, customLanguagePrompt)
+		}
+
+		modelToUse = model
+	}
+	if customInstructions.Structure != nil {
+		model, customStructurePrompt, err := uc.prepareRequest(
+			"prompts/case_review/instruction_structure.md",
+			map[string]any{
+				"structure": *customInstructions.Structure,
+			},
+		)
+		if err != nil {
+			logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
+		} else {
+			instructions = append(instructions, customStructurePrompt)
+		}
+
+		modelToUse = model
+	}
+
+	return instructions, modelToUse
+}
+
 // Contains all results from the case review process
 // Update this struct during the process and expose this struct to the caller to save the results in case we need to resume it
 // Didn't include the sanity check output because it's the last step and we don't need to save it
@@ -571,26 +656,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	}
 
 	// Get Organization prompt from file if defined, this prompt gives more details about the organization
-	var clientActivityDescription string
-	clientActivityDescription, err = readPrompt(fmt.Sprintf("prompts/org_desc/%s.md", caseData.organizationId))
-	if err != nil {
-		logger.DebugContext(ctx, "could not read organization description", "error", err)
-		clientActivityDescription = "placeholder"
-	}
+	clientActivityDescription := getOrganizationDescription(ctx, caseData.organizationId)
 
 	// Prepare the custom org instructions
-	var customOrgInstructions customOrgInstructions
-	// Check if the organization has custom instructions by checking the file in prompts/org_custom_settings/*.json
-	customOrgInstructionsContent, err := readPrompt(
-		fmt.Sprintf("prompts/org_custom_settings/%s.json", caseData.organizationId),
-	)
-	if err != nil {
-		logger.DebugContext(ctx, "could not read organization custom instructions", "error", err)
-	}
-	err = json.Unmarshal([]byte(customOrgInstructionsContent), &customOrgInstructions)
-	if err != nil {
-		logger.DebugContext(ctx, "could not unmarshal organization custom instructions", "error", err)
-	}
+	customOrgInstructions := getOrganizationCustomInstructions(ctx, caseData.organizationId)
 
 	// Define the system instruction for prompt
 	systemInstruction, err := readPrompt("prompts/system.md")
@@ -864,48 +933,31 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	// Do custom language and structure instructions
 	var finalOutput string = caseReviewContext.CaseReview.CaseReview
 
-	var customLanguageInstruction string
-	var customStructureInstruction string
-	_, customLanguageInstruction, err = uc.prepareRequest(
-		"prompts/case_review/instruction_language.md",
-		map[string]any{
-			"language": pure_utils.BCP47ToEnglish(*customOrgInstructions.Language),
-		},
-	)
-	if err != nil {
-		logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
-		return nil, errors.Wrap(err, "could not read custom language prompt")
-	}
-	_, customStructureInstruction, err = uc.prepareRequest(
-		"prompts/case_review/instruction_structure.md",
-		map[string]any{
-			"structure": *customOrgInstructions.Structure,
-		},
-	)
-	if err != nil {
-		logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
-		return nil, errors.Wrap(err, "could not read custom language prompt")
-	}
+	instructions, modelForInstruction := uc.getOrganizationInstructionsForPrompt(ctx, customOrgInstructions)
 
-	customFormatRequest := llm_adapter.NewRequest[string]().
-		WithInstruction(systemInstruction).
-		WithInstruction("Without any other text, just return the analysis with instructions")
-	if customLanguageInstruction != "" {
-		customFormatRequest = customFormatRequest.WithInstruction(customLanguageInstruction)
-	}
-	if customStructureInstruction != "" {
-		customFormatRequest = customFormatRequest.WithInstruction(customStructureInstruction)
-	}
-	requestCustomFormat, err := customFormatRequest.WithModel("gemini-2.5-flash-lite").WithText(
-		llm_adapter.RoleUser, "caseReviewContext.CaseReview.CaseReview").Do(ctx, client)
-	if err != nil {
-		logger.DebugContext(ctx, "could not get custom format", "error", err)
-		return nil, errors.Wrap(err, "could not get custom format")
-	}
-	finalOutput, err = requestCustomFormat.Get(0)
-	if err != nil {
-		logger.DebugContext(ctx, "could not get custom format", "error", err)
-		return nil, errors.Wrap(err, "could not get custom format")
+	// If there is no instructions, we don't need to format the output
+	if len(instructions) > 0 {
+		customFormatRequest := llm_adapter.NewRequest[string]().
+			WithInstruction(systemInstruction).
+			WithInstruction("Without any other text, just return the analysis with in the write language and structure if given").
+			WithModel(modelForInstruction).
+			WithText(llm_adapter.RoleUser, finalOutput)
+		// Add all custom instructions for organization
+		for _, instruction := range instructions {
+			customFormatRequest = customFormatRequest.WithInstruction(instruction)
+		}
+		requestCustomFormat, err := customFormatRequest.Do(ctx, client)
+		if err != nil {
+			logger.DebugContext(ctx, "could not get custom format", "error", err)
+			return nil, errors.Wrap(err, "could not get custom format")
+		}
+		finalOutput, err = requestCustomFormat.Get(0)
+		if err != nil {
+			logger.DebugContext(ctx, "could not get custom format", "error", err)
+			return nil, errors.Wrap(err, "could not get custom format")
+		}
+	} else {
+		logger.DebugContext(ctx, "No custom instructions for organization, skip this part")
 	}
 
 	logger.DebugContext(ctx, "================================ Custom format ================================")
