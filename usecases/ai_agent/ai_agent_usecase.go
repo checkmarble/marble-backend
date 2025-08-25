@@ -579,19 +579,24 @@ func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Conte
 	modelToUse := ""
 
 	if customInstructions.Language != nil {
-		model, customLanguagePrompt, err := uc.prepareRequest(
-			"prompts/case_review/instruction_language.md",
-			map[string]any{
-				"language": pure_utils.BCP47ToEnglish(*customInstructions.Language),
-			},
-		)
+		language, err := pure_utils.BCP47ToEnglish(*customInstructions.Language)
 		if err != nil {
-			logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
+			logger.DebugContext(ctx, "could not convert language to english, do not format the output with language", "error", err)
 		} else {
-			instructions = append(instructions, customLanguagePrompt)
-		}
+			model, customLanguagePrompt, err := uc.prepareRequest(
+				"prompts/case_review/instruction_language.md",
+				map[string]any{
+					"language": language,
+				},
+			)
+			if err != nil {
+				logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
+			} else {
+				instructions = append(instructions, customLanguagePrompt)
+			}
 
-		modelToUse = model
+			modelToUse = model
+		}
 	}
 	if customInstructions.Structure != nil {
 		model, customStructurePrompt, err := uc.prepareRequest(
@@ -601,7 +606,7 @@ func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Conte
 			},
 		)
 		if err != nil {
-			logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
+			logger.DebugContext(ctx, "could not read custom structure prompt", "error", err)
 		} else {
 			instructions = append(instructions, customStructurePrompt)
 		}
