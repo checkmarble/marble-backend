@@ -626,6 +626,7 @@ type CaseReviewContext struct {
 	RulesDefinitionsReview *string             `json:"rules_definitions_review"`
 	RuleThresholds         *string             `json:"rule_thresholds"`
 	CaseReview             *caseReviewOutput   `json:"case_review"`
+	SanityCheck            *sanityCheckOutput  `json:"sanity_check"`
 }
 
 // CreateCaseReviewSync performs a comprehensive AI-powered review of a case by analyzing
@@ -637,6 +638,7 @@ type CaseReviewContext struct {
 // 4. Analyze rule definitions and thresholds for context
 // 5. Generate the main case review with all available information
 // 6. Perform sanity check on the generated review for quality assurance
+// 7. Format the output with the custom instructions if given (language or structure for example)
 // caseReviewContext can be provided to resume the process from a previous iteration, it will be updated in place
 // Depends on the context, the process can avoid calling some LLM calls
 func (uc *AiAgentUsecase) CreateCaseReviewSync(
@@ -901,39 +903,42 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	logger.DebugContext(ctx, "================================ Full case review ================================")
 	logger.DebugContext(ctx, "Full case review", "response", *caseReviewContext.CaseReview)
 
-	// Finally, sanity check the resulting case review using a judgement prompt
-	modelSanityCheck, promptSanityCheck, err := uc.prepareRequest(
-		"prompts/case_review/sanity_check.md",
-		map[string]any{
-			"case_detail":        caseData.case_,
-			"case_events":        caseData.events,
-			"decisions":          caseData.decisions,
-			"data_model_summary": *caseReviewContext.DataModelSummary,
-			"pivot_objects":      caseData.pivotData,
-			"previous_cases":     relatedDataPerClient,
-			"rules_summary":      *caseReviewContext.RulesDefinitionsReview,
-			"rule_thresholds":    *caseReviewContext.RuleThresholds,
-			"case_review":        *caseReviewContext.CaseReview,
-		},
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not prepare sanity check request")
-	}
-	requestSanityCheck, err := llm_adapter.NewRequest[sanityCheckOutput]().
-		WithModel(modelSanityCheck).
-		WithInstruction(systemInstruction).
-		WithText(llm_adapter.RoleUser, promptSanityCheck).
-		Do(ctx, client)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not generate sanity check")
-	}
-	sanityCheck, err := requestSanityCheck.Get(0)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get sanity check")
+	if caseReviewContext.SanityCheck == nil {
+		// Finally, sanity check the resulting case review using a judgement prompt
+		modelSanityCheck, promptSanityCheck, err := uc.prepareRequest(
+			"prompts/case_review/sanity_check.md",
+			map[string]any{
+				"case_detail":        caseData.case_,
+				"case_events":        caseData.events,
+				"decisions":          caseData.decisions,
+				"data_model_summary": *caseReviewContext.DataModelSummary,
+				"pivot_objects":      caseData.pivotData,
+				"previous_cases":     relatedDataPerClient,
+				"rules_summary":      *caseReviewContext.RulesDefinitionsReview,
+				"rule_thresholds":    *caseReviewContext.RuleThresholds,
+				"case_review":        *caseReviewContext.CaseReview,
+			},
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not prepare sanity check request")
+		}
+		requestSanityCheck, err := llm_adapter.NewRequest[sanityCheckOutput]().
+			WithModel(modelSanityCheck).
+			WithInstruction(systemInstruction).
+			WithText(llm_adapter.RoleUser, promptSanityCheck).
+			Do(ctx, client)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not generate sanity check")
+		}
+		sanityCheck, err := requestSanityCheck.Get(0)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get sanity check")
+		}
+		caseReviewContext.SanityCheck = &sanityCheck
 	}
 
 	logger.DebugContext(ctx, "================================ Sanity check ================================")
-	logger.DebugContext(ctx, "Sanity check", "response", sanityCheck)
+	logger.DebugContext(ctx, "Sanity check", "response", *caseReviewContext.SanityCheck)
 
 	// Do custom language and structure instructions
 	var finalOutput string = caseReviewContext.CaseReview.CaseReview
@@ -968,9 +973,9 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	logger.DebugContext(ctx, "================================ Custom format ================================")
 	logger.DebugContext(ctx, "Custom format", "response", finalOutput)
 
-	caseReview := *caseReviewContext.CaseReview
-	proofs := make([]agent_dto.CaseReviewProof, len(caseReview.Proofs))
-	for i, proof := range caseReview.Proofs {
+	// Format the proofs
+	proofs := make([]agent_dto.CaseReviewProof, len(caseReviewContext.CaseReview.Proofs))
+	for i, proof := range caseReviewContext.CaseReview.Proofs {
 		proofs[i] = agent_dto.CaseReviewProof{
 			Id:     proof.Id,
 			Type:   proof.Type,
@@ -978,9 +983,11 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			Reason: proof.Reason,
 		}
 	}
-	if sanityCheck.Ok {
+
+	// Can access to Ok and Justification, the nil check is done in the sanity check step
+	if caseReviewContext.SanityCheck.Ok {
 		return agent_dto.CaseReviewV1{
-			Ok:     sanityCheck.Ok,
+			Ok:     caseReviewContext.SanityCheck.Ok,
 			Output: finalOutput,
 			Proofs: proofs,
 		}, nil
@@ -988,7 +995,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	return agent_dto.CaseReviewV1{
 		Ok:          false,
 		Output:      finalOutput,
-		SanityCheck: sanityCheck.Justification,
+		SanityCheck: caseReviewContext.SanityCheck.Justification,
 		Proofs:      proofs,
 	}, nil
 }
