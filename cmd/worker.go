@@ -82,6 +82,8 @@ func RunTaskQueue(apiVersion string) error {
 		cloudRunProbePort           string
 		caseReviewTimeout           time.Duration
 		caseManagerBucket           string
+		telemetryExporter           string
+		otelSamplingRates           string
 	}{
 		appName:                     "marble-backend",
 		env:                         utils.GetEnv("ENV", "development"),
@@ -92,6 +94,8 @@ func RunTaskQueue(apiVersion string) error {
 		cloudRunProbePort:           utils.GetEnv("CLOUD_RUN_PROBE_PORT", ""),
 		caseReviewTimeout:           utils.GetEnvDuration("AI_CASE_REVIEW_TIMEOUT", 5*time.Minute),
 		caseManagerBucket:           utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
+		telemetryExporter:           utils.GetEnv("TRACING_EXPORTER", "otlp"),
+		otelSamplingRates:           utils.GetEnv("TRACING_SAMPLING_RATES", ""),
 	}
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
@@ -138,6 +142,8 @@ func RunTaskQueue(apiVersion string) error {
 		ApplicationName: workerConfig.appName,
 		Enabled:         gcpConfig.EnableTracing,
 		ProjectID:       gcpConfig.ProjectId,
+		Exporter:        workerConfig.telemetryExporter,
+		SamplingMap:     infra.NewTelemetrySamplingMap(ctx, workerConfig.otelSamplingRates),
 	}
 	telemetryRessources, err := infra.InitTelemetry(tracingConfig, apiVersion)
 	if err != nil {

@@ -145,7 +145,8 @@ type TelemetryConfiguration struct {
 }
 
 type TelemetrySamplingMap struct {
-	SpanNames map[string]float64 `json:"span_names"`
+	SpanNames  map[string]float64 `json:"span_names"`
+	HttpRoutes map[string]float64 `json:"http_routes"`
 }
 
 func NewTelemetrySamplingMap(ctx context.Context, path string) TelemetrySamplingMap {
