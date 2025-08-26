@@ -105,7 +105,13 @@ const (
 )
 
 var (
-	routePrefixSampling = map[string]float64{
+	defaultSpanNamesSampling = map[string]float64{
+		"async_decision":   0.05,
+		"match_enrichment": 0.05,
+		"test_run_summary": 0.05,
+	}
+
+	defaultRoutePrefixSampling = map[string]float64{
 		"/health":           0.0,
 		"/liveness":         0.0,
 		"/version":          0.0,
@@ -160,7 +166,13 @@ func (ms MarbleSampler) ShouldSample(p sdktrace.SamplingParameters) sdktrace.Sam
 rates:
 	switch kind {
 	case SpanHttpIngress:
-		for prefix, prefixProb := range routePrefixSampling {
+		for prefix, prefixProb := range ms.SamplingMap.HttpRoutes {
+			if strings.HasPrefix(value, prefix) {
+				prob = prefixProb
+				break rates
+			}
+		}
+		for prefix, prefixProb := range defaultRoutePrefixSampling {
 			if strings.HasPrefix(value, prefix) {
 				prob = prefixProb
 				break rates
@@ -182,6 +194,10 @@ rates:
 
 	default:
 		if ratio, ok := ms.SamplingMap.SpanNames[p.Name]; ok {
+			prob = ratio
+			break rates
+		}
+		if ratio, ok := defaultSpanNamesSampling[p.Name]; ok {
 			prob = ratio
 			break rates
 		}
