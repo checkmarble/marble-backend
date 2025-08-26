@@ -629,85 +629,87 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	}
 	tableNamesWithLargRowNbs := pure_utils.Keys(tablesWithLargRowNbs)
 
-	for customerKey, clientData := range relatedDataPerClient.Data {
-		objectTables := clientData.IngestedData
-		if objectTables != nil {
-			// generate the map of fields to read for every table, but only once.
-			if caseReviewContext.FieldsToReadPerTable == nil {
-				props := jsonschema.NewProperties()
+	if len(tablesWithLargRowNbs) > 0 {
+		for customerKey, clientData := range relatedDataPerClient.Data {
+			objectTables := clientData.IngestedData
+			if len(objectTables) > 0 {
+				// generate the map of fields to read for every table, but only once.
+				if caseReviewContext.FieldsToReadPerTable == nil {
+					props := jsonschema.NewProperties()
 
-				for tableName, fields := range tablesWithLargRowNbs {
-					props.Set(tableName, &jsonschema.Schema{
-						Type: "array",
-						Items: &jsonschema.Schema{
-							Type: "string",
-							Enum: pure_utils.ToAnySlice(fields),
+					for tableName, fields := range tablesWithLargRowNbs {
+						props.Set(tableName, &jsonschema.Schema{
+							Type: "array",
+							Items: &jsonschema.Schema{
+								Type: "string",
+								Enum: pure_utils.ToAnySlice(fields),
+							},
+						})
+					}
+
+					schema := jsonschema.Schema{
+						Type:       "object",
+						Properties: props,
+					}
+
+					modelDataModelObjectFieldReadOptions, promptDataModelObjectFieldReadOptions, err := uc.prepareRequest(
+						"prompts/case_review/data_model_object_field_read_options.md",
+						map[string]any{
+							"data_model_table_names": tableNamesWithLargRowNbs,
 						},
-					})
+					)
+					if err != nil {
+						return nil, errors.Wrap(err, "could not prepare data model object field read options request")
+					}
+
+					requestDataModelObjectFieldReadOptions, err := llm_adapter.NewRequest[map[string][]string]().
+						OverrideResponseSchema(schema).
+						WithModel(modelDataModelObjectFieldReadOptions).
+						WithInstruction(systemInstruction).
+						WithText(llm_adapter.RoleAi, *caseReviewContext.DataModelSummary).
+						WithText(llm_adapter.RoleUser, promptDataModelObjectFieldReadOptions).
+						Do(ctx, client)
+					if err != nil {
+						return nil, errors.Wrap(err, "could not generate data model object field read options")
+					}
+
+					dataModelObjectFieldReadOptions, err :=
+						requestDataModelObjectFieldReadOptions.Get(0)
+					if err != nil {
+						return nil, errors.Wrap(err, "could not get data model object field read options")
+					}
+
+					logger.DebugContext(ctx, "================================ Data model object field read options ================================")
+					logger.DebugContext(ctx, "Data model object field read options",
+						"response", dataModelObjectFieldReadOptions)
+
+					caseReviewContext.FieldsToReadPerTable = dataModelObjectFieldReadOptions
 				}
 
-				schema := jsonschema.Schema{
-					Type:       "object",
-					Properties: props,
+				for tableName, fieldsToRead := range caseReviewContext.FieldsToReadPerTable {
+					// Reuse original read options, just adapt the number of rows to read and the fields to consider
+					fieldFilteredObjects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(
+						ctx,
+						caseData.organizationId,
+						tableName,
+						models.ClientDataListRequestBody{
+							ExplorationOptions: objectTables[tableName].ReadOptions,
+							Limit:              500,
+						},
+						fieldsToRead...,
+					)
+					if err != nil {
+						return nil, errors.Wrapf(err,
+							"could not read ingested client objects for %s", tableName)
+					}
+					// then, update the ingested data for this pivot object/table combination with the new filtered data
+					relatedDataPerClient.Data[customerKey].IngestedData[tableName] = agent_dto.IngestedDataResult{
+						Data:        fieldFilteredObjects,
+						ReadOptions: objectTables[tableName].ReadOptions,
+					}
 				}
 
-				modelDataModelObjectFieldReadOptions, promptDataModelObjectFieldReadOptions, err := uc.prepareRequest(
-					"prompts/case_review/data_model_object_field_read_options.md",
-					map[string]any{
-						"data_model_table_names": tableNamesWithLargRowNbs,
-					},
-				)
-				if err != nil {
-					return nil, errors.Wrap(err, "could not prepare data model object field read options request")
-				}
-
-				requestDataModelObjectFieldReadOptions, err := llm_adapter.NewRequest[map[string][]string]().
-					OverrideResponseSchema(schema).
-					WithModel(modelDataModelObjectFieldReadOptions).
-					WithInstruction(systemInstruction).
-					WithText(llm_adapter.RoleAi, *caseReviewContext.DataModelSummary).
-					WithText(llm_adapter.RoleUser, promptDataModelObjectFieldReadOptions).
-					Do(ctx, client)
-				if err != nil {
-					return nil, errors.Wrap(err, "could not generate data model object field read options")
-				}
-
-				dataModelObjectFieldReadOptions, err :=
-					requestDataModelObjectFieldReadOptions.Get(0)
-				if err != nil {
-					return nil, errors.Wrap(err, "could not get data model object field read options")
-				}
-
-				logger.DebugContext(ctx, "================================ Data model object field read options ================================")
-				logger.DebugContext(ctx, "Data model object field read options",
-					"response", dataModelObjectFieldReadOptions)
-
-				caseReviewContext.FieldsToReadPerTable = dataModelObjectFieldReadOptions
 			}
-
-			for tableName, fieldsToRead := range caseReviewContext.FieldsToReadPerTable {
-				// Reuse original read options, just adapt the number of rows to read and the fields to consider
-				fieldFilteredObjects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(
-					ctx,
-					caseData.organizationId,
-					tableName,
-					models.ClientDataListRequestBody{
-						ExplorationOptions: objectTables[tableName].ReadOptions,
-						Limit:              500,
-					},
-					fieldsToRead...,
-				)
-				if err != nil {
-					return nil, errors.Wrapf(err,
-						"could not read ingested client objects for %s", tableName)
-				}
-				// then, update the ingested data for this pivot object/table combination with the new filtered data
-				relatedDataPerClient.Data[customerKey].IngestedData[tableName] = agent_dto.IngestedDataResult{
-					Data:        fieldFilteredObjects,
-					ReadOptions: objectTables[tableName].ReadOptions,
-				}
-			}
-
 		}
 	}
 
