@@ -2,6 +2,7 @@ package scheduled_execution
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -77,4 +78,8 @@ func (w *MatchEnrichmentWorker) Work(ctx context.Context, job *river.Job[models.
 	}
 
 	return errs
+}
+
+func (w *MatchEnrichmentWorker) Timeout(job *river.Job[models.MatchEnrichmentArgs]) time.Duration {
+	return 10 * time.Second
 }

@@ -22,12 +22,10 @@ const (
 	INDEX_DELETION_DRY_RUN         = true
 )
 
-var (
-	indexRolloverWhitelistPrefixes = []string{
-		"uniq_idx",
-		"nav_",
-	}
-)
+var indexRolloverWhitelistPrefixes = []string{
+	"uniq_idx",
+	"nav_",
+}
 
 func NewIndexDeletionPeriodicJob(orgId string) *river.PeriodicJob {
 	return river.NewPeriodicJob(
@@ -48,7 +46,8 @@ func NewIndexDeletionPeriodicJob(orgId string) *river.PeriodicJob {
 }
 
 type indexDeletionIndexEditor interface {
-	GetRequiredIndices(ctx context.Context, organizationId string) (toCreate []models.AggregateQueryFamily, err error)
+	GetRequiredIndices(ctx context.Context, organizationId string) (
+		toCreate []models.AggregateQueryFamily, err error)
 }
 
 type IndexDeletionWorker struct {
@@ -144,7 +143,8 @@ IndexDeletion:
 			}
 		}
 
-		logger.DebugContext(ctx, fmt.Sprintf("index %s.%s.%s is candidate for deletion", exec.DatabaseSchema().Schema, index.TableName, index.Name()),
+		logger.DebugContext(ctx, fmt.Sprintf("index %s.%s.%s is candidate for deletion",
+			exec.DatabaseSchema().Schema, index.TableName, index.Name()),
 			"schema", exec.DatabaseSchema().Schema,
 			"table", index.TableName,
 			"index", index.Name(),
@@ -155,7 +155,8 @@ IndexDeletion:
 
 			switch err {
 			case nil:
-				logger.InfoContext(ctx, fmt.Sprintf("index %s.%s.%s was deleted successfully", exec.DatabaseSchema().Schema, index.TableName, index.Name()),
+				logger.InfoContext(ctx, fmt.Sprintf("index %s.%s.%s was deleted successfully",
+					exec.DatabaseSchema().Schema, index.TableName, index.Name()),
 					"schema", exec.DatabaseSchema().Schema,
 					"table", index.TableName,
 					"index", index.Name())
@@ -184,4 +185,8 @@ IndexDeletion:
 	}
 
 	return nil
+}
+
+func (w *IndexDeletionWorker) Timeout(job *river.Job[models.IndexDeletionArgs]) time.Duration {
+	return 20 * time.Second
 }
