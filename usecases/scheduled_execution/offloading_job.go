@@ -95,7 +95,6 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 	}
 
 	timeout := time.After(w.config.JobInterval - grace)
-	exit := false
 
 	for {
 		ctx, span := tracer.Start(ctx, "offloading_batch")
@@ -113,144 +112,108 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 			Watermark:    wm,
 		}
 
-		err = w.transactionFactory.Transaction(ctx, func(outerTx repositories.Transaction) error {
-			// The transaction is only so we can "set local" to disable hash joins in the repo call below - writes should still be made outside of the transaction,
-			// as we specificially don't want to wait for the end of the transaction to write the save points.
-			rules, err := w.repository.GetOffloadableDecisionRules(ctx, outerTx, req)
-			if err != nil {
-				return err
-			}
+		outerTx, err := exec.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		defer outerTx.Rollback(ctx) //nolint:errcheck
 
-			span.AddEvent("got_offloadable")
+		// The transaction is only so we can "set local" to disable hash joins in the repo call below - writes should still be made outside of the transaction,
+		// as we specificially don't want to wait for the end of the transaction to write the save points.
+		rules, err := w.repository.GetOffloadableDecisionRules(ctx, outerTx, req)
+		if err != nil {
+			return err
+		}
 
-			// Slice of pointers to not have to keep track of which decision were skipped or not, the
-			// query ignores NULL IDs.
-			offloadedIds := make([]*string, w.config.SavepointEvery)
-			idx := 0
+		span.AddEvent("got_offloadable")
 
-			var lastOfBatch *models.OffloadableDecisionRule
+		// Slice of pointers to not have to keep track of which decision were skipped or not, the
+		// query ignores NULL IDs.
+		offloadedIds := make([]*string, w.config.SavepointEvery)
+		idx := 0
 
-			for item := range rules {
-				select {
-				case <-timeout:
-					exit = true
-					return nil
-				case <-ctx.Done():
-					return ctx.Err()
-				default:
-					if err := w.limiter.Wait(ctx); err != nil {
-						return err
-					}
-				}
-
-				if item.Error != nil {
-					return item.Error
-				}
-
-				rule := item.Model
-				offloadedIds[idx%w.config.SavepointEvery] = nil
-
-				if rule.RuleExecutionId != nil && rule.RuleEvaluation != nil && rule.RuleOutcome != nil {
-					key := w.repository.GetOffloadedDecisionRuleKey(req.OrgId,
-						rule.DecisionId, *rule.RuleId, *rule.RuleOutcome, rule.CreatedAt)
-
-					opts := blob.WriterOptions{}
-
-					// Only if we work on GCS, retrieve the typed writer and set the Custom-Time fixed metadata to the rule creation time.
-					// We do not (currently) set the date on other blob storage platforms (but maybe we should?)
-					opts.BeforeWrite = func(asFunc func(any) bool) error {
-						var gcsWriter *storage.Writer
-
-						if asFunc(&gcsWriter) {
-							gcsWriter.CustomTime = rule.CreatedAt
-						}
-
-						exit = true
-						return nil
-					}
-
-					wr, err := w.blobRepository.OpenStreamWithOptions(ctx, w.config.BucketUrl, key, &opts)
-					if err != nil {
-						return err
-					}
-
-					enc := json.NewEncoder(wr)
-
-					if err := enc.Encode(rule.RuleEvaluation); err != nil {
-						if err := wr.Close(); err != nil {
-							logger.Error(fmt.Sprintf("could not close writer after write failure: %s", err.Error()))
-						}
-
-						return err
-					}
-
-					if err := wr.Close(); err != nil {
-						return err
-					}
-
-					id := *rule.RuleExecutionId
-					offloadedIds[idx%w.config.SavepointEvery] = &id
-				}
-
-				idx += 1
-
-				// If we get here, we have a full batch, so we can send the whole slice to be persisted.
-				// See below for the other case.
-				if idx%w.config.SavepointEvery == 0 {
-					err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-						if err := w.repository.RemoveDecisionRulePayload(ctx, tx, offloadedIds); err != nil {
-							return err
-						}
-						if err := w.repository.SaveWatermark(
-							ctx,
-							tx,
-							&job.Args.OrgId,
-							models.WatermarkTypeDecisionRules,
-							&rule.DecisionId,
-							rule.CreatedAt,
-							nil,
-						); err != nil {
-							return err
-						}
-
-						span.AddEvent("savepoint", trace.WithAttributes(attribute.Int("decision_rules", idx)))
-						logger.Debug(fmt.Sprintf("offloading save point after %d decision rules", idx), "org_id", job.Args.OrgId)
-
-						exit = true
-						return nil
-					})
-					if err != nil {
-						return err
-					}
-				}
-
-				lastOfBatch = &rule
-			}
-
-			if idx == 0 {
-				exit = true
+		var lastOfBatch *models.OffloadableDecisionRule
+		for item := range rules {
+			select {
+			case <-timeout:
 				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				if err := w.limiter.Wait(ctx); err != nil {
+					return err
+				}
 			}
 
-			// If we did not get a multiple of of save point batch size, we still have len(rules)%batch_size
-			// items to persist.
-			if idx%w.config.SavepointEvery > 0 {
-				remainingItems := offloadedIds[:idx%w.config.SavepointEvery]
+			if item.Error != nil {
+				return item.Error
+			}
 
-				err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-					if err := w.repository.RemoveDecisionRulePayload(ctx, tx, remainingItems); err != nil {
+			rule := item.Model
+			offloadedIds[idx%w.config.SavepointEvery] = nil
+
+			if rule.RuleExecutionId != nil && rule.RuleEvaluation != nil && rule.RuleOutcome != nil {
+				key := w.repository.GetOffloadedDecisionRuleKey(req.OrgId,
+					rule.DecisionId, *rule.RuleId, *rule.RuleOutcome, rule.CreatedAt)
+
+				opts := blob.WriterOptions{}
+
+				// Only if we work on GCS, retrieve the typed writer and set the Custom-Time fixed metadata to the rule creation time.
+				// We do not (currently) set the date on other blob storage platforms (but maybe we should?)
+				opts.BeforeWrite = func(asFunc func(any) bool) error {
+					var gcsWriter *storage.Writer
+
+					if asFunc(&gcsWriter) {
+						gcsWriter.CustomTime = rule.CreatedAt
+					}
+
+					return nil
+				}
+
+				wr, err := w.blobRepository.OpenStreamWithOptions(ctx, w.config.BucketUrl, key, &opts)
+				if err != nil {
+					return err
+				}
+				defer wr.Close()
+
+				enc := json.NewEncoder(wr)
+
+				if err := enc.Encode(rule.RuleEvaluation); err != nil {
+					return err
+				}
+
+				if err := wr.Close(); err != nil {
+					return err
+				}
+
+				id := *rule.RuleExecutionId
+				offloadedIds[idx%w.config.SavepointEvery] = &id
+			}
+
+			idx += 1
+
+			// If we get here, we have a full batch, so we can send the whole slice to be persisted.
+			// See below for the other case.
+			if idx%w.config.SavepointEvery == 0 {
+				err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+					if err := w.repository.RemoveDecisionRulePayload(ctx, tx, offloadedIds); err != nil {
 						return err
 					}
-					if err := w.repository.SaveWatermark(ctx, tx,
-						&job.Args.OrgId, models.WatermarkTypeDecisionRules,
-						&lastOfBatch.DecisionId, lastOfBatch.CreatedAt, nil); err != nil {
+					if err := w.repository.SaveWatermark(
+						ctx,
+						tx,
+						&job.Args.OrgId,
+						models.WatermarkTypeDecisionRules,
+						&rule.DecisionId,
+						rule.CreatedAt,
+						nil,
+					); err != nil {
 						return err
 					}
 
 					span.AddEvent("savepoint", trace.WithAttributes(attribute.Int("decision_rules", idx)))
-					logger.Debug(fmt.Sprintf("offloading save point after %d decision rules", idx+1), "org_id", job.Args.OrgId)
+					logger.Debug(fmt.Sprintf("offloading save point after %d decision rules", idx), "org_id", job.Args.OrgId)
 
-					exit = true
 					return nil
 				})
 				if err != nil {
@@ -258,19 +221,50 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 				}
 			}
 
-			if wm == nil {
-				span.AddEvent("finished", trace.WithAttributes(attribute.Int("decision_rules", idx)))
-				logger.Debug(fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id", job.Args.OrgId)
-			} else {
-				span.AddEvent("finished", trace.WithAttributes(attribute.Int("decision_rules", idx), attribute.String("watermark", wm.WatermarkTime.String())))
-				logger.Debug(fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id",
-					job.Args.OrgId, "watermark_id", wm.WatermarkId, "watermark_time", wm.WatermarkTime)
-			}
+			lastOfBatch = &rule
+		}
 
-			exit = true
+		if idx == 0 {
 			return nil
-		})
-		if err != nil || exit {
+		}
+
+		// If we did not get a multiple of of save point batch size, we still have len(rules)%batch_size
+		// items to persist.
+		if idx%w.config.SavepointEvery > 0 {
+			remainingItems := offloadedIds[:idx%w.config.SavepointEvery]
+
+			err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+				if err := w.repository.RemoveDecisionRulePayload(ctx, tx, remainingItems); err != nil {
+					return err
+				}
+				if err := w.repository.SaveWatermark(ctx, tx,
+					&job.Args.OrgId, models.WatermarkTypeDecisionRules,
+					&lastOfBatch.DecisionId, lastOfBatch.CreatedAt, nil); err != nil {
+					return err
+				}
+
+				span.AddEvent("savepoint", trace.WithAttributes(attribute.Int("decision_rules", idx)))
+				logger.Debug(fmt.Sprintf("offloading save point after %d decision rules", idx+1), "org_id", job.Args.OrgId)
+
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		if wm == nil {
+			span.AddEvent("finished", trace.WithAttributes(attribute.Int("decision_rules", idx)))
+			logger.Debug(fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id", job.Args.OrgId)
+		} else {
+			span.AddEvent("finished", trace.WithAttributes(
+				attribute.Int("decision_rules", idx),
+				attribute.String("watermark", wm.WatermarkTime.String())))
+			logger.Debug(fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id",
+				job.Args.OrgId, "watermark_id", wm.WatermarkId, "watermark_time", wm.WatermarkTime)
+		}
+
+		if err := outerTx.Rollback(ctx); err != nil {
 			return err
 		}
 
