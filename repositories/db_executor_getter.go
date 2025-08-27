@@ -20,6 +20,7 @@ import (
 const defaultOrgConfigKey = "default"
 
 type ExecutorGetter struct {
+	appName              string
 	marbleConnectionPool *pgxpool.Pool
 
 	// uses the organizationId as the key
@@ -157,6 +158,7 @@ func (g ExecutorGetter) getPoolAndSchema(
 		var err error
 		pool, err = infra.NewPostgresConnectionPool(
 			ctx,
+			g.appName,
 			config.ConnectionString,
 			g.tp,
 			config.MaxConns,

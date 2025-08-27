@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 
 // Deprecated
 func RunBatchIngestion(apiVersion string) error {
+	appName := fmt.Sprintf("marble-batch-ingestion %s", apiVersion)
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
 		EnableTracing: utils.GetEnv("ENABLE_GCP_TRACING", false),
@@ -75,7 +77,7 @@ func RunBatchIngestion(apiVersion string) error {
 	}
 	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
 
-	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(),
+	pool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
 		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -99,6 +101,7 @@ func RunBatchIngestion(apiVersion string) error {
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 	)
 	uc := usecases.NewUsecases(repositories,
+		usecases.WithAppName(appName),
 		usecases.WithIngestionBucketUrl(jobConfig.ingestionBucketUrl),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
