@@ -157,10 +157,10 @@ func (w *TaskQueueWorker) removeQueuesFromMissingOrgs(ctx context.Context,
 	return nil
 }
 
-func QueuesFromOrgs(ctx context.Context, orgsRepo repositories.OrganizationRepository,
+func QueuesFromOrgs(ctx context.Context, appName string, orgsRepo repositories.OrganizationRepository,
 	execGetter repositories.ExecutorGetter, offloadingConfig infra.OffloadingConfig,
 ) (queues map[string]river.QueueConfig, periodics []*river.PeriodicJob, err error) {
-	exec_fac := executor_factory.NewDbExecutorFactory(orgsRepo, execGetter)
+	exec_fac := executor_factory.NewDbExecutorFactory(appName, orgsRepo, execGetter)
 	orgs, err := orgsRepo.AllOrganizations(ctx, exec_fac.NewExecutor())
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)

@@ -24,6 +24,7 @@ import (
 )
 
 func RunServer(config CompiledConfig) error {
+	appName := fmt.Sprintf("marble-backend %s", config.Version)
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
@@ -192,7 +193,7 @@ func RunServer(config CompiledConfig) error {
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
-	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(),
+	pool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
 		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -239,6 +240,7 @@ func RunServer(config CompiledConfig) error {
 	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
 
 	uc := usecases.NewUsecases(repositories,
+		usecases.WithAppName(appName),
 		usecases.WithApiVersion(config.Version),
 		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),
 		usecases.WithIngestionBucketUrl(serverConfig.ingestionBucketUrl),
