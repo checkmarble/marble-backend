@@ -17,7 +17,7 @@ require (
 	github.com/biter777/countries v1.7.5
 	github.com/checkmarble/llm-adapter v0.0.0-20250729112324-4bb3f0d138b1
 	github.com/cockroachdb/errors v1.12.0
-	github.com/exaring/otelpgx v0.6.1
+	github.com/exaring/otelpgx v0.9.3
 	github.com/gavv/httpexpect/v2 v2.16.0
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/getsentry/sentry-go v0.28.1
