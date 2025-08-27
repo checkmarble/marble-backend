@@ -62,6 +62,10 @@ func (w *IndexCreationWorker) Work(ctx context.Context, job *river.Job[models.In
 	return err
 }
 
+func (w *IndexCreationWorker) Timeout(job *river.Job[models.IndexCreationArgs]) time.Duration {
+	return 20 * time.Second
+}
+
 type IndexCreationStatusWorker struct {
 	river.WorkerDefaults[models.IndexCreationStatusArgs]
 
@@ -152,6 +156,10 @@ func (w *IndexCreationStatusWorker) Work(ctx context.Context, job *river.Job[mod
 		"worker: finished creating indices", "indices", mapIndexNames(job.Args.Indices))
 
 	return nil
+}
+
+func (w *IndexCreationStatusWorker) Timeout(job *river.Job[models.IndexCreationStatusArgs]) time.Duration {
+	return 10 * time.Second
 }
 
 func mapIndexNames(indices []models.ConcreteIndex) []string {

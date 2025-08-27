@@ -84,3 +84,7 @@ func (w *IndexCleanupWorker) Work(ctx context.Context, job *river.Job[models.Ind
 
 	return nil
 }
+
+func (w *IndexCleanupWorker) Timeout(job *river.Job[models.IndexCleanupArgs]) time.Duration {
+	return 20 * time.Second
+}

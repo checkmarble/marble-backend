@@ -2,6 +2,7 @@ package scheduled_execution
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/feature_access"
@@ -39,4 +40,8 @@ func (w *AutoAssignmentWorker) Work(ctx context.Context, job *river.Job[models.A
 	}
 
 	return w.autoAssignmentUsecase.RunAutoAssigner(ctx, job.Args.OrgId, job.Args.InboxId)
+}
+
+func (w *AutoAssignmentWorker) Timeout(job *river.Job[models.AutoAssignmentArgs]) time.Duration {
+	return 20 * time.Second
 }
