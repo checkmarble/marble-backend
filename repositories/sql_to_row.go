@@ -56,8 +56,7 @@ func SqlToFallibleChannelOfModel[Model any](ctx context.Context, exec Executor, 
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			default:
-				modelsChannel <- ModelResult[Model]{model, err}
+			case modelsChannel <- ModelResult[Model]{model, err}:
 			}
 			return nil
 		})
@@ -69,8 +68,7 @@ func SqlToFallibleChannelOfModel[Model any](ctx context.Context, exec Executor, 
 			select {
 			case <-ctx.Done():
 				return
-			default:
-				modelsChannel <- ModelResult[Model]{*new(Model), err}
+			case modelsChannel <- ModelResult[Model]{*new(Model), err}:
 			}
 			return
 		}
