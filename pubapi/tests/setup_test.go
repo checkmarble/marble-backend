@@ -9,7 +9,6 @@ import (
 	"crypto/rsa"
 	"database/sql"
 	"fmt"
-	"io"
 	"log"
 	"log/slog"
 	"net"
@@ -61,7 +60,6 @@ func client(t *testing.T, sock, version, apiKey string) *httpexpect.Expect {
 func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContainer {
 	t.Helper()
 
-	testcontainers.Logger = log.New(io.Discard, "", 0)
 	goose.SetLogger(goose.NopLogger())
 
 	pg, err := postgres.Run(
