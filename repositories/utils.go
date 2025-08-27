@@ -25,7 +25,11 @@ func (e errorRow) Scan(args ...any) error {
 	return e.err
 }
 
-func injectDbSessionConfig(ctx context.Context, exec TransactionOrPool) (pgconn.CommandTag, error) {
+type executor interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+}
+
+func injectDbSessionConfig(ctx context.Context, exec executor) (pgconn.CommandTag, error) {
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
 		if creds.ActorIdentity.UserId != "" {
 			if tag, err := exec.Exec(ctx, "SELECT SET_CONFIG($1, $2, false)",

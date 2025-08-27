@@ -49,6 +49,9 @@ type Transaction interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	RawTx() pgx.Tx
+	Begin(ctx context.Context) (Transaction, error)
+	Commit(ctx context.Context) error
+	Rollback(ctx context.Context) error
 }
 
 func NewExecutorGetter(
