@@ -103,7 +103,7 @@ func RunTaskQueue(apiVersion string) error {
 		BucketUrl:       utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
 		JobInterval:     utils.GetEnvDuration("OFFLOADING_JOB_INTERVAL", 30*time.Minute),
 		OffloadBefore:   utils.GetEnvDuration("OFFLOADING_BEFORE", 7*24*time.Hour),
-		BatchSize:       utils.GetEnv("OFFLOADING_BATCH_SIZE", 10_000),
+		BatchSize:       utils.GetEnv("OFFLOADING_BATCH_SIZE", 1000),
 		SavepointEvery:  utils.GetEnv("OFFLOADING_SAVE_POINTS", 100),
 		WritesPerSecond: utils.GetEnv("OFFLOADING_WRITES_PER_SEC", 200),
 	}

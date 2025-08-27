@@ -972,10 +972,12 @@ func (repo *MarbleDbRepository) DecisionPivotValuesByCase(ctx context.Context, e
 	return out, nil
 }
 
-func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context, exec Executor,
+func (repo *MarbleDbRepository) GetOffloadableDecisionRules(
+	ctx context.Context,
+	tx Transaction,
 	req models.OffloadDecisionRuleRequest,
 ) (<-chan ModelResult[models.OffloadableDecisionRule], error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
+	if err := validateMarbleDbExecutor(tx); err != nil {
 		return nil, err
 	}
 
@@ -988,6 +990,12 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 
 	if req.Watermark.WatermarkId == nil {
 		return nil, errors.New("watermark id is required")
+	}
+
+	// In this query, the query planner may choose a hash join, which is about guaranteed to never complete on this large table.
+	_, err := tx.Exec(ctx, "SET local enable_hashjoin = off;")
+	if err != nil {
+		return nil, err
 	}
 
 	sql := NewQueryBuilder().
@@ -1007,7 +1015,10 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 				Where(squirrel.And{
 					squirrel.Eq{"org_id": req.OrgId},
 					squirrel.Lt{"created_at": req.DeleteBefore},
-					squirrel.Expr("(created_at, id) > (?, ?)", req.Watermark.WatermarkTime, *req.Watermark.WatermarkId),
+					// We use a large inequality at the risk of selecting decisions that are on the watermark again, because it is better
+					// to handle a decision twice (the operation of offloading is idempotent) rather than skip part of the decision rules
+					// attached to the decision.
+					squirrel.Expr("(created_at, id) >= (?, ?)", req.Watermark.WatermarkTime, *req.Watermark.WatermarkId),
 				}).
 				OrderBy("created_at, id").
 				Limit(uint64(req.BatchSize)),
@@ -1025,7 +1036,7 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(ctx context.Context,
 		return dbmodels.AdaptOffloadableRuleExecution(dbRow)
 	}
 
-	return SqlToFallibleChannelOfModel(ctx, exec, sql, cb), nil
+	return SqlToFallibleChannelOfModel(ctx, tx, sql, cb), nil
 }
 
 func (repo *MarbleDbRepository) RemoveDecisionRulePayload(ctx context.Context, tx Transaction, ids []*string) error {
