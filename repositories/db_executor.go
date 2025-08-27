@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -12,15 +13,24 @@ import (
 // //////////////////////////////////
 // Generic db executor (tx or pool)
 // //////////////////////////////////
+
+type pgxTxOrPool interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
+
 type TransactionOrPool interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Begin(ctx context.Context) (Transaction, error)
 }
 
 type PgExecutor struct {
 	databaseSchema models.DatabaseSchema
-	exec           TransactionOrPool
+	exec           pgxTxOrPool
 }
 
 func (e PgExecutor) DatabaseSchema() models.DatabaseSchema {
@@ -51,6 +61,17 @@ func (e PgExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.R
 	return e.exec.QueryRow(ctx, sql, args...)
 }
 
+func (e PgExecutor) Begin(ctx context.Context) (Transaction, error) {
+	tx, err := e.exec.Begin(ctx)
+	if err != nil {
+		return PgTx{}, errors.Wrap(err, "Error beginning transaction")
+	}
+	return PgTx{
+		databaseSchema: e.databaseSchema,
+		tx:             tx,
+	}, nil
+}
+
 ////////////////////////////////////
 // Transaction
 ////////////////////////////////////
@@ -78,4 +99,23 @@ func (t PgTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
 
 func (t PgTx) RawTx() pgx.Tx {
 	return t.tx
+}
+
+func (t PgTx) Commit(ctx context.Context) error {
+	return t.tx.Commit(ctx)
+}
+
+func (t PgTx) Rollback(ctx context.Context) error {
+	return t.tx.Rollback(ctx)
+}
+
+func (t PgTx) Begin(ctx context.Context) (Transaction, error) {
+	tx, err := t.tx.Begin(ctx)
+	if err != nil {
+		return PgTx{}, errors.Wrap(err, "Error beginning transaction")
+	}
+	return PgTx{
+		databaseSchema: t.databaseSchema,
+		tx:             tx,
+	}, nil
 }
