@@ -89,7 +89,7 @@ func NewLoggerMiddleware(l *slog.Logger) LoggerMiddleware {
 type RecovererMiddleware struct{}
 
 func (m RecovererMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) (err error) {
-	defer utils.RecoverAndReportSentryError(ctx, "RecoveredMiddleware.Work")
+	defer utils.RecoverAndReportSentryError(ctx, "RecovererMiddleware.Work")
 	return doInner(ctx)
 }
 
