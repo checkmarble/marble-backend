@@ -357,6 +357,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestUrl, &body)
+	req.Header.Set("content-type", "application/json")
 
 	repo.authenticateRequest(req)
 
