@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -28,6 +29,8 @@ import (
 )
 
 func RunTaskQueue(apiVersion string) error {
+	appName := fmt.Sprintf("marble-worker %s", apiVersion)
+
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig, err := infra.NewGcpConfig(
 		context.Background(),
@@ -145,7 +148,7 @@ func RunTaskQueue(apiVersion string) error {
 	}
 	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
 
-	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(),
+	pool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
 		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -181,7 +184,7 @@ func RunTaskQueue(apiVersion string) error {
 
 	// Start the task queue workers
 	workers := river.NewWorkers()
-	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx, &repositories.MarbleDbRepository,
+	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx, appName, &repositories.MarbleDbRepository,
 		repositories.ExecutorGetter, offloadingConfig)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -235,6 +238,7 @@ func RunTaskQueue(apiVersion string) error {
 	}
 
 	uc := usecases.NewUsecases(repositories,
+		usecases.WithAppName(appName),
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
 		usecases.WithOffloading(offloadingConfig),
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),

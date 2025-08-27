@@ -23,15 +23,18 @@ type organizationGetter interface {
 }
 
 type DbExecutorFactory struct {
+	appName                      string
 	orgGetter                    organizationGetter
 	transactionFactoryRepository executorFactoryRepository
 }
 
 func NewDbExecutorFactory(
+	appName string,
 	orgGetter organizationGetter,
 	transactionFactoryRepository executorFactoryRepository,
 ) DbExecutorFactory {
 	return DbExecutorFactory{
+		appName:                      appName,
 		orgGetter:                    orgGetter,
 		transactionFactoryRepository: transactionFactoryRepository,
 	}

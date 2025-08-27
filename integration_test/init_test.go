@@ -116,7 +116,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Need to declare this after the migrations, to have the correct search path
-	dbPool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(), nil, pgConfig.MaxPoolConnections)
+	dbPool, err := infra.NewPostgresConnectionPool(ctx, "marble-test", pgConfig.GetConnectionString(), nil, pgConfig.MaxPoolConnections)
 	if err != nil {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}
@@ -154,6 +154,7 @@ func TestMain(m *testing.M) {
 	firebaseAdminClient.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	testUsecases = usecases.NewUsecases(repos,
+		usecases.WithAppName("marble-test"),
 		usecases.WithLicense(models.NewFullLicense()),
 		usecases.WithIngestionBucketUrl("file://./tempFiles?create_dir=true"),
 		usecases.WithCaseManagerBucketUrl("file://./tempFiles?create_dir=true"),
