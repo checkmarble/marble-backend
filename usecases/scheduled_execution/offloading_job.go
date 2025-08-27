@@ -13,6 +13,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/riverqueue/river"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gocloud.dev/blob"
 	"golang.org/x/time/rate"
 )
@@ -83,6 +85,7 @@ func NewOffloadingWorker(executorFactory executor_factory.ExecutorFactory, trans
 }
 
 func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.OffloadingArgs]) error {
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	logger := utils.LoggerFromContext(ctx)
 	exec := w.executorFactory.NewExecutor()
 
@@ -92,8 +95,12 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 	}
 
 	timeout := time.After(w.config.JobInterval - grace)
+	exit := false
 
 	for {
+		ctx, span := tracer.Start(ctx, "offloading_batch")
+		defer span.End()
+
 		wm, err := w.repository.GetWatermark(ctx, exec, &job.Args.OrgId, models.WatermarkTypeDecisionRules)
 		if err != nil {
 			return err
@@ -114,6 +121,8 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 				return err
 			}
 
+			span.AddEvent("got_offloadable")
+
 			// Slice of pointers to not have to keep track of which decision were skipped or not, the
 			// query ignores NULL IDs.
 			offloadedIds := make([]*string, w.config.SavepointEvery)
@@ -124,6 +133,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 			for item := range rules {
 				select {
 				case <-timeout:
+					exit = true
 					return nil
 				case <-ctx.Done():
 					return ctx.Err()
@@ -155,6 +165,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 							gcsWriter.CustomTime = rule.CreatedAt
 						}
 
+						exit = true
 						return nil
 					}
 
@@ -198,8 +209,10 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 							return err
 						}
 
+						span.AddEvent("savepoint", trace.WithAttributes(attribute.Int("decision_rules", idx)))
 						logger.Debug(fmt.Sprintf("offloading save point after %d decision rules", idx), "org_id", job.Args.OrgId)
 
+						exit = true
 						return nil
 					})
 					if err != nil {
@@ -211,6 +224,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 			}
 
 			if idx == 0 {
+				exit = true
 				return nil
 			}
 
@@ -229,8 +243,10 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 						return err
 					}
 
+					span.AddEvent("savepoint", trace.WithAttributes(attribute.Int("decision_rules", idx)))
 					logger.Debug(fmt.Sprintf("offloading save point after %d decision rules", idx+1), "org_id", job.Args.OrgId)
 
+					exit = true
 					return nil
 				})
 				if err != nil {
@@ -239,15 +255,21 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 			}
 
 			if wm == nil {
+				span.AddEvent("finished", trace.WithAttributes(attribute.Int("decision_rules", idx)))
 				logger.Debug(fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id", job.Args.OrgId)
 			} else {
+				span.AddEvent("finished", trace.WithAttributes(attribute.Int("decision_rules", idx), attribute.String("watermark", wm.WatermarkTime.String())))
 				logger.Debug(fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id",
 					job.Args.OrgId, "watermark_id", wm.WatermarkId, "watermark_time", wm.WatermarkTime)
 			}
+
+			exit = true
 			return nil
 		})
-		if err != nil {
+		if err != nil || exit {
 			return err
 		}
+
+		span.End()
 	}
 }
