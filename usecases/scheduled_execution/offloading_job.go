@@ -185,7 +185,8 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 						return err
 					}
 
-					offloadedIds[idx%w.config.SavepointEvery] = rule.RuleExecutionId
+					id := *rule.RuleExecutionId
+					offloadedIds[idx%w.config.SavepointEvery] = &id
 				}
 
 				idx += 1
