@@ -106,10 +106,10 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 			Watermark:    wm,
 		}
 
-		err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		err = w.transactionFactory.Transaction(ctx, func(outerTx repositories.Transaction) error {
 			// The transaction is only so we can "set local" to disable hash joins in the repo call below - writes should still be made outside of the transaction,
 			// as we specificially don't want to wait for the end of the transaction to write the save points.
-			rules, err := w.repository.GetOffloadableDecisionRules(ctx, tx, req)
+			rules, err := w.repository.GetOffloadableDecisionRules(ctx, outerTx, req)
 			if err != nil {
 				return err
 			}
