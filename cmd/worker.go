@@ -217,8 +217,10 @@ func RunTaskQueue(apiVersion string) error {
 		FetchPollInterval: 100 * time.Millisecond,
 		Queues:            queues,
 
-		// Must be larger than the time it takes to process a job. Increase it if we want to use longer-lived jobs.
-		RescueStuckJobsAfter: 1 * time.Minute,
+		// Must be larger than the time it takes to process a job, if the job does not implement Timeout().
+		// Jobs that do not implement this and run for longer than this value will be rescued by the worker, which we should
+		// avoid if it is actually still running.
+		RescueStuckJobsAfter: 2 * time.Minute,
 		WorkerMiddleware: []rivertype.WorkerMiddleware{
 			jobs.NewTracingMiddleware(telemetryRessources.Tracer),
 			jobs.NewSentryMiddleware(),
