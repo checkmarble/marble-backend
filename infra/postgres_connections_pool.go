@@ -26,6 +26,7 @@ type ClientDbConfig struct {
 
 func NewPostgresConnectionPool(
 	ctx context.Context,
+	appName string,
 	connectionString string,
 	tp trace.TracerProvider,
 	maxConnections int,
@@ -44,6 +45,10 @@ func NewPostgresConnectionPool(
 		cfg.MaxConns = DEFAULT_MAX_CONNECTIONS
 	}
 	cfg.MaxConnIdleTime = MAX_CONNECTION_IDLE_TIME
+
+	cfg.ConnConfig.RuntimeParams = map[string]string{
+		"application_name": appName,
+	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

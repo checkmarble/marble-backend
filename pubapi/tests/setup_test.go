@@ -119,7 +119,7 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 
 	gin.SetMode(gin.ReleaseMode)
 
-	pool, err := infra.NewPostgresConnectionPool(ctx, dsn, nil, 10)
+	pool, err := infra.NewPostgresConnectionPool(ctx, "", dsn, nil, 10)
 	if err != nil {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}

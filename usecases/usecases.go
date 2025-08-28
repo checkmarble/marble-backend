@@ -21,6 +21,7 @@ import (
 
 type Usecases struct {
 	Repositories                repositories.Repositories
+	appName                     string
 	apiVersion                  string
 	batchIngestionMaxSize       int
 	ingestionBucketUrl          string
@@ -40,6 +41,12 @@ type Usecases struct {
 }
 
 type Option func(*options)
+
+func WithAppName(appName string) Option {
+	return func(o *options) {
+		o.appName = appName
+	}
+}
 
 func WithApiVersion(apiVersion string) Option {
 	return func(o *options) {
@@ -146,6 +153,7 @@ func WithAIAgentConfig(config infra.AIAgentConfiguration) Option {
 }
 
 type options struct {
+	appName                     string
 	apiVersion                  string
 	batchIngestionMaxSize       int
 	ingestionBucketUrl          string
@@ -170,6 +178,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 	}
 	return Usecases{
 		Repositories:                repositories,
+		appName:                     o.appName,
 		apiVersion:                  o.apiVersion,
 		batchIngestionMaxSize:       o.batchIngestionMaxSize,
 		ingestionBucketUrl:          o.ingestionBucketUrl,
@@ -199,6 +208,7 @@ func NewUsecases(repositories repositories.Repositories, opts ...Option) Usecase
 
 func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory {
 	return executor_factory.NewDbExecutorFactory(
+		usecases.appName,
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.ExecutorGetter,
 	)
@@ -206,6 +216,7 @@ func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory 
 
 func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFactory {
 	return executor_factory.NewDbExecutorFactory(
+		usecases.appName,
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.ExecutorGetter,
 	)
