@@ -231,6 +231,9 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (
 }
 
 func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error) {
+	ctx, span := utils.OpenTelemetryTracerFromContext(ctx).Start(ctx, "yente-request")
+	defer span.End()
+
 	req, rawQuery, err := repo.searchRequest(ctx, &query)
 	if err != nil {
 		return models.ScreeningRawSearchResponseWithMatches{}, err
@@ -238,9 +241,6 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 
 	utils.LoggerFromContext(ctx).InfoContext(ctx, "sending screening query")
 	startedAt := time.Now()
-
-	ctx, span := utils.OpenTelemetryTracerFromContext(ctx).Start(ctx, "yente-request")
-	defer span.End()
 
 	resp, err := repo.opensanctions.Client().Do(req)
 

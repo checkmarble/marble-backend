@@ -17,6 +17,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/cockroachdb/errors"
 	"github.com/getsentry/sentry-go"
@@ -90,7 +91,7 @@ func RunServer(config CompiledConfig) error {
 	}
 
 	openSanctionsConfig := infra.InitializeOpenSanctions(
-		http.DefaultClient,
+		otelhttp.DefaultClient,
 		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
 		utils.GetEnv("OPENSANCTIONS_AUTH_METHOD", ""),
 		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
