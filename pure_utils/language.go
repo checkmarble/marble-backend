@@ -7,8 +7,8 @@ import (
 	"golang.org/x/text/language/display"
 )
 
-// BCP47ToHumanReadable converts a BCP 47 language code to human-readable format
-func BCP47ToHumanReadable(bcp47Code string, displayLang language.Tag) (string, error) {
+// BCP47ToLocalizedLanguageName converts a BCP 47 language code to human-readable format
+func BCP47ToLocalizedLanguageName(bcp47Code string, displayLang language.Tag) (string, error) {
 	if bcp47Code == "" {
 		return "", errors.New("bcp47Code is empty")
 	}
@@ -29,5 +29,5 @@ func BCP47ToHumanReadable(bcp47Code string, displayLang language.Tag) (string, e
 
 // BCP47ToEnglish is a convenience function that displays language names in English
 func BCP47ToEnglish(bcp47Code string) (string, error) {
-	return BCP47ToHumanReadable(bcp47Code, language.English)
+	return BCP47ToLocalizedLanguageName(bcp47Code, language.English)
 }

@@ -6,7 +6,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-func TestBCP47ToHumanReadable(t *testing.T) {
+func TestBCP47ToLocalizedLanguageName(t *testing.T) {
 	tests := []struct {
 		name        string
 		bcp47Code   string
@@ -81,7 +81,7 @@ func TestBCP47ToHumanReadable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := BCP47ToHumanReadable(tt.bcp47Code, tt.displayLang)
+			result, err := BCP47ToLocalizedLanguageName(tt.bcp47Code, tt.displayLang)
 
 			if tt.expectError {
 				if err == nil {

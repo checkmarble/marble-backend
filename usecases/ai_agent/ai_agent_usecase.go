@@ -947,16 +947,24 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	// If there is no instructions, we don't need to format the output
 	if len(instructions) > 0 {
+		customReportInstruction, err := readPrompt("prompts/case_review/instruction_custom_report.md")
+		if err != nil {
+			logger.DebugContext(ctx, "could not read custom report instruction", "error", err)
+			customReportInstruction = "Transform the case review according to the instructions. Return only the transformed content without explanations or preambles."
+		}
+
 		customFormatRequest := llm_adapter.NewRequest[string]().
-			WithInstruction(systemInstruction).
-			WithInstruction("Without any other text, just return the analysis with in the write language and structure if given").
 			WithModel(modelForInstruction).
-			WithText(llm_adapter.RoleUser, finalOutput)
+			WithInstruction(systemInstruction).
+			WithInstruction(customReportInstruction)
 		// Add all custom instructions for organization
 		for _, instruction := range instructions {
+			logger.DebugContext(ctx, "Adding custom instruction", "instruction", instruction)
 			customFormatRequest = customFormatRequest.WithInstruction(instruction)
 		}
-		requestCustomFormat, err := customFormatRequest.Do(ctx, client)
+		requestCustomFormat, err := customFormatRequest.
+			WithText(llm_adapter.RoleUser, finalOutput).
+			Do(ctx, client)
 		if err != nil {
 			logger.DebugContext(ctx, "could not get custom format", "error", err)
 			return nil, errors.Wrap(err, "could not get custom format")
