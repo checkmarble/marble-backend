@@ -152,6 +152,11 @@ func NewAiAgentUsecase(
 	}
 }
 
+type customOrgInstructions struct {
+	Language  *string `json:"language"`
+	Structure *string `json:"structure"`
+}
+
 func (uc *AiAgentUsecase) createOpenAIProvider() (llm_adapter.Llm, error) {
 	opts := []openai.Opt{}
 	if uc.config.MainAgentURL != "" {
@@ -522,6 +527,96 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 	})
 }
 
+// Get the organization description from files, default to placeholder if not found
+// Not all organizations have a description file
+func getOrganizationDescription(ctx context.Context, organizationId string) string {
+	logger := utils.LoggerFromContext(ctx)
+
+	clientActivityDescription, err := readPrompt(fmt.Sprintf("prompts/org_desc/%s.md", organizationId))
+	if err != nil {
+		logger.DebugContext(ctx, "could not read organization description", "error", err)
+		clientActivityDescription = "placeholder"
+	}
+
+	return clientActivityDescription
+}
+
+// Get the organization custom instructions from files, default to nil if not found
+// Not all organizations have custom instructions
+func getOrganizationCustomInstructions(ctx context.Context, organizationId string) customOrgInstructions {
+	logger := utils.LoggerFromContext(ctx)
+
+	file, err := os.Open(fmt.Sprintf("prompts/org_custom_instructions/%s.json", organizationId))
+	if err != nil {
+		logger.DebugContext(ctx, "could not open organization custom instructions file", "error", err)
+		return customOrgInstructions{}
+	}
+	defer file.Close()
+
+	promptBytes, err := io.ReadAll(file)
+	if err != nil {
+		logger.DebugContext(ctx, "could not read organization custom instructions file", "error", err)
+		return customOrgInstructions{}
+	}
+
+	var result customOrgInstructions
+	err = json.Unmarshal(promptBytes, &result)
+	if err != nil {
+		logger.DebugContext(ctx, "could not unmarshal organization custom instructions", "error", err)
+		return customOrgInstructions{}
+	}
+
+	return result
+}
+
+// Return a list of instructions to give to the LLM and the model to use for the prompt
+// NOTE: The model is given by `prepareRequest()`, we call it at most twice and the the last call will set the model
+func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Context,
+	customInstructions customOrgInstructions,
+) ([]string, string) {
+	logger := utils.LoggerFromContext(ctx)
+	instructions := []string{}
+	modelToUse := ""
+
+	if customInstructions.Language != nil {
+		language, err := pure_utils.BCP47ToEnglish(*customInstructions.Language)
+		if err != nil {
+			logger.DebugContext(ctx, "could not convert language to english, do not format the output with language", "error", err)
+		} else {
+			model, customLanguagePrompt, err := uc.prepareRequest(
+				"prompts/case_review/instruction_language.md",
+				map[string]any{
+					"language": language,
+				},
+			)
+			if err != nil {
+				logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
+			} else {
+				instructions = append(instructions, customLanguagePrompt)
+			}
+
+			modelToUse = model
+		}
+	}
+	if customInstructions.Structure != nil {
+		model, customStructurePrompt, err := uc.prepareRequest(
+			"prompts/case_review/instruction_structure.md",
+			map[string]any{
+				"structure": *customInstructions.Structure,
+			},
+		)
+		if err != nil {
+			logger.DebugContext(ctx, "could not read custom structure prompt", "error", err)
+		} else {
+			instructions = append(instructions, customStructurePrompt)
+		}
+
+		modelToUse = model
+	}
+
+	return instructions, modelToUse
+}
+
 // Contains all results from the case review process
 // Update this struct during the process and expose this struct to the caller to save the results in case we need to resume it
 // Didn't include the sanity check output because it's the last step and we don't need to save it
@@ -531,6 +626,7 @@ type CaseReviewContext struct {
 	RulesDefinitionsReview *string             `json:"rules_definitions_review"`
 	RuleThresholds         *string             `json:"rule_thresholds"`
 	CaseReview             *caseReviewOutput   `json:"case_review"`
+	SanityCheck            *sanityCheckOutput  `json:"sanity_check"`
 }
 
 // CreateCaseReviewSync performs a comprehensive AI-powered review of a case by analyzing
@@ -542,6 +638,7 @@ type CaseReviewContext struct {
 // 4. Analyze rule definitions and thresholds for context
 // 5. Generate the main case review with all available information
 // 6. Perform sanity check on the generated review for quality assurance
+// 7. Format the output with the custom instructions if given (language or structure for example)
 // caseReviewContext can be provided to resume the process from a previous iteration, it will be updated in place
 // Depends on the context, the process can avoid calling some LLM calls
 func (uc *AiAgentUsecase) CreateCaseReviewSync(
@@ -566,12 +663,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	}
 
 	// Get Organization prompt from file if defined, this prompt gives more details about the organization
-	var clientActivityDescription string
-	clientActivityDescription, err = readPrompt(fmt.Sprintf("prompts/org_desc/%s.md", caseData.organizationId))
-	if err != nil {
-		logger.DebugContext(ctx, "could not read organization description", "error", err)
-		clientActivityDescription = "placeholder"
-	}
+	clientActivityDescription := getOrganizationDescription(ctx, caseData.organizationId)
+
+	// Prepare the custom org instructions
+	customOrgInstructions := getOrganizationCustomInstructions(ctx, caseData.organizationId)
 
 	// Define the system instruction for prompt
 	systemInstruction, err := readPrompt("prompts/system.md")
@@ -808,43 +903,87 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	logger.DebugContext(ctx, "================================ Full case review ================================")
 	logger.DebugContext(ctx, "Full case review", "response", *caseReviewContext.CaseReview)
 
-	// Finally, sanity check the resulting case review using a judgement prompt
-	modelSanityCheck, promptSanityCheck, err := uc.prepareRequest(
-		"prompts/case_review/sanity_check.md",
-		map[string]any{
-			"case_detail":        caseData.case_,
-			"case_events":        caseData.events,
-			"decisions":          caseData.decisions,
-			"data_model_summary": *caseReviewContext.DataModelSummary,
-			"pivot_objects":      caseData.pivotData,
-			"previous_cases":     relatedDataPerClient,
-			"rules_summary":      *caseReviewContext.RulesDefinitionsReview,
-			"rule_thresholds":    *caseReviewContext.RuleThresholds,
-			"case_review":        *caseReviewContext.CaseReview,
-		},
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not prepare sanity check request")
-	}
-	requestSanityCheck, err := llm_adapter.NewRequest[sanityCheckOutput]().
-		WithModel(modelSanityCheck).
-		WithInstruction(systemInstruction).
-		WithText(llm_adapter.RoleUser, promptSanityCheck).
-		Do(ctx, client)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not generate sanity check")
-	}
-	sanityCheck, err := requestSanityCheck.Get(0)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get sanity check")
+	if caseReviewContext.SanityCheck == nil {
+		// Finally, sanity check the resulting case review using a judgement prompt
+		modelSanityCheck, promptSanityCheck, err := uc.prepareRequest(
+			"prompts/case_review/sanity_check.md",
+			map[string]any{
+				"case_detail":        caseData.case_,
+				"case_events":        caseData.events,
+				"decisions":          caseData.decisions,
+				"data_model_summary": *caseReviewContext.DataModelSummary,
+				"pivot_objects":      caseData.pivotData,
+				"previous_cases":     relatedDataPerClient,
+				"rules_summary":      *caseReviewContext.RulesDefinitionsReview,
+				"rule_thresholds":    *caseReviewContext.RuleThresholds,
+				"case_review":        *caseReviewContext.CaseReview,
+			},
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not prepare sanity check request")
+		}
+		requestSanityCheck, err := llm_adapter.NewRequest[sanityCheckOutput]().
+			WithModel(modelSanityCheck).
+			WithInstruction(systemInstruction).
+			WithText(llm_adapter.RoleUser, promptSanityCheck).
+			Do(ctx, client)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not generate sanity check")
+		}
+		sanityCheck, err := requestSanityCheck.Get(0)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get sanity check")
+		}
+		caseReviewContext.SanityCheck = &sanityCheck
 	}
 
 	logger.DebugContext(ctx, "================================ Sanity check ================================")
-	logger.DebugContext(ctx, "Sanity check", "response", sanityCheck)
+	logger.DebugContext(ctx, "Sanity check", "response", *caseReviewContext.SanityCheck)
 
-	caseReview := *caseReviewContext.CaseReview
-	proofs := make([]agent_dto.CaseReviewProof, len(caseReview.Proofs))
-	for i, proof := range caseReview.Proofs {
+	// Do custom language and structure instructions
+	var finalOutput string = caseReviewContext.CaseReview.CaseReview
+
+	instructions, modelForInstruction := uc.getOrganizationInstructionsForPrompt(ctx, customOrgInstructions)
+
+	// If there is no instructions, we don't need to format the output
+	if len(instructions) > 0 {
+		customReportInstruction, err := readPrompt("prompts/case_review/instruction_custom_report.md")
+		if err != nil {
+			logger.DebugContext(ctx, "could not read custom report instruction", "error", err)
+			customReportInstruction = "Transform the case review according to the instructions. Return only the transformed content without explanations or preambles."
+		}
+
+		customFormatRequest := llm_adapter.NewRequest[string]().
+			WithModel(modelForInstruction).
+			WithInstruction(systemInstruction).
+			WithInstruction(customReportInstruction)
+		// Add all custom instructions for organization
+		for _, instruction := range instructions {
+			logger.DebugContext(ctx, "Adding custom instruction", "instruction", instruction)
+			customFormatRequest = customFormatRequest.WithInstruction(instruction)
+		}
+		requestCustomFormat, err := customFormatRequest.
+			WithText(llm_adapter.RoleUser, finalOutput).
+			Do(ctx, client)
+		if err != nil {
+			logger.DebugContext(ctx, "could not get custom format", "error", err)
+			return nil, errors.Wrap(err, "could not get custom format")
+		}
+		finalOutput, err = requestCustomFormat.Get(0)
+		if err != nil {
+			logger.DebugContext(ctx, "could not get custom format", "error", err)
+			return nil, errors.Wrap(err, "could not get custom format")
+		}
+	} else {
+		logger.DebugContext(ctx, "No custom instructions for organization, skip this part")
+	}
+
+	logger.DebugContext(ctx, "================================ Custom format ================================")
+	logger.DebugContext(ctx, "Custom format", "response", finalOutput)
+
+	// Format the proofs
+	proofs := make([]agent_dto.CaseReviewProof, len(caseReviewContext.CaseReview.Proofs))
+	for i, proof := range caseReviewContext.CaseReview.Proofs {
 		proofs[i] = agent_dto.CaseReviewProof{
 			Id:     proof.Id,
 			Type:   proof.Type,
@@ -852,17 +991,19 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			Reason: proof.Reason,
 		}
 	}
-	if sanityCheck.Ok {
+
+	// Can access to Ok and Justification, the nil check is done in the sanity check step
+	if caseReviewContext.SanityCheck.Ok {
 		return agent_dto.CaseReviewV1{
-			Ok:     sanityCheck.Ok,
-			Output: caseReview.CaseReview,
+			Ok:     caseReviewContext.SanityCheck.Ok,
+			Output: finalOutput,
 			Proofs: proofs,
 		}, nil
 	}
 	return agent_dto.CaseReviewV1{
 		Ok:          false,
-		Output:      caseReview.CaseReview,
-		SanityCheck: sanityCheck.Justification,
+		Output:      finalOutput,
+		SanityCheck: caseReviewContext.SanityCheck.Justification,
 		Proofs:      proofs,
 	}, nil
 }
