@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -29,25 +30,58 @@ type executor interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }
 
-func injectDbSessionConfig(ctx context.Context, exec executor) (pgconn.CommandTag, error) {
+type auditCommands struct {
+	query string
+	args  []any
+}
+
+var sqlUpdateVerbs = []string{"insert", "update", "delete"}
+
+func injectDbSessionConfig(ctx context.Context, exec executor, query string) (pgconn.CommandTag, error) {
+	if query != "" {
+		for _, v := range sqlUpdateVerbs {
+			if strings.Contains(strings.ToLower(query), v) {
+				break
+			}
+			return pgconn.NewCommandTag(""), nil
+		}
+	}
+
+	cmds := make([]auditCommands, 0)
+
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
-		if creds.ActorIdentity.UserId != "" {
-			if tag, err := exec.Exec(ctx, "SELECT SET_CONFIG($1, $2, false)",
-				postgres_audit_user_id_parameter, creds.ActorIdentity.UserId); err != nil {
-				return tag, err
-			}
-		} else if creds.ActorIdentity.ApiKeyId != "" {
-			if tag, err := exec.Exec(ctx, "SELECT SET_CONFIG($1, $2, false)",
-				postgres_audit_api_key_id_parameter, creds.ActorIdentity.ApiKeyId); err != nil {
-				return tag, err
-			}
+		switch {
+		case creds.ActorIdentity.UserId != "":
+			cmds = append(cmds, auditCommands{"SET_CONFIG($1, $2, false)", []any{
+				postgres_audit_user_id_parameter, creds.ActorIdentity.UserId,
+			}})
+		case creds.ActorIdentity.ApiKeyId != "":
+			cmds = append(cmds, auditCommands{"SET_CONFIG($1, $2, false)", []any{
+				postgres_audit_api_key_id_parameter, creds.ActorIdentity.ApiKeyId,
+			}})
+		default:
+			// We need to select dummy values so we simplify the arguments logic
+			cmds = append(cmds, auditCommands{"$1, $2", []any{0, 0}})
 		}
 
 		if creds.OrganizationId != "" {
-			if tag, err := exec.Exec(ctx, "SELECT SET_CONFIG($1, $2, false)",
-				postgres_audit_org_id_parameter, creds.OrganizationId); err != nil {
-				return tag, err
-			}
+			cmds = append(cmds, auditCommands{"SET_CONFIG($3, $4, false)", []any{
+				postgres_audit_org_id_parameter, creds.OrganizationId,
+			}})
+		}
+	}
+
+	if len(cmds) > 0 {
+		queries := make([]string, len(cmds))
+		args := make([]any, 0)
+
+		for idx, cmd := range cmds {
+			queries[idx] = cmd.query
+			args = append(args, cmd.args...)
+		}
+
+		if tag, err := exec.Exec(ctx, fmt.Sprintf("SELECT %s", strings.Join(queries, ",")), args...); err != nil {
+			return tag, err
 		}
 	}
 
