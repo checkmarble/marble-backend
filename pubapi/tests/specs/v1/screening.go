@@ -175,21 +175,17 @@ func screenings(t *testing.T, e *httpexpect.Expect) {
 		screeningsArray.Length().IsEqual(2)
 
 		// Find and validate the original screening (should now have status "no_hit")
-		originalScreening := screeningsArray.Find(func(index int, value *httpexpect.Value) bool {
-			return value.Object().Value("id").String().Raw() == "11111111-1111-1111-1111-111111111111"
-		})
-		originalScreening.Object().HasValue("id", "11111111-1111-1111-1111-111111111111")
-		originalScreening.Object().HasValue("status", "no_hit")
+		originalScreening := screeningsArray.Value(0).Object()
+		originalScreening.HasValue("id", "11111111-1111-1111-1111-111111111111")
+		originalScreening.HasValue("status", "no_hit")
 
 		// Find and validate the new screening (should have status "in_review")
-		newScreening := screeningsArray.Find(func(index int, value *httpexpect.Value) bool {
-			return value.Object().Value("id").String().Raw() == newScreeningId
-		})
-		newScreening.Object().HasValue("id", newScreeningId)
-		newScreening.Object().HasValue("status", "in_review")
+		newScreening := screeningsArray.Value(1).Object()
+		newScreening.HasValue("id", newScreeningId)
+		newScreening.HasValue("status", "in_review")
 
 		// Validate the new screening has the expected match
-		newScreeningMatches := newScreening.Object().Value("matches").Array()
+		newScreeningMatches := newScreening.Value("matches").Array()
 		newScreeningMatches.Length().IsEqual(1)
 
 		newScreeningMatch := newScreeningMatches.Value(0).Object().Path("$.payload").Object()
