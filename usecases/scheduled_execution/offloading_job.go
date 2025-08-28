@@ -270,5 +270,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 		}
 
 		span.End()
+
+		return nil
 	}
 }
