@@ -100,7 +100,7 @@ func handlePatchUser(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		createdUser, err := usecase.UpdateUser(c, dto.AdaptUpdateUser(data, userId))
+		createdUser, err := usecase.UpdateUser(ctx, dto.AdaptUpdateUser(data, userId))
 		if presentError(ctx, c, err) {
 			return
 		}
