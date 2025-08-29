@@ -99,7 +99,8 @@ func selectScreeningsWithMatches() squirrel.SelectBuilder {
 			strings.Join(columnsNames("scm", dbmodels.SelectScreeningMatchesColumn), ","))).
 		From(dbmodels.TABLE_SCREENINGS + " AS sc").
 		LeftJoin(dbmodels.TABLE_SCREENING_MATCHES + " AS scm ON sc.id = scm.sanction_check_id").
-		GroupBy("sc.id")
+		GroupBy("sc.id").
+		OrderBy("sc.created_at")
 }
 
 func (*MarbleDbRepository) ArchiveScreening(ctx context.Context, exec Executor, id string) error {

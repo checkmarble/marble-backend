@@ -45,6 +45,8 @@ func screenings(t *testing.T, e *httpexpect.Expect) {
 		matches.Value(0).Object().HasValue("status", "pending")
 		matches.Value(1).Object().HasValue("id", "22222222-2222-2222-2222-222222222222")
 		matches.Value(1).Object().HasValue("status", "no_hit")
+		matches.Value(2).Object().HasValue("id", "33333333-3333-3333-3333-333333333333")
+		matches.Value(2).Object().HasValue("status", "no_hit")
 	}
 
 	e.GET("/decisions/22222222-2222-2222-2222-222222222222/screenings").Expect().
@@ -142,12 +144,15 @@ func screenings(t *testing.T, e *httpexpect.Expect) {
 		})
 
 	{
-		matches := e.POST("/screening/22222222-2222-2222-2222-222222222222/refine").
+		// Execute the refine operation and capture the new screening ID
+		refineResponse := e.POST("/screening/22222222-2222-2222-2222-222222222222/refine").
 			WithJSON(gdto.RefineQueryDto{Thing: &gdto.RefineQueryBase{Name: "test"}}).
 			Expect().
 			Status(http.StatusOK).
-			JSON().Path("$.data.matches").Array()
+			JSON()
 
+		// Validate the refine response matches
+		matches := refineResponse.Path("$.data.matches").Array()
 		matches.Length().IsEqual(1)
 
 		match := matches.Value(0).Object().Path("$.payload").Object()
@@ -156,17 +161,34 @@ func screenings(t *testing.T, e *httpexpect.Expect) {
 		match.HasValue("datasets", []string{"one", "two"})
 		match.Path("$.properties").Object().HasValue("name", []string{"Bob Joe"})
 
-		out := e.GET("/decisions/11111111-1111-1111-1111-111111111111/screenings").Expect().
+		// Capture the new screening ID created by the refine operation
+		newScreeningId := refineResponse.Path("$.data.id").String().Raw()
+
+		// Fetch all screenings for the decision
+		screeningsResponse := e.GET("/decisions/11111111-1111-1111-1111-111111111111/screenings").Expect().
 			Status(http.StatusOK).
-			JSON().Path("$.data[1]").
-			Object()
+			JSON()
 
-		out.HasValue("status", "in_review")
+		screeningsArray := screeningsResponse.Path("$.data").Array()
 
-		matches = out.Value("matches").Array()
-		matches.Length().IsEqual(1)
+		// Validate we have exactly 2 screenings
+		screeningsArray.Length().IsEqual(2)
 
-		match = matches.Value(0).Object().Path("$.payload").Object()
-		match.HasValue("id", "ID")
+		// Find and validate the original screening (should now have status "no_hit")
+		originalScreening := screeningsArray.Value(0).Object()
+		originalScreening.HasValue("id", "11111111-1111-1111-1111-111111111111")
+		originalScreening.HasValue("status", "no_hit")
+
+		// Find and validate the new screening (should have status "in_review")
+		newScreening := screeningsArray.Value(1).Object()
+		newScreening.HasValue("id", newScreeningId)
+		newScreening.HasValue("status", "in_review")
+
+		// Validate the new screening has the expected match
+		newScreeningMatches := newScreening.Value("matches").Array()
+		newScreeningMatches.Length().IsEqual(1)
+
+		newScreeningMatch := newScreeningMatches.Value(0).Object().Path("$.payload").Object()
+		newScreeningMatch.HasValue("id", "ID")
 	}
 }
