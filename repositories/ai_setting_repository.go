@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -36,8 +35,9 @@ func (repo MarbleDbRepository) UpsertAiSetting(ctx context.Context, exec Executo
 		exec,
 		NewQueryBuilder().
 			Insert(dbmodels.TABLE_AI_SETTING).
-			Columns(dbmodels.AiSettingColumns...).
-			Values(orgId,
+			Columns(dbmodels.AiSettingColumnsInsert...).
+			Values(
+				orgId,
 				setting.KYCEnrichmentSetting.Model,
 				setting.KYCEnrichmentSetting.DomainFilter,
 				setting.KYCEnrichmentSetting.SearchContextSize,
@@ -46,6 +46,13 @@ func (repo MarbleDbRepository) UpsertAiSetting(ctx context.Context, exec Executo
 				setting.CaseReviewSetting.OrgDescription,
 			).
 			Suffix("ON CONFLICT (org_id) DO UPDATE SET "+
-				strings.Join(dbmodels.AiSettingColumns, ", ")),
+				"kyc_enrichment_model = EXCLUDED.kyc_enrichment_model, "+
+				"kyc_enrichment_domain_filter = EXCLUDED.kyc_enrichment_domain_filter, "+
+				"kyc_enrichment_search_context_size = EXCLUDED.kyc_enrichment_search_context_size, "+
+				"case_review_language = EXCLUDED.case_review_language, "+
+				"case_review_structure = EXCLUDED.case_review_structure, "+
+				"case_review_org_description = EXCLUDED.case_review_org_description, "+
+				"updated_at = CURRENT_TIMESTAMP",
+			),
 	)
 }

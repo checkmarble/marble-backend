@@ -69,7 +69,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 			auth.AuthedBy(utils.PublicApiKey, utils.BearerToken), uc)
 	}
 
-	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey), allowedNetworksGuard.Guard(usecases.AllowedNetworksOther))
+	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
+		allowedNetworksGuard.Guard(usecases.AllowedNetworksOther))
 
 	router.GET("/credentials", tom, handleGetCredentials())
 
@@ -326,4 +327,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/settings/me/unavailable", tom, handleGetUnavailability(uc))
 	router.POST("/settings/me/unavailable", tom, handleSetUnavailability(uc))
 	router.DELETE("/settings/me/unavailable", tom, handleDeleteUnavailability(uc))
+
+	router.GET("/settings/ai", tom, HandleGetAiSetting(uc))
+	router.PUT("/settings/ai", tom, HandleUpsertAiSetting(uc))
 }
