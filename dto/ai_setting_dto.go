@@ -3,12 +3,17 @@ package dto
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/google/uuid"
+	"golang.org/x/text/language"
 )
 
 type KYCEnrichmentSettingDto struct {
 	Model             *string                             `json:"model"`
 	DomainFilter      []string                            `json:"domain_filter"`
 	SearchContextSize *models.PerplexitySearchContextSize `json:"search_context_size"`
+}
+
+func (dto KYCEnrichmentSettingDto) Validate() error {
+	return nil
 }
 
 func AdaptKYCEnrichmentSettingDto(setting models.KYCEnrichmentSetting) KYCEnrichmentSettingDto {
@@ -31,6 +36,16 @@ type CaseReviewSettingDto struct {
 	Language       *string `json:"language"`
 	Structure      *string `json:"structure"`
 	OrgDescription *string `json:"org_description"`
+}
+
+func (dto CaseReviewSettingDto) Validate() error {
+	if dto.Language != nil {
+		_, err := language.Parse(*dto.Language)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func AdaptCaseReviewSettingDto(setting models.CaseReviewSetting) CaseReviewSettingDto {
@@ -73,6 +88,16 @@ type UpsertAiSettingDto struct {
 
 	// CaseReview usecase (not used yet)
 	CaseReviewSetting CaseReviewSettingDto `json:"case_review_setting" binding:"required"`
+}
+
+func (dto UpsertAiSettingDto) Validate() error {
+	if err := dto.KYCEnrichmentSetting.Validate(); err != nil {
+		return err
+	}
+	if err := dto.CaseReviewSetting.Validate(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func AdaptUpsertAiSetting(setting UpsertAiSettingDto) models.UpsertAiSetting {
