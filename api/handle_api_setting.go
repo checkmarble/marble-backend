@@ -4,8 +4,10 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -41,6 +43,11 @@ func HandleUpsertAiSetting(uc usecases.Usecases) func(c *gin.Context) {
 
 		var payload dto.UpsertAiSettingDto
 		if err := c.ShouldBindJSON(&payload); presentError(ctx, c, err) {
+			return
+		}
+
+		if err := payload.Validate(); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
