@@ -36,6 +36,10 @@ func (tx TransactionTest) Exec(ctx context.Context, query string, args ...interf
 	return pgconn.CommandTag{}, nil
 }
 
+func (tx TransactionTest) Begin(ctx context.Context) (Transaction, error) {
+	return PgTx{}, nil
+}
+
 func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 	path := []string{utils.DummyTableNameSecond}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 )
 
 // Generic executor mock (tx or pool)
@@ -33,6 +34,11 @@ func (e *Executor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows
 func (e *Executor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
 	arguments := e.Called(ctx, sql, args)
 	return arguments.Get(0).(pgx.Row)
+}
+
+func (e *Executor) Begin(ctx context.Context) (repositories.Transaction, error) {
+	arguments := e.Called(ctx)
+	return arguments.Get(0).(repositories.Transaction), arguments.Error(1)
 }
 
 // Tx mock
@@ -73,4 +79,9 @@ func (e *Transaction) Rollback(ctx context.Context) error {
 func (e *Transaction) RawTx() pgx.Tx {
 	arguments := e.Called()
 	return arguments.Get(0).(pgx.Tx)
+}
+
+func (e *Transaction) Begin(ctx context.Context) (repositories.Transaction, error) {
+	arguments := e.Called(ctx)
+	return arguments.Get(0).(repositories.Transaction), arguments.Error(1)
 }

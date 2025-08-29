@@ -30,6 +30,10 @@ func (stub ExecutorFactoryStub) NewClientDbExecutor(ctx context.Context, organiz
 	return nil, nil
 }
 
+func (stub PgExecutorStub) Begin(ctx context.Context) (repositories.Transaction, error) {
+	return NewDbExecFactoryStub(stub.PgxPoolIface), nil
+}
+
 func (stub ExecutorFactoryStub) NewExecutor() repositories.Executor {
 	return PgExecutorStub{
 		stub.Mock,
@@ -106,4 +110,16 @@ func (stub dbExecFactoryStub) Query(ctx context.Context, sql string, arguments .
 
 func (stub dbExecFactoryStub) QueryRow(ctx context.Context, sql string, arguments ...interface{}) pgx.Row {
 	return stub.exec.QueryRow(ctx, sql, arguments...)
+}
+
+func (stub dbExecFactoryStub) Begin(ctx context.Context) (repositories.Transaction, error) {
+	return stub, nil
+}
+
+func (stub dbExecFactoryStub) Commit(ctx context.Context) error {
+	return nil
+}
+
+func (stub dbExecFactoryStub) Rollback(ctx context.Context) error {
+	return nil
 }
