@@ -45,15 +45,20 @@ func ingestOp(spec *openapi3.T, isBatch, isPatch bool, table models.Table, field
 		RequestBody: &openapi3.RequestBodyRef{
 			Value: openapi3.NewRequestBody().
 				WithRequired(true).
-				WithContent(openapi3.NewContentWithJSONSchema(requestBody(isBatch, isPatch, fields, required)))},
+				WithContent(openapi3.NewContentWithJSONSchema(
+					requestBody(isBatch, isPatch, fields, required))),
+		},
 		Responses: openapi3.NewResponses(
-			openapi3.WithName("200", openapi3.NewResponse().WithDescription("Data was processed but no new object was ingested")),
+			openapi3.WithName("200", openapi3.NewResponse().WithDescription(
+				"Data was processed but no new object was ingested")),
 			openapi3.WithName("201", openapi3.NewResponse().WithDescription("Data was successfully ingested")),
 			openapi3.WithName("400",
 				openapi3.NewResponse().
 					WithDescription("The array of objects is too long, or one object did not match the data model").
-					WithContent(openapi3.NewContentWithJSONSchemaRef(openapi3.NewSchemaRef("#/components/schemas/ErrorDto", nil)))),
-			openapi3.WithName("500", openapi3.NewResponse().WithDescription("An error happened while ingesting data")),
+					WithContent(openapi3.NewContentWithJSONSchemaRef(
+						openapi3.NewSchemaRef("#/components/schemas/Error", nil)))),
+			openapi3.WithName("500", openapi3.NewResponse().WithDescription(
+				"An error happened while ingesting data")),
 		),
 	}
 }
