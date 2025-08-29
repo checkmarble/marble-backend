@@ -28,7 +28,7 @@ func (e PgExecutor) DatabaseSchema() models.DatabaseSchema {
 }
 
 func (e PgExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
-	if tag, err := injectDbSessionConfig(ctx, e.exec); err != nil {
+	if tag, err := injectDbSessionConfig(ctx, e.exec, sql); err != nil {
 		return tag, err
 	}
 
@@ -36,7 +36,7 @@ func (e PgExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.C
 }
 
 func (e PgExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
-	if _, err := injectDbSessionConfig(ctx, e.exec); err != nil {
+	if _, err := injectDbSessionConfig(ctx, e.exec, sql); err != nil {
 		return nil, err
 	}
 
@@ -44,7 +44,7 @@ func (e PgExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Row
 }
 
 func (e PgExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
-	if _, err := injectDbSessionConfig(ctx, e.exec); err != nil {
+	if _, err := injectDbSessionConfig(ctx, e.exec, sql); err != nil {
 		return errorRow{err}
 	}
 
