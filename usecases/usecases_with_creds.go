@@ -732,3 +732,12 @@ func (uc *UsecasesWithCreds) NewUserSettingsUsecase() UserSettingsUsecase {
 		repository:      &uc.Repositories.MarbleDbRepository,
 	}
 }
+
+func (uc *UsecasesWithCreds) NewAiSettingUsecase() ai_agent.AiSettingUsecase {
+	return ai_agent.NewAiSettingUsecase(
+		uc.NewExecutorFactory(),
+		uc.NewEnforceOrganizationSecurity(),
+		&uc.Repositories.MarbleDbRepository,
+		&uc.Repositories.MarbleDbRepository,
+	)
+}
