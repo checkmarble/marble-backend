@@ -1,4 +1,4 @@
-package usecases
+package ai_agent
 
 import (
 	"context"
@@ -24,6 +24,20 @@ type AiSettingUsecase struct {
 	enforceSecurity security.EnforceSecurityOrganization
 	repository      aiSettingRepository
 	orgRepository   organizationRepository
+}
+
+func NewAiSettingUsecase(
+	executorFactory executor_factory.ExecutorFactory,
+	enforceSecurity security.EnforceSecurityOrganization,
+	repository aiSettingRepository,
+	orgRepository organizationRepository,
+) AiSettingUsecase {
+	return AiSettingUsecase{
+		executorFactory: executorFactory,
+		enforceSecurity: enforceSecurity,
+		repository:      repository,
+		orgRepository:   orgRepository,
+	}
 }
 
 func (uc AiSettingUsecase) GetAiSetting(ctx context.Context, orgId string) (*models.AiSetting, error) {
