@@ -62,7 +62,7 @@ func (uc AiSettingUsecase) UpsertAiSetting(ctx context.Context, orgId string,
 			"don't have permission to update organization setting")
 	}
 
-	if err := uc.repository.UpsertAiSetting(ctx, uc.executorFactory.NewExecutor(), orgId, newSetting); err != nil {
+	if err := uc.repository.UpsertAiSetting(ctx, exec, orgId, newSetting); err != nil {
 		return models.AiSetting{}, errors.Wrap(err, "can't upsert ai setting")
 	}
 
@@ -71,7 +71,7 @@ func (uc AiSettingUsecase) UpsertAiSetting(ctx context.Context, orgId string,
 		return models.AiSetting{}, errors.Wrap(err, "can't get ai setting after update")
 	}
 	if aiSettingUpdated == nil {
-		return models.AiSetting{}, errors.New("Ai setting is null after upsert")
+		return models.AiSetting{}, errors.New("AI setting is null after upsert")
 	}
 
 	return *aiSettingUpdated, nil
