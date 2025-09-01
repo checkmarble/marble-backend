@@ -101,3 +101,9 @@ func (e MissingRequirementError) Is(target error) bool {
 
 	return errors.As(target, &req)
 }
+
+const (
+	MARBLE_GLOBAL_ERROR_HEADER = "x-marble-global-error"
+
+	MARBLE_GLOBAL_ERROR_DISALLOWED_NETWORK = "disallowed-network"
+)

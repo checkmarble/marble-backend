@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -108,6 +109,7 @@ func (uc AllowedNetworksUsecase) Guard(use AllowedNetworksUse) gin.HandlerFunc {
 			"ip", clientIp,
 			"subnets", subnets)
 
+		c.Header(models.MARBLE_GLOBAL_ERROR_HEADER, models.MARBLE_GLOBAL_ERROR_DISALLOWED_NETWORK)
 		c.AbortWithStatus(http.StatusForbidden)
 	}
 }
