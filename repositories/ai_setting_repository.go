@@ -8,7 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo MarbleDbRepository) GetAiSettingByOrgId(ctx context.Context, exec Executor, orgId string) (*models.AiSetting, error) {
+func (repo MarbleDbRepository) GetAiSetting(ctx context.Context, exec Executor, orgId string) (*models.AiSetting, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (repo MarbleDbRepository) PatchAiSetting(
 	}
 
 	// Get the complete updated setting
-	result, err := repo.GetAiSettingByOrgId(ctx, exec, orgId)
+	result, err := repo.GetAiSetting(ctx, exec, orgId)
 	if err != nil {
 		return models.AiSetting{}, err
 	}
@@ -82,7 +82,7 @@ func (repo MarbleDbRepository) upsertAiSettingType(
 	exec Executor,
 	orgId string,
 	settingType string,
-	value map[string]interface{},
+	value map[string]any,
 ) error {
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_AI_SETTING).

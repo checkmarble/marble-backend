@@ -3,7 +3,6 @@ package dto
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/google/uuid"
 	"golang.org/x/text/language"
 )
 
@@ -66,8 +65,7 @@ func AdaptCaseReviewSetting(setting CaseReviewSettingDto) models.CaseReviewSetti
 }
 
 type AiSettingDto struct {
-	Id    uuid.UUID `json:"id" binding:"required"`
-	OrgId string    `json:"org_id" binding:"required"`
+	OrgId string `json:"org_id" binding:"required"`
 
 	// Perplexity, KYC enrichment usecase
 	KYCEnrichmentSetting *KYCEnrichmentSettingDto `json:"kyc_enrichment_setting"`
@@ -86,7 +84,6 @@ func AdaptAiSettingDto(setting models.AiSetting) AiSettingDto {
 		caseReviewSetting = utils.Ptr(AdaptCaseReviewSettingDto(*setting.CaseReviewSetting))
 	}
 	return AiSettingDto{
-		Id:                   setting.Id,
 		OrgId:                setting.OrgId,
 		KYCEnrichmentSetting: kycEnrichmentSetting,
 		CaseReviewSetting:    caseReviewSetting,
@@ -118,7 +115,8 @@ func AdaptPatchAiSetting(setting PatchAiSettingDto) models.UpsertAiSetting {
 
 	if setting.KYCEnrichmentSetting != nil {
 		result.KYCEnrichmentSetting = utils.Ptr(
-			AdaptKYCEnrichmentSetting(*setting.KYCEnrichmentSetting))
+			AdaptKYCEnrichmentSetting(*setting.KYCEnrichmentSetting),
+		)
 	}
 
 	if setting.CaseReviewSetting != nil {

@@ -1,10 +1,6 @@
 // Package models contains the models for the AI settings for different AI usecases
 package models
 
-import (
-	"github.com/google/uuid"
-)
-
 type PerplexitySearchContextSize string
 
 const (
@@ -41,7 +37,6 @@ type CaseReviewSetting struct {
 // AiSetting contains the settings for the AI usecases, each usecase setting is stored in a separate struct
 // All fields are optional, if not set, let the usecase use a default value
 type AiSetting struct {
-	Id    uuid.UUID
 	OrgId string
 
 	// Perplexity, KYC enrichment usecase

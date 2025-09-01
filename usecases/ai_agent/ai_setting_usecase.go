@@ -11,7 +11,7 @@ import (
 )
 
 type aiSettingRepository interface {
-	GetAiSettingByOrgId(ctx context.Context, exec repositories.Executor, orgId string) (*models.AiSetting, error)
+	GetAiSetting(ctx context.Context, exec repositories.Executor, orgId string) (*models.AiSetting, error)
 	PatchAiSetting(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -25,26 +25,23 @@ type organizationRepository interface {
 }
 
 type AiSettingUsecase struct {
-	executorFactory    executor_factory.ExecutorFactory
-	transactionFactory executor_factory.TransactionFactory
-	enforceSecurity    security.EnforceSecurityOrganization
-	repository         aiSettingRepository
-	orgRepository      organizationRepository
+	executorFactory executor_factory.ExecutorFactory
+	enforceSecurity security.EnforceSecurityOrganization
+	repository      aiSettingRepository
+	orgRepository   organizationRepository
 }
 
 func NewAiSettingUsecase(
 	executorFactory executor_factory.ExecutorFactory,
-	transactionFactory executor_factory.TransactionFactory,
 	enforceSecurity security.EnforceSecurityOrganization,
 	repository aiSettingRepository,
 	orgRepository organizationRepository,
 ) AiSettingUsecase {
 	return AiSettingUsecase{
-		executorFactory:    executorFactory,
-		transactionFactory: transactionFactory,
-		enforceSecurity:    enforceSecurity,
-		repository:         repository,
-		orgRepository:      orgRepository,
+		executorFactory: executorFactory,
+		enforceSecurity: enforceSecurity,
+		repository:      repository,
+		orgRepository:   orgRepository,
 	}
 }
 
@@ -53,7 +50,7 @@ func (uc AiSettingUsecase) GetAiSetting(ctx context.Context, orgId string) (*mod
 		return nil, errors.Wrap(err, "don't have permission to see organization setting")
 	}
 
-	return uc.repository.GetAiSettingByOrgId(ctx, uc.executorFactory.NewExecutor(), orgId)
+	return uc.repository.GetAiSetting(ctx, uc.executorFactory.NewExecutor(), orgId)
 }
 
 func (uc AiSettingUsecase) PatchAiSetting(
