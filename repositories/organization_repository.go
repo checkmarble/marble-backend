@@ -9,7 +9,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/google/uuid"
 )
 
 type OrganizationRepository interface {
@@ -31,7 +30,6 @@ type OrganizationRepository interface {
 	HasOrganizations(ctx context.Context, exec Executor) (bool, error)
 	UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string,
 		subnets []net.IPNet) ([]net.IPNet, error)
-	UpdateOrganizationAiSettingId(ctx context.Context, exec Executor, organizationId string, aiSettingId *uuid.UUID) error
 }
 
 func (repo *MarbleDbRepository) AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error) {
@@ -251,13 +249,4 @@ func (m *MarbleDbRepository) UpdateOrganizationAllowedNetworks(ctx context.Conte
 		Suffix("returning allowed_networks")
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptOrganizationWhitelistedSubnets)
-}
-
-func (m *MarbleDbRepository) UpdateOrganizationAiSettingId(ctx context.Context, exec Executor, organizationId string, aiSettingId *uuid.UUID) error {
-	sql := NewQueryBuilder().
-		Update(dbmodels.TABLE_ORGANIZATION).
-		Set("ai_setting_id", aiSettingId).
-		Where("id = ?", organizationId)
-
-	return ExecBuilder(ctx, exec, sql)
 }

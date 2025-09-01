@@ -2,14 +2,13 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/checkmarble/marble-backend/utils"
-	"github.com/google/uuid"
 )
 
-func (repo MarbleDbRepository) GetAiSettingById(ctx context.Context, exec Executor, id uuid.UUID) (*models.AiSetting, error) {
+func (repo MarbleDbRepository) GetAiSettingByOrgId(ctx context.Context, exec Executor, orgId string) (*models.AiSetting, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -17,57 +16,86 @@ func (repo MarbleDbRepository) GetAiSettingById(ctx context.Context, exec Execut
 	query := NewQueryBuilder().
 		Select(dbmodels.AiSettingColumns...).
 		From(dbmodels.TABLE_AI_SETTING).
-		Where("id = ?", id)
+		Where("org_id = ?", orgId)
 
-	return SqlToOptionalModel(
-		ctx,
-		exec,
-		query,
-		dbmodels.AdaptAiSetting,
-	)
+	settings, err := SqlToListOfModels(ctx, exec, query, func(db dbmodels.DBAiSetting) (dbmodels.DBAiSetting, error) {
+		return db, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(settings) == 0 {
+		return nil, nil
+	}
+
+	aiSetting, err := dbmodels.AdaptAiSetting(settings, settings[0].OrgId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &aiSetting, nil
 }
 
-func (repo MarbleDbRepository) UpsertAiSetting(
+func (repo MarbleDbRepository) PatchAiSetting(
 	ctx context.Context,
 	exec Executor,
-	aiSettingId *uuid.UUID,
+	orgId string,
 	setting models.UpsertAiSetting,
 ) (models.AiSetting, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.AiSetting{}, err
 	}
 
-	if aiSettingId == nil {
-		aiSettingId = utils.Ptr(uuid.New())
+	// PATCH semantics: only update/delete the specific setting types provided
+	if setting.KYCEnrichmentSetting != nil {
+		if err := repo.upsertAiSettingType(ctx, exec, orgId,
+			dbmodels.AI_SETTING_TYPE_KYC_ENRICHMENT,
+			dbmodels.KYCEnrichmentToJSONB(*setting.KYCEnrichmentSetting)); err != nil {
+			return models.AiSetting{}, err
+		}
 	}
 
+	if setting.CaseReviewSetting != nil {
+		if err := repo.upsertAiSettingType(ctx, exec, orgId,
+			dbmodels.AI_SETTING_TYPE_CASE_REVIEW,
+			dbmodels.CaseReviewToJSONB(*setting.CaseReviewSetting)); err != nil {
+			return models.AiSetting{}, err
+		}
+	}
+
+	// Get the complete updated setting
+	result, err := repo.GetAiSettingByOrgId(ctx, exec, orgId)
+	if err != nil {
+		return models.AiSetting{}, err
+	}
+	if result == nil {
+		return models.AiSetting{}, fmt.Errorf("failed to retrieve patched AI setting")
+	}
+
+	return *result, nil
+}
+
+// Helper method to upsert a specific setting type (PATCH semantics)
+func (repo MarbleDbRepository) upsertAiSettingType(
+	ctx context.Context,
+	exec Executor,
+	orgId string,
+	settingType string,
+	value map[string]interface{},
+) error {
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_AI_SETTING).
-		Columns(dbmodels.AiSettingColumnsInsert...).
-		Values(
-			aiSettingId,
-			setting.KYCEnrichmentSetting.Model,
-			setting.KYCEnrichmentSetting.DomainFilter,
-			setting.KYCEnrichmentSetting.SearchContextSize,
-			setting.CaseReviewSetting.Language,
-			setting.CaseReviewSetting.Structure,
-			setting.CaseReviewSetting.OrgDescription,
-		).
-		Suffix("ON CONFLICT (id) DO UPDATE SET " +
-			"kyc_enrichment_model = EXCLUDED.kyc_enrichment_model, " +
-			"kyc_enrichment_domain_filter = EXCLUDED.kyc_enrichment_domain_filter, " +
-			"kyc_enrichment_search_context_size = EXCLUDED.kyc_enrichment_search_context_size, " +
-			"case_review_language = EXCLUDED.case_review_language, " +
-			"case_review_structure = EXCLUDED.case_review_structure, " +
-			"case_review_org_description = EXCLUDED.case_review_org_description, " +
-			"updated_at = CURRENT_TIMESTAMP",
-		).
-		Suffix("RETURNING *")
+		Columns("org_id", "type", "value").
+		Values(orgId, settingType, value).
+		Suffix("ON CONFLICT (org_id, type) DO UPDATE SET " +
+			"value = EXCLUDED.value, " +
+			"updated_at = CURRENT_TIMESTAMP")
 
-	return SqlToModel(
-		ctx,
-		exec,
-		query,
-		dbmodels.AdaptAiSetting,
-	)
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return err
+	}
+	_, err = exec.Exec(ctx, sql, args...)
+	return err
 }

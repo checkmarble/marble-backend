@@ -1,9 +1,8 @@
 package dto
 
 import (
-	"time"
-
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
 )
@@ -67,48 +66,64 @@ func AdaptCaseReviewSetting(setting CaseReviewSettingDto) models.CaseReviewSetti
 }
 
 type AiSettingDto struct {
-	Id        uuid.UUID `json:"id" binding:"required"`
-	CreatedAt time.Time `json:"created_at" binding:"required"`
-	UpdatedAt time.Time `json:"updated_at" binding:"required"`
+	Id    uuid.UUID `json:"id" binding:"required"`
+	OrgId string    `json:"org_id" binding:"required"`
 
 	// Perplexity, KYC enrichment usecase
-	KYCEnrichmentSetting KYCEnrichmentSettingDto `json:"kyc_enrichment_setting" binding:"required"`
+	KYCEnrichmentSetting *KYCEnrichmentSettingDto `json:"kyc_enrichment_setting"`
 
 	// CaseReview usecase (not used yet)
-	CaseReviewSetting CaseReviewSettingDto `json:"case_review_setting" binding:"required"`
+	CaseReviewSetting *CaseReviewSettingDto `json:"case_review_setting"`
 }
 
 func AdaptAiSettingDto(setting models.AiSetting) AiSettingDto {
+	var kycEnrichmentSetting *KYCEnrichmentSettingDto
+	if setting.KYCEnrichmentSetting != nil {
+		kycEnrichmentSetting = utils.Ptr(AdaptKYCEnrichmentSettingDto(*setting.KYCEnrichmentSetting))
+	}
+	var caseReviewSetting *CaseReviewSettingDto
+	if setting.CaseReviewSetting != nil {
+		caseReviewSetting = utils.Ptr(AdaptCaseReviewSettingDto(*setting.CaseReviewSetting))
+	}
 	return AiSettingDto{
 		Id:                   setting.Id,
-		CreatedAt:            setting.CreatedAt,
-		UpdatedAt:            setting.UpdatedAt,
-		KYCEnrichmentSetting: AdaptKYCEnrichmentSettingDto(setting.KYCEnrichmentSetting),
-		CaseReviewSetting:    AdaptCaseReviewSettingDto(setting.CaseReviewSetting),
+		OrgId:                setting.OrgId,
+		KYCEnrichmentSetting: kycEnrichmentSetting,
+		CaseReviewSetting:    caseReviewSetting,
 	}
 }
 
-type UpsertAiSettingDto struct {
-	// Perplexity, KYC enrichment usecase
-	KYCEnrichmentSetting KYCEnrichmentSettingDto `json:"kyc_enrichment_setting" binding:"required"`
-
-	// CaseReview usecase (not used yet)
-	CaseReviewSetting CaseReviewSettingDto `json:"case_review_setting" binding:"required"`
+// PATCH semantics: each field is optional, only provided fields are updated in DB, others remain unchanged
+type PatchAiSettingDto struct {
+	KYCEnrichmentSetting *KYCEnrichmentSettingDto `json:"kyc_enrichment_setting,omitempty"`
+	CaseReviewSetting    *CaseReviewSettingDto    `json:"case_review_setting,omitempty"`
 }
 
-func (dto UpsertAiSettingDto) Validate() error {
-	if err := dto.KYCEnrichmentSetting.Validate(); err != nil {
-		return err
+func (dto PatchAiSettingDto) Validate() error {
+	if dto.KYCEnrichmentSetting != nil {
+		if err := dto.KYCEnrichmentSetting.Validate(); err != nil {
+			return err
+		}
 	}
-	if err := dto.CaseReviewSetting.Validate(); err != nil {
-		return err
+	if dto.CaseReviewSetting != nil {
+		if err := dto.CaseReviewSetting.Validate(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func AdaptUpsertAiSetting(setting UpsertAiSettingDto) models.UpsertAiSetting {
-	return models.UpsertAiSetting{
-		KYCEnrichmentSetting: AdaptKYCEnrichmentSetting(setting.KYCEnrichmentSetting),
-		CaseReviewSetting:    AdaptCaseReviewSetting(setting.CaseReviewSetting),
+func AdaptPatchAiSetting(setting PatchAiSettingDto) models.UpsertAiSetting {
+	result := models.UpsertAiSetting{}
+
+	if setting.KYCEnrichmentSetting != nil {
+		result.KYCEnrichmentSetting = utils.Ptr(
+			AdaptKYCEnrichmentSetting(*setting.KYCEnrichmentSetting))
 	}
+
+	if setting.CaseReviewSetting != nil {
+		result.CaseReviewSetting = utils.Ptr(AdaptCaseReviewSetting(*setting.CaseReviewSetting))
+	}
+
+	return result
 }

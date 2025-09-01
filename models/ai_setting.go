@@ -2,8 +2,6 @@
 package models
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 )
 
@@ -43,18 +41,17 @@ type CaseReviewSetting struct {
 // AiSetting contains the settings for the AI usecases, each usecase setting is stored in a separate struct
 // All fields are optional, if not set, let the usecase use a default value
 type AiSetting struct {
-	Id        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Id    uuid.UUID
+	OrgId string
 
 	// Perplexity, KYC enrichment usecase
-	KYCEnrichmentSetting KYCEnrichmentSetting
+	KYCEnrichmentSetting *KYCEnrichmentSetting
 
 	// CaseReview usecase (not used yet)
-	CaseReviewSetting CaseReviewSetting
+	CaseReviewSetting *CaseReviewSetting
 }
 
 type UpsertAiSetting struct {
-	KYCEnrichmentSetting KYCEnrichmentSetting
-	CaseReviewSetting    CaseReviewSetting
+	KYCEnrichmentSetting *KYCEnrichmentSetting
+	CaseReviewSetting    *CaseReviewSetting
 }

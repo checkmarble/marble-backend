@@ -29,7 +29,6 @@ type Organization struct {
 
 	OpenSanctionsConfig  OrganizationOpenSanctionsConfig
 	AutoAssignQueueLimit int
-	AiSettingId          *uuid.UUID
 }
 
 // TODO: Add other organization-level configuration options

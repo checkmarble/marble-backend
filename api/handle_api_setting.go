@@ -33,7 +33,7 @@ func HandleGetAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Context
 	}
 }
 
-func HandleUpsertAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Context) {
+func HandlePatchAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -41,7 +41,7 @@ func HandleUpsertAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Cont
 			return
 		}
 
-		var payload dto.UpsertAiSettingDto
+		var payload dto.PatchAiSettingDto
 		if err := c.ShouldBindJSON(&payload); presentError(ctx, c, err) {
 			return
 		}
@@ -52,7 +52,7 @@ func HandleUpsertAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Cont
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiSettingUsecase()
-		aiSetting, err := usecase.UpsertAiSetting(ctx, organizationId, dto.AdaptUpsertAiSetting(payload))
+		aiSetting, err := usecase.PatchAiSetting(ctx, organizationId, dto.AdaptPatchAiSetting(payload))
 		if presentError(ctx, c, err) {
 			return
 		}
