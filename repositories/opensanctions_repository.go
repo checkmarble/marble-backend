@@ -382,6 +382,8 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg *models.ScreeningConfig
 		qs["include_dataset"] = cfg.Datasets
 	}
 
+	qs.Set("algorithm", repo.opensanctions.Algorithm())
+
 	if query != nil {
 		query.EffectiveThreshold = utils.Or(query.Config.Threshold, query.OrgConfig.MatchThreshold)
 

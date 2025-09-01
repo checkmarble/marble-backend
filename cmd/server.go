@@ -101,6 +101,9 @@ func RunServer(config CompiledConfig) error {
 	if scope := utils.GetEnv("OPENSANCTIONS_SCOPE", ""); scope != "" {
 		openSanctionsConfig.WithScope(scope)
 	}
+	if algo := utils.GetEnv("OPENSANCTIONS_ALGORITHM", ""); algo != "" {
+		openSanctionsConfig.WithAlgorithm(algo)
+	}
 
 	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
 		openSanctionsConfig.WithNameRecognition(apiUrl,
