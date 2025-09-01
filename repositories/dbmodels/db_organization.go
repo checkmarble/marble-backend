@@ -20,6 +20,7 @@ type DBOrganizationResult struct {
 	ScreeningThreshold      int         `db:"sanctions_threshold"`
 	ScreeningLimit          int         `db:"sanctions_limit"`
 	AutoAssignQueueLimit    int         `db:"auto_assign_queue_limit"`
+	AiSettingId             *uuid.UUID  `db:"ai_setting_id"`
 }
 
 const TABLE_ORGANIZATION = "organizations"
@@ -40,6 +41,7 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 			MatchLimit:     db.ScreeningLimit,
 		},
 		AutoAssignQueueLimit: db.AutoAssignQueueLimit,
+		AiSettingId:          db.AiSettingId,
 	}, nil
 }
 

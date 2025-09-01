@@ -736,6 +736,7 @@ func (uc *UsecasesWithCreds) NewUserSettingsUsecase() UserSettingsUsecase {
 func (uc *UsecasesWithCreds) NewAiSettingUsecase() ai_agent.AiSettingUsecase {
 	return ai_agent.NewAiSettingUsecase(
 		uc.NewExecutorFactory(),
+		uc.NewTransactionFactory(),
 		uc.NewEnforceOrganizationSecurity(),
 		&uc.Repositories.MarbleDbRepository,
 		&uc.Repositories.MarbleDbRepository,

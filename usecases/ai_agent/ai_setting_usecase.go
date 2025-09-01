@@ -8,35 +8,50 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type aiSettingRepository interface {
-	GetAiSetting(ctx context.Context, exec repositories.Executor, orgId string) (*models.AiSetting, error)
-	UpsertAiSetting(ctx context.Context, exec repositories.Executor, orgId string, setting models.UpsertAiSetting) error
+	GetAiSettingById(ctx context.Context, exec repositories.Executor, id uuid.UUID) (*models.AiSetting, error)
+	UpsertAiSetting(
+		ctx context.Context,
+		exec repositories.Executor,
+		aiSettingId *uuid.UUID,
+		setting models.UpsertAiSetting,
+	) (models.AiSetting, error)
 }
 
 type organizationRepository interface {
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, orgId string) (models.Organization, error)
+	UpdateOrganizationAiSettingId(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		aiSettingId *uuid.UUID,
+	) error
 }
 
 type AiSettingUsecase struct {
-	executorFactory executor_factory.ExecutorFactory
-	enforceSecurity security.EnforceSecurityOrganization
-	repository      aiSettingRepository
-	orgRepository   organizationRepository
+	executorFactory    executor_factory.ExecutorFactory
+	transactionFactory executor_factory.TransactionFactory
+	enforceSecurity    security.EnforceSecurityOrganization
+	repository         aiSettingRepository
+	orgRepository      organizationRepository
 }
 
 func NewAiSettingUsecase(
 	executorFactory executor_factory.ExecutorFactory,
+	transactionFactory executor_factory.TransactionFactory,
 	enforceSecurity security.EnforceSecurityOrganization,
 	repository aiSettingRepository,
 	orgRepository organizationRepository,
 ) AiSettingUsecase {
 	return AiSettingUsecase{
-		executorFactory: executorFactory,
-		enforceSecurity: enforceSecurity,
-		repository:      repository,
-		orgRepository:   orgRepository,
+		executorFactory:    executorFactory,
+		transactionFactory: transactionFactory,
+		enforceSecurity:    enforceSecurity,
+		repository:         repository,
+		orgRepository:      orgRepository,
 	}
 }
 
@@ -45,34 +60,49 @@ func (uc AiSettingUsecase) GetAiSetting(ctx context.Context, orgId string) (*mod
 		return nil, errors.Wrap(err, "don't have permission to see organization setting")
 	}
 
-	return uc.repository.GetAiSetting(ctx, uc.executorFactory.NewExecutor(), orgId)
+	org, err := uc.orgRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve organization")
+	}
+
+	if org.AiSettingId == nil {
+		return nil, nil
+	}
+
+	return uc.repository.GetAiSettingById(ctx, uc.executorFactory.NewExecutor(), *org.AiSettingId)
 }
 
-func (uc AiSettingUsecase) UpsertAiSetting(ctx context.Context, orgId string,
+func (uc AiSettingUsecase) UpsertAiSetting(
+	ctx context.Context,
+	orgId string,
 	newSetting models.UpsertAiSetting,
 ) (models.AiSetting, error) {
-	exec := uc.executorFactory.NewExecutor()
+	return executor_factory.TransactionReturnValue(
+		ctx,
+		uc.transactionFactory,
+		func(tx repositories.Transaction) (models.AiSetting, error) {
+			org, err := uc.orgRepository.GetOrganizationById(ctx, tx, orgId)
+			if err != nil {
+				return models.AiSetting{}, errors.Wrap(err, "could not retrieve organization")
+			}
+			if err := uc.enforceSecurity.EditOrganization(org); err != nil {
+				return models.AiSetting{}, errors.Wrap(err,
+					"don't have permission to update organization setting")
+			}
 
-	org, err := uc.orgRepository.GetOrganizationById(ctx, exec, orgId)
-	if err != nil {
-		return models.AiSetting{}, errors.Wrap(err, "could not retrieve organization")
-	}
-	if err := uc.enforceSecurity.EditOrganization(org); err != nil {
-		return models.AiSetting{}, errors.Wrap(err,
-			"don't have permission to update organization setting")
-	}
+			aiSettingUpserted, err := uc.repository.UpsertAiSetting(ctx, tx, org.AiSettingId, newSetting)
+			if err != nil {
+				return models.AiSetting{}, errors.Wrap(err, "can't upsert ai setting")
+			}
 
-	if err := uc.repository.UpsertAiSetting(ctx, exec, orgId, newSetting); err != nil {
-		return models.AiSetting{}, errors.Wrap(err, "can't upsert ai setting")
-	}
+			err = uc.orgRepository.UpdateOrganizationAiSettingId(ctx, tx, orgId, &aiSettingUpserted.Id)
+			if err != nil {
+				return models.AiSetting{}, errors.Wrap(err,
+					"can't update organization to attach ai setting",
+				)
+			}
 
-	aiSettingUpdated, err := uc.repository.GetAiSetting(ctx, exec, orgId)
-	if err != nil {
-		return models.AiSetting{}, errors.Wrap(err, "can't get ai setting after update")
-	}
-	if aiSettingUpdated == nil {
-		return models.AiSetting{}, errors.New("AI setting is null after upsert")
-	}
-
-	return *aiSettingUpdated, nil
+			return aiSettingUpserted, nil
+		},
+	)
 }

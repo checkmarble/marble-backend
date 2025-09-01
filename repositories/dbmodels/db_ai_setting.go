@@ -10,7 +10,7 @@ import (
 )
 
 type DBAiSetting struct {
-	OrgId     uuid.UUID `db:"org_id"`
+	Id        uuid.UUID `db:"id"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 
@@ -28,7 +28,7 @@ const TABLE_AI_SETTING = "ai_settings"
 var (
 	AiSettingColumns       = utils.ColumnList[DBAiSetting]()
 	AiSettingColumnsInsert = []string{
-		"org_id",
+		"id",
 		"kyc_enrichment_model",
 		"kyc_enrichment_domain_filter",
 		"kyc_enrichment_search_context_size",
@@ -49,7 +49,7 @@ func AdaptAiSetting(db DBAiSetting) (models.AiSetting, error) {
 	}
 
 	return models.AiSetting{
-		OrgId:     db.OrgId,
+		Id:        db.Id,
 		CreatedAt: db.CreatedAt,
 		UpdatedAt: db.UpdatedAt,
 		KYCEnrichmentSetting: models.KYCEnrichmentSetting{

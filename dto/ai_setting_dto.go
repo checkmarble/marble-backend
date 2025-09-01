@@ -67,7 +67,7 @@ func AdaptCaseReviewSetting(setting CaseReviewSettingDto) models.CaseReviewSetti
 }
 
 type AiSettingDto struct {
-	OrgId     uuid.UUID `json:"org_id" binding:"required"`
+	Id        uuid.UUID `json:"id" binding:"required"`
 	CreatedAt time.Time `json:"created_at" binding:"required"`
 	UpdatedAt time.Time `json:"updated_at" binding:"required"`
 
@@ -80,7 +80,7 @@ type AiSettingDto struct {
 
 func AdaptAiSettingDto(setting models.AiSetting) AiSettingDto {
 	return AiSettingDto{
-		OrgId:                setting.OrgId,
+		Id:                   setting.Id,
 		CreatedAt:            setting.CreatedAt,
 		UpdatedAt:            setting.UpdatedAt,
 		KYCEnrichmentSetting: AdaptKYCEnrichmentSettingDto(setting.KYCEnrichmentSetting),

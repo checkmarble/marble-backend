@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func HandleGetAiSetting(uc usecases.Usecases) func(c *gin.Context) {
+func HandleGetAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -33,7 +33,7 @@ func HandleGetAiSetting(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func HandleUpsertAiSetting(uc usecases.Usecases) func(c *gin.Context) {
+func HandleUpsertAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
