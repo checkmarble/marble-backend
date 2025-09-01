@@ -22,6 +22,7 @@ type OpenSanctions struct {
 	host        string
 	authMethod  OpenSanctionsAuthMethod
 	credentials string
+	algorithm   string
 	scope       string
 
 	nameRecognition *NameRecognitionProvider
@@ -37,6 +38,7 @@ func InitializeOpenSanctions(client *http.Client, host, authMethod, creds string
 		client:      client,
 		host:        host,
 		credentials: creds,
+		algorithm:   "logic-v1",
 		scope:       "default",
 	}
 
@@ -48,6 +50,12 @@ func InitializeOpenSanctions(client *http.Client, host, authMethod, creds string
 			os.authMethod = OPEN_SANCTIONS_AUTH_BASIC
 		}
 	}
+
+	return os
+}
+
+func (os *OpenSanctions) WithAlgorithm(algo string) *OpenSanctions {
+	os.algorithm = algo
 
 	return os
 }
@@ -108,6 +116,10 @@ func (os OpenSanctions) NameRecognition() *NameRecognitionProvider {
 
 func (os OpenSanctions) Scope() string {
 	return os.scope
+}
+
+func (os OpenSanctions) Algorithm() string {
+	return os.algorithm
 }
 
 func (ner OpenSanctions) IsNameRecognitionSet() bool {
