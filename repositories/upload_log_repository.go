@@ -75,6 +75,9 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(
 	if input.NumRowsIngested != nil {
 		updateRequest = updateRequest.Set("num_rows_ingested", *input.NumRowsIngested)
 	}
+	if input.Error != nil {
+		updateRequest = updateRequest.Set("error", *input.Error)
+	}
 
 	updateRequest = updateRequest.
 		Where("id = ?", input.Id).

@@ -13,6 +13,7 @@ type UploadLog struct {
 	FinishedAt     *time.Time
 	LinesProcessed int
 	RowsIngested   int
+	Error          *string
 }
 
 type UploadStatus string
@@ -44,4 +45,5 @@ type UpdateUploadLogStatusInput struct {
 	CurrentUploadStatusCondition UploadStatus // for optimistic locking. Only rows matching this current status will be updated
 	FinishedAt                   *time.Time
 	NumRowsIngested              *int
+	Error                        *string
 }

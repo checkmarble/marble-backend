@@ -18,6 +18,7 @@ type DBUploadLog struct {
 	FinishedAt      *time.Time `db:"finished_at"`
 	LinesProcessed  int        `db:"lines_processed"`
 	NumRowsIngested int        `db:"num_rows_ingested"`
+	Error           *string    `db:"error"`
 }
 
 const TABLE_UPLOAD_LOGS = "upload_logs"
@@ -36,5 +37,6 @@ func AdaptUploadLog(db DBUploadLog) (models.UploadLog, error) {
 		FinishedAt:     db.FinishedAt,
 		LinesProcessed: db.LinesProcessed,
 		RowsIngested:   db.NumRowsIngested,
+		Error:          db.Error,
 	}, nil
 }

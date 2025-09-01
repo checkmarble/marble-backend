@@ -393,9 +393,16 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		return nil
 	}
 
-	setToFailed := func(numRowsIngested int) {
+	setToFailed := func(numRowsIngested int, ingestErr error) {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
 		defer cancel()
+
+		errorString := ""
+
+		if ingestErr != nil {
+			errorString = ingestErr.Error()
+		}
+
 		_, err := usecase.uploadLogRepository.UpdateUploadLogStatus(
 			ctx,
 			exec,
@@ -404,6 +411,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 				CurrentUploadStatusCondition: models.UploadProcessing,
 				UploadStatus:                 models.UploadFailure,
 				NumRowsIngested:              &numRowsIngested,
+				Error:                        &errorString,
 			})
 		if err != nil {
 			logger.ErrorContext(ctx, fmt.Sprintf("Error setting upload log %s to failed", uploadLog.Id), "error", err.Error())
@@ -415,13 +423,13 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		defer file.ReadCloser.Close()
 	}
 	if err != nil {
-		setToFailed(0)
+		setToFailed(0, err)
 		return err
 	}
 
 	out := usecase.readFileIngestObjects(ctx, file.FileName, file.ReadCloser)
 	if out.err != nil {
-		setToFailed(out.numRowsIngested)
+		setToFailed(out.numRowsIngested, out.err)
 		return out.err
 	}
 
@@ -524,7 +532,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		windowEnd := objectIdx + csvIngestionBatchSize
 		clientObjects := make([]models.ClientObject, 0, csvIngestionBatchSize)
 		for ; objectIdx < windowEnd; objectIdx++ {
-			logger.InfoContext(ctx, fmt.Sprintf("Start reading line %v", objectIdx))
+			logger.DebugContext(ctx, fmt.Sprintf("Start reading line %v", objectIdx))
 			record, err := r.Read()
 			if err == io.EOF { //nolint:errorlint
 				keepParsingFile = false
@@ -543,7 +551,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 					err:             fmt.Errorf("error parsing line %d of CSV: %w", objectIdx, err),
 				}
 			}
-			logger.InfoContext(ctx, fmt.Sprintf("Object to ingest %d: %+v", objectIdx, object))
+			logger.DebugContext(ctx, fmt.Sprintf("Object to ingest %d: %+v", objectIdx, object))
 
 			clientObject := models.ClientObject{TableName: table.Name, Data: object}
 			clientObjects = append(clientObjects, clientObject)
