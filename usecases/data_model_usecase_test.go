@@ -223,12 +223,12 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_no_unique() {
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
 	var nilStr *string
-	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr).
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr, mock.Anything).
 		Return(nil, nil)
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
-		suite.ctx, suite.transaction, suite.organizationId, true).
+		suite.ctx, suite.transaction, suite.organizationId, true, mock.Anything).
 		Return(suite.dataModel, nil)
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return([]models.UnicityIndex{}, nil)
@@ -237,7 +237,7 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_no_unique() {
 		IncludeEnums:              true,
 		IncludeNavigationOptions:  true,
 		IncludeUnicityConstraints: true,
-	})
+	}, false)
 	suite.Require().NoError(err, "no error expected")
 	suite.Require().Equal(suite.dataModel, dataModel, "suite data model should be returned, without changes")
 
@@ -249,13 +249,13 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_with_unique() {
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
 	suite.dataModelRepository.On("GetDataModel",
-		suite.ctx, suite.transaction, suite.organizationId, true).
+		suite.ctx, suite.transaction, suite.organizationId, true, mock.Anything).
 		Return(suite.dataModel, nil)
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
 
 	var nilStr *string
-	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr).
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr, mock.Anything).
 		Return(nil, nil)
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
@@ -263,7 +263,7 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_with_unique() {
 		IncludeEnums:              true,
 		IncludeNavigationOptions:  true,
 		IncludeUnicityConstraints: true,
-	})
+	}, false)
 	suite.Require().NoError(err, "no error expected")
 	suite.Require().Equal(suite.dataModelWithUnique, dataModel,
 		"suite data model with unicity status should be returned")
@@ -279,7 +279,7 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_security_error() {
 		IncludeEnums:              true,
 		IncludeNavigationOptions:  true,
 		IncludeUnicityConstraints: true,
-	})
+	}, false)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.securityError, err, "expected error should be returned")
 
@@ -291,14 +291,14 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_repository_error() {
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
 	suite.dataModelRepository.On("GetDataModel",
-		suite.ctx, suite.transaction, suite.organizationId, true).
+		suite.ctx, suite.transaction, suite.organizationId, true, mock.Anything).
 		Return(models.DataModel{}, suite.repositoryError)
 
 	_, err := usecase.GetDataModel(suite.ctx, suite.organizationId, models.DataModelReadOptions{
 		IncludeEnums:              true,
 		IncludeNavigationOptions:  true,
 		IncludeUnicityConstraints: true,
-	})
+	}, false)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.repositoryError, err, "expected error should be returned")
 
@@ -710,7 +710,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_nominal() {
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
-		suite.ctx, suite.transaction, suite.organizationId, false).
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
@@ -749,7 +749,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_parent_field_not
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
-		suite.ctx, suite.transaction, suite.organizationId, false).
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return([]models.UnicityIndex{}, nil)
@@ -814,7 +814,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
-		suite.ctx, suite.transaction, suite.organizationId, false).
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
@@ -848,7 +848,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
-		suite.ctx, suite.transaction, suite.organizationId, false).
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
@@ -889,7 +889,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
-		suite.ctx, suite.transaction, suite.organizationId, false).
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
@@ -938,7 +938,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
-		suite.ctx, suite.transaction, suite.organizationId, false).
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)

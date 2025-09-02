@@ -210,7 +210,7 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 	}
 
 	sccs, err := uc.screeningConfigRepository.ListScreeningConfigs(ctx,
-		uc.executorFactory.NewExecutor(), decisions[0].ScenarioIterationId.String())
+		uc.executorFactory.NewExecutor(), decisions[0].ScenarioIterationId.String(), false)
 	if err != nil {
 		return nil, err
 	}

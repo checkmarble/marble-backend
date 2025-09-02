@@ -24,16 +24,16 @@ func (s *ScenarioFetcherRepositoryMock) GetScenarioById(ctx context.Context,
 }
 
 func (s *ScenarioFetcherRepositoryMock) GetScenarioIteration(ctx context.Context,
-	exec repositories.Executor, scenarioIterationId string,
+	exec repositories.Executor, scenarioIterationId string, useCache bool,
 ) (models.ScenarioIteration, error) {
-	args := s.Called(exec, scenarioIterationId)
+	args := s.Called(exec, scenarioIterationId, useCache)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }
 
 func (s *ScenarioFetcherRepositoryMock) ListScreeningConfigs(ctx context.Context,
-	exec repositories.Executor, scenarioIterationId string,
+	exec repositories.Executor, scenarioIterationId string, useCache bool,
 ) ([]models.ScreeningConfig, error) {
-	args := s.Called(exec, scenarioIterationId)
+	args := s.Called(exec, scenarioIterationId, useCache)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -71,9 +71,9 @@ func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 	mt := new(mocks.Executor)
 
 	repo := new(ScenarioFetcherRepositoryMock)
-	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
-	repo.On("GetScenarioById", mt, scenario.Id).Return(scenario, nil)
-	repo.On("ListScreeningConfigs", mt, scenarioIteration.Id).Return(nil, nil)
+	repo.On("GetScenarioIteration", mt, scenarioIteration.Id, mock.Anything).Return(scenarioIteration, nil)
+	repo.On("GetScenarioById", mt, scenario.Id, mock.Anything).Return(scenario, nil)
+	repo.On("ListScreeningConfigs", mt, scenarioIteration.Id, mock.Anything, mock.Anything).Return(nil, nil)
 
 	fetcher := ScenarioFetcher{
 		Repository: repo,
@@ -104,9 +104,9 @@ func TestScenarioFetcher_FetchScenarioAndIteration_withScreening(t *testing.T) {
 	mt := new(mocks.Executor)
 
 	repo := new(ScenarioFetcherRepositoryMock)
-	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
+	repo.On("GetScenarioIteration", mt, scenarioIteration.Id, mock.Anything).Return(scenarioIteration, nil)
 	repo.On("GetScenarioById", mt, scenario.Id).Return(scenario, nil)
-	repo.On("ListScreeningConfigs", mt, scenarioIteration.Id).Return([]models.ScreeningConfig{}, nil)
+	repo.On("ListScreeningConfigs", mt, scenarioIteration.Id, mock.Anything, mock.Anything).Return([]models.ScreeningConfig{}, nil)
 
 	fetcher := ScenarioFetcher{
 		Repository: repo,
@@ -127,7 +127,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioIteration_error(t 
 	mt := new(mocks.Executor)
 
 	repo := new(ScenarioFetcherRepositoryMock)
-	repo.On("GetScenarioIteration", mt, "scenario_iteration_id").Return(
+	repo.On("GetScenarioIteration", mt, "scenario_iteration_id", mock.Anything).Return(
 		models.ScenarioIteration{}, assert.AnError)
 
 	fetcher := ScenarioFetcher{
@@ -154,9 +154,9 @@ func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioById_error(t *test
 	mt := new(mocks.Executor)
 
 	repo := new(ScenarioFetcherRepositoryMock)
-	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
+	repo.On("GetScenarioIteration", mt, scenarioIteration.Id, mock.Anything).Return(scenarioIteration, nil)
 	repo.On("GetScenarioById", mt, scenario.Id).Return(scenario, assert.AnError)
-	repo.On("ListScreeningConfigs", mt, scenarioIteration.Id).Return(nil, nil)
+	repo.On("ListScreeningConfigs", mt, scenarioIteration.Id, mock.Anything, mock.Anything).Return(nil, nil)
 
 	fetcher := ScenarioFetcher{
 		Repository: repo,

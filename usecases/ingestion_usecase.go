@@ -66,7 +66,7 @@ func (usecase *IngestionUseCase) IngestObject(
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, true)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting data model in IngestObject")
 	}
@@ -142,7 +142,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, true)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting data model in IngestObjects")
 	}
@@ -223,7 +223,9 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		ctx,
 		usecase.executorFactory.NewExecutor(),
 		organizationId,
-		false)
+		false,
+		true,
+	)
 	if err != nil {
 		return models.UploadLog{}, err
 	}
@@ -474,7 +476,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, true)
 	if err != nil {
 		return ingestionResult{
 			err: errors.Wrap(err, "error getting data model in readFileIngestObjects"),

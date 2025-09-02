@@ -720,7 +720,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 	decisionDtos := make([]agent_dto.Decision, len(decisions))
 	for i := range decisions {
 		iteration, err := uc.repository.GetScenarioIteration(ctx, exec,
-			decisions[i].Decision.ScenarioIterationId.String())
+			decisions[i].Decision.ScenarioIterationId.String(), true)
 		if err != nil {
 			return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 				"could not retrieve scenario for decision %s", decisions[i].DecisionId)
@@ -742,7 +742,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 
 	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, c.OrganizationId, models.DataModelReadOptions{
 		IncludeEnums: true, IncludeNavigationOptions: true,
-	})
+	}, true)
 	if err != nil {
 		return caseData{}, agent_dto.CasePivotDataByPivot{},
 			errors.Wrap(err, "could not retrieve data model")
@@ -805,7 +805,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 				nil,
 				users,
 				func(scenarioIterationId string) (models.ScenarioIteration, error) {
-					return uc.repository.GetScenarioIteration(ctx, exec, scenarioIterationId)
+					return uc.repository.GetScenarioIteration(ctx, exec, scenarioIterationId, true)
 				},
 				func(decisionId string) ([]models.ScreeningWithMatches, error) {
 					return uc.repository.ListScreeningsForDecision(ctx, exec, decisionId, true)

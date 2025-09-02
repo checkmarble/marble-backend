@@ -7,9 +7,9 @@ import (
 )
 
 type EvalScenarioRepository interface {
-	GetScenarioIteration(ctx context.Context, exec Executor, scenarioIterationId string) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, exec Executor, scenarioIterationId string, useCache bool) (models.ScenarioIteration, error)
 }
 
 type EvalScreeningConfigRepository interface {
-	ListScreeningConfigs(ctx context.Context, exec Executor, scenarioIterationId string) ([]models.ScreeningConfig, error)
+	ListScreeningConfigs(ctx context.Context, exec Executor, scenarioIterationId string, useCache bool) ([]models.ScreeningConfig, error)
 }

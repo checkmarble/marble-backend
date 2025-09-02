@@ -363,7 +363,7 @@ func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context,
 	filtersTriggerObjects []string, organizationId string,
 ) ([]string, error) {
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId, true)
+		usecase.executorFactory.NewExecutor(), organizationId, true, true)
 	if err != nil {
 		return nil, err
 	}
@@ -422,7 +422,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		return false, models.DecisionWithRuleExecutions{}, err
 	}
 
-	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, input.OrganizationId, nil)
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, input.OrganizationId, nil, true)
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{}, err
 	}
@@ -606,7 +606,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		return nil, 0, err
 	}
 
-	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, input.OrganizationId, nil)
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, input.OrganizationId, nil, true)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -834,7 +834,7 @@ func (usecase DecisionUsecase) validatePayload(
 		return
 	}
 
-	dataModel, err = usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
+	dataModel, err = usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, true)
 	if err != nil {
 		err = errors.Wrap(err, "error getting data model in validatePayload")
 		return

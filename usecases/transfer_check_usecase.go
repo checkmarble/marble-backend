@@ -553,6 +553,7 @@ func (usecase *TransferCheckUsecase) getTransfercheckTable(ctx context.Context,
 		usecase.executorFactory.NewExecutor(),
 		organizationId,
 		false,
+		false,
 	)
 	if err != nil {
 		return models.Table{}, err

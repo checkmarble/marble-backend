@@ -51,7 +51,7 @@ func (usecase TransferDataReader) QueryTransferDataFromMapping(
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, transferMapping.OrganizationId, false)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, transferMapping.OrganizationId, false, true)
 	if err != nil {
 		return nil, err
 	}

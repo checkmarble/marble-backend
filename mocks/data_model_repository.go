@@ -18,8 +18,9 @@ func (d *DataModelRepository) GetDataModel(
 	exec repositories.Executor,
 	organizationId string,
 	fetchEnumValues bool,
+	useCache bool,
 ) (models.DataModel, error) {
-	args := d.Called(ctx, exec, organizationId, fetchEnumValues)
+	args := d.Called(ctx, exec, organizationId, fetchEnumValues, useCache)
 	return args.Get(0).(models.DataModel), args.Error(1)
 }
 
@@ -85,8 +86,9 @@ func (d *DataModelRepository) ListPivots(
 	exec repositories.Executor,
 	organization_id string,
 	tableId *string,
+	useCache bool,
 ) ([]models.PivotMetadata, error) {
-	args := d.Called(ctx, exec, organization_id, tableId)
+	args := d.Called(ctx, exec, organization_id, tableId, useCache)
 	if args.Error(1) != nil {
 		return nil, args.Error(1)
 	}
