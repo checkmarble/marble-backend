@@ -28,7 +28,8 @@ type OrganizationRepository interface {
 		updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
 	) error
 	HasOrganizations(ctx context.Context, exec Executor) (bool, error)
-	UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string, subnets []net.IPNet) ([]net.IPNet, error)
+	UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string,
+		subnets []net.IPNet) ([]net.IPNet, error)
 }
 
 func (repo *MarbleDbRepository) AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error) {
@@ -124,7 +125,8 @@ func (repo *MarbleDbRepository) UpdateOrganization(ctx context.Context, exec Exe
 		hasUpdates = true
 	}
 	if updateOrganization.AutoAssignQueueLimit != nil {
-		updateRequest = updateRequest.Set("auto_assign_queue_limit", updateOrganization.AutoAssignQueueLimit)
+		updateRequest = updateRequest.Set("auto_assign_queue_limit",
+			updateOrganization.AutoAssignQueueLimit)
 		hasUpdates = true
 	}
 
