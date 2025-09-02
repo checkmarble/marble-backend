@@ -22,17 +22,27 @@ func PerplexitySearchContextSizeFromString(s string) PerplexitySearchContextSize
 	return PerplexitySearchContextSizeUnknown
 }
 
-type KYCEnrichmentSetting struct {
-	Model             *string
-	DomainFilter      []string
-	SearchContextSize *PerplexitySearchContextSize
+type AiSettingEntity interface {
+	entityAiSetting()
 }
 
-type CaseReviewSetting struct {
-	Language       *string
-	Structure      *string
-	OrgDescription *string // Hum ... In CaseReview or put in AiSetting as a common field
+// Json tag for json serialization into JSONB column
+type KYCEnrichmentSetting struct {
+	Model             *string                      `json:"model"`
+	DomainFilter      []string                     `json:"domain_filter"`
+	SearchContextSize *PerplexitySearchContextSize `json:"search_context_size"`
 }
+
+func (KYCEnrichmentSetting) entityAiSetting() {}
+
+// Json tag for json serialization into JSONB column
+type CaseReviewSetting struct {
+	Language       *string `json:"language"`
+	Structure      *string `json:"structure"`
+	OrgDescription *string `json:"org_description"` // Hum ... In CaseReview or put in AiSetting as a common field
+}
+
+func (CaseReviewSetting) entityAiSetting() {}
 
 // AiSetting contains the settings for the AI usecases, each usecase setting is stored in a separate struct
 // All fields are optional, if not set, let the usecase use a default value

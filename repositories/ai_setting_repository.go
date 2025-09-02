@@ -51,7 +51,7 @@ func (repo MarbleDbRepository) PatchAiSetting(
 	if setting.KYCEnrichmentSetting != nil {
 		if err := repo.upsertAiSettingType(ctx, exec, orgId,
 			dbmodels.AI_SETTING_TYPE_KYC_ENRICHMENT,
-			dbmodels.KYCEnrichmentToJSONB(*setting.KYCEnrichmentSetting)); err != nil {
+			*setting.KYCEnrichmentSetting); err != nil {
 			return models.AiSetting{}, err
 		}
 	}
@@ -59,7 +59,7 @@ func (repo MarbleDbRepository) PatchAiSetting(
 	if setting.CaseReviewSetting != nil {
 		if err := repo.upsertAiSettingType(ctx, exec, orgId,
 			dbmodels.AI_SETTING_TYPE_CASE_REVIEW,
-			dbmodels.CaseReviewToJSONB(*setting.CaseReviewSetting)); err != nil {
+			*setting.CaseReviewSetting); err != nil {
 			return models.AiSetting{}, err
 		}
 	}
@@ -82,7 +82,7 @@ func (repo MarbleDbRepository) upsertAiSettingType(
 	exec Executor,
 	orgId string,
 	settingType string,
-	value map[string]any,
+	value models.AiSettingEntity,
 ) error {
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_AI_SETTING).

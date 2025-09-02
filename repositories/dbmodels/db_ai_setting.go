@@ -65,9 +65,17 @@ func adaptKYCEnrichmentFromJSONB(value map[string]any) (models.KYCEnrichmentSett
 		setting.Model = &model
 	}
 
-	if domainFilterRaw, ok := value["domain_filter"].([]string); ok {
+	if domainFilterRaw, ok := value["domain_filter"].([]any); ok {
 		setting.DomainFilter = make([]string, len(domainFilterRaw))
-		copy(setting.DomainFilter, domainFilterRaw)
+		for i, v := range domainFilterRaw {
+			if str, ok := v.(string); ok {
+				setting.DomainFilter[i] = str
+			} else {
+				return models.KYCEnrichmentSetting{}, fmt.Errorf(
+					"domain filter contains non-string value",
+				)
+			}
+		}
 	}
 
 	if searchContextStr, ok := value["search_context_size"].(string); ok && searchContextStr != "" {
@@ -94,37 +102,4 @@ func adaptCaseReviewFromJSONB(value map[string]any) (models.CaseReviewSetting, e
 	}
 
 	return setting, nil
-}
-
-// Helper functions to convert models to JSONB for storage
-func KYCEnrichmentToJSONB(setting models.KYCEnrichmentSetting) map[string]any {
-	value := make(map[string]any)
-
-	if setting.Model != nil {
-		value["model"] = *setting.Model
-	}
-	if len(setting.DomainFilter) > 0 {
-		value["domain_filter"] = setting.DomainFilter
-	}
-	if setting.SearchContextSize != nil {
-		value["search_context_size"] = string(*setting.SearchContextSize)
-	}
-
-	return value
-}
-
-func CaseReviewToJSONB(setting models.CaseReviewSetting) map[string]any {
-	value := make(map[string]any)
-
-	if setting.Language != nil {
-		value["language"] = *setting.Language
-	}
-	if setting.Structure != nil {
-		value["structure"] = *setting.Structure
-	}
-	if setting.OrgDescription != nil {
-		value["org_description"] = *setting.OrgDescription
-	}
-
-	return value
 }
