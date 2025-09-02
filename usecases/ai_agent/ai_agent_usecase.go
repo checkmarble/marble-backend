@@ -46,7 +46,7 @@ type AiAgentUsecaseRepository interface {
 		orgId, pivotValue string) ([]models.Case, error)
 	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId string,
 		target models.TagTarget, withCaseCount bool) ([]models.Tag, error)
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (models.ScenarioIteration, error)
 	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
 		initialOnly bool) ([]models.ScreeningWithMatches, error)
 	UpdateAiCaseReviewFeedback(
@@ -76,7 +76,7 @@ type AiAgentUsecaseIngestedDataReader interface {
 }
 
 type AiAgentUsecaseDataModelUsecase interface {
-	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions) (models.DataModel, error)
+	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions, useCache bool) (models.DataModel, error)
 }
 
 type caseReviewTaskEnqueuer interface {
@@ -1057,7 +1057,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 	decisionDtos := make([]agent_dto.Decision, len(decisions))
 	for i := range decisions {
 		iteration, err := uc.repository.GetScenarioIteration(ctx, exec,
-			decisions[i].Decision.ScenarioIterationId.String())
+			decisions[i].Decision.ScenarioIterationId.String(), false)
 		if err != nil {
 			return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 				"could not retrieve scenario for decision %s", decisions[i].DecisionId)
@@ -1079,7 +1079,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 
 	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, c.OrganizationId, models.DataModelReadOptions{
 		IncludeEnums: true, IncludeNavigationOptions: true,
-	})
+	}, false)
 	if err != nil {
 		return caseData{}, agent_dto.CasePivotDataByPivot{},
 			errors.Wrap(err, "could not retrieve data model")
@@ -1142,7 +1142,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 				nil,
 				users,
 				func(scenarioIterationId string) (models.ScenarioIteration, error) {
-					return uc.repository.GetScenarioIteration(ctx, exec, scenarioIterationId)
+					return uc.repository.GetScenarioIteration(ctx, exec, scenarioIterationId, false)
 				},
 				func(decisionId string) ([]models.ScreeningWithMatches, error) {
 					return uc.repository.ListScreeningsForDecision(ctx, exec, decisionId, true)

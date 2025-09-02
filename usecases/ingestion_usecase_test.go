@@ -179,7 +179,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), suite.organizationId, false).
+		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
@@ -216,7 +216,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), suite.organizationId, false).
+		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
@@ -253,7 +253,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), suite.organizationId, false).
+		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(dataModel, nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
@@ -286,7 +286,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), suite.organizationId, false).
+		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
@@ -316,7 +316,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), suite.organizationId, false).
+		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
@@ -354,7 +354,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_withou
 
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), suite.organizationId, false).
+		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
@@ -383,7 +383,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_nomin
 
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), suite.organizationId, false).
+		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
@@ -416,7 +416,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
 
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), suite.organizationId, false).
+		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
 	rowIdStr1 := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
@@ -458,7 +458,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), suite.organizationId, false).
+		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
 	rowIdStr1 := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
@@ -495,7 +495,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), suite.organizationId, false).
+		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
 	_, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",

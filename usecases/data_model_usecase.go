@@ -58,19 +58,20 @@ func (usecase DataModelUseCase) GetDataModel(
 	ctx context.Context,
 	organizationID string,
 	options models.DataModelReadOptions,
+	useCache bool,
 ) (models.DataModel, error) {
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return models.DataModel{}, err
 	}
 	exec := usecase.executorFactory.NewExecutor()
 
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, options.IncludeEnums)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, options.IncludeEnums, useCache)
 	if err != nil {
 		return models.DataModel{}, err
 	}
 
 	if options.IncludeNavigationOptions {
-		pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationID, nil)
+		pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationID, nil, useCache)
 		if err != nil {
 			return models.DataModel{}, err
 		}
@@ -279,7 +280,7 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 	}
 	dataModel, err := usecase.GetDataModel(ctx, table.OrganizationID, models.DataModelReadOptions{
 		IncludeUnicityConstraints: true,
-	})
+	}, false)
 	if err != nil {
 		return err
 	}
@@ -416,7 +417,7 @@ func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link m
 	// Check that the parent field is unique by getting the full data model
 	dataModel, err := usecase.GetDataModel(ctx, link.OrganizationID, models.DataModelReadOptions{
 		IncludeUnicityConstraints: true,
-	})
+	}, false)
 	if err != nil {
 		return "", err
 	}
@@ -458,7 +459,7 @@ func (usecase *DataModelUseCase) CreatePivot(ctx context.Context, input models.C
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
-	dm, err := usecase.dataModelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)
+	dm, err := usecase.dataModelRepository.GetDataModel(ctx, exec, input.OrganizationId, false, false)
 	if err != nil {
 		return models.Pivot{}, err
 	}
@@ -555,12 +556,12 @@ func (usecase *DataModelUseCase) ListPivots(ctx context.Context, organizationId 
 
 	exec := usecase.executorFactory.NewExecutor()
 
-	dm, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
+	dm, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, false)
 	if err != nil {
 		return nil, err
 	}
 
-	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationId, tableID)
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationId, tableID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -603,7 +604,7 @@ func (usecase *DataModelUseCase) CreateNavigationOption(ctx context.Context, inp
 	if err := usecase.enforceSecurity.WriteDataModel(orgId); err != nil {
 		return err
 	}
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, orgId, true)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, orgId, true, false)
 	if err != nil {
 		return err
 	}
@@ -614,7 +615,7 @@ func (usecase *DataModelUseCase) CreateNavigationOption(ctx context.Context, inp
 	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 	allTables := dataModel.AllTablesAsMap()
 
-	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, orgId, nil)
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
 	if err != nil {
 		return err
 	}
@@ -746,7 +747,7 @@ func (uc DataModelUseCase) GetDataModelOptions(ctx context.Context, orgId, table
 		return models.DataModelOptions{}, errors.Wrap(models.NotFoundError, "table not found")
 	}
 
-	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, tableMeta.OrganizationID, false)
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, tableMeta.OrganizationID, false, false)
 	if err != nil {
 		return models.DataModelOptions{}, err
 	}
@@ -785,7 +786,7 @@ func (uc DataModelUseCase) UpdateDataModelOptions(ctx context.Context,
 	if tableMeta.OrganizationID != orgId {
 		return models.DataModelOptions{}, errors.Wrap(models.NotFoundError, "table not found")
 	}
-	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, tableMeta.OrganizationID, false)
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, tableMeta.OrganizationID, false, false)
 	if err != nil {
 		return models.DataModelOptions{}, err
 	}

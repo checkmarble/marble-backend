@@ -94,7 +94,7 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 	suite.repository.On("ListRunningTestRun", suite.ctx, suite.transaction,
 		suite.organizationId).Return(nil, nil)
 	suite.screeningConfig.On("ListScreeningConfigs", suite.ctx, suite.transaction,
-		input.PhantomIterationId).Return(nil, nil)
+		input.PhantomIterationId, mock.Anything).Return(nil, nil)
 
 	suite.clientDbIndexEditor.On("CreateIndexesAsyncForScenarioWithCallback", suite.ctx,
 		suite.organizationId, []models.ConcreteIndex{

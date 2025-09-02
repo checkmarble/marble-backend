@@ -17,7 +17,7 @@ type decisionGetter interface {
 	DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error)
 }
 type iterationGetter interface {
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (
 		models.ScenarioIteration, error,
 	)
 }
@@ -115,7 +115,7 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForDecision(ctx context.Context, d
 		return models.SnoozesOfDecision{}, err
 	}
 
-	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId.String())
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId.String(), true)
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
@@ -192,7 +192,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 		return models.SnoozesOfDecision{}, err
 	}
 
-	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId.String())
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId.String(), false)
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
@@ -338,7 +338,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 		return models.SnoozesOfDecision{}, err
 	}
 
-	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId.String())
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId.String(), false)
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
@@ -433,7 +433,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 
 func (usecase RuleSnoozeUsecase) ActiveSnoozesForScenarioIteration(ctx context.Context, iterationId string) (models.SnoozesOfIteration, error) {
 	exec := usecase.executorFactory.NewExecutor()
-	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, iterationId)
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, iterationId, true)
 	if err != nil {
 		return models.SnoozesOfIteration{}, err
 	}
