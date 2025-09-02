@@ -31,7 +31,7 @@ type offloadingRepository interface {
 		ctx context.Context,
 		tx repositories.Transaction,
 		req models.OffloadDecisionRuleRequest,
-	) (<-chan repositories.ModelResult[models.OffloadableDecisionRule], error)
+	) (models.ChannelOfModels[models.OffloadableDecisionRule], error)
 	RemoveDecisionRulePayload(ctx context.Context, tx repositories.Transaction, ids []*string) error
 }
 
@@ -120,8 +120,12 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 
 		// The transaction is only so we can "set local" to disable hash joins in the repo call below - writes should still be made outside of the transaction,
 		// as we specificially don't want to wait for the end of the transaction to write the save points.
-		rules, err := w.repository.GetOffloadableDecisionRules(ctx, outerTx, req)
+		channels, err := w.repository.GetOffloadableDecisionRules(ctx, outerTx, req)
 		if err != nil {
+			return err
+		}
+		stopChannelAndReturn := func(err error) error {
+			channels.CloseAndWaitUntilDone()
 			return err
 		}
 
@@ -133,20 +137,20 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 		idx := 0
 
 		var lastOfBatch *models.OffloadableDecisionRule
-		for item := range rules {
+		for item := range channels.Models {
 			select {
 			case <-timeout:
-				return nil
+				return stopChannelAndReturn(nil)
 			case <-ctx.Done():
-				return ctx.Err()
+				return stopChannelAndReturn(ctx.Err())
 			default:
 				if err := w.limiter.Wait(ctx); err != nil {
-					return err
+					return stopChannelAndReturn(err)
 				}
 			}
 
 			if item.Error != nil {
-				return item.Error
+				return stopChannelAndReturn(item.Error)
 			}
 
 			rule := item.Model
@@ -172,18 +176,18 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 
 				wr, err := w.blobRepository.OpenStreamWithOptions(ctx, w.config.BucketUrl, key, &opts)
 				if err != nil {
-					return err
+					return stopChannelAndReturn(err)
 				}
 				defer wr.Close()
 
 				enc := json.NewEncoder(wr)
 
 				if err := enc.Encode(rule.RuleEvaluation); err != nil {
-					return err
+					return stopChannelAndReturn(err)
 				}
 
 				if err := wr.Close(); err != nil {
-					return err
+					return stopChannelAndReturn(err)
 				}
 
 				id := *rule.RuleExecutionId
@@ -217,11 +221,15 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 					return nil
 				})
 				if err != nil {
-					return err
+					return stopChannelAndReturn(err)
 				}
 			}
 
 			lastOfBatch = &rule
+		}
+		_ = stopChannelAndReturn(nil)
+		if err := outerTx.Rollback(ctx); err != nil {
+			return err
 		}
 
 		if idx == 0 {
@@ -267,10 +275,6 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 				attribute.String("watermark", wm.WatermarkTime.String())))
 			logger.Debug(fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id",
 				job.Args.OrgId, "watermark_id", wm.WatermarkId, "watermark_time", wm.WatermarkTime)
-		}
-
-		if err := outerTx.Rollback(ctx); err != nil {
-			return err
 		}
 
 		span.End()

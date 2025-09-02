@@ -976,9 +976,9 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(
 	ctx context.Context,
 	tx Transaction,
 	req models.OffloadDecisionRuleRequest,
-) (<-chan ModelResult[models.OffloadableDecisionRule], error) {
+) (models.ChannelOfModels[models.OffloadableDecisionRule], error) {
 	if err := validateMarbleDbExecutor(tx); err != nil {
-		return nil, err
+		return models.ChannelOfModels[models.OffloadableDecisionRule]{}, err
 	}
 
 	if req.Watermark == nil {
@@ -989,13 +989,13 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(
 	}
 
 	if req.Watermark.WatermarkId == nil {
-		return nil, errors.New("watermark id is required")
+		return models.ChannelOfModels[models.OffloadableDecisionRule]{}, errors.New("watermark id is required")
 	}
 
 	// In this query, the query planner may choose a hash join, which is about guaranteed to never complete on this large table.
 	_, err := tx.Exec(ctx, "SET local enable_hashjoin = off;")
 	if err != nil {
-		return nil, err
+		return models.ChannelOfModels[models.OffloadableDecisionRule]{}, err
 	}
 
 	sql := NewQueryBuilder().
