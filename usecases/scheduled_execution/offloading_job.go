@@ -204,7 +204,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 						tx,
 						&job.Args.OrgId,
 						models.WatermarkTypeDecisionRules,
-						&rule.DecisionId,
+						rule.RuleExecutionId,
 						rule.CreatedAt,
 						nil,
 					); err != nil {
@@ -237,14 +237,19 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 				if err := w.repository.RemoveDecisionRulePayload(ctx, tx, remainingItems); err != nil {
 					return err
 				}
-				if err := w.repository.SaveWatermark(ctx, tx,
-					&job.Args.OrgId, models.WatermarkTypeDecisionRules,
-					&lastOfBatch.DecisionId, lastOfBatch.CreatedAt, nil); err != nil {
+				if err := w.repository.SaveWatermark(
+					ctx,
+					tx,
+					&job.Args.OrgId,
+					models.WatermarkTypeDecisionRules,
+					lastOfBatch.RuleExecutionId,
+					lastOfBatch.CreatedAt,
+					nil); err != nil {
 					return err
 				}
 
 				span.AddEvent("savepoint", trace.WithAttributes(attribute.Int("decision_rules", idx)))
-				logger.Debug(fmt.Sprintf("offloading save point after %d decision rules", idx+1), "org_id", job.Args.OrgId)
+				logger.Debug(fmt.Sprintf("offloading last save point after %d decision rules", idx+1), "org_id", job.Args.OrgId)
 
 				return nil
 			})
