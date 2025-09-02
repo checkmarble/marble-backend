@@ -40,7 +40,8 @@ type AiAgentUsecaseRepository interface {
 		orgId, pivotValue string) ([]models.Case, error)
 	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId string,
 		target models.TagTarget, withCaseCount bool) ([]models.Tag, error)
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string,
+		useCache bool) (models.ScenarioIteration, error)
 	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
 		initialOnly bool) ([]models.ScreeningWithMatches, error)
 	UpdateAiCaseReviewFeedback(
@@ -77,7 +78,8 @@ type AiAgentUsecaseIngestedDataReader interface {
 }
 
 type AiAgentUsecaseDataModelUsecase interface {
-	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions) (models.DataModel, error)
+	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions,
+		useCache bool) (models.DataModel, error)
 }
 
 type caseReviewTaskEnqueuer interface {

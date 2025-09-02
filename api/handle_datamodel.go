@@ -28,7 +28,7 @@ func handleGetDataModel(uc usecases.Usecases) func(c *gin.Context) {
 			IncludeEnums:              true,
 			IncludeNavigationOptions:  true,
 			IncludeUnicityConstraints: true,
-		})
+		}, false)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -197,7 +197,7 @@ func legacy_handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 			IncludeEnums:              false,
 			IncludeNavigationOptions:  false,
 			IncludeUnicityConstraints: false,
-		})
+		}, false)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -236,7 +236,7 @@ func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 			IncludeEnums:              false,
 			IncludeNavigationOptions:  false,
 			IncludeUnicityConstraints: false,
-		})
+		}, false)
 		if presentError(ctx, c, err) {
 			return
 		}

@@ -394,7 +394,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		return false, se, nil
 	}
 
-	testRunIteration, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, testruns[0].ScenarioIterationId)
+	testRunIteration, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, testruns[0].ScenarioIterationId, true)
 	if err != nil {
 		return false, se, err
 	}
@@ -403,7 +403,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	// we just reuse the cached screening execution to avoid another (possibly paid) call to the screening service.
 	copiedScreening := make([]models.ScreeningWithMatches, 0)
 
-	sccs, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, testRunIteration.Id)
+	sccs, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, testRunIteration.Id, true)
 	if err != nil {
 		return false, se, errors.Wrap(err,
 			"error getting screening config from scenario iteration")
@@ -413,7 +413,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 
 	if len(sccs) > 0 {
 		liveVersionSccs, err := e.evalScreeningConfigRepository.ListScreeningConfigs(
-			ctx, exec, testruns[0].ScenarioLiveIterationId)
+			ctx, exec, testruns[0].ScenarioLiveIterationId, true)
 		if err != nil {
 			return false, se, err
 		}
@@ -491,13 +491,13 @@ func (e ScenarioEvaluator) EvalScenario(
 	)
 	defer span.End()
 
-	versionToRun, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, targetVersionId)
+	versionToRun, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, targetVersionId, true)
 	if err != nil {
 		return false, models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting scenario iteration in EvalScenario")
 	}
 
-	scc, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, versionToRun.Id)
+	scc, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, versionToRun.Id, true)
 	if err != nil {
 		return false, models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting screening config from scenario iteration")

@@ -10,11 +10,11 @@ import (
 type ScenarioFetcherRepository interface {
 	ListLiveIterationsAndNeighbors(ctx context.Context, exec repositories.Executor, orgId string) ([]models.ScenarioIteration, error)
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (
 		models.ScenarioIteration, error,
 	)
 	ListScreeningConfigs(ctx context.Context, exec repositories.Executor,
-		scenarioIterationId string) ([]models.ScreeningConfig, error)
+		scenarioIterationId string, useCache bool) ([]models.ScreeningConfig, error)
 	GetScreeningConfig(ctx context.Context, exec repositories.Executor,
 		scenarioIterationId, screeningId string) (models.ScreeningConfig, error)
 }
@@ -26,12 +26,12 @@ type ScenarioFetcher struct {
 func (fetcher ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context,
 	exec repositories.Executor, iterationId string,
 ) (result models.ScenarioAndIteration, err error) {
-	result.Iteration, err = fetcher.Repository.GetScenarioIteration(ctx, exec, iterationId)
+	result.Iteration, err = fetcher.Repository.GetScenarioIteration(ctx, exec, iterationId, false)
 	if err != nil {
 		return models.ScenarioAndIteration{}, err
 	}
 
-	screeningConfig, err := fetcher.Repository.ListScreeningConfigs(ctx, exec, iterationId)
+	screeningConfig, err := fetcher.Repository.ListScreeningConfigs(ctx, exec, iterationId, false)
 	if err != nil {
 		return models.ScenarioAndIteration{}, err
 	}

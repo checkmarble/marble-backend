@@ -14,13 +14,25 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/hashicorp/golang-lru/v2/expirable"
+)
+
+var (
+	screeningConfigsCache = expirable.NewLRU[string, []models.ScreeningConfig](50, nil, utils.GlobalCacheDuration())
 )
 
 func (repo *MarbleDbRepository) ListScreeningConfigs(
 	ctx context.Context,
 	exec Executor,
 	scenarioIterationId string,
+	useCache bool,
 ) ([]models.ScreeningConfig, error) {
+	if useCache {
+		if sccs, ok := screeningConfigsCache.Get(scenarioIterationId); ok {
+			return sccs, nil
+		}
+	}
+
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -30,7 +42,14 @@ func (repo *MarbleDbRepository) ListScreeningConfigs(
 		From(dbmodels.TABLE_SCREENING_CONFIGS).
 		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationId})
 
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreeningConfig)
+	sccs, err := SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreeningConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	screeningConfigsCache.Add(scenarioIterationId, sccs)
+
+	return sccs, nil
 }
 
 func (repo *MarbleDbRepository) GetScreeningConfig(

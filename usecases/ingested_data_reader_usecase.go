@@ -39,6 +39,7 @@ type ingestedDataReaderRepository interface {
 		exec repositories.Executor,
 		organization_id string,
 		tableId *string,
+		useCache bool,
 	) ([]models.PivotMetadata, error)
 	GetEntityAnnotations(
 		ctx context.Context,
@@ -48,7 +49,7 @@ type ingestedDataReaderRepository interface {
 }
 
 type ingestedDataReaderDataModelUsecase interface {
-	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions) (models.DataModel, error)
+	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions, useCache bool) (models.DataModel, error)
 }
 
 type IngestedDataReaderUsecase struct {
@@ -81,7 +82,7 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 	uniqueFieldName string,
 ) ([]models.ClientObjectDetail, error) {
 	if dataModel == nil {
-		d, err := usecase.dataModelUsecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{})
+		d, err := usecase.dataModelUsecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{}, true)
 		if err != nil {
 			return nil, err
 		}
@@ -122,12 +123,12 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 
 	dataModel, err := usecase.dataModelUsecase.GetDataModel(ctx, orgId, models.DataModelReadOptions{
 		IncludeUnicityConstraints: true,
-	})
+	}, true)
 	if err != nil {
 		return nil, err
 	}
 
-	pivotsMeta, err := usecase.repository.ListPivots(ctx, exec, orgId, nil)
+	pivotsMeta, err := usecase.repository.ListPivots(ctx, exec, orgId, nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +294,7 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 ) (objects []models.ClientObjectDetail, fieldStats []models.FieldStatistics, pagination models.ClientDataListPagination, err error) {
 	dataModel, err := usecase.dataModelUsecase.GetDataModel(ctx, orgId, models.DataModelReadOptions{
 		IncludeNavigationOptions: true,
-	})
+	}, true)
 	if err != nil {
 		return
 	}

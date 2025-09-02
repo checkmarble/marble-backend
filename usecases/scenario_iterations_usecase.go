@@ -22,6 +22,7 @@ type IterationUsecaseRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		scenarioIterationId string,
+		useCache bool,
 	) (models.ScenarioIteration, error)
 	ListScenarioIterations(
 		ctx context.Context,
@@ -88,13 +89,13 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 	scenarioIterationId string,
 ) (models.ScenarioIteration, error) {
 	si, err := usecase.repository.GetScenarioIteration(ctx,
-		usecase.executorFactory.NewExecutor(), scenarioIterationId)
+		usecase.executorFactory.NewExecutor(), scenarioIterationId, false)
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
 
 	scc, err := usecase.screeningConfigRepository.ListScreeningConfigs(ctx,
-		usecase.executorFactory.NewExecutor(), si.Id)
+		usecase.executorFactory.NewExecutor(), si.Id, false)
 	if err != nil {
 		return models.ScenarioIteration{}, errors.Wrap(err,
 			"could not retrieve screening config while getting scenario iteration")
@@ -207,12 +208,12 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.ScenarioIteration, error) {
-			si, err := usecase.repository.GetScenarioIteration(ctx, tx, scenarioIterationId)
+			si, err := usecase.repository.GetScenarioIteration(ctx, tx, scenarioIterationId, false)
 			if err != nil {
 				return models.ScenarioIteration{}, err
 			}
 
-			screeningConfigs, err := usecase.screeningConfigRepository.ListScreeningConfigs(ctx, tx, si.Id)
+			screeningConfigs, err := usecase.screeningConfigRepository.ListScreeningConfigs(ctx, tx, si.Id, false)
 			if err != nil {
 				return models.ScenarioIteration{}, errors.Wrap(err,
 					"could not retrieve screening config while creating draft")
@@ -377,7 +378,7 @@ func (usecase *ScenarioIterationUsecase) CommitScenarioIterationVersion(
 			if err = usecase.repository.UpdateScenarioIterationVersion(ctx, tx, iterationId, version); err != nil {
 				return iteration, err
 			}
-			return usecase.repository.GetScenarioIteration(ctx, tx, iterationId)
+			return usecase.repository.GetScenarioIteration(ctx, tx, iterationId, false)
 		},
 	)
 }

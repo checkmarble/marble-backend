@@ -50,8 +50,8 @@ func (s *ScheduledExecutionUsecaseRepository) GetScenarioById(ctx context.Contex
 }
 
 func (s *ScheduledExecutionUsecaseRepository) GetScenarioIteration(ctx context.Context,
-	exec repositories.Executor, scenarioIterationId string,
+	exec repositories.Executor, scenarioIterationId string, useCache bool,
 ) (models.ScenarioIteration, error) {
-	args := s.Called(exec, scenarioIterationId)
+	args := s.Called(exec, scenarioIterationId, useCache)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }

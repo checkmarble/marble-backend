@@ -54,7 +54,7 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
 	}
 
-	sccs, err := usecase.screeningConfigRepository.ListScreeningConfigs(ctx, exec, input.PhantomIterationId)
+	sccs, err := usecase.screeningConfigRepository.ListScreeningConfigs(ctx, exec, input.PhantomIterationId, true)
 	if err != nil {
 		return models.ScenarioTestRun{}, err
 	}

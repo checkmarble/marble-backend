@@ -45,7 +45,7 @@ type webhookEventsUsecase interface {
 }
 
 type asyncDecisionWorkerRepository interface {
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (models.ScenarioIteration, error)
 	UpdateDecisionToCreateStatus(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -253,7 +253,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	}
 	scenario := scenarioAndIteration.Scenario
 
-	dataModel, err := w.dataModelRepository.GetDataModel(ctx, tx, scenario.OrganizationId, false)
+	dataModel, err := w.dataModelRepository.GetDataModel(ctx, tx, scenario.OrganizationId, false, true)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -265,7 +265,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 			scenario.TriggerObjectType, models.NotFoundError)
 	}
 
-	pivotsMeta, err := w.dataModelRepository.ListPivots(ctx, tx, scenario.OrganizationId, nil)
+	pivotsMeta, err := w.dataModelRepository.ListPivots(ctx, tx, scenario.OrganizationId, nil, true)
 	if err != nil {
 		return false, nil, nil, err
 	}

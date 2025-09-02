@@ -211,7 +211,7 @@ func createDataModelAndSetupCaseManager(
 	dm, err = usecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{
 		IncludeNavigationOptions:  true,
 		IncludeUnicityConstraints: true,
-	})
+	}, false)
 	if err != nil {
 		assert.FailNow(t, "Could not get data model", err)
 	}
@@ -250,6 +250,8 @@ func createDataModelAndSetupCaseManager(
 	}
 	fmt.Printf("Created pivot %s\n", pivot.Id)
 
+	time.Sleep(1 * time.Second)
+
 	inboxUsecase := usecases.NewInboxUsecase()
 	inbox, err := inboxUsecase.CreateInbox(ctx, models.CreateInboxInput{
 		Name:           "test inbox",
@@ -264,7 +266,7 @@ func createDataModelAndSetupCaseManager(
 		IncludeEnums:              false,
 		IncludeNavigationOptions:  false,
 		IncludeUnicityConstraints: false,
-	})
+	}, false)
 	if err != nil {
 		assert.FailNow(t, "Could not get data model", err)
 	}

@@ -235,7 +235,7 @@ func (uc EntityAnnotationUsecase) DeleteAnnotation(ctx context.Context,
 // checkObject validates that the given object type exists in the organization's data model.
 // Returns an error if the object type is not found.
 func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId, objectType string) error {
-	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, uc.executorFactory.NewExecutor(), orgId, false)
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, uc.executorFactory.NewExecutor(), orgId, false, false)
 	if err != nil {
 		return err
 	}
