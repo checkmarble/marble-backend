@@ -5,15 +5,17 @@ import (
 	"net"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type APIOrganization struct {
-	Id                      string  `json:"id"`
-	Name                    string  `json:"name"`
-	DefaultScenarioTimezone *string `json:"default_scenario_timezone"`
-	SanctionsThreshold      int     `json:"sanctions_threshold"`
-	SanctionsLimit          int     `json:"sanctions_limit"`
-	AutoAssignQueueLimit    int     `json:"auto_assign_queue_limit"`
+	Id                      string      `json:"id"`
+	Name                    string      `json:"name"`
+	DefaultScenarioTimezone *string     `json:"default_scenario_timezone"`
+	SanctionsThreshold      int         `json:"sanctions_threshold"`
+	SanctionsLimit          int         `json:"sanctions_limit"`
+	AutoAssignQueueLimit    int         `json:"auto_assign_queue_limit"`
+	AllowedNetworks         []SubnetDto `json:"allowed_networks"`
 }
 
 func AdaptOrganizationDto(org models.Organization) APIOrganization {
@@ -24,6 +26,9 @@ func AdaptOrganizationDto(org models.Organization) APIOrganization {
 		SanctionsThreshold:      org.OpenSanctionsConfig.MatchThreshold,
 		SanctionsLimit:          org.OpenSanctionsConfig.MatchLimit,
 		AutoAssignQueueLimit:    org.AutoAssignQueueLimit,
+		AllowedNetworks: pure_utils.Map(org.WhitelistedSubnets, func(subnet net.IPNet) SubnetDto {
+			return SubnetDto{subnet}
+		}),
 	}
 }
 
