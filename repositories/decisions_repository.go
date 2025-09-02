@@ -1017,7 +1017,7 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(
 					squirrel.Lt{"created_at": req.DeleteBefore},
 					// We use a large inequality at the risk of selecting decisions that are on the watermark again, because it is better
 					// to handle a decision twice (the operation of offloading is idempotent) rather than skip part of the decision rules
-					// attached to the decision.
+					// attached to the decision. A second filter is done in the final query.
 					squirrel.Expr("created_at >= ?", req.Watermark.WatermarkTime),
 				}).
 				OrderBy("created_at, id").
@@ -1025,7 +1025,7 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(
 		).
 		Prefix(")").
 		From("pending_decisions d").
-		LeftJoin("decision_rules dr on dr.decision_id = d.id").
+		Join("decision_rules dr on dr.decision_id = d.id").
 		Where("(d.created_at, dr.id) > (?, ?)", req.Watermark.WatermarkTime, *req.Watermark.WatermarkId).
 		OrderBy("d.created_at, dr.id")
 

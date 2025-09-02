@@ -151,8 +151,8 @@ type OffloadableDecisionRule struct {
 	CreatedAt  time.Time
 
 	// Rule execution
-	RuleExecutionId *string
-	RuleId          *string
+	RuleExecutionId string
+	RuleId          string
 	RuleOutcome     *string
 	RuleEvaluation  *ast.NodeEvaluationDto
 }
