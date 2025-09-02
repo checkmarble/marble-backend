@@ -11,7 +11,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.48.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/TwiN/deepmerge v0.2.2
-	github.com/adhocore/gronx v1.8.1
+	github.com/adhocore/gronx v1.19.6
 	github.com/adrg/strutil v0.3.1
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/biter777/countries v1.7.5
