@@ -1018,7 +1018,7 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(
 					// We use a large inequality at the risk of selecting decisions that are on the watermark again, because it is better
 					// to handle a decision twice (the operation of offloading is idempotent) rather than skip part of the decision rules
 					// attached to the decision.
-					squirrel.Expr("(created_at, id) >= (?, ?)", req.Watermark.WatermarkTime, *req.Watermark.WatermarkId),
+					squirrel.Expr("created_at >= ?", req.Watermark.WatermarkTime),
 				}).
 				OrderBy("created_at, id").
 				Limit(uint64(req.BatchSize)),
@@ -1026,7 +1026,8 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(
 		Prefix(")").
 		From("pending_decisions d").
 		LeftJoin("decision_rules dr on dr.decision_id = d.id").
-		OrderBy("d.created_at, d.id")
+		Where("(d.created_at, dr.id) > (?, ?)", req.Watermark.WatermarkTime, *req.Watermark.WatermarkId).
+		OrderBy("d.created_at, dr.id")
 
 	cb := func(row pgx.CollectableRow) (models.OffloadableDecisionRule, error) {
 		dbRow, err := pgx.RowToStructByName[dbmodels.DbOffloadableDecisionRule](row)
