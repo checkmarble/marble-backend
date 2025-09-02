@@ -7,25 +7,46 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 
 	"github.com/Masterminds/squirrel"
+)
+
+var (
+	scenarioIterationCache = expirable.NewLRU[string, models.ScenarioIteration](50, nil, utils.GlobalCacheDuration())
 )
 
 func (repository *MarbleDbRepository) GetScenarioIteration(
 	ctx context.Context,
 	exec Executor,
 	scenarioIterationId string,
+	useCache bool,
 ) (models.ScenarioIteration, error) {
+	if useCache {
+		if iteration, ok := scenarioIterationCache.Get(scenarioIterationId); ok {
+			return iteration, nil
+		}
+	}
+
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ScenarioIteration{}, err
 	}
 
-	return SqlToModel(
+	iteration, err := SqlToModel(
 		ctx,
 		exec,
 		selectScenarioIterations().Where(squirrel.Eq{"si.id": scenarioIterationId}),
 		dbmodels.AdaptScenarioIterationWithRules,
 	)
+
+	if err != nil {
+		return models.ScenarioIteration{}, err
+	}
+
+	scenarioIterationCache.Add(scenarioIterationId, iteration)
+
+	return iteration, nil
 }
 
 func (repository *MarbleDbRepository) ListScenarioIterations(

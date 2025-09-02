@@ -19,6 +19,7 @@ type AstExpressionUsecaseRepository interface {
 		exec repositories.Executor,
 		organizationID string,
 		fetchEnumValues bool,
+		useCache bool,
 	) (models.DataModel, error)
 }
 
@@ -144,7 +145,7 @@ func (usecase AstExpressionUsecase) EditorIdentifiers(ctx context.Context, scena
 		return EditorIdentifiers{}, err
 	}
 
-	dataModel, err := usecase.repository.GetDataModel(ctx, exec, scenario.OrganizationId, false)
+	dataModel, err := usecase.repository.GetDataModel(ctx, exec, scenario.OrganizationId, false, true)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}

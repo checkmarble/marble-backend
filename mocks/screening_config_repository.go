@@ -16,8 +16,9 @@ func (r *ScreeningConfigRepository) ListScreeningConfigs(
 	ctx context.Context,
 	exec repositories.Executor,
 	scenarioIterationId string,
+	useCache bool,
 ) ([]models.ScreeningConfig, error) {
-	args := r.Called(ctx, exec, scenarioIterationId)
+	args := r.Called(ctx, exec, scenarioIterationId, useCache)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

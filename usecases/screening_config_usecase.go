@@ -13,7 +13,7 @@ import (
 
 type ScreeningConfigRepository interface {
 	ListScreeningConfigs(ctx context.Context, exec repositories.Executor,
-		scenarioIterationId string) ([]models.ScreeningConfig, error)
+		scenarioIterationId string, useCache bool) ([]models.ScreeningConfig, error)
 	GetScreeningConfig(ctx context.Context, exec repositories.Executor,
 		scenarioIterationId, id string) (models.ScreeningConfig, error)
 	CreateScreeningConfig(ctx context.Context, exec repositories.Executor,
