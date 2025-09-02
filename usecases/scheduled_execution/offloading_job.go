@@ -156,9 +156,9 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 			rule := item.Model
 			offloadedIds[idx%w.config.SavepointEvery] = nil
 
-			if rule.RuleExecutionId != nil && rule.RuleEvaluation != nil && rule.RuleOutcome != nil {
+			if rule.RuleEvaluation != nil && rule.RuleOutcome != nil {
 				key := w.repository.GetOffloadedDecisionRuleKey(req.OrgId,
-					rule.DecisionId, *rule.RuleId, *rule.RuleOutcome, rule.CreatedAt)
+					rule.DecisionId, rule.RuleId, *rule.RuleOutcome, rule.CreatedAt)
 
 				opts := blob.WriterOptions{}
 
@@ -190,7 +190,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 					return stopChannelAndReturn(err)
 				}
 
-				id := *rule.RuleExecutionId
+				id := rule.RuleExecutionId
 				offloadedIds[idx%w.config.SavepointEvery] = &id
 			}
 
@@ -208,7 +208,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 						tx,
 						&job.Args.OrgId,
 						models.WatermarkTypeDecisionRules,
-						rule.RuleExecutionId,
+						&rule.RuleExecutionId,
 						rule.CreatedAt,
 						nil,
 					); err != nil {
@@ -216,7 +216,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 					}
 
 					span.AddEvent("savepoint", trace.WithAttributes(attribute.Int("decision_rules", idx)))
-					logger.Debug(fmt.Sprintf("offloading save point after %d decision rules", idx), "org_id", job.Args.OrgId)
+					logger.DebugContext(ctx, fmt.Sprintf("offloading save point after %d decision rules", idx), "org_id", job.Args.OrgId)
 
 					return nil
 				})
@@ -250,14 +250,14 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 					tx,
 					&job.Args.OrgId,
 					models.WatermarkTypeDecisionRules,
-					lastOfBatch.RuleExecutionId,
+					&lastOfBatch.RuleExecutionId,
 					lastOfBatch.CreatedAt,
 					nil); err != nil {
 					return err
 				}
 
 				span.AddEvent("savepoint", trace.WithAttributes(attribute.Int("decision_rules", idx)))
-				logger.Debug(fmt.Sprintf("offloading last save point after %d decision rules", idx+1), "org_id", job.Args.OrgId)
+				logger.DebugContext(ctx, fmt.Sprintf("offloading last save point after %d decision rules", idx+1), "org_id", job.Args.OrgId)
 
 				return nil
 			})
@@ -268,13 +268,18 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 
 		if wm == nil {
 			span.AddEvent("finished", trace.WithAttributes(attribute.Int("decision_rules", idx)))
-			logger.Debug(fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id", job.Args.OrgId)
+			logger.DebugContext(ctx, fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id", job.Args.OrgId)
 		} else {
 			span.AddEvent("finished", trace.WithAttributes(
 				attribute.Int("decision_rules", idx),
 				attribute.String("watermark", wm.WatermarkTime.String())))
-			logger.Debug(fmt.Sprintf("offloaded batch of %d decisions rules", idx), "org_id",
-				job.Args.OrgId, "watermark_id", wm.WatermarkId, "watermark_time", wm.WatermarkTime)
+			logger.DebugContext(ctx, fmt.Sprintf("offloaded batch of %d decisions rules", idx),
+				"org_id", job.Args.OrgId,
+				"old_watermark_time", wm.WatermarkTime,
+				"old_watermark_id", wm.WatermarkId,
+				"new_watermark_time", lastOfBatch.CreatedAt.String(),
+				"new_watermark_id", lastOfBatch.RuleExecutionId,
+			)
 		}
 
 		span.End()

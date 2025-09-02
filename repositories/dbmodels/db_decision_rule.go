@@ -60,8 +60,8 @@ type DbOffloadableDecisionRule struct {
 	CreatedAt  time.Time `db:"created_at"`
 
 	// Rule execution
-	RuleExecutionId *string `db:"rule_execution_id"`
-	RuleId          *string `db:"rule_id"`
+	RuleExecutionId string  `db:"rule_execution_id"`
+	RuleId          string  `db:"rule_id"`
 	RuleOutcome     *string `db:"outcome"`
 	RuleEvaluation  []byte  `db:"rule_evaluation"`
 }
