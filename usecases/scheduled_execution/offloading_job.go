@@ -89,6 +89,12 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 	logger := utils.LoggerFromContext(ctx)
 	exec := w.executorFactory.NewExecutor()
 
+	// unicity of jobs per queue ignoreing completed or discarded jobs is unpractical, see the documentation of UniqueOpts.
+	if job.CreatedAt.Before(time.Now().Add(-w.config.JobInterval)) {
+		logger.DebugContext(ctx, "skipping offloading job instance because it was created too long ago. A new one should have been created.", "job_created_at", job.CreatedAt)
+		return nil
+	}
+
 	grace := time.Duration(w.config.JobInterval.Seconds()*0.90) * time.Second
 	if grace.Minutes() > 3 {
 		grace = 3 * time.Minute
