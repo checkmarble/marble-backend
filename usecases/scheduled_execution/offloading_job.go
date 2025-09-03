@@ -102,6 +102,10 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 
 	timeout := time.After(w.config.JobInterval - grace)
 
+	// The first iteration should use a large inequality, because a previous iteration of the offloading job may not have offloaded
+	// every rule of the watermarked decision. It will then be set to false for the next iterations to avoid an infinite loop once the end of the decisions is reached.
+	useLargeInequality := true
+
 	for {
 		ctx, span := tracer.Start(ctx, "offloading_batch")
 		defer span.End()
@@ -112,10 +116,11 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 		}
 
 		req := models.OffloadDecisionRuleRequest{
-			OrgId:        job.Args.OrgId,
-			DeleteBefore: time.Now().Add(-w.config.OffloadBefore),
-			BatchSize:    w.config.BatchSize,
-			Watermark:    wm,
+			OrgId:           job.Args.OrgId,
+			DeleteBefore:    time.Now().Add(-w.config.OffloadBefore),
+			BatchSize:       w.config.BatchSize,
+			Watermark:       wm,
+			LargeInequality: useLargeInequality,
 		}
 
 		outerTx, err := exec.Begin(ctx)
@@ -130,6 +135,9 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 		if err != nil {
 			return err
 		}
+		// The next iterations should use a strict inequality to avoid an infinite loop of decisions.
+		useLargeInequality = false
+
 		stopChannelAndReturn := func(err error) error {
 			channels.CloseAndWaitUntilDone()
 			return err
@@ -164,7 +172,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 
 			if rule.RuleEvaluation != nil && rule.RuleOutcome != nil {
 				key := w.repository.GetOffloadedDecisionRuleKey(req.OrgId,
-					rule.DecisionId, rule.RuleId, *rule.RuleOutcome, rule.CreatedAt)
+					rule.DecisionId, *rule.RuleId, *rule.RuleOutcome, rule.CreatedAt)
 
 				opts := blob.WriterOptions{}
 
@@ -196,7 +204,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 					return stopChannelAndReturn(err)
 				}
 
-				id := rule.RuleExecutionId
+				id := *rule.RuleExecutionId
 				offloadedIds[idx%w.config.SavepointEvery] = &id
 			}
 
@@ -214,7 +222,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 						tx,
 						&job.Args.OrgId,
 						models.WatermarkTypeDecisionRules,
-						&rule.RuleExecutionId,
+						&rule.DecisionId,
 						rule.CreatedAt,
 						nil,
 					); err != nil {
@@ -242,7 +250,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 			return nil
 		}
 
-		// If we did not get a multiple of of save point batch size, we still have len(rules)%batch_size
+		// If we did not get a multiple of save point batch size, we still have len(rules)%batch_size
 		// items to persist.
 		if idx%w.config.SavepointEvery > 0 {
 			remainingItems := offloadedIds[:idx%w.config.SavepointEvery]
@@ -256,7 +264,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 					tx,
 					&job.Args.OrgId,
 					models.WatermarkTypeDecisionRules,
-					&lastOfBatch.RuleExecutionId,
+					&lastOfBatch.DecisionId,
 					lastOfBatch.CreatedAt,
 					nil); err != nil {
 					return err

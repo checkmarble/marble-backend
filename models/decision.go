@@ -139,10 +139,11 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 }
 
 type OffloadDecisionRuleRequest struct {
-	OrgId        string
-	DeleteBefore time.Time
-	BatchSize    int
-	Watermark    *Watermark
+	OrgId           string
+	DeleteBefore    time.Time
+	BatchSize       int
+	Watermark       *Watermark
+	LargeInequality bool
 }
 
 type OffloadableDecisionRule struct {
@@ -151,8 +152,8 @@ type OffloadableDecisionRule struct {
 	CreatedAt  time.Time
 
 	// Rule execution
-	RuleExecutionId string
-	RuleId          string
+	RuleExecutionId *string
+	RuleId          *string
 	RuleOutcome     *string
 	RuleEvaluation  *ast.NodeEvaluationDto
 }
