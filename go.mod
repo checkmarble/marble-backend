@@ -13,7 +13,7 @@ require (
 	github.com/TwiN/deepmerge v0.2.2
 	github.com/adhocore/gronx v1.19.6
 	github.com/adrg/strutil v0.3.1
-	github.com/avast/retry-go/v4 v4.6.0
+	github.com/avast/retry-go/v4 v4.6.1
 	github.com/biter777/countries v1.7.5
 	github.com/checkmarble/llm-adapter v0.0.0-20250729112324-4bb3f0d138b1
 	github.com/cockroachdb/errors v1.12.0
