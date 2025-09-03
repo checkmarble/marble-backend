@@ -419,9 +419,3 @@ func (uc *Usecases) NewAutoAssignmentUsecase() AutoAssignmentUsecase {
 		repository:         uc.Repositories.MarbleDbRepository,
 	}
 }
-
-func (usecases *Usecases) NewDummyAnalyticsUsecase() DummyAnalyticsUsecase {
-	return DummyAnalyticsUsecase{
-		analyticsFactory: usecases.NewAnalyticsExecutorFactory(),
-	}
-}

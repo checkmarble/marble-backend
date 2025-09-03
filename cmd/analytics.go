@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"net/http"
 	"os/signal"
@@ -23,11 +24,21 @@ func RunAnalyticsServer(config CompiledConfig) error {
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
+	port := utils.GetEnv("ANALYTICS_PORT", "")
+	if port == "" {
+		port = utils.GetEnv("PORT", "")
+	}
+
+	if port == "" {
+		log.Fatalf("ANALYTICS_PORT or PORT environment variable is required")
+	}
+
 	apiConfig := api.Configuration{
-		Env:              utils.GetEnv("ENV", "development"),
-		AppName:          appName,
-		Port:             utils.GetRequiredEnv[string]("PORT"),
-		AnalyticsTimeout: utils.GetEnvDuration("ANALYTICS_TIMEOUT", 15*time.Second),
+		Env:                 utils.GetEnv("ENV", "development"),
+		AppName:             appName,
+		Port:                port,
+		RequestLoggingLevel: utils.GetEnv("REQUEST_LOGGING_LEVEL", "all"),
+		AnalyticsTimeout:    utils.GetEnvDuration("ANALYTICS_TIMEOUT", 15*time.Second),
 	}
 
 	pgConfig := infra.PgConfig{
@@ -74,7 +85,7 @@ func RunAnalyticsServer(config CompiledConfig) error {
 	}
 
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
-	license := infra.VerifyLicense(licenseConfig)
+	license := infra.VerifyLicense(licenseConfig, "")
 
 	repositories := repositories.NewRepositories(
 		pool,

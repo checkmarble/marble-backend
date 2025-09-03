@@ -67,3 +67,32 @@ func NewServer(
 		Handler:      h2c.NewHandler(router, &http2.Server{}),
 	}
 }
+func NewAnalyticsServer(
+	router *gin.Engine,
+	conf Configuration,
+	uc usecases.Usecases,
+	auth utils.Authentication,
+	opts ...Option,
+) *http.Server {
+	o := applyOptions(opts)
+
+	addAnalyticsRoutes(router, conf, uc, auth)
+
+	var host string
+	if o.localTest {
+		host = "localhost"
+	} else {
+		host = "0.0.0.0"
+	}
+
+	// Add 5 seconds to the server timeout to gracefully handle the timeout in our code
+	maxTimeout := max(conf.AnalyticsTimeout) + 5*time.Second
+
+	return &http.Server{
+		Addr:         fmt.Sprintf("%s:%s", host, conf.Port),
+		WriteTimeout: maxTimeout,
+		ReadTimeout:  maxTimeout,
+		IdleTimeout:  maxTimeout,
+		Handler:      h2c.NewHandler(router, &http2.Server{}),
+	}
+}
