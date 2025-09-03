@@ -197,6 +197,9 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 				enc := json.NewEncoder(wr)
 
 				if err := enc.Encode(rule.RuleEvaluation); err != nil {
+					if err := wr.Close(); err != nil {
+						logger.Error(fmt.Sprintf("could not close writer after write failure: %s", err.Error()))
+					}
 					return stopChannelAndReturn(err)
 				}
 
