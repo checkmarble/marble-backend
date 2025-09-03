@@ -77,7 +77,7 @@ func NewAnalyticsServer(
 ) *http.Server {
 	o := applyOptions(opts)
 
-	addAnalyticsRoutes(router, uc, auth)
+	addAnalyticsRoutes(router, conf, uc, auth)
 
 	var host string
 	if o.localTest {
