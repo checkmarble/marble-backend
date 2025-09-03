@@ -30,3 +30,46 @@ func handleListAnalytics(uc usecases.Usecases) func(c *gin.Context) {
 		})
 	}
 }
+
+func handleAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		uc := usecasesWithCreds(ctx, uc).NewDummyAnalyticsUsecase()
+
+		var filters dto.AnalyticsQueryFilters
+
+		if err := c.ShouldBindJSON(&filters); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		if err := filters.Validate(); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		var (
+			results any
+			err     error
+		)
+
+		switch c.Param("query") {
+		case "decision_outcomes_per_day":
+			results, err = uc.DecisionOutcomePerDay(c.Request.Context(), filters)
+		case "decisions_score_distribution":
+			results, err = uc.DecisionsScoreDistribution(c.Request.Context(), filters)
+		case "rule_hit_table":
+			results, err = uc.RuleHitTable(c.Request.Context(), filters)
+		case "rule_vs_decision_outcome":
+			results, err = uc.RuleVsDecisionOutcome(c.Request.Context(), filters)
+		default:
+			c.Status(http.StatusNotFound)
+			return
+		}
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, results)
+	}
+}

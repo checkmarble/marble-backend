@@ -741,3 +741,12 @@ func (uc *UsecasesWithCreds) NewAiSettingUsecase() ai_agent.AiSettingUsecase {
 		&uc.Repositories.MarbleDbRepository,
 	)
 }
+
+func (uc *UsecasesWithCreds) NewDummyAnalyticsUsecase() AnalyticsQueryUsecase {
+	return AnalyticsQueryUsecase{
+		enforceSecurity:    uc.NewEnforceScenarioSecurity(),
+		executorFactory:    uc.NewExecutorFactory(),
+		analyticsFactory:   uc.NewAnalyticsExecutorFactory(),
+		scenarioRepository: &uc.Repositories.MarbleDbRepository,
+	}
+}
