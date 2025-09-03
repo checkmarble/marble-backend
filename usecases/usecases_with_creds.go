@@ -744,3 +744,12 @@ func (uc *UsecasesWithCreds) NewDecisionWorkflowsWorker() *decision_workflows.De
 		uc.NewWebhookEventsUsecase(),
 	)
 }
+
+func (uc *UsecasesWithCreds) NewDummyAnalyticsUsecase() AnalyticsQueryUsecase {
+	return AnalyticsQueryUsecase{
+		enforceSecurity:    uc.NewEnforceScenarioSecurity(),
+		executorFactory:    uc.NewExecutorFactory(),
+		analyticsFactory:   uc.NewAnalyticsExecutorFactory(),
+		scenarioRepository: uc.Repositories.MarbleDbRepository,
+	}
+}
