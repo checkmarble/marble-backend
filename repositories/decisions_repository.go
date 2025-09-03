@@ -998,6 +998,11 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(
 		return models.ChannelOfModels[models.OffloadableDecisionRule]{}, err
 	}
 
+	inequalitySymbol := ">"
+	if req.LargeInequality {
+		inequalitySymbol = ">="
+	}
+
 	sql := NewQueryBuilder().
 		Select(
 			"d.id as id",
@@ -1007,27 +1012,16 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(
 			"dr.outcome as outcome",
 			"dr.rule_evaluation as rule_evaluation",
 		).
-		Prefix("with pending_decisions as (").
-		PrefixExpr(
-			squirrel.
-				Select("id", "created_at").
-				From(dbmodels.TABLE_DECISIONS).
-				Where(squirrel.And{
-					squirrel.Eq{"org_id": req.OrgId},
-					squirrel.Lt{"created_at": req.DeleteBefore},
-					// We use a large inequality at the risk of selecting decisions that are on the watermark again, because it is better
-					// to handle a decision twice (the operation of offloading is idempotent) rather than skip part of the decision rules
-					// attached to the decision. A second filter is done in the final query.
-					squirrel.Expr("created_at >= ?", req.Watermark.WatermarkTime),
-				}).
-				OrderBy("created_at, id").
-				Limit(uint64(req.BatchSize)),
-		).
-		Prefix(")").
-		From("pending_decisions d").
-		Join("decision_rules dr on dr.decision_id = d.id").
-		Where("(d.created_at, dr.id) > (?, ?)", req.Watermark.WatermarkTime, *req.Watermark.WatermarkId).
-		OrderBy("d.created_at, dr.id")
+		From(dbmodels.TABLE_DECISIONS).
+		Join(fmt.Sprintf("%s AS dr ON dr.decision_id = d.id", dbmodels.TABLE_DECISION_RULES)).
+		Where(squirrel.And{
+			squirrel.Eq{"org_id": req.OrgId},
+			squirrel.Lt{"created_at": req.DeleteBefore},
+			squirrel.Expr(fmt.Sprintf("(d.created_at, d.id) %s (?, ?)", inequalitySymbol),
+				req.Watermark.WatermarkTime, *req.Watermark.WatermarkId),
+		}).
+		OrderBy("d.created_at, d.id").
+		Limit(uint64(req.BatchSize))
 
 	cb := func(row pgx.CollectableRow) (models.OffloadableDecisionRule, error) {
 		dbRow, err := pgx.RowToStructByName[dbmodels.DbOffloadableDecisionRule](row)
