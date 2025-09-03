@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/cockroachdb/errors"
@@ -14,6 +15,7 @@ type BlobType int
 const (
 	BlobTypeS3 BlobType = iota
 	BlobTypeAzure
+	BlobTypeFS
 )
 
 type AnalyticsConfig struct {
@@ -33,9 +35,13 @@ func InitAnalyticsConfig(bucket string) (AnalyticsConfig, error) {
 	}
 
 	switch u.Scheme {
-
 	case "s3":
-		if err := cfg.buildS3ConnectionString(); err != nil {
+		if err := cfg.buildS3ConnectionString(u); err != nil {
+			return AnalyticsConfig{}, err
+		}
+
+	case "file":
+		if err := cfg.buildFilesystemConnectionString(u); err != nil {
 			return AnalyticsConfig{}, err
 		}
 
@@ -46,12 +52,7 @@ func InitAnalyticsConfig(bucket string) (AnalyticsConfig, error) {
 	return cfg, nil
 }
 
-func (cfg *AnalyticsConfig) buildS3ConnectionString() error {
-	u, err := url.Parse(cfg.Bucket)
-	if err != nil {
-		return errors.Wrap(err, "could not build analytics bucket connection string")
-	}
-
+func (cfg *AnalyticsConfig) buildS3ConnectionString(u *url.URL) error {
 	cfg.Type = BlobTypeS3
 	cfg.Bucket = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 
@@ -88,6 +89,28 @@ func (cfg *AnalyticsConfig) buildS3ConnectionString() error {
 	}
 
 	cfg.ConnectionString = strings.Join(args, ", ")
+
+	return nil
+}
+
+func (cfg *AnalyticsConfig) buildFilesystemConnectionString(u *url.URL) error {
+	dir := path.Join(u.Host, u.Path)
+
+	if u.Query().Get("create_dir") == "true" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+
+	stat, err := os.Stat(dir)
+	if err != nil {
+		return err
+	}
+	if !stat.IsDir() {
+		return errors.New("provided analytics path is not a directory")
+	}
+
+	cfg.Bucket = dir
 
 	return nil
 }
