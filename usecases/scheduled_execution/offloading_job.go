@@ -95,6 +95,11 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 		return nil
 	}
 
+	if w.config.BatchSize < 500 {
+		logger.WarnContext(ctx, fmt.Sprintf("OFFLOADING_BATCH_SIZE should be greater than 500, but is %d, using 500 instead", w.config.BatchSize))
+		w.config.BatchSize = 500
+	}
+
 	grace := time.Duration(w.config.JobInterval.Seconds()*0.90) * time.Second
 	if grace.Minutes() > 3 {
 		grace = 3 * time.Minute
