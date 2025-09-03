@@ -57,6 +57,7 @@ type AiAgentUsecaseRepository interface {
 	) error
 	GetCaseReviewById(ctx context.Context, exec repositories.Executor, reviewId uuid.UUID) (models.AiCaseReview, error)
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
+	GetAiSetting(ctx context.Context, exec repositories.Executor, organizationId string) (*models.AiSetting, error)
 }
 
 type AiAgentUsecaseIngestedDataReader interface {
@@ -103,8 +104,9 @@ type AiAgentUsecase struct {
 	config                   infra.AIAgentConfiguration
 	caseManagerBucketUrl     string
 
-	llmberjack *llmberjack.Llmberjack
-	mu         sync.Mutex
+	llmberjack        *llmberjack.Llmberjack
+	enrichmentAdapter *llmberjack.Llmberjack
+	mu                sync.Mutex
 }
 
 type sanityCheckOutput struct {

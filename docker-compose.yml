@@ -67,3 +67,5 @@ volumes:
     driver: local
   es:
     driver: local
+  minio:
+    driver: local

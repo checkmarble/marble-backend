@@ -160,12 +160,14 @@ func NewTelemetrySamplingMap(ctx context.Context, path string) TelemetrySampling
 
 	f, err := os.Open(path)
 	if err != nil {
-		utils.LoggerFromContext(ctx).Warn(fmt.Sprintf("could not read otel sampling rates file: %s", err.Error()))
+		utils.LoggerFromContext(ctx).Warn(fmt.Sprintf(
+			"could not read otel sampling rates file: %s", err.Error()))
 		return m
 	}
 
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
-		utils.LoggerFromContext(ctx).Warn(fmt.Sprintf("could not read otel sampling rates file: %s", err.Error()))
+		utils.LoggerFromContext(ctx).Warn(fmt.Sprintf(
+			"could not read otel sampling rates file: %s", err.Error()))
 		return m
 	}
 
@@ -197,6 +199,9 @@ type AIAgentConfiguration struct {
 	MainAgentBackend  genai.Backend
 	MainAgentProject  string
 	MainAgentLocation string
+
+	// For Perplexity
+	PerplexityAPIKey string
 }
 
 func AIAgentProviderTypeFromString(providerType string) AIAgentProviderType {

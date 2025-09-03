@@ -124,6 +124,9 @@ func RunServer(config CompiledConfig) error {
 		MetricsDataset: utils.GetEnv("BIGQUERY_METRICS_DATASET", infra.MetricsDataset),
 		MetricsTable:   utils.GetEnv("BIGQUERY_METRICS_TABLE", infra.MetricsTable),
 	}
+	aiAgentConfig := infra.AIAgentConfiguration{
+		PerplexityAPIKey: utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
+	}
 
 	serverConfig := struct {
 		batchIngestionMaxSize            int
@@ -256,6 +259,7 @@ func RunServer(config CompiledConfig) error {
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
 		usecases.WithTestMode(serverConfig.firebaseEmulatorHost != ""),
 		usecases.WithFirebaseAdmin(deps.FirebaseAdmin),
+		usecases.WithAIAgentConfig(aiAgentConfig),
 	)
 
 	////////////////////////////////////////////////////////////

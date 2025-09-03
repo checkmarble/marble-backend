@@ -246,6 +246,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/cases/:case_id/review", tom, handleGetCaseReview(uc))
 	router.PUT("/cases/:case_id/review/:review_id/feedback", tom, handlePutCaseReviewFeedback(uc))
 	router.POST("/cases/:case_id/review/enqueue", tom, handleEnqueueCaseReview(uc))
+	router.POST("/cases/:case_id/enrich_kyc", timeoutMiddleware(30*time.Second), handleEnrichCasePivotObjects(uc))
 
 	router.GET("/inboxes/:inbox_id", tom, handleGetInboxById(uc))
 	router.GET("/inboxes/:inbox_id/metadata", tom, handleGetInboxMetadataById(uc))

@@ -717,3 +717,19 @@ func handlePutCaseReviewFeedback(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, review)
 	}
 }
+
+func handleEnrichCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+
+		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
+		responses, err := usecase.EnrichCasePivotObjects(ctx, caseId)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, agent_dto.AdaptKYCEnrichmentResultsDto(responses))
+	}
+}
