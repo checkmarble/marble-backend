@@ -43,7 +43,10 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (*sql.DB, err
 
 		db = sql.OpenDB(ddb)
 
-		_, err = db.ExecContext(ctx, fmt.Sprintf(`create secret if not exists analytics (%s);`, f.config.ConnectionString))
+		switch f.config.Type {
+		case infra.BlobTypeS3:
+			_, err = db.ExecContext(ctx, fmt.Sprintf(`create secret if not exists analytics (%s);`, f.config.ConnectionString))
+		}
 	})
 
 	if err != nil {
@@ -55,7 +58,7 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (*sql.DB, err
 
 func (f AnalyticsExecutorFactory) BuildTarget(table string, aliases ...string) string {
 	alias := "main"
-	if len(alias) > 0 {
+	if len(aliases) > 0 {
 		alias = aliases[0]
 	}
 
