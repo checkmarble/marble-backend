@@ -1012,11 +1012,11 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(
 			"dr.outcome as outcome",
 			"dr.rule_evaluation as rule_evaluation",
 		).
-		From(dbmodels.TABLE_DECISIONS).
+		From(dbmodels.TABLE_DECISIONS + " AS d").
 		Join(fmt.Sprintf("%s AS dr ON dr.decision_id = d.id", dbmodels.TABLE_DECISION_RULES)).
 		Where(squirrel.And{
-			squirrel.Eq{"org_id": req.OrgId},
-			squirrel.Lt{"created_at": req.DeleteBefore},
+			squirrel.Eq{"d.org_id": req.OrgId},
+			squirrel.Lt{"d.created_at": req.DeleteBefore},
 			squirrel.Expr(fmt.Sprintf("(d.created_at, d.id) %s (?, ?)", inequalitySymbol),
 				req.Watermark.WatermarkTime, *req.Watermark.WatermarkId),
 		}).
