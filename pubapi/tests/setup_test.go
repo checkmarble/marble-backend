@@ -24,7 +24,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gin-gonic/gin"
-	"github.com/go-testfixtures/testfixtures/v3"
+	testfixtures "github.com/go-testfixtures/testfixtures/v3"
 	"github.com/pressly/goose/v3"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
