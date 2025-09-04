@@ -110,6 +110,7 @@ func (cfg *AnalyticsConfig) buildFilesystemConnectionString(u *url.URL) error {
 		return errors.New("provided analytics path is not a directory")
 	}
 
+	cfg.Type = BlobTypeFS
 	cfg.Bucket = dir
 
 	return nil
