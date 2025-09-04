@@ -130,6 +130,7 @@ func RunServer(config CompiledConfig) error {
 		caseManagerBucket                string
 		ingestionBucketUrl               string
 		offloadingBucketUrl              string
+		analyticsBucketUrl               string
 		jwtSigningKey                    string
 		jwtSigningKeyFile                string
 		loggingFormat                    string
@@ -143,6 +144,7 @@ func RunServer(config CompiledConfig) error {
 		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 		ingestionBucketUrl:               utils.GetEnv("INGESTION_BUCKET_URL", ""),
 		offloadingBucketUrl:              utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
+		analyticsBucketUrl:               utils.GetEnv("ANALYTICS_BUCKET_URL", ""),
 		jwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
 		jwtSigningKeyFile:                utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY_FILE", ""),
 		loggingFormat:                    utils.GetEnv("LOGGING_FORMAT", "text"),
@@ -224,6 +226,11 @@ func RunServer(config CompiledConfig) error {
 		defer bigQueryInfra.Close()
 	}
 
+	analyticsConfig, err := infra.InitAnalyticsConfig(serverConfig.analyticsBucketUrl)
+	if err != nil {
+		return err
+	}
+
 	repositories := repositories.NewRepositories(
 		pool,
 		gcpConfig,
@@ -256,6 +263,7 @@ func RunServer(config CompiledConfig) error {
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
 		usecases.WithTestMode(serverConfig.firebaseEmulatorHost != ""),
 		usecases.WithFirebaseAdmin(deps.FirebaseAdmin),
+		usecases.WithAnalyticsConfig(analyticsConfig),
 	)
 
 	////////////////////////////////////////////////////////////

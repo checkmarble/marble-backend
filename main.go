@@ -31,6 +31,7 @@ func main() {
 	shouldRunSendPendingWebhookEvents := flag.Bool("send-pending-webhook-events", false, "Send pending webhook events")
 	shouldRunScheduler := flag.Bool("cron-scheduler", false, "Run scheduler for cron jobs")
 	shouldRunWorker := flag.Bool("worker", false, "Run workers on the task queues")
+	shouldRunAnalyticsServer := flag.Bool("analytics", false, "Run analytics server")
 	flag.Parse()
 	logger := utils.NewLogger("text")
 	logger.Info("Flags",
@@ -41,6 +42,7 @@ func main() {
 		slog.Bool("shouldRunScheduler", *shouldRunScheduler),
 		slog.Bool("shouldRunSendPendingWebhookEvents", *shouldRunSendPendingWebhookEvents),
 		slog.Bool("shouldRunWorker", *shouldRunWorker),
+		slog.Bool("shouldRunAnalyticsServer", *shouldRunAnalyticsServer),
 	)
 
 	if *shouldRunMigrations {
@@ -93,6 +95,13 @@ func main() {
 
 	if *shouldRunWorker {
 		err := cmd.RunTaskQueue(apiVersion)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if *shouldRunAnalyticsServer {
+		err := cmd.RunAnalyticsServer(compiledConfig)
 		if err != nil {
 			log.Fatal(err)
 		}

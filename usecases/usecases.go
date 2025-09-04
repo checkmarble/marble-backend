@@ -38,6 +38,7 @@ type Usecases struct {
 	metricsCollectionConfig     infra.MetricCollectionConfig
 	firebaseAdmin               firebase.Adminer
 	aiAgentConfig               infra.AIAgentConfiguration
+	analyticsConfig             infra.AnalyticsConfig
 }
 
 type Option func(*options)
@@ -140,6 +141,12 @@ func WithFirebaseAdmin(client firebase.Adminer) Option {
 	}
 }
 
+func WithAnalyticsConfig(config infra.AnalyticsConfig) Option {
+	return func(o *options) {
+		o.analyticsConfig = config
+	}
+}
+
 func WithMetricsCollectionConfig(config infra.MetricCollectionConfig) Option {
 	return func(o *options) {
 		o.metricsCollectionConfig = config
@@ -170,6 +177,7 @@ type options struct {
 	metricsCollectionConfig     infra.MetricCollectionConfig
 	firebaseClient              firebase.Adminer
 	aiAgentConfig               infra.AIAgentConfiguration
+	analyticsConfig             infra.AnalyticsConfig
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -195,6 +203,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		metricsCollectionConfig:     o.metricsCollectionConfig,
 		firebaseAdmin:               o.firebaseClient,
 		aiAgentConfig:               o.aiAgentConfig,
+		analyticsConfig:             o.analyticsConfig,
 	}
 }
 
@@ -220,6 +229,10 @@ func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFa
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.ExecutorGetter,
 	)
+}
+
+func (usecases *Usecases) NewAnalyticsExecutorFactory() executor_factory.AnalyticsExecutorFactory {
+	return executor_factory.NewAnalyticsExecutorFactory(usecases.analyticsConfig)
 }
 
 func (usecases *Usecases) NewVersionUsecase() VersionUsecase {

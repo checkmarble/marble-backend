@@ -331,3 +331,14 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/settings/ai", tom, HandleGetAiSettingForOrganization(uc))
 	router.PATCH("/settings/ai", tom, HandlePatchAiSettingForOrganization(uc))
 }
+
+func addAnalyticsRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth utils.Authentication) {
+	tom := timeoutMiddleware(conf.AnalyticsTimeout)
+
+	router := r.Use(
+		auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
+	)
+
+	router.POST("/analytics/query/:query", tom, handleAnalyticsQuery(uc))
+	router.POST("/analytics/available-filters", tom, handleAnalyticsAvailableFilters(uc))
+}
