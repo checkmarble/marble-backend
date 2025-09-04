@@ -117,6 +117,9 @@ func (uc *AiAgentUsecase) enrichData(ctx context.Context, organizationId string,
 	_, prompt, err := uc.prepareRequest("prompts/kyc_enrichment/prompt_enrich.md", map[string]any{
 		"data": string(data),
 	})
+	if err != nil {
+		return models.AiEnrichmentKYC{}, errors.Wrap(err, "failed to prepare request")
+	}
 
 	logger.DebugContext(ctx, "KYC Enrichment - Prompt", "prompt", prompt)
 
