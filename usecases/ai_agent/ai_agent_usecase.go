@@ -23,9 +23,9 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/invopop/jsonschema"
 
-	llm_adapter "github.com/checkmarble/llm-adapter"
-	"github.com/checkmarble/llm-adapter/llms/aistudio"
-	"github.com/checkmarble/llm-adapter/llms/openai"
+	llmberjack "github.com/checkmarble/llmberjack"
+	"github.com/checkmarble/llmberjack/llms/aistudio"
+	"github.com/checkmarble/llmberjack/llms/openai"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
@@ -103,7 +103,7 @@ type AiAgentUsecase struct {
 	config                   infra.AIAgentConfiguration
 	caseManagerBucketUrl     string
 
-	llmAdapter *llm_adapter.LlmAdapter
+	llmberjack *llmberjack.Llmberjack
 	mu         sync.Mutex
 }
 
@@ -157,7 +157,7 @@ type customOrgInstructions struct {
 	Structure *string `json:"structure"`
 }
 
-func (uc *AiAgentUsecase) createOpenAIProvider() (llm_adapter.Llm, error) {
+func (uc *AiAgentUsecase) createOpenAIProvider() (llmberjack.Llm, error) {
 	opts := []openai.Opt{}
 	if uc.config.MainAgentURL != "" {
 		opts = append(opts, openai.WithBaseUrl(uc.config.MainAgentURL))
@@ -173,7 +173,7 @@ func (uc *AiAgentUsecase) createOpenAIProvider() (llm_adapter.Llm, error) {
 	return provider, nil
 }
 
-func (uc *AiAgentUsecase) createAIStudioProvider() (llm_adapter.Llm, error) {
+func (uc *AiAgentUsecase) createAIStudioProvider() (llmberjack.Llm, error) {
 	opts := []aistudio.Opt{
 		aistudio.WithBackend(uc.config.MainAgentBackend),
 	}
@@ -195,16 +195,16 @@ func (uc *AiAgentUsecase) createAIStudioProvider() (llm_adapter.Llm, error) {
 	return provider, nil
 }
 
-func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*llm_adapter.LlmAdapter, error) {
+func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*llmberjack.Llmberjack, error) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 
-	if uc.llmAdapter != nil {
-		return uc.llmAdapter, nil
+	if uc.llmberjack != nil {
+		return uc.llmberjack, nil
 	}
 
 	// Create provider based on config
-	var mainProvider llm_adapter.Llm
+	var mainProvider llmberjack.Llm
 	var err error
 
 	switch uc.config.MainAgentProviderType {
@@ -220,13 +220,13 @@ func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*llm_adapter.LlmAdapte
 		return nil, errors.Wrap(err, "failed to create LLM provider")
 	}
 
-	adapter, err := llm_adapter.New(llm_adapter.WithProvider("main", mainProvider))
+	adapter, err := llmberjack.New(llmberjack.WithProvider("main", mainProvider))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create LLM adapter")
 	}
 
-	uc.llmAdapter = adapter
-	return uc.llmAdapter, nil
+	uc.llmberjack = adapter
+	return uc.llmberjack, nil
 }
 
 func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.Reader, error) {
@@ -686,10 +686,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		}
 
 		// Create the request with Thread for the next steps which needs the response
-		requestDataModelSummary, err := llm_adapter.NewUntypedRequest().
+		requestDataModelSummary, err := llmberjack.NewUntypedRequest().
 			WithModel(modelDataModelSummary).
 			WithInstruction(systemInstruction).
-			WithText(llm_adapter.RoleUser, promptDataModelSummary).
+			WithText(llmberjack.RoleUser, promptDataModelSummary).
 			Do(ctx, client)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate data model summary")
@@ -757,12 +757,12 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 						return nil, errors.Wrap(err, "could not prepare data model object field read options request")
 					}
 
-					requestDataModelObjectFieldReadOptions, err := llm_adapter.NewRequest[map[string][]string]().
+					requestDataModelObjectFieldReadOptions, err := llmberjack.NewRequest[map[string][]string]().
 						OverrideResponseSchema(schema).
 						WithModel(modelDataModelObjectFieldReadOptions).
 						WithInstruction(systemInstruction).
-						WithText(llm_adapter.RoleAi, *caseReviewContext.DataModelSummary).
-						WithText(llm_adapter.RoleUser, promptDataModelObjectFieldReadOptions).
+						WithText(llmberjack.RoleAi, *caseReviewContext.DataModelSummary).
+						WithText(llmberjack.RoleUser, promptDataModelObjectFieldReadOptions).
 						Do(ctx, client)
 					if err != nil {
 						return nil, errors.Wrap(err, "could not generate data model object field read options")
@@ -820,10 +820,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare rules definitions review request")
 		}
-		requestRulesDefinitionsReview, err := llm_adapter.NewUntypedRequest().
+		requestRulesDefinitionsReview, err := llmberjack.NewUntypedRequest().
 			WithModel(modelRulesDefinitions).
 			WithInstruction(systemInstruction).
-			WithText(llm_adapter.RoleUser, promptRulesDefinitions).
+			WithText(llmberjack.RoleUser, promptRulesDefinitions).
 			Do(ctx, client)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate rules definitions review")
@@ -849,10 +849,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare rule thresholds request")
 		}
-		requestRuleThresholds, err := llm_adapter.NewUntypedRequest().
+		requestRuleThresholds, err := llmberjack.NewUntypedRequest().
 			WithModel(modelRuleThresholds).
 			WithInstruction(systemInstruction).
-			WithText(llm_adapter.RoleUser, promptRuleThresholds).
+			WithText(llmberjack.RoleUser, promptRuleThresholds).
 			Do(ctx, client)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate rule thresholds")
@@ -886,10 +886,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			return nil, errors.Wrap(err, "could not prepare case review request")
 		}
 
-		requestCaseReview, err := llm_adapter.NewRequest[caseReviewOutput]().
+		requestCaseReview, err := llmberjack.NewRequest[caseReviewOutput]().
 			WithModel(modelCaseReview).
 			WithInstruction(systemInstruction).
-			WithText(llm_adapter.RoleUser, promptCaseReview).
+			WithText(llmberjack.RoleUser, promptCaseReview).
 			Do(ctx, client)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate case review")
@@ -922,10 +922,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare sanity check request")
 		}
-		requestSanityCheck, err := llm_adapter.NewRequest[sanityCheckOutput]().
+		requestSanityCheck, err := llmberjack.NewRequest[sanityCheckOutput]().
 			WithModel(modelSanityCheck).
 			WithInstruction(systemInstruction).
-			WithText(llm_adapter.RoleUser, promptSanityCheck).
+			WithText(llmberjack.RoleUser, promptSanityCheck).
 			Do(ctx, client)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate sanity check")
@@ -953,7 +953,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			customReportInstruction = "Transform the case review according to the instructions. Return only the transformed content without explanations or preambles."
 		}
 
-		customFormatRequest := llm_adapter.NewRequest[string]().
+		customFormatRequest := llmberjack.NewRequest[string]().
 			WithModel(modelForInstruction).
 			WithInstruction(systemInstruction).
 			WithInstruction(customReportInstruction)
@@ -963,7 +963,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			customFormatRequest = customFormatRequest.WithInstruction(instruction)
 		}
 		requestCustomFormat, err := customFormatRequest.
-			WithText(llm_adapter.RoleUser, finalOutput).
+			WithText(llmberjack.RoleUser, finalOutput).
 			Do(ctx, client)
 		if err != nil {
 			logger.DebugContext(ctx, "could not get custom format", "error", err)
