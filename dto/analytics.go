@@ -7,6 +7,24 @@ import (
 	"github.com/google/uuid"
 )
 
+type AnalyticsAvailableFiltersRequest struct {
+	Start      time.Time `json:"start" validate:"required"`
+	End        time.Time `json:"end" validate:"required"`
+	ScenarioId uuid.UUID `json:"scenario_id" validate:"required"`
+}
+
+type AnalyticsAvailableFilter struct {
+	Name string               `json:"name"`
+	Type models.AnalyticsType `json:"type"`
+}
+
+func AdaptAnalyticsAvailableFilter(model models.AnalyticsFilter) AnalyticsAvailableFilter {
+	return AnalyticsAvailableFilter{
+		Name: model.Name,
+		Type: models.AnalyticsTypeFromColumn(model.Type),
+	}
+}
+
 type AnalyticsQueryFilters struct {
 	Start            time.Time `json:"start" validate:"required"`
 	End              time.Time `json:"end" validate:"required"`
