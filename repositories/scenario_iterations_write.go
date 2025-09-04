@@ -146,7 +146,7 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exe
 		countUpdate++
 	}
 	if countUpdate == 0 {
-		return repo.GetScenarioIteration(ctx, exec, scenarioIteration.Id)
+		return repo.GetScenarioIteration(ctx, exec, scenarioIteration.Id, true)
 	}
 
 	updatedIteration, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptScenarioIteration)

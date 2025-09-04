@@ -7,14 +7,16 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type DataModelRepository interface {
-	GetDataModel(ctx context.Context, exec Executor, organizationID string, fetchEnumValues bool) (models.DataModel, error)
+	GetDataModel(ctx context.Context, exec Executor, organizationID string, fetchEnumValues bool, useCache bool) (models.DataModel, error)
 	CreateDataModelTable(ctx context.Context, exec Executor, organizationID, tableID, name, description string) error
 	UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
@@ -37,7 +39,7 @@ type DataModelRepository interface {
 	BatchInsertEnumValues(ctx context.Context, exec Executor, enumValues models.EnumValues, table models.Table) error
 
 	CreatePivot(ctx context.Context, exec Executor, id string, pivot models.CreatePivotInput) error
-	ListPivots(ctx context.Context, exec Executor, organization_id string, tableId *string) ([]models.PivotMetadata, error)
+	ListPivots(ctx context.Context, exec Executor, organization_id string, tableId *string, useCache bool) ([]models.PivotMetadata, error)
 	GetPivot(ctx context.Context, exec Executor, pivotId string) (models.PivotMetadata, error)
 
 	GetDataModelOptionsForTable(ctx context.Context, exec Executor, tableId string) (*models.DataModelOptions, error)
@@ -47,12 +49,24 @@ type DataModelRepository interface {
 
 type DataModelRepositoryPostgresql struct{}
 
+var (
+	dataModelCache       = expirable.NewLRU[string, models.DataModel](50, nil, utils.GlobalCacheDuration())
+	dataModelPivotsCache = expirable.NewLRU[string, []models.PivotMetadata](50, nil, utils.GlobalCacheDuration())
+)
+
 func (repo MarbleDbRepository) GetDataModel(
 	ctx context.Context,
 	exec Executor,
 	organizationID string,
 	fetchEnumValues bool,
+	useCache bool,
 ) (models.DataModel, error) {
+	if useCache {
+		if dm, ok := dataModelCache.Get(organizationID); ok {
+			return dm, nil
+		}
+	}
+
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.DataModel{}, err
 	}
@@ -106,6 +120,9 @@ func (repo MarbleDbRepository) GetDataModel(
 	for _, link := range links {
 		dataModel.Tables[link.ChildTableName].LinksToSingle[link.Name] = link
 	}
+
+	dataModelCache.Add(organizationID, dataModel)
+
 	return dataModel, nil
 }
 
@@ -472,7 +489,19 @@ func (repo MarbleDbRepository) ListPivots(
 	exec Executor,
 	organizationId string,
 	tableId *string,
+	useCache bool,
 ) ([]models.PivotMetadata, error) {
+	cacheKey := organizationId
+	if tableId != nil {
+		cacheKey = organizationId + *tableId
+	}
+
+	if useCache {
+		if pivots, ok := dataModelPivotsCache.Get(cacheKey); ok {
+			return pivots, nil
+		}
+	}
+
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -487,7 +516,14 @@ func (repo MarbleDbRepository) ListPivots(
 		query = query.Where(squirrel.Eq{"base_table_id": *tableId})
 	}
 
-	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptPivotMetadata)
+	pivots, err := SqlToListOfModels(ctx, exec, query, dbmodels.AdaptPivotMetadata)
+	if err != nil {
+		return nil, err
+	}
+
+	dataModelPivotsCache.Add(cacheKey, pivots)
+
+	return pivots, nil
 }
 
 func (repo MarbleDbRepository) GetPivot(ctx context.Context, exec Executor, pivotId string) (models.PivotMetadata, error) {

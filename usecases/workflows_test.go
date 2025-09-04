@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestValidateWorkflowCondition(t *testing.T) {
@@ -125,7 +126,7 @@ func makeScenarioEvaluator(t *testing.T, scenario models.Scenario) (executor_fac
 	executorFactory.On("NewExecutor").Return(exec)
 
 	dataModel := new(mocks.DataModelRepository)
-	dataModel.On("GetDataModel", ctx, exec, scenario.OrganizationId, false).
+	dataModel.On("GetDataModel", ctx, exec, scenario.OrganizationId, false, mock.Anything).
 		Return(models.DataModel{
 			Version: "1",
 			Tables: map[string]models.Table{

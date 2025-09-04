@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
@@ -72,7 +73,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 	executorFactory := new(mocks.ExecutorFactory)
 	executorFactory.On("NewExecutor").Once().Return(exec)
 	mdmr := new(mocks.DataModelRepository)
-	mdmr.On("GetDataModel", ctx, exec, scenario.OrganizationId, false).
+	mdmr.On("GetDataModel", ctx, exec, scenario.OrganizationId, false, mock.Anything).
 		Return(models.DataModel{
 			Version: "version",
 			Tables: map[string]models.Table{
@@ -164,7 +165,7 @@ func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 	executorFactory := new(mocks.ExecutorFactory)
 	executorFactory.On("NewExecutor").Once().Return(exec)
 	mdmr := new(mocks.DataModelRepository)
-	mdmr.On("GetDataModel", ctx, exec, scenario.OrganizationId, false).
+	mdmr.On("GetDataModel", ctx, exec, scenario.OrganizationId, false, mock.Anything).
 		Return(models.DataModel{
 			Version: "version",
 			Tables: map[string]models.Table{
@@ -264,7 +265,7 @@ func TestValidationShouldBypassCircuitBreaking(t *testing.T) {
 	executorFactory := new(mocks.ExecutorFactory)
 	executorFactory.On("NewExecutor").Once().Return(exec)
 	mdmr := new(mocks.DataModelRepository)
-	mdmr.On("GetDataModel", ctx, exec, scenario.OrganizationId, false).
+	mdmr.On("GetDataModel", ctx, exec, scenario.OrganizationId, false, mock.Anything).
 		Return(models.DataModel{
 			Version: "version",
 			Tables: map[string]models.Table{

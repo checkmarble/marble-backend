@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"runtime/debug"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -204,27 +205,65 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	beforeRules := time.Now()
 
-	// Evaluate all rules
-	score, ruleExecutions, errEval := e.evalAllScenarioRules(
-		ctx,
-		cache,
-		iteration.Rules,
-		dataAccessor,
-		params.DataModel,
-		snoozes)
-	if errEval != nil {
-		return false, models.ScenarioExecution{}, errors.Wrap(errEval,
-			"error during concurrent rule evaluation")
-	}
+	var (
+		score          int
+		ruleExecutions []models.RuleExecution
+		ruleErr        error
+		rulesDuration  time.Duration
 
-	rulesDuration := time.Since(beforeRules)
+		screeningExecutions []models.ScreeningWithMatches
+		screeningErr        error
+	)
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+
+		ctx, span := utils.OpenTelemetryTracerFromContext(ctx).Start(ctx, "rule_evaluation")
+		defer span.End()
+
+		// Evaluate all rules
+		inScore, inExec, inErr := e.evalAllScenarioRules(
+			ctx,
+			cache,
+			iteration.Rules,
+			dataAccessor,
+			params.DataModel,
+			snoozes)
+
+		score = inScore
+		ruleExecutions = inExec
+		ruleErr = inErr
+		rulesDuration = time.Since(beforeRules)
+	}()
 
 	var outcome models.Outcome
 
-	screeningExecutions, err := e.evaluateScreening(ctx, iteration, params, dataAccessor)
-	if err != nil {
+	go func() {
+		defer wg.Done()
+
+		ctx, span := utils.OpenTelemetryTracerFromContext(ctx).Start(ctx, "screening_evaluation")
+		defer span.End()
+
+		inExec, inErr := e.evaluateScreening(ctx, iteration, params, dataAccessor)
+
+		screeningExecutions = inExec
+		screeningErr = inErr
+	}()
+
+	wg.Wait()
+
+	if ruleErr != nil {
+		return false, models.ScenarioExecution{}, errors.Wrap(ruleErr,
+			"error during concurrent rule evaluation")
+	}
+
+	if screeningErr != nil {
 		return false, models.ScenarioExecution{},
-			errors.Wrap(err, "could not perform screening")
+			errors.Wrap(screeningErr, "could not perform screening")
 	}
 
 	for idx, sce := range screeningExecutions {
@@ -355,7 +394,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		return false, se, nil
 	}
 
-	testRunIteration, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, testruns[0].ScenarioIterationId)
+	testRunIteration, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, testruns[0].ScenarioIterationId, true)
 	if err != nil {
 		return false, se, err
 	}
@@ -364,7 +403,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	// we just reuse the cached screening execution to avoid another (possibly paid) call to the screening service.
 	copiedScreening := make([]models.ScreeningWithMatches, 0)
 
-	sccs, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, testRunIteration.Id)
+	sccs, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, testRunIteration.Id, true)
 	if err != nil {
 		return false, se, errors.Wrap(err,
 			"error getting screening config from scenario iteration")
@@ -374,7 +413,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 
 	if len(sccs) > 0 {
 		liveVersionSccs, err := e.evalScreeningConfigRepository.ListScreeningConfigs(
-			ctx, exec, testruns[0].ScenarioLiveIterationId)
+			ctx, exec, testruns[0].ScenarioLiveIterationId, true)
 		if err != nil {
 			return false, se, err
 		}
@@ -452,13 +491,13 @@ func (e ScenarioEvaluator) EvalScenario(
 	)
 	defer span.End()
 
-	versionToRun, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, targetVersionId)
+	versionToRun, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, targetVersionId, true)
 	if err != nil {
 		return false, models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting scenario iteration in EvalScenario")
 	}
 
-	scc, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, versionToRun.Id)
+	scc, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, versionToRun.Id, true)
 	if err != nil {
 		return false, models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting screening config from scenario iteration")

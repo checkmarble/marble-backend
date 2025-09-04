@@ -18,7 +18,7 @@ const batchSize = 5000
 
 type RunScheduledExecutionRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (models.ScenarioIteration, error)
 	StoreDecisionsToCreate(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -177,7 +177,7 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 		return err
 	}
 
-	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec, scheduledExecution.ScenarioIterationId)
+	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec, scheduledExecution.ScenarioIterationId, true)
 	if err != nil {
 		return err
 	}
