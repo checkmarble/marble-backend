@@ -104,7 +104,7 @@ type AiAgentUsecase struct {
 	config                   infra.AIAgentConfiguration
 	caseManagerBucketUrl     string
 
-	llmberjack        *llmberjack.Llmberjack
+	caseReviewAdapter *llmberjack.Llmberjack
 	enrichmentAdapter *llmberjack.Llmberjack
 	mu                sync.Mutex
 }
@@ -201,8 +201,8 @@ func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*llmberjack.Llmberjack
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 
-	if uc.llmberjack != nil {
-		return uc.llmberjack, nil
+	if uc.caseReviewAdapter != nil {
+		return uc.caseReviewAdapter, nil
 	}
 
 	// Create provider based on config
@@ -227,8 +227,8 @@ func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*llmberjack.Llmberjack
 		return nil, errors.Wrap(err, "failed to create LLM adapter")
 	}
 
-	uc.llmberjack = adapter
-	return uc.llmberjack, nil
+	uc.caseReviewAdapter = adapter
+	return uc.caseReviewAdapter, nil
 }
 
 func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.Reader, error) {
