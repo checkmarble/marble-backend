@@ -363,4 +363,5 @@ func addAnalyticsRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases,
 	)
 
 	router.POST("/analytics/query/:query", tom, handleAnalyticsQuery(uc))
+	router.POST("/analytics/available-filters", tom, handleAnalyticsAvailableFilters(uc))
 }
