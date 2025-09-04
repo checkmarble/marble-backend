@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 
-	llmberjack "github.com/checkmarble/llmberjack"
+	"github.com/checkmarble/llmberjack"
 	"github.com/checkmarble/llmberjack/llms/openai"
-	perplexity "github.com/checkmarble/llmberjack/llms/perplexity"
+	"github.com/checkmarble/llmberjack/llms/perplexity"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"

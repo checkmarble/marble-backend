@@ -23,7 +23,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/invopop/jsonschema"
 
-	llmberjack "github.com/checkmarble/llmberjack"
+	"github.com/checkmarble/llmberjack"
 	"github.com/checkmarble/llmberjack/llms/aistudio"
 	"github.com/checkmarble/llmberjack/llms/openai"
 	"github.com/google/uuid"
