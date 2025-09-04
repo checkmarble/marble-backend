@@ -34,7 +34,7 @@ func handleListAnalytics(uc usecases.Usecases) func(c *gin.Context) {
 func handleAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		uc := usecasesWithCreds(ctx, uc).NewDummyAnalyticsUsecase()
+		uc := usecasesWithCreds(ctx, uc).NewAnalyticsQueryUsecase()
 
 		var filters dto.AnalyticsQueryFilters
 
@@ -71,5 +71,27 @@ func handleAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, results)
+	}
+}
+
+func handleAnalyticsAvailableFilters(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		uc := usecasesWithCreds(ctx, uc).NewAnalyticsMetadataUsecase()
+
+		var req dto.AnalyticsAvailableFiltersRequest
+
+		if err := c.ShouldBindJSON(&req); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		filters, err := uc.GetAvailableFilters(c.Request.Context(), req)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(filters, dto.AdaptAnalyticsAvailableFilter))
 	}
 }
