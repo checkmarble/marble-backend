@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const ENRICHMENT_DEFAULT_MODEL = "sonar"
+const ENRICHMENT_DEFAULT_MODEL = "sonar-pro"
 
 func (uc *AiAgentUsecase) getEnrichmentAdapter() (*llmberjack.Llmberjack, error) {
 	if uc.enrichmentAdapter != nil {
