@@ -23,7 +23,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/invopop/jsonschema"
 
-	llmberjack "github.com/checkmarble/llmberjack"
+	"github.com/checkmarble/llmberjack"
 	"github.com/checkmarble/llmberjack/llms/aistudio"
 	"github.com/checkmarble/llmberjack/llms/openai"
 	"github.com/google/uuid"
@@ -57,6 +57,7 @@ type AiAgentUsecaseRepository interface {
 	) error
 	GetCaseReviewById(ctx context.Context, exec repositories.Executor, reviewId uuid.UUID) (models.AiCaseReview, error)
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
+	GetAiSetting(ctx context.Context, exec repositories.Executor, organizationId string) (*models.AiSetting, error)
 }
 
 type AiAgentUsecaseIngestedDataReader interface {
@@ -103,8 +104,9 @@ type AiAgentUsecase struct {
 	config                   infra.AIAgentConfiguration
 	caseManagerBucketUrl     string
 
-	llmberjack *llmberjack.Llmberjack
-	mu         sync.Mutex
+	caseReviewAdapter *llmberjack.Llmberjack
+	enrichmentAdapter *llmberjack.Llmberjack
+	mu                sync.Mutex
 }
 
 type sanityCheckOutput struct {
@@ -199,8 +201,8 @@ func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*llmberjack.Llmberjack
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 
-	if uc.llmberjack != nil {
-		return uc.llmberjack, nil
+	if uc.caseReviewAdapter != nil {
+		return uc.caseReviewAdapter, nil
 	}
 
 	// Create provider based on config
@@ -225,8 +227,8 @@ func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*llmberjack.Llmberjack
 		return nil, errors.Wrap(err, "failed to create LLM adapter")
 	}
 
-	uc.llmberjack = adapter
-	return uc.llmberjack, nil
+	uc.caseReviewAdapter = adapter
+	return uc.caseReviewAdapter, nil
 }
 
 func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io.Reader, error) {

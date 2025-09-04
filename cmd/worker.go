@@ -136,6 +136,7 @@ func RunTaskQueue(apiVersion string) error {
 		),
 		MainAgentProject:  utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", gcpConfig.ProjectId),
 		MainAgentLocation: utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
+		PerplexityAPIKey:  utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
 	}
 
 	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env, apiVersion)
