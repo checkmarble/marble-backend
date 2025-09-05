@@ -13,9 +13,9 @@ type CaseRepository struct {
 
 func (r *CaseRepository) ListOrganizationCases(exec repositories.Executor, organizationId string,
 	filters models.CaseFilters, pagination models.PaginationAndSorting,
-) ([]models.CaseWithRank, error) {
+) ([]models.Case, error) {
 	args := r.Called(exec, organizationId)
-	return args.Get(0).([]models.CaseWithRank), args.Error(1)
+	return args.Get(0).([]models.Case), args.Error(1)
 }
 
 func (r *CaseRepository) GetCaseById(exec repositories.Executor, caseId string) (models.Case, error) {

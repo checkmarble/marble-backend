@@ -60,16 +60,12 @@ func AdaptCaseDto(c models.Case) APICase {
 
 type CastListPage struct {
 	Items       []APICase `json:"items"`
-	StartIndex  int       `json:"start_index"`
-	EndIndex    int       `json:"end_index"`
 	HasNextPage bool      `json:"has_next_page"`
 }
 
 func AdaptCaseListPage(casesPage models.CaseListPage) CastListPage {
 	return CastListPage{
 		Items:       pure_utils.Map(casesPage.Cases, AdaptCaseDto),
-		StartIndex:  casesPage.StartIndex,
-		EndIndex:    casesPage.EndIndex,
 		HasNextPage: casesPage.HasNextPage,
 	}
 }

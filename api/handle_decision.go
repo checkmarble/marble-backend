@@ -32,7 +32,6 @@ func handleGetDecision(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin.
 	}
 }
 
-// Endpoint used by the public API, that does not return the output decision ranks
 func handleListDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -66,43 +65,6 @@ func handleListDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gi
 		}
 
 		c.JSON(http.StatusOK, dto.AdaptDecisionListPageDto(decisions, marbleAppUrl))
-	}
-}
-
-// Endpoint used by the internal API to serve the app, that returns the output decision ranks
-func handleListDecisionsInternal(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		var filters dto.DecisionFilters
-		if err := c.ShouldBind(&filters); err != nil {
-			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
-				Message: err.Error(),
-			})
-			return
-		}
-
-		var paginationAndSortingDto dto.PaginationAndSorting
-		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
-			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
-				Message: err.Error(),
-			})
-			return
-		}
-		paginationAndSorting := models.WithPaginationDefaults(
-			dto.AdaptPaginationAndSorting(paginationAndSortingDto), decisionPaginationDefaults)
-
-		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decisions, err := usecase.ListDecisionsWithIndexes(ctx, organizationId, paginationAndSorting, filters)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		c.JSON(http.StatusOK, dto.AdaptDecisionListPageWithIndexesDto(decisions, marbleAppUrl))
 	}
 }
 

@@ -24,7 +24,7 @@ import (
 
 type CaseUseCaseRepository interface {
 	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters,
-		pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
+		pagination models.PaginationAndSorting) ([]models.Case, error)
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 	GetCaseMetadataById(ctx context.Context, exec repositories.Executor, caseId string) (models.CaseMetadata, error)
 	CreateCase(ctx context.Context, exec repositories.Executor,
@@ -167,7 +167,7 @@ func (usecase *CaseUseCase) ListCases(
 				return models.CaseListPage{}, err
 			}
 			for _, c := range cases {
-				if err := usecase.enforceSecurity.ReadOrUpdateCase(c.Case.GetMetadata(), availableInboxIds); err != nil {
+				if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 					return models.CaseListPage{}, err
 				}
 			}
@@ -181,15 +181,8 @@ func (usecase *CaseUseCase) ListCases(
 				cases = cases[:len(cases)-1]
 			}
 
-			casesWithoutRank := make([]models.Case, len(cases))
-			for i, c := range cases {
-				casesWithoutRank[i] = c.Case
-			}
-
 			return models.CaseListPage{
-				Cases:       casesWithoutRank,
-				StartIndex:  cases[0].RankNumber,
-				EndIndex:    cases[len(cases)-1].RankNumber,
+				Cases:       cases,
 				HasNextPage: hasNextPage,
 			}, nil
 		},
@@ -257,7 +250,8 @@ func (usecase *CaseUseCase) CreateCase(
 		return models.Case{}, err
 	}
 
-	if err := usecase.triggerAutoAssignment(ctx, tx, createCaseAttributes.OrganizationId, createCaseAttributes.InboxId); err != nil {
+	if err := usecase.triggerAutoAssignment(ctx, tx, createCaseAttributes.OrganizationId,
+		createCaseAttributes.InboxId); err != nil {
 		return models.Case{}, errors.Wrap(err, "could not trigger auto-assignment")
 	}
 
@@ -983,7 +977,12 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		return models.Case{}, err
 	}
 
-	decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
+	decisions, _, err := usecase.decisionRepository.DecisionsByCaseIdFromCursor(ctx, exec, models.CaseDecisionsRequest{
+		OrgId:    c.OrganizationId,
+		CaseId:   caseId,
+		Limit:    models.CaseDecisionsPerPage,
+		CursorId: "",
+	})
 	if err != nil {
 		return models.Case{}, err
 	}

@@ -39,8 +39,13 @@ type AiAgentUsecaseRepository interface {
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
 	ListUsers(ctx context.Context, exec repositories.Executor, organizationIDFilter *string) ([]models.User, error)
-	DecisionsByCaseId(ctx context.Context, exec repositories.Executor, orgId string, caseId string) (
-		[]models.DecisionWithRuleExecutions, error)
+
+	// Warning: returns a slice of DecisionWithRuleExecutions, but actually without the screening executions.
+	DecisionsByCaseIdFromCursor(
+		ctx context.Context,
+		exec repositories.Executor,
+		req models.CaseDecisionsRequest,
+	) ([]models.DecisionWithRuleExecutions, bool, error)
 	DecisionPivotValuesByCase(ctx context.Context, exec repositories.Executor, caseId string) ([]models.PivotDataWithCount, error)
 	GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor,
 		orgId, pivotValue string) ([]models.Case, error)
@@ -1051,7 +1056,12 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		caseEventsDto[i] = agent_dto.AdaptCaseEventDto(caseEvents[i], users)
 	}
 
-	decisions, err := uc.repository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
+	decisions, _, err := uc.repository.DecisionsByCaseIdFromCursor(ctx, exec, models.CaseDecisionsRequest{
+		OrgId:    c.OrganizationId,
+		CaseId:   caseId,
+		Limit:    models.CaseDecisionsPerPage,
+		CursorId: "",
+	})
 	if err != nil {
 		return caseData{}, agent_dto.CasePivotDataByPivot{},
 			errors.Wrap(err, "could not retrieve case decisions")
@@ -1124,7 +1134,12 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 				continue
 			}
 
-			decisions, err := uc.repository.DecisionsByCaseId(ctx, exec, c.OrganizationId, previousCase.Id)
+			decisions, _, err := uc.repository.DecisionsByCaseIdFromCursor(ctx, exec, models.CaseDecisionsRequest{
+				OrgId:    c.OrganizationId,
+				CaseId:   previousCase.Id,
+				Limit:    models.CaseDecisionsPerPage,
+				CursorId: "",
+			})
 			if err != nil {
 				return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 					"could not retrieve decisions for previous case %s", previousCase.Id)

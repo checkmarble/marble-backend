@@ -138,14 +138,7 @@ type CaseFilters struct {
 
 type CaseListPage struct {
 	Cases       []Case
-	StartIndex  int
-	EndIndex    int
 	HasNextPage bool
-}
-
-type CaseWithRank struct {
-	Case
-	RankNumber int
 }
 
 const CasesSortingCreatedAt = SortingFieldCreatedAt
