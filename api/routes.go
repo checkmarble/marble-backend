@@ -77,8 +77,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),
 		handleListDecisions(uc, parsedAppUrl))
-	router.GET("/decisions/with-ranks", tom,
-		handleListDecisionsInternal(uc, parsedAppUrl))
 	router.POST("/decisions", timeoutMiddleware(conf.DecisionTimeout),
 		handlePostDecision(uc, parsedAppUrl))
 	router.POST("/decisions/all",
