@@ -141,11 +141,6 @@ type CaseListPage struct {
 	HasNextPage bool
 }
 
-type CaseWithRank struct {
-	Case
-	RankNumber int
-}
-
 const CasesSortingCreatedAt = SortingFieldCreatedAt
 
 func ValidateCaseStatuses(statuses []string) ([]CaseStatus, error) {

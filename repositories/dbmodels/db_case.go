@@ -29,11 +29,6 @@ type DBCaseWithContributorsAndTags struct {
 	DecisionsCount int                 `db:"decisions_count"`
 }
 
-type DBPaginatedCases struct {
-	DBCaseWithContributorsAndTags
-	RankNumber int `db:"rank_number"`
-}
-
 const TABLE_CASES = "cases"
 
 var SelectCaseColumn = []string{
@@ -90,15 +85,4 @@ func AdaptCaseWithContributorsAndTags(db DBCaseWithContributorsAndTags) (models.
 	}
 
 	return caseModel, nil
-}
-
-func AdaptCaseWithRank(db DBCaseWithContributorsAndTags, rankNumber int) (models.CaseWithRank, error) {
-	c, err := AdaptCaseWithContributorsAndTags(db)
-	if err != nil {
-		return models.CaseWithRank{}, err
-	}
-	return models.CaseWithRank{
-		Case:       c,
-		RankNumber: rankNumber,
-	}, nil
 }
