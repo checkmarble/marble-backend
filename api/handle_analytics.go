@@ -61,6 +61,8 @@ func handleAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 			results, err = uc.RuleHitTable(c.Request.Context(), filters)
 		case "rule_vs_decision_outcome":
 			results, err = uc.RuleVsDecisionOutcome(c.Request.Context(), filters)
+		case "rule_cooccurence_matrix":
+			results, err = uc.RuleCoOccurenceMatrix(c.Request.Context(), filters)
 		default:
 			c.Status(http.StatusNotFound)
 			return
