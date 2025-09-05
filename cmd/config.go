@@ -15,6 +15,7 @@ type ServerConfig struct {
 	caseManagerBucket                string
 	ingestionBucketUrl               string
 	offloadingBucketUrl              string
+	analyticsBucketUrl               string
 	jwtSigningKey                    string
 	jwtSigningKeyFile                string
 	sentryDsn                        string
