@@ -278,7 +278,7 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 	}
 
 	objectId := models.ObjectIdWithPartnerIdPrefix(transferMapping.PartnerId, transferMapping.ClientTransferId)
-	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(ctx, exec, organizationId, objectId)
+	previousDecisions, err := usecase.decisionRepository.DEPRECATED_DecisionsByObjectId(ctx, exec, organizationId, objectId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -397,7 +397,7 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 	}
 
 	objectId := models.ObjectIdWithPartnerIdPrefix(transferMappings[0].PartnerId, transferMappings[0].ClientTransferId)
-	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(ctx, exec, organizationId, objectId)
+	previousDecisions, err := usecase.decisionRepository.DEPRECATED_DecisionsByObjectId(ctx, exec, organizationId, objectId)
 	if err != nil {
 		return nil, err
 	}
@@ -447,7 +447,7 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 	}
 
 	objectId := models.ObjectIdWithPartnerIdPrefix(transferMapping.PartnerId, transferMapping.ClientTransferId)
-	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(ctx, exec, organizationId, objectId)
+	previousDecisions, err := usecase.decisionRepository.DEPRECATED_DecisionsByObjectId(ctx, exec, organizationId, objectId)
 	if err != nil {
 		return models.Transfer{}, err
 	}

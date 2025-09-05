@@ -262,14 +262,6 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 	}
 }
 
-func (usecases *Usecases) NewExportScheduleExecution() *scheduled_execution.ExportScheduleExecution {
-	return &scheduled_execution.ExportScheduleExecution{
-		DecisionRepository:     usecases.Repositories.MarbleDbRepository,
-		OrganizationRepository: usecases.Repositories.MarbleDbRepository,
-		ExecutorFactory:        usecases.NewExecutorFactory(),
-	}
-}
-
 func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
 	environment := ast_eval.NewAstEvaluationEnvironment()
 

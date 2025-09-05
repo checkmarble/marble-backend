@@ -39,13 +39,16 @@ type DecisionRepository interface {
 		ctx context.Context,
 		exec Executor,
 		req models.CaseDecisionsRequest) ([]models.DecisionWithRuleExecutions, bool, error)
-	DecisionsByObjectId(ctx context.Context, exec Executor, organizationId string, objectId string) ([]models.DecisionCore, error)
-	DecisionsOfScheduledExecution(
-		ctx context.Context,
-		exec Executor,
-		organizationId string,
-		scheduledExecutionId string,
-	) (<-chan models.DecisionWithRuleExecutions, <-chan error)
+
+	// DEPRECATED: Do not use, see warning comment below next to the implementation
+	DEPRECATED_DecisionsByObjectId(ctx context.Context, exec Executor, organizationId string,
+		objectId string) ([]models.DecisionMetadata, error)
+	// DecisionsOfScheduledExecution(
+	// 	ctx context.Context,
+	// 	exec Executor,
+	// 	organizationId string,
+	// 	scheduledExecutionId string,
+	// ) (<-chan models.DecisionWithRuleExecutions, <-chan error)
 	StoreDecision(
 		ctx context.Context,
 		exec Executor,
@@ -66,6 +69,23 @@ type DecisionRepository interface {
 
 // the size of the batch is chosen without any benchmark
 const decisionRulesBatchSize = 1000
+
+// To read a decision complete with basic case information and scenario details requires several joins, which is why we have this helper.
+// It must be used with dbmodels.DbCoreDecisionWithCase.
+// Very targeted repo methods that only need the core decision data may benefit from using a simpler query and model to scan to.
+func selectDecisionAndCase() squirrel.SelectBuilder {
+	columns := columnsNames("d", dbmodels.SelectCoreDecisionColumn)
+	columns = append(columns, columnsNames("c", dbmodels.SelectCaseColumn)...)
+	return NewQueryBuilder().
+		Select(columns...).
+		Column("s.name AS scenario_name").
+		Column("s.description AS scenario_description").
+		Column("si.version AS scenario_version").
+		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
+		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
+		LeftJoin(fmt.Sprintf("%s AS s on d.scenario_id = s.id", dbmodels.TABLE_SCENARIOS)).
+		LeftJoin(fmt.Sprintf("%s AS si on d.scenario_iteration_id = si.id", dbmodels.TABLE_SCENARIO_ITERATIONS))
+}
 
 func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Context, exec Executor,
 	decisionId string,
@@ -176,28 +196,24 @@ func (repo *MarbleDbRepository) DecisionsWithRuleExecutionsByIds(
 	return SqlToListOfRow(
 		ctx,
 		exec,
-		selectJoinDecisionAndCase().
-			Where(squirrel.Eq{"d.id": decisionIds}),
+		selectDecisionAndCase().
+			Where(squirrel.Eq{"d.id": decisionIds}).
+			OrderBy("d.created_at DESC"),
 		func(row pgx.CollectableRow) (models.DecisionWithRuleExecutions, error) {
-			db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
+			db, err := pgx.RowToStructByPos[dbmodels.DbCoreDecisionWithCase](row)
 			if err != nil {
 				return models.DecisionWithRuleExecutions{}, err
 			}
 
-			var decisionCase *models.Case
-			if db.DbDecision.CaseId != nil {
-				decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
-				if err != nil {
-					return models.DecisionWithRuleExecutions{}, err
-				}
-				decisionCase = &decisionCaseValue
+			decision, err := dbmodels.AdaptDecision(db)
+			if err != nil {
+				return models.DecisionWithRuleExecutions{}, err
 			}
 
-			return dbmodels.AdaptDecisionWithRuleExecutions(
-				db.DbDecision,
-				rules[db.DbDecision.Id.String()],
-				decisionCase,
-			), nil
+			return models.DecisionWithRuleExecutions{
+				Decision:       decision,
+				RuleExecutions: rules[db.DbCoreDecision.Id.String()],
+			}, nil
 		},
 	)
 }
@@ -207,23 +223,17 @@ func (repo *MarbleDbRepository) DecisionsById(ctx context.Context, exec Executor
 		return nil, err
 	}
 
-	query := selectJoinDecisionAndCase().Where(squirrel.Eq{"d.id": decisionIds})
+	query := selectDecisionAndCase().
+		Where(squirrel.Eq{"d.id": decisionIds}).
+		OrderBy("d.created_at DESC")
 
 	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.Decision, error) {
-		db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
+		db, err := pgx.RowToStructByPos[dbmodels.DbCoreDecisionWithCase](row)
 		if err != nil {
 			return models.Decision{}, err
 		}
 
-		var decisionCase *models.Case
-		if db.DbDecision.CaseId != nil {
-			decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
-			if err != nil {
-				return models.Decision{}, err
-			}
-			decisionCase = &decisionCaseValue
-		}
-		return dbmodels.AdaptDecision(db.DbDecision, decisionCase), nil
+		return dbmodels.AdaptDecision(db)
 	})
 }
 
@@ -237,10 +247,16 @@ func (repo *MarbleDbRepository) DecisionsByCaseId(
 		return nil, err
 	}
 
-	query := selectDecisions().
-		Where(squirrel.Eq{"org_id": organizationId}).
-		Where(squirrel.Eq{"case_id": caseId}).
-		OrderBy("created_at DESC")
+	// query := selectDecisions().
+	// 	Where(squirrel.Eq{"d.org_id": organizationId}).
+	// 	Where(squirrel.Eq{"d.case_id": caseId}).
+	// 	OrderBy("d.created_at DESC")
+	query := selectDecisionAndCase().
+		Where(squirrel.Eq{
+			"d.org_id":  organizationId,
+			"d.case_id": caseId,
+		}).
+		OrderBy("d.created_at DESC")
 
 	decisionsChan, errChan := repo.channelOfDecisions(ctx, exec, query)
 
@@ -259,11 +275,18 @@ func (repo *MarbleDbRepository) DecisionsByCaseIdFromCursor(
 		return nil, false, err
 	}
 
-	query := selectDecisions().
-		Where(squirrel.Eq{"org_id": req.OrgId}).
-		Where(squirrel.Eq{"case_id": req.CaseId}).
+	// query := selectDecisions().
+	// 	Where(squirrel.Eq{"d.org_id": req.OrgId}).
+	// 	Where(squirrel.Eq{"d.case_id": req.CaseId}).
+	// 	Limit(uint64(req.Limit) + 1).
+	// 	OrderBy("d.created_at DESC, d.id DESC")
+	query := selectDecisionAndCase().
+		Where(squirrel.Eq{
+			"d.org_id":  req.OrgId,
+			"d.case_id": req.CaseId,
+		}).
 		Limit(uint64(req.Limit) + 1).
-		OrderBy("created_at DESC, id DESC")
+		OrderBy("d.created_at DESC, d.id DESC")
 
 	if req.CursorId != "" {
 		cursorDecision, err := repo.DecisionsById(ctx, exec, []string{req.CursorId})
@@ -274,7 +297,7 @@ func (repo *MarbleDbRepository) DecisionsByCaseIdFromCursor(
 			return nil, false, errors.Wrap(models.NotFoundError, "could not find decision for cursor")
 		}
 
-		query = query.Where(squirrel.Expr("(created_at, id) < (?, ?)",
+		query = query.Where(squirrel.Expr("(d.created_at, d.id) < (?, ?)",
 			cursorDecision[0].CreatedAt, req.CursorId))
 	}
 
@@ -295,28 +318,33 @@ func (repo *MarbleDbRepository) DecisionsByCaseIdFromCursor(
 	return decisions[:min(len(decisions), req.Limit)], hasMore, nil
 }
 
-func (repo *MarbleDbRepository) DecisionsByObjectId(
+// DEPRECATED: Do not use, see warning comment below
+func (repo *MarbleDbRepository) DEPRECATED_DecisionsByObjectId(
 	ctx context.Context,
 	exec Executor,
 	organizationId string,
 	objectId string,
-) ([]models.DecisionCore, error) {
+) ([]models.DecisionMetadata, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	query := selectDecisions().
-		Where(squirrel.Eq{"org_id": organizationId}).
-		Where(squirrel.Eq{"trigger_object->>'object_id'": objectId}).
-		OrderBy("created_at DESC")
+	// WARNING: This query is broken with the change in which this comment is introduced.. Anyway, it's deprecated and only used in
+	// the transfercheck usecase.
+	// To be removed but in another follow-up PR. I am only not doing it in the same PR because there is a LOT of code to remove
+	// which would be a distraction.
+	query := selectDecisionAndCase().
+		Where(squirrel.Eq{"d.org_id": organizationId}).
+		Where(squirrel.Eq{"d.trigger_object->>'object_id'": objectId}).
+		OrderBy("d.created_at DESC")
 
-	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.DecisionCore, error) {
-		db, err := pgx.RowToStructByPos[dbmodels.DbDecision](row)
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.DecisionMetadata, error) {
+		db, err := pgx.RowToStructByPos[dbmodels.DbCoreDecision](row)
 		if err != nil {
-			return models.DecisionCore{}, err
+			return models.DecisionMetadata{}, err
 		}
 
-		return dbmodels.AdaptDecisionCore(db), nil
+		return dbmodels.AdaptDecisionMetadata(db), nil
 	})
 }
 
@@ -337,12 +365,7 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 
 	orderCond := fmt.Sprintf("d.%s %s, d.id %s", pagination.Sorting, pagination.Order, pagination.Order)
 
-	columns := columnsNames("d", dbmodels.SelectDecisionColumn)
-	columns = append(columns, columnsNames("c", dbmodels.SelectCaseColumn)...)
-	query := NewQueryBuilder().
-		Select(columns...).
-		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
-		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
+	query := selectDecisionAndCase().
 		Where(squirrel.Eq{"d.org_id": organizationId}).
 		OrderBy(orderCond).
 		Limit(uint64(pagination.Limit))
@@ -408,20 +431,20 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 	}
 
 	decision, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.Decision, error) {
-		db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
+		db, err := pgx.RowToStructByPos[dbmodels.DbCoreDecisionWithCase](row)
 		if err != nil {
 			return models.Decision{}, err
 		}
 
-		var decisionCase *models.Case
-		if db.DbDecision.CaseId != nil {
-			decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
-			if err != nil {
-				return models.Decision{}, err
-			}
-			decisionCase = &decisionCaseValue
-		}
-		return dbmodels.AdaptDecision(db.DbDecision, decisionCase), nil
+		// var decisionCase *models.Case
+		// if db.DbDecision.CaseId != nil {
+		// 	decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
+		// 	if err != nil {
+		// 		return models.Decision{}, err
+		// 	}
+		// 	decisionCase = &decisionCaseValue
+		// }
+		return dbmodels.AdaptDecision(db)
 	})
 	if err != nil {
 		return nil, err
@@ -453,30 +476,30 @@ func applyDecisionPaginationFilters(query squirrel.SelectBuilder, p models.Pagin
 	return query, nil
 }
 
-func (repo *MarbleDbRepository) DecisionsOfScheduledExecution(
-	ctx context.Context,
-	exec Executor,
-	organizationId string,
-	scheduledExecutionId string,
-) (<-chan models.DecisionWithRuleExecutions, <-chan error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		valChannel := make(chan models.DecisionWithRuleExecutions)
-		errChannel := make(chan error)
-		errChannel <- err
-		close(valChannel)
-		close(errChannel)
-		return valChannel, errChannel
-	}
+// func (repo *MarbleDbRepository) DecisionsOfScheduledExecution(
+// 	ctx context.Context,
+// 	exec Executor,
+// 	organizationId string,
+// 	scheduledExecutionId string,
+// ) (<-chan models.DecisionWithRuleExecutions, <-chan error) {
+// 	if err := validateMarbleDbExecutor(exec); err != nil {
+// 		valChannel := make(chan models.DecisionWithRuleExecutions)
+// 		errChannel := make(chan error)
+// 		errChannel <- err
+// 		close(valChannel)
+// 		close(errChannel)
+// 		return valChannel, errChannel
+// 	}
 
-	return repo.channelOfDecisions(
-		ctx,
-		exec,
-		selectDecisions().
-			Where(squirrel.Eq{"org_id": organizationId}).
-			Where(squirrel.Eq{"scheduled_execution_id": scheduledExecutionId}).
-			OrderBy("created_at DESC"),
-	)
-}
+// 	return repo.channelOfDecisions(
+// 		ctx,
+// 		exec,
+// 		selectDecisions().
+// 			Where(squirrel.Eq{"d.org_id": organizationId}).
+// 			Where(squirrel.Eq{"d.scheduled_execution_id": scheduledExecutionId}).
+// 			OrderBy("d.created_at DESC"),
+// 	)
+// }
 
 // Nb: Beware that the decision usecase sends a complete decision object, and only reads it back if a case has been added
 // => do not add values directly at the repository or db level, or adjust the usecase logic accordingly.
@@ -512,9 +535,6 @@ func (repo *MarbleDbRepository) StoreDecision(
 				"review_status",
 				"scenario_id",
 				"scenario_iteration_id",
-				"scenario_name",
-				"scenario_description",
-				"scenario_version",
 				"score",
 				"trigger_object",
 				"trigger_object_type",
@@ -530,9 +550,6 @@ func (repo *MarbleDbRepository) StoreDecision(
 				decision.ReviewStatus,
 				decision.ScenarioId,
 				decision.ScenarioIterationId,
-				decision.ScenarioName,
-				decision.ScenarioDescription,
-				decision.ScenarioVersion,
 				decision.Score,
 				decision.ClientObject.Data,
 				decision.ClientObject.TableName,
@@ -602,17 +619,6 @@ func (repo *MarbleDbRepository) UpdateDecisionCaseId(ctx context.Context, exec E
 
 	err := ExecBuilder(ctx, exec, query)
 	return err
-}
-
-func selectJoinDecisionAndCase() squirrel.SelectBuilder {
-	var columns []string
-	columns = append(columns, columnsNames("d", dbmodels.SelectDecisionColumn)...)
-	columns = append(columns, columnsNames("c", dbmodels.SelectCaseColumn)...)
-	return NewQueryBuilder().
-		Select(columns...).
-		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
-		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
-		OrderBy("d.created_at DESC")
 }
 
 func (repo *MarbleDbRepository) rulesOfDecisions(
@@ -746,8 +752,8 @@ func (repo *MarbleDbRepository) channelOfDecisions(
 			query,
 			func(
 				row pgx.CollectableRow,
-			) (dbmodels.DbDecision, error) {
-				return pgx.RowToStructByName[dbmodels.DbDecision](row)
+			) (dbmodels.DbCoreDecisionWithCase, error) {
+				return pgx.RowToStructByPos[dbmodels.DbCoreDecisionWithCase](row)
 			},
 		)
 
@@ -759,7 +765,7 @@ func (repo *MarbleDbRepository) channelOfDecisions(
 			rules, err := repo.rulesOfDecisionsBatch(
 				ctx,
 				exec,
-				pure_utils.Map(dbDecisions, func(d dbmodels.DbDecision) string { return d.Id.String() }),
+				pure_utils.Map(dbDecisions, func(d dbmodels.DbCoreDecisionWithCase) string { return d.DbCoreDecision.Id.String() }),
 			)
 			if err != nil {
 				allErrors = append(allErrors, err)
@@ -768,7 +774,13 @@ func (repo *MarbleDbRepository) channelOfDecisions(
 			}
 
 			for i := 0; i < len(dbDecisions); i++ {
-				decisionsChannel <- dbmodels.AdaptDecisionWithRuleExecutions(dbDecisions[i], rules[i].rules, nil)
+				dec, err := dbmodels.AdaptDecisionWithRuleExecutions(dbDecisions[i], rules[i].rules)
+				if err != nil {
+					allErrors = append(allErrors, err)
+					// do not send invalid decisions
+					continue
+				}
+				decisionsChannel <- dec
 			}
 		}
 
@@ -781,11 +793,16 @@ func (repo *MarbleDbRepository) channelOfDecisions(
 	return decisionsChannel, errChannel
 }
 
-func selectDecisions() squirrel.SelectBuilder {
-	return NewQueryBuilder().
-		Select(dbmodels.SelectDecisionColumn...).
-		From(dbmodels.TABLE_DECISIONS)
-}
+// func selectDecisions() squirrel.SelectBuilder {
+// 	return NewQueryBuilder().
+// 		Select(columnsNames("d", dbmodels.SelectCoreDecisionColumn)...).
+// 		From(dbmodels.TABLE_DECISIONS + " AS d").
+// 		Column("s.name AS scenario_name").
+// 		Column("s.description AS scenario_description").
+// 		Column("si.version AS scenario_version").
+// 		LeftJoin(fmt.Sprintf("%s AS s on d.scenario_id = s.id", dbmodels.TABLE_SCENARIOS)).
+// 		LeftJoin(fmt.Sprintf("%s AS si on d.scenario_iteration_id = si.id", dbmodels.TABLE_SCENARIO_ITERATIONS))
+// }
 
 func BatchChannel[Value any](inChannel <-chan Value, batchSize int) <-chan []Value {
 	out := make(chan []Value, batchSize)
