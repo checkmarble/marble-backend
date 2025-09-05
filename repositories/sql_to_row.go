@@ -12,32 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-func SqlToChannelOfModels[Model any](ctx context.Context, exec Executor, query squirrel.Sqlizer,
-	adapter func(row pgx.CollectableRow) (Model, error),
-) (<-chan Model, <-chan error) {
-	modelsChannel := make(chan Model, 100)
-	errChannel := make(chan error, 1)
-
-	go func() {
-		defer close(modelsChannel)
-		defer close(errChannel)
-
-		err := ForEachRow(ctx, exec, query, func(row pgx.CollectableRow) error {
-			model, err := adapter(row)
-			if err != nil {
-				return err
-			} else {
-				modelsChannel <- model
-			}
-			return nil
-		})
-		errChannel <- err
-	}()
-
-	return modelsChannel, errChannel
-}
-
-func SqlToFallibleChannelOfModel[Model any](ctx context.Context, exec Executor, query squirrel.Sqlizer,
+func SqlToChannelOfModel[Model any](ctx context.Context, exec Executor, query squirrel.Sqlizer,
 	adapter func(row pgx.CollectableRow) (Model, error),
 ) models.ChannelOfModels[Model] {
 	modelsChannel := make(chan models.ModelResult[Model], 1)

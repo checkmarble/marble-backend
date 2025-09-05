@@ -977,7 +977,12 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		return models.Case{}, err
 	}
 
-	decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
+	decisions, _, err := usecase.decisionRepository.DecisionsByCaseIdFromCursor(ctx, exec, models.CaseDecisionsRequest{
+		OrgId:    c.OrganizationId,
+		CaseId:   caseId,
+		Limit:    models.CaseDecisionsPerPage,
+		CursorId: "",
+	})
 	if err != nil {
 		return models.Case{}, err
 	}
