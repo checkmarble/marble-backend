@@ -19,7 +19,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	exec Executor,
 	filters models.CaseFilters,
 	pagination models.PaginationAndSorting,
-) ([]models.CaseWithRank, error) {
+) ([]models.Case, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -39,25 +39,25 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 		var err error
 		offsetCase, err = repo.GetCaseById(ctx, exec, pagination.OffsetId)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return []models.CaseWithRank{}, errors.Wrap(models.NotFoundError,
+			return []models.Case{}, errors.Wrap(models.NotFoundError,
 				"No row found matching the provided offset case Id")
 		} else if err != nil {
-			return []models.CaseWithRank{}, errors.Wrap(err, "Error fetching offset case")
+			return []models.Case{}, errors.Wrap(err, "Error fetching offset case")
 		}
 	}
 
 	paginatedSubquery, err := applyCasesPagination(subquery, pagination, offsetCase)
 	if err != nil {
-		return []models.CaseWithRank{}, err
+		return []models.Case{}, err
 	}
 	queryWithJoinedFields := selectCasesWithJoinedFields(paginatedSubquery, orderCond)
 
-	return SqlToListOfRow(ctx, exec, queryWithJoinedFields, func(row pgx.CollectableRow) (models.CaseWithRank, error) {
-		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedCases](row)
+	return SqlToListOfRow(ctx, exec, queryWithJoinedFields, func(row pgx.CollectableRow) (models.Case, error) {
+		db, err := pgx.RowToStructByPos[dbmodels.DBCaseWithContributorsAndTags](row)
 		if err != nil {
-			return models.CaseWithRank{}, err
+			return models.Case{}, err
 		}
-		return dbmodels.AdaptCaseWithRank(db.DBCaseWithContributorsAndTags, db.RankNumber)
+		return dbmodels.AdaptCaseWithContributorsAndTags(db)
 	})
 }
 
@@ -296,7 +296,6 @@ func casesWithRankColumns() []string {
 	columnAlias = append(columnAlias, dbmodels.SelectCaseColumn...)
 
 	columns := columnsNames("s", columnAlias)
-	columns = append(columns, "rank_number")
 	return columns
 }
 
@@ -305,7 +304,6 @@ func casesCoreQueryWithRank(pagination models.PaginationAndSorting) squirrel.Sel
 
 	return squirrel.StatementBuilder.
 		Select(dbmodels.SelectCaseColumn...).
-		Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCondition)).
 		From(dbmodels.TABLE_CASES + " AS c").
 		OrderBy(orderCondition)
 }
@@ -388,7 +386,6 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, orderCond string)
 			),
 		).
 		Column(fmt.Sprintf("(SELECT count(distinct d.id) FROM %s AS d WHERE d.case_id = c.id AND d.org_id=c.org_id) AS decisions_count", dbmodels.TABLE_DECISIONS)).
-		Column("rank_number").
 		FromSelect(query, "c").
 		OrderBy(orderCond).
 		PlaceholderFormat(squirrel.Dollar)

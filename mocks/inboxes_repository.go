@@ -26,12 +26,16 @@ func (r *InboxRepository) GetInboxById(ctx context.Context, exec repositories.Ex
 	return args.Get(0).(models.Inbox), args.Error(1)
 }
 
-func (r *InboxRepository) CreateInbox(ctx context.Context, exec repositories.Executor, input models.CreateInboxInput, newInboxId uuid.UUID) error {
+func (r *InboxRepository) CreateInbox(ctx context.Context, exec repositories.Executor,
+	input models.CreateInboxInput, newInboxId uuid.UUID,
+) error {
 	args := r.Called(exec, input, newInboxId)
 	return args.Error(0)
 }
 
-func (r *InboxRepository) UpdateInbox(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID, name *string, escalationInboxId *uuid.UUID, autoAssignEnabled *bool) error {
+func (r *InboxRepository) UpdateInbox(ctx context.Context, exec repositories.Executor,
+	inboxId uuid.UUID, name *string, escalationInboxId *uuid.UUID, autoAssignEnabled *bool,
+) error {
 	args := r.Called(exec, inboxId, name, escalationInboxId, autoAssignEnabled)
 	return args.Error(0)
 }
@@ -43,9 +47,9 @@ func (r *InboxRepository) SoftDeleteInbox(ctx context.Context, exec repositories
 
 func (r *InboxRepository) ListOrganizationCases(ctx context.Context, exec repositories.Executor,
 	filters models.CaseFilters, pagination models.PaginationAndSorting,
-) ([]models.CaseWithRank, error) {
+) ([]models.Case, error) {
 	args := r.Called(exec, filters, pagination)
-	return args.Get(0).([]models.CaseWithRank), args.Error(1)
+	return args.Get(0).([]models.Case), args.Error(1)
 }
 
 func (r *InboxRepository) ListInboxUsers(ctx context.Context, exec repositories.Executor,
@@ -67,7 +71,9 @@ func (repo *InboxRepository) CreateInboxUser(ctx context.Context, exec repositor
 	return args.Error(0)
 }
 
-func (repo *InboxRepository) UpdateInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID, role *models.InboxUserRole, autoAssignable *bool) error {
+func (repo *InboxRepository) UpdateInboxUser(ctx context.Context, exec repositories.Executor,
+	inboxUserId uuid.UUID, role *models.InboxUserRole, autoAssignable *bool,
+) error {
 	args := repo.Called(exec, inboxUserId, role, autoAssignable)
 	return args.Error(0)
 }
