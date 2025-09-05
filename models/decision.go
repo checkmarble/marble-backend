@@ -197,8 +197,6 @@ type DecisionFilters struct {
 
 type DecisionListPageWithIndexes struct {
 	Decisions   []Decision
-	StartIndex  int
-	EndIndex    int
 	HasNextPage bool
 }
 

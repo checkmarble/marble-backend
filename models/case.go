@@ -138,8 +138,6 @@ type CaseFilters struct {
 
 type CaseListPage struct {
 	Cases       []Case
-	StartIndex  int
-	EndIndex    int
 	HasNextPage bool
 }
 

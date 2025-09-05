@@ -188,8 +188,6 @@ func (usecase *CaseUseCase) ListCases(
 
 			return models.CaseListPage{
 				Cases:       casesWithoutRank,
-				StartIndex:  cases[0].RankNumber,
-				EndIndex:    cases[len(cases)-1].RankNumber,
 				HasNextPage: hasNextPage,
 			}, nil
 		},
@@ -257,7 +255,8 @@ func (usecase *CaseUseCase) CreateCase(
 		return models.Case{}, err
 	}
 
-	if err := usecase.triggerAutoAssignment(ctx, tx, createCaseAttributes.OrganizationId, createCaseAttributes.InboxId); err != nil {
+	if err := usecase.triggerAutoAssignment(ctx, tx, createCaseAttributes.OrganizationId,
+		createCaseAttributes.InboxId); err != nil {
 		return models.Case{}, errors.Wrap(err, "could not trigger auto-assignment")
 	}
 

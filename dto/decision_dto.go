@@ -33,8 +33,6 @@ type DecisionFilters struct {
 
 type DecisionListPageWithIndexesDto struct {
 	Items       []Decision `json:"items"`
-	StartIndex  int        `json:"start_index"`
-	EndIndex    int        `json:"end_index"`
 	HasNextPage bool       `json:"has_next_page"`
 }
 
@@ -47,8 +45,6 @@ func AdaptDecisionListPageWithIndexesDto(decisionsPage models.DecisionListPageWi
 
 	return DecisionListPageWithIndexesDto{
 		Items:       items,
-		StartIndex:  decisionsPage.StartIndex,
-		EndIndex:    decisionsPage.EndIndex,
 		HasNextPage: decisionsPage.HasNextPage,
 	}
 }
