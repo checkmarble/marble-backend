@@ -43,6 +43,7 @@ func RunServer(config CompiledConfig) error {
 		BatchTimeout:        time.Duration(utils.GetEnv("BATCH_TIMEOUT_SECOND", 55)) * time.Second,
 		DecisionTimeout:     time.Duration(utils.GetEnv("DECISION_TIMEOUT_SECOND", 10)) * time.Second,
 		DefaultTimeout:      time.Duration(utils.GetEnv("DEFAULT_TIMEOUT_SECOND", 5)) * time.Second,
+		AnalyticsTimeout:    utils.GetEnvDuration("ANALYTICS_TIMEOUT", 15*time.Second),
 
 		MetabaseConfig: infra.MetabaseConfiguration{
 			SiteUrl:             utils.GetEnv("METABASE_SITE_URL", ""),
@@ -144,6 +145,7 @@ func RunServer(config CompiledConfig) error {
 		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 		ingestionBucketUrl:               utils.GetEnv("INGESTION_BUCKET_URL", ""),
 		offloadingBucketUrl:              utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
+		analyticsBucketUrl:               utils.GetEnv("ANALYTICS_BUCKET_URL", ""),
 		jwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
 		jwtSigningKeyFile:                utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY_FILE", ""),
 		sentryDsn:                        utils.GetEnv("SENTRY_DSN", ""),
@@ -227,6 +229,17 @@ func RunServer(config CompiledConfig) error {
 		defer bigQueryInfra.Close()
 	}
 
+	var analyticsConfig infra.AnalyticsConfig
+
+	if serverConfig.analyticsBucketUrl != "" {
+		analyticsConfig, err = infra.InitAnalyticsConfig(serverConfig.analyticsBucketUrl)
+		if err != nil {
+			return err
+		}
+
+		apiConfig.AnalyticsEnabled = true
+	}
+
 	repositories := repositories.NewRepositories(
 		pool,
 		gcpConfig,
@@ -267,6 +280,7 @@ func RunServer(config CompiledConfig) error {
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
 		usecases.WithFirebaseAdmin(deps.FirebaseAdmin),
 		usecases.WithAIAgentConfig(aiAgentConfig),
+		usecases.WithAnalyticsConfig(analyticsConfig),
 	)
 
 	////////////////////////////////////////////////////////////

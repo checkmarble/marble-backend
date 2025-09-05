@@ -353,14 +353,14 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	router.GET("/settings/ai", tom, HandleGetAiSettingForOrganization(uc))
 	router.PUT("/settings/ai", tom, HandlePutAiSettingForOrganization(uc))
+
+	if conf.AnalyticsEnabled {
+		addAnalyticsRoutes(router, conf, uc)
+	}
 }
 
-func addAnalyticsRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth utils.Authentication) {
+func addAnalyticsRoutes(router gin.IRoutes, conf Configuration, uc usecases.Usecases) {
 	tom := timeoutMiddleware(conf.AnalyticsTimeout)
-
-	router := r.Use(
-		auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
-	)
 
 	router.POST("/analytics/query/:query", tom, handleAnalyticsQuery(uc))
 	router.POST("/analytics/available-filters", tom, handleAnalyticsAvailableFilters(uc))
