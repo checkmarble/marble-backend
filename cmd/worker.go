@@ -226,10 +226,10 @@ func RunTaskQueue(apiVersion string) error {
 		// avoid if it is actually still running.
 		RescueStuckJobsAfter: 2 * time.Minute,
 		WorkerMiddleware: []rivertype.WorkerMiddleware{
-			jobs.NewTracingMiddleware(telemetryRessources.Tracer),
-			jobs.NewSentryMiddleware(),
-			jobs.NewLoggerMiddleware(logger),
 			jobs.NewRecoveredMiddleware(),
+			jobs.NewSentryMiddleware(),
+			jobs.NewTracingMiddleware(telemetryRessources.Tracer),
+			jobs.NewLoggerMiddleware(logger),
 		},
 		Workers:      workers,
 		PeriodicJobs: periodics,
