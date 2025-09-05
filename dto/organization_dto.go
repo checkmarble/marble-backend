@@ -3,9 +3,11 @@ package dto
 import (
 	"encoding/json"
 	"net"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/cockroachdb/errors"
 )
 
 type APIOrganization struct {
@@ -61,6 +63,24 @@ func (s *SubnetDto) UnmarshalJSON(b []byte) error {
 
 	if err := json.Unmarshal(b, &cidr); err != nil {
 		return err
+	}
+
+	// If a bare IP address was given
+	if !strings.Contains(cidr, "/") {
+		ip := net.ParseIP(cidr)
+
+		if ip == nil {
+			return errors.Newf("invalid CIDR-less IP address: %s", cidr)
+		}
+
+		switch {
+		case ip.To4() != nil:
+			cidr = ip.String() + "/32"
+		case ip.To16() != nil:
+			cidr = ip.String() + "/128"
+		default:
+			return errors.Newf("invalid CIDR-less IP address %s", cidr)
+		}
 	}
 
 	_, subnet, err := net.ParseCIDR(cidr)
