@@ -72,11 +72,4 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-
-	if *shouldRunAnalyticsServer {
-		err := cmd.RunAnalyticsServer(compiledConfig)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 }
