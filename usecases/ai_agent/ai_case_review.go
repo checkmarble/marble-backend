@@ -712,7 +712,11 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		caseEventsDto[i] = agent_dto.AdaptCaseEventDto(caseEvents[i], users)
 	}
 
-	decisions, err := uc.repository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
+	decisions, _, err := uc.repository.DecisionsByCaseIdFromCursor(ctx, exec, models.CaseDecisionsRequest{
+		OrgId:  c.OrganizationId,
+		CaseId: caseId,
+		Limit:  models.CaseDecisionsPerPage,
+	})
 	if err != nil {
 		return caseData{}, agent_dto.CasePivotDataByPivot{},
 			errors.Wrap(err, "could not retrieve case decisions")
@@ -785,7 +789,11 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 				continue
 			}
 
-			decisions, err := uc.repository.DecisionsByCaseId(ctx, exec, c.OrganizationId, previousCase.Id)
+			decisions, _, err := uc.repository.DecisionsByCaseIdFromCursor(ctx, exec, models.CaseDecisionsRequest{
+				OrgId:  c.OrganizationId,
+				CaseId: previousCase.Id,
+				Limit:  models.CaseDecisionsPerPage,
+			})
 			if err != nil {
 				return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 					"could not retrieve decisions for previous case %s", previousCase.Id)
