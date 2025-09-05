@@ -40,7 +40,7 @@ const (
 
 var ValidReviewStatuses = []string{ReviewStatusPending, ReviewStatusDecline, ReviewStatusApprove}
 
-type DecisionCore struct {
+type DecisionMetadata struct {
 	DecisionId     uuid.UUID
 	OrganizationId uuid.UUID
 	CreatedAt      time.Time
