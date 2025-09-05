@@ -120,6 +120,40 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filte
 	return utils.ScanStruct[models.RuleVsDecisionOutcome](ctx, exec, query)
 }
 
+func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.RuleCoOccurence, error) {
+	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
+	if err != nil {
+		return nil, err
+	}
+
+	query := squirrel.
+		Select(
+			"t1.rule_id as rule_x",
+			"any_value(t1.rule_name) as rule_x_name",
+			"t2.rule_id as rule_y",
+			"any_value(t2.rule_name) as rule_y_name",
+			"count() as decisions",
+		).
+		From(uc.analyticsFactory.BuildTarget("manual/decision_rules", "t1")). // TODO: change table path
+		Join(uc.analyticsFactory.BuildTarget("manual/decision_rules", "t2")+" on t1.decision_id = t2.decision_id").
+		Where("t1.created_at between ? and ?", filters.Start, filters.End).
+		Where("t1.rule_id >= t2.rule_id").
+		Where("t1.outcome = 'hit' and t2.outcome = 'hit'").
+		GroupBy("rule_x", "rule_y")
+
+	query, err = uc.analyticsFactory.ApplyFilters(query, scenario, filters, "t1")
+	if err != nil {
+		return nil, err
+	}
+
+	query, err = uc.analyticsFactory.ApplyFilters(query, scenario, filters, "t2")
+	if err != nil {
+		return nil, err
+	}
+
+	return utils.ScanStruct[models.RuleCoOccurence](ctx, exec, query)
+}
+
 func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid.UUID) (models.Scenario, *sql.DB, error) {
 	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, uc.executorFactory.NewExecutor(), scenarioId.String())
 	if err != nil {
