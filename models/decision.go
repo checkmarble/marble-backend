@@ -14,17 +14,19 @@ const (
 
 // Decision models
 type Decision struct {
-	DecisionId           uuid.UUID
-	OrganizationId       uuid.UUID
-	Case                 *Case
-	CreatedAt            time.Time
-	ClientObject         ClientObject
-	Outcome              Outcome
-	PivotId              *uuid.UUID
-	PivotValue           *string
-	ReviewStatus         *string
-	ScenarioId           uuid.UUID
-	ScenarioName         string
+	DecisionId     uuid.UUID
+	OrganizationId uuid.UUID
+	Case           *Case
+	CreatedAt      time.Time
+	ClientObject   ClientObject
+	Outcome        Outcome
+	PivotId        *uuid.UUID
+	PivotValue     *string
+	ReviewStatus   *string
+	ScenarioId     uuid.UUID
+	ScenarioName   string
+
+	// Deprecated. Remove it from the model after we remove the v0 publicAPI.
 	ScenarioDescription  string
 	ScenarioVersion      int
 	Score                int
@@ -64,6 +66,8 @@ type ScenarioExecution struct {
 	ScenarioId          uuid.UUID
 	ScenarioIterationId uuid.UUID
 	ScenarioName        string
+
+	// Deprecated. Remove it from the model after we remove the v0 publicAPI.
 	ScenarioDescription string
 	ScenarioVersion     int
 	PivotId             *uuid.UUID

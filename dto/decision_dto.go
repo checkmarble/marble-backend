@@ -90,8 +90,10 @@ type ErrorDto struct {
 }
 
 type DecisionScenario struct {
-	Id                  uuid.UUID `json:"id"`
-	Name                string    `json:"name"`
+	Id   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+
+	// Deprecated. Remove it from the model after we remove the v0 publicAPI.
 	Description         string    `json:"description"`
 	ScenarioIterationId uuid.UUID `json:"scenario_iteration_id"`
 	Version             int       `json:"version"`
