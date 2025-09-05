@@ -43,12 +43,7 @@ type DecisionRepository interface {
 	// DEPRECATED: Do not use, see warning comment below next to the implementation
 	DEPRECATED_DecisionsByObjectId(ctx context.Context, exec Executor, organizationId string,
 		objectId string) ([]models.DecisionMetadata, error)
-	// DecisionsOfScheduledExecution(
-	// 	ctx context.Context,
-	// 	exec Executor,
-	// 	organizationId string,
-	// 	scheduledExecutionId string,
-	// ) (<-chan models.DecisionWithRuleExecutions, <-chan error)
+
 	StoreDecision(
 		ctx context.Context,
 		exec Executor,
@@ -247,10 +242,6 @@ func (repo *MarbleDbRepository) DecisionsByCaseId(
 		return nil, err
 	}
 
-	// query := selectDecisions().
-	// 	Where(squirrel.Eq{"d.org_id": organizationId}).
-	// 	Where(squirrel.Eq{"d.case_id": caseId}).
-	// 	OrderBy("d.created_at DESC")
 	query := selectDecisionAndCase().
 		Where(squirrel.Eq{
 			"d.org_id":  organizationId,
@@ -275,11 +266,6 @@ func (repo *MarbleDbRepository) DecisionsByCaseIdFromCursor(
 		return nil, false, err
 	}
 
-	// query := selectDecisions().
-	// 	Where(squirrel.Eq{"d.org_id": req.OrgId}).
-	// 	Where(squirrel.Eq{"d.case_id": req.CaseId}).
-	// 	Limit(uint64(req.Limit) + 1).
-	// 	OrderBy("d.created_at DESC, d.id DESC")
 	query := selectDecisionAndCase().
 		Where(squirrel.Eq{
 			"d.org_id":  req.OrgId,
@@ -436,14 +422,6 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 			return models.Decision{}, err
 		}
 
-		// var decisionCase *models.Case
-		// if db.DbDecision.CaseId != nil {
-		// 	decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
-		// 	if err != nil {
-		// 		return models.Decision{}, err
-		// 	}
-		// 	decisionCase = &decisionCaseValue
-		// }
 		return dbmodels.AdaptDecision(db)
 	})
 	if err != nil {
@@ -475,31 +453,6 @@ func applyDecisionPaginationFilters(query squirrel.SelectBuilder, p models.Pagin
 
 	return query, nil
 }
-
-// func (repo *MarbleDbRepository) DecisionsOfScheduledExecution(
-// 	ctx context.Context,
-// 	exec Executor,
-// 	organizationId string,
-// 	scheduledExecutionId string,
-// ) (<-chan models.DecisionWithRuleExecutions, <-chan error) {
-// 	if err := validateMarbleDbExecutor(exec); err != nil {
-// 		valChannel := make(chan models.DecisionWithRuleExecutions)
-// 		errChannel := make(chan error)
-// 		errChannel <- err
-// 		close(valChannel)
-// 		close(errChannel)
-// 		return valChannel, errChannel
-// 	}
-
-// 	return repo.channelOfDecisions(
-// 		ctx,
-// 		exec,
-// 		selectDecisions().
-// 			Where(squirrel.Eq{"d.org_id": organizationId}).
-// 			Where(squirrel.Eq{"d.scheduled_execution_id": scheduledExecutionId}).
-// 			OrderBy("d.created_at DESC"),
-// 	)
-// }
 
 // Nb: Beware that the decision usecase sends a complete decision object, and only reads it back if a case has been added
 // => do not add values directly at the repository or db level, or adjust the usecase logic accordingly.
@@ -792,17 +745,6 @@ func (repo *MarbleDbRepository) channelOfDecisions(
 
 	return decisionsChannel, errChannel
 }
-
-// func selectDecisions() squirrel.SelectBuilder {
-// 	return NewQueryBuilder().
-// 		Select(columnsNames("d", dbmodels.SelectCoreDecisionColumn)...).
-// 		From(dbmodels.TABLE_DECISIONS + " AS d").
-// 		Column("s.name AS scenario_name").
-// 		Column("s.description AS scenario_description").
-// 		Column("si.version AS scenario_version").
-// 		LeftJoin(fmt.Sprintf("%s AS s on d.scenario_id = s.id", dbmodels.TABLE_SCENARIOS)).
-// 		LeftJoin(fmt.Sprintf("%s AS si on d.scenario_iteration_id = si.id", dbmodels.TABLE_SCENARIO_ITERATIONS))
-// }
 
 func BatchChannel[Value any](inChannel <-chan Value, batchSize int) <-chan []Value {
 	out := make(chan []Value, batchSize)
