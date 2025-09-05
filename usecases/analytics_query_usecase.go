@@ -154,6 +154,33 @@ func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filte
 	return utils.ScanStruct[models.RuleCoOccurence](ctx, exec, query)
 }
 
+func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.ScreeningHits, error) {
+	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
+	if err != nil {
+		return nil, err
+	}
+
+	query := squirrel.
+		Select(
+			"screening_config_id",
+			"any_value(screening_name) as screening_name",
+			"count() as execs",
+			"count() filter (matches > 0) as hits",
+			"(hits / execs) * 100 as hit_ratio",
+			"avg(matches) filter (matches > 0) as avg_hits",
+		).
+		From(uc.analyticsFactory.BuildTarget("manual/sanction_checks")). // TODO: change table path
+		Where("created_at between ? and ?", filters.Start, filters.End).
+		GroupBy("screening_config_id")
+
+	query, err = uc.analyticsFactory.ApplyFilters(query, scenario, filters)
+	if err != nil {
+		return nil, err
+	}
+
+	return utils.ScanStruct[models.ScreeningHits](ctx, exec, query)
+}
+
 func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid.UUID) (models.Scenario, *sql.DB, error) {
 	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, uc.executorFactory.NewExecutor(), scenarioId.String())
 	if err != nil {
