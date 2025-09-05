@@ -244,8 +244,6 @@ func (usecase *DecisionUsecase) ListDecisionsWithIndexes(
 	}
 	return models.DecisionListPageWithIndexes{
 		Decisions:   decisionsWithoutRank,
-		StartIndex:  decisions[0].RankNumber,
-		EndIndex:    decisions[len(decisions)-1].RankNumber,
 		HasNextPage: hasNextPage,
 	}, nil
 }
