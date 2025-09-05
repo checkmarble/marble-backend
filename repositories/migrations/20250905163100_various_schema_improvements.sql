@@ -56,6 +56,10 @@ DROP NOT NULL,
 ALTER COLUMN scenario_version
 DROP NOT NULL;
 
+ALTER TABLE decisions
+ALTER COLUMN review_status
+TYPE TEXT;
+
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
@@ -102,5 +106,9 @@ ALTER COLUMN scenario_description
 SET NOT NULL,
 ALTER COLUMN scenario_version
 SET NOT NULL;
+
+ALTER TABLE decisions
+ALTER COLUMN review_status
+TYPE VARCHAR(10);
 
 -- +goose StatementEnd
