@@ -15,12 +15,11 @@ import (
 
 type ScheduledExecutionsTestSuite struct {
 	suite.Suite
-	exec                    *mocks.Executor
-	transaction             *mocks.Transaction
-	enforceSecurity         *mocks.EnforceSecurity
-	transactionFactory      *mocks.TransactionFactory
-	repository              *mocks.ScheduledExecutionUsecaseRepository
-	exportScheduleExecution *mocks.ExportDecisionsMock
+	exec               *mocks.Executor
+	transaction        *mocks.Transaction
+	enforceSecurity    *mocks.EnforceSecurity
+	transactionFactory *mocks.TransactionFactory
+	repository         *mocks.ScheduledExecutionUsecaseRepository
 
 	organizationId      string
 	scenarioId          string
@@ -33,7 +32,6 @@ func (suite *ScheduledExecutionsTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.repository = new(mocks.ScheduledExecutionUsecaseRepository)
-	suite.exportScheduleExecution = new(mocks.ExportDecisionsMock)
 
 	suite.organizationId = "some org id"
 	suite.scenarioId = "some scenario id"
@@ -49,7 +47,6 @@ func (suite *ScheduledExecutionsTestSuite) makeUsecase() *ScheduledExecutionUsec
 		enforceSecurity:    suite.enforceSecurity,
 		transactionFactory: suite.transactionFactory,
 		repository:         suite.repository,
-		// exportScheduleExecution: suite.exportScheduleExecution,
 	}
 }
 
@@ -60,7 +57,6 @@ func (suite *ScheduledExecutionsTestSuite) AssertExpectations() {
 	suite.enforceSecurity.AssertExpectations(t)
 	suite.transactionFactory.AssertExpectations(t)
 	suite.repository.AssertExpectations(t)
-	suite.exportScheduleExecution.AssertExpectations(t)
 }
 
 func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_with_OrganizationId() {

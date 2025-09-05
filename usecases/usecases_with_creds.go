@@ -345,7 +345,6 @@ func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecu
 		transactionFactory: usecases.NewTransactionFactory(),
 		executorFactory:    usecases.NewExecutorFactory(),
 		repository:         &usecases.Repositories.MarbleDbRepository,
-		// exportScheduleExecution: usecases.NewExportScheduleExecution(),
 	}
 }
 
