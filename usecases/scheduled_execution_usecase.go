@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -12,9 +11,9 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/security"
 )
 
-type ExportDecisions interface {
-	ExportDecisions(ctx context.Context, organizationId string, scheduledExecutionId string, dest io.Writer) (int, error)
-}
+// type ExportDecisions interface {
+// 	ExportDecisions(ctx context.Context, organizationId string, scheduledExecutionId string, dest io.Writer) (int, error)
+// }
 
 type ScheduledExecutionUsecaseRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
@@ -35,11 +34,11 @@ type ScheduledExecutionUsecaseRepository interface {
 }
 
 type ScheduledExecutionUsecase struct {
-	enforceSecurity         security.EnforceSecurityDecision
-	transactionFactory      executor_factory.TransactionFactory
-	executorFactory         executor_factory.ExecutorFactory
-	repository              ScheduledExecutionUsecaseRepository
-	exportScheduleExecution ExportDecisions
+	enforceSecurity    security.EnforceSecurityDecision
+	transactionFactory executor_factory.TransactionFactory
+	executorFactory    executor_factory.ExecutorFactory
+	repository         ScheduledExecutionUsecaseRepository
+	// exportScheduleExecution ExportDecisions
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, id string) (models.ScheduledExecution, error) {
@@ -57,26 +56,26 @@ func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Cont
 	})
 }
 
-func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(
-	ctx context.Context,
-	organizationId string,
-	scheduledExecutionID string,
-	w io.Writer,
-) (int, error) {
-	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Transaction,
-	) (int, error) {
-		execution, err := usecase.repository.GetScheduledExecution(ctx, tx, scheduledExecutionID)
-		if err != nil {
-			return 0, err
-		}
-		if err := usecase.enforceSecurity.ReadScheduledExecution(execution); err != nil {
-			return 0, err
-		}
+// func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(
+// 	ctx context.Context,
+// 	organizationId string,
+// 	scheduledExecutionID string,
+// 	w io.Writer,
+// ) (int, error) {
+// 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+// 		tx repositories.Transaction,
+// 	) (int, error) {
+// 		execution, err := usecase.repository.GetScheduledExecution(ctx, tx, scheduledExecutionID)
+// 		if err != nil {
+// 			return 0, err
+// 		}
+// 		if err := usecase.enforceSecurity.ReadScheduledExecution(execution); err != nil {
+// 			return 0, err
+// 		}
 
-		return usecase.exportScheduleExecution.ExportDecisions(ctx, organizationId, execution.Id, w)
-	})
-}
+// 		return usecase.exportScheduleExecution.ExportDecisions(ctx, organizationId, execution.Id, w)
+// 	})
+// }
 
 // ListScheduledExecutions returns the list of scheduled executions of the current organization.
 // The optional argument 'scenarioId' can be used to filter the returned list.

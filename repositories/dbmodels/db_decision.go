@@ -12,7 +12,7 @@ import (
 
 const TABLE_DECISIONS = "decisions"
 
-type DbDecision struct {
+type DbCoreDecision struct {
 	Id                   uuid.UUID  `db:"id"`
 	OrganizationId       uuid.UUID  `db:"org_id"`
 	CaseId               *string    `db:"case_id"`
@@ -23,18 +23,18 @@ type DbDecision struct {
 	ReviewStatus         *string    `db:"review_status"`
 	ScenarioId           uuid.UUID  `db:"scenario_id"`
 	ScenarioIterationId  uuid.UUID  `db:"scenario_iteration_id"`
-	ScenarioName         string     `db:"scenario_name"`
-	ScenarioDescription  string     `db:"scenario_description"`
-	ScenarioVersion      int        `db:"scenario_version"`
 	ScheduledExecutionId *string    `db:"scheduled_execution_id"`
 	Score                int        `db:"score"`
 	TriggerObjectRaw     []byte     `db:"trigger_object"`
 	TriggerObjectType    string     `db:"trigger_object_type"`
 }
 
-type DbJoinDecisionAndCase struct {
-	DbDecision
+type DbCoreDecisionWithCase struct {
+	DbCoreDecision
 	DBCase
+	ScenarioName        string `db:"scenario_name"`
+	ScenarioDescription string `db:"scenario_description"`
+	ScenarioVersion     int    `db:"scenario_version"`
 }
 
 type DbDecisionsByOutcome struct {
@@ -44,15 +44,9 @@ type DbDecisionsByOutcome struct {
 	Total   int    `db:"total"`
 }
 
-type DBPaginatedDecisions struct {
-	DbDecision
-	DBCase
-	RankNumber int
-}
+var SelectCoreDecisionColumn = utils.ColumnList[DbCoreDecision]()
 
-var SelectDecisionColumn = utils.ColumnList[DbDecision]()
-
-func AdaptDecision(db DbDecision, decisionCase *models.Case) models.Decision {
+func adaptCoreDecision(db DbCoreDecision, decisionCase *models.Case) models.Decision {
 	triggerObject := make(map[string]any)
 	err := json.Unmarshal(db.TriggerObjectRaw, &triggerObject)
 	if err != nil {
@@ -71,16 +65,41 @@ func AdaptDecision(db DbDecision, decisionCase *models.Case) models.Decision {
 		ReviewStatus:         db.ReviewStatus,
 		ScenarioId:           db.ScenarioId,
 		ScenarioIterationId:  db.ScenarioIterationId,
-		ScenarioName:         db.ScenarioName,
-		ScenarioDescription:  db.ScenarioDescription,
-		ScenarioVersion:      db.ScenarioVersion,
 		Score:                db.Score,
 		ScheduledExecutionId: db.ScheduledExecutionId,
 	}
 }
 
-func AdaptDecisionCore(db DbDecision) models.DecisionCore {
-	return models.DecisionCore{
+func AdaptDecision(db DbCoreDecisionWithCase) (models.Decision, error) {
+	var decisionCase *models.Case
+	if db.DBCase.Id.Valid {
+		decisionCaseValue, err := AdaptCase(db.DBCase)
+		if err != nil {
+			return models.Decision{}, err
+		}
+		decisionCase = &decisionCaseValue
+	}
+
+	decision := adaptCoreDecision(db.DbCoreDecision, decisionCase)
+	decision.ScenarioName = db.ScenarioName
+	decision.ScenarioDescription = db.ScenarioDescription
+	decision.ScenarioVersion = db.ScenarioVersion
+	return decision, nil
+}
+
+func AdaptDecisionWithRuleExecutions(
+	db DbCoreDecisionWithCase,
+	ruleExecutions []models.RuleExecution,
+) (models.DecisionWithRuleExecutions, error) {
+	decision, err := AdaptDecision(db)
+	if err != nil {
+		return models.DecisionWithRuleExecutions{}, err
+	}
+	return models.DecisionWithRuleExecutions{Decision: decision, RuleExecutions: ruleExecutions}, nil
+}
+
+func AdaptDecisionMetadata(db DbCoreDecision) models.DecisionMetadata {
+	return models.DecisionMetadata{
 		DecisionId:     db.Id,
 		OrganizationId: db.OrganizationId,
 		CreatedAt:      db.CreatedAt,
@@ -95,11 +114,4 @@ func AdaptDecisionByOutcome(db DbDecisionsByOutcome) models.DecisionsByVersionBy
 		Score:   db.Score,
 		Count:   db.Total,
 	}
-}
-
-func AdaptDecisionWithRuleExecutions(db DbDecision, ruleExecutions []models.RuleExecution,
-	decisionCase *models.Case,
-) models.DecisionWithRuleExecutions {
-	decision := AdaptDecision(db, decisionCase)
-	return models.DecisionWithRuleExecutions{Decision: decision, RuleExecutions: ruleExecutions}
 }

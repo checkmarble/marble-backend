@@ -341,11 +341,10 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduled_executio
 
 func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
 	return ScheduledExecutionUsecase{
-		enforceSecurity:         usecases.NewEnforceDecisionSecurity(),
-		transactionFactory:      usecases.NewTransactionFactory(),
-		executorFactory:         usecases.NewExecutorFactory(),
-		repository:              usecases.Repositories.MarbleDbRepository,
-		exportScheduleExecution: usecases.NewExportScheduleExecution(),
+		enforceSecurity:    usecases.NewEnforceDecisionSecurity(),
+		transactionFactory: usecases.NewTransactionFactory(),
+		executorFactory:    usecases.NewExecutorFactory(),
+		repository:         usecases.Repositories.MarbleDbRepository,
 	}
 }
 

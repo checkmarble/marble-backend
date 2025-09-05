@@ -46,10 +46,10 @@ func (suite *ScheduledExecutionsTestSuite) SetupTest() {
 
 func (suite *ScheduledExecutionsTestSuite) makeUsecase() *ScheduledExecutionUsecase {
 	return &ScheduledExecutionUsecase{
-		enforceSecurity:         suite.enforceSecurity,
-		transactionFactory:      suite.transactionFactory,
-		repository:              suite.repository,
-		exportScheduleExecution: suite.exportScheduleExecution,
+		enforceSecurity:    suite.enforceSecurity,
+		transactionFactory: suite.transactionFactory,
+		repository:         suite.repository,
+		// exportScheduleExecution: suite.exportScheduleExecution,
 	}
 }
 
