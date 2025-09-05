@@ -52,13 +52,6 @@ type DecisionRepository interface {
 		decision models.DecisionWithRuleExecutions,
 		organizationId string,
 		newDecisionId string) error
-	DecisionsOfOrganizationWithRank(
-		ctx context.Context,
-		exec Executor,
-		organizationId string,
-		paginationAndSorting models.PaginationAndSorting,
-		filters models.DecisionFilters,
-	) ([]models.DecisionWithRank, error)
 	DecisionsOfOrganization(
 		ctx context.Context,
 		exec Executor,
@@ -342,143 +335,19 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 		return nil, errors.Wrapf(models.BadParameterError, "invalid sorting field: %s", pagination.Sorting)
 	}
 
-	orderCond := orderConditionForDecisions(pagination)
+	orderCond := fmt.Sprintf("d.%s %s, d.id %s", pagination.Sorting, pagination.Order, pagination.Order)
 
-	filteredSubquery := selectDecisionsWithFilters(organizationId, orderCond, filters, false)
-
-	paginatedQuery := NewQueryBuilder().
-		Select(columnsNames("s", dbmodels.SelectDecisionColumn)...).
-		FromSelect(filteredSubquery, "s").
-		Limit(uint64(pagination.Limit))
-
-	var offsetDecision models.DecisionWithRuleExecutions
-	if pagination.OffsetId != "" {
-		var err error
-		offsetDecision, err = repo.DecisionWithRuleExecutionsById(ctx, exec, pagination.OffsetId)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errors.Wrap(models.NotFoundError,
-				"No row found matching the provided offsetId")
-		} else if err != nil {
-			return nil, errors.Wrap(err,
-				"failed to fetch decision corresponding to the provided offsetId")
-		}
-	}
-
-	paginatedQuery, err := applyDecisionPaginationFilters(paginatedQuery, pagination, offsetDecision.Decision)
-	if err != nil {
-		return nil, err
-	}
-	query := selectDecisionsWithJoinedFields(paginatedQuery, orderCond)
-
-	decision, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.Decision, error) {
-		db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
-		if err != nil {
-			return models.Decision{}, err
-		}
-
-		var decisionCase *models.Case
-		if db.DbDecision.CaseId != nil {
-			decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
-			if err != nil {
-				return models.Decision{}, err
-			}
-			decisionCase = &decisionCaseValue
-		}
-		return dbmodels.AdaptDecision(db.DbDecision, decisionCase), nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return decision, nil
-}
-
-func (repo *MarbleDbRepository) DecisionsOfOrganizationWithRank(
-	ctx context.Context,
-	exec Executor,
-	organizationId string,
-	pagination models.PaginationAndSorting,
-	filters models.DecisionFilters,
-) ([]models.DecisionWithRank, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
-	}
-
-	if pagination.Sorting != models.SortingFieldCreatedAt {
-		return nil, errors.Wrapf(models.BadParameterError, "invalid sorting field: %s", pagination.Sorting)
-	}
-
-	orderCond := orderConditionForDecisions(pagination)
-
-	filteredSubquery := selectDecisionsWithFilters(organizationId, orderCond, filters, true)
-
-	columns := columnsNames("s", append(dbmodels.SelectDecisionColumn, "rank_number"))
-	paginatedQuery := NewQueryBuilder().
-		Select(columns...).
-		FromSelect(filteredSubquery, "s").
-		Limit(uint64(pagination.Limit))
-
-	var offsetDecision models.DecisionWithRuleExecutions
-	if pagination.OffsetId != "" {
-		var err error
-		offsetDecision, err = repo.DecisionWithRuleExecutionsById(ctx, exec, pagination.OffsetId)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return []models.DecisionWithRank{}, errors.Wrap(models.NotFoundError,
-				"No row found matching the provided offsetId")
-		} else if err != nil {
-			return []models.DecisionWithRank{}, errors.Wrap(err,
-				"failed to fetch decision corresponding to the provided offsetId")
-		}
-	}
-
-	paginatedQuery, err := applyDecisionPaginationFilters(paginatedQuery, pagination, offsetDecision.Decision)
-	if err != nil {
-		return []models.DecisionWithRank{}, err
-	}
-	query := selectDecisionsWithJoinedFields(paginatedQuery, orderCond).
-		Column("rank_number")
-
-	decision, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.DecisionWithRank, error) {
-		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedDecisions](row)
-		if err != nil {
-			return models.DecisionWithRank{}, err
-		}
-
-		var decisionCase *models.Case
-		if db.DbDecision.CaseId != nil {
-			decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
-			if err != nil {
-				return models.DecisionWithRank{}, err
-			}
-			decisionCase = &decisionCaseValue
-		}
-		return dbmodels.AdaptDecisionWithRank(db.DbDecision, decisionCase, db.RankNumber), nil
-	})
-	if err != nil {
-		return []models.DecisionWithRank{}, err
-	}
-	return decision, nil
-}
-
-func orderConditionForDecisions(p models.PaginationAndSorting) string {
-	return fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)
-}
-
-func selectDecisionsWithFilters(
-	organizationId string,
-	orderCond string,
-	filters models.DecisionFilters,
-	withRank bool,
-) squirrel.SelectBuilder {
+	columns := columnsNames("d", dbmodels.SelectDecisionColumn)
+	columns = append(columns, columnsNames("c", dbmodels.SelectCaseColumn)...)
 	query := NewQueryBuilder().
-		Select(columnsNames("d", dbmodels.SelectDecisionColumn)...).
+		Select(columns...).
 		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
+		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
 		Where(squirrel.Eq{"d.org_id": organizationId}).
-		OrderBy(orderCond)
+		OrderBy(orderCond).
+		Limit(uint64(pagination.Limit))
 
-	if withRank {
-		query = query.Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCond))
-	}
-
+	// Add filters
 	if len(filters.ScenarioIds) > 0 {
 		query = query.Where(squirrel.Eq{"d.scenario_id": filters.ScenarioIds})
 	}
@@ -515,15 +384,49 @@ func selectDecisionsWithFilters(
 	if filters.PivotValue != nil {
 		query = query.Where(squirrel.Eq{"d.pivot_value": *filters.PivotValue})
 	}
-
-	// only if we want to filter by case inbox id, join the cases table
+	// This filter condition relies on the join with the cases table
 	if len(filters.CaseInboxIds) > 0 {
-		query = query.
-			Join(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
-			Where(squirrel.Eq{"c.inbox_id": filters.CaseInboxIds})
+		query = query.Where(squirrel.Eq{"c.inbox_id": filters.CaseInboxIds})
 	}
 
-	return query
+	var offsetDecision models.DecisionWithRuleExecutions
+	if pagination.OffsetId != "" {
+		var err error
+		offsetDecision, err = repo.DecisionWithRuleExecutionsById(ctx, exec, pagination.OffsetId)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.Wrap(models.NotFoundError,
+				"No row found matching the provided offsetId")
+		} else if err != nil {
+			return nil, errors.Wrap(err,
+				"failed to fetch decision corresponding to the provided offsetId")
+		}
+	}
+	var err error
+	query, err = applyDecisionPaginationFilters(query, pagination, offsetDecision.Decision)
+	if err != nil {
+		return nil, err
+	}
+
+	decision, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.Decision, error) {
+		db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
+		if err != nil {
+			return models.Decision{}, err
+		}
+
+		var decisionCase *models.Case
+		if db.DbDecision.CaseId != nil {
+			decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
+			if err != nil {
+				return models.Decision{}, err
+			}
+			decisionCase = &decisionCaseValue
+		}
+		return dbmodels.AdaptDecision(db.DbDecision, decisionCase), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return decision, nil
 }
 
 func applyDecisionPaginationFilters(query squirrel.SelectBuilder, p models.PaginationAndSorting, offset models.Decision) (squirrel.SelectBuilder, error) {
@@ -540,25 +443,14 @@ func applyDecisionPaginationFilters(query squirrel.SelectBuilder, p models.Pagin
 		return query, fmt.Errorf("invalid sorting field: %w", models.BadParameterError)
 	}
 
-	args := []any{offsetValue, offsetValue, p.OffsetId}
+	args := []any{offsetValue, p.OffsetId}
 	if p.Order == models.SortingOrderDesc {
-		query = query.Where(fmt.Sprintf("%s < ? OR (%s = ? AND id < ?)", p.Sorting, p.Sorting), args...)
+		query = query.Where(fmt.Sprintf("(d.%s, d.id) < (?, ?)", p.Sorting), args...)
 	} else {
-		query = query.Where(fmt.Sprintf("%s > ? OR (%s = ? AND id > ?)", p.Sorting, p.Sorting), args...)
+		query = query.Where(fmt.Sprintf("(d.%s, d.id) > (?, ?)", p.Sorting), args...)
 	}
 
 	return query, nil
-}
-
-func selectDecisionsWithJoinedFields(query squirrel.SelectBuilder, orderCond string) squirrel.SelectBuilder {
-	columns := columnsNames("d", dbmodels.SelectDecisionColumn)
-	columns = append(columns, columnsNames("c", dbmodels.SelectCaseColumn)...)
-	return squirrel.
-		Select(columns...).
-		FromSelect(query, "d").
-		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
-		OrderBy(orderCond).
-		PlaceholderFormat(squirrel.Dollar)
 }
 
 func (repo *MarbleDbRepository) DecisionsOfScheduledExecution(

@@ -60,11 +60,6 @@ type DecisionsByVersionByOutcome struct {
 	Count   int
 }
 
-type DecisionWithRank struct {
-	Decision
-	RankNumber int
-}
-
 type ScenarioExecution struct {
 	ScenarioId          uuid.UUID
 	ScenarioIterationId uuid.UUID
@@ -193,11 +188,6 @@ type DecisionFilters struct {
 	StartDate             time.Time
 	TriggerObjects        []string
 	TriggerObjectId       *string
-}
-
-type DecisionListPageWithIndexes struct {
-	Decisions   []Decision
-	HasNextPage bool
 }
 
 type DecisionListPage struct {
