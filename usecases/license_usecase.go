@@ -144,7 +144,7 @@ func NewPublicLicenseUsecase(
 	}
 }
 
-func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licenseKey string, deploymentId string) (models.LicenseValidation, error) {
+func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licenseKey string, deploymentId uuid.UUID) (models.LicenseValidation, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	license, err := usecase.licenseRepository.GetLicenseByKey(ctx, exec, licenseKey)
 	if err != nil {
@@ -168,18 +168,13 @@ func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licens
 	}
 
 	// License is valid, send the deployment id and license key to the metrics repository
-	if deploymentId != "" {
+	if deploymentId != uuid.Nil {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 			defer cancel()
-			deploymentIdUUID, err := uuid.Parse(deploymentId)
-			if err != nil {
-				utils.LogAndReportSentryError(ctx, err)
-				return
-			}
-			err = usecase.metricsRepository.SendMetrics(ctx, models.MetricsCollection{
+			err := usecase.metricsRepository.SendMetrics(ctx, models.MetricsCollection{
 				CollectionID: uuid.New(),
-				DeploymentID: deploymentIdUUID,
+				DeploymentID: deploymentId,
 				LicenseKey:   &license.Key,
 				LicenseName:  &license.OrganizationName,
 				Metrics: []models.MetricData{

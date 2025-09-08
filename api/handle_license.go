@@ -4,9 +4,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 )
@@ -91,19 +94,21 @@ func handleValidateLicense(uc usecases.Usecases) func(c *gin.Context) {
 		licenseKey := c.Param("license_key")
 		deploymentId := c.Query("deployment_id")
 
-		// Should we check if the deployment is an UUID if provided and return an error if not?
-		// if deploymentId != "" {
-		// 	if _, err := uuid.Parse(deploymentId); err != nil {
-		// 		presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid deployment_id format"))
-		// 		return
-		// 	}
-		// }
+		var deploymentIdUUID uuid.UUID
+		if deploymentId != "" {
+			var err error
+			deploymentIdUUID, err = uuid.Parse(deploymentId)
+			if err != nil {
+				presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid deployment_id format"))
+				return
+			}
+		}
 
 		usecase := uc.NewLicenseUsecase()
 		licenseValidation, err := usecase.ValidateLicense(
 			ctx,
 			strings.TrimPrefix(licenseKey, "/"),
-			deploymentId,
+			deploymentIdUUID,
 		)
 		if presentError(ctx, c, err) {
 			return
