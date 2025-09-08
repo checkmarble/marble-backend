@@ -91,7 +91,7 @@ func handleValidateLicense(uc usecases.Usecases) func(c *gin.Context) {
 		licenseKey := c.Param("license_key")
 		deploymentId := c.Query("deployment_id")
 
-		// Should we check if the deployment is an UUID if provided?
+		// Should we check if the deployment is an UUID if provided and return an error if not?
 		// if deploymentId != "" {
 		// 	if _, err := uuid.Parse(deploymentId); err != nil {
 		// 		presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid deployment_id format"))

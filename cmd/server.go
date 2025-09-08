@@ -261,7 +261,6 @@ func RunServer(config CompiledConfig) error {
 		return errors.Wrap(err, "failed to get deployment ID from Marble DB")
 	}
 	license := infra.VerifyLicense(licenseConfig, deploymentMetadata.Value)
-	// license := models.NewFullLicense()
 
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),

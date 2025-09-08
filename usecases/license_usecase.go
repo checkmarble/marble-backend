@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -182,7 +183,13 @@ func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licens
 				LicenseKey:   &license.Key,
 				LicenseName:  &license.OrganizationName,
 				Metrics: []models.MetricData{
-					models.NewGlobalMetric("check_license", utils.Ptr(float64(1)), nil, time.Now(), time.Now()),
+					models.NewGlobalMetric(
+						metrics_collection.CheckLicenseMetricName,
+						utils.Ptr(float64(1)),
+						nil,
+						time.Now(),
+						time.Now(),
+					),
 				},
 			})
 			if err != nil {
