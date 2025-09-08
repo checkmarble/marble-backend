@@ -89,9 +89,22 @@ func handleValidateLicense(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		licenseKey := c.Param("license_key")
+		deploymentId := c.Query("deployment_id")
+
+		// Should we check if the deployment is an UUID if provided?
+		// if deploymentId != "" {
+		// 	if _, err := uuid.Parse(deploymentId); err != nil {
+		// 		presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid deployment_id format"))
+		// 		return
+		// 	}
+		// }
 
 		usecase := uc.NewLicenseUsecase()
-		licenseValidation, err := usecase.ValidateLicense(ctx, strings.TrimPrefix(licenseKey, "/"))
+		licenseValidation, err := usecase.ValidateLicense(
+			ctx,
+			strings.TrimPrefix(licenseKey, "/"),
+			deploymentId,
+		)
 		if presentError(ctx, c, err) {
 			return
 		}

@@ -59,7 +59,7 @@ func RunSendPendingWebhookEvents(apiVersion string) error {
 
 	logger := utils.NewLogger(jobConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
-	license := infra.VerifyLicense(licenseConfig)
+	license := infra.VerifyLicense(licenseConfig, "")
 
 	infra.SetupSentry(jobConfig.sentryDsn, jobConfig.env, apiVersion)
 	defer sentry.Flush(3 * time.Second)
