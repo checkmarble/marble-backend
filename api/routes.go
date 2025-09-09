@@ -330,5 +330,5 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.DELETE("/settings/me/unavailable", tom, handleDeleteUnavailability(uc))
 
 	router.GET("/settings/ai", tom, HandleGetAiSettingForOrganization(uc))
-	router.PATCH("/settings/ai", tom, HandlePatchAiSettingForOrganization(uc))
+	router.PUT("/settings/ai", tom, HandlePutAiSettingForOrganization(uc))
 }

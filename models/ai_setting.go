@@ -1,6 +1,11 @@
 // Package models contains the models for the AI settings for different AI usecases
 package models
 
+const (
+	AiCaseReviewDefaultLanguage   = "en"
+	AiKYCEnrichmentDefaultEnabled = false
+)
+
 type PerplexitySearchContextSize string
 
 const (
@@ -31,33 +36,53 @@ type KYCEnrichmentSetting struct {
 	Model             *string                      `json:"model"`
 	DomainFilter      []string                     `json:"domain_filter"`
 	SearchContextSize *PerplexitySearchContextSize `json:"search_context_size"`
-	Enabled           *bool                        `json:"enabled"`
+
+	// Opt-in, the user should explicitly enable it
+	Enabled bool `json:"enabled"`
 }
 
 func (KYCEnrichmentSetting) entityAiSetting() {}
 
+func DefaultKYCEnrichmentSetting() KYCEnrichmentSetting {
+	return KYCEnrichmentSetting{
+		Enabled:      AiKYCEnrichmentDefaultEnabled,
+		DomainFilter: []string{},
+	}
+}
+
 // Json tag for json serialization into JSONB column
 type CaseReviewSetting struct {
-	Language       *string `json:"language"`
+	Language       string  `json:"language"`
 	Structure      *string `json:"structure"`
-	OrgDescription *string `json:"org_description"` // Hum ... In CaseReview or put in AiSetting as a common field
+	OrgDescription *string `json:"org_description"`
 }
 
 func (CaseReviewSetting) entityAiSetting() {}
 
+func DefaultCaseReviewSetting() CaseReviewSetting {
+	return CaseReviewSetting{
+		Language: AiCaseReviewDefaultLanguage,
+	}
+}
+
 // AiSetting contains the settings for the AI usecases, each usecase setting is stored in a separate struct
 // All fields are optional, if not set, let the usecase use a default value
 type AiSetting struct {
-	OrgId string
-
 	// Perplexity, KYC enrichment usecase
-	KYCEnrichmentSetting *KYCEnrichmentSetting
+	KYCEnrichmentSetting KYCEnrichmentSetting
 
 	// CaseReview usecase (not used yet)
-	CaseReviewSetting *CaseReviewSetting
+	CaseReviewSetting CaseReviewSetting
+}
+
+func DefaultAiSetting() AiSetting {
+	return AiSetting{
+		KYCEnrichmentSetting: DefaultKYCEnrichmentSetting(),
+		CaseReviewSetting:    DefaultCaseReviewSetting(),
+	}
 }
 
 type UpsertAiSetting struct {
-	KYCEnrichmentSetting *KYCEnrichmentSetting
-	CaseReviewSetting    *CaseReviewSetting
+	KYCEnrichmentSetting KYCEnrichmentSetting
+	CaseReviewSetting    CaseReviewSetting
 }

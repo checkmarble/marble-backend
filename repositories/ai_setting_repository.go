@@ -2,10 +2,10 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
 )
 
 func (repo MarbleDbRepository) GetAiSetting(ctx context.Context, exec Executor, orgId string) (*models.AiSetting, error) {
@@ -29,7 +29,7 @@ func (repo MarbleDbRepository) GetAiSetting(ctx context.Context, exec Executor, 
 		return nil, nil
 	}
 
-	aiSetting, err := dbmodels.AdaptAiSetting(settings, settings[0].OrgId)
+	aiSetting, err := dbmodels.AdaptAiSetting(settings)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (repo MarbleDbRepository) GetAiSetting(ctx context.Context, exec Executor, 
 	return &aiSetting, nil
 }
 
-func (repo MarbleDbRepository) PatchAiSetting(
+func (repo MarbleDbRepository) PutAiSetting(
 	ctx context.Context,
 	exec Executor,
 	orgId string,
@@ -47,21 +47,15 @@ func (repo MarbleDbRepository) PatchAiSetting(
 		return models.AiSetting{}, err
 	}
 
-	// PATCH semantics: only update/delete the specific setting types provided
-	if setting.KYCEnrichmentSetting != nil {
-		if err := repo.upsertAiSettingType(ctx, exec, orgId,
-			dbmodels.AI_SETTING_TYPE_KYC_ENRICHMENT,
-			*setting.KYCEnrichmentSetting); err != nil {
-			return models.AiSetting{}, err
-		}
+	if err := repo.upsertAiSettingType(ctx, exec, orgId,
+		dbmodels.AI_SETTING_TYPE_KYC_ENRICHMENT,
+		setting.KYCEnrichmentSetting); err != nil {
+		return models.AiSetting{}, err
 	}
-
-	if setting.CaseReviewSetting != nil {
-		if err := repo.upsertAiSettingType(ctx, exec, orgId,
-			dbmodels.AI_SETTING_TYPE_CASE_REVIEW,
-			*setting.CaseReviewSetting); err != nil {
-			return models.AiSetting{}, err
-		}
+	if err := repo.upsertAiSettingType(ctx, exec, orgId,
+		dbmodels.AI_SETTING_TYPE_CASE_REVIEW,
+		setting.CaseReviewSetting); err != nil {
+		return models.AiSetting{}, err
 	}
 
 	// Get the complete updated setting
@@ -70,13 +64,12 @@ func (repo MarbleDbRepository) PatchAiSetting(
 		return models.AiSetting{}, err
 	}
 	if result == nil {
-		return models.AiSetting{}, fmt.Errorf("failed to retrieve patched AI setting")
+		return models.AiSetting{}, errors.New("failed to retrieve updated AI setting")
 	}
 
 	return *result, nil
 }
 
-// Helper method to upsert a specific setting type (PATCH semantics)
 func (repo MarbleDbRepository) upsertAiSettingType(
 	ctx context.Context,
 	exec Executor,

@@ -56,12 +56,16 @@ func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, caseId str
 	exec := uc.executorFactory.NewExecutor()
 
 	// Get setting
-	aiSetting, err := uc.repository.GetAiSetting(ctx, exec, uc.enforceSecurity.OrgId())
+	aiSetting := models.DefaultAiSetting()
+	aiSettingRepo, err := uc.repository.GetAiSetting(ctx, exec, uc.enforceSecurity.OrgId())
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve ai setting")
 	}
+	if aiSettingRepo != nil {
+		aiSetting = *aiSettingRepo
+	}
 
-	if !isKYCEnrichmentEnabled(aiSetting) {
+	if !aiSetting.KYCEnrichmentSetting.Enabled {
 		return nil, ErrKYCEnrichmentNotEnabled
 	}
 
@@ -112,9 +116,13 @@ func (uc *AiAgentUsecase) enrichData(ctx context.Context, organizationId string,
 	exec := uc.executorFactory.NewExecutor()
 
 	// Get setting
-	aiSetting, err := uc.repository.GetAiSetting(ctx, exec, organizationId)
+	aiSetting := models.DefaultAiSetting()
+	aiSettingRepo, err := uc.repository.GetAiSetting(ctx, exec, organizationId)
 	if err != nil {
 		return models.AiEnrichmentKYC{}, errors.Wrap(err, "could not retrieve ai setting")
+	}
+	if aiSettingRepo != nil {
+		aiSetting = *aiSettingRepo
 	}
 
 	// Get or initialize the enrichment adapter
@@ -146,7 +154,7 @@ func (uc *AiAgentUsecase) enrichData(ctx context.Context, organizationId string,
 		WithText(llmberjack.RoleUser, prompt)
 
 	// Override the default model if set in the AI setting
-	if aiSetting.KYCEnrichmentSetting != nil && aiSetting.KYCEnrichmentSetting.Model != nil {
+	if aiSetting.KYCEnrichmentSetting.Model != nil {
 		request.WithModel(*aiSetting.KYCEnrichmentSetting.Model)
 	}
 
@@ -178,18 +186,4 @@ func (uc *AiAgentUsecase) enrichData(ctx context.Context, organizationId string,
 			}
 		}),
 	}, nil
-}
-
-// Opt-in, the user should explicitly enable it
-func isKYCEnrichmentEnabled(aiSetting *models.AiSetting) bool {
-	if aiSetting == nil {
-		return false
-	}
-	if aiSetting.KYCEnrichmentSetting == nil {
-		return false
-	}
-	if aiSetting.KYCEnrichmentSetting.Enabled == nil {
-		return false
-	}
-	return *aiSetting.KYCEnrichmentSetting.Enabled
 }
