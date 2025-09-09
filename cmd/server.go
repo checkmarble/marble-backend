@@ -243,19 +243,7 @@ func RunServer(config CompiledConfig) error {
 	)
 
 	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
-
-	// Get deployment ID from Marble DB
-	executor, err := repositories.ExecutorGetter.GetExecutor(
-		ctx,
-		models.DATABASE_SCHEMA_TYPE_MARBLE,
-		nil,
-	)
-	if err != nil {
-		utils.LogAndReportSentryError(ctx, err)
-		return errors.Wrap(err, "failed to get executor from Marble DB")
-	}
-	deploymentMetadata, err := repositories.MarbleDbRepository.GetMetadata(ctx, executor, nil, models.MetadataKeyDeploymentID)
-	// Should never happen, new version of the app should have the deployment ID set
+	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return errors.Wrap(err, "failed to get deployment ID from Marble DB")
