@@ -24,16 +24,12 @@ func HandleGetAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Context
 		if presentError(ctx, c, err) {
 			return
 		}
-		if aiSetting == nil {
-			c.Status(http.StatusNotFound)
-			return
-		}
 
-		c.JSON(http.StatusOK, dto.AdaptAiSettingDto(*aiSetting))
+		c.JSON(http.StatusOK, dto.AdaptAiSettingDto(aiSetting))
 	}
 }
 
-func HandlePatchAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Context) {
+func HandlePutAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -41,8 +37,9 @@ func HandlePatchAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Conte
 			return
 		}
 
-		var payload dto.PatchAiSettingDto
-		if err := c.ShouldBindJSON(&payload); presentError(ctx, c, err) {
+		var payload dto.PutAiSettingDto
+		if err := c.ShouldBindJSON(&payload); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
@@ -52,7 +49,7 @@ func HandlePatchAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Conte
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiSettingUsecase()
-		aiSetting, err := usecase.PatchAiSetting(ctx, organizationId, dto.AdaptPatchAiSetting(payload))
+		aiSetting, err := usecase.PutAiSetting(ctx, organizationId, dto.AdaptPutAiSetting(payload))
 		if presentError(ctx, c, err) {
 			return
 		}

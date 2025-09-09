@@ -15,6 +15,8 @@ import (
 
 const ENRICHMENT_DEFAULT_MODEL = "sonar-pro"
 
+var ErrKYCEnrichmentNotEnabled = errors.New("kyc enrichment is not enabled")
+
 func (uc *AiAgentUsecase) getEnrichmentAdapter() (*llmberjack.Llmberjack, error) {
 	if uc.enrichmentAdapter != nil {
 		return uc.enrichmentAdapter, nil
@@ -51,6 +53,21 @@ type PivotDataForEnrichment struct {
 
 func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, caseId string) ([]models.AiEnrichmentKYC, error) {
 	logger := utils.LoggerFromContext(ctx)
+	exec := uc.executorFactory.NewExecutor()
+
+	// Get setting
+	aiSetting := models.DefaultAiSetting()
+	aiSettingRepo, err := uc.repository.GetAiSetting(ctx, exec, uc.enforceSecurity.OrgId())
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve ai setting")
+	}
+	if aiSettingRepo != nil {
+		aiSetting = *aiSettingRepo
+	}
+
+	if !aiSetting.KYCEnrichmentSetting.Enabled {
+		return nil, ErrKYCEnrichmentNotEnabled
+	}
 
 	// Get case data, included pivot data
 	caseData, _, err := uc.getCaseDataWithPermissions(ctx, caseId)
@@ -99,9 +116,13 @@ func (uc *AiAgentUsecase) enrichData(ctx context.Context, organizationId string,
 	exec := uc.executorFactory.NewExecutor()
 
 	// Get setting
-	aiSetting, err := uc.repository.GetAiSetting(ctx, exec, organizationId)
+	aiSetting := models.DefaultAiSetting()
+	aiSettingRepo, err := uc.repository.GetAiSetting(ctx, exec, organizationId)
 	if err != nil {
 		return models.AiEnrichmentKYC{}, errors.Wrap(err, "could not retrieve ai setting")
+	}
+	if aiSettingRepo != nil {
+		aiSetting = *aiSettingRepo
 	}
 
 	// Get or initialize the enrichment adapter
@@ -133,7 +154,7 @@ func (uc *AiAgentUsecase) enrichData(ctx context.Context, organizationId string,
 		WithText(llmberjack.RoleUser, prompt)
 
 	// Override the default model if set in the AI setting
-	if aiSetting.KYCEnrichmentSetting != nil && aiSetting.KYCEnrichmentSetting.Model != nil {
+	if aiSetting.KYCEnrichmentSetting.Model != nil {
 		request.WithModel(*aiSetting.KYCEnrichmentSetting.Model)
 	}
 

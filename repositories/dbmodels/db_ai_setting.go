@@ -28,30 +28,30 @@ const (
 var AiSettingColumns = utils.ColumnList[DBAiSetting]()
 
 // AdaptAiSetting adapts multiple DB records into a single AiSetting model
-func AdaptAiSetting(settings []DBAiSetting, orgId string) (models.AiSetting, error) {
+func AdaptAiSetting(settings []DBAiSetting) (models.AiSetting, error) {
 	if len(settings) == 0 {
-		return models.AiSetting{}, fmt.Errorf("no settings provided")
+		return models.DefaultAiSetting(), nil
 	}
 
-	aiSetting := models.AiSetting{
-		OrgId: orgId,
-	}
+	aiSetting := models.DefaultAiSetting()
 
 	for _, setting := range settings {
 		switch setting.Type {
 		case AI_SETTING_TYPE_KYC_ENRICHMENT:
 			kycSetting, err := adaptKYCEnrichmentFromJSONB(setting.Value)
 			if err != nil {
-				return models.AiSetting{}, fmt.Errorf("failed to adapt KYC enrichment setting: %w", err)
+				return models.DefaultAiSetting(), fmt.Errorf(
+					"failed to adapt KYC enrichment setting: %w", err)
 			}
-			aiSetting.KYCEnrichmentSetting = &kycSetting
+			aiSetting.KYCEnrichmentSetting = kycSetting
 
 		case AI_SETTING_TYPE_CASE_REVIEW:
 			caseReviewSetting, err := adaptCaseReviewFromJSONB(setting.Value)
 			if err != nil {
-				return models.AiSetting{}, fmt.Errorf("failed to adapt case review setting: %w", err)
+				return models.DefaultAiSetting(), fmt.Errorf(
+					"failed to adapt case review setting: %w", err)
 			}
-			aiSetting.CaseReviewSetting = &caseReviewSetting
+			aiSetting.CaseReviewSetting = caseReviewSetting
 		}
 	}
 
@@ -59,7 +59,7 @@ func AdaptAiSetting(settings []DBAiSetting, orgId string) (models.AiSetting, err
 }
 
 func adaptKYCEnrichmentFromJSONB(value map[string]any) (models.KYCEnrichmentSetting, error) {
-	setting := models.KYCEnrichmentSetting{}
+	setting := models.DefaultKYCEnrichmentSetting()
 
 	if model, ok := value["model"].(string); ok && model != "" {
 		setting.Model = &model
@@ -83,14 +83,18 @@ func adaptKYCEnrichmentFromJSONB(value map[string]any) (models.KYCEnrichmentSett
 		setting.SearchContextSize = &searchContext
 	}
 
+	if enabled, ok := value["enabled"].(bool); ok {
+		setting.Enabled = enabled
+	}
+
 	return setting, nil
 }
 
 func adaptCaseReviewFromJSONB(value map[string]any) (models.CaseReviewSetting, error) {
-	setting := models.CaseReviewSetting{}
+	setting := models.DefaultCaseReviewSetting()
 
 	if language, ok := value["language"].(string); ok && language != "" {
-		setting.Language = &language
+		setting.Language = language
 	}
 
 	if structure, ok := value["structure"].(string); ok && structure != "" {

@@ -12,7 +12,7 @@ import (
 
 type aiSettingRepository interface {
 	GetAiSetting(ctx context.Context, exec repositories.Executor, orgId string) (*models.AiSetting, error)
-	PatchAiSetting(
+	PutAiSetting(
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId string,
@@ -45,15 +45,25 @@ func NewAiSettingUsecase(
 	}
 }
 
-func (uc AiSettingUsecase) GetAiSetting(ctx context.Context, orgId string) (*models.AiSetting, error) {
+func (uc AiSettingUsecase) GetAiSetting(ctx context.Context, orgId string) (models.AiSetting, error) {
 	if err := uc.enforceSecurity.ReadOrganization(orgId); err != nil {
-		return nil, errors.Wrap(err, "don't have permission to see organization setting")
+		return models.AiSetting{}, errors.Wrap(err,
+			"don't have permission to see organization setting")
 	}
 
-	return uc.repository.GetAiSetting(ctx, uc.executorFactory.NewExecutor(), orgId)
+	aiSetting, err := uc.repository.GetAiSetting(ctx, uc.executorFactory.NewExecutor(), orgId)
+	if err != nil {
+		return models.AiSetting{}, errors.Wrap(err, "could not retrieve ai setting")
+	}
+
+	if aiSetting == nil {
+		return models.DefaultAiSetting(), nil
+	}
+
+	return *aiSetting, nil
 }
 
-func (uc AiSettingUsecase) PatchAiSetting(
+func (uc AiSettingUsecase) PutAiSetting(
 	ctx context.Context,
 	orgId string,
 	newSetting models.UpsertAiSetting,
@@ -68,7 +78,7 @@ func (uc AiSettingUsecase) PatchAiSetting(
 			"don't have permission to update organization setting")
 	}
 
-	aiSettingPatched, err := uc.repository.PatchAiSetting(ctx, exec, orgId, newSetting)
+	aiSettingPatched, err := uc.repository.PutAiSetting(ctx, exec, orgId, newSetting)
 	if err != nil {
 		return models.AiSetting{}, errors.Wrap(err, "can't upsert ai setting")
 	}
