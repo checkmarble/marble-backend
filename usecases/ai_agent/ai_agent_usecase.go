@@ -34,6 +34,19 @@ const HIGH_NB_ROWS_THRESHOLD = 100
 
 var ErrAiCaseReviewNotEnabled = errors.New("AI case review is not enabled")
 
+const (
+	PROMPT_CASE_REVIEW_PATH                          = "prompts/case_review/case_review.md"
+	PROMPT_DATA_MODEL_OBJECT_FIELD_READ_OPTIONS_PATH = "prompts/case_review/data_model_object_field_read_options.md"
+	PROMPT_DATA_MODEL_SUMMARY_PATH                   = "prompts/case_review/data_model_summary.md"
+	PROMPT_RULE_DEFINITIONS_PATH                     = "prompts/case_review/rule_definitions.md"
+	PROMPT_RULE_THRESHOLD_VALUES_PATH                = "prompts/case_review/rule_threshold_values.md"
+	PROMPT_SANITY_CHECK_PATH                         = "prompts/case_review/sanity_check.md"
+	INSTRUCTION_CUSTOM_REPORT_PATH                   = "prompts/case_review/instruction_custom_report.md"
+	INSTRUCTION_LANGUAGE_PATH                        = "prompts/case_review/instruction_language.md"
+	INSTRUCTION_STRUCTURE_PATH                       = "prompts/case_review/instruction_structure.md"
+	SYSTEM_PROMPT_PATH                               = "prompts/system.md"
+)
+
 type AiAgentUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
@@ -155,8 +168,9 @@ func NewAiAgentUsecase(
 }
 
 type customOrgInstructions struct {
-	Language  *string `json:"language"`
-	Structure *string `json:"structure"`
+	Language       *string `json:"language"`
+	Structure      *string `json:"structure"`
+	OrgDescription *string `json:"org_description"`
 }
 
 func (uc *AiAgentUsecase) createOpenAIProvider() (llmberjack.Llm, error) {
@@ -323,13 +337,47 @@ func readPrompt(path string) (string, error) {
 
 // Prepare the request for the LLM, the prompt comes from a file and need to be templated.
 // The file contains some variables that are replaced by the data provided by the caller.
-func (uc *AiAgentUsecase) prepareRequest(promptPath string, data map[string]any) (model string, prompt string, err error) {
+func preparePrompt(promptPath string, data map[string]any) (prompt string, err error) {
 	// Load prompt from file, do each time in case prompt configuration changes
 	promptContent, err := readPrompt(promptPath)
 	if err != nil {
-		return "", "", errors.Wrap(err, "could not read prompt file")
+		return "", errors.Wrap(err, "could not read prompt file")
 	}
 
+	// Build the prompt message with the data
+	// Prepare the data for the template execution
+	marshalledMap := make(map[string]string)
+	for k, v := range data {
+		if printer, ok := v.(agent_dto.AgentPrinter); ok {
+			marshalledMap[k], err = printer.PrintForAgent()
+			if err != nil {
+				return "", errors.Wrapf(err, "could not print %s", k)
+			}
+		} else {
+			b, err := json.Marshal(v)
+			if err != nil {
+				return "", errors.Wrapf(err, "could not marshal %s", k)
+			}
+			marshalledMap[k] = string(b)
+		}
+	}
+
+	t, err := template.New(promptPath).Parse(promptContent)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not parse template %s", promptPath)
+	}
+	buf := bytes.Buffer{}
+	err = t.Execute(&buf, marshalledMap)
+	if err != nil {
+		return "", errors.Wrap(err, "could not execute template")
+	}
+	prompt = buf.String()
+
+	return prompt, nil
+}
+
+// Call preparePrompt and complete the model with the model configuration
+func (uc *AiAgentUsecase) preparePromptWithModel(promptPath string, data map[string]any) (model string, prompt string, err error) {
 	// Load model configuration on each call
 	// Give the possibility to change the prompt without reloading the application
 	modelConfig, err := models.LoadAiAgentModelConfig("prompts/ai_agent_models.json", uc.config.MainAgentDefaultModel)
@@ -339,34 +387,10 @@ func (uc *AiAgentUsecase) prepareRequest(promptPath string, data map[string]any)
 
 	model = modelConfig.GetModelForPrompt(promptPath)
 
-	// Build the prompt message with the data
-	// Prepare the data for the template execution
-	marshalledMap := make(map[string]string)
-	for k, v := range data {
-		if printer, ok := v.(agent_dto.AgentPrinter); ok {
-			marshalledMap[k], err = printer.PrintForAgent()
-			if err != nil {
-				return "", "", errors.Wrapf(err, "could not print %s", k)
-			}
-		} else {
-			b, err := json.Marshal(v)
-			if err != nil {
-				return "", "", errors.Wrapf(err, "could not marshal %s", k)
-			}
-			marshalledMap[k] = string(b)
-		}
-	}
-
-	t, err := template.New(promptPath).Parse(promptContent)
+	prompt, err = preparePrompt(promptPath, data)
 	if err != nil {
-		return "", "", errors.Wrapf(err, "could not parse template %s", promptPath)
+		return "", "", errors.Wrap(err, "could not prepare prompt")
 	}
-	buf := bytes.Buffer{}
-	err = t.Execute(&buf, marshalledMap)
-	if err != nil {
-		return "", "", errors.Wrap(err, "could not execute template")
-	}
-	prompt = buf.String()
 
 	return model, prompt, nil
 }
@@ -529,46 +553,22 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 	})
 }
 
-// Get the organization description from files, default to placeholder if not found
-// Not all organizations have a description file
-func getOrganizationDescription(ctx context.Context, organizationId string) string {
-	logger := utils.LoggerFromContext(ctx)
-
-	clientActivityDescription, err := readPrompt(fmt.Sprintf("prompts/org_desc/%s.md", organizationId))
-	if err != nil {
-		logger.DebugContext(ctx, "could not read organization description", "error", err)
-		clientActivityDescription = "placeholder"
-	}
-
-	return clientActivityDescription
-}
-
-// Get the organization custom instructions from files, default to nil if not found
+// Get from ai setting
 // Not all organizations have custom instructions
-func getOrganizationCustomInstructions(ctx context.Context, organizationId string) customOrgInstructions {
+func (uc *AiAgentUsecase) getOrganizationCustomInstructions(ctx context.Context, organizationId string) customOrgInstructions {
 	logger := utils.LoggerFromContext(ctx)
 
-	file, err := os.Open(fmt.Sprintf("prompts/org_custom_instructions/%s.json", organizationId))
+	aiSetting, err := uc.repository.GetAiSetting(ctx, uc.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
-		logger.DebugContext(ctx, "could not open organization custom instructions file", "error", err)
-		return customOrgInstructions{}
-	}
-	defer file.Close()
-
-	promptBytes, err := io.ReadAll(file)
-	if err != nil {
-		logger.DebugContext(ctx, "could not read organization custom instructions file", "error", err)
+		logger.DebugContext(ctx, "could not get ai setting", "error", err)
 		return customOrgInstructions{}
 	}
 
-	var result customOrgInstructions
-	err = json.Unmarshal(promptBytes, &result)
-	if err != nil {
-		logger.DebugContext(ctx, "could not unmarshal organization custom instructions", "error", err)
-		return customOrgInstructions{}
+	return customOrgInstructions{
+		Language:       utils.Ptr(aiSetting.CaseReviewSetting.Language),
+		Structure:      aiSetting.CaseReviewSetting.Structure,
+		OrgDescription: aiSetting.CaseReviewSetting.OrgDescription,
 	}
-
-	return result
 }
 
 // Return a list of instructions to give to the LLM and the model to use for the prompt
@@ -585,8 +585,8 @@ func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Conte
 		if err != nil {
 			logger.DebugContext(ctx, "could not convert language to english, do not format the output with language", "error", err)
 		} else {
-			model, customLanguagePrompt, err := uc.prepareRequest(
-				"prompts/case_review/instruction_language.md",
+			model, customLanguagePrompt, err := uc.preparePromptWithModel(
+				INSTRUCTION_LANGUAGE_PATH,
 				map[string]any{
 					"language": language,
 				},
@@ -601,8 +601,8 @@ func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Conte
 		}
 	}
 	if customInstructions.Structure != nil {
-		model, customStructurePrompt, err := uc.prepareRequest(
-			"prompts/case_review/instruction_structure.md",
+		model, customStructurePrompt, err := uc.preparePromptWithModel(
+			INSTRUCTION_STRUCTURE_PATH,
 			map[string]any{
 				"structure": *customInstructions.Structure,
 			},
@@ -664,14 +664,11 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		return nil, errors.Wrap(err, "could not get case data")
 	}
 
-	// Get Organization prompt from file if defined, this prompt gives more details about the organization
-	clientActivityDescription := getOrganizationDescription(ctx, caseData.organizationId)
-
 	// Prepare the custom org instructions
-	customOrgInstructions := getOrganizationCustomInstructions(ctx, caseData.organizationId)
+	customOrgInstructions := uc.getOrganizationCustomInstructions(ctx, caseData.organizationId)
 
 	// Define the system instruction for prompt
-	systemInstruction, err := readPrompt("prompts/system.md")
+	systemInstruction, err := readPrompt(SYSTEM_PROMPT_PATH)
 	if err != nil {
 		logger.DebugContext(ctx, "could not read system instruction", "error", err)
 		systemInstruction = "You are a compliance officer or fraud analyst. You are given a case and you need to review it step by step. Reply factually to instructions in markdown format."
@@ -679,8 +676,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	if caseReviewContext.DataModelSummary == nil {
 		// Data model summary, create thread because the response will be used in next steps
-		modelDataModelSummary, promptDataModelSummary, err := uc.prepareRequest(
-			"prompts/case_review/data_model_summary.md", map[string]any{
+		modelDataModelSummary, promptDataModelSummary, err := uc.preparePromptWithModel(
+			PROMPT_DATA_MODEL_SUMMARY_PATH, map[string]any{
 				"data_model": caseData.dataModelDto,
 			})
 		if err != nil {
@@ -749,8 +746,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 						Properties: props,
 					}
 
-					modelDataModelObjectFieldReadOptions, promptDataModelObjectFieldReadOptions, err := uc.prepareRequest(
-						"prompts/case_review/data_model_object_field_read_options.md",
+					modelDataModelObjectFieldReadOptions, promptDataModelObjectFieldReadOptions, err := uc.preparePromptWithModel(
+						PROMPT_DATA_MODEL_OBJECT_FIELD_READ_OPTIONS_PATH,
 						map[string]any{
 							"data_model_table_names": tableNamesWithLargRowNbs,
 						},
@@ -811,12 +808,17 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	}
 
 	if caseReviewContext.RulesDefinitionsReview == nil {
+		organizationDescription := "No description provided"
+		if customOrgInstructions.OrgDescription != nil {
+			organizationDescription = *customOrgInstructions.OrgDescription
+		}
+
 		// Rules definitions review
-		modelRulesDefinitions, promptRulesDefinitions, err := uc.prepareRequest(
-			"prompts/case_review/rule_definitions.md",
+		modelRulesDefinitions, promptRulesDefinitions, err := uc.preparePromptWithModel(
+			PROMPT_RULE_DEFINITIONS_PATH,
 			map[string]any{
 				"decisions":            caseData.decisions,
-				"activity_description": clientActivityDescription,
+				"activity_description": organizationDescription,
 			},
 		)
 		if err != nil {
@@ -842,8 +844,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	// Rule thresholds
 	if caseReviewContext.RuleThresholds == nil {
-		modelRuleThresholds, promptRuleThresholds, err := uc.prepareRequest(
-			"prompts/case_review/rule_threshold_values.md",
+		modelRuleThresholds, promptRuleThresholds, err := uc.preparePromptWithModel(
+			PROMPT_RULE_THRESHOLD_VALUES_PATH,
 			map[string]any{
 				"decisions": caseData.decisions,
 			},
@@ -871,8 +873,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	// Finally, we can generate the case review
 	if caseReviewContext.CaseReview == nil {
-		modelCaseReview, promptCaseReview, err := uc.prepareRequest(
-			"prompts/case_review/case_review.md",
+		modelCaseReview, promptCaseReview, err := uc.preparePromptWithModel(
+			PROMPT_CASE_REVIEW_PATH,
 			map[string]any{
 				"case_detail":        caseData.case_,
 				"case_events":        caseData.events,
@@ -907,8 +909,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	if caseReviewContext.SanityCheck == nil {
 		// Finally, sanity check the resulting case review using a judgement prompt
-		modelSanityCheck, promptSanityCheck, err := uc.prepareRequest(
-			"prompts/case_review/sanity_check.md",
+		modelSanityCheck, promptSanityCheck, err := uc.preparePromptWithModel(
+			PROMPT_SANITY_CHECK_PATH,
 			map[string]any{
 				"case_detail":        caseData.case_,
 				"case_events":        caseData.events,
@@ -949,7 +951,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	// If there is no instructions, we don't need to format the output
 	if len(instructions) > 0 {
-		customReportInstruction, err := readPrompt("prompts/case_review/instruction_custom_report.md")
+		customReportInstruction, err := readPrompt(INSTRUCTION_CUSTOM_REPORT_PATH)
 		if err != nil {
 			logger.DebugContext(ctx, "could not read custom report instruction", "error", err)
 			customReportInstruction = "Transform the case review according to the instructions. Return only the transformed content without explanations or preambles."
