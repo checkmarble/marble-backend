@@ -726,6 +726,10 @@ func handleEnrichCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
 		responses, err := usecase.EnrichCasePivotObjects(ctx, caseId)
 		if err != nil {
+			if errors.Is(err, ai_agent.ErrKYCEnrichmentNotEnabled) {
+				presentError(ctx, c, errors.Wrap(models.ForbiddenError, "KYC enrichment is not enabled"))
+				return
+			}
 			presentError(ctx, c, err)
 			return
 		}

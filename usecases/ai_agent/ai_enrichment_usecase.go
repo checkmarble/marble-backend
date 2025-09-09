@@ -15,6 +15,8 @@ import (
 
 const ENRICHMENT_DEFAULT_MODEL = "sonar-pro"
 
+var ErrKYCEnrichmentNotEnabled = errors.New("kyc enrichment is not enabled")
+
 func (uc *AiAgentUsecase) getEnrichmentAdapter() (*llmberjack.Llmberjack, error) {
 	if uc.enrichmentAdapter != nil {
 		return uc.enrichmentAdapter, nil
@@ -51,6 +53,17 @@ type PivotDataForEnrichment struct {
 
 func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, caseId string) ([]models.AiEnrichmentKYC, error) {
 	logger := utils.LoggerFromContext(ctx)
+	exec := uc.executorFactory.NewExecutor()
+
+	// Get setting
+	aiSetting, err := uc.repository.GetAiSetting(ctx, exec, uc.enforceSecurity.OrgId())
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve ai setting")
+	}
+
+	if !isKYCEnrichmentEnabled(aiSetting) {
+		return nil, ErrKYCEnrichmentNotEnabled
+	}
 
 	// Get case data, included pivot data
 	caseData, _, err := uc.getCaseDataWithPermissions(ctx, caseId)
@@ -165,4 +178,18 @@ func (uc *AiAgentUsecase) enrichData(ctx context.Context, organizationId string,
 			}
 		}),
 	}, nil
+}
+
+// Opt-in, the user should explicitly enable it
+func isKYCEnrichmentEnabled(aiSetting *models.AiSetting) bool {
+	if aiSetting == nil {
+		return false
+	}
+	if aiSetting.KYCEnrichmentSetting == nil {
+		return false
+	}
+	if aiSetting.KYCEnrichmentSetting.Enabled == nil {
+		return false
+	}
+	return *aiSetting.KYCEnrichmentSetting.Enabled
 }
