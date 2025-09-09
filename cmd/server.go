@@ -157,7 +157,6 @@ func RunServer(config CompiledConfig) error {
 	}
 
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
-	license := infra.VerifyLicense(licenseConfig)
 
 	logger.Info("successfully authenticated in GCP", "principal", gcpConfig.PrincipalEmail, "project", gcpConfig.ProjectId)
 
@@ -244,6 +243,12 @@ func RunServer(config CompiledConfig) error {
 	)
 
 	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
+	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return errors.Wrap(err, "failed to get deployment ID from Marble DB")
+	}
+	license := infra.VerifyLicense(licenseConfig, deploymentMetadata.Value)
 
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),

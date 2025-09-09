@@ -6,4 +6,5 @@ const (
 	CaseCountMetricName         = "cases.count"
 	DecisionCountMetricName     = "decisions.count"
 	ScreeningCountMetricName    = "screenings.count"
+	CheckLicenseMetricName      = "check_license.count"
 )

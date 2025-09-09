@@ -377,6 +377,7 @@ func (usecase *Usecases) NewScenarioFetcher() scenarios.ScenarioFetcher {
 func (usecases *Usecases) NewLicenseUsecase() PublicLicenseUseCase {
 	return NewPublicLicenseUsecase(
 		usecases.NewExecutorFactory(),
+		usecases.Repositories.MetricsIngestionRepository,
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.license,
 	)

@@ -103,7 +103,6 @@ func RunTaskQueue(apiVersion string) error {
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
-	license := infra.VerifyLicense(licenseConfig)
 
 	offloadingConfig := infra.OffloadingConfig{
 		Enabled:         utils.GetEnv("OFFLOADING_ENABLED", false),
@@ -188,6 +187,13 @@ func RunTaskQueue(apiVersion string) error {
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 		repositories.WithOpenSanctions(openSanctionsConfig),
 	)
+
+	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return errors.Wrap(err, "failed to get deployment ID from Marble DB")
+	}
+	license := infra.VerifyLicense(licenseConfig, deploymentMetadata.Value)
 
 	// Start the task queue workers
 	workers := river.NewWorkers()

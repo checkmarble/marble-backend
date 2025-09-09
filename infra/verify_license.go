@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -20,7 +21,7 @@ const (
 
 // If config.KillIfReadLicenseError is true, the program will exit if there is an unexpected error while verifying
 // the license or reading the GCP project id
-func VerifyLicense(config models.LicenseConfiguration) models.LicenseValidation {
+func VerifyLicense(config models.LicenseConfiguration, deploymentId string) models.LicenseValidation {
 	if config.LicenseKey == "" {
 		isMarbleSaasProject := IsMarbleSaasProject()
 		if config.KillIfReadLicenseError && !isMarbleSaasProject {
@@ -38,7 +39,7 @@ func VerifyLicense(config models.LicenseConfiguration) models.LicenseValidation 
 	err := retry.Do(
 		func() error {
 			var err error
-			license, err = readLicenseFromLicenseServer(config.LicenseKey)
+			license, err = readLicenseFromLicenseServer(config.LicenseKey, deploymentId)
 			return err
 		},
 		retry.Attempts(3),
@@ -54,8 +55,16 @@ func VerifyLicense(config models.LicenseConfiguration) models.LicenseValidation 
 	return license
 }
 
-func readLicenseFromLicenseServer(licenseKey string) (models.LicenseValidation, error) {
-	resp, err := http.Get(LICENSE_SERVER_URL + licenseKey)
+func readLicenseFromLicenseServer(licenseKey string, deploymentId string) (models.LicenseValidation, error) {
+	url, err := url.Parse(LICENSE_SERVER_URL + licenseKey)
+	if err != nil {
+		return models.LicenseValidation{}, err
+	}
+	q := url.Query()
+	q.Add("deployment_id", deploymentId)
+	url.RawQuery = q.Encode()
+
+	resp, err := http.Get(url.String())
 	if err != nil {
 		return models.LicenseValidation{}, err
 	}

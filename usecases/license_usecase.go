@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -124,23 +125,26 @@ type publicLicenseRepository interface {
 
 type PublicLicenseUseCase struct {
 	executorFactory   executor_factory.ExecutorFactory
+	metricsRepository MetricsIngestionRepository
 	licenseRepository publicLicenseRepository
 	license           models.LicenseValidation
 }
 
 func NewPublicLicenseUsecase(
 	executorFactory executor_factory.ExecutorFactory,
+	metricsRepository MetricsIngestionRepository,
 	publicLicenseRepository publicLicenseRepository,
 	license models.LicenseValidation,
 ) PublicLicenseUseCase {
 	return PublicLicenseUseCase{
 		executorFactory:   executorFactory,
+		metricsRepository: metricsRepository,
 		licenseRepository: publicLicenseRepository,
 		license:           license,
 	}
 }
 
-func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licenseKey string) (models.LicenseValidation, error) {
+func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licenseKey string, deploymentId uuid.UUID) (models.LicenseValidation, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	license, err := usecase.licenseRepository.GetLicenseByKey(ctx, exec, licenseKey)
 	if err != nil {
@@ -161,6 +165,33 @@ func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licens
 		return models.LicenseValidation{
 			LicenseValidationCode: models.EXPIRED,
 		}, nil
+	}
+
+	// License is valid, send the deployment id and license key to the metrics repository
+	if deploymentId != uuid.Nil {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			defer cancel()
+			err := usecase.metricsRepository.SendMetrics(ctx, models.MetricsCollection{
+				CollectionID: uuid.New(),
+				DeploymentID: deploymentId,
+				LicenseKey:   &license.Key,
+				LicenseName:  &license.OrganizationName,
+				Metrics: []models.MetricData{
+					models.NewGlobalMetric(
+						metrics_collection.CheckLicenseMetricName,
+						utils.Ptr(float64(1)),
+						nil,
+						time.Now(),
+						time.Now(),
+					),
+				},
+			})
+			if err != nil {
+				utils.LogAndReportSentryError(ctx, err)
+				return
+			}
+		}()
 	}
 
 	return models.LicenseValidation{
