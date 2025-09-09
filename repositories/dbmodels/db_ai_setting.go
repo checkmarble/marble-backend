@@ -83,6 +83,10 @@ func adaptKYCEnrichmentFromJSONB(value map[string]any) (models.KYCEnrichmentSett
 		setting.SearchContextSize = &searchContext
 	}
 
+	if enabled, ok := value["enabled"].(bool); ok {
+		setting.Enabled = &enabled
+	}
+
 	return setting, nil
 }
 

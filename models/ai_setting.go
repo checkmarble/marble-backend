@@ -31,6 +31,7 @@ type KYCEnrichmentSetting struct {
 	Model             *string                      `json:"model"`
 	DomainFilter      []string                     `json:"domain_filter"`
 	SearchContextSize *PerplexitySearchContextSize `json:"search_context_size"`
+	Enabled           *bool                        `json:"enabled"`
 }
 
 func (KYCEnrichmentSetting) entityAiSetting() {}

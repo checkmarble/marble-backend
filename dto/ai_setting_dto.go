@@ -10,6 +10,7 @@ type KYCEnrichmentSettingDto struct {
 	Model             *string                             `json:"model"`
 	DomainFilter      []string                            `json:"domain_filter"`
 	SearchContextSize *models.PerplexitySearchContextSize `json:"search_context_size"`
+	Enabled           *bool                               `json:"enabled"`
 }
 
 func (dto KYCEnrichmentSettingDto) Validate() error {
@@ -21,6 +22,7 @@ func AdaptKYCEnrichmentSettingDto(setting models.KYCEnrichmentSetting) KYCEnrich
 		Model:             setting.Model,
 		DomainFilter:      setting.DomainFilter,
 		SearchContextSize: setting.SearchContextSize,
+		Enabled:           setting.Enabled,
 	}
 }
 
@@ -29,6 +31,7 @@ func AdaptKYCEnrichmentSetting(setting KYCEnrichmentSettingDto) models.KYCEnrich
 		Model:             setting.Model,
 		DomainFilter:      setting.DomainFilter,
 		SearchContextSize: setting.SearchContextSize,
+		Enabled:           setting.Enabled,
 	}
 }
 
