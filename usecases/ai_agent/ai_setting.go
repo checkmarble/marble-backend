@@ -8,21 +8,17 @@ import (
 )
 
 func (uc *AiAgentUsecase) GetAiSetting(ctx context.Context, orgId string) (models.AiSetting, error) {
-	if err := uc.enforceSecurityCase.ReadOrganization(orgId); err != nil {
+	if err := uc.enforceSecurityOrganization.ReadOrganization(orgId); err != nil {
 		return models.AiSetting{}, errors.Wrap(err,
 			"don't have permission to see organization setting")
 	}
 
-	aiSetting, err := uc.repository.GetAiSetting(ctx, uc.executorFactory.NewExecutor(), orgId)
+	aiSetting, err := uc.getAiSetting(ctx, orgId)
 	if err != nil {
-		return models.AiSetting{}, errors.Wrap(err, "could not retrieve ai setting")
+		return models.AiSetting{}, errors.Wrap(err, "could not get ai setting")
 	}
 
-	if aiSetting == nil {
-		return models.DefaultAiSetting(), nil
-	}
-
-	return *aiSetting, nil
+	return aiSetting, nil
 }
 
 func (uc *AiAgentUsecase) PutAiSetting(

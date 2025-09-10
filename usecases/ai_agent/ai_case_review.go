@@ -53,6 +53,16 @@ type customOrgInstructions struct {
 	OrgDescription *string `json:"org_description"`
 }
 
+// Get from ai setting
+// Not all organizations have custom instructions
+func getOrganizationCustomInstructions(aiSetting models.AiSetting) customOrgInstructions {
+	return customOrgInstructions{
+		Language:       utils.Ptr(aiSetting.CaseReviewSetting.Language),
+		Structure:      aiSetting.CaseReviewSetting.Structure,
+		OrgDescription: aiSetting.CaseReviewSetting.OrgDescription,
+	}
+}
+
 func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.UUID) (agent_dto.AiCaseReviewOutputDto, error) {
 	exec := uc.executorFactory.NewExecutor()
 	review, err := uc.repository.GetCaseReviewById(ctx, exec, reviewId)
@@ -189,24 +199,6 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 	})
 }
 
-// Get from ai setting
-// Not all organizations have custom instructions
-func (uc *AiAgentUsecase) getOrganizationCustomInstructions(ctx context.Context, organizationId string) customOrgInstructions {
-	logger := utils.LoggerFromContext(ctx)
-
-	aiSetting, err := uc.repository.GetAiSetting(ctx, uc.executorFactory.NewExecutor(), organizationId)
-	if err != nil {
-		logger.DebugContext(ctx, "could not get ai setting", "error", err)
-		return customOrgInstructions{}
-	}
-
-	return customOrgInstructions{
-		Language:       utils.Ptr(aiSetting.CaseReviewSetting.Language),
-		Structure:      aiSetting.CaseReviewSetting.Structure,
-		OrgDescription: aiSetting.CaseReviewSetting.OrgDescription,
-	}
-}
-
 // Return a list of instructions to give to the LLM and the model to use for the prompt
 // NOTE: The model is given by `prepareRequest()`, we call it at most twice and the the last call will set the model
 func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Context,
@@ -259,12 +251,13 @@ func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Conte
 // Update this struct during the process and expose this struct to the caller to save the results in case we need to resume it
 // Didn't include the sanity check output because it's the last step and we don't need to save it
 type CaseReviewContext struct {
-	DataModelSummary       *string             `json:"data_model_summary"`
-	FieldsToReadPerTable   map[string][]string `json:"fields_to_read_per_table"`
-	RulesDefinitionsReview *string             `json:"rules_definitions_review"`
-	RuleThresholds         *string             `json:"rule_thresholds"`
-	CaseReview             *caseReviewOutput   `json:"case_review"`
-	SanityCheck            *sanityCheckOutput  `json:"sanity_check"`
+	DataModelSummary       *string                  `json:"data_model_summary"`
+	FieldsToReadPerTable   map[string][]string      `json:"fields_to_read_per_table"`
+	RulesDefinitionsReview *string                  `json:"rules_definitions_review"`
+	RuleThresholds         *string                  `json:"rule_thresholds"`
+	PivotEnrichments       []models.AiEnrichmentKYC `json:"pivot_enrichments"`
+	CaseReview             *caseReviewOutput        `json:"case_review"`
+	SanityCheck            *sanityCheckOutput       `json:"sanity_check"`
 }
 
 // CreateCaseReviewSync performs a comprehensive AI-powered review of a case by analyzing
@@ -274,9 +267,10 @@ type CaseReviewContext struct {
 // 2. Generate data model summary to understand the case structure
 // 3. Determine optimal fields to read for large tables to manage data volume
 // 4. Analyze rule definitions and thresholds for context
-// 5. Generate the main case review with all available information
-// 6. Perform sanity check on the generated review for quality assurance
-// 7. Format the output with the custom instructions if given (language or structure for example)
+// 5. Enrich the pivot data with internet research
+// 6. Generate the main case review with all available information
+// 7. Perform sanity check on the generated review for quality assurance
+// 8. Format the output with the custom instructions if given (language or structure for example)
 // caseReviewContext can be provided to resume the process from a previous iteration, it will be updated in place
 // Depends on the context, the process can avoid calling some LLM calls
 func (uc *AiAgentUsecase) CreateCaseReviewSync(
@@ -300,8 +294,14 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		return nil, errors.Wrap(err, "could not get case data")
 	}
 
+	// Get AI setting
+	aiSetting, err := uc.getAiSetting(ctx, caseData.organizationId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get ai setting")
+	}
+
 	// Prepare the custom org instructions
-	customOrgInstructions := uc.getOrganizationCustomInstructions(ctx, caseData.organizationId)
+	customOrgInstructions := getOrganizationCustomInstructions(aiSetting)
 
 	// Define the system instruction for prompt
 	systemInstruction, err := readPrompt(SYSTEM_PROMPT_PATH)
@@ -507,6 +507,21 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	logger.DebugContext(ctx, "================================ Rule thresholds ================================")
 	logger.DebugContext(ctx, "Rule thresholds", "response", *caseReviewContext.RuleThresholds)
 
+	if len(caseReviewContext.PivotEnrichments) == 0 {
+		enrichmentResults, err := uc.EnrichCasePivotObjects(ctx, caseData.organizationId, caseId)
+		if err != nil {
+			if !errors.Is(err, ErrKYCEnrichmentNotEnabled) {
+				return nil, errors.Wrap(err, "could not enrich case pivot objects")
+			}
+			logger.DebugContext(ctx, "KYC enrichment is not enabled, skip enrichment")
+		}
+
+		caseReviewContext.PivotEnrichments = enrichmentResults
+	}
+
+	logger.DebugContext(ctx, "================================ Pivot enrichments ================================")
+	logger.DebugContext(ctx, "Pivot enrichments", "response", caseReviewContext.PivotEnrichments)
+
 	// Finally, we can generate the case review
 	if caseReviewContext.CaseReview == nil {
 		modelCaseReview, promptCaseReview, err := uc.preparePromptWithModel(
@@ -520,6 +535,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 				"previous_cases":     relatedDataPerClient,
 				"rules_summary":      *caseReviewContext.RulesDefinitionsReview,
 				"rule_thresholds":    *caseReviewContext.RuleThresholds,
+				"pivot_enrichment":   caseReviewContext.PivotEnrichments,
 			},
 		)
 		if err != nil {
@@ -557,6 +573,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 				"rules_summary":      *caseReviewContext.RulesDefinitionsReview,
 				"rule_thresholds":    *caseReviewContext.RuleThresholds,
 				"case_review":        *caseReviewContext.CaseReview,
+				"pivot_enrichments":  caseReviewContext.PivotEnrichments,
 			},
 		)
 		if err != nil {
@@ -631,20 +648,23 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			Reason: proof.Reason,
 		}
 	}
+	pivotEnrichments := agent_dto.AdaptKYCEnrichmentResultsDto(caseReviewContext.PivotEnrichments)
 
 	// Can access to Ok and Justification, the nil check is done in the sanity check step
 	if caseReviewContext.SanityCheck.Ok {
 		return agent_dto.CaseReviewV1{
-			Ok:     caseReviewContext.SanityCheck.Ok,
-			Output: finalOutput,
-			Proofs: proofs,
+			Ok:               caseReviewContext.SanityCheck.Ok,
+			Output:           finalOutput,
+			Proofs:           proofs,
+			PivotEnrichments: pivotEnrichments,
 		}, nil
 	}
 	return agent_dto.CaseReviewV1{
-		Ok:          false,
-		Output:      finalOutput,
-		SanityCheck: caseReviewContext.SanityCheck.Justification,
-		Proofs:      proofs,
+		Ok:               false,
+		Output:           finalOutput,
+		SanityCheck:      caseReviewContext.SanityCheck.Justification,
+		Proofs:           proofs,
+		PivotEnrichments: pivotEnrichments,
 	}, nil
 }
 

@@ -385,3 +385,18 @@ func (uc *AiAgentUsecase) getCaseWithPermissions(ctx context.Context, caseId str
 	}
 	return c, nil
 }
+
+// Get AI setting, merge default settings with repository settings if exists
+func (uc *AiAgentUsecase) getAiSetting(ctx context.Context, organizationId string) (models.AiSetting, error) {
+	aiSetting := models.DefaultAiSetting()
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Getting AI setting for organization", "organizationId", organizationId)
+	aiSettingRepo, err := uc.repository.GetAiSetting(ctx, uc.executorFactory.NewExecutor(), organizationId)
+	if err != nil {
+		return models.AiSetting{}, errors.Wrap(err, "could not get ai setting")
+	}
+	if aiSettingRepo != nil {
+		aiSetting = *aiSettingRepo
+	}
+	return aiSetting, nil
+}
