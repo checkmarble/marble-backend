@@ -15,6 +15,11 @@ import (
 
 const ENRICHMENT_DEFAULT_MODEL = "sonar-pro"
 
+const (
+	INSTRUCTION_PATH   = "prompts/kyc_enrichment/instruction.md"
+	PROMPT_ENRICH_PATH = "prompts/kyc_enrichment/prompt_enrich.md"
+)
+
 var ErrKYCEnrichmentNotEnabled = errors.New("kyc enrichment is not enabled")
 
 func (uc *AiAgentUsecase) getEnrichmentAdapter() (*llmberjack.Llmberjack, error) {
@@ -98,7 +103,7 @@ func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, caseId str
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to marshal pivot data for enrichment")
 		}
-		result, err := uc.enrichData(ctx, caseData.organizationId, pivotDataJson)
+		result, err := uc.enrichData(ctx, pivotDataJson, aiSetting)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to enrich data")
 		}
@@ -111,19 +116,12 @@ func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, caseId str
 
 // Function to launch LLM request to enrich data
 // data is JSON encoded which contains the data information like people name or company name
-func (uc *AiAgentUsecase) enrichData(ctx context.Context, organizationId string, data []byte) (models.AiEnrichmentKYC, error) {
+func (uc *AiAgentUsecase) enrichData(
+	ctx context.Context,
+	data []byte,
+	aiSetting models.AiSetting,
+) (models.AiEnrichmentKYC, error) {
 	logger := utils.LoggerFromContext(ctx)
-	exec := uc.executorFactory.NewExecutor()
-
-	// Get setting
-	aiSetting := models.DefaultAiSetting()
-	aiSettingRepo, err := uc.repository.GetAiSetting(ctx, exec, organizationId)
-	if err != nil {
-		return models.AiEnrichmentKYC{}, errors.Wrap(err, "could not retrieve ai setting")
-	}
-	if aiSettingRepo != nil {
-		aiSetting = *aiSettingRepo
-	}
 
 	// Get or initialize the enrichment adapter
 	adapter, err := uc.getEnrichmentAdapter()
@@ -131,11 +129,19 @@ func (uc *AiAgentUsecase) enrichData(ctx context.Context, organizationId string,
 		return models.AiEnrichmentKYC{}, errors.Wrap(err, "failed to get enrichment adapter")
 	}
 
-	instruction, err := readPrompt("prompts/kyc_enrichment/instruction.md")
+	// For now, use the Language from the case review setting ... See if we need to refacto to move into a general setting
+	language, err := pure_utils.BCP47ToEnglish(aiSetting.CaseReviewSetting.Language)
+	if err != nil {
+		return models.AiEnrichmentKYC{}, errors.Wrap(err,
+			"failed to convert language to english")
+	}
+	instruction, err := preparePrompt(INSTRUCTION_PATH, map[string]any{
+		"language": language,
+	})
 	if err != nil {
 		return models.AiEnrichmentKYC{}, errors.Wrap(err, "failed to read instruction")
 	}
-	_, prompt, err := uc.prepareRequest("prompts/kyc_enrichment/prompt_enrich.md", map[string]any{
+	prompt, err := preparePrompt(PROMPT_ENRICH_PATH, map[string]any{
 		"data": string(data),
 	})
 	if err != nil {
@@ -155,8 +161,15 @@ func (uc *AiAgentUsecase) enrichData(ctx context.Context, organizationId string,
 
 	// Override the default model if set in the AI setting
 	if aiSetting.KYCEnrichmentSetting.Model != nil {
-		request.WithModel(*aiSetting.KYCEnrichmentSetting.Model)
+		request = request.WithModel(*aiSetting.KYCEnrichmentSetting.Model)
 	}
+
+	// Perplexity specific options
+	options := perplexity.RequestOptions{}
+	if len(aiSetting.KYCEnrichmentSetting.DomainFilter) > 0 {
+		options.SearchDomainFilter = aiSetting.KYCEnrichmentSetting.DomainFilter
+	}
+	request = request.WithProviderOptions(options)
 
 	response, err := request.Do(ctx, adapter)
 	if err != nil {
