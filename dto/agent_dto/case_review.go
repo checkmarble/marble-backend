@@ -51,13 +51,13 @@ func OriginNameFromString(s string) OriginName {
 }
 
 type CaseReviewV1 struct {
-	Ok               bool                    `json:"ok"`
-	Output           string                  `json:"output"`
-	SanityCheck      string                  `json:"sanity_check"`
-	Thought          string                  `json:"thought"`
-	Version          string                  `json:"version"`
-	Proofs           []CaseReviewProof       `json:"proofs"`
-	PivotEnrichments KYCEnrichmentResultsDto `json:"pivot_enrichments"`
+	Ok               bool                     `json:"ok"`
+	Output           string                   `json:"output"`
+	SanityCheck      string                   `json:"sanity_check"`
+	Thought          string                   `json:"thought"`
+	Version          string                   `json:"version"`
+	Proofs           []CaseReviewProof        `json:"proofs"`
+	PivotEnrichments *KYCEnrichmentResultsDto `json:"pivot_enrichments"`
 }
 
 func (c CaseReviewV1) aiCaseReviewDto() {}

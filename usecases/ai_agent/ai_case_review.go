@@ -648,7 +648,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			Reason: proof.Reason,
 		}
 	}
-	pivotEnrichments := agent_dto.AdaptKYCEnrichmentResultsDto(caseReviewContext.PivotEnrichments)
+	var pivotEnrichments *agent_dto.KYCEnrichmentResultsDto
+	if len(caseReviewContext.PivotEnrichments) > 0 {
+		pivotEnrichments = utils.Ptr(agent_dto.AdaptKYCEnrichmentResultsDto(caseReviewContext.PivotEnrichments))
+	}
 
 	// Can access to Ok and Justification, the nil check is done in the sanity check step
 	if caseReviewContext.SanityCheck.Ok {
