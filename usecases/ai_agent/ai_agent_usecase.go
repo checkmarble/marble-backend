@@ -71,6 +71,12 @@ type AiAgentUsecaseRepository interface {
 	GetCaseReviewById(ctx context.Context, exec repositories.Executor, reviewId uuid.UUID) (models.AiCaseReview, error)
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
 	GetAiSetting(ctx context.Context, exec repositories.Executor, organizationId string) (*models.AiSetting, error)
+	PutAiSetting(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId string,
+		setting models.UpsertAiSetting,
+	) (models.AiSetting, error)
 }
 
 type AiAgentUsecaseIngestedDataReader interface {
@@ -104,18 +110,19 @@ type caseReviewTaskEnqueuer interface {
 }
 
 type AiAgentUsecase struct {
-	enforceSecurity          security.EnforceSecurityCase
-	repository               AiAgentUsecaseRepository
-	inboxReader              inboxes.InboxReader
-	executorFactory          executor_factory.ExecutorFactory
-	transactionFactory       executor_factory.TransactionFactory
-	ingestedDataReader       AiAgentUsecaseIngestedDataReader
-	dataModelUsecase         AiAgentUsecaseDataModelUsecase
-	caseReviewFileRepository caseReviewWorkerRepository
-	blobRepository           repositories.BlobRepository
-	caseReviewTaskEnqueuer   caseReviewTaskEnqueuer
-	config                   infra.AIAgentConfiguration
-	caseManagerBucketUrl     string
+	enforceSecurityCase         security.EnforceSecurityCase
+	enforceSecurityOrganization security.EnforceSecurityOrganization
+	repository                  AiAgentUsecaseRepository
+	inboxReader                 inboxes.InboxReader
+	executorFactory             executor_factory.ExecutorFactory
+	transactionFactory          executor_factory.TransactionFactory
+	ingestedDataReader          AiAgentUsecaseIngestedDataReader
+	dataModelUsecase            AiAgentUsecaseDataModelUsecase
+	caseReviewFileRepository    caseReviewWorkerRepository
+	blobRepository              repositories.BlobRepository
+	caseReviewTaskEnqueuer      caseReviewTaskEnqueuer
+	config                      infra.AIAgentConfiguration
+	caseManagerBucketUrl        string
 
 	caseReviewAdapter *llmberjack.Llmberjack
 	enrichmentAdapter *llmberjack.Llmberjack
@@ -138,7 +145,8 @@ type caseReviewOutput struct {
 }
 
 func NewAiAgentUsecase(
-	enforceSecurity security.EnforceSecurityCase,
+	enforceSecurityCase security.EnforceSecurityCase,
+	enforceSecurityOrganization security.EnforceSecurityOrganization,
 	repository AiAgentUsecaseRepository,
 	inboxReader inboxes.InboxReader,
 	executorFactory executor_factory.ExecutorFactory,
@@ -152,18 +160,19 @@ func NewAiAgentUsecase(
 	caseManagerBucketUrl string,
 ) AiAgentUsecase {
 	return AiAgentUsecase{
-		enforceSecurity:          enforceSecurity,
-		repository:               repository,
-		inboxReader:              inboxReader,
-		executorFactory:          executorFactory,
-		ingestedDataReader:       ingestedDataReader,
-		dataModelUsecase:         dataModelUsecase,
-		caseReviewFileRepository: caseReviewFileRepository,
-		blobRepository:           blobRepository,
-		caseReviewTaskEnqueuer:   caseReviewTaskEnqueuer,
-		transactionFactory:       transactionFactory,
-		config:                   config,
-		caseManagerBucketUrl:     caseManagerBucketUrl,
+		enforceSecurityCase:         enforceSecurityCase,
+		enforceSecurityOrganization: enforceSecurityOrganization,
+		repository:                  repository,
+		inboxReader:                 inboxReader,
+		executorFactory:             executorFactory,
+		ingestedDataReader:          ingestedDataReader,
+		dataModelUsecase:            dataModelUsecase,
+		caseReviewFileRepository:    caseReviewFileRepository,
+		blobRepository:              blobRepository,
+		caseReviewTaskEnqueuer:      caseReviewTaskEnqueuer,
+		transactionFactory:          transactionFactory,
+		config:                      config,
+		caseManagerBucketUrl:        caseManagerBucketUrl,
 	}
 }
 
@@ -411,7 +420,7 @@ func (uc *AiAgentUsecase) getCaseWithPermissions(ctx context.Context, caseId str
 	for i, inbox := range inboxes {
 		availableInboxIds[i] = inbox.Id
 	}
-	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+	if err := uc.enforceSecurityCase.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return models.Case{}, err
 	}
 	return c, nil
@@ -1029,7 +1038,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		availableInboxIds[i] = inbox.Id
 	}
 
-	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+	if err := uc.enforceSecurityCase.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return caseData{}, agent_dto.CasePivotDataByPivot{}, err
 	}
 

@@ -62,7 +62,7 @@ func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, caseId str
 
 	// Get setting
 	aiSetting := models.DefaultAiSetting()
-	aiSettingRepo, err := uc.repository.GetAiSetting(ctx, exec, uc.enforceSecurity.OrgId())
+	aiSettingRepo, err := uc.repository.GetAiSetting(ctx, exec, uc.enforceSecurityCase.OrgId())
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve ai setting")
 	}
