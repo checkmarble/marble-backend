@@ -24,8 +24,7 @@ type InboxRepository interface {
 	SoftDeleteInbox(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) error
 
 	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters,
-		pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
-	// Assuming CaseFilters.InboxIds will be updated to []uuid.UUID if necessary
+		pagination models.PaginationAndSorting) ([]models.Case, error)
 }
 
 type EnforceSecurityInboxes interface {

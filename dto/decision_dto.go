@@ -31,28 +31,6 @@ type DecisionFilters struct {
 	AllowInvalidScenarioId bool `form:"-"`
 }
 
-type DecisionListPageWithIndexesDto struct {
-	Items       []Decision `json:"items"`
-	StartIndex  int        `json:"start_index"`
-	EndIndex    int        `json:"end_index"`
-	HasNextPage bool       `json:"has_next_page"`
-}
-
-func AdaptDecisionListPageWithIndexesDto(decisionsPage models.DecisionListPageWithIndexes, marbleAppUrl *url.URL) DecisionListPageWithIndexesDto {
-	// initialize as a non nil slice, so that it is serialized as an empty array instead of null
-	items := make([]Decision, len(decisionsPage.Decisions))
-	for i, decision := range decisionsPage.Decisions {
-		items[i] = NewDecisionDto(decision, marbleAppUrl)
-	}
-
-	return DecisionListPageWithIndexesDto{
-		Items:       items,
-		StartIndex:  decisionsPage.StartIndex,
-		EndIndex:    decisionsPage.EndIndex,
-		HasNextPage: decisionsPage.HasNextPage,
-	}
-}
-
 type DecisionListPageDto struct {
 	Items       []Decision `json:"items"`
 	HasNextPage bool       `json:"has_next_page"`
@@ -112,8 +90,10 @@ type ErrorDto struct {
 }
 
 type DecisionScenario struct {
-	Id                  uuid.UUID `json:"id"`
-	Name                string    `json:"name"`
+	Id   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+
+	// Deprecated. Remove it from the model after we remove the v0 publicAPI.
 	Description         string    `json:"description"`
 	ScenarioIterationId uuid.UUID `json:"scenario_iteration_id"`
 	Version             int       `json:"version"`
