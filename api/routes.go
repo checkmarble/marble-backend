@@ -44,9 +44,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	r.GET("/config", tom, handleGetConfig(uc, conf))
 	r.GET("/is-sso-available", tom, handleIsSSOEnabled(uc))
 	r.GET("/signup-status", tom, handleSignupStatus(uc))
+	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
 
 	if infra.IsMarbleSaasProject() {
-		r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
 		r.POST("/metrics", tom, handleMetricsIngestion(uc))
 	}
 

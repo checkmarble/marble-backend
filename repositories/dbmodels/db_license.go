@@ -26,6 +26,7 @@ type DBLicense struct {
 	RuleSnoozes          bool               `db:"rule_snoozes"`
 	TestRun              bool               `db:"test_run"`
 	Sanctions            bool               `db:"sanctions"`
+	AutoAssignment       bool               `db:"auto_assignment"`
 }
 
 const TABLE_LICENSES = "licenses"
@@ -51,6 +52,7 @@ func AdaptLicense(db DBLicense) (models.License, error) {
 			RuleSnoozes:    db.RuleSnoozes,
 			TestRun:        db.TestRun,
 			Sanctions:      db.Sanctions,
+			CaseAutoAssign: db.AutoAssignment,
 		},
 	}, nil
 }
