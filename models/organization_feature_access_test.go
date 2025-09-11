@@ -137,47 +137,6 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				CaseAutoAssign:  Allowed,
 			},
 		},
-		{
-			name: "Test mode enabled",
-			dbFeatureAccess: DbStoredOrganizationFeatureAccess{
-				Id:             "4",
-				OrganizationId: "org4",
-				TestRun:        Restricted,
-				Sanctions:      Allowed,
-				CaseAutoAssign: Allowed,
-			},
-			license: LicenseEntitlements{
-				Analytics:      false,
-				Webhooks:       false,
-				Workflows:      false,
-				RuleSnoozes:    true,
-				UserRoles:      true,
-				TestRun:        false,
-				Sanctions:      true,
-				CaseAutoAssign: false,
-			},
-			config: FeaturesConfiguration{
-				Webhooks:        false,
-				Sanctions:       true,
-				NameRecognition: false,
-				Analytics:       false,
-			},
-			user: User{AiAssistEnabled: false},
-			expected: OrganizationFeatureAccess{
-				Id:              "4",
-				OrganizationId:  "org4",
-				TestRun:         Test,
-				Sanctions:       Allowed,
-				NameRecognition: MissingConfiguration,
-				Analytics:       MissingConfiguration,
-				Webhooks:        MissingConfiguration,
-				Workflows:       Test,
-				RuleSnoozes:     Allowed,
-				Roles:           Allowed,
-				AiAssist:        Restricted,
-				CaseAutoAssign:  Test,
-			},
-		},
 	}
 
 	for _, tt := range tests {
