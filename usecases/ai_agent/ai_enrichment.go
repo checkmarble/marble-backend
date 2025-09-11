@@ -130,10 +130,17 @@ func (uc *AiAgentUsecase) enrichData(
 		return models.AiEnrichmentKYC{}, errors.Wrap(err,
 			"failed to convert language to english")
 	}
-	instruction, err := preparePrompt(INSTRUCTION_PATH, map[string]any{
-		"language":            language,
-		"custom_instructions": aiSetting.KYCEnrichmentSetting.CustomInstructions,
-	})
+
+	// For INSTRUCTION_PATH, "custom_instructions" is an optional field that conditionally adds content to the instruction template.
+	// If custom_instructions is empty/nil, exclude it from instructionData entirely to prevent the template's {{if}} condition from rendering the section.
+	// Note: Including nil values in the data map results in "null" strings after JSON marshaling, which causes the template condition to evaluate as true.
+	instructionData := map[string]any{
+		"language": language,
+	}
+	if aiSetting.KYCEnrichmentSetting.CustomInstructions != nil {
+		instructionData["custom_instructions"] = *aiSetting.KYCEnrichmentSetting.CustomInstructions
+	}
+	instruction, err := preparePrompt(INSTRUCTION_PATH, instructionData)
 	if err != nil {
 		return models.AiEnrichmentKYC{}, errors.Wrap(err, "failed to read instruction")
 	}
@@ -144,6 +151,7 @@ func (uc *AiAgentUsecase) enrichData(
 		return models.AiEnrichmentKYC{}, errors.Wrap(err, "failed to prepare request")
 	}
 
+	logger.DebugContext(ctx, "KYC Enrichment - Instruction", "instruction", instruction)
 	logger.DebugContext(ctx, "KYC Enrichment - Prompt", "prompt", prompt)
 
 	type output struct {
