@@ -13,9 +13,7 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-var (
-	scenarioIterationCache = expirable.NewLRU[string, models.ScenarioIteration](50, nil, utils.GlobalCacheDuration())
-)
+var scenarioIterationCache = expirable.NewLRU[string, models.ScenarioIteration](50, nil, utils.GlobalCacheDuration())
 
 func (repository *MarbleDbRepository) GetScenarioIteration(
 	ctx context.Context,
@@ -23,7 +21,7 @@ func (repository *MarbleDbRepository) GetScenarioIteration(
 	scenarioIterationId string,
 	useCache bool,
 ) (models.ScenarioIteration, error) {
-	if useCache {
+	if useCache && repository.withCache {
 		if iteration, ok := scenarioIterationCache.Get(scenarioIterationId); ok {
 			return iteration, nil
 		}
@@ -39,7 +37,6 @@ func (repository *MarbleDbRepository) GetScenarioIteration(
 		selectScenarioIterations().Where(squirrel.Eq{"si.id": scenarioIterationId}),
 		dbmodels.AdaptScenarioIterationWithRules,
 	)
-
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}

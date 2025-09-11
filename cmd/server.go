@@ -240,6 +240,7 @@ func RunServer(config CompiledConfig) error {
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 		repositories.WithRiverClient(riverClient),
 		repositories.WithBigQueryInfra(bigQueryInfra),
+		repositories.WithCache(utils.GetEnv("CACHE_ENABLED", false)),
 	)
 
 	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)

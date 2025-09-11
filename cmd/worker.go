@@ -186,6 +186,7 @@ func RunTaskQueue(apiVersion string) error {
 		repositories.WithClientDbConfig(clientDbConfig),
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 		repositories.WithOpenSanctions(openSanctionsConfig),
+		repositories.WithCache(utils.GetEnv("CACHE_ENABLED", false)),
 	)
 
 	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
@@ -197,7 +198,7 @@ func RunTaskQueue(apiVersion string) error {
 
 	// Start the task queue workers
 	workers := river.NewWorkers()
-	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx, appName, &repositories.MarbleDbRepository,
+	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx, appName, repositories.MarbleDbRepository,
 		repositories.ExecutorGetter, offloadingConfig)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)

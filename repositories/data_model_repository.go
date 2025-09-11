@@ -49,8 +49,6 @@ type DataModelRepository interface {
 		req models.UpdateDataModelOptionsRequest) (models.DataModelOptions, error)
 }
 
-type DataModelRepositoryPostgresql struct{}
-
 var (
 	dataModelCacheEnum   = expirable.NewLRU[string, models.DataModel](50, nil, utils.GlobalCacheDuration())
 	dataModelCacheNoEnum = expirable.NewLRU[string, models.DataModel](50, nil, utils.GlobalCacheDuration())
@@ -70,7 +68,7 @@ func (repo MarbleDbRepository) GetDataModel(
 	} else {
 		cache = dataModelCacheNoEnum
 	}
-	if useCache {
+	if useCache && repo.withCache {
 		if dm, ok := cache.Get(organizationID); ok {
 			return dm, nil
 		}
@@ -505,7 +503,7 @@ func (repo MarbleDbRepository) ListPivots(
 		cacheKey = organizationId + *tableId
 	}
 
-	if useCache {
+	if useCache && repo.withCache {
 		if pivots, ok := dataModelPivotsCache.Get(cacheKey); ok {
 			return pivots, nil
 		}
