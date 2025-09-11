@@ -66,7 +66,6 @@ func (repo *MarbleDbRepository) CreateLicense(ctx context.Context, exec Executor
 			Columns(
 				"id",
 				"key",
-				"created_at",
 				"expiration_date",
 				"name",
 				"description",
@@ -78,11 +77,12 @@ func (repo *MarbleDbRepository) CreateLicense(ctx context.Context, exec Executor
 				"webhooks",
 				"rule_snoozes",
 				"test_run",
+				"sanctions",
+				"auto_assignment",
 			).
 			Values(
 				license.Id,
 				license.Key,
-				license.CreatedAt,
 				license.ExpirationDate,
 				license.OrganizationName,
 				license.Description,
@@ -94,6 +94,8 @@ func (repo *MarbleDbRepository) CreateLicense(ctx context.Context, exec Executor
 				license.LicenseEntitlements.Webhooks,
 				license.LicenseEntitlements.RuleSnoozes,
 				license.LicenseEntitlements.TestRun,
+				license.LicenseEntitlements.Sanctions,
+				license.LicenseEntitlements.CaseAutoAssign,
 			),
 	)
 	return err
@@ -132,6 +134,8 @@ func (repo *MarbleDbRepository) UpdateLicense(ctx context.Context, exec Executor
 		query = query.Set("webhooks", licenseEntitlements.Webhooks)
 		query = query.Set("rule_snoozes", licenseEntitlements.RuleSnoozes)
 		query = query.Set("test_run", licenseEntitlements.TestRun)
+		query = query.Set("sanctions", licenseEntitlements.Sanctions)
+		query = query.Set("auto_assignment", licenseEntitlements.CaseAutoAssign)
 	}
 
 	err := ExecBuilder(
