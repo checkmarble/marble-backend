@@ -233,17 +233,26 @@ func (repo MarbleDbRepository) UpdateDataModelField(
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
+	nbUpdates := 0
 	query := NewQueryBuilder().
 		Update(dbmodels.TableDataModelFields).
 		Where(squirrel.Eq{"id": fieldID})
 
 	if input.Description != nil {
 		query = query.Set("description", *input.Description)
+		nbUpdates++
 	}
 	if input.IsEnum != nil {
 		query = query.Set("is_enum", *input.IsEnum)
+		nbUpdates++
 	}
-
+	if input.IsNullable != nil {
+		query = query.Set("nullable", *input.IsNullable)
+		nbUpdates++
+	}
+	if nbUpdates == 0 {
+		return nil
+	}
 	err := ExecBuilder(
 		ctx,
 		exec,

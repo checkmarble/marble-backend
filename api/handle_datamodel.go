@@ -128,6 +128,7 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 			Description: input.Description,
 			IsEnum:      input.IsEnum,
 			IsUnique:    input.IsUnique,
+			IsNullable:  input.IsNullable,
 		})
 		if presentError(ctx, c, err) {
 			return
@@ -184,6 +185,7 @@ func handleDeleteDataModel(uc usecases.Usecases) func(c *gin.Context) {
 		c.Status(http.StatusNoContent)
 	}
 }
+
 func legacy_handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
