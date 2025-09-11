@@ -243,6 +243,7 @@ type UpdateFieldInput struct {
 	Description *string
 	IsEnum      *bool
 	IsUnique    *bool
+	IsNullable  *bool
 }
 
 type EnumValues map[string]map[any]struct{}

@@ -138,6 +138,7 @@ type UpdateFieldInput struct {
 	Description *string `json:"description"`
 	IsEnum      *bool   `json:"is_enum"`
 	IsUnique    *bool   `json:"is_unique"`
+	IsNullable  *bool   `json:"is_nullable"`
 }
 
 type CreateFieldInput struct {
