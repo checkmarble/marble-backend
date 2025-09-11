@@ -33,7 +33,6 @@ type Usecases struct {
 	hasMetabaseSetup            bool
 	hasOpensanctionsSetup       bool
 	hasNameRecognizerSetup      bool
-	hasTestMode                 bool
 	license                     models.LicenseValidation
 	metricsCollectionConfig     infra.MetricCollectionConfig
 	firebaseAdmin               firebase.Adminer
@@ -128,12 +127,6 @@ func WithNameRecognition(isSet bool) Option {
 	}
 }
 
-func WithTestMode(activated bool) Option {
-	return func(o *options) {
-		o.hasTestMode = true
-	}
-}
-
 func WithFirebaseAdmin(client firebase.Adminer) Option {
 	return func(o *options) {
 		o.firebaseClient = client
@@ -166,7 +159,6 @@ type options struct {
 	hasMetabaseSetup            bool
 	hasOpensanctionsSetup       bool
 	hasNameRecognitionSetup     bool
-	hasTestMode                 bool
 	metricsCollectionConfig     infra.MetricCollectionConfig
 	firebaseClient              firebase.Adminer
 	aiAgentConfig               infra.AIAgentConfiguration
@@ -191,7 +183,6 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		hasMetabaseSetup:            o.hasMetabaseSetup,
 		hasOpensanctionsSetup:       o.hasOpensanctionsSetup,
 		hasNameRecognizerSetup:      o.hasNameRecognitionSetup,
-		hasTestMode:                 o.hasTestMode,
 		metricsCollectionConfig:     o.metricsCollectionConfig,
 		firebaseAdmin:               o.firebaseClient,
 		aiAgentConfig:               o.aiAgentConfig,

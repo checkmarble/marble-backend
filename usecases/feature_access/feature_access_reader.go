@@ -24,7 +24,6 @@ type FeatureAccessReader struct {
 	executorFactory       executor_factory.ExecutorFactory
 	license               models.LicenseValidation
 	featuresConfiguration models.FeaturesConfiguration
-	hasTestMode           bool
 }
 
 func NewFeatureAccessReader(
@@ -36,7 +35,6 @@ func NewFeatureAccessReader(
 	hasMetabaseSetup bool,
 	hasOpensanctionsSetup bool,
 	hasNameRecognitionSetup bool,
-	hasTestMode bool,
 ) FeatureAccessReader {
 	return FeatureAccessReader{
 		enforceSecurity: enforceSecurity,
@@ -49,7 +47,6 @@ func NewFeatureAccessReader(
 			NameRecognition: hasNameRecognitionSetup,
 			Analytics:       hasMetabaseSetup,
 		},
-		hasTestMode: hasTestMode,
 	}
 }
 
@@ -78,5 +75,5 @@ func (f FeatureAccessReader) GetOrganizationFeatureAccess(
 	}
 
 	return dbStoredFeatureAccess.MergeWithLicenseEntitlement(f.license.LicenseEntitlements,
-		f.featuresConfiguration, f.hasTestMode, user), nil
+		f.featuresConfiguration, user), nil
 }

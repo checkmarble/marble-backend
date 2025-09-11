@@ -23,37 +23,6 @@ type OrganizationFeatureAccess struct {
 	AiAssist FeatureAccess
 }
 
-func (o OrganizationFeatureAccess) WithTestMode() OrganizationFeatureAccess {
-	if o.TestRun == Restricted {
-		o.TestRun = Test
-	}
-	if o.Workflows == Restricted {
-		o.Workflows = Test
-	}
-	if o.Webhooks == Restricted {
-		o.Webhooks = Test
-	}
-	if o.RuleSnoozes == Restricted {
-		o.RuleSnoozes = Test
-	}
-	if o.Roles == Restricted {
-		o.Roles = Test
-	}
-	if o.Analytics == Restricted {
-		o.Analytics = Test
-	}
-	if o.Sanctions == Restricted {
-		o.Sanctions = Test
-	}
-	if o.NameRecognition == Restricted {
-		o.NameRecognition = Test
-	}
-	if o.CaseAutoAssign == Restricted {
-		o.CaseAutoAssign = Test
-	}
-	return o
-}
-
 type DbStoredOrganizationFeatureAccess struct {
 	Id             string
 	OrganizationId string
@@ -80,7 +49,6 @@ type FeaturesConfiguration struct {
 func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	l LicenseEntitlements,
 	c FeaturesConfiguration,
-	hasTestMode bool,
 	user *User,
 ) OrganizationFeatureAccess {
 	o := OrganizationFeatureAccess{
@@ -121,11 +89,6 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	}
 	if !l.CaseAutoAssign {
 		o.CaseAutoAssign = Restricted
-	}
-
-	// as an exception, if test mode is enambled (if the app is running with the firebase auth emulator), set all the features to "test"
-	if hasTestMode {
-		o = o.WithTestMode()
 	}
 
 	// remove the feature accesses that are not allowed by the configuration
