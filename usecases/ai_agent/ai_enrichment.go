@@ -137,7 +137,7 @@ func (uc *AiAgentUsecase) enrichData(
 	instructionData := map[string]any{
 		"language": language,
 	}
-	if aiSetting.KYCEnrichmentSetting.CustomInstructions != nil {
+	if aiSetting.KYCEnrichmentSetting.CustomInstructions != nil && *aiSetting.KYCEnrichmentSetting.CustomInstructions != "" {
 		instructionData["custom_instructions"] = *aiSetting.KYCEnrichmentSetting.CustomInstructions
 	}
 	instruction, err := preparePrompt(INSTRUCTION_PATH, instructionData)
