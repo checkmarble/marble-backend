@@ -16,7 +16,8 @@ import (
 )
 
 type DataModelRepository interface {
-	GetDataModel(ctx context.Context, exec Executor, organizationID string, fetchEnumValues bool, useCache bool) (models.DataModel, error)
+	GetDataModel(ctx context.Context, exec Executor, organizationID string, fetchEnumValues bool,
+		useCache bool) (models.DataModel, error)
 	CreateDataModelTable(ctx context.Context, exec Executor, organizationID, tableID, name, description string) error
 	UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
@@ -39,7 +40,8 @@ type DataModelRepository interface {
 	BatchInsertEnumValues(ctx context.Context, exec Executor, enumValues models.EnumValues, table models.Table) error
 
 	CreatePivot(ctx context.Context, exec Executor, id string, pivot models.CreatePivotInput) error
-	ListPivots(ctx context.Context, exec Executor, organization_id string, tableId *string, useCache bool) ([]models.PivotMetadata, error)
+	ListPivots(ctx context.Context, exec Executor, organization_id string, tableId *string,
+		useCache bool) ([]models.PivotMetadata, error)
 	GetPivot(ctx context.Context, exec Executor, pivotId string) (models.PivotMetadata, error)
 
 	GetDataModelOptionsForTable(ctx context.Context, exec Executor, tableId string) (*models.DataModelOptions, error)
@@ -50,7 +52,8 @@ type DataModelRepository interface {
 type DataModelRepositoryPostgresql struct{}
 
 var (
-	dataModelCache       = expirable.NewLRU[string, models.DataModel](50, nil, utils.GlobalCacheDuration())
+	dataModelCacheEnum   = expirable.NewLRU[string, models.DataModel](50, nil, utils.GlobalCacheDuration())
+	dataModelCacheNoEnum = expirable.NewLRU[string, models.DataModel](50, nil, utils.GlobalCacheDuration())
 	dataModelPivotsCache = expirable.NewLRU[string, []models.PivotMetadata](50, nil, utils.GlobalCacheDuration())
 )
 
@@ -61,8 +64,14 @@ func (repo MarbleDbRepository) GetDataModel(
 	fetchEnumValues bool,
 	useCache bool,
 ) (models.DataModel, error) {
+	var cache *expirable.LRU[string, models.DataModel]
+	if fetchEnumValues {
+		cache = dataModelCacheEnum
+	} else {
+		cache = dataModelCacheNoEnum
+	}
 	if useCache {
-		if dm, ok := dataModelCache.Get(organizationID); ok {
+		if dm, ok := cache.Get(organizationID); ok {
 			return dm, nil
 		}
 	}
@@ -121,7 +130,7 @@ func (repo MarbleDbRepository) GetDataModel(
 		dataModel.Tables[link.ChildTableName].LinksToSingle[link.Name] = link
 	}
 
-	dataModelCache.Add(organizationID, dataModel)
+	cache.Add(organizationID, dataModel)
 
 	return dataModel, nil
 }
