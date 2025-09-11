@@ -223,7 +223,8 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_no_unique() {
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
 	var nilStr *string
-	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr, mock.Anything).
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction,
+		suite.organizationId, nilStr, mock.Anything).
 		Return(nil, nil)
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
@@ -255,7 +256,8 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_with_unique() {
 		Return(suite.uniqueIndexes, nil)
 
 	var nilStr *string
-	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId, nilStr, mock.Anything).
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction,
+		suite.organizationId, nilStr, mock.Anything).
 		Return(nil, nil)
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
@@ -317,6 +319,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx,
 		suite.transaction,
+		suite.organizationId,
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("models.CreateFieldInput")).
 		Return(nil)
@@ -370,6 +373,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_org_repository_
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx,
 		suite.transaction,
+		suite.organizationId,
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("models.CreateFieldInput")).
 		Return(nil)
@@ -484,7 +488,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_nominal_not_uni
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelField",
-		suite.ctx, suite.transaction, mock.AnythingOfType("string"), field).
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
 		Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
@@ -517,7 +521,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_nominal_unique(
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelField",
-		suite.ctx, suite.transaction, mock.AnythingOfType("string"), field).
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
 		Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
@@ -580,7 +584,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_repository_erro
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelField",
-		suite.ctx, suite.transaction, mock.AnythingOfType("string"), field).
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
 		Return(suite.repositoryError)
 
 	_, err := usecase.CreateDataModelField(suite.ctx, field)
@@ -610,7 +614,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_client_schema_r
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelField",
-		suite.ctx, suite.transaction, mock.AnythingOfType("string"), field).
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
 		Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).

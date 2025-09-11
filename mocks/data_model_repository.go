@@ -42,10 +42,11 @@ func (d *DataModelRepository) UpdateDataModelTable(ctx context.Context, exec rep
 func (d *DataModelRepository) CreateDataModelField(
 	ctx context.Context,
 	exec repositories.Executor,
+	organizationId string,
 	tableID string,
 	field models.CreateFieldInput,
 ) error {
-	args := d.Called(ctx, exec, tableID, field)
+	args := d.Called(ctx, exec, organizationId, tableID, field)
 	return args.Error(0)
 }
 

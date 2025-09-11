@@ -149,7 +149,7 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 
 		for _, field := range defaultFields {
 			fieldId := uuid.New().String()
-			err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, fieldId, field)
+			err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, organizationId, fieldId, field)
 			if err != nil {
 				return err
 			}
@@ -215,7 +215,7 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field
 
 			tableName = table.Name
 
-			if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, fieldId, field); err != nil {
+			if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, organizationId, fieldId, field); err != nil {
 				return err
 			}
 
