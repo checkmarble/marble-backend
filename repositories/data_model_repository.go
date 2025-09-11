@@ -128,7 +128,9 @@ func (repo MarbleDbRepository) GetDataModel(
 		dataModel.Tables[link.ChildTableName].LinksToSingle[link.Name] = link
 	}
 
-	cache.Add(organizationID, dataModel)
+	if useCache && repo.withCache {
+		cache.Add(organizationID, dataModel)
+	}
 
 	return dataModel, nil
 }
@@ -214,7 +216,7 @@ func (repo MarbleDbRepository) CreateDataModelField(
 		return err
 	}
 
-	// Minimalist attempt at cachce invalidation. Because there may be several instances of Marble running at the same time, requests
+	// Minimalist attempt at cache invalidation. Because there may be several instances of Marble running at the same time, requests
 	// may still get a stale cached response.
 	dataModelCacheEnum.Remove(organizationId)
 	dataModelCacheNoEnum.Remove(organizationId)
