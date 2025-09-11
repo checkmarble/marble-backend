@@ -13,7 +13,6 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 		license         LicenseEntitlements
 		config          FeaturesConfiguration
 		user            User
-		testMode        bool
 		expected        OrganizationFeatureAccess
 	}{
 		{
@@ -163,8 +162,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				NameRecognition: false,
 				Analytics:       false,
 			},
-			user:     User{AiAssistEnabled: false},
-			testMode: true,
+			user: User{AiAssistEnabled: false},
 			expected: OrganizationFeatureAccess{
 				Id:              "4",
 				OrganizationId:  "org4",
@@ -184,7 +182,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.dbFeatureAccess.MergeWithLicenseEntitlement(tt.license, tt.config, tt.testMode, &tt.user)
+			result := tt.dbFeatureAccess.MergeWithLicenseEntitlement(tt.license, tt.config, &tt.user)
 			assert.Equal(t, tt.expected, result, tt.name)
 		})
 	}

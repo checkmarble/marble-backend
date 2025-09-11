@@ -262,7 +262,6 @@ func RunServer(config CompiledConfig) error {
 		usecases.WithMetabase(apiConfig.MetabaseConfig.SiteUrl),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
-		usecases.WithTestMode(serverConfig.firebaseEmulatorHost != ""),
 		usecases.WithFirebaseAdmin(deps.FirebaseAdmin),
 		usecases.WithAIAgentConfig(aiAgentConfig),
 	)
