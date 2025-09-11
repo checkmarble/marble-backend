@@ -21,7 +21,7 @@ type DataModelRepository interface {
 	CreateDataModelTable(ctx context.Context, exec Executor, organizationID, tableID, name, description string) error
 	UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
-	CreateDataModelField(ctx context.Context, exec Executor, fieldId string, field models.CreateFieldInput) error
+	CreateDataModelField(ctx context.Context, exec Executor, organizationId string, fieldId string, field models.CreateFieldInput) error
 	UpdateDataModelField(
 		ctx context.Context,
 		exec Executor,
@@ -184,6 +184,7 @@ func (repo MarbleDbRepository) UpdateDataModelTable(ctx context.Context, exec Ex
 func (repo MarbleDbRepository) CreateDataModelField(
 	ctx context.Context,
 	exec Executor,
+	organizationId string,
 	fieldId string,
 	field models.CreateFieldInput,
 ) error {
@@ -209,7 +210,16 @@ func (repo MarbleDbRepository) CreateDataModelField(
 	if IsUniqueViolationError(err) {
 		return models.ConflictError
 	}
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Minimalist attempt at cachce invalidation. Because there may be several instances of Marble running at the same time, requests
+	// may still get a stale cached response.
+	dataModelCacheEnum.Remove(organizationId)
+	dataModelCacheNoEnum.Remove(organizationId)
+
+	return nil
 }
 
 func (repo MarbleDbRepository) UpdateDataModelField(
