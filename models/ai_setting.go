@@ -33,9 +33,10 @@ type AiSettingEntity interface {
 
 // Json tag for json serialization into JSONB column
 type KYCEnrichmentSetting struct {
-	Model             *string                      `json:"model"`
-	DomainFilter      []string                     `json:"domain_filter"`
-	SearchContextSize *PerplexitySearchContextSize `json:"search_context_size"`
+	Model              *string                      `json:"model"`
+	DomainFilter       []string                     `json:"domain_filter"`
+	SearchContextSize  *PerplexitySearchContextSize `json:"search_context_size"`
+	CustomInstructions *string                      `json:"custom_instructions"`
 
 	// Opt-in, the user should explicitly enable it
 	Enabled bool `json:"enabled"`

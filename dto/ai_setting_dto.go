@@ -6,10 +6,11 @@ import (
 )
 
 type KYCEnrichmentSettingDto struct {
-	Model             *string                             `json:"model"`
-	DomainFilter      []string                            `json:"domain_filter"`
-	SearchContextSize *models.PerplexitySearchContextSize `json:"search_context_size"`
-	Enabled           bool                                `json:"enabled"`
+	Model              *string                             `json:"model"`
+	DomainFilter       []string                            `json:"domain_filter"`
+	SearchContextSize  *models.PerplexitySearchContextSize `json:"search_context_size"`
+	CustomInstructions *string                             `json:"custom_instructions"`
+	Enabled            bool                                `json:"enabled"`
 }
 
 func (dto KYCEnrichmentSettingDto) Validate() error {
@@ -18,19 +19,21 @@ func (dto KYCEnrichmentSettingDto) Validate() error {
 
 func AdaptKYCEnrichmentSettingDto(setting models.KYCEnrichmentSetting) KYCEnrichmentSettingDto {
 	return KYCEnrichmentSettingDto{
-		Model:             setting.Model,
-		DomainFilter:      setting.DomainFilter,
-		SearchContextSize: setting.SearchContextSize,
-		Enabled:           setting.Enabled,
+		Model:              setting.Model,
+		DomainFilter:       setting.DomainFilter,
+		SearchContextSize:  setting.SearchContextSize,
+		CustomInstructions: setting.CustomInstructions,
+		Enabled:            setting.Enabled,
 	}
 }
 
 func AdaptKYCEnrichmentSetting(setting KYCEnrichmentSettingDto) models.KYCEnrichmentSetting {
 	return models.KYCEnrichmentSetting{
-		Model:             setting.Model,
-		DomainFilter:      setting.DomainFilter,
-		SearchContextSize: setting.SearchContextSize,
-		Enabled:           setting.Enabled,
+		Model:              setting.Model,
+		DomainFilter:       setting.DomainFilter,
+		SearchContextSize:  setting.SearchContextSize,
+		CustomInstructions: setting.CustomInstructions,
+		Enabled:            setting.Enabled,
 	}
 }
 
