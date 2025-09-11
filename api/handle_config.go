@@ -16,8 +16,8 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 		versionUsecase := uc.NewVersionUsecase()
 
 		signupUsecase := usecases.NewSignupUsecase(uc.NewExecutorFactory(),
-			&uc.Repositories.MarbleDbRepository,
-			&uc.Repositories.MarbleDbRepository,
+			uc.Repositories.MarbleDbRepository,
+			uc.Repositories.MarbleDbRepository,
 		)
 
 		migrationsRunForOrgs, hasAnOrganization, err := signupUsecase.HasAnOrganization(ctx)

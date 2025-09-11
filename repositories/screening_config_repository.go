@@ -17,9 +17,7 @@ import (
 	"github.com/hashicorp/golang-lru/v2/expirable"
 )
 
-var (
-	screeningConfigsCache = expirable.NewLRU[string, []models.ScreeningConfig](50, nil, utils.GlobalCacheDuration())
-)
+var screeningConfigsCache = expirable.NewLRU[string, []models.ScreeningConfig](50, nil, utils.GlobalCacheDuration())
 
 func (repo *MarbleDbRepository) ListScreeningConfigs(
 	ctx context.Context,
@@ -27,7 +25,7 @@ func (repo *MarbleDbRepository) ListScreeningConfigs(
 	scenarioIterationId string,
 	useCache bool,
 ) ([]models.ScreeningConfig, error) {
-	if useCache {
+	if useCache && repo.withCache {
 		if sccs, ok := screeningConfigsCache.Get(scenarioIterationId); ok {
 			return sccs, nil
 		}

@@ -22,6 +22,7 @@ type options struct {
 	riverClient                   *river.Client[pgx.Tx]
 	tp                            trace.TracerProvider
 	bigQueryInfra                 *infra.BigQueryInfra
+	withCache                     bool
 }
 
 type Option func(*options)
@@ -83,12 +84,18 @@ func WithBigQueryInfra(bigQueryInfra *infra.BigQueryInfra) Option {
 	}
 }
 
+func WithCache(withCache bool) Option {
+	return func(o *options) {
+		o.withCache = withCache
+	}
+}
+
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
 	ConvoyRepository                  ConvoyRepository
 	IngestionRepository               IngestionRepository
 	IngestedDataReadRepository        IngestedDataReadRepository
-	MarbleDbRepository                MarbleDbRepository
+	MarbleDbRepository                *MarbleDbRepository
 	ClientDbRepository                ClientDbRepository
 	ScenarioPublicationRepository     ScenarioPublicationRepository
 	OrganizationSchemaRepository      OrganizationSchemaRepository
@@ -100,7 +107,6 @@ type Repositories struct {
 	NameRecognitionRepository         NameRecognitionRepository
 	TransferCheckEnrichmentRepository *TransferCheckEnrichmentRepository
 	TaskQueueRepository               TaskQueueRepository
-	ScenarioTestrunRepository         ScenarioTestRunRepository
 	MetricsIngestionRepository        MetricsIngestionRepository
 }
 
@@ -132,8 +138,7 @@ func NewRepositories(
 		ConvoyRepository:              NewConvoyRepository(options.convoyClientProvider, options.convoyRateLimit),
 		IngestionRepository:           &IngestionRepositoryImpl{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
-		MarbleDbRepository:            MarbleDbRepository{},
-		ScenarioTestrunRepository:     &MarbleDbRepository{},
+		MarbleDbRepository:            NewMarbleDbRepository(options.withCache),
 		ClientDbRepository:            ClientDbRepository{},
 		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{},
 		OrganizationSchemaRepository:  &OrganizationSchemaRepositoryPostgresql{},

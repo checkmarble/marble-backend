@@ -200,7 +200,7 @@ func NewUsecases(repositories repositories.Repositories, opts ...Option) Usecase
 func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory {
 	return executor_factory.NewDbExecutorFactory(
 		usecases.appName,
-		&usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.ExecutorGetter,
 	)
 }
@@ -208,7 +208,7 @@ func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory 
 func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFactory {
 	return executor_factory.NewDbExecutorFactory(
 		usecases.appName,
-		&usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.ExecutorGetter,
 	)
 }
@@ -222,14 +222,14 @@ func (usecases *Usecases) NewVersionUsecase() VersionUsecase {
 func (usecases *Usecases) NewLivenessUsecase() LivenessUsecase {
 	return LivenessUsecase{
 		executorFactory:    usecases.NewExecutorFactory(),
-		livenessRepository: &usecases.Repositories.MarbleDbRepository,
+		livenessRepository: usecases.Repositories.MarbleDbRepository,
 	}
 }
 
 func (usecases *Usecases) NewHealthUsecase() HealthUsecase {
 	return HealthUsecase{
 		executorFactory:         usecases.NewExecutorFactory(),
-		healthRepository:        &usecases.Repositories.MarbleDbRepository,
+		healthRepository:        usecases.Repositories.MarbleDbRepository,
 		hasOpensanctionsSetup:   usecases.hasOpensanctionsSetup,
 		openSanctionsRepository: &usecases.Repositories.OpenSanctionsRepository,
 	}
@@ -239,9 +239,9 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	return SeedUseCase{
 		transactionFactory:     usecases.NewTransactionFactory(),
 		executorFactory:        usecases.NewExecutorFactory(),
-		userRepository:         &usecases.Repositories.MarbleDbRepository,
+		userRepository:         usecases.Repositories.MarbleDbRepository,
 		organizationCreator:    usecases.NewOrganizationCreator(),
-		organizationRepository: &usecases.Repositories.MarbleDbRepository,
+		organizationRepository: usecases.Repositories.MarbleDbRepository,
 		customListRepository:   usecases.Repositories.CustomListRepository,
 	}
 }
@@ -249,7 +249,7 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 func (usecases *Usecases) NewAllowedNetworksUsecase() AllowedNetworksUsecase {
 	return AllowedNetworksUsecase{
 		executorFactory: usecases.NewExecutorFactory(),
-		repository:      &usecases.Repositories.MarbleDbRepository,
+		repository:      usecases.Repositories.MarbleDbRepository,
 	}
 }
 
@@ -257,15 +257,15 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 	return organization.OrganizationCreator{
 		CustomListRepository:   usecases.Repositories.CustomListRepository,
 		ExecutorFactory:        usecases.NewExecutorFactory(),
-		OrganizationRepository: &usecases.Repositories.MarbleDbRepository,
+		OrganizationRepository: usecases.Repositories.MarbleDbRepository,
 		TransactionFactory:     usecases.NewTransactionFactory(),
 	}
 }
 
 func (usecases *Usecases) NewExportScheduleExecution() *scheduled_execution.ExportScheduleExecution {
 	return &scheduled_execution.ExportScheduleExecution{
-		DecisionRepository:     &usecases.Repositories.MarbleDbRepository,
-		OrganizationRepository: &usecases.Repositories.MarbleDbRepository,
+		DecisionRepository:     usecases.Repositories.MarbleDbRepository,
+		OrganizationRepository: usecases.Repositories.MarbleDbRepository,
 		ExecutorFactory:        usecases.NewExecutorFactory(),
 	}
 }
@@ -318,7 +318,7 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 	environment.AddEvaluator(ast.FUNC_TIMESTAMP_EXTRACT,
 		evaluate.NewTimestampExtract(
 			usecases.NewExecutorFactory(),
-			&usecases.Repositories.MarbleDbRepository,
+			usecases.Repositories.MarbleDbRepository,
 			params.OrganizationId))
 
 	return environment
@@ -332,10 +332,10 @@ func (usecases *Usecases) NewEvaluateAstExpression() ast_eval.EvaluateAstExpress
 
 func (usecases *Usecases) NewScenarioPublisher() ScenarioPublisher {
 	return scenarios.ScenarioPublisher{
-		Repository:                     &usecases.Repositories.MarbleDbRepository,
+		Repository:                     usecases.Repositories.MarbleDbRepository,
 		ValidateScenarioIteration:      usecases.NewValidateScenarioIteration(),
 		ScenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
-		ScenarioTestRunRepository:      usecases.Repositories.ScenarioTestrunRepository,
+		ScenarioTestRunRepository:      usecases.Repositories.MarbleDbRepository,
 	}
 }
 
@@ -361,7 +361,7 @@ func (usecases *Usecases) NewAstValidator() scenarios.AstValidator {
 
 func (usecase *Usecases) NewScenarioFetcher() scenarios.ScenarioFetcher {
 	return scenarios.ScenarioFetcher{
-		Repository: &usecase.Repositories.MarbleDbRepository,
+		Repository: usecase.Repositories.MarbleDbRepository,
 	}
 }
 
@@ -369,7 +369,7 @@ func (usecases *Usecases) NewLicenseUsecase() PublicLicenseUseCase {
 	return NewPublicLicenseUsecase(
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.MetricsIngestionRepository,
-		&usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.license,
 	)
 }
@@ -377,7 +377,7 @@ func (usecases *Usecases) NewLicenseUsecase() PublicLicenseUseCase {
 func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx], queueWhitelist []string) *TaskQueueWorker {
 	return NewTaskQueueWorker(
 		usecases.NewExecutorFactory(),
-		&usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
 		queueWhitelist,
 		riverClient,
 	)
@@ -387,11 +387,11 @@ func (usecases *Usecases) NewMetricsCollectionWorker(licenseConfiguration models
 	return scheduled_execution.NewMetricCollectionWorker(
 		metrics_collection.NewCollectorsV1(
 			usecases.NewExecutorFactory(),
-			&usecases.Repositories.MarbleDbRepository,
+			usecases.Repositories.MarbleDbRepository,
 			usecases.apiVersion,
 			licenseConfiguration,
 		),
-		&usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 		usecases.metricsCollectionConfig,
 	)
@@ -400,7 +400,7 @@ func (usecases *Usecases) NewMetricsCollectionWorker(licenseConfiguration models
 func (usecases *Usecases) NewMetricsIngestionUsecase() MetricsIngestionUsecase {
 	return NewMetricsIngestionUsecase(
 		usecases.Repositories.MetricsIngestionRepository,
-		&usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 	)
 }
@@ -409,8 +409,8 @@ func (uc *Usecases) NewAutoAssignmentUsecase() AutoAssignmentUsecase {
 	return AutoAssignmentUsecase{
 		executorFactory:    uc.NewExecutorFactory(),
 		transactionFactory: uc.NewTransactionFactory(),
-		caseRepository:     &uc.Repositories.MarbleDbRepository,
-		orgRepository:      &uc.Repositories.MarbleDbRepository,
-		repository:         &uc.Repositories.MarbleDbRepository,
+		caseRepository:     uc.Repositories.MarbleDbRepository,
+		orgRepository:      uc.Repositories.MarbleDbRepository,
+		repository:         uc.Repositories.MarbleDbRepository,
 	}
 }
