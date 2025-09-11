@@ -56,18 +56,13 @@ type PivotDataForEnrichment struct {
 	PivotData       map[string]any `json:"pivot_data"`
 }
 
-func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, caseId string) ([]models.AiEnrichmentKYC, error) {
+func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, orgId string, caseId string) ([]models.AiEnrichmentKYC, error) {
 	logger := utils.LoggerFromContext(ctx)
-	exec := uc.executorFactory.NewExecutor()
 
 	// Get setting
-	aiSetting := models.DefaultAiSetting()
-	aiSettingRepo, err := uc.repository.GetAiSetting(ctx, exec, uc.enforceSecurity.OrgId())
+	aiSetting, err := uc.getAiSetting(ctx, orgId)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve ai setting")
-	}
-	if aiSettingRepo != nil {
-		aiSetting = *aiSettingRepo
+		return nil, errors.Wrap(err, "could not get ai setting")
 	}
 
 	if !aiSetting.KYCEnrichmentSetting.Enabled {
