@@ -131,7 +131,8 @@ func (uc *AiAgentUsecase) enrichData(
 			"failed to convert language to english")
 	}
 	instruction, err := preparePrompt(INSTRUCTION_PATH, map[string]any{
-		"language": language,
+		"language":            language,
+		"custom_instructions": aiSetting.KYCEnrichmentSetting.CustomInstructions,
 	})
 	if err != nil {
 		return models.AiEnrichmentKYC{}, errors.Wrap(err, "failed to read instruction")

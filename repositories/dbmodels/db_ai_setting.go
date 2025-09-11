@@ -9,6 +9,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// DBAiSetting is the database model for the AI setting
+// For a given organization, there can be multiple settings for different AI usecases
+// Value of each usecase setting is stored in the Value field as a JSONB column, need to parse it to the correct type
 type DBAiSetting struct {
 	Id        uuid.UUID      `db:"id"`
 	OrgId     string         `db:"org_id"`
@@ -81,6 +84,10 @@ func adaptKYCEnrichmentFromJSONB(value map[string]any) (models.KYCEnrichmentSett
 	if searchContextStr, ok := value["search_context_size"].(string); ok && searchContextStr != "" {
 		searchContext := models.PerplexitySearchContextSizeFromString(searchContextStr)
 		setting.SearchContextSize = &searchContext
+	}
+
+	if customInstructions, ok := value["custom_instructions"].(string); ok && customInstructions != "" {
+		setting.CustomInstructions = &customInstructions
 	}
 
 	if enabled, ok := value["enabled"].(bool); ok {
