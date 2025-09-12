@@ -1406,8 +1406,8 @@ github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6Kllzaw
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
 github.com/valyala/fasthttp v1.52.0 h1:wqBQpxH71XW0e2g+Og4dzQM8pk34aFYlA1Ga8db7gU0=
 github.com/valyala/fasthttp v1.52.0/go.mod h1:hf5C4QnVMkNXMspnsUlfM3WitlgYflyhHYoKol/szxQ=
-github.com/vearne/gin-timeout v0.2.0 h1:KobNPr4YSMtrucHH+3Ce6aE/s99gxMLynu+IktWXeDs=
-github.com/vearne/gin-timeout v0.2.0/go.mod h1:BKCWwia+RoBi1gv+RS4FtVrcM7bVhNkfUg+jTvtHa1A=
+github.com/vearne/gin-timeout v0.2.2 h1:reg8i8Rm+46IsBtuiSoJD3WnzuWwNgeosPOVZi41w+8=
+github.com/vearne/gin-timeout v0.2.2/go.mod h1:BKCWwia+RoBi1gv+RS4FtVrcM7bVhNkfUg+jTvtHa1A=
 github.com/wk8/go-ordered-map/v2 v2.1.8 h1:5h/BUHu93oj4gIdvHHHGsScSTMijfx5PeYkE/fJgbpc=
 github.com/wk8/go-ordered-map/v2 v2.1.8/go.mod h1:5nJHM5DyteebpVlHnWMV0rPz6Zp7+xBAnxjb1X5vnTw=
 github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2zxlSyiKSe5eX1tZViRH5QA0qijqEDrYZiPEAiq3wU=
