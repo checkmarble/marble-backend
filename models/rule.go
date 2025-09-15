@@ -50,3 +50,8 @@ type UpdateRuleInput struct {
 	SnoozeGroupId        *string
 	StableRuleId         *string
 }
+
+type AiRuleDescription struct {
+	Description string
+	Example     string
+}
