@@ -65,10 +65,10 @@ func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl 
 	)
 	defer span.End()
 
-	if repository.buckets[bucketUrl] == nil {
-		repository.m.Lock()
-		defer repository.m.Unlock()
+	repository.m.Lock()
+	defer repository.m.Unlock()
 
+	if repository.buckets[bucketUrl] == nil {
 		var bucket *blob.Bucket
 		// adapt bucket url with additional values from env variables in the GCS case
 		url, err := url.Parse(bucketUrl)

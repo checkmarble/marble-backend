@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"os"
 	"slices"
 	"sync"
 	"time"
@@ -178,7 +179,10 @@ func QueuesFromOrgs(ctx context.Context, appName string, orgsRepo repositories.O
 		}...)
 
 		if offloadingConfig.Enabled {
-			periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(org.Id, offloadingConfig.JobInterval))
+			// Undocumented debug setting to only enable offloading for a specific organization
+			if onlyOffloadOrg := os.Getenv("OFFLOADING_ONLY_ORG"); onlyOffloadOrg == "" || onlyOffloadOrg == org.Id {
+				periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(org.Id, offloadingConfig.JobInterval))
+			}
 		}
 
 		queues[org.Id] = river.QueueConfig{
