@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -153,6 +154,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 		// Slice of pointers to not have to keep track of which decision were skipped or not, the
 		// query ignores NULL IDs.
 		offloadedIds := make([]*string, w.config.SavepointEvery)
+		rulesToOffload := make([]models.OffloadableDecisionRule, w.config.SavepointEvery)
 		idx := 0
 
 		var lastOfBatch *models.OffloadableDecisionRule
@@ -174,53 +176,19 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 
 			rule := item.Model
 			offloadedIds[idx%w.config.SavepointEvery] = nil
-
-			if rule.RuleEvaluation != nil && rule.RuleOutcome != nil {
-				key := w.repository.GetOffloadedDecisionRuleKey(req.OrgId,
-					rule.DecisionId, *rule.RuleId, *rule.RuleOutcome, rule.CreatedAt)
-
-				opts := blob.WriterOptions{}
-
-				// Only if we work on GCS, retrieve the typed writer and set the Custom-Time fixed metadata to the rule creation time.
-				// We do not (currently) set the date on other blob storage platforms (but maybe we should?)
-				opts.BeforeWrite = func(asFunc func(any) bool) error {
-					var gcsWriter *storage.Writer
-
-					if asFunc(&gcsWriter) {
-						gcsWriter.CustomTime = rule.CreatedAt
-					}
-
-					return nil
-				}
-
-				wr, err := w.blobRepository.OpenStreamWithOptions(ctx, w.config.BucketUrl, key, &opts)
-				if err != nil {
-					return stopChannelAndReturn(err)
-				}
-				defer wr.Close()
-
-				enc := json.NewEncoder(wr)
-
-				if err := enc.Encode(rule.RuleEvaluation); err != nil {
-					if err := wr.Close(); err != nil {
-						logger.Error(fmt.Sprintf("could not close writer after write failure: %s", err.Error()))
-					}
-					return stopChannelAndReturn(err)
-				}
-
-				if err := wr.Close(); err != nil {
-					return stopChannelAndReturn(err)
-				}
-
-				id := *rule.RuleExecutionId
-				offloadedIds[idx%w.config.SavepointEvery] = &id
-			}
+			rulesToOffload[idx%w.config.SavepointEvery] = rule
 
 			idx += 1
 
 			// If we get here, we have a full batch, so we can send the whole slice to be persisted.
 			// See below for the other case.
 			if idx%w.config.SavepointEvery == 0 {
+				span.AddEvent("savepoint_reached")
+
+				if err := w.writeBatchToBlobStorage(ctx, req, rulesToOffload, offloadedIds); err != nil {
+					return stopChannelAndReturn(err)
+				}
+
 				err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 					if err := w.repository.RemoveDecisionRulePayload(ctx, tx, offloadedIds); err != nil {
 						return err
@@ -249,6 +217,7 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 
 			lastOfBatch = &rule
 		}
+
 		_ = stopChannelAndReturn(nil)
 		if err := outerTx.Rollback(ctx); err != nil {
 			return err
@@ -261,10 +230,17 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 		// If we did not get a multiple of save point batch size, we still have len(rules)%batch_size
 		// items to persist.
 		if idx%w.config.SavepointEvery > 0 {
-			remainingItems := offloadedIds[:idx%w.config.SavepointEvery]
+			span.AddEvent("partial_savepoint_reached")
+
+			remainingItemIds := offloadedIds[:idx%w.config.SavepointEvery]
+			remainingRules := rulesToOffload[:idx%w.config.SavepointEvery]
+
+			if err := w.writeBatchToBlobStorage(ctx, req, remainingRules, remainingItemIds); err != nil {
+				return stopChannelAndReturn(err)
+			}
 
 			err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-				if err := w.repository.RemoveDecisionRulePayload(ctx, tx, remainingItems); err != nil {
+				if err := w.repository.RemoveDecisionRulePayload(ctx, tx, remainingItemIds); err != nil {
 					return err
 				}
 				if err := w.repository.SaveWatermark(
@@ -306,4 +282,87 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 
 		span.End()
 	}
+}
+
+// This will write all objects within the save point to GCS concurrently.
+// Encountering an error will not immediately stop the batch and will continue
+// writing the rest of the objects. The last error to be encountered will be
+// returned.
+func (w OffloadingWorker) writeBatchToBlobStorage(
+	ctx context.Context,
+	req models.OffloadDecisionRuleRequest,
+	rules []models.OffloadableDecisionRule,
+	offloadedIds []*string) error {
+
+	var (
+		wg     sync.WaitGroup
+		outErr error
+	)
+
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	logger := utils.LoggerFromContext(ctx)
+
+	ctx, span := tracer.Start(ctx, "offloading_job.ConcurrentWrites")
+	defer span.End()
+
+	for idx, rule := range rules {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			if rule.RuleEvaluation != nil && rule.RuleOutcome != nil {
+				key := w.repository.GetOffloadedDecisionRuleKey(req.OrgId,
+					rule.DecisionId, *rule.RuleId, *rule.RuleOutcome, rule.CreatedAt)
+
+				opts := blob.WriterOptions{}
+
+				// Only if we work on GCS, retrieve the typed writer and set the Custom-Time fixed metadata to the rule creation time.
+				// We do not (currently) set the date on other blob storage platforms (but maybe we should?)
+				opts.BeforeWrite = func(asFunc func(any) bool) error {
+					var gcsWriter *storage.Writer
+
+					if asFunc(&gcsWriter) {
+						gcsWriter.CustomTime = rule.CreatedAt
+					}
+
+					return nil
+				}
+
+				wr, err := w.blobRepository.OpenStreamWithOptions(ctx, w.config.BucketUrl, key, &opts)
+				if err != nil {
+					outErr = err
+					return
+				}
+				defer wr.Close()
+
+				enc := json.NewEncoder(wr)
+
+				if err := enc.Encode(rule.RuleEvaluation); err != nil {
+					if err := wr.Close(); err != nil {
+						logger.Error(fmt.Sprintf("could not close writer after write failure: %s", err.Error()))
+					}
+					outErr = err
+					return
+				}
+
+				if err := wr.Close(); err != nil {
+					outErr = err
+					return
+				}
+
+				id := *rule.RuleExecutionId
+				offloadedIds[idx] = &id
+
+				if err := wr.Close(); err != nil {
+					outErr = err
+					return
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	return outErr
 }
