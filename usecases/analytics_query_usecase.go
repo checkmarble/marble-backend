@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/dto"
@@ -24,24 +25,36 @@ type AnalyticsQueryUsecase struct {
 	scenarioRepository repositories.ScenarioUsecaseRepository
 }
 
-func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.DecisionOutomePerDay, error) {
+func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.DecisionOutcomePerDay, error) {
+	psql := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
 	}
 
-	query := squirrel.Select("time_bucket('1 day', created_at) as date, outcome, count() as decisions").
+	subquery := psql.Select("time_bucket('1 day', created_at) as date, outcome, count() as decisions").
 		From(uc.analyticsFactory.BuildTarget("manual/decisions")). // TODO: change table path
 		Where("created_at between ? and ?", filters.Start, filters.End).
-		GroupBy("date", "outcome").
-		OrderBy("date")
+		GroupBy("date", "outcome")
 
-	query, err = uc.analyticsFactory.ApplyFilters(query, scenario, filters)
+	subquery, err = uc.analyticsFactory.ApplyFilters(subquery, scenario, filters)
 	if err != nil {
 		return nil, err
 	}
 
-	return utils.ScanStruct[models.DecisionOutomePerDay](ctx, exec, query)
+	sql, args, err := subquery.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	query := fmt.Sprintf(`
+		pivot (from (%s))
+		on outcome in ('approve', 'decline', 'review', 'block_and_review')
+		using coalesce(sum(decisions), 0)
+		order by date`, sql)
+
+	return utils.RawScanStruct[models.DecisionOutcomePerDay](ctx, exec, query, args...)
 }
 
 func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.DecisionsScoreDistribution, error) {

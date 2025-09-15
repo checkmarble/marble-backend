@@ -6,10 +6,14 @@ import (
 	"github.com/google/uuid"
 )
 
-type DecisionOutomePerDay struct {
-	Date      time.Time `json:"date"`
-	Outcome   string    `json:"outcome"`
-	Decisions int       `json:"decisions"`
+type DecisionOutcomePerDay struct {
+	Date time.Time `json:"date"`
+
+	// Those fields are returned through a PIVOT(), so need to be alphabetically sorted
+	Approve        int `json:"approve"`
+	BlockAndReview int `json:"block_and_review"`
+	Decline        int `json:"decline"`
+	Review         int `json:"review"`
 }
 
 type DecisionsScoreDistribution struct {
