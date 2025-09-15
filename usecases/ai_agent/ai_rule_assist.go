@@ -15,8 +15,9 @@ const (
 )
 
 type aiRuleDescriptionOutput struct {
-	Description string `json:"description" jsonschema_description:"The description of the rule"`
-	Example     string `json:"example" jsonschema_description:"The example of the rule with explanation"`
+	Description string  `json:"description" jsonschema_description:"The description of the rule"`
+	Example     string  `json:"example" jsonschema_description:"The example of the rule with explanation"`
+	Advice      *string `json:"advice" jsonschema_description:"The advice to the user to improve the rule, could be empty"`
 }
 
 func (uc *AiAgentUsecase) AiRuleDescription(
@@ -90,5 +91,6 @@ func (uc *AiAgentUsecase) AiRuleDescription(
 	return models.AiRuleDescription{
 		Description: ruleDescriptionResponse.Description,
 		Example:     ruleDescriptionResponse.Example,
+		Advice:      ruleDescriptionResponse.Advice,
 	}, nil
 }
