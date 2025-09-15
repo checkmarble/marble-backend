@@ -109,13 +109,15 @@ func AdaptUpdateRule(ruleId string, body UpdateRuleBody) (models.UpdateRuleInput
 }
 
 type AiRuleDescriptionDto struct {
-	Description string `json:"description"`
-	Example     string `json:"example"`
+	Description string  `json:"description"`
+	Example     string  `json:"example"`
+	Advice      *string `json:"advice"`
 }
 
 func AdaptAiRuleDescriptionDto(aiRuleDescription models.AiRuleDescription) AiRuleDescriptionDto {
 	return AiRuleDescriptionDto{
 		Description: aiRuleDescription.Description,
 		Example:     aiRuleDescription.Example,
+		Advice:      aiRuleDescription.Advice,
 	}
 }

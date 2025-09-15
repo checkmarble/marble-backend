@@ -133,7 +133,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/scenario-iteration-rules/:rule_id", tom, handleGetRule(uc))
 	router.PATCH("/scenario-iteration-rules/:rule_id", tom, handleUpdateRule(uc))
 	router.DELETE("/scenario-iteration-rules/:rule_id", tom, handleDeleteRule(uc))
-	router.GET("/scenario-iteration-rules/:rule_id/ai-description", tom,
+	router.GET("/scenario-iteration-rules/:rule_id/ai-description", timeoutMiddleware(conf.BatchTimeout),
 		handleAiDescriptionScenarioIteration(uc),
 	)
 
