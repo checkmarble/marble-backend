@@ -14,6 +14,10 @@ func ScanStruct[T any](ctx context.Context, exec *sql.DB, query squirrel.SelectB
 		return nil, err
 	}
 
+	return RawScanStruct[T](ctx, exec, sql, args...)
+}
+
+func RawScanStruct[T any](ctx context.Context, exec *sql.DB, sql string, args ...any) ([]T, error) {
 	tmp := *new(T)
 
 	rt := reflect.TypeOf(tmp)
