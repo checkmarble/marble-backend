@@ -18,7 +18,7 @@ require (
 	github.com/checkmarble/llmberjack v0.0.0-20250903150633-14827363b542
 	github.com/cockroachdb/errors v1.12.0
 	github.com/exaring/otelpgx v0.9.3
-	github.com/gavv/httpexpect/v2 v2.16.0
+	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/getsentry/sentry-go v0.28.1
 	github.com/gin-contrib/cors v1.7.2
