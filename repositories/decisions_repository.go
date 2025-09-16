@@ -236,19 +236,15 @@ func (repo *MarbleDbRepository) DecisionsByCaseIdFromCursor(
 		return
 	}
 
-	if req.Limit == 0 {
-		logger := utils.LoggerFromContext(ctx)
-		logger.Warn("DecisionsByCaseIdFromCursor: limit is 0, using a default limit instead")
-		req.Limit = models.CaseDecisionsPerPage
-	}
-
 	query := selectDecisionAndCase().
 		Where(squirrel.Eq{
 			"d.org_id":  req.OrgId,
 			"d.case_id": req.CaseId,
 		}).
-		OrderBy("d.created_at DESC, d.id DESC").
-		Limit(uint64(req.Limit) + 1)
+		OrderBy("d.created_at DESC, d.id DESC")
+	if req.Limit > 0 {
+		query = query.Limit(uint64(req.Limit) + 1)
+	}
 
 	if req.CursorId != "" {
 		cursorDecision, err := repo.DecisionsById(ctx, exec, []string{req.CursorId})
@@ -287,9 +283,12 @@ func (repo *MarbleDbRepository) DecisionsByCaseIdFromCursor(
 		}
 	}
 
-	hasMore = len(decisionsWithRules) > req.Limit
-
-	return decisionsWithRules[:min(len(decisionsWithRules), req.Limit)], hasMore, nil
+	if req.Limit > 0 {
+		hasMore = len(decisionsWithRules) > req.Limit
+		decisionsWithRules = decisionsWithRules[:min(len(decisionsWithRules), req.Limit)]
+		return
+	}
+	return decisionsWithRules, false, nil
 }
 
 // DEPRECATED: Do not use, see warning comment below
