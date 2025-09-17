@@ -138,7 +138,6 @@ func RunServer(config CompiledConfig) error {
 		loggingFormat                    string
 		sentryDsn                        string
 		transferCheckEnrichmentBucketUrl string
-		firebaseEmulatorHost             string
 		telemetryExporter                string
 		otelSamplingRates                string
 	}{
@@ -148,10 +147,8 @@ func RunServer(config CompiledConfig) error {
 		offloadingBucketUrl:              utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
 		jwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
 		jwtSigningKeyFile:                utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY_FILE", ""),
-		loggingFormat:                    utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:                        utils.GetEnv("SENTRY_DSN", ""),
 		transferCheckEnrichmentBucketUrl: utils.GetEnv("TRANSFER_CHECK_ENRICHMENT_BUCKET_URL", ""), // required for transfercheck
-		firebaseEmulatorHost:             utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
 		telemetryExporter:                utils.GetEnv("TRACING_EXPORTER", "otlp"),
 		otelSamplingRates:                utils.GetEnv("TRACING_SAMPLING_RATES", ""),
 	}
