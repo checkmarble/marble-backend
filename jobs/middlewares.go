@@ -31,6 +31,8 @@ type LoggerMiddleware struct {
 	errorCountLock *sync.Mutex
 }
 
+func (m LoggerMiddleware) IsMiddleware() bool { return true }
+
 func (m LoggerMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
 	logger := m.l.With(
 		"job_id", job.ID,
@@ -88,6 +90,8 @@ func NewLoggerMiddleware(l *slog.Logger) LoggerMiddleware {
 
 type RecovererMiddleware struct{}
 
+func (m RecovererMiddleware) IsMiddleware() bool { return true }
+
 func (m RecovererMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) (err error) {
 	defer utils.RecoverAndReportSentryError(ctx, "RecovererMiddleware.Work")
 	return doInner(ctx)
@@ -102,6 +106,8 @@ func NewRecoveredMiddleware() RecovererMiddleware {
 type TracingMiddleware struct {
 	tracer trace.Tracer
 }
+
+func (m TracingMiddleware) IsMiddleware() bool { return true }
 
 func (m TracingMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
 	ctx, span := m.tracer.Start(
@@ -129,6 +135,8 @@ func NewTracingMiddleware(tracer trace.Tracer) TracingMiddleware {
 // Sentry middleware
 
 type SentryMiddleware struct{}
+
+func (m SentryMiddleware) IsMiddleware() bool { return true }
 
 func (m SentryMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
 	hub := sentry.GetHubFromContext(ctx)

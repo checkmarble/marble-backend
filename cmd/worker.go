@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"maps"
 	"net/http"
 	"os"
 	"os/signal"
+	"reflect"
 	"slices"
 	"syscall"
 	"time"
@@ -28,7 +30,7 @@ import (
 	"github.com/riverqueue/river/rivertype"
 )
 
-func RunTaskQueue(apiVersion string) error {
+func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	appName := fmt.Sprintf("marble-worker %s", apiVersion)
 
 	// This is where we read the environment variables and set up the configuration for the application.
@@ -267,6 +269,15 @@ func RunTaskQueue(apiVersion string) error {
 		usecases.WithAIAgentConfig(aiAgentConfig),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
+
+	if only != "" {
+		if err := singleJobRun(ctx, adminUc, only, onlyArgs); err != nil {
+			logger.Error(err.Error())
+		}
+
+		return nil
+	}
+
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
 	river.AddWorker(workers, adminUc.NewNewAsyncScheduledExecWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
@@ -407,4 +418,53 @@ func ensureGlobalQueuesAreActive(ctx context.Context, riverClient *river.Client[
 	}
 
 	return nil
+}
+
+func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, jobArgs string) error {
+	switch jobName {
+	case "async_decision":
+		return uc.NewAsyncDecisionWorker().Work(ctx, singleJobCreate[models.AsyncDecisionArgs](ctx, jobArgs))
+	case "scheduled_exec_status":
+		return uc.NewNewAsyncScheduledExecWorker().Work(ctx, singleJobCreate[models.ScheduledExecStatusSyncArgs](ctx, jobArgs))
+	case "auto_assignment":
+		return uc.NewAutoAssignmentWorker().Work(ctx, singleJobCreate[models.AutoAssignmentArgs](ctx, jobArgs))
+	case "index_cleanup":
+		return uc.NewIndexCleanupWorker().Work(ctx, singleJobCreate[models.IndexCleanupArgs](ctx, jobArgs))
+	case "index_creation":
+		return uc.NewIndexCreationWorker().Work(ctx, singleJobCreate[models.IndexCreationArgs](ctx, jobArgs))
+	case "index_creation_status":
+		return uc.NewIndexCreationStatusWorker().Work(ctx, singleJobCreate[models.IndexCreationStatusArgs](ctx, jobArgs))
+	case "index_deletion":
+		return uc.NewIndexDeletionWorker().Work(ctx, singleJobCreate[models.IndexDeletionArgs](ctx, jobArgs))
+	case "match_enrichment":
+		return uc.NewMatchEnrichmentWorker().Work(ctx, singleJobCreate[models.MatchEnrichmentArgs](ctx, jobArgs))
+	case "offloading":
+		return uc.NewOffloadingWorker().Work(ctx, singleJobCreate[models.OffloadingArgs](ctx, jobArgs))
+	case "test_run_summary":
+		return uc.NewTestRunSummaryWorker().Work(ctx, singleJobCreate[models.TestRunSummaryArgs](ctx, jobArgs))
+	case "case_review":
+		return uc.NewCaseReviewWorker(time.Hour).Work(ctx, singleJobCreate[models.CaseReviewArgs](ctx, jobArgs))
+	default:
+		return errors.Newf("unknown job %s", jobName)
+	}
+}
+
+func singleJobCreate[A river.JobArgs](ctx context.Context, argsJson string) *river.Job[A] {
+	var args A
+
+	if argsJson != "" {
+		if err := json.Unmarshal([]byte(argsJson), &args); err != nil {
+			utils.LoggerFromContext(ctx).Error("could not unmarshal provided JSON into job arguments", "error", err.Error())
+			os.Exit(1)
+		}
+	}
+
+	if reflect.DeepEqual(args, *new(A)) {
+		utils.LoggerFromContext(ctx).Warn("job arguments unmarshalled to the zero struct, job might not run properly")
+	}
+
+	return &river.Job[A]{
+		JobRow: &rivertype.JobRow{CreatedAt: time.Now()},
+		Args:   args,
+	}
 }

@@ -28,6 +28,46 @@
         "--worker"
       ],
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Launch single worker job (.env)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/.",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "--worker",
+        "--worker-only=${input:jobName}",
+        "--worker-args=${input:jobArgs}",
+      ],
+      "console": "integratedTerminal"
     }
+  ],
+  "inputs": [
+    {
+      "id": "jobArgs",
+      "description": "Job arguments",
+      "type": "promptString",
+      "default": "{\"org_id\": \"\"}",
+    },
+    {
+      "id": "jobName",
+      "description": "Job to run",
+      "type": "pickString",
+      "options": [
+        "async_decision",
+        "scheduled_exec_status",
+        "auto_assignment",
+        "index_cleanup",
+        "index_creation",
+        "index_creation_status",
+        "index_deletion",
+        "match_enrichment",
+        "offloading",
+        "test_run_summary",
+        "case_review"
+      ]
+    },
   ]
 }
