@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,6 +30,9 @@ func NewAnalyticsExecutorFactory(config infra.AnalyticsConfig) AnalyticsExecutor
 var (
 	ddbOnce sync.Once
 	db      *sql.DB
+
+	exporterDdbOnce sync.Once
+	exportDb        *sql.DB
 )
 
 func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (*sql.DB, error) {
@@ -56,13 +61,43 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (*sql.DB, err
 	return db, nil
 }
 
-func (f AnalyticsExecutorFactory) BuildTarget(table string, aliases ...string) string {
+func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, alias string) (*sql.DB, error) {
+	var err error
+
+	exporterDdbOnce.Do(func() {
+		exportDb, err = f.GetExecutor(ctx)
+		if err != nil {
+			return
+		}
+
+		if _, err = exportDb.ExecContext(ctx, f.buildUpstreamAttachStatement(alias)); err != nil {
+			return
+		}
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return exportDb, nil
+}
+
+func (f AnalyticsExecutorFactory) BuildTarget(table string, triggerObject *string, aliases ...string) string {
 	alias := "main"
 	if len(aliases) > 0 {
 		alias = aliases[0]
 	}
 
-	return fmt.Sprintf(`read_parquet('%s/%s/*/*/*/*/*.parquet', hive_partitioning = true, union_by_name = true) %s`, f.config.Bucket, table, pgx.Identifier.Sanitize([]string{alias}))
+	tr := "*"
+	if triggerObject != nil {
+		tr = "trigger_object_type=" + *triggerObject
+	}
+
+	return fmt.Sprintf(`read_parquet('%s/*/*/*/%s/*.parquet', hive_partitioning = true, union_by_name = true) %s`, f.BuildTablePrefix(table), tr, pgx.Identifier.Sanitize([]string{alias}))
+}
+
+func (f AnalyticsExecutorFactory) BuildTablePrefix(table string) string {
+	return fmt.Sprintf(`%s/%s`, f.config.Bucket, table)
 }
 
 func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuilder, orgId string, start, end time.Time, triggerObjectType string, aliases ...string) squirrel.SelectBuilder {
@@ -137,4 +172,32 @@ func (f AnalyticsExecutorFactory) ApplyFilters(query squirrel.SelectBuilder, sce
 	}
 
 	return query, nil
+}
+
+func (f AnalyticsExecutorFactory) buildUpstreamAttachStatement(alias string) string {
+	if f.config.PgConfig.ConnectionString != "" {
+		u, _ := url.Parse(f.config.PgConfig.ConnectionString)
+
+		f.config.PgConfig.Hostname = u.Hostname()
+		f.config.PgConfig.Port = u.Port()
+		f.config.PgConfig.Database = strings.TrimPrefix(u.Path, "/")
+		if u.User != nil {
+			f.config.PgConfig.User = u.User.Username()
+
+			if pwd, ok := u.User.Password(); ok {
+				f.config.PgConfig.Password = pwd
+			}
+		}
+	}
+
+	return fmt.Sprintf(
+		`attach or replace 'dbname=%s user=%s password=%s host=%s port=%s' as %s (type postgres, read_only)`,
+		f.config.PgConfig.Database,
+		f.config.PgConfig.User,
+		f.config.PgConfig.Password,
+		f.config.PgConfig.Hostname,
+		f.config.PgConfig.Port,
+		alias,
+	)
+
 }
