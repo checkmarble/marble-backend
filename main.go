@@ -26,7 +26,24 @@ func main() {
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
 	shouldRunWorker := flag.Bool("worker", false, "Run workers on the task queues")
+
+	// DEVELOPMENT-ONLY: those flags are used to help debugging and cannot be used in production
+	var (
+		workerOnly     *string = utils.Ptr("")
+		workerOnlyArgs *string = utils.Ptr("")
+	)
+
+	if apiVersion == "dev" {
+		workerOnly = flag.String("worker-only", "", "only run a specific job to completion")
+		workerOnlyArgs = flag.String("worker-args", "", "JSON-encoded arguments to the worker")
+	}
+
 	flag.Parse()
+
+	if !*shouldRunWorker && (*workerOnly != "" || *workerOnlyArgs != "") {
+		log.Fatal("-worker-only and -worker-args can only be used when running the worker")
+	}
+
 	logger := utils.NewLogger("text")
 	logger.Info("Flags",
 		slog.Bool("shouldRunMigrations", *shouldRunMigrations),
@@ -48,7 +65,7 @@ func main() {
 	}
 
 	if *shouldRunWorker {
-		err := cmd.RunTaskQueue(apiVersion)
+		err := cmd.RunTaskQueue(apiVersion, *workerOnly, *workerOnlyArgs)
 		if err != nil {
 			log.Fatal(err)
 		}
