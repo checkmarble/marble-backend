@@ -87,6 +87,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		cloudRunProbePort:           utils.GetEnv("CLOUD_RUN_PROBE_PORT", ""),
 		caseReviewTimeout:           utils.GetEnvDuration("AI_CASE_REVIEW_TIMEOUT", 5*time.Minute),
 		caseManagerBucket:           utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
+		analyticsBucket:             utils.GetEnv("ANALYTICS_BUCKET_URL", ""),
 		telemetryExporter:           utils.GetEnv("TRACING_EXPORTER", "otlp"),
 		otelSamplingRates:           utils.GetEnv("TRACING_SAMPLING_RATES", ""),
 	}
@@ -102,6 +103,15 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		BatchSize:       utils.GetEnv("OFFLOADING_BATCH_SIZE", 1000),
 		SavepointEvery:  utils.GetEnv("OFFLOADING_SAVE_POINTS", 100),
 		WritesPerSecond: utils.GetEnv("OFFLOADING_WRITES_PER_SEC", 200),
+	}
+
+	var analyticsConfig infra.AnalyticsConfig
+
+	if workerConfig.analyticsBucket != "" {
+		analyticsConfig, err = infra.InitAnalyticsConfig(pgConfig, workerConfig.analyticsBucket)
+		if err != nil {
+			return err
+		}
 	}
 
 	offloadingConfig.ValidateAndFix(ctx)
@@ -189,7 +199,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	// Start the task queue workers
 	workers := river.NewWorkers()
 	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx, appName, repositories.MarbleDbRepository,
-		repositories.ExecutorGetter, offloadingConfig)
+		repositories.ExecutorGetter, offloadingConfig, analyticsConfig)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -255,6 +265,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithMetricsCollectionConfig(metricCollectionConfig),
 		usecases.WithCaseManagerBucketUrl(workerConfig.caseManagerBucket),
 		usecases.WithAIAgentConfig(aiAgentConfig),
+		usecases.WithAnalyticsConfig(analyticsConfig),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 
@@ -283,6 +294,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 	if !metricCollectionConfig.Disabled {
 		river.AddWorker(workers, uc.NewMetricsCollectionWorker(licenseConfig))
+	}
+	if analyticsConfig.Enabled {
+		river.AddWorker(workers, adminUc.NewAnalyticsExportWorker(analyticsConfig))
 	}
 
 	if err := riverClient.Start(ctx); err != nil {

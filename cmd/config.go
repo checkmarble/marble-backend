@@ -37,6 +37,7 @@ type WorkerConfig struct {
 	env                         string
 	failedWebhooksRetryPageSize int
 	ingestionBucketUrl          string
+	analyticsBucket             string
 	loggingFormat               string
 	sentryDsn                   string
 	cloudRunProbePort           string

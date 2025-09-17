@@ -88,3 +88,9 @@ type DecisionWorkflowArgs struct {
 }
 
 func (DecisionWorkflowArgs) Kind() string { return "decision_workflow" }
+
+type AnalyticsExportArgs struct {
+	OrgId string `json:"org_id"`
+}
+
+func (AnalyticsExportArgs) Kind() string { return "analytics_export" }

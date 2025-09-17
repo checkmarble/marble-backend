@@ -46,7 +46,7 @@ type RuleCoOccurence struct {
 type ScreeningHits struct {
 	ConfigId            uuid.UUID `json:"config_id"`
 	Name                string    `json:"name"`
-	Executions          int       `json:"execs"`
+	Execs               int       `json:"execs"`
 	Hits                int       `json:"hits"`
 	HitRatio            float64   `json:"hit_ratio"`
 	AvgHitsPerScreening float64   `json:"avg_hits_per_screening"`

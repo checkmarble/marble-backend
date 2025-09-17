@@ -6,7 +6,9 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
 
@@ -19,21 +21,29 @@ const (
 )
 
 type AnalyticsConfig struct {
+	Enabled     bool
+	JobInterval time.Duration
+
 	Type             BlobType
 	Bucket           string
 	ConnectionString string
+	PgConfig         PgConfig
 }
 
-func InitAnalyticsConfig(bucket string) (AnalyticsConfig, error) {
+func InitAnalyticsConfig(pgConfig PgConfig, bucket string) (AnalyticsConfig, error) {
 	u, err := url.Parse(bucket)
 	if err != nil {
 		return AnalyticsConfig{}, err
 	}
 
 	cfg := AnalyticsConfig{
-		Bucket: bucket,
+		Enabled:     true,
+		JobInterval: utils.GetEnvDuration("ANALYTICS_JOB_INTERVAL", time.Hour),
+		Bucket:      bucket,
+		PgConfig:    pgConfig,
 	}
 
+	// TODO: add other supported blob storage plaforms (azblob)
 	switch u.Scheme {
 	case "s3":
 		if err := cfg.buildS3ConnectionString(u); err != nil {
