@@ -81,6 +81,10 @@ func (node Node) Cost() int {
 	return selfCost + childCost
 }
 
+func (node *Node) PrintForAgent() (string, error) {
+	return node.ToHumanReadable(), nil
+}
+
 // ToHumanReadable converts the AST node to a human-readable format with indentation
 // similar to mathematical/logical expressions with proper grouping
 func (node *Node) ToHumanReadable() string {
