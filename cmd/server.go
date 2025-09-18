@@ -125,7 +125,18 @@ func RunServer(config CompiledConfig) error {
 		MetricsTable:   utils.GetEnv("BIGQUERY_METRICS_TABLE", infra.MetricsTable),
 	}
 	aiAgentConfig := infra.AIAgentConfiguration{
-		PerplexityAPIKey: utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
+		MainAgentProviderType: infra.AIAgentProviderTypeFromString(
+			utils.GetEnv("AI_AGENT_MAIN_AGENT_PROVIDER_TYPE", "openai"),
+		),
+		MainAgentURL:          utils.GetEnv("AI_AGENT_MAIN_AGENT_URL", ""),
+		MainAgentKey:          utils.GetEnv("AI_AGENT_MAIN_AGENT_KEY", ""),
+		MainAgentDefaultModel: utils.GetEnv("AI_AGENT_MAIN_AGENT_DEFAULT_MODEL", "gemini-2.5-flash"),
+		MainAgentBackend: infra.AIAgentProviderBackendFromString(
+			utils.GetEnv("AI_AGENT_MAIN_AGENT_BACKEND", ""),
+		),
+		MainAgentProject:  utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", gcpConfig.ProjectId),
+		MainAgentLocation: utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
+		PerplexityAPIKey:  utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
 	}
 
 	serverConfig := struct {
