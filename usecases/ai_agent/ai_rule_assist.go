@@ -15,9 +15,7 @@ const (
 )
 
 type aiRuleDescriptionOutput struct {
-	Description string  `json:"description" jsonschema_description:"The description of the rule"`
-	Example     string  `json:"example" jsonschema_description:"The example of the rule with explanation"`
-	Advice      *string `json:"advice" jsonschema_description:"The advice to the user to improve the rule, could be empty"`
+	Description string `json:"description" jsonschema_description:"The description of the rule"`
 }
 
 func (uc *AiAgentUsecase) AiRuleDescription(
@@ -31,10 +29,6 @@ func (uc *AiAgentUsecase) AiRuleDescription(
 	// Get the scenario iteration
 	// Permissions are checked in the rule usecase
 	rule, err := uc.ruleUsecase.GetRule(ctx, ruleId)
-	if err != nil {
-		return models.AiRuleDescription{}, err
-	}
-	ruleDto, err := agent_dto.AdaptRuleDto(rule)
 	if err != nil {
 		return models.AiRuleDescription{}, err
 	}
@@ -56,7 +50,7 @@ func (uc *AiAgentUsecase) AiRuleDescription(
 	dataModelDto := agent_dto.AdaptDataModelDto(dataModel)
 
 	// Get the LLM client and prompt
-	adapter, err := uc.GetClient(ctx)
+	client, err := uc.GetClient(ctx)
 	if err != nil {
 		return models.AiRuleDescription{}, err
 	}
@@ -65,18 +59,20 @@ func (uc *AiAgentUsecase) AiRuleDescription(
 	model, ruleDescription, err := uc.preparePromptWithModel(RULE_DESCRIPTION_PROMPT_PATH, map[string]any{
 		"data_model":  dataModelDto,
 		"custom_list": customListsDto,
-		"rule":        ruleDto,
+		"rule":        rule.FormulaAstExpression,
 	})
 	if err != nil {
 		return models.AiRuleDescription{}, err
 	}
 
+	logger.DebugContext(ctx, "Rule description", "model", model)
 	logger.DebugContext(ctx, "Rule description", "prompt", ruleDescription)
 
 	aiStudioRequest, err := llmberjack.NewRequest[aiRuleDescriptionOutput]().
 		WithModel(model).
 		WithText(llmberjack.RoleUser, ruleDescription).
-		Do(ctx, adapter)
+		WithThinking(false).
+		Do(ctx, client)
 	if err != nil {
 		return models.AiRuleDescription{}, err
 	}
@@ -90,7 +86,5 @@ func (uc *AiAgentUsecase) AiRuleDescription(
 
 	return models.AiRuleDescription{
 		Description: ruleDescriptionResponse.Description,
-		Example:     ruleDescriptionResponse.Example,
-		Advice:      ruleDescriptionResponse.Advice,
 	}, nil
 }
