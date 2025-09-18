@@ -296,7 +296,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		river.AddWorker(workers, uc.NewMetricsCollectionWorker(licenseConfig))
 	}
 	if analyticsConfig.Enabled {
-		river.AddWorker(workers, adminUc.NewAnalyticsExportWorker(analyticsConfig))
+		river.AddWorker(workers, adminUc.NewAnalyticsExportWorker())
 	}
 
 	if err := riverClient.Start(ctx); err != nil {
@@ -461,6 +461,8 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "decision_workflows":
 		return uc.NewDecisionWorkflowsWorker().Work(ctx,
 			singleJobCreate[models.DecisionWorkflowArgs](ctx, jobArgs))
+	case "analytics_export":
+		return uc.NewAnalyticsExportWorker().Work(ctx, singleJobCreate[models.AnalyticsExportArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}
