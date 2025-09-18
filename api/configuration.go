@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
+	"github.com/checkmarble/marble-backend/usecases/auth"
 )
 
 type Configuration struct {
@@ -24,7 +25,10 @@ type Configuration struct {
 	AnalyticsEnabled bool
 	AnalyticsTimeout time.Duration
 
+	TokenProvider  auth.TokenProvider
 	FirebaseConfig FirebaseConfig
+	OidcConfig     infra.OidcConfig
+
 	MetabaseConfig infra.MetabaseConfiguration
 }
 

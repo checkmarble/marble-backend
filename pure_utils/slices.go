@@ -15,3 +15,23 @@ func ToAnySlice[T any](input []T) []any {
 	}
 	return output
 }
+
+func AnySliceAtIndex[T any](input any, index int) (T, bool) {
+	dflt := *new(T)
+
+	if input == nil {
+		return dflt, false
+	}
+
+	sliceOfAny, ok := input.([]any)
+	if !ok {
+		return dflt, false
+	}
+
+	item, ok := sliceOfAny[index].(T)
+	if !ok {
+		return dflt, false
+	}
+
+	return item, true
+}

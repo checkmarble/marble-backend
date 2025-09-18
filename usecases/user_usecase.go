@@ -8,7 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/repositories/firebase"
+	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
@@ -21,7 +21,7 @@ type UserUseCase struct {
 	executorFactory     executor_factory.ExecutorFactory
 	transactionFactory  executor_factory.TransactionFactory
 	userRepository      repositories.UserRepository
-	firebaseAdmin       firebase.Adminer
+	firebaseAdmin       idp.Adminer
 }
 
 func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
@@ -49,8 +49,10 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 				return models.User{}, err
 			}
 
-			if err := usecase.firebaseAdmin.CreateUser(ctx, createUser.Email, fmt.Sprintf("%s %s", createUser.FirstName, createUser.LastName)); err != nil {
-				return models.User{}, errors.Wrap(err, "could not create Firebase user")
+			if usecase.firebaseAdmin != nil {
+				if err := usecase.firebaseAdmin.CreateUser(ctx, createUser.Email, fmt.Sprintf("%s %s", createUser.FirstName, createUser.LastName)); err != nil {
+					return models.User{}, errors.Wrap(err, "could not create Firebase user")
+				}
 			}
 
 			return usecase.userRepository.UserById(ctx, tx, createdUserUuid)
