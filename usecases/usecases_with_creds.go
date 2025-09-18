@@ -644,6 +644,16 @@ func (usecases UsecasesWithCreds) NewAutoAssignmentWorker() *scheduled_execution
 	)
 }
 
+func (usecases UsecasesWithCreds) NewAnalyticsExportWorker() *scheduled_execution.AnalyticsExportWorker {
+	return scheduled_execution.NewAnalyticsExportWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewAnalyticsExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.analyticsConfig,
+	)
+}
+
 func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataReaderUsecase {
 	return NewIngestedDataReaderUsecase(
 		usecases.Repositories.IngestedDataReadRepository,

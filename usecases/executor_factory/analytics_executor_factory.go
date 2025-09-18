@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/jackc/pgx/v5"
 	"github.com/marcboeker/go-duckdb/v2"
 )
@@ -26,11 +29,14 @@ func NewAnalyticsExecutorFactory(config infra.AnalyticsConfig) AnalyticsExecutor
 }
 
 var (
-	ddbOnce sync.Once
-	db      *sql.DB
+	ddbOnce         sync.Once
+	exporterDdbOnce sync.Once
+
+	db       repositories.AnalyticsExecutor
+	exportDb repositories.AnalyticsExecutor
 )
 
-func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (*sql.DB, error) {
+func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (repositories.AnalyticsExecutor, error) {
 	var err error
 
 	ddbOnce.Do(func() {
@@ -41,10 +47,10 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (*sql.DB, err
 			return
 		}
 
-		db = sql.OpenDB(ddb)
+		db = repositories.NewDuckDbExecutor(sql.OpenDB(ddb))
 
 		switch f.config.Type {
-		case infra.BlobTypeS3:
+		case infra.BlobTypeS3, infra.BlobTypeGCS:
 			_, err = db.ExecContext(ctx, fmt.Sprintf(`create secret if not exists analytics (%s);`, f.config.ConnectionString))
 		}
 	})
@@ -56,13 +62,43 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (*sql.DB, err
 	return db, nil
 }
 
-func (f AnalyticsExecutorFactory) BuildTarget(table string, aliases ...string) string {
+func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, alias string) (repositories.AnalyticsExecutor, error) {
+	var err error
+
+	exporterDdbOnce.Do(func() {
+		exportDb, err = f.GetExecutor(ctx)
+		if err != nil {
+			return
+		}
+
+		if _, err = exportDb.ExecContext(ctx, f.buildUpstreamAttachStatement(alias)); err != nil {
+			return
+		}
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return exportDb, nil
+}
+
+func (f AnalyticsExecutorFactory) BuildTarget(table string, triggerObject *string, aliases ...string) string {
 	alias := "main"
 	if len(aliases) > 0 {
 		alias = aliases[0]
 	}
 
-	return fmt.Sprintf(`read_parquet('%s/%s/*/*/*/*/*.parquet', hive_partitioning = true, union_by_name = true) %s`, f.config.Bucket, table, pgx.Identifier.Sanitize([]string{alias}))
+	tr := "*"
+	if triggerObject != nil {
+		tr = "trigger_object_type=" + *triggerObject
+	}
+
+	return fmt.Sprintf(`read_parquet('%s/*/*/*/%s/*.parquet', hive_partitioning = true, union_by_name = true) %s`, f.BuildTablePrefix(table), tr, pgx.Identifier.Sanitize([]string{alias}))
+}
+
+func (f AnalyticsExecutorFactory) BuildTablePrefix(table string) string {
+	return fmt.Sprintf(`%s/%s`, f.config.Bucket, table)
 }
 
 func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuilder, orgId string, start, end time.Time, triggerObjectType string, aliases ...string) squirrel.SelectBuilder {
@@ -137,4 +173,32 @@ func (f AnalyticsExecutorFactory) ApplyFilters(query squirrel.SelectBuilder, sce
 	}
 
 	return query, nil
+}
+
+func (f AnalyticsExecutorFactory) buildUpstreamAttachStatement(alias string) string {
+	if f.config.PgConfig.ConnectionString != "" {
+		u, _ := url.Parse(f.config.PgConfig.ConnectionString)
+
+		f.config.PgConfig.Hostname = u.Hostname()
+		f.config.PgConfig.Port = u.Port()
+		f.config.PgConfig.Database = strings.TrimPrefix(u.Path, "/")
+		if u.User != nil {
+			f.config.PgConfig.User = u.User.Username()
+
+			if pwd, ok := u.User.Password(); ok {
+				f.config.PgConfig.Password = pwd
+			}
+		}
+	}
+
+	return fmt.Sprintf(
+		`attach or replace 'dbname=%s user=%s password=%s host=%s port=%s' as %s (type postgres, read_only)`,
+		f.config.PgConfig.Database,
+		f.config.PgConfig.User,
+		f.config.PgConfig.Password,
+		f.config.PgConfig.Hostname,
+		f.config.PgConfig.Port,
+		alias,
+	)
+
 }

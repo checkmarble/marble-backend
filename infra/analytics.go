@@ -6,35 +6,51 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
 
 type BlobType int
 
 const (
-	BlobTypeS3 BlobType = iota
+	BlobTypeGCS BlobType = iota
+	BlobTypeS3
 	BlobTypeAzure
 	BlobTypeFS
 )
 
 type AnalyticsConfig struct {
+	Enabled     bool
+	JobInterval time.Duration
+
 	Type             BlobType
 	Bucket           string
 	ConnectionString string
+	PgConfig         PgConfig
 }
 
-func InitAnalyticsConfig(bucket string) (AnalyticsConfig, error) {
+func InitAnalyticsConfig(pgConfig PgConfig, bucket string) (AnalyticsConfig, error) {
 	u, err := url.Parse(bucket)
 	if err != nil {
 		return AnalyticsConfig{}, err
 	}
 
 	cfg := AnalyticsConfig{
-		Bucket: bucket,
+		Enabled:     true,
+		JobInterval: utils.GetEnvDuration("ANALYTICS_JOB_INTERVAL", time.Hour),
+		Bucket:      bucket,
+		PgConfig:    pgConfig,
 	}
 
+	// TODO: add other supported blob storage plaforms (azblob)
 	switch u.Scheme {
+	case "gs":
+		cfg.Type = BlobTypeGCS
+		cfg.Bucket = u.String()
+		cfg.ConnectionString = fmt.Sprintf("type gcs, key_id '%s', secret '%s'", os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"))
+
 	case "s3":
 		if err := cfg.buildS3ConnectionString(u); err != nil {
 			return AnalyticsConfig{}, err

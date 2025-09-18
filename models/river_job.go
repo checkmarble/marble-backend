@@ -81,3 +81,9 @@ type AutoAssignmentArgs struct {
 }
 
 func (AutoAssignmentArgs) Kind() string { return "auto_assignment" }
+
+type AnalyticsExportArgs struct {
+	OrgId string `json:"org_id"`
+}
+
+func (AnalyticsExportArgs) Kind() string { return "analytics_export" }

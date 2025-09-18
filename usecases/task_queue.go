@@ -158,8 +158,10 @@ func (w *TaskQueueWorker) removeQueuesFromMissingOrgs(ctx context.Context,
 	return nil
 }
 
-func QueuesFromOrgs(ctx context.Context, appName string, orgsRepo repositories.OrganizationRepository,
-	execGetter repositories.ExecutorGetter, offloadingConfig infra.OffloadingConfig,
+func QueuesFromOrgs(ctx context.Context, appName string,
+	orgsRepo repositories.OrganizationRepository,
+	execGetter repositories.ExecutorGetter,
+	offloadingConfig infra.OffloadingConfig, analyticsConfig infra.AnalyticsConfig,
 ) (queues map[string]river.QueueConfig, periodics []*river.PeriodicJob, err error) {
 	exec_fac := executor_factory.NewDbExecutorFactory(appName, orgsRepo, execGetter)
 	orgs, err := orgsRepo.AllOrganizations(ctx, exec_fac.NewExecutor())
@@ -183,6 +185,9 @@ func QueuesFromOrgs(ctx context.Context, appName string, orgsRepo repositories.O
 			if onlyOffloadOrg := os.Getenv("OFFLOADING_ONLY_ORG"); onlyOffloadOrg == "" || onlyOffloadOrg == org.Id {
 				periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(org.Id, offloadingConfig.JobInterval))
 			}
+		}
+		if analyticsConfig.Enabled {
+			periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(org.Id, analyticsConfig.JobInterval))
 		}
 
 		queues[org.Id] = river.QueueConfig{

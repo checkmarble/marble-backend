@@ -229,7 +229,7 @@ func RunServer(config CompiledConfig) error {
 	var analyticsConfig infra.AnalyticsConfig
 
 	if serverConfig.analyticsBucketUrl != "" {
-		analyticsConfig, err = infra.InitAnalyticsConfig(serverConfig.analyticsBucketUrl)
+		analyticsConfig, err = infra.InitAnalyticsConfig(pgConfig, serverConfig.analyticsBucketUrl)
 		if err != nil {
 			return err
 		}

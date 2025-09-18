@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
@@ -11,7 +10,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
@@ -26,15 +24,13 @@ type AnalyticsQueryUsecase struct {
 }
 
 func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.DecisionOutcomePerDay, error) {
-	psql := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
-
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
 	}
 
-	subquery := psql.Select("time_bucket('1 day', created_at) as date, outcome, count() as decisions").
-		From(uc.analyticsFactory.BuildTarget("manual/decisions")). // TODO: change table path
+	subquery := squirrel.Select("time_bucket('1 day', created_at) as date, outcome, count() as decisions").
+		From(uc.analyticsFactory.BuildTarget("decisions", &scenario.TriggerObjectType)).
 		Where("created_at between ? and ?", filters.Start, filters.End).
 		GroupBy("date", "outcome")
 
@@ -54,7 +50,7 @@ func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filte
 		using coalesce(sum(decisions), 0)
 		order by date`, sql)
 
-	return utils.RawScanStruct[models.DecisionOutcomePerDay](ctx, exec, query, args...)
+	return repositories.AnalyticsRawScanStruct[models.DecisionOutcomePerDay](ctx, exec, query, args...)
 }
 
 func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.DecisionsScoreDistribution, error) {
@@ -68,7 +64,7 @@ func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, 
 	}
 
 	query := squirrel.Select("score, count() as decisions").
-		From(uc.analyticsFactory.BuildTarget("manual/decisions")). // TODO: change table path
+		From(uc.analyticsFactory.BuildTarget("decisions", &scenario.TriggerObjectType)).
 		Where("created_at between ? and ?", filters.Start, filters.End).
 		GroupBy("score").
 		OrderBy("score")
@@ -78,7 +74,7 @@ func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, 
 		return nil, err
 	}
 
-	return utils.ScanStruct[models.DecisionsScoreDistribution](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[models.DecisionsScoreDistribution](ctx, exec, query)
 }
 
 func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.RuleHitTable, error) {
@@ -95,8 +91,9 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 			"count(distinct pivot_value) as pivot_count",
 			"(count(distinct pivot_value) / count()) * 100 as pivot_ratio",
 		).
-		From(uc.analyticsFactory.BuildTarget("manual/decision_rules")). // TODO: change table path
+		From(uc.analyticsFactory.BuildTarget("decision_rules", &scenario.TriggerObjectType)).
 		Where("created_at between ? and ?", filters.Start, filters.End).
+		Where("rule_name is not null").
 		GroupBy("rule_id", "rule_name")
 
 	query, err = uc.analyticsFactory.ApplyFilters(query, scenario, filters)
@@ -104,7 +101,7 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 		return nil, err
 	}
 
-	return utils.ScanStruct[models.RuleHitTable](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[models.RuleHitTable](ctx, exec, query)
 }
 
 func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.RuleVsDecisionOutcome, error) {
@@ -119,10 +116,10 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filte
 			"d.outcome",
 			"count() as decisions",
 		).
-		From(uc.analyticsFactory.BuildTarget("manual/decision_rules", "dr")). // TODO: change table path
-		InnerJoin(uc.analyticsFactory.BuildTarget("manual/decisions", "d")+" on d.decision_id = dr.decision_id").
+		From(uc.analyticsFactory.BuildTarget("decision_rules", &scenario.TriggerObjectType, "dr")).
+		InnerJoin(uc.analyticsFactory.BuildTarget("decisions", &scenario.TriggerObjectType, "d")+" on d.id = dr.decision_id").
 		Where("d.created_at between ? and ?", filters.Start, filters.End).
-		Where("dr.outcome = 'hit'").
+		Where("rule_name is not null and dr.outcome = 'hit'").
 		GroupBy("rule_id", "rule_name", "d.outcome")
 
 	query, err = uc.analyticsFactory.ApplyFilters(query, scenario, filters, "dr")
@@ -130,7 +127,7 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filte
 		return nil, err
 	}
 
-	return utils.ScanStruct[models.RuleVsDecisionOutcome](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[models.RuleVsDecisionOutcome](ctx, exec, query)
 }
 
 func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.RuleCoOccurence, error) {
@@ -147,8 +144,8 @@ func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filte
 			"any_value(t2.rule_name) as rule_y_name",
 			"count() as decisions",
 		).
-		From(uc.analyticsFactory.BuildTarget("manual/decision_rules", "t1")). // TODO: change table path
-		Join(uc.analyticsFactory.BuildTarget("manual/decision_rules", "t2")+" on t1.decision_id = t2.decision_id").
+		From(uc.analyticsFactory.BuildTarget("decision_rules", &scenario.TriggerObjectType, "t1")).
+		Join(uc.analyticsFactory.BuildTarget("decision_rules", &scenario.TriggerObjectType, "t2")+" on t1.decision_id = t2.decision_id").
 		Where("t1.created_at between ? and ?", filters.Start, filters.End).
 		Where("t1.rule_id >= t2.rule_id").
 		Where("t1.outcome = 'hit' and t2.outcome = 'hit'").
@@ -164,7 +161,7 @@ func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filte
 		return nil, err
 	}
 
-	return utils.ScanStruct[models.RuleCoOccurence](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[models.RuleCoOccurence](ctx, exec, query)
 }
 
 func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.ScreeningHits, error) {
@@ -182,7 +179,7 @@ func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.A
 			"(hits / execs) * 100 as hit_ratio",
 			"avg(matches) filter (matches > 0) as avg_hits",
 		).
-		From(uc.analyticsFactory.BuildTarget("manual/sanction_checks")). // TODO: change table path
+		From(uc.analyticsFactory.BuildTarget("screenings", &scenario.TriggerObjectType)).
 		Where("created_at between ? and ?", filters.Start, filters.End).
 		GroupBy("screening_config_id")
 
@@ -191,10 +188,10 @@ func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.A
 		return nil, err
 	}
 
-	return utils.ScanStruct[models.ScreeningHits](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[models.ScreeningHits](ctx, exec, query)
 }
 
-func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid.UUID) (models.Scenario, *sql.DB, error) {
+func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid.UUID) (models.Scenario, repositories.AnalyticsExecutor, error) {
 	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, uc.executorFactory.NewExecutor(), scenarioId.String())
 	if err != nil {
 		return models.Scenario{}, nil, err
