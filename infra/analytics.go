@@ -15,7 +15,8 @@ import (
 type BlobType int
 
 const (
-	BlobTypeS3 BlobType = iota
+	BlobTypeGCS BlobType = iota
+	BlobTypeS3
 	BlobTypeAzure
 	BlobTypeFS
 )
@@ -45,6 +46,11 @@ func InitAnalyticsConfig(pgConfig PgConfig, bucket string) (AnalyticsConfig, err
 
 	// TODO: add other supported blob storage plaforms (azblob)
 	switch u.Scheme {
+	case "gs":
+		cfg.Type = BlobTypeGCS
+		cfg.Bucket = u.String()
+		cfg.ConnectionString = fmt.Sprintf("type gcs, key_id '%s', secret '%s'", os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"))
+
 	case "s3":
 		if err := cfg.buildS3ConnectionString(u); err != nil {
 			return AnalyticsConfig{}, err

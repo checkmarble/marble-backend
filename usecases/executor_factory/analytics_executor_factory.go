@@ -50,7 +50,7 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (repositories
 		db = repositories.NewDuckDbExecutor(sql.OpenDB(ddb))
 
 		switch f.config.Type {
-		case infra.BlobTypeS3:
+		case infra.BlobTypeS3, infra.BlobTypeGCS:
 			_, err = db.ExecContext(ctx, fmt.Sprintf(`create secret if not exists analytics (%s);`, f.config.ConnectionString))
 		}
 	})
