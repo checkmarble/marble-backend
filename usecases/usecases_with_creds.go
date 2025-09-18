@@ -3,7 +3,6 @@ package usecases
 import (
 	"time"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
@@ -645,13 +644,13 @@ func (usecases UsecasesWithCreds) NewAutoAssignmentWorker() *scheduled_execution
 	)
 }
 
-func (usecases UsecasesWithCreds) NewAnalyticsExportWorker(config infra.AnalyticsConfig) *scheduled_execution.AnalyticsExportWorker {
+func (usecases UsecasesWithCreds) NewAnalyticsExportWorker() *scheduled_execution.AnalyticsExportWorker {
 	return scheduled_execution.NewAnalyticsExportWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.NewAnalyticsExecutorFactory(),
 		usecases.Repositories.MarbleDbRepository,
-		config,
+		usecases.analyticsConfig,
 	)
 }
 
