@@ -24,14 +24,12 @@ type AnalyticsQueryUsecase struct {
 }
 
 func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.DecisionOutcomePerDay, error) {
-	psql := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
-
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
 	}
 
-	subquery := psql.Select("time_bucket('1 day', created_at) as date, outcome, count() as decisions").
+	subquery := squirrel.Select("time_bucket('1 day', created_at) as date, outcome, count() as decisions").
 		From(uc.analyticsFactory.BuildTarget("decisions", &scenario.TriggerObjectType)).
 		Where("created_at between ? and ?", filters.Start, filters.End).
 		GroupBy("date", "outcome")

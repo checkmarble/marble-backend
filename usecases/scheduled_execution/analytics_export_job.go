@@ -136,11 +136,11 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 
 			return w.exportScreenings(ctx, job, dbExec, exec, req)
 		})
-	}
 
-	if err := wg.Wait(); err != nil {
-		logger.ErrorContext(ctx, "failed to export analytics data", "error", err.Error())
-		return errors.Wrap(err, "failed to export data")
+		if err := wg.Wait(); err != nil {
+			logger.ErrorContext(ctx, "failed to export analytics data", "error", err.Error())
+			return errors.Wrap(err, "failed to export data")
+		}
 	}
 
 	return nil
