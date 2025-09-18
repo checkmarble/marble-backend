@@ -50,7 +50,7 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (repositories
 		db = repositories.NewDuckDbExecutor(sql.OpenDB(ddb))
 
 		switch f.config.Type {
-		case infra.BlobTypeS3:
+		case infra.BlobTypeS3, infra.BlobTypeGCS:
 			_, err = db.ExecContext(ctx, fmt.Sprintf(`create secret if not exists analytics (%s);`, f.config.ConnectionString))
 		}
 	})
@@ -72,6 +72,9 @@ func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, ali
 		}
 
 		if _, err = exportDb.ExecContext(ctx, f.buildUpstreamAttachStatement(alias)); err != nil {
+			return
+		}
+		if _, err = exportDb.ExecContext(ctx, fmt.Sprintf(`set threads to 1; call postgres_execute('%[1]s', 'set enable_seqscan = 0'); call postgres_execute('%[1]s', 'set enable_indexscan = 0');`, alias)); err != nil {
 			return
 		}
 	})
