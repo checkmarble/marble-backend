@@ -7,8 +7,6 @@ import (
 
 type Rule struct {
 	Id                   string      `json:"id"`
-	Name                 string      `json:"name"`
-	Description          string      `json:"description"`
 	ScoreModifier        int         `json:"score_modifier"`
 	FormulaAstExpression dto.NodeDto `json:"formula_ast_expression"`
 }
@@ -24,8 +22,6 @@ func AdaptRuleDto(rule models.Rule) (Rule, error) {
 	}
 	return Rule{
 		Id:                   rule.Id,
-		Name:                 rule.Name,
-		Description:          rule.Description,
 		ScoreModifier:        rule.ScoreModifier,
 		FormulaAstExpression: formulaAstExpression,
 	}, nil

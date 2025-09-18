@@ -53,6 +53,4 @@ type UpdateRuleInput struct {
 
 type AiRuleDescription struct {
 	Description string
-	Example     string
-	Advice      *string
 }
