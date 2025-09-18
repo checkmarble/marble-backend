@@ -42,7 +42,9 @@ type ConfigUrlsDto struct {
 }
 
 type ConfigAuthDto struct {
+	Provider string                `json:"provider"`
 	Firebase ConfigAuthFirebaseDto `json:"firebase"`
+	Oidc     *ConfigAuthOidcDto    `json:"oidc,omitempty"`
 }
 
 type ConfigAuthFirebaseDto struct {
@@ -51,6 +53,14 @@ type ConfigAuthFirebaseDto struct {
 	ProjectId    NullString `json:"project_id"`
 	ApiKey       NullString `json:"api_key"`
 	AuthDomain   NullString `json:"auth_domain"`
+}
+
+type ConfigAuthOidcDto struct {
+	Issuer      string            `json:"issuer"`
+	ClientId    string            `json:"client_id"`
+	RedirectUri string            `json:"redirect_uri"`
+	Scopes      []string          `json:"scopes"`
+	ExtraParams map[string]string `json:"extra_params"`
 }
 
 type ConfigFeaturesDto struct {

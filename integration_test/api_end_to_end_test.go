@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/gavv/httpexpect/v2"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func TestApiEndToEnd(t *testing.T) {
@@ -29,9 +31,15 @@ func TestApiEndToEnd(t *testing.T) {
 	ingestAndCreateDecision(authApiKey, scenarioId)
 }
 
+func firebaseDummyToken(email string) string {
+	token, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"email": email, "iss": infra.MockFirebaseIssuer}).SignedString([]byte("key"))
+
+	return token
+}
+
 func setupOrgAndUser(e *httpexpect.Expect) (authOrgAdmin *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
 	adminToken := e.POST("/token").
-		WithHeader("Authorization", fmt.Sprintf("Bearer %s", marbleAdminEmail)).
+		WithHeader("Authorization", fmt.Sprintf("Bearer %s", firebaseDummyToken(marbleAdminEmail))).
 		Expect().Status(http.StatusOK).
 		JSON().
 		Object().ContainsKey("access_token").
@@ -79,7 +87,7 @@ func setupOrgAndUser(e *httpexpect.Expect) (authOrgAdmin *httpexpect.Expect, aut
 
 	// Build an authenticated client as the org's admin user
 	orgAdminToken := e.POST("/token").
-		WithHeader("Authorization", fmt.Sprintf("Bearer %s", orgAdminEmail)).
+		WithHeader("Authorization", fmt.Sprintf("Bearer %s", firebaseDummyToken(orgAdminEmail))).
 		Expect().Status(http.StatusOK).
 		JSON().
 		Object().ContainsKey("access_token").
@@ -100,7 +108,7 @@ func setupOrgAndUser(e *httpexpect.Expect) (authOrgAdmin *httpexpect.Expect, aut
 		WithJSON(map[string]any{"email": viewerEmail, "organization_id": orgId, "role": "VIEWER"}).
 		Expect().Status(http.StatusOK)
 	orgViewerToken := e.POST("/token").
-		WithHeader("Authorization", fmt.Sprintf("Bearer %s", viewerEmail)).
+		WithHeader("Authorization", fmt.Sprintf("Bearer %s", firebaseDummyToken(viewerEmail))).
 		Expect().Status(http.StatusOK).
 		JSON().
 		Object().ContainsKey("access_token").

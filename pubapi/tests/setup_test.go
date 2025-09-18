@@ -22,6 +22,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/go-testfixtures/testfixtures/v3"
@@ -124,7 +125,7 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}
 
-	cfg := api.Configuration{Env: "development", MarbleAppUrl: "http://x", DefaultTimeout: 5 * time.Second}
+	cfg := api.Configuration{Env: "development", MarbleAppUrl: "http://x", DefaultTimeout: 5 * time.Second, TokenProvider: auth.TokenProviderFirebase}
 	key, err := rsa.GenerateKey(rand.Reader, 128)
 	if err != nil {
 		t.Fatal(err)
@@ -135,7 +136,7 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 		t.Fatal(err)
 	}
 
-	deps := api.InitDependencies(ctx, cfg, pool, key, nil, nil, nil)
+	deps, _ := api.InitDependencies(ctx, cfg, pool, key, nil, nil, nil)
 	openSanctions := infra.InitializeOpenSanctions(http.DefaultClient, "http://screening", " ", " ")
 	repos := repositories.NewRepositories(pool, infra.GcpConfig{},
 		repositories.WithOpenSanctions(openSanctions),

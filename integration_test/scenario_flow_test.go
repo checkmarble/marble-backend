@@ -16,6 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/utils"
@@ -86,11 +87,17 @@ func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases
 		assert.FailNow(t, "Could not create api key", err)
 	}
 
-	_, _, creds, err := tokenGenerator.FromAPIKey(ctx, apiKey.Key)
+	in := auth.Credentials{Type: auth.CredentialsApiKey, Value: apiKey.Key}
+
+	claims, err := apiKeyVerifier.Verify(ctx, in)
 	if err != nil {
 		assert.FailNow(t, "Could not generate creds from api key", err)
 	}
-	return creds
+	creds, err := tokenGenerator.GenerateToken(ctx, in, claims)
+	if err != nil {
+		assert.FailNow(t, "Could not generate creds from api key", err)
+	}
+	return creds.Credentials
 }
 
 func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models.Credentials, models.DataModel, uuid.UUID) {

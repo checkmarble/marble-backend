@@ -12,8 +12,8 @@ type JWTEncoderValidator struct {
 	mock.Mock
 }
 
-func (m *JWTEncoderValidator) EncodeMarbleToken(expirationTime time.Time, creds models.Credentials) (string, error) {
-	args := m.Called(expirationTime, creds)
+func (m *JWTEncoderValidator) EncodeMarbleToken(issuer string, expirationTime time.Time, creds models.Credentials) (string, error) {
+	args := m.Called(issuer, expirationTime, creds)
 	return args.String(0), args.Error(1)
 }
 

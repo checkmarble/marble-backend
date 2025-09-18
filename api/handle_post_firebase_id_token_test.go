@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -18,9 +20,9 @@ type mockGenerator struct {
 	mock.Mock
 }
 
-func (m *mockGenerator) GenerateToken(ctx context.Context, key string, firebaseToken string) (models.Credentials, string, time.Time, error) {
-	args := m.Called(ctx, key, firebaseToken)
-	return models.Credentials{}, args.String(0), args.Get(1).(time.Time), args.Error(2)
+func (m *mockGenerator) GenerateToken(ctx context.Context, creds auth.Credentials, claims models.IdentityClaims) (auth.Token, error) {
+	args := m.Called(ctx, creds, claims)
+	return args.Get(0).(auth.Token), args.Error(1)
 }
 
 func TestToken_GenerateToken(t *testing.T) {
@@ -32,12 +34,14 @@ func TestToken_GenerateToken(t *testing.T) {
 		}
 
 		mGenerator := new(mockGenerator)
-		mGenerator.On("GenerateToken", mock.Anything, "", "token").
-			Return(tok.AccessToken, tok.ExpiresAt, nil)
+		mGenerator.On("GenerateToken", mock.Anything, auth.Credentials{Value: "token"}, mock.Anything).
+			Return(auth.Token{Value: tok.AccessToken, Expiration: tok.ExpiresAt}, nil)
 
-		tokenHandler := TokenHandler{
-			generator: mGenerator,
-		}
+		tokenHandler := NewTokenHandler(auth.NewTokenHandler(
+			auth.DefaultExtractor(),
+			mocks.NewStaticTokenVerifier("token", nil),
+			mGenerator,
+		))
 
 		gin.SetMode(gin.TestMode)
 		router := gin.New()
@@ -57,12 +61,14 @@ func TestToken_GenerateToken(t *testing.T) {
 
 	t.Run("GenerateToken error", func(t *testing.T) {
 		mGenerator := new(mockGenerator)
-		mGenerator.On("GenerateToken", mock.Anything, "", "token").
-			Return("", time.Time{}, assert.AnError)
+		mGenerator.On("GenerateToken", mock.Anything, auth.Credentials{Value: "token"}, mock.Anything).
+			Return(auth.Token{}, assert.AnError)
 
-		tokenHandler := TokenHandler{
-			generator: mGenerator,
-		}
+		tokenHandler := NewTokenHandler(auth.NewTokenHandler(
+			auth.DefaultExtractor(),
+			mocks.NewStaticTokenVerifier("token", nil),
+			mGenerator,
+		))
 
 		gin.SetMode(gin.TestMode)
 		router := gin.New()
@@ -79,7 +85,11 @@ func TestToken_GenerateToken(t *testing.T) {
 	})
 
 	t.Run("bad token", func(t *testing.T) {
-		tokenHandler := TokenHandler{}
+		tokenHandler := NewTokenHandler(auth.NewTokenHandler(
+			auth.DefaultExtractor(),
+			mocks.NewStaticTokenVerifier("token", nil),
+			nil,
+		))
 
 		gin.SetMode(gin.TestMode)
 		router := gin.New()
@@ -91,6 +101,6 @@ func TestToken_GenerateToken(t *testing.T) {
 		r := httptest.NewRecorder()
 		router.ServeHTTP(r, req)
 
-		assert.Equal(t, http.StatusBadRequest, r.Code)
+		assert.Equal(t, http.StatusUnauthorized, r.Code)
 	})
 }

@@ -1,10 +1,12 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/gin-gonic/gin"
 )
 
@@ -30,6 +32,18 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 			return
 		}
 
+		var oidcConfig *dto.ConfigAuthOidcDto
+
+		if cfg.TokenProvider == auth.TokenProviderOidc {
+			oidcConfig = &dto.ConfigAuthOidcDto{
+				Issuer:      cfg.OidcConfig.Issuer,
+				ClientId:    cfg.OidcConfig.ClientId,
+				RedirectUri: fmt.Sprintf("%s/oidc/callback", cfg.MarbleAppUrl),
+				Scopes:      cfg.OidcConfig.Scopes,
+				ExtraParams: cfg.OidcConfig.ExtraParams,
+			}
+		}
+
 		out := dto.ConfigDto{
 			Version:         versionUsecase.ApiVersion,
 			IsManagedMarble: licenseUsecase.IsManagedMarble(),
@@ -44,6 +58,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 				Metabase:  dto.NewNullString(cfg.MetabaseConfig.SiteUrl),
 			},
 			Auth: dto.ConfigAuthDto{
+				Provider: cfg.TokenProvider.String(),
 				Firebase: dto.ConfigAuthFirebaseDto{
 					IsEmulator:   cfg.FirebaseConfig.EmulatorHost != "",
 					EmulatorHost: cfg.FirebaseConfig.EmulatorHost,
@@ -51,6 +66,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 					ApiKey:       dto.NewNullString(cfg.FirebaseConfig.ApiKey),
 					AuthDomain:   dto.NewNullString(cfg.FirebaseConfig.AuthDomain),
 				},
+				Oidc: oidcConfig,
 			},
 			Features: dto.ConfigFeaturesDto{
 				Sso:     licenseUsecase.HasSsoEnabled(),

@@ -13,23 +13,27 @@ import (
 )
 
 type MarbleJwtRepository struct {
+	issuer               string
 	jwtSigningPrivateKey rsa.PrivateKey
 }
 
 // We add jwt.RegisteredClaims as an embedded type, to provide fields like expiry time
 type Claims struct {
-	Credentials dto.Credentials `json:"credentials"`
 	jwt.RegisteredClaims
+
+	Issuer      string          `json:"issuer"`
+	Credentials dto.Credentials `json:"credentials"`
 }
 
 var ValidationAlgo = jwt.SigningMethodRS256
 
-func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, creds models.Credentials) (string, error) {
+func (repo *MarbleJwtRepository) EncodeMarbleToken(issuer string, expirationTime time.Time, creds models.Credentials) (string, error) {
 	credDto, err := dto.AdaptCredentialDto(creds)
 	if err != nil {
 		return "", err
 	}
 	claims := &Claims{
+		Issuer:      issuer,
 		Credentials: credDto,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
@@ -59,14 +63,20 @@ func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (models
 		)
 	}
 
-	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+	claims, ok := token.Claims.(*Claims)
+	if claims.Issuer != repo.issuer {
+		return models.Credentials{}, errors.Newf("invalid token issuer '%s'", claims.Issuer)
+	}
+
+	if ok && token.Valid {
 		return dto.AdaptCredential(claims.Credentials), nil
 	}
 	return models.Credentials{}, fmt.Errorf("invalid Marble Jwt Token")
 }
 
-func NewJWTRepository(key *rsa.PrivateKey) *MarbleJwtRepository {
+func NewJWTRepository(issuer string, key *rsa.PrivateKey) *MarbleJwtRepository {
 	return &MarbleJwtRepository{
+		issuer:               issuer,
 		jwtSigningPrivateKey: *key,
 	}
 }
