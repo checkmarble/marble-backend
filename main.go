@@ -26,6 +26,7 @@ func main() {
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
 	shouldRunWorker := flag.Bool("worker", false, "Run workers on the task queues")
+	shouldRunAnalyticsServer := flag.Bool("analytics", false, "Run analytics server")
 
 	// DEVELOPMENT-ONLY: those flags are used to help debugging and cannot be used in production
 	var (
@@ -49,6 +50,7 @@ func main() {
 		slog.Bool("shouldRunMigrations", *shouldRunMigrations),
 		slog.Bool("shouldRunServer", *shouldRunServer),
 		slog.Bool("shouldRunWorker", *shouldRunWorker),
+		slog.Bool("shouldRunAnalyticsServer", *shouldRunAnalyticsServer),
 	)
 
 	if *shouldRunMigrations {

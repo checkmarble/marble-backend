@@ -21,6 +21,9 @@ type Configuration struct {
 	DecisionTimeout     time.Duration
 	DefaultTimeout      time.Duration
 
+	AnalyticsEnabled bool
+	AnalyticsTimeout time.Duration
+
 	FirebaseConfig FirebaseConfig
 	MetabaseConfig infra.MetabaseConfiguration
 }

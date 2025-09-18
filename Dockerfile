@@ -1,16 +1,19 @@
-FROM golang:1.24 AS build
+# FROM golang:1.24-alpine3.22 AS build
+FROM golang:1.24-bookworm AS build
 
 ARG MARBLE_VERSION=dev
 ARG SEGMENT_WRITE_KEY=
 
 WORKDIR /go/src/app
+
+COPY go.mod go.sum /go/src/app/
+RUN go mod download -x
+
 COPY . .
 
-RUN go get
+RUN CGO_ENABLED=1 go build -o /go/bin/app -trimpath -ldflags='-extldflags=-s -w -X main.apiVersion="${MARBLE_VERSION}" -X main.segmentWriteKey="${SEGMENT_WRITE_KEY}"'
 
-RUN CGO_ENABLED=0 go build -o /go/bin/app -ldflags="-X 'main.apiVersion=${MARBLE_VERSION}' -X 'main.segmentWriteKey=${SEGMENT_WRITE_KEY}'"
-
-FROM alpine:3.19
+FROM gcr.io/distroless/cc:latest
 
 COPY --from=build /go/bin/app /
 COPY --from=build /usr/local/go/lib/time/zoneinfo.zip /
