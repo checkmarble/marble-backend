@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
@@ -27,6 +28,18 @@ func RunServer(config CompiledConfig) error {
 	appName := fmt.Sprintf("marble-backend %s", config.Version)
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
+
+	authProvider := auth.ParseTokenProvider(utils.GetEnv("AUTH_PROVIDER", "firebase"))
+	oidcProvider := infra.OidcConfig{}
+
+	if authProvider == auth.TokenProviderOidc {
+		oidc, err := infra.InitializeOidc(ctx)
+		if err != nil {
+			return err
+		}
+
+		oidcProvider = oidc
+	}
 
 	// This is where we read the environment variables and set up the configuration for the application.
 	apiConfig := api.Configuration{
@@ -53,12 +66,15 @@ func RunServer(config CompiledConfig) error {
 				models.GlobalDashboard: utils.GetEnv("METABASE_GLOBAL_DASHBOARD_ID", 0),
 			},
 		},
+
+		TokenProvider: authProvider,
 		FirebaseConfig: api.FirebaseConfig{
 			ProjectId:    utils.GetEnv("FIREBASE_PROJECT_ID", ""),
 			EmulatorHost: utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
 			ApiKey:       utils.GetRequiredEnv[string]("FIREBASE_API_KEY"),
 			AuthDomain:   utils.GetEnv("FIREBASE_AUTH_DOMAIN", ""),
 		},
+		OidcConfig: oidcProvider,
 	}
 	if apiConfig.DisableSegment {
 		apiConfig.SegmentWriteKey = ""
@@ -258,7 +274,11 @@ func RunServer(config CompiledConfig) error {
 		repositories.WithSimilarityThreshold(serverConfig.similarityThreshold),
 	)
 
-	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
+	deps, err := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
+	if err != nil {
+		return err
+	}
+
 	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -278,7 +298,7 @@ func RunServer(config CompiledConfig) error {
 		usecases.WithMetabase(apiConfig.MetabaseConfig.SiteUrl),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
-		usecases.WithFirebaseAdmin(deps.FirebaseAdmin),
+		usecases.WithFirebaseAdmin(apiConfig.TokenProvider, deps.FirebaseAdmin),
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
 	)

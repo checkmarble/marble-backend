@@ -8,17 +8,14 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
 
-type tokenGenerator interface {
-	GenerateToken(ctx context.Context, key string, firebaseToken string) (models.Credentials, string, time.Time, error)
-}
-
 type TokenHandler struct {
-	generator tokenGenerator
+	handler auth.TokenHandler
 }
 
 type accessToken struct {
@@ -29,15 +26,8 @@ type accessToken struct {
 
 func (t *TokenHandler) GenerateToken(c *gin.Context) {
 	ctx := c.Request.Context()
-	key := utils.ParseApiKeyHeader(c.Request.Header)
-	bearerToken, err := ParseAuthorizationBearerHeader(c.Request.Header)
-	if err != nil {
-		_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
+	token, err := t.handler.GetToken(ctx, c.Request)
 
-	creds, marbleToken, expirationTime, err := t.generator.GenerateToken(ctx, key, bearerToken)
 	if err != nil {
 		utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not verify firebase token", "error", err)
 
@@ -57,19 +47,19 @@ func (t *TokenHandler) GenerateToken(c *gin.Context) {
 		return
 	}
 
-	newContext := context.WithValue(ctx, utils.ContextKeyCredentials, creds)
+	newContext := context.WithValue(ctx, utils.ContextKeyCredentials, token.Credentials)
 
 	c.Request = c.Request.WithContext(newContext)
 
 	c.JSON(http.StatusOK, accessToken{
-		AccessToken: marbleToken,
+		AccessToken: token.Value,
 		TokenType:   "Bearer",
-		ExpiresAt:   expirationTime,
+		ExpiresAt:   token.Expiration,
 	})
 }
 
-func NewTokenHandler(generator tokenGenerator) TokenHandler {
+func NewTokenHandler(handler auth.TokenHandler) TokenHandler {
 	return TokenHandler{
-		generator: generator,
+		handler: handler,
 	}
 }

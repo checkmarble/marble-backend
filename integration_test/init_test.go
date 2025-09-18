@@ -24,10 +24,11 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/repositories/firebase"
+	"github.com/checkmarble/marble-backend/repositories/clock"
+	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/usecases/token"
+	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -41,7 +42,8 @@ const (
 
 var (
 	testUsecases   usecases.Usecases
-	tokenGenerator *token.Generator
+	apiKeyVerifier auth.Verifier
+	tokenGenerator auth.TokenGenerator
 	riverClient    *river.Client[pgx.Tx]
 
 	testServer *httptest.Server
@@ -159,7 +161,7 @@ func TestMain(m *testing.M) {
 		usecases.WithLicense(models.NewFullLicense()),
 		usecases.WithIngestionBucketUrl("file://./tempFiles?create_dir=true"),
 		usecases.WithCaseManagerBucketUrl("file://./tempFiles?create_dir=true"),
-		usecases.WithFirebaseAdmin(firebaseAdminClient),
+		usecases.WithFirebaseAdmin(auth.TokenProviderFirebase, firebaseAdminClient),
 	)
 
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases)
@@ -179,18 +181,22 @@ func TestMain(m *testing.M) {
 		AppName:             "marble-backend",
 		MarbleAppUrl:        "http://localhost:3000",
 		RequestLoggingLevel: "all",
+		TokenProvider:       auth.TokenProviderFirebase,
 		TokenLifetimeMinute: 60,
 		DisableSegment:      true,
 		SegmentWriteKey:     "",
 		BatchTimeout:        55 * time.Second,
 		DecisionTimeout:     10 * time.Second,
 		DefaultTimeout:      5 * time.Second,
+		FirebaseConfig: api.FirebaseConfig{
+			ProjectId: "project",
+		},
 	}
 
 	tokenVerifier := infra.NewMockedFirebaseTokenVerifier()
-	firebaseClient := firebase.New(tokenVerifier)
+	firebaseClient := idp.NewFirebaseClient("project", tokenVerifier)
 
-	deps := api.InitDependencies(ctx, apiConfig, dbPool, privateKey, tokenVerifier)
+	deps, _ := api.InitDependencies(ctx, apiConfig, dbPool, privateKey, tokenVerifier)
 
 	telemetryRessources, _ := infra.InitTelemetry(infra.TelemetryConfiguration{Enabled: false}, "")
 	router := api.InitRouterMiddlewares(ctx, apiConfig, apiConfig.DisableSegment,
@@ -198,12 +204,14 @@ func TestMain(m *testing.M) {
 	server := api.NewServer(router, apiConfig, testUsecases,
 		deps.Authentication, deps.TokenHandler, logger, api.WithLocalTest(true))
 
-	jwtRepository := repositories.NewJWTRepository(privateKey)
+	jwtRepository := repositories.NewJWTRepository(infra.MockFirebaseIssuer, privateKey)
 	database := postgres.New(dbPool)
 	if err != nil {
 		panic(err)
 	}
-	tokenGenerator = token.NewGenerator(database, jwtRepository, firebaseClient, 10)
+
+	apiKeyVerifier = auth.NewVerifier(auth.TokenProviderFirebase, firebaseClient)
+	tokenGenerator = auth.NewGenerator(database, jwtRepository, time.Minute, clock.New())
 
 	// we need to create a first marble admin user, otherwise we can't use the API (chicken and egg)
 	seedUsecase := testUsecases.NewSeedUseCase()

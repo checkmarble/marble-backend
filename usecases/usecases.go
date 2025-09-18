@@ -5,9 +5,10 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/repositories/firebase"
+	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
+	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
 	"github.com/checkmarble/marble-backend/usecases/organization"
@@ -35,7 +36,7 @@ type Usecases struct {
 	hasNameRecognizerSetup      bool
 	license                     models.LicenseValidation
 	metricsCollectionConfig     infra.MetricCollectionConfig
-	firebaseAdmin               firebase.Adminer
+	firebaseAdmin               idp.Adminer
 	aiAgentConfig               infra.AIAgentConfiguration
 	analyticsConfig             infra.AnalyticsConfig
 }
@@ -128,9 +129,11 @@ func WithNameRecognition(isSet bool) Option {
 	}
 }
 
-func WithFirebaseAdmin(client firebase.Adminer) Option {
+func WithFirebaseAdmin(provider auth.TokenProvider, client idp.Adminer) Option {
 	return func(o *options) {
-		o.firebaseClient = client
+		if provider == auth.TokenProviderFirebase {
+			o.firebaseClient = client
+		}
 	}
 }
 
@@ -167,7 +170,7 @@ type options struct {
 	hasOpensanctionsSetup       bool
 	hasNameRecognitionSetup     bool
 	metricsCollectionConfig     infra.MetricCollectionConfig
-	firebaseClient              firebase.Adminer
+	firebaseClient              idp.Adminer
 	aiAgentConfig               infra.AIAgentConfiguration
 	analyticsConfig             infra.AnalyticsConfig
 }
