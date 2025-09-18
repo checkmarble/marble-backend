@@ -2,7 +2,6 @@ package scheduled_execution
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"maps"
 	"slices"
@@ -148,7 +147,7 @@ func (w AnalyticsExportWorker) exportDecisions(
 	ctx context.Context,
 	job *river.Job[models.AnalyticsExportArgs],
 	dbExec repositories.Executor,
-	exec *sql.DB,
+	exec repositories.AnalyticsExecutor,
 	req repositories.AnalyticsCopyRequest) error {
 
 	wm, err := w.repository.GetWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsDecisions, req.TriggerObject))
@@ -180,7 +179,7 @@ func (w AnalyticsExportWorker) exportDecisionRules(
 	ctx context.Context,
 	job *river.Job[models.AnalyticsExportArgs],
 	dbExec repositories.Executor,
-	exec *sql.DB,
+	exec repositories.AnalyticsExecutor,
 	req repositories.AnalyticsCopyRequest) error {
 
 	wm, err := w.repository.GetWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsDecisionRules, req.TriggerObject))
@@ -212,7 +211,7 @@ func (w AnalyticsExportWorker) exportScreenings(
 	ctx context.Context,
 	job *river.Job[models.AnalyticsExportArgs],
 	dbExec repositories.Executor,
-	exec *sql.DB,
+	exec repositories.AnalyticsExecutor,
 	req repositories.AnalyticsCopyRequest) error {
 
 	wm, err := w.repository.GetWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsScreenings, req.TriggerObject))

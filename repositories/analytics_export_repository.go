@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -23,7 +22,7 @@ type AnalyticsCopyRequest struct {
 	Limit int
 }
 
-func AnalyticsGetLatestRow(ctx context.Context, exec *sql.DB, table string) (uuid.UUID, time.Time, error) {
+func AnalyticsGetLatestRow(ctx context.Context, exec AnalyticsExecutor, table string) (uuid.UUID, time.Time, error) {
 	query := squirrel.Select("id", "created_at").From(table).OrderBy("created_at desc").Limit(1)
 	sql, _, err := query.ToSql()
 	if err != nil {
@@ -44,7 +43,7 @@ func AnalyticsGetLatestRow(ctx context.Context, exec *sql.DB, table string) (uui
 	return id, createdAt, nil
 }
 
-func AnalyticsCopyDecisions(ctx context.Context, exec *sql.DB, req AnalyticsCopyRequest) (int, error) {
+func AnalyticsCopyDecisions(ctx context.Context, exec AnalyticsExecutor, req AnalyticsCopyRequest) (int, error) {
 	inner := squirrel.
 		Select(
 			"d.id", "d.score", "d.outcome",
@@ -96,7 +95,7 @@ func AnalyticsCopyDecisions(ctx context.Context, exec *sql.DB, req AnalyticsCopy
 	return int(nRows), nil
 }
 
-func AnalyticsCopyDecisionRules(ctx context.Context, exec *sql.DB, req AnalyticsCopyRequest) (int, error) {
+func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req AnalyticsCopyRequest) (int, error) {
 	inner := squirrel.
 		Select(
 			"dr.id",
@@ -158,7 +157,7 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec *sql.DB, req Analytics
 	return int(nRows), nil
 }
 
-func AnalyticsCopyScreenings(ctx context.Context, exec *sql.DB, req AnalyticsCopyRequest) (int, error) {
+func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req AnalyticsCopyRequest) (int, error) {
 	inner := squirrel.
 		Select(
 			"sc.id",

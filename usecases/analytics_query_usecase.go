@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
@@ -11,7 +10,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
@@ -54,7 +52,7 @@ func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filte
 		using coalesce(sum(decisions), 0)
 		order by date`, sql)
 
-	return utils.RawScanStruct[models.DecisionOutcomePerDay](ctx, exec, query, args...)
+	return repositories.AnalyticsRawScanStruct[models.DecisionOutcomePerDay](ctx, exec, query, args...)
 }
 
 func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.DecisionsScoreDistribution, error) {
@@ -78,7 +76,7 @@ func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, 
 		return nil, err
 	}
 
-	return utils.ScanStruct[models.DecisionsScoreDistribution](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[models.DecisionsScoreDistribution](ctx, exec, query)
 }
 
 func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.RuleHitTable, error) {
@@ -105,7 +103,7 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 		return nil, err
 	}
 
-	return utils.ScanStruct[models.RuleHitTable](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[models.RuleHitTable](ctx, exec, query)
 }
 
 func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.RuleVsDecisionOutcome, error) {
@@ -131,7 +129,7 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filte
 		return nil, err
 	}
 
-	return utils.ScanStruct[models.RuleVsDecisionOutcome](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[models.RuleVsDecisionOutcome](ctx, exec, query)
 }
 
 func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.RuleCoOccurence, error) {
@@ -165,7 +163,7 @@ func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filte
 		return nil, err
 	}
 
-	return utils.ScanStruct[models.RuleCoOccurence](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[models.RuleCoOccurence](ctx, exec, query)
 }
 
 func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.ScreeningHits, error) {
@@ -192,10 +190,10 @@ func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.A
 		return nil, err
 	}
 
-	return utils.ScanStruct[models.ScreeningHits](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[models.ScreeningHits](ctx, exec, query)
 }
 
-func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid.UUID) (models.Scenario, *sql.DB, error) {
+func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid.UUID) (models.Scenario, repositories.AnalyticsExecutor, error) {
 	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, uc.executorFactory.NewExecutor(), scenarioId.String())
 	if err != nil {
 		return models.Scenario{}, nil, err

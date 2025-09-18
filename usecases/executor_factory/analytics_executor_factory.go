@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/jackc/pgx/v5"
 	"github.com/marcboeker/go-duckdb/v2"
 )
@@ -28,14 +29,14 @@ func NewAnalyticsExecutorFactory(config infra.AnalyticsConfig) AnalyticsExecutor
 }
 
 var (
-	ddbOnce sync.Once
-	db      *sql.DB
-
+	ddbOnce         sync.Once
 	exporterDdbOnce sync.Once
-	exportDb        *sql.DB
+
+	db       repositories.AnalyticsExecutor
+	exportDb repositories.AnalyticsExecutor
 )
 
-func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (*sql.DB, error) {
+func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (repositories.AnalyticsExecutor, error) {
 	var err error
 
 	ddbOnce.Do(func() {
@@ -46,7 +47,7 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (*sql.DB, err
 			return
 		}
 
-		db = sql.OpenDB(ddb)
+		db = repositories.NewDuckDbExecutor(sql.OpenDB(ddb))
 
 		switch f.config.Type {
 		case infra.BlobTypeS3:
@@ -61,7 +62,7 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (*sql.DB, err
 	return db, nil
 }
 
-func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, alias string) (*sql.DB, error) {
+func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, alias string) (repositories.AnalyticsExecutor, error) {
 	var err error
 
 	exporterDdbOnce.Do(func() {

@@ -41,7 +41,7 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req 
 
 	innerSql, innerArgs, _ := inner.ToSql()
 
-	rows, err := exec.Query(fmt.Sprintf(
+	rows, err := exec.QueryContext(ctx, fmt.Sprintf(
 		`
 			select column_name, column_type
 			from (describe select * from %s) o
