@@ -195,7 +195,7 @@ func NewDecisionWithRuleDto(decision models.DecisionWithRuleExecutions, marbleAp
 				Id:      sce.Id,
 				Status:  sce.Status.String(),
 				Partial: sce.Partial,
-				Count:   sce.Count,
+				Count:   sce.NumberOfMatches,
 			}
 		}
 	}
@@ -217,6 +217,35 @@ func NewDecisionRuleDto(rule models.RuleExecution, withRuleExecution bool) Decis
 		out.RuleEvaluation = rule.Evaluation
 	}
 	return out
+}
+
+func NewDecisionWithRuleBaseInfoDto(
+	decision models.DecisionWithRulesAndScreeningsBaseInfo,
+	marbleAppUrl *url.URL,
+) DecisionWithRules {
+	decisionDto := DecisionWithRules{
+		Decision: NewDecisionDto(decision.Decision, marbleAppUrl),
+		Rules:    make([]DecisionRule, len(decision.RuleExecutions)),
+	}
+
+	for i, ruleExecution := range decision.RuleExecutions {
+		decisionDto.Rules[i] = NewDecisionRuleDto(ruleExecution, false)
+	}
+
+	if decision.ScreeningExecutions != nil {
+		decisionDto.Screenings = make([]DecisionScreening, len(decision.ScreeningExecutions))
+
+		for idx, sce := range decision.ScreeningExecutions {
+			decisionDto.Screenings[idx] = DecisionScreening{
+				Id:      sce.Id,
+				Status:  sce.Status.String(),
+				Partial: sce.Partial,
+				Count:   sce.NumberOfMatches,
+			}
+		}
+	}
+
+	return decisionDto
 }
 
 func ErrorDtoFromError(execErr ast.ExecutionError) *ErrorDto {

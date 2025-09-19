@@ -250,6 +250,7 @@ func (*MarbleDbRepository) InsertScreening(
 		"requested_by",
 		"status",
 		"error_codes",
+		"number_of_matches",
 	).Values(
 		scId,
 		decisionId,
@@ -267,6 +268,7 @@ func (*MarbleDbRepository) InsertScreening(
 		screening.RequestedBy,
 		screening.Status.String(),
 		screening.ErrorCodes,
+		screening.NumberOfMatches,
 	).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningColumn, ",")))
 
 	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptScreening)
@@ -292,7 +294,6 @@ func (*MarbleDbRepository) InsertScreening(
 		return models.ScreeningWithMatches{}, err
 	}
 
-	withMatches.Count = len(matches)
 	withMatches.Matches = matches
 
 	return withMatches, nil
@@ -461,4 +462,34 @@ func (repo *MarbleDbRepository) CountScreeningsByOrg(ctx context.Context, exec E
 		GroupBy("org_id")
 
 	return countByHelper(ctx, exec, query, orgIds)
+}
+
+func (repo *MarbleDbRepository) screeningsWithoutHitsOfDecision(
+	ctx context.Context,
+	exec Executor,
+	decisionIds []string,
+) (map[string][]models.Screening, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectScreeningColumn...).
+		From(dbmodels.TABLE_SCREENINGS).
+		Where(squirrel.Eq{
+			"decision_id": decisionIds,
+			"is_archived": false,
+		})
+
+	screenings, err := SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreening)
+	if err != nil {
+		return nil, err
+	}
+
+	screeningsAsMap := make(map[string][]models.Screening, len(decisionIds))
+	for _, screening := range screenings {
+		screeningsAsMap[screening.DecisionId] = append(
+			screeningsAsMap[screening.DecisionId], screening)
+	}
+	return screeningsAsMap, nil
 }

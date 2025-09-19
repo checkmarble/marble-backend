@@ -281,8 +281,8 @@ func handleListCaseDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c
 		}
 
 		c.JSON(http.StatusOK, dto.CaseDecisionListDto{
-			Decisions: pure_utils.Map(decisions, func(d models.DecisionWithRuleExecutions) dto.DecisionWithRules {
-				return dto.NewDecisionWithRuleDto(d, marbleAppUrl, false)
+			Decisions: pure_utils.Map(decisions, func(d models.DecisionWithRulesAndScreeningsBaseInfo) dto.DecisionWithRules {
+				return dto.NewDecisionWithRuleBaseInfoDto(d, marbleAppUrl)
 			}),
 			Pagination: dto.CaseDecisionListPaginationDto{
 				HasMore:      hasMore,

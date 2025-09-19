@@ -267,7 +267,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 	}
 
 	for idx, sce := range screeningExecutions {
-		if sce.Count > 0 && iteration.ScreeningConfigs[idx].ForcedOutcome.Priority() > outcome.Priority() {
+		if sce.NumberOfMatches > 0 && iteration.ScreeningConfigs[idx].ForcedOutcome.Priority() > outcome.Priority() {
 			outcome = iteration.ScreeningConfigs[idx].ForcedOutcome
 		}
 	}

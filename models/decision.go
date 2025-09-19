@@ -49,6 +49,14 @@ type DecisionMetadata struct {
 	Score          int
 }
 
+type DecisionWithRulesAndScreeningsBaseInfo struct {
+	Decision
+
+	// Rule executions should not be expected to contain the rule evaluation in this context
+	RuleExecutions      []RuleExecution
+	ScreeningExecutions []Screening
+}
+
 type DecisionWithRuleExecutions struct {
 	Decision
 	RuleExecutions      []RuleExecution
