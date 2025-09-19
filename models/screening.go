@@ -112,8 +112,14 @@ type Screening struct {
 	WhitelistedEntities []string
 	ErrorCodes          []string
 	ErrorDetail         error
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+
+	// This field is newly stored in DB, but is not filled for all old screenings.
+	// The "GetDecisionById" and "ListScreeningsByDecision" endpoints override it with the actual number of matches if it is 0 in DB,
+	// but not all instances of models.Screening have it.
+	// It should be backfilled in a future release, once all new screenings have it written.
+	NumberOfMatches int
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type ScreeningConfigRef struct {
@@ -125,7 +131,6 @@ type ScreeningConfigRef struct {
 type ScreeningWithMatches struct {
 	Screening
 	Matches            []ScreeningMatch
-	Count              int
 	EffectiveThreshold int
 
 	Duration                time.Duration
@@ -163,10 +168,10 @@ func (s ScreeningRawSearchResponseWithMatches) AdaptScreeningFromSearchResponse(
 			ErrorCodes:          s.ErrorCodes,
 			CreatedAt:           time.Now(),
 			UpdatedAt:           time.Now(),
+			NumberOfMatches:     s.Count,
 		},
 		Matches:            s.Matches,
 		EffectiveThreshold: s.EffectiveThreshold,
-		Count:              s.Count,
 	}
 	screening.Status = screening.InitialStatusFromMatches()
 	return screening
