@@ -29,7 +29,14 @@ type DbCoreDecision struct {
 	TriggerObjectType    string     `db:"trigger_object_type"`
 }
 
-type DbCoreDecisionWithCase struct {
+type DbCoreDecisionWithScenario struct {
+	DbCoreDecision
+	ScenarioName        string `db:"scenario_name"`
+	ScenarioDescription string `db:"scenario_description"`
+	ScenarioVersion     int    `db:"scenario_version"`
+}
+
+type DbCoreDecisionWithCaseAndScenario struct {
 	DbCoreDecision
 	DBCase
 	ScenarioName        string `db:"scenario_name"`
@@ -70,7 +77,15 @@ func adaptCoreDecision(db DbCoreDecision, decisionCase *models.Case) models.Deci
 	}
 }
 
-func AdaptDecision(db DbCoreDecisionWithCase) (models.Decision, error) {
+func AdaptDecision(db DbCoreDecisionWithScenario) (models.Decision, error) {
+	decision := adaptCoreDecision(db.DbCoreDecision, nil)
+	decision.ScenarioName = db.ScenarioName
+	decision.ScenarioDescription = db.ScenarioDescription
+	decision.ScenarioVersion = db.ScenarioVersion
+	return decision, nil
+}
+
+func AdaptDecisionWithCase(db DbCoreDecisionWithCaseAndScenario) (models.Decision, error) {
 	var decisionCase *models.Case
 	if db.DBCase.Id.Valid {
 		decisionCaseValue, err := AdaptCase(db.DBCase)
@@ -88,10 +103,10 @@ func AdaptDecision(db DbCoreDecisionWithCase) (models.Decision, error) {
 }
 
 func AdaptDecisionWithRuleExecutions(
-	db DbCoreDecisionWithCase,
+	db DbCoreDecisionWithCaseAndScenario,
 	ruleExecutions []models.RuleExecution,
 ) (models.DecisionWithRuleExecutions, error) {
-	decision, err := AdaptDecision(db)
+	decision, err := AdaptDecisionWithCase(db)
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}

@@ -462,3 +462,33 @@ func (repo *MarbleDbRepository) CountScreeningsByOrg(ctx context.Context, exec E
 
 	return countByHelper(ctx, exec, query, orgIds)
 }
+
+func (repo *MarbleDbRepository) screeningsWithoutHitsOfDecision(
+	ctx context.Context,
+	exec Executor,
+	decisionIds []string,
+) (map[string][]models.Screening, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectScreeningColumn...).
+		From(dbmodels.TABLE_SCREENINGS).
+		Where(squirrel.Eq{
+			"decision_id": decisionIds,
+			"is_archived": false,
+		})
+
+	screenings, err := SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreening)
+	if err != nil {
+		return nil, err
+	}
+
+	screeningsAsMap := make(map[string][]models.Screening, len(decisionIds))
+	for _, screening := range screenings {
+		screeningsAsMap[screening.DecisionId] = append(
+			screeningsAsMap[screening.DecisionId], screening)
+	}
+	return screeningsAsMap, nil
+}
