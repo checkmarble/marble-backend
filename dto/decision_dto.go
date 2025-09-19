@@ -240,6 +240,7 @@ func NewDecisionWithRuleBaseInfoDto(
 				Id:      sce.Id,
 				Status:  sce.Status.String(),
 				Partial: sce.Partial,
+				Count:   sce.NumberOfMatches,
 			}
 		}
 	}

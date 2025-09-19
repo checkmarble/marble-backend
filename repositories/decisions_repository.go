@@ -192,7 +192,7 @@ func (repo *MarbleDbRepository) DecisionsWithRuleExecutionsByIds(
 		exec,
 		selectDecisionAndCase().
 			Where(squirrel.Eq{"d.id": decisionIds}).
-			OrderBy("d.created_at DESC"),
+			OrderBy("d.created_at DESC, d.id DESC"),
 		func(row pgx.CollectableRow) (models.DecisionWithRuleExecutions, error) {
 			db, err := pgx.RowToStructByPos[dbmodels.DbCoreDecisionWithCaseAndScenario](row)
 			if err != nil {
