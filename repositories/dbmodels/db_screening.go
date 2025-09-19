@@ -33,6 +33,7 @@ type DBScreening struct {
 	InitialHasMatches   bool                             `db:"initial_has_matches"`
 	WhitelistedEntities []string                         `db:"whitelisted_entities"`
 	ErrorCodes          []string                         `db:"error_codes"`
+	NumberOfMatches     *int                             `db:"number_of_matches"`
 	CreatedAt           time.Time                        `db:"created_at"`
 	UpdatedAt           time.Time                        `db:"updated_at"`
 }
@@ -46,6 +47,10 @@ func AdaptScreening(dto DBScreening) (models.Screening, error) {
 	cfg := models.OrganizationOpenSanctionsConfig{
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
+	}
+	numberOfMatches := 0
+	if dto.NumberOfMatches != nil {
+		numberOfMatches = *dto.NumberOfMatches
 	}
 
 	return models.Screening{
@@ -65,6 +70,7 @@ func AdaptScreening(dto DBScreening) (models.Screening, error) {
 		WhitelistedEntities: dto.WhitelistedEntities,
 		RequestedBy:         dto.RequestedBy,
 		ErrorCodes:          dto.ErrorCodes,
+		NumberOfMatches:     numberOfMatches,
 		CreatedAt:           dto.CreatedAt,
 		UpdatedAt:           dto.UpdatedAt,
 	}, nil
@@ -85,6 +91,5 @@ func AdaptScreeningWithMatches(dto DBScreeningWithMatches) (models.ScreeningWith
 	return models.ScreeningWithMatches{
 		Screening: sc,
 		Matches:   matches,
-		Count:     len(matches),
 	}, nil
 }

@@ -48,7 +48,7 @@ func AdaptScreeningDto(m models.ScreeningWithMatches) ScreeningDto {
 		},
 		Status:      m.Status.String(),
 		Partial:     m.Partial,
-		Count:       m.Count,
+		Count:       m.NumberOfMatches,
 		IsManual:    m.IsManual,
 		RequestedBy: m.RequestedBy,
 		Matches:     pure_utils.Map(m.Matches, AdaptScreeningMatchDto),

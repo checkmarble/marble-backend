@@ -250,6 +250,7 @@ func (*MarbleDbRepository) InsertScreening(
 		"requested_by",
 		"status",
 		"error_codes",
+		"number_of_matches",
 	).Values(
 		scId,
 		decisionId,
@@ -267,6 +268,7 @@ func (*MarbleDbRepository) InsertScreening(
 		screening.RequestedBy,
 		screening.Status.String(),
 		screening.ErrorCodes,
+		screening.NumberOfMatches,
 	).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningColumn, ",")))
 
 	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptScreening)
@@ -292,7 +294,6 @@ func (*MarbleDbRepository) InsertScreening(
 		return models.ScreeningWithMatches{}, err
 	}
 
-	withMatches.Count = len(matches)
 	withMatches.Matches = matches
 
 	return withMatches, nil

@@ -94,7 +94,7 @@ func AdaptScreeningWithMatches(screening models.ScreeningWithMatches) ScreeningW
 	return ScreeningWithMatches{
 		Screening: AdaptScreening(screening.Screening),
 		Matches:   pure_utils.Map(screening.Matches, AdaptScreeningMatch),
-		Count:     screening.Count,
+		Count:     screening.NumberOfMatches,
 	}
 }
 
