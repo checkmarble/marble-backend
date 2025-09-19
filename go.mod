@@ -15,7 +15,7 @@ require (
 	github.com/adrg/strutil v0.3.1
 	github.com/avast/retry-go/v4 v4.6.1
 	github.com/biter777/countries v1.7.5
-	github.com/checkmarble/llmberjack v0.0.0-20250903150633-14827363b542
+	github.com/checkmarble/llmberjack v0.0.0-20250918140151-35a7e6d6fe5a
 	github.com/cockroachdb/errors v1.12.0
 	github.com/exaring/otelpgx v0.9.3
 	github.com/gavv/httpexpect/v2 v2.17.0
