@@ -219,6 +219,34 @@ func NewDecisionRuleDto(rule models.RuleExecution, withRuleExecution bool) Decis
 	return out
 }
 
+func NewDecisionWithRuleBaseInfoDto(
+	decision models.DecisionWithRulesAndScreeningsBaseInfo,
+	marbleAppUrl *url.URL,
+) DecisionWithRules {
+	decisionDto := DecisionWithRules{
+		Decision: NewDecisionDto(decision.Decision, marbleAppUrl),
+		Rules:    make([]DecisionRule, len(decision.RuleExecutions)),
+	}
+
+	for i, ruleExecution := range decision.RuleExecutions {
+		decisionDto.Rules[i] = NewDecisionRuleDto(ruleExecution, false)
+	}
+
+	if decision.ScreeningExecutions != nil {
+		decisionDto.Screenings = make([]DecisionScreening, len(decision.ScreeningExecutions))
+
+		for idx, sce := range decision.ScreeningExecutions {
+			decisionDto.Screenings[idx] = DecisionScreening{
+				Id:      sce.Id,
+				Status:  sce.Status.String(),
+				Partial: sce.Partial,
+			}
+		}
+	}
+
+	return decisionDto
+}
+
 func ErrorDtoFromError(execErr ast.ExecutionError) *ErrorDto {
 	return &ErrorDto{
 		Code:    int(execErr),

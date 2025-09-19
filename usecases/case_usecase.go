@@ -219,7 +219,7 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 	return c, nil
 }
 
-func (usecase *CaseUseCase) ListCaseDecisions(ctx context.Context, req models.CaseDecisionsRequest) ([]models.DecisionWithRuleExecutions, bool, error) {
+func (usecase *CaseUseCase) ListCaseDecisions(ctx context.Context, req models.CaseDecisionsRequest) ([]models.DecisionWithRulesAndScreeningsBaseInfo, bool, error) {
 	_, err := usecase.GetCase(ctx, req.CaseId)
 	if err != nil {
 		return nil, false, err
@@ -977,12 +977,7 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		return models.Case{}, err
 	}
 
-	decisions, _, err := usecase.decisionRepository.DecisionsByCaseIdFromCursor(ctx, exec, models.CaseDecisionsRequest{
-		OrgId:    c.OrganizationId,
-		CaseId:   caseId,
-		Limit:    models.CaseDecisionsPerPage,
-		CursorId: "",
-	})
+	decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}

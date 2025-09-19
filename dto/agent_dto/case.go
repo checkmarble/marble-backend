@@ -106,7 +106,6 @@ func AdaptCaseWithDecisionsDto(
 	c models.Case,
 	tags []models.Tag,
 	inboxes []models.Inbox,
-	rules []models.Rule,
 	users []models.User,
 	getScenarioIteration func(scenarioIterationId string) (models.ScenarioIteration, error),
 	getScreenings func(decisionId string) ([]models.ScreeningWithMatches, error),
@@ -121,8 +120,7 @@ func AdaptCaseWithDecisionsDto(
 		if err != nil {
 			return CaseWithDecisions{}, err
 		}
-		decisions[i] = AdaptDecision(c.Decisions[i].Decision, iteration,
-			c.Decisions[i].RuleExecutions, rules, screenings)
+		decisions[i] = AdaptDecision(c.Decisions[i], iteration, nil, nil, screenings)
 	}
 	return CaseWithDecisions{
 		Case:      AdaptCaseDto(c, tags, inboxes, users),
