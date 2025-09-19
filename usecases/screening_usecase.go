@@ -224,6 +224,10 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 	)
 
 	for sidx, sc := range scs {
+		if sc.NumberOfMatches == 0 && len(sc.Matches) > 0 {
+			sc.NumberOfMatches = len(sc.Matches)
+		}
+
 		for _, scc := range sccs {
 			if sc.ScreeningConfigId == scc.Id {
 				screeningConfig = scc
@@ -410,8 +414,11 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	return screening, nil
 }
 
-func (uc ScreeningUsecase) FilterOutWhitelistedMatches(ctx context.Context, orgId string,
-	screening models.ScreeningWithMatches, counterpartyId string,
+func (uc ScreeningUsecase) FilterOutWhitelistedMatches(
+	ctx context.Context,
+	orgId string,
+	screening models.ScreeningWithMatches,
+	counterpartyId string,
 ) (models.ScreeningWithMatches, error) {
 	matchesSet := set.From(pure_utils.FlatMap(screening.Matches, func(m models.ScreeningMatch) []string {
 		return append(m.Referents, m.EntityId)
@@ -454,9 +461,9 @@ func (uc ScreeningUsecase) FilterOutWhitelistedMatches(ctx context.Context, orgI
 	}
 
 	screening.Matches = matchesAfterWhitelisting
-	screening.Count = len(screening.Matches)
+	screening.NumberOfMatches = len(screening.Matches)
 
-	if screening.Count == 0 {
+	if screening.NumberOfMatches == 0 {
 		screening.Status = models.ScreeningStatusNoHit
 	}
 
