@@ -726,27 +726,35 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		return caseData{}, agent_dto.CasePivotDataByPivot{},
 			errors.Wrap(err, "could not retrieve case decisions")
 	}
+
+	decicionsWithRulesExec, err := uc.repository.DecisionsWithRuleExecutionsByIds(ctx, exec,
+		pure_utils.Map(decisions, func(d models.DecisionWithRulesAndScreeningsBaseInfo) string { return d.DecisionId.String() }))
+	if err != nil {
+		return caseData{}, agent_dto.CasePivotDataByPivot{},
+			errors.Wrap(err, "could not retrieve case decisions with rule executions")
+	}
+
 	decisionDtos := make([]agent_dto.Decision, len(decisions))
-	for i := range decisions {
+	for i, decision := range decicionsWithRulesExec {
 		iteration, err := uc.repository.GetScenarioIteration(ctx, exec,
-			decisions[i].Decision.ScenarioIterationId.String(), true)
+			decision.Decision.ScenarioIterationId.String(), true)
 		if err != nil {
 			return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
-				"could not retrieve scenario for decision %s", decisions[i].DecisionId)
+				"could not retrieve scenario for decision %s", decision.DecisionId)
 		}
 		rules, err := uc.repository.ListRulesByIterationId(ctx, exec,
 			decisions[i].Decision.ScenarioIterationId.String())
 		if err != nil {
 			return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
-				"could not retrieve rules for decision %s", decisions[i].DecisionId)
+				"could not retrieve rules for decision %s", decision.DecisionId)
 		}
-		screenings, err := uc.repository.ListScreeningsForDecision(ctx, exec, decisions[i].DecisionId.String(), true)
+		screenings, err := uc.repository.ListScreeningsForDecision(ctx, exec, decision.DecisionId.String(), true)
 		if err != nil {
 			return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
-				"could not retrieve screenings for decision %s", decisions[i].DecisionId)
+				"could not retrieve screenings for decision %s", decision.DecisionId)
 		}
-		decisionDtos[i] = agent_dto.AdaptDecision(decisions[i].Decision, iteration,
-			decisions[i].RuleExecutions, rules, screenings)
+		decisionDtos[i] = agent_dto.AdaptDecision(decision.Decision, iteration,
+			decision.RuleExecutions, rules, screenings)
 	}
 
 	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, c.OrganizationId, models.DataModelReadOptions{
@@ -803,7 +811,9 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 				return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 					"could not retrieve decisions for previous case %s", previousCase.Id)
 			}
-			previousCase.Decisions = decisions
+			for _, decision := range decisions {
+				previousCase.Decisions = append(previousCase.Decisions, decision.Decision)
+			}
 			events, err := uc.repository.ListCaseEvents(ctx, exec, previousCase.Id)
 			if err != nil {
 				return caseData{}, agent_dto.CasePivotDataByPivot{}, err
@@ -815,7 +825,6 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 				previousCase,
 				tags,
 				inboxes,
-				nil,
 				users,
 				func(scenarioIterationId string) (models.ScenarioIteration, error) {
 					return uc.repository.GetScenarioIteration(ctx, exec, scenarioIterationId, true)

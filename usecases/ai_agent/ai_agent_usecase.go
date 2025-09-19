@@ -34,13 +34,16 @@ type AiAgentUsecaseRepository interface {
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
 	ListUsers(ctx context.Context, exec repositories.Executor, organizationIDFilter *string) ([]models.User, error)
-
-	// Warning: returns a slice of DecisionWithRuleExecutions, but actually without the screening executions.
 	DecisionsByCaseIdFromCursor(
 		ctx context.Context,
 		exec repositories.Executor,
 		req models.CaseDecisionsRequest,
-	) ([]models.DecisionWithRuleExecutions, bool, error)
+	) ([]models.DecisionWithRulesAndScreeningsBaseInfo, bool, error)
+	DecisionsWithRuleExecutionsByIds(
+		ctx context.Context,
+		exec repositories.Executor,
+		decisionIds []string,
+	) ([]models.DecisionWithRuleExecutions, error)
 	DecisionPivotValuesByCase(ctx context.Context, exec repositories.Executor, caseId string) ([]models.PivotDataWithCount, error)
 	GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor,
 		orgId, pivotValue string) ([]models.Case, error)
