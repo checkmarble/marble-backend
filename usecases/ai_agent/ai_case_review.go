@@ -734,7 +734,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 			errors.Wrap(err, "could not retrieve case decisions with rule executions")
 	}
 
-	decisionDtos := make([]agent_dto.Decision, len(decisions))
+	decisionDtos := make([]agent_dto.Decision, len(decicionsWithRulesExec))
 	for i, decision := range decicionsWithRulesExec {
 		iteration, err := uc.repository.GetScenarioIteration(ctx, exec,
 			decision.Decision.ScenarioIterationId.String(), true)
@@ -743,7 +743,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 				"could not retrieve scenario for decision %s", decision.DecisionId)
 		}
 		rules, err := uc.repository.ListRulesByIterationId(ctx, exec,
-			decisions[i].Decision.ScenarioIterationId.String())
+			decision.Decision.ScenarioIterationId.String())
 		if err != nil {
 			return caseData{}, agent_dto.CasePivotDataByPivot{}, errors.Wrapf(err,
 				"could not retrieve rules for decision %s", decision.DecisionId)
