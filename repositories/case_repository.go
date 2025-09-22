@@ -24,8 +24,6 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 		return nil, err
 	}
 
-	orderCondition := fmt.Sprintf("c.boost is null %[1]s, c.%[2]s %[1]s, c.id %[1]s", pagination.Order, pagination.Sorting)
-
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectCaseColumn...).
 		Column(
@@ -44,7 +42,6 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 		).
 		Column(fmt.Sprintf("(SELECT count(distinct d.id) FROM %s AS d WHERE d.case_id = c.id AND d.org_id=c.org_id) AS decisions_count", dbmodels.TABLE_DECISIONS)).
 		From(dbmodels.TABLE_CASES + " AS c").
-		OrderBy(orderCondition).
 		Limit(uint64(pagination.Limit))
 
 		// Apply filters
@@ -78,6 +75,8 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 		query = query.Where(squirrel.Eq{"assigned_to": filters.AssigneeId})
 	}
 
+	query = applyCasesOrdering(query, filters, pagination.Order, pagination.Sorting)
+
 	// Apply pagination, by fetching the offset case (error if not found)
 	var offsetCase models.Case
 	if pagination.OffsetId != "" {
@@ -104,6 +103,19 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 		}
 		return dbmodels.AdaptCaseWithContributorsAndTags(db)
 	})
+}
+
+func applyCasesOrdering(query squirrel.SelectBuilder, filters models.CaseFilters,
+	order models.SortingOrder, sorting models.SortingField,
+) squirrel.SelectBuilder {
+	commonOrder := fmt.Sprintf("c.boost IS NULL %[1]s, c.%[2]s %[1]s, c.id %[1]s", order, sorting)
+	if filters.Name != "" {
+		query = query.OrderBy(fmt.Sprintf("similarity(c.name, ?) DESC, %s", commonOrder), filters.Name)
+	} else {
+		query = query.OrderBy(commonOrder)
+	}
+
+	return query
 }
 
 func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSorting, offsetCase models.Case) (squirrel.SelectBuilder, error) {
