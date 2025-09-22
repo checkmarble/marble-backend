@@ -188,8 +188,8 @@ func (node *Node) formatOperatorFunction(funcName string, depth int) string {
 	childStrs := node.formatRegularChildrenParams(depth)
 
 	// Special formatting for different operator types
-	switch node.Function {
-	case FUNC_AND, FUNC_OR:
+	switch {
+	case IsLogicalOperation(node.Function):
 		// Logical operators: use uppercase and add line breaks for readability
 		// Indentation is managed here
 		operator := strings.ToUpper(funcName)
@@ -203,9 +203,7 @@ func (node *Node) formatOperatorFunction(funcName string, depth int) string {
 		// Add the operator between the children
 		return fmt.Sprintf("(\n%s%s\n%s)", indentation,
 			strings.Join(childStrs, fmt.Sprintf("\n%s%s\n%s", indentation, operator, indentation)), baseIndentation)
-	case FUNC_ADD, FUNC_SUBTRACT, FUNC_MULTIPLY, FUNC_DIVIDE,
-		FUNC_GREATER, FUNC_GREATER_OR_EQUAL, FUNC_LESS, FUNC_LESS_OR_EQUAL,
-		FUNC_EQUAL, FUNC_NOT_EQUAL:
+	case IsMathOperation(node.Function):
 		// Add the operator between the children
 		return fmt.Sprintf("(%s)", strings.Join(childStrs, fmt.Sprintf(" %s ", funcName)))
 	default:
