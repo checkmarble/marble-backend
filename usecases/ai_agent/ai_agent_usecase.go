@@ -31,6 +31,7 @@ import (
 type AiAgentUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
+	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
 	ListUsers(ctx context.Context, exec repositories.Executor, organizationIDFilter *string) ([]models.User, error)
 
@@ -66,6 +67,10 @@ type AiAgentUsecaseRepository interface {
 	) (models.AiSetting, error)
 }
 
+type AiAgentUsecaseCustomListRepository interface {
+	AllCustomLists(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.CustomList, error)
+}
+
 type AiAgentUsecaseIngestedDataReader interface {
 	ReadPivotObjectsFromValues(
 		ctx context.Context,
@@ -87,6 +92,10 @@ type AiAgentUsecaseDataModelUsecase interface {
 		useCache bool) (models.DataModel, error)
 }
 
+type AiAgentUsecaseRuleUsecase interface {
+	GetRule(ctx context.Context, ruleId string) (models.Rule, error)
+}
+
 type caseReviewTaskEnqueuer interface {
 	EnqueueCaseReviewTask(
 		ctx context.Context,
@@ -101,11 +110,13 @@ type AiAgentUsecase struct {
 	enforceSecurityCase         security.EnforceSecurityCase
 	enforceSecurityOrganization security.EnforceSecurityOrganization
 	repository                  AiAgentUsecaseRepository
+	customListRepository        AiAgentUsecaseCustomListRepository
 	inboxReader                 inboxes.InboxReader
 	executorFactory             executor_factory.ExecutorFactory
 	transactionFactory          executor_factory.TransactionFactory
 	ingestedDataReader          AiAgentUsecaseIngestedDataReader
 	dataModelUsecase            AiAgentUsecaseDataModelUsecase
+	ruleUsecase                 AiAgentUsecaseRuleUsecase
 	caseReviewFileRepository    caseReviewWorkerRepository
 	blobRepository              repositories.BlobRepository
 	caseReviewTaskEnqueuer      caseReviewTaskEnqueuer
@@ -121,10 +132,12 @@ func NewAiAgentUsecase(
 	enforceSecurityCase security.EnforceSecurityCase,
 	enforceSecurityOrganization security.EnforceSecurityOrganization,
 	repository AiAgentUsecaseRepository,
+	customListRepository AiAgentUsecaseCustomListRepository,
 	inboxReader inboxes.InboxReader,
 	executorFactory executor_factory.ExecutorFactory,
 	ingestedDataReader AiAgentUsecaseIngestedDataReader,
 	dataModelUsecase AiAgentUsecaseDataModelUsecase,
+	ruleUsecase AiAgentUsecaseRuleUsecase,
 	caseReviewFileRepository caseReviewWorkerRepository,
 	blobRepository repositories.BlobRepository,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
@@ -136,10 +149,12 @@ func NewAiAgentUsecase(
 		enforceSecurityCase:         enforceSecurityCase,
 		enforceSecurityOrganization: enforceSecurityOrganization,
 		repository:                  repository,
+		customListRepository:        customListRepository,
 		inboxReader:                 inboxReader,
 		executorFactory:             executorFactory,
 		ingestedDataReader:          ingestedDataReader,
 		dataModelUsecase:            dataModelUsecase,
+		ruleUsecase:                 ruleUsecase,
 		caseReviewFileRepository:    caseReviewFileRepository,
 		blobRepository:              blobRepository,
 		caseReviewTaskEnqueuer:      caseReviewTaskEnqueuer,

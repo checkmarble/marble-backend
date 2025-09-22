@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/cockroachdb/errors"
 )
@@ -305,4 +306,40 @@ func shortCircuitIfFalse(res NodeEvaluation) bool {
 		return b
 	}
 	return true
+}
+
+func IsLogicalOperation(f Function) bool {
+	return slices.Contains([]Function{
+		FUNC_AND,
+		FUNC_OR,
+	}, f)
+}
+
+func IsMathOperation(f Function) bool {
+	return slices.Contains([]Function{
+		FUNC_GREATER,
+		FUNC_GREATER_OR_EQUAL,
+		FUNC_LESS,
+		FUNC_LESS_OR_EQUAL,
+		FUNC_EQUAL,
+		FUNC_NOT_EQUAL,
+		FUNC_ADD,
+		FUNC_SUBTRACT,
+		FUNC_MULTIPLY,
+		FUNC_DIVIDE,
+	}, f)
+}
+
+func IsStringComparison(f Function) bool {
+	return slices.Contains([]Function{
+		FUNC_STRING_CONTAINS,
+		FUNC_STRING_NOT_CONTAIN,
+	}, f)
+}
+
+func IsInListComparison(f Function) bool {
+	return slices.Contains([]Function{
+		FUNC_IS_IN_LIST,
+		FUNC_IS_NOT_IN_LIST,
+	}, f)
 }
