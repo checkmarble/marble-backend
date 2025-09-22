@@ -323,6 +323,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		// Create the request with Thread for the next steps which needs the response
 		requestDataModelSummary, err := llmberjack.NewUntypedRequest().
 			WithModel(modelDataModelSummary).
+			WithThinking(false).
 			WithInstruction(systemInstruction).
 			WithText(llmberjack.RoleUser, promptDataModelSummary).
 			Do(ctx, client)
@@ -395,6 +396,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 					requestDataModelObjectFieldReadOptions, err := llmberjack.NewRequest[map[string][]string]().
 						OverrideResponseSchema(schema).
 						WithModel(modelDataModelObjectFieldReadOptions).
+						WithThinking(false).
 						WithInstruction(systemInstruction).
 						WithText(llmberjack.RoleAi, *caseReviewContext.DataModelSummary).
 						WithText(llmberjack.RoleUser, promptDataModelObjectFieldReadOptions).
@@ -462,6 +464,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		}
 		requestRulesDefinitionsReview, err := llmberjack.NewUntypedRequest().
 			WithModel(modelRulesDefinitions).
+			WithThinking(false).
 			WithInstruction(systemInstruction).
 			WithText(llmberjack.RoleUser, promptRulesDefinitions).
 			Do(ctx, client)
@@ -491,6 +494,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		}
 		requestRuleThresholds, err := llmberjack.NewUntypedRequest().
 			WithModel(modelRuleThresholds).
+			WithThinking(false).
 			WithInstruction(systemInstruction).
 			WithText(llmberjack.RoleUser, promptRuleThresholds).
 			Do(ctx, client)
@@ -613,6 +617,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		customFormatRequest := llmberjack.NewRequest[string]().
 			WithModel(modelForInstruction).
 			WithInstruction(systemInstruction).
+			WithThinking(false).
 			WithInstruction(customReportInstruction)
 		// Add all custom instructions for organization
 		for _, instruction := range instructions {
