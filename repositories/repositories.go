@@ -23,6 +23,7 @@ type options struct {
 	tp                            trace.TracerProvider
 	bigQueryInfra                 *infra.BigQueryInfra
 	withCache                     bool
+	trigramThreshold              float64
 }
 
 type Option func(*options)
@@ -90,6 +91,12 @@ func WithCache(withCache bool) Option {
 	}
 }
 
+func WithTrigramThreshold(trigramThreshold float64) Option {
+	return func(o *options) {
+		o.trigramThreshold = trigramThreshold
+	}
+}
+
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
 	ConvoyRepository                  ConvoyRepository
@@ -138,7 +145,7 @@ func NewRepositories(
 		ConvoyRepository:              NewConvoyRepository(options.convoyClientProvider, options.convoyRateLimit),
 		IngestionRepository:           &IngestionRepositoryImpl{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
-		MarbleDbRepository:            NewMarbleDbRepository(options.withCache),
+		MarbleDbRepository:            NewMarbleDbRepository(options.withCache, options.trigramThreshold),
 		ClientDbRepository:            ClientDbRepository{},
 		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{},
 		OrganizationSchemaRepository:  &OrganizationSchemaRepositoryPostgresql{},

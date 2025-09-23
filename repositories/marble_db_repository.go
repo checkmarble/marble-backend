@@ -1,11 +1,13 @@
 package repositories
 
 type MarbleDbRepository struct {
-	withCache bool
+	withCache        bool
+	trigramThreshold float64
 }
 
-func NewMarbleDbRepository(withCache bool) *MarbleDbRepository {
+func NewMarbleDbRepository(withCache bool, trigramThreshold float64) *MarbleDbRepository {
 	return &MarbleDbRepository{
-		withCache: withCache,
+		withCache:        withCache,
+		trigramThreshold: trigramThreshold,
 	}
 }

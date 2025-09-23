@@ -249,6 +249,7 @@ func RunServer(config CompiledConfig) error {
 		repositories.WithRiverClient(riverClient),
 		repositories.WithBigQueryInfra(bigQueryInfra),
 		repositories.WithCache(utils.GetEnv("CACHE_ENABLED", false)),
+		repositories.WithTrigramThreshold(utils.GetEnv("TRIGRAM_THRESHOLD", DEFAULT_TRIGRAM_THRESHOLD)),
 	)
 
 	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
