@@ -73,6 +73,7 @@ type decisionWorkflowsUsecase interface {
 type ScenarioEvaluator interface {
 	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (
 		triggerPassed bool, se models.ScenarioExecution, err error)
+	GetDataAccessor(params evaluate_scenario.ScenarioEvaluationParameters) evaluate_scenario.DataAccessor
 }
 
 type decisionUsecaseScreeningWriter interface {
@@ -372,6 +373,39 @@ func (usecase *DecisionUsecase) CreateDecision(
 	newDecision, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.DecisionWithRuleExecutions, error) {
+		{
+			// TODO: get those from settings
+			pivotFields := []struct {
+				path  []string
+				field string
+			}{
+				{[]string{"transaction_account"}, "firstname"},
+				{[]string{"transaction_account"}, "lastname"},
+				{[]string{"transaction_account"}, "updated_at"},
+			}
+
+			da := usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters)
+
+			for _, pf := range pivotFields {
+				out, err := da.GetDbField(ctx, scenario.TriggerObjectType, pf.path, pf.field)
+
+				if err == nil {
+					switch out.(type) {
+					case time.Time:
+						fmt.Println("TIMESTAMP", out)
+					case string:
+						fmt.Println("STRING", out)
+					case int:
+						fmt.Println("INT", out)
+					case float64:
+						fmt.Println("FLOAT64", out)
+					case bool:
+						fmt.Println("BOOL", out)
+					}
+				}
+			}
+		}
+
 		if err = usecase.repository.StoreDecision(
 			ctx,
 			tx,
