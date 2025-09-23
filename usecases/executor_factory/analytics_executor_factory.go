@@ -161,7 +161,14 @@ func (f AnalyticsExecutorFactory) ApplyFilters(query squirrel.SelectBuilder, sce
 		query = query.Where(fmt.Sprintf("%s in ?", pgx.Identifier.Sanitize([]string{alias, "version"})), filters.ScenarioVersions)
 	}
 
-	for _, f := range filters.Trigger {
+	for _, f := range filters.Fields {
+		switch f.Source {
+		case models.AnalyticsSourceTriggerObject:
+			f.Field = "tr_" + f.Field
+		case models.AnalyticsSourceIngestedData:
+			f.Field = "ex_" + f.Field
+		}
+
 		lhs, rhs, err := f.ToPredicate(aliases...)
 		if err != nil {
 			return query, err

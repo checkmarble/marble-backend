@@ -3,12 +3,11 @@ package scheduled_execution
 import (
 	"context"
 	"encoding/json"
-	"maps"
-	"slices"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -25,6 +24,7 @@ type analyticsExportRepository interface {
 
 	GetDataModel(ctx context.Context, exec repositories.Executor, organizationID string, fetchEnumValues bool,
 		useCache bool) (models.DataModel, error)
+	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]models.AnalyticsSettings, error)
 }
 
 func NewAnalyticsExportJob(orgId string, interval time.Duration) *river.PeriodicJob {
@@ -101,12 +101,37 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 	// type, since we will add specific column configured on the data model
 	// table.
 	for _, table := range dataModel.Tables {
+		// TODO: remove
+		if table.Name == "accounts" {
+			continue
+		}
+
+		triggerFields := make([]models.Field, 0)
+		dbFields := make([]models.Field, 0)
+
+		if settings, err := w.repository.GetAnalyticsSettings(ctx, w.executorFactory.NewExecutor(), job.Args.OrgId); err == nil {
+			if setting, ok := settings[table.Name]; ok {
+				triggerFields = pure_utils.Map(setting.TriggerFields, func(name string) models.Field {
+					return table.Fields[name]
+				})
+
+				for _, f := range setting.DbFields {
+					if field, ok := dataModel.FindField(table, f.Path, f.Name); ok {
+						field.Name = f.Ident()
+
+						dbFields = append(dbFields, field)
+					}
+				}
+			}
+		}
+
 		wg.Go(func() error {
 			req := repositories.AnalyticsCopyRequest{
 				OrgId:               job.Args.OrgId,
 				Table:               w.analyticsFactory.BuildTablePrefix("decisions"),
 				TriggerObject:       table.Name,
-				TriggerObjectFields: slices.Collect(maps.Values(table.Fields)),
+				TriggerObjectFields: triggerFields,
+				ExtraDbFields:       dbFields,
 				Limit:               50000,
 			}
 
@@ -118,7 +143,8 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 				OrgId:               job.Args.OrgId,
 				Table:               w.analyticsFactory.BuildTablePrefix("decision_rules"),
 				TriggerObject:       table.Name,
-				TriggerObjectFields: slices.Collect(maps.Values(table.Fields)),
+				TriggerObjectFields: triggerFields,
+				ExtraDbFields:       dbFields,
 				Limit:               50000,
 			}
 
@@ -130,7 +156,8 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 				OrgId:               job.Args.OrgId,
 				Table:               w.analyticsFactory.BuildTablePrefix("screenings"),
 				TriggerObject:       table.Name,
-				TriggerObjectFields: slices.Collect(maps.Values(table.Fields)),
+				TriggerObjectFields: triggerFields,
+				ExtraDbFields:       dbFields,
 				Limit:               50000,
 			}
 

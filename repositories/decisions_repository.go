@@ -46,7 +46,8 @@ type DecisionRepository interface {
 		exec Executor,
 		decision models.DecisionWithRuleExecutions,
 		organizationId string,
-		newDecisionId string) error
+		newDecisionId string,
+		analyticsFields map[string]any) error
 	DecisionsOfOrganization(
 		ctx context.Context,
 		exec Executor,
@@ -449,6 +450,7 @@ func (repo *MarbleDbRepository) StoreDecision(
 	decision models.DecisionWithRuleExecutions,
 	organizationId string,
 	newDecisionId string,
+	analyticsFields map[string]any,
 ) error {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
@@ -479,6 +481,7 @@ func (repo *MarbleDbRepository) StoreDecision(
 				"trigger_object",
 				"trigger_object_type",
 				"scheduled_execution_id",
+				"analytics_fields",
 			).
 			Values(
 				newDecisionId,
@@ -494,6 +497,7 @@ func (repo *MarbleDbRepository) StoreDecision(
 				decision.ClientObject.Data,
 				decision.ClientObject.TableName,
 				decision.ScheduledExecutionId,
+				analyticsFields,
 			),
 	)
 	if err != nil {

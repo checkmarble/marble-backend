@@ -1,7 +1,9 @@
 package api
 
 import (
+	"cmp"
 	"net/http"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 
@@ -96,6 +98,13 @@ func handleAnalyticsAvailableFilters(uc usecases.Usecases) func(c *gin.Context) 
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(filters, dto.AdaptAnalyticsAvailableFilter))
+		fields := slices.SortedFunc(slices.Values(pure_utils.Map(filters, dto.AdaptAnalyticsAvailableFilter)), func(m1, m2 dto.AnalyticsAvailableFilter) int {
+			return cmp.Or(
+				cmp.Compare(m1.Source, m2.Source),
+				cmp.Compare(m1.Name, m2.Name),
+			)
+		})
+
+		c.JSON(http.StatusOK, fields)
 	}
 }

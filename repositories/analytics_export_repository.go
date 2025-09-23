@@ -18,6 +18,7 @@ type AnalyticsCopyRequest struct {
 
 	TriggerObject       string
 	TriggerObjectFields []models.Field
+	ExtraDbFields       []models.Field
 
 	Limit int
 }
@@ -68,6 +69,9 @@ func AnalyticsCopyDecisions(ctx context.Context, exec AnalyticsExecutor, req Ana
 
 	for _, f := range req.TriggerObjectFields {
 		inner = analyticsAddTriggerObjectField(inner, f, false)
+	}
+	for _, f := range req.ExtraDbFields {
+		inner = analyticsAddExtraField(inner, f, false)
 	}
 
 	innerSql, args, err := inner.ToSql()
@@ -131,6 +135,9 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 	for _, f := range req.TriggerObjectFields {
 		inner = analyticsAddTriggerObjectField(inner, f, false)
 	}
+	for _, f := range req.ExtraDbFields {
+		inner = analyticsAddExtraField(inner, f, false)
+	}
 
 	innerSql, args, err := inner.ToSql()
 	if err != nil {
@@ -191,6 +198,9 @@ func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req An
 	for _, f := range req.TriggerObjectFields {
 		inner = analyticsAddTriggerObjectField(inner, f, true)
 	}
+	for _, f := range req.ExtraDbFields {
+		inner = analyticsAddExtraField(inner, f, true)
+	}
 
 	innerSql, args, err := inner.ToSql()
 	if err != nil {
@@ -235,5 +245,26 @@ func analyticsAddTriggerObjectField(b squirrel.SelectBuilder, field models.Field
 		return b.Column(fmt.Sprintf("(any_value(d.trigger_object)->>'%s')::%s as tr_%s", field.Name, sqlType, field.Name))
 	} else {
 		return b.Column(fmt.Sprintf("(d.trigger_object->>'%s')::%s as tr_%s", field.Name, sqlType, field.Name))
+	}
+}
+
+func analyticsAddExtraField(b squirrel.SelectBuilder, field models.Field, anyValue bool) squirrel.SelectBuilder {
+	sqlType := "text"
+
+	switch field.DataType {
+	case models.Bool:
+		sqlType = "bool"
+	case models.Int:
+		sqlType = "int"
+	case models.Float:
+		sqlType = "float"
+	case models.Timestamp:
+		sqlType = "timestamp with time zone"
+	}
+
+	if anyValue {
+		return b.Column(fmt.Sprintf(`(any_value(d.analytics_fields)->>'%s')::%s as "ex_%s"`, field.Name, sqlType, field.Name))
+	} else {
+		return b.Column(fmt.Sprintf(`(d.analytics_fields->>'%s')::%s as "ex_%s"`, field.Name, sqlType, field.Name))
 	}
 }

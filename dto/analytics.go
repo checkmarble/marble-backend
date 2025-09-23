@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -14,14 +15,25 @@ type AnalyticsAvailableFiltersRequest struct {
 }
 
 type AnalyticsAvailableFilter struct {
-	Name string               `json:"name"`
-	Type models.AnalyticsType `json:"type"`
+	Name   string                      `json:"name"`
+	Type   models.AnalyticsType        `json:"type"`
+	Source models.AnalyticsFieldSource `json:"source"`
 }
 
 func AdaptAnalyticsAvailableFilter(model models.AnalyticsFilter) AnalyticsAvailableFilter {
+	source := models.AnalyticsSourceTriggerObject
+
+	switch {
+	case strings.HasPrefix(model.Name, "tr_"):
+		source = models.AnalyticsSourceTriggerObject
+	case strings.HasPrefix(model.Name, "ex_"):
+		source = models.AnalyticsSourceIngestedData
+	}
+
 	return AnalyticsAvailableFilter{
-		Name: model.Name,
-		Type: models.AnalyticsTypeFromColumn(model.Type),
+		Name:   model.Name[3:],
+		Type:   models.AnalyticsTypeFromColumn(model.Type),
+		Source: source,
 	}
 }
 
@@ -31,11 +43,11 @@ type AnalyticsQueryFilters struct {
 	ScenarioId       uuid.UUID `json:"scenario_id" validate:"required"`
 	ScenarioVersions []int     `json:"scenario_versions"`
 
-	Trigger []models.AnalyticsQueryObjectFilter `json:"trigger"`
+	Fields []models.AnalyticsQueryObjectFilter `json:"fields"`
 }
 
 func (f AnalyticsQueryFilters) Validate() error {
-	for _, tf := range f.Trigger {
+	for _, tf := range f.Fields {
 		if err := tf.Validate(); err != nil {
 			return err
 		}
