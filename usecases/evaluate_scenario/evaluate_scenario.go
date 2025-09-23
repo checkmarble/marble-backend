@@ -129,6 +129,16 @@ func NewScenarioEvaluator(
 	}
 }
 
+func (e ScenarioEvaluator) GetDataAccessor(params ScenarioEvaluationParameters) DataAccessor {
+	return DataAccessor{
+		DataModel:                  params.DataModel,
+		ClientObject:               params.ClientObject,
+		executorFactory:            e.executorFactory,
+		organizationId:             params.Scenario.OrganizationId,
+		ingestedDataReadRepository: e.ingestedDataReadRepository,
+	}
+}
+
 func (e ScenarioEvaluator) processScenarioIteration(
 	ctx context.Context,
 	params ScenarioEvaluationParameters,
