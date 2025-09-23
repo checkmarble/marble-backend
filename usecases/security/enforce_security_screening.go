@@ -23,5 +23,5 @@ func (e *EnforceSecurityImpl) WriteWhitelist(ctx context.Context) error {
 }
 
 func (e *EnforceSecurityImpl) PerformFreeformSearch(ctx context.Context) error {
-	return e.Permission(models.SREENING_FREEFORM_SEARCH)
+	return e.Permission(models.SCREENING_FREEFORM_SEARCH)
 }
