@@ -139,19 +139,7 @@ func RunServer(config CompiledConfig) error {
 		PerplexityAPIKey:  utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
 	}
 
-	serverConfig := struct {
-		batchIngestionMaxSize            int
-		caseManagerBucket                string
-		ingestionBucketUrl               string
-		offloadingBucketUrl              string
-		jwtSigningKey                    string
-		jwtSigningKeyFile                string
-		loggingFormat                    string
-		sentryDsn                        string
-		transferCheckEnrichmentBucketUrl string
-		telemetryExporter                string
-		otelSamplingRates                string
-	}{
+	serverConfig := ServerConfig{
 		batchIngestionMaxSize:            utils.GetEnv("BATCH_INGESTION_MAX_SIZE", 0),
 		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 		ingestionBucketUrl:               utils.GetEnv("INGESTION_BUCKET_URL", ""),
@@ -162,6 +150,11 @@ func RunServer(config CompiledConfig) error {
 		transferCheckEnrichmentBucketUrl: utils.GetEnv("TRANSFER_CHECK_ENRICHMENT_BUCKET_URL", ""), // required for transfercheck
 		telemetryExporter:                utils.GetEnv("TRACING_EXPORTER", "otlp"),
 		otelSamplingRates:                utils.GetEnv("TRACING_SAMPLING_RATES", ""),
+		trigramThreshold:                 utils.GetEnv("TRIGRAM_THRESHOLD", DEFAULT_TRIGRAM_THRESHOLD),
+	}
+	if err := serverConfig.Validate(); err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
 	}
 
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
@@ -249,7 +242,7 @@ func RunServer(config CompiledConfig) error {
 		repositories.WithRiverClient(riverClient),
 		repositories.WithBigQueryInfra(bigQueryInfra),
 		repositories.WithCache(utils.GetEnv("CACHE_ENABLED", false)),
-		repositories.WithTrigramThreshold(utils.GetEnv("TRIGRAM_THRESHOLD", DEFAULT_TRIGRAM_THRESHOLD)),
+		repositories.WithTrigramThreshold(serverConfig.trigramThreshold),
 	)
 
 	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
