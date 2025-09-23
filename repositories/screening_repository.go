@@ -468,25 +468,27 @@ func (repo *MarbleDbRepository) screeningsWithoutHitsOfDecision(
 	ctx context.Context,
 	exec Executor,
 	decisionIds []string,
-) (map[string][]models.Screening, error) {
+) (map[string][]models.ScreeningBaseInfo, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.SelectScreeningColumn...).
-		From(dbmodels.TABLE_SCREENINGS).
+		Select(columnsNames("sc", dbmodels.SelectScreeningBaseInfoColumn)...).
+		Column("scf.name AS name").
+		From(dbmodels.TABLE_SCREENINGS + " AS sc").
+		Join(dbmodels.TABLE_SCREENING_CONFIGS + " AS scf ON sc.sanction_check_config_id = scf.id").
 		Where(squirrel.Eq{
-			"decision_id": decisionIds,
-			"is_archived": false,
+			"sc.decision_id": decisionIds,
+			"sc.is_archived": false,
 		})
 
-	screenings, err := SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreening)
+	screenings, err := SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreeningBaseInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	screeningsAsMap := make(map[string][]models.Screening, len(decisionIds))
+	screeningsAsMap := make(map[string][]models.ScreeningBaseInfo, len(decisionIds))
 	for _, screening := range screenings {
 		screeningsAsMap[screening.DecisionId] = append(
 			screeningsAsMap[screening.DecisionId], screening)

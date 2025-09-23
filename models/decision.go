@@ -54,7 +54,7 @@ type DecisionWithRulesAndScreeningsBaseInfo struct {
 
 	// Rule executions should not be expected to contain the rule evaluation in this context
 	RuleExecutions      []RuleExecution
-	ScreeningExecutions []Screening
+	ScreeningExecutions []ScreeningBaseInfo
 }
 
 type DecisionWithRuleExecutions struct {

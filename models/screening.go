@@ -122,6 +122,18 @@ type Screening struct {
 	UpdatedAt       time.Time
 }
 
+type ScreeningBaseInfo struct {
+	Id              string
+	DecisionId      string
+	OrgId           string
+	Status          ScreeningStatus
+	RequestedBy     *string
+	Partial         bool
+	Name            string
+	NumberOfMatches int
+	CreatedAt       time.Time
+}
+
 type ScreeningConfigRef struct {
 	Id       string
 	StableId string
