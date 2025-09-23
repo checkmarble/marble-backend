@@ -20,10 +20,13 @@ var defaultBuiltInParsers = map[reflect.Kind]ParserFunc{
 	reflect.Int: func(v string) (interface{}, error) {
 		return strconv.Atoi(v)
 	},
+	reflect.Float64: func(v string) (interface{}, error) {
+		return strconv.ParseFloat(v, 64)
+	},
 }
 
 type envVarType interface {
-	~string | ~bool | ~int
+	~string | ~bool | ~int | ~float64
 }
 
 func parseEnvVar[T envVarType](envVar string, envValue string) T {

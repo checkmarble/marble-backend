@@ -77,19 +77,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
 
-	workerConfig := struct {
-		appName                     string
-		env                         string
-		failedWebhooksRetryPageSize int
-		ingestionBucketUrl          string
-		loggingFormat               string
-		sentryDsn                   string
-		cloudRunProbePort           string
-		caseReviewTimeout           time.Duration
-		caseManagerBucket           string
-		telemetryExporter           string
-		otelSamplingRates           string
-	}{
+	workerConfig := WorkerConfig{
 		appName:                     "marble-backend",
 		env:                         utils.GetEnv("ENV", "development"),
 		failedWebhooksRetryPageSize: utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
@@ -423,27 +411,38 @@ func ensureGlobalQueuesAreActive(ctx context.Context, riverClient *river.Client[
 func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, jobArgs string) error {
 	switch jobName {
 	case "async_decision":
-		return uc.NewAsyncDecisionWorker().Work(ctx, singleJobCreate[models.AsyncDecisionArgs](ctx, jobArgs))
+		return uc.NewAsyncDecisionWorker().Work(ctx,
+			singleJobCreate[models.AsyncDecisionArgs](ctx, jobArgs))
 	case "scheduled_exec_status":
-		return uc.NewNewAsyncScheduledExecWorker().Work(ctx, singleJobCreate[models.ScheduledExecStatusSyncArgs](ctx, jobArgs))
+		return uc.NewNewAsyncScheduledExecWorker().Work(ctx,
+			singleJobCreate[models.ScheduledExecStatusSyncArgs](ctx, jobArgs))
 	case "auto_assignment":
-		return uc.NewAutoAssignmentWorker().Work(ctx, singleJobCreate[models.AutoAssignmentArgs](ctx, jobArgs))
+		return uc.NewAutoAssignmentWorker().Work(ctx,
+			singleJobCreate[models.AutoAssignmentArgs](ctx, jobArgs))
 	case "index_cleanup":
-		return uc.NewIndexCleanupWorker().Work(ctx, singleJobCreate[models.IndexCleanupArgs](ctx, jobArgs))
+		return uc.NewIndexCleanupWorker().Work(ctx,
+			singleJobCreate[models.IndexCleanupArgs](ctx, jobArgs))
 	case "index_creation":
-		return uc.NewIndexCreationWorker().Work(ctx, singleJobCreate[models.IndexCreationArgs](ctx, jobArgs))
+		return uc.NewIndexCreationWorker().Work(ctx,
+			singleJobCreate[models.IndexCreationArgs](ctx, jobArgs))
 	case "index_creation_status":
-		return uc.NewIndexCreationStatusWorker().Work(ctx, singleJobCreate[models.IndexCreationStatusArgs](ctx, jobArgs))
+		return uc.NewIndexCreationStatusWorker().Work(ctx,
+			singleJobCreate[models.IndexCreationStatusArgs](ctx, jobArgs))
 	case "index_deletion":
-		return uc.NewIndexDeletionWorker().Work(ctx, singleJobCreate[models.IndexDeletionArgs](ctx, jobArgs))
+		return uc.NewIndexDeletionWorker().Work(ctx,
+			singleJobCreate[models.IndexDeletionArgs](ctx, jobArgs))
 	case "match_enrichment":
-		return uc.NewMatchEnrichmentWorker().Work(ctx, singleJobCreate[models.MatchEnrichmentArgs](ctx, jobArgs))
+		return uc.NewMatchEnrichmentWorker().Work(ctx,
+			singleJobCreate[models.MatchEnrichmentArgs](ctx, jobArgs))
 	case "offloading":
-		return uc.NewOffloadingWorker().Work(ctx, singleJobCreate[models.OffloadingArgs](ctx, jobArgs))
+		return uc.NewOffloadingWorker().Work(ctx,
+			singleJobCreate[models.OffloadingArgs](ctx, jobArgs))
 	case "test_run_summary":
-		return uc.NewTestRunSummaryWorker().Work(ctx, singleJobCreate[models.TestRunSummaryArgs](ctx, jobArgs))
+		return uc.NewTestRunSummaryWorker().Work(ctx,
+			singleJobCreate[models.TestRunSummaryArgs](ctx, jobArgs))
 	case "case_review":
-		return uc.NewCaseReviewWorker(time.Hour).Work(ctx, singleJobCreate[models.CaseReviewArgs](ctx, jobArgs))
+		return uc.NewCaseReviewWorker(time.Hour).Work(ctx,
+			singleJobCreate[models.CaseReviewArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}
