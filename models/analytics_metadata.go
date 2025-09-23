@@ -9,6 +9,13 @@ const (
 	AnalyticsTimestamp               = "timestamp"
 )
 
+type AnalyticsFieldSource string
+
+const (
+	AnalyticsSourceTriggerObject AnalyticsFieldSource = "trigger_object"
+	AnalyticsSourceIngestedData                       = "ingested_data"
+)
+
 func AnalyticsTypeFromColumn(colType string) AnalyticsType {
 	switch colType {
 	case "VARCHAR", "TEXT":

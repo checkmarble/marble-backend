@@ -96,6 +96,22 @@ func (dm DataModel) AllFieldsAsMap() map[string]Field {
 	return fields
 }
 
+func (dm DataModel) FindField(table Table, path []string, field string) (Field, bool) {
+	if path == nil || len(path) == 0 {
+		f, ok := table.Fields[field]
+
+		return f, ok
+	}
+
+	for _, link := range table.LinksToSingle {
+		if link.Name == path[0] {
+			return dm.FindField(dm.Tables[link.ParentTableName], path[1:], field)
+		}
+	}
+
+	return Field{}, false
+}
+
 // ///////////////////////////////
 // Data Model table
 // ///////////////////////////////

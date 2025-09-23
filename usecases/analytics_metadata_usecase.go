@@ -48,7 +48,7 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req 
 			inner join (
 			  select distinct name from (
 			    unpivot(%s)
-			    on columns('tr_.*')::varchar
+			    on columns('^(tr|ex)_')::varchar
 			  )
 			) i
 			on i.name = o.column_name;
@@ -71,7 +71,7 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req 
 			return nil, err
 		}
 
-		if strings.HasPrefix(tmp.Name, "tr_") {
+		if strings.HasPrefix(tmp.Name, "tr_") || strings.HasPrefix(tmp.Name, "ex_") {
 			filters = append(filters, tmp)
 		}
 	}
