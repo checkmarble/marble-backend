@@ -20,7 +20,7 @@ type mockGenerator struct {
 	mock.Mock
 }
 
-func (m *mockGenerator) GenerateToken(ctx context.Context, creds auth.Credentials, claims models.IdentityClaims) (auth.Token, error) {
+func (m *mockGenerator) GenerateToken(ctx context.Context, creds auth.Credentials, intoCredentials models.IntoCredentials, claims models.IdentityClaims) (auth.Token, error) {
 	args := m.Called(ctx, creds, claims)
 	return args.Get(0).(auth.Token), args.Error(1)
 }

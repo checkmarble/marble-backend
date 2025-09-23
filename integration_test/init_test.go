@@ -210,7 +210,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	apiKeyVerifier = auth.NewVerifier(auth.TokenProviderFirebase, firebaseClient)
+	apiKeyVerifier = auth.NewVerifier(auth.TokenProviderFirebase, firebaseClient, database)
 	tokenGenerator = auth.NewGenerator(database, jwtRepository, time.Minute, clock.New())
 
 	// we need to create a first marble admin user, otherwise we can't use the API (chicken and egg)

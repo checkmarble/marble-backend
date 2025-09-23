@@ -26,7 +26,7 @@ type dependencies struct {
 	SegmentClient  analytics.Client
 }
 
-type tokenVerifier interface {
+type idpTokenVerifier interface {
 	VerifyIDToken(ctx context.Context, idToken string) (*firebase.Token, error)
 }
 
@@ -35,7 +35,7 @@ func InitDependencies(
 	conf Configuration,
 	dbPool *pgxpool.Pool,
 	signingKey *rsa.PrivateKey,
-	optTokenVerifier ...tokenVerifier,
+	optTokenVerifier ...idpTokenVerifier,
 ) (dependencies, error) {
 	database := postgres.New(dbPool)
 
@@ -54,22 +54,22 @@ func InitDependencies(
 	segmentClient := analytics.New(conf.SegmentWriteKey)
 
 	var (
-		tokenVerifier idp.TokenRepository
-		tokenIssuer   string
+		idpTokenVerifier idp.TokenRepository
+		tokenIssuer      string
 	)
 
 	switch conf.TokenProvider {
 	case auth.TokenProviderFirebase:
-		tokenVerifier = idp.NewFirebaseClient(conf.FirebaseConfig.ProjectId, optTokenVerifier[0])
-		tokenIssuer = tokenVerifier.Issuer()
+		idpTokenVerifier = idp.NewFirebaseClient(conf.FirebaseConfig.ProjectId, optTokenVerifier[0])
+		tokenIssuer = idpTokenVerifier.Issuer()
 	case auth.TokenProviderOidc:
 		oidcConfig, err := infra.InitializeOidc(ctx)
 		if err != nil {
 			return dependencies{}, err
 		}
 
-		tokenVerifier = idp.NewOidcClient(oidcConfig.Issuer, oidcConfig.Verifier)
-		tokenIssuer = tokenVerifier.Issuer()
+		idpTokenVerifier = idp.NewOidcClient(oidcConfig.Issuer, oidcConfig.Verifier)
+		tokenIssuer = idpTokenVerifier.Issuer()
 	}
 
 	jwtRepository := repositories.NewJWTRepository(tokenIssuer, signingKey)
@@ -77,7 +77,7 @@ func InitDependencies(
 
 	tokenHandler := auth.NewTokenHandler(
 		auth.DefaultExtractor(),
-		auth.NewVerifier(conf.TokenProvider, tokenVerifier),
+		auth.NewVerifier(conf.TokenProvider, idpTokenVerifier, database),
 		auth.NewGenerator(database, jwtRepository, time.Hour, clock.New()),
 	)
 

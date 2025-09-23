@@ -19,7 +19,7 @@ type EnforceSecurityCaseImpl struct {
 }
 
 func EnforceSecurityCaseForUser(user models.User) *EnforceSecurityCaseImpl {
-	creds := models.NewCredentialWithUser(user)
+	creds := user.IntoCredentials()
 
 	return &EnforceSecurityCaseImpl{
 		EnforceSecurity: NewEnforceSecurity(creds),

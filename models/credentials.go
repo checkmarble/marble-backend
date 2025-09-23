@@ -1,5 +1,9 @@
 package models
 
+type IntoCredentials interface {
+	IntoCredentials() Credentials
+}
+
 type Identity struct {
 	UserId     UserId
 	Email      string
@@ -16,28 +20,28 @@ type Credentials struct {
 	Role           Role
 }
 
-func NewCredentialWithUser(user User) Credentials {
+func (u User) IntoCredentials() Credentials {
 	return Credentials{
 		ActorIdentity: Identity{
-			UserId:    user.UserId,
-			Email:     user.Email,
-			FirstName: user.FirstName,
-			LastName:  user.LastName,
+			UserId:    u.UserId,
+			Email:     u.Email,
+			FirstName: u.FirstName,
+			LastName:  u.LastName,
 		},
-		OrganizationId: user.OrganizationId,
-		PartnerId:      user.PartnerId,
-		Role:           user.Role,
+		OrganizationId: u.OrganizationId,
+		PartnerId:      u.PartnerId,
+		Role:           u.Role,
 	}
 }
 
-func NewCredentialWithApiKey(key ApiKey, apiKeyName string) Credentials {
+func (k ApiKey) IntoCredentials() Credentials {
 	return Credentials{
 		ActorIdentity: Identity{
-			ApiKeyId:   key.Id,
-			ApiKeyName: apiKeyName,
+			ApiKeyId:   k.Id,
+			ApiKeyName: k.DisplayString,
 		},
-		OrganizationId: key.OrganizationId,
-		PartnerId:      key.PartnerId,
-		Role:           key.Role,
+		OrganizationId: k.OrganizationId,
+		PartnerId:      k.PartnerId,
+		Role:           k.Role,
 	}
 }
