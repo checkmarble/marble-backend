@@ -11,6 +11,8 @@ type ApiKey struct {
 	PartnerId      *string
 	Prefix         string
 	Role           Role
+
+	DisplayString string
 }
 
 type CreateApiKeyInput struct {

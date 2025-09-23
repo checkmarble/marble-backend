@@ -18,9 +18,14 @@ func (m *FirebaseTokenVerifier) VerifyFirebaseToken(ctx context.Context, firebas
 	return args.Get(0).(models.FirebaseIdentity), args.Error(1)
 }
 
-func (m *FirebaseTokenVerifier) Verify(ctx context.Context, creds auth.Credentials) (models.IdentityClaims, error) {
+func (m *FirebaseTokenVerifier) Verify(ctx context.Context, creds auth.Credentials) (models.IntoCredentials, models.IdentityClaims, error) {
 	args := m.Called(ctx, creds)
-	return args.Get(0).(models.FirebaseIdentity), args.Error(1)
+
+	if args.Get(2) != nil {
+		return nil, nil, args.Error(2)
+	}
+
+	return args.Get(0).(models.IntoCredentials), args.Get(1).(models.FirebaseIdentity), args.Error(2)
 }
 
 type FirebaseAdminClient struct {

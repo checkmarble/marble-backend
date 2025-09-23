@@ -89,11 +89,11 @@ func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases
 
 	in := auth.Credentials{Type: auth.CredentialsApiKey, Value: apiKey.Key}
 
-	claims, err := apiKeyVerifier.Verify(ctx, in)
+	intoCredentials, claims, err := apiKeyVerifier.Verify(ctx, in)
 	if err != nil {
 		assert.FailNow(t, "Could not generate creds from api key", err)
 	}
-	creds, err := tokenGenerator.GenerateToken(ctx, in, claims)
+	creds, err := tokenGenerator.GenerateToken(ctx, in, intoCredentials, claims)
 	if err != nil {
 		assert.FailNow(t, "Could not generate creds from api key", err)
 	}

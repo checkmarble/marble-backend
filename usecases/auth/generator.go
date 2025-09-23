@@ -2,8 +2,6 @@ package auth
 
 import (
 	"context"
-	"crypto/sha256"
-	"errors"
 	"fmt"
 	"time"
 
@@ -23,7 +21,7 @@ type encoder interface {
 }
 
 type TokenGenerator interface {
-	GenerateToken(ctx context.Context, creds Credentials, claims models.IdentityClaims) (Token, error)
+	GenerateToken(ctx context.Context, creds Credentials, intoCredentials models.IntoCredentials, claims models.IdentityClaims) (Token, error)
 }
 
 type Token struct {
@@ -49,22 +47,12 @@ func NewGenerator(repository marbleRepository, encoder encoder, lifetime time.Du
 	}
 }
 
-func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentials, claims models.IdentityClaims) (Token, error) {
+func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentials, intoCredentials models.IntoCredentials, claims models.IdentityClaims) (Token, error) {
 	expirationTime := g.clock.Now().Add(g.tokenLifetime)
-
-	var credentials models.Credentials
+	credentials := intoCredentials.IntoCredentials()
 
 	switch creds.Type {
 	case CredentialsBearer:
-		user, err := g.repository.UserByEmail(ctx, claims.GetEmail())
-		if errors.Is(err, models.NotFoundError) {
-			return Token{}, fmt.Errorf("%w: %w", models.ErrUnknownUser, err)
-		} else if err != nil {
-			return Token{}, fmt.Errorf("repository.UserByEmail error: %w", err)
-		}
-
-		credentials = models.NewCredentialWithUser(user)
-
 		if credentials.Role != models.MARBLE_ADMIN {
 			organization, err := g.repository.GetOrganizationByID(ctx, credentials.OrganizationId)
 			if err != nil {
@@ -82,22 +70,6 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 					"organization_id": credentials.OrganizationId,
 				})
 		}
-
-	case CredentialsApiKey:
-		hash := sha256.Sum256([]byte(creds.Value))
-
-		apiKey, err := g.repository.GetApiKeyByHash(ctx, hash[:])
-		if err != nil {
-			return Token{}, fmt.Errorf("getter.GetApiKeyByHash error: %w", err)
-		}
-
-		organization, err := g.repository.GetOrganizationByID(ctx, apiKey.OrganizationId)
-		if err != nil {
-			return Token{}, fmt.Errorf("getter.GetOrganizationByID error: %w", err)
-		}
-
-		name := fmt.Sprintf("Api key %s*** of %s", apiKey.Prefix, organization.Name)
-		credentials = models.NewCredentialWithApiKey(apiKey, name)
 	}
 
 	token, err := g.encoder.EncodeMarbleToken(claims.GetIssuer(), expirationTime, credentials)
