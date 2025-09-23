@@ -29,7 +29,9 @@ type OffloadedReader struct {
 	offloadingBucketUrl string
 }
 
-func (uc OffloadedReader) MutateWithOffloadedDecisionRules(ctx context.Context, orgId string,
+func (uc OffloadedReader) MutateWithOffloadedDecisionRules(
+	ctx context.Context,
+	orgId string,
 	decision models.DecisionWithRuleExecutions,
 ) error {
 	offloadingWatermark, err := uc.repository.GetWatermark(ctx,
@@ -42,6 +44,9 @@ func (uc OffloadedReader) MutateWithOffloadedDecisionRules(ctx context.Context, 
 		return nil
 	}
 	if decision.CreatedAt.After(offloadingWatermark.WatermarkTime) {
+		return nil
+	}
+	if uc.offloadingBucketUrl == "" {
 		return nil
 	}
 
