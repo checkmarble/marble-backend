@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	DEFAULT_TRIGRAM_THRESHOLD = 0.3
+	DEFAULT_SIMILARITY_THRESHOLD = 0.3
 )
 
 func GetDeploymentMetadata(ctx context.Context, repositories repositories.Repositories) (models.Metadata, error) {

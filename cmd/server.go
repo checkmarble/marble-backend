@@ -150,7 +150,7 @@ func RunServer(config CompiledConfig) error {
 		transferCheckEnrichmentBucketUrl: utils.GetEnv("TRANSFER_CHECK_ENRICHMENT_BUCKET_URL", ""), // required for transfercheck
 		telemetryExporter:                utils.GetEnv("TRACING_EXPORTER", "otlp"),
 		otelSamplingRates:                utils.GetEnv("TRACING_SAMPLING_RATES", ""),
-		trigramThreshold:                 utils.GetEnv("TRIGRAM_THRESHOLD", DEFAULT_TRIGRAM_THRESHOLD),
+		similarityThreshold:              utils.GetEnv("SIMILARITY_THRESHOLD", DEFAULT_SIMILARITY_THRESHOLD),
 	}
 	if err := serverConfig.Validate(); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -242,7 +242,7 @@ func RunServer(config CompiledConfig) error {
 		repositories.WithRiverClient(riverClient),
 		repositories.WithBigQueryInfra(bigQueryInfra),
 		repositories.WithCache(utils.GetEnv("CACHE_ENABLED", false)),
-		repositories.WithTrigramThreshold(serverConfig.trigramThreshold),
+		repositories.WithSimilarityThreshold(serverConfig.similarityThreshold),
 	)
 
 	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)

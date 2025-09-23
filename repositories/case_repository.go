@@ -63,7 +63,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 		query = query.Where(squirrel.Eq{"c.inbox_id": filters.InboxIds})
 	}
 	if filters.Name != "" {
-		query = query.Where("similarity(c.name, ?) > ?", filters.Name, repo.trigramThreshold)
+		query = query.Where("similarity(c.name, ?) > ?", filters.Name, repo.similarityThreshold)
 	}
 	if !filters.IncludeSnoozed {
 		query = query.Where(squirrel.Or{

@@ -1,6 +1,9 @@
 package cmd
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 type CompiledConfig struct {
 	Version         string
@@ -14,17 +17,30 @@ type ServerConfig struct {
 	offloadingBucketUrl              string
 	jwtSigningKey                    string
 	jwtSigningKeyFile                string
-	loggingFormat                    string
 	sentryDsn                        string
 	transferCheckEnrichmentBucketUrl string
 	telemetryExporter                string
 	otelSamplingRates                string
-	trigramThreshold                 float64
+	similarityThreshold              float64
 }
 
 func (config ServerConfig) Validate() error {
-	if config.trigramThreshold <= 0 || config.trigramThreshold > 1 {
-		return errors.New("trigramThreshold must be between 0 and 1")
+	if config.similarityThreshold < 0 || config.similarityThreshold > 1 {
+		return errors.New("similarityThreshold must be between 0 and 1")
 	}
 	return nil
+}
+
+type WorkerConfig struct {
+	appName                     string
+	env                         string
+	failedWebhooksRetryPageSize int
+	ingestionBucketUrl          string
+	loggingFormat               string
+	sentryDsn                   string
+	cloudRunProbePort           string
+	caseReviewTimeout           time.Duration
+	caseManagerBucket           string
+	telemetryExporter           string
+	otelSamplingRates           string
 }
