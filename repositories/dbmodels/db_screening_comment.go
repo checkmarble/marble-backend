@@ -7,13 +7,13 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const TABLE_SCREENING_MATCH_COMMENTS = "sanction_check_match_comments"
+const TABLE_SCREENING_MATCH_COMMENTS = "screening_match_comments"
 
 var SelectScreeningMatchCommentsColumn = utils.ColumnList[DBScreeningMatchComment]()
 
 type DBScreeningMatchComment struct {
 	Id               string    `db:"id"`
-	ScreeningMatchId string    `db:"sanction_check_match_id"`
+	ScreeningMatchId string    `db:"screening_match_id"`
 	CommentedBy      string    `db:"commented_by"`
 	Comment          string    `db:"comment"`
 	CreatedAt        time.Time `db:"created_at"`

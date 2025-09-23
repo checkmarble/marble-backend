@@ -7,7 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const TABLE_SCREENING_WHITELISTS = "sanction_check_whitelists"
+const TABLE_SCREENING_WHITELISTS = "screening_whitelists"
 
 type DBScreeningWhitelists struct {
 	Id             string    `db:"id"`

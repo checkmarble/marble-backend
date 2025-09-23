@@ -9,14 +9,14 @@ import (
 
 type DBScreeningFile struct {
 	Id            string    `db:"id"`
-	ScreeningId   string    `db:"sanction_check_id"`
+	ScreeningId   string    `db:"screening_id"`
 	BucketName    string    `db:"bucket_name"`
 	FileReference string    `db:"file_reference"`
 	FileName      string    `db:"file_name"`
 	CreatedAt     time.Time `db:"created_at"`
 }
 
-const TABLE_SCREENING_FILES = "sanction_check_files"
+const TABLE_SCREENING_FILES = "screening_files"
 
 var SelectScreeningFileColumn = utils.ColumnList[DBScreeningFile]()
 

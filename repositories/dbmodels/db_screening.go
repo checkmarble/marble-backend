@@ -8,7 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const TABLE_SCREENINGS = "sanction_checks"
+const TABLE_SCREENINGS = "screenings"
 
 var (
 	SelectScreeningColumn            = utils.ColumnList[DBScreening]()
@@ -20,7 +20,7 @@ type DBScreening struct {
 	Id                  string                           `db:"id"`
 	DecisionId          string                           `db:"decision_id"`
 	OrgId               string                           `db:"org_id"`
-	ScreeningConfigId   string                           `db:"sanction_check_config_id"`
+	ScreeningConfigId   string                           `db:"screening_config_id"`
 	Status              string                           `db:"status"`
 	SearchInput         json.RawMessage                  `db:"search_input"`
 	InitialQuery        []models.OpenSanctionsCheckQuery `db:"initial_query"`
@@ -52,7 +52,7 @@ type DBScreeningBaseInfo struct {
 
 type DBScreeningBaseInfoWithName struct {
 	DBScreeningBaseInfo
-	Name string `db:"name"` // field is on sanction_check_configs table and requires a join
+	Name string `db:"name"` // field is on screening_configs table and requires a join
 }
 
 type DBScreeningWithMatches struct {

@@ -45,13 +45,41 @@ type screeningConfigValidationDto struct {
 }
 
 type ScenarioValidationDto struct {
-	Trigger          triggerValidationDto           `json:"trigger"`
-	Rules            rulesValidationDto             `json:"rules"`
-	ScreeningConfigs []screeningConfigValidationDto `json:"sanction_check_config"` //nolint:tagliatelle
-	Decision         decisionValidationDto          `json:"decision"`
+	Trigger triggerValidationDto `json:"trigger"`
+	Rules   rulesValidationDto   `json:"rules"`
+
+	// Deprecated, to remove after the frontend starts consuming the new field
+	ScreeningConfigs_deprec []screeningConfigValidationDto `json:"sanction_check_config"` //nolint:tagliatelle
+	ScreeningConfigs        []screeningConfigValidationDto `json:"screening_configs"`
+	Decision                decisionValidationDto          `json:"decision"`
 }
 
 func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationDto {
+	screeningConfigs := pure_utils.Map(s.Screenings, func(
+		sc models.ScreeningConfigValidation,
+	) screeningConfigValidationDto {
+		return screeningConfigValidationDto{
+			Trigger: triggerValidationDto{
+				Errors:            pure_utils.Map(sc.TriggerRule.Errors, AdaptScenarioValidationErrorDto),
+				TriggerEvaluation: ast.AdaptNodeEvaluationDto(sc.TriggerRule.TriggerEvaluation),
+			},
+			Query: ruleValidationDto{
+				Errors:         pure_utils.Map(sc.Query.Errors, AdaptScenarioValidationErrorDto),
+				RuleEvaluation: ast.AdaptNodeEvaluationDto(sc.Query.RuleEvaluation),
+			},
+			QueryFields: pure_utils.MapValues(sc.QueryFields, func(e models.RuleValidation) ruleValidationDto {
+				return ruleValidationDto{
+					Errors:         pure_utils.Map(e.Errors, AdaptScenarioValidationErrorDto),
+					RuleEvaluation: ast.AdaptNodeEvaluationDto(e.RuleEvaluation),
+				}
+			}),
+			CounterpartyIdExpression: ruleValidationDto{
+				Errors: pure_utils.Map(sc.CounterpartyIdExpression.Errors, AdaptScenarioValidationErrorDto),
+				RuleEvaluation: ast.AdaptNodeEvaluationDto(
+					sc.CounterpartyIdExpression.RuleEvaluation),
+			},
+		}
+	})
 	return ScenarioValidationDto{
 		Trigger: triggerValidationDto{
 			Errors:            pure_utils.Map(s.Trigger.Errors, AdaptScenarioValidationErrorDto),
@@ -66,28 +94,8 @@ func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationD
 				}
 			}),
 		},
-		ScreeningConfigs: pure_utils.Map(s.Screenings, func(sc models.ScreeningConfigValidation) screeningConfigValidationDto {
-			return screeningConfigValidationDto{
-				Trigger: triggerValidationDto{
-					Errors:            pure_utils.Map(sc.TriggerRule.Errors, AdaptScenarioValidationErrorDto),
-					TriggerEvaluation: ast.AdaptNodeEvaluationDto(sc.TriggerRule.TriggerEvaluation),
-				},
-				Query: ruleValidationDto{
-					Errors:         pure_utils.Map(sc.Query.Errors, AdaptScenarioValidationErrorDto),
-					RuleEvaluation: ast.AdaptNodeEvaluationDto(sc.Query.RuleEvaluation),
-				},
-				QueryFields: pure_utils.MapValues(sc.QueryFields, func(e models.RuleValidation) ruleValidationDto {
-					return ruleValidationDto{
-						Errors:         pure_utils.Map(e.Errors, AdaptScenarioValidationErrorDto),
-						RuleEvaluation: ast.AdaptNodeEvaluationDto(e.RuleEvaluation),
-					}
-				}),
-				CounterpartyIdExpression: ruleValidationDto{
-					Errors:         pure_utils.Map(sc.CounterpartyIdExpression.Errors, AdaptScenarioValidationErrorDto),
-					RuleEvaluation: ast.AdaptNodeEvaluationDto(sc.CounterpartyIdExpression.RuleEvaluation),
-				},
-			}
-		}),
+		ScreeningConfigs_deprec: screeningConfigs,
+		ScreeningConfigs:        screeningConfigs,
 		Decision: decisionValidationDto{
 			Errors: pure_utils.Map(s.Decision.Errors, AdaptScenarioValidationErrorDto),
 		},

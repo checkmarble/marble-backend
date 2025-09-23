@@ -28,7 +28,8 @@ type ScenarioUsecaseRepository interface {
 		exec Executor,
 		scenario models.UpdateScenarioInput,
 	) error
-	ListScenarioLatestRuleVersions(ctx context.Context, exec Executor, scenarioId string) ([]models.ScenarioRuleLatestVersion, error)
+	ListScenarioLatestRuleVersions(ctx context.Context, exec Executor, scenarioId string) (
+		[]models.ScenarioRuleLatestVersion, error)
 }
 
 func selectScenarios() squirrel.SelectBuilder {
@@ -135,35 +136,38 @@ func (repo *MarbleDbRepository) ListLiveIterationsAndNeighbors(ctx context.Conte
 		return nil, err
 	}
 
-	ctes :=
-		WithCtes("live", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+	ctes := WithCtes("live", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+		return b.
+			Select("si.id as id").
+			From(dbmodels.TABLE_SCENARIO_ITERATIONS+" si").
+			InnerJoin("scenarios s on s.live_scenario_iteration_id = si.id").
+			Where("si.org_id = ?", orgId)
+	}).
+		With("test_run", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
 			return b.
-				Select("si.id as id").
+				Select("str.scenario_iteration_id as id").
 				From(dbmodels.TABLE_SCENARIO_ITERATIONS+" si").
-				InnerJoin("scenarios s on s.live_scenario_iteration_id = si.id").
-				Where("si.org_id = ?", orgId)
+				InnerJoin(dbmodels.TABLE_SCENARIO_TESTRUN+
+					" str on str.scenario_iteration_id = si.id").
+				Where("si.org_id = ? and str.status = 'up'", orgId)
 		}).
-			With("test_run", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
-				return b.
-					Select("str.scenario_iteration_id as id").
-					From(dbmodels.TABLE_SCENARIO_ITERATIONS+" si").
-					InnerJoin(dbmodels.TABLE_SCENARIO_TESTRUN+" str on str.scenario_iteration_id = si.id").
-					Where("si.org_id = ? and str.status = 'up'", orgId)
-			}).
-			With("neighbors", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
-				return b.
-					Select("sp.scenario_iteration_id as id").
-					From(dbmodels.TABLE_SCENARIOS_PUBLICATIONS + " sp").
-					Where(squirrel.And{
-						squirrel.Eq{
-							"org_id":             orgId,
-							"publication_action": []string{models.Prepare.String(), models.Publish.String(), models.Unpublish.String()},
+		With("neighbors", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+			return b.
+				Select("sp.scenario_iteration_id as id").
+				From(dbmodels.TABLE_SCENARIOS_PUBLICATIONS + " sp").
+				Where(squirrel.And{
+					squirrel.Eq{
+						"org_id": orgId,
+						"publication_action": []string{
+							models.Prepare.String(),
+							models.Publish.String(), models.Unpublish.String(),
 						},
-						squirrel.Gt{
-							"created_at": time.Now().Add(-3 * 24 * time.Hour),
-						},
-					})
-			})
+					},
+					squirrel.Gt{
+						"created_at": time.Now().Add(-3 * 24 * time.Hour),
+					},
+				})
+		})
 
 	sql := NewQueryBuilder().
 		Select(columnsNames("si", dbmodels.SelectScenarioIterationColumn)...).
@@ -182,7 +186,9 @@ func (repo *MarbleDbRepository) ListLiveIterationsAndNeighbors(ctx context.Conte
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScenarioIterationWithRules)
 }
 
-func (repo *MarbleDbRepository) ListScenarioLatestRuleVersions(ctx context.Context, exec Executor, scenarioId string) ([]models.ScenarioRuleLatestVersion, error) {
+func (repo *MarbleDbRepository) ListScenarioLatestRuleVersions(ctx context.Context, exec Executor,
+	scenarioId string,
+) ([]models.ScenarioRuleLatestVersion, error) {
 	sql := `
 		select type, stable_rule_id, name, version
 		from (
@@ -203,7 +209,7 @@ func (repo *MarbleDbRepository) ListScenarioLatestRuleVersions(ctx context.Conte
 				scc.stable_id,
 				scc.name,
 				si.version
-			from sanction_check_configs scc
+			from screening_configs scc
 			inner join scenario_iterations si on si.id = scc.scenario_iteration_id
 			where si.scenario_id = $2
 			and si.version is not null
@@ -221,7 +227,6 @@ func (repo *MarbleDbRepository) ListScenarioLatestRuleVersions(ctx context.Conte
 
 	for rows.Next() {
 		rule, err := pgx.RowToStructByName[dbmodels.DBScenarioRuleLatestVersion](rows)
-
 		if err != nil {
 			return nil, err
 		}

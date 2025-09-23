@@ -24,7 +24,10 @@ type ScreeningPreprocessor func(
 	scc models.ScreeningConfig,
 ) ([]models.OpenSanctionsCheckQuery, error)
 
-func SkipIfUnder(ctx context.Context, e ScenarioEvaluator, screeningId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.ScreeningConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func SkipIfUnder(ctx context.Context, e ScenarioEvaluator, screeningId string,
+	queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration,
+	scc models.ScreeningConfig,
+) ([]models.OpenSanctionsCheckQuery, error) {
 	if scc.Preprocessing.SkipIfUnder == 0 {
 		return queries, nil
 	}
@@ -42,15 +45,19 @@ func SkipIfUnder(ctx context.Context, e ScenarioEvaluator, screeningId string, q
 	}
 
 	if skipped > 0 {
-		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: skipped %d queries", skipped),
-			"sanction_check_id", screeningId,
+		utils.LoggerFromContext(ctx).DebugContext(ctx,
+			fmt.Sprintf("screening preprocessing: skipped %d queries", skipped),
+			"screening_id", screeningId,
 			"step", "skip_if_under")
 	}
 
 	return out, nil
 }
 
-func RemoveNumbers(ctx context.Context, e ScenarioEvaluator, screeningId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.ScreeningConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func RemoveNumbers(ctx context.Context, e ScenarioEvaluator, screeningId string,
+	queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration,
+	scc models.ScreeningConfig,
+) ([]models.OpenSanctionsCheckQuery, error) {
 	if !scc.Preprocessing.RemoveNumbers {
 		return queries, nil
 	}
@@ -76,15 +83,19 @@ func RemoveNumbers(ctx context.Context, e ScenarioEvaluator, screeningId string,
 	}
 
 	if removed > 0 {
-		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: removed %d characters", removed),
-			"sanction_check_id", screeningId,
+		utils.LoggerFromContext(ctx).DebugContext(ctx,
+			fmt.Sprintf("screening preprocessing: removed %d characters", removed),
+			"screening_id", screeningId,
 			"step", "remove_numbers")
 	}
 
 	return out, nil
 }
 
-func IgnoreList(ctx context.Context, e ScenarioEvaluator, screeningId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.ScreeningConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func IgnoreList(ctx context.Context, e ScenarioEvaluator, screeningId string,
+	queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration,
+	scc models.ScreeningConfig,
+) ([]models.OpenSanctionsCheckQuery, error) {
 	if scc.Preprocessing.IgnoreListId == "" {
 		return queries, nil
 	}
@@ -93,7 +104,9 @@ func IgnoreList(ctx context.Context, e ScenarioEvaluator, screeningId string, qu
 	removed := 0
 
 	for _, query := range queries {
-		customListEval, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil, ast.NewNodeCustomListAccess(scc.Preprocessing.IgnoreListId), iteration.OrganizationId, models.ClientObject{}, models.DataModel{})
+		customListEval, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
+			ast.NewNodeCustomListAccess(scc.Preprocessing.IgnoreListId), iteration.OrganizationId,
+			models.ClientObject{}, models.DataModel{})
 		if err != nil {
 			return nil, err
 		}
@@ -125,15 +138,19 @@ func IgnoreList(ctx context.Context, e ScenarioEvaluator, screeningId string, qu
 	}
 
 	if removed > 0 {
-		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: removed %d words", removed),
-			"sanction_check_id", screeningId,
+		utils.LoggerFromContext(ctx).DebugContext(ctx,
+			fmt.Sprintf("screening preprocessing: removed %d words", removed),
+			"screening_id", screeningId,
 			"step", "ignore_list")
 	}
 
 	return out, nil
 }
 
-func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId string, queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration, scc models.ScreeningConfig) ([]models.OpenSanctionsCheckQuery, error) {
+func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId string,
+	queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration,
+	scc models.ScreeningConfig,
+) ([]models.OpenSanctionsCheckQuery, error) {
 	if !scc.Preprocessing.UseNer {
 		return queries, nil
 	}
@@ -183,8 +200,9 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId
 	}
 
 	if performed {
-		utils.LoggerFromContext(ctx).DebugContext(ctx, fmt.Sprintf("screening preprocessing: turned %d queries into %d", len(queries), len(out)),
-			"sanction_check_id", screeningId,
+		utils.LoggerFromContext(ctx).DebugContext(ctx,
+			fmt.Sprintf("screening preprocessing: turned %d queries into %d", len(queries), len(out)),
+			"screening_id", screeningId,
 			"step", "ner",
 			"out", pure_utils.Map(queries, func(q models.OpenSanctionsCheckQuery) string {
 				return q.Type

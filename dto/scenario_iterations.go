@@ -27,7 +27,8 @@ type ScenarioIterationDto struct {
 type ScenarioIterationBodyDto struct {
 	TriggerConditionAstExpression *NodeDto          `json:"trigger_condition_ast_expression"`
 	Rules                         []RuleDto         `json:"rules"`
-	ScreeningConfigs              []ScreeningConfig `json:"sanction_check_configs,omitempty"` //nolint:tagliatelle
+	SanctionCheckConfigs_deprec   []ScreeningConfig `json:"sanction_check_configs,omitempty"` //nolint:tagliatelle
+	ScreeningConfigs              []ScreeningConfig `json:"screening_configs,omitempty"`
 	ScoreReviewThreshold          *int              `json:"score_review_threshold"`
 	ScoreBlockAndReviewThreshold  *int              `json:"score_block_and_review_threshold"`
 	ScoreRejectThreshold_deprec   *int              `json:"score_reject_threshold"` //nolint:tagliatelle
@@ -43,7 +44,6 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		ScoreDeclineThreshold:        si.ScoreDeclineThreshold,
 		Schedule:                     si.Schedule,
 		Rules:                        make([]RuleDto, len(si.Rules)),
-		ScreeningConfigs:             nil,
 	}
 	for i, rule := range si.Rules {
 		apiRule, err := AdaptRuleDto(rule)
@@ -62,6 +62,7 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		}
 
 		body.ScreeningConfigs = sccs
+		body.SanctionCheckConfigs_deprec = sccs
 	}
 
 	if si.TriggerConditionAstExpression != nil {
