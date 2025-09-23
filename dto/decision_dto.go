@@ -82,6 +82,7 @@ type DecisionScreening struct {
 	Status  string `json:"status"`
 	Partial bool   `json:"partial"`
 	Count   int    `json:"count"`
+	Name    string `json:"name"`
 }
 
 type ErrorDto struct {
@@ -196,6 +197,7 @@ func NewDecisionWithRuleDto(decision models.DecisionWithRuleExecutions, marbleAp
 				Status:  sce.Status.String(),
 				Partial: sce.Partial,
 				Count:   sce.NumberOfMatches,
+				Name:    sce.Config.Name,
 			}
 		}
 	}
@@ -241,6 +243,7 @@ func NewDecisionWithRuleBaseInfoDto(
 				Status:  sce.Status.String(),
 				Partial: sce.Partial,
 				Count:   sce.NumberOfMatches,
+				Name:    sce.Name,
 			}
 		}
 	}

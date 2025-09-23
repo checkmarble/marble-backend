@@ -281,7 +281,7 @@ func (repo *MarbleDbRepository) DecisionsByCaseIdFromCursor(
 	}
 
 	var rules map[string][]models.RuleExecution
-	var screenings map[string][]models.Screening
+	var screenings map[string][]models.ScreeningBaseInfo
 
 	decisionIds := pure_utils.Map(decisions, func(d models.Decision) string { return d.DecisionId.String() })
 	rules, err = repo.rulesOfDecisions(ctx, exec, decisionIds, false)
