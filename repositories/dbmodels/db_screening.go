@@ -12,6 +12,7 @@ const TABLE_SCREENINGS = "sanction_checks"
 
 var (
 	SelectScreeningColumn            = utils.ColumnList[DBScreening]()
+	SelectScreeningBaseInfoColumn    = utils.ColumnList[DBScreeningBaseInfo]()
 	SelectScreeningWithMatchesColumn = utils.ColumnList[DBScreeningWithMatches]()
 )
 
@@ -36,6 +37,22 @@ type DBScreening struct {
 	NumberOfMatches     *int                             `db:"number_of_matches"`
 	CreatedAt           time.Time                        `db:"created_at"`
 	UpdatedAt           time.Time                        `db:"updated_at"`
+}
+
+type DBScreeningBaseInfo struct {
+	Id              string    `db:"id"`
+	DecisionId      string    `db:"decision_id"`
+	OrgId           string    `db:"org_id"`
+	Status          string    `db:"status"`
+	RequestedBy     *string   `db:"requested_by"`
+	IsPartial       bool      `db:"is_partial"`
+	NumberOfMatches *int      `db:"number_of_matches"`
+	CreatedAt       time.Time `db:"created_at"`
+}
+
+type DBScreeningBaseInfoWithName struct {
+	DBScreeningBaseInfo
+	Name string `db:"name"` // field is on sanction_check_configs table and requires a join
 }
 
 type DBScreeningWithMatches struct {
@@ -73,6 +90,24 @@ func AdaptScreening(dto DBScreening) (models.Screening, error) {
 		NumberOfMatches:     numberOfMatches,
 		CreatedAt:           dto.CreatedAt,
 		UpdatedAt:           dto.UpdatedAt,
+	}, nil
+}
+
+func AdaptScreeningBaseInfo(dto DBScreeningBaseInfoWithName) (models.ScreeningBaseInfo, error) {
+	numberOfMatches := 0
+	if dto.NumberOfMatches != nil {
+		numberOfMatches = *dto.NumberOfMatches
+	}
+	return models.ScreeningBaseInfo{
+		Id:              dto.Id,
+		DecisionId:      dto.DecisionId,
+		OrgId:           dto.OrgId,
+		Status:          models.ScreeningStatusFrom(dto.Status),
+		RequestedBy:     dto.RequestedBy,
+		Partial:         dto.IsPartial,
+		Name:            dto.Name,
+		NumberOfMatches: numberOfMatches,
+		CreatedAt:       dto.CreatedAt,
 	}, nil
 }
 
