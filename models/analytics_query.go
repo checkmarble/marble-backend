@@ -29,9 +29,10 @@ func IsValidAnalyticsQueryOp(op AnalyticsQueryOp) bool {
 }
 
 type AnalyticsQueryObjectFilter struct {
-	Field  string           `json:"field"`
-	Op     AnalyticsQueryOp `json:"op"`
-	Values []any            `json:"values"`
+	Source AnalyticsFieldSource `json:"source"`
+	Field  string               `json:"field"`
+	Op     AnalyticsQueryOp     `json:"op"`
+	Values []any                `json:"values"`
 }
 
 func (f AnalyticsQueryObjectFilter) Validate() error {

@@ -13,20 +13,21 @@ import (
 const TABLE_DECISIONS = "decisions"
 
 type DbCoreDecision struct {
-	Id                   uuid.UUID  `db:"id"`
-	OrganizationId       uuid.UUID  `db:"org_id"`
-	CaseId               *string    `db:"case_id"`
-	CreatedAt            time.Time  `db:"created_at"`
-	Outcome              string     `db:"outcome"`
-	PivotId              *uuid.UUID `db:"pivot_id"`
-	PivotValue           *string    `db:"pivot_value"`
-	ReviewStatus         *string    `db:"review_status"`
-	ScenarioId           uuid.UUID  `db:"scenario_id"`
-	ScenarioIterationId  uuid.UUID  `db:"scenario_iteration_id"`
-	ScheduledExecutionId *string    `db:"scheduled_execution_id"`
-	Score                int        `db:"score"`
-	TriggerObjectRaw     []byte     `db:"trigger_object"`
-	TriggerObjectType    string     `db:"trigger_object_type"`
+	Id                   uuid.UUID      `db:"id"`
+	OrganizationId       uuid.UUID      `db:"org_id"`
+	CaseId               *string        `db:"case_id"`
+	CreatedAt            time.Time      `db:"created_at"`
+	Outcome              string         `db:"outcome"`
+	PivotId              *uuid.UUID     `db:"pivot_id"`
+	PivotValue           *string        `db:"pivot_value"`
+	ReviewStatus         *string        `db:"review_status"`
+	ScenarioId           uuid.UUID      `db:"scenario_id"`
+	ScenarioIterationId  uuid.UUID      `db:"scenario_iteration_id"`
+	ScheduledExecutionId *string        `db:"scheduled_execution_id"`
+	Score                int            `db:"score"`
+	TriggerObjectRaw     []byte         `db:"trigger_object"`
+	TriggerObjectType    string         `db:"trigger_object_type"`
+	AnalyticsFields      map[string]any `db:"analytics_fields"`
 }
 
 type DbCoreDecisionWithScenario struct {

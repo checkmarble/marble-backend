@@ -42,7 +42,8 @@ type DecisionUsecaseRepository interface {
 		exec repositories.Executor,
 		decision models.DecisionWithRuleExecutions,
 		organizationId string,
-		newDecisionId string) error
+		newDecisionId string,
+		dbFields map[string]any) error
 	DecisionsOfOrganization(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -57,6 +58,8 @@ type DecisionUsecaseRepository interface {
 		testRunId string) ([]models.DecisionsByVersionByOutcome, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
+
+	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]models.AnalyticsSettings, error)
 }
 
 type ScenarioEvaluator interface {
@@ -361,45 +364,13 @@ func (usecase *DecisionUsecase) CreateDecision(
 	newDecision, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.DecisionWithRuleExecutions, error) {
-		{
-			// TODO: get those from settings
-			pivotFields := []struct {
-				path  []string
-				field string
-			}{
-				{[]string{"transaction_account"}, "firstname"},
-				{[]string{"transaction_account"}, "lastname"},
-				{[]string{"transaction_account"}, "updated_at"},
-			}
-
-			da := usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters)
-
-			for _, pf := range pivotFields {
-				out, err := da.GetDbField(ctx, scenario.TriggerObjectType, pf.path, pf.field)
-
-				if err == nil {
-					switch out.(type) {
-					case time.Time:
-						fmt.Println("TIMESTAMP", out)
-					case string:
-						fmt.Println("STRING", out)
-					case int:
-						fmt.Println("INT", out)
-					case float64:
-						fmt.Println("FLOAT64", out)
-					case bool:
-						fmt.Println("BOOL", out)
-					}
-				}
-			}
-		}
-
 		if err = usecase.repository.StoreDecision(
 			ctx,
 			tx,
 			decision,
 			input.OrganizationId,
 			decision.DecisionId.String(),
+			usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(ctx, exec, usecase.repository, evaluationParameters),
 		); err != nil {
 			return models.DecisionWithRuleExecutions{},
 				fmt.Errorf("error storing decision: %w", err)
@@ -541,9 +512,10 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	}
 
 	type decisionAndScenario struct {
-		decision  models.DecisionWithRuleExecutions
-		scenario  models.Scenario
-		execution models.ScenarioExecution
+		decision        models.DecisionWithRuleExecutions
+		scenario        models.Scenario
+		execution       models.ScenarioExecution
+		analyticsFields map[string]any
 	}
 	var items []decisionAndScenario
 	for _, scenario := range filteredScenarios {
@@ -576,6 +548,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			items = append(items, decisionAndScenario{
 				decision: decision,
 				scenario: scenario, execution: scenarioExecution,
+				analyticsFields: usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(ctx, exec, usecase.repository, evaluationParameters),
 			})
 			usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable,
 				evaluationParameters, scenario, &scenarioExecution)
@@ -593,12 +566,14 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		for _, item := range items {
 			ids = append(ids, item.decision.DecisionId.String())
 			storageStart := time.Now()
+
 			if err = usecase.repository.StoreDecision(
 				ctx,
 				tx,
 				item.decision,
 				input.OrganizationId,
 				item.decision.DecisionId.String(),
+				item.analyticsFields,
 			); err != nil {
 				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}

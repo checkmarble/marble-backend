@@ -76,11 +76,13 @@ type asyncDecisionWorkerRepository interface {
 		updateScheduledEx models.UpdateScheduledExecutionStatusInput,
 	) (executed bool, err error)
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
+	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]models.AnalyticsSettings, error)
 }
 
 type ScenarioEvaluator interface {
 	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (
 		triggerPassed bool, se models.ScenarioExecution, err error)
+	GetDataAccessor(params evaluate_scenario.ScenarioEvaluationParameters) evaluate_scenario.DataAccessor
 }
 
 type decisionWorkerScreeningWriter interface {
@@ -353,6 +355,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		decision,
 		scenario.OrganizationId,
 		decision.DecisionId.String(),
+		w.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(ctx, tx, w.repository, evaluationParameters),
 	)
 	if err != nil {
 		return false, nil, nil, errors.Wrapf(err, "error storing decision in AsyncDecisionWorker %s", scenario.Id)
