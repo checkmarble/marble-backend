@@ -25,12 +25,12 @@ func (h MarbleTokenHandler) GetToken(ctx context.Context, r *http.Request) (Toke
 		return Token{}, err
 	}
 
-	claims, err := h.verifier.Verify(ctx, c)
+	intoCredentials, claims, err := h.verifier.Verify(ctx, c)
 	if err != nil {
 		return Token{}, err
 	}
 
-	token, err := h.generator.GenerateToken(ctx, c, claims)
+	token, err := h.generator.GenerateToken(ctx, c, intoCredentials, claims)
 	if err != nil {
 		return Token{}, err
 	}

@@ -30,10 +30,30 @@ func NewStaticTokenVerifier(token string, claims models.IdentityClaims) StaticTo
 	return StaticTokenVerifier{Token: token, Claims: claims}
 }
 
-func (e StaticTokenVerifier) Verify(_ context.Context, creds auth.Credentials) (models.IdentityClaims, error) {
+func (e StaticTokenVerifier) Verify(_ context.Context, creds auth.Credentials) (models.IntoCredentials, models.IdentityClaims, error) {
 	if creds.Value == e.Token {
-		return e.Claims, nil
+		return models.User{}, e.Claims, nil
 	}
 
-	return nil, errors.New("invalid token")
+	return nil, nil, errors.New("invalid token")
+}
+
+type StaticIdpTokenVerifier struct {
+	issuer string
+	claims models.IdentityClaims
+}
+
+func NewStaticIdpTokenVerifier(issuer string, claims models.IdentityClaims) StaticIdpTokenVerifier {
+	return StaticIdpTokenVerifier{
+		issuer: issuer,
+		claims: claims,
+	}
+}
+
+func (e StaticIdpTokenVerifier) Issuer() string {
+	return e.issuer
+}
+
+func (e StaticIdpTokenVerifier) VerifyToken(ctx context.Context, idToken string) (models.IdentityClaims, error) {
+	return e.claims, nil
 }
