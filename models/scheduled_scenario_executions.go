@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -108,62 +107,6 @@ type Filter struct {
 	RightNestedFilter *Filter
 }
 
-func mathComparisonFuncToString(f ast.Function) string {
-	switch f {
-	case ast.FUNC_GREATER:
-		return ">"
-	case ast.FUNC_GREATER_OR_EQUAL:
-		return ">="
-	case ast.FUNC_LESS:
-		return "<"
-	case ast.FUNC_LESS_OR_EQUAL:
-		return "<="
-	case ast.FUNC_EQUAL:
-		return "="
-	case ast.FUNC_NOT_EQUAL:
-		return "!="
-	case ast.FUNC_ADD:
-		return "+"
-	case ast.FUNC_SUBTRACT:
-		return "-"
-	case ast.FUNC_MULTIPLY:
-		return "*"
-	case ast.FUNC_DIVIDE:
-		return "/"
-	default:
-		return ""
-	}
-}
-
-func isMathOperation(f ast.Function) bool {
-	return slices.Contains([]ast.Function{
-		ast.FUNC_GREATER,
-		ast.FUNC_GREATER_OR_EQUAL,
-		ast.FUNC_LESS,
-		ast.FUNC_LESS_OR_EQUAL,
-		ast.FUNC_EQUAL,
-		ast.FUNC_NOT_EQUAL,
-		ast.FUNC_ADD,
-		ast.FUNC_SUBTRACT,
-		ast.FUNC_MULTIPLY,
-		ast.FUNC_DIVIDE,
-	}, f)
-}
-
-func isStringComparison(f ast.Function) bool {
-	return slices.Contains([]ast.Function{
-		ast.FUNC_STRING_CONTAINS,
-		ast.FUNC_STRING_NOT_CONTAIN,
-	}, f)
-}
-
-func isInListComparison(f ast.Function) bool {
-	return slices.Contains([]ast.Function{
-		ast.FUNC_IS_IN_LIST,
-		ast.FUNC_IS_NOT_IN_LIST,
-	}, f)
-}
-
 // Disclaimer: this logic creates some coupling between the models and SQL queries. It's not great, but I could not find
 // a simple enough abstraction to avoid doing this.
 func (f Filter) ToSql() (sql string, args []any) {
@@ -191,18 +134,23 @@ func (f Filter) ToSql() (sql string, args []any) {
 		args = append(args, rightArgs...)
 	}
 
-	if isMathOperation(f.Operator) {
+	if ast.IsMathOperation(f.Operator) {
+		attrs, err := f.Operator.Attributes()
+		if err != nil {
+			// Should never happen because we check for math operations above
+			return "", nil
+		}
 		// apply NULLIF to protect against division by zero
 		if f.Operator == ast.FUNC_DIVIDE {
 			sql = fmt.Sprintf("%s %s NULLIF(%s, 0)",
-				left, mathComparisonFuncToString(f.Operator), right)
+				left, attrs.AstName, right)
 		} else {
 			sql = fmt.Sprintf("%s %s %s", left,
-				mathComparisonFuncToString(f.Operator), right)
+				attrs.AstName, right)
 		}
-	} else if isStringComparison(f.Operator) {
+	} else if ast.IsStringComparison(f.Operator) {
 		sql = fmt.Sprintf("%s ILIKE CONCAT('%%',%s::text,'%%')", left, right)
-	} else if isInListComparison(f.Operator) {
+	} else if ast.IsInListComparison(f.Operator) {
 		sql = fmt.Sprintf("%s = ANY(%s)", left, right)
 	} else if f.Operator == ast.FUNC_IS_EMPTY {
 		sql = fmt.Sprintf("(%s IS NULL OR %s = '')", left, left)

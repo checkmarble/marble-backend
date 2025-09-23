@@ -125,22 +125,21 @@ func RunServer(config CompiledConfig) error {
 		MetricsTable:   utils.GetEnv("BIGQUERY_METRICS_TABLE", infra.MetricsTable),
 	}
 	aiAgentConfig := infra.AIAgentConfiguration{
-		PerplexityAPIKey: utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
+		MainAgentProviderType: infra.AIAgentProviderTypeFromString(
+			utils.GetEnv("AI_AGENT_MAIN_AGENT_PROVIDER_TYPE", "openai"),
+		),
+		MainAgentURL:          utils.GetEnv("AI_AGENT_MAIN_AGENT_URL", ""),
+		MainAgentKey:          utils.GetEnv("AI_AGENT_MAIN_AGENT_KEY", ""),
+		MainAgentDefaultModel: utils.GetEnv("AI_AGENT_MAIN_AGENT_DEFAULT_MODEL", "gemini-2.5-flash"),
+		MainAgentBackend: infra.AIAgentProviderBackendFromString(
+			utils.GetEnv("AI_AGENT_MAIN_AGENT_BACKEND", ""),
+		),
+		MainAgentProject:  utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", gcpConfig.ProjectId),
+		MainAgentLocation: utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
+		PerplexityAPIKey:  utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
 	}
 
-	serverConfig := struct {
-		batchIngestionMaxSize            int
-		caseManagerBucket                string
-		ingestionBucketUrl               string
-		offloadingBucketUrl              string
-		jwtSigningKey                    string
-		jwtSigningKeyFile                string
-		loggingFormat                    string
-		sentryDsn                        string
-		transferCheckEnrichmentBucketUrl string
-		telemetryExporter                string
-		otelSamplingRates                string
-	}{
+	serverConfig := ServerConfig{
 		batchIngestionMaxSize:            utils.GetEnv("BATCH_INGESTION_MAX_SIZE", 0),
 		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 		ingestionBucketUrl:               utils.GetEnv("INGESTION_BUCKET_URL", ""),
@@ -151,6 +150,11 @@ func RunServer(config CompiledConfig) error {
 		transferCheckEnrichmentBucketUrl: utils.GetEnv("TRANSFER_CHECK_ENRICHMENT_BUCKET_URL", ""), // required for transfercheck
 		telemetryExporter:                utils.GetEnv("TRACING_EXPORTER", "otlp"),
 		otelSamplingRates:                utils.GetEnv("TRACING_SAMPLING_RATES", ""),
+		similarityThreshold:              utils.GetEnv("SIMILARITY_THRESHOLD", DEFAULT_SIMILARITY_THRESHOLD),
+	}
+	if err := serverConfig.Validate(); err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
 	}
 
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
@@ -238,6 +242,7 @@ func RunServer(config CompiledConfig) error {
 		repositories.WithRiverClient(riverClient),
 		repositories.WithBigQueryInfra(bigQueryInfra),
 		repositories.WithCache(utils.GetEnv("CACHE_ENABLED", false)),
+		repositories.WithSimilarityThreshold(serverConfig.similarityThreshold),
 	)
 
 	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)

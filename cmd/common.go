@@ -9,6 +9,10 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+const (
+	DEFAULT_SIMILARITY_THRESHOLD = 0.3
+)
+
 func GetDeploymentMetadata(ctx context.Context, repositories repositories.Repositories) (models.Metadata, error) {
 	// Get deployment ID from Marble DB
 	executor, err := repositories.ExecutorGetter.GetExecutor(

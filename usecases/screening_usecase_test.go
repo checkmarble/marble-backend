@@ -33,8 +33,8 @@ func buildScreeningUsecaseMock() (ScreeningUsecase, executor_factory.ExecutorFac
 		organizationRepository:    repoMock,
 		externalRepository:        repoMock,
 		inboxReader:               repoMock,
-		repository:                repositories.NewMarbleDbRepository(false),
-		screeningConfigRepository: repositories.NewMarbleDbRepository(false),
+		repository:                repositories.NewMarbleDbRepository(false, 0.3),
+		screeningConfigRepository: repositories.NewMarbleDbRepository(false, 0.3),
 		executorFactory:           exec,
 		transactionFactory:        txFac,
 	}
@@ -78,10 +78,17 @@ func TestListScreeningOnDecision(t *testing.T) {
 
 	exec.Mock.ExpectQuery(escapeSql(`
 		SELECT
+<<<<<<< HEAD
 			sc.id, sc.decision_id, sc.org_id, sc.screening_config_id, sc.status, sc.search_input, sc.initial_query, sc.search_datasets, sc.match_threshold, sc.match_limit, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.initial_has_matches, sc.whitelisted_entities, sc.error_codes, sc.number_of_matches, sc.created_at, sc.updated_at,
 			ARRAY_AGG(ROW(scm.id,scm.screening_id,scm.opensanction_entity_id,scm.status,scm.query_ids,scm.counterparty_id,scm.payload,scm.enriched,scm.reviewed_by,scm.created_at,scm.updated_at) ORDER BY array_position(.+, scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL) AS matches
 		FROM screenings AS sc
 		LEFT JOIN screening_matches AS scm ON sc.id = scm.screening_id
+=======
+			sc.id, sc.decision_id, sc.org_id, sc.sanction_check_config_id, sc.status, sc.search_input, sc.initial_query, sc.search_datasets, sc.match_threshold, sc.match_limit, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.initial_has_matches, sc.whitelisted_entities, sc.error_codes, sc.number_of_matches, sc.created_at, sc.updated_at,
+			ARRAY_AGG(ROW(scm.id,scm.sanction_check_id,scm.opensanction_entity_id,scm.status,scm.query_ids,scm.counterparty_id,scm.payload,scm.enriched,scm.reviewed_by,scm.created_at,scm.updated_at) ORDER BY array_position(.+, scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL) AS matches
+		FROM sanction_checks AS sc
+		LEFT JOIN sanction_check_matches AS scm ON sc.id = scm.sanction_check_id
+>>>>>>> main
 		WHERE sc.decision_id = $1 AND sc.is_archived = $2
 		GROUP BY sc.id
 	`)).
