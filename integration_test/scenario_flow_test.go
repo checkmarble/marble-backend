@@ -496,6 +496,9 @@ func createDecisions(
 	assert.Equal(t, models.Decline, declineDecision.Outcome,
 		"Expected decision to be Decline, got %s", declineDecision.Outcome)
 
+	// Let river process the scenario workflow after the decision creation
+	time.Sleep(1 * time.Second)
+
 	// Create a second decision with the same account_id to check their cases [Decline]
 	declineDecision2 := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
 		organizationId, scenarioId, 111)
