@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const TABLE_SCREENING_CONFIGS = "sanction_check_configs"
+const TABLE_SCREENING_CONFIGS = "screening_configs"
 
 type DBScreeningConfigs struct {
 	Id                  string                              `db:"id"`

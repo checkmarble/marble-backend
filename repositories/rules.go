@@ -169,7 +169,7 @@ func (repo *MarbleDbRepository) ScreeningExecutionStats(
 		return nil, err
 	}
 
-	screeningRuleName := "SELECT stable_id, name FROM sanction_check_configs WHERE scenario_iteration_id = $1"
+	screeningRuleName := "SELECT stable_id, name FROM screening_configs WHERE scenario_iteration_id = $1"
 	var stableId string
 	var name string
 	err = exec.QueryRow(ctx, screeningRuleName, iterationId).Scan(&stableId, &name)
@@ -185,7 +185,7 @@ func (repo *MarbleDbRepository) ScreeningExecutionStats(
 	query := NewQueryBuilder().
 		Select("CASE WHEN sc.initial_has_matches THEN 'hit' ELSE 'no_hit' END AS outcome, COUNT(*) as total").
 		From(fmt.Sprintf("%s as d", baseTable)).
-		Join("sanction_checks as sc ON sc.decision_id = d.id").
+		Join("screenings as sc ON sc.decision_id = d.id").
 		Where(squirrel.GtOrEq{"d.created_at": begin}).
 		Where(squirrel.LtOrEq{"d.created_at": end}).
 		Where(squirrel.Eq{"d.org_id": organizationId}).

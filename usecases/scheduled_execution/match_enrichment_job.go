@@ -62,7 +62,13 @@ func (w *MatchEnrichmentWorker) Work(ctx context.Context, job *river.Job[models.
 
 	var errs error
 
-	scc, err := w.repository.GetScreening(ctx, w.executorFactory.NewExecutor(), job.Args.ScreeningId)
+	// TODO: can be removed once the sanction_check_id has been removed from the job args
+	screeningId := job.Args.ScreeningId
+	if job.Args.SanctionCheckId_deprec != "" {
+		screeningId = job.Args.SanctionCheckId_deprec
+	}
+
+	scc, err := w.repository.GetScreening(ctx, w.executorFactory.NewExecutor(), screeningId)
 	if err != nil {
 		return err
 	}

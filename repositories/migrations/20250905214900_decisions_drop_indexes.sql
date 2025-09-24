@@ -6,6 +6,7 @@ DROP INDEX decisions_scenario_iteration_id_idx;
 
 -- +goose StatementEnd
 -- +goose Down
+-- +goose NO TRANSACTION
 CREATE INDEX CONCURRENTLY IF NOT EXISTS decision_pivot_id_idx ON decisions (pivot_id);
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS decisions_scenario_iteration_id_idx ON decisions (scenario_iteration_id);

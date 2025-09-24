@@ -8,13 +8,13 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const TABLE_SCREENING_MATCHES = "sanction_check_matches"
+const TABLE_SCREENING_MATCHES = "screening_matches"
 
 var SelectScreeningMatchesColumn = utils.ColumnList[DBScreeningMatch]()
 
 type DBScreeningMatch struct {
 	Id                   string          `db:"id"`
-	ScreeningId          string          `db:"sanction_check_id"`
+	ScreeningId          string          `db:"screening_id"`
 	OpenSanctionEntityId string          `db:"opensanction_entity_id"`
 	Status               string          `db:"status"`
 	QueryIds             []string        `db:"query_ids"`

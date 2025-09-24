@@ -56,7 +56,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 
 		utils.LoggerFromContext(ctx).Error(fmt.Sprintf(
 			"screening execution returned some fatal errors: %s", err),
-			"sanction_check_config_id", scc.Id)
+			"screening_config_id", scc.Id)
 
 		screeningErrors = append(screeningErrors, err)
 	}
@@ -252,8 +252,8 @@ func (e ScenarioEvaluator) evaluateScreening(
 			}
 
 			utils.LoggerFromContext(ctx).Warn("screening execution returned some errors",
-				"sanction_check_config_id", sce.ScreeningConfigId,
-				"sanction_check_id", sce.Id,
+				"screening_config_id", sce.ScreeningConfigId,
+				"screening_id", sce.Id,
 				"error_codes", sce.ErrorCodes,
 				"error", errStr)
 		}

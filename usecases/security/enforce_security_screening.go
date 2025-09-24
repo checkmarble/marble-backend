@@ -15,13 +15,13 @@ type EnforceSecurityScreening interface {
 }
 
 func (e *EnforceSecurityImpl) ReadWhitelist(ctx context.Context) error {
-	return e.Permission(models.SANCTION_CHECK_WHITELIST_READ)
+	return e.Permission(models.SCREENING_WHITELIST_READ)
 }
 
 func (e *EnforceSecurityImpl) WriteWhitelist(ctx context.Context) error {
-	return e.Permission(models.SANCTION_CHECK_WHITELIST_WRITE)
+	return e.Permission(models.SCREENING_WHITELIST_WRITE)
 }
 
 func (e *EnforceSecurityImpl) PerformFreeformSearch(ctx context.Context) error {
-	return e.Permission(models.SANCTION_CHECK_FREEFORM_SEARCH)
+	return e.Permission(models.SCREENING_FREEFORM_SEARCH)
 }

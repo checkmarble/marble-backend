@@ -70,13 +70,19 @@ func AdaptScreeningDto(m models.ScreeningWithMatches) ScreeningDto {
 }
 
 type ScreeningRefineDto struct {
-	ScreeningId string         `json:"sanction_check_id"` //nolint:tagliatelle
-	Query       RefineQueryDto `json:"query"`
+	// Deprecated, to remove after the frontend starts consuming the new field
+	SanctionCheckId string         `json:"sanction_check_id"`
+	ScreeningId     string         `json:"screening_id"`
+	Query           RefineQueryDto `json:"query"`
 }
 
 func AdaptScreeningRefineDto(dto ScreeningRefineDto) models.ScreeningRefineRequest {
+	screeningId := dto.ScreeningId
+	if dto.SanctionCheckId != "" {
+		screeningId = dto.SanctionCheckId
+	}
 	return models.ScreeningRefineRequest{
-		ScreeningId: dto.ScreeningId,
+		ScreeningId: screeningId,
 		Type:        dto.Query.Type(),
 		Query:       AdaptRefineQueryDto(dto.Query),
 	}
