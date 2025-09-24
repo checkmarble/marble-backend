@@ -123,7 +123,7 @@ type Decision struct {
 type DecisionWithRules struct {
 	Decision
 	Rules      []DecisionRule      `json:"rules"`
-	Screenings []DecisionScreening `json:"screenings,omitempty"` //nolint:tagliatelle
+	Screenings []DecisionScreening `json:"screenings,omitempty"`
 }
 
 func NewDecisionDto(decision models.Decision, marbleAppUrl *url.URL) Decision {
