@@ -119,7 +119,11 @@ func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[model
 		DataModel:    dataModel,
 	}
 
-	workflowRules, err := w.decisionWorkflowsWorkerRepository.ListWorkflowsForScenario(ctx, exec, uuid.MustParse(scenario.Id))
+	scenarioUUID, err := uuid.Parse(scenario.Id)
+	if err != nil {
+		return errors.Wrap(err, "invalid scenario ID: not a valid UUID")
+	}
+	workflowRules, err := w.decisionWorkflowsWorkerRepository.ListWorkflowsForScenario(ctx, exec, scenarioUUID)
 	if err != nil {
 		return errors.Wrap(err, "error getting workflows for scenario")
 	}
