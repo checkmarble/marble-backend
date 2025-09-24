@@ -22,8 +22,3 @@ type AnalyticsSettingsDbField struct {
 func (f AnalyticsSettingsDbField) Ident() string {
 	return fmt.Sprintf("%s.%s", strings.Join(f.Path, "."), f.Name)
 }
-
-// type DecisionAnalyticsField struct {
-// 	Type  DataType `json:"type"`
-// 	Value any      `json:"value"`
-// }

@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -24,7 +25,7 @@ type AnalyticsCopyRequest struct {
 }
 
 func AnalyticsGetLatestRow(ctx context.Context, exec AnalyticsExecutor, table string) (uuid.UUID, time.Time, error) {
-	query := squirrel.Select("id", "created_at").From(table).OrderBy("created_at desc").Limit(1)
+	query := squirrel.Select("id", "created_at").From(table).OrderBy("created_at desc, id desc").Limit(1)
 	sql, _, err := query.ToSql()
 	if err != nil {
 		return uuid.Nil, time.Time{}, err
@@ -55,9 +56,9 @@ func AnalyticsCopyDecisions(ctx context.Context, exec AnalyticsExecutor, req Ana
 			"extract(year from d.created_at) as year", "extract(month from d.created_at) as month",
 			"d.trigger_object_type",
 		).
-		From("pg.marble.decisions d").
-		InnerJoin("pg.marble.scenario_iterations si on si.id = d.scenario_iteration_id").
-		InnerJoin("pg.marble.scenarios s on s.id = si.scenario_id").
+		From("marble.decisions d").
+		InnerJoin("marble.scenario_iterations si on si.id = d.scenario_iteration_id").
+		InnerJoin("marble.scenarios s on s.id = si.scenario_id").
 		Where("d.org_id = ?", req.OrgId).
 		Where("d.trigger_object_type = ?", req.TriggerObject).
 		OrderBy("d.created_at, d.id").
@@ -79,8 +80,14 @@ func AnalyticsCopyDecisions(ctx context.Context, exec AnalyticsExecutor, req Ana
 		return 0, err
 	}
 
-	query := fmt.Sprintf(`copy ( %s ) to '%s' (format parquet, compression zstd, partition_by (org_id, year, month, trigger_object_type), append)`, innerSql, req.Table)
-	result, err := exec.ExecContext(ctx, query, args...)
+	unsafeQuery, err := unsafeBuildSqlQuery(innerSql, args)
+	if err != nil {
+		return 0, err
+	}
+
+	query := fmt.Sprintf(`copy ( select * from postgres_query(?, ?) ) to '%s' (format parquet, compression zstd, partition_by (org_id, year, month, trigger_object_type), append)`, req.Table)
+
+	result, err := exec.ExecContext(ctx, query, "pg", unsafeQuery)
 	if err != nil {
 		return 0, err
 	}
@@ -118,11 +125,11 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 			"extract(year from d.created_at) as year", "extract(month from d.created_at) as month",
 			"d.trigger_object_type",
 		).
-		From("pg.marble.decision_rules dr").
-		LeftJoin("pg.marble.decisions d on d.id = dr.decision_id").
-		InnerJoin("pg.marble.scenario_iterations si on si.id = d.scenario_iteration_id").
-		InnerJoin("pg.marble.scenarios s on s.id = si.scenario_id").
-		LeftJoin("pg.marble.scenario_iteration_rules sir on sir.id = dr.rule_id").
+		From("marble.decision_rules dr").
+		LeftJoin("marble.decisions d on d.id = dr.decision_id").
+		InnerJoin("marble.scenario_iterations si on si.id = d.scenario_iteration_id").
+		InnerJoin("marble.scenarios s on s.id = si.scenario_id").
+		LeftJoin("marble.scenario_iteration_rules sir on sir.id = dr.rule_id").
 		Where("d.org_id = ?", req.OrgId).
 		Where("d.trigger_object_type = ?", req.TriggerObject).
 		OrderBy("d.created_at, dr.id").
@@ -144,8 +151,14 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 		return 0, err
 	}
 
-	query := fmt.Sprintf(`copy ( %s ) to '%s' (format parquet, compression zstd, partition_by (org_id, year, month, trigger_object_type), append)`, innerSql, req.Table)
-	result, err := exec.ExecContext(ctx, query, args...)
+	unsafeQuery, err := unsafeBuildSqlQuery(innerSql, args)
+	if err != nil {
+		return 0, err
+	}
+
+	query := fmt.Sprintf(`copy ( select * from postgres_query(?, ?) ) to '%s' (format parquet, compression zstd, partition_by (org_id, year, month, trigger_object_type), append)`, req.Table)
+
+	result, err := exec.ExecContext(ctx, query, "pg", unsafeQuery)
 	if err != nil {
 		return 0, err
 	}
@@ -172,19 +185,19 @@ func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req An
 			"any_value(sc.status) as status",
 			"any_value(scc.stable_id) as screening_config_id",
 			"any_value(scc.name) as screening_name",
-			"count() filter (where scm.id is not null) as matches",
+			"count(*) filter (where scm.id is not null) as matches",
 			"any_value(s.id) as scenario_id",
 			"any_value(sc.created_at) as created_at",
 			"any_value(sc.org_id) as org_id",
 			"extract(year from any_value(sc.created_at)) as year", "extract(month from any_value(sc.created_at)) as month",
 			"any_value(s.trigger_object_type) as trigger_object_type",
 		).
-		From("pg.marble.sanction_checks sc").
-		InnerJoin("pg.marble.sanction_check_configs scc on scc.id = sc.sanction_check_config_id").
-		LeftJoin("pg.marble.sanction_check_matches scm on scm.sanction_check_id = sc.id").
-		InnerJoin("pg.marble.scenario_iterations si on si.id = scc.scenario_iteration_id").
-		InnerJoin("pg.marble.scenarios s on s.id = si.scenario_id").
-		InnerJoin("pg.marble.decisions d on d.id = sc.decision_id").
+		From("marble.sanction_checks sc").
+		InnerJoin("marble.sanction_check_configs scc on scc.id = sc.sanction_check_config_id").
+		LeftJoin("marble.sanction_check_matches scm on scm.sanction_check_id = sc.id").
+		InnerJoin("marble.scenario_iterations si on si.id = scc.scenario_iteration_id").
+		InnerJoin("marble.scenarios s on s.id = si.scenario_id").
+		InnerJoin("marble.decisions d on d.id = sc.decision_id").
 		Where("sc.org_id = ?", req.OrgId).
 		Where("s.trigger_object_type = ?", req.TriggerObject).
 		GroupBy("sc.id").
@@ -207,8 +220,14 @@ func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req An
 		return 0, err
 	}
 
-	query := fmt.Sprintf(`copy ( %s ) to '%s' (format parquet, compression zstd, partition_by (org_id, year, month, trigger_object_type), append)`, innerSql, req.Table)
-	result, err := exec.ExecContext(ctx, query, args...)
+	unsafeQuery, err := unsafeBuildSqlQuery(innerSql, args)
+	if err != nil {
+		return 0, err
+	}
+
+	query := fmt.Sprintf(`copy ( select * from postgres_query(?, ?) ) to '%s' (format parquet, compression zstd, partition_by (org_id, year, month, trigger_object_type), append)`, req.Table)
+
+	result, err := exec.ExecContext(ctx, query, "pg", unsafeQuery)
 	if err != nil {
 		return 0, err
 	}
@@ -267,4 +286,26 @@ func analyticsAddExtraField(b squirrel.SelectBuilder, field models.Field, anyVal
 	} else {
 		return b.Column(fmt.Sprintf(`(d.analytics_fields->>'%s')::%s as "ex_%s"`, field.Name, sqlType, field.Name))
 	}
+}
+
+func unsafeBuildSqlQuery(sql string, args []any) (string, error) {
+	for _, arg := range args {
+		var val string
+
+		switch v := arg.(type) {
+		case string:
+			val = "'" + strings.ReplaceAll(v, "'", "''") + "'"
+		case *string:
+			val = "'" + strings.ReplaceAll(*v, "'", "''") + "'"
+		case time.Time:
+			val = "'" + v.Format(time.RFC3339Nano) + "'"
+		case nil:
+			val = "NULL"
+		default:
+			return "", fmt.Errorf("unsupported argument type: %T", v)
+		}
+
+		sql = strings.Replace(sql, "?", val, 1)
+	}
+	return sql, nil
 }
