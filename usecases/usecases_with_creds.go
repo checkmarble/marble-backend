@@ -733,3 +733,15 @@ func (uc *UsecasesWithCreds) NewUserSettingsUsecase() UserSettingsUsecase {
 		repository:      uc.Repositories.MarbleDbRepository,
 	}
 }
+
+func (uc *UsecasesWithCreds) NewDecisionWorkflowsWorker() *decision_workflows.DecisionWorkflowsWorker {
+	return decision_workflows.NewDecisionWorkflowsWorker(
+		uc.NewExecutorFactory(),
+		uc.NewTransactionFactory(),
+		uc.NewDecisionWorkflows(),
+		uc.Repositories.MarbleDbRepository,
+		uc.Repositories.IngestedDataReadRepository,
+		uc.Repositories.MarbleDbRepository,
+		uc.NewWebhookEventsUsecase(),
+	)
+}
