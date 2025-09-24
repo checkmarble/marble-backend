@@ -116,7 +116,8 @@ func TestMain(m *testing.M) {
 	}
 
 	// Need to declare this after the migrations, to have the correct search path
-	dbPool, err := infra.NewPostgresConnectionPool(ctx, "marble-test", pgConfig.GetConnectionString(), nil, pgConfig.MaxPoolConnections)
+	dbPool, err := infra.NewPostgresConnectionPool(ctx, "marble-test",
+		pgConfig.GetConnectionString(), nil, pgConfig.MaxPoolConnections)
 	if err != nil {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}
@@ -167,6 +168,7 @@ func TestMain(m *testing.M) {
 	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(10*time.Second))
+	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		log.Fatalln("Could not start river client:", err)

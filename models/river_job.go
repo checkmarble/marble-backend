@@ -82,3 +82,9 @@ type AutoAssignmentArgs struct {
 }
 
 func (AutoAssignmentArgs) Kind() string { return "auto_assignment" }
+
+type DecisionWorkflowArgs struct {
+	DecisionId string `json:"decision_id"`
+}
+
+func (DecisionWorkflowArgs) Kind() string { return "decision_workflow" }

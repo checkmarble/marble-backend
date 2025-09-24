@@ -62,7 +62,14 @@ type TaskQueueRepository interface {
 	EnqueueAutoAssignmentTask(
 		ctx context.Context,
 		tx Transaction,
-		orgId string, inboxId uuid.UUID,
+		orgId string,
+		inboxId uuid.UUID,
+	) error
+	EnqueueDecisionWorkflowTask(
+		ctx context.Context,
+		tx Transaction,
+		orgId string,
+		decisionId string,
 	) error
 }
 
@@ -245,7 +252,8 @@ func (r riverRepository) EnqueueCaseReviewTask(
 func (r riverRepository) EnqueueAutoAssignmentTask(
 	ctx context.Context,
 	tx Transaction,
-	orgId string, inboxId uuid.UUID,
+	orgId string,
+	inboxId uuid.UUID,
 ) error {
 	res, err := r.client.InsertTx(
 		ctx,
@@ -269,5 +277,30 @@ func (r riverRepository) EnqueueAutoAssignmentTask(
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued scheduled execution for case auto-assignment", "job_id", res.Job.ID)
 
+	return nil
+}
+
+func (r riverRepository) EnqueueDecisionWorkflowTask(
+	ctx context.Context,
+	tx Transaction,
+	orgId string,
+	decisionId string,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.DecisionWorkflowArgs{
+			DecisionId: decisionId,
+		},
+		&river.InsertOpts{
+			Queue: orgId,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued decision workflow task", "job_id", res.Job.ID)
 	return nil
 }

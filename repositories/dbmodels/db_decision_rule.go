@@ -19,6 +19,7 @@ type DbDecisionRule struct {
 	RuleId         string             `db:"rule_id"`
 	RuleEvaluation []byte             `db:"rule_evaluation"`
 	Outcome        string             `db:"outcome"`
+	StableRuleId   string             `db:"stable_rule_id"`
 }
 
 const TABLE_DECISION_RULES = "decision_rules"
@@ -47,9 +48,10 @@ func AdaptRuleExecution(db DbDecisionRule) (models.RuleExecution, error) {
 		Result:              db.Result,
 		ResultScoreModifier: db.ScoreModifier,
 		Rule: models.Rule{
-			Id:          db.RuleId,
-			Name:        db.Name,
-			Description: db.Description,
+			Id:           db.RuleId,
+			Name:         db.Name,
+			Description:  db.Description,
+			StableRuleId: db.StableRuleId,
 		},
 	}, nil
 }

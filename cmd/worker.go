@@ -276,6 +276,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
+	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
@@ -443,6 +444,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "case_review":
 		return uc.NewCaseReviewWorker(time.Hour).Work(ctx,
 			singleJobCreate[models.CaseReviewArgs](ctx, jobArgs))
+	case "decision_workflows":
+		return uc.NewDecisionWorkflowsWorker().Work(ctx,
+			singleJobCreate[models.DecisionWorkflowArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

@@ -624,7 +624,7 @@ func (repo *MarbleDbRepository) rulesOfDecisions(
 		return nil, err
 	}
 
-	columns := "d.id, d.org_id, d.decision_id, r.name, r.description, d.score_modifier, d.result, d.error_code, d.rule_id, d.outcome"
+	columns := "d.id, d.org_id, d.decision_id, r.name, r.description, d.score_modifier, d.result, d.error_code, d.rule_id, d.outcome, r.stable_rule_id"
 	if withEvaluation {
 		columns += ", d.rule_evaluation"
 	}
@@ -650,6 +650,7 @@ func (repo *MarbleDbRepository) rulesOfDecisions(
 				&r.ErrorCode,
 				&r.RuleId,
 				&r.Outcome,
+				&r.StableRuleId,
 			}
 			if withEvaluation {
 				fields = append(fields, &r.RuleEvaluation)

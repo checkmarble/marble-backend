@@ -39,7 +39,7 @@
       "args": [
         "--worker",
         "--worker-only=${input:jobName}",
-        "--worker-args=${input:jobArgs}",
+        "--worker-args=${input:jobArgs}"
       ],
       "console": "integratedTerminal"
     }
@@ -49,7 +49,7 @@
       "id": "jobArgs",
       "description": "Job arguments",
       "type": "promptString",
-      "default": "{\"org_id\": \"\"}",
+      "default": "{\"org_id\": \"\"}"
     },
     {
       "id": "jobName",
@@ -68,6 +68,6 @@
         "test_run_summary",
         "case_review"
       ]
-    },
+    }
   ]
 }

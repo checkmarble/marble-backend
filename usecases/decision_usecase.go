@@ -59,17 +59,6 @@ type DecisionUsecaseRepository interface {
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
 }
 
-type decisionWorkflowsUsecase interface {
-	ProcessDecisionWorkflows(
-		ctx context.Context,
-		tx repositories.Transaction,
-		rules []models.Workflow,
-		scenario models.Scenario,
-		decision models.DecisionWithRuleExecutions,
-		params evaluate_scenario.ScenarioEvaluationParameters,
-	) (models.WorkflowExecution, error)
-}
-
 type ScenarioEvaluator interface {
 	EvalScenario(ctx context.Context, params evaluate_scenario.ScenarioEvaluationParameters) (
 		triggerPassed bool, se models.ScenarioExecution, err error)
@@ -97,7 +86,6 @@ type DecisionUsecase struct {
 	repository                DecisionUsecaseRepository
 	screeningRepository       decisionUsecaseScreeningWriter
 	scenarioTestRunRepository repositories.ScenarioTestRunRepository
-	decisionWorkflows         decisionWorkflowsUsecase
 	offloadedReader           OffloadedReader
 	webhookEventsSender       webhookEventsUsecase
 	phantomUseCase            decision_phantom.PhantomDecisionUsecase
@@ -426,32 +414,17 @@ func (usecase *DecisionUsecase) CreateDecision(
 			sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 		}
 
-		workflowRules, err := usecase.repository.ListWorkflowsForScenario(ctx, exec, uuid.MustParse(scenario.Id))
-		if err != nil {
-			return models.DecisionWithRuleExecutions{}, err
-		}
-
-		workflowExecutions, err := usecase.decisionWorkflows.ProcessDecisionWorkflows(ctx, tx,
-			workflowRules, scenario, decision, evaluationParameters)
+		err = usecase.taskQueueRepository.EnqueueDecisionWorkflowTask(
+			ctx,
+			tx,
+			decision.OrganizationId.String(),
+			decision.DecisionId.String(),
+		)
 		if err != nil {
 			utils.LoggerFromContext(ctx).Warn("could not execute decision workflows",
 				"error", err.Error(), "decision", decision.DecisionId)
 		}
 
-		sendWebhookEventId = append(sendWebhookEventId, workflowExecutions.WebhookIds...)
-
-		if workflowExecutions.AddedToCase {
-			dec, err := usecase.repository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId.String())
-			if err != nil {
-				return models.DecisionWithRuleExecutions{}, err
-			}
-
-			dec.ScreeningExecutions = scs
-
-			return dec, nil
-		}
-
-		// only refresh the decision if it has changed, meaning if it was added to a case
 		return decision, nil
 	})
 	if err != nil {
@@ -647,31 +620,15 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			}
 			sendWebhookEventIds = append(sendWebhookEventIds, webhookEventId)
 
-			caseWebhookEventId := uuid.NewString()
-
-			evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
-				Scenario:     item.scenario,
-				ClientObject: payload,
-				DataModel:    dataModel,
-				Pivot:        pivot,
-			}
-
-			workflowRules, err := usecase.repository.ListWorkflowsForScenario(ctx, exec, uuid.MustParse(item.scenario.Id))
-			if err != nil {
-				return nil, err
-			}
-
-			workflowExecutions, err := usecase.decisionWorkflows.ProcessDecisionWorkflows(ctx, tx,
-				workflowRules, item.scenario, item.decision, evaluationParameters)
+			err = usecase.taskQueueRepository.EnqueueDecisionWorkflowTask(
+				ctx,
+				tx,
+				item.decision.OrganizationId.String(),
+				item.decision.DecisionId.String(),
+			)
 			if err != nil {
 				utils.LoggerFromContext(ctx).Warn("could not execute decision workflows",
 					"error", err.Error(), "decision", item.decision.DecisionId)
-			}
-
-			sendWebhookEventIds = append(sendWebhookEventIds, workflowExecutions.WebhookIds...)
-
-			if workflowExecutions.AddedToCase {
-				sendWebhookEventIds = append(sendWebhookEventIds, caseWebhookEventId)
 			}
 		}
 

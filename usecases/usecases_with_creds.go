@@ -119,7 +119,6 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		dataModelRepository:       usecases.Repositories.MarbleDbRepository,
 		repository:                usecases.Repositories.MarbleDbRepository,
 		screeningRepository:       usecases.Repositories.MarbleDbRepository,
-		decisionWorkflows:         usecases.NewDecisionWorkflows(),
 		webhookEventsSender:       usecases.NewWebhookEventsUsecase(),
 		phantomUseCase:            usecases.NewPhantomDecisionUseCase(),
 		scenarioTestRunRepository: usecases.Repositories.MarbleDbRepository,
@@ -732,4 +731,16 @@ func (uc *UsecasesWithCreds) NewUserSettingsUsecase() UserSettingsUsecase {
 		enforceSecurity: uc.NewEnforceSecurity(),
 		repository:      uc.Repositories.MarbleDbRepository,
 	}
+}
+
+func (uc *UsecasesWithCreds) NewDecisionWorkflowsWorker() *decision_workflows.DecisionWorkflowsWorker {
+	return decision_workflows.NewDecisionWorkflowsWorker(
+		uc.NewExecutorFactory(),
+		uc.NewTransactionFactory(),
+		uc.NewDecisionWorkflows(),
+		uc.Repositories.MarbleDbRepository,
+		uc.Repositories.IngestedDataReadRepository,
+		uc.Repositories.MarbleDbRepository,
+		uc.NewWebhookEventsUsecase(),
+	)
 }

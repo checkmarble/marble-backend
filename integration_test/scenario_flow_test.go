@@ -496,16 +496,27 @@ func createDecisions(
 	assert.Equal(t, models.Decline, declineDecision.Outcome,
 		"Expected decision to be Decline, got %s", declineDecision.Outcome)
 
+	// Let river process the scenario workflow after the decision creation
+	time.Sleep(1 * time.Second)
+
 	// Create a second decision with the same account_id to check their cases [Decline]
 	declineDecision2 := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
 		organizationId, scenarioId, 111)
 	assert.Equal(t, models.Decline, declineDecision2.Outcome,
 		"Expected decision to be Decline, got %s", declineDecision2.Outcome)
 
+	// Let river process the scenario workflow after the decision creation
+	time.Sleep(1 * time.Second)
+
+	declineDecision_after, err := decisionUsecase.GetDecision(ctx, declineDecision.DecisionId.String())
+	assert.NoError(t, err)
+	declineDecision2_after, err := decisionUsecase.GetDecision(ctx, declineDecision2.DecisionId.String())
+	assert.NoError(t, err)
+
 	// Check that the two decisions on tx with account_id "{account_id_decline}" are both in a case - the same
-	assert.NotNil(t, declineDecision.Case, "Decision is in a case")
-	assert.NotNil(t, declineDecision2.Case, "Decision is in a case")
-	assert.Equal(t, declineDecision.Case.Id, declineDecision2.Case.Id,
+	assert.NotNil(t, declineDecision_after.Case, "Decision is in a case")
+	assert.NotNil(t, declineDecision2_after.Case, "Decision is in a case")
+	assert.Equal(t, declineDecision_after.Case.Id, declineDecision2_after.Case.Id,
 		"The two decisions are in the same case")
 
 	// Create a decision [APPROVE]
@@ -597,7 +608,7 @@ func createDecisions(
 	}
 	// Now snooze the rules and rerun the decision in Decline status
 	ruleSnoozeUsecase := usecasesWithUserCreds.NewRuleSnoozeUsecase()
-	_, err := ruleSnoozeUsecase.SnoozeDecision(ctx, models.SnoozeDecisionInput{
+	_, err = ruleSnoozeUsecase.SnoozeDecision(ctx, models.SnoozeDecisionInput{
 		Comment:        "this is a test snooze",
 		DecisionId:     declineDecision.DecisionId.String(),
 		Duration:       "500ms", // snooze for 0.5 sec, after this wait for the snooze to end before moving on
