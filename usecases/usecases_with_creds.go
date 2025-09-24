@@ -119,7 +119,6 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		dataModelRepository:       usecases.Repositories.MarbleDbRepository,
 		repository:                usecases.Repositories.MarbleDbRepository,
 		screeningRepository:       usecases.Repositories.MarbleDbRepository,
-		decisionWorkflows:         usecases.NewDecisionWorkflows(),
 		webhookEventsSender:       usecases.NewWebhookEventsUsecase(),
 		phantomUseCase:            usecases.NewPhantomDecisionUseCase(),
 		scenarioTestRunRepository: usecases.Repositories.MarbleDbRepository,

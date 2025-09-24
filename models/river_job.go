@@ -84,11 +84,7 @@ type AutoAssignmentArgs struct {
 func (AutoAssignmentArgs) Kind() string { return "auto_assignment" }
 
 type DecisionWorkflowArgs struct {
-	DecisionId         string `json:"decision_id"`
-	ScenarioId         string `json:"scenario_id"`
-	ObjectId           string `json:"object_id"`
-	TriggerObjectTable string `json:"trigger_object_table"`
-	OrganizationId     string `json:"organization_id"`
+	DecisionId string `json:"decision_id"`
 }
 
 func (DecisionWorkflowArgs) Kind() string { return "decision_workflow" }

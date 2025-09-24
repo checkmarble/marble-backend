@@ -62,16 +62,14 @@ type TaskQueueRepository interface {
 	EnqueueAutoAssignmentTask(
 		ctx context.Context,
 		tx Transaction,
-		orgId string, inboxId uuid.UUID,
+		orgId string,
+		inboxId uuid.UUID,
 	) error
 	EnqueueDecisionWorkflowTask(
 		ctx context.Context,
 		tx Transaction,
-		organizationId string,
+		orgId string,
 		decisionId string,
-		scenarioId string,
-		objectId string,
-		triggerObjectTable string,
 	) error
 }
 
@@ -254,7 +252,8 @@ func (r riverRepository) EnqueueCaseReviewTask(
 func (r riverRepository) EnqueueAutoAssignmentTask(
 	ctx context.Context,
 	tx Transaction,
-	orgId string, inboxId uuid.UUID,
+	orgId string,
+	inboxId uuid.UUID,
 ) error {
 	res, err := r.client.InsertTx(
 		ctx,
@@ -284,24 +283,17 @@ func (r riverRepository) EnqueueAutoAssignmentTask(
 func (r riverRepository) EnqueueDecisionWorkflowTask(
 	ctx context.Context,
 	tx Transaction,
-	organizationId string,
+	orgId string,
 	decisionId string,
-	scenarioId string,
-	objectId string,
-	triggerObjectTable string,
 ) error {
 	res, err := r.client.InsertTx(
 		ctx,
 		tx.RawTx(),
 		models.DecisionWorkflowArgs{
-			DecisionId:         decisionId,
-			ScenarioId:         scenarioId,
-			ObjectId:           objectId,
-			TriggerObjectTable: triggerObjectTable,
-			OrganizationId:     organizationId,
+			DecisionId: decisionId,
 		},
 		&river.InsertOpts{
-			Queue: organizationId,
+			Queue: orgId,
 		},
 	)
 	if err != nil {

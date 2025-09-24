@@ -82,3 +82,12 @@ func (m *TaskQueueRepository) EnqueueAutoAssignmentTask(
 ) error {
 	return m.Called(ctx, tx, orgId, inboxId).Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueDecisionWorkflowTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId string,
+	decisionId string,
+) error {
+	return m.Called(ctx, tx, organizationId, decisionId).Error(0)
+}

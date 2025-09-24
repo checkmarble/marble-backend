@@ -91,30 +91,32 @@ func (w *DecisionWorkflowsWorker) Timeout(job *river.Job[models.DecisionWorkflow
 
 func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[models.DecisionWorkflowArgs]) error {
 	exec := w.executorFactory.NewExecutor()
-	// Build data for decision workflows
+
+	// Fetch/Build data for decision workflows
 	decision, err := w.decisionWorkflowsWorkerRepository.DecisionWithRuleExecutionsById(ctx, exec, job.Args.DecisionId)
 	if err != nil {
 		return errors.Wrap(err, "error getting decision with rule executions")
 	}
-	scenario, err := w.decisionWorkflowsWorkerRepository.GetScenarioById(ctx, exec, job.Args.ScenarioId)
+
+	scenario, err := w.decisionWorkflowsWorkerRepository.GetScenarioById(ctx, exec, decision.ScenarioId.String())
 	if err != nil {
 		return errors.Wrap(err, "error getting scenario")
 	}
-	dataModel, err := w.dataModelRepository.GetDataModel(ctx, exec, job.Args.OrganizationId, true, true)
+
+	dataModel, err := w.dataModelRepository.GetDataModel(
+		ctx,
+		exec,
+		decision.OrganizationId.String(),
+		true,
+		true,
+	)
 	if err != nil {
 		return errors.Wrap(err, "error getting data model")
 	}
 
-	table := dataModel.Tables[job.Args.TriggerObjectTable]
-	objectMap, err := w.ingestedDataReadRepository.QueryIngestedObject(ctx, exec, table, job.Args.ObjectId)
-	if err != nil {
-		return errors.Wrap(err, "error getting ingested object")
-	}
-	clientObject := models.ClientObject{TableName: table.Name, Data: objectMap[0].Data}
-
 	evalParams := evaluate_scenario.ScenarioEvaluationParameters{
 		Scenario:     scenario,
-		ClientObject: clientObject,
+		ClientObject: decision.ClientObject,
 		DataModel:    dataModel,
 	}
 
@@ -138,7 +140,6 @@ func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[model
 		if err != nil {
 			return models.WorkflowExecution{}, errors.Wrap(err, "error processing decision workflows")
 		}
-
 		return workflowExecutions, nil
 	})
 	if err != nil {
