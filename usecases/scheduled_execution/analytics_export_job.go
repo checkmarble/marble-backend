@@ -78,6 +78,7 @@ func (w *AnalyticsExportWorker) Timeout(job *river.Job[models.AnalyticsExportArg
 
 func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.AnalyticsExportArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
+	start := time.Now()
 
 	if job.CreatedAt.Before(time.Now().Add(-w.config.JobInterval)) {
 		logger.DebugContext(ctx, "skipping offloading job instance because it was created too long ago. A new one should have been created.", "job_created_at", job.CreatedAt)
@@ -124,6 +125,7 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 				TriggerObject:       table.Name,
 				TriggerObjectFields: triggerFields,
 				ExtraDbFields:       dbFields,
+				EndTime:             start,
 				Limit:               50000,
 			}
 
@@ -137,6 +139,7 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 				TriggerObject:       table.Name,
 				TriggerObjectFields: triggerFields,
 				ExtraDbFields:       dbFields,
+				EndTime:             start,
 				Limit:               50000,
 			}
 
@@ -150,6 +153,7 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 				TriggerObject:       table.Name,
 				TriggerObjectFields: triggerFields,
 				ExtraDbFields:       dbFields,
+				EndTime:             start,
 				Limit:               50000,
 			}
 
