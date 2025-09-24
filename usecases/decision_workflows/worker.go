@@ -85,7 +85,6 @@ func NewDecisionWorkflowsWorker(
 }
 
 func (w *DecisionWorkflowsWorker) Timeout(job *river.Job[models.DecisionWorkflowArgs]) time.Duration {
-	// TODO: Need to change?
 	return 10 * time.Second
 }
 
@@ -125,7 +124,7 @@ func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[model
 		return errors.Wrap(err, "error getting workflows for scenario")
 	}
 
-	// Create transaction just for ProcessDecisionWorkflows because all function in there expect a transaction
+	// Create transaction just for ProcessDecisionWorkflows because all functions in there expect a transaction
 	workflowExecutions, err := executor_factory.TransactionReturnValue(ctx, w.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.WorkflowExecution, error) {

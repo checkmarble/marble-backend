@@ -78,7 +78,8 @@ func (m *TaskQueueRepository) EnqueueCaseReviewTask(
 func (m *TaskQueueRepository) EnqueueAutoAssignmentTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	orgId string, inboxId uuid.UUID,
+	orgId string,
+	inboxId uuid.UUID,
 ) error {
 	return m.Called(ctx, tx, orgId, inboxId).Error(0)
 }
@@ -86,8 +87,8 @@ func (m *TaskQueueRepository) EnqueueAutoAssignmentTask(
 func (m *TaskQueueRepository) EnqueueDecisionWorkflowTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	organizationId string,
+	orgId string,
 	decisionId string,
 ) error {
-	return m.Called(ctx, tx, organizationId, decisionId).Error(0)
+	return m.Called(ctx, tx, orgId, decisionId).Error(0)
 }
