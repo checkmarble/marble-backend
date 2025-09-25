@@ -304,6 +304,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/data-model/tables/:tableID/navigation_options", tom, handleCreateNavigationOption(uc))
 	router.GET("/data-model/tables/:tableID/options", tom, handleGetDataModelOptions(uc))
 	router.POST("/data-model/tables/:tableID/options", tom, handleSetDataModelOptions(uc))
+	router.GET("/data-model/tables/:tableID/exported-fields", tom, handleGetFieldExportedFields(uc))
+	router.POST("/data-model/tables/:tableID/exported-fields", tom, handleCreateFieldExportedFields(uc))
 
 	router.POST("/transfers", tom, handleCreateTransfer(uc))
 	router.GET("/transfers", tom, handleQueryTransfers(uc))
