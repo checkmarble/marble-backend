@@ -56,7 +56,7 @@ func RunServer(config CompiledConfig) error {
 		FirebaseConfig: api.FirebaseConfig{
 			ProjectId:    utils.GetEnv("FIREBASE_PROJECT_ID", ""),
 			EmulatorHost: utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
-			ApiKey:       utils.GetEnv("FIREBASE_API_KEY", ""),
+			ApiKey:       utils.GetRequiredEnv[string]("FIREBASE_API_KEY"),
 			AuthDomain:   utils.GetEnv("FIREBASE_AUTH_DOMAIN", ""),
 		},
 	}
