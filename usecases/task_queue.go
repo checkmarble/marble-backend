@@ -187,7 +187,10 @@ func QueuesFromOrgs(ctx context.Context, appName string,
 			}
 		}
 		if analyticsConfig.Enabled {
-			periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(org.Id, analyticsConfig.JobInterval))
+			// TODO: during QA phase, we can only enable analytics for a single organization
+			if onlyAnalyticsOrg := os.Getenv("ANALYTICS_ONLY_ORG"); onlyAnalyticsOrg == org.Id {
+				periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(org.Id, analyticsConfig.JobInterval))
+			}
 		}
 
 		queues[org.Id] = river.QueueConfig{
