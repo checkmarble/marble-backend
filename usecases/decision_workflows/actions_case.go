@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
@@ -21,6 +22,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	evalParams evaluate_scenario.ScenarioEvaluationParameters,
 	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
 ) (models.WorkflowExecution, error) {
+	logger := utils.LoggerFromContext(ctx)
 	webhookEventId := uuid.NewString()
 
 	createNewCaseForDecision := func(ctx context.Context) (models.WorkflowExecution, error) {
@@ -94,14 +96,17 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	case models.WorkflowCreateCase:
 		return createNewCaseForDecision(ctx)
 	case models.WorkflowAddToCaseIfPossible:
+		logger.DebugContext(ctx, "Adding decision to open case")
 		matchedCase, added, err := d.addToOpenCase(ctx, tx, scenario, decision, action)
 		if err != nil {
 			return models.WorkflowExecution{}, errors.Wrap(err, "error adding decision to open case")
 		}
 		if !added {
+			logger.DebugContext(ctx, "No open case found, creating new case")
 			return createNewCaseForDecision(ctx)
 		}
 
+		logger.DebugContext(ctx, "Adding decision to open case", "caseId", matchedCase.Id)
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: matchedCase.OrganizationId,

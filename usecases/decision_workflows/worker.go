@@ -132,6 +132,14 @@ func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[model
 	workflowExecutions, err := executor_factory.TransactionReturnValue(ctx, w.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.WorkflowExecution, error) {
+		// Set serializable isolation level to avoid race conditions when adding decisions to cases
+		// We do a read to find matching cases and then we write to the case to add the decision, in case of multiple concurrent tasks,
+		// this could lead to a race condition
+		_, err := tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+		if err != nil {
+			return models.WorkflowExecution{}, errors.Wrap(err,
+				"error setting transaction isolation level")
+		}
 		workflowExecutions, err := w.decisionWorkflowsUsecase.ProcessDecisionWorkflows(
 			ctx,
 			tx,

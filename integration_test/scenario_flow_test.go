@@ -496,16 +496,13 @@ func createDecisions(
 	assert.Equal(t, models.Decline, declineDecision.Outcome,
 		"Expected decision to be Decline, got %s", declineDecision.Outcome)
 
-	// Let river process the scenario workflow after the decision creation
-	time.Sleep(1 * time.Second)
-
 	// Create a second decision with the same account_id to check their cases [Decline]
 	declineDecision2 := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
 		organizationId, scenarioId, 111)
 	assert.Equal(t, models.Decline, declineDecision2.Outcome,
 		"Expected decision to be Decline, got %s", declineDecision2.Outcome)
 
-	// Let river process the scenario workflow after the decision creation
+	// Since the decision workflows are async, we need to wait for them to be processed then fetch the decisions from the db to have the case populated
 	time.Sleep(1 * time.Second)
 
 	declineDecision_after, err := decisionUsecase.GetDecision(ctx, declineDecision.DecisionId.String())

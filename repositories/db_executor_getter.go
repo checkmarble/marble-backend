@@ -93,7 +93,7 @@ func (g ExecutorGetter) Transaction(
 	}
 	// Retry retryable commit errors once, immediately after failure.
 	err = retry.Do(execInTransaction,
-		retry.Attempts(1),
+		retry.Attempts(2),
 		retry.LastErrorOnly(true),
 		retry.RetryIf(func(err error) bool {
 			return IsDeadlockError(err) || IsSerializationFailureError(err)

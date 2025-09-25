@@ -555,12 +555,12 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *scheduled_execution.
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewTransactionFactory(),
-		usecases.NewDecisionWorkflows(),
 		usecases.NewWebhookEventsUsecase(),
 		usecases.NewScenarioFetcher(),
 		usecases.NewPhantomDecisionUseCase(),
 		usecases.NewScenarioEvaluator(),
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
 	)
 	return &w
 }

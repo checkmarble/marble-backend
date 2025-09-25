@@ -24,17 +24,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type decisionWorkflowsUsecase interface {
-	ProcessDecisionWorkflows(
-		ctx context.Context,
-		tx repositories.Transaction,
-		rules []models.Workflow,
-		scenario models.Scenario,
-		decision models.DecisionWithRuleExecutions,
-		params evaluate_scenario.ScenarioEvaluationParameters,
-	) (models.WorkflowExecution, error)
-}
-
 type webhookEventsUsecase interface {
 	CreateWebhookEvent(
 		ctx context.Context,
@@ -45,7 +34,8 @@ type webhookEventsUsecase interface {
 }
 
 type asyncDecisionWorkerRepository interface {
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string,
+		useCache bool) (models.ScenarioIteration, error)
 	UpdateDecisionToCreateStatus(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -103,12 +93,12 @@ type AsyncDecisionWorker struct {
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	decisionRepository         repositories.DecisionRepository
 	transactionFactory         executor_factory.TransactionFactory
-	decisionWorkflows          decisionWorkflowsUsecase
 	webhookEventsSender        webhookEventsUsecase
 	scenarioFetcher            scenarios.ScenarioFetcher
 	phantomDecision            decision_phantom.PhantomDecisionUsecase
 	scenarioEvaluator          ScenarioEvaluator
 	screeningRepository        decisionWorkerScreeningWriter
+	taskQueueRepository        repositories.TaskQueueRepository
 }
 
 func NewAsyncDecisionWorker(
@@ -118,12 +108,12 @@ func NewAsyncDecisionWorker(
 	ingestedDataReadRepository repositories.IngestedDataReadRepository,
 	decisionRepository repositories.DecisionRepository,
 	transactionFactory executor_factory.TransactionFactory,
-	decisionWorkflows decisionWorkflowsUsecase,
 	webhookEventsSender webhookEventsUsecase,
 	scenarioFetcher scenarios.ScenarioFetcher,
 	phantom decision_phantom.PhantomDecisionUsecase,
 	scenarioEvaluator ScenarioEvaluator,
 	screeningRepository decisionWorkerScreeningWriter,
+	taskQueueRepository repositories.TaskQueueRepository,
 ) AsyncDecisionWorker {
 	return AsyncDecisionWorker{
 		repository:                 repository,
@@ -132,12 +122,12 @@ func NewAsyncDecisionWorker(
 		ingestedDataReadRepository: ingestedDataReadRepository,
 		decisionRepository:         decisionRepository,
 		transactionFactory:         transactionFactory,
-		decisionWorkflows:          decisionWorkflows,
 		webhookEventsSender:        webhookEventsSender,
 		scenarioFetcher:            scenarioFetcher,
 		phantomDecision:            phantom,
 		scenarioEvaluator:          scenarioEvaluator,
 		screeningRepository:        screeningRepository,
+		taskQueueRepository:        taskQueueRepository,
 	}
 }
 
@@ -398,18 +388,11 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	}
 	sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 
-	workflowRules, err := w.repository.ListWorkflowsForScenario(ctx, tx, uuid.MustParse(scenario.Id))
+	err = w.taskQueueRepository.EnqueueDecisionWorkflowTask(ctx, tx,
+		decision.OrganizationId.String(), decision.DecisionId.String())
 	if err != nil {
 		return false, nil, nil, err
 	}
-
-	workflowExecutions, err := w.decisionWorkflows.ProcessDecisionWorkflows(ctx, tx,
-		workflowRules, scenario, decision, evaluationParameters)
-	if err != nil {
-		return false, nil, nil, err
-	}
-
-	sendWebhookEventId = append(sendWebhookEventId, workflowExecutions.WebhookIds...)
 
 	err = w.repository.UpdateDecisionToCreateStatus(ctx, tx, args.DecisionToCreateId, models.DecisionToCreateStatusCreated)
 	if err != nil {
