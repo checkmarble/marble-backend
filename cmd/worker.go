@@ -107,11 +107,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	var analyticsConfig infra.AnalyticsConfig
 
-	if workerConfig.analyticsBucket != "" {
-		analyticsConfig, err = infra.InitAnalyticsConfig(pgConfig, workerConfig.analyticsBucket)
-		if err != nil {
-			return err
-		}
+	if analyticsConfig, err = infra.InitAnalyticsConfig(pgConfig, workerConfig.analyticsBucket); err != nil {
+		return err
 	}
 
 	offloadingConfig.ValidateAndFix(ctx)

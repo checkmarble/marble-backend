@@ -32,13 +32,18 @@ type AnalyticsConfig struct {
 }
 
 func InitAnalyticsConfig(pgConfig PgConfig, bucket string) (AnalyticsConfig, error) {
+	if bucket == "" {
+		return AnalyticsConfig{Enabled: false}, nil
+	}
+
 	u, err := url.Parse(bucket)
 	if err != nil {
 		return AnalyticsConfig{}, err
 	}
 
 	cfg := AnalyticsConfig{
-		Enabled:     true,
+		Enabled: utils.GetEnv("ANALYTICS_ONLY_ORG", "") != "",
+		// TODO: during QA phase, analytics is only enabled if we set it for a single organization
 		JobInterval: utils.GetEnvDuration("ANALYTICS_JOB_INTERVAL", time.Hour),
 		Bucket:      bucket,
 		PgConfig:    pgConfig,
