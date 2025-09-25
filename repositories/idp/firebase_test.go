@@ -1,4 +1,4 @@
-package firebase
+package idp
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 )
 
@@ -22,6 +23,7 @@ func (m *mockTokenCookieVerifier) VerifyIDToken(ctx context.Context, idToken str
 
 func TestClient_VerifyFirebaseToken(t *testing.T) {
 	token := auth.Token{
+		Issuer:  infra.MockFirebaseIssuer,
 		Subject: "token_subject",
 		Firebase: auth.FirebaseInfo{
 			Identities: map[string]interface{}{
@@ -35,14 +37,13 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 		mockVerifier.On("VerifyIDToken", mock.Anything, "token").
 			Return(&token, nil)
 
-		c := Client{
-			verifier: mockVerifier,
-		}
+		c := NewFirebaseClient("project", mockVerifier)
 
-		identity, err := c.VerifyFirebaseToken(context.Background(), "token")
+		identity, err := c.VerifyToken(context.Background(), "token")
 		assert.NoError(t, err)
 		assert.Equal(t, models.FirebaseIdentity{
-			Email: "user@email.com",
+			Issuer: infra.MockFirebaseIssuer,
+			Email:  "user@email.com",
 		}, identity)
 		mockVerifier.AssertExpectations(t)
 	})
@@ -52,11 +53,9 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 		mockVerifier.On("VerifyIDToken", mock.Anything, "token").
 			Return(&auth.Token{}, assert.AnError)
 
-		c := Client{
-			verifier: mockVerifier,
-		}
+		c := NewFirebaseClient("project", mockVerifier)
 
-		_, err := c.VerifyFirebaseToken(context.Background(), "token")
+		_, err := c.VerifyToken(context.Background(), "token")
 		assert.Error(t, err)
 		mockVerifier.AssertExpectations(t)
 	})
@@ -66,11 +65,9 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 		mockVerifier.On("VerifyIDToken", mock.Anything, "token").
 			Return(&auth.Token{}, nil)
 
-		c := Client{
-			verifier: mockVerifier,
-		}
+		c := NewFirebaseClient("project", mockVerifier)
 
-		_, err := c.VerifyFirebaseToken(context.Background(), "token")
+		_, err := c.VerifyToken(context.Background(), "token")
 		assert.Error(t, err)
 		mockVerifier.AssertExpectations(t)
 	})
@@ -79,6 +76,7 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 		mockVerifier := new(mockTokenCookieVerifier)
 		mockVerifier.On("VerifyIDToken", mock.Anything, "token").
 			Return(&auth.Token{
+				Issuer:  infra.MockFirebaseIssuer,
 				Subject: "token_subject",
 				Firebase: auth.FirebaseInfo{
 					Identities: map[string]interface{}{
@@ -87,11 +85,9 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 				},
 			}, nil)
 
-		c := Client{
-			verifier: mockVerifier,
-		}
+		c := NewFirebaseClient("project", mockVerifier)
 
-		_, err := c.VerifyFirebaseToken(context.Background(), "token")
+		_, err := c.VerifyToken(context.Background(), "token")
 		assert.Error(t, err)
 		mockVerifier.AssertExpectations(t)
 	})
@@ -100,6 +96,7 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 		mockVerifier := new(mockTokenCookieVerifier)
 		mockVerifier.On("VerifyIDToken", mock.Anything, "token").
 			Return(&auth.Token{
+				Issuer:  infra.MockFirebaseIssuer,
 				Subject: "token_subject",
 				Firebase: auth.FirebaseInfo{
 					Identities: map[string]interface{}{
@@ -108,11 +105,9 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 				},
 			}, nil)
 
-		c := Client{
-			verifier: mockVerifier,
-		}
+		c := NewFirebaseClient("project", mockVerifier)
 
-		_, err := c.VerifyFirebaseToken(context.Background(), "token")
+		_, err := c.VerifyToken(context.Background(), "token")
 		assert.Error(t, err)
 		mockVerifier.AssertExpectations(t)
 	})

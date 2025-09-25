@@ -1,4 +1,4 @@
-package firebase
+package idp
 
 import (
 	"context"
@@ -9,15 +9,16 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-type tokenCookieVerifier interface {
+type firebaseTokenCookieVerifier interface {
 	VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error)
 }
 
-type Client struct {
-	verifier tokenCookieVerifier
+type FirebaseClient struct {
+	projectId string
+	verifier  firebaseTokenCookieVerifier
 }
 
-func (c *Client) verifyTokenOrCookie(ctx context.Context, firebaseToken string) (*auth.Token, error) {
+func (c *FirebaseClient) verifyTokenOrCookie(ctx context.Context, firebaseToken string) (*auth.Token, error) {
 	token, err := c.verifier.VerifyIDToken(ctx, firebaseToken)
 	if err != nil {
 		return nil, err
@@ -29,10 +30,14 @@ func (c *Client) verifyTokenOrCookie(ctx context.Context, firebaseToken string) 
 	return token, nil
 }
 
-func (c *Client) VerifyFirebaseToken(ctx context.Context, firebaseToken string) (models.FirebaseIdentity, error) {
+func (c *FirebaseClient) VerifyToken(ctx context.Context, firebaseToken string) (models.IdentityClaims, error) {
 	token, err := c.verifyTokenOrCookie(ctx, firebaseToken)
 	if err != nil {
 		return models.FirebaseIdentity{}, fmt.Errorf("verifyTokenOrCookie error: %w", err)
+	}
+
+	if token.Issuer != c.Issuer() {
+		return models.FirebaseIdentity{}, fmt.Errorf("invalid issuer %s != %s for firebase", token.Issuer, c.Issuer())
 	}
 
 	identities := token.Firebase.Identities["email"]
@@ -41,7 +46,7 @@ func (c *Client) VerifyFirebaseToken(ctx context.Context, firebaseToken string) 
 			"unexpected firebase token content: Field email is missing")
 	}
 
-	emails, ok := identities.([]interface{})
+	emails, ok := identities.([]any)
 	if !ok || len(emails) == 0 {
 		return models.FirebaseIdentity{}, fmt.Errorf(
 			"unexpected firebase token content: identities is not an array")
@@ -53,12 +58,18 @@ func (c *Client) VerifyFirebaseToken(ctx context.Context, firebaseToken string) 
 	}
 
 	return models.FirebaseIdentity{
-		Email: email,
+		Issuer: token.Issuer,
+		Email:  email,
 	}, nil
 }
 
-func New(verifier tokenCookieVerifier) *Client {
-	return &Client{
-		verifier: verifier,
+func (c *FirebaseClient) Issuer() string {
+	return "https://securetoken.google.com/" + c.projectId
+}
+
+func NewFirebaseClient(projectId string, verifier firebaseTokenCookieVerifier) *FirebaseClient {
+	return &FirebaseClient{
+		projectId: projectId,
+		verifier:  verifier,
 	}
 }

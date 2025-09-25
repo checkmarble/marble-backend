@@ -2,34 +2,28 @@ package token
 
 import (
 	"context"
-	"encoding/hex"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/clock"
+	"github.com/checkmarble/marble-backend/usecases/auth"
 )
 
 func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 	key := "api_key"
-	// hash of "api_key"
-	keyHash, err := hex.DecodeString("2e9bc6c94a4cbdfe2a31d2df79103a5eb3702eaf5d7018d47a774e9540a8ec29")
-	assert.NoError(t, err)
 
 	apiKey := models.ApiKey{
 		Id:             "api_key_id",
 		OrganizationId: "organization_id",
 		Prefix:         "abc",
 		Role:           models.ADMIN,
-	}
-
-	organization := models.Organization{
-		Id:   "organization_id",
-		Name: "organization",
+		Representation: "Api key abc*** of organization",
 	}
 
 	token := "token"
@@ -39,13 +33,9 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 
 	t.Run("nominal", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
-		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
-			Return(apiKey, nil)
-		mockRepository.On("GetOrganizationByID", ctx, "organization_id").
-			Return(organization, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
-		mockEncoder.On("EncodeMarbleToken", mock.Anything, models.Credentials{
+		mockEncoder.On("EncodeMarbleToken", "", mock.Anything, models.Credentials{
 			OrganizationId: "organization_id",
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
@@ -55,63 +45,27 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 		}).
 			Return(token, nil)
 
-		generator := Generator{
-			repository:    mockRepository,
-			encoder:       mockEncoder,
-			clock:         clock.NewMock(now),
-			tokenLifetime: 60 * time.Second,
-		}
+		generator := auth.NewGenerator(
+			mockRepository,
+			mockEncoder,
+			60*time.Second,
+			clock.NewMock(now),
+		)
 
-		_, receivedToken, expirationTime, err := generator.GenerateToken(ctx, key, "")
+		creds, err := generator.GenerateToken(ctx, auth.Credentials{Type: auth.CredentialsApiKey, Value: key}, apiKey, models.FirebaseIdentity{})
 		assert.NoError(t, err)
-		assert.Equal(t, token, receivedToken)
-		assert.Equal(t, now.Add(60*time.Second), expirationTime)
+		assert.Equal(t, token, creds.Value)
+		assert.Equal(t, now.Add(60*time.Second), creds.Expiration)
 
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
 	})
 
-	t.Run("GetApiKeyByHash error", func(t *testing.T) {
-		mockRepository := new(mocks.Database)
-		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
-			Return(models.ApiKey{}, assert.AnError)
-
-		generator := Generator{
-			repository: mockRepository,
-		}
-
-		_, _, _, err := generator.GenerateToken(ctx, key, "")
-		assert.Error(t, err)
-
-		mockRepository.AssertExpectations(t)
-	})
-
-	t.Run("GetOrganizationByID error", func(t *testing.T) {
-		mockRepository := new(mocks.Database)
-		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
-			Return(apiKey, nil)
-		mockRepository.On("GetOrganizationByID", ctx, "organization_id").
-			Return(models.Organization{}, assert.AnError)
-
-		generator := Generator{
-			repository: mockRepository,
-		}
-
-		_, _, _, err := generator.GenerateToken(ctx, key, "")
-		assert.Error(t, err)
-
-		mockRepository.AssertExpectations(t)
-	})
-
 	t.Run("EncodeMarbleToken error", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
-		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
-			Return(apiKey, nil)
-		mockRepository.On("GetOrganizationByID", ctx, "organization_id").
-			Return(organization, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
-		mockEncoder.On("EncodeMarbleToken", mock.Anything, models.Credentials{
+		mockEncoder.On("EncodeMarbleToken", "", mock.Anything, models.Credentials{
 			OrganizationId: "organization_id",
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
@@ -121,17 +75,17 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 		}).
 			Return(token, nil)
 
-		generator := Generator{
-			repository:    mockRepository,
-			encoder:       mockEncoder,
-			clock:         clock.NewMock(now),
-			tokenLifetime: 60 * time.Second,
-		}
+		generator := auth.NewGenerator(
+			mockRepository,
+			mockEncoder,
+			60*time.Second,
+			clock.NewMock(now),
+		)
 
-		_, receivedToken, expirationTime, err := generator.GenerateToken(ctx, key, "")
+		receivedToken, err := generator.GenerateToken(ctx, auth.Credentials{Type: auth.CredentialsApiKey, Value: key}, apiKey, models.FirebaseIdentity{})
 		assert.NoError(t, err)
-		assert.Equal(t, token, receivedToken)
-		assert.Equal(t, now.Add(60*time.Second), expirationTime)
+		assert.Equal(t, token, receivedToken.Value)
+		assert.Equal(t, now.Add(60*time.Second), receivedToken.Expiration)
 
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
@@ -139,9 +93,10 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 }
 
 func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
-	firebaseToken := "firebaseToken"
+	firebaseToken := auth.Credentials{Type: auth.CredentialsBearer, Value: "firebaseToken"}
 	firebaseIdentity := models.FirebaseIdentity{
-		Email: "user@email.com",
+		Issuer: infra.MockFirebaseIssuer,
+		Email:  "user@email.com",
 	}
 	token := "token"
 	now := time.Now()
@@ -155,17 +110,15 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 	t.Run("nominal", func(t *testing.T) {
 		mockVerifier := new(mocks.FirebaseTokenVerifier)
-		mockVerifier.On("VerifyFirebaseToken", mock.Anything, firebaseToken).
-			Return(firebaseIdentity, nil)
+		mockVerifier.On("Verify", mock.Anything, firebaseToken).
+			Return(user, firebaseIdentity, nil)
 
 		mockRepository := new(mocks.Database)
-		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
-			Return(user, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
 			Return(models.Organization{}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
-		mockEncoder.On("EncodeMarbleToken", mock.Anything, models.Credentials{
+		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: "organization_id",
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
@@ -175,18 +128,19 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		}).
 			Return(token, nil)
 
-		generator := Generator{
-			repository:    mockRepository,
-			verifier:      mockVerifier,
-			encoder:       mockEncoder,
-			clock:         clock.NewMock(now),
-			tokenLifetime: 60 * time.Second,
-		}
+		generator := auth.NewGenerator(
+			mockRepository,
+			mockEncoder,
+			60*time.Second,
+			clock.NewMock(now),
+		)
 
-		_, receivedToken, expirationTime, err := generator.GenerateToken(context.Background(), "", firebaseToken)
+		tokenHandler := auth.NewTokenHandler(mocks.NewStaticTokenExtractor(firebaseToken), mockVerifier, generator)
+		receivedToken, err := tokenHandler.GetToken(context.Background(), nil)
+
 		assert.NoError(t, err)
-		assert.Equal(t, token, receivedToken)
-		assert.Equal(t, now.Add(60*time.Second), expirationTime)
+		assert.Equal(t, token, receivedToken.Value)
+		assert.Equal(t, now.Add(60*time.Second), receivedToken.Expiration)
 		mockRepository.AssertExpectations(t)
 		mockVerifier.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
@@ -194,17 +148,15 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 	t.Run("nominal first connection", func(t *testing.T) {
 		mockVerifier := new(mocks.FirebaseTokenVerifier)
-		mockVerifier.On("VerifyFirebaseToken", mock.Anything, firebaseToken).
-			Return(firebaseIdentity, nil)
+		mockVerifier.On("Verify", mock.Anything, firebaseToken).
+			Return(user, firebaseIdentity, nil)
 
 		mockRepository := new(mocks.Database)
-		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
-			Return(user, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
 			Return(models.Organization{}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
-		mockEncoder.On("EncodeMarbleToken", mock.Anything, models.Credentials{
+		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: "organization_id",
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
@@ -214,68 +166,35 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		}).
 			Return(token, nil)
 
-		generator := Generator{
-			repository:    mockRepository,
-			verifier:      mockVerifier,
-			encoder:       mockEncoder,
-			clock:         clock.NewMock(now),
-			tokenLifetime: 60 * time.Second,
-		}
+		generator := auth.NewGenerator(
+			mockRepository,
+			mockEncoder,
+			60*time.Second,
+			clock.NewMock(now),
+		)
 
-		_, receivedToken, expirationTime, err := generator.GenerateToken(context.Background(), "", firebaseToken)
+		tokenHandler := auth.NewTokenHandler(mocks.NewStaticTokenExtractor(firebaseToken), mockVerifier, generator)
+		receivedToken, err := tokenHandler.GetToken(context.Background(), nil)
+
 		assert.NoError(t, err)
-		assert.Equal(t, token, receivedToken)
-		assert.Equal(t, now.Add(60*time.Second), expirationTime)
+		assert.Equal(t, token, receivedToken.Value)
+		assert.Equal(t, now.Add(60*time.Second), receivedToken.Expiration)
 		mockRepository.AssertExpectations(t)
 		mockVerifier.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
 	})
 
-	t.Run("VerifyFirebaseToken error", func(t *testing.T) {
-		mockVerifier := new(mocks.FirebaseTokenVerifier)
-		mockVerifier.On("VerifyFirebaseToken", mock.Anything, firebaseToken).
-			Return(models.FirebaseIdentity{}, assert.AnError)
-
-		generator := Generator{
-			verifier: mockVerifier,
-		}
-
-		_, _, _, err := generator.GenerateToken(context.Background(), "", firebaseToken)
-		assert.Error(t, err)
-		mockVerifier.AssertExpectations(t)
-	})
-
-	t.Run("UserByEmail error", func(t *testing.T) {
-		mockVerifier := new(mocks.FirebaseTokenVerifier)
-		mockVerifier.On("VerifyFirebaseToken", mock.Anything, firebaseToken).
-			Return(firebaseIdentity, nil)
-
-		mockRepository := new(mocks.Database)
-		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
-			Return(models.User{}, assert.AnError)
-
-		generator := Generator{
-			repository: mockRepository,
-			verifier:   mockVerifier,
-		}
-
-		_, _, _, err := generator.GenerateToken(context.Background(), "", firebaseToken)
-		assert.Error(t, err)
-		mockRepository.AssertExpectations(t)
-		mockVerifier.AssertExpectations(t)
-	})
-
 	t.Run("EncodeMarbleToken error", func(t *testing.T) {
 		mockVerifier := new(mocks.FirebaseTokenVerifier)
-		mockVerifier.On("VerifyFirebaseToken", mock.Anything, firebaseToken).
-			Return(firebaseIdentity, nil)
+		mockVerifier.On("Verify", mock.Anything, firebaseToken).
+			Return(user, firebaseIdentity, nil)
 
 		mockRepository := new(mocks.Database)
-		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
-			Return(user, nil)
+		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
+			Return(models.Organization{}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
-		mockEncoder.On("EncodeMarbleToken", mock.Anything, models.Credentials{
+		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: "organization_id",
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
@@ -285,15 +204,16 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		}).
 			Return("", assert.AnError)
 
-		generator := Generator{
-			repository:    mockRepository,
-			verifier:      mockVerifier,
-			encoder:       mockEncoder,
-			clock:         clock.NewMock(now),
-			tokenLifetime: 60 * time.Second,
-		}
+		generator := auth.NewGenerator(
+			mockRepository,
+			mockEncoder,
+			60*time.Second,
+			clock.NewMock(now),
+		)
 
-		_, _, _, err := generator.GenerateToken(context.Background(), "", firebaseToken)
+		tokenHandler := auth.NewTokenHandler(mocks.NewStaticTokenExtractor(firebaseToken), mockVerifier, generator)
+		_, err := tokenHandler.GetToken(context.Background(), nil)
+
 		assert.Error(t, err)
 		mockRepository.AssertExpectations(t)
 		mockVerifier.AssertExpectations(t)
