@@ -1,6 +1,8 @@
 package dbmodels
 
 import (
+	"time"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -14,6 +16,8 @@ type DbAnalyticsSettings struct {
 	TriggerObjectType string               `db:"trigger_object_type"`
 	TriggerFields     []string             `db:"trigger_fields"`
 	DbFields          []DbAnalyticsDbField `db:"db_fields"`
+	CreatedAt         time.Time            `db:"created_at"`
+	UpdatedAt         time.Time            `db:"updated_at"`
 }
 
 const AnalyticsSettingsTable = "analytics_settings"

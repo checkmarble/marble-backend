@@ -313,6 +313,14 @@ func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewAnalyticsSettingsUsecase() AnalyticsSettingsUsecase {
+	return AnalyticsSettingsUsecase{
+		enforceSecurity: usecases.NewEnforceOrganizationSecurity(),
+		repository:      usecases.Repositories.MarbleDbRepository,
+		executorFactory: usecases.NewExecutorFactory(),
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	return IngestionUseCase{
 		enforceSecurity:       usecases.NewEnforceIngestionSecurity(),
