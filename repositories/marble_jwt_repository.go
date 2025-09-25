@@ -41,6 +41,9 @@ func (repo *MarbleJwtRepository) EncodeMarbleToken(issuer string, expirationTime
 		},
 	}
 
+	// TODO: nopz
+	claims.Credentials.Permissions = make([]string, 0)
+
 	token := jwt.NewWithClaims(ValidationAlgo, claims)
 	return token.SignedString(&repo.jwtSigningPrivateKey)
 }
