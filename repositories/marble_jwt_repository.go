@@ -41,6 +41,11 @@ func (repo *MarbleJwtRepository) EncodeMarbleToken(issuer string, expirationTime
 		},
 	}
 
+	// TODO: no component, to this day, uses the permissions contained in the
+	// token, so let's empty it to regain spaces in the cookie. This cannot be
+	// completely removed since components still expect to find an array.
+	claims.Credentials.Permissions = make([]string, 0)
+
 	token := jwt.NewWithClaims(ValidationAlgo, claims)
 	return token.SignedString(&repo.jwtSigningPrivateKey)
 }
