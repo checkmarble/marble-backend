@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
@@ -21,6 +22,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	evalParams evaluate_scenario.ScenarioEvaluationParameters,
 	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
 ) (models.WorkflowExecution, error) {
+	logger := utils.LoggerFromContext(ctx)
 	webhookEventId := uuid.NewString()
 
 	createNewCaseForDecision := func(ctx context.Context) (models.WorkflowExecution, error) {
@@ -94,6 +96,30 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	case models.WorkflowCreateCase:
 		return createNewCaseForDecision(ctx)
 	case models.WorkflowAddToCaseIfPossible:
+		// Get an advisory lock on pivot value to prevent race conditions when multiple decisions
+		// for the same entity (user, account, etc.) arrive simultaneously. This ensures that
+		// AddToCaseIfPossible operations are serialized and only one case gets created per pivot value.
+		// If pivot value is nil, no lock is needed since we'll always create a new case.
+		if decision.PivotValue != nil {
+			logger.DebugContext(
+				ctx,
+				"getting advisory lock on pivot",
+				"pivot_value", *decision.PivotValue,
+				"inbox_id", action.Params.InboxId,
+			)
+			err := repositories.GetAdvisoryLockTx(ctx, tx, lockKey(decision, action))
+			if err != nil {
+				return models.WorkflowExecution{}, errors.Wrap(err,
+					"error getting advisory lock on pivot value")
+			}
+			logger.DebugContext(
+				ctx,
+				"acquired advisory lock on pivot",
+				"pivot_value", *decision.PivotValue,
+				"inbox_id", action.Params.InboxId,
+			)
+		}
+
 		matchedCase, added, err := d.addToOpenCase(ctx, tx, scenario, decision, action)
 		if err != nil {
 			return models.WorkflowExecution{}, errors.Wrap(err, "error adding decision to open case")
@@ -225,4 +251,21 @@ func caseIsBetterMatch(a, b caseMetadataWithDecisionCount) bool {
 	}
 
 	return a.CreatedAt.After(b.CreatedAt)
+}
+
+// Build a key for advisory lock on pivot value, pivot ID and inbox ID
+func lockKey(decision models.DecisionWithRuleExecutions, action models.WorkflowActionSpec[dto.WorkflowActionCaseParams]) string {
+	pivotValue := ""
+	if decision.PivotValue != nil {
+		pivotValue = *decision.PivotValue
+	}
+	pivotId := uuid.UUID{}
+	if decision.PivotId != nil {
+		pivotId = *decision.PivotId
+	}
+	inboxId := uuid.UUID{}
+	if !action.Params.AnyInbox {
+		inboxId = action.Params.InboxId
+	}
+	return fmt.Sprintf("%s-%s-%s", pivotValue, pivotId.String(), inboxId.String())
 }
