@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
@@ -76,7 +77,7 @@ type asyncDecisionWorkerRepository interface {
 		updateScheduledEx models.UpdateScheduledExecutionStatusInput,
 	) (executed bool, err error)
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
-	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]models.AnalyticsSettings, error)
+	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]analytics.Settings, error)
 }
 
 type ScenarioEvaluator interface {

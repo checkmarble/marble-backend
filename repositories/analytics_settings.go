@@ -3,11 +3,11 @@ package repositories
 import (
 	"context"
 
-	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) GetAnalyticsSettings(ctx context.Context, exec Executor, orgId string) (map[string]models.AnalyticsSettings, error) {
+func (repo *MarbleDbRepository) GetAnalyticsSettings(ctx context.Context, exec Executor, orgId string) (map[string]analytics.Settings, error) {
 	query := NewQueryBuilder().
 		Select(dbmodels.AnalyticsSettingsColumns...).
 		From(dbmodels.AnalyticsSettingsTable).
@@ -19,7 +19,7 @@ func (repo *MarbleDbRepository) GetAnalyticsSettings(ctx context.Context, exec E
 		return nil, err
 	}
 
-	settings := make(map[string]models.AnalyticsSettings, len(rows))
+	settings := make(map[string]analytics.Settings, len(rows))
 
 	for _, s := range rows {
 		settings[s.TriggerObjectType] = s

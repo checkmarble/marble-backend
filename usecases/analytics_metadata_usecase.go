@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -41,6 +42,14 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req 
 
 	innerSql, innerArgs, _ := inner.ToSql()
 
+	// This query retrieves all columns that have a tr. or ex. prefix with their type.
+	//
+	// The query within the inner join takes the table data and returns
+	// one row per column matching the regex. Essentially, the unpivot
+	// transforms columns into rows, in our case, without associated data.
+	//
+	// Each of those columns is then joined with the table definition to add the
+	// column type.
 	rows, err := exec.QueryContext(ctx, fmt.Sprintf(
 		`
 			select column_name, column_type
@@ -48,7 +57,7 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req 
 			inner join (
 			  select distinct name from (
 			    unpivot(%s)
-			    on columns('^(tr|ex)_')::varchar
+			    on columns('^(tr|ex)\.')::varchar
 			  )
 			) i
 			on i.name = o.column_name;
@@ -71,7 +80,7 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req 
 			return nil, err
 		}
 
-		if strings.HasPrefix(tmp.Name, "tr_") || strings.HasPrefix(tmp.Name, "ex_") {
+		if strings.HasPrefix(tmp.Name, analytics.TriggerObjectFieldPrefix) || strings.HasPrefix(tmp.Name, analytics.DatabaseFieldPrefix) {
 			filters = append(filters, tmp)
 		}
 	}

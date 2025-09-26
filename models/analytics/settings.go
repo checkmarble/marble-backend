@@ -1,4 +1,4 @@
-package models
+package analytics
 
 import (
 	"fmt"
@@ -7,18 +7,23 @@ import (
 	"github.com/google/uuid"
 )
 
-type AnalyticsSettings struct {
+const (
+	TriggerObjectFieldPrefix = "tr."
+	DatabaseFieldPrefix      = "ex."
+)
+
+type Settings struct {
 	Id                uuid.UUID
 	TriggerObjectType string
 	TriggerFields     []string
-	DbFields          []AnalyticsSettingsDbField
+	DbFields          []SettingsDbField
 }
 
-type AnalyticsSettingsDbField struct {
+type SettingsDbField struct {
 	Path []string
 	Name string
 }
 
-func (f AnalyticsSettingsDbField) Ident() string {
+func (f SettingsDbField) Ident() string {
 	return fmt.Sprintf("%s.%s", strings.Join(f.Path, "."), f.Name)
 }
