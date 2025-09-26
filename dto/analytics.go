@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/google/uuid"
 )
 
@@ -24,9 +25,9 @@ func AdaptAnalyticsAvailableFilter(model models.AnalyticsFilter) AnalyticsAvaila
 	source := models.AnalyticsSourceTriggerObject
 
 	switch {
-	case strings.HasPrefix(model.Name, "tr_"):
+	case strings.HasPrefix(model.Name, analytics.TriggerObjectFieldPrefix):
 		source = models.AnalyticsSourceTriggerObject
-	case strings.HasPrefix(model.Name, "ex_"):
+	case strings.HasPrefix(model.Name, analytics.DatabaseFieldPrefix):
 		source = models.AnalyticsSourceIngestedData
 	}
 
@@ -43,7 +44,7 @@ type AnalyticsQueryFilters struct {
 	ScenarioId       uuid.UUID `json:"scenario_id" validate:"required"`
 	ScenarioVersions []int     `json:"scenario_versions"`
 
-	Fields []models.AnalyticsQueryObjectFilter `json:"fields"`
+	Fields []analytics.QueryObjectFilter `json:"fields"`
 }
 
 func (f AnalyticsQueryFilters) Validate() error {

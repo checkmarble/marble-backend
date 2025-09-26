@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
@@ -56,7 +57,7 @@ func AnalyticsCopyDecisions(ctx context.Context, exec AnalyticsExecutor, req Ana
 			"si.version",
 			"d.created_at",
 			"d.org_id",
-			"extract(year from d.created_at) as year", "extract(month from d.created_at) as month",
+			"extract(year from d.created_at)::int as year", "extract(month from d.created_at)::int as month",
 			"d.trigger_object_type",
 		).
 		From("marble.decisions d").
@@ -69,7 +70,7 @@ func AnalyticsCopyDecisions(ctx context.Context, exec AnalyticsExecutor, req Ana
 		Limit(uint64(req.Limit))
 
 	if req.Watermark != nil {
-		inner = inner.Where("(d.created_at, d.id::text) > (?::timestamp with time zone, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
+		inner = inner.Where("(d.created_at, d.id) > (?::timestamp with time zone, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
 	}
 
 	for _, f := range req.TriggerObjectFields {
@@ -126,7 +127,7 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 			"si.version",
 			"d.created_at",
 			"dr.org_id",
-			"extract(year from d.created_at) as year", "extract(month from d.created_at) as month",
+			"extract(year from d.created_at)::int as year", "extract(month from d.created_at)::int as month",
 			"d.trigger_object_type",
 		).
 		From("marble.decision_rules dr").
@@ -141,7 +142,7 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 		Limit(uint64(req.Limit))
 
 	if req.Watermark != nil {
-		inner = inner.Where("(d.created_at, dr.id::text) > (?::timestamp with time zone, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
+		inner = inner.Where("(d.created_at, dr.id) > (?::timestamp with time zone, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
 	}
 
 	for _, f := range req.TriggerObjectFields {
@@ -186,20 +187,20 @@ func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req An
 	inner := squirrel.
 		Select(
 			"sc.id",
-			"any_value(sc.decision_id) as decision_id",
-			"any_value(sc.status) as status",
-			"any_value(scc.stable_id) as screening_config_id",
-			"any_value(scc.name) as screening_name",
+			"min(sc.decision_id::text)::uuid as decision_id",
+			"min(sc.status) as status",
+			"min(scc.stable_id::text)::uuid as screening_config_id",
+			"min(scc.name) as screening_name",
 			"count(*) filter (where scm.id is not null) as matches",
-			"any_value(s.id) as scenario_id",
-			"any_value(sc.created_at) as created_at",
-			"any_value(sc.org_id) as org_id",
-			"extract(year from any_value(sc.created_at)) as year", "extract(month from any_value(sc.created_at)) as month",
-			"any_value(s.trigger_object_type) as trigger_object_type",
+			"min(s.id::text)::uuid as scenario_id",
+			"min(sc.created_at) as created_at",
+			"min(sc.org_id::text)::uuid as org_id",
+			"extract(year from min(sc.created_at))::int as year", "extract(month from min(sc.created_at))::int as month",
+			"min(s.trigger_object_type) as trigger_object_type",
 		).
-		From("marble.sanction_checks sc").
-		InnerJoin("marble.sanction_check_configs scc on scc.id = sc.sanction_check_config_id").
-		LeftJoin("marble.sanction_check_matches scm on scm.sanction_check_id = sc.id").
+		From("marble.screenings sc").
+		InnerJoin("marble.screening_configs scc on scc.id = sc.screening_config_id").
+		LeftJoin("marble.screening_matches scm on scm.screening_id = sc.id").
 		InnerJoin("marble.scenario_iterations si on si.id = scc.scenario_iteration_id").
 		InnerJoin("marble.scenarios s on s.id = si.scenario_id").
 		InnerJoin("marble.decisions d on d.id = sc.decision_id").
@@ -207,11 +208,11 @@ func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req An
 		Where("s.trigger_object_type = ?", req.TriggerObject).
 		Where("sc.created_at < ?", req.EndTime).
 		GroupBy("sc.id").
-		OrderBy("any_value(sc.created_at), sc.id").
+		OrderBy("min(sc.created_at), sc.id").
 		Limit(uint64(req.Limit))
 
 	if req.Watermark != nil {
-		inner = inner.Where("(sc.created_at, sc.id::text) > (?::timestamp with time zone, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
+		inner = inner.Where("(sc.created_at, sc.id) > (?::timestamp with time zone, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
 	}
 
 	for _, f := range req.TriggerObjectFields {
@@ -267,9 +268,9 @@ func analyticsAddTriggerObjectField(b squirrel.SelectBuilder, field models.Field
 	}
 
 	if anyValue {
-		return b.Column(fmt.Sprintf("(any_value(d.trigger_object)->>'%s')::%s as tr_%s", field.Name, sqlType, field.Name))
+		return b.Column(fmt.Sprintf(`(min(d.trigger_object::text)::jsonb->>'%s')::%s as "%s%s"`, field.Name, sqlType, analytics.TriggerObjectFieldPrefix, field.Name))
 	} else {
-		return b.Column(fmt.Sprintf("(d.trigger_object->>'%s')::%s as tr_%s", field.Name, sqlType, field.Name))
+		return b.Column(fmt.Sprintf(`(d.trigger_object->>'%s')::%s as "%s%s"`, field.Name, sqlType, analytics.TriggerObjectFieldPrefix, field.Name))
 	}
 }
 
@@ -288,9 +289,9 @@ func analyticsAddExtraField(b squirrel.SelectBuilder, field models.Field, anyVal
 	}
 
 	if anyValue {
-		return b.Column(fmt.Sprintf(`(any_value(d.analytics_fields)->>'%s')::%s as "ex_%s"`, field.Name, sqlType, field.Name))
+		return b.Column(fmt.Sprintf(`(min(d.analytics_fields::text)::jsonb->>'%s')::%s as "%s%s"`, field.Name, sqlType, analytics.DatabaseFieldPrefix, field.Name))
 	} else {
-		return b.Column(fmt.Sprintf(`(d.analytics_fields->>'%s')::%s as "ex_%s"`, field.Name, sqlType, field.Name))
+		return b.Column(fmt.Sprintf(`(d.analytics_fields->>'%s')::%s as "%s%s"`, field.Name, sqlType, analytics.DatabaseFieldPrefix, field.Name))
 	}
 }
 

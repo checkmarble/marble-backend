@@ -7,11 +7,11 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 type AnalyticsQueryUsecase struct {
@@ -23,7 +23,7 @@ type AnalyticsQueryUsecase struct {
 	scenarioRepository repositories.ScenarioUsecaseRepository
 }
 
-func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.DecisionOutcomePerDay, error) {
+func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.DecisionOutcomePerDay, error) {
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
@@ -50,14 +50,10 @@ func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filte
 		using coalesce(sum(decisions), 0)
 		order by date`, sql)
 
-	return repositories.AnalyticsRawScanStruct[models.DecisionOutcomePerDay](ctx, exec, query, args...)
+	return repositories.AnalyticsRawScanStruct[analytics.DecisionOutcomePerDay](ctx, exec, query, args...)
 }
 
-func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.DecisionsScoreDistribution, error) {
-	if len(filters.ScenarioVersions) != 1 {
-		return nil, errors.New("DecisionsScoreDistribution must be called with one scenario version")
-	}
-
+func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.DecisionsScoreDistribution, error) {
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
@@ -74,10 +70,10 @@ func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, 
 		return nil, err
 	}
 
-	return repositories.AnalyticsScanStruct[models.DecisionsScoreDistribution](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[analytics.DecisionsScoreDistribution](ctx, exec, query)
 }
 
-func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.RuleHitTable, error) {
+func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.RuleHitTable, error) {
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
@@ -101,10 +97,10 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 		return nil, err
 	}
 
-	return repositories.AnalyticsScanStruct[models.RuleHitTable](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[analytics.RuleHitTable](ctx, exec, query)
 }
 
-func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.RuleVsDecisionOutcome, error) {
+func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.RuleVsDecisionOutcome, error) {
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
@@ -127,10 +123,10 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filte
 		return nil, err
 	}
 
-	return repositories.AnalyticsScanStruct[models.RuleVsDecisionOutcome](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[analytics.RuleVsDecisionOutcome](ctx, exec, query)
 }
 
-func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.RuleCoOccurence, error) {
+func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.RuleCoOccurence, error) {
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
@@ -161,10 +157,10 @@ func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filte
 		return nil, err
 	}
 
-	return repositories.AnalyticsScanStruct[models.RuleCoOccurence](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[analytics.RuleCoOccurence](ctx, exec, query)
 }
 
-func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]models.ScreeningHits, error) {
+func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.ScreeningHits, error) {
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
@@ -188,7 +184,7 @@ func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.A
 		return nil, err
 	}
 
-	return repositories.AnalyticsScanStruct[models.ScreeningHits](ctx, exec, query)
+	return repositories.AnalyticsScanStruct[analytics.ScreeningHits](ctx, exec, query)
 }
 
 func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid.UUID) (models.Scenario, repositories.AnalyticsExecutor, error) {

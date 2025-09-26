@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/jackc/pgx/v5"
 	"github.com/marcboeker/go-duckdb/v2"
@@ -118,6 +118,8 @@ func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuild
 
 	firstBetweenYears := start.Year() + 1
 
+	or := squirrel.Or{}
+
 	if firstBetweenYears != end.Year() && start.Year() != end.Year() {
 		betweens := make([]int, end.Year()-firstBetweenYears)
 
@@ -125,15 +127,15 @@ func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuild
 			betweens[y] = firstBetweenYears + y
 		}
 
-		query = query.Where(fmt.Sprintf("%s in ?", pgx.Identifier.Sanitize([]string{alias, "year"})), betweens)
+		or = append(or, squirrel.Expr(fmt.Sprintf("%s in ?", pgx.Identifier.Sanitize([]string{alias, "year"})), betweens))
 	}
 
 	if start.Year() == end.Year() {
-		query = query.Where(
+		or = append(or, squirrel.Expr(
 			fmt.Sprintf("%s = ? and %s between ? and ?", pgx.Identifier.Sanitize([]string{alias, "year"}), pgx.Identifier.Sanitize([]string{alias, "month"})),
-			start.Year(), start.Month(), end.Month())
+			start.Year(), start.Month(), end.Month()))
 	} else {
-		query = query.Where(squirrel.Or{
+		or = append(or, squirrel.Or{
 			squirrel.And{
 				squirrel.Eq{pgx.Identifier.Sanitize([]string{alias, "year"}): start.Year()},
 				squirrel.Expr(fmt.Sprintf("%s between ? and 12", pgx.Identifier.Sanitize([]string{alias, "month"})), start.Month()),
@@ -144,6 +146,8 @@ func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuild
 			},
 		})
 	}
+
+	query = query.Where(or)
 
 	return query
 }
@@ -164,9 +168,9 @@ func (f AnalyticsExecutorFactory) ApplyFilters(query squirrel.SelectBuilder, sce
 	for _, f := range filters.Fields {
 		switch f.Source {
 		case models.AnalyticsSourceTriggerObject:
-			f.Field = "tr_" + f.Field
+			f.Field = analytics.TriggerObjectFieldPrefix + f.Field
 		case models.AnalyticsSourceIngestedData:
-			f.Field = "ex_" + f.Field
+			f.Field = analytics.DatabaseFieldPrefix + f.Field
 		}
 
 		lhs, rhs, err := f.ToPredicate(aliases...)
@@ -186,28 +190,20 @@ func (f AnalyticsExecutorFactory) ApplyFilters(query squirrel.SelectBuilder, sce
 }
 
 func (f AnalyticsExecutorFactory) buildUpstreamAttachStatement(alias string) string {
-	if f.config.PgConfig.ConnectionString != "" {
-		u, _ := url.Parse(f.config.PgConfig.ConnectionString)
+	dsn, err := url.Parse(f.config.PgConfig.ConnectionString)
 
-		f.config.PgConfig.Hostname = u.Hostname()
-		f.config.PgConfig.Port = u.Port()
-		f.config.PgConfig.Database = strings.TrimPrefix(u.Path, "/")
-		if u.User != nil {
-			f.config.PgConfig.User = u.User.Username()
+	if err != nil {
+		dsn = &url.URL{}
 
-			if pwd, ok := u.User.Password(); ok {
-				f.config.PgConfig.Password = pwd
-			}
-		}
+		dsn.Host = f.config.PgConfig.Hostname + ":" + f.config.PgConfig.Port
+		dsn.Path = "/" + f.config.PgConfig.Database
+		dsn.User = url.UserPassword(f.config.PgConfig.User, f.config.PgConfig.Password)
+		dsn.Query().Set("sslmode", f.config.PgConfig.SslMode)
 	}
 
 	return fmt.Sprintf(
-		`attach or replace 'dbname=%s user=%s password=%s host=%s port=%s' as %s (type postgres, read_only)`,
-		f.config.PgConfig.Database,
-		f.config.PgConfig.User,
-		f.config.PgConfig.Password,
-		f.config.PgConfig.Hostname,
-		f.config.PgConfig.Port,
+		`attach or replace '%s' as %s (type postgres, read_only)`,
+		dsn.String(),
 		alias,
 	)
 

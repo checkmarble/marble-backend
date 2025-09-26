@@ -2,6 +2,7 @@ package dbmodels
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -25,13 +26,13 @@ type DbAnalyticsDbField struct {
 	Type models.DataType `json:"type"`
 }
 
-func AdaptAnalyticsSettings(db DbAnalyticsSettings) (models.AnalyticsSettings, error) {
-	return models.AnalyticsSettings{
+func AdaptAnalyticsSettings(db DbAnalyticsSettings) (analytics.Settings, error) {
+	return analytics.Settings{
 		Id:                db.Id,
 		TriggerObjectType: db.TriggerObjectType,
 		TriggerFields:     db.TriggerFields,
-		DbFields: pure_utils.Map(db.DbFields, func(f DbAnalyticsDbField) models.AnalyticsSettingsDbField {
-			return models.AnalyticsSettingsDbField{
+		DbFields: pure_utils.Map(db.DbFields, func(f DbAnalyticsDbField) analytics.SettingsDbField {
+			return analytics.SettingsDbField{
 				Path: f.Path,
 				Name: f.Name,
 			}

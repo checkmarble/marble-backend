@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -24,7 +25,7 @@ type analyticsExportRepository interface {
 
 	GetDataModel(ctx context.Context, exec repositories.Executor, organizationID string, fetchEnumValues bool,
 		useCache bool) (models.DataModel, error)
-	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]models.AnalyticsSettings, error)
+	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]analytics.Settings, error)
 }
 
 func NewAnalyticsExportJob(orgId string, interval time.Duration) *river.PeriodicJob {
@@ -78,7 +79,6 @@ func (w *AnalyticsExportWorker) Timeout(job *river.Job[models.AnalyticsExportArg
 
 func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.AnalyticsExportArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
-	start := time.Now()
 
 	if job.CreatedAt.Before(time.Now().Add(-w.config.JobInterval)) {
 		logger.DebugContext(ctx, "skipping offloading job instance because it was created too long ago. A new one should have been created.", "job_created_at", job.CreatedAt)
@@ -125,7 +125,7 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 				TriggerObject:       table.Name,
 				TriggerObjectFields: triggerFields,
 				ExtraDbFields:       dbFields,
-				EndTime:             start,
+				EndTime:             job.CreatedAt,
 				Limit:               50000,
 			}
 
@@ -139,7 +139,7 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 				TriggerObject:       table.Name,
 				TriggerObjectFields: triggerFields,
 				ExtraDbFields:       dbFields,
-				EndTime:             start,
+				EndTime:             job.CreatedAt,
 				Limit:               50000,
 			}
 
@@ -153,7 +153,7 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 				TriggerObject:       table.Name,
 				TriggerObjectFields: triggerFields,
 				ExtraDbFields:       dbFields,
-				EndTime:             start,
+				EndTime:             job.CreatedAt,
 				Limit:               50000,
 			}
 

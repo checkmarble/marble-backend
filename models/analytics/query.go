@@ -1,41 +1,42 @@
-package models
+package analytics
 
 import (
 	"fmt"
 	"slices"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
 )
 
-type AnalyticsQueryOp string
+type QueryOp string
 
 const (
-	Eq  AnalyticsQueryOp = "="
-	Ne                   = "!="
-	Gt                   = ">"
-	Gte                  = ">="
-	Lt                   = "<"
-	Lte                  = "<="
-	In                   = "in"
+	Eq  QueryOp = "="
+	Ne          = "!="
+	Gt          = ">"
+	Gte         = ">="
+	Lt          = "<"
+	Lte         = "<="
+	In          = "in"
 )
 
 var (
-	ValidAnalyticsQueryOps = []AnalyticsQueryOp{Eq, Ne, Gt, Gte, Lt, Lte, In}
+	ValidAnalyticsQueryOps = []QueryOp{Eq, Ne, Gt, Gte, Lt, Lte, In}
 )
 
-func IsValidAnalyticsQueryOp(op AnalyticsQueryOp) bool {
+func IsValidAnalyticsQueryOp(op QueryOp) bool {
 	return slices.Contains(ValidAnalyticsQueryOps, op)
 }
 
-type AnalyticsQueryObjectFilter struct {
-	Source AnalyticsFieldSource `json:"source"`
-	Field  string               `json:"field"`
-	Op     AnalyticsQueryOp     `json:"op"`
-	Values []any                `json:"values"`
+type QueryObjectFilter struct {
+	Source models.AnalyticsFieldSource `json:"source"`
+	Field  string                      `json:"field"`
+	Op     QueryOp                     `json:"op"`
+	Values []any                       `json:"values"`
 }
 
-func (f AnalyticsQueryObjectFilter) Validate() error {
+func (f QueryObjectFilter) Validate() error {
 	if !IsValidAnalyticsQueryOp(f.Op) {
 		return errors.Newf("unknown filter operator %s", f.Op)
 	}
@@ -50,7 +51,7 @@ func (f AnalyticsQueryObjectFilter) Validate() error {
 	return nil
 }
 
-func (f AnalyticsQueryObjectFilter) ToPredicate(aliases ...string) (string, []any, error) {
+func (f QueryObjectFilter) ToPredicate(aliases ...string) (string, []any, error) {
 	alias := "main"
 	if len(aliases) > 0 {
 		alias = aliases[0]
