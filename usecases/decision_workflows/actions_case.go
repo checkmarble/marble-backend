@@ -256,7 +256,7 @@ func caseIsBetterMatch(a, b caseMetadataWithDecisionCount) bool {
 // Build a key for advisory lock on pivot value, pivot ID and inbox ID
 func lockKey(decision models.DecisionWithRuleExecutions, action models.WorkflowActionSpec[dto.WorkflowActionCaseParams]) string {
 	pivotValue := ""
-	if decision.PivotId != nil {
+	if decision.PivotValue != nil {
 		pivotValue = *decision.PivotValue
 	}
 	pivotId := uuid.UUID{}
