@@ -99,23 +99,15 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		// Get an advisory lock on pivot value to prevent race conditions when multiple decisions
 		// for the same entity (user, account, etc.) arrive simultaneously. This ensures that
 		// AddToCaseIfPossible operations are serialized and only one case gets created per pivot value.
-		// Lock is automatically released when the transaction commits or rolls back.
 		// If pivot value is nil, no lock is needed since we'll always create a new case.
 		if decision.PivotValue != nil {
 			logger.Debug("getting advisory lock on pivot value", "pivot_value", *decision.PivotValue)
-			err := repositories.GetAdvisoryLock(ctx, tx, *decision.PivotValue)
+			err := repositories.GetAdvisoryLockTx(ctx, tx, *decision.PivotValue)
 			if err != nil {
 				return models.WorkflowExecution{}, errors.Wrap(err,
 					"error getting advisory lock on pivot value")
 			}
 			logger.Debug("advisory lock on pivot value", "pivot_value", *decision.PivotValue)
-			defer func() {
-				err := repositories.ReleaseAdvisoryLock(ctx, tx, *decision.PivotValue)
-				if err != nil {
-					logger.Warn("error releasing advisory lock on pivot value",
-						"pivot_value", *decision.PivotValue, "error", err)
-				}
-			}()
 		}
 
 		matchedCase, added, err := d.addToOpenCase(ctx, tx, scenario, decision, action)
