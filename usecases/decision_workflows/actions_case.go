@@ -253,7 +253,7 @@ func caseIsBetterMatch(a, b caseMetadataWithDecisionCount) bool {
 	return a.CreatedAt.After(b.CreatedAt)
 }
 
-// Build a key for advisory lock on pivot Value, pivot ID and inbox ID
+// Build a key for advisory lock on pivot value, pivot ID and inbox ID
 func lockKey(decision models.DecisionWithRuleExecutions, action models.WorkflowActionSpec[dto.WorkflowActionCaseParams]) string {
 	pivotValue := ""
 	if decision.PivotId != nil {
