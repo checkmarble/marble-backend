@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/idp"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -73,6 +74,15 @@ func (v MarbleVerifier) Verify(ctx context.Context, creds Credentials) (models.I
 			return nil, nil, fmt.Errorf("%w: %w", models.ErrUnknownUser, err)
 		} else if err != nil {
 			return nil, nil, fmt.Errorf("repository.UserByEmail error: %w", err)
+		}
+
+		if fn, ln, ok := identity.GetName(); ok {
+			user, err = v.repository.UpdateUser(ctx, user, fn, ln)
+			if err != nil {
+				utils.LoggerFromContext(ctx).WarnContext(ctx, "could not update user's name", "error", err.Error())
+
+				return user, identity, nil
+			}
 		}
 
 		return user, identity, nil

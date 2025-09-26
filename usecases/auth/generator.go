@@ -14,6 +14,7 @@ type marbleRepository interface {
 	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
 	GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error)
 	UserByEmail(ctx context.Context, email string) (models.User, error)
+	UpdateUser(ctx context.Context, user models.User, firstname, lastname string) (models.User, error)
 }
 
 type encoder interface {
