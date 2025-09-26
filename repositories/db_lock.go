@@ -17,7 +17,7 @@ func hashStringToBigInt(s string) (int64, error) {
 // pg_advisory_xact_lock is a transaction-level advisory lock
 // cf: https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS-TABLE
 func GetAdvisoryLockTx(ctx context.Context, tx Transaction, key string) error {
-	// Lock take a bigint, hash the string
+	// Lock takes a bigint, hash the string
 	keyInt, err := hashStringToBigInt(key)
 	if err != nil {
 		return err
