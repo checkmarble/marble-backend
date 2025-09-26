@@ -29,28 +29,19 @@ func GetAdvisoryLockTx(ctx context.Context, tx Transaction, key string) error {
 	return nil
 }
 
-// pg_advisory_lock is a session-level advisory lock and could be released manually
+// pg_advisory_lock is a session-level advisory lock and could be released manually (call defer on the first return value)
 // cf: https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS-TABLE
-func GetAdvisoryLock(ctx context.Context, exec Executor, key string) error {
+func GetAdvisoryLock(ctx context.Context, exec Executor, key string) (func() error, error) {
 	keyInt, err := hashStringToBigInt(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, err = exec.Exec(ctx, "SELECT pg_advisory_lock($1)", keyInt)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
-}
-
-func ReleaseAdvisoryLock(ctx context.Context, exec Executor, key string) error {
-	keyInt, err := hashStringToBigInt(key)
-	if err != nil {
+	return func() error {
+		_, err := exec.Exec(ctx, "SELECT pg_advisory_unlock($1)", keyInt)
 		return err
-	}
-	_, err = exec.Exec(ctx, "SELECT pg_advisory_unlock($1)", keyInt)
-	if err != nil {
-		return err
-	}
-	return nil
+	}, nil
 }

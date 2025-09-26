@@ -101,13 +101,23 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		// AddToCaseIfPossible operations are serialized and only one case gets created per pivot value.
 		// If pivot value is nil, no lock is needed since we'll always create a new case.
 		if decision.PivotValue != nil {
-			logger.DebugContext(ctx, "getting advisory lock on pivot value", "pivot_value", *decision.PivotValue)
-			err := repositories.GetAdvisoryLockTx(ctx, tx, *decision.PivotValue)
+			logger.DebugContext(
+				ctx,
+				"getting advisory lock on pivot",
+				"pivot_value", *decision.PivotValue,
+				"inbox_id", action.Params.InboxId,
+			)
+			err := repositories.GetAdvisoryLockTx(ctx, tx, lockKey(decision, action))
 			if err != nil {
 				return models.WorkflowExecution{}, errors.Wrap(err,
 					"error getting advisory lock on pivot value")
 			}
-			logger.Debug("advisory lock on pivot value", "pivot_value", *decision.PivotValue)
+			logger.DebugContext(
+				ctx,
+				"acquired advisory lock on pivot",
+				"pivot_value", *decision.PivotValue,
+				"inbox_id", action.Params.InboxId,
+			)
 		}
 
 		matchedCase, added, err := d.addToOpenCase(ctx, tx, scenario, decision, action)
@@ -241,4 +251,21 @@ func caseIsBetterMatch(a, b caseMetadataWithDecisionCount) bool {
 	}
 
 	return a.CreatedAt.After(b.CreatedAt)
+}
+
+// Build a key for advisory lock on pivot Value, pivot ID and inbox ID
+func lockKey(decision models.DecisionWithRuleExecutions, action models.WorkflowActionSpec[dto.WorkflowActionCaseParams]) string {
+	pivotValue := ""
+	if decision.PivotId != nil {
+		pivotValue = *decision.PivotValue
+	}
+	pivotId := uuid.UUID{}
+	if decision.PivotId != nil {
+		pivotId = *decision.PivotId
+	}
+	inboxId := uuid.UUID{}
+	if !action.Params.AnyInbox {
+		inboxId = action.Params.InboxId
+	}
+	return fmt.Sprintf("%s-%s-%s", pivotValue, pivotId.String(), inboxId.String())
 }
