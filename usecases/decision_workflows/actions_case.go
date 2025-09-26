@@ -101,7 +101,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		// AddToCaseIfPossible operations are serialized and only one case gets created per pivot value.
 		// If pivot value is nil, no lock is needed since we'll always create a new case.
 		if decision.PivotValue != nil {
-			logger.Debug("getting advisory lock on pivot value", "pivot_value", *decision.PivotValue)
+			logger.DebugContext(ctx, "getting advisory lock on pivot value", "pivot_value", *decision.PivotValue)
 			err := repositories.GetAdvisoryLockTx(ctx, tx, *decision.PivotValue)
 			if err != nil {
 				return models.WorkflowExecution{}, errors.Wrap(err,
