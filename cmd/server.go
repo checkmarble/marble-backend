@@ -176,9 +176,8 @@ func RunServer(config CompiledConfig) error {
 		}
 
 		if apiConfig.FirebaseConfig.AuthDomain == "" {
-			logger.Warn(fmt.Sprintf("no FIREBASE_AUTH_DOMAIN specified, defaulting to %s", apiConfig.FirebaseConfig.AuthDomain))
-
 			apiConfig.FirebaseConfig.AuthDomain = fmt.Sprintf("%s.firebaseapp.com", apiConfig.FirebaseConfig.ProjectId)
+			logger.Warn(fmt.Sprintf("no FIREBASE_AUTH_DOMAIN specified, defaulting to %s", apiConfig.FirebaseConfig.AuthDomain))
 		}
 	} else {
 		// The auth domain, when using the emulator, is always the emulator host itself
