@@ -14,7 +14,9 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivermigrate"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 )
@@ -38,7 +40,25 @@ func NewMigrater(pgConfig infra.PgConfig) *Migrater {
 }
 
 func (m *Migrater) Run(ctx context.Context) error {
-	if err := m.openDb(ctx); err != nil {
+	connectionString := m.pgConfig.GetConnectionString()
+	cfg, err := pgxpool.ParseConfig(connectionString)
+	if err != nil {
+		return errors.Wrap(err, "unable to parse connection string")
+	}
+	if m.pgConfig.ImpersonateRole != "" {
+		cfg.ConnConfig.Config.AfterConnect = func(ctx context.Context, conn *pgconn.PgConn) error {
+			res := conn.Exec(ctx, "SET ROLE ;"+m.pgConfig.ImpersonateRole)
+			_, err := res.ReadAll()
+			return err
+		}
+	}
+	// we register the config with the stdlib driver to be able to use it with the goose library. This allows
+	// to use even advanced settings like AfterConnect that are not supported by the sql.Open function.
+	// It works by setting the config as a global variable and then using the stdlib driver to open the connection.
+	// The DSN created by the driver is only used as a lookup key for the config within sql.Open().
+	registeredConfig := stdlib.RegisterConnConfig(cfg.ConnConfig)
+
+	if err := m.openDb(ctx, registeredConfig); err != nil {
 		return errors.Wrap(err, "unable to open db in Migrater")
 	}
 
@@ -47,7 +67,7 @@ func (m *Migrater) Run(ctx context.Context) error {
 		return errors.Wrap(err, "runMarbleDbMigrations error")
 	}
 
-	pgxPool, err := m.openDbPgx(ctx)
+	pgxPool, err := m.openDbPgx(ctx, cfg)
 	if err != nil {
 		return errors.Wrap(err, "unable to open db in Migrater")
 	}
@@ -64,9 +84,8 @@ func (m *Migrater) Run(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrater) openDb(ctx context.Context) error {
-	connectionString := m.pgConfig.GetConnectionString()
-	db, err := sql.Open("pgx", connectionString)
+func (m *Migrater) openDb(ctx context.Context, connectionDsn string) error {
+	db, err := sql.Open("pgx", connectionDsn)
 	if err != nil {
 		return errors.Wrap(err, "unable to create connection pool for migrations")
 	} else {
@@ -80,14 +99,8 @@ func (m *Migrater) openDb(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrater) openDbPgx(ctx context.Context) (*pgxpool.Pool, error) {
-	connectionString := m.pgConfig.GetConnectionString()
-	cfg, err := pgxpool.ParseConfig(connectionString)
-	if err != nil {
-		return nil, fmt.Errorf("create connection pool: %w", err)
-	}
-
-	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+func (m *Migrater) openDbPgx(ctx context.Context, cfg *pgxpool.Config) (*pgxpool.Pool, error) {
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}
