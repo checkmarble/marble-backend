@@ -165,6 +165,7 @@ func (g ExecutorGetter) getPoolAndSchema(
 			config.ConnectionString,
 			g.tp,
 			config.MaxConns,
+			config.ImpersonateRole,
 		)
 		if err != nil {
 			return nil, models.DatabaseSchema{}, errors.Wrap(err, "Error creating connection pool")

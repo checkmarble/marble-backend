@@ -54,6 +54,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		MaxPoolConnections: utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
 		ClientDbConfigFile: utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
 		SslMode:            utils.GetEnv("PG_SSL_MODE", "prefer"),
+		ImpersonateRole:    utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
 	}
 	convoyConfiguration := infra.ConvoyConfiguration{
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
@@ -152,7 +153,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
 
 	pool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
-		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections)
+		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}
