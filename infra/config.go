@@ -104,6 +104,9 @@ type PgConfig struct {
 	MaxPoolConnections int
 	ClientDbConfigFile string
 	SslMode            string
+
+	// Role to impersonate when connecting to the database. To be used in particular with IAM authentication to handle role based access control.
+	ImpersonateRole string
 }
 
 func (config PgConfig) GetConnectionString() string {

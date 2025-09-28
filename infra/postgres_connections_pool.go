@@ -9,12 +9,13 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/exaring/otelpgx"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel/trace"
 )
 
 const (
-	DEFAULT_MAX_CONNECTIONS  = 40 // TODO: make this a configurable value
+	DEFAULT_MAX_CONNECTIONS  = 40
 	MAX_CONNECTION_IDLE_TIME = 5 * time.Minute
 )
 
@@ -22,6 +23,7 @@ type ClientDbConfig struct {
 	ConnectionString string `json:"connection_string"`
 	MaxConns         int    `json:"max_conns"`
 	SchemaName       string `json:"schema_name"`
+	ImpersonateRole  string `json:"impersonate_role"`
 }
 
 func NewPostgresConnectionPool(
@@ -30,6 +32,7 @@ func NewPostgresConnectionPool(
 	connectionString string,
 	tp trace.TracerProvider,
 	maxConnections int,
+	impersonateRole string,
 ) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
@@ -45,6 +48,13 @@ func NewPostgresConnectionPool(
 		cfg.MaxConns = DEFAULT_MAX_CONNECTIONS
 	}
 	cfg.MaxConnIdleTime = MAX_CONNECTION_IDLE_TIME
+
+	if impersonateRole != "" {
+		cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+			_, err := conn.Exec(ctx, "SET ROLE ;"+impersonateRole)
+			return err
+		}
+	}
 
 	cfg.ConnConfig.RuntimeParams = map[string]string{
 		"application_name": appName,
