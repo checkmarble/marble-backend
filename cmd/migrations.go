@@ -19,6 +19,7 @@ func RunMigrations(apiVersion string) error {
 		Port:             utils.GetEnv("PG_PORT", "5432"),
 		User:             utils.GetEnv("PG_USER", ""),
 		SslMode:          utils.GetEnv("PG_SSL_MODE", "prefer"),
+		ImpersonateRole:  utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
 	}
 
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))

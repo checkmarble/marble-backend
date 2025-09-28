@@ -105,7 +105,8 @@ type PgConfig struct {
 	ClientDbConfigFile string
 	SslMode            string
 
-	// Role to impersonate when connecting to the database. To be used in particular with IAM authentication to handle role based access control.
+	// Role to impersonate when connecting to the database. To be used in particular with IAM authentication t
+	// handle role based access control. Ignored if empty.
 	ImpersonateRole string
 }
 
