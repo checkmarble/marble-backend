@@ -50,15 +50,20 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req 
 	//
 	// Each of those columns is then joined with the table definition to add the
 	// column type.
+	//
+	// It requires that the targetted table has an "id" columns to be used as a
+	// fallback when no other exported fields are present. The id column is
+	// subsequently filtered out.
 	rows, err := exec.QueryContext(ctx, fmt.Sprintf(
 		`
 			select column_name, column_type
 			from (describe select * from %s) o
 			inner join (
 			  select distinct name from (
-			    unpivot(%s)
-			    on columns('^(tr|ex)\.')::varchar
+			    unpivot (%s)
+			    on columns('^(id|tr\.|ex\.)')::varchar
 			  )
+			  where regexp_matches(name, '^(tr|ex)\.')
 			) i
 			on i.name = o.column_name;
 		`,

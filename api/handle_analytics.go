@@ -97,6 +97,10 @@ func handleAnalyticsAvailableFilters(uc usecases.Usecases) func(c *gin.Context) 
 		if presentError(ctx, c, err) {
 			return
 		}
+		if filters == nil || len(filters) == 0 {
+			c.JSON(http.StatusOK, []struct{}{})
+			return
+		}
 
 		fields := slices.SortedFunc(slices.Values(pure_utils.Map(filters, dto.AdaptAnalyticsAvailableFilter)), func(m1, m2 dto.AnalyticsAvailableFilter) int {
 			return cmp.Or(

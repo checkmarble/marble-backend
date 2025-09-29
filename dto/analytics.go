@@ -23,16 +23,19 @@ type AnalyticsAvailableFilter struct {
 
 func AdaptAnalyticsAvailableFilter(model models.AnalyticsFilter) AnalyticsAvailableFilter {
 	source := models.AnalyticsSourceTriggerObject
+	name := model.Name
 
 	switch {
 	case strings.HasPrefix(model.Name, analytics.TriggerObjectFieldPrefix):
 		source = models.AnalyticsSourceTriggerObject
+		name = model.Name[3:]
 	case strings.HasPrefix(model.Name, analytics.DatabaseFieldPrefix):
 		source = models.AnalyticsSourceIngestedData
+		name = model.Name[3:]
 	}
 
 	return AnalyticsAvailableFilter{
-		Name:   model.Name[3:],
+		Name:   name,
 		Type:   models.AnalyticsTypeFromColumn(model.Type),
 		Source: source,
 	}
