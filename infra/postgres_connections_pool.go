@@ -51,7 +51,7 @@ func NewPostgresConnectionPool(
 
 	if impersonateRole != "" {
 		cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-			_, err := conn.Exec(ctx, "SET ROLE ;"+impersonateRole)
+			_, err := conn.Exec(ctx, "SET ROLE "+impersonateRole)
 			return err
 		}
 	}
