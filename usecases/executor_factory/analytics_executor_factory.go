@@ -192,9 +192,10 @@ func (f AnalyticsExecutorFactory) ApplyFilters(query squirrel.SelectBuilder, sce
 func (f AnalyticsExecutorFactory) buildUpstreamAttachStatement(alias string) string {
 	dsn, err := url.Parse(f.config.PgConfig.ConnectionString)
 
-	if err != nil {
+	if f.config.PgConfig.ConnectionString == "" || err != nil {
 		dsn = &url.URL{}
 
+		dsn.Scheme = "postgres"
 		dsn.Host = f.config.PgConfig.Hostname + ":" + f.config.PgConfig.Port
 		dsn.Path = "/" + f.config.PgConfig.Database
 		dsn.User = url.UserPassword(f.config.PgConfig.User, f.config.PgConfig.Password)
