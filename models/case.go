@@ -136,6 +136,10 @@ type CaseFilters struct {
 	AssigneeId      UserId
 }
 
+const (
+	DEFAULT_SIMILARITY_THRESHOLD = 0.5
+)
+
 type CaseListPage struct {
 	Cases       []Case
 	HasNextPage bool

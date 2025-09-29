@@ -63,7 +63,11 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 		query = query.Where(squirrel.Eq{"c.inbox_id": filters.InboxIds})
 	}
 	if filters.Name != "" {
-		query = query.Where("similarity(c.name, ?) > ?", filters.Name, repo.similarityThreshold)
+		// Straight from the Postgres doc,
+		// "Same as word_similarity, but forces extent boundaries to match word boundaries. Since we don't have cross-word trigrams,
+		// this function actually returns greatest similarity between first string and any continuous extent of words of the second string."
+		// Hence, the (presumably shorter) string received as input should be used as the first argument.
+		query = query.Where("word_similarity(?, c.name) > ?", filters.Name, repo.similarityThreshold)
 	}
 	if !filters.IncludeSnoozed {
 		query = query.Where(squirrel.Or{
