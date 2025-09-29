@@ -47,7 +47,7 @@ func (m *Migrater) Run(ctx context.Context) error {
 	}
 	if m.pgConfig.ImpersonateRole != "" {
 		cfg.ConnConfig.Config.AfterConnect = func(ctx context.Context, conn *pgconn.PgConn) error {
-			res := conn.Exec(ctx, "SET ROLE ;"+m.pgConfig.ImpersonateRole)
+			res := conn.Exec(ctx, "SET ROLE "+m.pgConfig.ImpersonateRole)
 			_, err := res.ReadAll()
 			return err
 		}
