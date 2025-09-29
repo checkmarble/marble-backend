@@ -152,7 +152,7 @@ func RunServer(config CompiledConfig) error {
 		transferCheckEnrichmentBucketUrl: utils.GetEnv("TRANSFER_CHECK_ENRICHMENT_BUCKET_URL", ""), // required for transfercheck
 		telemetryExporter:                utils.GetEnv("TRACING_EXPORTER", "otlp"),
 		otelSamplingRates:                utils.GetEnv("TRACING_SAMPLING_RATES", ""),
-		similarityThreshold:              utils.GetEnv("SIMILARITY_THRESHOLD", DEFAULT_SIMILARITY_THRESHOLD),
+		similarityThreshold:              utils.GetEnv("SIMILARITY_THRESHOLD", models.DEFAULT_SIMILARITY_THRESHOLD),
 	}
 	if err := serverConfig.Validate(); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
