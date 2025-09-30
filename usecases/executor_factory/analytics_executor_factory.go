@@ -3,8 +3,10 @@ package executor_factory
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -80,7 +82,8 @@ func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, ali
 	})
 
 	if err != nil {
-		return nil, err
+		// DuckDB exposes sensitive data in its error messages, so for now we sanitize it
+		return nil, errors.New("could not connect analytics connector to PostgreSQL [redacted error]")
 	}
 
 	return exportDb, nil
@@ -194,12 +197,23 @@ func (f AnalyticsExecutorFactory) buildUpstreamAttachStatement(alias string) str
 
 	if f.config.PgConfig.ConnectionString == "" || err != nil {
 		dsn = &url.URL{}
+		q := url.Values{}
+
+		if strings.HasPrefix(f.config.PgConfig.Hostname, "/") {
+			q.Set("host", f.config.PgConfig.Hostname)
+			f.config.PgConfig.Hostname = "localhost"
+		}
 
 		dsn.Scheme = "postgres"
 		dsn.Host = f.config.PgConfig.Hostname + ":" + f.config.PgConfig.Port
 		dsn.Path = "/" + f.config.PgConfig.Database
 		dsn.User = url.UserPassword(f.config.PgConfig.User, f.config.PgConfig.Password)
-		dsn.Query().Set("sslmode", f.config.PgConfig.SslMode)
+
+		if f.config.PgConfig.SslMode != "" {
+			q.Set("sslmode", f.config.PgConfig.SslMode)
+		}
+
+		dsn.RawQuery = q.Encode()
 	}
 
 	return fmt.Sprintf(
@@ -207,5 +221,4 @@ func (f AnalyticsExecutorFactory) buildUpstreamAttachStatement(alias string) str
 		dsn.String(),
 		alias,
 	)
-
 }
