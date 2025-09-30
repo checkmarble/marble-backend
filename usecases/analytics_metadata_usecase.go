@@ -51,7 +51,7 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req 
 	// Each of those columns is then joined with the table definition to add the
 	// column type.
 	//
-	// It requires that the targetted table has an "id" columns to be used as a
+	// It requires that the targeted table has an "id" column to be used as a
 	// fallback when no other exported fields are present. The id column is
 	// subsequently filtered out.
 	rows, err := exec.QueryContext(ctx, fmt.Sprintf(
