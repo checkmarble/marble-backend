@@ -107,6 +107,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 
 	testAdminUsecase = generateUsecaseWithCredForMarbleAdmin(testUsecases)
 
+	// add the river worker queue for this organization. It's used to run the asynchronous decisions for batch mode.
 	err = riverClient.Queues().Add(organizationId, river.QueueConfig{MaxWorkers: 3})
 	assert.NoError(t, err)
 

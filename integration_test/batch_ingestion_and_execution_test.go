@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/riverqueue/river"
 	"github.com/segmentio/analytics-go/v3"
 	"github.com/stretchr/testify/assert"
 
@@ -48,14 +47,6 @@ func TestBatchIngestionAndExecution(t *testing.T) {
 	// Setup an organization and user credentials
 	userCreds, _, inboxId := setupOrgAndCreds(ctx, t, "test org with batch usage")
 	organizationId := userCreds.OrganizationId
-
-	// add the river worker queue for this organization. It's used to run the asynchronous decisions for batch mode.
-	err := riverClient.Queues().Add(organizationId, river.QueueConfig{
-		MaxWorkers: 3,
-	})
-	if err != nil {
-		assert.FailNow(t, "Failed to add queue", err)
-	}
 
 	// Now that we have a user and credentials, create a container for usecases with these credentials
 	usecasesWithCreds := generateUsecaseWithCreds(testUsecases, userCreds)
@@ -110,7 +101,9 @@ func createDecisionsBatch(
 	organizationId, scenarioId, scenarioIterationId string,
 ) {
 	scheduledExecUsecase := usecasesWithUserCreds.NewScheduledExecutionUsecase()
-	ses, err := scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, models.ListScheduledExecutionsFilters{ScenarioId: scenarioId}, nil)
+	ses, err := scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, models.ListScheduledExecutionsFilters{
+		ScenarioId: scenarioId,
+	}, nil)
 	if err != nil {
 		assert.FailNow(t, "Failed to list scheduled executions", err)
 	}
@@ -129,7 +122,9 @@ func createDecisionsBatch(
 		assert.FailNow(t, "Failed to create scheduled executions", err)
 	}
 
-	ses, err = scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, models.ListScheduledExecutionsFilters{ScenarioId: scenarioId}, nil)
+	ses, err = scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, models.ListScheduledExecutionsFilters{
+		ScenarioId: scenarioId,
+	}, nil)
 	if err != nil {
 		assert.FailNow(t, "Failed to list scheduled executions", err)
 	}
