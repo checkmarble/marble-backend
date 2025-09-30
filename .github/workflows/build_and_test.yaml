@@ -14,7 +14,7 @@ jobs:
       contents: read
       pull-requests: read
       checks: write
-    
+
     services:
       postgres:
         image: postgres:17-alpine
@@ -30,15 +30,15 @@ jobs:
           --tmpfs /var/lib/postgresql/data
         ports:
           - 5432:5432
-    
+
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: ./go.mod
           cache: true
@@ -56,7 +56,7 @@ jobs:
             go install github.com/pressly/goose/v3/cmd/goose@latest
           fi
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-          
+
       - name: Run migrations on main branch
         env:
           GOOSE_DRIVER: postgres
@@ -64,10 +64,10 @@ jobs:
         run: goose -dir repositories/migrations up
 
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          
+
       - name: Run migrations on PR branch
         env:
           GOOSE_DRIVER: postgres
@@ -85,6 +85,4 @@ jobs:
       contents: read
       pull-requests: read
       checks: write
-    secrets:
-      README_API_KEY: ${{ secrets.README_API_KEY }}
     uses: ./.github/workflows/backend_test_workflow.yaml

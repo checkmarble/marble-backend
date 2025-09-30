@@ -1,9 +1,6 @@
 name: Test back-end
 
-on:
-  workflow_call:
-    secrets:
-      README_API_KEY:
+on: workflow_call
 
 permissions:
   contents: read
@@ -15,7 +12,34 @@ jobs:
     name: Test back-end
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: ./go.mod
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Generate Marble API OpenAPI as temporary file
+        run: go run pubapi/openapi/generate.go v1 > /tmp/marble-api-v1.yml
+
+      - name: Upload OpenAPI specifications as artifacts, to be downloaded and used in the production deployment workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: marble-api-openapi
+          path: /tmp/marble-api-*.yml
+          retention-days: 1
+
+  lint_backend:
+    name: Lint back-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -27,19 +51,3 @@ jobs:
         with:
           version: v2.5
           args: --timeout=3m
-
-      - name: Build
-        run: go build -v ./...
-
-      - name: Test
-        run: go test ./...
-
-      - name: Generate Marble API OpenAPI
-        run: go run pubapi/openapi/generate.go v1 > /tmp/marble-api-v1.yml
-
-      - name: Upload OpenAPI specifications as artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: marble-api-openapi
-          path: /tmp/marble-api-*.yml
-          retention-days: 1
