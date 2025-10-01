@@ -155,3 +155,18 @@ type CaseDecisionListPaginationDto struct {
 	HasMore      bool   `json:"has_more"`
 	NextCursorId string `json:"next_cursor_id"`
 }
+
+type CaseMassUpdateDto struct {
+	Action      string                     `json:"action" binding:"required,oneof=close reopen assign move_to_inbox"`
+	CaseIds     []uuid.UUID                `json:"case_ids" binding:"required,dive,uuid"`
+	Assign      *CaseMassUpdateAssignDto   `json:"assign" binding:"required_if=Action assign"`
+	MoveToInbox *CaseMassUpdateMoveToInbox `json:"move_to_inbox" binding:"required_if=Action move_to_inbox"`
+}
+
+type CaseMassUpdateAssignDto struct {
+	AssigneeId uuid.UUID `json:"assignee_id" binding:"required"`
+}
+
+type CaseMassUpdateMoveToInbox struct {
+	InboxId uuid.UUID `json:"inbox_id" binding:"required"`
+}
