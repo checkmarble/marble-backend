@@ -1158,6 +1158,8 @@ components:
               type: string
             birthDate:
               type: string
+            nationality:
+              type: string
             passportNumber:
               type: string
             address:
@@ -1174,6 +1176,8 @@ components:
           minProperties: 1
           properties:
             name:
+              type: string
+            country:
               type: string
             registrationNumber:
               type: string
