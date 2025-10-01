@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"mime/multipart"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -69,6 +71,10 @@ type CaseUseCaseRepository interface {
 	GetNextCase(ctx context.Context, exec repositories.Executor, c models.Case) (string, error)
 
 	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
+
+	CaseMassChangeStatus(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, status models.CaseStatus) ([]uuid.UUID, error)
+	CaseMassAssign(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, assigneeId uuid.UUID) ([]uuid.UUID, error)
+	CaseMassMoveToInbox(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, inboxId uuid.UUID) ([]uuid.UUID, error)
 }
 
 type CaseUsecaseScreeningRepository interface {
@@ -1662,4 +1668,144 @@ func (uc *CaseUseCase) triggerAutoAssignment(ctx context.Context, tx repositorie
 	}
 
 	return nil
+}
+
+func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto) error {
+	exec := uc.executorFactory.NewExecutor()
+	orgId := uc.enforceSecurity.OrgId()
+	userId := uc.enforceSecurity.UserId()
+
+	sourceCases := make(map[string]models.Case, len(req.CaseIds))
+	events := make(map[string]models.CreateCaseEventAttributes, len(req.CaseIds))
+
+	var newAssignee models.User
+
+	availableInboxIds, err := uc.getAvailableInboxIds(ctx, exec, orgId)
+	if err != nil {
+		return err
+	}
+
+	if req.Action == models.CaseMassUpdateAssign {
+		var err error
+
+		newAssignee, err = uc.repository.UserById(ctx, exec, req.Assign.AssigneeId.String())
+		if err != nil {
+			return errors.Wrap(err, "target user for assignment not found")
+		}
+	}
+
+	// For all cases in the mass update, we need to check the current user can manage them.
+	for _, caseId := range req.CaseIds {
+		// TODO: that is harsh, refactor GetCaseById into a single SQL query to
+		// retrieve all cases outside of the loop
+		c, err := uc.repository.GetCaseById(ctx, exec, caseId.String())
+		if err != nil {
+			return err
+		}
+
+		if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+			return err
+		}
+
+		// If we are trying to mass-assign, we need to check, for each case, that the target user can manage the case.
+		if req.Action == models.CaseMassUpdateAssign {
+			if err := security.EnforceSecurityCaseForUser(newAssignee).ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+				return errors.Wrap(err, "target user lacks case permissions for assignment")
+			}
+		}
+
+		sourceCases[c.Id] = c
+	}
+
+	// When changing the cases' inboxes, the user needs to have access to the target inbox.
+	if req.Action == models.CaseMassUpdateMoveToInbox {
+		if _, err := uc.inboxReader.GetInboxById(ctx, req.MoveToInbox.InboxId); err != nil {
+			return errors.Wrap(err, fmt.Sprintf("User does not have access the new inbox %s", req.MoveToInbox.InboxId))
+		}
+	}
+
+	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		switch models.CaseMassUpdateActionFromString(req.Action) {
+		case models.CaseMassUpdateClose:
+			updatedIds, err := uc.repository.CaseMassChangeStatus(ctx, tx, req.CaseIds, models.CaseClosed)
+
+			if err != nil {
+				return err
+			}
+
+			for _, updatedId := range updatedIds {
+				events[updatedId.String()] = models.CreateCaseEventAttributes{
+					UserId:        userId,
+					CaseId:        updatedId.String(),
+					EventType:     models.CaseStatusUpdated,
+					PreviousValue: utils.Ptr(string(sourceCases[updatedId.String()].Status)),
+					NewValue:      utils.Ptr(string(models.CaseClosed)),
+				}
+			}
+
+		case models.CaseMassUpdateReopen:
+			updatedIds, err := uc.repository.CaseMassChangeStatus(ctx, tx, req.CaseIds, models.CasePending)
+
+			if err != nil {
+				return err
+			}
+
+			for _, updatedId := range updatedIds {
+				events[updatedId.String()] = models.CreateCaseEventAttributes{
+					UserId:        userId,
+					CaseId:        updatedId.String(),
+					EventType:     models.CaseStatusUpdated,
+					PreviousValue: utils.Ptr(string(sourceCases[updatedId.String()].Status)),
+					NewValue:      utils.Ptr(string(models.CasePending)),
+				}
+			}
+
+		case models.CaseMassUpdateAssign:
+			updatedIds, err := uc.repository.CaseMassAssign(ctx, tx, req.CaseIds, req.Assign.AssigneeId)
+
+			if err != nil {
+				return err
+			}
+
+			for _, updatedId := range updatedIds {
+				events[updatedId.String()] = models.CreateCaseEventAttributes{
+					UserId:        userId,
+					CaseId:        updatedId.String(),
+					EventType:     models.CaseAssigned,
+					PreviousValue: (*string)(sourceCases[updatedId.String()].AssignedTo),
+					NewValue:      utils.Ptr(req.Assign.AssigneeId.String()),
+				}
+			}
+
+		case models.CaseMassUpdateMoveToInbox:
+			updatedIds, err := uc.repository.CaseMassMoveToInbox(ctx, tx, req.CaseIds, req.MoveToInbox.InboxId)
+
+			if err != nil {
+				return err
+			}
+
+			for _, updatedId := range updatedIds {
+				events[updatedId.String()] = models.CreateCaseEventAttributes{
+					UserId:        userId,
+					CaseId:        updatedId.String(),
+					EventType:     models.CaseInboxChanged,
+					PreviousValue: utils.Ptr(sourceCases[updatedId.String()].InboxId.String()),
+					NewValue:      utils.Ptr(req.MoveToInbox.InboxId.String()),
+				}
+			}
+
+		default:
+			return errors.Newf("unknown case mass update action %s", req.Action)
+		}
+
+		if len(events) == 0 {
+			return nil
+		}
+
+		if err := uc.repository.BatchCreateCaseEvents(ctx, tx, slices.Collect(maps.Values(events))); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }

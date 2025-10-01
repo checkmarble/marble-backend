@@ -202,3 +202,28 @@ type CaseDecisionsRequest struct {
 	CursorId string
 	Limit    int
 }
+
+type CaseMassUpdateAction string
+
+const (
+	CaseMassUpdateClose       CaseMassUpdateAction = "close"
+	CaseMassUpdateReopen                           = "reopen"
+	CaseMassUpdateAssign                           = "assign"
+	CaseMassUpdateMoveToInbox                      = "move_to_inbox"
+	CaseMassUpdateUnknown                          = "unknown"
+)
+
+func CaseMassUpdateActionFromString(s string) CaseMassUpdateAction {
+	switch s {
+	case "close":
+		return CaseMassUpdateClose
+	case "reopen":
+		return CaseMassUpdateReopen
+	case "assign":
+		return CaseMassUpdateAssign
+	case "move_to_inbox":
+		return CaseMassUpdateMoveToInbox
+	default:
+		return CaseMassUpdateUnknown
+	}
+}
