@@ -106,7 +106,7 @@ func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[model
 		ctx,
 		exec,
 		decision.OrganizationId.String(),
-		true,
+		false,
 		true,
 	)
 	if err != nil {
