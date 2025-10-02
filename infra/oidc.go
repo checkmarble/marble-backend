@@ -10,11 +10,12 @@ import (
 )
 
 type OidcConfig struct {
-	Issuer      string
-	ClientId    string
-	RedirectUri string
-	Scopes      []string
-	ExtraParams map[string]string
+	Issuer       string
+	ClientId     string
+	ClientSecret string
+	RedirectUri  string
+	Scopes       []string
+	ExtraParams  map[string]string
 
 	Provider *oidc.Provider
 	Verifier *oidc.IDTokenVerifier
@@ -39,10 +40,12 @@ func InitializeOidc(ctx context.Context) (OidcConfig, error) {
 	}
 
 	return OidcConfig{
-		Issuer:      issuer,
-		ClientId:    clientId,
-		Scopes:      strings.Split(utils.GetEnv("AUTH_OIDC_SCOPE", ""), ","),
-		ExtraParams: extraParams,
+		Issuer:       issuer,
+		ClientId:     clientId,
+		ClientSecret: utils.GetEnv("AUTH_OIDC_CLIENT_SECRET", ""),
+		Scopes:       strings.Split(utils.GetEnv("AUTH_OIDC_SCOPE", ""), ","),
+		RedirectUri:  utils.GetEnv("AUTH_OIDC_REDIRECT_URI", ""),
+		ExtraParams:  extraParams,
 
 		Provider: provider,
 		Verifier: provider.Verifier(&oidc.Config{
