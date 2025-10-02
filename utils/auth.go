@@ -19,7 +19,7 @@ type AuthType int
 const (
 	FederatedBearerToken AuthType = iota
 	PublicApiKey
-	BearerToken
+	ApiKeyAsBearerToken
 )
 
 func ParseApiKeyHeader(header http.Header) string {
@@ -36,12 +36,12 @@ func identityAttr(identity models.Identity) (attr slog.Attr, ok bool) {
 	return slog.Attr{}, false
 }
 
-type validator interface {
-	Validate(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error)
+type tokenAndKeyValidator interface {
+	ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error)
 }
 
 type Authentication struct {
-	Validator validator
+	validator tokenAndKeyValidator
 }
 
 func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
@@ -62,7 +62,7 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 			key = ParseApiKeyHeader(c.Request.Header)
 		}
 
-		if key == "" && slices.Contains(methods, BearerToken) {
+		if key == "" && slices.Contains(methods, ApiKeyAsBearerToken) {
 			token, err := ParseAuthorizationBearerHeader(c.Request.Header)
 			if err != nil {
 				_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
@@ -88,7 +88,7 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 			return
 		}
 
-		credentials, err := a.Validator.Validate(ctx, jwtToken, key)
+		credentials, err := a.validator.ValidateTokenOrKey(ctx, jwtToken, key)
 		if err != nil {
 			if errors.Is(err, models.NotFoundError) ||
 				errors.Is(err, models.UnAuthorizedError) {
@@ -115,9 +115,9 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 	}
 }
 
-func NewAuthentication(validator validator) Authentication {
+func NewAuthentication(validator tokenAndKeyValidator) Authentication {
 	return Authentication{
-		Validator: validator,
+		validator: validator,
 	}
 }
 

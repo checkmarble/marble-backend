@@ -16,7 +16,7 @@ type MockValidator struct {
 	mock.Mock
 }
 
-func (m *MockValidator) Validate(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error) {
+func (m *MockValidator) ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error) {
 	args := m.Called(ctx, marbleToken, apiKey)
 	return args.Get(0).(models.Credentials), args.Error(1)
 }
@@ -38,7 +38,7 @@ func TestAuthedBy(t *testing.T) {
 				r.Header.Set("X-API-Key", "test-api-key")
 			},
 			setupValidator: func(v *MockValidator) {
-				v.On("Validate", mock.Anything, "", "test-api-key").
+				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{ApiKeyName: "test"},
 						Role:          models.ADMIN,
@@ -48,12 +48,12 @@ func TestAuthedBy(t *testing.T) {
 		},
 		{
 			name:    "success with BearerToken",
-			methods: []AuthType{BearerToken},
+			methods: []AuthType{ApiKeyAsBearerToken},
 			setupHeaders: func(r *http.Request) {
 				r.Header.Set("Authorization", "Bearer test-token")
 			},
 			setupValidator: func(v *MockValidator) {
-				v.On("Validate", mock.Anything, "", "test-token").
+				v.On("ValidateTokenOrKey", mock.Anything, "", "test-token").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{Email: "test@example.com"},
 						Role:          models.VIEWER,
@@ -68,7 +68,7 @@ func TestAuthedBy(t *testing.T) {
 				r.Header.Set("Authorization", "Bearer test-jwt")
 			},
 			setupValidator: func(v *MockValidator) {
-				v.On("Validate", mock.Anything, "test-jwt", "").
+				v.On("ValidateTokenOrKey", mock.Anything, "test-jwt", "").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{Email: "test@example.com"},
 						Role:          models.VIEWER,
@@ -78,7 +78,7 @@ func TestAuthedBy(t *testing.T) {
 		},
 		{
 			name:    "invalid bearer token format",
-			methods: []AuthType{BearerToken},
+			methods: []AuthType{ApiKeyAsBearerToken},
 			setupHeaders: func(r *http.Request) {
 				r.Header.Set("Authorization", "InvalidFormat")
 			},
@@ -92,14 +92,14 @@ func TestAuthedBy(t *testing.T) {
 				r.Header.Set("X-API-Key", "invalid-key")
 			},
 			setupValidator: func(v *MockValidator) {
-				v.On("Validate", mock.Anything, "", "invalid-key").
+				v.On("ValidateTokenOrKey", mock.Anything, "", "invalid-key").
 					Return(models.Credentials{}, models.NotFoundError)
 			},
 			expectedStatus: http.StatusUnauthorized,
 		},
 		{
 			name:    "empty authorization header",
-			methods: []AuthType{BearerToken},
+			methods: []AuthType{ApiKeyAsBearerToken},
 			setupHeaders: func(r *http.Request) {
 				// Don't set any headers
 			},
@@ -108,7 +108,7 @@ func TestAuthedBy(t *testing.T) {
 		},
 		{
 			name:    "multiple auth methods - none provided",
-			methods: []AuthType{BearerToken, PublicApiKey},
+			methods: []AuthType{ApiKeyAsBearerToken, PublicApiKey},
 			setupHeaders: func(r *http.Request) {
 				// Don't set any headers
 			},
@@ -117,12 +117,12 @@ func TestAuthedBy(t *testing.T) {
 		},
 		{
 			name:    "multiple auth methods - valid API key",
-			methods: []AuthType{BearerToken, PublicApiKey},
+			methods: []AuthType{ApiKeyAsBearerToken, PublicApiKey},
 			setupHeaders: func(r *http.Request) {
 				r.Header.Set("X-API-Key", "test-api-key")
 			},
 			setupValidator: func(v *MockValidator) {
-				v.On("Validate", mock.Anything, "", "test-api-key").
+				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{ApiKeyName: "test"},
 						Role:          models.ADMIN,

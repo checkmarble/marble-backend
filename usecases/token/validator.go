@@ -38,7 +38,7 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 	return credentials, nil
 }
 
-func (v *Validator) Validate(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error) {
+func (v *Validator) ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error) {
 	if apiKey != "" {
 		return v.fromAPIKey(ctx, apiKey)
 	}

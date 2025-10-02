@@ -51,7 +51,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		credentials, err := v.Validate(ctx, "", key)
+		credentials, err := v.ValidateTokenOrKey(ctx, "", key)
 		assert.NoError(t, err)
 		assert.Equal(t, creds, credentials)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
@@ -66,7 +66,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		_, err := v.Validate(ctx, "", key)
+		_, err := v.ValidateTokenOrKey(ctx, "", key)
 		assert.Error(t, err)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})
@@ -82,7 +82,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		_, err := v.Validate(ctx, "", key)
+		_, err := v.ValidateTokenOrKey(ctx, "", key)
 		assert.Error(t, err)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})
@@ -109,7 +109,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		credentials, err := v.Validate(context.Background(), token, "")
+		credentials, err := v.ValidateTokenOrKey(context.Background(), token, "")
 		assert.NoError(t, err)
 		assert.Equal(t, creds, credentials)
 		mockValidator.AssertExpectations(t)
@@ -124,7 +124,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		_, err := v.Validate(context.Background(), token, "")
+		_, err := v.ValidateTokenOrKey(context.Background(), token, "")
 		assert.Error(t, err)
 		mockValidator.AssertExpectations(t)
 	})
