@@ -422,3 +422,7 @@ func (uc *Usecases) NewAutoAssignmentUsecase() AutoAssignmentUsecase {
 		repository:         uc.Repositories.MarbleDbRepository,
 	}
 }
+
+func (uc *Usecases) NewOidcUsecase() OidcUsecase {
+	return OidcUsecase{}
+}

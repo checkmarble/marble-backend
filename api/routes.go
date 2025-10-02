@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/pubapi"
 	pubapiv1 "github.com/checkmarble/marble-backend/pubapi/v1"
+	uauth "github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/checkmarble/marble-backend/usecases"
@@ -45,6 +46,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	r.GET("/is-sso-available", tom, handleIsSSOEnabled(uc))
 	r.GET("/signup-status", tom, handleSignupStatus(uc))
 	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
+
+	if conf.TokenProvider == uauth.TokenProviderOidc {
+		r.POST("/oidc/token", tom, handleOidcTokenExchange(uc, conf.OidcConfig))
+	}
 
 	if infra.IsMarbleSaasProject() {
 		r.POST("/metrics", tom, handleMetricsIngestion(uc))

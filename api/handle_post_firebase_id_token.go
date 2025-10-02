@@ -29,7 +29,7 @@ func (t *TokenHandler) GenerateToken(c *gin.Context) {
 	token, err := t.handler.GetToken(ctx, c.Request)
 
 	if err != nil {
-		utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not verify firebase token", "error", err)
+		utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not verify token", "error", err)
 
 		_ = c.Error(fmt.Errorf("generator.GenerateToken error: %w", err))
 
