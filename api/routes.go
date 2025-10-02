@@ -60,13 +60,13 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		pubapi.InitPublicApi()
 
 		pubapiv1.Routes(cfg, "v1", r.Group("/v1"),
-			auth.AuthedBy(utils.PublicApiKey, utils.BearerToken), uc)
+			auth.AuthedBy(utils.PublicApiKey, utils.ApiKeyAsBearerToken), uc)
 
 		// Mount both the v1 and new v1beta routes under /v1beta for backward compatibility
 		pubapiv1.Routes(cfg, "v1beta", r.Group("/v1beta"),
-			auth.AuthedBy(utils.PublicApiKey, utils.BearerToken), uc)
+			auth.AuthedBy(utils.PublicApiKey, utils.ApiKeyAsBearerToken), uc)
 		pubapiv1.BetaRoutes(cfg, r.Group("/v1beta"),
-			auth.AuthedBy(utils.PublicApiKey, utils.BearerToken), uc)
+			auth.AuthedBy(utils.PublicApiKey, utils.ApiKeyAsBearerToken), uc)
 	}
 
 	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
