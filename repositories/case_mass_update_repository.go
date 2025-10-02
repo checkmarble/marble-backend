@@ -10,7 +10,24 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+func (repo *MarbleDbRepository) GetMassCasesByIds(ctx context.Context, exec Executor, caseIds []uuid.UUID) ([]models.Case, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectCaseColumn...).
+		From(dbmodels.TABLE_CASES).
+		Where(squirrel.Eq{"id": caseIds})
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptCase)
+}
+
 func (repo *MarbleDbRepository) CaseMassChangeStatus(ctx context.Context, tx Transaction, caseIds []uuid.UUID, status models.CaseStatus) ([]uuid.UUID, error) {
+	if err := validateMarbleDbExecutor(tx); err != nil {
+		return nil, err
+	}
+
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_CASES).
 		Set("status", status).
@@ -25,6 +42,10 @@ func (repo *MarbleDbRepository) CaseMassChangeStatus(ctx context.Context, tx Tra
 }
 
 func (repo *MarbleDbRepository) CaseMassAssign(ctx context.Context, tx Transaction, caseIds []uuid.UUID, assigneeId uuid.UUID) ([]uuid.UUID, error) {
+	if err := validateMarbleDbExecutor(tx); err != nil {
+		return nil, err
+	}
+
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_CASES).
 		Set("assigned_to", assigneeId).
@@ -42,6 +63,10 @@ func (repo *MarbleDbRepository) CaseMassAssign(ctx context.Context, tx Transacti
 }
 
 func (repo *MarbleDbRepository) CaseMassMoveToInbox(ctx context.Context, tx Transaction, caseIds []uuid.UUID, inboxId uuid.UUID) ([]uuid.UUID, error) {
+	if err := validateMarbleDbExecutor(tx); err != nil {
+		return nil, err
+	}
+
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_CASES).
 		Set("inbox_id", inboxId).

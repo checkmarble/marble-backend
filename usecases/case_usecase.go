@@ -72,6 +72,7 @@ type CaseUseCaseRepository interface {
 
 	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
 
+	GetMassCasesByIds(ctx context.Context, exec repositories.Executor, caseIds []uuid.UUID) ([]models.Case, error)
 	CaseMassChangeStatus(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, status models.CaseStatus) ([]uuid.UUID, error)
 	CaseMassAssign(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, assigneeId uuid.UUID) ([]uuid.UUID, error)
 	CaseMassMoveToInbox(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, inboxId uuid.UUID) ([]uuid.UUID, error)
@@ -1680,9 +1681,22 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 
 	var newAssignee models.User
 
+	cases, err := uc.repository.GetMassCasesByIds(ctx, exec, req.CaseIds)
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve requested cases for mass update")
+	}
+
+	if len(cases) != len(req.CaseIds) {
+		return errors.New("some requested cases for mass update do not exist")
+	}
+
+	casesMap := pure_utils.MapSliceToMap(cases, func(c models.Case) (string, models.Case) {
+		return c.Id, c
+	})
+
 	availableInboxIds, err := uc.getAvailableInboxIds(ctx, exec, orgId)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not retrieve available inboxes")
 	}
 
 	if req.Action == models.CaseMassUpdateAssign {
@@ -1696,11 +1710,9 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 
 	// For all cases in the mass update, we need to check the current user can manage them.
 	for _, caseId := range req.CaseIds {
-		// TODO: that is harsh, refactor GetCaseById into a single SQL query to
-		// retrieve all cases outside of the loop
-		c, err := uc.repository.GetCaseById(ctx, exec, caseId.String())
-		if err != nil {
-			return err
+		c, ok := casesMap[caseId.String()]
+		if !ok {
+			return errors.Newf("requested cases '%s' for mass update does not exist", caseId)
 		}
 
 		if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
@@ -1720,7 +1732,7 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 	// When changing the cases' inboxes, the user needs to have access to the target inbox.
 	if req.Action == models.CaseMassUpdateMoveToInbox {
 		if _, err := uc.inboxReader.GetInboxById(ctx, req.MoveToInbox.InboxId); err != nil {
-			return errors.Wrap(err, fmt.Sprintf("User does not have access the new inbox %s", req.MoveToInbox.InboxId))
+			return errors.Wrap(err, fmt.Sprintf("user does not have access the new inbox %s", req.MoveToInbox.InboxId))
 		}
 	}
 
@@ -1728,9 +1740,8 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 		switch models.CaseMassUpdateActionFromString(req.Action) {
 		case models.CaseMassUpdateClose:
 			updatedIds, err := uc.repository.CaseMassChangeStatus(ctx, tx, req.CaseIds, models.CaseClosed)
-
 			if err != nil {
-				return err
+				return errors.Wrap(err, "could not update case status in mass update")
 			}
 
 			for _, updatedId := range updatedIds {
@@ -1747,7 +1758,7 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 			updatedIds, err := uc.repository.CaseMassChangeStatus(ctx, tx, req.CaseIds, models.CasePending)
 
 			if err != nil {
-				return err
+				return errors.Wrap(err, "could not updaet case status in mass update")
 			}
 
 			for _, updatedId := range updatedIds {
@@ -1764,7 +1775,7 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 			updatedIds, err := uc.repository.CaseMassAssign(ctx, tx, req.CaseIds, req.Assign.AssigneeId)
 
 			if err != nil {
-				return err
+				return errors.Wrap(err, "could not assign cases in mass update")
 			}
 
 			for _, updatedId := range updatedIds {
@@ -1781,7 +1792,7 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 			updatedIds, err := uc.repository.CaseMassMoveToInbox(ctx, tx, req.CaseIds, req.MoveToInbox.InboxId)
 
 			if err != nil {
-				return err
+				return errors.Wrap(err, "could not change case inbox in mass update")
 			}
 
 			for _, updatedId := range updatedIds {
@@ -1802,8 +1813,10 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 			return nil
 		}
 
+		// TODO: perform relevant side effects
+
 		if err := uc.repository.BatchCreateCaseEvents(ctx, tx, slices.Collect(maps.Values(events))); err != nil {
-			return err
+			return errors.Wrap(err, "could not create case events in mass update")
 		}
 
 		return nil
