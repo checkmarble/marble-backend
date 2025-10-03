@@ -362,3 +362,32 @@ func handleAiDescriptionScenarioIteration(uc usecases.Usecases) func(c *gin.Cont
 		c.JSON(http.StatusOK, dto.AdaptAiRuleDescriptionDto(result))
 	}
 }
+
+func handleAiDescriptionAST(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		var input dto.AiDescriptionASTInputDto
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		astNode, err := dto.AdaptASTNode(input.AST_expression)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
+		result, err := usecase.AiASTDescription(ctx, orgId, &astNode)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptAiRuleDescriptionDto(result))
+	}
+}
