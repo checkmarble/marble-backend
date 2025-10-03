@@ -21,6 +21,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/cockroachdb/errors"
 	"github.com/getsentry/sentry-go"
@@ -330,6 +331,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte("OK"))
 			})
+
+			http.Handle("/metrics", promhttp.Handler())
+
 			if err := http.ListenAndServe(":"+workerConfig.cloudRunProbePort, nil); err != nil {
 				utils.LogAndReportSentryError(ctx, err)
 			}

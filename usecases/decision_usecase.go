@@ -9,6 +9,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -447,6 +448,14 @@ func (usecase *DecisionUsecase) CreateDecision(
 		storageDuration := time.Since(storageStart)
 		decisionDuration := time.Since(decisionStart)
 
+		utils.MetricDecisionCount.
+			With(prometheus.Labels{"org_id": decision.OrganizationId.String()}).
+			Inc()
+
+		utils.MetricDecisionLatency.
+			With(prometheus.Labels{"org_id": decision.OrganizationId.String()}).
+			Observe(decisionDuration.Seconds())
+
 		scenarioExecution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
 
 		logger.InfoContext(ctx,
@@ -586,6 +595,14 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			); err != nil {
 				return fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}
+
+			utils.MetricDecisionCount.
+				With(prometheus.Labels{"org_id": item.decision.OrganizationId.String()}).
+				Inc()
+
+			utils.MetricDecisionLatency.
+				With(prometheus.Labels{"org_id": item.decision.OrganizationId.String()}).
+				Observe(time.Since(decisionStart).Seconds())
 
 			if item.decision.ScreeningExecutions != nil {
 				var sc models.ScreeningWithMatches
