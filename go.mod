@@ -8,7 +8,7 @@ require (
 	cloud.google.com/go/storage v1.53.0
 	firebase.google.com/go/v4 v4.14.1
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.24.0
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.48.0
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.54.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/TwiN/deepmerge v0.2.2
 	github.com/adhocore/gronx v1.19.6
@@ -17,6 +17,7 @@ require (
 	github.com/biter777/countries v1.7.5
 	github.com/checkmarble/llmberjack v0.0.0-20250918140151-35a7e6d6fe5a
 	github.com/cockroachdb/errors v1.12.0
+	github.com/coreos/go-oidc/v3 v3.15.0
 	github.com/exaring/otelpgx v0.9.3
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/getkin/kin-openapi v0.132.0
@@ -28,6 +29,7 @@ require (
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/go-testfixtures/testfixtures/v3 v3.18.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/guregu/null/v5 v5.0.0
 	github.com/h2non/gock v1.2.0
@@ -140,7 +142,6 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
-	github.com/coreos/go-oidc/v3 v3.15.0 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/distribution/reference v0.6.0 // indirect
@@ -175,7 +176,6 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
