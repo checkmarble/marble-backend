@@ -52,6 +52,7 @@ type AnalyticsExportWorker struct {
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 	analyticsFactory   executor_factory.AnalyticsExecutorFactory
+	license            models.LicenseValidation
 	repository         analyticsExportRepository
 	config             infra.AnalyticsConfig
 }
@@ -60,6 +61,7 @@ func NewAnalyticsExportWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
 	analyticsFactory executor_factory.AnalyticsExecutorFactory,
+	license models.LicenseValidation,
 	repository analyticsExportRepository,
 	config infra.AnalyticsConfig,
 ) *AnalyticsExportWorker {
@@ -67,6 +69,7 @@ func NewAnalyticsExportWorker(
 		executorFactory:    executorFactory,
 		transactionFactory: transactionFactory,
 		analyticsFactory:   analyticsFactory,
+		license:            license,
 		repository:         repository,
 		config:             config,
 	}
@@ -132,33 +135,35 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 			return w.exportDecisions(ctx, job, dbExec, exec, req)
 		})
 
-		wg.Go(func() error {
-			req := repositories.AnalyticsCopyRequest{
-				OrgId:               job.Args.OrgId,
-				Table:               w.analyticsFactory.BuildTablePrefix("decision_rules"),
-				TriggerObject:       table.Name,
-				TriggerObjectFields: triggerFields,
-				ExtraDbFields:       dbFields,
-				EndTime:             job.CreatedAt,
-				Limit:               50000,
-			}
+		if w.license.Analytics {
+			wg.Go(func() error {
+				req := repositories.AnalyticsCopyRequest{
+					OrgId:               job.Args.OrgId,
+					Table:               w.analyticsFactory.BuildTablePrefix("decision_rules"),
+					TriggerObject:       table.Name,
+					TriggerObjectFields: triggerFields,
+					ExtraDbFields:       dbFields,
+					EndTime:             job.CreatedAt,
+					Limit:               50000,
+				}
 
-			return w.exportDecisionRules(ctx, job, dbExec, exec, req)
-		})
+				return w.exportDecisionRules(ctx, job, dbExec, exec, req)
+			})
 
-		wg.Go(func() error {
-			req := repositories.AnalyticsCopyRequest{
-				OrgId:               job.Args.OrgId,
-				Table:               w.analyticsFactory.BuildTablePrefix("screenings"),
-				TriggerObject:       table.Name,
-				TriggerObjectFields: triggerFields,
-				ExtraDbFields:       dbFields,
-				EndTime:             job.CreatedAt,
-				Limit:               50000,
-			}
+			wg.Go(func() error {
+				req := repositories.AnalyticsCopyRequest{
+					OrgId:               job.Args.OrgId,
+					Table:               w.analyticsFactory.BuildTablePrefix("screenings"),
+					TriggerObject:       table.Name,
+					TriggerObjectFields: triggerFields,
+					ExtraDbFields:       dbFields,
+					EndTime:             job.CreatedAt,
+					Limit:               50000,
+				}
 
-			return w.exportScreenings(ctx, job, dbExec, exec, req)
-		})
+				return w.exportScreenings(ctx, job, dbExec, exec, req)
+			})
+		}
 
 		if err := wg.Wait(); err != nil {
 			logger.ErrorContext(ctx, "failed to export analytics data", "error", err.Error())

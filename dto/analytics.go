@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -42,6 +43,8 @@ func AdaptAnalyticsAvailableFilter(model models.AnalyticsFilter) AnalyticsAvaila
 }
 
 type AnalyticsQueryFilters struct {
+	Timezone string `json:"timezone"`
+
 	Start            time.Time `json:"start" validate:"required"`
 	End              time.Time `json:"end" validate:"required"`
 	ScenarioId       uuid.UUID `json:"scenario_id" validate:"required"`
@@ -50,7 +53,14 @@ type AnalyticsQueryFilters struct {
 	Fields []analytics.QueryObjectFilter `json:"fields"`
 }
 
-func (f AnalyticsQueryFilters) Validate() error {
+func (f *AnalyticsQueryFilters) Validate() error {
+	tz, err := time.LoadLocation(f.Timezone)
+	if err != nil {
+		return errors.Newf("invalid timezone name %s", f.Timezone)
+	}
+
+	f.Timezone = tz.String()
+
 	for _, tf := range f.Fields {
 		if err := tf.Validate(); err != nil {
 			return err
