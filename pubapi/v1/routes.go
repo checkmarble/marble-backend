@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"github.com/checkmarble/marble-backend/api/middleware"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/gin-gonic/gin"
@@ -9,7 +10,7 @@ import (
 func Routes(conf pubapi.Config, version string, unauthed *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
 	unauthed.GET("/-/version", handleVersion(version))
 
-	authed := unauthed.Group("/", authMiddleware)
+	authed := unauthed.Group("/", authMiddleware, middleware.PrometheusMiddleware)
 
 	{
 		root := authed.Group("/", pubapi.TimeoutMiddleware(conf.DefaultTimeout))
@@ -44,7 +45,7 @@ func Routes(conf pubapi.Config, version string, unauthed *gin.RouterGroup, authM
 }
 
 func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
-	authed := unauthed.Group("/", authMiddleware)
+	authed := unauthed.Group("/", authMiddleware, middleware.PrometheusMiddleware)
 
 	{
 		root := authed.Group("/", pubapi.TimeoutMiddleware(conf.DefaultTimeout))

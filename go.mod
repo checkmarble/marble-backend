@@ -48,6 +48,7 @@ require (
 	github.com/pashagolub/pgxmock/v4 v4.8.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.20.0
+	github.com/prometheus/client_golang v1.23.2
 	github.com/riverqueue/river v0.25.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.25.0
 	github.com/riverqueue/river/rivertype v0.25.0
@@ -128,6 +129,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.34.0 // indirect
 	github.com/aws/smithy-go v1.22.4 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
+	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/bytedance/sonic v1.14.0 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
@@ -225,6 +227,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
+	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/openai/openai-go v1.9.0 // indirect
@@ -238,6 +241,9 @@ require (
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
+	github.com/prometheus/client_model v0.6.2 // indirect
+	github.com/prometheus/common v0.66.1 // indirect
+	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/quic-go/qpack v0.5.1 // indirect
 	github.com/quic-go/quic-go v0.54.1 // indirect
 	github.com/riverqueue/river/riverdriver v0.25.0 // indirect
@@ -280,6 +286,7 @@ require (
 	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/mock v0.5.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/arch v0.20.0 // indirect
 	golang.org/x/crypto v0.42.0 // indirect
 	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0 // indirect

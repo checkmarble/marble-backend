@@ -12,6 +12,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/getsentry/sentry-go"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"go.opentelemetry.io/otel/attribute"
@@ -57,6 +58,10 @@ func (m LoggerMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInn
 		m.aggregateAndLogError(ctx, job, err)
 		return err
 	}
+
+	utils.MetricJobDuration.
+		With(prometheus.Labels{"queue": job.Queue, "job_name": job.Kind}).
+		Observe(time.Since(start).Seconds())
 
 	logger.InfoContext(ctx, fmt.Sprintf("%s job n°%d succeeded after %s", job.Kind, job.ID, time.Since(start)))
 	return nil

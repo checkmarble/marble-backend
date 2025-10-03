@@ -11,6 +11,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
@@ -255,10 +256,16 @@ func (e ScenarioEvaluator) processScenarioIteration(
 	go func() {
 		defer wg.Done()
 
+		start := time.Now()
+
 		ctx, span := utils.OpenTelemetryTracerFromContext(ctx).Start(ctx, "screening_evaluation")
 		defer span.End()
 
 		inExec, inErr := e.evaluateScreening(ctx, iteration, params, dataAccessor)
+
+		utils.MetricScreeningLatency.
+			With(prometheus.Labels{"org_id": params.Scenario.OrganizationId}).
+			Observe(time.Since(start).Seconds())
 
 		screeningExecutions = inExec
 		screeningErr = inErr
