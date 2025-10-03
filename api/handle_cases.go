@@ -741,3 +741,22 @@ func handleEnrichCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, agent_dto.AdaptKYCEnrichmentResultsDto(responses))
 	}
 }
+
+func handleCaseMassUpdate(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var params dto.CaseMassUpdateDto
+
+		if err := c.ShouldBindJSON(&params); presentError(ctx, c, err) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
+
+		if err := uc.MassUpdate(ctx, params); presentError(ctx, c, err) {
+			return
+		}
+	}
+}
