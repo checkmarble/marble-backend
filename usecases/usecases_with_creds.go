@@ -656,6 +656,7 @@ func (usecases UsecasesWithCreds) NewAnalyticsExportWorker() *scheduled_executio
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.NewAnalyticsExecutorFactory(),
+		usecases.license,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.analyticsConfig,
 	)
@@ -768,6 +769,7 @@ func (uc *UsecasesWithCreds) NewAnalyticsQueryUsecase() AnalyticsQueryUsecase {
 		enforceSecurity:    uc.NewEnforceScenarioSecurity(),
 		executorFactory:    uc.NewExecutorFactory(),
 		analyticsFactory:   uc.NewAnalyticsExecutorFactory(),
+		license:            uc.license,
 		scenarioRepository: uc.Repositories.MarbleDbRepository,
 	}
 }

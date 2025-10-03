@@ -20,6 +20,7 @@ type AnalyticsQueryUsecase struct {
 	executorFactory  executor_factory.ExecutorFactory
 	analyticsFactory executor_factory.AnalyticsExecutorFactory
 
+	license            models.LicenseValidation
 	scenarioRepository repositories.ScenarioUsecaseRepository
 }
 
@@ -54,6 +55,10 @@ func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filte
 }
 
 func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.DecisionsScoreDistribution, error) {
+	if !uc.license.Analytics {
+		return []analytics.DecisionsScoreDistribution{}, nil
+	}
+
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
@@ -74,6 +79,10 @@ func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, 
 }
 
 func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.RuleHitTable, error) {
+	if !uc.license.Analytics {
+		return []analytics.RuleHitTable{}, nil
+	}
+
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
@@ -101,6 +110,10 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 }
 
 func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.RuleVsDecisionOutcome, error) {
+	if !uc.license.Analytics {
+		return []analytics.RuleVsDecisionOutcome{}, nil
+	}
+
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
@@ -127,6 +140,10 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filte
 }
 
 func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.RuleCoOccurence, error) {
+	if !uc.license.Analytics {
+		return []analytics.RuleCoOccurence{}, nil
+	}
+
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
@@ -161,6 +178,10 @@ func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filte
 }
 
 func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.ScreeningHits, error) {
+	if !uc.license.Analytics {
+		return []analytics.ScreeningHits{}, nil
+	}
+
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
