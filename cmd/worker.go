@@ -79,7 +79,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 
 	workerConfig := WorkerConfig{
-		appName:                     "marble-backend",
+		appName:                     "marble-backend-worker",
 		env:                         utils.GetEnv("ENV", "development"),
 		failedWebhooksRetryPageSize: utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
 		ingestionBucketUrl:          utils.GetRequiredEnv[string]("INGESTION_BUCKET_URL"),
@@ -460,7 +460,8 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 		return uc.NewDecisionWorkflowsWorker().Work(ctx,
 			singleJobCreate[models.DecisionWorkflowArgs](ctx, jobArgs))
 	case "analytics_export":
-		return uc.NewAnalyticsExportWorker().Work(ctx, singleJobCreate[models.AnalyticsExportArgs](ctx, jobArgs))
+		return uc.NewAnalyticsExportWorker().Work(ctx,
+			singleJobCreate[models.AnalyticsExportArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

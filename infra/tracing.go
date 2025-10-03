@@ -111,9 +111,10 @@ const (
 
 var (
 	defaultSpanNamesSampling = map[string]float64{
-		"async_decision":   0.05,
-		"match_enrichment": 0.05,
-		"test_run_summary": 0.05,
+		"async_decision":    0.05,
+		"match_enrichment":  0.05,
+		"test_run_summary":  0.05,
+		"decision_workflow": 0.05,
 	}
 
 	defaultRoutePrefixSampling = map[string]float64{
@@ -204,6 +205,10 @@ rates:
 		}
 		if ratio, ok := defaultSpanNamesSampling[p.Name]; ok {
 			prob = ratio
+			break rates
+		}
+		if p.Name == "pool.acquire" {
+			prob = 0.0
 			break rates
 		}
 

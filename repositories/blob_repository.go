@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -131,19 +132,22 @@ func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl 
 
 func (repository *blobRepository) GetBlob(ctx context.Context, bucketUrl, key string) (models.Blob, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
-	ctx, span := tracer.Start(
-		ctx,
-		"repositories.BlobRepository.openBlobBucket",
-		trace.WithAttributes(attribute.String("bucket", bucketUrl)),
-		trace.WithAttributes(attribute.String("key", key)),
-	)
-	defer span.End()
+	if os.Getenv("DEBUG_BLOB_WRITE_TRACE") == "true" {
+		newCtx, span := tracer.Start(
+			ctx,
+			"repositories.BlobRepository.openBlobBucket",
+			trace.WithAttributes(attribute.String("bucket", bucketUrl)),
+			trace.WithAttributes(attribute.String("key", key)),
+		)
+		defer span.End()
+		ctx = newCtx
+	}
 	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
 	if err != nil {
 		return models.Blob{}, err
 	}
 
-	ctx, span = tracer.Start(
+	ctx, span := tracer.Start(
 		ctx,
 		"repositories.BlobRepository.GetFile - file reader",
 	)
