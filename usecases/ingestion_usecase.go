@@ -16,6 +16,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -673,6 +674,8 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	payloads []models.ClientObject,
 	table models.Table,
 ) (int, error) {
+	start := time.Now()
+
 	var nb int
 	var err error
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
@@ -682,6 +685,14 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	if err != nil {
 		return 0, err
 	}
+
+	utils.MetricIngestionCount.
+		With(prometheus.Labels{"org_id": organizationId}).
+		Add(float64(len(payloads)))
+
+	utils.MetricIngestionLatency.
+		With(prometheus.Labels{"org_id": organizationId}).
+		Observe(time.Since(start).Seconds() / float64(len(payloads)))
 
 	go func() {
 		// I'm giving it a short deadline because it's not critical to the user - in any situation i'd rather it fails

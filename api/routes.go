@@ -11,6 +11,7 @@ import (
 	pubapiv1 "github.com/checkmarble/marble-backend/pubapi/v1"
 	uauth "github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/checkmarble/marble-backend/usecases"
 
@@ -50,6 +51,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	if conf.TokenProvider == uauth.TokenProviderOidc {
 		r.POST("/oidc/token", tom, handleOidcTokenExchange(uc, conf.OidcConfig))
 	}
+
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	if infra.IsMarbleSaasProject() {
 		r.POST("/metrics", tom, handleMetricsIngestion(uc))

@@ -11,6 +11,7 @@ import (
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/segmentio/analytics-go/v3"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
@@ -92,7 +93,24 @@ func InitRouterMiddlewares(
 		otelgin.WithTracerProvider(telemetryRessources.TracerProvider),
 		otelgin.WithPropagators(telemetryRessources.TextMapPropagator),
 	))
+	r.Use(prometheusMiddleware)
 	r.Use(utils.StoreOpenTelemetryTracerInContextMiddleware(telemetryRessources.Tracer))
 
 	return r
+}
+
+func prometheusMiddleware(c *gin.Context) {
+	start := time.Now()
+
+	c.Next()
+
+	orgId, _ := utils.OrganizationIdFromRequest(c.Request)
+
+	utils.MetricRequestCount.
+		With(prometheus.Labels{"org_id": orgId, "method": c.Request.Method, "url": c.FullPath(), "status": fmt.Sprintf("%d", c.Writer.Status())}).
+		Inc()
+
+	utils.MetricRequestLatency.
+		With(prometheus.Labels{"org_id": orgId, "method": c.Request.Method, "url": c.FullPath(), "status": fmt.Sprintf("%d", c.Writer.Status())}).
+		Observe(time.Since(start).Seconds())
 }

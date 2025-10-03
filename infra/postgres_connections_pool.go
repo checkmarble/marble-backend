@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -67,6 +68,8 @@ func NewPostgresConnectionPool(
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+
+	utils.InitPgxPrometheus(pool, nil)
 
 	return pool, retry.Do(
 		func() error {
