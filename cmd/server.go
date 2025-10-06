@@ -286,6 +286,10 @@ func RunServer(config CompiledConfig) error {
 	}
 	license := infra.VerifyLicense(licenseConfig, deploymentMetadata.Value)
 
+	if apiConfig.TokenProvider == auth.TokenProviderOidc && !license.Sso {
+		return errors.New("cannot use OpenID Connect configuration without the appropriate license entitlement")
+	}
+
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),
 		usecases.WithApiVersion(config.Version),
