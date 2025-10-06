@@ -59,12 +59,15 @@ func NewBlobRepository(gcpConfig infra.GcpConfig) BlobRepository {
 
 func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl string) (*blob.Bucket, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
-	ctx, span := tracer.Start(
-		ctx,
-		"repositories.BlobRepository.openBlobBucket",
-		trace.WithAttributes(attribute.String("bucket", bucketUrl)),
-	)
-	defer span.End()
+	if os.Getenv("DEBUG_BLOB_TRACE") == "true" {
+		newCtx, span := tracer.Start(
+			ctx,
+			"repositories.BlobRepository.openBlobBucket",
+			trace.WithAttributes(attribute.String("bucket", bucketUrl)),
+		)
+		defer span.End()
+		ctx = newCtx
+	}
 
 	repository.m.Lock()
 	defer repository.m.Unlock()
@@ -132,22 +135,20 @@ func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl 
 
 func (repository *blobRepository) GetBlob(ctx context.Context, bucketUrl, key string) (models.Blob, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
-	if os.Getenv("DEBUG_BLOB_WRITE_TRACE") == "true" {
-		newCtx, span := tracer.Start(
-			ctx,
-			"repositories.BlobRepository.openBlobBucket",
-			trace.WithAttributes(attribute.String("bucket", bucketUrl)),
-			trace.WithAttributes(attribute.String("key", key)),
-		)
-		defer span.End()
-		ctx = newCtx
-	}
+	ctx, span := tracer.Start(
+		ctx,
+		"repositories.BlobRepository.GetBlob",
+		trace.WithAttributes(attribute.String("bucket", bucketUrl)),
+		trace.WithAttributes(attribute.String("key", key)),
+	)
+	defer span.End()
+
 	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
 	if err != nil {
 		return models.Blob{}, err
 	}
 
-	ctx, span := tracer.Start(
+	ctx, span = tracer.Start(
 		ctx,
 		"repositories.BlobRepository.GetFile - file reader",
 	)
