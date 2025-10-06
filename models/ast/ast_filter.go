@@ -32,17 +32,6 @@ type Filter struct {
 	Value     any
 }
 
-var FuncFilterAttributes = FuncAttributes{
-	DebugName: "FUNC_FILTER",
-	AstName:   "Filter",
-	NamedArguments: []string{
-		"tableName",
-		"fieldName",
-		"operator",
-		"value",
-	},
-}
-
 type FuzzyMatchOptions struct {
 	Algorithm string
 

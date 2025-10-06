@@ -11,10 +11,3 @@ const (
 	AGGREGATOR_SUM            Aggregator = "SUM"
 	AGGREGATOR_UNKNOWN        Aggregator = "Unkown aggregator"
 )
-
-var FuncAggregatorAttributes = FuncAttributes{
-	DebugName:      "FUNC_AGGREGATOR",
-	AstName:        "Aggregator",
-	NamedArguments: []string{"tableName", "fieldName", "aggregator", "filters", "label"},
-	Cost:           50,
-}
