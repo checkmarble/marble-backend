@@ -324,6 +324,7 @@ func (w OffloadingWorker) writeBatchToBlobStorage(
 
 					if asFunc(&gcsWriter) {
 						gcsWriter.CustomTime = rule.CreatedAt
+						gcsWriter.ChunkSize = 0
 					}
 
 					return nil
