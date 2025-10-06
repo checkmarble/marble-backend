@@ -117,3 +117,7 @@ func AdaptAiRuleDescriptionDto(aiRuleDescription models.AiRuleDescription) AiRul
 		Description: aiRuleDescription.Description,
 	}
 }
+
+type AiDescriptionASTInputDto struct {
+	AST_expression NodeDto `json:"ast_expression"`
+}

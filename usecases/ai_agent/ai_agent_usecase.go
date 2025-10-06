@@ -74,6 +74,10 @@ type AiAgentUsecaseCustomListRepository interface {
 	AllCustomLists(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.CustomList, error)
 }
 
+type AiAgentUsecaseCustomListUsecase interface {
+	GetCustomLists(ctx context.Context, organizationId string) ([]models.CustomList, error)
+}
+
 type AiAgentUsecaseIngestedDataReader interface {
 	ReadPivotObjectsFromValues(
 		ctx context.Context,
@@ -113,13 +117,13 @@ type AiAgentUsecase struct {
 	enforceSecurityCase         security.EnforceSecurityCase
 	enforceSecurityOrganization security.EnforceSecurityOrganization
 	repository                  AiAgentUsecaseRepository
-	customListRepository        AiAgentUsecaseCustomListRepository
 	inboxReader                 inboxes.InboxReader
 	executorFactory             executor_factory.ExecutorFactory
 	transactionFactory          executor_factory.TransactionFactory
 	ingestedDataReader          AiAgentUsecaseIngestedDataReader
 	dataModelUsecase            AiAgentUsecaseDataModelUsecase
 	ruleUsecase                 AiAgentUsecaseRuleUsecase
+	customListUsecase           AiAgentUsecaseCustomListUsecase
 	caseReviewFileRepository    caseReviewWorkerRepository
 	blobRepository              repositories.BlobRepository
 	caseReviewTaskEnqueuer      caseReviewTaskEnqueuer
@@ -135,12 +139,12 @@ func NewAiAgentUsecase(
 	enforceSecurityCase security.EnforceSecurityCase,
 	enforceSecurityOrganization security.EnforceSecurityOrganization,
 	repository AiAgentUsecaseRepository,
-	customListRepository AiAgentUsecaseCustomListRepository,
 	inboxReader inboxes.InboxReader,
 	executorFactory executor_factory.ExecutorFactory,
 	ingestedDataReader AiAgentUsecaseIngestedDataReader,
 	dataModelUsecase AiAgentUsecaseDataModelUsecase,
 	ruleUsecase AiAgentUsecaseRuleUsecase,
+	customListUsecase AiAgentUsecaseCustomListUsecase,
 	caseReviewFileRepository caseReviewWorkerRepository,
 	blobRepository repositories.BlobRepository,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
@@ -152,12 +156,12 @@ func NewAiAgentUsecase(
 		enforceSecurityCase:         enforceSecurityCase,
 		enforceSecurityOrganization: enforceSecurityOrganization,
 		repository:                  repository,
-		customListRepository:        customListRepository,
 		inboxReader:                 inboxReader,
 		executorFactory:             executorFactory,
 		ingestedDataReader:          ingestedDataReader,
 		dataModelUsecase:            dataModelUsecase,
 		ruleUsecase:                 ruleUsecase,
+		customListUsecase:           customListUsecase,
 		caseReviewFileRepository:    caseReviewFileRepository,
 		blobRepository:              blobRepository,
 		caseReviewTaskEnqueuer:      caseReviewTaskEnqueuer,

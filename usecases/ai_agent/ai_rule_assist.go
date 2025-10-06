@@ -6,6 +6,7 @@ import (
 	"github.com/checkmarble/llmberjack"
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -23,9 +24,6 @@ func (uc *AiAgentUsecase) AiRuleDescription(
 	orgId string,
 	ruleId string,
 ) (models.AiRuleDescription, error) {
-	exec := uc.executorFactory.NewExecutor()
-	logger := utils.LoggerFromContext(ctx)
-
 	// Get the scenario iteration
 	// Permissions are checked in the rule usecase
 	rule, err := uc.ruleUsecase.GetRule(ctx, ruleId)
@@ -33,8 +31,20 @@ func (uc *AiAgentUsecase) AiRuleDescription(
 		return models.AiRuleDescription{}, err
 	}
 
+	return uc.AiASTDescription(ctx, orgId, rule.FormulaAstExpression)
+}
+
+// AiASTDescription generates a description for a given AST node
+// Requires permissions to read the data model and custom lists
+func (uc *AiAgentUsecase) AiASTDescription(
+	ctx context.Context,
+	orgId string,
+	ruleAST *ast.Node,
+) (models.AiRuleDescription, error) {
+	logger := utils.LoggerFromContext(ctx)
+
 	// Get custom list (at least list of custom list with their names and ID)
-	customLists, err := uc.customListRepository.AllCustomLists(ctx, exec, orgId)
+	customLists, err := uc.customListUsecase.GetCustomLists(ctx, orgId)
 	if err != nil {
 		return models.AiRuleDescription{}, err
 	}
@@ -59,7 +69,7 @@ func (uc *AiAgentUsecase) AiRuleDescription(
 	model, ruleDescription, err := uc.preparePromptWithModel(RULE_DESCRIPTION_PROMPT_PATH, map[string]any{
 		"data_model":  dataModelDto,
 		"custom_list": customListsDto,
-		"rule":        rule.FormulaAstExpression,
+		"rule":        ruleAST,
 	})
 	if err != nil {
 		return models.AiRuleDescription{}, err
