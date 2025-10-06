@@ -83,6 +83,7 @@ func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, ali
 
 	if err != nil {
 		// DuckDB exposes sensitive data in its error messages, so for now we sanitize it
+		fmt.Println(err)
 		return nil, errors.New("could not connect analytics connector to PostgreSQL [redacted error]")
 	}
 

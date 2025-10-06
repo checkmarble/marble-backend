@@ -101,13 +101,19 @@ func (cfg *AnalyticsConfig) buildS3ConnectionString(u *url.URL) error {
 	}
 	if v := u.Query().Get("disableSSL"); v == "true" {
 		args = append(args, "use_ssl 'false'")
+	} else if v := u.Query().Get("disable_https"); v == "true" {
+		args = append(args, "use_ssl 'false'")
 	}
 	if v := u.Query().Get("s3ForcePathStyle"); v == "true" {
+		args = append(args, "url_style 'path'")
+	} else if v := u.Query().Get("use_path_style"); v == "true" {
 		args = append(args, "url_style 'path'")
 	}
 	if v := u.Query().Get("region"); v != "" {
 		args = append(args, fmt.Sprintf("region '%s'", v))
 	}
+
+	fmt.Println(args)
 
 	cfg.ConnectionString = strings.Join(args, ", ")
 
