@@ -114,6 +114,28 @@ func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl 
 			if err != nil {
 				return nil, err
 			}
+		} else if url.Scheme == "s3" {
+			p := url.Query()
+			p.Set("awssdk", "v2")
+
+			// disableSSL became disable_https
+			if p.Get("disableSSL") != "" {
+				p.Set("disable_https", p.Get("disableSSL"))
+				p.Del("disableSSL")
+			}
+			// s3ForcePathStyle became use_path_style
+			// gocloud provides a legacy parameter for the former, but I'd rather we don't rely on it
+			if p.Get("s3ForcePathStyle") != "" {
+				p.Set("use_path_style", p.Get("s3ForcePathStyle"))
+				p.Del("s3ForcePathStyle")
+			}
+
+			url.RawQuery = p.Encode()
+
+			bucket, err = blob.OpenBucket(ctx, url.String())
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to open bucket %s", bucketUrl)
+			}
 		} else {
 			bucket, err = blob.OpenBucket(ctx, bucketUrl)
 			if err != nil {
