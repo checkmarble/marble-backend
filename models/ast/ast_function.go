@@ -158,8 +158,22 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName: "FUNC_PAYLOAD",
 		AstName:   "Payload",
 	},
-	FUNC_DB_ACCESS:          AttributeFuncDbAccess.FuncAttributes,
-	FUNC_CUSTOM_LIST_ACCESS: AttributeFuncCustomListAccess.FuncAttributes,
+	FUNC_DB_ACCESS: {
+		DebugName: "FUNC_DB_ACCESS",
+		AstName:   "DatabaseAccess",
+		NamedArguments: []string{
+			"tableName", "fieldName", "path",
+		},
+		Cost: 30,
+	},
+	FUNC_CUSTOM_LIST_ACCESS: {
+		DebugName: "FUNC_CUSTOM_LIST_ACCESS",
+		AstName:   "CustomListAccess",
+		NamedArguments: []string{
+			"customListId",
+		},
+		Cost: 30,
+	},
 	FUNC_IS_IN_LIST: {
 		DebugName: "FUNC_IS_IN_LIST",
 		AstName:   "IsInList",
@@ -192,7 +206,12 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName: "FUNC_CONTAINS_NONE",
 		AstName:   "ContainsNoneOf",
 	},
-	FUNC_AGGREGATOR: FuncAggregatorAttributes,
+	FUNC_AGGREGATOR: {
+		DebugName:      "FUNC_AGGREGATOR",
+		AstName:        "Aggregator",
+		NamedArguments: []string{"tableName", "fieldName", "aggregator", "filters", "label"},
+		Cost:           50,
+	},
 	FUNC_LIST: {
 		DebugName: "FUNC_LIST",
 		AstName:   "List",
@@ -238,7 +257,16 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName: "FUNC_STRING_CONCAT",
 		AstName:   "StringConcat",
 	},
-	FUNC_FILTER: FuncFilterAttributes,
+	FUNC_FILTER: {
+		DebugName: "FUNC_FILTER",
+		AstName:   "Filter",
+		NamedArguments: []string{
+			"tableName",
+			"fieldName",
+			"operator",
+			"value",
+		},
+	},
 }
 
 func (f Function) Attributes() (FuncAttributes, error) {
@@ -266,30 +294,11 @@ func NewNodeConstant(value any) Node {
 
 // ======= DbAccess =======
 
-var AttributeFuncDbAccess = struct {
-	FuncAttributes
-	ArgumentTableName string
-	ArgumentFieldName string
-	ArgumentPathName  string
-}{
-	FuncAttributes: FuncAttributes{
-		DebugName: "FUNC_DB_ACCESS",
-		AstName:   "DatabaseAccess",
-		NamedArguments: []string{
-			"tableName", "fieldName", "path",
-		},
-		Cost: 30,
-	},
-	ArgumentTableName: "tableName",
-	ArgumentFieldName: "fieldName",
-	ArgumentPathName:  "path",
-}
-
 func NewNodeDatabaseAccess(tableName string, fieldName string, path []string) Node {
 	return Node{Function: FUNC_DB_ACCESS}.
-		AddNamedChild(AttributeFuncDbAccess.ArgumentTableName, NewNodeConstant(tableName)).
-		AddNamedChild(AttributeFuncDbAccess.ArgumentFieldName, NewNodeConstant(fieldName)).
-		AddNamedChild(AttributeFuncDbAccess.ArgumentPathName, NewNodeConstant(path))
+		AddNamedChild("tableName", NewNodeConstant(tableName)).
+		AddNamedChild("fieldName", NewNodeConstant(fieldName)).
+		AddNamedChild("path", NewNodeConstant(path))
 }
 
 func shortCircuitIfTrue(res NodeEvaluation) bool {
@@ -342,4 +351,9 @@ func IsInListComparison(f Function) bool {
 		FUNC_IS_IN_LIST,
 		FUNC_IS_NOT_IN_LIST,
 	}, f)
+}
+
+func NewNodeCustomListAccess(customListId string) Node {
+	return Node{Function: FUNC_CUSTOM_LIST_ACCESS}.
+		AddNamedChild("customListId", NewNodeConstant(customListId))
 }
