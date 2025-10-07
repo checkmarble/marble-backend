@@ -662,6 +662,17 @@ func (usecases UsecasesWithCreds) NewAnalyticsExportWorker() *scheduled_executio
 	)
 }
 
+func (usecases UsecasesWithCreds) NewAnalyticsMergeWorker() *scheduled_execution.AnalyticsMergeWorker {
+	return scheduled_execution.NewAnalyticsMergeWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewAnalyticsExecutorFactory(),
+		usecases.license,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.analyticsConfig,
+		usecases.Repositories.BlobRepository,
+	)
+}
+
 func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataReaderUsecase {
 	return NewIngestedDataReaderUsecase(
 		usecases.Repositories.IngestedDataReadRepository,

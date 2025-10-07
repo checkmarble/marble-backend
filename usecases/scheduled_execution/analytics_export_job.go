@@ -18,6 +18,7 @@ import (
 )
 
 type analyticsExportRepository interface {
+	AllOrganizations(ctx context.Context, exec repositories.Executor) ([]models.Organization, error)
 	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *string,
 		watermarkType models.WatermarkType) (*models.Watermark, error)
 	SaveWatermark(ctx context.Context, exec repositories.Executor,

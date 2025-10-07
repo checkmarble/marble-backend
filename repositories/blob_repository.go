@@ -40,6 +40,7 @@ type BlobRepository interface {
 	GetBlob(ctx context.Context, bucketUrl, key string) (models.Blob, error)
 	OpenStream(ctx context.Context, bucketUrl, key string, fileName string) (io.WriteCloser, error)
 	OpenStreamWithOptions(ctx context.Context, bucketUrl, key string, opts *blob.WriterOptions) (io.WriteCloser, error)
+	RawBucket(ctx context.Context, bucketUrl string) (*blob.Bucket, error)
 	DeleteFile(ctx context.Context, bucketUrl, key string) error
 	GenerateSignedUrl(ctx context.Context, bucketUrl, key string) (string, error)
 }
@@ -212,6 +213,10 @@ func (repository *blobRepository) OpenStreamWithOptions(ctx context.Context, buc
 	}
 
 	return bucket.NewWriter(ctx, key, opts)
+}
+
+func (repository *blobRepository) RawBucket(ctx context.Context, bucketUrl string) (*blob.Bucket, error) {
+	return repository.openBlobBucket(ctx, bucketUrl)
 }
 
 func (repository *blobRepository) DeleteFile(ctx context.Context, bucketUrl, key string) error {

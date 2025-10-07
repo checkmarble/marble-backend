@@ -94,3 +94,7 @@ type AnalyticsExportArgs struct {
 }
 
 func (AnalyticsExportArgs) Kind() string { return "analytics_export" }
+
+type AnalyticsMergeArgs struct{}
+
+func (AnalyticsMergeArgs) Kind() string { return "analytics_merge" }

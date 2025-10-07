@@ -108,6 +108,9 @@ func (f AnalyticsExecutorFactory) BuildTablePrefix(table string) string {
 }
 
 func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuilder, orgId string, start, end time.Time, triggerObjectType string, aliases ...string) squirrel.SelectBuilder {
+	// Align time range on UTC to select the proper list of partitions
+	start, end = start.UTC(), end.UTC()
+
 	alias := "main"
 	if len(aliases) > 0 {
 		alias = aliases[0]
