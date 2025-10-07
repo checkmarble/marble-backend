@@ -740,7 +740,8 @@ func (repo *MarbleDbRepository) GetOffloadableDecisionRules(
 	}
 
 	// In this query, the query planner may choose a hash join, which is about guaranteed to never complete on this large table.
-	_, err := tx.Exec(ctx, "SET local enable_hashjoin = off;")
+	// Also, in some cases where there is very little data to fetch, it arbitrarily chooses a sequential scan, for no clear reason.
+	_, err := tx.Exec(ctx, "SET local enable_hashjoin = off; SET local enable_seqscan = OFF;")
 	if err != nil {
 		return models.ChannelOfModels[models.OffloadableDecisionRule]{}, err
 	}
