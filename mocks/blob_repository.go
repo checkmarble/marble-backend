@@ -35,6 +35,12 @@ func (r *MockBlobRepository) OpenStreamWithOptions(ctx context.Context, bucketUr
 	return args.Get(0).(io.WriteCloser), args.Error(1)
 }
 
+func (r *MockBlobRepository) RawBucket(ctx context.Context, bucketUrl string) (*blob.Bucket, error) {
+	args := r.Called(ctx, bucketUrl)
+
+	return args.Get(0).(*blob.Bucket), args.Error(1)
+}
+
 func (r *MockBlobRepository) DeleteFile(ctx context.Context, bucketUrl, key string) error {
 	args := r.Called(ctx, bucketUrl, key)
 	return args.Error(0)

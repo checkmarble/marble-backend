@@ -214,6 +214,13 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 			scheduled_execution.NewMetricsCollectionPeriodicJob(metricCollectionConfig))
 	}
 
+	if analyticsConfig.Enabled {
+		analyticsQueue := usecases.QueueAnalyticsMerge()
+		maps.Copy(nonOrgQueues, analyticsQueue)
+		globalPeriodics = append(globalPeriodics,
+			scheduled_execution.NewAnalyticsMergeJob())
+	}
+
 	maps.Copy(queues, nonOrgQueues)
 
 	// Periodics always contain the per-org tasks retrieved above. Add other, non-organization-scoped periodics below
@@ -295,6 +302,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 	if analyticsConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewAnalyticsExportWorker())
+		river.AddWorker(workers, adminUc.NewAnalyticsMergeWorker())
 	}
 
 	if err := riverClient.Start(ctx); err != nil {
@@ -462,6 +470,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "analytics_export":
 		return uc.NewAnalyticsExportWorker().Work(ctx,
 			singleJobCreate[models.AnalyticsExportArgs](ctx, jobArgs))
+	case "analytics_merge":
+		return uc.NewAnalyticsMergeWorker().Work(ctx,
+			singleJobCreate[models.AnalyticsMergeArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

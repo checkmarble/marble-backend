@@ -27,6 +27,7 @@ type AnalyticsConfig struct {
 
 	Type             BlobType
 	Bucket           string
+	BucketUrl        string
 	ConnectionString string
 	PgConfig         PgConfig
 }
@@ -46,6 +47,7 @@ func InitAnalyticsConfig(pgConfig PgConfig, bucket string) (AnalyticsConfig, err
 		// TODO: during QA phase, analytics is only enabled if we set it for a single organization
 		JobInterval: utils.GetEnvDuration("ANALYTICS_JOB_INTERVAL", time.Hour),
 		Bucket:      bucket,
+		BucketUrl:   bucket,
 		PgConfig:    pgConfig,
 	}
 

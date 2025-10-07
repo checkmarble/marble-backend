@@ -18,6 +18,10 @@ const (
 	WatermarkTypeAnalyticsDecisions     WatermarkType = "analytics_decisions"
 	WatermarkTypeAnalyticsDecisionRules WatermarkType = "analytics_decision_rules"
 	WatermarkTypeAnalyticsScreenings    WatermarkType = "analytics_screenings"
+
+	WatermarkTypeMergedAnalyticsDecisions     WatermarkType = "analytics_merged_decisions"
+	WatermarkTypeMergedAnalyticsDecisionRules WatermarkType = "analytics_merged_decision_rules"
+	WatermarkTypeMergedAnalyticsScreenings    WatermarkType = "analytics_merged_screenings"
 )
 
 func (t WatermarkType) String() string {
@@ -39,6 +43,12 @@ func WatermarkTypeFromString(s string) (WatermarkType, error) {
 		return WatermarkTypeAnalyticsDecisionRules, nil
 	case "analytics_screenings":
 		return WatermarkTypeAnalyticsScreenings, nil
+	case "analytics_merged_decisions":
+		return WatermarkTypeMergedAnalyticsDecisions, nil
+	case "analytics_merged_decision_rules":
+		return WatermarkType(WatermarkTypeMergedAnalyticsDecisionRules.String()), nil
+	case "analytics_merged_screenings":
+		return WatermarkTypeMergedAnalyticsScreenings, nil
 	default:
 		return "", errors.New("invalid watermark type")
 	}
