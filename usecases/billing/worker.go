@@ -9,6 +9,8 @@ import (
 	"github.com/riverqueue/river"
 )
 
+// TODO: CHANGE WORKER TO USE BILLING INTERFACE AND NOT REPOSITORY
+
 type billingWorkerRepository interface {
 	SendEvent(ctx context.Context, event models.BillingEvent) error
 }

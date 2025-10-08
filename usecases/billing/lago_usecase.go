@@ -14,57 +14,35 @@ type enqueueSendBillingEventTask interface {
 	EnqueueSendBillingEventTask(ctx context.Context, tx repositories.Transaction, orgId string, event models.BillingEvent) error
 }
 
-type BillingUsecase struct {
+type LagoBillingUsecase struct {
 	lagoRepository lago_repository.LagoRepository
 
 	transactionFactory          executor_factory.TransactionFactory
 	enqueueSendBillingEventTask enqueueSendBillingEventTask
 }
 
-func NewBillingUsecase(
+func NewLagoBillingUsecase(
 	lagoRepository lago_repository.LagoRepository,
 	transactionFactory executor_factory.TransactionFactory,
 	enqueueSendBillingEventTask enqueueSendBillingEventTask,
-) BillingUsecase {
-	return BillingUsecase{
+) LagoBillingUsecase {
+	return LagoBillingUsecase{
 		lagoRepository:              lagoRepository,
 		transactionFactory:          transactionFactory,
 		enqueueSendBillingEventTask: enqueueSendBillingEventTask,
 	}
 }
 
-func (u BillingUsecase) SendEvent(ctx context.Context, orgId string, event models.BillingEvent) error {
+func (u LagoBillingUsecase) SendEvent(ctx context.Context, orgId string, event models.BillingEvent) error {
 	return u.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		return u.enqueueSendBillingEventTask.EnqueueSendBillingEventTask(ctx, tx, orgId, event)
 	})
 }
 
-// Get all subscriptions of an organization that have a charge for the given billable metric
-// Need to get first the list of subscriptions, then get the detailed subscription to get the charges
-func (u BillingUsecase) GetSubscriptionsForEvent(ctx context.Context, orgId string, code BillableMetric) ([]models.Subscription, error) {
-	subscriptionsForEvent := make([]models.Subscription, 0)
-	subscriptions, err := u.lagoRepository.GetSubscriptions(ctx, orgId)
-	if err != nil {
-		return nil, err
-	}
-	for _, subscription := range subscriptions {
-		subscriptionDetailed, err := u.lagoRepository.GetSubscription(ctx, subscription.ExternalId)
-		if err != nil {
-			return nil, err
-		}
-		for _, charge := range subscriptionDetailed.Plan.Charges {
-			if charge.BillableMetricCode == code.String() {
-				subscriptionsForEvent = append(subscriptionsForEvent, subscription)
-			}
-		}
-	}
-	return subscriptionsForEvent, nil
-}
-
 // Check if there are enough funds in the wallet to cover the cost of the event
 // Check if the wallet exists and if the balance is enough
 // Suppose there is only one subscription for the event
-func (u BillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId string, code BillableMetric) (bool, string, error) {
+func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId string, code BillableMetric) (bool, string, error) {
 	logger := utils.LoggerFromContext(ctx)
 
 	wallet, err := u.lagoRepository.GetWallet(ctx, orgId)
@@ -78,7 +56,7 @@ func (u BillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId st
 	}
 
 	// Expect only one subscription for the event, in case of multiple subscriptions, we will use the first one
-	subscriptions, err := u.GetSubscriptionsForEvent(ctx, orgId, code)
+	subscriptions, err := u.getSubscriptionsForEvent(ctx, orgId, code)
 	if err != nil {
 		return false, "", err
 	}
@@ -107,4 +85,27 @@ func (u BillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId st
 	}
 
 	return true, subscription.ExternalId, nil
+}
+
+// Get all subscriptions of an organization that have a charge for the given billable metric
+// Need to get first the list of subscriptions, then get the detailed subscription to get the charges
+func (u LagoBillingUsecase) getSubscriptionsForEvent(ctx context.Context, orgId string, code BillableMetric) ([]models.Subscription, error) {
+	subscriptionsForEvent := make([]models.Subscription, 0)
+	subscriptions, err := u.lagoRepository.GetSubscriptions(ctx, orgId)
+	if err != nil {
+		return nil, err
+	}
+	for _, subscription := range subscriptions {
+		subscriptionDetailed, err := u.lagoRepository.GetSubscription(ctx, subscription.ExternalId)
+		if err != nil {
+			return nil, err
+		}
+		for _, charge := range subscriptionDetailed.Plan.Charges {
+			if charge.BillableMetricCode == code.String() {
+				subscriptionsForEvent = append(subscriptionsForEvent, subscription)
+				break
+			}
+		}
+	}
+	return subscriptionsForEvent, nil
 }
