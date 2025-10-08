@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 	"github.com/checkmarble/marble-backend/usecases/auth"
+	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
 	"github.com/checkmarble/marble-backend/usecases/organization"
@@ -425,4 +426,10 @@ func (uc *Usecases) NewAutoAssignmentUsecase() AutoAssignmentUsecase {
 
 func (uc *Usecases) NewOidcUsecase() OidcUsecase {
 	return OidcUsecase{}
+}
+
+func (uc *Usecases) NewSendBillingEventsWorker() *billing.SendBillingEventsWorker {
+	return billing.NewSendBillingEventsWorker(
+		uc.Repositories.LagoRepository,
+	)
 }

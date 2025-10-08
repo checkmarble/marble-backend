@@ -29,6 +29,8 @@ func RunServer(config CompiledConfig) error {
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
+	isMarbleSaasProject := infra.IsMarbleSaasProject()
+
 	authProvider := auth.ParseTokenProvider(utils.GetEnv("AUTH_PROVIDER", "firebase"))
 	oidcProvider := infra.OidcConfig{}
 
@@ -236,7 +238,7 @@ func RunServer(config CompiledConfig) error {
 	}
 
 	var bigQueryInfra *infra.BigQueryInfra
-	if infra.IsMarbleSaasProject() {
+	if isMarbleSaasProject {
 		bigQueryInfra, err = infra.InitializeBigQueryInfra(ctx, bigQueryConfig)
 		if err != nil {
 			utils.LogAndReportSentryError(ctx, err)
@@ -256,6 +258,15 @@ func RunServer(config CompiledConfig) error {
 		apiConfig.AnalyticsEnabled = true
 	}
 
+	var lagoConfig infra.LagoConfig
+	if isMarbleSaasProject {
+		lagoConfig = infra.InitializeLago()
+		if err := lagoConfig.Validate(); err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+			return err
+		}
+	}
+
 	repositories := repositories.NewRepositories(
 		pool,
 		gcpConfig,
@@ -272,6 +283,7 @@ func RunServer(config CompiledConfig) error {
 		repositories.WithBigQueryInfra(bigQueryInfra),
 		repositories.WithCache(utils.GetEnv("CACHE_ENABLED", false)),
 		repositories.WithSimilarityThreshold(serverConfig.similarityThreshold),
+		repositories.WithLagoConfig(lagoConfig),
 	)
 
 	deps, err := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)

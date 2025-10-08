@@ -95,6 +95,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if err != nil {
 		logger.WarnContext(ctx, "could not initialize GCP config", "error", err.Error())
 	}
+	isMarbleSaasProject := infra.IsMarbleSaasProject()
 
 	offloadingConfig := infra.OffloadingConfig{
 		Enabled:         utils.GetEnv("OFFLOADING_ENABLED", false),
@@ -173,6 +174,15 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		return err
 	}
 
+	var lagoConfig infra.LagoConfig
+	if isMarbleSaasProject {
+		lagoConfig = infra.InitializeLago()
+		if err := lagoConfig.Validate(); err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+			return err
+		}
+	}
+
 	repositories := repositories.NewRepositories(
 		pool,
 		infra.GcpConfig{},
@@ -185,6 +195,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 		repositories.WithOpenSanctions(openSanctionsConfig),
 		repositories.WithCache(utils.GetEnv("CACHE_ENABLED", false)),
+		repositories.WithLagoConfig(lagoConfig),
 	)
 
 	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
@@ -293,6 +304,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
+	river.AddWorker(workers, adminUc.NewSendBillingEventsWorker())
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
