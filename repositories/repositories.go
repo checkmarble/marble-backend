@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/infra"
+	lago_repository "github.com/checkmarble/marble-backend/repositories/lago"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -24,6 +25,7 @@ type options struct {
 	bigQueryInfra                 *infra.BigQueryInfra
 	withCache                     bool
 	similarityThreshold           float64
+	lagoConfig                    infra.LagoConfig
 }
 
 type Option func(*options)
@@ -97,6 +99,12 @@ func WithSimilarityThreshold(threshold float64) Option {
 	}
 }
 
+func WithLagoConfig(lagoConfig infra.LagoConfig) Option {
+	return func(o *options) {
+		o.lagoConfig = lagoConfig
+	}
+}
+
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
 	ConvoyRepository                  ConvoyRepository
@@ -115,6 +123,7 @@ type Repositories struct {
 	TransferCheckEnrichmentRepository *TransferCheckEnrichmentRepository
 	TaskQueueRepository               TaskQueueRepository
 	MetricsIngestionRepository        MetricsIngestionRepository
+	LagoRepository                    lago_repository.LagoRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -168,5 +177,6 @@ func NewRepositories(
 		),
 		TaskQueueRepository:        NewTaskQueueRepository(options.riverClient),
 		MetricsIngestionRepository: NewMetricsIngestionRepository(options.bigQueryInfra),
+		LagoRepository:             lago_repository.NewLagoRepository(options.lagoConfig),
 	}
 }

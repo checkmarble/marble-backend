@@ -94,3 +94,9 @@ type AnalyticsExportArgs struct {
 }
 
 func (AnalyticsExportArgs) Kind() string { return "analytics_export" }
+
+type SendBillingEventsArgs struct {
+	Events []BillingEvent `json:"events"`
+}
+
+func (SendBillingEventsArgs) Kind() string { return "send_billing_events" }

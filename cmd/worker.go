@@ -44,6 +44,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		return err
 	}
 
+	isMarbleSaasProject := infra.IsMarbleSaasProject()
+
 	pgConfig := infra.PgConfig{
 		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:           utils.GetEnv("PG_DATABASE", "marble"),
@@ -173,6 +175,15 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		return err
 	}
 
+	var lagoConfig infra.LagoConfig
+	if isMarbleSaasProject {
+		lagoConfig = infra.InitializeLago()
+		if err := lagoConfig.Validate(); err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+			return err
+		}
+	}
+
 	repositories := repositories.NewRepositories(
 		pool,
 		infra.GcpConfig{},
@@ -185,6 +196,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 		repositories.WithOpenSanctions(openSanctionsConfig),
 		repositories.WithCache(utils.GetEnv("CACHE_ENABLED", false)),
+		repositories.WithLagoConfig(lagoConfig),
 	)
 
 	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
@@ -286,6 +298,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
+	river.AddWorker(workers, adminUc.NewSendBillingEventsWorker())
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
