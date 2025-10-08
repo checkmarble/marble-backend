@@ -113,8 +113,6 @@ func (cfg *AnalyticsConfig) buildS3ConnectionString(u *url.URL) error {
 		args = append(args, fmt.Sprintf("region '%s'", v))
 	}
 
-	fmt.Println(args)
-
 	cfg.ConnectionString = strings.Join(args, ", ")
 
 	return nil
