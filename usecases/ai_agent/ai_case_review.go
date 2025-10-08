@@ -725,13 +725,11 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	}
 
 	// Send billing event
-	uc.billingUsecase.SendEvents(ctx, caseData.organizationId, []models.BillingEvent{
-		{
-			TransactionId:          uuid.Must(uuid.NewV7()).String(),
-			ExternalSubscriptionId: subscriptionId,
-			Code:                   billing.AI_CASE_REVIEW.String(),
-			Timestamp:              time.Now(),
-		},
+	uc.billingUsecase.SendEvent(ctx, caseData.organizationId, models.BillingEvent{
+		TransactionId:          uuid.Must(uuid.NewV7()).String(),
+		ExternalSubscriptionId: subscriptionId,
+		Code:                   billing.AI_CASE_REVIEW.String(),
+		Timestamp:              time.Now(),
 	})
 
 	// Can access to Ok and Justification, the nil check is done in the sanity check step

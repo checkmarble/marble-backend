@@ -99,8 +99,8 @@ type AnalyticsMergeArgs struct{}
 
 func (AnalyticsMergeArgs) Kind() string { return "analytics_merge" }
 
-type SendBillingEventsArgs struct {
-	Events []BillingEvent `json:"events"`
+type SendBillingEventArgs struct {
+	Event BillingEvent `json:"event"`
 }
 
-func (SendBillingEventsArgs) Kind() string { return "send_billing_events" }
+func (SendBillingEventArgs) Kind() string { return "send_billing_events" }
