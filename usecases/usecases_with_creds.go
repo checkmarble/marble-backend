@@ -785,8 +785,9 @@ func (uc *UsecasesWithCreds) NewAnalyticsMetadataUsecase() AnalyticsMetadataUsec
 	}
 }
 
-func (uc *UsecasesWithCreds) NewBillingUsecase() billing.BillingUsecase {
+func (uc *UsecasesWithCreds) NewBillingUsecase() billing.BillingUsecaseInterface {
 	return billing.NewBillingUsecase(
+		uc.Repositories.LagoRepository.IsConfigured(),
 		uc.Repositories.LagoRepository,
 		uc.NewTransactionFactory(),
 		uc.Repositories.TaskQueueRepository,

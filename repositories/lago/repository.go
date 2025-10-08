@@ -31,7 +31,7 @@ func NewLagoRepository(lagoConfig infra.LagoConfig) LagoRepository {
 	}
 }
 
-func (repo LagoRepository) isConfigured() bool {
+func (repo LagoRepository) IsConfigured() bool {
 	return repo.lagoConfig.BaseUrl != "" && repo.lagoConfig.ApiKey != ""
 }
 
@@ -48,7 +48,7 @@ func (repo LagoRepository) getRequest(ctx context.Context, method string, url st
 
 // Get Wallet for an organization
 func (repo LagoRepository) GetWallet(ctx context.Context, orgId string) ([]models.Wallet, error) {
-	if !repo.isConfigured() {
+	if !repo.IsConfigured() {
 		return nil, errors.New("lago repository is not configured")
 	}
 
@@ -87,7 +87,7 @@ func (repo LagoRepository) GetWallet(ctx context.Context, orgId string) ([]model
 
 // Get Active Subscriptions (not detailed) for an organization
 func (repo LagoRepository) GetSubscriptions(ctx context.Context, orgId string) ([]models.Subscription, error) {
-	if !repo.isConfigured() {
+	if !repo.IsConfigured() {
 		return nil, errors.New("lago repository is not configured")
 	}
 
@@ -128,7 +128,7 @@ func (repo LagoRepository) GetSubscriptions(ctx context.Context, orgId string) (
 // Get subscription with more details
 // Be careful, use the external ID to get the subscription (cf: https://getlago.com/docs/api-reference/subscriptions/get-specific)
 func (repo LagoRepository) GetSubscription(ctx context.Context, subscriptionExternalId string) (models.Subscription, error) {
-	if !repo.isConfigured() {
+	if !repo.IsConfigured() {
 		return models.Subscription{}, errors.New("lago repository is not configured")
 	}
 
@@ -169,7 +169,7 @@ func (repo LagoRepository) GetCustomerUsage(
 	orgId string,
 	subscriptionExternalId string,
 ) (models.CustomerUsage, error) {
-	if !repo.isConfigured() {
+	if !repo.IsConfigured() {
 		return models.CustomerUsage{}, errors.New("lago repository is not configured")
 	}
 
@@ -208,7 +208,7 @@ func (repo LagoRepository) GetCustomerUsage(
 
 func (repo LagoRepository) SendEvent(ctx context.Context, event models.BillingEvent) error {
 	logger := utils.LoggerFromContext(ctx)
-	if !repo.isConfigured() {
+	if !repo.IsConfigured() {
 		return errors.New("lago repository is not configured")
 	}
 
@@ -248,7 +248,7 @@ func (repo LagoRepository) SendEvent(ctx context.Context, event models.BillingEv
 // In case or error, need to retry the entire batch
 func (repo LagoRepository) SendEvents(ctx context.Context, events []models.BillingEvent) error {
 	logger := utils.LoggerFromContext(ctx)
-	if !repo.isConfigured() {
+	if !repo.IsConfigured() {
 		return errors.New("lago repository is not configured")
 	}
 
