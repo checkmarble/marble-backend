@@ -11,7 +11,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
@@ -208,6 +207,7 @@ func (repo LagoRepository) GetCustomerUsage(
 }
 
 func (repo LagoRepository) SendEvent(ctx context.Context, event models.BillingEvent) error {
+	logger := utils.LoggerFromContext(ctx)
 	if !repo.isConfigured() {
 		return errors.New("lago repository is not configured")
 	}
@@ -227,12 +227,18 @@ func (repo LagoRepository) SendEvent(ctx context.Context, event models.BillingEv
 	if err != nil {
 		return errors.Wrap(err, "failed to create request")
 	}
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := repo.client.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "failed to send event")
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		logger.ErrorContext(ctx, "failed to send billing event", "status", resp.StatusCode, "response", string(bodyBytes))
+		return errors.Newf("failed to send billing event")
+	}
 
 	return nil
 }
@@ -254,10 +260,7 @@ func (repo LagoRepository) SendEvents(ctx context.Context, events []models.Billi
 
 	for i := 0; i < len(events); i += MAX_EVENTS_PER_BATCH {
 		batch := events[i:min(i+MAX_EVENTS_PER_BATCH, len(events))]
-		eventsDto := BillingEventsDto{
-			Events: pure_utils.Map(batch, AdaptModelToBillingEventDto),
-		}
-		body, err := json.Marshal(eventsDto)
+		body, err := json.Marshal(AdaptModelToBillingEventsDto(batch))
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal events")
 		}

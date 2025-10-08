@@ -109,7 +109,7 @@ func AdaptCustomerUsageDtoToModel(dto CustomerUsageDto) models.CustomerUsage {
 	}
 }
 
-type BillingEventDto struct {
+type BillingEventItemDto struct {
 	TransactionId          string         `json:"transaction_id"`
 	ExternalSubscriptionId string         `json:"external_subscription_id"`
 	Code                   string         `json:"code"`
@@ -117,8 +117,8 @@ type BillingEventDto struct {
 	Properties             map[string]any `json:"properties"`
 }
 
-func AdaptModelToBillingEventDto(event models.BillingEvent) BillingEventDto {
-	return BillingEventDto{
+func AdaptModelToBillingEventItemDto(event models.BillingEvent) BillingEventItemDto {
+	return BillingEventItemDto{
 		TransactionId:          event.TransactionId,
 		ExternalSubscriptionId: event.ExternalSubscriptionId,
 		Code:                   event.Code,
@@ -127,6 +127,22 @@ func AdaptModelToBillingEventDto(event models.BillingEvent) BillingEventDto {
 	}
 }
 
+type BillingEventDto struct {
+	Event BillingEventItemDto `json:"event"`
+}
+
+func AdaptModelToBillingEventDto(event models.BillingEvent) BillingEventDto {
+	return BillingEventDto{
+		Event: AdaptModelToBillingEventItemDto(event),
+	}
+}
+
 type BillingEventsDto struct {
-	Events []BillingEventDto `json:"events"`
+	Events []BillingEventItemDto `json:"events"`
+}
+
+func AdaptModelToBillingEventsDto(events []models.BillingEvent) BillingEventsDto {
+	return BillingEventsDto{
+		Events: pure_utils.Map(events, AdaptModelToBillingEventItemDto),
+	}
 }

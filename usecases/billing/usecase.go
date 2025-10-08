@@ -10,32 +10,32 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-type enqueueSendBillingEventsTask interface {
-	EnqueueSendBillingEventsTask(ctx context.Context, tx repositories.Transaction, orgId string, events []models.BillingEvent) error
+type enqueueSendBillingEventTask interface {
+	EnqueueSendBillingEventTask(ctx context.Context, tx repositories.Transaction, orgId string, event models.BillingEvent) error
 }
 
 type BillingUsecase struct {
 	lagoRepository lago_repository.LagoRepository
 
-	transactionFactory           executor_factory.TransactionFactory
-	enqueueSendBillingEventsTask enqueueSendBillingEventsTask
+	transactionFactory          executor_factory.TransactionFactory
+	enqueueSendBillingEventTask enqueueSendBillingEventTask
 }
 
 func NewBillingUsecase(
 	lagoRepository lago_repository.LagoRepository,
 	transactionFactory executor_factory.TransactionFactory,
-	enqueueSendBillingEventsTask enqueueSendBillingEventsTask,
+	enqueueSendBillingEventTask enqueueSendBillingEventTask,
 ) BillingUsecase {
 	return BillingUsecase{
-		lagoRepository:               lagoRepository,
-		transactionFactory:           transactionFactory,
-		enqueueSendBillingEventsTask: enqueueSendBillingEventsTask,
+		lagoRepository:              lagoRepository,
+		transactionFactory:          transactionFactory,
+		enqueueSendBillingEventTask: enqueueSendBillingEventTask,
 	}
 }
 
-func (u BillingUsecase) SendEvents(ctx context.Context, orgId string, events []models.BillingEvent) error {
+func (u BillingUsecase) SendEvent(ctx context.Context, orgId string, event models.BillingEvent) error {
 	return u.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return u.enqueueSendBillingEventsTask.EnqueueSendBillingEventsTask(ctx, tx, orgId, events)
+		return u.enqueueSendBillingEventTask.EnqueueSendBillingEventTask(ctx, tx, orgId, event)
 	})
 }
 
@@ -98,7 +98,7 @@ func (u BillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId st
 	}
 
 	// For now, suppose there is only one wallet
-	if wallet[0].BalanceCents < customerUsage.TotalAmountCents {
+	if wallet[0].BalanceCents <= customerUsage.TotalAmountCents {
 		logger.Debug("not enough funds in the wallet", "orgId", orgId, "code", code,
 			"wallet", wallet[0].BalanceCents, "subscription",
 			customerUsage.TotalAmountCents,
