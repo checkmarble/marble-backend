@@ -11,27 +11,27 @@ import (
 
 // TODO: CHANGE WORKER TO USE BILLING INTERFACE AND NOT REPOSITORY
 
-type billingWorkerRepository interface {
+type lagoBillingWorkerRepository interface {
 	SendEvent(ctx context.Context, event models.BillingEvent) error
 }
 
-type SendBillingEventsWorker struct {
+type SendLagoBillingEventsWorker struct {
 	river.WorkerDefaults[models.SendBillingEventArgs]
 
-	repository billingWorkerRepository
+	repository lagoBillingWorkerRepository
 }
 
-func NewSendBillingEventsWorker(repository billingWorkerRepository) *SendBillingEventsWorker {
-	return &SendBillingEventsWorker{
+func NewSendLagoBillingEventsWorker(repository lagoBillingWorkerRepository) *SendLagoBillingEventsWorker {
+	return &SendLagoBillingEventsWorker{
 		repository: repository,
 	}
 }
 
-func (w *SendBillingEventsWorker) Timeout(job *river.Job[models.SendBillingEventArgs]) time.Duration {
+func (w *SendLagoBillingEventsWorker) Timeout(job *river.Job[models.SendBillingEventArgs]) time.Duration {
 	return 10 * time.Second
 }
 
-func (w *SendBillingEventsWorker) Work(ctx context.Context, job *river.Job[models.SendBillingEventArgs]) error {
+func (w *SendLagoBillingEventsWorker) Work(ctx context.Context, job *river.Job[models.SendBillingEventArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Sending billing events", "events", job.Args.Event)
 
