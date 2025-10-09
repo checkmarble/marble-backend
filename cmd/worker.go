@@ -34,16 +34,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	appName := fmt.Sprintf("marble-worker %s", apiVersion)
 
 	// This is where we read the environment variables and set up the configuration for the application.
-	gcpConfig, err := infra.NewGcpConfig(
-		context.Background(),
-		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
-		utils.GetEnv("ENABLE_GCP_TRACING", false),
-	)
-	if err != nil {
-		return err
-	}
-
 	pgConfig := infra.PgConfig{
 		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:           utils.GetEnv("PG_DATABASE", "marble"),
@@ -95,6 +85,16 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
+
+	gcpConfig, err := infra.NewGcpConfig(
+		context.Background(),
+		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
+		utils.GetEnv("ENABLE_GCP_TRACING", false),
+	)
+	if err != nil {
+		logger.WarnContext(ctx, "could not initialize GCP config", "error", err.Error())
+	}
 
 	offloadingConfig := infra.OffloadingConfig{
 		Enabled:         utils.GetEnv("OFFLOADING_ENABLED", false),
