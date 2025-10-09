@@ -428,8 +428,8 @@ func (uc *Usecases) NewOidcUsecase() OidcUsecase {
 	return OidcUsecase{}
 }
 
-func (uc *Usecases) NewSendBillingEventsWorker() *billing.SendBillingEventsWorker {
-	return billing.NewSendBillingEventsWorker(
+func (uc *Usecases) NewSendBillingEventsWorker() *billing.SendLagoBillingEventsWorker {
+	return billing.NewSendLagoBillingEventsWorker(
 		uc.Repositories.LagoRepository,
 	)
 }

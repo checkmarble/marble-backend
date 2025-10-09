@@ -725,12 +725,17 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	}
 
 	// Send billing event
-	uc.billingUsecase.SendEvent(ctx, caseData.organizationId, models.BillingEvent{
-		TransactionId:          uuid.Must(uuid.NewV7()).String(),
-		ExternalSubscriptionId: subscriptionId,
-		Code:                   billing.AI_CASE_REVIEW.String(),
-		Timestamp:              time.Now(),
+	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return uc.billingUsecase.SendEventAsync(ctx, tx, caseData.organizationId, models.BillingEvent{
+			TransactionId:          uuid.Must(uuid.NewV7()).String(),
+			ExternalSubscriptionId: subscriptionId,
+			Code:                   billing.AI_CASE_REVIEW.String(),
+			Timestamp:              time.Now(),
+		})
 	})
+	if err != nil {
+		return nil, errors.Wrap(err, "could not send billing event")
+	}
 
 	// Can access to Ok and Justification, the nil check is done in the sanity check step
 	if caseReviewContext.SanityCheck.Ok {

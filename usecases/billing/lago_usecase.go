@@ -6,7 +6,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	lago_repository "github.com/checkmarble/marble-backend/repositories/lago"
-	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -17,26 +16,22 @@ type enqueueSendBillingEventTask interface {
 type LagoBillingUsecase struct {
 	lagoRepository lago_repository.LagoRepository
 
-	transactionFactory          executor_factory.TransactionFactory
 	enqueueSendBillingEventTask enqueueSendBillingEventTask
 }
 
 func NewLagoBillingUsecase(
 	lagoRepository lago_repository.LagoRepository,
-	transactionFactory executor_factory.TransactionFactory,
 	enqueueSendBillingEventTask enqueueSendBillingEventTask,
 ) LagoBillingUsecase {
 	return LagoBillingUsecase{
 		lagoRepository:              lagoRepository,
-		transactionFactory:          transactionFactory,
 		enqueueSendBillingEventTask: enqueueSendBillingEventTask,
 	}
 }
 
-func (u LagoBillingUsecase) SendEvent(ctx context.Context, orgId string, event models.BillingEvent) error {
-	return u.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return u.enqueueSendBillingEventTask.EnqueueSendBillingEventTask(ctx, tx, orgId, event)
-	})
+// Send an event to Lago in async
+func (u LagoBillingUsecase) SendEventAsync(ctx context.Context, tx repositories.Transaction, orgId string, event models.BillingEvent) error {
+	return u.enqueueSendBillingEventTask.EnqueueSendBillingEventTask(ctx, tx, orgId, event)
 }
 
 // Check if there are enough funds in the wallet to cover the cost of the event
