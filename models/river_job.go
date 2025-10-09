@@ -100,3 +100,7 @@ type SendBillingEventArgs struct {
 }
 
 func (SendBillingEventArgs) Kind() string { return "send_billing_event" }
+
+type BillingEventPeriodicJobArgs struct{}
+
+func (BillingEventPeriodicJobArgs) Kind() string { return "billing_event_periodic_job" }

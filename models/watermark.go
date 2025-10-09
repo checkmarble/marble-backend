@@ -18,6 +18,8 @@ const (
 	WatermarkTypeAnalyticsDecisions     WatermarkType = "analytics_decisions"
 	WatermarkTypeAnalyticsDecisionRules WatermarkType = "analytics_decision_rules"
 	WatermarkTypeAnalyticsScreenings    WatermarkType = "analytics_screenings"
+
+	WatermarkTypeBillingDecisions WatermarkType = "billing_decisions"
 )
 
 func (t WatermarkType) String() string {

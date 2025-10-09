@@ -57,7 +57,7 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 	}
 
 	// Expect only one subscription for the event, in case of multiple subscriptions, we will use the first one
-	subscriptions, err := u.getSubscriptionsForEvent(ctx, orgId, code)
+	subscriptions, err := u.GetSubscriptionsForEvent(ctx, orgId, code)
 	if err != nil {
 		return false, "", err
 	}
@@ -90,7 +90,7 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 
 // Get all subscriptions of an organization that have a charge for the given billable metric
 // Need to get first the list of subscriptions, then get the detailed subscription to get the charges
-func (u LagoBillingUsecase) getSubscriptionsForEvent(ctx context.Context, orgId string, code BillableMetric) ([]models.Subscription, error) {
+func (u LagoBillingUsecase) GetSubscriptionsForEvent(ctx context.Context, orgId string, code BillableMetric) ([]models.Subscription, error) {
 	subscriptionsForEvent := make([]models.Subscription, 0)
 	subscriptions, err := u.lagoRepository.GetSubscriptions(ctx, orgId)
 	if err != nil {
