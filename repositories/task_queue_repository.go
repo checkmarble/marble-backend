@@ -71,6 +71,12 @@ type TaskQueueRepository interface {
 		orgId string,
 		decisionId string,
 	) error
+	EnqueueSendBillingEventTask(
+		ctx context.Context,
+		tx Transaction,
+		orgId string,
+		event models.BillingEvent,
+	) error
 }
 
 type riverRepository struct {
@@ -302,5 +308,31 @@ func (r riverRepository) EnqueueDecisionWorkflowTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued decision workflow task", "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueSendBillingEventTask(
+	ctx context.Context,
+	tx Transaction,
+	orgId string,
+	event models.BillingEvent,
+) error {
+	logger := utils.LoggerFromContext(ctx)
+
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.SendBillingEventArgs{
+			Event: event,
+		},
+		&river.InsertOpts{
+			Queue: orgId,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger.DebugContext(ctx, "Enqueued send billing event task", "job_id", res.Job.ID)
 	return nil
 }

@@ -723,6 +723,7 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		usecases.NewDataModelUseCase(),
 		utils.Ptr(usecases.NewRuleUsecase()),
 		utils.Ptr(usecases.NewCustomListUseCase()),
+		usecases.NewBillingUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.BlobRepository,
 		usecases.Repositories.TaskQueueRepository,
