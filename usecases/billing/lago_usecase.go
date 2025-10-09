@@ -5,22 +5,28 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	lago_repository "github.com/checkmarble/marble-backend/repositories/lago"
 	"github.com/checkmarble/marble-backend/utils"
 )
+
+type lagoRepository interface {
+	GetWallet(ctx context.Context, orgId string) ([]models.Wallet, error)
+	GetSubscriptions(ctx context.Context, orgId string) ([]models.Subscription, error)
+	GetSubscription(ctx context.Context, subscriptionExternalId string) (models.Subscription, error)
+	GetCustomerUsage(ctx context.Context, orgId string, subscriptionExternalId string) (models.CustomerUsage, error)
+}
 
 type enqueueSendBillingEventTask interface {
 	EnqueueSendBillingEventTask(ctx context.Context, tx repositories.Transaction, orgId string, event models.BillingEvent) error
 }
 
 type LagoBillingUsecase struct {
-	lagoRepository lago_repository.LagoRepository
+	lagoRepository lagoRepository
 
 	enqueueSendBillingEventTask enqueueSendBillingEventTask
 }
 
 func NewLagoBillingUsecase(
-	lagoRepository lago_repository.LagoRepository,
+	lagoRepository lagoRepository,
 	enqueueSendBillingEventTask enqueueSendBillingEventTask,
 ) LagoBillingUsecase {
 	return LagoBillingUsecase{
