@@ -15,10 +15,6 @@ const (
 	WatermarkTypeDecisionRules WatermarkType = "decision_rules"
 	WatermarkTypeMetrics       WatermarkType = "metrics"
 
-	WatermarkTypeAnalyticsDecisions     WatermarkType = "analytics_decisions"
-	WatermarkTypeAnalyticsDecisionRules WatermarkType = "analytics_decision_rules"
-	WatermarkTypeAnalyticsScreenings    WatermarkType = "analytics_screenings"
-
 	WatermarkTypeMergedAnalyticsDecisions     WatermarkType = "analytics_merged_decisions"
 	WatermarkTypeMergedAnalyticsDecisionRules WatermarkType = "analytics_merged_decision_rules"
 	WatermarkTypeMergedAnalyticsScreenings    WatermarkType = "analytics_merged_screenings"
@@ -37,12 +33,6 @@ func WatermarkTypeFromString(s string) (WatermarkType, error) {
 		return WatermarkTypeDecisionRules, nil
 	case "metrics":
 		return WatermarkTypeMetrics, nil
-	case "analytics_decisions":
-		return WatermarkTypeAnalyticsDecisions, nil
-	case "analytics_decision_rules":
-		return WatermarkTypeAnalyticsDecisionRules, nil
-	case "analytics_screenings":
-		return WatermarkTypeAnalyticsScreenings, nil
 	case "analytics_merged_decisions":
 		return WatermarkTypeMergedAnalyticsDecisions, nil
 	case "analytics_merged_decision_rules":
