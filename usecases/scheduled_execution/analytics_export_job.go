@@ -133,7 +133,7 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 				Limit:               50000,
 			}
 
-			return w.exportDecisions(ctx, job, dbExec, exec, req)
+			return w.exportDecisions(ctx, exec, req)
 		})
 
 		if w.license.Analytics {
@@ -148,7 +148,7 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 					Limit:               50000,
 				}
 
-				return w.exportDecisionRules(ctx, job, dbExec, exec, req)
+				return w.exportDecisionRules(ctx, exec, req)
 			})
 
 			wg.Go(func() error {
@@ -162,7 +162,7 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 					Limit:               50000,
 				}
 
-				return w.exportScreenings(ctx, job, dbExec, exec, req)
+				return w.exportScreenings(ctx, exec, req)
 			})
 		}
 
@@ -177,31 +177,19 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 
 func (w AnalyticsExportWorker) exportDecisions(
 	ctx context.Context,
-	job *river.Job[models.AnalyticsExportArgs],
-	dbExec repositories.Executor,
 	exec repositories.AnalyticsExecutor,
 	req repositories.AnalyticsCopyRequest) error {
 
-	wm, err := w.repository.GetWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsDecisions, req.TriggerObject))
+	id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("decisions", &req.TriggerObject))
 	if err != nil {
-		return errors.Wrap(err, "failed to get watermark")
+		return errors.Wrap(err, "failed to get latest exported row")
 	}
 
-	req.Watermark = wm
+	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: createdAt}
 
-	nRows, err := repositories.AnalyticsCopyDecisions(ctx, exec, req)
+	_, err = repositories.AnalyticsCopyDecisions(ctx, exec, req)
 	if err != nil {
 		return errors.Wrap(err, "failed to copy decisions")
-	}
-
-	if nRows > 0 {
-		id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("decisions", &req.TriggerObject))
-		if err != nil {
-			return errors.Wrap(err, "failed to get latest exported row")
-		}
-		if err := w.repository.SaveWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsDecisions, req.TriggerObject), utils.Ptr(id.String()), createdAt, nil); err != nil {
-			return errors.Wrap(err, "failed to save watermark")
-		}
 	}
 
 	return nil
@@ -209,31 +197,19 @@ func (w AnalyticsExportWorker) exportDecisions(
 
 func (w AnalyticsExportWorker) exportDecisionRules(
 	ctx context.Context,
-	job *river.Job[models.AnalyticsExportArgs],
-	dbExec repositories.Executor,
 	exec repositories.AnalyticsExecutor,
 	req repositories.AnalyticsCopyRequest) error {
 
-	wm, err := w.repository.GetWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsDecisionRules, req.TriggerObject))
+	id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("decision_rules", &req.TriggerObject))
 	if err != nil {
-		return errors.Wrap(err, "failed to get watermark")
+		return errors.Wrap(err, "failed to get latest exported row")
 	}
 
-	req.Watermark = wm
+	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: createdAt}
 
-	nRows, err := repositories.AnalyticsCopyDecisionRules(ctx, exec, req)
+	_, err = repositories.AnalyticsCopyDecisionRules(ctx, exec, req)
 	if err != nil {
 		return errors.Wrap(err, "failed to copy decision rules")
-	}
-
-	if nRows > 0 {
-		id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("decision_rules", &req.TriggerObject))
-		if err != nil {
-			return errors.Wrap(err, "failed to get latest exported row")
-		}
-		if err := w.repository.SaveWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsDecisionRules, req.TriggerObject), utils.Ptr(id.String()), createdAt, nil); err != nil {
-			return errors.Wrap(err, "failed to save watermark")
-		}
 	}
 
 	return nil
@@ -241,31 +217,19 @@ func (w AnalyticsExportWorker) exportDecisionRules(
 
 func (w AnalyticsExportWorker) exportScreenings(
 	ctx context.Context,
-	job *river.Job[models.AnalyticsExportArgs],
-	dbExec repositories.Executor,
 	exec repositories.AnalyticsExecutor,
 	req repositories.AnalyticsCopyRequest) error {
 
-	wm, err := w.repository.GetWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsScreenings, req.TriggerObject))
+	id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("screenings", &req.TriggerObject))
 	if err != nil {
-		return errors.Wrap(err, "failed to get watermark")
+		return errors.Wrap(err, "failed to get latest exported row")
 	}
 
-	req.Watermark = wm
+	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: createdAt}
 
-	nRows, err := repositories.AnalyticsCopyScreenings(ctx, exec, req)
+	_, err = repositories.AnalyticsCopyScreenings(ctx, exec, req)
 	if err != nil {
 		return errors.Wrap(err, "failed to copy screenings")
-	}
-
-	if nRows > 0 {
-		id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("screenings", &req.TriggerObject))
-		if err != nil {
-			return errors.Wrap(err, "failed to get latest exported row")
-		}
-		if err := w.repository.SaveWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsScreenings, req.TriggerObject), utils.Ptr(id.String()), createdAt, nil); err != nil {
-			return errors.Wrap(err, "failed to save watermark")
-		}
 	}
 
 	return nil
