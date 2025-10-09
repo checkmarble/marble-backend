@@ -55,22 +55,22 @@ const (
 )
 
 type FuncAttributes struct {
-	DebugName string
-	AstName   string
+	DebugName string `json:"-"`
+	AstName   string `json:"function_name"` //nolint:tagliatelle
 
 	// WARNING: NamedArguments is written here for the sake of discoverability of the expected AST node format.
 	// However, it is not consumed anywhere, and it is in NO WAY enforced by the compiler or even the runtime.
 	// The only source of truth for what named children an AST must/can have is in the ast nodes Evaluate function.
-	NamedArguments []string
+	NamedArguments []string `json:"named_arguments"`
 	// A function can define LazyChildEvaluation indicating that its children should be evaluated lazily,
 	// considering for every one of them if evaluation should continue or not. For the result value of one child, the
 	// function returns whether evaluation of subsequent children should continue (true) or not (false).
-	LazyChildEvaluation func(NodeEvaluation) bool
+	LazyChildEvaluation func(NodeEvaluation) bool `json:"-"`
 	// Commutative indicates this function can treat its children as a commutative list of arguments, and that
 	// they can be reordered without changing the outcome of the function.
-	Commutative bool
+	Commutative bool `json:"-"`
 	// Cost modelizes the computation cost of a given node, the default being zero.
-	Cost int
+	Cost int `json:"-"`
 }
 
 // If number of arguments -1 the function can take any number of arguments

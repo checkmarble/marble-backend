@@ -283,7 +283,7 @@ func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io
 			}
 		}
 
-		for pivotObjectStr, data := range relatedDataPerClient.Data {
+		for pivotObjectStr, ingestedData := range relatedDataPerClient.IngestedData {
 			pivotObjectFolder := fmt.Sprintf("related_data/%s/", pivotObjectStr)
 
 			fileStr := pivotObjectFolder + "related_cases.json"
@@ -292,12 +292,16 @@ func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io
 				pw.CloseWithError(errors.Wrapf(err, "could not create %s in zip", fileStr))
 				return
 			}
-			if err := json.NewEncoder(f).Encode(data.RelatedCases); err != nil {
-				pw.CloseWithError(errors.Wrapf(err, "could not write %s to zip", fileStr))
-				return
+
+			relatedCasesData, ok := relatedDataPerClient.RelatedCases[pivotObjectStr]
+			if ok {
+				if err := json.NewEncoder(f).Encode(relatedCasesData); err != nil {
+					pw.CloseWithError(errors.Wrapf(err, "could not write %s to zip", fileStr))
+					return
+				}
 			}
 
-			for tableName, objects := range data.IngestedData {
+			for tableName, objects := range ingestedData {
 				if len(objects.Data) == 0 {
 					continue
 				}

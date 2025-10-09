@@ -2,7 +2,6 @@ package agent_dto
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -150,15 +149,17 @@ func (i IngestedDataResult) PrintForAgent() (string, error) {
 	return stringBuilder.String(), nil
 }
 
-type CasePivotObjectData struct {
-	IngestedData map[string]IngestedDataResult `json:"ingested_data"`
-	RelatedCases []CaseWithDecisions           `json:"related_cases"`
-}
+// type CasePivotObjectData struct {
+// 	IngestedData map[string]IngestedDataResult `json:"ingested_data"`
+// 	RelatedCases []CaseWithDecisions           `json:"related_cases"`
+// }
 
-func (c CasePivotObjectData) PrintForAgent() (string, error) {
+type CasePivotIngestedData map[string]IngestedDataResult
+
+func (c CasePivotIngestedData) PrintForAgent() (string, error) {
 	stringBuilder := strings.Builder{}
 
-	for key, value := range c.IngestedData {
+	for key, value := range c {
 		ingestedDataFormatted, err := value.PrintForAgent()
 		if err != nil {
 			return "", err
@@ -166,36 +167,43 @@ func (c CasePivotObjectData) PrintForAgent() (string, error) {
 		stringBuilder.WriteString(fmt.Sprintf("table %s as csv: %s\n", key, ingestedDataFormatted))
 	}
 
-	for _, relatedCase := range c.RelatedCases {
-		relatedCaseFormatted, err := json.Marshal(relatedCase)
-		if err != nil {
-			return "", err
-		}
-		stringBuilder.WriteString("related case:")
-		_, err = stringBuilder.Write(relatedCaseFormatted)
-		if err != nil {
-			return "", err
-		}
-		stringBuilder.WriteString("\n")
-	}
+	// for _, relatedCase := range c.RelatedCases {
+	// 	relatedCaseFormatted, err := json.Marshal(relatedCase)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// 	stringBuilder.WriteString("related case:")
+	// 	_, err = stringBuilder.Write(relatedCaseFormatted)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// 	stringBuilder.WriteString("\n")
+	// }
 
 	return stringBuilder.String(), nil
+}
+
+type CasIngestedDataByPivot map[string]CasePivotIngestedData
+
+func (c CasIngestedDataByPivot) PrintForAgent() (string, error) {
+	return "", nil
 }
 
 type CasePivotDataByPivot struct {
-	Data map[string]CasePivotObjectData `json:"data"`
+	IngestedData CasIngestedDataByPivot
+	RelatedCases map[string][]CaseWithDecisions
 }
 
-func (c CasePivotDataByPivot) PrintForAgent() (string, error) {
-	stringBuilder := strings.Builder{}
+// func (c CasePivotDataByPivot) PrintForAgent() (string, error) {
+// 	stringBuilder := strings.Builder{}
 
-	for key, value := range c.Data {
-		ingestedDataFormatted, err := value.PrintForAgent()
-		if err != nil {
-			return "", err
-		}
-		stringBuilder.WriteString(fmt.Sprintf("pivot object %s: %s\n", key, ingestedDataFormatted))
-	}
+// 	for key, value := range c.Data {
+// 		ingestedDataFormatted, err := value.PrintForAgent()
+// 		if err != nil {
+// 			return "", err
+// 		}
+// 		stringBuilder.WriteString(fmt.Sprintf("pivot object %s: %s\n", key, ingestedDataFormatted))
+// 	}
 
-	return stringBuilder.String(), nil
-}
+// 	return stringBuilder.String(), nil
+// }

@@ -89,6 +89,10 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 	if err != nil {
 		return errors.Wrap(err, "Error while getting case")
 	}
+	logger = logger.With(
+		"organization_id", c.OrganizationId,
+		"case_id", job.Args.CaseId,
+	)
 
 	// Check if the organization has AI case review enabled
 	hasAiCaseReviewEnabled, err := w.caseReviewUsecase.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
@@ -96,7 +100,7 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		return errors.Wrap(err, "Error while checking if AI case review is enabled")
 	}
 	if !hasAiCaseReviewEnabled {
-		logger.DebugContext(ctx, "AI case review is not enabled for organization", "organization_id", c.OrganizationId)
+		logger.DebugContext(ctx, "AI case review is not enabled for organization")
 		return nil
 	}
 
@@ -122,7 +126,7 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		)
 	}
 
-	logger.DebugContext(ctx, "Finished generating case review", "case_id", job.Args.CaseId)
+	logger.DebugContext(ctx, "Finished generating case review")
 
 	stream, err := w.blobRepository.OpenStream(ctx, w.bucketUrl, aiCaseReview.FileReference, aiCaseReview.FileReference)
 	if err != nil {
@@ -157,7 +161,7 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 			errors.Wrap(err, "Error while updating case review file status"),
 		)
 	}
-	logger.DebugContext(ctx, "Finished creating case review file", "case_id", job.Args.CaseId, "review_id", aiCaseReview.Id)
+	logger.DebugContext(ctx, "Finished creating case review file", "review_id", aiCaseReview.Id)
 
 	return nil
 }
