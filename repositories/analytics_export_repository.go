@@ -11,6 +11,8 @@ import (
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
+	"github.com/marcboeker/go-duckdb/v2"
+	"github.com/pkg/errors"
 )
 
 type AnalyticsCopyRequest struct {
@@ -43,6 +45,12 @@ func AnalyticsGetLatestRow(ctx context.Context, exec AnalyticsExecutor, table st
 	)
 
 	if err := row.Scan(&id, &createdAt); err != nil {
+		derr := &duckdb.Error{}
+
+		if errors.As(err, &derr) {
+			return uuid.Nil, time.Time{}, nil
+		}
+
 		return uuid.Nil, time.Time{}, err
 	}
 
