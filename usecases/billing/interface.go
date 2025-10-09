@@ -13,6 +13,7 @@ type BillingUsecaseInterface interface {
 	CheckIfEnoughFundsInWallet(ctx context.Context, orgId string, code BillableMetric) (bool, string, error)
 }
 
+// Factory function to create the appropriate billing usecase
 func NewBillingUsecase(
 	isLagoConfigured bool,
 	lagoRepository lago_repository.LagoRepository,

@@ -5,7 +5,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/ai_agent"
-	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
@@ -795,12 +794,4 @@ func (uc *UsecasesWithCreds) NewAnalyticsMetadataUsecase() AnalyticsMetadataUsec
 		analyticsFactory:   uc.NewAnalyticsExecutorFactory(),
 		scenarioRepository: uc.Repositories.MarbleDbRepository,
 	}
-}
-
-func (uc *UsecasesWithCreds) NewBillingUsecase() billing.BillingUsecaseInterface {
-	return billing.NewBillingUsecase(
-		uc.Repositories.LagoRepository.IsConfigured(),
-		uc.Repositories.LagoRepository,
-		uc.Repositories.TaskQueueRepository,
-	)
 }

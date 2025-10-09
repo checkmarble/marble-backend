@@ -428,6 +428,14 @@ func (uc *Usecases) NewOidcUsecase() OidcUsecase {
 	return OidcUsecase{}
 }
 
+func (uc *Usecases) NewBillingUsecase() billing.BillingUsecaseInterface {
+	return billing.NewBillingUsecase(
+		uc.Repositories.LagoRepository.IsConfigured(),
+		uc.Repositories.LagoRepository,
+		uc.Repositories.TaskQueueRepository,
+	)
+}
+
 func (uc *Usecases) NewSendBillingEventsWorker() *billing.SendLagoBillingEventsWorker {
 	return billing.NewSendLagoBillingEventsWorker(
 		uc.Repositories.LagoRepository,
