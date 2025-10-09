@@ -125,7 +125,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_getSubscriptionsForEvent_ReturnsM
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-2").Return(detailedSub2, nil)
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-3").Return(detailedSub3, nil)
 
-	result, err := usecase.getSubscriptionsForEvent(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	result, err := usecase.GetSubscriptionsForEvent(suite.ctx, suite.orgId, AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.Len(result, 2, "should return 2 subscriptions with AI_CASE_REVIEW code")
@@ -164,7 +164,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_getSubscriptionsForEvent_NoMatchi
 	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 
-	result, err := usecase.getSubscriptionsForEvent(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	result, err := usecase.GetSubscriptionsForEvent(suite.ctx, suite.orgId, AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.Empty(result, "should return empty list when no matching subscriptions")

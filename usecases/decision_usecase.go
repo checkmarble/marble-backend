@@ -371,7 +371,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 			decision,
 			input.OrganizationId,
 			decision.DecisionId.String(),
-			usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(ctx, exec, usecase.repository, evaluationParameters),
+			usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(
+				ctx, exec, usecase.repository, evaluationParameters),
 		); err != nil {
 			return models.DecisionWithRuleExecutions{},
 				fmt.Errorf("error storing decision: %w", err)
@@ -549,7 +550,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			items = append(items, decisionAndScenario{
 				decision: decision,
 				scenario: scenario, execution: scenarioExecution,
-				analyticsFields: usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(ctx, exec, usecase.repository, evaluationParameters),
+				analyticsFields: usecase.scenarioEvaluator.GetDataAccessor(
+					evaluationParameters).GetAnalyticsFields(ctx, exec, usecase.repository, evaluationParameters),
 			})
 			usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable,
 				evaluationParameters, scenario, &scenarioExecution)
