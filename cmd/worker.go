@@ -180,7 +180,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		lagoConfig = infra.InitializeLago()
 		if err := lagoConfig.Validate(); err != nil {
 			utils.LogAndReportSentryError(ctx, err)
-			return err
 		}
 	}
 
@@ -298,8 +297,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
-	river.AddWorker(workers, adminUc.NewSendBillingEventsWorker())
-
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
 	}
@@ -308,6 +305,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 	if analyticsConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewAnalyticsExportWorker())
+	}
+	if err := lagoConfig.Validate(); err == nil {
+		river.AddWorker(workers, uc.NewSendBillingEventsWorker())
 	}
 
 	if err := riverClient.Start(ctx); err != nil {

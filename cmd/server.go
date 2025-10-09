@@ -263,7 +263,6 @@ func RunServer(config CompiledConfig) error {
 		lagoConfig = infra.InitializeLago()
 		if err := lagoConfig.Validate(); err != nil {
 			utils.LogAndReportSentryError(ctx, err)
-			return err
 		}
 	}
 

@@ -35,7 +35,7 @@ func (repo LagoRepository) IsConfigured() bool {
 	return repo.lagoConfig.BaseUrl != "" && repo.lagoConfig.ApiKey != ""
 }
 
-// Build the request with the corret headers
+// Build the request with the correct headers
 func (repo LagoRepository) getRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
@@ -247,7 +247,6 @@ func (repo LagoRepository) SendEvent(ctx context.Context, event models.BillingEv
 // Can only send 100 events per batch (cf: https://getlago.com/docs/api-reference/events/batch)
 // In case or error, need to retry the entire batch
 func (repo LagoRepository) SendEvents(ctx context.Context, events []models.BillingEvent) error {
-	logger := utils.LoggerFromContext(ctx)
 	if !repo.IsConfigured() {
 		return errors.New("lago repository is not configured")
 	}
@@ -265,23 +264,31 @@ func (repo LagoRepository) SendEvents(ctx context.Context, events []models.Billi
 			return errors.Wrap(err, "failed to marshal events")
 		}
 
-		req, err := repo.getRequest(ctx, http.MethodPost, baseUrl.String(), bytes.NewReader(body))
-		if err != nil {
-			return errors.Wrap(err, "failed to create request")
-		}
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, err := repo.client.Do(req)
-		if err != nil {
-			return errors.Wrap(err, "failed to send events")
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			bodyBytes, _ := io.ReadAll(resp.Body)
-			logger.ErrorContext(ctx, "failed to send events", "response", string(bodyBytes))
-			return errors.Newf("failed to send events")
+		if err := repo.sendBatch(ctx, baseUrl.String(), body); err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+func (repo LagoRepository) sendBatch(ctx context.Context, baseUrl string, body []byte) error {
+	logger := utils.LoggerFromContext(ctx)
+	req, err := repo.getRequest(ctx, http.MethodPost, baseUrl, bytes.NewReader(body))
+	if err != nil {
+		return errors.Wrap(err, "failed to create request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := repo.client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "failed to send events")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		logger.WarnContext(ctx, "failed to send events", "status", resp.StatusCode, "response", string(bodyBytes))
+		return errors.Newf("failed to send events")
+	}
 	return nil
 }
