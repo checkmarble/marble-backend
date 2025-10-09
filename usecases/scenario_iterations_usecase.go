@@ -15,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type IterationUsecaseRepository interface {
@@ -53,9 +54,13 @@ type IterationUsecaseRepository interface {
 		exec repositories.Executor,
 		scenarioIterationId string,
 	) error
-
-	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
 }
+
+const (
+	defaultReviewThreshold         = 1
+	defaultBlockAndReviewThreshold = 10
+	defaultDeclineThreshold        = 20
+)
 
 type ScenarioIterationUsecase struct {
 	repository                IterationUsecaseRepository
@@ -108,40 +113,34 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 	return si, nil
 }
 
-func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Context,
-	organizationId string, scenarioIteration models.CreateScenarioIterationInput,
+func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(
+	ctx context.Context,
+	organizationId string,
+	scenarioIteration models.CreateScenarioIterationInput,
 ) (models.ScenarioIteration, error) {
 	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
 		return models.ScenarioIteration{}, err
 	}
-	body := scenarioIteration.Body
-	if body != nil && body.Schedule != "" {
+
+	b := scenarioIteration.Body
+	if b.Schedule != "" {
 		gron := gronx.New()
-		ok := gron.IsValid(body.Schedule)
+		ok := gron.IsValid(b.Schedule)
 		if !ok {
 			return models.ScenarioIteration{}, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 		}
 	}
 
-	if body == nil {
-		body = &models.CreateScenarioIterationBody{}
-		scenarioIteration.Body = body
+	if b.ScoreReviewThreshold == nil {
+		b.ScoreReviewThreshold = utils.Ptr(defaultReviewThreshold)
 	}
-
-	if body.ScoreReviewThreshold == nil {
-		defaultReviewThreshold := 1
-		body.ScoreReviewThreshold = &defaultReviewThreshold
+	if b.ScoreBlockAndReviewThreshold == nil {
+		b.ScoreBlockAndReviewThreshold = utils.Ptr(defaultBlockAndReviewThreshold)
 	}
-
-	defaultDeclineThreshold := 10
-	if body.ScoreBlockAndReviewThreshold == nil {
-		// the block and review outcome cannot be reached with the default scenario iteration
-		body.ScoreBlockAndReviewThreshold = &defaultDeclineThreshold
+	if b.ScoreDeclineThreshold == nil {
+		b.ScoreDeclineThreshold = utils.Ptr(defaultDeclineThreshold)
 	}
-
-	if body.ScoreDeclineThreshold == nil {
-		body.ScoreDeclineThreshold = &defaultDeclineThreshold
-	}
+	scenarioIteration.Body = b
 
 	si, err := usecase.repository.CreateScenarioIterationAndRules(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId, scenarioIteration)
@@ -238,17 +237,15 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 			}
 			createScenarioIterationInput := models.CreateScenarioIterationInput{
 				ScenarioId: si.ScenarioId,
+				Body: models.CreateScenarioIterationBody{
+					ScoreReviewThreshold:          si.ScoreReviewThreshold,
+					ScoreBlockAndReviewThreshold:  si.ScoreBlockAndReviewThreshold,
+					ScoreDeclineThreshold:         si.ScoreDeclineThreshold,
+					Schedule:                      si.Schedule,
+					Rules:                         make([]models.CreateRuleInput, len(si.Rules)),
+					TriggerConditionAstExpression: si.TriggerConditionAstExpression,
+				},
 			}
-			createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
-				ScoreReviewThreshold:          si.ScoreReviewThreshold,
-				ScoreBlockAndReviewThreshold:  si.ScoreBlockAndReviewThreshold,
-				ScoreDeclineThreshold:         si.ScoreDeclineThreshold,
-				Schedule:                      si.Schedule,
-				Rules:                         make([]models.CreateRuleInput, len(si.Rules)),
-				TriggerConditionAstExpression: si.TriggerConditionAstExpression,
-			}
-
-			stableRuleGroupsToUpdate := make([]models.UpdateRuleInput, 0, len(si.Rules))
 			for i, rule := range si.Rules {
 				createScenarioIterationInput.Body.Rules[i] = models.CreateRuleInput{
 					DisplayOrder:         rule.DisplayOrder,
@@ -259,12 +256,6 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 					RuleGroup:            rule.RuleGroup,
 					SnoozeGroupId:        rule.SnoozeGroupId,
 					StableRuleId:         rule.StableRuleId,
-				}
-			}
-			for _, updateOldRule := range stableRuleGroupsToUpdate {
-				err := usecase.repository.UpdateRule(ctx, tx, updateOldRule)
-				if err != nil {
-					return models.ScenarioIteration{}, err
 				}
 			}
 

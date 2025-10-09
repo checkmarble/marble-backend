@@ -32,7 +32,7 @@ type GetScenarioIterationFilters struct {
 
 type CreateScenarioIterationInput struct {
 	ScenarioId string
-	Body       *CreateScenarioIterationBody
+	Body       CreateScenarioIterationBody
 }
 
 type CreateScenarioIterationBody struct {
@@ -111,7 +111,8 @@ func (scc ScreeningConfig) HasSameQuery(other ScreeningConfig) bool {
 		return false
 	}
 
-	if (scc.Threshold == nil && other.Threshold != nil) || (scc.Threshold != nil && other.Threshold == nil) {
+	if (scc.Threshold == nil && other.Threshold != nil) ||
+		(scc.Threshold != nil && other.Threshold == nil) {
 		return false
 	}
 	if scc.Threshold != nil && other.Threshold != nil {
@@ -120,7 +121,8 @@ func (scc ScreeningConfig) HasSameQuery(other ScreeningConfig) bool {
 		}
 	}
 
-	if (scc.TriggerRule == nil && other.TriggerRule != nil) || (scc.TriggerRule != nil && other.TriggerRule == nil) {
+	if (scc.TriggerRule == nil && other.TriggerRule != nil) ||
+		(scc.TriggerRule != nil && other.TriggerRule == nil) {
 		return false
 	}
 	if scc.TriggerRule != nil && other.TriggerRule != nil {
@@ -129,7 +131,8 @@ func (scc ScreeningConfig) HasSameQuery(other ScreeningConfig) bool {
 		}
 	}
 
-	if (scc.CounterpartyIdExpression == nil && other.CounterpartyIdExpression != nil) || (scc.CounterpartyIdExpression != nil && other.CounterpartyIdExpression == nil) {
+	if (scc.CounterpartyIdExpression == nil && other.CounterpartyIdExpression != nil) ||
+		(scc.CounterpartyIdExpression != nil && other.CounterpartyIdExpression == nil) {
 		return false
 	}
 	if scc.CounterpartyIdExpression != nil && other.CounterpartyIdExpression != nil {
@@ -143,7 +146,8 @@ func (scc ScreeningConfig) HasSameQuery(other ScreeningConfig) bool {
 	}
 
 	// If the queries do not target the same fields, we are not equal
-	if !set.From(slices.Collect(maps.Keys(other.Query))).Equal(set.From(slices.Collect(maps.Keys(scc.Query)))) {
+	if !set.From(slices.Collect(maps.Keys(other.Query))).Equal(
+		set.From(slices.Collect(maps.Keys(scc.Query)))) {
 		return false
 	}
 

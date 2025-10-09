@@ -123,14 +123,14 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 // Create iteration DTO
 type CreateScenarioIterationBody struct {
 	ScenarioId string `json:"scenario_id"`
-	Body       *struct {
+	Body       struct {
 		TriggerConditionAstExpression *NodeDto              `json:"trigger_condition_ast_expression"`
 		Rules                         []CreateRuleInputBody `json:"rules"`
 		ScoreReviewThreshold          *int                  `json:"score_review_threshold,omitempty"`
 		ScoreBlockAndReviewThreshold  *int                  `json:"score_block_and_review_threshold,omitempty"`
 		ScoreDeclineThreshold         *int                  `json:"score_decline_threshold,omitempty"`
 		Schedule                      string                `json:"schedule"`
-	} `json:"body,omitempty"`
+	} `json:"body"`
 }
 
 func AdaptCreateScenarioIterationInput(input CreateScenarioIterationBody, organizationId string) (models.CreateScenarioIterationInput, error) {
@@ -138,33 +138,31 @@ func AdaptCreateScenarioIterationInput(input CreateScenarioIterationBody, organi
 		ScenarioId: input.ScenarioId,
 	}
 
-	if input.Body != nil {
-		createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
-			ScoreReviewThreshold:         input.Body.ScoreReviewThreshold,
-			ScoreBlockAndReviewThreshold: input.Body.ScoreBlockAndReviewThreshold,
-			ScoreDeclineThreshold:        input.Body.ScoreDeclineThreshold,
-			Schedule:                     input.Body.Schedule,
-			Rules:                        make([]models.CreateRuleInput, len(input.Body.Rules)),
-		}
-
-		for i, rule := range input.Body.Rules {
-			var err error
-			createScenarioIterationInput.Body.Rules[i], err =
-				AdaptCreateRuleInput(rule, organizationId)
-			if err != nil {
-				return models.CreateScenarioIterationInput{}, err
-			}
-		}
-
-		if input.Body.TriggerConditionAstExpression != nil {
-			trigger, err := AdaptASTNode(*input.Body.TriggerConditionAstExpression)
-			if err != nil {
-				return models.CreateScenarioIterationInput{},
-					errors.Wrap(models.BadParameterError, "invalid trigger")
-			}
-			createScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
-		}
-
+	createScenarioIterationInput.Body = models.CreateScenarioIterationBody{
+		ScoreReviewThreshold:         input.Body.ScoreReviewThreshold,
+		ScoreBlockAndReviewThreshold: input.Body.ScoreBlockAndReviewThreshold,
+		ScoreDeclineThreshold:        input.Body.ScoreDeclineThreshold,
+		Schedule:                     input.Body.Schedule,
+		Rules:                        make([]models.CreateRuleInput, len(input.Body.Rules)),
 	}
+
+	for i, rule := range input.Body.Rules {
+		var err error
+		createScenarioIterationInput.Body.Rules[i], err =
+			AdaptCreateRuleInput(rule, organizationId)
+		if err != nil {
+			return models.CreateScenarioIterationInput{}, err
+		}
+	}
+
+	if input.Body.TriggerConditionAstExpression != nil {
+		trigger, err := AdaptASTNode(*input.Body.TriggerConditionAstExpression)
+		if err != nil {
+			return models.CreateScenarioIterationInput{},
+				errors.Wrap(models.BadParameterError, "invalid trigger")
+		}
+		createScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
+	}
+
 	return createScenarioIterationInput, nil
 }

@@ -312,7 +312,7 @@ func setupScenarioAndPublish(
 	scenarioIteration, err := scenarioIterationUsecase.CreateScenarioIteration(
 		ctx, organizationId, models.CreateScenarioIterationInput{
 			ScenarioId: scenarioId,
-			Body: &models.CreateScenarioIterationBody{
+			Body: models.CreateScenarioIterationBody{
 				Rules: rules,
 				TriggerConditionAstExpression: &ast.Node{
 					Function: ast.FUNC_AND,

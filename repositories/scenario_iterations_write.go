@@ -22,11 +22,25 @@ func (repo *MarbleDbRepository) DeleteScenarioIteration(ctx context.Context, exe
 	return err
 }
 
-func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Context, exec Executor,
-	organizationId string, scenarioIteration models.CreateScenarioIterationInput,
+func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+	scenarioIteration models.CreateScenarioIterationInput,
 ) (models.ScenarioIteration, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ScenarioIteration{}, err
+	}
+
+	var triggerCondition *[]byte
+	if scenarioIteration.Body.TriggerConditionAstExpression != nil {
+		var err error
+		triggerCondition, err = dbmodels.SerializeFormulaAstExpression(
+			scenarioIteration.Body.TriggerConditionAstExpression)
+		if err != nil {
+			return models.ScenarioIteration{}, fmt.Errorf(
+				"unable to marshal trigger condition ast expression: %w", err)
+		}
 	}
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_SCENARIO_ITERATIONS).
@@ -34,44 +48,23 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 			"id",
 			"org_id",
 			"scenario_id",
-		).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScenarioIterationColumn, ",")))
-
-	scenarioIterationBodyInput := scenarioIteration.Body
-	if scenarioIterationBodyInput != nil {
-
-		var triggerCondition *[]byte
-		if scenarioIterationBodyInput.TriggerConditionAstExpression != nil {
-			var err error
-			triggerCondition, err = dbmodels.SerializeFormulaAstExpression(
-				scenarioIterationBodyInput.TriggerConditionAstExpression)
-			if err != nil {
-				return models.ScenarioIteration{}, fmt.Errorf(
-					"unable to marshal trigger condition ast expression: %w", err)
-			}
-		}
-		query = query.Columns(
 			"score_review_threshold",
 			"score_block_and_review_threshold",
 			"score_reject_threshold",
 			"trigger_condition_ast_expression",
 			"schedule",
-		).Values(
+		).
+		Values(
 			pure_utils.NewPrimaryKey(organizationId),
 			organizationId,
 			scenarioIteration.ScenarioId,
-			scenarioIterationBodyInput.ScoreReviewThreshold,
-			scenarioIterationBodyInput.ScoreBlockAndReviewThreshold,
-			scenarioIterationBodyInput.ScoreDeclineThreshold,
+			scenarioIteration.Body.ScoreReviewThreshold,
+			scenarioIteration.Body.ScoreBlockAndReviewThreshold,
+			scenarioIteration.Body.ScoreDeclineThreshold,
 			triggerCondition,
-			scenarioIterationBodyInput.Schedule,
-		)
-	} else {
-		query = query.Values(
-			pure_utils.NewPrimaryKey(organizationId),
-			organizationId,
-			scenarioIteration.ScenarioId,
-		)
-	}
+			scenarioIteration.Body.Schedule,
+		).
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScenarioIterationColumn, ",")))
 
 	createdIteration, err := SqlToModel(
 		ctx,
@@ -83,7 +76,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 		return models.ScenarioIteration{}, err
 	}
 
-	if scenarioIteration.Body != nil && len(scenarioIteration.Body.Rules) > 0 {
+	if len(scenarioIteration.Body.Rules) > 0 {
 		for i := range scenarioIteration.Body.Rules {
 			scenarioIteration.Body.Rules[i].Id = pure_utils.NewPrimaryKey(organizationId)
 			scenarioIteration.Body.Rules[i].OrganizationId = organizationId
