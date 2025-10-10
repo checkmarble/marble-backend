@@ -52,14 +52,15 @@ type sanityCheckOutput struct {
 	ReviewLevel   *string `json:"review_level" jsonschema_description:"Estimated review level, based on the case review that was received. Required if the sanity check is ok." jsonschema:"enum=probable_false_positive,enum=investigate,enum=escalate"`
 }
 
+// The jsonschema used for the case review output are set dynamically, because the list of enum values depends on the user.
 type caseReviewOutput struct {
-	CaseReview string `json:"case_review" jsonschema_description:"The case review report in markdown format"`
+	CaseReview string `json:"case_review"`
 	Proofs     []struct {
-		Id     string               `json:"id" jsonschema_description:"The ID of the object used as proof. For the organization data model, this is referred to as object_id."`
-		Type   string               `json:"type" jsonschema_description:"The type of the object used as proof, could be decision or case. For the organization data model, this is referred to as trigger_object_type."`
-		Origin agent_dto.OriginName `json:"origin" jsonschema_description:"The origin of the object used as proof, could be data_model or internal"`
-		Reason string               `json:"reason" jsonschema_description:"The reason why this object was useful for your review"`
-	} `json:"proofs" jsonschema_description:"The proofs used to generate the case review"`
+		Id     string               `json:"id"`
+		Type   string               `json:"type"`
+		Origin agent_dto.OriginName `json:"origin"`
+		Reason string               `json:"reason"`
+	} `json:"proofs"`
 }
 
 type customOrgInstructions struct {
@@ -573,7 +574,51 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			return nil, errors.Wrap(err, "could not prepare case review request")
 		}
 
+		// The schema is constructed dynamically so that we can pass the enum of table names explicitly.
+		properties := jsonschema.NewProperties()
+		properties.Set("case_review", &jsonschema.Schema{
+			Type: "string",
+		})
+		proofsSchemaDataModel := jsonschema.NewProperties()
+		proofsSchemaDataModel.Set("id", &jsonschema.Schema{
+			Type:        "string",
+			Description: "The ID of the object used as proof. For ingested data, this is their object_id. The value of the id should be consistent with the type of the object, in the sense that an object of type \"{type}\" with id \"{object_id}\" is present in the case.",
+		})
+		proofsSchemaDataModel.Set("type", &jsonschema.Schema{
+			Type:        "string",
+			Description: "The type of object that serves as proof.",
+			Enum:        pure_utils.ToAnySlice(pure_utils.Keys(caseData.dataModel.Tables)),
+		})
+		proofsSchemaDataModel.Set("origin", &jsonschema.Schema{
+			Type:        "string",
+			Description: "The origin of the object used as proof. In this case, can only be \"data_model\".",
+			Enum:        []any{"data_model"},
+		})
+		proofsSchemaDataModel.Set("reason", &jsonschema.Schema{
+			Type:        "string",
+			Description: "The reason why this object was useful for your review.",
+		})
+
+		// TODO: later, perhaps add the possibility for "internal" objects, meaning screenings or screening matches, or for external links.
+		// For now, the frontend will only handle "data_model" objects.
+		properties.Set("proofs", &jsonschema.Schema{
+			Type: "array",
+			Items: &jsonschema.Schema{
+				Type:       "object",
+				Properties: proofsSchemaDataModel,
+				// required was the intent, but is not supported by the VertexAI models (they reject with status 400 without details)
+				// Required:   []string{"id", "type", "origine", "reason"},
+			},
+		})
+		schema := jsonschema.Schema{
+			// Title:       "Case Review",
+			Description: "A review of a case",
+			Type:        "object",
+			Properties:  properties,
+		}
+
 		requestCaseReview, err := llmberjack.NewRequest[caseReviewOutput]().
+			OverrideResponseSchema(schema).
 			WithModel(modelCaseReview).
 			WithInstruction(systemInstruction).
 			WithText(llmberjack.RoleUser, promptCaseReview).
@@ -585,6 +630,31 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not get case review")
 		}
+
+		// any incorrect proofs are logged but otherwise ignored
+		for i, proof := range caseReview.Proofs {
+			badObject := false
+			if proof.Origin != agent_dto.OriginNameDataModel {
+				badObject = true
+				logger.ErrorContext(ctx, "invalid proof origin", "origin", proof.Origin)
+			} else {
+				objs, err := uc.ingestedDataReader.GetIngestedObject(
+					ctx, caseData.organizationId,
+					&caseData.dataModel, proof.Type,
+					proof.Id, "object_id")
+				if err != nil {
+					return nil, errors.Wrapf(err, "could not get ingested object of type %s for proof %s", proof.Type, proof.Id)
+				}
+				if len(objs) == 0 {
+					badObject = true
+					logger.ErrorContext(ctx, "no ingested object found for proof", "type", proof.Type, "id", proof.Id)
+				}
+			}
+			if badObject {
+				caseReview.Proofs = slices.Delete(caseReview.Proofs, i, 1)
+			}
+		}
+
 		caseReviewContext.CaseReview = &caseReview
 	}
 	logger.DebugContext(ctx, "================================ Full case review ================================")
