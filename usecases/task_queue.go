@@ -208,3 +208,11 @@ func QueueMetrics() map[string]river.QueueConfig {
 	}
 	return queues
 }
+
+func QueueAnalyticsMerge() map[string]river.QueueConfig {
+	queues := make(map[string]river.QueueConfig, 1)
+	queues["analytics_merge"] = river.QueueConfig{
+		MaxWorkers: 1,
+	}
+	return queues
+}
