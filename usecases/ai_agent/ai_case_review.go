@@ -606,12 +606,11 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			Items: &jsonschema.Schema{
 				Type:       "object",
 				Properties: proofsSchemaDataModel,
-				// required was the intent, but is not supported by the VertexAI models (they reject with status 400 without details)
-				// Required:   []string{"id", "type", "origine", "reason"},
+				Required:   []string{"id", "type", "origin", "reason"},
 			},
 		})
 		schema := jsonschema.Schema{
-			// Title:       "Case Review",
+			Title:       "Case Review",
 			Description: "A review of a case",
 			Type:        "object",
 			Properties:  properties,
