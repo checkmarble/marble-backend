@@ -69,7 +69,7 @@ func (repo LagoRepository) GetWallet(ctx context.Context, orgId string) ([]model
 
 	resp, err := repo.client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get wallet")
+		return nil, errors.Wrap(err, "failed to send 'get wallet' request")
 	}
 	defer resp.Body.Close()
 
