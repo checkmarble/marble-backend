@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -42,7 +44,9 @@ func (e PgExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.C
 		return tag, err
 	}
 
-	return e.exec.Exec(ctx, sql, args...)
+	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{"org_id": ""}, func() (pgconn.CommandTag, error) {
+		return e.exec.Exec(ctx, sql, args...)
+	})
 }
 
 func (e PgExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
@@ -50,7 +54,9 @@ func (e PgExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Row
 		return nil, err
 	}
 
-	return e.exec.Query(ctx, sql, args...)
+	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{"org_id": ""}, func() (pgx.Rows, error) {
+		return e.exec.Query(ctx, sql, args...)
+	})
 }
 
 func (e PgExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
@@ -58,7 +64,9 @@ func (e PgExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.R
 		return errorRow{err}
 	}
 
-	return e.exec.QueryRow(ctx, sql, args...)
+	return utils.MeasureLatency(utils.MetricQueryLatency, prometheus.Labels{"org_id": ""}, func() pgx.Row {
+		return e.exec.QueryRow(ctx, sql, args...)
+	})
 }
 
 func (e PgExecutor) Begin(ctx context.Context) (Transaction, error) {
@@ -86,15 +94,21 @@ func (t PgTx) DatabaseSchema() models.DatabaseSchema {
 }
 
 func (t PgTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
-	return t.tx.Exec(ctx, sql, args...)
+	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{"org_id": ""}, func() (pgconn.CommandTag, error) {
+		return t.tx.Exec(ctx, sql, args...)
+	})
 }
 
 func (t PgTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
-	return t.tx.Query(ctx, sql, args...)
+	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{"org_id": ""}, func() (pgx.Rows, error) {
+		return t.tx.Query(ctx, sql, args...)
+	})
 }
 
 func (t PgTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
-	return t.tx.QueryRow(ctx, sql, args...)
+	return utils.MeasureLatency(utils.MetricQueryLatency, prometheus.Labels{"org_id": ""}, func() pgx.Row {
+		return t.tx.QueryRow(ctx, sql, args...)
+	})
 }
 
 func (t PgTx) RawTx() pgx.Tx {

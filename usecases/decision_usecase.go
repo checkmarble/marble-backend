@@ -9,6 +9,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -440,6 +441,10 @@ func (usecase *DecisionUsecase) CreateDecision(
 	if scenarioExecution.ExecutionMetrics != nil {
 		storageDuration := time.Since(storageStart)
 		decisionDuration := time.Since(decisionStart)
+
+		utils.MetricDecisionLatency.
+			With(prometheus.Labels{"org_id": decision.OrganizationId.String()}).
+			Observe(decisionDuration.Seconds())
 
 		scenarioExecution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
 
