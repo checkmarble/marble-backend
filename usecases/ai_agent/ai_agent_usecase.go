@@ -79,6 +79,14 @@ type AiAgentUsecaseCustomListUsecase interface {
 }
 
 type AiAgentUsecaseIngestedDataReader interface {
+	GetIngestedObject(
+		ctx context.Context,
+		organizationId string,
+		dataModel *models.DataModel,
+		objectType string,
+		uniqueFieldValue string,
+		uniqueFieldName string,
+	) ([]models.ClientObjectDetail, error)
 	ReadPivotObjectsFromValues(
 		ctx context.Context,
 		organizationId string,
