@@ -58,6 +58,7 @@ type CaseReviewV1 struct {
 	Version          string                   `json:"version"`
 	Proofs           []CaseReviewProof        `json:"proofs"`
 	PivotEnrichments *KYCEnrichmentResultsDto `json:"pivot_enrichments"`
+	ReviewLevel      *string                  `json:"review_level"`
 }
 
 func (c CaseReviewV1) aiCaseReviewDto() {}

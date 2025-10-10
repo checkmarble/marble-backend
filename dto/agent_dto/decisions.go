@@ -98,6 +98,18 @@ func AdaptScreeningWithMatches(screening models.ScreeningWithMatches) ScreeningW
 	}
 }
 
+// Used to print screenings bare information, from old cases.
+func AdaptScreeningWithMatchesFromScreeningBaseInfo(screening models.ScreeningBaseInfo) ScreeningWithMatches {
+	return ScreeningWithMatches{
+		Screening: AdaptScreening(models.Screening{
+			Status:  screening.Status,
+			Partial: screening.Partial,
+		}),
+		Matches: make([]ScreeningMatch, 0),
+		Count:   screening.NumberOfMatches,
+	}
+}
+
 type Decision struct {
 	Id                uuid.UUID              `json:"id"`
 	CreatedAt         time.Time              `json:"created_at"`
@@ -112,10 +124,10 @@ type Decision struct {
 
 func AdaptDecision(
 	decision models.Decision,
-	scenario models.ScenarioIteration,
 	ruleExecutions []models.RuleExecution,
-	rules []models.Rule,
 	screenings []models.ScreeningWithMatches,
+	scenario models.ScenarioIteration,
+	rules []models.Rule,
 ) Decision {
 	return Decision{
 		Id:                decision.DecisionId,
@@ -136,5 +148,37 @@ func AdaptDecision(
 			return AcaptDecisionRule(ruleExec, rules)
 		}),
 		Screenings: pure_utils.Map(screenings, AdaptScreeningWithMatches),
+	}
+}
+
+// Formats a DTO to print decisions without rule execution details and without screening details:
+// if rule exec details are present in the received ruleExecutions, they are ignored.
+// TODO: maybe add a little more context, showing very basic information (not the full json) on possible
+// or confirmed matches ?
+func AdaptDecisionWithoutRuleExecDetails(
+	decision models.DecisionWithRulesAndScreeningsBaseInfo,
+	scenario models.ScenarioIteration,
+) Decision {
+	return Decision{
+		Id:                decision.DecisionId,
+		CreatedAt:         decision.CreatedAt,
+		TriggerObject:     decision.ClientObject.Data,
+		TriggerObjectType: decision.ClientObject.TableName,
+		Outcome:           decision.Outcome.String(),
+		Scenario: DecisionScenario{
+			Name:                    decision.ScenarioName,
+			Description:             decision.ScenarioDescription,
+			Version:                 decision.ScenarioVersion,
+			ReviewThreshold:         scenario.ScoreReviewThreshold,
+			BlockAndReviewThreshold: scenario.ScoreBlockAndReviewThreshold,
+			DeclineThreshold:        scenario.ScoreDeclineThreshold,
+		},
+		Score: decision.Score,
+		Rules: pure_utils.Map(decision.RuleExecutions, func(ruleExec models.RuleExecution) DecisionRule {
+			ruleExec.Evaluation = nil
+			return AcaptDecisionRule(ruleExec, scenario.Rules)
+		}),
+		Screenings: pure_utils.Map(decision.ScreeningExecutions,
+			AdaptScreeningWithMatchesFromScreeningBaseInfo),
 	}
 }
