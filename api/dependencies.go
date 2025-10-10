@@ -77,7 +77,7 @@ func InitDependencies(
 
 	tokenHandler := auth.NewTokenHandler(
 		auth.DefaultExtractor(),
-		auth.NewVerifier(conf.TokenProvider, idpTokenVerifier, database),
+		auth.NewVerifier(conf.TokenProvider, idpTokenVerifier, database, conf.OidcConfig.AllowedDomains),
 		auth.NewGenerator(database, jwtRepository, time.Hour, clock.New()),
 	)
 

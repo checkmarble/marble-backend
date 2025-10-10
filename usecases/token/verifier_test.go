@@ -45,7 +45,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		mockRepository.On("GetOrganizationByID", ctx, "organization_id").
 			Return(organization, nil)
 
-		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository)
+		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
 		intoCreds, _, err := verifier.Verify(ctx, auth.Credentials{Type: auth.CredentialsApiKey, Value: key})
 
 		assert.NoError(t, err)
@@ -58,7 +58,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
 			Return(models.ApiKey{}, assert.AnError)
 
-		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository)
+		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
 		_, _, err := verifier.Verify(ctx, auth.Credentials{Type: auth.CredentialsApiKey, Value: key})
 
 		assert.Error(t, err)
@@ -73,7 +73,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		mockRepository.On("GetOrganizationByID", ctx, "organization_id").
 			Return(models.Organization{}, assert.AnError)
 
-		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository)
+		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
 		_, _, err := verifier.Verify(ctx, auth.Credentials{Type: auth.CredentialsApiKey, Value: key})
 
 		assert.Error(t, err)
@@ -120,7 +120,7 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		}).
 			Return(token, nil)
 
-		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository)
+		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
 		generator := auth.NewGenerator(
 			mockRepository,
 			mockEncoder,
@@ -162,7 +162,7 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
 			Return(models.User{}, assert.AnError)
 
-		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository)
+		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
 		generator := auth.NewGenerator(
 			mockRepository,
 			nil,
