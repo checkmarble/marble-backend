@@ -52,7 +52,7 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 		return false, "", err
 	}
 	if len(wallet) == 0 {
-		logger.Debug("no wallet found for the organization", "orgId", orgId)
+		logger.DebugContext(ctx, "no wallet found for the organization", "orgId", orgId)
 		return false, "", nil
 	}
 
