@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/cockroachdb/errors"
 	"github.com/guregu/null/v5"
 )
 
@@ -39,9 +40,7 @@ func AdaptCaseDto(c models.Case, tags []models.Tag, inboxes []models.Inbox, user
 		InboxName: inboxName,
 		Name:      c.Name,
 		Status:    c.Status.EnrichedStatus(c.SnoozedUntil, c.Boost),
-		// TODO: Commented out for now because we don't want the AI agent to "cheat" by using the real outcome
-		// while we iterate on the prompts. Final behavior may change but is still undetermined.
-		// Outcome:   string(c.Outcome),
+		Outcome:   string(c.Outcome),
 		Tags: pure_utils.Map(c.Tags, func(t models.CaseTag) string {
 			for _, tag := range tags {
 				if tag.Id == t.TagId {
@@ -89,41 +88,34 @@ func AdaptCaseEventDto(caseEvent models.CaseEvent, users []models.User) CaseEven
 		}
 	}
 	return CaseEvent{
-		UserName:  userName,
-		CreatedAt: caseEvent.CreatedAt,
-		EventType: string(caseEvent.EventType),
-		// TODO: Commented out for now because we don't want the AI agent to "cheat" by using the human review to generate a review
-		// while we iterate on the prompts. Final behavior may change but is still undetermined.
+		UserName:       userName,
+		CreatedAt:      caseEvent.CreatedAt,
+		EventType:      string(caseEvent.EventType),
 		AdditionalNote: caseEvent.AdditionalNote,
-		// AdditionalNote: "Redacted",
-		NewValue:     caseEvent.NewValue,
-		ResourceType: string(caseEvent.ResourceType),
+		NewValue:       caseEvent.NewValue,
+		ResourceType:   string(caseEvent.ResourceType),
 	}
 }
 
-func AdaptCaseWithDecisionsDto(
+func AdaptCaseWithDecisionsDtoWithoutRuleExecDetails(
 	c models.Case,
+	decisions []models.DecisionWithRulesAndScreeningsBaseInfo,
 	tags []models.Tag,
 	inboxes []models.Inbox,
 	users []models.User,
 	getScenarioIteration func(scenarioIterationId string) (models.ScenarioIteration, error),
-	getScreenings func(decisionId string) ([]models.ScreeningWithMatches, error),
 ) (CaseWithDecisions, error) {
-	decisions := make([]Decision, len(c.Decisions))
+	decisionDtos := make([]Decision, len(c.Decisions))
 	for i := range c.Decisions {
 		iteration, err := getScenarioIteration(c.Decisions[i].ScenarioIterationId.String())
 		if err != nil {
 			return CaseWithDecisions{}, err
 		}
-		screenings, err := getScreenings(c.Decisions[i].DecisionId.String())
-		if err != nil {
-			return CaseWithDecisions{}, err
-		}
-		decisions[i] = AdaptDecision(c.Decisions[i], iteration, nil, nil, screenings)
+		decisionDtos[i] = AdaptDecisionWithoutRuleExecDetails(decisions[i], iteration)
 	}
 	return CaseWithDecisions{
 		Case:      AdaptCaseDto(c, tags, inboxes, users),
-		Decisions: decisions,
+		Decisions: decisionDtos,
 	}, nil
 }
 
@@ -143,16 +135,11 @@ func (i IngestedDataResult) PrintForAgent() (string, error) {
 
 	err := WriteClientDataToCsv(i.Data, csvWriter)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "could not write client data to csv")
 	}
 	csvWriter.Flush()
 	return stringBuilder.String(), nil
 }
-
-// type CasePivotObjectData struct {
-// 	IngestedData map[string]IngestedDataResult `json:"ingested_data"`
-// 	RelatedCases []CaseWithDecisions           `json:"related_cases"`
-// }
 
 type CasePivotIngestedData map[string]IngestedDataResult
 
@@ -164,21 +151,8 @@ func (c CasePivotIngestedData) PrintForAgent() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		stringBuilder.WriteString(fmt.Sprintf("table %s as csv: %s\n", key, ingestedDataFormatted))
+		stringBuilder.WriteString(fmt.Sprintf("\nData from table \"%s\" as csv:\n <IngestedDataTable>\n%s\n</IngestedDataTable>", key, ingestedDataFormatted))
 	}
-
-	// for _, relatedCase := range c.RelatedCases {
-	// 	relatedCaseFormatted, err := json.Marshal(relatedCase)
-	// 	if err != nil {
-	// 		return "", err
-	// 	}
-	// 	stringBuilder.WriteString("related case:")
-	// 	_, err = stringBuilder.Write(relatedCaseFormatted)
-	// 	if err != nil {
-	// 		return "", err
-	// 	}
-	// 	stringBuilder.WriteString("\n")
-	// }
 
 	return stringBuilder.String(), nil
 }
@@ -186,24 +160,26 @@ func (c CasePivotIngestedData) PrintForAgent() (string, error) {
 type CasIngestedDataByPivot map[string]CasePivotIngestedData
 
 func (c CasIngestedDataByPivot) PrintForAgent() (string, error) {
-	return "", nil
+	stringBuilder := strings.Builder{}
+
+	for pivotValueKey, value := range c {
+		pivotValue, pivotObjectType := pivotObjectTypeAndValueFromKey(pivotValueKey)
+		allTablesFormatted, err := value.PrintForAgent()
+		if err != nil {
+			return "", err
+		}
+		stringBuilder.WriteString(fmt.Sprintf("\nAll ingested data for customer of type \"%s\" with pivot value \"%s\":\n <IngestedDataForPivot>\n%s\n</IngestedDataForPivot>",
+			pivotObjectType, pivotValue, allTablesFormatted))
+	}
+
+	return stringBuilder.String(), nil
 }
 
-type CasePivotDataByPivot struct {
-	IngestedData CasIngestedDataByPivot
-	RelatedCases map[string][]CaseWithDecisions
+func PivotObjectKeyForMap(pivotObject models.PivotObject) string {
+	return pivotObject.PivotObjectName + ":::" + pivotObject.PivotValue
 }
 
-// func (c CasePivotDataByPivot) PrintForAgent() (string, error) {
-// 	stringBuilder := strings.Builder{}
-
-// 	for key, value := range c.Data {
-// 		ingestedDataFormatted, err := value.PrintForAgent()
-// 		if err != nil {
-// 			return "", err
-// 		}
-// 		stringBuilder.WriteString(fmt.Sprintf("pivot object %s: %s\n", key, ingestedDataFormatted))
-// 	}
-
-// 	return stringBuilder.String(), nil
-// }
+func pivotObjectTypeAndValueFromKey(key string) (string, string) {
+	parts := strings.Split(key, ":::")
+	return parts[0], parts[1]
+}
