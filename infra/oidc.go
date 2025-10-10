@@ -17,6 +17,8 @@ type OidcConfig struct {
 	Scopes       []string
 	ExtraParams  map[string]string
 
+	AllowedDomains []string
+
 	Provider *oidc.Provider
 	Verifier *oidc.IDTokenVerifier
 }
@@ -39,6 +41,16 @@ func InitializeOidc(ctx context.Context) (OidcConfig, error) {
 		return OidcConfig{}, err
 	}
 
+	var allowedDomains []string
+
+	if domains := utils.GetEnv("AUTH_OIDC_ALLOWED_DOMAINS", ""); domains != "" {
+		allowedDomains = strings.Split(domains, ",")
+	}
+
+	for idx, domain := range allowedDomains {
+		allowedDomains[idx] = "@" + domain
+	}
+
 	return OidcConfig{
 		Issuer:       issuer,
 		ClientId:     clientId,
@@ -46,6 +58,8 @@ func InitializeOidc(ctx context.Context) (OidcConfig, error) {
 		Scopes:       strings.Split(utils.GetEnv("AUTH_OIDC_SCOPE", ""), ","),
 		RedirectUri:  utils.GetEnv("AUTH_OIDC_REDIRECT_URI", ""),
 		ExtraParams:  extraParams,
+
+		AllowedDomains: allowedDomains,
 
 		Provider: provider,
 		Verifier: provider.Verifier(&oidc.Config{
