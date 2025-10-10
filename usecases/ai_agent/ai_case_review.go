@@ -562,9 +562,9 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 				"customer_related_data": relatedDataPerClient.ingestedData,
 
 				// Data from previous steps
-				"data_model_summary": *caseReviewContext.DataModelSummary,
-				"rules_summary":      *caseReviewContext.RulesDefinitionsReview,
-				"rule_thresholds":    *caseReviewContext.RuleThresholds,
+				"data_model_summary": caseReviewContext.DataModelSummary,
+				"rules_summary":      caseReviewContext.RulesDefinitionsReview,
+				"rule_thresholds":    caseReviewContext.RuleThresholds,
 				"pivot_enrichment":   caseReviewContext.PivotEnrichments,
 			},
 		)
@@ -594,19 +594,24 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		modelSanityCheck, promptSanityCheck, err := uc.preparePromptWithModel(
 			PROMPT_SANITY_CHECK_PATH,
 			map[string]any{
+				// Global data
+				"org_activity": organizationDescription,
+
 				// Case data
-				"case_detail":    caseData.case_,
-				"case_events":    caseData.events,
-				"decisions":      caseData.decisions,
-				"pivot_objects":  caseData.pivotData,
-				"previous_cases": relatedDataPerClient.relatedCases,
+				"case_detail":           caseData.case_,
+				"case_events":           caseData.events,
+				"decisions":             caseData.decisions,
+				"pivot_objects":         caseData.pivotData,
+				"has_more_alerts":       caseData.hasMoreDecisions,
+				"previous_cases":        relatedDataPerClient.relatedCases,
+				"customer_related_data": relatedDataPerClient.ingestedData,
 
 				// Data from previous steps
-				"data_model_summary": *caseReviewContext.DataModelSummary,
-				"rules_summary":      *caseReviewContext.RulesDefinitionsReview,
-				"rule_thresholds":    *caseReviewContext.RuleThresholds,
-				"case_review":        *caseReviewContext.CaseReview,
+				"data_model_summary": caseReviewContext.DataModelSummary,
+				"rules_summary":      caseReviewContext.RulesDefinitionsReview,
+				"rule_thresholds":    caseReviewContext.RuleThresholds,
 				"pivot_enrichments":  caseReviewContext.PivotEnrichments,
+				"case_review":        caseReviewContext.CaseReview,
 			},
 		)
 		if err != nil {
@@ -693,6 +698,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			logger.ErrorContext(ctx,
 				"invalid review level received: "+*caseReviewContext.SanityCheck.ReviewLevel)
 			caseReviewContext.SanityCheck.ReviewLevel = nil
+		} else if caseReviewContext.SanityCheck.ReviewLevel == nil {
+			logger.ErrorContext(ctx, "no review level received")
 		}
 		return agent_dto.CaseReviewV1{
 			Ok:               caseReviewContext.SanityCheck.Ok,
