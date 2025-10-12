@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"slices"
+	"text/template"
 
 	"github.com/checkmarble/llmberjack"
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
@@ -1016,4 +1017,19 @@ func (uc *AiAgentUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId stri
 		return false, nil
 	}
 	return true, nil
+}
+
+var templateFuncMap = template.FuncMap{
+	"isTrue": func(v any) bool {
+		// 1. Try to convert the `any` value to a `*bool`.
+		b, ok := v.(*bool)
+
+		// 2. If it's not a *bool OR if the pointer is nil, it's not "true".
+		if !ok || b == nil {
+			return false
+		}
+
+		// 3. If we're here, we have a valid pointer. Dereference it and return its value.
+		return *b
+	},
 }
