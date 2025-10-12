@@ -3,6 +3,7 @@ package ai_agent
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"text/template"
 
@@ -646,7 +647,16 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 				}
 				if len(objs) == 0 {
 					badObject = true
-					logger.ErrorContext(ctx, "no ingested object found for proof", "type", proof.Type, "id", proof.Id)
+					if isPivotObject(proof, caseData.pivotData) {
+						// The agent "should not" use this as proof, it's already the basic data from the case. Silently ignore it if it happens.
+						logger.DebugContext(ctx, fmt.Sprintf("pivot object %s \"%s\" used as proof but has not been ingested", proof.Type, proof.Id))
+					} else if isDecisionTriggerObject(proof, caseData.decisions) {
+						// TODO: ideally, allow this and make the frontend handle this case, by having a different type of proof data
+						// "decision_trigger". In practice, not the highest priority so may be done later.
+						logger.DebugContext(ctx, fmt.Sprintf("decision trigger object %s \"%s\" used as proof but has not been ingested", proof.Type, proof.Id))
+					} else {
+						logger.ErrorContext(ctx, "no ingested object found for proof", "type", proof.Type, "id", proof.Id)
+					}
 				}
 			}
 			if badObject {
@@ -1101,4 +1111,23 @@ var templateFuncMap = template.FuncMap{
 		// 3. If we're here, we have a valid pointer. Dereference it and return its value.
 		return *b
 	},
+}
+
+func isPivotObject(proof agent_dto.CaseReviewProof, pivotObjects []agent_dto.PivotObject) bool {
+	for _, pivotObject := range pivotObjects {
+		if pivotObject.PivotObjectName == proof.Type && pivotObject.PivotValue == proof.Id {
+			return true
+		}
+	}
+	return false
+}
+
+func isDecisionTriggerObject(proof agent_dto.CaseReviewProof, decisions []agent_dto.Decision) bool {
+	for _, decision := range decisions {
+		if decision.TriggerObjectType == proof.Type &&
+			decision.TriggerObject["object_id"] == proof.Id {
+			return true
+		}
+	}
+	return false
 }
