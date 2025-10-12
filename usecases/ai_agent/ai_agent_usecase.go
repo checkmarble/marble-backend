@@ -364,7 +364,7 @@ func preparePrompt(promptPath string, data map[string]any) (prompt string, err e
 		}
 	}
 
-	t, err := template.New(promptPath).Parse(promptContent)
+	t, err := template.New(promptPath).Funcs(templateFuncMap).Parse(promptContent)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not parse template %s", promptPath)
 	}
