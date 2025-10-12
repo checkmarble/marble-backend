@@ -157,9 +157,9 @@ func (c CasePivotIngestedData) PrintForAgent() (string, error) {
 	return stringBuilder.String(), nil
 }
 
-type CasIngestedDataByPivot map[string]CasePivotIngestedData
+type CaseIngestedDataByPivot map[string]CasePivotIngestedData
 
-func (c CasIngestedDataByPivot) PrintForAgent() (string, error) {
+func (c CaseIngestedDataByPivot) PrintForAgent() (string, error) {
 	stringBuilder := strings.Builder{}
 
 	for pivotValueKey, value := range c {

@@ -706,6 +706,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			Output:           finalOutput,
 			Proofs:           proofs,
 			PivotEnrichments: pivotEnrichments,
+			ReviewLevel:      caseReviewContext.SanityCheck.ReviewLevel,
 		}, nil
 	}
 	return agent_dto.CaseReviewV1{
@@ -718,7 +719,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 }
 
 type casePivotDataByPivot struct {
-	ingestedData agent_dto.CasIngestedDataByPivot
+	ingestedData agent_dto.CaseIngestedDataByPivot
 	relatedCases map[string][]agent_dto.CaseWithDecisions
 }
 
@@ -840,7 +841,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 	}
 
 	relatedDataPerClient := casePivotDataByPivot{
-		ingestedData: make(agent_dto.CasIngestedDataByPivot, len(pivotObjects)),
+		ingestedData: make(agent_dto.CaseIngestedDataByPivot, len(pivotObjects)),
 		relatedCases: make(map[string][]agent_dto.CaseWithDecisions, len(pivotObjects)),
 	}
 
@@ -971,7 +972,7 @@ type caseData struct {
 	organizationId   string
 }
 
-func someClientHasManyRowsForTable(relatedDataPerClient agent_dto.CasIngestedDataByPivot, tableName string) bool {
+func someClientHasManyRowsForTable(relatedDataPerClient agent_dto.CaseIngestedDataByPivot, tableName string) bool {
 	for _, clientData := range relatedDataPerClient {
 		if clientData[tableName].Data != nil {
 			return len(clientData[tableName].Data) > HIGH_NB_ROWS_THRESHOLD
