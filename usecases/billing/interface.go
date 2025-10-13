@@ -2,10 +2,13 @@ package billing
 
 import (
 	"context"
+	"errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	lago_repository "github.com/checkmarble/marble-backend/repositories/lago"
 )
+
+var ErrInsufficientFunds = errors.New("insufficient funds in wallet")
 
 type BillingUsecaseInterface interface {
 	EnqueueBillingEventTask(ctx context.Context, event models.BillingEvent) error

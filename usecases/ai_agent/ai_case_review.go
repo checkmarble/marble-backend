@@ -323,7 +323,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		return nil, errors.Wrap(err, "could not check if enough funds in wallet")
 	}
 	if !enoughFunds {
-		return nil, errors.New("not enough funds in wallet")
+		return nil, billing.ErrInsufficientFunds
 	}
 
 	// Get AI setting

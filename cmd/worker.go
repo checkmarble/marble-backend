@@ -95,6 +95,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if err != nil {
 		logger.WarnContext(ctx, "could not initialize GCP config", "error", err.Error())
 	}
+
 	isMarbleSaasProject := infra.IsMarbleSaasProject()
 
 	offloadingConfig := infra.OffloadingConfig{
