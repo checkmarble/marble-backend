@@ -55,13 +55,14 @@ type sanityCheckOutput struct {
 
 // The jsonschema used for the case review output are set dynamically, because the list of enum values depends on the user.
 type caseReviewOutput struct {
-	CaseReview string `json:"case_review"`
-	Proofs     []struct {
-		Id     string               `json:"id"`
-		Type   string               `json:"type"`
-		Origin agent_dto.OriginName `json:"origin"`
-		Reason string               `json:"reason"`
-	} `json:"proofs"`
+	CaseReview string  `json:"case_review"`
+	Proofs     []proof `json:"proofs"`
+}
+type proof struct {
+	Id     string               `json:"id"`
+	Type   string               `json:"type"`
+	Origin agent_dto.OriginName `json:"origin"`
+	Reason string               `json:"reason"`
 }
 
 type customOrgInstructions struct {
@@ -575,48 +576,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			return nil, errors.Wrap(err, "could not prepare case review request")
 		}
 
-		// The schema is constructed dynamically so that we can pass the enum of table names explicitly.
-		properties := jsonschema.NewProperties()
-		properties.Set("case_review", &jsonschema.Schema{
-			Type: "string",
-		})
-		proofsSchemaDataModel := jsonschema.NewProperties()
-		proofsSchemaDataModel.Set("id", &jsonschema.Schema{
-			Type:        "string",
-			Description: "The ID of the object used as proof. For ingested data, this is their object_id. The value of the id should be consistent with the type of the object, in the sense that an object of type \"{type}\" with id \"{object_id}\" is present in the case.",
-		})
-		proofsSchemaDataModel.Set("type", &jsonschema.Schema{
-			Type:        "string",
-			Description: "The type of object that serves as proof.",
-			Enum:        pure_utils.ToAnySlice(pure_utils.Keys(caseData.dataModel.Tables)),
-		})
-		proofsSchemaDataModel.Set("origin", &jsonschema.Schema{
-			Type:        "string",
-			Description: "The origin of the object used as proof. In this case, can only be \"data_model\".",
-			Enum:        []any{"data_model"},
-		})
-		proofsSchemaDataModel.Set("reason", &jsonschema.Schema{
-			Type:        "string",
-			Description: "The reason why this object was useful for your review.",
-		})
-
-		// TODO: later, perhaps add the possibility for "internal" objects, meaning screenings or screening matches, or for external links.
-		// For now, the frontend will only handle "data_model" objects.
-		properties.Set("proofs", &jsonschema.Schema{
-			Type: "array",
-			Items: &jsonschema.Schema{
-				Type:       "object",
-				Properties: proofsSchemaDataModel,
-				Required:   []string{"id", "type", "origin", "reason"},
-			},
-		})
-		schema := jsonschema.Schema{
-			Title:       "Case Review",
-			Description: "A review of a case",
-			Type:        "object",
-			Properties:  properties,
-		}
-
+		schema := getProofSchema(caseData.dataModel)
 		requestCaseReview, err := llmberjack.NewRequest[caseReviewOutput]().
 			OverrideResponseSchema(schema).
 			WithModel(modelCaseReview).
@@ -633,31 +593,9 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 		// any incorrect proofs are logged but otherwise ignored
 		for i, proof := range caseReview.Proofs {
-			badObject := false
-			if proof.Origin != agent_dto.OriginNameDataModel {
-				badObject = true
-				logger.ErrorContext(ctx, "invalid proof origin", "origin", proof.Origin)
-			} else {
-				objs, err := uc.ingestedDataReader.GetIngestedObject(
-					ctx, caseData.organizationId,
-					&caseData.dataModel, proof.Type,
-					proof.Id, "object_id")
-				if err != nil {
-					return nil, errors.Wrapf(err, "could not get ingested object of type %s for proof %s", proof.Type, proof.Id)
-				}
-				if len(objs) == 0 {
-					badObject = true
-					if isPivotObject(proof, caseData.pivotData) {
-						// The agent "should not" use this as proof, it's already the basic data from the case. Silently ignore it if it happens.
-						logger.DebugContext(ctx, fmt.Sprintf("pivot object %s \"%s\" used as proof but has not been ingested", proof.Type, proof.Id))
-					} else if isDecisionTriggerObject(proof, caseData.decisions) {
-						// TODO: ideally, allow this and make the frontend handle this case, by having a different type of proof data
-						// "decision_trigger". In practice, not the highest priority so may be done later.
-						logger.DebugContext(ctx, fmt.Sprintf("decision trigger object %s \"%s\" used as proof but has not been ingested", proof.Type, proof.Id))
-					} else {
-						logger.ErrorContext(ctx, "no ingested object found for proof", "type", proof.Type, "id", proof.Id)
-					}
-				}
+			badObject, err := uc.shouldRemoveProof(ctx, caseData, proof)
+			if err != nil {
+				return nil, err
 			}
 			if badObject {
 				caseReview.Proofs = slices.Delete(caseReview.Proofs, i, 1)
@@ -1130,4 +1068,85 @@ func isDecisionTriggerObject(proof agent_dto.CaseReviewProof, decisions []agent_
 		}
 	}
 	return false
+}
+
+// shouldRemoveProof centralizes validation of a proof element emitted by the LLM.
+// It returns true if the proof should be filtered out, and an error if a lookup failed.
+func (uc *AiAgentUsecase) shouldRemoveProof(ctx context.Context, caseData caseData, p proof) (bool, error) {
+	logger := utils.LoggerFromContext(ctx)
+
+	if p.Origin != agent_dto.OriginNameDataModel {
+		logger.ErrorContext(ctx, "invalid proof origin", "origin", p.Origin)
+		return true, nil
+	}
+
+	objs, err := uc.ingestedDataReader.GetIngestedObject(
+		ctx, caseData.organizationId,
+		&caseData.dataModel, p.Type,
+		p.Id, "object_id",
+	)
+	if err != nil {
+		return false, errors.Wrapf(err, "could not get ingested object of type %s for proof %s", p.Type, p.Id)
+	}
+	if len(objs) == 0 {
+		// Reuse existing helpers for nuanced logging
+		dtoProof := agent_dto.CaseReviewProof{Id: p.Id, Type: p.Type, Origin: p.Origin}
+		if isPivotObject(dtoProof, caseData.pivotData) {
+			// The agent "should not" use this as proof, it's already the basic data from the case. Silently ignore it if it happens.
+			logger.DebugContext(ctx, fmt.Sprintf("pivot object %s \"%s\" used as proof but has not been ingested", p.Type, p.Id))
+		} else if isDecisionTriggerObject(dtoProof, caseData.decisions) {
+			// TODO: ideally, allow this and make the frontend handle this case, by having a different type of proof data
+			// "decision_trigger". In practice, not the highest priority so may be done later.
+			logger.DebugContext(ctx, fmt.Sprintf("decision trigger object %s \"%s\" used as proof but has not been ingested", p.Type, p.Id))
+		} else {
+			logger.ErrorContext(ctx, "no ingested object found for proof", "type", p.Type, "id", p.Id)
+		}
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func getProofSchema(dataModel models.DataModel) jsonschema.Schema {
+	// The schema is constructed dynamically so that we can pass the enum of table names explicitly.
+	properties := jsonschema.NewProperties()
+	properties.Set("case_review", &jsonschema.Schema{
+		Type: "string",
+	})
+	proofsSchemaDataModel := jsonschema.NewProperties()
+	proofsSchemaDataModel.Set("id", &jsonschema.Schema{
+		Type:        "string",
+		Description: "The ID of the object used as proof. For ingested data, this is their object_id. The value of the id should be consistent with the type of the object, in the sense that an object of type \"{type}\" with id \"{object_id}\" is present in the case.",
+	})
+	proofsSchemaDataModel.Set("type", &jsonschema.Schema{
+		Type:        "string",
+		Description: "The type of object that serves as proof.",
+		Enum:        pure_utils.ToAnySlice(pure_utils.Keys(dataModel.Tables)),
+	})
+	proofsSchemaDataModel.Set("origin", &jsonschema.Schema{
+		Type:        "string",
+		Description: "The origin of the object used as proof. In this case, can only be \"data_model\".",
+		Enum:        []any{"data_model"},
+	})
+	proofsSchemaDataModel.Set("reason", &jsonschema.Schema{
+		Type:        "string",
+		Description: "The reason why this object was useful for your review.",
+	})
+
+	// TODO: later, perhaps add the possibility for "internal" objects, meaning screenings or screening matches, or for external links.
+	// For now, the frontend will only handle "data_model" objects.
+	properties.Set("proofs", &jsonschema.Schema{
+		Type: "array",
+		Items: &jsonschema.Schema{
+			Type:       "object",
+			Properties: proofsSchemaDataModel,
+			Required:   []string{"id", "type", "origin", "reason"},
+		},
+	})
+	return jsonschema.Schema{
+		Title:       "Case Review",
+		Description: "A review of a case",
+		Type:        "object",
+		Properties:  properties,
+	}
 }
