@@ -288,7 +288,7 @@ func (repo LagoRepository) sendBatch(ctx context.Context, baseUrl string, body [
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		logger.WarnContext(ctx, "failed to send events", "status", resp.StatusCode, "response", string(bodyBytes))
-		return errors.Newf("failed to send events")
+		return errors.New("failed to send events")
 	}
 	return nil
 }
