@@ -13,7 +13,7 @@ func NewDisabledBillingUsecase() DisabledBillingUsecase {
 	return DisabledBillingUsecase{}
 }
 
-func (u DisabledBillingUsecase) SendEventAsync(ctx context.Context, tx repositories.Transaction, orgId string, event models.BillingEvent) error {
+func (u DisabledBillingUsecase) SendEventAsync(ctx context.Context, tx repositories.Transaction, event models.BillingEvent) error {
 	return nil
 }
 

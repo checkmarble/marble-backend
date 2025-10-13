@@ -726,7 +726,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	// Send billing event
 	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return uc.billingUsecase.SendEventAsync(ctx, tx, caseData.organizationId, models.BillingEvent{
+		return uc.billingUsecase.SendEventAsync(ctx, tx, models.BillingEvent{
 			TransactionId:          uuid.Must(uuid.NewV7()).String(),
 			ExternalSubscriptionId: subscriptionId,
 			Code:                   billing.AI_CASE_REVIEW.String(),

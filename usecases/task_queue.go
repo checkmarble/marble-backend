@@ -203,7 +203,15 @@ func QueuesFromOrgs(ctx context.Context, appName string,
 
 func QueueMetrics() map[string]river.QueueConfig {
 	queues := make(map[string]river.QueueConfig, 1)
-	queues["metrics"] = river.QueueConfig{
+	queues[models.METRICS_QUEUE_NAME] = river.QueueConfig{
+		MaxWorkers: 1,
+	}
+	return queues
+}
+
+func QueueBilling() map[string]river.QueueConfig {
+	queues := make(map[string]river.QueueConfig, 1)
+	queues[models.BILLING_QUEUE_NAME] = river.QueueConfig{
 		MaxWorkers: 1,
 	}
 	return queues

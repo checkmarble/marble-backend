@@ -17,6 +17,10 @@ func InitializeLago() LagoConfig {
 	}
 }
 
+func (config LagoConfig) IsConfigured() bool {
+	return config.BaseUrl != "" && config.ApiKey != ""
+}
+
 func (config LagoConfig) Validate() error {
 	if config.BaseUrl == "" || config.ApiKey == "" {
 		return errors.New("lago config is not valid")

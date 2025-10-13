@@ -218,8 +218,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	globalPeriodics := []*river.PeriodicJob{}
 
 	if !metricCollectionConfig.Disabled {
-		metricQueue := usecases.QueueMetrics()
-		maps.Copy(nonOrgQueues, metricQueue)
+		maps.Copy(nonOrgQueues, usecases.QueueMetrics())
 		globalPeriodics = append(globalPeriodics,
 			scheduled_execution.NewMetricsCollectionPeriodicJob(metricCollectionConfig))
 	}
@@ -230,7 +229,11 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		globalPeriodics = append(globalPeriodics,
 			scheduled_execution.NewAnalyticsMergeJob())
 	}
+	if isMarbleSaasProject && lagoConfig.IsConfigured() {
+		maps.Copy(nonOrgQueues, usecases.QueueBilling())
+	}
 
+	// Merge non-org queues with org queues
 	maps.Copy(queues, nonOrgQueues)
 
 	// Periodics always contain the per-org tasks retrieved above. Add other, non-organization-scoped periodics below
@@ -313,7 +316,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		river.AddWorker(workers, adminUc.NewAnalyticsExportWorker())
 		river.AddWorker(workers, adminUc.NewAnalyticsMergeWorker())
 	}
-	if err := lagoConfig.Validate(); err == nil {
+	if lagoConfig.IsConfigured() {
 		river.AddWorker(workers, uc.NewSendBillingEventsWorker())
 	}
 

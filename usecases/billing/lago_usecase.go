@@ -16,7 +16,7 @@ type lagoRepository interface {
 }
 
 type enqueueSendBillingEventTask interface {
-	EnqueueSendBillingEventTask(ctx context.Context, tx repositories.Transaction, orgId string, event models.BillingEvent) error
+	EnqueueSendBillingEventTask(ctx context.Context, tx repositories.Transaction, event models.BillingEvent) error
 }
 
 type LagoBillingUsecase struct {
@@ -36,8 +36,8 @@ func NewLagoBillingUsecase(
 }
 
 // Send an event to Lago in async
-func (u LagoBillingUsecase) SendEventAsync(ctx context.Context, tx repositories.Transaction, orgId string, event models.BillingEvent) error {
-	return u.enqueueSendBillingEventTask.EnqueueSendBillingEventTask(ctx, tx, orgId, event)
+func (u LagoBillingUsecase) SendEventAsync(ctx context.Context, tx repositories.Transaction, event models.BillingEvent) error {
+	return u.enqueueSendBillingEventTask.EnqueueSendBillingEventTask(ctx, tx, event)
 }
 
 // Check if there are enough funds in the wallet to cover the cost of the event

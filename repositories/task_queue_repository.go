@@ -74,7 +74,6 @@ type TaskQueueRepository interface {
 	EnqueueSendBillingEventTask(
 		ctx context.Context,
 		tx Transaction,
-		orgId string,
 		event models.BillingEvent,
 	) error
 }
@@ -314,7 +313,6 @@ func (r riverRepository) EnqueueDecisionWorkflowTask(
 func (r riverRepository) EnqueueSendBillingEventTask(
 	ctx context.Context,
 	tx Transaction,
-	orgId string,
 	event models.BillingEvent,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
@@ -326,7 +324,7 @@ func (r riverRepository) EnqueueSendBillingEventTask(
 			Event: event,
 		},
 		&river.InsertOpts{
-			Queue: orgId,
+			Queue: "billing",
 		},
 	)
 	if err != nil {
