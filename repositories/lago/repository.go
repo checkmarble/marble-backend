@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
@@ -32,7 +31,7 @@ func NewLagoRepository(lagoConfig infra.LagoConfig) LagoRepository {
 }
 
 func (repo LagoRepository) IsConfigured() bool {
-	return repo.lagoConfig.BaseUrl != "" && repo.lagoConfig.ApiKey != ""
+	return repo.lagoConfig.BaseUrl != "" && repo.lagoConfig.ApiKey != "" && repo.lagoConfig.ParsedUrl != nil
 }
 
 // Build the request with the correct headers
@@ -52,11 +51,7 @@ func (repo LagoRepository) GetWallet(ctx context.Context, orgId string) ([]model
 		return nil, errors.New("lago repository is not configured")
 	}
 
-	baseUrl, err := url.Parse(repo.lagoConfig.BaseUrl)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse lago base url")
-	}
-
+	baseUrl := *repo.lagoConfig.ParsedUrl
 	baseUrl.Path = "/api/v1/wallets"
 	query := baseUrl.Query()
 	query.Add("external_customer_id", orgId)
@@ -91,11 +86,7 @@ func (repo LagoRepository) GetSubscriptions(ctx context.Context, orgId string) (
 		return nil, errors.New("lago repository is not configured")
 	}
 
-	baseUrl, err := url.Parse(repo.lagoConfig.BaseUrl)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse lago base url")
-	}
-
+	baseUrl := *repo.lagoConfig.ParsedUrl
 	baseUrl.Path = "/api/v1/subscriptions"
 	query := baseUrl.Query()
 	query.Add("external_customer_id", orgId)
@@ -132,11 +123,7 @@ func (repo LagoRepository) GetSubscription(ctx context.Context, subscriptionExte
 		return models.Subscription{}, errors.New("lago repository is not configured")
 	}
 
-	baseUrl, err := url.Parse(repo.lagoConfig.BaseUrl)
-	if err != nil {
-		return models.Subscription{}, errors.Wrap(err, "failed to parse lago base url")
-	}
-
+	baseUrl := *repo.lagoConfig.ParsedUrl
 	baseUrl.Path = fmt.Sprintf("/api/v1/subscriptions/%s", subscriptionExternalId)
 
 	req, err := repo.getRequest(ctx, http.MethodGet, baseUrl.String(), nil)
@@ -173,11 +160,7 @@ func (repo LagoRepository) GetCustomerUsage(
 		return models.CustomerUsage{}, errors.New("lago repository is not configured")
 	}
 
-	baseUrl, err := url.Parse(repo.lagoConfig.BaseUrl)
-	if err != nil {
-		return models.CustomerUsage{}, errors.Wrap(err, "failed to parse lago base url")
-	}
-
+	baseUrl := *repo.lagoConfig.ParsedUrl
 	baseUrl.Path = fmt.Sprintf("/api/v1/customers/%s/current_usage", orgId)
 	query := baseUrl.Query()
 	query.Add("external_subscription_id", subscriptionExternalId)
@@ -212,10 +195,7 @@ func (repo LagoRepository) SendEvent(ctx context.Context, event models.BillingEv
 		return errors.New("lago repository is not configured")
 	}
 
-	baseUrl, err := url.Parse(repo.lagoConfig.BaseUrl)
-	if err != nil {
-		return errors.Wrap(err, "failed to parse lago base url")
-	}
+	baseUrl := *repo.lagoConfig.ParsedUrl
 	baseUrl.Path = "/api/v1/events"
 
 	body, err := json.Marshal(AdaptModelToBillingEventDto(event))
@@ -251,10 +231,7 @@ func (repo LagoRepository) SendEvents(ctx context.Context, events []models.Billi
 		return errors.New("lago repository is not configured")
 	}
 
-	baseUrl, err := url.Parse(repo.lagoConfig.BaseUrl)
-	if err != nil {
-		return errors.Wrap(err, "failed to parse lago base url")
-	}
+	baseUrl := *repo.lagoConfig.ParsedUrl
 	baseUrl.Path = "/api/v1/events/batch"
 
 	for i := 0; i < len(events); i += MAX_EVENTS_PER_BATCH {

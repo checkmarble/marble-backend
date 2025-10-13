@@ -48,7 +48,6 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 
 	wallet, err := u.lagoRepository.GetWallet(ctx, orgId)
 	if err != nil {
-		logger.Error("failed to get wallet", "orgId", orgId, "error", err)
 		return false, "", err
 	}
 	if len(wallet) == 0 {
@@ -65,14 +64,12 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 		logger.Debug("no subscription found for the event", "orgId", orgId, "code", code)
 		return false, "", nil
 	} else if len(subscriptions) > 1 {
-		// Should we raise an error in this case?
 		logger.Warn("multiple subscriptions found for the event", "orgId", orgId, "code", code, "subscriptions", subscriptions)
 	}
 	subscription := subscriptions[0]
 
 	customerUsage, err := u.lagoRepository.GetCustomerUsage(ctx, orgId, subscription.ExternalId)
 	if err != nil {
-		logger.Error("failed to get customer usage", "orgId", orgId, "error", err)
 		return false, "", err
 	}
 
