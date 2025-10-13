@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/repositories"
 )
 
 type DisabledBillingUsecase struct{}
@@ -13,7 +12,7 @@ func NewDisabledBillingUsecase() DisabledBillingUsecase {
 	return DisabledBillingUsecase{}
 }
 
-func (u DisabledBillingUsecase) SendEventAsync(ctx context.Context, tx repositories.Transaction, event models.BillingEvent) error {
+func (u DisabledBillingUsecase) SendEventAsync(ctx context.Context, event models.BillingEvent) error {
 	return nil
 }
 

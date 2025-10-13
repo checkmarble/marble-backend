@@ -73,7 +73,6 @@ type TaskQueueRepository interface {
 	) error
 	EnqueueSendBillingEventTask(
 		ctx context.Context,
-		tx Transaction,
 		event models.BillingEvent,
 	) error
 }
@@ -312,14 +311,12 @@ func (r riverRepository) EnqueueDecisionWorkflowTask(
 
 func (r riverRepository) EnqueueSendBillingEventTask(
 	ctx context.Context,
-	tx Transaction,
 	event models.BillingEvent,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	res, err := r.client.InsertTx(
+	res, err := r.client.Insert(
 		ctx,
-		tx.RawTx(),
 		models.SendBillingEventArgs{
 			Event: event,
 		},

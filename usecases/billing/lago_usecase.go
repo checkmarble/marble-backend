@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -16,7 +15,7 @@ type lagoRepository interface {
 }
 
 type enqueueSendBillingEventTask interface {
-	EnqueueSendBillingEventTask(ctx context.Context, tx repositories.Transaction, event models.BillingEvent) error
+	EnqueueSendBillingEventTask(ctx context.Context, event models.BillingEvent) error
 }
 
 type LagoBillingUsecase struct {
@@ -36,8 +35,8 @@ func NewLagoBillingUsecase(
 }
 
 // Send an event to Lago in async
-func (u LagoBillingUsecase) SendEventAsync(ctx context.Context, tx repositories.Transaction, event models.BillingEvent) error {
-	return u.enqueueSendBillingEventTask.EnqueueSendBillingEventTask(ctx, tx, event)
+func (u LagoBillingUsecase) SendEventAsync(ctx context.Context, event models.BillingEvent) error {
+	return u.enqueueSendBillingEventTask.EnqueueSendBillingEventTask(ctx, event)
 }
 
 // Check if there are enough funds in the wallet to cover the cost of the event

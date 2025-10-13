@@ -95,8 +95,7 @@ func (m *TaskQueueRepository) EnqueueDecisionWorkflowTask(
 
 func (m *TaskQueueRepository) EnqueueSendBillingEventTask(
 	ctx context.Context,
-	tx repositories.Transaction,
 	event models.BillingEvent,
 ) error {
-	return m.Called(ctx, tx, event).Error(0)
+	return m.Called(ctx, event).Error(0)
 }

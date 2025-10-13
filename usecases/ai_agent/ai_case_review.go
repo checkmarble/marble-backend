@@ -725,13 +725,11 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	}
 
 	// Send billing event
-	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return uc.billingUsecase.SendEventAsync(ctx, tx, models.BillingEvent{
-			TransactionId:          uuid.Must(uuid.NewV7()).String(),
-			ExternalSubscriptionId: subscriptionId,
-			Code:                   billing.AI_CASE_REVIEW.String(),
-			Timestamp:              time.Now(),
-		})
+	err = uc.billingUsecase.SendEventAsync(ctx, models.BillingEvent{
+		TransactionId:          uuid.Must(uuid.NewV7()).String(),
+		ExternalSubscriptionId: subscriptionId,
+		Code:                   billing.AI_CASE_REVIEW.String(),
+		Timestamp:              time.Now(),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not send billing event")
