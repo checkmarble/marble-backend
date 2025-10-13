@@ -321,7 +321,7 @@ func (r riverRepository) EnqueueSendBillingEventTask(
 			Event: event,
 		},
 		&river.InsertOpts{
-			Queue: "billing",
+			Queue: models.BILLING_QUEUE_NAME,
 		},
 	)
 	if err != nil {

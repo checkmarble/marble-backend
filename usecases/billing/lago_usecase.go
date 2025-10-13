@@ -60,10 +60,11 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 		return false, "", err
 	}
 	if len(subscriptions) == 0 {
-		logger.Debug("no subscription found for the event", "orgId", orgId, "code", code)
+		logger.DebugContext(ctx, "no subscription found for the event", "orgId", orgId, "code", code)
 		return false, "", nil
 	} else if len(subscriptions) > 1 {
-		logger.Warn("multiple subscriptions found for the event", "orgId", orgId, "code", code, "subscriptions", subscriptions)
+		logger.WarnContext(ctx, "multiple subscriptions found for the event", "orgId",
+			orgId, "code", code, "subscriptions", subscriptions)
 	}
 	subscription := subscriptions[0]
 
@@ -74,7 +75,7 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 
 	// For now, suppose there is only one wallet
 	if wallet[0].BalanceCents <= customerUsage.TotalAmountCents {
-		logger.Debug("not enough funds in the wallet", "orgId", orgId, "code", code,
+		logger.DebugContext(ctx, "not enough funds in the wallet", "orgId", orgId, "code", code,
 			"wallet", wallet[0].BalanceCents, "subscription",
 			customerUsage.TotalAmountCents,
 		)
