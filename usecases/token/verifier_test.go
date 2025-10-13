@@ -26,7 +26,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		OrganizationId: "organization_id",
 		Prefix:         "abc",
 		Role:           models.ADMIN,
-		DisplayString: "Api key abc*** of organization",
+		DisplayString:  "Api key abc*** of organization",
 	}
 
 	organization := models.Organization{
@@ -105,6 +105,8 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
 			Return(models.Organization{}, nil)
 		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
+			Return(user, nil)
+		mockRepository.On("UpdateUser", mock.Anything, user, models.IdentityUpdatableClaims{}).
 			Return(user, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)

@@ -2,21 +2,30 @@ package models
 
 type IdentityClaims interface {
 	GetIssuer() string
-	GetName() (string, string, bool)
 	GetEmail() string
+	GetProfile() *IdentityUpdatableClaims
+}
+
+type IdentityUpdatableClaims struct {
+	Firstname string
+	Lastname  string
+	Picture   string
 }
 
 type FirebaseIdentity struct {
-	Issuer string
-	Email  string
+	Issuer  string
+	Email   string
+	Picture string
 }
 
 func (i FirebaseIdentity) GetIssuer() string {
 	return i.Issuer
 }
 
-func (i FirebaseIdentity) GetName() (string, string, bool) {
-	return "", "", false
+func (i FirebaseIdentity) GetProfile() *IdentityUpdatableClaims {
+	return &IdentityUpdatableClaims{
+		Picture: i.Picture,
+	}
 }
 
 func (i FirebaseIdentity) GetEmail() string {
@@ -28,18 +37,19 @@ type OidcIdentity struct {
 	Firstname string `json:"given_name"`  //nolint:tagliatelle
 	Lastname  string `json:"family_name"` //nolint:tagliatelle
 	Email     string `json:"email"`
+	Picture   string `json:"picture"`
 }
 
 func (i OidcIdentity) GetIssuer() string {
 	return i.Issuer
 }
 
-func (i OidcIdentity) GetName() (string, string, bool) {
-	if i.Firstname != "" && i.Lastname != "" {
-		return i.Firstname, i.Lastname, true
+func (i OidcIdentity) GetProfile() *IdentityUpdatableClaims {
+	return &IdentityUpdatableClaims{
+		Firstname: i.Firstname,
+		Lastname:  i.Lastname,
+		Picture:   i.Picture,
 	}
-
-	return "", "", false
 }
 
 func (c OidcIdentity) GetEmail() string {
@@ -54,8 +64,8 @@ func (i ApiKeyIdentity) GetIssuer() string {
 	return "marble"
 }
 
-func (i ApiKeyIdentity) GetName() (string, string, bool) {
-	return "", "", false
+func (i ApiKeyIdentity) GetProfile() *IdentityUpdatableClaims {
+	return nil
 }
 
 func (i ApiKeyIdentity) GetEmail() string {
