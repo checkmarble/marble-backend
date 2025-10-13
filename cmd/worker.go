@@ -95,7 +95,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if err != nil {
 		logger.WarnContext(ctx, "could not initialize GCP config", "error", err.Error())
 	}
-
 	isMarbleSaasProject := infra.IsMarbleSaasProject()
 
 	offloadingConfig := infra.OffloadingConfig{
@@ -223,7 +222,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		globalPeriodics = append(globalPeriodics,
 			scheduled_execution.NewMetricsCollectionPeriodicJob(metricCollectionConfig))
 	}
-
 	if analyticsConfig.Enabled {
 		analyticsQueue := usecases.QueueAnalyticsMerge()
 		maps.Copy(nonOrgQueues, analyticsQueue)
@@ -233,7 +231,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if isMarbleSaasProject && lagoConfig.IsConfigured() {
 		maps.Copy(nonOrgQueues, usecases.QueueBilling())
 	}
-
 	// Merge non-org queues with org queues
 	maps.Copy(queues, nonOrgQueues)
 
