@@ -12,8 +12,8 @@ import (
 
 type LagoBillingUsecaseTestSuite struct {
 	suite.Suite
-	lagoRepository              *mocks.LagoRepository
-	enqueueSendBillingEventTask *mocks.TaskQueueRepository
+	lagoRepository           *mocks.LagoRepository
+	billingEventTaskEnqueuer *mocks.TaskQueueRepository
 
 	ctx   context.Context
 	orgId string
@@ -21,7 +21,7 @@ type LagoBillingUsecaseTestSuite struct {
 
 func (suite *LagoBillingUsecaseTestSuite) SetupTest() {
 	suite.lagoRepository = new(mocks.LagoRepository)
-	suite.enqueueSendBillingEventTask = new(mocks.TaskQueueRepository)
+	suite.billingEventTaskEnqueuer = new(mocks.TaskQueueRepository)
 
 	suite.ctx = context.Background()
 	suite.orgId = "org-123"
@@ -30,14 +30,14 @@ func (suite *LagoBillingUsecaseTestSuite) SetupTest() {
 func (suite *LagoBillingUsecaseTestSuite) makeUsecase() LagoBillingUsecase {
 	return NewLagoBillingUsecase(
 		suite.lagoRepository,
-		suite.enqueueSendBillingEventTask,
+		suite.billingEventTaskEnqueuer,
 	)
 }
 
 func (suite *LagoBillingUsecaseTestSuite) AssertExpectations() {
 	t := suite.T()
 	suite.lagoRepository.AssertExpectations(t)
-	suite.enqueueSendBillingEventTask.AssertExpectations(t)
+	suite.billingEventTaskEnqueuer.AssertExpectations(t)
 }
 
 func TestLagoBillingUsecase(t *testing.T) {
@@ -82,7 +82,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_getSubscriptionsForEvent_ReturnsM
 				},
 				{
 					Id:                 "charge-2",
-					BillableMetricCode: DECISION.String(),
+					BillableMetricCode: UNKNOWN.String(),
 				},
 			},
 		},
@@ -98,7 +98,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_getSubscriptionsForEvent_ReturnsM
 			Charges: []models.Charge{
 				{
 					Id:                 "charge-3",
-					BillableMetricCode: DECISION.String(),
+					BillableMetricCode: UNKNOWN.String(),
 				},
 			},
 		},
@@ -155,7 +155,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_getSubscriptionsForEvent_NoMatchi
 			Charges: []models.Charge{
 				{
 					Id:                 "charge-1",
-					BillableMetricCode: DECISION.String(),
+					BillableMetricCode: UNKNOWN.String(),
 				},
 			},
 		},
@@ -217,7 +217,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_NoMatc
 			Charges: []models.Charge{
 				{
 					Id:                 "charge-1",
-					BillableMetricCode: DECISION.String(), // Different code
+					BillableMetricCode: UNKNOWN.String(), // Different code
 				},
 			},
 		},

@@ -8,7 +8,7 @@ import (
 )
 
 type BillingUsecaseInterface interface {
-	SendEventAsync(ctx context.Context, event models.BillingEvent) error
+	EnqueueBillingEventTask(ctx context.Context, event models.BillingEvent) error
 	CheckIfEnoughFundsInWallet(ctx context.Context, orgId string, code BillableMetric) (bool, string, error)
 }
 
@@ -16,7 +16,7 @@ type BillingUsecaseInterface interface {
 func NewBillingUsecase(
 	isLagoConfigured bool,
 	lagoRepository lago_repository.LagoRepository,
-	enqueueSendBillingEventTask enqueueSendBillingEventTask,
+	enqueueSendBillingEventTask billingEventTaskEnqueuer,
 ) BillingUsecaseInterface {
 	if isLagoConfigured {
 		return NewLagoBillingUsecase(
@@ -24,5 +24,5 @@ func NewBillingUsecase(
 			enqueueSendBillingEventTask,
 		)
 	}
-	return NewDisabledBillingUsecase()
+	return NewNoOpBillingUsecase()
 }

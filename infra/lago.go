@@ -19,7 +19,7 @@ func InitializeLago() LagoConfig {
 	baseUrl := utils.GetEnv("LAGO_BASE_URL", "")
 	var parsedUrl *url.URL
 	parsedUrl, err := url.Parse(baseUrl)
-	if err == nil {
+	if err != nil {
 		parsedUrl = nil
 	}
 

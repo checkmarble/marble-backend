@@ -14,29 +14,29 @@ type lagoRepository interface {
 	GetCustomerUsage(ctx context.Context, orgId string, subscriptionExternalId string) (models.CustomerUsage, error)
 }
 
-type enqueueSendBillingEventTask interface {
+type billingEventTaskEnqueuer interface {
 	EnqueueSendBillingEventTask(ctx context.Context, event models.BillingEvent) error
 }
 
 type LagoBillingUsecase struct {
 	lagoRepository lagoRepository
 
-	enqueueSendBillingEventTask enqueueSendBillingEventTask
+	billingEventTaskEnqueuer billingEventTaskEnqueuer
 }
 
 func NewLagoBillingUsecase(
 	lagoRepository lagoRepository,
-	enqueueSendBillingEventTask enqueueSendBillingEventTask,
+	billingEventTaskEnqueuer billingEventTaskEnqueuer,
 ) LagoBillingUsecase {
 	return LagoBillingUsecase{
-		lagoRepository:              lagoRepository,
-		enqueueSendBillingEventTask: enqueueSendBillingEventTask,
+		lagoRepository:           lagoRepository,
+		billingEventTaskEnqueuer: billingEventTaskEnqueuer,
 	}
 }
 
 // Send an event to Lago in async
-func (u LagoBillingUsecase) SendEventAsync(ctx context.Context, event models.BillingEvent) error {
-	return u.enqueueSendBillingEventTask.EnqueueSendBillingEventTask(ctx, event)
+func (u LagoBillingUsecase) EnqueueBillingEventTask(ctx context.Context, event models.BillingEvent) error {
+	return u.billingEventTaskEnqueuer.EnqueueSendBillingEventTask(ctx, event)
 }
 
 // Check if there are enough funds in the wallet to cover the cost of the event

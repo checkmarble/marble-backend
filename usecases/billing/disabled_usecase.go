@@ -6,16 +6,16 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-type DisabledBillingUsecase struct{}
+type NoOpBillingUsecase struct{}
 
-func NewDisabledBillingUsecase() DisabledBillingUsecase {
-	return DisabledBillingUsecase{}
+func NewNoOpBillingUsecase() NoOpBillingUsecase {
+	return NoOpBillingUsecase{}
 }
 
-func (u DisabledBillingUsecase) SendEventAsync(ctx context.Context, event models.BillingEvent) error {
+func (u NoOpBillingUsecase) EnqueueBillingEventTask(ctx context.Context, event models.BillingEvent) error {
 	return nil
 }
 
-func (u DisabledBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId string, code BillableMetric) (bool, string, error) {
+func (u NoOpBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId string, code BillableMetric) (bool, string, error) {
 	return true, "Fake subscription ID", nil
 }

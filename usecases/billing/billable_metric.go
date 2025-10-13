@@ -5,6 +5,8 @@ type BillableMetric string
 // Need to be synced with Lago Billable Metrics
 const (
 	AI_CASE_REVIEW BillableMetric = "ai_case_review"
+
+	UNKNOWN BillableMetric = "unknown"
 )
 
 func (b BillableMetric) String() string {

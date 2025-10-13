@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -14,6 +15,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var testLagoConfig = func() infra.LagoConfig {
+	baseUrl := "https://api.getlago.com"
+	parsedUrl, _ := url.Parse(baseUrl)
+
+	return infra.LagoConfig{
+		BaseUrl:   baseUrl,
+		ApiKey:    "test_api_key",
+		ParsedUrl: parsedUrl,
+	}
+}()
 
 func TestSendEvent(t *testing.T) {
 	defer gock.Off()
@@ -53,11 +65,8 @@ func TestSendEvent(t *testing.T) {
 	gock.InterceptClient(client)
 
 	repo := LagoRepository{
-		client: client,
-		lagoConfig: infra.LagoConfig{
-			BaseUrl: "https://api.getlago.com",
-			ApiKey:  "test_api_key",
-		},
+		client:     client,
+		lagoConfig: testLagoConfig,
 	}
 
 	event := models.BillingEvent{
@@ -122,11 +131,8 @@ func TestSendEvents(t *testing.T) {
 	gock.InterceptClient(client)
 
 	repo := LagoRepository{
-		client: client,
-		lagoConfig: infra.LagoConfig{
-			BaseUrl: "https://api.getlago.com",
-			ApiKey:  "test_api_key",
-		},
+		client:     client,
+		lagoConfig: testLagoConfig,
 	}
 
 	events := []models.BillingEvent{
@@ -213,11 +219,8 @@ func TestSendEvents_LargeBatch(t *testing.T) {
 	gock.InterceptClient(client)
 
 	repo := LagoRepository{
-		client: client,
-		lagoConfig: infra.LagoConfig{
-			BaseUrl: "https://api.getlago.com",
-			ApiKey:  "test_api_key",
-		},
+		client:     client,
+		lagoConfig: testLagoConfig,
 	}
 
 	// Create 150 events (more than MAX_EVENTS_PER_BATCH of 100)
