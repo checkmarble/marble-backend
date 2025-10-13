@@ -193,8 +193,8 @@ func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.A
 			"any_value(screening_name) as screening_name",
 			"count() as execs",
 			"count() filter (matches > 0) as hits",
-			"(hits / execs) * 100 as hit_ratio",
-			"avg(matches) filter (matches > 0) as avg_hits",
+			"coalesce((hits / execs) * 100, 0.0) as hit_ratio",
+			"coalesce(avg(matches) filter (matches > 0), 0) as avg_hits",
 		).
 		From(uc.analyticsFactory.BuildTarget("screenings", &scenario.TriggerObjectType)).
 		Where("created_at between ? and ?", filters.Start, filters.End).
