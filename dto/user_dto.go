@@ -14,6 +14,7 @@ type User struct {
 	PartnerId      *string    `json:"partner_id,omitempty"`
 	FirstName      string     `json:"first_name"`
 	LastName       string     `json:"last_name"`
+	Picture        string     `json:"picture"`
 	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
 }
 
@@ -26,6 +27,7 @@ func AdaptUserDto(user models.User) User {
 		PartnerId:      user.PartnerId,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
+		Picture:        user.Picture,
 		DeletedAt:      user.DeletedAt,
 	}
 }

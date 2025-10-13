@@ -14,6 +14,7 @@ type User struct {
 	LastName        string
 	DeletedAt       *time.Time
 	AiAssistEnabled bool
+	Picture         string
 }
 
 func (u User) FullName() string {

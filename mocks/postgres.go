@@ -27,8 +27,8 @@ func (m *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.Api
 	return args.Get(0).(models.ApiKey), args.Error(1)
 }
 
-func (m *Database) UpdateUser(ctx context.Context, user models.User, firstname, lastname string) (models.User, error) {
-	args := m.Called(ctx, user, firstname, lastname)
+func (m *Database) UpdateUser(ctx context.Context, user models.User, profile models.IdentityUpdatableClaims) (models.User, error) {
+	args := m.Called(ctx, user, profile)
 
 	return args.Get(0).(models.User), args.Error(1)
 }

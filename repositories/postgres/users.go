@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
 func (db *Database) UserByEmail(ctx context.Context, email string) (models.User, error) {
@@ -49,14 +50,29 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 	return user, nil
 }
 
-func (db *Database) UpdateUser(ctx context.Context, user models.User, firstname, lastname string) (models.User, error) {
-	query := `
-		update users
-		set first_name = $2, last_name = $3
-		where id = $1
-	`
+func (db *Database) UpdateUser(ctx context.Context, user models.User, profile models.IdentityUpdatableClaims) (models.User, error) {
+	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where("id = ?", user.UserId)
+	updated := false
 
-	if _, err := db.pool.Exec(ctx, query, user.UserId, firstname, lastname); err != nil {
+	if profile.Firstname != "" && profile.Lastname != "" {
+		query = query.Set("first_name", profile.Firstname).Set("last_name", profile.Lastname)
+		updated = true
+	}
+	if profile.Picture != "" {
+		query = query.Set("picture", profile.Picture)
+		updated = true
+	}
+
+	if !updated {
+		return user, nil
+	}
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return user, err
+	}
+
+	if _, err := db.pool.Exec(ctx, sql, args...); err != nil {
 		return user, err
 	}
 

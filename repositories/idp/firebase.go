@@ -47,9 +47,16 @@ func (c *FirebaseClient) VerifyToken(ctx context.Context, firebaseToken string) 
 			"unexpected firebase token content: Field email is missing")
 	}
 
+	picture := ""
+
+	if p, ok := token.Claims["picture"].(string); ok {
+		picture = p
+	}
+
 	return models.FirebaseIdentity{
-		Issuer: token.Issuer,
-		Email:  email,
+		Issuer:  token.Issuer,
+		Email:   email,
+		Picture: picture,
 	}, nil
 }
 

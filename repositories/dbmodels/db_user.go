@@ -16,6 +16,7 @@ type DBUserResult struct {
 	LastName        pgtype.Text        `db:"last_name"`
 	DeletedAt       pgtype.Timestamptz `db:"deleted_at"`
 	AiAssistEnabled bool               `db:"ai_assist_enabled"`
+	Picture         string             `db:"picture"`
 }
 
 const TABLE_USERS = "users"
@@ -29,6 +30,7 @@ func AdaptUser(db DBUserResult) (models.User, error) {
 		Role:            models.Role(db.Role),
 		PartnerId:       db.PartnerId,
 		AiAssistEnabled: db.AiAssistEnabled,
+		Picture:         db.Picture,
 	}
 	if db.OrganizationId != nil {
 		user.OrganizationId = *db.OrganizationId
