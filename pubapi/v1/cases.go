@@ -95,3 +95,52 @@ func HandleListCases(uc usecases.Usecases) gin.HandlerFunc {
 			Serve(c)
 	}
 }
+
+func HandleGetCase(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		caseUsecase := uc.NewCaseUseCase()
+		userUsecase := uc.NewUserUseCase()
+		tagUsecase := uc.NewTagUseCase()
+
+		cas, err := caseUsecase.GetCase(ctx, caseId.String())
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		users, err := userUsecase.ListUsers(ctx, &orgId)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+		tags, err := tagUsecase.ListAllTags(ctx, orgId, models.TagTargetCase, false)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.
+			NewResponse(dto.AdaptCase(users, tags, referents)(cas)).
+			Serve(c)
+	}
+}
