@@ -144,3 +144,56 @@ func HandleGetCase(uc usecases.Usecases) gin.HandlerFunc {
 			Serve(c)
 	}
 }
+
+func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		var p pubapi.PaginationParams
+
+		if err := c.ShouldBindQuery(&p); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		paging := p.ToModel(casePaginationDefaults)
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		caseUsecase := uc.NewCaseUseCase()
+		userUsecase := uc.NewUserUseCase()
+
+		users, err := userUsecase.ListUsers(ctx, &orgId)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		comments, err := caseUsecase.GetCaseComments(ctx, caseId.String(), paging)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		nextPageId := ""
+
+		if len(comments.Items) > 0 {
+			nextPageId = comments.Items[len(comments.Items)-1].Id
+		}
+
+		pubapi.
+			NewResponse(pure_utils.Map(comments.Items, dto.AdaptCaseComment(users))).
+			WithPagination(comments.HasNextPage, nextPageId).
+			Serve(c)
+	}
+}
