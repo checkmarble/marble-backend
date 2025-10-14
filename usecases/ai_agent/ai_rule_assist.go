@@ -64,7 +64,7 @@ func (uc *AiAgentUsecase) AiASTDescription(
 	flattenErrors := astValidation.Evaluation.FlattenErrors()
 	if len(astValidation.Errors) > 0 || len(flattenErrors) > 0 {
 		return models.AiRuleDescription{
-			RuleValid: false,
+			IsRuleValid: false,
 		}, nil
 	}
 
@@ -121,6 +121,6 @@ func (uc *AiAgentUsecase) AiASTDescription(
 
 	return models.AiRuleDescription{
 		Description: ruleDescriptionResponse.Description,
-		RuleValid:   true,
+		IsRuleValid: true,
 	}, nil
 }
