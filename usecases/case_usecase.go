@@ -45,6 +45,7 @@ type CaseUseCaseRepository interface {
 	BatchCreateCaseEvents(ctx context.Context, exec repositories.Executor,
 		createCaseEventAttributes []models.CreateCaseEventAttributes) error
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
+	ListCaseEventsOfTypes(ctx context.Context, exec repositories.Executor, caseId string, types []models.CaseEventType, paging models.PaginationAndSorting) ([]models.CaseEvent, error)
 
 	GetCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) (*models.CaseContributor, error)
 	CreateCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) error
@@ -211,6 +212,32 @@ func (uc *CaseUseCase) GetCasesReferents(ctx context.Context, caseIds []string) 
 	}
 
 	return referentMap, nil
+}
+
+func (uc *CaseUseCase) GetCaseComments(ctx context.Context, caseId string, paging models.PaginationAndSorting) (models.Paginated[models.CaseEvent], error) {
+	c, err := uc.GetCase(ctx, caseId)
+	if err != nil {
+		return models.Paginated[models.CaseEvent]{}, errors.Wrap(err, "could not retrieve requested case")
+	}
+
+	inboxes, err := uc.getAvailableInboxIds(ctx, uc.executorFactory.NewExecutor(), c.OrganizationId)
+	if err != nil {
+		return models.Paginated[models.CaseEvent]{}, errors.Wrap(err, "could not retrieve available inboxes")
+	}
+
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxes); err != nil {
+		return models.Paginated[models.CaseEvent]{}, err
+	}
+
+	comments, err := uc.repository.ListCaseEventsOfTypes(ctx, uc.executorFactory.NewExecutor(), caseId, []models.CaseEventType{models.CaseCommentAdded}, paging)
+	if err != nil {
+		return models.Paginated[models.CaseEvent]{}, errors.Wrap(err, "could not list comment case events")
+	}
+
+	return models.Paginated[models.CaseEvent]{
+		Items:       comments[:min(len(comments), paging.Limit)],
+		HasNextPage: len(comments) > paging.Limit,
+	}, nil
 }
 
 func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]uuid.UUID, error) {

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -26,6 +27,48 @@ func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, exec Executo
 		query,
 		dbmodels.AdaptCaseEvent,
 	)
+}
+
+func (repo *MarbleDbRepository) GetCaseEventById(ctx context.Context, exec Executor, id string) (models.CaseEvent, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.CaseEvent{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectCaseEventColumn...).
+		From(dbmodels.TABLE_CASE_EVENTS).
+		Where("id = ?", id)
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptCaseEvent)
+}
+
+func (repo *MarbleDbRepository) ListCaseEventsOfTypes(ctx context.Context, exec Executor, caseId string, types []models.CaseEventType, paging models.PaginationAndSorting) ([]models.CaseEvent, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectCaseEventColumn...).
+		From(dbmodels.TABLE_CASE_EVENTS).
+		Where(squirrel.Eq{"case_id": caseId}).
+		Where(squirrel.Eq{"event_type": types}).
+		OrderBy(fmt.Sprintf("created_at %[1]s, id %[1]s", paging.Order)).
+		Limit(uint64(paging.Limit) + 1)
+
+	if paging.OffsetId != "" {
+		offsetCaseEvent, err := repo.GetCaseEventById(ctx, exec, paging.OffsetId)
+		if err != nil {
+			return nil, err
+		}
+
+		if paging.Order == models.SortingOrderDesc {
+			query = query.Where(fmt.Sprintf("(%s, id) < (?, ?)", paging.Sorting), offsetCaseEvent.CreatedAt, offsetCaseEvent.Id)
+		} else {
+			query = query.Where(fmt.Sprintf("(%s, id) > (?, ?)", paging.Sorting), offsetCaseEvent.CreatedAt, offsetCaseEvent.Id)
+		}
+	}
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptCaseEvent)
 }
 
 func (repo *MarbleDbRepository) CreateCaseEvent(ctx context.Context, exec Executor,
