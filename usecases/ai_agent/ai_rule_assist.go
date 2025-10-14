@@ -31,7 +31,17 @@ func (uc *AiAgentUsecase) AiRuleDescription(
 		return models.AiRuleDescription{}, err
 	}
 
-	return uc.AiASTDescription(ctx, orgId, rule.ScenarioIterationId, rule.FormulaAstExpression)
+	scenarioIteration, err := uc.repository.GetScenarioIteration(
+		ctx,
+		uc.executorFactory.NewExecutor(),
+		rule.ScenarioIterationId,
+		true,
+	)
+	if err != nil {
+		return models.AiRuleDescription{}, err
+	}
+
+	return uc.AiASTDescription(ctx, orgId, scenarioIteration.ScenarioId, rule.FormulaAstExpression)
 }
 
 // AiASTDescription generates a description for a given AST node
@@ -50,8 +60,7 @@ func (uc *AiAgentUsecase) AiASTDescription(
 	if err != nil {
 		return models.AiRuleDescription{}, err
 	}
-	// When building a rule, check the scenario validation errors should be enough
-	// No need to flatten errors of children nodes
+	// Check if the evaluation has errors
 	flattenErrors := astValidation.Evaluation.FlattenErrors()
 	if len(astValidation.Errors) > 0 || len(flattenErrors) > 0 {
 		return models.AiRuleDescription{
@@ -112,5 +121,6 @@ func (uc *AiAgentUsecase) AiASTDescription(
 
 	return models.AiRuleDescription{
 		Description: ruleDescriptionResponse.Description,
+		RuleValid:   true,
 	}, nil
 }
