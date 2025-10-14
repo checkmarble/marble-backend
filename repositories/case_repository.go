@@ -26,6 +26,11 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 
 	orderCondition := fmt.Sprintf("c.boost is null %[1]s, c.%[2]s %[1]s, c.id %[1]s", pagination.Order, pagination.Sorting)
 
+	// In the public API, we simply sort by created date, we do not boost cases.
+	if filters.UseLinearOrdering {
+		orderCondition = fmt.Sprintf("c.%[1]s %[2]s, c.id %[2]s", pagination.Sorting, pagination.Order)
+	}
+
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectCaseColumn...).
 		Column(
@@ -95,7 +100,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 		}
 	}
 	var err error
-	query, err = applyCasesPagination(query, pagination, offsetCase)
+	query, err = applyCasesPagination(query, pagination, offsetCase, filters.UseLinearOrdering)
 	if err != nil {
 		return []models.Case{}, err
 	}
@@ -110,7 +115,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	})
 }
 
-func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSorting, offsetCase models.Case) (squirrel.SelectBuilder, error) {
+func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSorting, offsetCase models.Case, useLinearOrdering bool) (squirrel.SelectBuilder, error) {
 	if p.OffsetId == "" {
 		return query, nil
 	}
@@ -127,6 +132,12 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 	queryConditionBefore := fmt.Sprintf("(c.boost IS NULL, c.%s, c.id) < (?, ?, ?)", p.Sorting)
 	queryConditionAfter := fmt.Sprintf("(c.boost IS NULL, c.%s, c.id) > (?, ?, ?)", p.Sorting)
 	args := []any{offsetCase.Boost == nil, offsetFieldVal, p.OffsetId}
+
+	if useLinearOrdering {
+		queryConditionBefore = fmt.Sprintf("(c.%s, c.id) < (?, ?)", p.Sorting)
+		queryConditionAfter = fmt.Sprintf("(c.%s, c.id) > (?, ?)", p.Sorting)
+		args = args[1:]
+	}
 
 	if p.Order == models.SortingOrderDesc {
 		query = query.Where(queryConditionBefore, args...)
@@ -185,6 +196,23 @@ func (repo *MarbleDbRepository) GetCaseMetadataById(ctx context.Context, exec Ex
 		dbmodels.AdaptCase,
 	)
 	return c.GetMetadata(), err
+}
+
+func (repo *MarbleDbRepository) GetCaseReferents(ctx context.Context, exec Executor, caseIds []string) ([]models.CaseReferents, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("c.id as id").
+		Column(fmt.Sprintf("case when c.assigned_to is null then null else row(%s) end as assignee", strings.Join(columnsNames("u", dbmodels.UserFields), ","))).
+		Column(fmt.Sprintf("row(%s) as inbox", strings.Join(columnsNames("i", dbmodels.SelectInboxColumn), ","))).
+		From(dbmodels.TABLE_CASES + " c").
+		LeftJoin(dbmodels.TABLE_USERS + " u on u.id = c.assigned_to").
+		InnerJoin(dbmodels.TABLE_INBOXES + " i on i.id = c.inbox_id").
+		Where(squirrel.Eq{"c.id": caseIds})
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptCaseReferents)
 }
 
 func (repo *MarbleDbRepository) CreateCase(ctx context.Context, exec Executor,

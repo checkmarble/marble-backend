@@ -885,8 +885,8 @@ components:
           type: object
           additionalProperties: true
 
-    Case:
-      title: Case
+    Ref:
+      title: Reference
       type: object
       required:
         - id
@@ -894,6 +894,9 @@ components:
         id:
           type: string
           format: uuid
+        name:
+          type: string
+          description: Optional name for the referenced object, not all references will have it.
 
     Scenario:
       title: Scenario
@@ -934,7 +937,7 @@ components:
           type: string
           format: uuid
         case:
-          $ref: "#/components/schemas/Case"
+          $ref: "#/components/schemas/Ref"
         scenario:
           $ref: "#/components/schemas/Scenario"
         trigger_object:

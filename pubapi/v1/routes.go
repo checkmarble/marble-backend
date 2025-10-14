@@ -44,7 +44,13 @@ func Routes(conf pubapi.Config, version string, unauthed *gin.RouterGroup, authM
 }
 
 func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
-	// New, future v1 endpoints go here.
+	authed := unauthed.Group("/", authMiddleware)
+
+	{
+		root := authed.Group("/", pubapi.TimeoutMiddleware(conf.DefaultTimeout))
+
+		root.GET("/cases", HandleListCases(uc))
+	}
 }
 
 func handleVersion(version string) gin.HandlerFunc {
