@@ -11,6 +11,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/h2non/gock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,16 +65,13 @@ func TestSendEvent(t *testing.T) {
 	client := &http.Client{Transport: &http.Transport{}}
 	gock.InterceptClient(client)
 
-	repo := LagoRepository{
-		client:     client,
-		lagoConfig: testLagoConfig,
-	}
+	repo := NewLagoRepository(client, testLagoConfig)
 
 	event := models.BillingEvent{
 		TransactionId:          "txn_123",
 		ExternalSubscriptionId: "sub_456",
 		Code:                   "api_calls",
-		Timestamp:              time.Now(),
+		Timestamp:              utils.Ptr(time.Now()),
 		Properties:             map[string]any{"count": 10},
 	}
 
@@ -130,24 +128,21 @@ func TestSendEvents(t *testing.T) {
 	client := &http.Client{Transport: &http.Transport{}}
 	gock.InterceptClient(client)
 
-	repo := LagoRepository{
-		client:     client,
-		lagoConfig: testLagoConfig,
-	}
+	repo := NewLagoRepository(client, testLagoConfig)
 
 	events := []models.BillingEvent{
 		{
 			TransactionId:          "txn_1",
 			ExternalSubscriptionId: "sub_123",
 			Code:                   "api_calls",
-			Timestamp:              time.Now(),
+			Timestamp:              utils.Ptr(time.Now()),
 			Properties:             map[string]any{},
 		},
 		{
 			TransactionId:          "txn_2",
 			ExternalSubscriptionId: "sub_123",
 			Code:                   "storage",
-			Timestamp:              time.Now(),
+			Timestamp:              utils.Ptr(time.Now()),
 			Properties:             map[string]any{},
 		},
 	}
@@ -218,10 +213,7 @@ func TestSendEvents_LargeBatch(t *testing.T) {
 	client := &http.Client{Transport: &http.Transport{}}
 	gock.InterceptClient(client)
 
-	repo := LagoRepository{
-		client:     client,
-		lagoConfig: testLagoConfig,
-	}
+	repo := NewLagoRepository(client, testLagoConfig)
 
 	// Create 150 events (more than MAX_EVENTS_PER_BATCH of 100)
 	events := make([]models.BillingEvent, 150)
@@ -230,7 +222,7 @@ func TestSendEvents_LargeBatch(t *testing.T) {
 			TransactionId:          "txn_" + string(rune(i)),
 			ExternalSubscriptionId: "sub_123",
 			Code:                   "api_calls",
-			Timestamp:              time.Now(),
+			Timestamp:              utils.Ptr(time.Now()),
 			Properties:             map[string]any{},
 		}
 	}

@@ -177,6 +177,6 @@ func NewRepositories(
 		),
 		TaskQueueRepository:        NewTaskQueueRepository(options.riverClient),
 		MetricsIngestionRepository: NewMetricsIngestionRepository(options.bigQueryInfra),
-		LagoRepository:             lago_repository.NewLagoRepository(options.lagoConfig),
+		LagoRepository:             lago_repository.NewLagoRepository(http.DefaultClient, options.lagoConfig),
 	}
 }

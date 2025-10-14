@@ -37,6 +37,6 @@ type BillingEvent struct {
 	TransactionId          string
 	ExternalSubscriptionId string
 	Code                   string
-	Timestamp              time.Time
+	Timestamp              *time.Time
 	Properties             map[string]any
 }

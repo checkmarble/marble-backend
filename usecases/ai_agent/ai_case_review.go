@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"text/template"
-	"time"
 
 	"github.com/checkmarble/llmberjack"
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
@@ -729,7 +728,6 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		TransactionId:          uuid.Must(uuid.NewV7()).String(),
 		ExternalSubscriptionId: subscriptionId,
 		Code:                   billing.AI_CASE_REVIEW.String(),
-		Timestamp:              time.Now(),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not send billing event")

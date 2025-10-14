@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
@@ -23,9 +25,9 @@ type LagoRepository struct {
 	lagoConfig infra.LagoConfig
 }
 
-func NewLagoRepository(lagoConfig infra.LagoConfig) LagoRepository {
+func NewLagoRepository(client *http.Client, lagoConfig infra.LagoConfig) LagoRepository {
 	return LagoRepository{
-		client:     http.DefaultClient,
+		client:     client,
 		lagoConfig: lagoConfig,
 	}
 }
@@ -45,6 +47,51 @@ func (repo LagoRepository) getRequest(ctx context.Context, method string, url st
 	return req, nil
 }
 
+// doRequestWithRetry performs an HTTP request with retry logic
+// Retries on network errors, 5xx errors, and 429 (rate limit) errors
+func (repo LagoRepository) doRequestWithRetry(ctx context.Context, method string, url string, body []byte) (*http.Response, error) {
+	var resp *http.Response
+	var err error
+
+	err = retry.Do(
+		func() error {
+			var reqBody io.Reader
+			if body != nil {
+				reqBody = bytes.NewReader(body)
+			}
+
+			req, err := repo.getRequest(ctx, method, url, reqBody)
+			if err != nil {
+				return err
+			}
+
+			if body != nil {
+				req.Header.Set("Content-Type", "application/json")
+			}
+
+			resp, err = repo.client.Do(req)
+			if err != nil {
+				return err
+			}
+
+			// Retry on server errors (5xx) or rate limiting (429)
+			if resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests {
+				resp.Body.Close()
+				return errors.Newf("received status code %d", resp.StatusCode)
+			}
+
+			return nil
+		},
+		retry.Attempts(3),
+		retry.LastErrorOnly(true),
+		retry.Delay(100*time.Millisecond),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(ctx),
+	)
+
+	return resp, err
+}
+
 // Get Wallet for an organization
 func (repo LagoRepository) GetWallet(ctx context.Context, orgId string) ([]models.Wallet, error) {
 	if !repo.IsConfigured() {
@@ -57,12 +104,7 @@ func (repo LagoRepository) GetWallet(ctx context.Context, orgId string) ([]model
 	query.Add("external_customer_id", orgId)
 	baseUrl.RawQuery = query.Encode()
 
-	req, err := repo.getRequest(ctx, http.MethodGet, baseUrl.String(), nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create request")
-	}
-
-	resp, err := repo.client.Do(req)
+	resp, err := repo.doRequestWithRetry(ctx, http.MethodGet, baseUrl.String(), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send 'get wallet' request")
 	}
@@ -93,12 +135,7 @@ func (repo LagoRepository) GetSubscriptions(ctx context.Context, orgId string) (
 	query.Add("status[]", "active")
 	baseUrl.RawQuery = query.Encode()
 
-	req, err := repo.getRequest(ctx, http.MethodGet, baseUrl.String(), nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create request")
-	}
-
-	resp, err := repo.client.Do(req)
+	resp, err := repo.doRequestWithRetry(ctx, http.MethodGet, baseUrl.String(), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get subscriptions")
 	}
@@ -126,12 +163,7 @@ func (repo LagoRepository) GetSubscription(ctx context.Context, subscriptionExte
 	baseUrl := *repo.lagoConfig.ParsedUrl
 	baseUrl.Path = fmt.Sprintf("/api/v1/subscriptions/%s", subscriptionExternalId)
 
-	req, err := repo.getRequest(ctx, http.MethodGet, baseUrl.String(), nil)
-	if err != nil {
-		return models.Subscription{}, errors.Wrap(err, "failed to create request")
-	}
-
-	resp, err := repo.client.Do(req)
+	resp, err := repo.doRequestWithRetry(ctx, http.MethodGet, baseUrl.String(), nil)
 	if err != nil {
 		return models.Subscription{}, errors.Wrap(err, "failed to get subscription")
 	}
@@ -166,12 +198,7 @@ func (repo LagoRepository) GetCustomerUsage(
 	query.Add("external_subscription_id", subscriptionExternalId)
 	baseUrl.RawQuery = query.Encode()
 
-	req, err := repo.getRequest(ctx, http.MethodGet, baseUrl.String(), nil)
-	if err != nil {
-		return models.CustomerUsage{}, errors.Wrap(err, "failed to create request")
-	}
-
-	resp, err := repo.client.Do(req)
+	resp, err := repo.doRequestWithRetry(ctx, http.MethodGet, baseUrl.String(), nil)
 	if err != nil {
 		return models.CustomerUsage{}, errors.Wrap(err, "failed to get customer usage")
 	}
@@ -203,13 +230,7 @@ func (repo LagoRepository) SendEvent(ctx context.Context, event models.BillingEv
 		return errors.Wrap(err, "failed to marshal event")
 	}
 
-	req, err := repo.getRequest(ctx, http.MethodPost, baseUrl.String(), bytes.NewReader(body))
-	if err != nil {
-		return errors.Wrap(err, "failed to create request")
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := repo.client.Do(req)
+	resp, err := repo.doRequestWithRetry(ctx, http.MethodPost, baseUrl.String(), body)
 	if err != nil {
 		return errors.Wrap(err, "failed to send event")
 	}
@@ -251,13 +272,8 @@ func (repo LagoRepository) SendEvents(ctx context.Context, events []models.Billi
 
 func (repo LagoRepository) sendBatch(ctx context.Context, baseUrl string, body []byte) error {
 	logger := utils.LoggerFromContext(ctx)
-	req, err := repo.getRequest(ctx, http.MethodPost, baseUrl, bytes.NewReader(body))
-	if err != nil {
-		return errors.Wrap(err, "failed to create request")
-	}
-	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := repo.client.Do(req)
+	resp, err := repo.doRequestWithRetry(ctx, http.MethodPost, baseUrl, body)
 	if err != nil {
 		return errors.Wrap(err, "failed to send events")
 	}

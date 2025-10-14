@@ -3,6 +3,7 @@ package lago_repository
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type WalletDto struct {
@@ -113,16 +114,20 @@ type BillingEventItemDto struct {
 	TransactionId          string         `json:"transaction_id"`
 	ExternalSubscriptionId string         `json:"external_subscription_id"`
 	Code                   string         `json:"code"`
-	Timestamp              int64          `json:"timestamp"`
-	Properties             map[string]any `json:"properties"`
+	Timestamp              *int64         `json:"timestamp,omitempty"`
+	Properties             map[string]any `json:"properties,omitempty"`
 }
 
 func AdaptModelToBillingEventItemDto(event models.BillingEvent) BillingEventItemDto {
+	var timestamp *int64
+	if event.Timestamp != nil {
+		timestamp = utils.Ptr(event.Timestamp.Unix())
+	}
 	return BillingEventItemDto{
 		TransactionId:          event.TransactionId,
 		ExternalSubscriptionId: event.ExternalSubscriptionId,
 		Code:                   event.Code,
-		Timestamp:              event.Timestamp.Unix(),
+		Timestamp:              timestamp,
 		Properties:             event.Properties,
 	}
 }
