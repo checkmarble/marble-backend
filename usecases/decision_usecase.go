@@ -283,6 +283,11 @@ func (usecase *DecisionUsecase) CreateDecision(
 	input models.CreateDecisionInput,
 	params models.CreateDecisionParams,
 ) (bool, models.DecisionWithRuleExecutions, error) {
+	logger := utils.LoggerFromContext(ctx).With(
+		"org_id", input.OrganizationId,
+		"scenario_id", input.ScenarioId,
+	)
+	ctx = utils.StoreLoggerInContext(ctx, logger)
 	decisionStart := time.Now()
 
 	exec := usecase.executorFactory.NewExecutor()
@@ -371,7 +376,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 			decision,
 			input.OrganizationId,
 			decision.DecisionId.String(),
-			usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(ctx, exec, usecase.repository, evaluationParameters),
+			usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(
+				ctx, exec, usecase.repository, evaluationParameters),
 		); err != nil {
 			return models.DecisionWithRuleExecutions{},
 				fmt.Errorf("error storing decision: %w", err)
@@ -427,8 +433,10 @@ func (usecase *DecisionUsecase) CreateDecision(
 			decision.DecisionId.String(),
 		)
 		if err != nil {
-			utils.LoggerFromContext(ctx).Warn("could not execute decision workflows",
-				"error", err.Error(), "decision", decision.DecisionId)
+			logger.WarnContext(ctx, "could not execute decision workflows",
+				"decision", decision.DecisionId,
+				"error", err.Error(),
+			)
 		}
 
 		return decision, nil
@@ -443,11 +451,9 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 		scenarioExecution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
 
-		utils.LoggerFromContext(ctx).InfoContext(ctx,
+		logger.InfoContext(ctx,
 			fmt.Sprintf("created decision %s in %dms", decision.DecisionId, decisionDuration.Milliseconds()),
-			"org_id", scenario.OrganizationId,
 			"decision_id", decision.DecisionId,
-			"scenario_id", scenario.Id,
 			"score", scenarioExecution.Score,
 			"outcome", scenarioExecution.Outcome,
 			"duration", decisionDuration.Milliseconds(),
@@ -470,6 +476,11 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	input models.CreateAllDecisionsInput,
 	params models.CreateDecisionParams,
 ) (decisions []models.DecisionWithRuleExecutions, nbSkipped int, err error) {
+	logger := utils.LoggerFromContext(ctx).
+		With("org_id", input.OrganizationId,
+			"trigger_object_table", input.TriggerObjectTable,
+		)
+	ctx = utils.StoreLoggerInContext(ctx, logger)
 	decisionStart := time.Now()
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
@@ -549,7 +560,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			items = append(items, decisionAndScenario{
 				decision: decision,
 				scenario: scenario, execution: scenarioExecution,
-				analyticsFields: usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(ctx, exec, usecase.repository, evaluationParameters),
+				analyticsFields: usecase.scenarioEvaluator.GetDataAccessor(
+					evaluationParameters).GetAnalyticsFields(ctx, exec, usecase.repository, evaluationParameters),
 			})
 			usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable,
 				evaluationParameters, scenario, &scenarioExecution)
@@ -600,25 +612,6 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				}
 			}
 
-			if item.execution.ExecutionMetrics != nil {
-				storageDuration := time.Since(storageStart)
-				decisionDuration := time.Since(decisionStart)
-
-				item.execution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
-
-				utils.LoggerFromContext(ctx).InfoContext(ctx,
-					fmt.Sprintf("created decision (all) %s in %dms",
-						item.decision.DecisionId, decisionDuration.Milliseconds()),
-					"org_id", item.scenario.OrganizationId,
-					"decision_id", item.decision.DecisionId,
-					"scenario_id", item.scenario.Id,
-					"score", item.execution.Score,
-					"outcome", item.execution.Outcome,
-					"duration", decisionDuration.Milliseconds(),
-					"rules", item.execution.ExecutionMetrics.Rules,
-					"steps", item.execution.ExecutionMetrics.Steps)
-			}
-
 			webhookEventId := uuid.NewString()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
@@ -637,12 +630,45 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				item.decision.DecisionId.String(),
 			)
 			if err != nil {
-				utils.LoggerFromContext(ctx).Warn("could not execute decision workflows",
-					"error", err.Error(), "decision", item.decision.DecisionId)
+				logger.WarnContext(ctx, "could not execute decision workflows",
+					"error", err.Error(),
+					"decision", item.decision.DecisionId,
+				)
+			}
+
+			if item.execution.ExecutionMetrics != nil {
+				storageDuration := time.Since(storageStart)
+				decisionDuration := time.Since(decisionStart)
+
+				item.execution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
+
+				logger.InfoContext(ctx,
+					fmt.Sprintf("created decision (all) %s in %dms",
+						item.decision.DecisionId, decisionDuration.Milliseconds()),
+					"decision_id", item.decision.DecisionId,
+					"scenario_id", item.scenario.Id,
+					"score", item.execution.Score,
+					"outcome", item.execution.Outcome,
+					"duration", decisionDuration.Milliseconds(),
+					"rules", item.execution.ExecutionMetrics.Rules,
+					"steps", item.execution.ExecutionMetrics.Steps)
 			}
 		}
 
-		return usecase.repository.DecisionsWithRuleExecutionsByIds(ctx, tx, ids)
+		// There is a suspicion that this is creating a long tail of high delay. To refactor for better decision insertion performance
+		// if it is confirmed.
+		readAllDecisionsStart := time.Now()
+		dec, err := usecase.repository.DecisionsWithRuleExecutionsByIds(ctx, tx, ids)
+		if err != nil {
+			return nil, err
+		}
+		readAllDecisionsDuration := time.Since(readAllDecisionsStart)
+		logger.InfoContext(ctx,
+			fmt.Sprintf("read all decisions in %dms", readAllDecisionsDuration.Milliseconds()),
+			"decision_ids", ids,
+			"duration", readAllDecisionsDuration.Milliseconds())
+
+		return dec, nil
 	})
 	if err != nil {
 		return nil, 0, err
