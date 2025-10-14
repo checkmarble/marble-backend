@@ -50,6 +50,7 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 		root := authed.Group("/", pubapi.TimeoutMiddleware(conf.DefaultTimeout))
 
 		root.GET("/cases", HandleListCases(uc))
+		root.GET("/cases/:caseId", HandleGetCase(uc))
 	}
 }
 
