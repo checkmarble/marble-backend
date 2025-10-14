@@ -10,7 +10,7 @@ import (
 
 var ErrInsufficientFunds = errors.New("insufficient funds in wallet")
 
-type BillingUsecaseInterface interface {
+type BillingUsecase interface {
 	EnqueueBillingEventTask(ctx context.Context, event models.BillingEvent) error
 	CheckIfEnoughFundsInWallet(ctx context.Context, orgId string, code BillableMetric) (bool, string, error)
 }
@@ -20,7 +20,7 @@ func NewBillingUsecase(
 	isLagoConfigured bool,
 	lagoRepository lago_repository.LagoRepository,
 	enqueueSendBillingEventTask billingEventTaskEnqueuer,
-) BillingUsecaseInterface {
+) BillingUsecase {
 	if isLagoConfigured {
 		return NewLagoBillingUsecase(
 			lagoRepository,

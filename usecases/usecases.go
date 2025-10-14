@@ -428,7 +428,7 @@ func (uc *Usecases) NewOidcUsecase() OidcUsecase {
 	return OidcUsecase{}
 }
 
-func (uc *Usecases) NewBillingUsecase() billing.BillingUsecaseInterface {
+func (uc *Usecases) NewBillingUsecase() billing.BillingUsecase {
 	return billing.NewBillingUsecase(
 		uc.Repositories.LagoRepository.IsConfigured(),
 		uc.Repositories.LagoRepository,
