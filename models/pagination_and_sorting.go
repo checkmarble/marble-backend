@@ -4,6 +4,11 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+type Paginated[T any] struct {
+	Items       []T
+	HasNextPage bool
+}
+
 type PaginationAndSorting struct {
 	OffsetId string
 	Sorting  SortingField

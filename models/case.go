@@ -27,6 +27,12 @@ type Case struct {
 	Boost          *BoostReason
 }
 
+type CaseReferents struct {
+	Id       string
+	Inbox    Inbox
+	Assignee *User
+}
+
 func (c Case) GetMetadata() CaseMetadata {
 	return CaseMetadata{
 		Id:             c.Id,
@@ -134,6 +140,8 @@ type CaseFilters struct {
 	IncludeSnoozed  bool
 	ExcludeAssigned bool
 	AssigneeId      UserId
+
+	UseLinearOrdering bool
 }
 
 const (

@@ -36,6 +36,7 @@ type CaseUseCaseRepository interface {
 	SnoozeCase(ctx context.Context, exec repositories.Executor, snoozeRequest models.CaseSnoozeRequest) error
 	UnsnoozeCase(ctx context.Context, exec repositories.Executor,
 		caseId string) error
+	GetCaseReferents(ctx context.Context, exec repositories.Executor, caseIds []string) ([]models.CaseReferents, error)
 
 	DecisionPivotValuesByCase(ctx context.Context, exec repositories.Executor, caseId string) ([]models.PivotDataWithCount, error)
 
@@ -151,14 +152,15 @@ func (usecase *CaseUseCase) ListCases(
 			}
 
 			repoFilters := models.CaseFilters{
-				StartDate:       filters.StartDate,
-				EndDate:         filters.EndDate,
-				Statuses:        filters.Statuses,
-				OrganizationId:  organizationId,
-				Name:            filters.Name,
-				IncludeSnoozed:  filters.IncludeSnoozed,
-				ExcludeAssigned: filters.ExcludeAssigned,
-				AssigneeId:      filters.AssigneeId,
+				StartDate:         filters.StartDate,
+				EndDate:           filters.EndDate,
+				Statuses:          filters.Statuses,
+				OrganizationId:    organizationId,
+				Name:              filters.Name,
+				IncludeSnoozed:    filters.IncludeSnoozed,
+				ExcludeAssigned:   filters.ExcludeAssigned,
+				AssigneeId:        filters.AssigneeId,
+				UseLinearOrdering: filters.UseLinearOrdering,
 			}
 			if len(filters.InboxIds) > 0 {
 				repoFilters.InboxIds = filters.InboxIds
@@ -194,6 +196,21 @@ func (usecase *CaseUseCase) ListCases(
 			}, nil
 		},
 	)
+}
+
+func (uc *CaseUseCase) GetCasesReferents(ctx context.Context, caseIds []string) (map[string]models.CaseReferents, error) {
+	referents, err := uc.repository.GetCaseReferents(ctx, uc.executorFactory.NewExecutor(), caseIds)
+	if err != nil {
+		return nil, err
+	}
+
+	referentMap := make(map[string]models.CaseReferents, len(referents))
+
+	for _, ref := range referents {
+		referentMap[ref.Id] = ref
+	}
+
+	return referentMap, nil
 }
 
 func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]uuid.UUID, error) {

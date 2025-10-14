@@ -14,7 +14,7 @@ import (
 type Decision struct {
 	Id               uuid.UUID        `json:"id"`
 	BatchExecutionId *string          `json:"batch_execution_id,omitempty"`
-	Case             *Case            `json:"case,omitempty"`
+	Case             *Ref             `json:"case,omitempty"`
 	CreatedAt        pubapi.DateTime  `json:"created_at"`
 	TriggerObject    map[string]any   `json:"trigger_object"`
 	Outcome          string           `json:"outcome"`
@@ -64,7 +64,7 @@ func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution,
 		}
 
 		if model.Case != nil {
-			d.Case = utils.Ptr(AdaptCase(*model.Case))
+			d.Case = utils.Ptr(AdaptIdRef(model.Case.Id))
 		}
 
 		if includeRules {

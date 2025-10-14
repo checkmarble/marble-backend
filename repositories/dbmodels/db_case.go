@@ -86,3 +86,33 @@ func AdaptCaseWithContributorsAndTags(db DBCaseWithContributorsAndTags) (models.
 
 	return caseModel, nil
 }
+
+type CaseReferents struct {
+	Id       string        `db:"id"`
+	Inbox    DBInbox       `db:"inbox"`
+	Assignee *DBUserResult `db:"assignee"`
+}
+
+func AdaptCaseReferents(c CaseReferents) (models.CaseReferents, error) {
+	var assignee *models.User
+
+	if c.Assignee != nil {
+		u, err := AdaptUser(*c.Assignee)
+		if err != nil {
+			return models.CaseReferents{}, err
+		}
+
+		assignee = &u
+	}
+
+	inbox, err := AdaptInbox(c.Inbox)
+	if err != nil {
+		return models.CaseReferents{}, err
+	}
+
+	return models.CaseReferents{
+		Id:       c.Id,
+		Inbox:    inbox,
+		Assignee: assignee,
+	}, nil
+}
