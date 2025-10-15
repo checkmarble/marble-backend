@@ -170,6 +170,7 @@ func (g ExecutorGetter) getPoolAndSchema(
 		if err != nil {
 			return nil, models.DatabaseSchema{}, errors.Wrap(err, "Error creating connection pool")
 		}
+
 		g.clientDbPools[config.ConnectionString] = pool
 	}
 
