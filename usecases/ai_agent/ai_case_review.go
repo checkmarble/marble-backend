@@ -592,15 +592,17 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		}
 
 		// any incorrect proofs are logged but otherwise ignored
-		for i, proof := range caseReview.Proofs {
+		validProofs := make([]proof, 0, len(caseReview.Proofs))
+		for _, proof := range caseReview.Proofs {
 			badObject, err := uc.shouldRemoveProof(ctx, caseData, proof)
 			if err != nil {
 				return nil, err
 			}
-			if badObject {
-				caseReview.Proofs = slices.Delete(caseReview.Proofs, i, 1)
+			if !badObject {
+				validProofs = append(validProofs, proof)
 			}
 		}
+		caseReview.Proofs = validProofs
 
 		caseReviewContext.CaseReview = &caseReview
 	}
