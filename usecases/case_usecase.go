@@ -240,6 +240,29 @@ func (uc *CaseUseCase) GetCaseComments(ctx context.Context, caseId string, pagin
 	}, nil
 }
 
+func (uc *CaseUseCase) GetCaseFiles(ctx context.Context, caseId string) ([]models.CaseFile, error) {
+	c, err := uc.GetCase(ctx, caseId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve requested case")
+	}
+
+	inboxes, err := uc.getAvailableInboxIds(ctx, uc.executorFactory.NewExecutor(), c.OrganizationId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve available inboxes")
+	}
+
+	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxes); err != nil {
+		return nil, err
+	}
+
+	caseFiles, err := uc.repository.GetCasesFileByCaseId(ctx, uc.executorFactory.NewExecutor(), caseId)
+	if err != nil {
+		return nil, err
+	}
+
+	return caseFiles, nil
+}
+
 func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]uuid.UUID, error) {
 	inboxes, err := usecase.inboxReader.ListInboxes(ctx, exec, organizationId, false)
 	if err != nil {

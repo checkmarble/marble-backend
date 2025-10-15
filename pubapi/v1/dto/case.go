@@ -30,6 +30,12 @@ type CaseComment struct {
 	CreatedAt pubapi.DateTime `json:"created_at"`
 }
 
+type CaseFile struct {
+	Id        string          `json:"id"`
+	Filename  string          `json:"file_name"` //nolint:tagliatelle
+	CreatedAt pubapi.DateTime `json:"created_at"`
+}
+
 func AdaptCase(users []models.User, tags []models.Tag, referents map[string]models.CaseReferents) func(c models.Case) Case {
 	userMap := pure_utils.MapSliceToMap(users, func(u models.User) (models.UserId, models.User) { return u.UserId, u })
 	tagMap := pure_utils.MapSliceToMap(tags, func(t models.Tag) (string, models.Tag) { return t.Id, t })
@@ -96,4 +102,14 @@ func AdaptCaseComment(users []models.User) func(models.CaseEvent) CaseComment {
 
 		return comment
 	}
+}
+
+func AdaptCaseFile(f models.CaseFile) CaseFile {
+	file := CaseFile{
+		Id:        f.Id,
+		Filename:  f.FileName,
+		CreatedAt: pubapi.DateTime(f.CreatedAt),
+	}
+
+	return file
 }

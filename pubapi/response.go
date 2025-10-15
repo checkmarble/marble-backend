@@ -51,6 +51,11 @@ func NewResponse[T any](data T) baseResponse[T] {
 	}
 }
 
+func Redirect(c *gin.Context, url string) {
+	c.Header("location", url)
+	c.JSON(http.StatusFound, gin.H{"redirect_to": url})
+}
+
 func (resp baseResponse[T]) WithPagination(hasMore bool, nextPageId string) baseResponse[T] {
 	if hasMore {
 		resp.Pagination = &paginationResponse{

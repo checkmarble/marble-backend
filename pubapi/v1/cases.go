@@ -197,3 +197,51 @@ func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
 			Serve(c)
 	}
 }
+
+func HandleListCaseFiles(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		files, err := caseUsecase.GetCaseFiles(ctx, caseId.String())
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.
+			NewResponse(pure_utils.Map(files, dto.AdaptCaseFile)).
+			Serve(c)
+	}
+}
+
+func HandleDownloadCaseFile(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		fileId, err := pubapi.UuidParam(c, "fileId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		url, err := caseUsecase.GetCaseFileUrl(ctx, fileId.String())
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.Redirect(c, url)
+	}
+}

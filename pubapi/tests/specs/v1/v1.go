@@ -12,3 +12,7 @@ func PublicApiV1(t *testing.T, e *httpexpect.Expect) {
 	decisions(t, e)
 	batchExecutions(t, e)
 }
+
+func PublicApiV1Beta(t *testing.T, e *httpexpect.Expect) {
+	cases(t, e)
+}

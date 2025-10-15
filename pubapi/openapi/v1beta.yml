@@ -156,6 +156,54 @@ paths:
         "400":
           $ref: "#/components/responses/400"
 
+  /cases/{caseId}/files:
+    get:
+      operationId: listCaseFiles
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: List case files
+      description: |
+        List files that were uploaded and attached to the provided case.
+      responses:
+        "200":
+          description: List of files
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/CaseFile"
+        "400":
+          $ref: "#/components/responses/400"
+
+  /cases/{caseId}/files/{fileId}/download:
+    get:
+      operationId: downloadCaseFile
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Download a case file
+      description: |
+        Download the file that was uploaded on a case.
+
+        This endpoint will provide a temporary download URL for the file that can be retrieved in two ways, depending on the capabilities and configuration of your HTTP client:
+
+           - It will be included in the response body
+           - It will be part of a redirect status flow in the response
+      responses:
+        "302":
+          $ref: "#/components/responses/302"
+
 components:
   securitySchemes:
     BearerTokenAuth:
@@ -167,6 +215,23 @@ components:
       name: X-API-KEY
 
   responses:
+    "302":
+      description: Resource can be downloaded elsewhere
+      headers:
+        location:
+          description: The download URL of the file. If your HTTP client follows redirects, it will be downloaded directly.
+          schema: string
+          format: url
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [redirect_to]
+            properties:
+              redirect_to:
+                description: The download URL of the file. Can be used if your HTTP client does not follows redirects.
+                type: string
+                format: url
     "400":
       description: Provided parameters or payload is malformed or invalid
       content:
@@ -346,6 +411,23 @@ components:
         user:
           $ref: "#/components/schemas/Ref"
         comment:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CaseFile:
+      title: Case file
+      type: object
+      required:
+        - id
+        - filename
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        filename:
           type: string
         created_at:
           type: string
