@@ -110,11 +110,13 @@ func AdaptUpdateRule(ruleId string, body UpdateRuleBody) (models.UpdateRuleInput
 
 type AiRuleDescriptionDto struct {
 	Description string `json:"description"`
+	IsRuleValid bool   `json:"is_rule_valid"`
 }
 
 func AdaptAiRuleDescriptionDto(aiRuleDescription models.AiRuleDescription) AiRuleDescriptionDto {
 	return AiRuleDescriptionDto{
 		Description: aiRuleDescription.Description,
+		IsRuleValid: aiRuleDescription.IsRuleValid,
 	}
 }
 

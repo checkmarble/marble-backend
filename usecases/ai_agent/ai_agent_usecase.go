@@ -15,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
@@ -78,6 +79,15 @@ type AiAgentUsecaseCustomListUsecase interface {
 	GetCustomLists(ctx context.Context, organizationId string) ([]models.CustomList, error)
 }
 
+type AiAgentUsecaseScenarioUsecase interface {
+	ValidateScenarioAst(
+		ctx context.Context,
+		scenarioId string,
+		astNode *ast.Node,
+		expectedReturnType ...string,
+	) (models.AstValidation, error)
+}
+
 type AiAgentUsecaseIngestedDataReader interface {
 	GetIngestedObject(
 		ctx context.Context,
@@ -132,6 +142,7 @@ type AiAgentUsecase struct {
 	dataModelUsecase            AiAgentUsecaseDataModelUsecase
 	ruleUsecase                 AiAgentUsecaseRuleUsecase
 	customListUsecase           AiAgentUsecaseCustomListUsecase
+	scenarioUsecase             AiAgentUsecaseScenarioUsecase
 	caseReviewFileRepository    caseReviewWorkerRepository
 	blobRepository              repositories.BlobRepository
 	caseReviewTaskEnqueuer      caseReviewTaskEnqueuer
@@ -153,6 +164,7 @@ func NewAiAgentUsecase(
 	dataModelUsecase AiAgentUsecaseDataModelUsecase,
 	ruleUsecase AiAgentUsecaseRuleUsecase,
 	customListUsecase AiAgentUsecaseCustomListUsecase,
+	scenarioUsecase AiAgentUsecaseScenarioUsecase,
 	caseReviewFileRepository caseReviewWorkerRepository,
 	blobRepository repositories.BlobRepository,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
@@ -170,6 +182,7 @@ func NewAiAgentUsecase(
 		dataModelUsecase:            dataModelUsecase,
 		ruleUsecase:                 ruleUsecase,
 		customListUsecase:           customListUsecase,
+		scenarioUsecase:             scenarioUsecase,
 		caseReviewFileRepository:    caseReviewFileRepository,
 		blobRepository:              blobRepository,
 		caseReviewTaskEnqueuer:      caseReviewTaskEnqueuer,

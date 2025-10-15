@@ -116,6 +116,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/scenarios/:scenario_id", tom, getScenario(uc))
 	router.PATCH("/scenarios/:scenario_id", tom, updateScenario(uc))
 	router.POST("/scenarios/:scenario_id/validate-ast", tom, validateScenarioAst(uc))
+	router.POST("/scenarios/:scenario_id/ast-ai-description", timeoutMiddleware(conf.BatchTimeout),
+		handleAiDescriptionAST(uc),
+	)
 	router.GET("/scenarios/:scenario_id/rules/latest", tom, listLatestScenarioRules(uc))
 
 	router.GET("/scenario-iterations", tom, handleListScenarioIterations(uc))
@@ -140,9 +143,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	router.GET("/scenario-iteration-rules", tom, handleListRules(uc))
 	router.POST("/scenario-iteration-rules", tom, handleCreateRule(uc))
-	router.POST("/scenario-iteration-rules/ai-description", timeoutMiddleware(conf.BatchTimeout),
-		handleAiDescriptionAST(uc),
-	)
 	router.GET("/scenario-iteration-rules/:rule_id", tom, handleGetRule(uc))
 	router.PATCH("/scenario-iteration-rules/:rule_id", tom, handleUpdateRule(uc))
 	router.DELETE("/scenario-iteration-rules/:rule_id", tom, handleDeleteRule(uc))

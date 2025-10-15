@@ -377,13 +377,15 @@ func handleAiDescriptionAST(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
+		scenarioId := c.Param("scenario_id")
+
 		astNode, err := dto.AdaptASTNode(input.AST_expression)
 		if presentError(ctx, c, err) {
 			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		result, err := usecase.AiASTDescription(ctx, orgId, &astNode)
+		result, err := usecase.AiASTDescription(ctx, orgId, scenarioId, &astNode)
 		if presentError(ctx, c, err) {
 			return
 		}

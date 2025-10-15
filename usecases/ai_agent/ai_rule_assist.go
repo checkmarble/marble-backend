@@ -31,17 +31,42 @@ func (uc *AiAgentUsecase) AiRuleDescription(
 		return models.AiRuleDescription{}, err
 	}
 
-	return uc.AiASTDescription(ctx, orgId, rule.FormulaAstExpression)
+	scenarioIteration, err := uc.repository.GetScenarioIteration(
+		ctx,
+		uc.executorFactory.NewExecutor(),
+		rule.ScenarioIterationId,
+		true,
+	)
+	if err != nil {
+		return models.AiRuleDescription{}, err
+	}
+
+	return uc.AiASTDescription(ctx, orgId, scenarioIteration.ScenarioId, rule.FormulaAstExpression)
 }
 
 // AiASTDescription generates a description for a given AST node
 // Requires permissions to read the data model and custom lists
+// Require permission to read scenario (needed for ast validation)
 func (uc *AiAgentUsecase) AiASTDescription(
 	ctx context.Context,
 	orgId string,
+	scenarioId string,
 	ruleAST *ast.Node,
 ) (models.AiRuleDescription, error) {
 	logger := utils.LoggerFromContext(ctx)
+
+	// Check if the rule is valid before calling LLM
+	astValidation, err := uc.scenarioUsecase.ValidateScenarioAst(ctx, scenarioId, ruleAST)
+	if err != nil {
+		return models.AiRuleDescription{}, err
+	}
+	// Check if the evaluation has errors
+	flattenErrors := astValidation.Evaluation.FlattenErrors()
+	if len(astValidation.Errors) > 0 || len(flattenErrors) > 0 {
+		return models.AiRuleDescription{
+			IsRuleValid: false,
+		}, nil
+	}
 
 	// Get custom list (at least list of custom list with their names and ID)
 	customLists, err := uc.customListUsecase.GetCustomLists(ctx, orgId)
@@ -96,5 +121,6 @@ func (uc *AiAgentUsecase) AiASTDescription(
 
 	return models.AiRuleDescription{
 		Description: ruleDescriptionResponse.Description,
+		IsRuleValid: true,
 	}, nil
 }

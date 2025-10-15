@@ -53,4 +53,5 @@ type UpdateRuleInput struct {
 
 type AiRuleDescription struct {
 	Description string
+	IsRuleValid bool
 }
