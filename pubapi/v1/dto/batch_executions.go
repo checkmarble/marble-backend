@@ -1,9 +1,8 @@
 package dto
 
 import (
-	"time"
-
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pubapi"
 )
 
 type ScheduledExecution struct {
@@ -12,8 +11,8 @@ type ScheduledExecution struct {
 	Manual           bool             `json:"manual"`
 	Status           string           `json:"status"`
 	DecisionsCreated int              `json:"decisions_created"`
-	CreatedAt        time.Time        `json:"created_at"`
-	FinishedAt       *time.Time       `json:"finished_at"`
+	CreatedAt        pubapi.DateTime  `json:"created_at"`
+	FinishedAt       *pubapi.DateTime `json:"finished_at"`
 }
 
 func AdaptScheduledExecution(model models.ScheduledExecution) ScheduledExecution {
@@ -27,7 +26,7 @@ func AdaptScheduledExecution(model models.ScheduledExecution) ScheduledExecution
 		Manual:           model.Manual,
 		Status:           model.Status.String(),
 		DecisionsCreated: model.NumberOfCreatedDecisions,
-		CreatedAt:        model.StartedAt,
-		FinishedAt:       model.FinishedAt,
+		CreatedAt:        pubapi.DateTime(model.StartedAt),
+		FinishedAt:       pubapi.ThenDateTime(model.FinishedAt),
 	}
 }
