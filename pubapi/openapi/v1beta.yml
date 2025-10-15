@@ -1,0 +1,352 @@
+openapi: 3.1.0
+info:
+  title: Marble decision engine API
+  description: Public API on decisions and data ingestion.
+  version: 1.0.0
+x-readme:
+  explorer-enabled: false
+  proxy-enabled: false
+  samples-languages:
+    - shell
+    - python
+    - javascript
+    - go
+    - ruby
+servers:
+  - url: https://api.checkmarble.com/v1beta
+tags:
+  - name: Cases
+    description: Routes for cases
+paths:
+  /cases:
+    get:
+      operationId: listCases
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: List cases
+      description: |
+        List cases according to a filter set.
+
+        This endpoint will list all cases matching the filter, sorted by creation date, in the requested order. It will not reorder boosted or hide snoozed cases.
+      parameters:
+        - name: inbox_id[]
+          description: |
+            Only list cases in the specified inboxes.
+
+            This parameter may be repeated as necessary.
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+        - name: status[]
+          description: |
+            Filter cases by their investigation status.
+
+            This parameter may be repeated as necessary.
+          in: query
+          schema:
+            type: string
+            enum: [pending, investigating, closed]
+        - name: assigned_to
+          description: List cases assigned to the specified user
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: start
+          description: Filter cases created after this date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          description: Filter cases created before this date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/offset_id"
+      responses:
+        "200":
+          description: List of cases
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - $ref: "#/components/schemas/BasePagination"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/400"
+
+  /cases/{caseId}:
+    get:
+      operationId: getCase
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Get case
+      description: |
+        Get case by its ID.
+      parameters:
+        - name: caseId
+          in: path
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of cases
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/400"
+
+  /cases/{caseId}/comments:
+    get:
+      operationId: listCaseComments
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: List case comments
+      description: |
+        List comments that were left on the given case.
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/offset_id"
+      responses:
+        "200":
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - $ref: "#/components/schemas/BasePagination"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/CaseComment"
+        "400":
+          $ref: "#/components/responses/400"
+
+components:
+  securitySchemes:
+    BearerTokenAuth:
+      type: http
+      scheme: bearer
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+
+  responses:
+    "400":
+      description: Provided parameters or payload is malformed or invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    "401":
+      description: Credentials are missing or invalid
+    "403":
+      description:
+        The provided credentials are missing the required permissions for
+        the requested action
+    "404":
+      description: The requested resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    "409":
+      description: The resource being created conflicts with an existing resource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    "422":
+      description: The requested action is not possible on the requested resource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  parameters:
+    limit:
+      name: limit
+      description: How many item to return on each page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+
+    order:
+      name: order
+      description: Sort direction for items
+      in: query
+      schema:
+        type: string
+        enum: ["ASC", "DESC"]
+    offset_id:
+      name: offset_id
+      description: |
+        Value to start iterating from.
+
+        Should be a value returned in the `pagination.next_page_id` field of a response.
+      in: query
+      schema:
+        type: string
+
+  schemas:
+    BaseResponse:
+      title: Base response
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          description: Requested objects from the API
+
+    BasePagination:
+      type: object
+      properties:
+        pagination:
+          title: Pagination information
+          type: object
+          required:
+            - has_more
+          properties:
+            has_more:
+              description: Whether there are more elements to iteration through
+              type: boolean
+            next_page_id:
+              description: Value to use in pagination filter to request for the next page
+              type: string
+
+    Error:
+      title: Error response
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          description: Defined, machine-readable identifier for the error
+          type: string
+          enum:
+            - invalid_payload
+            - unprocessable_entity
+            - not_found
+            - feature_disabled
+            - feature_not_configured
+            - server_error
+        messages:
+          description: List of human-readable descriptions for the error
+          type: array
+          items:
+            type: string
+        detail:
+          description: Free-form objects providing details on the error
+          type: object
+          additionalProperties: true
+
+    Ref:
+      title: Reference
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Optional name for the referenced object, not all references will have it.
+
+    Case:
+      title: Case
+      type: object
+      required:
+        - id
+        - inbox
+        - name
+        - status
+        - outcome
+        - contributors
+        - tags
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        inbox:
+          $ref: "#/components/schemas/Ref"
+        name:
+          type: string
+        assignee:
+          $ref: "#/components/schemas/Ref"
+        status:
+          type: string
+          enum: [pending, investigating, closed]
+        outcome:
+          type: string
+          enum: [unset, confirmed_risk, valuable_alert, false_positive]
+        contributors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ref"
+        tags:
+          $ref: "#/components/schemas/Ref"
+        snoozed_until:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    CaseComment:
+      title: Case comment
+      type: object
+      required:
+        - id
+        - user
+        - comment
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        user:
+          $ref: "#/components/schemas/Ref"
+        comment:
+          type: string
+        created_at:
+          type: string
+          format: date-time
