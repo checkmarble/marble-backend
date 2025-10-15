@@ -1,8 +1,10 @@
 package pubapi
 
 import (
+	"encoding/json"
 	"time"
 
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -16,6 +18,8 @@ func UuidParam(c *gin.Context, param string) (*uuid.UUID, error) {
 
 	return &parsed, nil
 }
+
+const outputDateFormat = "2006-01-02T15:04:05.000Z07:00"
 
 var dateFormats = []string{
 	"2006-01-02T15:04:05Z",
@@ -40,9 +44,21 @@ func (b *DateTime) UnmarshalParam(param string) error {
 	return errors.WithDetailf(ErrInvalidPayload, "invalid datetime format, use yyyy-mm-ddThh:mm:ss+zz:zz")
 }
 
+func (b DateTime) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Time(b).UTC().Format(outputDateFormat))
+}
+
 func (b *DateTime) IsZero() bool {
 	if b == nil {
 		return true
 	}
 	return time.Time(*b).IsZero()
+}
+
+func ThenDateTime(value *time.Time) *DateTime {
+	if value == nil {
+		return nil
+	}
+
+	return utils.Ptr(DateTime(*value))
 }

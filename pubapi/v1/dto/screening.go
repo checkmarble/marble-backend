@@ -2,9 +2,9 @@ package dto
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
@@ -18,8 +18,8 @@ type Screening struct {
 	MatchCount int              `json:"match_count"`
 	Matches    []ScreeningMatch `json:"matches,omitzero"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt pubapi.DateTime `json:"created_at"`
+	UpdatedAt pubapi.DateTime `json:"updated_at"`
 }
 
 type ScreeningMatch struct {
@@ -38,8 +38,8 @@ func AdaptScreening(includeMatches bool) func(models.ScreeningWithMatches) Scree
 			InitialQuery: model.InitialQuery,
 			Partial:      model.Partial,
 			MatchCount:   len(model.Matches),
-			CreatedAt:    model.CreatedAt,
-			UpdatedAt:    model.UpdatedAt,
+			CreatedAt:    pubapi.DateTime(model.CreatedAt),
+			UpdatedAt:    pubapi.DateTime(model.UpdatedAt),
 		}
 
 		if includeMatches {
@@ -64,15 +64,15 @@ func AdaptScreeningMatch(model models.ScreeningMatch) ScreeningMatch {
 }
 
 type ScreeningWhitelist struct {
-	Counterparty string    `json:"counterparty"`
-	EntityId     string    `json:"entity_id"`
-	CreatedAt    time.Time `json:"created_at"`
+	Counterparty string          `json:"counterparty"`
+	EntityId     string          `json:"entity_id"`
+	CreatedAt    pubapi.DateTime `json:"created_at"`
 }
 
 func AdaptScreeningWhitelist(model models.ScreeningWhitelist) ScreeningWhitelist {
 	return ScreeningWhitelist{
 		Counterparty: model.CounterpartyId,
 		EntityId:     model.EntityId,
-		CreatedAt:    model.CreatedAt,
+		CreatedAt:    pubapi.DateTime(model.CreatedAt),
 	}
 }
