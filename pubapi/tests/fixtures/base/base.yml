@@ -22,3 +22,16 @@ scenarios:
     name: Scenario 2 name
     description: Scenario 2 description
     trigger_object_type: transactions
+
+inboxes:
+  - id: 11111111-1111-1111-1111-111111111111
+    organization_id: 00000000-0000-0000-0000-000000000000
+    name: Inbox 1
+
+users:
+  - id: 11111111-1111-1111-1111-111111111111
+    organization_id: 00000000-0000-0000-0000-000000000000
+    email: bob@example.com
+    first_name: Bob
+    last_name: Example
+    role: 4
