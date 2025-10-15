@@ -314,8 +314,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		river.AddWorker(workers, adminUc.NewAnalyticsExportWorker())
 		river.AddWorker(workers, adminUc.NewAnalyticsMergeWorker())
 	}
-	if lagoConfig.IsConfigured() {
-		river.AddWorker(workers, uc.NewSendBillingEventsWorker())
+	if isMarbleSaasProject && lagoConfig.IsConfigured() {
+		river.AddWorker(workers, uc.NewSendBillingEventWorker())
 	}
 
 	if err := riverClient.Start(ctx); err != nil {
@@ -486,6 +486,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "analytics_merge":
 		return uc.NewAnalyticsMergeWorker().Work(ctx,
 			singleJobCreate[models.AnalyticsMergeArgs](ctx, jobArgs))
+	case "send_billing_event":
+		return uc.NewSendBillingEventWorker().Work(ctx,
+			singleJobCreate[models.SendBillingEventArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

@@ -103,4 +103,4 @@ type SendBillingEventArgs struct {
 	Event BillingEvent `json:"event"`
 }
 
-func (SendBillingEventArgs) Kind() string { return "send_billing_events" }
+func (SendBillingEventArgs) Kind() string { return "send_billing_event" }

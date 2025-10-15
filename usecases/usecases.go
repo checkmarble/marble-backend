@@ -436,8 +436,8 @@ func (uc *Usecases) NewBillingUsecase() billing.BillingUsecase {
 	)
 }
 
-func (uc *Usecases) NewSendBillingEventsWorker() *billing.SendLagoBillingEventsWorker {
-	return billing.NewSendLagoBillingEventsWorker(
+func (uc *Usecases) NewSendBillingEventWorker() *billing.SendLagoBillingEventWorker {
+	return billing.NewSendLagoBillingEventWorker(
 		uc.Repositories.LagoRepository,
 	)
 }

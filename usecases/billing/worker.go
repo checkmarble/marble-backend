@@ -13,31 +13,31 @@ type lagoBillingWorkerRepository interface {
 	SendEvent(ctx context.Context, event models.BillingEvent) error
 }
 
-type SendLagoBillingEventsWorker struct {
+type SendLagoBillingEventWorker struct {
 	river.WorkerDefaults[models.SendBillingEventArgs]
 
 	repository lagoBillingWorkerRepository
 }
 
-func NewSendLagoBillingEventsWorker(repository lagoBillingWorkerRepository) *SendLagoBillingEventsWorker {
-	return &SendLagoBillingEventsWorker{
+func NewSendLagoBillingEventWorker(repository lagoBillingWorkerRepository) *SendLagoBillingEventWorker {
+	return &SendLagoBillingEventWorker{
 		repository: repository,
 	}
 }
 
-func (w *SendLagoBillingEventsWorker) Timeout(job *river.Job[models.SendBillingEventArgs]) time.Duration {
+func (w *SendLagoBillingEventWorker) Timeout(job *river.Job[models.SendBillingEventArgs]) time.Duration {
 	return 10 * time.Second
 }
 
-func (w *SendLagoBillingEventsWorker) Work(ctx context.Context, job *river.Job[models.SendBillingEventArgs]) error {
+func (w *SendLagoBillingEventWorker) Work(ctx context.Context, job *river.Job[models.SendBillingEventArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
-	logger.DebugContext(ctx, "Sending billing events", "events", job.Args.Event)
+	logger.DebugContext(ctx, "Sending billing event", "event", job.Args.Event)
 
 	if err := w.repository.SendEvent(ctx, job.Args.Event); err != nil {
 		return err
 	}
 
-	logger.DebugContext(ctx, "Billing events sent", "events", job.Args.Event)
+	logger.DebugContext(ctx, "Billing event sent", "event", job.Args.Event)
 
 	return nil
 }
