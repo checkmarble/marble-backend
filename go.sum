@@ -66,8 +66,8 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/cloudmock v0
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/cloudmock v0.53.0/go.mod h1:jUZ5LYlw40WMd07qxcQJD5M40aUxrfwqQX1g7zxYnrQ=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0 h1:Ron4zCA/yk6U7WOBXhTJcDpsUBG9npumK6xw2auFltQ=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0/go.mod h1:cSgYe11MCNYunTnRXrKiR/tHc0eoKjICUuWpNZoVCOo=
-github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.53.0 h1:RAHqDHJmNMLe6JvDoRIlXmb72w+62Ue/k5p/qP9yfAg=
-github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.53.0/go.mod h1:dtCRwgvytbGKWdlrjMOg9geBoRwRpCYWIOM/JhVsDIc=
+github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.54.0 h1:mQdVn6c25/S2MHfJTWGSK3NwGoI/w9Ad7tzyLWbjAQI=
+github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.54.0/go.mod h1:8W5IW/jylevlBQKSWkh5ZMP2oy7yT9Pnfug6Y6W/9D8=
 github.com/Masterminds/squirrel v1.5.4 h1:uUcX/aBc8O7Fg9kaISIUsHXdKuqehiXAMQTYX8afzqM=
 github.com/Masterminds/squirrel v1.5.4/go.mod h1:NNaOrjSoIDfDA40n7sr2tPNZRfjzjA400rg+riTZj10=
 github.com/MicahParks/keyfunc v1.9.0 h1:lhKd5xrFHLNOWrDc4Tyb/Q1AJ4LCzQ48GVJyVIID3+o=
