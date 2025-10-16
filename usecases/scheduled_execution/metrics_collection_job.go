@@ -23,7 +23,7 @@ func NewMetricsCollectionPeriodicJob(config infra.MetricCollectionConfig) *river
 		river.PeriodicInterval(config.JobInterval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.MetricsCollectionArgs{}, &river.InsertOpts{
-				Queue: "metrics",
+				Queue: models.METRICS_QUEUE_NAME,
 				UniqueOpts: river.UniqueOpts{
 					ByQueue:  true,
 					ByPeriod: config.JobInterval,

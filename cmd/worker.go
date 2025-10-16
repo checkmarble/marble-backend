@@ -95,6 +95,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if err != nil {
 		logger.WarnContext(ctx, "could not initialize GCP config", "error", err.Error())
 	}
+	isMarbleSaasProject := infra.IsMarbleSaasProject()
 
 	offloadingConfig := infra.OffloadingConfig{
 		Enabled:         utils.GetEnv("OFFLOADING_ENABLED", false),
@@ -173,6 +174,14 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		return err
 	}
 
+	var lagoConfig infra.LagoConfig
+	if isMarbleSaasProject {
+		lagoConfig = infra.InitializeLago()
+		if err := lagoConfig.Validate(); err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+		}
+	}
+
 	repositories := repositories.NewRepositories(
 		pool,
 		infra.GcpConfig{},
@@ -185,6 +194,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 		repositories.WithOpenSanctions(openSanctionsConfig),
 		repositories.WithCache(utils.GetEnv("CACHE_ENABLED", false)),
+		repositories.WithLagoConfig(lagoConfig),
 	)
 
 	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
@@ -208,19 +218,20 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	globalPeriodics := []*river.PeriodicJob{}
 
 	if !metricCollectionConfig.Disabled {
-		metricQueue := usecases.QueueMetrics()
-		maps.Copy(nonOrgQueues, metricQueue)
+		maps.Copy(nonOrgQueues, usecases.QueueMetrics())
 		globalPeriodics = append(globalPeriodics,
 			scheduled_execution.NewMetricsCollectionPeriodicJob(metricCollectionConfig))
 	}
-
 	if analyticsConfig.Enabled {
 		analyticsQueue := usecases.QueueAnalyticsMerge()
 		maps.Copy(nonOrgQueues, analyticsQueue)
 		globalPeriodics = append(globalPeriodics,
 			scheduled_execution.NewAnalyticsMergeJob())
 	}
-
+	if isMarbleSaasProject && lagoConfig.IsConfigured() {
+		maps.Copy(nonOrgQueues, usecases.QueueBilling())
+	}
+	// Merge non-org queues with org queues
 	maps.Copy(queues, nonOrgQueues)
 
 	// Periodics always contain the per-org tasks retrieved above. Add other, non-organization-scoped periodics below
@@ -293,7 +304,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
-
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
 	}
@@ -303,6 +313,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if analyticsConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewAnalyticsExportWorker())
 		river.AddWorker(workers, adminUc.NewAnalyticsMergeWorker())
+	}
+	if isMarbleSaasProject && lagoConfig.IsConfigured() {
+		river.AddWorker(workers, uc.NewSendBillingEventWorker())
 	}
 
 	if err := riverClient.Start(ctx); err != nil {
@@ -473,6 +486,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "analytics_merge":
 		return uc.NewAnalyticsMergeWorker().Work(ctx,
 			singleJobCreate[models.AnalyticsMergeArgs](ctx, jobArgs))
+	case "send_billing_event":
+		return uc.NewSendBillingEventWorker().Work(ctx,
+			singleJobCreate[models.SendBillingEventArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

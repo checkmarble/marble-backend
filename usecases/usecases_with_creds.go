@@ -735,6 +735,7 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		utils.Ptr(usecases.NewRuleUsecase()),
 		utils.Ptr(usecases.NewCustomListUseCase()),
 		utils.Ptr(usecases.NewScenarioUsecase()),
+		usecases.NewBillingUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.BlobRepository,
 		usecases.Repositories.TaskQueueRepository,

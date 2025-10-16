@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/invopop/jsonschema"
@@ -310,6 +311,18 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	caseData, relatedDataPerClient, err := uc.getCaseDataWithPermissions(ctx, caseId)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get case data")
+	}
+
+	// Check if the organization has enough funds to cover the cost of the case review
+	enoughFunds, subscriptionId, err := uc.billingUsecase.CheckIfEnoughFundsInWallet(
+		ctx,
+		caseData.organizationId,
+		billing.AI_CASE_REVIEW)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not check if enough funds in wallet")
+	}
+	if !enoughFunds {
+		return nil, billing.ErrInsufficientFunds
 	}
 
 	// Get AI setting
@@ -708,6 +721,16 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	var pivotEnrichments *agent_dto.KYCEnrichmentResultsDto
 	if len(caseReviewContext.PivotEnrichments) > 0 {
 		pivotEnrichments = utils.Ptr(agent_dto.AdaptKYCEnrichmentResultsDto(caseReviewContext.PivotEnrichments))
+	}
+
+	// Send billing event
+	err = uc.billingUsecase.EnqueueBillingEventTask(ctx, models.BillingEvent{
+		TransactionId:          uuid.Must(uuid.NewV7()).String(),
+		ExternalSubscriptionId: subscriptionId,
+		Code:                   billing.AI_CASE_REVIEW.String(),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "could not send billing event")
 	}
 
 	// Can access to Ok and Justification, the nil check is done in the sanity check step

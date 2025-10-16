@@ -92,3 +92,10 @@ func (m *TaskQueueRepository) EnqueueDecisionWorkflowTask(
 ) error {
 	return m.Called(ctx, tx, orgId, decisionId).Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueSendBillingEventTask(
+	ctx context.Context,
+	event models.BillingEvent,
+) error {
+	return m.Called(ctx, event).Error(0)
+}
