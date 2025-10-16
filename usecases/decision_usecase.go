@@ -433,10 +433,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 			decision.DecisionId.String(),
 		)
 		if err != nil {
-			logger.WarnContext(ctx, "could not execute decision workflows",
-				"decision", decision.DecisionId,
-				"error", err.Error(),
-			)
+			return models.DecisionWithRuleExecutions{},
+				errors.Wrap(err, "could not execute decision workflows")
 		}
 
 		return decision, nil
@@ -630,10 +628,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				item.decision.DecisionId.String(),
 			)
 			if err != nil {
-				logger.WarnContext(ctx, "could not execute decision workflows",
-					"error", err.Error(),
-					"decision", item.decision.DecisionId,
-				)
+				return nil, errors.Wrapf(err, "could not execute decision workflows for decision %s", item.decision.DecisionId)
 			}
 
 			if item.execution.ExecutionMetrics != nil {
