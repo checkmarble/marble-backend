@@ -569,13 +569,13 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	ctx, span2 := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions - store decisions")
 	defer span2.End()
 
+	// gather the decisions to return in this slice
+	decisions = make([]models.DecisionWithRuleExecutions, len(items))
 	sendWebhookEventIds := make([]string, 0)
-	decisions, err = executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Transaction,
-	) ([]models.DecisionWithRuleExecutions, error) {
-		var ids []string
-		for _, item := range items {
-			ids = append(ids, item.decision.DecisionId.String())
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		ids := make([]string, len(items))
+		for i, item := range items {
+			ids[i] = item.decision.DecisionId.String()
 			storageStart := time.Now()
 
 			if err = usecase.repository.StoreDecision(
@@ -586,20 +586,27 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				item.decision.DecisionId.String(),
 				item.analyticsFields,
 			); err != nil {
-				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
+				return fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}
 
 			if item.decision.ScreeningExecutions != nil {
 				var sc models.ScreeningWithMatches
-
-				for _, sce := range item.decision.ScreeningExecutions {
+				scs := make([]models.ScreeningWithMatches, len(item.decision.ScreeningExecutions))
+				for i, sce := range item.decision.ScreeningExecutions {
 					sc, err = usecase.screeningRepository.InsertScreening(
 						ctx, tx, item.decision.DecisionId.String(),
 						item.decision.OrganizationId.String(), sce, true)
 					if err != nil {
-						return nil, errors.Wrap(err, "could not store screening execution")
+						return errors.Wrap(err, "could not store screening execution")
 					}
+					scs[i] = sc
+					// TODO: need to review if we really want to write the screening, read it back, and patch the config on it again (it's not written together).
+					// But for now I'm adding it again because it's already there on the "create single decision" path. It's not used in the public API v1 however.
+					// Or rather, it seems used only on the v0 decisions API to return the name of a screening rule, without being actually documented in the API spec.
+					scs[i].Config = sce.Config
 				}
+				item.decision.ScreeningExecutions = scs
+				decisions[i] = item.decision
 
 				if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
 					if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
@@ -617,7 +624,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				EventContent:   models.NewWebhookEventDecisionCreated(item.decision.DecisionId.String()),
 			})
 			if err != nil {
-				return nil, err
+				return err
 			}
 			sendWebhookEventIds = append(sendWebhookEventIds, webhookEventId)
 
@@ -628,7 +635,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				item.decision.DecisionId.String(),
 			)
 			if err != nil {
-				return nil, errors.Wrapf(err, "could not execute decision workflows for decision %s", item.decision.DecisionId)
+				return errors.Wrapf(err, "could not execute decision workflows for decision %s", item.decision.DecisionId)
 			}
 
 			if item.execution.ExecutionMetrics != nil {
@@ -650,20 +657,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			}
 		}
 
-		// There is a suspicion that this is creating a long tail of high delay. To refactor for better decision insertion performance
-		// if it is confirmed.
-		readAllDecisionsStart := time.Now()
-		dec, err := usecase.repository.DecisionsWithRuleExecutionsByIds(ctx, tx, ids)
-		if err != nil {
-			return nil, err
-		}
-		readAllDecisionsDuration := time.Since(readAllDecisionsStart)
-		logger.InfoContext(ctx,
-			fmt.Sprintf("read all decisions in %dms", readAllDecisionsDuration.Milliseconds()),
-			"decision_ids", ids,
-			"duration", readAllDecisionsDuration.Milliseconds())
-
-		return dec, nil
+		return nil
 	})
 	if err != nil {
 		return nil, 0, err
@@ -673,7 +667,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, caseWebhookEventId)
 	}
 
-	return
+	return decisions, nbSkipped, nil
 }
 
 func (usecase *DecisionUsecase) executeTestRun(
