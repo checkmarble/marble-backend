@@ -229,7 +229,10 @@ func (uc *CaseUseCase) GetCaseComments(ctx context.Context, caseId string, pagin
 		return models.Paginated[models.CaseEvent]{}, err
 	}
 
-	comments, err := uc.repository.ListCaseEventsOfTypes(ctx, uc.executorFactory.NewExecutor(), caseId, []models.CaseEventType{models.CaseCommentAdded}, paging)
+	pagingPlusOne := paging
+	pagingPlusOne.Limit += 1
+
+	comments, err := uc.repository.ListCaseEventsOfTypes(ctx, uc.executorFactory.NewExecutor(), caseId, []models.CaseEventType{models.CaseCommentAdded}, pagingPlusOne)
 	if err != nil {
 		return models.Paginated[models.CaseEvent]{}, errors.Wrap(err, "could not list comment case events")
 	}

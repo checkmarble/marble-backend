@@ -11,8 +11,8 @@ import (
 type ListCasesParams struct {
 	pubapi.PaginationParams
 
-	InboxIds   []string        `form:"inbox_id[]" binding:"omitempty,dive,uuid"`
-	Statuses   []string        `form:"status[]" binding:"omitempty,dive,oneof=pending investigating closed"`
+	InboxIds   []string        `form:"inbox_id" binding:"omitempty,lte=1,dive,uuid"`
+	Statuses   []string        `form:"status" binding:"omitempty,lte=1,dive,oneof=pending investigating closed"`
 	AssignedTo string          `form:"assigned_to" binding:"omitempty,uuid"`
 	StartDate  pubapi.DateTime `form:"start" binding:"required_with=EndDate"`
 	EndDate    pubapi.DateTime `form:"end" binding:"required_with=StartDate"`

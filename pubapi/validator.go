@@ -28,7 +28,7 @@ func AdaptFieldValidationError(fe validator.FieldError) string {
 				return "must not be empty"
 			}
 
-			if reflect.TypeOf(fe.Value()).Kind() == reflect.Slice {
+			if fe.Type().Kind() == reflect.Slice {
 				return fmt.Sprintf("must have more than %s items", fe.Param())
 			}
 			if _, ok := fe.Value().(int); ok {
@@ -40,7 +40,7 @@ func AdaptFieldValidationError(fe validator.FieldError) string {
 		case "ltcsfield":
 			return fmt.Sprintf("must be less than the value of `%s`", fe.Param())
 		case "lt":
-			if reflect.TypeOf(fe.Value()).Kind() == reflect.Slice {
+			if fe.Type().Kind() == reflect.Slice {
 				return fmt.Sprintf("must have less than %s items", fe.Param())
 			}
 			if _, ok := fe.Value().(int); ok {
@@ -48,7 +48,7 @@ func AdaptFieldValidationError(fe validator.FieldError) string {
 			}
 			return fmt.Sprintf("must have less than %s character", fe.Param())
 		case "lte":
-			if _, ok := fe.Value().([]any); ok {
+			if fe.Type().Kind() == reflect.Slice {
 				return fmt.Sprintf("must have at most %s items", fe.Param())
 			}
 			if _, ok := fe.Value().(int); ok {
