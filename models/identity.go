@@ -33,11 +33,12 @@ func (i FirebaseIdentity) GetEmail() string {
 }
 
 type OidcIdentity struct {
-	Issuer    string `json:"iss"`         //nolint:tagliatelle
-	Firstname string `json:"given_name"`  //nolint:tagliatelle
-	Lastname  string `json:"family_name"` //nolint:tagliatelle
-	Email     string `json:"email"`
-	Picture   string `json:"picture"`
+	Issuer        string `json:"iss"`         //nolint:tagliatelle
+	Firstname     string `json:"given_name"`  //nolint:tagliatelle
+	Lastname      string `json:"family_name"` //nolint:tagliatelle
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	Picture       string `json:"picture"`
 }
 
 func (i OidcIdentity) GetIssuer() string {
@@ -53,6 +54,9 @@ func (i OidcIdentity) GetProfile() *IdentityUpdatableClaims {
 }
 
 func (c OidcIdentity) GetEmail() string {
+	if !c.EmailVerified {
+		return ""
+	}
 	return c.Email
 }
 
