@@ -690,6 +690,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	if err != nil {
 		return nil, 0, err
 	}
+	// Note: do not do anything that may take time after this, otherwise the info logs about decision execution time will be incorrect.
 
 	sinceLastWrite := time.Since(lastWriteTime)
 	logger.InfoContext(ctx, fmt.Sprintf("In CreateAllDecisions, committed all decisions in %dms", sinceLastWrite.Milliseconds()),
