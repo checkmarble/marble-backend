@@ -57,20 +57,20 @@ type DataModel struct {
 	Tables  map[string]Table
 }
 
-func (dm DataModel) Copy() DataModel {
+func (d DataModel) Copy() DataModel {
 	tables := make(map[string]Table)
-	for k, v := range dm.Tables {
+	for k, v := range d.Tables {
 		tables[k] = v.Copy()
 	}
 	return DataModel{
-		Version: dm.Version,
+		Version: d.Version,
 		Tables:  tables,
 	}
 }
 
-func (dm DataModel) AllLinksAsMap() map[string]LinkToSingle {
+func (d DataModel) AllLinksAsMap() map[string]LinkToSingle {
 	links := make(map[string]LinkToSingle, 100)
-	for _, table := range dm.Tables {
+	for _, table := range d.Tables {
 		for _, link := range table.LinksToSingle {
 			links[link.Id] = link
 		}
@@ -78,17 +78,17 @@ func (dm DataModel) AllLinksAsMap() map[string]LinkToSingle {
 	return links
 }
 
-func (dm DataModel) AllTablesAsMap() map[string]Table {
+func (d DataModel) AllTablesAsMap() map[string]Table {
 	tables := make(map[string]Table, 100)
-	for _, table := range dm.Tables {
+	for _, table := range d.Tables {
 		tables[table.ID] = table
 	}
 	return tables
 }
 
-func (dm DataModel) AllFieldsAsMap() map[string]Field {
+func (d DataModel) AllFieldsAsMap() map[string]Field {
 	fields := make(map[string]Field, 100)
-	for _, table := range dm.Tables {
+	for _, table := range d.Tables {
 		for _, field := range table.Fields {
 			fields[field.ID] = field
 		}
@@ -96,8 +96,8 @@ func (dm DataModel) AllFieldsAsMap() map[string]Field {
 	return fields
 }
 
-func (dm DataModel) FindField(table Table, path []string, field string) (Field, bool) {
-	if path == nil || len(path) == 0 {
+func (d DataModel) FindField(table Table, path []string, field string) (Field, bool) {
+	if len(path) == 0 {
 		f, ok := table.Fields[field]
 
 		return f, ok
@@ -105,7 +105,7 @@ func (dm DataModel) FindField(table Table, path []string, field string) (Field, 
 
 	for _, link := range table.LinksToSingle {
 		if link.Name == path[0] {
-			return dm.FindField(dm.Tables[link.ParentTableName], path[1:], field)
+			return d.FindField(d.Tables[link.ParentTableName], path[1:], field)
 		}
 	}
 

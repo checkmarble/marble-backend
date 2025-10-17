@@ -368,9 +368,9 @@ func (usecases *Usecases) NewAstValidator() scenarios.AstValidator {
 	}
 }
 
-func (usecase *Usecases) NewScenarioFetcher() scenarios.ScenarioFetcher {
+func (usecases *Usecases) NewScenarioFetcher() scenarios.ScenarioFetcher {
 	return scenarios.ScenarioFetcher{
-		Repository: usecase.Repositories.MarbleDbRepository,
+		Repository: usecases.Repositories.MarbleDbRepository,
 	}
 }
 
@@ -414,30 +414,30 @@ func (usecases *Usecases) NewMetricsIngestionUsecase() MetricsIngestionUsecase {
 	)
 }
 
-func (uc *Usecases) NewAutoAssignmentUsecase() AutoAssignmentUsecase {
+func (usecases *Usecases) NewAutoAssignmentUsecase() AutoAssignmentUsecase {
 	return AutoAssignmentUsecase{
-		executorFactory:    uc.NewExecutorFactory(),
-		transactionFactory: uc.NewTransactionFactory(),
-		caseRepository:     uc.Repositories.MarbleDbRepository,
-		orgRepository:      uc.Repositories.MarbleDbRepository,
-		repository:         uc.Repositories.MarbleDbRepository,
+		executorFactory:    usecases.NewExecutorFactory(),
+		transactionFactory: usecases.NewTransactionFactory(),
+		caseRepository:     usecases.Repositories.MarbleDbRepository,
+		orgRepository:      usecases.Repositories.MarbleDbRepository,
+		repository:         usecases.Repositories.MarbleDbRepository,
 	}
 }
 
-func (uc *Usecases) NewOidcUsecase() OidcUsecase {
+func (usecases *Usecases) NewOidcUsecase() OidcUsecase {
 	return OidcUsecase{}
 }
 
-func (uc *Usecases) NewBillingUsecase() billing.BillingUsecase {
+func (usecases *Usecases) NewBillingUsecase() billing.BillingUsecase {
 	return billing.NewBillingUsecase(
-		uc.Repositories.LagoRepository.IsConfigured(),
-		uc.Repositories.LagoRepository,
-		uc.Repositories.TaskQueueRepository,
+		usecases.Repositories.LagoRepository.IsConfigured(),
+		usecases.Repositories.LagoRepository,
+		usecases.Repositories.TaskQueueRepository,
 	)
 }
 
-func (uc *Usecases) NewSendBillingEventWorker() *billing.SendLagoBillingEventWorker {
+func (usecases *Usecases) NewSendBillingEventWorker() *billing.SendLagoBillingEventWorker {
 	return billing.NewSendLagoBillingEventWorker(
-		uc.Repositories.LagoRepository,
+		usecases.Repositories.LagoRepository,
 	)
 }

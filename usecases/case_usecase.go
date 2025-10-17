@@ -75,8 +75,10 @@ type CaseUseCaseRepository interface {
 	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
 
 	GetMassCasesByIds(ctx context.Context, exec repositories.Executor, caseIds []uuid.UUID) ([]models.Case, error)
-	CaseMassChangeStatus(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, status models.CaseStatus) ([]uuid.UUID, error)
-	CaseMassAssign(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, assigneeId uuid.UUID) ([]uuid.UUID, error)
+	CaseMassChangeStatus(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID,
+		status models.CaseStatus) ([]uuid.UUID, error)
+	CaseMassAssign(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID,
+		assigneeId uuid.UUID) ([]uuid.UUID, error)
 	CaseMassMoveToInbox(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, inboxId uuid.UUID) ([]uuid.UUID, error)
 }
 
@@ -526,18 +528,18 @@ func (usecase *CaseUseCase) UpdateCase(
 	return updatedCase, nil
 }
 
-func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest) error {
-	c, err := uc.repository.GetCaseById(ctx, uc.executorFactory.NewExecutor(), req.CaseId)
+func (usecase *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest) error {
+	c, err := usecase.repository.GetCaseById(ctx, usecase.executorFactory.NewExecutor(), req.CaseId)
 	if err != nil {
 		return err
 	}
 
-	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), []uuid.UUID{c.InboxId}); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), []uuid.UUID{c.InboxId}); err != nil {
 		return err
 	}
 
-	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		if err := uc.repository.SnoozeCase(ctx, tx, req); err != nil {
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := usecase.repository.SnoozeCase(ctx, tx, req); err != nil {
 			return err
 		}
 
@@ -548,10 +550,10 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 		}
 
 		// Case side effects should be called before snoozing, since it removes the boost.
-		if err := uc.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
 			return err
 		}
-		if err := uc.repository.BoostCase(ctx, tx, req.CaseId, models.BoostUnsnoozed); err != nil {
+		if err := usecase.repository.BoostCase(ctx, tx, req.CaseId, models.BoostUnsnoozed); err != nil {
 			return err
 		}
 
@@ -563,7 +565,7 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 			PreviousValue: previousSnooze,
 		}
 
-		if err = uc.repository.CreateCaseEvent(ctx, tx, event); err != nil {
+		if err = usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
 			return err
 		}
 
@@ -571,8 +573,8 @@ func (uc *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeRequest)
 	})
 }
 
-func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeRequest) error {
-	c, err := uc.repository.GetCaseById(ctx, uc.executorFactory.NewExecutor(), req.CaseId)
+func (usecase *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeRequest) error {
+	c, err := usecase.repository.GetCaseById(ctx, usecase.executorFactory.NewExecutor(), req.CaseId)
 	if err != nil {
 		return err
 	}
@@ -581,16 +583,16 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 		return nil
 	}
 
-	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), []uuid.UUID{c.InboxId}); err != nil {
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), []uuid.UUID{c.InboxId}); err != nil {
 			return err
 		}
 
 		// Case side effects should be called before unsnoozing, since it removes the boost.
-		if err := uc.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
 			return err
 		}
-		if err = uc.repository.UnsnoozeCase(ctx, tx, req.CaseId); err != nil {
+		if err = usecase.repository.UnsnoozeCase(ctx, tx, req.CaseId); err != nil {
 			return err
 		}
 
@@ -601,7 +603,7 @@ func (uc *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeReques
 			PreviousValue: utils.Ptr(c.SnoozedUntil.Format(time.RFC3339)),
 		}
 
-		if err = uc.repository.CreateCaseEvent(ctx, tx, event); err != nil {
+		if err = usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
 			return err
 		}
 
@@ -1275,10 +1277,10 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 	return usecase.getCaseWithDetails(ctx, exec, input.CaseId)
 }
 
-func (uc *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Transaction,
+func (usecase *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Transaction,
 	annotationId string, annotationReq models.CreateEntityAnnotationRequest,
 ) error {
-	return uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+	return usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		CaseId:         *annotationReq.CaseId,
 		UserId:         (*string)(annotationReq.AnnotatedBy),
 		EventType:      models.CaseEntityAnnotated,
@@ -1288,7 +1290,7 @@ func (uc *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Tra
 	})
 }
 
-func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositories.Transaction,
+func (usecase *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositories.Transaction,
 	annotationId string, annotationReq models.CreateEntityAnnotationRequest, files []models.EntityAnnotationFilePayloadFile,
 ) error {
 	if annotationReq.CaseId == nil {
@@ -1298,9 +1300,9 @@ func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositorie
 	for _, file := range files {
 		newFileUuid := uuid.NewString()
 
-		err := uc.repository.CreateDbCaseFile(ctx, tx, models.CreateDbCaseFileInput{
+		err := usecase.repository.CreateDbCaseFile(ctx, tx, models.CreateDbCaseFileInput{
 			Id:            newFileUuid,
-			BucketName:    uc.caseManagerBucketUrl,
+			BucketName:    usecase.caseManagerBucketUrl,
 			CaseId:        *annotationReq.CaseId,
 			FileName:      file.Filename,
 			FileReference: file.Key,
@@ -1310,7 +1312,7 @@ func (uc *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositorie
 		}
 	}
 
-	err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+	err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		CaseId:         *annotationReq.CaseId,
 		UserId:         (*string)(annotationReq.AnnotatedBy),
 		EventType:      models.CaseEntityAnnotated,
@@ -1527,15 +1529,15 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	return c, nil
 }
 
-func (uc *CaseUseCase) GetRelatedCases(ctx context.Context, orgId, pivotValue string) ([]models.Case, error) {
-	exec := uc.executorFactory.NewExecutor()
+func (usecase *CaseUseCase) GetRelatedCases(ctx context.Context, orgId, pivotValue string) ([]models.Case, error) {
+	exec := usecase.executorFactory.NewExecutor()
 
-	availableInboxIds, err := uc.getAvailableInboxIds(ctx, exec, orgId)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
 	if err != nil {
 		return nil, err
 	}
 
-	cases, err := uc.repository.GetCasesWithPivotValue(ctx, exec, orgId, pivotValue)
+	cases, err := usecase.repository.GetCasesWithPivotValue(ctx, exec, orgId, pivotValue)
 	if err != nil {
 		return nil, err
 	}
@@ -1543,7 +1545,7 @@ func (uc *CaseUseCase) GetRelatedCases(ctx context.Context, orgId, pivotValue st
 	allowedCases := make([]models.Case, 0, len(cases))
 
 	for _, c := range cases {
-		if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err == nil {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err == nil {
 			allowedCases = append(allowedCases, c)
 		}
 	}
@@ -1551,24 +1553,24 @@ func (uc *CaseUseCase) GetRelatedCases(ctx context.Context, orgId, pivotValue st
 	return allowedCases, nil
 }
 
-func (uc *CaseUseCase) GetNextCaseId(ctx context.Context, orgId, caseId string) (string, error) {
-	exec := uc.executorFactory.NewExecutor()
+func (usecase *CaseUseCase) GetNextCaseId(ctx context.Context, orgId, caseId string) (string, error) {
+	exec := usecase.executorFactory.NewExecutor()
 
-	availableInboxIds, err := uc.getAvailableInboxIds(ctx, exec, orgId)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
 	if err != nil {
 		return "", err
 	}
 
-	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
+	c, err := usecase.repository.GetCaseById(ctx, exec, caseId)
 	if err != nil {
 		return "", err
 	}
 
-	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return "", err
 	}
 
-	nextCaseId, err := uc.repository.GetNextCase(ctx, exec, c)
+	nextCaseId, err := usecase.repository.GetNextCase(ctx, exec, c)
 	if err != nil {
 		return "", err
 	}
@@ -1612,9 +1614,9 @@ func (usecase *CaseUseCase) ReadCasePivotObjects(ctx context.Context, caseId str
 	return usecase.ingestedDataReader.ReadPivotObjectsFromValues(ctx, c.OrganizationId, pivotValues)
 }
 
-func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
-	exec := uc.executorFactory.NewExecutor()
-	c, err := uc.repository.GetCaseById(ctx, exec, caseId)
+func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
+	exec := usecase.executorFactory.NewExecutor()
+	c, err := usecase.repository.GetCaseById(ctx, exec, caseId)
 	if err != nil {
 		return err
 	}
@@ -1622,15 +1624,15 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 		return errors.New("case is already closed, cannot escalate")
 	}
 
-	availableInboxIds, err := uc.getAvailableInboxIds(ctx, exec, c.OrganizationId)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
 		return err
 	}
-	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return err
 	}
 
-	sourceInbox, err := uc.inboxReader.GetInboxById(ctx, c.InboxId)
+	sourceInbox, err := usecase.inboxReader.GetInboxById(ctx, c.InboxId)
 	if err != nil {
 		return errors.Wrap(err, "could not read source inbox")
 	}
@@ -1641,7 +1643,7 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 
 	// Not using the inboxReader here because we do not want to check for permission. A user
 	// escalating a case will usually not have access to the target inbox.
-	targetInbox, err := uc.inboxReader.GetEscalationInboxMetadata(ctx, *sourceInbox.EscalationInboxId)
+	targetInbox, err := usecase.inboxReader.GetEscalationInboxMetadata(ctx, *sourceInbox.EscalationInboxId)
 	if err != nil {
 		return errors.Wrap(err, "could not read target inbox")
 	}
@@ -1654,11 +1656,11 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 		userId = utils.Ptr(string(creds.ActorIdentity.UserId))
 	}
 
-	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		targetInboxIdStr := targetInbox.Id.String()
 		sourceInboxIdStr := sourceInbox.Id.String()
 
-		if err := uc.repository.EscalateCase(ctx, tx, caseId, targetInboxIdStr); err != nil {
+		if err := usecase.repository.EscalateCase(ctx, tx, caseId, targetInboxIdStr); err != nil {
 			return errors.Wrap(err, "could not escalate case")
 		}
 
@@ -1670,7 +1672,7 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 			PreviousValue: &sourceInboxIdStr,
 		}
 
-		if err := uc.repository.CreateCaseEvent(ctx, tx, event); err != nil {
+		if err := usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
 			return err
 		}
 
@@ -1678,15 +1680,15 @@ func (uc *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
 	})
 }
 
-func (uc *CaseUseCase) performCaseActionSideEffectsWithoutStatusChange(ctx context.Context, tx repositories.Transaction, c models.Case) error {
-	userId := uc.enforceSecurity.UserId()
+func (usecase *CaseUseCase) performCaseActionSideEffectsWithoutStatusChange(ctx context.Context, tx repositories.Transaction, c models.Case) error {
+	userId := usecase.enforceSecurity.UserId()
 	if userId != nil && c.AssignedTo == nil {
-		if err := uc.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
+		if err := usecase.SelfAssignOnAction(ctx, tx, c.Id, *userId); err != nil {
 			return err
 		}
 	}
 
-	if err := uc.repository.UnboostCase(ctx, tx, c.Id); err != nil {
+	if err := usecase.repository.UnboostCase(ctx, tx, c.Id); err != nil {
 		return err
 	}
 
@@ -1694,7 +1696,7 @@ func (uc *CaseUseCase) performCaseActionSideEffectsWithoutStatusChange(ctx conte
 	// deadlocks, though deadlocks are also retried by the transaction factory for safety. This also means that the side
 	// effects should be called after all the "main" updates ⚠️
 	if userId != nil {
-		err := uc.createCaseContributorIfNotExist(ctx, tx, c.Id, *userId)
+		err := usecase.createCaseContributorIfNotExist(ctx, tx, c.Id, *userId)
 		if err != nil {
 			return err
 		}
@@ -1703,36 +1705,36 @@ func (uc *CaseUseCase) performCaseActionSideEffectsWithoutStatusChange(ctx conte
 	return nil
 }
 
-func (uc *CaseUseCase) PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error {
+func (usecase *CaseUseCase) PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error {
 	if c.Status == models.CasePending {
 		update := models.UpdateCaseAttributes{Id: c.Id, Status: models.CaseInvestigating}
 
-		if err := uc.repository.UpdateCase(ctx, tx, update); err != nil {
+		if err := usecase.repository.UpdateCase(ctx, tx, update); err != nil {
 			return err
 		}
 	}
 
-	if err := uc.performCaseActionSideEffectsWithoutStatusChange(ctx, tx, c); err != nil {
+	if err := usecase.performCaseActionSideEffectsWithoutStatusChange(ctx, tx, c); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (uc *CaseUseCase) triggerAutoAssignment(ctx context.Context, tx repositories.Transaction, orgId string, inboxId uuid.UUID) error {
-	features, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+func (usecase *CaseUseCase) triggerAutoAssignment(ctx context.Context, tx repositories.Transaction, orgId string, inboxId uuid.UUID) error {
+	features, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not check feature access")
 	}
 
 	if features.CaseAutoAssign.IsAllowed() {
-		enabled, err := uc.inboxReader.GetAutoAssignmentEnabled(ctx, inboxId)
+		enabled, err := usecase.inboxReader.GetAutoAssignmentEnabled(ctx, inboxId)
 		if err != nil {
 			return errors.Wrap(err, "could not read inbox")
 		}
 
 		if enabled {
-			if err := uc.taskQueueRepository.EnqueueAutoAssignmentTask(ctx, tx, orgId, inboxId); err != nil {
+			if err := usecase.taskQueueRepository.EnqueueAutoAssignmentTask(ctx, tx, orgId, inboxId); err != nil {
 				return errors.Wrap(err, "could not enqueue auto-assignment job")
 			}
 		}
@@ -1741,17 +1743,17 @@ func (uc *CaseUseCase) triggerAutoAssignment(ctx context.Context, tx repositorie
 	return nil
 }
 
-func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto) error {
-	exec := uc.executorFactory.NewExecutor()
-	orgId := uc.enforceSecurity.OrgId()
-	userId := uc.enforceSecurity.UserId()
+func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto) error {
+	exec := usecase.executorFactory.NewExecutor()
+	orgId := usecase.enforceSecurity.OrgId()
+	userId := usecase.enforceSecurity.UserId()
 
 	sourceCases := make(map[string]models.Case, len(req.CaseIds))
 	events := make(map[string]models.CreateCaseEventAttributes, len(req.CaseIds))
 
 	var newAssignee models.User
 
-	cases, err := uc.repository.GetMassCasesByIds(ctx, exec, req.CaseIds)
+	cases, err := usecase.repository.GetMassCasesByIds(ctx, exec, req.CaseIds)
 	if err != nil {
 		return errors.Wrap(err, "could not retrieve requested cases for mass update")
 	}
@@ -1764,15 +1766,15 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 		return c.Id, c
 	})
 
-	availableInboxIds, err := uc.getAvailableInboxIds(ctx, exec, orgId)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
 	if err != nil {
 		return errors.Wrap(err, "could not retrieve available inboxes")
 	}
 
-	if req.Action == models.CaseMassUpdateAssign {
+	if req.Action == models.CaseMassUpdateAssign.String() {
 		var err error
 
-		newAssignee, err = uc.repository.UserById(ctx, exec, req.Assign.AssigneeId.String())
+		newAssignee, err = usecase.repository.UserById(ctx, exec, req.Assign.AssigneeId.String())
 		if err != nil {
 			return errors.Wrap(err, "target user for assignment not found")
 		}
@@ -1785,13 +1787,14 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 			return errors.Newf("requested cases '%s' for mass update does not exist", caseId)
 		}
 
-		if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 			return err
 		}
 
 		// If we are trying to mass-assign, we need to check, for each case, that the target user can manage the case.
-		if req.Action == models.CaseMassUpdateAssign {
-			if err := security.EnforceSecurityCaseForUser(newAssignee).ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+		if req.Action == models.CaseMassUpdateAssign.String() {
+			if err := security.EnforceSecurityCaseForUser(newAssignee).ReadOrUpdateCase(
+				c.GetMetadata(), availableInboxIds); err != nil {
 				return errors.Wrap(err, "target user lacks case permissions for assignment")
 			}
 		}
@@ -1800,16 +1803,16 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 	}
 
 	// When changing the cases' inboxes, the user needs to have access to the target inbox.
-	if req.Action == models.CaseMassUpdateMoveToInbox {
-		if _, err := uc.inboxReader.GetInboxById(ctx, req.MoveToInbox.InboxId); err != nil {
+	if req.Action == models.CaseMassUpdateMoveToInbox.String() {
+		if _, err := usecase.inboxReader.GetInboxById(ctx, req.MoveToInbox.InboxId); err != nil {
 			return errors.Wrap(err, fmt.Sprintf("user does not have access the new inbox %s", req.MoveToInbox.InboxId))
 		}
 	}
 
-	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		switch models.CaseMassUpdateActionFromString(req.Action) {
 		case models.CaseMassUpdateClose:
-			updatedIds, err := uc.repository.CaseMassChangeStatus(ctx, tx, req.CaseIds, models.CaseClosed)
+			updatedIds, err := usecase.repository.CaseMassChangeStatus(ctx, tx, req.CaseIds, models.CaseClosed)
 			if err != nil {
 				return errors.Wrap(err, "could not update case status in mass update")
 			}
@@ -1825,8 +1828,7 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 			}
 
 		case models.CaseMassUpdateReopen:
-			updatedIds, err := uc.repository.CaseMassChangeStatus(ctx, tx, req.CaseIds, models.CasePending)
-
+			updatedIds, err := usecase.repository.CaseMassChangeStatus(ctx, tx, req.CaseIds, models.CasePending)
 			if err != nil {
 				return errors.Wrap(err, "could not updaet case status in mass update")
 			}
@@ -1842,8 +1844,7 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 			}
 
 		case models.CaseMassUpdateAssign:
-			updatedIds, err := uc.repository.CaseMassAssign(ctx, tx, req.CaseIds, req.Assign.AssigneeId)
-
+			updatedIds, err := usecase.repository.CaseMassAssign(ctx, tx, req.CaseIds, req.Assign.AssigneeId)
 			if err != nil {
 				return errors.Wrap(err, "could not assign cases in mass update")
 			}
@@ -1859,8 +1860,7 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 			}
 
 		case models.CaseMassUpdateMoveToInbox:
-			updatedIds, err := uc.repository.CaseMassMoveToInbox(ctx, tx, req.CaseIds, req.MoveToInbox.InboxId)
-
+			updatedIds, err := usecase.repository.CaseMassMoveToInbox(ctx, tx, req.CaseIds, req.MoveToInbox.InboxId)
 			if err != nil {
 				return errors.Wrap(err, "could not change case inbox in mass update")
 			}
@@ -1885,7 +1885,8 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 
 		// TODO: perform relevant side effects
 
-		if err := uc.repository.BatchCreateCaseEvents(ctx, tx, slices.Collect(maps.Values(events))); err != nil {
+		if err := usecase.repository.BatchCreateCaseEvents(ctx, tx,
+			slices.Collect(maps.Values(events))); err != nil {
 			return errors.Wrap(err, "could not create case events in mass update")
 		}
 

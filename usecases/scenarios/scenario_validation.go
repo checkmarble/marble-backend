@@ -150,7 +150,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 
 		queryValidation := models.NewRuleValidation()
 
-		if scc.Query == nil || len(scc.Query) == 0 {
+		if len(scc.Query) == 0 {
 			queryValidation.Errors = append(queryValidation.Errors, models.ScenarioValidationError{
 				Error: errors.Wrap(models.BadParameterError,
 					"screening does not have a query formula"),

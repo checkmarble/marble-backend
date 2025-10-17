@@ -39,7 +39,6 @@ func indexesToCreateFromScenarioIterations(
 func indexFamiliesToCreateFromScenarioIterations(
 	ctx context.Context,
 	scenarioIterations []models.ScenarioIteration,
-	existingIndexes []models.ConcreteIndex,
 ) ([]models.AggregateQueryFamily, error) {
 	var asts []ast.Node
 	for _, i := range scenarioIterations {

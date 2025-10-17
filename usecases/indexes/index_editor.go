@@ -125,11 +125,7 @@ func (editor ClientDbIndexEditor) GetRequiredIndices(
 	}
 
 	for _, iteration := range iterations {
-		required, err := indexFamiliesToCreateFromScenarioIterations(
-			ctx,
-			[]models.ScenarioIteration{iteration},
-			[]models.ConcreteIndex{},
-		)
+		required, err := indexFamiliesToCreateFromScenarioIterations(ctx, []models.ScenarioIteration{iteration})
 		if err != nil {
 			return required, errors.Wrap(err,
 				"Error while finding indexes to create from scenario iterations in CreateDatamodelIndexesForScenarioPublication")

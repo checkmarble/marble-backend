@@ -195,8 +195,8 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 	suite.ctx = utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 }
 
-func (suite *DatamodelUsecaseTestSuite) makeUsecase() *DataModelUseCase {
-	return &DataModelUseCase{
+func (suite *DatamodelUsecaseTestSuite) makeUsecase() *usecase {
+	return &usecase{
 		clientDbIndexEditor:          suite.clientDbIndexEditor,
 		dataModelRepository:          suite.dataModelRepository,
 		enforceSecurity:              suite.enforceSecurity,
