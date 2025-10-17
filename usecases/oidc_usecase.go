@@ -18,7 +18,6 @@ func (uc OidcUsecase) ExchangeToken(ctx context.Context, cfg infra.OidcConfig, r
 	}
 
 	f := r.Form
-	f.Set("client_secret", cfg.ClientSecret)
 
 	req := oauth2.Config{
 		Endpoint:     cfg.Provider.Endpoint(),
@@ -28,5 +27,24 @@ func (uc OidcUsecase) ExchangeToken(ctx context.Context, cfg infra.OidcConfig, r
 		Scopes:       cfg.Scopes,
 	}
 
-	return req.Exchange(ctx, f.Get("code"), oauth2.VerifierOption(f.Get("code_verifier")))
+	switch f.Get("grant_type") {
+	case "authorization_code":
+		return req.Exchange(ctx, f.Get("code"), oauth2.VerifierOption(f.Get("code_verifier")))
+
+	case "refresh_token":
+		src := req.TokenSource(ctx, &oauth2.Token{RefreshToken: f.Get("refresh_token")})
+
+		tokens, err := src.Token()
+		if err != nil {
+			return nil, err
+		}
+
+		if tokens.Extra("id_token") == "" {
+			return nil, errors.New("ID token was not reissued during refresh")
+		}
+
+		return tokens, nil
+	}
+
+	return nil, errors.New("invalid grant type")
 }

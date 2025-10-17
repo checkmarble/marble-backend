@@ -35,8 +35,8 @@ func (c *OidcClient) VerifyToken(ctx context.Context, idToken string) (models.Id
 	if err := token.Claims(&claims); err != nil {
 		return models.OidcIdentity{}, err
 	}
-	if claims.Email == "" {
-		return models.OidcIdentity{}, errors.New("oidc claims do not contain the principal's email")
+	if claims.GetEmail() == "" {
+		return models.OidcIdentity{}, errors.New("oidc claims do not contain the principal's email or it is not verified")
 	}
 
 	return claims, nil
