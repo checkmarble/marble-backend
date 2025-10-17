@@ -491,7 +491,10 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	decisionStart := time.Now()
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
-	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions")
+	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions",
+		trace.WithAttributes(attribute.String("trigger_object_table", input.TriggerObjectTable)),
+		trace.WithAttributes(attribute.String("org_id", input.OrganizationId)),
+	)
 	defer span.End()
 
 	if err = usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
@@ -558,9 +561,17 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 		switch {
 		case err != nil:
-			return nil, 0, errors.Wrap(err, "error evaluating scenario in CreateAllDecisions")
+			return nil, 0, errors.Wrapf(err, "error evaluating scenario \"%s\" in CreateAllDecisions", scenario.Name)
 		case !triggerPassed:
 			nbSkipped++
+			sinceStart := time.Since(decisionStart)
+			logger.DebugContext(ctx,
+				fmt.Sprintf("In CreateAllDecisions, skipped scenario \"%s\" after %dms",
+					scenario.Name, sinceStart.Milliseconds()),
+				"scenario_id", scenario.Id,
+				"since_start", sinceStart.Milliseconds(),
+				"steps", scenarioExecution.ExecutionMetrics.Steps,
+			)
 			usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable, evaluationParameters, scenario, nil)
 		default:
 			decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
@@ -581,9 +592,10 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	// gather the decisions to return in this slice
 	decisions = make([]models.DecisionWithRuleExecutions, len(items))
 	sendWebhookEventIds := make([]string, 0)
+	lastWriteTime := time.Now()
 	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		for i, item := range items {
-			storageStart := time.Now()
+			thisStorageStart := time.Now()
 
 			if err = usecase.repository.StoreDecision(
 				ctx,
@@ -650,33 +662,40 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				item.decision.DecisionId.String(),
 			)
 			if err != nil {
-				return errors.Wrapf(err, "could not execute decision workflows for decision %s", item.decision.DecisionId)
+				return errors.Wrapf(err, "Failed to execute decision workflows for decision on scenario \"%s\"", item.scenario.Name)
 			}
 
 			if item.execution.ExecutionMetrics != nil {
-				storageDuration := time.Since(storageStart)
-				decisionDuration := time.Since(decisionStart)
-
+				storageDuration := time.Since(thisStorageStart)
+				sinceStart := time.Since(decisionStart)
 				item.execution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
 
 				logger.InfoContext(ctx,
-					fmt.Sprintf("created decision (all) %s in %dms",
-						item.decision.DecisionId, decisionDuration.Milliseconds()),
+					fmt.Sprintf("In CreateAllDecisions, created decision for scenario \"%s\" after %dms",
+						item.scenario.Name, sinceStart.Milliseconds()),
 					"decision_id", item.decision.DecisionId,
 					"scenario_id", item.scenario.Id,
 					"score", item.execution.Score,
 					"outcome", item.execution.Outcome,
-					"duration", decisionDuration.Milliseconds(),
+					"since_start", sinceStart.Milliseconds(),
 					"rules", item.execution.ExecutionMetrics.Rules,
-					"steps", item.execution.ExecutionMetrics.Steps)
+					"steps", item.execution.ExecutionMetrics.Steps,
+				)
 			}
 		}
 
+		lastWriteTime = time.Now()
 		return nil
 	})
 	if err != nil {
 		return nil, 0, err
 	}
+
+	sinceLastWrite := time.Since(lastWriteTime)
+	logger.InfoContext(ctx, fmt.Sprintf("In CreateAllDecisions, committed all decisions in %dms", sinceLastWrite.Milliseconds()),
+		"since_last_write", sinceLastWrite.Milliseconds(),
+		"nb_decisions", len(decisions),
+	)
 
 	for _, caseWebhookEventId := range sendWebhookEventIds {
 		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, caseWebhookEventId)
