@@ -211,7 +211,6 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		decisionsUsecase := uc.NewDecisionUsecase()
-		screeningUsecase := uc.NewScreeningUsecase()
 
 		decisions, skipped, err := decisionsUsecase.CreateAllDecisions(
 			ctx,
@@ -236,21 +235,9 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		var screeningErr error
-
 		dtos := pure_utils.Map(decisions, func(d models.DecisionWithRuleExecutions) dto.Decision {
-			screenings, err := screeningUsecase.ListScreenings(ctx, d.DecisionId.String(), false)
-			if err != nil {
-				screeningErr = errors.Join(screeningErr, err)
-			}
-
-			return dto.AdaptDecision(true, d.RuleExecutions, screenings)(d.Decision)
+			return dto.AdaptDecision(true, d.RuleExecutions, d.ScreeningExecutions)(d.Decision)
 		})
-
-		if screeningErr != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
-			return
-		}
 
 		stats := gdto.AdaptDecisionsMetadata(decisions, skipped)
 
