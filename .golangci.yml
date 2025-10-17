@@ -7,6 +7,7 @@ linters:
     - sloglint
     - tagliatelle
     - unconvert
+    - staticcheck
   settings:
     tagliatelle:
       case:
@@ -21,14 +22,16 @@ linters:
           xml: camel
           yaml: camel
         use-field-name: true
-
     staticcheck:
       checks:
+        - all
+        - -ST1003
         - -ST1006
+        - -ST1020
+        - -ST1021
         - -QF1001
         - -QF1002
         - -QF1003
-        - -QF1004
         - -QF1008
   exclusions:
     presets:
@@ -36,9 +39,6 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
-    rules:
-      - path: repository/ingested_data_indexes_repository.go
-        text: should be called, not discarded, to avoid a context leak
     paths:
       - third_party$
       - builtin$

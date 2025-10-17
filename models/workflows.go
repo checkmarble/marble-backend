@@ -30,11 +30,11 @@ type WorkflowConditionType string
 
 const (
 	WorkflowConditionUnknown   WorkflowConditionType = "unknown"
-	WorkflowConditionAlways                          = "always"
-	WorkflowConditionNever                           = "never"
-	WorkflowConditionOutcomeIn                       = "outcome_in"
-	WorkflowConditionRuleHit                         = "rule_hit"
-	WorkflowPayloadEvaluates                         = "payload_evaluates"
+	WorkflowConditionAlways    WorkflowConditionType = "always"
+	WorkflowConditionNever     WorkflowConditionType = "never"
+	WorkflowConditionOutcomeIn WorkflowConditionType = "outcome_in"
+	WorkflowConditionRuleHit   WorkflowConditionType = "rule_hit"
+	WorkflowPayloadEvaluates   WorkflowConditionType = "payload_evaluates"
 )
 
 var ValidWorkflowConditions = []WorkflowConditionType{
@@ -44,17 +44,21 @@ var ValidWorkflowConditions = []WorkflowConditionType{
 	WorkflowConditionRuleHit,
 }
 
+func (t WorkflowConditionType) String() string {
+	return string(t)
+}
+
 func WorkflowConditionFromString(s string) WorkflowConditionType {
 	switch s {
-	case WorkflowConditionAlways:
+	case WorkflowConditionAlways.String():
 		return WorkflowConditionAlways
-	case WorkflowConditionNever:
+	case WorkflowConditionNever.String():
 		return WorkflowConditionNever
-	case WorkflowConditionOutcomeIn:
+	case WorkflowConditionOutcomeIn.String():
 		return WorkflowConditionOutcomeIn
-	case WorkflowConditionRuleHit:
+	case WorkflowConditionRuleHit.String():
 		return WorkflowConditionRuleHit
-	case WorkflowPayloadEvaluates:
+	case WorkflowPayloadEvaluates.String():
 		return WorkflowPayloadEvaluates
 	default:
 		return WorkflowConditionUnknown

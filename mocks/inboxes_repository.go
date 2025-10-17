@@ -59,26 +59,26 @@ func (r *InboxRepository) ListInboxUsers(ctx context.Context, exec repositories.
 	return args.Get(0).([]models.InboxUser), args.Error(1)
 }
 
-func (repo *InboxRepository) GetInboxUserById(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID) (models.InboxUser, error) {
-	args := repo.Called(exec, inboxUserId)
+func (r *InboxRepository) GetInboxUserById(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID) (models.InboxUser, error) {
+	args := r.Called(exec, inboxUserId)
 	return args.Get(0).(models.InboxUser), args.Error(1)
 }
 
-func (repo *InboxRepository) CreateInboxUser(ctx context.Context, exec repositories.Executor,
+func (r *InboxRepository) CreateInboxUser(ctx context.Context, exec repositories.Executor,
 	input models.CreateInboxUserInput, newInboxUserId uuid.UUID,
 ) error {
-	args := repo.Called(exec, input, newInboxUserId)
+	args := r.Called(exec, input, newInboxUserId)
 	return args.Error(0)
 }
 
-func (repo *InboxRepository) UpdateInboxUser(ctx context.Context, exec repositories.Executor,
+func (r *InboxRepository) UpdateInboxUser(ctx context.Context, exec repositories.Executor,
 	inboxUserId uuid.UUID, role *models.InboxUserRole, autoAssignable *bool,
 ) error {
-	args := repo.Called(exec, inboxUserId, role, autoAssignable)
+	args := r.Called(exec, inboxUserId, role, autoAssignable)
 	return args.Error(0)
 }
 
-func (repo *InboxRepository) DeleteInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID) error {
-	args := repo.Called(exec, inboxUserId)
+func (r *InboxRepository) DeleteInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID) error {
+	args := r.Called(exec, inboxUserId)
 	return args.Error(0)
 }

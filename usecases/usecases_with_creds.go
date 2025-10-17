@@ -301,8 +301,8 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 	)
 }
 
-func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
-	return DataModelUseCase{
+func (usecases *UsecasesWithCreds) NewDataModelUseCase() usecase {
+	return usecase{
 		clientDbIndexEditor:           usecases.NewClientDbIndexEditor(),
 		dataModelRepository:           usecases.Repositories.MarbleDbRepository,
 		enforceSecurity:               usecases.NewEnforceOrganizationSecurity(),
@@ -757,41 +757,41 @@ func (usecases *UsecasesWithCreds) NewCaseReviewWorker(timeout time.Duration) *a
 	return &w
 }
 
-func (uc *UsecasesWithCreds) NewUserSettingsUsecase() UserSettingsUsecase {
+func (usecases *UsecasesWithCreds) NewUserSettingsUsecase() UserSettingsUsecase {
 	return UserSettingsUsecase{
-		executorFactory: uc.NewExecutorFactory(),
-		enforceSecurity: uc.NewEnforceSecurity(),
-		repository:      uc.Repositories.MarbleDbRepository,
+		executorFactory: usecases.NewExecutorFactory(),
+		enforceSecurity: usecases.NewEnforceSecurity(),
+		repository:      usecases.Repositories.MarbleDbRepository,
 	}
 }
 
-func (uc *UsecasesWithCreds) NewDecisionWorkflowsWorker() *decision_workflows.DecisionWorkflowsWorker {
+func (usecases *UsecasesWithCreds) NewDecisionWorkflowsWorker() *decision_workflows.DecisionWorkflowsWorker {
 	return decision_workflows.NewDecisionWorkflowsWorker(
-		uc.NewExecutorFactory(),
-		uc.NewTransactionFactory(),
-		uc.NewDecisionWorkflows(),
-		uc.Repositories.MarbleDbRepository,
-		uc.Repositories.IngestedDataReadRepository,
-		uc.Repositories.MarbleDbRepository,
-		uc.NewWebhookEventsUsecase(),
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewDecisionWorkflows(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewWebhookEventsUsecase(),
 	)
 }
 
-func (uc *UsecasesWithCreds) NewAnalyticsQueryUsecase() AnalyticsQueryUsecase {
+func (usecases *UsecasesWithCreds) NewAnalyticsQueryUsecase() AnalyticsQueryUsecase {
 	return AnalyticsQueryUsecase{
-		enforceSecurity:    uc.NewEnforceScenarioSecurity(),
-		executorFactory:    uc.NewExecutorFactory(),
-		analyticsFactory:   uc.NewAnalyticsExecutorFactory(),
-		license:            uc.license,
-		scenarioRepository: uc.Repositories.MarbleDbRepository,
+		enforceSecurity:    usecases.NewEnforceScenarioSecurity(),
+		executorFactory:    usecases.NewExecutorFactory(),
+		analyticsFactory:   usecases.NewAnalyticsExecutorFactory(),
+		license:            usecases.license,
+		scenarioRepository: usecases.Repositories.MarbleDbRepository,
 	}
 }
 
-func (uc *UsecasesWithCreds) NewAnalyticsMetadataUsecase() AnalyticsMetadataUsecase {
+func (usecases *UsecasesWithCreds) NewAnalyticsMetadataUsecase() AnalyticsMetadataUsecase {
 	return AnalyticsMetadataUsecase{
-		enforceSecurity:    uc.NewEnforceScenarioSecurity(),
-		executorFactory:    uc.NewExecutorFactory(),
-		analyticsFactory:   uc.NewAnalyticsExecutorFactory(),
-		scenarioRepository: uc.Repositories.MarbleDbRepository,
+		enforceSecurity:    usecases.NewEnforceScenarioSecurity(),
+		executorFactory:    usecases.NewExecutorFactory(),
+		analyticsFactory:   usecases.NewAnalyticsExecutorFactory(),
+		scenarioRepository: usecases.Repositories.MarbleDbRepository,
 	}
 }

@@ -62,7 +62,7 @@ func generateRsaPrivateKey(bitSize int) (*rsa.PrivateKey, error) {
 
 func parsePrivateKey(privateKeyString string) *rsa.PrivateKey {
 	// when a multi-line env variable is passed to the docker container by docker-compose, it escapes the newlines
-	privateKeyString = strings.Replace(privateKeyString, "\\n", "\n", -1)
+	privateKeyString = strings.ReplaceAll(privateKeyString, "\\n", "\n")
 	block, _ := pem.Decode([]byte(privateKeyString))
 	if block == nil {
 		panic(errors.New("failed to decode PEM block containing RSA private key"))
@@ -70,12 +70,13 @@ func parsePrivateKey(privateKeyString string) *rsa.PrivateKey {
 
 	var privateKey *rsa.PrivateKey
 	var err error
-	if block.Type == "RSA PRIVATE KEY" {
+	switch block.Type {
+	case "RSA PRIVATE KEY":
 		privateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
 			panic(errors.New(fmt.Sprintf("Can't load AUTHENTICATION_JWT_SIGNING_KEY private key %s", err)))
 		}
-	} else if block.Type == "PRIVATE KEY" {
+	case "PRIVATE KEY":
 		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 		if err != nil {
 			panic(errors.New(fmt.Sprintf("Can't load AUTHENTICATION_JWT_SIGNING_KEY private key %s", err)))
@@ -85,7 +86,7 @@ func parsePrivateKey(privateKeyString string) *rsa.PrivateKey {
 		if !ok {
 			panic("expected RSA key")
 		}
-	} else {
+	default:
 		panic(errors.New("failed to decode PEM block containing RSA private key"))
 	}
 

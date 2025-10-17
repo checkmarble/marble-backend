@@ -41,8 +41,8 @@ func (f StringTemplate) Evaluate(ctx context.Context, arguments ast.Arguments) (
 			}
 			variableValue = "{}"
 		}
-		replacedTemplate = strings.Replace(replacedTemplate,
-			fmt.Sprintf("%%%s%%", match[1]), variableValue, -1)
+		replacedTemplate = strings.ReplaceAll(replacedTemplate,
+			fmt.Sprintf("%%%s%%", match[1]), variableValue)
 	}
 
 	errs := MakeAdaptedArgsErrors(execErrors)

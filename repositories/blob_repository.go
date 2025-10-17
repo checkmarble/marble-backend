@@ -80,7 +80,8 @@ func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl 
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse bucket url %s", bucketUrl)
 		}
-		if url.Scheme == "gs" {
+		switch url.Scheme {
+		case "gs":
 			// in the GCS case, we need to set those values in the url
 			creds, err := google.FindDefaultCredentials(ctx, compute.CloudPlatformScope)
 			if err != nil {
@@ -115,7 +116,7 @@ func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl 
 			if err != nil {
 				return nil, err
 			}
-		} else if url.Scheme == "s3" {
+		case "s3":
 			p := url.Query()
 			p.Set("awssdk", "v2")
 
@@ -137,7 +138,7 @@ func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl 
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to open bucket %s", bucketUrl)
 			}
-		} else {
+		default:
 			bucket, err = blob.OpenBucket(ctx, bucketUrl)
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to open bucket %s", bucketUrl)
@@ -231,7 +232,7 @@ func (repository *blobRepository) DeleteFile(ctx context.Context, bucketUrl, key
 	return bucket.Delete(ctx, key)
 }
 
-func (repo *blobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, key string) (string, error) {
+func (repository *blobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, key string) (string, error) {
 	if strings.HasPrefix(bucketUrl, "file://") {
 		logger := utils.LoggerFromContext(ctx)
 		logger.Warn("Signed URL generation is not supported with a file bucket. Please use a GCS, S3 or Azure bucket instead. Returning a placeholder URL instead.")
@@ -239,7 +240,7 @@ func (repo *blobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, ke
 		return placeholderFileUrl, nil
 	}
 
-	bucket, err := repo.openBlobBucket(ctx, bucketUrl)
+	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
 	if err != nil {
 		return "", err
 	}

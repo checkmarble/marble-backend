@@ -30,8 +30,8 @@ func main() {
 
 	// DEVELOPMENT-ONLY: those flags are used to help debugging and cannot be used in production
 	var (
-		workerOnly     *string = utils.Ptr("")
-		workerOnlyArgs *string = utils.Ptr("")
+		workerOnly     = utils.Ptr("")
+		workerOnlyArgs = utils.Ptr("")
 	)
 
 	if apiVersion == "dev" {

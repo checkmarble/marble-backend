@@ -51,9 +51,7 @@ func (repo LagoRepository) getRequest(ctx context.Context, method string, url st
 // Retries on network errors, 5xx errors, and 429 (rate limit) errors
 func (repo LagoRepository) doRequestWithRetry(ctx context.Context, method string, url string, body []byte) (*http.Response, error) {
 	var resp *http.Response
-	var err error
-
-	err = retry.Do(
+	var err = retry.Do(
 		func() error {
 			var reqBody io.Reader
 			if body != nil {
@@ -74,7 +72,6 @@ func (repo LagoRepository) doRequestWithRetry(ctx context.Context, method string
 				return err
 			}
 
-			// Retry on server errors (5xx) or rate limiting (429)
 			if resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests {
 				resp.Body.Close()
 				return errors.Newf("received status code %d", resp.StatusCode)

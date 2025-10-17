@@ -241,7 +241,9 @@ func (repo *MarbleDbRepository) GetOrganizationAllowedNetworks(ctx context.Conte
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptOrganizationWhitelistedSubnets)
 }
 
-func (m *MarbleDbRepository) UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string, subnets []net.IPNet) ([]net.IPNet, error) {
+func (repo *MarbleDbRepository) UpdateOrganizationAllowedNetworks(ctx context.Context,
+	exec Executor, orgId string, subnets []net.IPNet,
+) ([]net.IPNet, error) {
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_ORGANIZATION).
 		Set("allowed_networks", subnets).
