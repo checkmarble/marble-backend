@@ -30,20 +30,18 @@ paths:
       description: |
         List cases according to a filter set.
 
-        This endpoint will list all cases matching the filter, sorted by creation date, in the requested order. It will not reorder boosted or hide snoozed cases.
+        This endpoint will list all cases matching the filter, sorted by creation date, in the requested order. It will not reorder "waiting for action" or hide snoozed cases.
       parameters:
-        - name: inbox_id[]
+        - name: inbox_id
           description: |
             Only list cases in the specified inboxes.
 
             This parameter may be repeated as necessary.
           in: query
           schema:
-            type: array
-            items:
-              type: string
-              format: uuid
-        - name: status[]
+            type: string
+            format: uuid
+        - name: status
           description: |
             Filter cases by their investigation status.
 
@@ -59,13 +57,13 @@ paths:
             type: string
             format: uuid
         - name: start
-          description: Filter cases created after this date
+          description: Filter cases created on and after this date
           in: query
           schema:
             type: string
             format: date-time
         - name: end
-          description: Filter cases created before this date
+          description: Filter cases created strictly before this date
           in: query
           schema:
             type: string

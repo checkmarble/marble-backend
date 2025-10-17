@@ -53,7 +53,7 @@ func (repo *MarbleDbRepository) ListCaseEventsOfTypes(ctx context.Context, exec 
 		Where(squirrel.Eq{"case_id": caseId}).
 		Where(squirrel.Eq{"event_type": types}).
 		OrderBy(fmt.Sprintf("created_at %[1]s, id %[1]s", paging.Order)).
-		Limit(uint64(paging.Limit) + 1)
+		Limit(uint64(paging.Limit))
 
 	if paging.OffsetId != "" {
 		offsetCaseEvent, err := repo.GetCaseEventById(ctx, exec, paging.OffsetId)
