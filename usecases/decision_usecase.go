@@ -573,9 +573,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	decisions = make([]models.DecisionWithRuleExecutions, len(items))
 	sendWebhookEventIds := make([]string, 0)
 	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		ids := make([]string, len(items))
 		for i, item := range items {
-			ids[i] = item.decision.DecisionId.String()
 			storageStart := time.Now()
 
 			if err = usecase.repository.StoreDecision(
