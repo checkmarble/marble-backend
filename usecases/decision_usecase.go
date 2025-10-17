@@ -604,7 +604,6 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 					scs[i].Config = sce.Config
 				}
 				item.decision.ScreeningExecutions = scs
-				decisions[i] = item.decision
 
 				if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
 					if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
@@ -614,6 +613,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 					}
 				}
 			}
+			decisions[i] = item.decision
 
 			webhookEventId := uuid.NewString()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
