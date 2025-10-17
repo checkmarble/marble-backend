@@ -227,7 +227,8 @@ func asynchronouslyCreateIndexes(
 	indexes []models.ConcreteIndex,
 ) {
 	ctx = context.WithoutCancel(ctx)
-	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT) //nolint:govet
+	ctx, cancel := context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT) //nolint:govet
+	defer cancel()
 	// The function is meant to be executed asynchronously and return way after the request was finished,
 	// so we don't return any error
 	// However the indexes are created one after the other to avoid a (probably) deadlock situation
@@ -306,11 +307,12 @@ func (repo *ClientDbRepository) CreateUniqueIndexAsync(ctx context.Context, exec
 	}
 
 	ctx = context.WithoutCancel(ctx)
-	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT) //nolint:govet
+	ctx, cancel := context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT)
 
-	go createUniqueIndex(ctx, exec, index, true) //nolint:errcheck
-	// The function is meant to be executed asynchronously and return way after the request was finished,
-	// so we don't return any error
+	go func() {
+		defer cancel()
+		_ = createUniqueIndex(ctx, exec, index, true)
+	}()
 	return nil
 }
 
@@ -431,7 +433,7 @@ func (repo *ClientDbRepository) ListIndicesPendingCreation(ctx context.Context, 
 	return indices, err
 }
 
-func (editor *ClientDbRepository) ListInvalidIndices(ctx context.Context, exec Executor) ([]string, error) {
+func (repo *ClientDbRepository) ListInvalidIndices(ctx context.Context, exec Executor) ([]string, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -462,7 +464,7 @@ func (editor *ClientDbRepository) ListInvalidIndices(ctx context.Context, exec E
 	return indices, err
 }
 
-func (editor *ClientDbRepository) DeleteIndex(ctx context.Context, exec Executor, indexName string) error {
+func (repo *ClientDbRepository) DeleteIndex(ctx context.Context, exec Executor, indexName string) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}

@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (r *MarbleDbRepository) CreateCaseReviewFile(
+func (repo *MarbleDbRepository) CreateCaseReviewFile(
 	ctx context.Context,
 	exec Executor,
 	caseReview models.AiCaseReview,
@@ -47,7 +47,7 @@ func (r *MarbleDbRepository) CreateCaseReviewFile(
 	return err
 }
 
-func (r *MarbleDbRepository) UpdateCaseReviewFile(
+func (repo *MarbleDbRepository) UpdateCaseReviewFile(
 	ctx context.Context,
 	exec Executor,
 	caseReviewId uuid.UUID,
@@ -65,7 +65,7 @@ func (r *MarbleDbRepository) UpdateCaseReviewFile(
 	return ExecBuilder(ctx, exec, query)
 }
 
-func (r *MarbleDbRepository) GetCaseReviewFile(
+func (repo *MarbleDbRepository) GetCaseReviewFile(
 	ctx context.Context,
 	exec Executor,
 	aiCaseReviewId uuid.UUID,
@@ -82,7 +82,7 @@ func (r *MarbleDbRepository) GetCaseReviewFile(
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptAiCaseReview)
 }
 
-func (r *MarbleDbRepository) ListCaseReviewFiles(
+func (repo *MarbleDbRepository) ListCaseReviewFiles(
 	ctx context.Context,
 	exec Executor,
 	caseId uuid.UUID,
@@ -110,7 +110,7 @@ func (r *MarbleDbRepository) ListCaseReviewFiles(
 	)
 }
 
-func (r *MarbleDbRepository) CountAiCaseReviewsByOrg(
+func (repo *MarbleDbRepository) CountAiCaseReviewsByOrg(
 	ctx context.Context,
 	exec Executor,
 	orgIds []string,
@@ -133,7 +133,7 @@ func (r *MarbleDbRepository) CountAiCaseReviewsByOrg(
 }
 
 // For now, update the feedback for the most recent completed case review.
-func (r *MarbleDbRepository) UpdateAiCaseReviewFeedback(
+func (repo *MarbleDbRepository) UpdateAiCaseReviewFeedback(
 	ctx context.Context,
 	exec Executor,
 	reviewId uuid.UUID,
@@ -155,7 +155,7 @@ func (r *MarbleDbRepository) UpdateAiCaseReviewFeedback(
 	return err
 }
 
-func (r *MarbleDbRepository) GetCaseReviewById(
+func (repo *MarbleDbRepository) GetCaseReviewById(
 	ctx context.Context,
 	exec Executor,
 	reviewId uuid.UUID,

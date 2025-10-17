@@ -96,7 +96,7 @@ func (err MissingRequirementError) Error() string {
 	return string(err.Requirement)
 }
 
-func (e MissingRequirementError) Is(target error) bool {
+func (err MissingRequirementError) Is(target error) bool {
 	var req MissingRequirementError
 
 	return errors.As(target, &req)

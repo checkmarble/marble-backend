@@ -4,16 +4,16 @@ type AnalyticsType string
 
 const (
 	AnalyticsString    AnalyticsType = "string"
-	AnalyticsBoolean                 = "bool"
-	AnalyticsNumber                  = "number"
-	AnalyticsTimestamp               = "timestamp"
+	AnalyticsBoolean   AnalyticsType = "bool"
+	AnalyticsNumber    AnalyticsType = "number"
+	AnalyticsTimestamp AnalyticsType = "timestamp"
 )
 
 type AnalyticsFieldSource string
 
 const (
 	AnalyticsSourceTriggerObject AnalyticsFieldSource = "trigger_object"
-	AnalyticsSourceIngestedData                       = "ingested_data"
+	AnalyticsSourceIngestedData  AnalyticsFieldSource = "ingested_data"
 )
 
 func AnalyticsTypeFromColumn(colType string) AnalyticsType {

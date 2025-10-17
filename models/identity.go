@@ -53,11 +53,11 @@ func (i OidcIdentity) GetProfile() *IdentityUpdatableClaims {
 	}
 }
 
-func (c OidcIdentity) GetEmail() string {
-	if !c.EmailVerified {
+func (i OidcIdentity) GetEmail() string {
+	if !i.EmailVerified {
 		return ""
 	}
-	return c.Email
+	return i.Email
 }
 
 type ApiKeyIdentity struct {

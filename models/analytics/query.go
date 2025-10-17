@@ -13,17 +13,15 @@ type QueryOp string
 
 const (
 	Eq  QueryOp = "="
-	Ne          = "!="
-	Gt          = ">"
-	Gte         = ">="
-	Lt          = "<"
-	Lte         = "<="
-	In          = "in"
+	Ne  QueryOp = "!="
+	Gt  QueryOp = ">"
+	Gte QueryOp = ">="
+	Lt  QueryOp = "<"
+	Lte QueryOp = "<="
+	In  QueryOp = "in"
 )
 
-var (
-	ValidAnalyticsQueryOps = []QueryOp{Eq, Ne, Gt, Gte, Lt, Lte, In}
-)
+var ValidAnalyticsQueryOps = []QueryOp{Eq, Ne, Gt, Gte, Lt, Lte, In}
 
 func IsValidAnalyticsQueryOp(op QueryOp) bool {
 	return slices.Contains(ValidAnalyticsQueryOps, op)

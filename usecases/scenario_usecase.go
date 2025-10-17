@@ -129,15 +129,17 @@ func (usecase *ScenarioUsecase) CreateScenario(
 	return createdScenario, nil
 }
 
-func (uc *ScenarioUsecase) ListLatestRules(ctx context.Context, scenarioId string) ([]models.ScenarioRuleLatestVersion, error) {
-	scenario, err := uc.repository.GetScenarioById(ctx, uc.executorFactory.NewExecutor(), scenarioId)
+func (usecase *ScenarioUsecase) ListLatestRules(ctx context.Context, scenarioId string) ([]models.ScenarioRuleLatestVersion, error) {
+	scenario, err := usecase.repository.GetScenarioById(ctx,
+		usecase.executorFactory.NewExecutor(), scenarioId)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := uc.enforceSecurity.ReadScenario(scenario); err != nil {
+	if err := usecase.enforceSecurity.ReadScenario(scenario); err != nil {
 		return nil, err
 	}
 
-	return uc.repository.ListScenarioLatestRuleVersions(ctx, uc.executorFactory.NewExecutor(), scenarioId)
+	return usecase.repository.ListScenarioLatestRuleVersions(ctx,
+		usecase.executorFactory.NewExecutor(), scenarioId)
 }

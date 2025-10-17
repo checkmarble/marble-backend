@@ -84,14 +84,14 @@ func NewDbExecFactoryStub(exec pgxmock.PgxPoolIface) dbExecFactoryStub {
 	}
 }
 
-func (exec dbExecFactoryStub) withClientSchema() dbExecFactoryStub {
-	exec.schemaType = models.DATABASE_SCHEMA_TYPE_CLIENT
-	return exec
+func (stub dbExecFactoryStub) withClientSchema() dbExecFactoryStub {
+	stub.schemaType = models.DATABASE_SCHEMA_TYPE_CLIENT
+	return stub
 }
 
-func (exec dbExecFactoryStub) DatabaseSchema() models.DatabaseSchema {
+func (stub dbExecFactoryStub) DatabaseSchema() models.DatabaseSchema {
 	return models.DatabaseSchema{
-		SchemaType: exec.schemaType,
+		SchemaType: stub.schemaType,
 		Schema:     "test",
 	}
 }

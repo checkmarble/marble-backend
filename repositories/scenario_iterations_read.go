@@ -15,13 +15,13 @@ import (
 
 var scenarioIterationCache = expirable.NewLRU[string, models.ScenarioIteration](50, nil, utils.GlobalCacheDuration())
 
-func (repository *MarbleDbRepository) GetScenarioIteration(
+func (repo *MarbleDbRepository) GetScenarioIteration(
 	ctx context.Context,
 	exec Executor,
 	scenarioIterationId string,
 	useCache bool,
 ) (models.ScenarioIteration, error) {
-	if useCache && repository.withCache {
+	if useCache && repo.withCache {
 		if iteration, ok := scenarioIterationCache.Get(scenarioIterationId); ok {
 			return iteration, nil
 		}
@@ -46,7 +46,7 @@ func (repository *MarbleDbRepository) GetScenarioIteration(
 	return iteration, nil
 }
 
-func (repository *MarbleDbRepository) ListScenarioIterations(
+func (repo *MarbleDbRepository) ListScenarioIterations(
 	ctx context.Context,
 	exec Executor,
 	organizationId string,
