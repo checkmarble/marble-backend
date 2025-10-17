@@ -46,6 +46,9 @@ jobs:
         with:
           go-version-file: ./go.mod
 
+      - name: Build
+        run: go build -v ./...
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
