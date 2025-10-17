@@ -39,10 +39,14 @@ var sqlUpdateVerbs = []string{"insert", "update", "delete"}
 
 func injectDbSessionConfig(ctx context.Context, exec executor, query string) (pgconn.CommandTag, error) {
 	if query != "" {
+		exitEarly := true
 		for _, v := range sqlUpdateVerbs {
 			if strings.Contains(strings.ToLower(query), v) {
+				exitEarly = false
 				break
 			}
+		}
+		if exitEarly {
 			return pgconn.NewCommandTag(""), nil
 		}
 	}

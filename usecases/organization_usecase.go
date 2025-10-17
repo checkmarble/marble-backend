@@ -177,14 +177,15 @@ var (
 	ErrRealClientIpNotPresent         = errors.New("no value for client IP in x-real-ip header")
 )
 
-func (uc OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context, subnets []net.IPNet) ([]net.IPNet, error) {
-	orgId := uc.enforceSecurity.OrgId()
+func (usecase OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context, subnets []net.IPNet) ([]net.IPNet, error) {
+	orgId := usecase.enforceSecurity.OrgId()
 
-	org, err := uc.organizationRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId)
+	org, err := usecase.organizationRepository.GetOrganizationById(ctx,
+		usecase.executorFactory.NewExecutor(), orgId)
 	if err != nil {
 		return nil, err
 	}
-	if err := uc.enforceSecurity.EditOrganization(org); err != nil {
+	if err := usecase.enforceSecurity.EditOrganization(org); err != nil {
 		return nil, err
 	}
 
@@ -208,8 +209,8 @@ func (uc OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context, sub
 		}
 	}
 
-	subnets, err = uc.organizationRepository.UpdateOrganizationAllowedNetworks(ctx, uc.executorFactory.NewExecutor(), orgId, subnets)
-
+	subnets, err = usecase.organizationRepository.UpdateOrganizationAllowedNetworks(ctx,
+		usecase.executorFactory.NewExecutor(), orgId, subnets)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not update whitelisted subnets")
 	}

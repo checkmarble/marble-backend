@@ -38,7 +38,7 @@ type dataModelUsecaseIngestedDataReadRepo interface {
 		orgId string) ([]models.FieldStatistics, error)
 }
 
-type DataModelUseCase struct {
+type usecase struct {
 	clientDbIndexEditor           dataModelUsecaseIndexEditor
 	dataModelRepository           repositories.DataModelRepository
 	enforceSecurity               security.EnforceSecurityOrganization
@@ -54,7 +54,7 @@ var (
 	validNameRegex = regexp.MustCompile(`^[a-z]+[a-z0-9_]+$`)
 )
 
-func (usecase DataModelUseCase) GetDataModel(
+func (usecase usecase) GetDataModel(
 	ctx context.Context,
 	organizationID string,
 	options models.DataModelReadOptions,
@@ -113,7 +113,7 @@ func (usecase DataModelUseCase) GetDataModel(
 	return dataModel, nil
 }
 
-func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organizationId, name, description string) (string, error) {
+func (usecase *usecase) CreateDataModelTable(ctx context.Context, organizationId, name, description string) (string, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(organizationId); err != nil {
 		return "", err
 	}
@@ -175,7 +175,7 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 	return tableId, err
 }
 
-func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, tableID, description string) error {
+func (usecase *usecase) UpdateDataModelTable(ctx context.Context, tableID, description string) error {
 	exec := usecase.executorFactory.NewExecutor()
 	if table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, tableID); err != nil {
 		return err
@@ -186,7 +186,7 @@ func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, table
 	return usecase.dataModelRepository.UpdateDataModelTable(ctx, exec, tableID, description)
 }
 
-func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
+func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
 	if field.Name == "id" {
 		return "", errors.Wrap(models.BadParameterError, "field name 'id' is reserved")
 	}
@@ -261,7 +261,7 @@ func getFieldUniqueIndex(tableName string, fieldName string) models.UnicityIndex
 	}
 }
 
-func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateFieldInput) error {
+func (usecase *usecase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateFieldInput) error {
 	// Note for the future me: if we want to allow making a "not nullable" field to "nullable", we need to also have a routine
 	// that removes the constraint on the DB if it exists, for backwards compatibility.
 	// We currently no longer add those constraints on fields marked as required and their value is only enforced at ingestion time
@@ -386,7 +386,7 @@ func findLinksToField(dataModel models.DataModel, tableName string, fieldName st
 	return links
 }
 
-func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) (string, error) {
+func (usecase *usecase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) (string, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(link.OrganizationID); err != nil {
 		return "", err
 	}
@@ -432,7 +432,7 @@ func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link m
 	return linkId, usecase.dataModelRepository.CreateDataModelLink(ctx, exec, linkId, link)
 }
 
-func (usecase *DataModelUseCase) DeleteDataModel(ctx context.Context, organizationID string) error {
+func (usecase *usecase) DeleteDataModel(ctx context.Context, organizationID string) error {
 	if err := usecase.enforceSecurity.WriteDataModel(organizationID); err != nil {
 		return err
 	}
@@ -453,7 +453,7 @@ func (usecase *DataModelUseCase) DeleteDataModel(ctx context.Context, organizati
 
 // data model pivot methods
 
-func (usecase *DataModelUseCase) CreatePivot(ctx context.Context, input models.CreatePivotInput) (models.Pivot, error) {
+func (usecase *usecase) CreatePivot(ctx context.Context, input models.CreatePivotInput) (models.Pivot, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(input.OrganizationId); err != nil {
 		return models.Pivot{}, err
 	}
@@ -549,7 +549,7 @@ func validatePivotCreateInput(input models.CreatePivotInput, dm models.DataModel
 	return nil
 }
 
-func (usecase *DataModelUseCase) ListPivots(ctx context.Context, organizationId string, tableID *string) ([]models.Pivot, error) {
+func (usecase *usecase) ListPivots(ctx context.Context, organizationId string, tableID *string) ([]models.Pivot, error) {
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return nil, err
 	}
@@ -578,7 +578,7 @@ func (usecase *DataModelUseCase) ListPivots(ctx context.Context, organizationId 
 	return pivots, nil
 }
 
-func (usecase *DataModelUseCase) CreateNavigationOption(ctx context.Context, input models.CreateNavigationOptionInput) error {
+func (usecase *usecase) CreateNavigationOption(ctx context.Context, input models.CreateNavigationOptionInput) error {
 	exec := usecase.executorFactory.NewExecutor()
 
 	// Basic sanity checks on input
@@ -732,14 +732,14 @@ func (usecase *DataModelUseCase) CreateNavigationOption(ctx context.Context, inp
 	})
 }
 
-func (uc DataModelUseCase) GetDataModelOptions(ctx context.Context, orgId, tableId string) (models.DataModelOptions, error) {
-	exec := uc.executorFactory.NewExecutor()
+func (usecase usecase) GetDataModelOptions(ctx context.Context, orgId, tableId string) (models.DataModelOptions, error) {
+	exec := usecase.executorFactory.NewExecutor()
 
-	if err := uc.enforceSecurity.ReadDataModel(); err != nil {
+	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return models.DataModelOptions{}, err
 	}
 
-	tableMeta, err := uc.dataModelRepository.GetDataModelTable(ctx, exec, tableId)
+	tableMeta, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, tableId)
 	if err != nil {
 		return models.DataModelOptions{}, err
 	}
@@ -747,12 +747,12 @@ func (uc DataModelUseCase) GetDataModelOptions(ctx context.Context, orgId, table
 		return models.DataModelOptions{}, errors.Wrap(models.NotFoundError, "table not found")
 	}
 
-	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, tableMeta.OrganizationID, false, false)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, tableMeta.OrganizationID, false, false)
 	if err != nil {
 		return models.DataModelOptions{}, err
 	}
 
-	opts, err := uc.dataModelRepository.GetDataModelOptionsForTable(ctx, exec, tableId)
+	opts, err := usecase.dataModelRepository.GetDataModelOptionsForTable(ctx, exec, tableId)
 	if err != nil {
 		return models.DataModelOptions{}, err
 	}
@@ -769,24 +769,24 @@ func (uc DataModelUseCase) GetDataModelOptions(ctx context.Context, orgId, table
 	return *opts, nil
 }
 
-func (uc DataModelUseCase) UpdateDataModelOptions(ctx context.Context,
+func (usecase usecase) UpdateDataModelOptions(ctx context.Context,
 	orgId string,
 	req models.UpdateDataModelOptionsRequest,
 ) (models.DataModelOptions, error) {
-	exec := uc.executorFactory.NewExecutor()
+	exec := usecase.executorFactory.NewExecutor()
 
-	if err := uc.enforceSecurity.WriteDataModel(orgId); err != nil {
+	if err := usecase.enforceSecurity.WriteDataModel(orgId); err != nil {
 		return models.DataModelOptions{}, err
 	}
 
-	tableMeta, err := uc.dataModelRepository.GetDataModelTable(ctx, exec, req.TableId)
+	tableMeta, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, req.TableId)
 	if err != nil {
 		return models.DataModelOptions{}, err
 	}
 	if tableMeta.OrganizationID != orgId {
 		return models.DataModelOptions{}, errors.Wrap(models.NotFoundError, "table not found")
 	}
-	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, tableMeta.OrganizationID, false, false)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, tableMeta.OrganizationID, false, false)
 	if err != nil {
 		return models.DataModelOptions{}, err
 	}
@@ -815,7 +815,7 @@ func (uc DataModelUseCase) UpdateDataModelOptions(ctx context.Context,
 		}
 	}
 
-	opts, err := uc.dataModelRepository.UpsertDataModelOptions(ctx, exec, req)
+	opts, err := usecase.dataModelRepository.UpsertDataModelOptions(ctx, exec, req)
 	if err != nil {
 		return models.DataModelOptions{}, err
 	}

@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	_ "embed"
-
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin/binding"
@@ -44,7 +42,8 @@ func GetOpenApiForVersion(version string) (*openapi3.T, error) {
 
 	b, err := OPENAPI_SOURCES.ReadFile("openapi/" + version + ".yml")
 	if err != nil {
-		return nil, errors.Wrapf(models.NotFoundError, "could not find OpenAPI spec for version '%s'", version)
+		return nil, errors.Wrapf(models.NotFoundError,
+			"could not find OpenAPI spec for version '%s'", version)
 	}
 
 	if err := yaml.Unmarshal(b, &yamlSpec); err != nil {

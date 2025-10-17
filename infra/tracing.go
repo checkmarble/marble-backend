@@ -143,8 +143,8 @@ func (ms MarbleSampler) ShouldSample(p sdktrace.SamplingParameters) sdktrace.Sam
 	var (
 		kind     SpanKind
 		value    string
-		prob     float64                   = DEFAULT_SAMPLING_RATE
-		decision sdktrace.SamplingDecision = sdktrace.Drop
+		prob     = DEFAULT_SAMPLING_RATE
+		decision = sdktrace.Drop
 	)
 
 	psc := trace.SpanContextFromContext(p.ParentContext)

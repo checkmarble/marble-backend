@@ -669,7 +669,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	logger.DebugContext(ctx, "Sanity check", "response", *caseReviewContext.SanityCheck)
 
 	// Do custom language and structure instructions
-	var finalOutput string = caseReviewContext.CaseReview.CaseReview
+	var finalOutput = caseReviewContext.CaseReview.CaseReview
 
 	instructions, modelForInstruction := uc.getOrganizationInstructionsForPrompt(ctx, customOrgInstructions)
 

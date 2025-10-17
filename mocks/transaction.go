@@ -16,8 +16,8 @@ type Executor struct {
 	mock.Mock
 }
 
-func (t *Executor) DatabaseSchema() models.DatabaseSchema {
-	args := t.Called()
+func (e *Executor) DatabaseSchema() models.DatabaseSchema {
+	args := e.Called()
 	return args.Get(0).(models.DatabaseSchema)
 }
 
@@ -46,8 +46,8 @@ type Transaction struct {
 	mock.Mock
 }
 
-func (t *Transaction) DatabaseSchema() models.DatabaseSchema {
-	args := t.Called()
+func (e *Transaction) DatabaseSchema() models.DatabaseSchema {
+	args := e.Called()
 	return args.Get(0).(models.DatabaseSchema)
 }
 

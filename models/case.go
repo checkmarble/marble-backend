@@ -41,8 +41,8 @@ func (c Case) IsSnoozed() bool {
 	return c.SnoozedUntil != nil && c.SnoozedUntil.After(time.Now())
 }
 
-func (c CaseStatus) IsFinalized() bool {
-	return c == CaseClosed
+func (s CaseStatus) IsFinalized() bool {
+	return s == CaseClosed
 }
 
 type CaseMetadata struct {
@@ -207,11 +207,15 @@ type CaseMassUpdateAction string
 
 const (
 	CaseMassUpdateClose       CaseMassUpdateAction = "close"
-	CaseMassUpdateReopen                           = "reopen"
-	CaseMassUpdateAssign                           = "assign"
-	CaseMassUpdateMoveToInbox                      = "move_to_inbox"
-	CaseMassUpdateUnknown                          = "unknown"
+	CaseMassUpdateReopen      CaseMassUpdateAction = "reopen"
+	CaseMassUpdateAssign      CaseMassUpdateAction = "assign"
+	CaseMassUpdateMoveToInbox CaseMassUpdateAction = "move_to_inbox"
+	CaseMassUpdateUnknown     CaseMassUpdateAction = "unknown"
 )
+
+func (a CaseMassUpdateAction) String() string {
+	return string(a)
+}
 
 func CaseMassUpdateActionFromString(s string) CaseMassUpdateAction {
 	switch s {

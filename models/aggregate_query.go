@@ -57,53 +57,53 @@ func (family AggregateQueryFamily) Hash() string {
 	return fmt.Sprintf("%s - %s - %s - %s", family.TableName, eq, ineq, other)
 }
 
-func (qFamily AggregateQueryFamily) ToIndexFamilies() *set.HashSet[IndexFamily, string] {
+func (family AggregateQueryFamily) ToIndexFamilies() *set.HashSet[IndexFamily, string] {
 	// we output a collection of index families, with the different combinations of "inequality filtering"
 	//  at the end of the index.
 	// E.g. if we have a query with conditions a = 1, b = 2, c > 3, d > 4, e > 5, we output:
 	// { Flex: {a,b}, Last: c, Included: {d,e} }  +  { Flex: {a,b}, Last: d, Included: {c,e} }   +  { Flex: {a,b}, Last: e, Included: {c,d} }
 	output := set.NewHashSet[IndexFamily](0)
-	if (qFamily.EqConditions == nil || qFamily.EqConditions.Size() == 0) &&
-		(qFamily.IneqConditions == nil || qFamily.IneqConditions.Size() == 0) {
+	if (family.EqConditions == nil || family.EqConditions.Size() == 0) &&
+		(family.IneqConditions == nil || family.IneqConditions.Size() == 0) {
 		// if there are no conditions that are indexable, we return an empty family
 		return output
 	}
 
 	// first iterate on equality conditions and colunms to include anyway
 	base := NewIndexFamily()
-	base.TableName = qFamily.TableName
-	if qFamily.EqConditions != nil {
-		qFamily.EqConditions.ForEach(func(f string) bool {
+	base.TableName = family.TableName
+	if family.EqConditions != nil {
+		family.EqConditions.ForEach(func(f string) bool {
 			base.Flex.Insert(f)
 			return true
 		})
 	}
-	if qFamily.SelectOrOtherConditions != nil {
-		qFamily.SelectOrOtherConditions.ForEach(func(f string) bool {
+	if family.SelectOrOtherConditions != nil {
+		family.SelectOrOtherConditions.ForEach(func(f string) bool {
 			base.Included.Insert(f)
 			return true
 		})
 	}
-	if qFamily.IneqConditions == nil || qFamily.IneqConditions.Size() == 0 {
+	if family.IneqConditions == nil || family.IneqConditions.Size() == 0 {
 		output.Insert(base)
 		return output
 	}
 
 	// If inequality conditions are involved, we need to create a family for each column involved
 	// in the inequality conditions (and complete the "other" columns)
-	qFamily.IneqConditions.ForEach(func(f string) bool {
+	family.IneqConditions.ForEach(func(f string) bool {
 		// we create a copy of the base family
-		family := base.Copy()
+		fam := base.Copy()
 		// we add the current column as the "last" column
-		family.Last = f
+		fam.Last = f
 		// we add all the other columns as "other" columns
-		qFamily.IneqConditions.ForEach(func(o string) bool {
+		family.IneqConditions.ForEach(func(o string) bool {
 			if o != f {
-				family.Included.Insert(o)
+				fam.Included.Insert(o)
 			}
 			return true
 		})
-		output.Insert(family)
+		output.Insert(fam)
 		return true
 	})
 

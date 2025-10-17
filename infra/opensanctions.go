@@ -122,6 +122,6 @@ func (os OpenSanctions) Algorithm() string {
 	return os.algorithm
 }
 
-func (ner OpenSanctions) IsNameRecognitionSet() bool {
-	return ner.nameRecognition != nil && ner.nameRecognition.ApiUrl != ""
+func (os OpenSanctions) IsNameRecognitionSet() bool {
+	return os.nameRecognition != nil && os.nameRecognition.ApiUrl != ""
 }

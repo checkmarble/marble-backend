@@ -52,8 +52,8 @@ func (i OidcIdentity) GetProfile() *IdentityUpdatableClaims {
 	}
 }
 
-func (c OidcIdentity) GetEmail() string {
-	return c.Email
+func (i OidcIdentity) GetEmail() string {
+	return i.Email
 }
 
 type ApiKeyIdentity struct {

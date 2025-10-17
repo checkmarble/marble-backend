@@ -159,11 +159,7 @@ func (scc ScreeningConfig) HasSameQuery(other ScreeningConfig) bool {
 		}
 	}
 
-	if scc.ForcedOutcome != other.ForcedOutcome {
-		return false
-	}
-
-	return true
+	return scc.ForcedOutcome == other.ForcedOutcome
 }
 
 type ScreeningOutcome struct {
