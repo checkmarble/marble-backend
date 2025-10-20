@@ -209,41 +209,12 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 		return nil, err
 	}
 
-	sccs, err := uc.screeningConfigRepository.ListScreeningConfigs(ctx,
-		uc.executorFactory.NewExecutor(), decisions[0].ScenarioIterationId.String(), false)
-	if err != nil {
-		return nil, err
-	}
-
 	matchIds := set.New[string](0)
 	matchIdToMatch := make(map[string]*models.ScreeningMatch)
-
-	var (
-		screeningConfig models.ScreeningConfig
-		found           bool
-	)
 
 	for sidx, sc := range scs {
 		if sc.NumberOfMatches == 0 && len(sc.Matches) > 0 {
 			sc.NumberOfMatches = len(sc.Matches)
-		}
-
-		for _, scc := range sccs {
-			if sc.ScreeningConfigId == scc.Id {
-				screeningConfig = scc
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			return nil, errors.New("could not find screening config for match")
-		}
-
-		scs[sidx].Config = models.ScreeningConfigRef{
-			Id:       screeningConfig.Id,
-			StableId: screeningConfig.StableId,
-			Name:     screeningConfig.Name,
 		}
 
 		for midx, match := range sc.Matches {
@@ -252,8 +223,7 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 		}
 	}
 
-	comments, err := uc.repository.ListScreeningCommentsByIds(ctx,
-		uc.executorFactory.NewExecutor(), matchIds.Slice())
+	comments, err := uc.repository.ListScreeningCommentsByIds(ctx, exec, matchIds.Slice())
 	if err != nil {
 		return nil, err
 	}
