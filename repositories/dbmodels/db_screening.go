@@ -54,7 +54,7 @@ type DBScreeningWithMatches struct {
 	Matches []DBScreeningMatch `db:"matches"`
 }
 
-func AdaptScreeningWithoutConfig(dto DBScreening) (models.Screening, error) {
+func adaptScreeningWithoutConfig(dto DBScreening) (models.Screening, error) {
 	cfg := models.OrganizationOpenSanctionsConfig{
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
@@ -88,7 +88,7 @@ func AdaptScreeningWithoutConfig(dto DBScreening) (models.Screening, error) {
 }
 
 func AdaptScreening(dto DBScreeningAndConfig) (models.Screening, error) {
-	sc, _ := AdaptScreeningWithoutConfig(dto.DBScreening)
+	sc, _ := adaptScreeningWithoutConfig(dto.DBScreening)
 	sc.Config = models.ScreeningConfigRef{
 		Id:       dto.ConfigId,
 		StableId: dto.StableId,

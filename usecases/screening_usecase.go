@@ -66,11 +66,8 @@ type ScreeningRepository interface {
 	InsertScreening(
 		ctx context.Context,
 		exec repositories.Executor,
-		decisionid string,
-		orgId string,
 		sc models.ScreeningWithMatches,
-		storeMatches bool,
-	) (models.ScreeningWithMatches, error)
+	) error
 	UpdateScreeningStatus(ctx context.Context, exec repositories.Executor, id string,
 		status models.ScreeningStatus) error
 
@@ -285,6 +282,7 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
+	screening = models.MergeScreeningExecWithDefaults(decision.DecisionId, decision.OrganizationId)(screening)
 
 	var requester *string
 
@@ -307,8 +305,7 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 			return models.ScreeningWithMatches{}, err
 		}
 
-		if screening, err = uc.repository.InsertScreening(ctx, tx,
-			decision.DecisionId.String(), decision.OrganizationId.String(), screening, true); err != nil {
+		if err = uc.repository.InsertScreening(ctx, tx, screening); err != nil {
 			return models.ScreeningWithMatches{}, err
 		}
 

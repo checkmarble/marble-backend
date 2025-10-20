@@ -9,7 +9,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/google/uuid"
 )
 
 func (*MarbleDbRepository) GetActiveScreeningForDecision(
@@ -221,18 +220,10 @@ func (*MarbleDbRepository) UpdateScreeningMatchStatus(
 func (*MarbleDbRepository) InsertScreening(
 	ctx context.Context,
 	exec Executor,
-	decisionId string,
-	orgId string,
 	screening models.ScreeningWithMatches,
-	storeMatches bool,
-) (models.ScreeningWithMatches, error) {
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return screening, err
-	}
-
-	scId := screening.Id
-	if scId == "" {
-		scId = uuid.NewString()
+		return err
 	}
 
 	whitelistedEntities := make([]string, 0)
@@ -263,9 +254,9 @@ func (*MarbleDbRepository) InsertScreening(
 			"number_of_matches",
 		).
 		Values(
-			scId,
-			decisionId,
-			orgId,
+			screening.Id,
+			screening.DecisionId,
+			screening.OrgId,
 			screening.ScreeningConfigId,
 			screening.SearchInput,
 			screening.InitialQuery,
@@ -280,36 +271,27 @@ func (*MarbleDbRepository) InsertScreening(
 			screening.Status.String(),
 			screening.ErrorCodes,
 			screening.NumberOfMatches,
-		).
-		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningColumn, ",")))
+		)
 
-	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningWithoutConfig)
+	err := ExecBuilder(ctx, exec, sql)
 	if err != nil {
-		return models.ScreeningWithMatches{}, err
+		return err
 	}
 
-	withMatches := models.ScreeningWithMatches{Screening: result}
-	if !storeMatches || len(screening.Matches) == 0 {
-		return withMatches, nil
+	if len(screening.Matches) == 0 {
+		return nil
 	}
 
 	matchSql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SCREENING_MATCHES).
-		Columns("screening_id", "opensanction_entity_id", "query_ids", "payload", "counterparty_id").
-		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningMatchesColumn, ",")))
+		Columns("screening_id", "opensanction_entity_id", "query_ids", "payload", "counterparty_id")
 
 	for _, match := range screening.Matches {
-		matchSql = matchSql.Values(result.Id, match.EntityId, match.QueryIds, match.Payload, match.UniqueCounterpartyIdentifier)
+		matchSql = matchSql.Values(screening.Id, match.EntityId, match.QueryIds,
+			match.Payload, match.UniqueCounterpartyIdentifier)
 	}
 
-	matches, err := SqlToListOfModels(ctx, exec, matchSql, dbmodels.AdaptScreeningMatch)
-	if err != nil {
-		return models.ScreeningWithMatches{}, err
-	}
-
-	withMatches.Matches = matches
-
-	return withMatches, nil
+	return ExecBuilder(ctx, exec, matchSql)
 }
 
 func (*MarbleDbRepository) ListScreeningCommentsByIds(ctx context.Context, exec Executor, ids []string) ([]models.ScreeningMatchComment, error) {

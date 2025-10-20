@@ -24,11 +24,8 @@ type PhantomDecisionUsecaseScreeningRepository interface {
 	InsertScreening(
 		ctx context.Context,
 		exec repositories.Executor,
-		phantomDecisionId string,
-		orgId string,
 		screening models.ScreeningWithMatches,
-		storeMatches bool,
-	) (models.ScreeningWithMatches, error)
+	) error
 }
 
 type StoreTestRunRepository interface {
@@ -121,20 +118,13 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 				return err
 			}
 
-			if len(phantomDecision.ScreeningExecutions) > 0 {
+			for _, sce := range phantomDecision.ScreeningExecutions {
 				// We don't need to store the matches in the case of a phantom decision
 				// because we are only interested in statistics on the screening status
-				for _, sce := range phantomDecision.ScreeningExecutions {
-					_, err := usecase.externalRepository.InsertScreening(
-						ctx,
-						tx,
-						phantomDecision.PhantomDecisionId,
-						input.OrganizationId,
-						sce,
-						false)
-					if err != nil {
-						return errors.Wrap(err, "could not store screening execution")
-					}
+				sce.Matches = nil
+				err := usecase.externalRepository.InsertScreening(ctx, tx, sce)
+				if err != nil {
+					return errors.Wrapf(err, "error storing screening execution in CreatePhantomDecision")
 				}
 			}
 
