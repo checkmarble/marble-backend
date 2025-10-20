@@ -951,13 +951,13 @@ func (uc ScreeningUsecase) enforceCanReadOrUpdateScreeningMatch(
 	ctx context.Context,
 	matchId string,
 ) (screeningContextData, error) {
-	match, err := uc.repository.GetScreeningMatch(ctx, uc.executorFactory.NewExecutor(), matchId)
+	exec := uc.executorFactory.NewExecutor()
+	match, err := uc.repository.GetScreeningMatch(ctx, exec, matchId)
 	if err != nil {
 		return screeningContextData{}, err
 	}
 
-	screening, err := uc.repository.GetScreeningWithoutMatches(ctx,
-		uc.executorFactory.NewExecutor(), match.ScreeningId)
+	screening, err := uc.repository.GetScreeningWithoutMatches(ctx, exec, match.ScreeningId)
 	if err != nil {
 		return screeningContextData{}, err
 	}

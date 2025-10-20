@@ -84,24 +84,31 @@ func (*MarbleDbRepository) GetScreeningWithoutMatches(ctx context.Context, exec 
 		return models.Screening{}, err
 	}
 
-	sql := NewQueryBuilder().
-		Select(dbmodels.SelectScreeningColumn...).
-		From(dbmodels.TABLE_SCREENINGS).
-		Where(squirrel.Eq{"id": id})
+	sql := selectScreenings().Where(squirrel.Eq{"sc.id": id})
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreening)
+}
+
+func selectScreenings() squirrel.SelectBuilder {
+	return NewQueryBuilder().
+		Select(columnsNames("sc", dbmodels.SelectScreeningColumn)...).
+		Columns("scc.id AS config_id", "stable_id", "name").
+		From(dbmodels.TABLE_SCREENINGS + " AS sc").
+		InnerJoin(dbmodels.TABLE_SCREENING_CONFIGS + " AS scc ON sc.screening_config_id=scc.id")
 }
 
 func selectScreeningsWithMatches() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(columnsNames("sc", dbmodels.SelectScreeningColumn)...).
+		Columns("scc.id AS config_id", "stable_id", "scc.name").
 		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s) ORDER BY array_position(array['confirmed_hit', 'pending', 'no_hit', 'skipped'], scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL) AS matches",
 			strings.Join(columnsNames("scm", dbmodels.SelectScreeningMatchesColumn), ","))).
 		From(dbmodels.TABLE_SCREENINGS + " AS sc").
-		LeftJoin(dbmodels.TABLE_SCREENING_MATCHES + " AS scm ON sc.id = scm.screening_id").
+		InnerJoin(dbmodels.TABLE_SCREENING_CONFIGS + " AS scc ON sc.screening_config_id=scc.id").
+		LeftJoin(dbmodels.TABLE_SCREENING_MATCHES + " AS scm ON (sc.id = scm.screening_id)").
 		// TODO: revert to "group by id" once the view/table renaming has been done - currently the "screenings" table is a view on the actual table called "sanction_checks" which is not compatible with the "group by id" syntax
 		// GroupBy("sc.id").
-		GroupBy(columnsNames("sc", dbmodels.SelectScreeningColumn)...).
+		GroupBy(append(columnsNames("sc", dbmodels.SelectScreeningColumn), "config_id", "stable_id", "name")...).
 		OrderBy("sc.created_at")
 }
 
@@ -276,7 +283,7 @@ func (*MarbleDbRepository) InsertScreening(
 		).
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningColumn, ",")))
 
-	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptScreening)
+	result, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningWithoutConfig)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
