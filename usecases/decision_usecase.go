@@ -602,7 +602,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			for _, sce := range item.decision.ScreeningExecutions {
 				err = usecase.screeningRepository.InsertScreening(ctx, tx, sce)
 				if err != nil {
-					return errors.Wrap(err, "could not store screening execution")
+					return errors.Wrapf(err, "error storing screening execution in CreateAllDecisions")
 				}
 
 				if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
