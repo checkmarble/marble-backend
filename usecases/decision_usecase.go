@@ -561,12 +561,12 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 		switch {
 		case err != nil:
-			return nil, 0, errors.Wrapf(err, "error evaluating scenario \"%s\" in CreateAllDecisions", scenario.Name)
+			return nil, 0, errors.Wrapf(err, `error evaluating scenario "%s" in CreateAllDecisions`, scenario.Name)
 		case !triggerPassed:
 			nbSkipped++
 			sinceStart := time.Since(decisionStart)
 			logger.DebugContext(ctx,
-				fmt.Sprintf("In CreateAllDecisions, skipped scenario \"%s\" after %dms",
+				fmt.Sprintf(`In CreateAllDecisions, skipped scenario "%s" after %dms`,
 					scenario.Name, sinceStart.Milliseconds()),
 				"scenario_id", scenario.Id,
 				"since_start", sinceStart.Milliseconds(),
@@ -662,7 +662,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				item.decision.DecisionId.String(),
 			)
 			if err != nil {
-				return errors.Wrapf(err, "Failed to execute decision workflows for decision on scenario \"%s\"", item.scenario.Name)
+				return errors.Wrapf(err, `Failed to execute decision workflows for decision on scenario "%s"`, item.scenario.Name)
 			}
 
 			if item.execution.ExecutionMetrics != nil {
@@ -671,7 +671,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				item.execution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
 
 				logger.InfoContext(ctx,
-					fmt.Sprintf("In CreateAllDecisions, created decision for scenario \"%s\" after %dms",
+					fmt.Sprintf(`In CreateAllDecisions, created decision for scenario "%s" after %dms`,
 						item.scenario.Name, sinceStart.Milliseconds()),
 					"decision_id", item.decision.DecisionId,
 					"scenario_id", item.scenario.Id,
