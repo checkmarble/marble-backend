@@ -384,34 +384,21 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
-		var scs []models.ScreeningWithMatches
-
-		if len(decision.ScreeningExecutions) > 0 {
-			scs = make([]models.ScreeningWithMatches, len(decision.ScreeningExecutions))
-
-			for idx, sce := range decision.ScreeningExecutions {
-				sc, err := usecase.screeningRepository.InsertScreening(ctx, tx,
-					decision.DecisionId.String(), decision.OrganizationId.String(), sce, true)
-				if err != nil {
-					return models.DecisionWithRuleExecutions{},
-						errors.Wrap(err, "could not store screening execution")
-				}
-
-				scs[idx] = sc
-				scs[idx].Config = sce.Config
+		for _, sce := range decision.ScreeningExecutions {
+			_, err := usecase.screeningRepository.InsertScreening(ctx, tx,
+				decision.DecisionId.String(), decision.OrganizationId.String(), sce, true)
+			if err != nil {
+				return models.DecisionWithRuleExecutions{},
+					errors.Wrap(err, "could not store screening execution")
 			}
 
 			if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
-				for _, sc := range scs {
-					if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
-						ctx, tx, input.OrganizationId, sc.Id); err != nil {
-						utils.LogAndReportSentryError(ctx, errors.Wrap(err,
-							"could not enqueue screening for refinement"))
-					}
+				if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
+					ctx, tx, input.OrganizationId, sce.Id); err != nil {
+					utils.LogAndReportSentryError(ctx, errors.Wrap(err,
+						"could not enqueue screening for refinement"))
 				}
 			}
-
-			decision.ScreeningExecutions = scs
 		}
 
 		if params.WithDecisionWebhooks {
@@ -616,27 +603,26 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				With(prometheus.Labels{"org_id": item.decision.OrganizationId.String()}).
 				Observe(time.Since(decisionStart).Seconds())
 
-			if item.decision.ScreeningExecutions != nil {
-				var sc models.ScreeningWithMatches
-				scs := make([]models.ScreeningWithMatches, len(item.decision.ScreeningExecutions))
-				for i, sce := range item.decision.ScreeningExecutions {
-					sc, err = usecase.screeningRepository.InsertScreening(
-						ctx, tx, item.decision.DecisionId.String(),
-						item.decision.OrganizationId.String(), sce, true)
-					if err != nil {
-						return errors.Wrap(err, "could not store screening execution")
-					}
-					scs[i] = sc
-					// TODO: need to review if we really want to write the screening, read it back, and patch the config on it again (it's not written together).
-					// But for now I'm adding it again because it's already there on the "create single decision" path. It's not used in the public API v1 however.
-					// Or rather, it seems used only on the v0 decisions API to return the name of a screening rule, without being actually documented in the API spec.
-					scs[i].Config = sce.Config
+			for _, sce := range item.decision.ScreeningExecutions {
+				_, err = usecase.screeningRepository.InsertScreening(
+					ctx,
+					tx,
+					item.decision.DecisionId.String(),
+					item.decision.OrganizationId.String(),
+					sce,
+					true,
+				)
+				if err != nil {
+					return errors.Wrap(err, "could not store screening execution")
 				}
-				item.decision.ScreeningExecutions = scs
 
 				if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
 					if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
-						ctx, tx, input.OrganizationId, sc.Id); err != nil {
+						ctx,
+						tx,
+						input.OrganizationId,
+						sce.Id,
+					); err != nil {
 						utils.LogAndReportSentryError(ctx, errors.Wrap(err,
 							"could not enqueue screening for refinement"))
 					}
