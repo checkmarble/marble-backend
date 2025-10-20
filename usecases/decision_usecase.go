@@ -76,11 +76,8 @@ type decisionUsecaseScreeningWriter interface {
 	InsertScreening(
 		ctx context.Context,
 		exec repositories.Executor,
-		decisionId string,
-		orgId string,
 		sc models.ScreeningWithMatches,
-		storeMatches bool,
-	) (models.ScreeningWithMatches, error)
+	) error
 }
 
 type DecisionUsecase struct {
@@ -385,11 +382,10 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 
 		for _, sce := range decision.ScreeningExecutions {
-			_, err := usecase.screeningRepository.InsertScreening(ctx, tx,
-				decision.DecisionId.String(), decision.OrganizationId.String(), sce, true)
+			err := usecase.screeningRepository.InsertScreening(ctx, tx, sce)
 			if err != nil {
 				return models.DecisionWithRuleExecutions{},
-					errors.Wrap(err, "could not store screening execution")
+					errors.Wrapf(err, "error storing screening execution in CreateDecision")
 			}
 
 			if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
@@ -604,16 +600,9 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				Observe(time.Since(decisionStart).Seconds())
 
 			for _, sce := range item.decision.ScreeningExecutions {
-				_, err = usecase.screeningRepository.InsertScreening(
-					ctx,
-					tx,
-					item.decision.DecisionId.String(),
-					item.decision.OrganizationId.String(),
-					sce,
-					true,
-				)
+				err := usecase.screeningRepository.InsertScreening(ctx, tx, sce)
 				if err != nil {
-					return errors.Wrap(err, "could not store screening execution")
+					return errors.Wrapf(err, "error storing screening execution in CreateAllDecisions")
 				}
 
 				if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
