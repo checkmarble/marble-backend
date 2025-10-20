@@ -600,9 +600,9 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				Observe(time.Since(decisionStart).Seconds())
 
 			for _, sce := range item.decision.ScreeningExecutions {
-				err := usecase.screeningRepository.InsertScreening(ctx, tx, sce)
+				err = usecase.screeningRepository.InsertScreening(ctx, tx, sce)
 				if err != nil {
-					return errors.Wrapf(err, "error storing screening execution in CreateAllDecisions")
+					return errors.Wrap(err, "could not store screening execution")
 				}
 
 				if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
