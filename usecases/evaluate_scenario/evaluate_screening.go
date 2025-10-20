@@ -297,6 +297,11 @@ func (e ScenarioEvaluator) preprocess(
 func outcomeNoHit(scc models.ScreeningConfig, initialQuery []models.OpenSanctionsCheckQuery) models.ScreeningWithMatches {
 	return models.ScreeningWithMatches{
 		Screening: models.Screening{
+			Config: models.ScreeningConfigRef{
+				Id:       scc.Id,
+				StableId: scc.StableId,
+				Name:     scc.Name,
+			},
 			ScreeningConfigId: scc.Id,
 			InitialQuery:      initialQuery,
 			Status:            models.ScreeningStatusNoHit,
@@ -308,6 +313,11 @@ func outcomeNoHit(scc models.ScreeningConfig, initialQuery []models.OpenSanction
 func outcomeError(scc models.ScreeningConfig, code string, err error) models.ScreeningWithMatches {
 	return models.ScreeningWithMatches{
 		Screening: models.Screening{
+			Config: models.ScreeningConfigRef{
+				Id:       scc.Id,
+				StableId: scc.StableId,
+				Name:     scc.Name,
+			},
 			ScreeningConfigId: scc.Id,
 			Status:            models.ScreeningStatusError,
 			ErrorCodes:        []string{code},

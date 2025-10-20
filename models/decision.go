@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
 
@@ -122,9 +123,10 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 		reviewStatus = &val
 	}
 
+	decisionId := uuid.Must(uuid.NewV7())
 	return DecisionWithRuleExecutions{
 		Decision: Decision{
-			DecisionId:           uuid.Must(uuid.NewV7()),
+			DecisionId:           decisionId,
 			CreatedAt:            time.Now(),
 			ClientObject:         clientObject,
 			Outcome:              scenarioExecution.Outcome,
@@ -140,8 +142,24 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 			ScheduledExecutionId: scheduledExecutionId,
 			Score:                scenarioExecution.Score,
 		},
-		RuleExecutions:      scenarioExecution.RuleExecutions,
-		ScreeningExecutions: scenarioExecution.ScreeningExecutions,
+		RuleExecutions: scenarioExecution.RuleExecutions,
+		ScreeningExecutions: pure_utils.Map(scenarioExecution.ScreeningExecutions,
+			mergeScreeningExecWithDefaults(decisionId.String(),
+				scenarioExecution.OrganizationId.String())),
+	}
+}
+
+func mergeScreeningExecWithDefaults(decisionId, orgId string) func(se ScreeningWithMatches) ScreeningWithMatches {
+	return func(se ScreeningWithMatches) ScreeningWithMatches {
+		if se.Id == "" {
+			se.Id = uuid.Must(uuid.NewV7()).String()
+		}
+		se.DecisionId = decisionId
+		se.OrgId = orgId
+		// se.orgConfig = ??
+		se.CreatedAt = time.Now()
+		se.UpdatedAt = time.Now()
+		return se
 	}
 }
 
