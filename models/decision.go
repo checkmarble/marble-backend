@@ -144,18 +144,17 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 		},
 		RuleExecutions: scenarioExecution.RuleExecutions,
 		ScreeningExecutions: pure_utils.Map(scenarioExecution.ScreeningExecutions,
-			mergeScreeningExecWithDefaults(decisionId.String(),
-				scenarioExecution.OrganizationId.String())),
+			MergeScreeningExecWithDefaults(decisionId, scenarioExecution.OrganizationId)),
 	}
 }
 
-func mergeScreeningExecWithDefaults(decisionId, orgId string) func(se ScreeningWithMatches) ScreeningWithMatches {
+func MergeScreeningExecWithDefaults(decisionId, orgId uuid.UUID) func(se ScreeningWithMatches) ScreeningWithMatches {
 	return func(se ScreeningWithMatches) ScreeningWithMatches {
 		if se.Id == "" {
 			se.Id = uuid.Must(uuid.NewV7()).String()
 		}
-		se.DecisionId = decisionId
-		se.OrgId = orgId
+		se.DecisionId = decisionId.String()
+		se.OrgId = orgId.String()
 		// se.orgConfig = ??
 		se.CreatedAt = time.Now()
 		se.UpdatedAt = time.Now()
