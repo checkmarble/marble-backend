@@ -12,6 +12,7 @@ const TABLE_SCREENINGS = "screenings"
 
 var (
 	SelectScreeningColumn            = utils.ColumnList[DBScreening]()
+	SelectScreeningAndConfigColumn   = utils.ColumnList[DBScreeningAndConfig]()
 	SelectScreeningBaseInfoColumn    = utils.ColumnList[DBScreeningBaseInfo]()
 	SelectScreeningWithMatchesColumn = utils.ColumnList[DBScreeningWithMatches]()
 )
@@ -39,28 +40,21 @@ type DBScreening struct {
 	UpdatedAt           time.Time                        `db:"updated_at"`
 }
 
-type DBScreeningBaseInfo struct {
-	Id              string    `db:"id"`
-	DecisionId      string    `db:"decision_id"`
-	OrgId           string    `db:"org_id"`
-	Status          string    `db:"status"`
-	RequestedBy     *string   `db:"requested_by"`
-	IsPartial       bool      `db:"is_partial"`
-	NumberOfMatches *int      `db:"number_of_matches"`
-	CreatedAt       time.Time `db:"created_at"`
-}
+type DBScreeningAndConfig struct {
+	DBScreening
 
-type DBScreeningBaseInfoWithName struct {
-	DBScreeningBaseInfo
-	Name string `db:"name"` // field is on screening_configs table and requires a join
+	// Fields from config (joined via screening_config_id)
+	ConfigId string `db:"config_id"`
+	StableId string `db:"stable_id"`
+	Name     string `db:"name"`
 }
 
 type DBScreeningWithMatches struct {
-	DBScreening
+	DBScreeningAndConfig
 	Matches []DBScreeningMatch `db:"matches"`
 }
 
-func AdaptScreening(dto DBScreening) (models.Screening, error) {
+func AdaptScreeningWithoutConfig(dto DBScreening) (models.Screening, error) {
 	cfg := models.OrganizationOpenSanctionsConfig{
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
@@ -93,6 +87,51 @@ func AdaptScreening(dto DBScreening) (models.Screening, error) {
 	}, nil
 }
 
+func AdaptScreening(dto DBScreeningAndConfig) (models.Screening, error) {
+	sc, _ := AdaptScreeningWithoutConfig(dto.DBScreening)
+	sc.Config = models.ScreeningConfigRef{
+		Id:       dto.ConfigId,
+		StableId: dto.StableId,
+		Name:     dto.Name,
+	}
+	return sc, nil
+}
+
+func AdaptScreeningWithMatches(dto DBScreeningWithMatches) (models.ScreeningWithMatches, error) {
+	matches := make([]models.ScreeningMatch, 0, len(dto.Matches))
+	for _, match := range dto.Matches {
+		m, err := AdaptScreeningMatch(match)
+		if err != nil {
+			return models.ScreeningWithMatches{}, err
+		}
+
+		matches = append(matches, m)
+	}
+
+	sc, _ := AdaptScreening(dto.DBScreeningAndConfig)
+	return models.ScreeningWithMatches{
+		Screening: sc,
+		Matches:   matches,
+	}, nil
+}
+
+// Screening with base information: no reading of matches
+type DBScreeningBaseInfo struct {
+	Id              string    `db:"id"`
+	DecisionId      string    `db:"decision_id"`
+	OrgId           string    `db:"org_id"`
+	Status          string    `db:"status"`
+	RequestedBy     *string   `db:"requested_by"`
+	IsPartial       bool      `db:"is_partial"`
+	NumberOfMatches *int      `db:"number_of_matches"`
+	CreatedAt       time.Time `db:"created_at"`
+}
+
+type DBScreeningBaseInfoWithName struct {
+	DBScreeningBaseInfo
+	Name string `db:"name"` // field is on screening_configs table and requires a join
+}
+
 func AdaptScreeningBaseInfo(dto DBScreeningBaseInfoWithName) (models.ScreeningBaseInfo, error) {
 	numberOfMatches := 0
 	if dto.NumberOfMatches != nil {
@@ -108,23 +147,5 @@ func AdaptScreeningBaseInfo(dto DBScreeningBaseInfoWithName) (models.ScreeningBa
 		Name:            dto.Name,
 		NumberOfMatches: numberOfMatches,
 		CreatedAt:       dto.CreatedAt,
-	}, nil
-}
-
-func AdaptScreeningWithMatches(dto DBScreeningWithMatches) (models.ScreeningWithMatches, error) {
-	matches := make([]models.ScreeningMatch, 0, len(dto.Matches))
-	for _, match := range dto.Matches {
-		m, err := AdaptScreeningMatch(match)
-		if err != nil {
-			return models.ScreeningWithMatches{}, err
-		}
-
-		matches = append(matches, m)
-	}
-
-	sc, _ := AdaptScreening(dto.DBScreening)
-	return models.ScreeningWithMatches{
-		Screening: sc,
-		Matches:   matches,
 	}, nil
 }

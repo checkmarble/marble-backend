@@ -79,11 +79,17 @@ func TestListScreeningOnDecision(t *testing.T) {
 	exec.Mock.ExpectQuery(escapeSql(`
 		SELECT
 			sc.id, sc.decision_id, sc.org_id, sc.screening_config_id, sc.status, sc.search_input, sc.initial_query, sc.search_datasets, sc.match_threshold, sc.match_limit, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.initial_has_matches, sc.whitelisted_entities, sc.error_codes, sc.number_of_matches, sc.created_at, sc.updated_at,
-			ARRAY_AGG(ROW(scm.id,scm.screening_id,scm.opensanction_entity_id,scm.status,scm.query_ids,scm.counterparty_id,scm.payload,scm.enriched,scm.reviewed_by,scm.created_at,scm.updated_at) ORDER BY array_position(.+, scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL) AS matches
+			scc.id AS config_id, stable_id, scc.name,
+			ARRAY_AGG(ROW(scm.id,scm.screening_id,scm.opensanction_entity_id,scm.status,scm.query_ids,scm.counterparty_id,scm.payload,scm.enriched,scm.reviewed_by,scm.created_at,scm.updated_at)
+				ORDER BY array_position(.+, scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL)
+				AS matches
 		FROM screenings AS sc
-		LEFT JOIN screening_matches AS scm ON sc.id = scm.screening_id
-		WHERE sc.decision_id = $1 AND sc.is_archived = $2
-		GROUP BY sc.id
+		INNER JOIN screening_configs AS scc ON sc.screening_config_id=scc.id
+		LEFT JOIN screening_matches AS scm ON (sc.id = scm.screening_id)
+		WHERE sc.decision_id = $1
+			AND sc.is_archived = $2
+		GROUP BY sc.id, sc.decision_id, sc.org_id, sc.screening_config_id, sc.status, sc.search_input, sc.initial_query, sc.search_datasets, sc.match_threshold, sc.match_limit, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.initial_has_matches, sc.whitelisted_entities, sc.error_codes, sc.number_of_matches, sc.created_at, sc.updated_at, config_id, stable_id, name
+		ORDER BY sc.created_at
 	`)).
 		WithArgs(utils.TextToUUID("decisionid").String(), false).
 		WillReturnRows(
@@ -150,7 +156,7 @@ func TestUpdateMatchStatus(t *testing.T) {
 			return "pending", nil
 		}))
 
-	_, mockScRow := utils.FakeStruct[dbmodels.DBScreening](ops.WithCustomFieldProvider(
+	_, mockScRow := utils.FakeStruct[dbmodels.DBScreeningAndConfig](ops.WithCustomFieldProvider(
 		"Id", func() (interface{}, error) {
 			return "screening_id", nil
 		}),
@@ -168,9 +174,9 @@ func TestUpdateMatchStatus(t *testing.T) {
 			AddRow(mockScmRow...),
 		)
 	exec.Mock.
-		ExpectQuery(`SELECT id, decision_id, org_id, screening_config_id, status, search_input, initial_query, search_datasets, match_threshold, match_limit, is_manual, requested_by, is_partial, is_archived, initial_has_matches, whitelisted_entities, error_codes, number_of_matches, created_at, updated_at FROM screenings WHERE id = \$1`).
+		ExpectQuery(`SELECT sc.id, sc.decision_id, sc.org_id, sc.screening_config_id, sc.status, sc.search_input, sc.initial_query, sc.search_datasets, sc.match_threshold, sc.match_limit, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.initial_has_matches, sc.whitelisted_entities, sc.error_codes, sc.number_of_matches, sc.created_at, sc.updated_at, scc.id AS config_id, stable_id, name FROM screenings AS sc INNER JOIN screening_configs AS scc ON sc.screening_config_id=scc.id WHERE sc.id = \$1`).
 		WithArgs("screening_id").
-		WillReturnRows(pgxmock.NewRows(dbmodels.SelectScreeningColumn).
+		WillReturnRows(pgxmock.NewRows(dbmodels.SelectScreeningAndConfigColumn).
 			AddRow(mockScRow...),
 		)
 	exec.Mock.ExpectQuery(`SELECT id, screening_id, opensanction_entity_id, status, query_ids, counterparty_id, payload, enriched, reviewed_by, created_at, updated_at FROM screening_matches WHERE screening_id = \$1`).
