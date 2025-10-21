@@ -250,6 +250,18 @@ func RunServer(config CompiledConfig) error {
 		return err
 	}
 
+	redisConfig, err := infra.InitRedisConfig()
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
+	}
+
+	redisClient, err := repositories.NewRedisClient(redisConfig)
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
+	}
+
 	var bigQueryInfra *infra.BigQueryInfra
 	if isMarbleSaasProject {
 		bigQueryInfra, err = infra.InitializeBigQueryInfra(ctx, bigQueryConfig)
@@ -282,6 +294,7 @@ func RunServer(config CompiledConfig) error {
 	repositories := repositories.NewRepositories(
 		pool,
 		gcpConfig,
+		repositories.WithRedisClient(redisClient),
 		repositories.WithMetabase(infra.InitializeMetabase(apiConfig.MetabaseConfig)),
 		repositories.WithTransferCheckEnrichmentBucket(serverConfig.transferCheckEnrichmentBucketUrl),
 		repositories.WithConvoyClientProvider(
