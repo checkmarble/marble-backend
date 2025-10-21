@@ -17,6 +17,7 @@ type options struct {
 	metabase                      Metabase
 	transfercheckEnrichmentBucket string
 	clientDbConfig                map[string]infra.ClientDbConfig
+	redisClient                   *RedisClient
 	convoyClientProvider          ConvoyClientProvider
 	convoyRateLimit               int
 	openSanctions                 infra.OpenSanctions
@@ -36,6 +37,12 @@ func getOptions(opts []Option) *options {
 		opt(o)
 	}
 	return o
+}
+
+func WithRedisClient(client *RedisClient) Option {
+	return func(o *options) {
+		o.redisClient = client
+	}
 }
 
 func WithMetabase(metabase Metabase) Option {
@@ -107,6 +114,7 @@ func WithLagoConfig(lagoConfig infra.LagoConfig) Option {
 
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
+	RedisClient                       *RedisClient
 	ConvoyRepository                  ConvoyRepository
 	IngestionRepository               IngestionRepository
 	IngestedDataReadRepository        IngestedDataReadRepository
@@ -151,6 +159,7 @@ func NewRepositories(
 
 	return Repositories{
 		ExecutorGetter:                executorGetter,
+		RedisClient:                   options.redisClient,
 		ConvoyRepository:              NewConvoyRepository(options.convoyClientProvider, options.convoyRateLimit),
 		IngestionRepository:           &IngestionRepositoryImpl{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
