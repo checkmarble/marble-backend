@@ -108,12 +108,16 @@ func IgnoreList(ctx context.Context, e ScenarioEvaluator, screeningId string,
 			ast.NewNodeCustomListAccess(scc.Preprocessing.IgnoreListId), iteration.OrganizationId,
 			models.ClientObject{}, models.DataModel{})
 		if err != nil {
-			return nil, err
+			utils.LogAndReportSentryError(ctx, errors.Wrapf(err,
+				`Error retrieving custom list "%s" in IgnoreList`, scc.Preprocessing.IgnoreListId))
+			return queries, nil
 		}
 
 		list, ok := customListEval.ReturnValue.([]string)
 		if !ok {
-			return nil, errors.New("could not retrieve custom list")
+			utils.LogAndReportSentryError(ctx, errors.Newf(
+				`Custom list "%s" did not return a list of strings in IgnoreList`, scc.Preprocessing.IgnoreListId))
+			return queries, nil
 		}
 
 		list = pure_utils.Map(list, func(s string) string {
@@ -151,6 +155,10 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId
 	queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration,
 	scc models.ScreeningConfig,
 ) ([]models.OpenSanctionsCheckQuery, error) {
+	logger := utils.LoggerFromContext(ctx).With(
+		"step", "ner",
+		"screening_id", screeningId,
+	)
 	if !scc.Preprocessing.UseNer {
 		return queries, nil
 	}
@@ -167,12 +175,13 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId
 
 		matches, err := e.nameRecognizer.PerformNameRecognition(nerCtx, query.GetName())
 		if err != nil {
-			utils.LoggerFromContext(ctx).Warn("screening preprocessing: name entity recognition returned an error, using initial query", "error", err.Error())
+			logger.WarnContext(ctx,
+				"screening preprocessing: name entity recognition returned an error, using initial query", "error", err.Error())
 			return queries, nil
 		}
 
 		if len(matches) == 0 {
-			utils.LoggerFromContext(ctx).Debug("screening preprocessing: name entity recognition returns no match, using initial query")
+			logger.DebugContext(ctx, "screening preprocessing: name entity recognition returns no match, using initial query")
 			out = append(out, query)
 			continue
 		}
@@ -200,10 +209,8 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId
 	}
 
 	if performed {
-		utils.LoggerFromContext(ctx).DebugContext(ctx,
+		logger.DebugContext(ctx,
 			fmt.Sprintf("screening preprocessing: turned %d queries into %d", len(queries), len(out)),
-			"screening_id", screeningId,
-			"step", "ner",
 			"out", pure_utils.Map(queries, func(q models.OpenSanctionsCheckQuery) string {
 				return q.Type
 			}))

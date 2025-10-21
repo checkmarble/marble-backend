@@ -14,6 +14,8 @@ type Screening struct {
 	Query        json.RawMessage                  `json:"query"`
 	InitialQuery []models.OpenSanctionsCheckQuery `json:"initial_query"`
 	Partial      bool                             `json:"partial"`
+	Name         string                           `json:"name"`
+	ErrorCodes   []string                         `json:"error_codes"`
 
 	MatchCount int              `json:"match_count"`
 	Matches    []ScreeningMatch `json:"matches,omitzero"`
@@ -31,12 +33,19 @@ type ScreeningMatch struct {
 
 func AdaptScreening(includeMatches bool) func(models.ScreeningWithMatches) Screening {
 	return func(model models.ScreeningWithMatches) Screening {
+		errors := make([]string, 0)
+		if model.ErrorCodes != nil {
+			errors = model.ErrorCodes
+		}
+
 		sc := Screening{
 			Id:           model.Id,
 			Status:       model.Status.String(),
 			Query:        model.SearchInput,
 			InitialQuery: model.InitialQuery,
 			Partial:      model.Partial,
+			Name:         model.Config.Name,
+			ErrorCodes:   errors,
 			MatchCount:   len(model.Matches),
 			CreatedAt:    pubapi.DateTime(model.CreatedAt),
 			UpdatedAt:    pubapi.DateTime(model.UpdatedAt),

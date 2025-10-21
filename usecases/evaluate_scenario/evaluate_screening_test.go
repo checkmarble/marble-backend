@@ -133,11 +133,10 @@ func TestScreeningErrorWhenNameQueryNotString(t *testing.T) {
 		}},
 	}
 
-	sce, err := eval.evaluateScreening(context.TODO(), iteration,
+	_, err := eval.evaluateScreening(context.TODO(), iteration,
 		ScenarioEvaluationParameters{}, DataAccessor{})
 
-	assert.NoError(t, err)
-	assert.Equal(t, models.ScreeningStatusError, sce[0].Status)
+	assert.Error(t, err)
 }
 
 func TestScreeningCalledWhenNameFilterConstant(t *testing.T) {
@@ -282,7 +281,9 @@ func TestScreeningCalledWithNameRecognizedLabel(t *testing.T) {
 			},
 		},
 		InitialQuery: []models.OpenSanctionsCheckQuery{
-			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"dinner with joe finnigan"}}},
+			{Type: "Thing", Filters: models.OpenSanctionsFilter{
+				"name": []string{"dinner with joe finnigan"},
+			}},
 		},
 	}
 
@@ -357,7 +358,9 @@ func TestScreeningCalledWithNumbersPreprocessing(t *testing.T) {
 			},
 		},
 		InitialQuery: []models.OpenSanctionsCheckQuery{
-			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"din2ner 123 with 4 joe fi4n5n65i8gan"}}},
+			{Type: "Thing", Filters: models.OpenSanctionsFilter{
+				"name": []string{"din2ner 123 with 4 joe fi4n5n65i8gan"},
+			}},
 		},
 	}
 
@@ -486,7 +489,9 @@ func TestScreeningWithListPreprocessing(t *testing.T) {
 			},
 		},
 		InitialQuery: []models.OpenSanctionsCheckQuery{
-			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"This Contains Forbidden Words"}}},
+			{Type: "Thing", Filters: models.OpenSanctionsFilter{
+				"name": []string{"This Contains Forbidden Words"},
+			}},
 		},
 	}
 

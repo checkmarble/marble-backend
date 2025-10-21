@@ -17,19 +17,33 @@ import (
 )
 
 const (
-	ErrScreeningTriggerRuleNotBoolean   = "trigger_rule_not_boolean"
+	ErrScreeningAllFieldsNullOrEmpty = "all_fields_null_or_empty"
+
+	// Not written on new screenings, but exists on some old ones (we ignore nil counterparty ids now)
 	ErrScreeningCounterpartyIdNotString = "counterparty_id_not_string"
-	ErrScreeningAllFieldsNullOrEmpty    = "all_fields_null_or_empty"
-	ErrScreeningFieldsNotString         = "fields_not_string"
-	ErrScreeningPreprocessingFailed     = "preprocessing_failed"
+
+	// not used currently but may be reintroduced
+	ErrScreeningPreprocessingFailed = "preprocessing_failed"
 )
 
+// "Expected" error codes on screening checks:
+//   - trigger rule returns nil (consistent with decision trigger condition that evaluates as false if returning null)
+//   - null or empty fields in query (before or after preprocessing)
+//
+// Ignored errors, we just log them:
+//   - counterparty id not a string, especially the case where it is nil
+//   - failure to read custom list values in ignore list preprocessing
+//   - failure to generate NER matches within 2sec, whatever the root cause
+//
+// Blocking errors:
+//   - trigger condition does returns a non-nil, non-boolean value - this should be blocked at publication time
 func (e ScenarioEvaluator) evaluateScreening(
 	ctx context.Context,
 	iteration models.ScenarioIteration,
 	params ScenarioEvaluationParameters,
 	dataAccessor DataAccessor,
 ) (sexecs []models.ScreeningWithMatches, serr error) {
+	logger := utils.LoggerFromContext(ctx)
 	// First, check if the screening should be performed
 	if len(iteration.ScreeningConfigs) == 0 {
 		return
@@ -67,7 +81,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 		go func(idx int, scc models.ScreeningConfig) {
 			defer func() {
 				if r := recover(); r != nil {
-					utils.LoggerFromContext(ctx).ErrorContext(ctx,
+					logger.ErrorContext(ctx,
 						fmt.Sprintf("recovered from panic during screening execution: '%s'. stacktrace from panic:", r))
 					utils.LogAndReportSentryError(ctx, errors.New(string(debug.Stack())))
 
@@ -94,11 +108,14 @@ func (e ScenarioEvaluator) evaluateScreening(
 					return
 				}
 
-				passed, ok := triggerEvaluation.ReturnValue.(bool)
+				if triggerEvaluation.ReturnValue == nil {
+					logger.DebugContext(ctx, "screening trigger rule returned nil, returning no hit", "screening_config_id", scc.Id)
+					addScreeningResult(idx, outcomeNoHit(scc, nil))
+				}
 
+				passed, ok := triggerEvaluation.ReturnValue.(bool)
 				if !ok {
-					addScreeningResult(idx, outcomeError(scc,
-						ErrScreeningTriggerRuleNotBoolean, nil))
+					addScreeningError(scc, errors.Newf("screening trigger rule returned a non-boolean value, '%T' instead", triggerEvaluation.ReturnValue))
 					return
 				}
 				if !passed {
@@ -137,7 +154,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 
 					input, ok := inputAst.ReturnValue.(string)
 					if !ok {
-						addScreeningResult(idx, outcomeError(scc, ErrScreeningFieldsNotString, nil))
+						addScreeningError(scc, errors.Newf("screening field filter '%s' does not return a string, '%T' instead", fieldName, inputAst.ReturnValue))
 						return
 					}
 					if input == "" {
@@ -149,7 +166,9 @@ func (e ScenarioEvaluator) evaluateScreening(
 				}
 
 				if queries, err = e.preprocess(ctx, scId, queriesBeforeProcessing, iteration, scc); err != nil {
-					addScreeningResult(idx, outcomeError(scc, ErrScreeningAllFieldsNullOrEmpty, nil))
+					// NB: should never happen with the preprocessing steps as they are implemented as of this commit.
+					addScreeningError(scc, errors.Wrap(err,
+						"could not preprocess screening queries"))
 					return
 				}
 			}
@@ -186,9 +205,8 @@ func (e ScenarioEvaluator) evaluateScreening(
 
 				counterpartyId, ok := counterpartyIdResult.ReturnValue.(string)
 				if counterpartyIdResult.ReturnValue == nil || !ok {
-					addScreeningResult(idx, outcomeError(scc,
-						ErrScreeningCounterpartyIdNotString, nil))
-					return
+					logger.DebugContext(ctx, "screening counterparty ID returned nil or not a string, ignoring the value", "screening_config_id", scc.Id)
+					counterpartyId = ""
 				}
 
 				if trimmed := strings.TrimSpace(counterpartyId); trimmed != "" {
@@ -262,6 +280,9 @@ func (e ScenarioEvaluator) evaluateScreening(
 	return
 }
 
+// NB: the function may return an error as per its signature, but as currently implemented it never does:
+// all error cases are logged and handled by choosing the most logical "skip preprocessing" path, even if that means
+// possibly more false positives.
 func (e ScenarioEvaluator) preprocess(
 	ctx context.Context,
 	screeningId string,

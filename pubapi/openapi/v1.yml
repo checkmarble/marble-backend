@@ -1023,6 +1023,7 @@ components:
         - status
         - query
         - match_count
+        - name
         - created_at
         - updated_at
       properties:
@@ -1057,6 +1058,15 @@ components:
         match_count:
           description: Number of matches for the query
           type: integer
+        name: 
+          description: Name of the screening configuration
+          type: string
+        error_codes:
+          description: List of error codes that occurred during the screening execution
+          type: array
+          items:
+            type: string
+            enum: ["counterparty_id_not_string", "all_fields_null_or_empty"]
         created_at:
           type: string
           format: date-time
