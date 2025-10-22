@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"reflect"
@@ -47,6 +48,17 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		SslMode:            utils.GetEnv("PG_SSL_MODE", "prefer"),
 		ImpersonateRole:    utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
 	}
+	if pgConfig.ConnectionString != "" {
+		if u, err := url.Parse(pgConfig.ConnectionString); err != nil || !u.IsAbs() {
+			switch err {
+			case nil:
+				return errors.New("invalid database connection string")
+			default:
+				return errors.Wrap(err, "invalid database connection string")
+			}
+		}
+	}
+
 	convoyConfiguration := infra.ConvoyConfiguration{
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
 		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
