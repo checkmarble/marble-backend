@@ -73,8 +73,10 @@ type CaseUseCaseRepository interface {
 	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
 
 	GetMassCasesByIds(ctx context.Context, exec repositories.Executor, caseIds []uuid.UUID) ([]models.Case, error)
-	CaseMassChangeStatus(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, status models.CaseStatus) ([]uuid.UUID, error)
-	CaseMassAssign(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, assigneeId uuid.UUID) ([]uuid.UUID, error)
+	CaseMassChangeStatus(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID,
+		status models.CaseStatus) ([]uuid.UUID, error)
+	CaseMassAssign(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID,
+		assigneeId uuid.UUID) ([]uuid.UUID, error)
 	CaseMassMoveToInbox(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, inboxId uuid.UUID) ([]uuid.UUID, error)
 }
 
@@ -1721,7 +1723,8 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 
 		// If we are trying to mass-assign, we need to check, for each case, that the target user can manage the case.
 		if req.Action == models.CaseMassUpdateAssign {
-			if err := security.EnforceSecurityCaseForUser(newAssignee).ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+			if err := security.EnforceSecurityCaseForUser(newAssignee).ReadOrUpdateCase(
+				c.GetMetadata(), availableInboxIds); err != nil {
 				return errors.Wrap(err, "target user lacks case permissions for assignment")
 			}
 		}
@@ -1756,7 +1759,6 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 
 		case models.CaseMassUpdateReopen:
 			updatedIds, err := uc.repository.CaseMassChangeStatus(ctx, tx, req.CaseIds, models.CasePending)
-
 			if err != nil {
 				return errors.Wrap(err, "could not updaet case status in mass update")
 			}
@@ -1773,7 +1775,6 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 
 		case models.CaseMassUpdateAssign:
 			updatedIds, err := uc.repository.CaseMassAssign(ctx, tx, req.CaseIds, req.Assign.AssigneeId)
-
 			if err != nil {
 				return errors.Wrap(err, "could not assign cases in mass update")
 			}
@@ -1790,7 +1791,6 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 
 		case models.CaseMassUpdateMoveToInbox:
 			updatedIds, err := uc.repository.CaseMassMoveToInbox(ctx, tx, req.CaseIds, req.MoveToInbox.InboxId)
-
 			if err != nil {
 				return errors.Wrap(err, "could not change case inbox in mass update")
 			}
@@ -1815,7 +1815,8 @@ func (uc *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpdateDto
 
 		// TODO: perform relevant side effects
 
-		if err := uc.repository.BatchCreateCaseEvents(ctx, tx, slices.Collect(maps.Values(events))); err != nil {
+		if err := uc.repository.BatchCreateCaseEvents(ctx, tx,
+			slices.Collect(maps.Values(events))); err != nil {
 			return errors.Wrap(err, "could not create case events in mass update")
 		}
 
