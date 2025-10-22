@@ -82,7 +82,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	workerConfig := WorkerConfig{
 		appName:                     "marble-backend-worker",
-		env:                         utils.GetEnv("ENV", "development"),
+		env:                         utils.GetEnv("ENV", "production"),
 		failedWebhooksRetryPageSize: utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
 		ingestionBucketUrl:          utils.GetRequiredEnv[string]("INGESTION_BUCKET_URL"),
 		loggingFormat:               utils.GetEnv("LOGGING_FORMAT", "text"),
