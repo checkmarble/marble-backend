@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 )
 
 func RunMigrations(apiVersion string) error {
@@ -20,6 +22,16 @@ func RunMigrations(apiVersion string) error {
 		User:             utils.GetEnv("PG_USER", ""),
 		SslMode:          utils.GetEnv("PG_SSL_MODE", "prefer"),
 		ImpersonateRole:  utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
+	}
+	if pgConfig.ConnectionString != "" {
+		if u, err := url.Parse(pgConfig.ConnectionString); err != nil || !u.IsAbs() {
+			switch err {
+			case nil:
+				return errors.New("invalid database connection string")
+			default:
+				return errors.Wrap(err, "invalid database connection string")
+			}
+		}
 	}
 
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))

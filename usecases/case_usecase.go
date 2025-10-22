@@ -201,8 +201,8 @@ func (usecase *CaseUseCase) ListCases(
 	)
 }
 
-func (uc *CaseUseCase) GetCasesReferents(ctx context.Context, caseIds []string) (map[string]models.CaseReferents, error) {
-	referents, err := uc.repository.GetCaseReferents(ctx, uc.executorFactory.NewExecutor(), caseIds)
+func (usecase *CaseUseCase) GetCasesReferents(ctx context.Context, caseIds []string) (map[string]models.CaseReferents, error) {
+	referents, err := usecase.repository.GetCaseReferents(ctx, usecase.executorFactory.NewExecutor(), caseIds)
 	if err != nil {
 		return nil, err
 	}
@@ -216,25 +216,25 @@ func (uc *CaseUseCase) GetCasesReferents(ctx context.Context, caseIds []string) 
 	return referentMap, nil
 }
 
-func (uc *CaseUseCase) GetCaseComments(ctx context.Context, caseId string, paging models.PaginationAndSorting) (models.Paginated[models.CaseEvent], error) {
-	c, err := uc.GetCase(ctx, caseId)
+func (usecase *CaseUseCase) GetCaseComments(ctx context.Context, caseId string, paging models.PaginationAndSorting) (models.Paginated[models.CaseEvent], error) {
+	c, err := usecase.GetCase(ctx, caseId)
 	if err != nil {
 		return models.Paginated[models.CaseEvent]{}, errors.Wrap(err, "could not retrieve requested case")
 	}
 
-	inboxes, err := uc.getAvailableInboxIds(ctx, uc.executorFactory.NewExecutor(), c.OrganizationId)
+	inboxes, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor(), c.OrganizationId)
 	if err != nil {
 		return models.Paginated[models.CaseEvent]{}, errors.Wrap(err, "could not retrieve available inboxes")
 	}
 
-	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxes); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxes); err != nil {
 		return models.Paginated[models.CaseEvent]{}, err
 	}
 
 	pagingPlusOne := paging
 	pagingPlusOne.Limit += 1
 
-	comments, err := uc.repository.ListCaseEventsOfTypes(ctx, uc.executorFactory.NewExecutor(), caseId, []models.CaseEventType{models.CaseCommentAdded}, pagingPlusOne)
+	comments, err := usecase.repository.ListCaseEventsOfTypes(ctx, usecase.executorFactory.NewExecutor(), caseId, []models.CaseEventType{models.CaseCommentAdded}, pagingPlusOne)
 	if err != nil {
 		return models.Paginated[models.CaseEvent]{}, errors.Wrap(err, "could not list comment case events")
 	}
@@ -245,22 +245,22 @@ func (uc *CaseUseCase) GetCaseComments(ctx context.Context, caseId string, pagin
 	}, nil
 }
 
-func (uc *CaseUseCase) GetCaseFiles(ctx context.Context, caseId string) ([]models.CaseFile, error) {
-	c, err := uc.GetCase(ctx, caseId)
+func (usecase *CaseUseCase) GetCaseFiles(ctx context.Context, caseId string) ([]models.CaseFile, error) {
+	c, err := usecase.GetCase(ctx, caseId)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve requested case")
 	}
 
-	inboxes, err := uc.getAvailableInboxIds(ctx, uc.executorFactory.NewExecutor(), c.OrganizationId)
+	inboxes, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor(), c.OrganizationId)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve available inboxes")
 	}
 
-	if err := uc.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxes); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxes); err != nil {
 		return nil, err
 	}
 
-	caseFiles, err := uc.repository.GetCasesFileByCaseId(ctx, uc.executorFactory.NewExecutor(), caseId)
+	caseFiles, err := usecase.repository.GetCasesFileByCaseId(ctx, usecase.executorFactory.NewExecutor(), caseId)
 	if err != nil {
 		return nil, err
 	}
