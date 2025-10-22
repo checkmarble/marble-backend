@@ -46,7 +46,7 @@ func RunServer(config CompiledConfig) error {
 
 	// This is where we read the environment variables and set up the configuration for the application.
 	apiConfig := api.Configuration{
-		Env:                 utils.GetEnv("ENV", "development"),
+		Env:                 utils.GetEnv("ENV", "production"),
 		AppName:             "marble-backend",
 		MarbleApiUrl:        utils.GetEnv("MARBLE_API_URL", ""),
 		MarbleAppUrl:        utils.GetEnv("MARBLE_APP_URL", ""),
