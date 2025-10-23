@@ -553,7 +553,6 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 					scenario.Name, sinceStart.Milliseconds()),
 				"scenario_id", scenario.Id,
 				"since_start", sinceStart.Milliseconds(),
-				"steps", scenarioExecution.ExecutionMetrics.Steps,
 			)
 			usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable, evaluationParameters, scenario, nil)
 		default:

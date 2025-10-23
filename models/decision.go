@@ -155,7 +155,6 @@ func MergeScreeningExecWithDefaults(decisionId, orgId uuid.UUID) func(se Screeni
 		}
 		se.DecisionId = decisionId.String()
 		se.OrgId = orgId.String()
-		// se.orgConfig = ??
 		se.CreatedAt = time.Now()
 		se.UpdatedAt = time.Now()
 		return se
