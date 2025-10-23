@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
 
@@ -27,8 +28,9 @@ type PhantomDecision struct {
 }
 
 func AdaptScenarExecToPhantomDecision(scenarioExecution ScenarioExecution) PhantomDecision {
+	decisionId := uuid.Must(uuid.NewV7())
 	return PhantomDecision{
-		PhantomDecisionId:   uuid.Must(uuid.NewV7()).String(),
+		PhantomDecisionId:   decisionId.String(),
 		CreatedAt:           time.Now(),
 		OrganizationId:      scenarioExecution.OrganizationId.String(),
 		Outcome:             scenarioExecution.Outcome,
@@ -36,6 +38,7 @@ func AdaptScenarExecToPhantomDecision(scenarioExecution ScenarioExecution) Phant
 		ScenarioIterationId: scenarioExecution.ScenarioIterationId.String(),
 		Score:               scenarioExecution.Score,
 		RuleExecutions:      scenarioExecution.RuleExecutions,
-		ScreeningExecutions: scenarioExecution.ScreeningExecutions,
+		ScreeningExecutions: pure_utils.Map(scenarioExecution.ScreeningExecutions,
+			MergeScreeningExecWithDefaults(decisionId, scenarioExecution.OrganizationId)),
 	}
 }
