@@ -8,5 +8,5 @@ import (
 
 type TokenRepository interface {
 	Issuer() string
-	VerifyToken(ctx context.Context, firebaseToken string) (models.IdentityClaims, error)
+	VerifyToken(ctx context.Context, idToken, accessToken string) (models.IdentityClaims, error)
 }

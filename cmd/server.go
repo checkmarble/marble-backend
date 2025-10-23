@@ -31,12 +31,13 @@ func RunServer(config CompiledConfig) error {
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
 	isMarbleSaasProject := infra.IsMarbleSaasProject()
+	marbleAppUrl := utils.GetEnv("MARBLE_APP_URL", "")
 
 	authProvider := auth.ParseTokenProvider(utils.GetEnv("AUTH_PROVIDER", "firebase"))
 	oidcProvider := infra.OidcConfig{}
 
 	if authProvider == auth.TokenProviderOidc {
-		oidc, err := infra.InitializeOidc(ctx)
+		oidc, err := infra.InitializeOidc(ctx, marbleAppUrl)
 		if err != nil {
 			return err
 		}
@@ -49,7 +50,7 @@ func RunServer(config CompiledConfig) error {
 		Env:                 utils.GetEnv("ENV", "production"),
 		AppName:             "marble-backend",
 		MarbleApiUrl:        utils.GetEnv("MARBLE_API_URL", ""),
-		MarbleAppUrl:        utils.GetEnv("MARBLE_APP_URL", ""),
+		MarbleAppUrl:        marbleAppUrl,
 		MarbleBackofficeUrl: utils.GetEnv("MARBLE_BACKOFFICE_URL", ""),
 		Port:                utils.GetRequiredEnv[string]("PORT"),
 		RequestLoggingLevel: utils.GetEnv("REQUEST_LOGGING_LEVEL", "all"),

@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"strings"
 
@@ -23,7 +24,7 @@ type OidcConfig struct {
 	Verifier *oidc.IDTokenVerifier
 }
 
-func InitializeOidc(ctx context.Context) (OidcConfig, error) {
+func InitializeOidc(ctx context.Context, marbleAppUrl string) (OidcConfig, error) {
 	issuer := utils.GetEnv("AUTH_OIDC_ISSUER", "")
 	clientId := utils.GetEnv("AUTH_OIDC_CLIENT_ID", "")
 	extraParams := map[string]string{}
@@ -56,7 +57,7 @@ func InitializeOidc(ctx context.Context) (OidcConfig, error) {
 		ClientId:     clientId,
 		ClientSecret: utils.GetEnv("AUTH_OIDC_CLIENT_SECRET", ""),
 		Scopes:       strings.Split(utils.GetEnv("AUTH_OIDC_SCOPE", ""), ","),
-		RedirectUri:  utils.GetEnv("AUTH_OIDC_REDIRECT_URI", ""),
+		RedirectUri:  fmt.Sprintf("%s/oidc/callback", marbleAppUrl),
 		ExtraParams:  extraParams,
 
 		AllowedDomains: allowedDomains,

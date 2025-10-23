@@ -39,7 +39,7 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 
 		c := NewFirebaseClient("project", mockVerifier)
 
-		identity, err := c.VerifyToken(context.Background(), "token")
+		identity, err := c.VerifyToken(context.Background(), "token", "")
 		assert.NoError(t, err)
 		assert.Equal(t, models.FirebaseIdentity{
 			Issuer: infra.MockFirebaseIssuer,
@@ -55,7 +55,7 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 
 		c := NewFirebaseClient("project", mockVerifier)
 
-		_, err := c.VerifyToken(context.Background(), "token")
+		_, err := c.VerifyToken(context.Background(), "token", "")
 		assert.Error(t, err)
 		mockVerifier.AssertExpectations(t)
 	})
@@ -67,7 +67,7 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 
 		c := NewFirebaseClient("project", mockVerifier)
 
-		_, err := c.VerifyToken(context.Background(), "token")
+		_, err := c.VerifyToken(context.Background(), "token", "")
 		assert.Error(t, err)
 		mockVerifier.AssertExpectations(t)
 	})
@@ -87,7 +87,7 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 
 		c := NewFirebaseClient("project", mockVerifier)
 
-		_, err := c.VerifyToken(context.Background(), "token")
+		_, err := c.VerifyToken(context.Background(), "token", "")
 		assert.Error(t, err)
 		mockVerifier.AssertExpectations(t)
 	})
@@ -107,7 +107,7 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 
 		c := NewFirebaseClient("project", mockVerifier)
 
-		_, err := c.VerifyToken(context.Background(), "token")
+		_, err := c.VerifyToken(context.Background(), "token", "")
 		assert.Error(t, err)
 		mockVerifier.AssertExpectations(t)
 	})
