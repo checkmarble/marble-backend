@@ -46,21 +46,6 @@ func TestListScreeningOnDecision(t *testing.T) {
 	uc, exec := buildScreeningUsecaseMock()
 	sccId := uuid.NewString()
 
-	sccRow, mockSccRow := utils.FakeStruct[dbmodels.DBScreeningConfigs](
-		ops.WithCustomFieldProvider("Id", func() (interface{}, error) {
-			return sccId, nil
-		}),
-		ops.WithCustomFieldProvider("TriggerRule", func() (interface{}, error) {
-			return []byte(`{}`), nil
-		}),
-		ops.WithCustomFieldProvider("Query", func() (interface{}, error) {
-			return []byte(`{}`), nil
-		}),
-		ops.WithCustomFieldProvider("CounterpartyIdExpr", func() (interface{}, error) {
-			return []byte(`{}`), nil
-		}),
-	)
-
 	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBScreeningWithMatches](
 		ops.WithRandomMapAndSliceMinSize(1),
 		ops.WithRandomMapAndSliceMaxSize(1),
@@ -97,14 +82,6 @@ func TestListScreeningOnDecision(t *testing.T) {
 				AddRow(mockScRow...),
 		)
 
-	exec.Mock.
-		ExpectQuery(`SELECT id, .+ FROM screening_configs WHERE scenario_iteration_id = \$1`).
-		WithArgs(utils.TextToUUID("scenario-iteration-id").String()).
-		WillReturnRows(
-			pgxmock.NewRows(dbmodels.ScreeningConfigColumnList).
-				AddRow(mockSccRow...),
-		)
-
 	exec.Mock.ExpectQuery(`SELECT .* FROM screening_match_comments WHERE screening_match_id = ANY\(\$1\)`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
@@ -122,7 +99,6 @@ func TestListScreeningOnDecision(t *testing.T) {
 	assert.Equal(t, models.ScreeningMatchStatusFrom(scs[0].Matches[0].Status.String()), models.ScreeningMatchStatusUnknown)
 	assert.Len(t, scs[0].Matches[0].Comments, 4)
 	assert.Equal(t, scs[0].Matches[0].Comments[0].Comment, mockComments[0].Comment)
-	assert.Equal(t, scs[0].Config.Name, sccRow.Name)
 }
 
 func TestUpdateMatchStatus(t *testing.T) {
