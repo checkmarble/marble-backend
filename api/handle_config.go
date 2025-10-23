@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -38,7 +37,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 			oidcConfig = &dto.ConfigAuthOidcDto{
 				Issuer:      cfg.OidcConfig.Issuer,
 				ClientId:    cfg.OidcConfig.ClientId,
-				RedirectUri: fmt.Sprintf("%s/oidc/callback", cfg.MarbleAppUrl),
+				RedirectUri: cfg.OidcConfig.RedirectUri,
 				Scopes:      cfg.OidcConfig.Scopes,
 				ExtraParams: cfg.OidcConfig.ExtraParams,
 			}

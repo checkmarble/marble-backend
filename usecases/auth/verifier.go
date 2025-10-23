@@ -66,7 +66,7 @@ func NewVerifier(flavor TokenProvider, verifier idp.TokenRepository, repository 
 func (v MarbleVerifier) Verify(ctx context.Context, creds Credentials) (models.IntoCredentials, models.IdentityClaims, error) {
 	switch creds.Type {
 	case CredentialsBearer:
-		identity, err := v.verifier.VerifyToken(ctx, creds.Value)
+		identity, err := v.verifier.VerifyToken(ctx, creds.Value, creds.Fallback)
 		if err != nil {
 			return nil, nil, err
 		}

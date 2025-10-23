@@ -31,7 +31,7 @@ func (c *FirebaseClient) verifyTokenOrCookie(ctx context.Context, firebaseToken 
 	return token, nil
 }
 
-func (c *FirebaseClient) VerifyToken(ctx context.Context, firebaseToken string) (models.IdentityClaims, error) {
+func (c *FirebaseClient) VerifyToken(ctx context.Context, firebaseToken, _accessToken string) (models.IdentityClaims, error) {
 	token, err := c.verifyTokenOrCookie(ctx, firebaseToken)
 	if err != nil {
 		return models.FirebaseIdentity{}, fmt.Errorf("firebaseVerifyToken error: %w", err)

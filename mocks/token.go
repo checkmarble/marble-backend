@@ -54,6 +54,6 @@ func (e StaticIdpTokenVerifier) Issuer() string {
 	return e.issuer
 }
 
-func (e StaticIdpTokenVerifier) VerifyToken(ctx context.Context, idToken string) (models.IdentityClaims, error) {
+func (e StaticIdpTokenVerifier) VerifyToken(ctx context.Context, idToken, accessToken string) (models.IdentityClaims, error) {
 	return e.claims, nil
 }
