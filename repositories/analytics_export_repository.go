@@ -138,6 +138,7 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 			"dr.result",
 			"dr.outcome",
 			"dr.rule_id",
+			"sir.stable_rule_id as stable_rule_id",
 			"sir.name as rule_name",
 			"d.pivot_id", "d.pivot_value",
 			"s.id as scenario_id",

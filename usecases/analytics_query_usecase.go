@@ -129,7 +129,7 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filte
 		InnerJoin(uc.analyticsFactory.BuildTarget("decisions", "d")+" on d.id = dr.decision_id").
 		Where("d.created_at between ? and ?", filters.Start, filters.End).
 		Where("rule_name is not null and dr.outcome = 'hit'").
-		GroupBy("rule_id", "rule_name", "d.outcome")
+		GroupBy("stable_rule_id", "rule_name", "d.outcome")
 
 	query, err = uc.analyticsFactory.ApplyFilters(query, scenario, filters, "dr")
 	if err != nil {
