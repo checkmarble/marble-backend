@@ -15,6 +15,7 @@ func GetDeploymentMetadata(ctx context.Context, repositories repositories.Reposi
 		ctx,
 		models.DATABASE_SCHEMA_TYPE_MARBLE,
 		nil,
+		"",
 	)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
