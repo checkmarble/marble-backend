@@ -9,23 +9,22 @@ import (
 type OrganizationFeatureAccess struct {
 	Id                  string
 	OrganizationId      uuid.UUID
-	TestRun             FeatureAccess
-	Workflows           FeatureAccess
-	Webhooks            FeatureAccess
-	RuleSnoozes         FeatureAccess
-	Roles               FeatureAccess
-	Analytics           FeatureAccess
-	Sanctions           FeatureAccess
-	NameRecognition     FeatureAccess
-	CaseAutoAssign      FeatureAccess
-	CaseAiAssist        FeatureAccess
-	ContinuousScreening FeatureAccess
+	TestRun             FeatureAccess `redis:"test_run"`
+	Workflows           FeatureAccess `redis:"workflows"`
+	Webhooks            FeatureAccess `redis:"webhooks"`
+	RuleSnoozes         FeatureAccess `redis:"rule_snoozes"`
+	Roles               FeatureAccess `redis:"roles"`
+	Analytics           FeatureAccess `redis:"analytics"`
+	Sanctions           FeatureAccess `redis:"sanctions"`
+	NameRecognition     FeatureAccess `redis:"name_recognition"`
+	CaseAutoAssign      FeatureAccess `redis:"case_auto_assign"`
+	CaseAiAssist        FeatureAccess `redis:"case_ai_assis"`
+	ContinuousScreening FeatureAccess `redis:"continuous_screening"`
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 
-	// user-scoped
-	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
-	AiAssist FeatureAccess
+	// user-scoped, temporarily at least
+	AiAssist FeatureAccess `redis:"ai_assist"`
 }
 
 type DbStoredOrganizationFeatureAccess struct {
