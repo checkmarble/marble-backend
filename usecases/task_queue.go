@@ -165,7 +165,7 @@ func QueuesFromOrgs(ctx context.Context, appName string,
 	execGetter repositories.ExecutorGetter,
 	offloadingConfig infra.OffloadingConfig, analyticsConfig infra.AnalyticsConfig,
 ) (queues map[string]river.QueueConfig, periodics []*river.PeriodicJob, err error) {
-	exec_fac := executor_factory.NewDbExecutorFactory(appName, orgsRepo, execGetter)
+	exec_fac := executor_factory.NewDbExecutorFactory(appName, orgsRepo, execGetter, "")
 	orgs, err := orgsRepo.AllOrganizations(ctx, exec_fac.NewExecutor())
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
