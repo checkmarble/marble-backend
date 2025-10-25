@@ -40,6 +40,10 @@ func (tx TransactionTest) Begin(ctx context.Context) (Transaction, error) {
 	return PgTx{}, nil
 }
 
+func (tx TransactionTest) Cache(ctx context.Context) *RedisExecutor {
+	return nil
+}
+
 func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 	path := []string{utils.DummyTableNameSecond}
 

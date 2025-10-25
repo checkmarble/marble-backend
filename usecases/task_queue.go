@@ -223,7 +223,7 @@ func QueuesFromOrgs(
 	analyticsConfig infra.AnalyticsConfig,
 	csCreateFullDatasetInterval time.Duration,
 ) (queues map[string]river.QueueConfig, periodics []*river.PeriodicJob, err error) {
-	exec_fac := executor_factory.NewDbExecutorFactory(appName, orgsRepo, execGetter)
+	exec_fac := executor_factory.NewDbExecutorFactory(appName, orgsRepo, execGetter, uuid.Nil)
 	orgs, err := orgsRepo.AllOrganizations(ctx, exec_fac.NewExecutor())
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)

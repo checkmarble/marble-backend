@@ -141,6 +141,7 @@ type CaseUseCase struct {
 	repository              CaseUseCaseRepository
 	decisionRepository      repositories.DecisionRepository
 	inboxReader             inboxes.InboxReader
+	cache                   *repositories.RedisClient
 	blobRepository          repositories.BlobRepository
 	caseManagerBucketUrl    string
 	transactionFactory      executor_factory.TransactionFactory

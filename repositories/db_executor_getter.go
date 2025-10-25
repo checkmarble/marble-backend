@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/cockroachdb/errors"
@@ -22,6 +23,7 @@ const defaultOrgConfigKey = "default"
 type ExecutorGetter struct {
 	appName              string
 	marbleConnectionPool *pgxpool.Pool
+	redisClient          *RedisClient
 
 	// uses the organizationId as the key
 	clientDbConfigs map[string]infra.ClientDbConfig
@@ -38,13 +40,19 @@ type databaseSchemaGetter interface {
 	DatabaseSchema() models.DatabaseSchema
 }
 
+type cacheGetter interface {
+	Cache(context.Context) *RedisExecutor
+}
+
 type Executor interface {
 	TransactionOrPool
 	databaseSchemaGetter
+	cacheGetter
 }
 
 type Transaction interface {
 	databaseSchemaGetter
+	cacheGetter
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
@@ -57,10 +65,12 @@ type Transaction interface {
 func NewExecutorGetter(
 	pool *pgxpool.Pool,
 	clientDbConfigs map[string]infra.ClientDbConfig,
+	redisClient *RedisClient,
 	tp trace.TracerProvider,
 ) ExecutorGetter {
 	return ExecutorGetter{
 		clientDbConfigs:      clientDbConfigs,
+		redisClient:          redisClient,
 		clientDbPools:        make(map[string]*pgxpool.Pool, len(clientDbConfigs)),
 		marbleConnectionPool: pool,
 		tp:                   tp,
@@ -85,9 +95,15 @@ func (g ExecutorGetter) Transaction(
 				return err
 			}
 
+			orgId := uuid.Nil
+			if org != nil {
+				orgId = org.Id
+			}
+
 			return fn(&PgTx{
 				databaseSchema: databaseSchema,
 				tx:             tx,
+				cache:          g.redisClient.NewExecutor(orgId),
 			})
 		})
 	}
@@ -190,9 +206,15 @@ func (g ExecutorGetter) GetExecutor(
 		return nil, errors.Wrap(err, "Error getting pool and schema")
 	}
 
+	orgId := uuid.Nil
+	if org != nil {
+		orgId = org.Id
+	}
+
 	return &PgExecutor{
 		databaseSchema: databaseSchema,
 		exec:           pool,
+		cache:          g.redisClient.NewExecutor(orgId),
 	}, nil
 }
 

@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"time"
 
@@ -12,14 +13,20 @@ import (
 )
 
 type RedisExecutor struct {
-	client *RedisClient
-	orgId  uuid.UUID
+	client   *RedisClient
+	orgId    uuid.UUID
+	prefixes []string
 }
 
-func (client *RedisClient) NewExecutor(orgId uuid.UUID) *RedisExecutor {
+func (client *RedisClient) NewExecutor(orgId uuid.UUID, prefixes ...string) *RedisExecutor {
+	if client == nil {
+		return nil
+	}
+
 	return &RedisExecutor{
-		client: client,
-		orgId:  orgId,
+		client:   client,
+		orgId:    orgId,
+		prefixes: prefixes,
 	}
 }
 
@@ -30,29 +37,55 @@ func (exec *RedisExecutor) WithOrg(orgId uuid.UUID) *RedisExecutor {
 }
 
 func (exec *RedisExecutor) Key(keys ...string) string {
+	if exec == nil {
+		return ""
+	}
+
 	key := strings.Join(keys, ":")
 
-	if exec.orgId == uuid.Nil {
+	prefixes := exec.prefixes
+	if exec.orgId != uuid.Nil {
+		prefixes = slices.Insert(prefixes, 0, exec.orgId.String())
+	}
+
+	if len(prefixes) == 0 {
 		return key
 	}
-	return exec.orgId.String() + ":" + key
+
+	return strings.Join(prefixes, ":") + ":" + key
 }
 
 func (exec *RedisExecutor) Exec(f func(*redis.Client) error) error {
+	if exec == nil {
+		return models.NotFoundError
+	}
+
 	return f(exec.client.client)
 }
 
 func (exec *RedisExecutor) Tx(ctx context.Context, f func(redis.Pipeliner) error) ([]redis.Cmder, error) {
+	if exec == nil {
+		return nil, models.NotFoundError
+	}
+
 	return exec.client.client.TxPipelined(ctx, func(p redis.Pipeliner) error {
 		return f(p)
 	})
 }
 
 func RedisQuery[T any](exec *RedisExecutor, cb func(*redis.Client) (T, error)) (T, error) {
+	if exec == nil {
+		return *new(T), models.NotFoundError
+	}
+
 	return cb(exec.client.client)
 }
 
 func RedisLoadModel[T any](ctx context.Context, exec *RedisExecutor, key string) (T, error) {
+	if exec == nil {
+		return *new(T), models.NotFoundError
+	}
+
 	dflt := *new(T)
 
 	out, err := exec.client.client.Get(ctx, key).Result()
@@ -72,6 +105,10 @@ func RedisLoadModel[T any](ctx context.Context, exec *RedisExecutor, key string)
 }
 
 func (exec *RedisExecutor) SaveModel(ctx context.Context, key string, model any, ttl time.Duration) error {
+	if exec == nil {
+		return models.NotFoundError
+	}
+
 	marshalled, err := json.Marshal(model)
 	if err != nil {
 		return err
@@ -81,6 +118,10 @@ func (exec *RedisExecutor) SaveModel(ctx context.Context, key string, model any,
 }
 
 func RedisLoadMap[T comparable](ctx context.Context, exec *RedisExecutor, key string) (T, error) {
+	if exec == nil {
+		return *new(T), models.NotFoundError
+	}
+
 	var model T
 
 	cmd := exec.client.client.HGetAll(ctx, key)
