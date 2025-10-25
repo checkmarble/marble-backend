@@ -7,15 +7,16 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
 type RedisExecutor struct {
 	client *RedisClient
-	orgId  string
+	orgId  uuid.UUID
 }
 
-func (client *RedisClient) NewExecutor(orgId string) *RedisExecutor {
+func (client *RedisClient) NewExecutor(orgId uuid.UUID) *RedisExecutor {
 	return &RedisExecutor{
 		client: client,
 		orgId:  orgId,
@@ -31,10 +32,10 @@ func (exec *RedisExecutor) WithOrg(orgId uuid.UUID) *RedisExecutor {
 func (exec *RedisExecutor) Key(keys ...string) string {
 	key := strings.Join(keys, ":")
 
-	if exec.orgId == "" {
+	if exec.orgId == uuid.Nil {
 		return key
 	}
-	return exec.orgId + ":" + key
+	return exec.orgId.String() + ":" + key
 }
 
 func (exec *RedisExecutor) Exec(f func(*redis.Client) error) error {

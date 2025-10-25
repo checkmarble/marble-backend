@@ -745,6 +745,7 @@ func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.Featur
 		usecases.NewEnforceOrganizationSecurity(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
+		usecases.Repositories.RedisClient,
 		usecases.Usecases.license,
 		usecases.Usecases.hasConvoyServerSetup,
 		usecases.Usecases.hasMetabaseSetup,
