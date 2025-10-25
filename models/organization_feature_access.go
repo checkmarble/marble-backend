@@ -7,20 +7,20 @@ import (
 type OrganizationFeatureAccess struct {
 	Id              string
 	OrganizationId  string
-	TestRun         FeatureAccess
-	Workflows       FeatureAccess
-	Webhooks        FeatureAccess
-	RuleSnoozes     FeatureAccess
-	Roles           FeatureAccess
-	Analytics       FeatureAccess
-	Sanctions       FeatureAccess
-	NameRecognition FeatureAccess
-	CaseAutoAssign  FeatureAccess
+	TestRun         FeatureAccess `redis:"test_run"`
+	Workflows       FeatureAccess `redis:"workflows"`
+	Webhooks        FeatureAccess `redis:"webhooks"`
+	RuleSnoozes     FeatureAccess `redis:"rule_snoozes"`
+	Roles           FeatureAccess `redis:"roles"`
+	Analytics       FeatureAccess `redis:"analytics"`
+	Sanctions       FeatureAccess `redis:"sanctions"`
+	NameRecognition FeatureAccess `redis:"name_recognition"`
+	CaseAutoAssign  FeatureAccess `redis:"case_auto_assign"`
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 
 	// user-scoped, temporarily at least
-	AiAssist FeatureAccess
+	AiAssist FeatureAccess `redis:"ai_assist"`
 }
 
 type DbStoredOrganizationFeatureAccess struct {
