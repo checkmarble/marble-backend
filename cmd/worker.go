@@ -191,6 +191,18 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		return err
 	}
 
+	redisConfig, err := infra.InitRedisConfig()
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
+	}
+
+	redisClient, err := repositories.NewRedisClient(redisConfig)
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
+	}
+
 	var lagoConfig infra.LagoConfig
 	if isMarbleSaasProject {
 		lagoConfig = infra.InitializeLago()
@@ -205,6 +217,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	repositories := repositories.NewRepositories(
 		pool,
 		infra.GcpConfig{},
+		repositories.WithRedisClient(redisClient),
 		repositories.WithRiverClient(riverClient),
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(convoyConfiguration),
@@ -269,8 +282,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	)
 
 	// Create demo orgs fetcher for cron monitoring middleware
-	execFactory := executor_factory.NewDbExecutorFactory(appName,
-		repositories.MarbleDbRepository, repositories.ExecutorGetter)
+	execFactory := executor_factory.NewDbExecutorFactory(appName, repositories.MarbleDbRepository, repositories.ExecutorGetter, uuid.Nil)
 	demoOrgsFetcher := func(ctx context.Context) (map[uuid.UUID]struct{}, error) {
 		orgs, err := repositories.MarbleDbRepository.AllOrganizations(ctx, execFactory.NewExecutor())
 		if err != nil {
