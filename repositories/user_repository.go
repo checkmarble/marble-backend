@@ -2,10 +2,12 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/google/uuid"
 )
@@ -79,8 +81,13 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 		query = query.Set("last_name", *updateUser.LastName)
 	}
 
-	err := ExecBuilder(ctx, exec, query)
-	return err
+	if err := ExecBuilder(ctx, exec, query); err != nil {
+		return err
+	}
+
+	return exec.Cache().Exec(func(c *redis.Client) error {
+		return c.Del(ctx, exec.Cache().Key("user", updateUser.UserId)).Err()
+	})
 }
 
 func (repo *MarbleDbRepository) DeleteUser(ctx context.Context, exec Executor, userID models.UserId) error {
@@ -96,7 +103,13 @@ func (repo *MarbleDbRepository) DeleteUser(ctx context.Context, exec Executor, u
 			Where(squirrel.Eq{"id": userID}).
 			Set("deleted_at", squirrel.Expr("NOW()")),
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return exec.Cache().Exec(func(c *redis.Client) error {
+		return c.Del(ctx, exec.Cache().Key("user", string(userID))).Err()
+	})
 }
 
 func (repo *MarbleDbRepository) DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId string) error {
@@ -113,11 +126,15 @@ func (repo *MarbleDbRepository) DeleteUsersOfOrganization(ctx context.Context, e
 }
 
 func (repo *MarbleDbRepository) UserById(ctx context.Context, exec Executor, userId string) (models.User, error) {
+	if user, err := RedisLoadModel[models.User](ctx, exec.Cache(), exec.Cache().Key("user", userId)); err == nil {
+		return user, nil
+	}
+
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.User{}, err
 	}
 
-	return SqlToModel(
+	user, err := SqlToModel(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -128,6 +145,13 @@ func (repo *MarbleDbRepository) UserById(ctx context.Context, exec Executor, use
 			OrderBy("id"),
 		dbmodels.AdaptUser,
 	)
+	if err != nil {
+		return user, err
+	}
+
+	_ = exec.Cache().SaveModel(ctx, exec.Cache().Key("user", userId), user, time.Hour)
+
+	return user, nil
 }
 
 func (repo *MarbleDbRepository) ListUsers(ctx context.Context, exec Executor, organizationIDFilter *string) ([]models.User, error) {

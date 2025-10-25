@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
@@ -20,6 +21,24 @@ import (
 type UsecasesWithCreds struct {
 	Usecases
 	Credentials models.Credentials
+}
+
+func (usecases *UsecasesWithCreds) NewExecutorFactory() executor_factory.ExecutorFactory {
+	return executor_factory.NewDbExecutorFactory(
+		usecases.appName,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.ExecutorGetter,
+		usecases.Credentials.OrganizationId,
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewTransactionFactory() executor_factory.TransactionFactory {
+	return executor_factory.NewDbExecutorFactory(
+		usecases.appName,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.ExecutorGetter,
+		usecases.Credentials.OrganizationId,
+	)
 }
 
 func (usecases *UsecasesWithCreds) NewEnforceSecurity() security.EnforceSecurity {
@@ -384,6 +403,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		transactionFactory:   usecases.NewTransactionFactory(),
 		executorFactory:      usecases.NewExecutorFactory(),
 		repository:           usecases.Repositories.MarbleDbRepository,
+		cache:                usecases.Repositories.RedisClient,
 		decisionRepository:   usecases.Repositories.MarbleDbRepository,
 		inboxReader:          usecases.NewInboxReader(),
 		caseManagerBucketUrl: usecases.caseManagerBucketUrl,
@@ -429,6 +449,7 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 			TransactionFactory:  usecases.NewTransactionFactory(),
 			ExecutorFactory:     executorFactory,
 			UserRepository:      usecases.Repositories.MarbleDbRepository,
+			Cache:               usecases.Repositories.RedisClient,
 		},
 	}
 }
@@ -687,6 +708,7 @@ func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.Featur
 		usecases.NewEnforceOrganizationSecurity(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
+		usecases.Repositories.RedisClient,
 		usecases.Usecases.license,
 		usecases.Usecases.hasConvoyServerSetup,
 		usecases.Usecases.hasMetabaseSetup,

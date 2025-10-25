@@ -22,6 +22,7 @@ const defaultOrgConfigKey = "default"
 type ExecutorGetter struct {
 	appName              string
 	marbleConnectionPool *pgxpool.Pool
+	redisClient          *RedisClient
 
 	// uses the organizationId as the key
 	clientDbConfigs map[string]infra.ClientDbConfig
@@ -38,13 +39,19 @@ type databaseSchemaGetter interface {
 	DatabaseSchema() models.DatabaseSchema
 }
 
+type cacheGetter interface {
+	Cache() *RedisExecutor
+}
+
 type Executor interface {
 	TransactionOrPool
 	databaseSchemaGetter
+	cacheGetter
 }
 
 type Transaction interface {
 	databaseSchemaGetter
+	cacheGetter
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
@@ -57,10 +64,12 @@ type Transaction interface {
 func NewExecutorGetter(
 	pool *pgxpool.Pool,
 	clientDbConfigs map[string]infra.ClientDbConfig,
+	redisClient *RedisClient,
 	tp trace.TracerProvider,
 ) ExecutorGetter {
 	return ExecutorGetter{
 		clientDbConfigs:      clientDbConfigs,
+		redisClient:          redisClient,
 		clientDbPools:        make(map[string]*pgxpool.Pool, len(clientDbConfigs)),
 		marbleConnectionPool: pool,
 		tp:                   tp,
@@ -72,6 +81,7 @@ func (g ExecutorGetter) Transaction(
 	ctx context.Context,
 	typ models.DatabaseSchemaType,
 	org *models.Organization,
+	orgId string,
 	fn func(exec Transaction) error,
 ) error {
 	pool, databaseSchema, err := g.getPoolAndSchema(ctx, typ, org)
@@ -88,6 +98,7 @@ func (g ExecutorGetter) Transaction(
 			return fn(&PgTx{
 				databaseSchema: databaseSchema,
 				tx:             tx,
+				cache:          g.redisClient.NewExecutor(orgId),
 			})
 		})
 	}
@@ -184,6 +195,7 @@ func (g ExecutorGetter) GetExecutor(
 	ctx context.Context,
 	typ models.DatabaseSchemaType,
 	org *models.Organization,
+	orgId string,
 ) (Executor, error) {
 	pool, databaseSchema, err := g.getPoolAndSchema(ctx, typ, org)
 	if err != nil {
@@ -193,6 +205,7 @@ func (g ExecutorGetter) GetExecutor(
 	return &PgExecutor{
 		databaseSchema: databaseSchema,
 		exec:           pool,
+		cache:          g.redisClient.NewExecutor(orgId),
 	}, nil
 }
 
