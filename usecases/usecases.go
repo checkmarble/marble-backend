@@ -19,6 +19,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
+	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
@@ -257,6 +258,7 @@ func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory 
 		usecases.appName,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.ExecutorGetter,
+		uuid.Nil, // No org ID on regular usecases
 	)
 }
 
@@ -269,6 +271,7 @@ func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFa
 		usecases.appName,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.ExecutorGetter,
+		uuid.Nil, // No org ID on regular usecases
 	)
 }
 

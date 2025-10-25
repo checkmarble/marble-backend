@@ -50,6 +50,6 @@ func (f FeatureAccess) IsAllowed() bool {
 	return f == Allowed || f == Test
 }
 
-func (fa FeatureAccess) MarshalBinary() ([]byte, error) {
-	return []byte(strconv.Itoa(int(fa))), nil
+func (f FeatureAccess) MarshalBinary() ([]byte, error) {
+	return []byte(strconv.Itoa(int(f))), nil
 }

@@ -3,13 +3,16 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jackc/pgx/v5"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -83,6 +86,12 @@ func (repo MarbleDbRepository) GetDataModel(
 	fetchEnumValues bool,
 	useCache bool,
 ) (models.DataModel, error) {
+	cacheKey := exec.Cache(ctx).Key("data-model", strconv.FormatBool(fetchEnumValues))
+
+	if dataModel, err := RedisLoadModel[models.DataModel](ctx, exec.Cache(ctx), cacheKey); err == nil {
+		return dataModel, nil
+	}
+
 	var cache *expirable.LRU[string, models.DataModel]
 	if fetchEnumValues {
 		cache = dataModelCacheEnum
@@ -165,6 +174,10 @@ func (repo MarbleDbRepository) GetDataModel(
 		cache.Add(organizationID.String(), dataModel)
 	}
 
+	if err := exec.Cache(ctx).SaveModel(ctx, cacheKey, dataModel, time.Minute); err != nil {
+		return dataModel, err
+	}
+
 	return dataModel, nil
 }
 
@@ -184,10 +197,14 @@ func (repo MarbleDbRepository) CreateDataModelTable(
 		VALUES ($1, $2, $3, $4, $5)`
 
 	_, err := exec.Exec(ctx, query, tableID, organizationId, name, description, ftmEntity)
-	if IsUniqueViolationError(err) {
-		return models.ConflictError
+	if err != nil {
+		if IsUniqueViolationError(err) {
+			return models.ConflictError
+		}
+		return err
 	}
-	return err
+
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error) {
@@ -237,11 +254,16 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 	}
 
 	query = query.Where(squirrel.Eq{"id": tableID})
-	return ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		query,
 	)
+	if err != nil {
+		return err
+	}
+
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) CreateDataModelField(
@@ -283,7 +305,7 @@ func (repo MarbleDbRepository) CreateDataModelField(
 	dataModelCacheEnum.Remove(organizationId.String())
 	dataModelCacheNoEnum.Remove(organizationId.String())
 
-	return nil
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) UpdateDataModelField(
@@ -320,11 +342,16 @@ func (repo MarbleDbRepository) UpdateDataModelField(
 	if nbUpdates == 0 {
 		return nil
 	}
-	return ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		query,
 	)
+	if err != nil {
+		return err
+	}
+
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) CreateDataModelLink(ctx context.Context, exec Executor, id string, link models.DataModelLinkCreateInput) error {
@@ -356,10 +383,14 @@ func (repo MarbleDbRepository) CreateDataModelLink(ctx context.Context, exec Exe
 				link.ChildFieldID,
 			),
 	)
-	if IsUniqueViolationError(err) {
-		return models.ConflictError
+	if err != nil {
+		if IsUniqueViolationError(err) {
+			return models.ConflictError
+		}
+		return err
 	}
-	return err
+
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Executor,
@@ -580,14 +611,17 @@ func (repo MarbleDbRepository) CreatePivot(
 			Columns("id", "organization_id", "base_table_id", "field_id", "path_link_ids").
 			Values(id, pivot.OrganizationId, pivot.BaseTableId, pivot.FieldId, pivot.PathLinkIds),
 	)
-
-	if IsUniqueViolationError(err) {
-		return errors.Wrap(
-			models.ConflictError,
-			fmt.Sprintf("Conflict on creating pivot for table %s in repository CreatePivot", pivot.BaseTableId),
-		)
+	if err != nil {
+		if IsUniqueViolationError(err) {
+			return errors.Wrap(
+				models.ConflictError,
+				fmt.Sprintf("Conflict on creating pivot for table %s in repository CreatePivot", pivot.BaseTableId),
+			)
+		}
+		return err
 	}
-	return err
+
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) ListPivots(
@@ -697,7 +731,7 @@ func (repo MarbleDbRepository) BatchInsertEnumValues(ctx context.Context, exec E
 		}
 	}
 
-	return nil
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) ArchiveDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error {
@@ -710,7 +744,11 @@ func (repo MarbleDbRepository) ArchiveDataModelTable(ctx context.Context, exec E
 		Set("archived", true).
 		Where("id = ?", table.ID)
 
-	return ExecBuilder(ctx, exec, query)
+	if err := ExecBuilder(ctx, exec, query); err != nil {
+		return err
+	}
+
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) DeleteDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error {
@@ -722,7 +760,11 @@ func (repo MarbleDbRepository) DeleteDataModelTable(ctx context.Context, exec Ex
 		Delete(dbmodels.TableDataModelTables).
 		Where("id = ?", table.ID)
 
-	return ExecBuilder(ctx, exec, query)
+	if err := ExecBuilder(ctx, exec, query); err != nil {
+		return err
+	}
+
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) ArchiveDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error {
@@ -735,7 +777,11 @@ func (repo MarbleDbRepository) ArchiveDataModelField(ctx context.Context, exec E
 		Set("archived", true).
 		Where("table_id = ? and id = ?", table.ID, field.ID)
 
-	return ExecBuilder(ctx, exec, query)
+	if err := ExecBuilder(ctx, exec, query); err != nil {
+		return err
+	}
+
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) DeleteDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error {
@@ -747,7 +793,11 @@ func (repo MarbleDbRepository) DeleteDataModelField(ctx context.Context, exec Ex
 		Delete(dbmodels.TableDataModelFields).
 		Where("table_id = ? and id = ?", table.ID, field.ID)
 
-	return ExecBuilder(ctx, exec, query)
+	if err := ExecBuilder(ctx, exec, query); err != nil {
+		return err
+	}
+
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) DeleteDataModelLink(ctx context.Context, exec Executor, id string) error {
@@ -759,7 +809,11 @@ func (repo MarbleDbRepository) DeleteDataModelLink(ctx context.Context, exec Exe
 		Delete("data_model_links").
 		Where("id = ?", id)
 
-	return ExecBuilder(ctx, exec, query)
+	if err := ExecBuilder(ctx, exec, query); err != nil {
+		return err
+	}
+
+	return repo.DeleteDataModelCache(ctx, exec)
 }
 
 func (repo MarbleDbRepository) DeleteDataModelPivot(ctx context.Context, exec Executor, id string) error {
@@ -771,5 +825,21 @@ func (repo MarbleDbRepository) DeleteDataModelPivot(ctx context.Context, exec Ex
 		Delete("data_model_pivots").
 		Where("id = ?", id)
 
-	return ExecBuilder(ctx, exec, query)
+	if err := ExecBuilder(ctx, exec, query); err != nil {
+		return err
+	}
+
+	return repo.DeleteDataModelCache(ctx, exec)
+}
+
+func (repo MarbleDbRepository) DeleteDataModelCache(ctx context.Context, exec Executor) error {
+	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
+		if err := c.Del(ctx, exec.Cache(ctx).Key("data-model", "true")).Err(); err != nil {
+			return err
+		}
+		if err := c.Del(ctx, exec.Cache(ctx).Key("data-model", "false")).Err(); err != nil {
+			return err
+		}
+		return nil
+	})
 }

@@ -41,6 +41,10 @@ func (e *Executor) Begin(ctx context.Context) (repositories.Transaction, error) 
 	return arguments.Get(0).(repositories.Transaction), arguments.Error(1)
 }
 
+func (e *Executor) Cache(ctx context.Context) *repositories.RedisExecutor {
+	return nil
+}
+
 // Tx mock
 type Transaction struct {
 	mock.Mock
@@ -84,4 +88,8 @@ func (e *Transaction) RawTx() pgx.Tx {
 func (e *Transaction) Begin(ctx context.Context) (repositories.Transaction, error) {
 	arguments := e.Called(ctx)
 	return arguments.Get(0).(repositories.Transaction), arguments.Error(1)
+}
+
+func (e *Transaction) Cache(ctx context.Context) *repositories.RedisExecutor {
+	return nil
 }

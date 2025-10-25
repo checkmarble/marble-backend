@@ -34,6 +34,8 @@ type TransactionOrPool interface {
 type PgExecutor struct {
 	databaseSchema models.DatabaseSchema
 	exec           pgxTxOrPool
+
+	cache *RedisExecutor
 }
 
 func (e PgExecutor) DatabaseSchema() models.DatabaseSchema {
@@ -101,6 +103,15 @@ func (e PgExecutor) Begin(ctx context.Context) (Transaction, error) {
 	}, nil
 }
 
+func (e PgExecutor) Cache(ctx context.Context) *RedisExecutor {
+	orgId := uuid.Nil
+	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
+		orgId = creds.OrganizationId
+	}
+
+	return e.cache.WithOrg(orgId)
+}
+
 ////////////////////////////////////
 // Transaction
 ////////////////////////////////////
@@ -108,6 +119,7 @@ func (e PgExecutor) Begin(ctx context.Context) (Transaction, error) {
 type PgTx struct {
 	databaseSchema models.DatabaseSchema
 	tx             pgx.Tx
+	cache          *RedisExecutor
 }
 
 func (t PgTx) DatabaseSchema() models.DatabaseSchema {
@@ -174,4 +186,13 @@ func (t PgTx) Begin(ctx context.Context) (Transaction, error) {
 		databaseSchema: t.databaseSchema,
 		tx:             tx,
 	}, nil
+}
+
+func (t PgTx) Cache(ctx context.Context) *RedisExecutor {
+	orgId := uuid.Nil
+	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
+		orgId = creds.OrganizationId
+	}
+
+	return t.cache.WithOrg(orgId)
 }

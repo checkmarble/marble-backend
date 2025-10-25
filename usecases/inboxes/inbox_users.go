@@ -36,6 +36,7 @@ type InboxUsers struct {
 	InboxUserRepository InboxUserRepository
 	UserRepository      repositories.UserRepository
 	Credentials         models.Credentials
+	Cache               *repositories.RedisClient
 }
 
 func (usecase *InboxUsers) GetInboxUserById(ctx context.Context, inboxUserId uuid.UUID) (models.InboxUser, error) {

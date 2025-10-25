@@ -45,6 +45,24 @@ func (usecases *UsecasesWithCreds) NewWithRootImpersonatedExecutor(tx repositori
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewExecutorFactory() executor_factory.ExecutorFactory {
+	return executor_factory.NewDbExecutorFactory(
+		usecases.appName,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.ExecutorGetter,
+		usecases.Credentials.OrganizationId,
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewTransactionFactory() executor_factory.TransactionFactory {
+	return executor_factory.NewDbExecutorFactory(
+		usecases.appName,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.ExecutorGetter,
+		usecases.Credentials.OrganizationId,
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewEnforceSecurity() security.EnforceSecurity {
 	return &security.EnforceSecurityImpl{
 		Credentials: usecases.Credentials,
@@ -425,6 +443,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		transactionFactory:      usecases.NewTransactionFactory(),
 		executorFactory:         usecases.NewExecutorFactory(),
 		repository:              usecases.Repositories.MarbleDbRepository,
+		cache:                   usecases.Repositories.RedisClient,
 		decisionRepository:      usecases.Repositories.MarbleDbRepository,
 		inboxReader:             usecases.NewInboxReader(),
 		caseManagerBucketUrl:    usecases.caseManagerBucketUrl,
@@ -472,6 +491,7 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 			TransactionFactory:  usecases.NewTransactionFactory(),
 			ExecutorFactory:     executorFactory,
 			UserRepository:      usecases.Repositories.MarbleDbRepository,
+			Cache:               usecases.Repositories.RedisClient,
 		},
 	}
 }
