@@ -153,7 +153,7 @@ func NewRepositories(
 ) Repositories {
 	options := getOptions(opts)
 
-	executorGetter := NewExecutorGetter(marbleConnectionPool, options.clientDbConfig, options.tp)
+	executorGetter := NewExecutorGetter(marbleConnectionPool, options.clientDbConfig, options.redisClient, options.tp)
 
 	blobRepository := NewBlobRepository(gcpConfig)
 

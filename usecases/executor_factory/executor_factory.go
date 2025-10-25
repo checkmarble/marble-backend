@@ -12,6 +12,7 @@ import (
 type executorFactoryRepository interface {
 	GetExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization) (repositories.Executor, error)
 	GetPinnedExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization) (repositories.Executor, func(), error)
+	// GetExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization, orgId uuid.UUID) (repositories.Executor, error)
 	Transaction(
 		ctx context.Context,
 		typ models.DatabaseSchemaType,
@@ -28,17 +29,20 @@ type DbExecutorFactory struct {
 	appName                      string
 	orgGetter                    organizationGetter
 	transactionFactoryRepository executorFactoryRepository
+	orgId                        uuid.UUID
 }
 
 func NewDbExecutorFactory(
 	appName string,
 	orgGetter organizationGetter,
 	transactionFactoryRepository executorFactoryRepository,
+	orgId uuid.UUID,
 ) DbExecutorFactory {
 	return DbExecutorFactory{
 		appName:                      appName,
 		orgGetter:                    orgGetter,
 		transactionFactoryRepository: transactionFactoryRepository,
+		orgId:                        orgId,
 	}
 }
 

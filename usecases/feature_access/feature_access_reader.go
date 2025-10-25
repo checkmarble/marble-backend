@@ -95,7 +95,7 @@ func (f FeatureAccessReader) GetOrganizationFeatureAccess(
 	entitlements := dbStoredFeatureAccess.MergeWithLicenseEntitlement(f.license.LicenseEntitlements,
 		f.featuresConfiguration, user)
 
-	cache.Tx(ctx, func(c redis.Pipeliner) error {
+	_, _ = cache.Tx(ctx, func(c redis.Pipeliner) error {
 		if err := c.HSet(ctx, cacheKey, entitlements).Err(); err != nil {
 			return err
 		}
