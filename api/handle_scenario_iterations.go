@@ -363,6 +363,25 @@ func handleAiDescriptionScenarioIteration(uc usecases.Usecases) func(c *gin.Cont
 	}
 }
 
+func handleGenerateAstRule(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		ruleId := c.Param("rule_id")
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
+		err = usecase.GenerateAstRule(ctx, orgId, ruleId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
 func handleAiDescriptionAST(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

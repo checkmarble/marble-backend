@@ -20,6 +20,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 
@@ -35,6 +36,7 @@ type AiAgentUsecaseRepository interface {
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
+	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
 	ListUsers(ctx context.Context, exec repositories.Executor, organizationIDFilter *string) ([]models.User, error)
 	DecisionsByCaseIdFromCursor(
 		ctx context.Context,
@@ -153,6 +155,7 @@ type AiAgentUsecase struct {
 	caseReviewFileRepository    caseReviewWorkerRepository
 	blobRepository              repositories.BlobRepository
 	caseReviewTaskEnqueuer      caseReviewTaskEnqueuer
+	scenarioFetcher             scenarios.ScenarioFetcher
 	config                      infra.AIAgentConfiguration
 	caseManagerBucketUrl        string
 
@@ -177,6 +180,7 @@ func NewAiAgentUsecase(
 	blobRepository repositories.BlobRepository,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
 	transactionFactory executor_factory.TransactionFactory,
+	scenarioFetcher scenarios.ScenarioFetcher,
 	config infra.AIAgentConfiguration,
 	caseManagerBucketUrl string,
 ) AiAgentUsecase {
@@ -196,6 +200,7 @@ func NewAiAgentUsecase(
 		blobRepository:              blobRepository,
 		caseReviewTaskEnqueuer:      caseReviewTaskEnqueuer,
 		transactionFactory:          transactionFactory,
+		scenarioFetcher:             scenarioFetcher,
 		config:                      config,
 		caseManagerBucketUrl:        caseManagerBucketUrl,
 	}

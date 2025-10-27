@@ -152,6 +152,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/scenario-iteration-rules/:rule_id/ai-description", timeoutMiddleware(conf.BatchTimeout),
 		handleAiDescriptionScenarioIteration(uc),
 	)
+	router.GET("/scenario-iteration-rules/:rule_id/generate-ast",
+		timeoutMiddleware(conf.BatchTimeout), handleGenerateAstRule(uc))
 
 	// Deprecated
 	router.GET("/sanction-checks/freshness", tom, handleScreeningDatasetFreshness(uc))
