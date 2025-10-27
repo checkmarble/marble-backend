@@ -21,6 +21,9 @@ func TestBagOfWordsSimilarity(t *testing.T) {
 		{"the dog was walking on the sidewalk", "the d og as walkin' on the side alk", 72},
 		{"Mr Mrs John Jane OR Doe Smith	", "John Doe", 100},
 		{"ça, c'est une théière", "la theier a une typo", 65},
+		{"🇨🇦", "anything", 0},
+		{"❤️", "this is a heart", 0},
+		{"🏴󠁧󠁢󠁳󠁣󠁴󠁿", "28-byte long emoji (Scotland flag)", 0},
 	}
 
 	for _, example := range examples {

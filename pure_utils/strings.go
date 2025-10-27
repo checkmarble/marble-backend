@@ -120,6 +120,11 @@ func BagOfWordsSimilarity(s1, s2 string) int {
 	s1 = cleanseString(s1)
 	s2 = cleanseString(s2)
 
+	// If one of the string is empty (after cleanup), short-circuit and return no similarity
+	if (len(s1) == 0 && len(s2) > 0) || (len(s1) > 0 && len(s2) == 0) {
+		return 0
+	}
+
 	set1 := stringToSet(s1)
 	set2 := stringToSet(s2)
 
