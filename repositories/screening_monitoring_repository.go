@@ -103,10 +103,6 @@ func (repo *MarbleDbRepository) UpdateScreeningMonitoringConfig(
 		countUpdate++
 	}
 	if input.Datasets != nil {
-		if len(*input.Datasets) == 0 {
-			return models.ScreeningMonitoringConfig{},
-				errors.New("datasets are required for screening monitoring config")
-		}
 		sql = sql.Set("datasets", *input.Datasets)
 		countUpdate++
 	}
