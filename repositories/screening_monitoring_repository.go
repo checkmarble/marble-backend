@@ -111,10 +111,6 @@ func (repo *MarbleDbRepository) UpdateScreeningMonitoringConfig(
 		countUpdate++
 	}
 	if input.MatchThreshold != nil {
-		if *input.MatchThreshold < 0 || *input.MatchThreshold > 100 {
-			return models.ScreeningMonitoringConfig{},
-				errors.New("match threshold must be between 0 and 100")
-		}
 		sql = sql.Set("match_threshold", *input.MatchThreshold)
 		countUpdate++
 	}
