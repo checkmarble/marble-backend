@@ -9,6 +9,7 @@ type EnforceSecurityScreeningMonitoring interface {
 	EnforceSecurity
 	ReadScreeningMonitoringConfig(config models.ScreeningMonitoringConfig) error
 	WriteScreeningMonitoringConfig(orgId string) error
+	WriteScreeningMonitoringObject(orgId string) error
 }
 
 type EnforceSecurityScreeningMonitoringImpl struct {
@@ -26,6 +27,13 @@ func (e *EnforceSecurityScreeningMonitoringImpl) ReadScreeningMonitoringConfig(c
 func (e *EnforceSecurityScreeningMonitoringImpl) WriteScreeningMonitoringConfig(orgId string) error {
 	return errors.Join(
 		e.Permission(models.SCREENING_MONITORING_WRITE),
+		e.ReadOrganization(orgId),
+	)
+}
+
+func (e *EnforceSecurityScreeningMonitoringImpl) WriteScreeningMonitoringObject(orgId string) error {
+	return errors.Join(
+		e.Permission(models.SCREENING_MONITORING_OBJECT_WRITE),
 		e.ReadOrganization(orgId),
 	)
 }

@@ -116,3 +116,30 @@ func handleUpdateScreeningMonitoringConfig(uc usecases.Usecases) func(c *gin.Con
 		c.JSON(http.StatusOK, dto.AdaptScreeningMonitoringConfigDto(screeningMonitoringConfig))
 	}
 }
+
+func handleInsertScreeningMonitoringObject(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var input dto.InsertScreeningMonitoringObjectDto
+		if err := c.ShouldBindJSON(&input); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+		if err := input.Validate(); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewScreeningMonitoringUsecase()
+		err := uc.InsertScreeningMonitoringObject(
+			ctx,
+			dto.AdaptInsertScreeningMonitoringObjectDtoToModel(input),
+		)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.Status(http.StatusCreated)
+	}
+}
