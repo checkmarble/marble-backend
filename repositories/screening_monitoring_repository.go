@@ -111,10 +111,6 @@ func (repo *MarbleDbRepository) UpdateScreeningMonitoringConfig(
 		countUpdate++
 	}
 	if input.MatchLimit != nil {
-		if *input.MatchLimit < 0 {
-			return models.ScreeningMonitoringConfig{},
-				errors.New("match limit must be greater than or equal to 0")
-		}
 		sql = sql.Set("match_limit", *input.MatchLimit)
 		countUpdate++
 	}

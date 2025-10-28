@@ -22,11 +22,10 @@ type ScreeningMonitoringConfig struct {
 
 	// TODO: Do we need this limit, or we can use the same at organization level?
 	MatchLimit int
+	Enabled    bool
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-
-	Enabled bool
 }
 
 type CreateScreeningMonitoringConfig struct {
