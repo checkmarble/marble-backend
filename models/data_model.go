@@ -1,6 +1,10 @@
 package models
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/checkmarble/marble-backend/pure_utils"
+)
 
 // ///////////////////////////////
 // Data Type
@@ -123,6 +127,7 @@ type Table struct {
 	Fields            map[string]Field
 	LinksToSingle     map[string]LinkToSingle
 	NavigationOptions []NavigationOption
+	FTMEntity         *FollowTheMoneyEntity
 }
 
 func (t Table) FieldNames() []string {
@@ -162,6 +167,7 @@ type TableMetadata struct {
 	Description    string
 	Name           string
 	OrganizationID string
+	FTMEntity      *FollowTheMoneyEntity
 }
 
 func ColumnNames(table Table) []string {
@@ -201,6 +207,7 @@ type Field struct {
 	Values            []any
 	FieldStatistics   FieldStatistics
 	UnicityConstraint UnicityConstraint
+	FTMProperty       *FollowTheMoneyProperty
 }
 
 type FieldMetadata struct {
@@ -211,6 +218,7 @@ type FieldMetadata struct {
 	Name        string
 	Nullable    bool
 	TableId     string
+	FTMProperty *FollowTheMoneyProperty
 }
 
 type UnicityConstraint int
@@ -253,6 +261,7 @@ type CreateFieldInput struct {
 	Nullable    bool
 	IsEnum      bool
 	IsUnique    bool
+	FTMProperty *FollowTheMoneyProperty
 }
 
 type UpdateFieldInput struct {
@@ -260,6 +269,7 @@ type UpdateFieldInput struct {
 	IsEnum      *bool
 	IsUnique    *bool
 	IsNullable  *bool
+	FTMProperty pure_utils.Null[FollowTheMoneyProperty]
 }
 
 type EnumValues map[string]map[any]struct{}

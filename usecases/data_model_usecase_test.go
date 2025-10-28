@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/mock"
@@ -314,7 +315,8 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelTable",
-		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name", "description").
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name",
+		"description", (*models.FollowTheMoneyEntity)(nil)).
 		Return(nil)
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx,
@@ -340,7 +342,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 		}).
 		Return(nil)
 
-	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description")
+	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description", nil)
 	suite.Require().NoError(err, "no error expected")
 
 	suite.AssertExpectations()
@@ -352,10 +354,11 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_repository_erro
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelTable",
-		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name", "description").
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name",
+		"description", (*models.FollowTheMoneyEntity)(nil)).
 		Return(suite.repositoryError)
 
-	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description")
+	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description", nil)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.repositoryError, err, "expected error should be returned")
 
@@ -368,7 +371,8 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_org_repository_
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelTable",
-		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name", "description").
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name",
+		"description", (*models.FollowTheMoneyEntity)(nil)).
 		Return(nil)
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx,
@@ -382,7 +386,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_org_repository_
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, suite.transaction).
 		Return(suite.repositoryError)
 
-	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description")
+	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description", nil)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.repositoryError, err, "expected error should be returned")
 
@@ -394,7 +398,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_security_error(
 	tableName := "name"
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
 
-	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description")
+	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description", nil)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.securityError, err, "expected error should be returned")
 
@@ -415,10 +419,13 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal() {
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("UpdateDataModelTable",
-		suite.ctx, suite.transaction, tableId, "description").
+		suite.ctx, suite.transaction, tableId, "description",
+		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil)).
 		Return(nil)
 
-	err := usecase.UpdateDataModelTable(suite.ctx, tableId, "description")
+	err := usecase.UpdateDataModelTable(suite.ctx, tableId, "description",
+		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
+	)
 	suite.Require().NoError(err, "no error expected")
 
 	suite.AssertExpectations()
@@ -437,7 +444,9 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_security_error(
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
 
-	err := usecase.UpdateDataModelTable(suite.ctx, tableId, "description")
+	err := usecase.UpdateDataModelTable(suite.ctx, tableId, "description",
+		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
+	)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.securityError, err, "expected error should be returned")
 
@@ -457,12 +466,94 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_repository_erro
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("UpdateDataModelTable",
-		suite.ctx, suite.transaction, tableId, "description").
+		suite.ctx, suite.transaction, tableId, "description",
+		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
+	).
 		Return(suite.repositoryError)
 
-	err := usecase.UpdateDataModelTable(suite.ctx, tableId, "description")
+	err := usecase.UpdateDataModelTable(suite.ctx, tableId, "description",
+		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
+	)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.repositoryError, err, "expected error should be returned")
+
+	suite.AssertExpectations()
+}
+
+func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_cannot_update_ftm_entity_if_already_defined() {
+	tableId := "tableId"
+	ftmEntity := models.FollowTheMoneyEntityPerson
+	table := models.TableMetadata{
+		Name:           "name",
+		Description:    "description",
+		OrganizationID: suite.organizationId,
+		FTMEntity:      &ftmEntity,
+	}
+	ftmEntityCompany := models.FollowTheMoneyEntityCompany
+	usecase := suite.makeUsecase()
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(table, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+
+	err := usecase.UpdateDataModelTable(suite.ctx, tableId, "description",
+		pure_utils.NullFrom(ftmEntityCompany),
+	)
+	suite.Require().Error(err, "error expected when trying to update existing FTM entity")
+	suite.Require().ErrorContains(err, "can not update FTM entity on a table that already has one defined",
+		"expected error message about FTM entity already being defined")
+
+	suite.AssertExpectations()
+}
+
+func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal_set_ftm_entity() {
+	tableId := "tableId"
+	table := models.TableMetadata{
+		Name:           "name",
+		Description:    "description",
+		OrganizationID: suite.organizationId,
+		FTMEntity:      nil,
+	}
+	ftmEntity := models.FollowTheMoneyEntityPerson
+	usecase := suite.makeUsecase()
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(table, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	suite.dataModelRepository.On("UpdateDataModelTable",
+		suite.ctx, suite.transaction, tableId, "description",
+		pure_utils.NullFrom(ftmEntity)).
+		Return(nil)
+
+	err := usecase.UpdateDataModelTable(suite.ctx, tableId, "description",
+		pure_utils.NullFrom(ftmEntity),
+	)
+	suite.Require().NoError(err, "no error expected when setting FTM entity on table without one")
+
+	suite.AssertExpectations()
+}
+
+func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_cannot_clear_ftm_entity_if_already_defined() {
+	tableId := "tableId"
+	ftmEntity := models.FollowTheMoneyEntityPerson
+	table := models.TableMetadata{
+		Name:           "name",
+		Description:    "description",
+		OrganizationID: suite.organizationId,
+		FTMEntity:      &ftmEntity,
+	}
+	usecase := suite.makeUsecase()
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(table, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+
+	err := usecase.UpdateDataModelTable(suite.ctx, tableId, "description",
+		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
+	)
+	suite.Require().Error(err, "error expected when trying to update existing FTM entity")
+	suite.Require().ErrorContains(err, "can not update FTM entity on a table that already has one defined",
+		"expected error message about FTM entity already being defined")
 
 	suite.AssertExpectations()
 }
@@ -982,6 +1073,294 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_repository_erro
 	err := usecase.UpdateDataModelField(suite.ctx, fieldId, input)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.repositoryError, err, "expected error should be returned")
+
+	suite.AssertExpectations()
+}
+
+func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_with_ftm_property() {
+	tableId := "tableId"
+	ftmProperty := models.FollowTheMoneyPropertyName
+	ftmEntity := models.FollowTheMoneyEntityPerson
+	field := models.CreateFieldInput{
+		Name:        "name",
+		DataType:    models.String,
+		Nullable:    false,
+		TableId:     tableId,
+		FTMProperty: &ftmProperty,
+	}
+	table := models.TableMetadata{
+		ID:             tableId,
+		Name:           "name",
+		Description:    "description",
+		OrganizationID: suite.organizationId,
+		FTMEntity:      &ftmEntity,
+	}
+	usecase := suite.makeUsecase()
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(table, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	suite.dataModelRepository.On("CreateDataModelField",
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
+		Return(nil)
+	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
+	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
+		Return(nil)
+
+	_, err := usecase.CreateDataModelField(suite.ctx, field)
+	suite.Require().NoError(err, "no error expected")
+
+	suite.AssertExpectations()
+}
+
+// UpdateDataModelField with FTM Property
+func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_ftm_property() {
+	fieldId := "fieldId"
+	tableId := "tableId"
+	ftmProperty := models.FollowTheMoneyPropertyEmail
+	ftmEntity := models.FollowTheMoneyEntityPerson
+	input := models.UpdateFieldInput{
+		FTMProperty: pure_utils.NullFrom(ftmProperty),
+	}
+	usecase := suite.makeUsecase()
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
+		Return(models.FieldMetadata{Name: "email", DataType: models.String, ID: fieldId, IsEnum: false, TableId: tableId}, nil)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(models.TableMetadata{
+			Name:           "customers",
+			OrganizationID: suite.organizationId,
+			FTMEntity:      &ftmEntity,
+		}, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	suite.enforceSecurity.On("ReadDataModel").Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
+	dataModelWithFTM := suite.dataModel
+	dataModelWithFTM.Tables["customers"] = models.Table{
+		Name:      "customers",
+		FTMEntity: &ftmEntity,
+	}
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(dataModelWithFTM, nil)
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
+		Return(suite.uniqueIndexes, nil)
+	suite.dataModelRepository.On("UpdateDataModelField", suite.ctx, suite.transaction, fieldId, input).
+		Return(nil)
+
+	err := usecase.UpdateDataModelField(suite.ctx, fieldId, input)
+	suite.Require().NoError(err, "no error expected")
+
+	suite.AssertExpectations()
+}
+
+// UpdateDataModelField to clear FTM Property
+func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_clear_ftm_property() {
+	fieldId := "fieldId"
+	tableId := "tableId"
+	input := models.UpdateFieldInput{
+		FTMProperty: pure_utils.NullFromPtr[models.FollowTheMoneyProperty](nil),
+	}
+	usecase := suite.makeUsecase()
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
+		Return(models.FieldMetadata{
+			Name:        "email",
+			DataType:    models.String,
+			ID:          fieldId,
+			IsEnum:      false,
+			TableId:     tableId,
+			FTMProperty: utils.Ptr(models.FollowTheMoneyPropertyEmail),
+		}, nil)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(models.TableMetadata{
+			Name:           "customers",
+			OrganizationID: suite.organizationId,
+		}, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	// for GetDataModel (reused in UpdateDataModelField)
+	suite.enforceSecurity.On("ReadDataModel").Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModel, nil)
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
+		Return(suite.uniqueIndexes, nil)
+	suite.dataModelRepository.On("UpdateDataModelField", suite.ctx, suite.transaction, fieldId, input).
+		Return(nil)
+
+	err := usecase.UpdateDataModelField(suite.ctx, fieldId, input)
+	suite.Require().NoError(err, "no error expected")
+
+	suite.AssertExpectations()
+}
+
+// CreateDataModelField with invalid FTM property for entity
+// RegistrationNumber is invalid for Person entity (only valid for Company, Organization, Vessel)
+func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_with_invalid_ftm_property_for_entity() {
+	tableId := "tableId"
+	ftmProperty := models.FollowTheMoneyPropertyRegistrationNumber
+	ftmEntity := models.FollowTheMoneyEntityPerson
+	field := models.CreateFieldInput{
+		Name:        "registration_num",
+		DataType:    models.String,
+		Nullable:    false,
+		TableId:     tableId,
+		FTMProperty: &ftmProperty,
+	}
+	table := models.TableMetadata{
+		ID:             tableId,
+		Name:           "people",
+		Description:    "description",
+		OrganizationID: suite.organizationId,
+		FTMEntity:      &ftmEntity,
+	}
+	usecase := suite.makeUsecase()
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(table, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+
+	_, err := usecase.CreateDataModelField(suite.ctx, field)
+	suite.Require().Error(err, "error expected: RegistrationNumber is not valid for Person entity")
+	suite.Require().ErrorContains(err, "invalid FTM property for entity",
+		"expected error message about invalid property")
+
+	suite.AssertExpectations()
+}
+
+// UpdateDataModelField with invalid FTM property for entity
+// CageCode is invalid for Person entity (only valid for Company)
+func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_invalid_ftm_property_for_entity() {
+	fieldId := "fieldId"
+	tableId := "tableId"
+	ftmProperty := models.FollowTheMoneyPropertyCageCode
+	ftmEntity := models.FollowTheMoneyEntityPerson
+	input := models.UpdateFieldInput{
+		FTMProperty: pure_utils.NullFrom(ftmProperty),
+	}
+	usecase := suite.makeUsecase()
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
+		Return(models.FieldMetadata{Name: "cage_code", DataType: models.String, ID: fieldId, IsEnum: false, TableId: tableId}, nil)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(models.TableMetadata{
+			Name:           "people",
+			OrganizationID: suite.organizationId,
+			FTMEntity:      &ftmEntity,
+		}, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	// Mock GetDataModel which is called before FTM validation in UpdateDataModelField
+	suite.enforceSecurity.On("ReadDataModel").Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
+	dataModelWithPeople := suite.dataModel
+	dataModelWithPeople.Tables["people"] = models.Table{
+		Name:      "people",
+		FTMEntity: &ftmEntity,
+	}
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(dataModelWithPeople, nil)
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
+		Return(suite.uniqueIndexes, nil)
+
+	err := usecase.UpdateDataModelField(suite.ctx, fieldId, input)
+	suite.Require().Error(err, "error expected: CageCode is not valid for Person entity")
+	suite.Require().ErrorContains(err, "invalid FTM property for entity",
+		"expected error message about invalid property")
+
+	suite.AssertExpectations()
+}
+
+// UpdateDataModelField with FTM property but no entity defined on table
+// Cannot set FTM property without table FTM entity
+func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_ftm_property_but_no_entity() {
+	fieldId := "fieldId"
+	tableId := "tableId"
+	ftmProperty := models.FollowTheMoneyPropertyEmail
+	input := models.UpdateFieldInput{
+		FTMProperty: pure_utils.NullFrom(ftmProperty),
+	}
+	usecase := suite.makeUsecase()
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
+		Return(models.FieldMetadata{Name: "email", DataType: models.String, ID: fieldId, IsEnum: false, TableId: tableId}, nil)
+	// Table has NO FTM entity defined
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(models.TableMetadata{
+			Name:           "customers",
+			OrganizationID: suite.organizationId,
+			FTMEntity:      nil,
+		}, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	// Mock GetDataModel which is called before FTM validation in UpdateDataModelField
+	suite.enforceSecurity.On("ReadDataModel").Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModel, nil)
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
+		Return(suite.uniqueIndexes, nil)
+
+	err := usecase.UpdateDataModelField(suite.ctx, fieldId, input)
+	suite.Require().Error(err, "error expected: cannot set FTM property without table FTM entity")
+	suite.Require().ErrorContains(err, "FTM entity not defined for table",
+		"expected error message about missing entity")
+
+	suite.AssertExpectations()
+}
+
+// UpdateDataModelField with PassportNumber property on Organization entity (invalid)
+// PassportNumber is only valid for Person entity
+func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_invalid_passport_on_organization() {
+	fieldId := "fieldId"
+	tableId := "tableId"
+	ftmProperty := models.FollowTheMoneyPropertyPassportNumber
+	ftmEntity := models.FollowTheMoneyEntityOrganization
+	input := models.UpdateFieldInput{
+		FTMProperty: pure_utils.NullFrom(ftmProperty),
+	}
+	usecase := suite.makeUsecase()
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
+		Return(models.FieldMetadata{Name: "passport_num", DataType: models.String, ID: fieldId, IsEnum: false, TableId: tableId}, nil)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(models.TableMetadata{
+			Name:           "organizations",
+			OrganizationID: suite.organizationId,
+			FTMEntity:      &ftmEntity,
+		}, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	// Mock GetDataModel which is called before FTM validation in UpdateDataModelField
+	suite.enforceSecurity.On("ReadDataModel").Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
+	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
+		Return(nil, nil)
+	dataModelWithOrganizations := suite.dataModel
+	dataModelWithOrganizations.Tables["organizations"] = models.Table{
+		Name:          "organizations",
+		Fields:        map[string]models.Field{},
+		LinksToSingle: make(map[string]models.LinkToSingle),
+		FTMEntity:     &ftmEntity,
+	}
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(dataModelWithOrganizations, nil)
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
+		Return(suite.uniqueIndexes, nil)
+
+	err := usecase.UpdateDataModelField(suite.ctx, fieldId, input)
+	suite.Require().Error(err, "error expected: PassportNumber is not valid for Organization entity")
+	suite.Require().ErrorContains(err, "invalid FTM property for entity",
+		"expected error message about invalid property")
 
 	suite.AssertExpectations()
 }
