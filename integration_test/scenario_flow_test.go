@@ -163,7 +163,7 @@ func createDataModelAndSetupCaseManager(
 	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases)
 
 	usecase := testAdminUsecase.NewDataModelUseCase()
-	transactionsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "transactions", "description")
+	transactionsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "transactions", "description", nil)
 	if err != nil {
 		assert.FailNow(t, "Could not create table", err)
 	}
@@ -184,7 +184,7 @@ func createDataModelAndSetupCaseManager(
 		}
 	}
 
-	accountsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "accounts", "description")
+	accountsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "accounts", "description", nil)
 	if err != nil {
 		assert.FailNow(t, "Could not create table", err)
 	}
@@ -202,7 +202,7 @@ func createDataModelAndSetupCaseManager(
 		}
 	}
 
-	companiesTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "companies", "description")
+	companiesTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "companies", "description", nil)
 	if err != nil {
 		assert.FailNow(t, "Could not create table", err)
 	}

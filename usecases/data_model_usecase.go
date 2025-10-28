@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -113,7 +114,9 @@ func (usecase usecase) GetDataModel(
 	return dataModel, nil
 }
 
-func (usecase *usecase) CreateDataModelTable(ctx context.Context, organizationId, name, description string) (string, error) {
+func (usecase *usecase) CreateDataModelTable(ctx context.Context,
+	organizationId, name, description string, ftmEntity *models.FollowTheMoneyEntity,
+) (string, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(organizationId); err != nil {
 		return "", err
 	}
@@ -142,7 +145,7 @@ func (usecase *usecase) CreateDataModelTable(ctx context.Context, organizationId
 	}
 
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		err := usecase.dataModelRepository.CreateDataModelTable(ctx, tx, organizationId, tableId, name, description)
+		err := usecase.dataModelRepository.CreateDataModelTable(ctx, tx, organizationId, tableId, name, description, ftmEntity)
 		if err != nil {
 			return err
 		}
@@ -175,15 +178,28 @@ func (usecase *usecase) CreateDataModelTable(ctx context.Context, organizationId
 	return tableId, err
 }
 
-func (usecase *usecase) UpdateDataModelTable(ctx context.Context, tableID, description string) error {
+func (usecase *usecase) UpdateDataModelTable(
+	ctx context.Context,
+	tableID, description string,
+	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
+) error {
 	exec := usecase.executorFactory.NewExecutor()
-	if table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, tableID); err != nil {
-		return err
-	} else if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+
+	table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, tableID)
+	if err != nil {
 		return err
 	}
+	if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+		return err
+	}
+	if ftmEntity.Set {
+		if table.FTMEntity != nil {
+			return errors.Wrap(models.BadParameterError,
+				"can not update FTM entity on a table that already has one defined")
+		}
+	}
 
-	return usecase.dataModelRepository.UpdateDataModelTable(ctx, exec, tableID, description)
+	return usecase.dataModelRepository.UpdateDataModelTable(ctx, exec, tableID, description, ftmEntity)
 }
 
 func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
@@ -210,6 +226,10 @@ func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.C
 			}
 			organizationId = table.OrganizationID
 			if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+				return err
+			}
+
+			if err := validateFTMProperty(table, pure_utils.NullFromPtr(field.FTMProperty)); err != nil {
 				return err
 			}
 
@@ -287,6 +307,11 @@ func (usecase *usecase) UpdateDataModelField(ctx context.Context, fieldID string
 
 	makeUnique, makeNotUnique, err := validateFieldUpdateRules(dataModel, field, table, input)
 	if err != nil {
+		return err
+	}
+
+	// Check if the FTM property is valid and supported by the FTM entity defined in the table
+	if err := validateFTMProperty(table, input.FTMProperty); err != nil {
 		return err
 	}
 
@@ -384,6 +409,26 @@ func findLinksToField(dataModel models.DataModel, tableName string, fieldName st
 	}
 
 	return links
+}
+
+func validateFTMProperty(table models.TableMetadata, property pure_utils.Null[models.FollowTheMoneyProperty]) error {
+	// Check if the FTM property is valid and supported by the FTM entity defined in the table
+	if property.Set {
+		if property.Valid {
+			if table.FTMEntity == nil {
+				return fmt.Errorf("FTM entity not defined for table %s", table.Name)
+			}
+			ok := slices.Contains(models.FollowTheMoneyEntityProperties[*table.FTMEntity], property.Value())
+			if !ok {
+				return fmt.Errorf(
+					"invalid FTM property for entity %s: %s",
+					*table.FTMEntity,
+					property.Value(),
+				)
+			}
+		}
+	}
+	return nil
 }
 
 func (usecase *usecase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) (string, error) {

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -18,8 +19,18 @@ import (
 type DataModelRepository interface {
 	GetDataModel(ctx context.Context, exec Executor, organizationID string, fetchEnumValues bool,
 		useCache bool) (models.DataModel, error)
-	CreateDataModelTable(ctx context.Context, exec Executor, organizationID, tableID, name, description string) error
-	UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error
+	CreateDataModelTable(
+		ctx context.Context,
+		exec Executor,
+		organizationID, tableID, name, description string,
+		ftmEntity *models.FollowTheMoneyEntity,
+	) error
+	UpdateDataModelTable(
+		ctx context.Context,
+		exec Executor,
+		tableID, description string,
+		ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
+	) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
 	CreateDataModelField(ctx context.Context, exec Executor, organizationId string, fieldId string, field models.CreateFieldInput) error
 	UpdateDataModelField(
@@ -135,16 +146,21 @@ func (repo MarbleDbRepository) GetDataModel(
 	return dataModel, nil
 }
 
-func (repo MarbleDbRepository) CreateDataModelTable(ctx context.Context, exec Executor, organizationID, tableID, name, description string) error {
+func (repo MarbleDbRepository) CreateDataModelTable(
+	ctx context.Context,
+	exec Executor,
+	organizationID, tableID, name, description string,
+	ftmEntity *models.FollowTheMoneyEntity,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
 	query := `
-		INSERT INTO data_model_tables (id, organization_id, name, description)
-		VALUES ($1, $2, $3, $4)`
+		INSERT INTO data_model_tables (id, organization_id, name, description, ftm_entity)
+		VALUES ($1, $2, $3, $4, $5)`
 
-	_, err := exec.Exec(ctx, query, tableID, organizationID, name, description)
+	_, err := exec.Exec(ctx, query, tableID, organizationID, name, description, ftmEntity)
 	if IsUniqueViolationError(err) {
 		return models.ConflictError
 	}
@@ -167,20 +183,31 @@ func (repo MarbleDbRepository) GetDataModelTable(ctx context.Context, exec Execu
 	)
 }
 
-func (repo MarbleDbRepository) UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error {
+func (repo MarbleDbRepository) UpdateDataModelTable(
+	ctx context.Context,
+	exec Executor,
+	tableID, description string,
+	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
-	err := ExecBuilder(
+	query := NewQueryBuilder().
+		Update(dbmodels.TableDataModelTables).
+		Set("description", description)
+
+	if ftmEntity.Set {
+		query = query.Set("ftm_entity", ftmEntity.Ptr())
+	}
+
+	query = query.Where(squirrel.Eq{"id": tableID})
+
+	return ExecBuilder(
 		ctx,
 		exec,
-		NewQueryBuilder().
-			Update(dbmodels.TableDataModelTables).
-			Set("description", description).
-			Where(squirrel.Eq{"id": tableID}),
+		query,
 	)
-	return err
 }
 
 func (repo MarbleDbRepository) CreateDataModelField(
@@ -195,8 +222,8 @@ func (repo MarbleDbRepository) CreateDataModelField(
 	}
 
 	query := `
-		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description, is_enum)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description, is_enum, ftm_property)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id`
 
 	_, err := exec.Exec(ctx,
@@ -208,6 +235,7 @@ func (repo MarbleDbRepository) CreateDataModelField(
 		field.Nullable,
 		field.Description,
 		field.IsEnum,
+		field.FTMProperty,
 	)
 	if IsUniqueViolationError(err) {
 		return models.ConflictError
@@ -250,15 +278,19 @@ func (repo MarbleDbRepository) UpdateDataModelField(
 		query = query.Set("nullable", *input.IsNullable)
 		nbUpdates++
 	}
+	if input.FTMProperty.Set {
+		query = query.Set("ftm_property", input.FTMProperty.Ptr())
+		nbUpdates++
+	}
+
 	if nbUpdates == 0 {
 		return nil
 	}
-	err := ExecBuilder(
+	return ExecBuilder(
 		ctx,
 		exec,
 		query,
 	)
-	return err
 }
 
 func (repo MarbleDbRepository) CreateDataModelLink(ctx context.Context, exec Executor, id string, link models.DataModelLinkCreateInput) error {
@@ -326,12 +358,14 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 			&dbModel.OrganizationID,
 			&dbModel.TableName,
 			&dbModel.TableDescription,
+			&dbModel.TableFTMEntity,
 			&dbModel.FieldID,
 			&dbModel.FieldName,
 			&dbModel.FieldType,
 			&dbModel.FieldNullable,
 			&dbModel.FieldDescription,
 			&dbModel.FieldIsEnum,
+			&dbModel.FieldFTMProperty,
 		); err != nil {
 			return dbmodels.DbDataModelTableJoinField{}, err
 		}
