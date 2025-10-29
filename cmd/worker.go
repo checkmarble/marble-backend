@@ -22,6 +22,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/cockroachdb/errors"
@@ -339,14 +340,21 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	// run a non-blocking basic http server to respond to Cloud Run http probes, to respect the Cloud Run contract
 	if workerConfig.cloudRunProbePort != "" {
 		go func() {
-			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte("OK"))
+			gin.SetMode(gin.ReleaseMode)
+
+			r := gin.New()
+
+			r.GET("/", func(c *gin.Context) {
+				c.String(http.StatusOK, "OK")
 			})
 
-			http.Handle("/metrics", promhttp.Handler())
+			r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-			if err := http.ListenAndServe(":"+workerConfig.cloudRunProbePort, nil); err != nil {
+			if os.Getenv("DEBUG_ENABLE_PROFILING") == "1" {
+				utils.SetupProfilerEndpoints(r, "marble-worker", apiVersion, gcpConfig.ProjectId)
+			}
+
+			if err := r.Run(":" + workerConfig.cloudRunProbePort); err != nil {
 				utils.LogAndReportSentryError(ctx, err)
 			}
 		}()
