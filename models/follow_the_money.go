@@ -50,12 +50,7 @@ const (
 	FollowTheMoneyPropertyPassportNumber       FollowTheMoneyProperty = "passportNumber"
 	FollowTheMoneyPropertySocialSecurityNumber FollowTheMoneyProperty = "socialSecurityNumber"
 	FollowTheMoneyPropertyAddress              FollowTheMoneyProperty = "address"
-	FollowTheMoneyPropertyCountry              FollowTheMoneyProperty = "country"
-	FollowTheMoneyPropertyCageCode             FollowTheMoneyProperty = "cageCode"
-	FollowTheMoneyPropertyPermId               FollowTheMoneyProperty = "permId"
 	FollowTheMoneyPropertyImoNumber            FollowTheMoneyProperty = "imoNumber"
-	FollowTheMoneyPropertyGiiNumber            FollowTheMoneyProperty = "giiNumber"
-	FollowTheMoneyPropertyVATCode              FollowTheMoneyProperty = "vatCode"
 	FollowTheMoneyPropertyRegistrationNumber   FollowTheMoneyProperty = "registrationNumber"
 	FollowTheMoneyPropertyJurisdiction         FollowTheMoneyProperty = "jurisdiction"
 	FollowTheMoneyPropertyIsinCode             FollowTheMoneyProperty = "isinCode"
@@ -86,18 +81,8 @@ func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
 		return FollowTheMoneyPropertySocialSecurityNumber
 	case "address":
 		return FollowTheMoneyPropertyAddress
-	case "country":
-		return FollowTheMoneyPropertyCountry
-	case "cageCode":
-		return FollowTheMoneyPropertyCageCode
-	case "permId":
-		return FollowTheMoneyPropertyPermId
 	case "imoNumber":
 		return FollowTheMoneyPropertyImoNumber
-	case "giiNumber":
-		return FollowTheMoneyPropertyGiiNumber
-	case "vatCode":
-		return FollowTheMoneyPropertyVATCode
 	case "registrationNumber":
 		return FollowTheMoneyPropertyRegistrationNumber
 	case "jurisdiction":
@@ -139,16 +124,6 @@ var FollowTheMoneyEntityProperties = map[FollowTheMoneyEntity][]FollowTheMoneyPr
 		FollowTheMoneyPropertyWebsite,
 		FollowTheMoneyPropertyAddress,
 	},
-	FollowTheMoneyEntityOrganization: {
-		FollowTheMoneyPropertyName,
-		FollowTheMoneyPropertyBirthCountry,
-		FollowTheMoneyPropertyEmail,
-		FollowTheMoneyPropertyPhone,
-		FollowTheMoneyPropertyWebsite,
-		FollowTheMoneyPropertyRegistrationNumber,
-		FollowTheMoneyPropertyAddress,
-	},
-	// I am not sure about this one, do we need to search Vessel? do we need to add more properties?
 	FollowTheMoneyEntityVessel: {
 		FollowTheMoneyPropertyName,
 		FollowTheMoneyPropertyImoNumber,
