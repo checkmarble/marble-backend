@@ -34,23 +34,64 @@ type ScreeningMonitoringUsecaseRepository interface {
 		id uuid.UUID,
 		input models.UpdateScreeningMonitoringConfig,
 	) (models.ScreeningMonitoringConfig, error)
+	GetDataModelTable(ctx context.Context, exec repositories.Executor, tableId string) (models.TableMetadata, error)
+	GetDataModel(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationID string,
+		fetchEnumValues bool,
+		useCache bool,
+	) (models.DataModel, error)
+}
+
+type ScreeningMonitoringClientDbRepository interface {
+	CreateInternalScreeningMonitoringTable(ctx context.Context, exec repositories.Executor, tableName string) error
+	CreateInternalScreeningMonitoringIndex(ctx context.Context, exec repositories.Executor, tableName string) error
+	InsertScreeningMonitoringObject(
+		ctx context.Context,
+		exec repositories.Executor,
+		tableName string,
+		objectId string,
+		configId uuid.UUID,
+	) error
+}
+
+type ScreeningMonitoringIngestedDataReader interface {
+	QueryIngestedObject(
+		ctx context.Context,
+		exec repositories.Executor,
+		table models.Table,
+		objectId string,
+	) ([]models.DataModelObject, error)
 }
 
 type ScreeningMonitoringUsecase struct {
-	executorFactory executor_factory.ExecutorFactory
+	executorFactory    executor_factory.ExecutorFactory
+	transactionFactory executor_factory.TransactionFactory
 
-	enforceSecurity               security.EnforceSecurityScreeningMonitoring
-	screeningMonitoringRepository ScreeningMonitoringUsecaseRepository
+	enforceSecurity              security.EnforceSecurityScreeningMonitoring
+	repository                   ScreeningMonitoringUsecaseRepository
+	clientDbRepository           ScreeningMonitoringClientDbRepository
+	organizationSchemaRepository repositories.OrganizationSchemaRepository
+	ingestedDataReader           ScreeningMonitoringIngestedDataReader
 }
 
 func NewScreeningMonitoringUsecase(
 	executorFactory executor_factory.ExecutorFactory,
+	transactionFactory executor_factory.TransactionFactory,
 	enforceSecurity security.EnforceSecurityScreeningMonitoring,
 	screeningMonitoringRepository ScreeningMonitoringUsecaseRepository,
+	clientDbRepository ScreeningMonitoringClientDbRepository,
+	organizationSchemaRepository repositories.OrganizationSchemaRepository,
+	ingestedDataReader ScreeningMonitoringIngestedDataReader,
 ) ScreeningMonitoringUsecase {
 	return ScreeningMonitoringUsecase{
-		executorFactory:               executorFactory,
-		enforceSecurity:               enforceSecurity,
-		screeningMonitoringRepository: screeningMonitoringRepository,
+		executorFactory:              executorFactory,
+		transactionFactory:           transactionFactory,
+		enforceSecurity:              enforceSecurity,
+		repository:                   screeningMonitoringRepository,
+		clientDbRepository:           clientDbRepository,
+		organizationSchemaRepository: organizationSchemaRepository,
+		ingestedDataReader:           ingestedDataReader,
 	}
 }

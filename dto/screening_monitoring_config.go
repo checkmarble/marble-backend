@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type ScreeningMonitoringConfigDto struct {
@@ -100,5 +101,19 @@ func AdaptUpdateScreeningMonitoringConfigDtoToModel(dto UpdateScreeningMonitorin
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
 		Enabled:        dto.Enabled,
+	}
+}
+
+type InsertScreeningMonitoringObjectDto struct {
+	TableName string    `json:"table_name" binding:"required"`
+	ObjectId  string    `json:"object_id" binding:"required"`
+	ConfigId  uuid.UUID `json:"config_id" binding:"required"`
+}
+
+func AdaptInsertScreeningMonitoringObjectDtoToModel(dto InsertScreeningMonitoringObjectDto) models.InsertScreeningMonitoringObject {
+	return models.InsertScreeningMonitoringObject{
+		TableName: dto.TableName,
+		ObjectId:  dto.ObjectId,
+		ConfigId:  dto.ConfigId,
 	}
 }
