@@ -37,7 +37,7 @@ type CreateScreeningMonitoringConfigDto struct {
 	Name           string   `json:"name" binding:"required"`
 	Description    *string  `json:"description"`
 	Datasets       []string `json:"datasets" binding:"required"`
-	MatchThreshold int      `json:"match_threshold" binding:"required,min=0,max=100"`
+	MatchThreshold int      `json:"match_threshold" binding:"required"`
 	MatchLimit     int      `json:"match_limit" binding:"required"`
 }
 
@@ -45,6 +45,15 @@ func (dto CreateScreeningMonitoringConfigDto) Validate() error {
 	if len(dto.Datasets) == 0 {
 		return errors.New("datasets are required for screening monitoring config")
 	}
+
+	if dto.MatchThreshold < 0 || dto.MatchThreshold > 100 {
+		return errors.New("match threshold must be between 0 and 100")
+	}
+
+	if dto.MatchLimit < 0 {
+		return errors.New("match limit must be greater than or equal to 0")
+	}
+
 	return nil
 }
 
