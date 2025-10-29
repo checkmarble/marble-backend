@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -53,6 +54,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	}
 
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	if os.Getenv("DEBUG_ENABLE_PROFILING") == "1" {
+		utils.SetupProfilerEndpoints(r, "marble-backend", conf.AppVersion, conf.GcpConfig.ProjectId)
+	}
 
 	if infra.IsMarbleSaasProject() {
 		r.POST("/metrics", tom, handleMetricsIngestion(uc))

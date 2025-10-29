@@ -10,6 +10,7 @@ import (
 type Configuration struct {
 	Env                 string
 	AppName             string
+	AppVersion          string
 	Port                string
 	MarbleApiUrl        string
 	MarbleAppUrl        string
@@ -29,6 +30,7 @@ type Configuration struct {
 	FirebaseConfig FirebaseConfig
 	OidcConfig     infra.OidcConfig
 
+	GcpConfig      infra.GcpConfig
 	MetabaseConfig infra.MetabaseConfiguration
 }
 

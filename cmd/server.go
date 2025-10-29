@@ -45,10 +45,21 @@ func RunServer(config CompiledConfig) error {
 		oidcProvider = oidc
 	}
 
+	gcpConfig, err := infra.NewGcpConfig(
+		ctx,
+		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
+		utils.GetEnv("ENABLE_GCP_TRACING", false),
+	)
+	if err != nil {
+		return err
+	}
+
 	// This is where we read the environment variables and set up the configuration for the application.
 	apiConfig := api.Configuration{
 		Env:                 utils.GetEnv("ENV", "production"),
 		AppName:             "marble-backend",
+		AppVersion:          config.Version,
 		MarbleApiUrl:        utils.GetEnv("MARBLE_API_URL", ""),
 		MarbleAppUrl:        marbleAppUrl,
 		MarbleBackofficeUrl: utils.GetEnv("MARBLE_BACKOFFICE_URL", ""),
@@ -61,6 +72,8 @@ func RunServer(config CompiledConfig) error {
 		DecisionTimeout:     time.Duration(utils.GetEnv("DECISION_TIMEOUT_SECOND", 10)) * time.Second,
 		DefaultTimeout:      time.Duration(utils.GetEnv("DEFAULT_TIMEOUT_SECOND", 5)) * time.Second,
 		AnalyticsTimeout:    utils.GetEnvDuration("ANALYTICS_TIMEOUT", 15*time.Second),
+
+		GcpConfig: gcpConfig,
 
 		MetabaseConfig: infra.MetabaseConfiguration{
 			SiteUrl:             utils.GetEnv("METABASE_SITE_URL", ""),
@@ -82,16 +95,6 @@ func RunServer(config CompiledConfig) error {
 	}
 	if apiConfig.DisableSegment {
 		apiConfig.SegmentWriteKey = ""
-	}
-
-	gcpConfig, err := infra.NewGcpConfig(
-		ctx,
-		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
-		utils.GetEnv("ENABLE_GCP_TRACING", false),
-	)
-	if err != nil {
-		return err
 	}
 
 	pgConfig := infra.PgConfig{
