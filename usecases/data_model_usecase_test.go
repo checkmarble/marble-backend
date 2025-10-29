@@ -1238,7 +1238,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_with_invalid_ft
 func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_invalid_ftm_property_for_entity() {
 	fieldId := "fieldId"
 	tableId := "tableId"
-	ftmProperty := models.FollowTheMoneyPropertyCageCode
+	ftmProperty := models.FollowTheMoneyPropertyRegistrationNumber
 	ftmEntity := models.FollowTheMoneyEntityPerson
 	input := models.UpdateFieldInput{
 		FTMProperty: pure_utils.NullFrom(ftmProperty),
