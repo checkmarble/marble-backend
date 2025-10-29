@@ -21,13 +21,13 @@ import (
 
 func NewAnalyticsMergeJob() *river.PeriodicJob {
 	return river.NewPeriodicJob(
-		river.PeriodicInterval(time.Minute),
+		river.PeriodicInterval(time.Hour),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.AnalyticsMergeArgs{}, &river.InsertOpts{
 				Queue: "analytics_merge",
 				UniqueOpts: river.UniqueOpts{
 					ByQueue:  true,
-					ByPeriod: time.Minute,
+					ByPeriod: time.Hour,
 				},
 			}
 		},
@@ -149,8 +149,8 @@ func (w AnalyticsMergeWorker) merge(
 	dbExec repositories.Executor,
 	exec repositories.AnalyticsExecutor,
 	watermarkType models.WatermarkType,
-	kind, tableName string) error {
-
+	kind, tableName string,
+) error {
 	logger := utils.LoggerFromContext(ctx).With("org_id", orgId, "kind", kind, "trigger_object_type", tableName)
 
 	// Let's find the first partition (e.g. month) that can be merged. The eligible partition is the first month:
