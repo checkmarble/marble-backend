@@ -5,10 +5,11 @@ go 1.25.1
 require (
 	cloud.google.com/go/bigquery v1.69.0
 	cloud.google.com/go/iam v1.5.2
+	cloud.google.com/go/profiler v0.4.3
 	cloud.google.com/go/storage v1.57.0
 	firebase.google.com/go/v4 v4.14.1
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.29.0
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.53.0
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.54.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/TwiN/deepmerge v0.2.2
 	github.com/adhocore/gronx v1.19.6
@@ -86,7 +87,6 @@ require (
 	cloud.google.com/go/firestore v1.18.0 // indirect
 	cloud.google.com/go/longrunning v0.6.7 // indirect
 	cloud.google.com/go/monitoring v1.24.2 // indirect
-	cloud.google.com/go/profiler v0.4.3 // indirect
 	cloud.google.com/go/trace v1.11.6 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.1 // indirect
