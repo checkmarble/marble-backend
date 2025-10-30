@@ -148,7 +148,7 @@ func (dto InsertScreeningMonitoringObjectDto) Validate() error {
 	return nil
 }
 
-func AdaptInsertScreeningMonitoringObjectDtoToModel(dto InsertScreeningMonitoringObjectDto) models.InsertScreeningMonitoringObject {
+func AdaptInsertScreeningMonitoringObjectDto(dto InsertScreeningMonitoringObjectDto) models.InsertScreeningMonitoringObject {
 	return models.InsertScreeningMonitoringObject{
 		ObjectType:    dto.ObjectType,
 		ConfigId:      dto.ConfigId,

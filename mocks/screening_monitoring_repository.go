@@ -94,3 +94,18 @@ func (m *ScreeningMonitoringClientDbRepository) InsertScreeningMonitoringObject(
 	args := m.Called(ctx, exec, tableName, objectId, configId)
 	return args.Error(0)
 }
+
+type ScreeningMonitoringScreeningProvider struct {
+	mock.Mock
+}
+
+func (m *ScreeningMonitoringScreeningProvider) Search(
+	ctx context.Context,
+	query models.OpenSanctionsQuery,
+) (models.ScreeningRawSearchResponseWithMatches, error) {
+	args := m.Called(ctx, query)
+	if args.Get(0) == nil {
+		return models.ScreeningRawSearchResponseWithMatches{}, args.Error(1)
+	}
+	return args.Get(0).(models.ScreeningRawSearchResponseWithMatches), args.Error(1)
+}
