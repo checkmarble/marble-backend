@@ -19,7 +19,6 @@ var (
 	ErrArgumentRequired                       = errors.New("argument is required")
 	ErrArgumentInvalidType                    = errors.New("argument has an invalid type")
 	ErrListNotFound                           = errors.New("list not found")
-	ErrDatabaseAccessNotFound                 = errors.New("database access not found")
 	ErrFilterTableNotMatch                    = errors.New("filters must be applied on the same table")
 	ErrAggregationFieldNotChosen              = errors.New("aggregation field not chosen")
 	ErrAggregationFieldIncompatibleAggregator = errors.New("aggregation field is incompatible with the aggregator")

@@ -2,7 +2,6 @@ package evaluate
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/cockroachdb/errors"
 
@@ -49,11 +48,8 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 
 	fieldValue, err := d.getDbField(ctx, tableName, fieldName, pathStringArr)
 	if err != nil {
-		errorMsg := fmt.Sprintf("Error reading value in DatabaseAccess: tableName %s, fieldName %s, path %v", tableName, fieldName, path)
-		return MakeEvaluateError(errors.Join(
-			errors.Wrap(ast.ErrDatabaseAccessNotFound, errorMsg),
-			err,
-		))
+		return MakeEvaluateError(errors.Wrapf(err,
+			`Error reading value in DatabaseAccess: tableName "%s", fieldName "%s", path %v`, tableName, fieldName, path))
 	}
 	if fieldValue == nil {
 		return nil, nil

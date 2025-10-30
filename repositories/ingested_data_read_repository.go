@@ -696,12 +696,13 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
-	fieldStats := pure_utils.Map(slices.Collect(maps.Values(fieldStatsMap)), func(f *models.FieldStatistics) models.FieldStatistics {
+	fieldStats := pure_utils.Map(slices.Collect(maps.Values(fieldStatsMap)), func(
+		f *models.FieldStatistics,
+	) models.FieldStatistics {
 		// SAFETY: those are statically assign above, and cannot be nil
 		return *f
 	})
