@@ -50,7 +50,7 @@ func (dto CreateScreeningMonitoringConfigDto) Validate() error {
 		return errors.New("match threshold must be between 0 and 100")
 	}
 
-	if dto.MatchLimit < 0 {
+	if dto.MatchLimit < 1 {
 		return errors.New("match limit must be greater than or equal to 0")
 	}
 
