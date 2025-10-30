@@ -22,8 +22,9 @@ const (
 )
 
 type AnalyticsConfig struct {
-	Enabled     bool
-	JobInterval time.Duration
+	Enabled         bool
+	JobInterval     time.Duration
+	ExportBatchSize int
 
 	Type             BlobType
 	Bucket           string
@@ -44,9 +45,10 @@ func InitAnalyticsConfig(pgConfig PgConfig, bucket string) (AnalyticsConfig, err
 	cfg := AnalyticsConfig{
 		Enabled: utils.GetEnv("ANALYTICS_ONLY_ORG", "") != "",
 		// TODO: during QA phase, analytics is only enabled if we set it for a single organization
-		JobInterval: utils.GetEnvDuration("ANALYTICS_JOB_INTERVAL", time.Hour),
-		Bucket:      bucket,
-		PgConfig:    pgConfig,
+		JobInterval:     utils.GetEnvDuration("ANALYTICS_JOB_INTERVAL", time.Hour),
+		ExportBatchSize: utils.GetEnv("ANALYTICS_BATCH_SIZE", 10000),
+		Bucket:          bucket,
+		PgConfig:        pgConfig,
 	}
 
 	// TODO: add other supported blob storage plaforms (azblob)

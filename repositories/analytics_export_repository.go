@@ -112,6 +112,26 @@ func AnalyticsCopyDecisions(ctx context.Context, exec AnalyticsExecutor, req Ana
 }
 
 func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req AnalyticsCopyRequest) (int, error) {
+	innerInner := squirrel.
+		Select(
+			"d.id",
+			"d.scenario_iteration_id",
+			"d.pivot_id", "d.pivot_value",
+			"d.created_at",
+			"extract(year from d.created_at)::int as year", "extract(month from d.created_at)::int as month",
+			"d.trigger_object_type",
+		).
+		From("marble.decisions d").
+		Where("d.org_id = ?", req.OrgId).
+		Where("d.trigger_object_type = ?", req.TriggerObject).
+		Where("d.created_at < ?", req.EndTime).
+		OrderBy("d.created_at, d.id").
+		Limit(uint64(req.Limit))
+
+	if req.Watermark != nil {
+		innerInner = innerInner.Where("(d.created_at, d.id) > (?::timestamp with time zone, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
+	}
+
 	inner := squirrel.
 		Select(
 			"dr.id",
@@ -130,20 +150,12 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 			"extract(year from d.created_at)::int as year", "extract(month from d.created_at)::int as month",
 			"d.trigger_object_type",
 		).
-		From("marble.decision_rules dr").
-		LeftJoin("marble.decisions d on d.id = dr.decision_id").
+		FromSelect(innerInner, "d").
+		InnerJoin("marble.decision_rules dr on dr.decision_id = d.id").
 		InnerJoin("marble.scenario_iterations si on si.id = d.scenario_iteration_id").
 		InnerJoin("marble.scenarios s on s.id = si.scenario_id").
 		LeftJoin("marble.scenario_iteration_rules sir on sir.id = dr.rule_id").
-		Where("d.org_id = ?", req.OrgId).
-		Where("d.trigger_object_type = ?", req.TriggerObject).
-		Where("d.created_at < ?", req.EndTime).
-		OrderBy("d.created_at, dr.id").
-		Limit(uint64(req.Limit))
-
-	if req.Watermark != nil {
-		inner = inner.Where("(d.created_at, dr.id) > (?::timestamp with time zone, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
-	}
+		OrderBy("d.created_at, d.id")
 
 	for _, f := range req.TriggerObjectFields {
 		inner = analyticsAddTriggerObjectField(inner, f, false)

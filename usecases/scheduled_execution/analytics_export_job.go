@@ -88,6 +88,13 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 		return nil
 	}
 
+	grace := time.Duration(w.config.JobInterval.Seconds()*0.75) * time.Second
+	if grace.Minutes() > 3 {
+		grace = 3 * time.Minute
+	}
+
+	timeout := time.After(w.config.JobInterval - grace)
+
 	dbExec := w.executorFactory.NewExecutor()
 	exec, err := w.analyticsFactory.GetExecutorWithSource(ctx, "pg")
 	if err != nil {
@@ -99,75 +106,108 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 		return errors.Wrap(err, "could not retrieve data model")
 	}
 
-	var wg errgroup.Group
+RepeatLoop:
+	for {
+		select {
+		case <-timeout:
+			break RepeatLoop
+		default:
+		}
 
-	for _, table := range dataModel.Tables {
-		triggerFields := make([]models.Field, 0)
-		dbFields := make([]models.Field, 0)
+		var wg errgroup.Group
 
-		if settings, err := w.repository.GetAnalyticsSettings(ctx, w.executorFactory.NewExecutor(), job.Args.OrgId); err == nil {
-			if setting, ok := settings[table.Name]; ok {
-				triggerFields = pure_utils.Map(setting.TriggerFields, func(name string) models.Field {
-					return table.Fields[name]
-				})
+		insertedRows := false
 
-				for _, f := range setting.DbFields {
-					if field, ok := dataModel.FindField(table, f.Path, f.Name); ok {
-						field.Name = f.Ident()
+		for _, table := range dataModel.Tables {
+			triggerFields := make([]models.Field, 0)
+			dbFields := make([]models.Field, 0)
 
-						dbFields = append(dbFields, field)
+			if settings, err := w.repository.GetAnalyticsSettings(ctx, w.executorFactory.NewExecutor(), job.Args.OrgId); err == nil {
+				if setting, ok := settings[table.Name]; ok {
+					triggerFields = pure_utils.Map(setting.TriggerFields, func(name string) models.Field {
+						return table.Fields[name]
+					})
+
+					for _, f := range setting.DbFields {
+						if field, ok := dataModel.FindField(table, f.Path, f.Name); ok {
+							field.Name = f.Ident()
+
+							dbFields = append(dbFields, field)
+						}
 					}
 				}
 			}
-		}
 
-		wg.Go(func() error {
-			req := repositories.AnalyticsCopyRequest{
-				OrgId:               job.Args.OrgId,
-				Table:               w.analyticsFactory.BuildTablePrefix("decisions"),
-				TriggerObject:       table.Name,
-				TriggerObjectFields: triggerFields,
-				ExtraDbFields:       dbFields,
-				EndTime:             job.CreatedAt,
-				Limit:               50000,
+			wg.Go(func() error {
+				req := repositories.AnalyticsCopyRequest{
+					OrgId:               job.Args.OrgId,
+					Table:               w.analyticsFactory.BuildTablePrefix("decisions"),
+					TriggerObject:       table.Name,
+					TriggerObjectFields: triggerFields,
+					ExtraDbFields:       dbFields,
+					EndTime:             job.CreatedAt,
+					Limit:               w.config.ExportBatchSize,
+				}
+
+				nRows, err := w.exportDecisions(ctx, exec, req)
+
+				if nRows > 0 {
+					insertedRows = true
+				}
+
+				return err
+			})
+
+			if w.license.Analytics {
+				wg.Go(func() error {
+					req := repositories.AnalyticsCopyRequest{
+						OrgId:               job.Args.OrgId,
+						Table:               w.analyticsFactory.BuildTablePrefix("decision_rules"),
+						TriggerObject:       table.Name,
+						TriggerObjectFields: triggerFields,
+						ExtraDbFields:       dbFields,
+						EndTime:             job.CreatedAt,
+						Limit:               w.config.ExportBatchSize,
+					}
+
+					nRows, err := w.exportDecisionRules(ctx, exec, req)
+
+					if nRows > 0 {
+						insertedRows = true
+					}
+
+					return err
+				})
+
+				wg.Go(func() error {
+					req := repositories.AnalyticsCopyRequest{
+						OrgId:               job.Args.OrgId,
+						Table:               w.analyticsFactory.BuildTablePrefix("screenings"),
+						TriggerObject:       table.Name,
+						TriggerObjectFields: triggerFields,
+						ExtraDbFields:       dbFields,
+						EndTime:             job.CreatedAt,
+						Limit:               w.config.ExportBatchSize,
+					}
+
+					nRows, err := w.exportScreenings(ctx, exec, req)
+
+					if nRows > 0 {
+						insertedRows = true
+					}
+
+					return err
+				})
 			}
 
-			return w.exportDecisions(ctx, job, dbExec, exec, req)
-		})
-
-		if w.license.Analytics {
-			wg.Go(func() error {
-				req := repositories.AnalyticsCopyRequest{
-					OrgId:               job.Args.OrgId,
-					Table:               w.analyticsFactory.BuildTablePrefix("decision_rules"),
-					TriggerObject:       table.Name,
-					TriggerObjectFields: triggerFields,
-					ExtraDbFields:       dbFields,
-					EndTime:             job.CreatedAt,
-					Limit:               50000,
-				}
-
-				return w.exportDecisionRules(ctx, job, dbExec, exec, req)
-			})
-
-			wg.Go(func() error {
-				req := repositories.AnalyticsCopyRequest{
-					OrgId:               job.Args.OrgId,
-					Table:               w.analyticsFactory.BuildTablePrefix("screenings"),
-					TriggerObject:       table.Name,
-					TriggerObjectFields: triggerFields,
-					ExtraDbFields:       dbFields,
-					EndTime:             job.CreatedAt,
-					Limit:               50000,
-				}
-
-				return w.exportScreenings(ctx, job, dbExec, exec, req)
-			})
+			if err := wg.Wait(); err != nil {
+				logger.ErrorContext(ctx, "failed to export analytics data", "error", err.Error())
+				return errors.Wrap(err, "failed to export data")
+			}
 		}
 
-		if err := wg.Wait(); err != nil {
-			logger.ErrorContext(ctx, "failed to export analytics data", "error", err.Error())
-			return errors.Wrap(err, "failed to export data")
+		if !insertedRows {
+			break
 		}
 	}
 
@@ -176,96 +216,60 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 
 func (w AnalyticsExportWorker) exportDecisions(
 	ctx context.Context,
-	job *river.Job[models.AnalyticsExportArgs],
-	dbExec repositories.Executor,
 	exec repositories.AnalyticsExecutor,
-	req repositories.AnalyticsCopyRequest) error {
-
-	wm, err := w.repository.GetWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsDecisions, req.TriggerObject))
+	req repositories.AnalyticsCopyRequest,
+) (int, error) {
+	id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("decisions", &req.TriggerObject))
 	if err != nil {
-		return errors.Wrap(err, "failed to get watermark")
+		return 0, errors.Wrap(err, "failed to get latest exported row")
 	}
 
-	req.Watermark = wm
+	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: createdAt}
 
 	nRows, err := repositories.AnalyticsCopyDecisions(ctx, exec, req)
 	if err != nil {
-		return errors.Wrap(err, "failed to copy decisions")
+		return 0, errors.Wrap(err, "failed to copy decisions")
 	}
 
-	if nRows > 0 {
-		id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("decisions", &req.TriggerObject))
-		if err != nil {
-			return errors.Wrap(err, "failed to get latest exported row")
-		}
-		if err := w.repository.SaveWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsDecisions, req.TriggerObject), utils.Ptr(id.String()), createdAt, nil); err != nil {
-			return errors.Wrap(err, "failed to save watermark")
-		}
-	}
-
-	return nil
+	return nRows, nil
 }
 
 func (w AnalyticsExportWorker) exportDecisionRules(
 	ctx context.Context,
-	job *river.Job[models.AnalyticsExportArgs],
-	dbExec repositories.Executor,
 	exec repositories.AnalyticsExecutor,
-	req repositories.AnalyticsCopyRequest) error {
-
-	wm, err := w.repository.GetWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsDecisionRules, req.TriggerObject))
+	req repositories.AnalyticsCopyRequest,
+) (int, error) {
+	id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("decision_rules", &req.TriggerObject))
 	if err != nil {
-		return errors.Wrap(err, "failed to get watermark")
+		return 0, errors.Wrap(err, "failed to get latest exported row")
 	}
 
-	req.Watermark = wm
+	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: createdAt}
 
 	nRows, err := repositories.AnalyticsCopyDecisionRules(ctx, exec, req)
 	if err != nil {
-		return errors.Wrap(err, "failed to copy decision rules")
+		return 0, errors.Wrap(err, "failed to copy decision rules")
 	}
 
-	if nRows > 0 {
-		id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("decision_rules", &req.TriggerObject))
-		if err != nil {
-			return errors.Wrap(err, "failed to get latest exported row")
-		}
-		if err := w.repository.SaveWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsDecisionRules, req.TriggerObject), utils.Ptr(id.String()), createdAt, nil); err != nil {
-			return errors.Wrap(err, "failed to save watermark")
-		}
-	}
-
-	return nil
+	return nRows, nil
 }
 
 func (w AnalyticsExportWorker) exportScreenings(
 	ctx context.Context,
-	job *river.Job[models.AnalyticsExportArgs],
-	dbExec repositories.Executor,
 	exec repositories.AnalyticsExecutor,
-	req repositories.AnalyticsCopyRequest) error {
-
-	wm, err := w.repository.GetWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsScreenings, req.TriggerObject))
+	req repositories.AnalyticsCopyRequest,
+) (int, error) {
+	id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("screenings", &req.TriggerObject))
 	if err != nil {
-		return errors.Wrap(err, "failed to get watermark")
+		return 0, errors.Wrap(err, "failed to get latest exported row")
 	}
 
-	req.Watermark = wm
+	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: createdAt}
 
 	nRows, err := repositories.AnalyticsCopyScreenings(ctx, exec, req)
 	if err != nil {
-		return errors.Wrap(err, "failed to copy screenings")
+		return 0, errors.Wrap(err, "failed to copy screenings")
 	}
 
-	if nRows > 0 {
-		id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("screenings", &req.TriggerObject))
-		if err != nil {
-			return errors.Wrap(err, "failed to get latest exported row")
-		}
-		if err := w.repository.SaveWatermark(ctx, dbExec, &job.Args.OrgId, models.SpecializedWatermark(models.WatermarkTypeAnalyticsScreenings, req.TriggerObject), utils.Ptr(id.String()), createdAt, nil); err != nil {
-			return errors.Wrap(err, "failed to save watermark")
-		}
-	}
-
-	return nil
+	return nRows, nil
 }
