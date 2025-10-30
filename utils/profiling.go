@@ -26,7 +26,8 @@ func SetupProfilerEndpoints(r *gin.Engine, serviceName, serviceVersion, gcpProje
 	case "http":
 		pp := r.Group("/debug/pprof")
 		pp.Use(func(c *gin.Context) {
-			if c.Request.Header.Get("authorization") != "Bearer "+os.Getenv("DEBUG_PROFILING_TOKEN") {
+			if c.Request.Header.Get("authorization") !=
+				"Bearer "+os.Getenv("DEBUG_PROFILING_TOKEN") {
 				c.AbortWithStatus(http.StatusUnauthorized)
 			}
 		})
