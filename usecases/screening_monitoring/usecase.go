@@ -2,10 +2,12 @@ package screening_monitoring
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/google/uuid"
 )
@@ -65,6 +67,16 @@ type ScreeningMonitoringIngestedDataReader interface {
 	) ([]models.DataModelObject, error)
 }
 
+type ScreeningMonitoringIngestionUsecase interface {
+	IngestObject(
+		ctx context.Context,
+		organizationId string,
+		objectType string,
+		objectBody json.RawMessage,
+		parserOpts ...payload_parser.ParserOpt,
+	) (int, error)
+}
+
 type ScreeningMonitoringUsecase struct {
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
@@ -74,6 +86,7 @@ type ScreeningMonitoringUsecase struct {
 	clientDbRepository           ScreeningMonitoringClientDbRepository
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
 	ingestedDataReader           ScreeningMonitoringIngestedDataReader
+	ingestionUsecase             ScreeningMonitoringIngestionUsecase
 }
 
 func NewScreeningMonitoringUsecase(
@@ -84,6 +97,7 @@ func NewScreeningMonitoringUsecase(
 	clientDbRepository ScreeningMonitoringClientDbRepository,
 	organizationSchemaRepository repositories.OrganizationSchemaRepository,
 	ingestedDataReader ScreeningMonitoringIngestedDataReader,
+	ingestionUsecase ScreeningMonitoringIngestionUsecase,
 ) ScreeningMonitoringUsecase {
 	return ScreeningMonitoringUsecase{
 		executorFactory:              executorFactory,
@@ -93,5 +107,6 @@ func NewScreeningMonitoringUsecase(
 		clientDbRepository:           clientDbRepository,
 		organizationSchemaRepository: organizationSchemaRepository,
 		ingestedDataReader:           ingestedDataReader,
+		ingestionUsecase:             ingestionUsecase,
 	}
 }

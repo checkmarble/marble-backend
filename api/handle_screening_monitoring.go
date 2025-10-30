@@ -126,6 +126,10 @@ func handleInsertScreeningMonitoringObject(uc usecases.Usecases) func(c *gin.Con
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
+		if err := input.Validate(); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
 
 		uc := usecasesWithCreds(ctx, uc).NewScreeningMonitoringUsecase()
 		err := uc.InsertScreeningMonitoringObject(

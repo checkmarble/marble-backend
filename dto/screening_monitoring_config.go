@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -105,15 +106,29 @@ func AdaptUpdateScreeningMonitoringConfigDtoToModel(dto UpdateScreeningMonitorin
 }
 
 type InsertScreeningMonitoringObjectDto struct {
-	TableName string    `json:"table_name" binding:"required"`
-	ObjectId  string    `json:"object_id" binding:"required"`
-	ConfigId  uuid.UUID `json:"config_id" binding:"required"`
+	ObjectType    string           `json:"object_type" binding:"required"`
+	ConfigId      uuid.UUID        `json:"config_id" binding:"required"`
+	ObjectId      *string          `json:"object_id"`
+	ObjectPayload *json.RawMessage `json:"object_payload"`
+}
+
+func (dto InsertScreeningMonitoringObjectDto) Validate() error {
+	if dto.ObjectId == nil && dto.ObjectPayload == nil {
+		return errors.New("object_id or object_payload is required")
+	}
+
+	if dto.ObjectId != nil && dto.ObjectPayload != nil {
+		return errors.New("object_id and object_payload cannot be provided together")
+	}
+
+	return nil
 }
 
 func AdaptInsertScreeningMonitoringObjectDtoToModel(dto InsertScreeningMonitoringObjectDto) models.InsertScreeningMonitoringObject {
 	return models.InsertScreeningMonitoringObject{
-		TableName: dto.TableName,
-		ObjectId:  dto.ObjectId,
-		ConfigId:  dto.ConfigId,
+		ObjectType:    dto.ObjectType,
+		ConfigId:      dto.ConfigId,
+		ObjectId:      dto.ObjectId,
+		ObjectPayload: dto.ObjectPayload,
 	}
 }

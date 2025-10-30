@@ -813,5 +813,6 @@ func (usecases *UsecasesWithCreds) NewScreeningMonitoringUsecase() screening_mon
 		&usecases.Repositories.ClientDbRepository,
 		usecases.Repositories.OrganizationSchemaRepository,
 		usecases.Repositories.IngestedDataReadRepository,
+		utils.Ptr(usecases.NewIngestionUseCase()),
 	)
 }

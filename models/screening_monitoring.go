@@ -1,9 +1,14 @@
 package models
 
-import "github.com/google/uuid"
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+)
 
 type InsertScreeningMonitoringObject struct {
-	TableName string
-	ObjectId  string
-	ConfigId  uuid.UUID
+	ObjectType    string
+	ConfigId      uuid.UUID
+	ObjectId      *string
+	ObjectPayload *json.RawMessage
 }

@@ -51,7 +51,8 @@ func (repo *ClientDbRepository) CreateInternalScreeningMonitoringIndex(ctx conte
 
 	// Unique index to have a unique object_id for a given config_id
 	sql := fmt.Sprintf(
-		"CREATE UNIQUE INDEX IF NOT EXISTS uniq_idx_config_id_object_id ON %s (config_id, object_id)",
+		"CREATE UNIQUE INDEX IF NOT EXISTS uniq_idx_%s_config_id_object_id ON %s (config_id, object_id)",
+		tableNameWithPrefix(tableName),
 		sanitizedTableName(exec, tableName),
 	)
 
