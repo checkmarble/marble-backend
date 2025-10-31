@@ -9,7 +9,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
-	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
 
@@ -74,7 +73,8 @@ func AnalyticsCopyDecisions(ctx context.Context, exec AnalyticsExecutor, req Ana
 		Limit(uint64(req.Limit))
 
 	if req.Watermark != nil {
-		inner = inner.Where("(d.created_at, d.id) > (?::timestamp with time zone, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
+		inner = inner.Where("(d.created_at, d.id) > (?::timestamp with time zone, ?)",
+			req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
 	}
 
 	for _, f := range req.TriggerObjectFields {
@@ -105,13 +105,6 @@ func AnalyticsCopyDecisions(ctx context.Context, exec AnalyticsExecutor, req Ana
 		return 0, err
 	}
 
-	switch nRows {
-	case 0:
-		utils.LoggerFromContext(ctx).DebugContext(ctx, "decisions export is up to date")
-	default:
-		utils.LoggerFromContext(ctx).DebugContext(ctx, "decisions export succeeded", "rows", nRows)
-	}
-
 	return int(nRows), nil
 }
 
@@ -133,7 +126,8 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 		Limit(uint64(req.Limit))
 
 	if req.Watermark != nil {
-		innerInner = innerInner.Where("(d.created_at, d.id) > (?::timestamp with time zone, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
+		innerInner = innerInner.Where("(d.created_at, d.id) > (?::timestamp with time zone, ?)",
+			req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
 	}
 
 	inner := squirrel.
@@ -189,13 +183,6 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 		return 0, err
 	}
 
-	switch nRows {
-	case 0:
-		utils.LoggerFromContext(ctx).DebugContext(ctx, "decision rules export is up to date")
-	default:
-		utils.LoggerFromContext(ctx).DebugContext(ctx, "decision rules export succeeded", "rows", nRows)
-	}
-
 	return int(nRows), nil
 }
 
@@ -211,7 +198,8 @@ func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req An
 			"min(s.id::text)::uuid as scenario_id",
 			"min(sc.created_at) as created_at",
 			"min(sc.org_id::text)::uuid as org_id",
-			"extract(year from min(sc.created_at))::int as year", "extract(month from min(sc.created_at))::int as month",
+			"extract(year from min(sc.created_at))::int as year",
+			"extract(month from min(sc.created_at))::int as month",
 			"min(s.trigger_object_type) as trigger_object_type",
 		).
 		From("marble.screenings sc").
@@ -228,7 +216,8 @@ func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req An
 		Limit(uint64(req.Limit))
 
 	if req.Watermark != nil {
-		inner = inner.Where("(sc.created_at, sc.id) > (?::timestamp with time zone, ?)", req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
+		inner = inner.Where("(sc.created_at, sc.id) > (?::timestamp with time zone, ?)",
+			req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
 	}
 
 	for _, f := range req.TriggerObjectFields {
@@ -259,13 +248,6 @@ func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req An
 		return 0, err
 	}
 
-	switch nRows {
-	case 0:
-		utils.LoggerFromContext(ctx).DebugContext(ctx, "screenings export is up to date")
-	default:
-		utils.LoggerFromContext(ctx).DebugContext(ctx, "screenings export succeeded", "rows", nRows)
-	}
-
 	return int(nRows), nil
 }
 
@@ -284,9 +266,11 @@ func analyticsAddTriggerObjectField(b squirrel.SelectBuilder, field models.Field
 	}
 
 	if anyValue {
-		return b.Column(fmt.Sprintf(`(min(d.trigger_object::text)::jsonb->>'%s')::%s as "%s%s"`, field.Name, sqlType, analytics.TriggerObjectFieldPrefix, field.Name))
+		return b.Column(fmt.Sprintf(`(min(d.trigger_object::text)::jsonb->>'%s')::%s as "%s%s"`,
+			field.Name, sqlType, analytics.TriggerObjectFieldPrefix, field.Name))
 	} else {
-		return b.Column(fmt.Sprintf(`(d.trigger_object->>'%s')::%s as "%s%s"`, field.Name, sqlType, analytics.TriggerObjectFieldPrefix, field.Name))
+		return b.Column(fmt.Sprintf(`(d.trigger_object->>'%s')::%s as "%s%s"`, field.Name,
+			sqlType, analytics.TriggerObjectFieldPrefix, field.Name))
 	}
 }
 
@@ -305,9 +289,11 @@ func analyticsAddExtraField(b squirrel.SelectBuilder, field models.Field, anyVal
 	}
 
 	if anyValue {
-		return b.Column(fmt.Sprintf(`(min(d.analytics_fields::text)::jsonb->>'%s')::%s as "%s%s"`, field.Name, sqlType, analytics.DatabaseFieldPrefix, field.Name))
+		return b.Column(fmt.Sprintf(`(min(d.analytics_fields::text)::jsonb->>'%s')::%s as "%s%s"`,
+			field.Name, sqlType, analytics.DatabaseFieldPrefix, field.Name))
 	} else {
-		return b.Column(fmt.Sprintf(`(d.analytics_fields->>'%s')::%s as "%s%s"`, field.Name, sqlType, analytics.DatabaseFieldPrefix, field.Name))
+		return b.Column(fmt.Sprintf(`(d.analytics_fields->>'%s')::%s as "%s%s"`, field.Name,
+			sqlType, analytics.DatabaseFieldPrefix, field.Name))
 	}
 }
 
