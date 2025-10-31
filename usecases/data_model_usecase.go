@@ -192,12 +192,6 @@ func (usecase *usecase) UpdateDataModelTable(
 	if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 		return err
 	}
-	if ftmEntity.Set {
-		if table.FTMEntity != nil {
-			return errors.Wrap(models.BadParameterError,
-				"can not update FTM entity on a table that already has one defined")
-		}
-	}
 
 	return usecase.dataModelRepository.UpdateDataModelTable(ctx, exec, tableID, description, ftmEntity)
 }
