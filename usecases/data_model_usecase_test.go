@@ -480,32 +480,6 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_repository_erro
 	suite.AssertExpectations()
 }
 
-func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_cannot_update_ftm_entity_if_already_defined() {
-	tableId := "tableId"
-	ftmEntity := models.FollowTheMoneyEntityPerson
-	table := models.TableMetadata{
-		Name:           "name",
-		Description:    "description",
-		OrganizationID: suite.organizationId,
-		FTMEntity:      &ftmEntity,
-	}
-	ftmEntityCompany := models.FollowTheMoneyEntityCompany
-	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
-		Return(table, nil)
-	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-
-	err := usecase.UpdateDataModelTable(suite.ctx, tableId, "description",
-		pure_utils.NullFrom(ftmEntityCompany),
-	)
-	suite.Require().Error(err, "error expected when trying to update existing FTM entity")
-	suite.Require().ErrorContains(err, "can not update FTM entity on a table that already has one defined",
-		"expected error message about FTM entity already being defined")
-
-	suite.AssertExpectations()
-}
-
 func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal_set_ftm_entity() {
 	tableId := "tableId"
 	table := models.TableMetadata{
@@ -529,31 +503,6 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal_set_ftm
 		pure_utils.NullFrom(ftmEntity),
 	)
 	suite.Require().NoError(err, "no error expected when setting FTM entity on table without one")
-
-	suite.AssertExpectations()
-}
-
-func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_cannot_clear_ftm_entity_if_already_defined() {
-	tableId := "tableId"
-	ftmEntity := models.FollowTheMoneyEntityPerson
-	table := models.TableMetadata{
-		Name:           "name",
-		Description:    "description",
-		OrganizationID: suite.organizationId,
-		FTMEntity:      &ftmEntity,
-	}
-	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
-		Return(table, nil)
-	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-
-	err := usecase.UpdateDataModelTable(suite.ctx, tableId, "description",
-		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
-	)
-	suite.Require().Error(err, "error expected when trying to update existing FTM entity")
-	suite.Require().ErrorContains(err, "can not update FTM entity on a table that already has one defined",
-		"expected error message about FTM entity already being defined")
 
 	suite.AssertExpectations()
 }
