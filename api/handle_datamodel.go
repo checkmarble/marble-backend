@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -52,8 +53,22 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
+		var ftmEntity *models.FollowTheMoneyEntity
+		if input.FTMEntity != nil {
+			entity := models.FollowTheMoneyEntityFrom(*input.FTMEntity)
+			if entity == models.FollowTheMoneyEntityUnknown {
+				presentError(
+					ctx,
+					c,
+					errors.Wrapf(models.BadParameterError, "invalid FTM entity: %s", *input.FTMEntity),
+				)
+				return
+			}
+			ftmEntity = &entity
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		tableID, err := usecase.CreateDataModelTable(ctx, organizationID, input.Name, input.Description)
+		tableID, err := usecase.CreateDataModelTable(ctx, organizationID, input.Name, input.Description, ftmEntity)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -73,8 +88,23 @@ func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 		}
 		tableID := c.Param("tableID")
 
+		var ftmEntity pure_utils.Null[models.FollowTheMoneyEntity]
+		if input.FTMEntity.Set {
+			if input.FTMEntity.Valid {
+				entity := models.FollowTheMoneyEntityFrom(input.FTMEntity.Value())
+				if entity == models.FollowTheMoneyEntityUnknown {
+					presentError(ctx, c, errors.Wrapf(models.BadParameterError,
+						"invalid FTM entity: %s", input.FTMEntity.Value()))
+					return
+				}
+				ftmEntity = pure_utils.NullFrom(entity)
+			} else {
+				ftmEntity = pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil)
+			}
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		err := usecase.UpdateDataModelTable(ctx, tableID, input.Description)
+		err := usecase.UpdateDataModelTable(ctx, tableID, input.Description, ftmEntity)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -91,6 +121,17 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
+		var ftmProperty *models.FollowTheMoneyProperty
+		if input.FTMProperty != nil {
+			property := models.FollowTheMoneyPropertyFrom(*input.FTMProperty)
+			if property == models.FollowTheMoneyPropertyUnknown {
+				presentError(ctx, c, errors.Wrapf(models.BadParameterError,
+					"invalid FTM property: %s", *input.FTMProperty))
+				return
+			}
+			ftmProperty = &property
+		}
+
 		tableID := c.Param("tableID")
 		field := models.CreateFieldInput{
 			TableId:     tableID,
@@ -100,6 +141,7 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 			Nullable:    input.Nullable,
 			IsEnum:      input.IsEnum,
 			IsUnique:    input.IsUnique,
+			FTMProperty: ftmProperty,
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
@@ -123,12 +165,28 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 		}
 		fieldID := c.Param("fieldID")
 
+		var ftmProperty pure_utils.Null[models.FollowTheMoneyProperty]
+		if input.FTMProperty.Set {
+			if input.FTMProperty.Valid {
+				property := models.FollowTheMoneyPropertyFrom(input.FTMProperty.Value())
+				if property == models.FollowTheMoneyPropertyUnknown {
+					presentError(ctx, c, errors.Wrapf(models.BadParameterError,
+						"invalid FTM property: %s", input.FTMProperty.Value()))
+					return
+				}
+				ftmProperty = pure_utils.NullFrom(property)
+			} else {
+				ftmProperty = pure_utils.NullFromPtr[models.FollowTheMoneyProperty](nil)
+			}
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		err := usecase.UpdateDataModelField(ctx, fieldID, models.UpdateFieldInput{
 			Description: input.Description,
 			IsEnum:      input.IsEnum,
 			IsUnique:    input.IsUnique,
 			IsNullable:  input.IsNullable,
+			FTMProperty: ftmProperty,
 		})
 		if presentError(ctx, c, err) {
 			return
