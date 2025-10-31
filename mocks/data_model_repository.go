@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 )
 
@@ -29,13 +30,23 @@ func (d *DataModelRepository) DeleteDataModel(ctx context.Context, exec reposito
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) CreateDataModelTable(ctx context.Context, exec repositories.Executor, organizationID, tableID, name, description string) error {
-	args := d.Called(ctx, exec, organizationID, tableID, name, description)
+func (d *DataModelRepository) CreateDataModelTable(
+	ctx context.Context,
+	exec repositories.Executor,
+	organizationID, tableID, name, description string,
+	ftmEntity *models.FollowTheMoneyEntity,
+) error {
+	args := d.Called(ctx, exec, organizationID, tableID, name, description, ftmEntity)
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) UpdateDataModelTable(ctx context.Context, exec repositories.Executor, tableID, description string) error {
-	args := d.Called(ctx, exec, tableID, description)
+func (d *DataModelRepository) UpdateDataModelTable(
+	ctx context.Context,
+	exec repositories.Executor,
+	tableID, description string,
+	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
+) error {
+	args := d.Called(ctx, exec, tableID, description, ftmEntity)
 	return args.Error(0)
 }
 

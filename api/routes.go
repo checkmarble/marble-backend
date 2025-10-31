@@ -188,6 +188,13 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/screenings/matches/:id", tom, handleUpdateScreeningMatchStatus(uc))
 	router.POST("/screenings/matches/:id/enrich", tom, handleEnrichScreeningMatch(uc))
 
+	router.GET("/screening-monitoring/configs", tom, handleListScreeningMonitoringConfigs(uc))
+	router.POST("/screening-monitoring/configs", tom, handleCreateScreeningMonitoringConfig(uc))
+	router.GET("/screening-monitoring/configs/:config_id", tom, handleGetScreeningMonitoringConfig(uc))
+	router.PATCH("/screening-monitoring/configs/:config_id", tom,
+		handleUpdateScreeningMonitoringConfig(uc),
+	)
+
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))
 	router.GET("/scenario-publications/preparation", tom,
