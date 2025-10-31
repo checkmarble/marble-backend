@@ -77,6 +77,11 @@ type ScreeningMonitoringIngestionUsecase interface {
 	) (int, error)
 }
 
+type ScreeningMonitoringScreeningProvider interface {
+	Search(ctx context.Context, query models.OpenSanctionsQuery) (
+		models.ScreeningRawSearchResponseWithMatches, error)
+}
+
 type ScreeningMonitoringUsecase struct {
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
@@ -87,6 +92,7 @@ type ScreeningMonitoringUsecase struct {
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
 	ingestedDataReader           ScreeningMonitoringIngestedDataReader
 	ingestionUsecase             ScreeningMonitoringIngestionUsecase
+	screeningProvider            ScreeningMonitoringScreeningProvider
 }
 
 func NewScreeningMonitoringUsecase(
@@ -98,6 +104,7 @@ func NewScreeningMonitoringUsecase(
 	organizationSchemaRepository repositories.OrganizationSchemaRepository,
 	ingestedDataReader ScreeningMonitoringIngestedDataReader,
 	ingestionUsecase ScreeningMonitoringIngestionUsecase,
+	screeningProvider ScreeningMonitoringScreeningProvider,
 ) ScreeningMonitoringUsecase {
 	return ScreeningMonitoringUsecase{
 		executorFactory:              executorFactory,
@@ -108,5 +115,6 @@ func NewScreeningMonitoringUsecase(
 		organizationSchemaRepository: organizationSchemaRepository,
 		ingestedDataReader:           ingestedDataReader,
 		ingestionUsecase:             ingestionUsecase,
+		screeningProvider:            screeningProvider,
 	}
 }

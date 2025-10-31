@@ -814,5 +814,6 @@ func (usecases *UsecasesWithCreds) NewScreeningMonitoringUsecase() screening_mon
 		usecases.Repositories.OrganizationSchemaRepository,
 		usecases.Repositories.IngestedDataReadRepository,
 		utils.Ptr(usecases.NewIngestionUseCase()),
+		usecases.Repositories.OpenSanctionsRepository,
 	)
 }

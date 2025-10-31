@@ -132,7 +132,7 @@ func handleInsertScreeningMonitoringObject(uc usecases.Usecases) func(c *gin.Con
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewScreeningMonitoringUsecase()
-		err := uc.InsertScreeningMonitoringObject(
+		screeningResponse, err := uc.InsertScreeningMonitoringObject(
 			ctx,
 			dto.AdaptInsertScreeningMonitoringObjectDtoToModel(input),
 		)
@@ -140,6 +140,8 @@ func handleInsertScreeningMonitoringObject(uc usecases.Usecases) func(c *gin.Con
 			return
 		}
 
-		c.Status(http.StatusCreated)
+		c.JSON(http.StatusCreated, dto.AdaptScreeningDto(
+			screeningResponse,
+		))
 	}
 }
