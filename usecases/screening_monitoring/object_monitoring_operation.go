@@ -46,6 +46,11 @@ func (uc *ScreeningMonitoringUsecase) InsertScreeningMonitoringObject(
 		return errors.Wrapf(models.NotFoundError, "table %s not found in data model", input.ObjectType)
 	}
 
+	// Check if data model table and fields are well configured for screening monitoring
+	if err := checkDataModelTableAndFieldsConfiguration(table); err != nil {
+		return err
+	}
+
 	var objectId string
 	// Ignore the conflict error in case of ingestion. The payload can be an updated object and we will force the screening again on the updated object.
 	ignoreConflictError := false
@@ -124,4 +129,29 @@ func extractObjectIDFromPayload(payload json.RawMessage) (string, error) {
 		return "", err
 	}
 	return objectID.ObjectID, nil
+}
+
+func checkDataModelTableAndFieldsConfiguration(table models.Table) error {
+	// Check if the table has a FTM entity
+	if table.FTMEntity == nil {
+		return errors.Wrap(models.BadParameterError,
+			"table is not configured for the use case")
+	}
+
+	atLeastOneFieldWithFTMProperty := false
+	for _, field := range table.Fields {
+		if field.FTMProperty != nil {
+			atLeastOneFieldWithFTMProperty = true
+			break
+		}
+	}
+
+	if !atLeastOneFieldWithFTMProperty {
+		return errors.Wrap(
+			models.BadParameterError,
+			"table's fields are not configured for the use case",
+		)
+	}
+
+	return nil
 }

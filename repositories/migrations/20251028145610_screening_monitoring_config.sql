@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table screening_monitoring_configs (
+create table if not exists screening_monitoring_configs (    
     id uuid primary key default uuid_generate_v4(),
     org_id uuid not null,
     name text not null,
@@ -16,7 +16,7 @@ create table screening_monitoring_configs (
     constraint fk_org foreign key (org_id) references organizations (id) on delete cascade
 );
 
-create index idx_screening_monitoring_configs_org_id on screening_monitoring_configs (org_id);
+create index if not exists idx_screening_monitoring_configs_org_id on screening_monitoring_configs (org_id);
 
 -- +goose StatementEnd
 
