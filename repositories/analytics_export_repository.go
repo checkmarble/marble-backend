@@ -43,6 +43,10 @@ func AnalyticsGetLatestRow(ctx context.Context, exec AnalyticsExecutor, table st
 	)
 
 	if err := row.Scan(&id, &createdAt); err != nil {
+		if IsDuckDBNoFilesError(err) {
+			return uuid.Nil, time.Time{}, nil
+		}
+
 		return uuid.Nil, time.Time{}, err
 	}
 

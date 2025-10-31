@@ -4,8 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"reflect"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/marcboeker/go-duckdb/v2"
+	"github.com/pkg/errors"
 )
 
 type AnalyticsExecutor interface {
@@ -74,4 +77,14 @@ func AnalyticsRawScanStruct[T any](ctx context.Context, exec AnalyticsExecutor, 
 	}
 
 	return results, rows.Err()
+}
+
+func IsDuckDBNoFilesError(err error) bool {
+	derr := &duckdb.Error{}
+
+	if errors.As(err, &derr) && derr.Type == duckdb.ErrorTypeIO && strings.Contains(derr.Msg, "No files found") {
+		return true
+	}
+
+	return false
 }
