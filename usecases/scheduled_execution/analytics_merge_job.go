@@ -14,7 +14,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/marcboeker/go-duckdb/v2"
 	"github.com/riverqueue/river"
 	"gocloud.dev/blob"
 )
@@ -253,9 +252,7 @@ func (w AnalyticsMergeWorker) findFirstMergeablePartition(
 
 	row := exec.QueryRowContext(ctx, sql, args...)
 	if err := row.Err(); err != nil {
-		derr := &duckdb.Error{}
-
-		if errors.As(err, &derr) && derr.Type == duckdb.ErrorTypeIO {
+		if repositories.IsDuckDBNoFilesError(err) {
 			return time.Time{}, false, nil
 		}
 
