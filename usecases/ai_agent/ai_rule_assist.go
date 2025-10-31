@@ -3,6 +3,7 @@ package ai_agent
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/checkmarble/llmberjack"
 	"github.com/checkmarble/marble-backend/dto"
@@ -11,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/invopop/jsonschema"
 )
 
 const (
@@ -53,6 +55,7 @@ func (uc *AiAgentUsecase) GenerateAstRule(
 	ctx context.Context,
 	orgId string,
 	ruleId string,
+	instruction string,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 	exec := uc.executorFactory.NewExecutor()
@@ -90,7 +93,7 @@ func (uc *AiAgentUsecase) GenerateAstRule(
 	model, ruleGenerationPrompt, err := uc.preparePromptWithModel(RULE_GENERATION_PROMPT_PATH, map[string]any{
 		"data_model":   dataModelDto,
 		"custom_list":  customListsDto,
-		"instruction":  "detect whether the user had any transactions with value over 1000",
+		"instruction":  instruction,
 		"trigger_type": scenarioAndIteration.Scenario.TriggerObjectType,
 	})
 	if err != nil {
@@ -100,11 +103,69 @@ func (uc *AiAgentUsecase) GenerateAstRule(
 	logger.DebugContext(ctx, "Rule generation", "model", model)
 	// logger.DebugContext(ctx, "Rule generation", "prompt", ruleGenerationPrompt)
 
+	properties := jsonschema.NewProperties()
+	properties.Set("name", &jsonschema.Schema{
+		Type: "string",
+	})
+	properties.Set("constant", &jsonschema.Schema{
+		Type: "string",
+	})
+	properties.Set("children", &jsonschema.Schema{
+		Type: "array",
+		Items: &jsonschema.Schema{
+			Ref: "#/definitions/NodeDto",
+		},
+	})
+	// properties.Set("named_children", &jsonschema.Schema{
+	// 	Type: "object",
+	// 	PatternProperties: map[string]*jsonschema.Schema{
+	// 		"^.*$": {
+	// 			Ref: "#/definitions/NodeDto",
+	// 		},
+	// 	},
+	// 	AdditionalProperties: nil,
+	// })
+
+	rootProps := jsonschema.NewProperties()
+	rootProps.Set("root", &jsonschema.Schema{
+		Type: "object",
+		Ref:  "#/definitions/NodeDto",
+	})
+	schema := jsonschema.Schema{
+		Type:       "object",
+		Properties: properties,
+		// Ref:        "#/definitions/NodeDto",
+		Definitions: jsonschema.Definitions{
+			"NodeDto": {
+				Type:                 "object",
+				Properties:           properties,
+				AdditionalProperties: jsonschema.FalseSchema,
+				Required:             []string{"name", "constant", "children"},
+			},
+		},
+		AdditionalProperties: jsonschema.FalseSchema,
+		Required:             []string{"name", "constant", "children"},
+	}
+
+	jsschema, err := json.Marshal(schema)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(jsschema))
+
+	// Name          string             `json:"name,omitempty" jsonschema_description:"Name of the AST node" jsonschema:"required"`
+	// Constant      any                `json:"constant,omitempty" jsonschema_description:"Constant value of the node, if the node is a constant"`
+	// Children      []NodeDto          `json:"children,omitempty" jsonschema_description:"Positional arguments to the current function"`
+	// NamedChildren map[string]NodeDto `json:"named_children,omitempty" jsonschema_description:"Name arguments to the current function"`
+
 	// Boom stack overflow
-	// aiStudioRequest, err := llmberjack.NewRequest[dto.NodeDto]().
-	aiStudioRequest, err := llmberjack.NewRequest[string]().
+	aiStudioRequest, err := llmberjack.NewRequest[dto.NodeDto]().
+		// aiStudioRequest, err := llmberjack.NewRequest[string]().
 		WithModel(model).
+		WithSchemaDescription("NodeDto", "The AST node of the rule").
+		OverrideResponseSchema(schema).
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
+		// WithText(llmberjack.RoleUser, "Create an AST tree using the SUM function with two positional children that scalar of the INT nodes 3 and 5").
 		WithThinking(true).
 		Do(ctx, client)
 	if err != nil {
@@ -112,20 +173,20 @@ func (uc *AiAgentUsecase) GenerateAstRule(
 	}
 
 	// that's with the proper type...
-	// ruleAstDto, err := aiStudioRequest.Get(0)
+	ruleAstDto, err := aiStudioRequest.Get(0)
+	if err != nil {
+		return err
+	}
+
+	// dtoString, err := aiStudioRequest.Get(0)
 	// if err != nil {
 	// 	return err
 	// }
-
-	dtoString, err := aiStudioRequest.Get(0)
-	if err != nil {
-		return err
-	}
-	var ruleAstDto dto.NodeDto
-	err = json.Unmarshal([]byte(dtoString), &ruleAstDto)
-	if err != nil {
-		return err
-	}
+	// var ruleAstDto dto.NodeDto
+	// err = json.Unmarshal([]byte(dtoString), &ruleAstDto)
+	// if err != nil {
+	// 	return err
+	// }
 
 	ruleAst, err := dto.AdaptASTNode(ruleAstDto)
 	if err != nil {
