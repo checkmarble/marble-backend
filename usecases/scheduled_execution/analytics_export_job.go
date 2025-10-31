@@ -3,6 +3,7 @@ package scheduled_execution
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -13,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"golang.org/x/sync/errgroup"
 )
@@ -119,10 +121,12 @@ RepeatLoop:
 		insertedRows := false
 
 		for _, table := range dataModel.Tables {
+			ctx = utils.StoreLoggerInContext(ctx, logger.With("table", table.Name))
+			logger.DebugContext(ctx, fmt.Sprintf(`exporting data for table "%s"`, table.Name))
 			triggerFields := make([]models.Field, 0)
 			dbFields := make([]models.Field, 0)
 
-			if settings, err := w.repository.GetAnalyticsSettings(ctx, w.executorFactory.NewExecutor(), job.Args.OrgId); err == nil {
+			if settings, err := w.repository.GetAnalyticsSettings(ctx, dbExec, job.Args.OrgId); err == nil {
 				if setting, ok := settings[table.Name]; ok {
 					triggerFields = pure_utils.Map(setting.TriggerFields, func(name string) models.Field {
 						return table.Fields[name]
@@ -214,19 +218,40 @@ RepeatLoop:
 	return nil
 }
 
+func logExportResult(ctx context.Context, table string, start time.Time, nRows int, startWatermark time.Time, err error) {
+	logger := utils.LoggerFromContext(ctx)
+	switch {
+	case err != nil:
+		logger.ErrorContext(ctx, fmt.Sprintf("%s export failed", table), "duration",
+			time.Since(start), "error", err.Error())
+	case nRows > 0:
+		logger.DebugContext(ctx, fmt.Sprintf("%s export succeeded", table), "duration", time.Since(start), "rows", nRows)
+	default:
+		logger.DebugContext(ctx, fmt.Sprintf("%s export is up to date", table), "duration", time.Since(start))
+	}
+}
+
 func (w AnalyticsExportWorker) exportDecisions(
 	ctx context.Context,
 	exec repositories.AnalyticsExecutor,
 	req repositories.AnalyticsCopyRequest,
-) (int, error) {
-	id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("decisions", &req.TriggerObject))
+) (nRows int, err error) {
+	start := time.Now()
+	var startWatermark time.Time
+	defer func() {
+		logExportResult(ctx, "decisions", start, nRows, startWatermark, err)
+	}()
+
+	var id uuid.UUID
+	id, startWatermark, err = repositories.AnalyticsGetLatestRow(ctx, exec,
+		w.analyticsFactory.BuildTarget("decisions", &req.TriggerObject))
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get latest exported row")
 	}
 
-	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: createdAt}
+	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: startWatermark}
 
-	nRows, err := repositories.AnalyticsCopyDecisions(ctx, exec, req)
+	nRows, err = repositories.AnalyticsCopyDecisions(ctx, exec, req)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to copy decisions")
 	}
@@ -238,15 +263,23 @@ func (w AnalyticsExportWorker) exportDecisionRules(
 	ctx context.Context,
 	exec repositories.AnalyticsExecutor,
 	req repositories.AnalyticsCopyRequest,
-) (int, error) {
-	id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("decision_rules", &req.TriggerObject))
+) (nRows int, err error) {
+	start := time.Now()
+	var startWatermark time.Time
+	defer func() {
+		logExportResult(ctx, "decision rules", start, nRows, startWatermark, err)
+	}()
+
+	var id uuid.UUID
+	id, startWatermark, err = repositories.AnalyticsGetLatestRow(ctx, exec,
+		w.analyticsFactory.BuildTarget("decision_rules", &req.TriggerObject))
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get latest exported row")
 	}
 
-	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: createdAt}
+	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: startWatermark}
 
-	nRows, err := repositories.AnalyticsCopyDecisionRules(ctx, exec, req)
+	nRows, err = repositories.AnalyticsCopyDecisionRules(ctx, exec, req)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to copy decision rules")
 	}
@@ -258,15 +291,23 @@ func (w AnalyticsExportWorker) exportScreenings(
 	ctx context.Context,
 	exec repositories.AnalyticsExecutor,
 	req repositories.AnalyticsCopyRequest,
-) (int, error) {
-	id, createdAt, err := repositories.AnalyticsGetLatestRow(ctx, exec, w.analyticsFactory.BuildTarget("screenings", &req.TriggerObject))
+) (nRows int, err error) {
+	start := time.Now()
+	var startWatermark time.Time
+	defer func() {
+		logExportResult(ctx, "screenings", start, nRows, startWatermark, err)
+	}()
+
+	var id uuid.UUID
+	id, startWatermark, err = repositories.AnalyticsGetLatestRow(ctx, exec,
+		w.analyticsFactory.BuildTarget("screenings", &req.TriggerObject))
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get latest exported row")
 	}
 
-	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: createdAt}
+	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: startWatermark}
 
-	nRows, err := repositories.AnalyticsCopyScreenings(ctx, exec, req)
+	nRows, err = repositories.AnalyticsCopyScreenings(ctx, exec, req)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to copy screenings")
 	}
