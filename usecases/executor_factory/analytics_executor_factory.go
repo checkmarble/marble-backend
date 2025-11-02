@@ -76,7 +76,7 @@ func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, ali
 		if _, err = exportDb.ExecContext(ctx, f.buildUpstreamAttachStatement(alias)); err != nil {
 			return
 		}
-		if _, err = exportDb.ExecContext(ctx, fmt.Sprintf(`set threads to 1; call postgres_execute('%[1]s', 'set enable_seqscan = 0');`, alias)); err != nil {
+		if _, err = exportDb.ExecContext(ctx, `set threads to 1;`); err != nil {
 			return
 		}
 	})
@@ -218,6 +218,13 @@ func (f AnalyticsExecutorFactory) buildUpstreamAttachStatement(alias string) str
 
 		dsn.RawQuery = q.Encode()
 	}
+
+	// We cannot control how DuckDB will create connections from the pool or
+	// transactions, so we need to set query options on the connections
+	// directly.
+	q := dsn.Query()
+	q.Set("options", `-cenable_seqscan=0`)
+	dsn.RawQuery = q.Encode()
 
 	return fmt.Sprintf(
 		`attach or replace '%s' as %s (type postgres, read_only)`,
