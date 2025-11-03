@@ -16,8 +16,8 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/duckdb/duckdb-go/v2"
 	"github.com/jackc/pgx/v5"
-	"github.com/marcboeker/go-duckdb/v2"
 )
 
 type AnalyticsExecutorFactory struct {
@@ -89,18 +89,13 @@ func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, ali
 	return exportDb, nil
 }
 
-func (f AnalyticsExecutorFactory) BuildTarget(table string, triggerObject *string, aliases ...string) string {
+func (f AnalyticsExecutorFactory) BuildTarget(table string, aliases ...string) string {
 	alias := "main"
 	if len(aliases) > 0 {
 		alias = aliases[0]
 	}
 
-	tr := "*"
-	if triggerObject != nil {
-		tr = "trigger_object_type=" + *triggerObject
-	}
-
-	return fmt.Sprintf(`read_parquet('%s/*/*/*/%s/*.parquet', hive_partitioning = true, union_by_name = true) %s`, f.BuildTablePrefix(table), tr, pgx.Identifier.Sanitize([]string{alias}))
+	return fmt.Sprintf(`read_parquet('%s/**/*.parquet', hive_partitioning = true, union_by_name = true) %s`, f.BuildTablePrefix(table), pgx.Identifier.Sanitize([]string{alias}))
 }
 
 func (f AnalyticsExecutorFactory) BuildTablePrefix(table string) string {
@@ -120,7 +115,9 @@ func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuild
 		return query
 	}
 
-	query = query.Where(fmt.Sprintf("%s = ?", pgx.Identifier.Sanitize([]string{alias, "trigger_object_type"})), triggerObjectType)
+	query = query.
+		Where(fmt.Sprintf("%s = ?", pgx.Identifier.Sanitize([]string{alias, "org_id"})), orgId).
+		Where(fmt.Sprintf("%s = ?", pgx.Identifier.Sanitize([]string{alias, "trigger_object_type"})), triggerObjectType)
 
 	firstBetweenYears := start.Year() + 1
 

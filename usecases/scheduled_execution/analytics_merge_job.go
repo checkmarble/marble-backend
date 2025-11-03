@@ -184,7 +184,7 @@ func (w AnalyticsMergeWorker) merge(
 	if !isMerged {
 		inner := repositories.NewQueryBuilder().
 			Select("*").
-			From(w.analyticsFactory.BuildTarget(kind, &tableName)).
+			From(w.analyticsFactory.BuildTarget(kind)).
 			Where("org_id = ?", orgId).
 			Where("trigger_object_type = ?", tableName).
 			Where("(year, month) = (?, ?)", lhs.Year(), lhs.Month())
@@ -237,7 +237,7 @@ func (w AnalyticsMergeWorker) findFirstMergeablePartition(
 	// columns.
 	minQuery := repositories.NewQueryBuilder().
 		Select("unnest(coalesce(min((year, month)), (0, 0)))").
-		From(w.analyticsFactory.BuildTarget(kind, &tableName)).
+		From(w.analyticsFactory.BuildTarget(kind)).
 		Where("org_id = ?", orgId).
 		Where("trigger_object_type = ?", tableName)
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/marcboeker/go-duckdb/v2"
+	"github.com/duckdb/duckdb-go/v2"
 	"github.com/pkg/errors"
 )
 
