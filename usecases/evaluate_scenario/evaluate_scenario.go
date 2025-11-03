@@ -263,9 +263,11 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 		inExec, inErr := e.evaluateScreening(ctx, iteration, params, dataAccessor)
 
-		utils.MetricScreeningLatency.
-			With(prometheus.Labels{"org_id": params.Scenario.OrganizationId}).
-			Observe(time.Since(start).Seconds())
+		if len(inExec) > 0 {
+			utils.MetricScreeningLatency.
+				With(prometheus.Labels{"org_id": params.Scenario.OrganizationId}).
+				Observe(time.Since(start).Seconds())
+		}
 
 		screeningExecutions = inExec
 		screeningErr = inErr
@@ -355,8 +357,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		stepDurations[LogScreeningDurationKey] = screeningExecutions[idx].Duration.Milliseconds()
 
 		if screeningExecutions[idx].NameRecognitionDuration != 0 {
-			stepDurations[LogNerDurationKey] =
-				screeningExecutions[idx].NameRecognitionDuration.Milliseconds()
+			stepDurations[LogNerDurationKey] = screeningExecutions[idx].NameRecognitionDuration.Milliseconds()
 		}
 	}
 
