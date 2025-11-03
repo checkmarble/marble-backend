@@ -246,7 +246,7 @@ func (w AnalyticsExportWorker) exportDecisions(
 
 	var id uuid.UUID
 	id, startWatermark, err = repositories.AnalyticsGetLatestRow(ctx, exec,
-		w.analyticsFactory.BuildTarget("decisions", &req.TriggerObject))
+		w.analyticsFactory.BuildTarget("decisions"))
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get latest exported row")
 	}
@@ -274,7 +274,7 @@ func (w AnalyticsExportWorker) exportDecisionRules(
 
 	var id uuid.UUID
 	id, startWatermark, err = repositories.AnalyticsGetLatestRow(ctx, exec,
-		w.analyticsFactory.BuildTarget("decision_rules", &req.TriggerObject))
+		w.analyticsFactory.BuildTarget("decision_rules"))
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get latest exported row")
 	}
@@ -302,7 +302,7 @@ func (w AnalyticsExportWorker) exportScreenings(
 
 	var id uuid.UUID
 	id, startWatermark, err = repositories.AnalyticsGetLatestRow(ctx, exec,
-		w.analyticsFactory.BuildTarget("screenings", &req.TriggerObject))
+		w.analyticsFactory.BuildTarget("screenings"))
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get latest exported row")
 	}

@@ -20,8 +20,8 @@ func TestDifferentSeparateYears(t *testing.T) {
 	sql, args, err := q.ToSql()
 
 	assert.NilError(t, err)
-	assert.Equal(t, `SELECT * FROM t WHERE "main"."trigger_object_type" = ? AND ("main"."year" in ? OR (("main"."year" = ? AND "main"."month" between ? and 12) OR ("main"."year" = ? AND "main"."month" between 1 and ?)))`, sql)
-	assert.DeepEqual(t, []any{"accounts", []int{2025, 2026}, 2024, time.March, 2027, time.October}, args)
+	assert.Equal(t, `SELECT * FROM t WHERE "main"."org_id" = ? AND "main"."trigger_object_type" = ? AND ("main"."year" in ? OR (("main"."year" = ? AND "main"."month" between ? and 12) OR ("main"."year" = ? AND "main"."month" between 1 and ?)))`, sql)
+	assert.DeepEqual(t, []any{"orgid", "accounts", []int{2025, 2026}, 2024, time.March, 2027, time.October}, args)
 }
 
 func TestSameYears(t *testing.T) {
@@ -36,8 +36,8 @@ func TestSameYears(t *testing.T) {
 	sql, args, err := q.ToSql()
 
 	assert.NilError(t, err)
-	assert.Equal(t, `SELECT * FROM t WHERE "main"."trigger_object_type" = ? AND ("main"."year" = ? and "main"."month" between ? and ?)`, sql)
-	assert.DeepEqual(t, []any{"accounts", 2024, time.March, time.October}, args)
+	assert.Equal(t, `SELECT * FROM t WHERE "main"."org_id" = ? AND "main"."trigger_object_type" = ? AND ("main"."year" = ? and "main"."month" between ? and ?)`, sql)
+	assert.DeepEqual(t, []any{"orgid", "accounts", 2024, time.March, time.October}, args)
 }
 
 func TestSameMonths(t *testing.T) {
@@ -52,6 +52,6 @@ func TestSameMonths(t *testing.T) {
 	sql, args, err := q.ToSql()
 
 	assert.NilError(t, err)
-	assert.Equal(t, `SELECT * FROM t WHERE "main"."trigger_object_type" = ? AND ("main"."year" = ? and "main"."month" between ? and ?)`, sql)
-	assert.DeepEqual(t, []any{"accounts", 2024, time.March, time.March}, args)
+	assert.Equal(t, `SELECT * FROM t WHERE "main"."org_id" = ? AND "main"."trigger_object_type" = ? AND ("main"."year" = ? and "main"."month" between ? and ?)`, sql)
+	assert.DeepEqual(t, []any{"orgid", "accounts", 2024, time.March, time.March}, args)
 }
