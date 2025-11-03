@@ -2,13 +2,14 @@ package billing
 
 import (
 	"context"
+	"errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 type lagoRepository interface {
-	GetWallet(ctx context.Context, orgId string) ([]models.Wallet, error)
+	GetWallets(ctx context.Context, orgId string) ([]models.Wallet, error)
 	GetSubscriptions(ctx context.Context, orgId string) ([]models.Subscription, error)
 	GetSubscription(ctx context.Context, subscriptionExternalId string) (models.Subscription, error)
 	GetCustomerUsage(ctx context.Context, orgId string, subscriptionExternalId string) (models.CustomerUsage, error)
@@ -45,12 +46,18 @@ func (u LagoBillingUsecase) EnqueueBillingEventTask(ctx context.Context, event m
 func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId string, code BillableMetric) (bool, string, error) {
 	logger := utils.LoggerFromContext(ctx)
 
-	wallet, err := u.lagoRepository.GetWallet(ctx, orgId)
+	wallets, err := u.lagoRepository.GetWallets(ctx, orgId)
 	if err != nil {
 		return false, "", err
 	}
-	if len(wallet) == 0 {
+	if len(wallets) == 0 {
 		logger.DebugContext(ctx, "no wallet found for the organization", "orgId", orgId)
+		return false, "", nil
+	}
+
+	activeWallet, err := selectActiveWallet(wallets)
+	if err != nil {
+		logger.DebugContext(ctx, "no active wallet found", "orgId", orgId, "error", err)
 		return false, "", nil
 	}
 
@@ -74,9 +81,9 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 	}
 
 	// For now, suppose there is only one wallet
-	if wallet[0].BalanceCents <= customerUsage.TotalAmountCents {
+	if activeWallet.BalanceCents <= customerUsage.TotalAmountCents {
 		logger.DebugContext(ctx, "not enough funds in the wallet", "orgId", orgId, "code", code,
-			"wallet", wallet[0].BalanceCents, "subscription",
+			"wallet", activeWallet.BalanceCents, "subscription",
 			customerUsage.TotalAmountCents,
 		)
 		return false, "", nil
@@ -106,4 +113,13 @@ func (u LagoBillingUsecase) getSubscriptionsForEvent(ctx context.Context, orgId 
 		}
 	}
 	return subscriptionsForEvent, nil
+}
+
+func selectActiveWallet(wallets []models.Wallet) (models.Wallet, error) {
+	for _, wallet := range wallets {
+		if wallet.Status == models.WalletStatusActive {
+			return wallet, nil
+		}
+	}
+	return models.Wallet{}, errors.New("no active wallet found")
 }

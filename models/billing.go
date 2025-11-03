@@ -1,10 +1,36 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/cockroachdb/errors"
+)
+
+type WalletStatus string
+
+const (
+	WalletStatusActive     WalletStatus = "active"
+	WalletStatusTerminated WalletStatus = "terminated"
+)
+
+func WalletStatusFromString(s string) (WalletStatus, error) {
+	switch s {
+	case "active":
+		return WalletStatusActive, nil
+	case "terminated":
+		return WalletStatusTerminated, nil
+	default:
+		return "", errors.Newf("invalid wallet status: %s", s)
+	}
+}
+
+func (s WalletStatus) String() string {
+	return string(s)
+}
 
 type Wallet struct {
 	Id              string
-	Status          string
+	Status          WalletStatus
 	Name            string
 	CreditsBalance  float64
 	BalanceCents    int

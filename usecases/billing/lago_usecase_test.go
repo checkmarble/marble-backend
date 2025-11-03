@@ -176,13 +176,36 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_NoWall
 	usecase := suite.makeUsecase()
 
 	// Return empty wallet list
-	suite.lagoRepository.On("GetWallet", suite.ctx, suite.orgId).Return([]models.Wallet{}, nil)
+	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return([]models.Wallet{}, nil)
 
 	hasEnoughFunds, subscriptionId, err :=
 		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.False(hasEnoughFunds, "should return false when no wallet exists")
+	suite.Empty(subscriptionId, "should return empty subscription ID")
+	suite.AssertExpectations()
+}
+
+// Test CheckIfEnoughFundsInWallet - Case of no active wallet
+func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_NoActiveWallet() {
+	usecase := suite.makeUsecase()
+
+	wallets := []models.Wallet{
+		{
+			Id:           "wallet-1",
+			Status:       "terminated",
+			BalanceCents: 10000,
+		},
+	}
+
+	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallets, nil)
+
+	hasEnoughFunds, subscriptionId, err :=
+		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+
+	suite.NoError(err)
+	suite.False(hasEnoughFunds, "should return false when no active wallet exists")
 	suite.Empty(subscriptionId, "should return empty subscription ID")
 	suite.AssertExpectations()
 }
@@ -223,7 +246,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_NoMatc
 		},
 	}
 
-	suite.lagoRepository.On("GetWallet", suite.ctx, suite.orgId).Return(wallet, nil)
+	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
 	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 
@@ -298,7 +321,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_Multip
 		TotalAmountCents: 5000,
 	}
 
-	suite.lagoRepository.On("GetWallet", suite.ctx, suite.orgId).Return(wallet, nil)
+	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
 	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-2").Return(detailedSub2, nil)
@@ -354,7 +377,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_Enough
 		TotalAmountCents: 5000, // 50.00 in currency - less than wallet balance
 	}
 
-	suite.lagoRepository.On("GetWallet", suite.ctx, suite.orgId).Return(wallet, nil)
+	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
 	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 	suite.lagoRepository.On("GetCustomerUsage", suite.ctx, suite.orgId, "ext-sub-1").Return(customerUsage, nil)
@@ -408,7 +431,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_NotEno
 		TotalAmountCents: 10000, // 100.00 in currency - more than wallet balance
 	}
 
-	suite.lagoRepository.On("GetWallet", suite.ctx, suite.orgId).Return(wallet, nil)
+	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
 	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 	suite.lagoRepository.On("GetCustomerUsage", suite.ctx, suite.orgId, "ext-sub-1").Return(customerUsage, nil)
@@ -462,7 +485,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_Exactl
 		TotalAmountCents: 5000, // Exactly equal to wallet balance
 	}
 
-	suite.lagoRepository.On("GetWallet", suite.ctx, suite.orgId).Return(wallet, nil)
+	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
 	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 	suite.lagoRepository.On("GetCustomerUsage", suite.ctx, suite.orgId, "ext-sub-1").Return(customerUsage, nil)
