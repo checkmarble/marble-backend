@@ -3,7 +3,6 @@ package dbmodels
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
 )
 
 type DbDataModelTable struct {
@@ -24,9 +23,9 @@ var SelectDataModelTableColumns = utils.ColumnList[DbDataModelTable]()
 func AdaptTableMetadata(dbDataModelTable DbDataModelTable) (models.TableMetadata, error) {
 	var fmtEntity *models.FollowTheMoneyEntity
 	if dbDataModelTable.FTMEntity != nil {
-		entity := models.FollowTheMoneyEntityFrom(*dbDataModelTable.FTMEntity)
-		if entity == models.FollowTheMoneyEntityUnknown {
-			return models.TableMetadata{}, errors.Newf("invalid FTM entity: %s", *dbDataModelTable.FTMEntity)
+		entity, err := models.FollowTheMoneyEntityFrom(*dbDataModelTable.FTMEntity)
+		if err != nil {
+			return models.TableMetadata{}, err
 		}
 		fmtEntity = &entity
 	}

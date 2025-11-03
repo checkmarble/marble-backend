@@ -1,30 +1,31 @@
 package models
 
+import "github.com/cockroachdb/errors"
+
 // ///////////////////////////////
 // Follow The Money Entity
 // ///////////////////////////////
 type FollowTheMoneyEntity string
 
 const (
-	FollowTheMoneyEntityUnknown      FollowTheMoneyEntity = "Unknown"
 	FollowTheMoneyEntityPerson       FollowTheMoneyEntity = "Person"
 	FollowTheMoneyEntityCompany      FollowTheMoneyEntity = "Company"
 	FollowTheMoneyEntityOrganization FollowTheMoneyEntity = "Organization"
 	FollowTheMoneyEntityVessel       FollowTheMoneyEntity = "Vessel"
 )
 
-func FollowTheMoneyEntityFrom(s string) FollowTheMoneyEntity {
+func FollowTheMoneyEntityFrom(s string) (FollowTheMoneyEntity, error) {
 	switch s {
 	case "Person":
-		return FollowTheMoneyEntityPerson
+		return FollowTheMoneyEntityPerson, nil
 	case "Company":
-		return FollowTheMoneyEntityCompany
+		return FollowTheMoneyEntityCompany, nil
 	case "Organization":
-		return FollowTheMoneyEntityOrganization
+		return FollowTheMoneyEntityOrganization, nil
 	case "Vessel":
-		return FollowTheMoneyEntityVessel
+		return FollowTheMoneyEntityVessel, nil
 	default:
-		return FollowTheMoneyEntityUnknown
+		return "", errors.Newf("unknown FTM entity: %s", s)
 	}
 }
 
@@ -38,7 +39,6 @@ func (e FollowTheMoneyEntity) String() string {
 type FollowTheMoneyProperty string
 
 const (
-	FollowTheMoneyPropertyUnknown              FollowTheMoneyProperty = "unknown"
 	FollowTheMoneyPropertyName                 FollowTheMoneyProperty = "name"
 	FollowTheMoneyPropertyEmail                FollowTheMoneyProperty = "email"
 	FollowTheMoneyPropertyPhone                FollowTheMoneyProperty = "phone"
@@ -55,44 +55,47 @@ const (
 	FollowTheMoneyPropertyJurisdiction         FollowTheMoneyProperty = "jurisdiction"
 	FollowTheMoneyPropertyIsinCode             FollowTheMoneyProperty = "isinCode"
 	FollowTheMoneyPropertyWebsite              FollowTheMoneyProperty = "website"
+	FollowTheMoneyPropertyCountry              FollowTheMoneyProperty = "country"
 )
 
-func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
+func FollowTheMoneyPropertyFrom(s string) (FollowTheMoneyProperty, error) {
 	switch s {
 	case "name":
-		return FollowTheMoneyPropertyName
+		return FollowTheMoneyPropertyName, nil
 	case "email":
-		return FollowTheMoneyPropertyEmail
+		return FollowTheMoneyPropertyEmail, nil
 	case "phone":
-		return FollowTheMoneyPropertyPhone
+		return FollowTheMoneyPropertyPhone, nil
 	case "nationality":
-		return FollowTheMoneyPropertyNationality
+		return FollowTheMoneyPropertyNationality, nil
 	case "birthDate":
-		return FollowTheMoneyPropertyBirthDate
+		return FollowTheMoneyPropertyBirthDate, nil
 	case "birthCountry":
-		return FollowTheMoneyPropertyBirthCountry
+		return FollowTheMoneyPropertyBirthCountry, nil
 	case "deathDate":
-		return FollowTheMoneyPropertyDeathDate
+		return FollowTheMoneyPropertyDeathDate, nil
 	case "citizenship":
-		return FollowTheMoneyPropertyCitizenship
+		return FollowTheMoneyPropertyCitizenship, nil
 	case "passportNumber":
-		return FollowTheMoneyPropertyPassportNumber
+		return FollowTheMoneyPropertyPassportNumber, nil
 	case "socialSecurityNumber":
-		return FollowTheMoneyPropertySocialSecurityNumber
+		return FollowTheMoneyPropertySocialSecurityNumber, nil
 	case "address":
-		return FollowTheMoneyPropertyAddress
+		return FollowTheMoneyPropertyAddress, nil
 	case "imoNumber":
-		return FollowTheMoneyPropertyImoNumber
+		return FollowTheMoneyPropertyImoNumber, nil
 	case "registrationNumber":
-		return FollowTheMoneyPropertyRegistrationNumber
+		return FollowTheMoneyPropertyRegistrationNumber, nil
 	case "jurisdiction":
-		return FollowTheMoneyPropertyJurisdiction
+		return FollowTheMoneyPropertyJurisdiction, nil
 	case "isinCode":
-		return FollowTheMoneyPropertyIsinCode
+		return FollowTheMoneyPropertyIsinCode, nil
 	case "website":
-		return FollowTheMoneyPropertyWebsite
+		return FollowTheMoneyPropertyWebsite, nil
+	case "country":
+		return FollowTheMoneyPropertyCountry, nil
 	default:
-		return FollowTheMoneyPropertyUnknown
+		return "", errors.Newf("unknown FTM property: %s", s)
 	}
 }
 
@@ -113,6 +116,7 @@ var FollowTheMoneyEntityProperties = map[FollowTheMoneyEntity][]FollowTheMoneyPr
 		FollowTheMoneyPropertyPassportNumber,
 		FollowTheMoneyPropertySocialSecurityNumber,
 		FollowTheMoneyPropertyAddress,
+		FollowTheMoneyPropertyCountry,
 	},
 	FollowTheMoneyEntityCompany: {
 		FollowTheMoneyPropertyName,

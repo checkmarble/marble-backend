@@ -112,6 +112,24 @@ func (repo MarbleDbRepository) GetDataModel(
 			}
 		}
 
+		var ftmEntity *models.FollowTheMoneyEntity
+		if field.TableFTMEntity != nil {
+			entity, err := models.FollowTheMoneyEntityFrom(*field.TableFTMEntity)
+			if err != nil {
+				return models.DataModel{}, err
+			}
+			ftmEntity = &entity
+		}
+
+		var ftmProperty *models.FollowTheMoneyProperty
+		if field.FieldFTMProperty != nil {
+			property, err := models.FollowTheMoneyPropertyFrom(*field.FieldFTMProperty)
+			if err != nil {
+				return models.DataModel{}, err
+			}
+			ftmProperty = &property
+		}
+
 		_, ok := dataModel.Tables[field.TableName]
 		if !ok {
 			dataModel.Tables[field.TableName] = models.Table{
@@ -120,6 +138,7 @@ func (repo MarbleDbRepository) GetDataModel(
 				Description:   field.TableDescription,
 				Fields:        map[string]models.Field{},
 				LinksToSingle: make(map[string]models.LinkToSingle),
+				FTMEntity:     ftmEntity,
 			}
 		}
 		dataModel.Tables[field.TableName].Fields[field.FieldName] = models.Field{
@@ -131,6 +150,7 @@ func (repo MarbleDbRepository) GetDataModel(
 			IsEnum:      field.FieldIsEnum,
 			TableId:     field.TableID,
 			Values:      values,
+			FTMProperty: ftmProperty,
 		}
 
 	}
@@ -487,7 +507,8 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 			data_model_fields.name,
 			data_model_fields.nullable,
 			data_model_fields.table_id,
-			data_model_fields.type
+			data_model_fields.type,
+			data_model_fields.ftm_property
 		FROM data_model_fields
 		WHERE id = $1
 	`
@@ -496,6 +517,7 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 
 	var field models.FieldMetadata
 	var dataType string
+	var ftmProperty *string
 	if err := row.Scan(
 		&field.Description,
 		&field.IsEnum,
@@ -503,6 +525,7 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 		&field.Nullable,
 		&field.TableId,
 		&dataType,
+		&ftmProperty,
 	); errors.Is(err, pgx.ErrNoRows) {
 		return models.FieldMetadata{}, fmt.Errorf("error in GetDataModelField: %w", models.NotFoundError)
 	} else if err != nil {
@@ -510,6 +533,13 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 	}
 	field.ID = fieldId
 	field.DataType = models.DataTypeFrom(dataType)
+	if ftmProperty != nil {
+		property, err := models.FollowTheMoneyPropertyFrom(*ftmProperty)
+		if err != nil {
+			return models.FieldMetadata{}, err
+		}
+		field.FTMProperty = &property
+	}
 
 	return field, nil
 }

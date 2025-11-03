@@ -55,13 +55,9 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 
 		var ftmEntity *models.FollowTheMoneyEntity
 		if input.FTMEntity != nil {
-			entity := models.FollowTheMoneyEntityFrom(*input.FTMEntity)
-			if entity == models.FollowTheMoneyEntityUnknown {
-				presentError(
-					ctx,
-					c,
-					errors.Wrapf(models.BadParameterError, "invalid FTM entity: %s", *input.FTMEntity),
-				)
+			entity, err := models.FollowTheMoneyEntityFrom(*input.FTMEntity)
+			if err != nil {
+				presentError(ctx, c, err)
 				return
 			}
 			ftmEntity = &entity
@@ -91,10 +87,9 @@ func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 		var ftmEntity pure_utils.Null[models.FollowTheMoneyEntity]
 		if input.FTMEntity.Set {
 			if input.FTMEntity.Valid {
-				entity := models.FollowTheMoneyEntityFrom(input.FTMEntity.Value())
-				if entity == models.FollowTheMoneyEntityUnknown {
-					presentError(ctx, c, errors.Wrapf(models.BadParameterError,
-						"invalid FTM entity: %s", input.FTMEntity.Value()))
+				entity, err := models.FollowTheMoneyEntityFrom(input.FTMEntity.Value())
+				if err != nil {
+					presentError(ctx, c, err)
 					return
 				}
 				ftmEntity = pure_utils.NullFrom(entity)
@@ -123,10 +118,9 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 
 		var ftmProperty *models.FollowTheMoneyProperty
 		if input.FTMProperty != nil {
-			property := models.FollowTheMoneyPropertyFrom(*input.FTMProperty)
-			if property == models.FollowTheMoneyPropertyUnknown {
-				presentError(ctx, c, errors.Wrapf(models.BadParameterError,
-					"invalid FTM property: %s", *input.FTMProperty))
+			property, err := models.FollowTheMoneyPropertyFrom(*input.FTMProperty)
+			if err != nil {
+				presentError(ctx, c, err)
 				return
 			}
 			ftmProperty = &property
@@ -168,10 +162,9 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 		var ftmProperty pure_utils.Null[models.FollowTheMoneyProperty]
 		if input.FTMProperty.Set {
 			if input.FTMProperty.Valid {
-				property := models.FollowTheMoneyPropertyFrom(input.FTMProperty.Value())
-				if property == models.FollowTheMoneyPropertyUnknown {
-					presentError(ctx, c, errors.Wrapf(models.BadParameterError,
-						"invalid FTM property: %s", input.FTMProperty.Value()))
+				property, err := models.FollowTheMoneyPropertyFrom(input.FTMProperty.Value())
+				if err != nil {
+					presentError(ctx, c, err)
 					return
 				}
 				ftmProperty = pure_utils.NullFrom(property)
