@@ -109,6 +109,7 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 	return repositories.AnalyticsScanStruct[analytics.RuleHitTable](ctx, exec, query)
 }
 
+// TODO: could maybe be optimized by storing (d.outcome) denormalized alongside the decision rule.
 func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.RuleVsDecisionOutcome, error) {
 	if !uc.license.Analytics {
 		return []analytics.RuleVsDecisionOutcome{}, nil
@@ -127,7 +128,7 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filte
 		).
 		From(uc.analyticsFactory.BuildTarget("decision_rules", "dr")).
 		InnerJoin(uc.analyticsFactory.BuildTarget("decisions", "d")+" on d.id = dr.decision_id").
-		Where("d.created_at between ? and ?", filters.Start, filters.End).
+		Where("dr.created_at between ? and ?", filters.Start, filters.End).
 		Where("rule_name is not null and dr.outcome = 'hit'").
 		GroupBy("stable_rule_id", "rule_name", "d.outcome")
 
@@ -135,6 +136,8 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filte
 	if err != nil {
 		return nil, err
 	}
+	// Also add pushdown filters for decision table so reads can be optimized in the join
+	query = uc.analyticsFactory.BuildPushdownFilter(query, scenario.OrganizationId, filters.Start, filters.End, scenario.TriggerObjectType, "d")
 
 	return repositories.AnalyticsScanStruct[analytics.RuleVsDecisionOutcome](ctx, exec, query)
 }
