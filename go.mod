@@ -10,6 +10,7 @@ require (
 	firebase.google.com/go/v4 v4.14.1
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.29.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.53.0
+	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/TwiN/deepmerge v0.2.2
 	github.com/adhocore/gronx v1.19.6
