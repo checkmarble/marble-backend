@@ -6,10 +6,13 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/auth"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
 )
 
 func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Context) {
+	go utils.RunCheckOutdated(cfg.AppVersion)
+
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -45,6 +48,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 
 		out := dto.ConfigDto{
 			Version:         versionUsecase.ApiVersion,
+			Outdated:        utils.IsOutdatedVersion.Load(),
 			IsManagedMarble: licenseUsecase.IsManagedMarble(),
 			Status: dto.ConfigStatusDto{
 				Migrations: migrationsRunForOrgs && migrationsRunForUsers,

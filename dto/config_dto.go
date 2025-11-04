@@ -22,6 +22,7 @@ func (s NullString) MarshalJSON() ([]byte, error) {
 
 type ConfigDto struct {
 	Version         string            `json:"version"`
+	Outdated        bool              `json:"outdated"`
 	Status          ConfigStatusDto   `json:"status"`
 	Urls            ConfigUrlsDto     `json:"urls"`
 	Auth            ConfigAuthDto     `json:"auth"`
