@@ -117,6 +117,8 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 			"d.created_at",
 			"extract(year from d.created_at)::int as year", "extract(month from d.created_at)::int as month",
 			"d.trigger_object_type",
+			"d.trigger_object",
+			"d.analytics_fields",
 		).
 		From("marble.decisions d").
 		Where("d.org_id = ?", req.OrgId).
