@@ -116,11 +116,7 @@ func (repo LagoRepository) GetWallets(ctx context.Context, orgId string) ([]mode
 		return nil, errors.Wrap(err, "failed to decode wallet")
 	}
 
-	adaptedWallets, err := AdaptWalletsDtoToModel(wallets)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to adapt wallets")
-	}
-
+	adaptedWallets := AdaptWalletsDtoToModel(wallets)
 	return adaptedWallets, nil
 }
 

@@ -13,25 +13,21 @@ type WalletDto struct {
 	BalanceCents int    `json:"balance_cents"`
 }
 
-func AdaptWalletDtoToModel(dto WalletDto) (models.Wallet, error) {
-	status, err := models.WalletStatusFromString(dto.Status)
-	if err != nil {
-		return models.Wallet{}, err
-	}
+func AdaptWalletDtoToModel(dto WalletDto) models.Wallet {
 	return models.Wallet{
 		Id:           dto.LagoId,
-		Status:       status,
+		Status:       models.WalletStatusFromString(dto.Status),
 		Name:         dto.Name,
 		BalanceCents: dto.BalanceCents,
-	}, nil
+	}
 }
 
 type WalletsDto struct {
 	Wallets []WalletDto `json:"wallets"`
 }
 
-func AdaptWalletsDtoToModel(dto WalletsDto) ([]models.Wallet, error) {
-	return pure_utils.MapErr(dto.Wallets, AdaptWalletDtoToModel)
+func AdaptWalletsDtoToModel(dto WalletsDto) []models.Wallet {
+	return pure_utils.Map(dto.Wallets, AdaptWalletDtoToModel)
 }
 
 type ChargeDto struct {
