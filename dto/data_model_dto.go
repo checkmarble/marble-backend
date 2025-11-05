@@ -118,12 +118,14 @@ func AdaptDataModelDto(dataModel models.DataModel) DataModel {
 }
 
 type CreateTableInput struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	FTMEntity   *string `json:"ftm_entity"`
 }
 
 type UpdateTableInput struct {
-	Description string `json:"description"`
+	Description string                  `json:"description"`
+	FTMEntity   pure_utils.Null[string] `json:"ftm_entity"`
 }
 
 type CreateLinkInput struct {
@@ -135,19 +137,21 @@ type CreateLinkInput struct {
 }
 
 type UpdateFieldInput struct {
-	Description *string `json:"description"`
-	IsEnum      *bool   `json:"is_enum"`
-	IsUnique    *bool   `json:"is_unique"`
-	IsNullable  *bool   `json:"is_nullable"`
+	Description *string                 `json:"description"`
+	IsEnum      *bool                   `json:"is_enum"`
+	IsUnique    *bool                   `json:"is_unique"`
+	IsNullable  *bool                   `json:"is_nullable"`
+	FTMProperty pure_utils.Null[string] `json:"ftm_property"`
 }
 
 type CreateFieldInput struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Type        string `json:"type"`
-	Nullable    bool   `json:"nullable"`
-	IsEnum      bool   `json:"is_enum"`
-	IsUnique    bool   `json:"is_unique"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Type        string  `json:"type"`
+	Nullable    bool    `json:"nullable"`
+	IsEnum      bool    `json:"is_enum"`
+	IsUnique    bool    `json:"is_unique"`
+	FTMProperty *string `json:"ftm_property"`
 }
 
 type DataModelObject struct {
