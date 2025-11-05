@@ -51,7 +51,7 @@ func (repo LagoRepository) getRequest(ctx context.Context, method string, url st
 // Retries on network errors, 5xx errors, and 429 (rate limit) errors
 func (repo LagoRepository) doRequestWithRetry(ctx context.Context, method string, url string, body []byte) (*http.Response, error) {
 	var resp *http.Response
-	var err = retry.Do(
+	err := retry.Do(
 		func() error {
 			var reqBody io.Reader
 			if body != nil {
@@ -90,7 +90,7 @@ func (repo LagoRepository) doRequestWithRetry(ctx context.Context, method string
 }
 
 // Get Wallet for an organization
-func (repo LagoRepository) GetWallet(ctx context.Context, orgId string) ([]models.Wallet, error) {
+func (repo LagoRepository) GetWallets(ctx context.Context, orgId string) ([]models.Wallet, error) {
 	if !repo.IsConfigured() {
 		return nil, errors.New("lago repository is not configured")
 	}
@@ -111,12 +111,13 @@ func (repo LagoRepository) GetWallet(ctx context.Context, orgId string) ([]model
 		return nil, errors.Newf("failed to get wallet: %s", resp.Status)
 	}
 
-	var wallet WalletsDto
-	if err = json.NewDecoder(resp.Body).Decode(&wallet); err != nil {
+	var wallets WalletsDto
+	if err = json.NewDecoder(resp.Body).Decode(&wallets); err != nil {
 		return nil, errors.Wrap(err, "failed to decode wallet")
 	}
 
-	return AdaptWalletsDtoToModel(wallet), nil
+	adaptedWallets := AdaptWalletsDtoToModel(wallets)
+	return adaptedWallets, nil
 }
 
 // Get Active Subscriptions (not detailed) for an organization

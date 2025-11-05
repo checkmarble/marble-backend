@@ -11,7 +11,7 @@ type LagoRepository struct {
 	mock.Mock
 }
 
-func (r *LagoRepository) GetWallet(ctx context.Context, orgId string) ([]models.Wallet, error) {
+func (r *LagoRepository) GetWallets(ctx context.Context, orgId string) ([]models.Wallet, error) {
 	args := r.Called(ctx, orgId)
 	return args.Get(0).([]models.Wallet), args.Error(1)
 }

@@ -16,7 +16,7 @@ type WalletDto struct {
 func AdaptWalletDtoToModel(dto WalletDto) models.Wallet {
 	return models.Wallet{
 		Id:           dto.LagoId,
-		Status:       dto.Status,
+		Status:       models.WalletStatusFromString(dto.Status),
 		Name:         dto.Name,
 		BalanceCents: dto.BalanceCents,
 	}
