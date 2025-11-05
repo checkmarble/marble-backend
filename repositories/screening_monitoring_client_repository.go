@@ -8,10 +8,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const TABLE_INTERNAL_SCREENING_MONITORING = "_screening_monitoring_objects"
+const TABLE_INTERNAL_MONITORED_OBJECTS = "_monitored_objects"
 
 func tableNameWithPrefix(tableName string) string {
-	return fmt.Sprintf("%s_%s", TABLE_INTERNAL_SCREENING_MONITORING, tableName)
+	return fmt.Sprintf("%s_%s", TABLE_INTERNAL_MONITORED_OBJECTS, tableName)
 }
 
 func sanitizedTableName(exec Executor, tableName string) string {
@@ -28,6 +28,8 @@ func (repo *ClientDbRepository) CreateInternalScreeningMonitoringTable(ctx conte
 		return err
 	}
 
+	sanitizedTableName := sanitizedTableName(exec, tableName)
+
 	sql := fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS %s (
 			id UUID NOT NULL PRIMARY KEY,
@@ -35,28 +37,17 @@ func (repo *ClientDbRepository) CreateInternalScreeningMonitoringTable(ctx conte
 			config_id UUID NOT NULL,
 			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 		);
-	`, sanitizedTableName(exec, tableName))
-
+	`, sanitizedTableName)
 	_, err := exec.Exec(ctx, sql)
-	return err
-}
-
-// Create index needed for the table
-// uniq_idx_config_id_object_id: UNIQUE INDEX, config_id and object_id must be unique
-// TODO: Should we add the index creation with the table creation?
-func (repo *ClientDbRepository) CreateInternalScreeningMonitoringIndex(ctx context.Context, exec Executor, tableName string) error {
-	if err := validateClientDbExecutor(exec); err != nil {
-		return err
-	}
 
 	// Unique index to have a unique object_id for a given config_id
-	sql := fmt.Sprintf(
+	sql = fmt.Sprintf(
 		"CREATE UNIQUE INDEX IF NOT EXISTS uniq_idx%s_config_id_object_id ON %s (config_id, object_id)",
 		tableNameWithPrefix(tableName),
-		sanitizedTableName(exec, tableName),
+		sanitizedTableName,
 	)
+	_, err = exec.Exec(ctx, sql)
 
-	_, err := exec.Exec(ctx, sql)
 	return err
 }
 

@@ -48,7 +48,6 @@ type ScreeningMonitoringUsecaseRepository interface {
 
 type ScreeningMonitoringClientDbRepository interface {
 	CreateInternalScreeningMonitoringTable(ctx context.Context, exec repositories.Executor, tableName string) error
-	CreateInternalScreeningMonitoringIndex(ctx context.Context, exec repositories.Executor, tableName string) error
 	InsertScreeningMonitoringObject(
 		ctx context.Context,
 		exec repositories.Executor,

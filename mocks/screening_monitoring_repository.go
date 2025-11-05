@@ -84,15 +84,6 @@ func (m *ScreeningMonitoringClientDbRepository) CreateInternalScreeningMonitorin
 	return args.Error(0)
 }
 
-func (m *ScreeningMonitoringClientDbRepository) CreateInternalScreeningMonitoringIndex(
-	ctx context.Context,
-	exec repositories.Executor,
-	tableName string,
-) error {
-	args := m.Called(ctx, exec, tableName)
-	return args.Error(0)
-}
-
 func (m *ScreeningMonitoringClientDbRepository) InsertScreeningMonitoringObject(
 	ctx context.Context,
 	exec repositories.Executor,

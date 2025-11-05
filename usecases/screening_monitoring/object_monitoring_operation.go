@@ -95,9 +95,6 @@ func (uc *ScreeningMonitoringUsecase) InsertScreeningMonitoringObject(
 		if err := uc.clientDbRepository.CreateInternalScreeningMonitoringTable(ctx, tx, table.Name); err != nil {
 			return err
 		}
-		if err := uc.clientDbRepository.CreateInternalScreeningMonitoringIndex(ctx, tx, table.Name); err != nil {
-			return err
-		}
 
 		return uc.clientDbRepository.InsertScreeningMonitoringObject(
 			ctx,

@@ -122,8 +122,6 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
 	suite.clientDbRepository.On("CreateInternalScreeningMonitoringTable", suite.ctx,
 		mock.Anything, suite.objectType).Return(nil)
-	suite.clientDbRepository.On("CreateInternalScreeningMonitoringIndex", suite.ctx,
-		mock.Anything, suite.objectType).Return(nil)
 	suite.clientDbRepository.On("InsertScreeningMonitoringObject", suite.ctx, mock.Anything,
 		suite.objectType, suite.objectId, suite.configId).Return(nil)
 
@@ -191,8 +189,6 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 		suite.objectId).Return(ingestedObjects, nil)
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
 	suite.clientDbRepository.On("CreateInternalScreeningMonitoringTable", suite.ctx,
-		mock.Anything, suite.objectType).Return(nil)
-	suite.clientDbRepository.On("CreateInternalScreeningMonitoringIndex", suite.ctx,
 		mock.Anything, suite.objectType).Return(nil)
 	suite.clientDbRepository.On("InsertScreeningMonitoringObject", suite.ctx, mock.Anything,
 		suite.objectType, suite.objectId, suite.configId).Return(nil)
@@ -409,8 +405,6 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
 	suite.clientDbRepository.On("CreateInternalScreeningMonitoringTable", suite.ctx,
 		mock.Anything, suite.objectType).Return(nil)
-	suite.clientDbRepository.On("CreateInternalScreeningMonitoringIndex", suite.ctx,
-		mock.Anything, suite.objectType).Return(nil)
 	// Return a unique violation error
 	suite.clientDbRepository.On("InsertScreeningMonitoringObject", suite.ctx, mock.Anything,
 		suite.objectType, suite.objectId, suite.configId).Return(&pgconn.PgError{
@@ -474,8 +468,6 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 		suite.objectId).Return(ingestedObjects, nil)
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
 	suite.clientDbRepository.On("CreateInternalScreeningMonitoringTable", suite.ctx,
-		mock.Anything, suite.objectType).Return(nil)
-	suite.clientDbRepository.On("CreateInternalScreeningMonitoringIndex", suite.ctx,
 		mock.Anything, suite.objectType).Return(nil)
 	// Return a unique violation error
 	suite.clientDbRepository.On("InsertScreeningMonitoringObject", suite.ctx, mock.Anything,
