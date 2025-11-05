@@ -11,7 +11,6 @@ const (
 )
 
 // -1 because of the underscore before the hash
-// -1
 var IDENTIFIER_PREFIX_LENGTH = MAX_IDENTIFIER_LENGTH - HASH_LENGTH - 1
 
 func TruncateIdentifier(name string) string {
