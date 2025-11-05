@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -14,24 +14,42 @@ type GithubRelease struct {
 	TagName     string    `json:"tag_name"`
 	Prerelease  bool      `json:"prerelease"`
 	PublishedAt time.Time `json:"published_at"`
+	HtmlUrl     string    `json:"html_url"`
+	Body        string    `json:"body"`
+}
+
+type OutdatedInfo struct {
+	Outdated      bool     `json:"outdated"`
+	LatestVersion string   `json:"latest_version,omitempty"`
+	LatestUrl     string   `json:"latest_url,omitempty"`
+	ReleaseNotes  []string `json:"release_notes,omitempty"`
 }
 
 const (
-	GithubReleaseUrl            = "https://api.github.com/repos/checkmarble/marble-backend/releases?per_page=100"
+	GithubBackendReleaseUrl     = "https://api.github.com/repos/checkmarble/marble-backend/releases?per_page=100"
+	GithubReleaseUrl            = "https://api.github.com/repos/checkmarble/marble/releases?per_page=100"
 	GithubReleaseMaxMinorSpread = 2
 	GithubReleaseGracePeriod    = 30 * 24 * time.Hour
 )
 
-var IsOutdatedVersion atomic.Bool
+var (
+	Outdated      OutdatedInfo
+	OutdatedMutex sync.RWMutex
+)
 
 func RunCheckOutdated(appVersion string) {
 	for {
-		IsOutdatedVersion.Store(checkOutdated(context.Background(), appVersion))
+		info := checkOutdated(context.Background(), appVersion)
+
+		OutdatedMutex.Lock()
+		Outdated = info
+		OutdatedMutex.Unlock()
+
 		time.Sleep(time.Hour)
 	}
 }
 
-func checkOutdated(ctx context.Context, appVersion string) (isOutdated bool) {
+func checkOutdated(ctx context.Context, appVersion string) (info OutdatedInfo) {
 	// No outdated notion for development builds
 	if appVersion == "dev" {
 		return
@@ -44,29 +62,19 @@ func checkOutdated(ctx context.Context, appVersion string) (isOutdated bool) {
 	withoutPrerelease, _ := currentSv.SetPrerelease("")
 	currentSv = &withoutPrerelease
 
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, GithubReleaseUrl, nil)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return
-	}
-
-	defer resp.Body.Close()
-
-	dec := json.NewDecoder(resp.Body)
-
-	var (
-		releases       []GithubRelease
-		currentRelease *GithubRelease
-		minorsSince    = 1
-	)
-
+	releases, err := fetchReleases(ctx, GithubBackendReleaseUrl)
 	// In case we cannot retrieve releases or the list is empty, bail out.
-	if err := dec.Decode(&releases); err != nil {
+	if err != nil {
 		return
 	}
 	if len(releases) == 0 {
 		return
 	}
+
+	var (
+		currentRelease *GithubRelease
+		minorsSince    = 1
+	)
 
 	latest := releases[0]
 	latestSv, err := semver.NewVersion(latest.TagName)
@@ -76,6 +84,8 @@ func checkOutdated(ctx context.Context, appVersion string) (isOutdated bool) {
 
 	// Keep the latest unique minor version found, so we can count them.
 	var seenMinor *semver.Version
+
+	info.ReleaseNotes = make([]string, 0, minorsSince)
 
 	for _, r := range releases {
 		if r.TagName == currentSv.Original() {
@@ -97,10 +107,29 @@ func checkOutdated(ctx context.Context, appVersion string) (isOutdated bool) {
 		}
 	}
 
+	if releases, err := fetchReleases(ctx, GithubReleaseUrl); err == nil && len(releases) > 0 {
+		release := releases[0]
+		info.LatestVersion = release.TagName
+		info.LatestUrl = release.HtmlUrl
+
+		for _, release := range releases {
+			sv, err := semver.NewVersion(release.TagName)
+			if err != nil {
+				continue
+			}
+
+			if sv.Major() == currentSv.Major() && sv.Minor() == currentSv.Minor() {
+				break
+			}
+
+			info.ReleaseNotes = append(info.ReleaseNotes, release.Body)
+		}
+	}
+
 	// Edge case, if we did not find the current version in the release list, if
 	// means we are outdated by more than 100 releases or we are in a weird state.
 	if currentRelease == nil {
-		isOutdated = true
+		info.Outdated = true
 		return
 	}
 
@@ -111,8 +140,28 @@ func checkOutdated(ctx context.Context, appVersion string) (isOutdated bool) {
 		latestSv.GreaterThan(currentSv) &&
 		latest.PublishedAt.Sub(currentRelease.PublishedAt) > GithubReleaseGracePeriod {
 
-		isOutdated = true
+		info.Outdated = true
 	}
 
 	return
+}
+
+func fetchReleases(ctx context.Context, url string) ([]GithubRelease, error) {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	dec := json.NewDecoder(resp.Body)
+
+	var releases []GithubRelease
+
+	if err := dec.Decode(&releases); err != nil {
+		return nil, err
+	}
+
+	return releases, nil
 }
