@@ -22,11 +22,11 @@ type DecisionsScoreDistribution struct {
 }
 
 type RuleHitTable struct {
-	RuleName   string  `json:"rule_name"`
-	HitCount   int     `json:"hit_count"`
-	HitRatio   float64 `json:"hit_ratio"`
-	PivotCount int     `json:"pivot_count"`
-	PivotRatio float64 `json:"pivot_ratio"`
+	RuleName       string  `json:"rule_name"`
+	HitCount       int     `json:"hit_count"`
+	HitRatio       float64 `json:"hit_ratio"`
+	DistinctPivots int     `json:"distinct_pivots"`
+	RepeatRatio    float64 `json:"repeat_ratio"`
 }
 
 type RuleVsDecisionOutcome struct {
