@@ -487,7 +487,7 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 
 	// Assert - should error when ignoreConflictError is false and unique violation occurs
 	suite.Error(err)
-	suite.Equal(models.ConflictError, err)
+	suite.Contains(err.Error(), "object already exists in screening monitored objects table")
 	suite.AssertExpectations()
 }
 

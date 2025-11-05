@@ -61,7 +61,7 @@ func (dto CreateScreeningMonitoringConfigDto) Validate() error {
 	if dto.MatchLimit < 1 {
 		return errors.Wrap(
 			models.BadParameterError,
-			"match limit must be greater than or equal to 0",
+			"match limit must be at least 1",
 		)
 	}
 
@@ -98,7 +98,7 @@ func (dto UpdateScreeningMonitoringConfigDto) Validate() error {
 	if dto.MatchLimit != nil && *dto.MatchLimit < 0 {
 		return errors.Wrap(
 			models.BadParameterError,
-			"match limit must be greater than or equal to 0",
+			"match limit must be at least 1",
 		)
 	}
 

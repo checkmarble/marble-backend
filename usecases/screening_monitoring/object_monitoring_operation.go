@@ -105,13 +105,14 @@ func (uc *ScreeningMonitoringUsecase) InsertScreeningMonitoringObject(
 		)
 	})
 
+	if repositories.IsUniqueViolationError(err) && ignoreConflictError {
+		return nil
+	}
 	if repositories.IsUniqueViolationError(err) {
-		// If the object already exists in the screening monitoring table, we can ignore the conflict error
-		// in case of ingestion. Consider the object as a new one and force the screening on the updated object.
-		if ignoreConflictError {
-			return nil
-		}
-		return models.ConflictError
+		return errors.Wrap(
+			models.ConflictError,
+			"object already exists in screening monitored objects table",
+		)
 	}
 	return err
 }
