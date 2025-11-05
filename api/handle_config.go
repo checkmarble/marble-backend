@@ -46,9 +46,12 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 			}
 		}
 
+		utils.OutdatedMutex.RLock()
+		defer utils.OutdatedMutex.RUnlock()
+
 		out := dto.ConfigDto{
 			Version:         versionUsecase.ApiVersion,
-			Outdated:        utils.IsOutdatedVersion.Load(),
+			Outdated:        utils.Outdated,
 			IsManagedMarble: licenseUsecase.IsManagedMarble(),
 			Status: dto.ConfigStatusDto{
 				Migrations: migrationsRunForOrgs && migrationsRunForUsers,
