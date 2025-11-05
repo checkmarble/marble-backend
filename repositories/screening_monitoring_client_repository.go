@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -15,20 +16,31 @@ func tableNameWithPrefix(tableName string) string {
 }
 
 func sanitizedTableName(exec Executor, tableName string) string {
-	return pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableNameWithPrefix(tableName)})
+	return pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
 }
 
 // Table schema
-// id: UUID, primary key UUID V7
+// id: UUID, primary key
 // object_id: TEXT, foreign key to client_tables.object_id
 // config_id: UUID, foreign key to screening_monitoring_configs.id
 // created_at: TIMESTAMP WITH TIME ZONE
+// Truncate the table name and the uniq index name to the maximum length of 63 characters
+// Add unique index to have a unique object_id for a given config_id
 func (repo *ClientDbRepository) CreateInternalScreeningMonitoringTable(ctx context.Context, exec Executor, tableName string) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}
 
-	sanitizedTableName := sanitizedTableName(exec, tableName)
+	tableNameWithPrefix := tableNameWithPrefix(tableName)
+	truncatedTableName := utils.TruncateIdentifier(tableNameWithPrefix)
+
+	sanitizedTableName := sanitizedTableName(exec, truncatedTableName)
+	truncatedUniqIndexName := utils.TruncateIdentifier(
+		fmt.Sprintf(
+			"_uniq_idx_config_id_object_id_%s",
+			tableNameWithPrefix,
+		),
+	)
 
 	sql := fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS %s (
@@ -39,11 +51,14 @@ func (repo *ClientDbRepository) CreateInternalScreeningMonitoringTable(ctx conte
 		);
 	`, sanitizedTableName)
 	_, err := exec.Exec(ctx, sql)
+	if err != nil {
+		return err
+	}
 
 	// Unique index to have a unique object_id for a given config_id
 	sql = fmt.Sprintf(
-		"CREATE UNIQUE INDEX IF NOT EXISTS uniq_idx%s_config_id_object_id ON %s (config_id, object_id)",
-		tableNameWithPrefix(tableName),
+		"CREATE UNIQUE INDEX IF NOT EXISTS %s ON %s (config_id, object_id)",
+		truncatedUniqIndexName,
 		sanitizedTableName,
 	)
 	_, err = exec.Exec(ctx, sql)
@@ -60,7 +75,7 @@ func (repo *ClientDbRepository) InsertScreeningMonitoringObject(ctx context.Cont
 
 	sql := fmt.Sprintf(
 		"INSERT INTO %s (id, object_id, config_id) VALUES ($1, $2, $3)",
-		sanitizedTableName(exec, tableName),
+		sanitizedTableName(exec, utils.TruncateIdentifier(tableNameWithPrefix(tableName))),
 	)
 
 	_, err := exec.Exec(ctx, sql, uuid.Must(uuid.NewV7()), objectId, configId)

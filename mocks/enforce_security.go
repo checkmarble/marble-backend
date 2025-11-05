@@ -212,7 +212,7 @@ func (e *EnforceSecurity) WriteScreeningMonitoringConfig(orgId string) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) WriteScreeningMonitoringObject(orgId string) error {
+func (e *EnforceSecurity) WriteMonitoredObject(orgId string) error {
 	args := e.Called(orgId)
 	return args.Error(0)
 }

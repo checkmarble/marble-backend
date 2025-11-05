@@ -31,7 +31,7 @@ func (uc *ScreeningMonitoringUsecase) InsertScreeningMonitoringObject(
 		return err
 	}
 
-	if err := uc.enforceSecurity.WriteScreeningMonitoringObject(config.OrgId); err != nil {
+	if err := uc.enforceSecurity.WriteMonitoredObject(config.OrgId); err != nil {
 		return err
 	}
 

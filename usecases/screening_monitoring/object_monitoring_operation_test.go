@@ -115,7 +115,7 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 
 	// Setup expectations
 	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteScreeningMonitoringObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId).Return(ingestedObjects, nil)
@@ -182,7 +182,7 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 
 	// Setup expectations
 	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteScreeningMonitoringObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(1, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
@@ -233,7 +233,7 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 
 	// Setup expectations
 	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteScreeningMonitoringObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 
 	// Execute
@@ -280,7 +280,7 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 
 	// Setup expectations - QueryIngestedObject returns empty list
 	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteScreeningMonitoringObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId).Return([]models.DataModelObject{}, nil)
@@ -335,7 +335,7 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 
 	// Setup expectations - IngestObject returns 0 (no objects ingested)
 	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteScreeningMonitoringObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(0, nil)
 
@@ -397,7 +397,7 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 
 	// Setup expectations
 	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteScreeningMonitoringObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(1, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
@@ -462,7 +462,7 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 
 	// Setup expectations
 	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteScreeningMonitoringObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId).Return(ingestedObjects, nil)
