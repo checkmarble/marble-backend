@@ -24,7 +24,9 @@ type AnalyticsQueryUsecase struct {
 	scenarioRepository repositories.ScenarioUsecaseRepository
 }
 
-func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.DecisionOutcomePerDay, error) {
+func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context,
+	filters dto.AnalyticsQueryFilters,
+) ([]analytics.DecisionOutcomePerDay, error) {
 	scenario, exec, err := uc.getExecutor(ctx, filters.ScenarioId)
 	if err != nil {
 		return nil, err
@@ -54,7 +56,9 @@ func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context, filte
 	return repositories.AnalyticsRawScanStruct[analytics.DecisionOutcomePerDay](ctx, exec, query, args...)
 }
 
-func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.DecisionsScoreDistribution, error) {
+func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context,
+	filters dto.AnalyticsQueryFilters,
+) ([]analytics.DecisionsScoreDistribution, error) {
 	if !uc.license.Analytics {
 		return []analytics.DecisionsScoreDistribution{}, nil
 	}
@@ -93,8 +97,8 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 			"rule_name",
 			"count() filter (outcome = 'hit') as hit_count",
 			"((count() filter (outcome = 'hit')) / count()) * 100 as hit_ratio",
-			"count(distinct pivot_value) filter (outcome = 'hit') as pivot_count",
-			"(count(distinct pivot_value) filter (outcome = 'hit') / count()) * 100 as pivot_ratio",
+			"count(distinct pivot_value) filter (outcome = 'hit') as distinct_pivots",
+			"100 - (count(distinct pivot_value) filter (outcome = 'hit') / count()) * 100 as repeat_ratio",
 		).
 		From(uc.analyticsFactory.BuildTarget("decision_rules")).
 		Where("created_at between ? and ?", filters.Start, filters.End).
@@ -110,7 +114,9 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 }
 
 // TODO: could maybe be optimized by storing (d.outcome) denormalized alongside the decision rule.
-func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.RuleVsDecisionOutcome, error) {
+func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context,
+	filters dto.AnalyticsQueryFilters,
+) ([]analytics.RuleVsDecisionOutcome, error) {
 	if !uc.license.Analytics {
 		return []analytics.RuleVsDecisionOutcome{}, nil
 	}
@@ -137,12 +143,15 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context, filte
 		return nil, err
 	}
 	// Also add pushdown filters for decision table so reads can be optimized in the join
-	query = uc.analyticsFactory.BuildPushdownFilter(query, scenario.OrganizationId, filters.Start, filters.End, scenario.TriggerObjectType, "d")
+	query = uc.analyticsFactory.BuildPushdownFilter(query, scenario.OrganizationId,
+		filters.Start, filters.End, scenario.TriggerObjectType, "d")
 
 	return repositories.AnalyticsScanStruct[analytics.RuleVsDecisionOutcome](ctx, exec, query)
 }
 
-func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.RuleCoOccurence, error) {
+func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context,
+	filters dto.AnalyticsQueryFilters,
+) ([]analytics.RuleCoOccurence, error) {
 	if !uc.license.Analytics {
 		return []analytics.RuleCoOccurence{}, nil
 	}
@@ -180,7 +189,9 @@ func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context, filte
 	return repositories.AnalyticsScanStruct[analytics.RuleCoOccurence](ctx, exec, query)
 }
 
-func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.AnalyticsQueryFilters) ([]analytics.ScreeningHits, error) {
+func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context,
+	filters dto.AnalyticsQueryFilters,
+) ([]analytics.ScreeningHits, error) {
 	if !uc.license.Analytics {
 		return []analytics.ScreeningHits{}, nil
 	}
@@ -212,7 +223,8 @@ func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context, filters dto.A
 }
 
 func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid.UUID) (models.Scenario, repositories.AnalyticsExecutor, error) {
-	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, uc.executorFactory.NewExecutor(), scenarioId.String())
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx,
+		uc.executorFactory.NewExecutor(), scenarioId.String())
 	if err != nil {
 		return models.Scenario{}, nil, err
 	}
