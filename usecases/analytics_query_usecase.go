@@ -47,9 +47,10 @@ func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context,
 		return nil, err
 	}
 
+	// Note that the order of the outcomes in the PIVOT() must exacly match the order of the outcomes in the DecisionOutcomePerDay struct.
 	query := fmt.Sprintf(`
 		pivot (from (%s))
-		on outcome in ('approve', 'decline', 'review', 'block_and_review')
+		on outcome in ('approve', 'review', 'block_and_review', 'decline')
 		using coalesce(sum(decisions), 0)
 		order by date`, sql)
 

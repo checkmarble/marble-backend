@@ -9,11 +9,12 @@ import (
 type DecisionOutcomePerDay struct {
 	Date time.Time `json:"date"`
 
-	// Those fields are returned through a PIVOT(), so need to be alphabetically sorted
+	// Those fields are returned through a PIVOT(), so they need to be in exactly the order of the outcomes in the PIVOT():
+	// Here the order is chosen (arbitrarily) to be the "severity" order of the outcomes.
 	Approve        int `json:"approve"`
+	Review         int `json:"review"`
 	BlockAndReview int `json:"block_and_review"`
 	Decline        int `json:"decline"`
-	Review         int `json:"review"`
 }
 
 type DecisionsScoreDistribution struct {
