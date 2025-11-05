@@ -33,7 +33,7 @@ func (e *EnforceSecurityScreeningMonitoringImpl) WriteScreeningMonitoringConfig(
 
 func (e *EnforceSecurityScreeningMonitoringImpl) WriteScreeningMonitoringObject(orgId string) error {
 	return errors.Join(
-		e.Permission(models.SCREENING_MONITORING_OBJECT_WRITE),
+		e.Permission(models.MONITORED_OBJECT_WRITE),
 		e.ReadOrganization(orgId),
 	)
 }
