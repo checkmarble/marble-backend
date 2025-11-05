@@ -45,15 +45,24 @@ type CreateScreeningMonitoringConfigDto struct {
 
 func (dto CreateScreeningMonitoringConfigDto) Validate() error {
 	if len(dto.Datasets) == 0 {
-		return errors.New("datasets are required for screening monitoring config")
+		return errors.Wrap(
+			models.BadParameterError,
+			"datasets are required for screening monitoring config",
+		)
 	}
 
 	if dto.MatchThreshold < 0 || dto.MatchThreshold > 100 {
-		return errors.New("match threshold must be between 0 and 100")
+		return errors.Wrap(
+			models.BadParameterError,
+			"match threshold must be between 0 and 100",
+		)
 	}
 
 	if dto.MatchLimit < 1 {
-		return errors.New("match limit must be greater than or equal to 0")
+		return errors.Wrap(
+			models.BadParameterError,
+			"match limit must be greater than or equal to 0",
+		)
 	}
 
 	return nil
@@ -80,15 +89,24 @@ type UpdateScreeningMonitoringConfigDto struct {
 
 func (dto UpdateScreeningMonitoringConfigDto) Validate() error {
 	if dto.MatchThreshold != nil && (*dto.MatchThreshold < 0 || *dto.MatchThreshold > 100) {
-		return errors.New("match threshold must be between 0 and 100")
+		return errors.Wrap(
+			models.BadParameterError,
+			"match threshold must be between 0 and 100",
+		)
 	}
 
 	if dto.MatchLimit != nil && *dto.MatchLimit < 0 {
-		return errors.New("match limit must be greater than or equal to 0")
+		return errors.Wrap(
+			models.BadParameterError,
+			"match limit must be greater than or equal to 0",
+		)
 	}
 
 	if dto.Datasets != nil && len(*dto.Datasets) == 0 {
-		return errors.New("datasets cannot be empty")
+		return errors.Wrap(
+			models.BadParameterError,
+			"datasets cannot be empty",
+		)
 	}
 
 	return nil
@@ -114,11 +132,17 @@ type InsertScreeningMonitoringObjectDto struct {
 
 func (dto InsertScreeningMonitoringObjectDto) Validate() error {
 	if dto.ObjectId == nil && dto.ObjectPayload == nil {
-		return errors.New("object_id or object_payload is required")
+		return errors.Wrap(
+			models.BadParameterError,
+			"object_id or object_payload is required",
+		)
 	}
 
 	if dto.ObjectId != nil && dto.ObjectPayload != nil {
-		return errors.New("object_id and object_payload cannot be provided together")
+		return errors.Wrap(
+			models.BadParameterError,
+			"object_id and object_payload cannot be provided together",
+		)
 	}
 
 	return nil

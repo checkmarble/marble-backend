@@ -65,7 +65,7 @@ func handleCreateScreeningMonitoringConfig(uc usecases.Usecases) func(c *gin.Con
 		}
 
 		if err := input.Validate(); err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			presentError(ctx, c, err)
 			return
 		}
 
@@ -99,7 +99,7 @@ func handleUpdateScreeningMonitoringConfig(uc usecases.Usecases) func(c *gin.Con
 			return
 		}
 		if err := input.Validate(); err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			presentError(ctx, c, err)
 			return
 		}
 
@@ -127,7 +127,7 @@ func handleInsertScreeningMonitoringObject(uc usecases.Usecases) func(c *gin.Con
 			return
 		}
 		if err := input.Validate(); err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			presentError(ctx, c, err)
 			return
 		}
 
