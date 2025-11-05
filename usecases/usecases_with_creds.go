@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
+	"github.com/checkmarble/marble-backend/usecases/screening_monitoring"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transfers_data_read"
 	"github.com/checkmarble/marble-backend/utils"
@@ -105,6 +106,13 @@ func (usecases *UsecasesWithCreds) NewEnforceScreeningSecurity() security.Enforc
 
 func (usecases *UsecasesWithCreds) NewEnforceAnnotationSecurity() security.EnforceSecurityAnnotation {
 	return &security.EnforceSecurityAnnotationImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewEnforceSecurityScreeningMonitoring() security.EnforceSecurityScreeningMonitoring {
+	return &security.EnforceSecurityScreeningMonitoringImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
 	}
@@ -794,4 +802,12 @@ func (usecases *UsecasesWithCreds) NewAnalyticsMetadataUsecase() AnalyticsMetada
 		analyticsFactory:   usecases.NewAnalyticsExecutorFactory(),
 		scenarioRepository: usecases.Repositories.MarbleDbRepository,
 	}
+}
+
+func (usecases *UsecasesWithCreds) NewScreeningMonitoringUsecase() screening_monitoring.ScreeningMonitoringUsecase {
+	return screening_monitoring.NewScreeningMonitoringUsecase(
+		usecases.NewExecutorFactory(),
+		usecases.NewEnforceSecurityScreeningMonitoring(),
+		usecases.Repositories.MarbleDbRepository,
+	)
 }
