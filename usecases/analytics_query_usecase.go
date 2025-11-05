@@ -93,8 +93,8 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 			"rule_name",
 			"count() filter (outcome = 'hit') as hit_count",
 			"((count() filter (outcome = 'hit')) / count()) * 100 as hit_ratio",
-			"count(distinct pivot_value) as pivot_count",
-			"(count(distinct pivot_value) / count()) * 100 as pivot_ratio",
+			"count(distinct pivot_value) filter (outcome = 'hit') as pivot_count",
+			"(count(distinct pivot_value) filter (outcome = 'hit') / count()) * 100 as pivot_ratio",
 		).
 		From(uc.analyticsFactory.BuildTarget("decision_rules")).
 		Where("created_at between ? and ?", filters.Start, filters.End).
