@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/jobs"
 	"github.com/checkmarble/marble-backend/models"
@@ -347,6 +348,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 			r.GET("/", func(c *gin.Context) {
 				c.String(http.StatusOK, "OK")
 			})
+			r.GET("/liveness", api.HandleLivenessProbe(uc))
 
 			r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
