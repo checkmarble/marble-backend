@@ -40,7 +40,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	allowedNetworksGuard := uc.NewAllowedNetworksUsecase()
 
-	r.GET("/liveness", tom, handleLivenessProbe(uc))
+	r.GET("/liveness", tom, HandleLivenessProbe(uc))
 	r.GET("/health", tom, handleHealth(uc))
 	r.GET("/version", tom, handleVersion(uc))
 	r.POST("/token", tom, allowedNetworksGuard.Guard(usecases.AllowedNetworksLogin), tokenHandler.GenerateToken)
