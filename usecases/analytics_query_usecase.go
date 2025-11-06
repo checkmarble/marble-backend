@@ -101,12 +101,13 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 			"count() filter (outcome = 'hit') as hit_count",
 			"((count() filter (outcome = 'hit')) / count()) * 100 as hit_ratio",
 			"count(distinct pivot_value) filter (outcome = 'hit') as distinct_pivots",
-			"100 - (count(distinct pivot_value) filter (outcome = 'hit') / count()) * 100 as repeat_ratio",
+			"IFNULL(100 - (count(distinct pivot_value) filter (outcome = 'hit') / NULLIF(count() filter (outcome = 'hit'), 0) ) * 100, 0) as repeat_ratio",
 		).
 		From(uc.analyticsFactory.BuildTarget("decision_rules")).
 		Where("created_at between ? and ?", filters.Start, filters.End).
 		Where("rule_name is not null").
-		GroupBy("rule_id", "rule_name")
+		GroupBy("rule_id", "rule_name").
+		OrderBy("hit_ratio desc")
 
 	query, err = uc.analyticsFactory.ApplyFilters(query, scenario, filters)
 	if err != nil {
