@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -27,14 +29,21 @@ type AnalyticsCopyRequest struct {
 	Limit int
 }
 
-func AnalyticsGetLatestRow(ctx context.Context, exec AnalyticsExecutor, table string) (uuid.UUID, time.Time, error) {
-	query := squirrel.Select("id", "created_at").From(table).OrderBy("created_at desc, id desc").Limit(1)
-	sql, _, err := query.ToSql()
+func AnalyticsGetLatestRow(ctx context.Context, exec AnalyticsExecutor, orgId, triggerObjectType, table string) (uuid.UUID, time.Time, error) {
+	query := squirrel.
+		Select("id", "created_at").
+		From(table).
+		Where("org_id = ?", orgId).
+		Where("trigger_object_type = ?", triggerObjectType).
+		OrderBy("created_at desc, id desc").
+		Limit(1)
+
+	querySql, args, err := query.ToSql()
 	if err != nil {
 		return uuid.Nil, time.Time{}, err
 	}
 
-	row := exec.QueryRowContext(ctx, sql)
+	row := exec.QueryRowContext(ctx, querySql, args...)
 
 	var (
 		id        uuid.UUID
@@ -42,7 +51,7 @@ func AnalyticsGetLatestRow(ctx context.Context, exec AnalyticsExecutor, table st
 	)
 
 	if err := row.Scan(&id, &createdAt); err != nil {
-		if IsDuckDBNoFilesError(err) {
+		if errors.Is(err, sql.ErrNoRows) || IsDuckDBNoFilesError(err) {
 			return uuid.Nil, time.Time{}, nil
 		}
 
