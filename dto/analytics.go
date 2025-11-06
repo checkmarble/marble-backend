@@ -43,7 +43,8 @@ func AdaptAnalyticsAvailableFilter(model models.AnalyticsFilter) AnalyticsAvaila
 }
 
 type AnalyticsQueryFilters struct {
-	Timezone string `json:"timezone"`
+	TimezoneName string `json:"timezone"` //nolint:tagliatelle
+	Timezone     *time.Location
 
 	Start            time.Time `json:"start" validate:"required"`
 	End              time.Time `json:"end" validate:"required"`
@@ -54,12 +55,13 @@ type AnalyticsQueryFilters struct {
 }
 
 func (f *AnalyticsQueryFilters) Validate() error {
-	tz, err := time.LoadLocation(f.Timezone)
+	tz, err := time.LoadLocation(f.TimezoneName)
 	if err != nil {
 		return errors.Newf("invalid timezone name %s", f.Timezone)
 	}
 
-	f.Timezone = tz.String()
+	f.TimezoneName = tz.String()
+	f.Timezone = tz
 
 	for _, tf := range f.Fields {
 		if err := tf.Validate(); err != nil {
