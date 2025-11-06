@@ -106,17 +106,18 @@ func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(
 	begin, end time.Time,
 ) ([]models.DecisionsByVersionByOutcome, error) {
 	decisionQuery := squirrel.StatementBuilder.
-		Select("outcome, scenario_version, score").
-		From(dbmodels.TABLE_DECISIONS).
+		Select("outcome, si.version as scenario_version, score").
+		From(dbmodels.TABLE_DECISIONS + " AS d").
+		InnerJoin(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS si ON si.id = d.scenario_iteration_id").
 		Where(squirrel.GtOrEq{
-			"created_at": begin,
+			"d.created_at": begin,
 		}).
 		Where(squirrel.LtOrEq{
-			"created_at": end,
+			"d.created_at": end,
 		}).
 		Where(squirrel.Eq{
-			"org_id":      organizationId,
-			"scenario_id": scenarioId,
+			"d.org_id":      organizationId,
+			"d.scenario_id": scenarioId,
 		})
 	phantomDecisionQuery := squirrel.StatementBuilder.
 		Select("outcome, scenario_version, score").
