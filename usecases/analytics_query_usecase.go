@@ -32,7 +32,9 @@ func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context,
 		return nil, err
 	}
 
-	subquery := squirrel.Select("time_bucket('1 day', created_at::date) as date, outcome, count() as decisions").
+	_, tzOffset := filters.End.In(filters.Timezone).Zone()
+
+	subquery := squirrel.Select(fmt.Sprintf("(created_at + interval %d seconds)::date as date, outcome, count() as decisions", tzOffset)).
 		From(uc.analyticsFactory.BuildTarget("decisions")).
 		Where("created_at between ? and ?", filters.Start, filters.End).
 		GroupBy("date", "outcome")
