@@ -194,6 +194,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/screening-monitoring/configs/:config_id", tom,
 		handleUpdateScreeningMonitoringConfig(uc),
 	)
+	router.POST("/screening-monitoring/objects", tom, handleInsertScreeningMonitoringObject(uc))
 
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))

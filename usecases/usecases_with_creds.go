@@ -807,7 +807,12 @@ func (usecases *UsecasesWithCreds) NewAnalyticsMetadataUsecase() AnalyticsMetada
 func (usecases *UsecasesWithCreds) NewScreeningMonitoringUsecase() screening_monitoring.ScreeningMonitoringUsecase {
 	return screening_monitoring.NewScreeningMonitoringUsecase(
 		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
 		usecases.NewEnforceSecurityScreeningMonitoring(),
 		usecases.Repositories.MarbleDbRepository,
+		&usecases.Repositories.ClientDbRepository,
+		usecases.Repositories.OrganizationSchemaRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		utils.Ptr(usecases.NewIngestionUseCase()),
 	)
 }

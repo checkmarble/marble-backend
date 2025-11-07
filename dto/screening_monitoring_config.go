@@ -1,10 +1,12 @@
 package dto
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type ScreeningMonitoringConfigDto struct {
@@ -43,15 +45,24 @@ type CreateScreeningMonitoringConfigDto struct {
 
 func (dto CreateScreeningMonitoringConfigDto) Validate() error {
 	if len(dto.Datasets) == 0 {
-		return errors.New("datasets are required for screening monitoring config")
+		return errors.Wrap(
+			models.BadParameterError,
+			"datasets are required for screening monitoring config",
+		)
 	}
 
 	if dto.MatchThreshold < 0 || dto.MatchThreshold > 100 {
-		return errors.New("match threshold must be between 0 and 100")
+		return errors.Wrap(
+			models.BadParameterError,
+			"match threshold must be between 0 and 100",
+		)
 	}
 
 	if dto.MatchLimit < 1 {
-		return errors.New("match limit must be greater than or equal to 0")
+		return errors.Wrap(
+			models.BadParameterError,
+			"match limit must be at least 1",
+		)
 	}
 
 	return nil
@@ -78,15 +89,24 @@ type UpdateScreeningMonitoringConfigDto struct {
 
 func (dto UpdateScreeningMonitoringConfigDto) Validate() error {
 	if dto.MatchThreshold != nil && (*dto.MatchThreshold < 0 || *dto.MatchThreshold > 100) {
-		return errors.New("match threshold must be between 0 and 100")
+		return errors.Wrap(
+			models.BadParameterError,
+			"match threshold must be between 0 and 100",
+		)
 	}
 
 	if dto.MatchLimit != nil && *dto.MatchLimit < 0 {
-		return errors.New("match limit must be greater than or equal to 0")
+		return errors.Wrap(
+			models.BadParameterError,
+			"match limit must be at least 1",
+		)
 	}
 
 	if dto.Datasets != nil && len(*dto.Datasets) == 0 {
-		return errors.New("datasets cannot be empty")
+		return errors.Wrap(
+			models.BadParameterError,
+			"datasets cannot be empty",
+		)
 	}
 
 	return nil
@@ -100,5 +120,39 @@ func AdaptUpdateScreeningMonitoringConfigDtoToModel(dto UpdateScreeningMonitorin
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
 		Enabled:        dto.Enabled,
+	}
+}
+
+type InsertScreeningMonitoringObjectDto struct {
+	ObjectType    string           `json:"object_type" binding:"required"`
+	ConfigId      uuid.UUID        `json:"config_id" binding:"required"`
+	ObjectId      *string          `json:"object_id"`
+	ObjectPayload *json.RawMessage `json:"object_payload"`
+}
+
+func (dto InsertScreeningMonitoringObjectDto) Validate() error {
+	if dto.ObjectId == nil && dto.ObjectPayload == nil {
+		return errors.Wrap(
+			models.BadParameterError,
+			"object_id or object_payload is required",
+		)
+	}
+
+	if dto.ObjectId != nil && dto.ObjectPayload != nil {
+		return errors.Wrap(
+			models.BadParameterError,
+			"object_id and object_payload cannot be provided together",
+		)
+	}
+
+	return nil
+}
+
+func AdaptInsertScreeningMonitoringObjectDtoToModel(dto InsertScreeningMonitoringObjectDto) models.InsertScreeningMonitoringObject {
+	return models.InsertScreeningMonitoringObject{
+		ObjectType:    dto.ObjectType,
+		ConfigId:      dto.ConfigId,
+		ObjectId:      dto.ObjectId,
+		ObjectPayload: dto.ObjectPayload,
 	}
 }

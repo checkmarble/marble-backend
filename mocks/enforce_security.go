@@ -201,3 +201,18 @@ func (e *EnforceSecurity) CanIngest(orgId string) error {
 	args := e.Called(orgId)
 	return args.Error(0)
 }
+
+func (e *EnforceSecurity) ReadScreeningMonitoringConfig(config models.ScreeningMonitoringConfig) error {
+	args := e.Called(config)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) WriteScreeningMonitoringConfig(orgId string) error {
+	args := e.Called(orgId)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) WriteMonitoredObject(orgId string) error {
+	args := e.Called(orgId)
+	return args.Error(0)
+}

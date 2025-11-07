@@ -112,15 +112,6 @@ func (repo MarbleDbRepository) GetDataModel(
 			}
 		}
 
-		var ftmEntity *models.FollowTheMoneyEntity
-		if field.TableFTMEntity != nil {
-			entity, err := models.FollowTheMoneyEntityFrom(*field.TableFTMEntity)
-			if err != nil {
-				return models.DataModel{}, err
-			}
-			ftmEntity = &entity
-		}
-
 		var ftmProperty *models.FollowTheMoneyProperty
 		if field.FieldFTMProperty != nil {
 			property, err := models.FollowTheMoneyPropertyFrom(*field.FieldFTMProperty)
@@ -132,6 +123,14 @@ func (repo MarbleDbRepository) GetDataModel(
 
 		_, ok := dataModel.Tables[field.TableName]
 		if !ok {
+			var ftmEntity *models.FollowTheMoneyEntity
+			if field.TableFTMEntity != nil {
+				entity, err := models.FollowTheMoneyEntityFrom(*field.TableFTMEntity)
+				if err != nil {
+					return models.DataModel{}, err
+				}
+				ftmEntity = &entity
+			}
 			dataModel.Tables[field.TableName] = models.Table{
 				ID:            field.TableID,
 				Name:          field.TableName,
@@ -152,7 +151,6 @@ func (repo MarbleDbRepository) GetDataModel(
 			Values:      values,
 			FTMProperty: ftmProperty,
 		}
-
 	}
 
 	for _, link := range links {

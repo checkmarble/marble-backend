@@ -8,7 +8,7 @@ import (
 )
 
 func (uc *ScreeningMonitoringUsecase) GetScreeningMonitoringConfig(ctx context.Context, id uuid.UUID) (models.ScreeningMonitoringConfig, error) {
-	config, err := uc.screeningMonitoringRepository.GetScreeningMonitoringConfig(ctx, uc.executorFactory.NewExecutor(), id)
+	config, err := uc.repository.GetScreeningMonitoringConfig(ctx, uc.executorFactory.NewExecutor(), id)
 	if err != nil {
 		return models.ScreeningMonitoringConfig{}, err
 	}
@@ -21,7 +21,7 @@ func (uc *ScreeningMonitoringUsecase) GetScreeningMonitoringConfig(ctx context.C
 }
 
 func (uc *ScreeningMonitoringUsecase) GetScreeningMonitoringConfigsByOrgId(ctx context.Context, orgId string) ([]models.ScreeningMonitoringConfig, error) {
-	configs, err := uc.screeningMonitoringRepository.GetScreeningMonitoringConfigsByOrgId(ctx,
+	configs, err := uc.repository.GetScreeningMonitoringConfigsByOrgId(ctx,
 		uc.executorFactory.NewExecutor(), orgId)
 	if err != nil {
 		return []models.ScreeningMonitoringConfig{}, err
@@ -44,7 +44,7 @@ func (uc *ScreeningMonitoringUsecase) CreateScreeningMonitoringConfig(
 		return models.ScreeningMonitoringConfig{}, err
 	}
 
-	configCreated, err := uc.screeningMonitoringRepository.CreateScreeningMonitoringConfig(ctx,
+	configCreated, err := uc.repository.CreateScreeningMonitoringConfig(ctx,
 		uc.executorFactory.NewExecutor(), input)
 	if err != nil {
 		return models.ScreeningMonitoringConfig{}, err
@@ -59,7 +59,7 @@ func (uc *ScreeningMonitoringUsecase) UpdateScreeningMonitoringConfig(
 	input models.UpdateScreeningMonitoringConfig,
 ) (models.ScreeningMonitoringConfig, error) {
 	exec := uc.executorFactory.NewExecutor()
-	config, err := uc.screeningMonitoringRepository.GetScreeningMonitoringConfig(ctx, exec, id)
+	config, err := uc.repository.GetScreeningMonitoringConfig(ctx, exec, id)
 	if err != nil {
 		return models.ScreeningMonitoringConfig{}, err
 	}
@@ -68,7 +68,7 @@ func (uc *ScreeningMonitoringUsecase) UpdateScreeningMonitoringConfig(
 		return models.ScreeningMonitoringConfig{}, err
 	}
 
-	configUpdated, err := uc.screeningMonitoringRepository.UpdateScreeningMonitoringConfig(ctx, exec, id, input)
+	configUpdated, err := uc.repository.UpdateScreeningMonitoringConfig(ctx, exec, id, input)
 	if err != nil {
 		return models.ScreeningMonitoringConfig{}, err
 	}
