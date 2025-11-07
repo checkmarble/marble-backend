@@ -792,6 +792,7 @@ func (usecases *UsecasesWithCreds) NewAnalyticsQueryUsecase() AnalyticsQueryUsec
 		analyticsFactory:   usecases.NewAnalyticsExecutorFactory(),
 		license:            usecases.license,
 		scenarioRepository: usecases.Repositories.MarbleDbRepository,
+		inboxReader:        usecases.NewInboxReader(),
 	}
 }
 
