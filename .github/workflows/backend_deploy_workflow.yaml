@@ -89,6 +89,13 @@ jobs:
             --image=${{ env.VERSION_IMAGE }} \
             --region="europe-west1"
 
+      - name: Deploy server
+        run: |
+          gcloud run deploy marble-analytics-backend \
+            --quiet \
+            --image=${{ env.VERSION_IMAGE }} \
+            --region="europe-west1"
+
       - name: Deploy execute async worker service
         run: |
           gcloud run deploy marble-backend-worker \

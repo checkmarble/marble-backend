@@ -25,7 +25,7 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
-func RunServer(config CompiledConfig) error {
+func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	appName := fmt.Sprintf("marble-backend %s", config.Version)
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
@@ -57,21 +57,23 @@ func RunServer(config CompiledConfig) error {
 
 	// This is where we read the environment variables and set up the configuration for the application.
 	apiConfig := api.Configuration{
-		Env:                 utils.GetEnv("ENV", "production"),
-		AppName:             "marble-backend",
-		AppVersion:          config.Version,
-		MarbleApiUrl:        utils.GetEnv("MARBLE_API_URL", ""),
-		MarbleAppUrl:        marbleAppUrl,
-		MarbleBackofficeUrl: utils.GetEnv("MARBLE_BACKOFFICE_URL", ""),
-		Port:                utils.GetRequiredEnv[string]("PORT"),
-		RequestLoggingLevel: utils.GetEnv("REQUEST_LOGGING_LEVEL", "all"),
-		TokenLifetimeMinute: utils.GetEnv("TOKEN_LIFETIME_MINUTE", 60*2),
-		SegmentWriteKey:     utils.GetEnv("SEGMENT_WRITE_KEY", config.SegmentWriteKey),
-		DisableSegment:      utils.GetEnv("DISABLE_SEGMENT", false),
-		BatchTimeout:        time.Duration(utils.GetEnv("BATCH_TIMEOUT_SECOND", 55)) * time.Second,
-		DecisionTimeout:     time.Duration(utils.GetEnv("DECISION_TIMEOUT_SECOND", 10)) * time.Second,
-		DefaultTimeout:      time.Duration(utils.GetEnv("DEFAULT_TIMEOUT_SECOND", 5)) * time.Second,
-		AnalyticsTimeout:    utils.GetEnvDuration("ANALYTICS_TIMEOUT", 15*time.Second),
+		ServerMode:           mode,
+		Env:                  utils.GetEnv("ENV", "production"),
+		AppName:              "marble-backend",
+		AppVersion:           config.Version,
+		MarbleApiUrl:         utils.GetEnv("MARBLE_API_URL", ""),
+		MarbleAppUrl:         marbleAppUrl,
+		MarbleBackofficeUrl:  utils.GetEnv("MARBLE_BACKOFFICE_URL", ""),
+		Port:                 utils.GetRequiredEnv[string]("PORT"),
+		RequestLoggingLevel:  utils.GetEnv("REQUEST_LOGGING_LEVEL", "all"),
+		TokenLifetimeMinute:  utils.GetEnv("TOKEN_LIFETIME_MINUTE", 60*2),
+		SegmentWriteKey:      utils.GetEnv("SEGMENT_WRITE_KEY", config.SegmentWriteKey),
+		DisableSegment:       utils.GetEnv("DISABLE_SEGMENT", false),
+		BatchTimeout:         time.Duration(utils.GetEnv("BATCH_TIMEOUT_SECOND", 55)) * time.Second,
+		DecisionTimeout:      time.Duration(utils.GetEnv("DECISION_TIMEOUT_SECOND", 10)) * time.Second,
+		DefaultTimeout:       time.Duration(utils.GetEnv("DEFAULT_TIMEOUT_SECOND", 5)) * time.Second,
+		AnalyticsTimeout:     utils.GetEnvDuration("ANALYTICS_TIMEOUT", 15*time.Second),
+		AnalyticsProxyApiUrl: utils.GetEnv("ANALYTICS_PROXY_API_URL", ""),
 
 		GcpConfig: gcpConfig,
 
@@ -272,6 +274,15 @@ func RunServer(config CompiledConfig) error {
 		}
 
 		apiConfig.AnalyticsEnabled = true
+	}
+	if apiConfig.AnalyticsProxyApiUrl != "" {
+		u, err := url.Parse(apiConfig.AnalyticsProxyApiUrl)
+		if err != nil {
+			return errors.Newf("cannot parse analytics proxy URL: %s (%s)", u, err.Error())
+		}
+		if !u.IsAbs() {
+			return errors.Newf("cannot parse analytics proxy URL: %s", u)
+		}
 	}
 
 	var lagoConfig infra.LagoConfig

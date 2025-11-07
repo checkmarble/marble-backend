@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 
+	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/cmd"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -60,7 +61,13 @@ func main() {
 	}
 
 	if *shouldRunServer {
-		err := cmd.RunServer(compiledConfig)
+		err := cmd.RunServer(compiledConfig, api.ServerModeDefault)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	if *shouldRunAnalyticsServer {
+		err := cmd.RunServer(compiledConfig, api.ServerModeAnalytics)
 		if err != nil {
 			log.Fatal(err)
 		}
