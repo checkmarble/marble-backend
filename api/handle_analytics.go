@@ -2,7 +2,9 @@ package api
 
 import (
 	"cmp"
+	"io"
 	"net/http"
+	"net/url"
 	"slices"
 
 	"github.com/gin-gonic/gin"
@@ -113,5 +115,48 @@ func handleAnalyticsAvailableFilters(uc usecases.Usecases) func(c *gin.Context) 
 		})
 
 		c.JSON(http.StatusOK, fields)
+	}
+}
+
+func handleAnalyticsProxy(proxyApiUrl string) func(c *gin.Context) {
+	proxyUrl, err := url.Parse(proxyApiUrl)
+	if err != nil {
+		proxyUrl = nil
+	}
+
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		if proxyUrl == nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+
+		c.Request.URL.Scheme = proxyUrl.Scheme
+		c.Request.URL.Host = proxyUrl.Host
+
+		req, err := http.NewRequestWithContext(ctx, c.Request.Method, c.Request.URL.String(), c.Request.Body)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		req.Header = c.Request.Header
+
+		resp, err := http.DefaultClient.Do(req)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		if _, err := io.Copy(c.Writer, resp.Body); presentError(ctx, c, err) {
+			return
+		}
+
+		c.Status(resp.StatusCode)
+
+		for k, vs := range resp.Header {
+			for _, v := range vs {
+				c.Writer.Header().Add(k, v)
+			}
+		}
 	}
 }

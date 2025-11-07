@@ -7,10 +7,18 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/auth"
 )
 
+type ServerMode int
+
+const (
+	ServerModeDefault ServerMode = iota
+	ServerModeAnalytics
+)
+
 type Configuration struct {
 	Env                 string
 	AppName             string
 	AppVersion          string
+	ServerMode          ServerMode
 	Port                string
 	MarbleApiUrl        string
 	MarbleAppUrl        string
@@ -23,8 +31,9 @@ type Configuration struct {
 	DecisionTimeout     time.Duration
 	DefaultTimeout      time.Duration
 
-	AnalyticsEnabled bool
-	AnalyticsTimeout time.Duration
+	AnalyticsEnabled     bool
+	AnalyticsTimeout     time.Duration
+	AnalyticsProxyApiUrl string
 
 	TokenProvider  auth.TokenProvider
 	FirebaseConfig FirebaseConfig

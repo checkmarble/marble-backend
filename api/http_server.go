@@ -47,7 +47,15 @@ func NewServer(
 ) *http.Server {
 	o := applyOptions(opts)
 
-	addRoutes(router, conf, uc, auth, tokenHandler, logger)
+	addDefaultRoutes(router, conf, uc)
+
+	switch conf.ServerMode {
+	case ServerModeAnalytics:
+		runStandaloneAnalyticsRoutes(router, conf, uc, auth)
+
+	default:
+		addRoutes(router, conf, uc, auth, tokenHandler, logger)
+	}
 
 	var host string
 	if o.localTest {

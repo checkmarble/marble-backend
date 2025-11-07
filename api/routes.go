@@ -31,6 +31,14 @@ func timeoutMiddleware(duration time.Duration) gin.HandlerFunc {
 	)
 }
 
+func addDefaultRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases) {
+	tom := timeoutMiddleware(conf.DefaultTimeout)
+
+	r.GET("/liveness", tom, HandleLivenessProbe(uc))
+	r.GET("/health", tom, handleHealth(uc))
+	r.GET("/version", tom, handleVersion(uc))
+}
+
 func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth utils.Authentication, tokenHandler TokenHandler, logger *slog.Logger) {
 	tom := timeoutMiddleware(conf.DefaultTimeout)
 	parsedAppUrl, err := url.Parse(conf.MarbleAppUrl)
@@ -40,9 +48,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	allowedNetworksGuard := uc.NewAllowedNetworksUsecase()
 
-	r.GET("/liveness", tom, HandleLivenessProbe(uc))
-	r.GET("/health", tom, handleHealth(uc))
-	r.GET("/version", tom, handleVersion(uc))
 	r.POST("/token", tom, allowedNetworksGuard.Guard(usecases.AllowedNetworksLogin), tokenHandler.GenerateToken)
 	r.GET("/config", tom, handleGetConfig(uc, conf))
 	r.GET("/is-sso-available", tom, handleIsSSOEnabled(uc))
@@ -382,8 +387,21 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PUT("/settings/ai", tom, HandlePutAiSettingForOrganization(uc))
 
 	if conf.AnalyticsEnabled {
-		addAnalyticsRoutes(router, conf, uc)
+		if conf.AnalyticsProxyApiUrl == "" {
+			addAnalyticsRoutes(router, conf, uc)
+		} else {
+			addAnalyticsProxyRoutes(router, conf)
+		}
 	}
+}
+
+func runStandaloneAnalyticsRoutes(router gin.IRoutes, conf Configuration, uc usecases.Usecases, auth utils.Authentication) {
+	allowedNetworksGuard := uc.NewAllowedNetworksUsecase()
+
+	router = router.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
+		allowedNetworksGuard.Guard(usecases.AllowedNetworksOther))
+
+	addAnalyticsRoutes(router, conf, uc)
 }
 
 func addAnalyticsRoutes(router gin.IRoutes, conf Configuration, uc usecases.Usecases) {
@@ -391,4 +409,10 @@ func addAnalyticsRoutes(router gin.IRoutes, conf Configuration, uc usecases.Usec
 
 	router.POST("/analytics/query/:query", tom, handleAnalyticsQuery(uc))
 	router.POST("/analytics/available-filters", tom, handleAnalyticsAvailableFilters(uc))
+}
+
+func addAnalyticsProxyRoutes(router gin.IRoutes, conf Configuration) {
+	tom := timeoutMiddleware(conf.AnalyticsTimeout)
+
+	router.Match([]string{http.MethodPost}, "/analytics/*path", tom, handleAnalyticsProxy(conf.AnalyticsProxyApiUrl))
 }
