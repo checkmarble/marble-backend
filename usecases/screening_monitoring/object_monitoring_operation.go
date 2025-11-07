@@ -148,14 +148,6 @@ func extractObjectIDFromPayload(payload json.RawMessage) (string, error) {
 	return objectID.ObjectID, nil
 }
 
-// Call screening provider to perform the screening
-func (uc *ScreeningMonitoringUsecase) doScreening(
-	ctx context.Context,
-	query models.OpenSanctionsQuery,
-) (models.ScreeningRawSearchResponseWithMatches, error) {
-	return uc.screeningProvider.Search(ctx, query)
-}
-
 // Ingest the object from payload and return the object ID from payload
 func (uc *ScreeningMonitoringUsecase) ingestObject(
 	ctx context.Context,
