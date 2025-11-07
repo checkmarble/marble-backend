@@ -59,3 +59,19 @@ type ScreeningHits struct {
 	HitRatio            float64   `json:"hit_ratio"`
 	AvgHitsPerScreening float64   `json:"avg_hits_per_screening"`
 }
+
+type CaseStatusByDate struct {
+	Date          time.Time `json:"date"`
+	Pending       int       `json:"pending"`
+	Investigating int       `json:"investigating"`
+	Closed        int       `json:"closed"`
+	Snoozed       int       `json:"snoozed"`
+}
+
+type CaseStatusByInbox struct {
+	Inbox         string `json:"inbox"`
+	Pending       int    `json:"pending"`
+	Investigating int    `json:"investigating"`
+	Closed        int    `json:"closed"`
+	Snoozed       int    `json:"snoozed"`
+}

@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"slices"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -42,19 +43,32 @@ func handleAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 
 		var filters dto.AnalyticsQueryFilters
 
-		if err := c.ShouldBindJSON(&filters); presentError(ctx, c, err) {
-			c.Status(http.StatusBadRequest)
-			return
+		if err := c.ShouldBindJSON(&filters); err != nil {
+			switch {
+			case errors.Is(err, io.EOF):
+				// No body is valid for some queries
+
+			default:
+				if presentError(ctx, c, err) {
+					c.Status(http.StatusBadRequest)
+					return
+				}
+			}
 		}
 		if err := filters.Validate(); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		var (
-			results any
-			err     error
-		)
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			c.Status(http.StatusUnauthorized)
+			return
+		}
+
+		filters.OrgId = orgId
+
+		var results any
 
 		switch c.Param("query") {
 		case "decision_outcomes_per_day":
@@ -69,6 +83,14 @@ func handleAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 			results, err = uc.RuleCoOccurenceMatrix(c.Request.Context(), filters)
 		case "screening_hits":
 			results, err = uc.ScreeningHits(c.Request.Context(), filters)
+
+		// The following endpoint use Postgres, for now, instead of DuckDB.
+
+		case "case_status_by_date":
+			results, err = uc.CaseStatusByDate(c.Request.Context(), filters)
+		case "case_status_by_inbox":
+			results, err = uc.CaseStatusByInbox(c.Request.Context(), filters)
+
 		default:
 			c.Status(http.StatusNotFound)
 			return

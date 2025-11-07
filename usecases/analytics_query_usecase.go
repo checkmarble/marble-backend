@@ -9,10 +9,14 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type AnalyticsQueryUsecase struct {
@@ -23,6 +27,7 @@ type AnalyticsQueryUsecase struct {
 
 	license            models.LicenseValidation
 	scenarioRepository repositories.ScenarioUsecaseRepository
+	inboxReader        inboxes.InboxReader
 }
 
 func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context,
@@ -285,6 +290,123 @@ func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context,
 	return repositories.AnalyticsScanStruct[analytics.ScreeningHits](ctx, exec, query)
 }
 
+func (uc AnalyticsQueryUsecase) CaseStatusByDate(ctx context.Context,
+	filters dto.AnalyticsQueryFilters,
+) ([]analytics.CaseStatusByDate, error) {
+	if !uc.license.Analytics {
+		return []analytics.CaseStatusByDate{}, nil
+	}
+
+	_, tzOffset := filters.End.In(filters.Timezone).Zone()
+
+	exec := uc.executorFactory.NewExecutor()
+
+	inboxes, err := uc.getAvailableInboxIds(ctx, exec, filters.OrgId)
+	if err != nil {
+		return nil, err
+	}
+
+	cte := repositories.WithCtes("case_statuses", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+		return b.Select(
+			fmt.Sprintf("created_at + interval '%d seconds' as created_at", tzOffset),
+			"status",
+			"snoozed_until is not null and snoozed_until > now() as snoozed",
+		).
+			From(dbmodels.TABLE_CASES).
+			Where("org_id = ?", filters.OrgId).
+			Where(squirrel.Eq{"inbox_id": inboxes}).
+			Where("created_at >= (now() - interval '10 days')::date")
+	})
+
+	query := squirrel.
+		Select(
+			"created_at::date as date",
+			"count(*) filter (where snoozed) as snoozed",
+			"count(*) filter (where not snoozed  and status = 'pending') as pending",
+			"count(*) filter (where not snoozed and status = 'investigating') as investigating",
+			"count(*) filter (where not snoozed  and status = 'closed') as closed",
+		).
+		PrefixExpr(cte).
+		From("case_statuses").
+		GroupBy("created_at::date").
+		OrderBy("created_at::date")
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	output, err := pgx.CollectRows[analytics.CaseStatusByDate](rows, pgx.RowToStructByName)
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
+}
+
+func (uc AnalyticsQueryUsecase) CaseStatusByInbox(ctx context.Context,
+	filters dto.AnalyticsQueryFilters,
+) ([]analytics.CaseStatusByInbox, error) {
+	if !uc.license.Analytics {
+		return []analytics.CaseStatusByInbox{}, nil
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+
+	inboxes, err := uc.getAvailableInboxIds(ctx, exec, filters.OrgId)
+	if err != nil {
+		return nil, err
+	}
+
+	cte := repositories.WithCtes("case_statuses", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+		return b.Select(
+			"i.name as inbox",
+			"c.status",
+			"snoozed_until is not null and snoozed_until > now() and boost = 'unsnoozed' as snoozed",
+		).
+			From(dbmodels.TABLE_CASES+" c").
+			InnerJoin(dbmodels.TABLE_INBOXES+" i on i.id = c.inbox_id").
+			Where("org_id = ?", filters.OrgId).
+			Where(squirrel.Eq{"inbox_id": inboxes}).
+			Where("c.created_at >= (now() - interval '10 days')::date")
+	})
+
+	query := squirrel.
+		Select(
+			"inbox",
+			"count(*) filter (where snoozed) as snoozed",
+			"count(*) filter (where not snoozed and status = 'pending') as pending",
+			"count(*) filter (where not snoozed and status = 'investigating') as investigating",
+			"count(*) filter (where not snoozed and status = 'closed') as closed",
+		).
+		PrefixExpr(cte).
+		From("case_statuses").
+		GroupBy("inbox").
+		OrderBy("count(*) desc, inbox")
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	output, err := pgx.CollectRows[analytics.CaseStatusByInbox](rows, pgx.RowToStructByName)
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
+}
+
 func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid.UUID) (models.Scenario, repositories.AnalyticsExecutor, error) {
 	scenario, err := uc.scenarioRepository.GetScenarioById(ctx,
 		uc.executorFactory.NewExecutor(), scenarioId.String())
@@ -301,4 +423,16 @@ func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid
 	}
 
 	return scenario, exec, nil
+}
+
+func (uc AnalyticsQueryUsecase) getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]uuid.UUID, error) {
+	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, organizationId, false)
+	if err != nil {
+		return []uuid.UUID{}, errors.Wrap(err, "failed to list available inboxes in usecase")
+	}
+	availableInboxIds := make([]uuid.UUID, len(inboxes))
+	for i, inbox := range inboxes {
+		availableInboxIds[i] = inbox.Id
+	}
+	return availableInboxIds, nil
 }

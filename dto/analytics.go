@@ -43,6 +43,8 @@ func AdaptAnalyticsAvailableFilter(model models.AnalyticsFilter) AnalyticsAvaila
 }
 
 type AnalyticsQueryFilters struct {
+	OrgId string `json:"-" `
+
 	TimezoneName string `json:"timezone"` //nolint:tagliatelle
 	Timezone     *time.Location
 
