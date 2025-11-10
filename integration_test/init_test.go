@@ -112,7 +112,7 @@ func TestMain(m *testing.M) {
 	logger := utils.NewLogger("text")
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
-	err = migrater.Run(ctx)
+	err = migrater.Run(ctx, nil)
 	if err != nil {
 		log.Fatalf("Could not run migrations: %s", err)
 	}

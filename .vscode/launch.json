@@ -26,7 +26,7 @@
       "envFile": "${workspaceFolder}/.env",
       "args": [
         "--migrations",
-        "--down"
+        "--down-to=${input:migrateDownTo}"
       ],
       "console": "integratedTerminal"
     },
@@ -82,6 +82,12 @@
         "case_review",
         "analytics_export"
       ]
+    },
+    {
+      "id": "migrateDownTo",
+      "description": "Migrate down to a specific version",
+      "type": "promptString",
+      "default": "-1"
     }
   ]
 }

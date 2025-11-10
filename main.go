@@ -25,7 +25,7 @@ var compiledConfig = cmd.CompiledConfig{
 
 func main() {
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
-	migrateDown := flag.Bool("down", false, "Migrate down")
+	migrateDownTo := flag.Int64("down-to", -1, "Migrate down to a specific version (expects an integer version number)")
 	shouldRunServer := flag.Bool("server", false, "Run server")
 	shouldRunWorker := flag.Bool("worker", false, "Run workers on the task queues")
 	shouldRunAnalyticsServer := flag.Bool("analytics", false, "Run analytics server")
@@ -42,6 +42,11 @@ func main() {
 	}
 
 	flag.Parse()
+	// reset the argument to nil if not passed or default value is passed, for clearer edge case handling
+	// in the code downstream.
+	if *migrateDownTo == -1 {
+		migrateDownTo = nil
+	}
 
 	if !*shouldRunWorker && (*workerOnly != "" || *workerOnlyArgs != "") {
 		log.Fatal("-worker-only and -worker-args can only be used when running the worker")
@@ -55,11 +60,11 @@ func main() {
 		slog.Bool("shouldRunAnalyticsServer", *shouldRunAnalyticsServer),
 	)
 
-	if *migrateDown && !*shouldRunMigrations {
-		log.Fatal("-down can only be used together with -migrations")
+	if migrateDownTo != nil && !*shouldRunMigrations {
+		log.Fatal("-down-to can only be used together with -migrations")
 	}
 	if *shouldRunMigrations {
-		if err := cmd.RunMigrations(apiVersion, *migrateDown); err != nil {
+		if err := cmd.RunMigrations(apiVersion, migrateDownTo); err != nil {
 			log.Fatal(err)
 		}
 	}

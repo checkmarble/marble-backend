@@ -89,7 +89,7 @@ func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContaine
 	pgConfig := infra.PgConfig{ConnectionString: dsn}
 	migrator := repositories.NewMigrater(pgConfig)
 
-	if err = migrator.Run(ctx); err != nil {
+	if err = migrator.Run(ctx, nil); err != nil {
 		log.Fatal(err)
 	}
 
@@ -125,7 +125,10 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}
 
-	cfg := api.Configuration{Env: "development", MarbleAppUrl: "http://x", DefaultTimeout: 5 * time.Second, TokenProvider: auth.TokenProviderFirebase}
+	cfg := api.Configuration{
+		Env: "development", MarbleAppUrl: "http://x",
+		DefaultTimeout: 5 * time.Second, TokenProvider: auth.TokenProviderFirebase,
+	}
 	key, err := rsa.GenerateKey(rand.Reader, 128)
 	if err != nil {
 		t.Fatal(err)
