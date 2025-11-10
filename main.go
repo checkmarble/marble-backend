@@ -25,6 +25,7 @@ var compiledConfig = cmd.CompiledConfig{
 
 func main() {
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
+	migrateDown := flag.Bool("down", false, "Migrate down")
 	shouldRunServer := flag.Bool("server", false, "Run server")
 	shouldRunWorker := flag.Bool("worker", false, "Run workers on the task queues")
 	shouldRunAnalyticsServer := flag.Bool("analytics", false, "Run analytics server")
@@ -54,8 +55,11 @@ func main() {
 		slog.Bool("shouldRunAnalyticsServer", *shouldRunAnalyticsServer),
 	)
 
+	if *migrateDown && !*shouldRunMigrations {
+		log.Fatal("-down can only be used together with -migrations")
+	}
 	if *shouldRunMigrations {
-		if err := cmd.RunMigrations(apiVersion); err != nil {
+		if err := cmd.RunMigrations(apiVersion, *migrateDown); err != nil {
 			log.Fatal(err)
 		}
 	}
