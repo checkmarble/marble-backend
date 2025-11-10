@@ -18,6 +18,19 @@
       "console": "integratedTerminal"
     },
     {
+      "name": "Migrate down (.env)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/.",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "--migrations",
+        "--down"
+      ],
+      "console": "integratedTerminal"
+    },
+    {
       "name": "Launch task queue workers (.env)",
       "type": "go",
       "request": "launch",
