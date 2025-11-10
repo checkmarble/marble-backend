@@ -25,16 +25,6 @@ import (
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
 
-// Controls the direction of the migration. Using goose conventions, up migrates all the way up, while down migrates just one step down.
-// NB: this controls only the Marble DB migrations. River migrations are run in the up direction in case of up, or skipped in case of down.
-// There is no strong need to control river migrations down for now, as this is typically only run once every few versions with new river versions.
-type MigrationDirection int
-
-const (
-	MigrationUp MigrationDirection = iota
-	MigrationDown
-)
-
 type Migrater struct {
 	dbMigrationsFileSystem embed.FS
 	pgConfig               infra.PgConfig
@@ -48,7 +38,11 @@ func NewMigrater(pgConfig infra.PgConfig) *Migrater {
 	}
 }
 
-func (m *Migrater) Run(ctx context.Context, direction MigrationDirection) error {
+// The argument "migrateDownTo" controls the direction of the migration and how far to migrate down.
+// NB: this controls only the Marble DB migrations. River migrations are run in the up direction if Marble migrates
+// up, or skipped if Marble migrates down. There is no strong need to control river migrations down for now, as
+// this is typically only run once every few versions with new river versions.
+func (m *Migrater) Run(ctx context.Context, migrateDownTo *int64) error {
 	connectionString := m.pgConfig.GetConnectionString()
 	cfg, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
@@ -72,11 +66,11 @@ func (m *Migrater) Run(ctx context.Context, direction MigrationDirection) error 
 	}
 
 	// Now run the migrations
-	if err := m.runMarbleDbMigrations(ctx, direction); err != nil {
+	if err := m.runMarbleDbMigrations(ctx, migrateDownTo); err != nil {
 		return errors.Wrap(err, "runMarbleDbMigrations error")
 	}
 
-	if direction == MigrationUp {
+	if migrateDownTo == nil {
 		pgxPool, err := m.openDbPgx(ctx, cfg)
 		if err != nil {
 			return errors.Wrap(err, "unable to open db in Migrater")
@@ -125,16 +119,15 @@ func (m *Migrater) openDbPgx(ctx context.Context, cfg *pgxpool.Config) (*pgxpool
 	return pool, nil
 }
 
-func (m *Migrater) runMarbleDbMigrations(ctx context.Context, direction MigrationDirection) error {
+func (m *Migrater) runMarbleDbMigrations(ctx context.Context, migrateDownTo *int64) error {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, "Migrations starting to setup marble DB")
 	goose.SetBaseFS(m.dbMigrationsFileSystem)
 	if err := goose.SetDialect("postgres"); err != nil {
 		return err
 	}
-	if direction == MigrationUp {
+	if migrateDownTo == nil {
 		return goose.Up(m.db, "migrations")
-	} else {
-		return goose.Down(m.db, "migrations")
 	}
+	return goose.DownTo(m.db, "migrations", *migrateDownTo)
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func RunMigrations(apiVersion string, migrateDown bool) error {
+func RunMigrations(apiVersion string, migrateDownTo *int64) error {
 	pgConfig := infra.PgConfig{
 		ConnectionString: utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:         utils.GetEnv("PG_DATABASE", "marble"),
@@ -41,11 +41,7 @@ func RunMigrations(apiVersion string, migrateDown bool) error {
 
 	migrater := repositories.NewMigrater(pgConfig)
 
-	direction := repositories.MigrationUp
-	if migrateDown {
-		direction = repositories.MigrationDown
-	}
-	if err := migrater.Run(ctx, direction); err != nil {
+	if err := migrater.Run(ctx, migrateDownTo); err != nil {
 		logger.ErrorContext(ctx, fmt.Sprintf("error running migrations: %v", err))
 		return err
 	}
