@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
+// TMP, to be moved to a common place if we keep it here.
 func getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
 	dataAccessors := []ast.Node{}
 	var recursiveDatabaseAccessor func(

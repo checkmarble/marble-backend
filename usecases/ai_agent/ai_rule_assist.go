@@ -94,8 +94,16 @@ func (uc *AiAgentUsecase) GenerateAstRule(
 	if err != nil {
 		return err
 	}
+	databaseNodes, err := pure_utils.MapErr(databaseAccessors, dto.AdaptNodeDto)
+	if err != nil {
+		return err
+	}
 
 	payloadAccessors, err := getPayloadIdentifiers(scenarioAndIteration.Scenario, dataModel)
+	if err != nil {
+		return err
+	}
+	payloadNodes, err := pure_utils.MapErr(payloadAccessors, dto.AdaptNodeDto)
 	if err != nil {
 		return err
 	}
@@ -105,12 +113,14 @@ func (uc *AiAgentUsecase) GenerateAstRule(
 		"custom_list":        customListsDto,
 		"instruction":        instruction,
 		"trigger_type":       scenarioAndIteration.Scenario.TriggerObjectType,
-		"database_accessors": databaseAccessors,
-		"payload_accessors":  payloadAccessors,
+		"database_accessors": databaseNodes,
+		"payload_accessors":  payloadNodes,
 	})
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Rule generation prompt has length %d\n", len(ruleGenerationPrompt))
+	fmt.Printf("Rule generation prompt: %s\n", ruleGenerationPrompt)
 
 	logger.DebugContext(ctx, "Rule generation", "model", model)
 

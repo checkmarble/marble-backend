@@ -1,5 +1,7 @@
 module github.com/checkmarble/marble-backend
 
+replace github.com/checkmarble/llmberjack => /Users/pascal/Documents/marble/llmberjack
+
 go 1.25.1
 
 require (
