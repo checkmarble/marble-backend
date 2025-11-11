@@ -90,18 +90,29 @@ func (uc *AiAgentUsecase) GenerateAstRule(
 		return err
 	}
 
+	databaseAccessors, err := getLinkedDatabaseIdentifiers(scenarioAndIteration.Scenario, dataModel)
+	if err != nil {
+		return err
+	}
+
+	payloadAccessors, err := getPayloadIdentifiers(scenarioAndIteration.Scenario, dataModel)
+	if err != nil {
+		return err
+	}
+
 	model, ruleGenerationPrompt, err := uc.preparePromptWithModel(RULE_GENERATION_PROMPT_PATH, map[string]any{
-		"data_model":   dataModelDto,
-		"custom_list":  customListsDto,
-		"instruction":  instruction,
-		"trigger_type": scenarioAndIteration.Scenario.TriggerObjectType,
+		"data_model":         dataModelDto,
+		"custom_list":        customListsDto,
+		"instruction":        instruction,
+		"trigger_type":       scenarioAndIteration.Scenario.TriggerObjectType,
+		"database_accessors": databaseAccessors,
+		"payload_accessors":  payloadAccessors,
 	})
 	if err != nil {
 		return err
 	}
 
 	logger.DebugContext(ctx, "Rule generation", "model", model)
-	// logger.DebugContext(ctx, "Rule generation", "prompt", ruleGenerationPrompt)
 
 	properties := jsonschema.NewProperties()
 	properties.Set("name", &jsonschema.Schema{
@@ -116,15 +127,15 @@ func (uc *AiAgentUsecase) GenerateAstRule(
 			Ref: "#/definitions/NodeDto",
 		},
 	})
-	// properties.Set("named_children", &jsonschema.Schema{
-	// 	Type: "object",
-	// 	PatternProperties: map[string]*jsonschema.Schema{
-	// 		"^.*$": {
-	// 			Ref: "#/definitions/NodeDto",
-	// 		},
-	// 	},
-	// 	AdditionalProperties: nil,
-	// })
+	properties.Set("named_children", &jsonschema.Schema{
+		Type: "object",
+		PatternProperties: map[string]*jsonschema.Schema{
+			"^.*$": {
+				Ref: "#/definitions/NodeDto",
+			},
+		},
+		AdditionalProperties: jsonschema.FalseSchema,
+	})
 
 	rootProps := jsonschema.NewProperties()
 	rootProps.Set("root", &jsonschema.Schema{
@@ -134,7 +145,6 @@ func (uc *AiAgentUsecase) GenerateAstRule(
 	schema := jsonschema.Schema{
 		Type:       "object",
 		Properties: properties,
-		// Ref:        "#/definitions/NodeDto",
 		Definitions: jsonschema.Definitions{
 			"NodeDto": {
 				Type:                 "object",
@@ -153,40 +163,22 @@ func (uc *AiAgentUsecase) GenerateAstRule(
 	}
 	fmt.Println(string(jsschema))
 
-	// Name          string             `json:"name,omitempty" jsonschema_description:"Name of the AST node" jsonschema:"required"`
-	// Constant      any                `json:"constant,omitempty" jsonschema_description:"Constant value of the node, if the node is a constant"`
-	// Children      []NodeDto          `json:"children,omitempty" jsonschema_description:"Positional arguments to the current function"`
-	// NamedChildren map[string]NodeDto `json:"named_children,omitempty" jsonschema_description:"Name arguments to the current function"`
-
 	// Boom stack overflow
-	aiStudioRequest, err := llmberjack.NewRequest[dto.NodeDto]().
-		// aiStudioRequest, err := llmberjack.NewRequest[string]().
+	req, err := llmberjack.NewRequest[dto.NodeDto]().
 		WithModel(model).
 		WithSchemaDescription("NodeDto", "The AST node of the rule").
 		OverrideResponseSchema(schema).
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
-		// WithText(llmberjack.RoleUser, "Create an AST tree using the SUM function with two positional children that scalar of the INT nodes 3 and 5").
 		WithThinking(true).
 		Do(ctx, client)
 	if err != nil {
 		return err
 	}
 
-	// that's with the proper type...
-	ruleAstDto, err := aiStudioRequest.Get(0)
+	ruleAstDto, err := req.Get(0)
 	if err != nil {
 		return err
 	}
-
-	// dtoString, err := aiStudioRequest.Get(0)
-	// if err != nil {
-	// 	return err
-	// }
-	// var ruleAstDto dto.NodeDto
-	// err = json.Unmarshal([]byte(dtoString), &ruleAstDto)
-	// if err != nil {
-	// 	return err
-	// }
 
 	ruleAst, err := dto.AdaptASTNode(ruleAstDto)
 	if err != nil {
