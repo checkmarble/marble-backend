@@ -95,6 +95,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		analyticsBucket:             utils.GetEnv("ANALYTICS_BUCKET_URL", ""),
 		telemetryExporter:           utils.GetEnv("TRACING_EXPORTER", "otlp"),
 		otelSamplingRates:           utils.GetEnv("TRACING_SAMPLING_RATES", ""),
+		enablePrometheus:            utils.GetEnv("ENABLE_PROMETHEUS", false),
 	}
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
@@ -348,7 +349,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 				c.String(http.StatusOK, "OK")
 			})
 
-			r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+			if workerConfig.enablePrometheus {
+				r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+			}
 
 			if os.Getenv("DEBUG_ENABLE_PROFILING") == "1" {
 				utils.SetupProfilerEndpoints(r, "marble-worker", apiVersion, gcpConfig.ProjectId)

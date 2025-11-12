@@ -53,7 +53,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		r.POST("/oidc/token", tom, handleOidcTokenExchange(uc, conf.OidcConfig))
 	}
 
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	if conf.EnablePrometheus {
+		r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	}
 
 	if os.Getenv("DEBUG_ENABLE_PROFILING") == "1" {
 		utils.SetupProfilerEndpoints(r, "marble-backend", conf.AppVersion, conf.GcpConfig.ProjectId)
