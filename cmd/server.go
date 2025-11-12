@@ -86,6 +86,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 			},
 		},
 
+		EnablePrometheus: utils.GetEnv("ENABLE_PROMETHEUS", false),
+
 		TokenProvider: authProvider,
 		FirebaseConfig: api.FirebaseConfig{
 			ProjectId:    utils.GetEnv("FIREBASE_PROJECT_ID", ""),

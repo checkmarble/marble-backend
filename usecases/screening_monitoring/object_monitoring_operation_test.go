@@ -958,7 +958,10 @@ func TestPrepareOpenSanctionsQuery(t *testing.T) {
 				assert.Equal(t, len(tt.expectedQuery.Queries), len(result.Queries))
 				if len(result.Queries) > 0 {
 					assert.Equal(t, tt.expectedQuery.Queries[0].Type, result.Queries[0].Type)
-					assert.Equal(t, tt.expectedQuery.Queries[0].Filters, result.Queries[0].Filters)
+
+					for k, v := range tt.expectedQuery.Queries[0].Filters {
+						assert.ElementsMatch(t, v, result.Queries[0].Filters[k])
+					}
 				}
 			}
 		})

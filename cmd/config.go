@@ -45,4 +45,5 @@ type WorkerConfig struct {
 	caseManagerBucket           string
 	telemetryExporter           string
 	otelSamplingRates           string
+	enablePrometheus            bool
 }
