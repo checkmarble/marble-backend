@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const TABLE_SCREENING_MONITORING_CONFIGS = "screening_monitoring_configs"
+const TABLE_SCREENING_MONITORING_CONFIGS = "continuous_screening_configs"
 
 type DBScreeningMonitoringConfig struct {
 	Id             uuid.UUID `db:"id"`
