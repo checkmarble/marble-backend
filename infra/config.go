@@ -24,10 +24,9 @@ type GcpConfig struct {
 	ProjectId                    string
 	PrincipalEmail               string
 	GoogleApplicationCredentials string
-	EnableTracing                bool
 }
 
-func NewGcpConfig(ctx context.Context, gcpProjectId string, googleApplicationCredentials string, enableTracing bool) (GcpConfig, error) {
+func NewGcpConfig(ctx context.Context, gcpProjectId string, googleApplicationCredentials string) (GcpConfig, error) {
 	// Errors to validate GCP credentials do not have to be a hard fail.
 	// They are common when trying out the product with the emulator (no service account required).
 	// So long as the GCP project is defined in the configuration, most things will work.
@@ -70,7 +69,6 @@ func NewGcpConfig(ctx context.Context, gcpProjectId string, googleApplicationCre
 		ProjectId:                    projectId,
 		PrincipalEmail:               adcPrincipal,
 		GoogleApplicationCredentials: googleApplicationCredentials,
-		EnableTracing:                enableTracing,
 	}
 
 	return cfg, nil

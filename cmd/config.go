@@ -23,6 +23,7 @@ type ServerConfig struct {
 	telemetryExporter                string
 	otelSamplingRates                string
 	similarityThreshold              float64
+	enableTracing                    bool
 }
 
 func (config ServerConfig) Validate() error {
@@ -46,4 +47,5 @@ type WorkerConfig struct {
 	telemetryExporter           string
 	otelSamplingRates           string
 	enablePrometheus            bool
+	enableTracing               bool
 }
