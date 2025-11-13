@@ -1,5 +1,7 @@
 module github.com/checkmarble/marble-backend
 
+replace github.com/checkmarble/llmberjack => /Users/pascal/Documents/marble/llmberjack
+
 go 1.25.1
 
 require (
@@ -17,7 +19,7 @@ require (
 	github.com/adrg/strutil v0.3.1
 	github.com/avast/retry-go/v4 v4.6.1
 	github.com/biter777/countries v1.7.5
-	github.com/checkmarble/llmberjack v0.0.0-20250918140151-35a7e6d6fe5a
+	github.com/checkmarble/llmberjack v0.0.0-20251026203202-3a1f82294fff
 	github.com/cockroachdb/errors v1.12.0
 	github.com/coreos/go-oidc/v3 v3.15.0
 	github.com/duckdb/duckdb-go/v2 v2.5.1
