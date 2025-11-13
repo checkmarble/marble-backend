@@ -48,6 +48,7 @@ type CreateContinuousScreeningConfigDto struct {
 	Datasets       []string `json:"datasets" binding:"required"`
 	MatchThreshold int      `json:"match_threshold" binding:"required"`
 	MatchLimit     int      `json:"match_limit" binding:"required"`
+	ObjectTypes    []string `json:"object_types" binding:"required"`
 }
 
 func (dto CreateContinuousScreeningConfigDto) Validate() error {

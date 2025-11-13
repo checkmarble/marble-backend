@@ -89,8 +89,9 @@ func TestContinuousScreeningUsecase(t *testing.T) {
 func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_WithObjectId() {
 	// Setup test data
 	config := models.ContinuousScreeningConfig{
-		Id:    suite.configId,
-		OrgId: suite.orgId,
+		Id:          suite.configId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
 	}
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
@@ -130,9 +131,6 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
-		mock.Anything, suite.objectType).Return(nil)
 	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
@@ -166,8 +164,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup test data
 	config := models.ContinuousScreeningConfig{
-		Id:    suite.configId,
-		OrgId: suite.orgId,
+		Id:          suite.configId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
 	}
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
@@ -212,9 +211,6 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(1, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
-		mock.Anything, suite.objectType).Return(nil)
 	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
@@ -246,8 +242,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_TableNotConfigured() {
 	// Setup test data - table without FTM entity
 	config := models.ContinuousScreeningConfig{
-		Id:    suite.configId,
-		OrgId: suite.orgId,
+		Id:          suite.configId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
 	}
 
 	table := models.Table{
@@ -290,8 +287,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_ObjectIdNotFoundInIngestedData() {
 	// Setup test data
 	config := models.ContinuousScreeningConfig{
-		Id:    suite.configId,
-		OrgId: suite.orgId,
+		Id:          suite.configId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
 	}
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
@@ -341,8 +339,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	payload := json.RawMessage(`{"object_id": "test-object-id", "amount": 100}`)
 
 	config := models.ContinuousScreeningConfig{
-		Id:    suite.configId,
-		OrgId: suite.orgId,
+		Id:          suite.configId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
 	}
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
@@ -395,8 +394,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	payload := json.RawMessage(`{"object_id": "test-object-id", "amount": 100}`)
 
 	config := models.ContinuousScreeningConfig{
-		Id:    suite.configId,
-		OrgId: suite.orgId,
+		Id:          suite.configId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
 	}
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
@@ -441,9 +441,6 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(1, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
-		mock.Anything, suite.objectType).Return(nil)
 	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
@@ -478,8 +475,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_UniqueViolationWithoutIgnoreConflictError() {
 	// Setup test data - object ID, which will NOT set ignoreConflictError
 	config := models.ContinuousScreeningConfig{
-		Id:    suite.configId,
-		OrgId: suite.orgId,
+		Id:          suite.configId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
 	}
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
@@ -519,9 +517,6 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
-		mock.Anything, suite.objectType).Return(nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
 		suite.objectType, suite.objectId, suite.configId).Return(&pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
@@ -540,6 +535,34 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Assert - should error when ignoreConflictError is false and unique violation occurs
 	suite.Error(err)
 	suite.True(errors.Is(err, models.ConflictError), "error should be ConflictError")
+	suite.AssertExpectations()
+}
+
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_ObjectTypeNotConfigured() {
+	// Setup test data - config doesn't include the object type
+	config := models.ContinuousScreeningConfig{
+		Id:          suite.configId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{"other_table"}, // Config has "other_table" but we're trying to use "transactions"
+	}
+
+	// Setup expectations
+	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	input := models.InsertContinuousScreeningObject{
+		ObjectType: suite.objectType, // "transactions" which is not in ObjectTypes
+		ConfigId:   suite.configId,
+		ObjectId:   &suite.objectId,
+	}
+
+	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "object type transactions is not configured with this config")
 	suite.AssertExpectations()
 }
 

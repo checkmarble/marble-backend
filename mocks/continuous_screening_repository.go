@@ -133,3 +133,8 @@ func (m *ContinuousScreeningScreeningProvider) Search(
 	}
 	return args.Get(0).(models.ScreeningRawSearchResponseWithMatches), args.Error(1)
 }
+
+func (m *ContinuousScreeningScreeningProvider) GetAlgorithms(ctx context.Context) (models.OpenSanctionAlgorithms, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(models.OpenSanctionAlgorithms), args.Error(1)
+}

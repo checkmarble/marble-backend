@@ -43,12 +43,14 @@ type CreateContinuousScreeningConfig struct {
 	Datasets       []string
 	MatchThreshold int
 	MatchLimit     int
+	ObjectTypes    []string
 }
 
 type UpdateContinuousScreeningConfig struct {
 	Name           *string
 	Description    *string
 	Algorithm      *string
+	ObjectTypes    *[]string
 	Datasets       *[]string
 	MatchThreshold *int
 	MatchLimit     *int

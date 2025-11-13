@@ -35,3 +35,17 @@ func AnySliceAtIndex[T any](input any, index int) (T, bool) {
 
 	return item, true
 }
+
+// Check if all elements of a are present in b
+func AllElementsIn[T comparable](a, b []T) bool {
+	bSet := make(map[T]bool, len(b))
+	for _, item := range b {
+		bSet[item] = true
+	}
+	for _, item := range a {
+		if !bSet[item] {
+			return false
+		}
+	}
+	return true
+}

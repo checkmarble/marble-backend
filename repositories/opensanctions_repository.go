@@ -21,14 +21,16 @@ import (
 )
 
 const (
-	OPEN_SANCTIONS_DEFAULT_INDEX_URL = "https://data.opensanctions.org/datasets/latest/default/index.json"
-	OPEN_SANCTIONS_INDEX_URL         = "https://data.opensanctions.org/datasets/latest/index.json"
-	OPEN_SANCTIONS_CATALOG_CACHE_KEY = "catalog"
+	OPEN_SANCTIONS_DEFAULT_INDEX_URL    = "https://data.opensanctions.org/datasets/latest/default/index.json"
+	OPEN_SANCTIONS_INDEX_URL            = "https://data.opensanctions.org/datasets/latest/index.json"
+	OPEN_SANCTIONS_CATALOG_CACHE_KEY    = "catalog"
+	OPEN_SANCTIONS_ALGORITHMS_CACHE_KEY = "algorithms"
 )
 
 var (
-	OPEN_SANCTIONS_DATASET_CACHE = expirable.NewLRU[string, models.OpenSanctionsCatalog](1, nil, time.Hour)
-	OPEN_SANCTIONS_DATASET_TAGS  = expirable.NewLRU[string, []string](0, nil, 0)
+	OPEN_SANCTIONS_DATASET_CACHE    = expirable.NewLRU[string, models.OpenSanctionsCatalog](1, nil, time.Hour)
+	OPEN_SANCTIONS_DATASET_TAGS     = expirable.NewLRU[string, []string](0, nil, 0)
+	OPEN_SANCTIONS_ALGORITHMS_CACHE = expirable.NewLRU[string, models.OpenSanctionAlgorithms](1, nil, time.Hour)
 )
 
 type OpenSanctionsRepository struct {
@@ -228,6 +230,34 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (
 	}
 
 	return dataset, nil
+}
+
+func (repo OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.OpenSanctionAlgorithms, error) {
+	if cached, ok := OPEN_SANCTIONS_ALGORITHMS_CACHE.Get(OPEN_SANCTIONS_ALGORITHMS_CACHE_KEY); ok {
+		return cached, nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		fmt.Sprintf("%s/algorithms", repo.opensanctions.Host()), nil)
+	if err != nil {
+		return models.OpenSanctionAlgorithms{}, err
+	}
+
+	resp, err := repo.opensanctions.Client().Do(req)
+	if err != nil {
+		return models.OpenSanctionAlgorithms{}, err
+	}
+
+	defer resp.Body.Close()
+
+	var algorithms httpmodels.HTTPOpenSanctionsAlgorithms
+	if err := json.NewDecoder(resp.Body).Decode(&algorithms); err != nil {
+		return models.OpenSanctionAlgorithms{}, err
+	}
+
+	modelAlgorithms := httpmodels.AdaptOpenSanctionsAlgorithms(algorithms)
+	OPEN_SANCTIONS_ALGORITHMS_CACHE.Add(OPEN_SANCTIONS_ALGORITHMS_CACHE_KEY, modelAlgorithms)
+	return modelAlgorithms, nil
 }
 
 func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error) {
