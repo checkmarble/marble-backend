@@ -250,6 +250,9 @@ func (repo OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.O
 
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return models.OpenSanctionAlgorithms{}, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
 	var algorithms httpmodels.HTTPOpenSanctionsAlgorithms
 	if err := json.NewDecoder(resp.Body).Decode(&algorithms); err != nil {
 		return models.OpenSanctionAlgorithms{}, err
