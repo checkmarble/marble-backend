@@ -1,4 +1,4 @@
-package screening_monitoring
+package continuous_screening
 
 import (
 	"context"
@@ -12,30 +12,30 @@ import (
 	"github.com/google/uuid"
 )
 
-type ScreeningMonitoringUsecaseRepository interface {
-	GetScreeningMonitoringConfig(
+type ContinuousScreeningUsecaseRepository interface {
+	GetContinuousScreeningConfig(
 		ctx context.Context,
 		exec repositories.Executor,
 		Id uuid.UUID,
 	) (
-		models.ScreeningMonitoringConfig, error)
-	GetScreeningMonitoringConfigsByOrgId(
+		models.ContinuousScreeningConfig, error)
+	GetContinuousScreeningConfigsByOrgId(
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId string,
 	) (
-		[]models.ScreeningMonitoringConfig, error)
-	CreateScreeningMonitoringConfig(
+		[]models.ContinuousScreeningConfig, error)
+	CreateContinuousScreeningConfig(
 		ctx context.Context,
 		exec repositories.Executor,
-		input models.CreateScreeningMonitoringConfig,
-	) (models.ScreeningMonitoringConfig, error)
-	UpdateScreeningMonitoringConfig(
+		input models.CreateContinuousScreeningConfig,
+	) (models.ContinuousScreeningConfig, error)
+	UpdateContinuousScreeningConfig(
 		ctx context.Context,
 		exec repositories.Executor,
 		id uuid.UUID,
-		input models.UpdateScreeningMonitoringConfig,
-	) (models.ScreeningMonitoringConfig, error)
+		input models.UpdateContinuousScreeningConfig,
+	) (models.ContinuousScreeningConfig, error)
 	GetDataModelTable(ctx context.Context, exec repositories.Executor, tableId string) (models.TableMetadata, error)
 	GetDataModel(
 		ctx context.Context,
@@ -44,11 +44,27 @@ type ScreeningMonitoringUsecaseRepository interface {
 		fetchEnumValues bool,
 		useCache bool,
 	) (models.DataModel, error)
+	InsertContinuousScreening(
+		ctx context.Context,
+		exec repositories.Executor,
+		screening models.ScreeningWithMatches,
+		orgId string,
+		configId uuid.UUID,
+		objectType string,
+		objectId string,
+		objectInternalId uuid.UUID,
+	) error
+	ListContinuousScreeningsForOrg(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		paginationAndSorting models.PaginationAndSorting,
+	) ([]models.ContinuousScreeningWithMatches, error)
 }
 
-type ScreeningMonitoringClientDbRepository interface {
-	CreateInternalScreeningMonitoringTable(ctx context.Context, exec repositories.Executor, tableName string) error
-	InsertScreeningMonitoringObject(
+type ContinuousScreeningClientDbRepository interface {
+	CreateInternalContinuousScreeningTable(ctx context.Context, exec repositories.Executor, tableName string) error
+	InsertContinuousScreeningObject(
 		ctx context.Context,
 		exec repositories.Executor,
 		tableName string,
@@ -57,16 +73,17 @@ type ScreeningMonitoringClientDbRepository interface {
 	) error
 }
 
-type ScreeningMonitoringIngestedDataReader interface {
+type ContinuousScreeningIngestedDataReader interface {
 	QueryIngestedObject(
 		ctx context.Context,
 		exec repositories.Executor,
 		table models.Table,
 		objectId string,
+		metadataFields ...string,
 	) ([]models.DataModelObject, error)
 }
 
-type ScreeningMonitoringIngestionUsecase interface {
+type ContinuousScreeningIngestionUsecase interface {
 	IngestObject(
 		ctx context.Context,
 		organizationId string,
@@ -76,40 +93,40 @@ type ScreeningMonitoringIngestionUsecase interface {
 	) (int, error)
 }
 
-type ScreeningMonitoringScreeningProvider interface {
+type ContinuousScreeningScreeningProvider interface {
 	Search(ctx context.Context, query models.OpenSanctionsQuery) (
 		models.ScreeningRawSearchResponseWithMatches, error)
 }
 
-type ScreeningMonitoringUsecase struct {
+type ContinuousScreeningUsecase struct {
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 
-	enforceSecurity              security.EnforceSecurityScreeningMonitoring
-	repository                   ScreeningMonitoringUsecaseRepository
-	clientDbRepository           ScreeningMonitoringClientDbRepository
+	enforceSecurity              security.EnforceSecurityContinuousScreening
+	repository                   ContinuousScreeningUsecaseRepository
+	clientDbRepository           ContinuousScreeningClientDbRepository
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
-	ingestedDataReader           ScreeningMonitoringIngestedDataReader
-	ingestionUsecase             ScreeningMonitoringIngestionUsecase
-	screeningProvider            ScreeningMonitoringScreeningProvider
+	ingestedDataReader           ContinuousScreeningIngestedDataReader
+	ingestionUsecase             ContinuousScreeningIngestionUsecase
+	screeningProvider            ContinuousScreeningScreeningProvider
 }
 
-func NewScreeningMonitoringUsecase(
+func NewContinuousScreeningUsecase(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
-	enforceSecurity security.EnforceSecurityScreeningMonitoring,
-	screeningMonitoringRepository ScreeningMonitoringUsecaseRepository,
-	clientDbRepository ScreeningMonitoringClientDbRepository,
+	enforceSecurity security.EnforceSecurityContinuousScreening,
+	repository ContinuousScreeningUsecaseRepository,
+	clientDbRepository ContinuousScreeningClientDbRepository,
 	organizationSchemaRepository repositories.OrganizationSchemaRepository,
-	ingestedDataReader ScreeningMonitoringIngestedDataReader,
-	ingestionUsecase ScreeningMonitoringIngestionUsecase,
-	screeningProvider ScreeningMonitoringScreeningProvider,
-) ScreeningMonitoringUsecase {
-	return ScreeningMonitoringUsecase{
+	ingestedDataReader ContinuousScreeningIngestedDataReader,
+	ingestionUsecase ContinuousScreeningIngestionUsecase,
+	screeningProvider ContinuousScreeningScreeningProvider,
+) ContinuousScreeningUsecase {
+	return ContinuousScreeningUsecase{
 		executorFactory:              executorFactory,
 		transactionFactory:           transactionFactory,
 		enforceSecurity:              enforceSecurity,
-		repository:                   screeningMonitoringRepository,
+		repository:                   repository,
 		clientDbRepository:           clientDbRepository,
 		organizationSchemaRepository: organizationSchemaRepository,
 		ingestedDataReader:           ingestedDataReader,

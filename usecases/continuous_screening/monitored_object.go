@@ -1,37 +1,39 @@
-package screening_monitoring
+package continuous_screening
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
-// Before inserting an object into screening monitoring list, we need to check if the table exists, create if not exists the screening monitoring table and index
+// Before inserting an object into continuous screening table, we need to check if the table exists, create if not exists the continuous screening table and index
 // then insert the object into the list with the monitoring config ID.
 // 2 modes:
-//   - Provide the object ID of an ingested object and add it into the screening monitoring list
-//   - Provide the object payload and ingest the object first then add it into the screening monitoring list
+//   - Provide the object ID of an ingested object and add it into the continuous screening list
+//   - Provide the object payload and ingest the object first then add it into the continuous screening list
 //
 // If the object already ingested and it is a new version, we will ignore the conflict error and consider the object as a new one and force the screening on the updated object.
-// The updated object should be ingested, we check if the object has been ingested before resume the screening monitoring operation.
-func (uc *ScreeningMonitoringUsecase) InsertScreeningMonitoringObject(
+// The updated object should be ingested, we check if the object has been ingested before resume the continuous screening operation.
+func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	ctx context.Context,
-	input models.InsertScreeningMonitoringObject,
+	input models.InsertContinuousScreeningObject,
 ) (models.ScreeningWithMatches, error) {
 	exec := uc.executorFactory.NewExecutor()
 
 	// Check if the config exists
-	config, err := uc.repository.GetScreeningMonitoringConfig(ctx, exec, input.ConfigId)
+	config, err := uc.repository.GetContinuousScreeningConfig(ctx, exec, input.ConfigId)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
 
-	if err := uc.enforceSecurity.WriteMonitoredObject(config.OrgId); err != nil {
+	if err := uc.enforceSecurity.WriteContinuousScreeningObject(config.OrgId); err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
 
@@ -46,15 +48,17 @@ func (uc *ScreeningMonitoringUsecase) InsertScreeningMonitoringObject(
 			errors.Wrapf(models.BadParameterError, "table %s not found in data model", input.ObjectType)
 	}
 
-	// Check if data model table and fields are well configured for screening monitoring and fetch the mapping
+	// Check if data model table and fields are well configured for continuous screening and fetch the mapping
 	dataModelMapping, err := buildDataModelMapping(table)
 	if err != nil {
 		return models.ScreeningWithMatches{}, errors.Wrap(models.BadParameterError, err.Error())
 	}
 
 	var objectId string
-	// Ignore the conflict error in case of ingestion. The payload can be an updated object and we will force the screening again on the updated object.
-	ignoreConflictError := false
+	// Ignore the unique violation error in case of ingestion.
+	// The payload can be an updated object and we will force the screening again on the updated object.
+	// Without recording the object ID in the continuous screening table.
+	ignoreUniqueViolationError := false
 
 	// Ingest the object if provided
 	if input.ObjectPayload != nil {
@@ -62,7 +66,7 @@ func (uc *ScreeningMonitoringUsecase) InsertScreeningMonitoringObject(
 		if err != nil {
 			return models.ScreeningWithMatches{}, err
 		}
-		ignoreConflictError = true
+		ignoreUniqueViolationError = true
 	} else if input.ObjectId != nil {
 		objectId = *input.ObjectId
 	} else {
@@ -73,11 +77,14 @@ func (uc *ScreeningMonitoringUsecase) InsertScreeningMonitoringObject(
 
 	var screeningResponse models.ScreeningRawSearchResponseWithMatches
 	var query models.OpenSanctionsQuery
+	var ingestedObject models.DataModelObject
+	var ingestedObjectInternalId uuid.UUID
 
-	// Check if the object exists in ingested data then insert it into screening monitoring table
-	// Create if not exists the screening monitoring table and index
+	// Check if the object exists in ingested data then insert it into continuous screening table
+	// Create if not exists the continuous screening table and index
+	// TODO: Remove the transaction and use the repository directly (because removing the create schema and table creation from this method)
 	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId, func(tx repositories.Transaction) error {
-		ingestedObjects, err := uc.ingestedDataReader.QueryIngestedObject(ctx, tx, table, objectId)
+		ingestedObjects, err := uc.ingestedDataReader.QueryIngestedObject(ctx, tx, table, objectId, "id")
 		if err != nil {
 			return err
 		}
@@ -87,24 +94,21 @@ func (uc *ScreeningMonitoringUsecase) InsertScreeningMonitoringObject(
 				fmt.Sprintf("object %s not found in ingested data", objectId),
 			)
 		}
+		// TODO: Move this part when configuring the continuous screening config
 		if err := uc.organizationSchemaRepository.CreateSchemaIfNotExists(ctx, tx); err != nil {
 			return err
 		}
-		if err := uc.clientDbRepository.CreateInternalScreeningMonitoringTable(ctx, tx, table.Name); err != nil {
+		if err := uc.clientDbRepository.CreateInternalContinuousScreeningTable(ctx, tx, table.Name); err != nil {
 			return err
 		}
 
-		// Do screening on the object
-		query, err = prepareOpenSanctionsQuery(ingestedObjects[0], dataModelMapping.Entity, dataModelMapping.Properties, config)
-		if err != nil {
-			return err
-		}
-		screeningResponse, err = uc.screeningProvider.Search(ctx, query)
+		ingestedObject = ingestedObjects[0]
+		ingestedObjectInternalId, err = getIngestedObjectInternalId(ingestedObject)
 		if err != nil {
 			return err
 		}
 
-		return uc.clientDbRepository.InsertScreeningMonitoringObject(
+		return uc.clientDbRepository.InsertContinuousScreeningObject(
 			ctx,
 			tx,
 			table.Name,
@@ -112,24 +116,44 @@ func (uc *ScreeningMonitoringUsecase) InsertScreeningMonitoringObject(
 			input.ConfigId,
 		)
 	})
-
 	// Unique violation error is handled below
-	if err != nil && !repositories.IsUniqueViolationError(err) {
+	if err != nil {
+		if repositories.IsUniqueViolationError(err) && ignoreUniqueViolationError {
+			// Do nothing, normal case
+		} else if repositories.IsUniqueViolationError(err) {
+			return models.ScreeningWithMatches{}, errors.Wrap(
+				models.ConflictError,
+				"object already exists in continuous screening table",
+			)
+		} else {
+			return models.ScreeningWithMatches{}, err
+		}
+	}
+
+	// Do screening on the object
+	query, err = prepareOpenSanctionsQuery(ingestedObject, dataModelMapping.Entity, dataModelMapping.Properties, config)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+	screeningResponse, err = uc.screeningProvider.Search(ctx, query)
+	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
 
 	screeningWithMatches := screeningResponse.AdaptScreeningFromSearchResponse(query)
 
-	// If the object already exists in the screening monitoring table, we can ignore the conflict error
-	// in case of ingestion. Consider the object as a new one and force the screening on the updated object.
-	if repositories.IsUniqueViolationError(err) {
-		if ignoreConflictError {
-			return screeningWithMatches, nil
-		}
-		return models.ScreeningWithMatches{}, errors.Wrap(
-			models.ConflictError,
-			"object already exists in screening monitored objects table",
-		)
+	err = uc.repository.InsertContinuousScreening(
+		ctx,
+		exec,
+		screeningWithMatches,
+		config.OrgId,
+		input.ConfigId,
+		input.ObjectType,
+		objectId,
+		ingestedObjectInternalId,
+	)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
 	}
 	return screeningWithMatches, nil
 }
@@ -149,10 +173,10 @@ func extractObjectIDFromPayload(payload json.RawMessage) (string, error) {
 }
 
 // Ingest the object from payload and return the object ID from payload
-func (uc *ScreeningMonitoringUsecase) ingestObject(
+func (uc *ContinuousScreeningUsecase) ingestObject(
 	ctx context.Context,
 	orgId string,
-	input models.InsertScreeningMonitoringObject,
+	input models.InsertContinuousScreeningObject,
 ) (string, error) {
 	// Ingestion doesn't return the object after operation.
 	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId, input.ObjectType, *input.ObjectPayload)
@@ -161,7 +185,7 @@ func (uc *ScreeningMonitoringUsecase) ingestObject(
 	}
 	if nb == 0 {
 		// Can happen if the payload defines a previous version of the ingested object based on updated_at
-		return "", errors.New("no object ingested")
+		return "", errors.Wrap(models.ConflictError, "no object ingested")
 	}
 	return extractObjectIDFromPayload(*input.ObjectPayload)
 }
@@ -184,7 +208,17 @@ func prepareScreeningFilters(
 	dataModelMapping map[string]string,
 ) (models.OpenSanctionsFilter, error) {
 	filters := models.OpenSanctionsFilter{}
-	for modelField, property := range dataModelMapping {
+
+	// Sort the keys to ensure deterministic order (since map iteration is randomized in Go)
+	keys := make([]string, 0, len(dataModelMapping))
+	for key := range dataModelMapping {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	// Iterate in sorted order
+	for _, modelField := range keys {
+		property := dataModelMapping[modelField]
 		if value, ok := ingestedObject.Data[modelField]; ok {
 			filters[property] = append(filters[property], stringRepresentation(value))
 		} else {
@@ -200,7 +234,7 @@ func prepareOpenSanctionsQuery(
 	ingestedObject models.DataModelObject,
 	dataModelEntityType string,
 	dataModelMapping map[string]string,
-	config models.ScreeningMonitoringConfig,
+	config models.ContinuousScreeningConfig,
 ) (models.OpenSanctionsQuery, error) {
 	screeningFilters, err := prepareScreeningFilters(ingestedObject, dataModelMapping)
 	if err != nil {
@@ -271,4 +305,36 @@ func buildDataModelMapping(table models.Table) (dataModelMapping, error) {
 		Entity:     table.FTMEntity.String(),
 		Properties: properties,
 	}, nil
+}
+
+func getIngestedObjectInternalId(ingestedObject models.DataModelObject) (uuid.UUID, error) {
+	if _, ok := ingestedObject.Metadata["id"]; !ok {
+		return uuid.UUID{}, errors.New(
+			"object internal id not found in ingested object",
+		)
+	}
+	// From DB, the object internal id is stored as a [16]byte
+	if id, ok := ingestedObject.Metadata["id"].([16]byte); ok {
+		return uuid.UUID(id), nil
+	}
+	return uuid.UUID{}, errors.Newf(
+		"unexpected type for object internal id: %T", ingestedObject.Metadata["id"])
+}
+
+func (uc *ContinuousScreeningUsecase) ListContinuousScreeningsForOrg(
+	ctx context.Context,
+	orgId uuid.UUID,
+	paginationAndSorting models.PaginationAndSorting,
+) ([]models.ContinuousScreeningWithMatches, error) {
+	exec := uc.executorFactory.NewExecutor()
+	monitorings, err := uc.repository.ListContinuousScreeningsForOrg(ctx, exec, orgId, paginationAndSorting)
+	if err != nil {
+		return nil, err
+	}
+	for _, monitoring := range monitorings {
+		if err := uc.enforceSecurity.ReadContinuousScreeningHit(monitoring); err != nil {
+			return nil, err
+		}
+	}
+	return monitorings, nil
 }

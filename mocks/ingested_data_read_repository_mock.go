@@ -9,16 +9,17 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 )
 
-type ScreeningMonitoringIngestedDataReader struct {
+type ContinuousScreeningIngestedDataReader struct {
 	mock.Mock
 }
 
-func (m *ScreeningMonitoringIngestedDataReader) QueryIngestedObject(
+func (m *ContinuousScreeningIngestedDataReader) QueryIngestedObject(
 	ctx context.Context,
 	exec repositories.Executor,
 	table models.Table,
 	objectId string,
+	metadataFields ...string,
 ) ([]models.DataModelObject, error) {
-	args := m.Called(ctx, exec, table, objectId)
+	args := m.Called(ctx, exec, table, objectId, metadataFields)
 	return args.Get(0).([]models.DataModelObject), args.Error(1)
 }

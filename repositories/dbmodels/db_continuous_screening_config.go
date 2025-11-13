@@ -8,13 +8,16 @@ import (
 	"github.com/google/uuid"
 )
 
-const TABLE_SCREENING_MONITORING_CONFIGS = "continuous_screening_configs"
+const TABLE_CONTINUOUS_SCREENING_CONFIGS = "continuous_screening_configs"
 
-type DBScreeningMonitoringConfig struct {
+type DBContinuousScreeningConfig struct {
 	Id             uuid.UUID `db:"id"`
+	StableId       uuid.UUID `db:"stable_id"`
 	OrgId          string    `db:"org_id"`
 	Name           string    `db:"name"`
 	Description    *string   `db:"description"`
+	Algorithm      string    `db:"algorithm"`
+	ObjectTypes    []string  `db:"object_types"`
 	Datasets       []string  `db:"datasets"`
 	MatchThreshold int       `db:"match_threshold"`
 	MatchLimit     int       `db:"match_limit"`
@@ -23,14 +26,16 @@ type DBScreeningMonitoringConfig struct {
 	UpdatedAt      time.Time `db:"updated_at"`
 }
 
-var ScreeningMonitoringConfigColumnList = utils.ColumnList[DBScreeningMonitoringConfig]()
+var ContinuousScreeningConfigColumnList = utils.ColumnList[DBContinuousScreeningConfig]()
 
-func AdaptScreeningMonitoringConfig(db DBScreeningMonitoringConfig) (models.ScreeningMonitoringConfig, error) {
-	return models.ScreeningMonitoringConfig{
+func AdaptContinuousScreeningConfig(db DBContinuousScreeningConfig) (models.ContinuousScreeningConfig, error) {
+	return models.ContinuousScreeningConfig{
 		Id:             db.Id,
+		StableId:       db.StableId,
 		OrgId:          db.OrgId,
 		Name:           db.Name,
 		Description:    db.Description,
+		Algorithm:      db.Algorithm,
 		Datasets:       db.Datasets,
 		MatchThreshold: db.MatchThreshold,
 		MatchLimit:     db.MatchLimit,

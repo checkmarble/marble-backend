@@ -9,11 +9,11 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 )
 
-type ScreeningMonitoringIngestionUsecase struct {
+type ContinuousScreeningIngestionUsecase struct {
 	mock.Mock
 }
 
-func (m *ScreeningMonitoringIngestionUsecase) IngestObject(
+func (m *ContinuousScreeningIngestionUsecase) IngestObject(
 	ctx context.Context,
 	organizationId string,
 	objectType string,

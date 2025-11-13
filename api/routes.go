@@ -195,13 +195,16 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/screenings/matches/:id", tom, handleUpdateScreeningMatchStatus(uc))
 	router.POST("/screenings/matches/:id/enrich", tom, handleEnrichScreeningMatch(uc))
 
-	router.GET("/screening-monitoring/configs", tom, handleListScreeningMonitoringConfigs(uc))
-	router.POST("/screening-monitoring/configs", tom, handleCreateScreeningMonitoringConfig(uc))
-	router.GET("/screening-monitoring/configs/:config_id", tom, handleGetScreeningMonitoringConfig(uc))
-	router.PATCH("/screening-monitoring/configs/:config_id", tom,
-		handleUpdateScreeningMonitoringConfig(uc),
+	router.GET("/continuous-screenings", tom, handleListContinuousScreeningsForOrg(uc))
+	router.GET("/continuous-screenings/configs", tom, handleListContinuousScreeningConfigs(uc))
+	router.POST("/continuous-screenings/configs", tom,
+		handleCreateContinuousScreeningConfig(uc))
+	router.GET("/continuous-screenings/configs/:config_id", tom, handleGetContinuousScreeningConfig(uc))
+	router.PATCH("/continuous-screenings/configs/:config_id", tom,
+		handleUpdateContinuousScreeningConfig(uc),
 	)
-	router.POST("/screening-monitoring/objects", tom, handleInsertScreeningMonitoringObject(uc))
+	router.POST("/continuous-screenings/objects", tom,
+		handleInsertContinuousScreeningObject(uc))
 
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))
@@ -416,5 +419,6 @@ func addAnalyticsRoutes(router gin.IRoutes, conf Configuration, uc usecases.Usec
 func addAnalyticsProxyRoutes(router gin.IRoutes, conf Configuration) {
 	tom := timeoutMiddleware(conf.AnalyticsTimeout)
 
-	router.Match([]string{http.MethodPost}, "/analytics/*path", tom, handleAnalyticsProxy(conf.AnalyticsProxyApiUrl))
+	router.Match([]string{http.MethodPost}, "/analytics/*path", tom,
+		handleAnalyticsProxy(conf.AnalyticsProxyApiUrl))
 }
