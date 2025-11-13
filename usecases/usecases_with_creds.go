@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/ai_agent"
+	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
@@ -12,7 +13,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
-	"github.com/checkmarble/marble-backend/usecases/screening_monitoring"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transfers_data_read"
 	"github.com/checkmarble/marble-backend/utils"
@@ -111,8 +111,8 @@ func (usecases *UsecasesWithCreds) NewEnforceAnnotationSecurity() security.Enfor
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewEnforceSecurityScreeningMonitoring() security.EnforceSecurityScreeningMonitoring {
-	return &security.EnforceSecurityScreeningMonitoringImpl{
+func (usecases *UsecasesWithCreds) NewEnforceSecurityContinuousScreening() security.EnforceSecurityContinuousScreening {
+	return &security.EnforceSecurityContinuousScreeningImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
 	}
@@ -804,11 +804,11 @@ func (usecases *UsecasesWithCreds) NewAnalyticsMetadataUsecase() AnalyticsMetada
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewScreeningMonitoringUsecase() screening_monitoring.ScreeningMonitoringUsecase {
-	return screening_monitoring.NewScreeningMonitoringUsecase(
+func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() continuous_screening.ContinuousScreeningUsecase {
+	return continuous_screening.NewContinuousScreeningUsecase(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
-		usecases.NewEnforceSecurityScreeningMonitoring(),
+		usecases.NewEnforceSecurityContinuousScreening(),
 		usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.ClientDbRepository,
 		usecases.Repositories.OrganizationSchemaRepository,

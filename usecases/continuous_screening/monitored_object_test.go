@@ -1,8 +1,9 @@
-package screening_monitoring
+package continuous_screening
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sort"
 	"testing"
 	"time"
@@ -18,15 +19,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ScreeningMonitoringUsecaseTestSuite struct {
+type ContinuousScreeningUsecaseTestSuite struct {
 	suite.Suite
 	enforceSecurity              *mocks.EnforceSecurity
-	repository                   *mocks.ScreeningMonitoringRepository
-	clientDbRepository           *mocks.ScreeningMonitoringClientDbRepository
+	repository                   *mocks.ContinuousScreeningRepository
+	clientDbRepository           *mocks.ContinuousScreeningClientDbRepository
 	organizationSchemaRepository *mocks.OrganizationSchemaRepository
-	ingestedDataReader           *mocks.ScreeningMonitoringIngestedDataReader
-	ingestionUsecase             *mocks.ScreeningMonitoringIngestionUsecase
-	screeningProvider            *mocks.ScreeningMonitoringScreeningProvider
+	ingestedDataReader           *mocks.ContinuousScreeningIngestedDataReader
+	ingestionUsecase             *mocks.ContinuousScreeningIngestionUsecase
+	screeningProvider            *mocks.ContinuousScreeningScreeningProvider
 	executorFactory              executor_factory.ExecutorFactoryStub
 	transactionFactory           executor_factory.TransactionFactoryStub
 
@@ -37,14 +38,14 @@ type ScreeningMonitoringUsecaseTestSuite struct {
 	objectId   string
 }
 
-func (suite *ScreeningMonitoringUsecaseTestSuite) SetupTest() {
+func (suite *ContinuousScreeningUsecaseTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
-	suite.repository = new(mocks.ScreeningMonitoringRepository)
-	suite.clientDbRepository = new(mocks.ScreeningMonitoringClientDbRepository)
+	suite.repository = new(mocks.ContinuousScreeningRepository)
+	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.organizationSchemaRepository = new(mocks.OrganizationSchemaRepository)
-	suite.ingestedDataReader = new(mocks.ScreeningMonitoringIngestedDataReader)
-	suite.ingestionUsecase = new(mocks.ScreeningMonitoringIngestionUsecase)
-	suite.screeningProvider = new(mocks.ScreeningMonitoringScreeningProvider)
+	suite.ingestedDataReader = new(mocks.ContinuousScreeningIngestedDataReader)
+	suite.ingestionUsecase = new(mocks.ContinuousScreeningIngestionUsecase)
+	suite.screeningProvider = new(mocks.ContinuousScreeningScreeningProvider)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
@@ -56,8 +57,8 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) SetupTest() {
 	suite.objectId = "test-object-id"
 }
 
-func (suite *ScreeningMonitoringUsecaseTestSuite) makeUsecase() *ScreeningMonitoringUsecase {
-	return &ScreeningMonitoringUsecase{
+func (suite *ContinuousScreeningUsecaseTestSuite) makeUsecase() *ContinuousScreeningUsecase {
+	return &ContinuousScreeningUsecase{
 		executorFactory:              suite.executorFactory,
 		transactionFactory:           suite.transactionFactory,
 		enforceSecurity:              suite.enforceSecurity,
@@ -70,7 +71,7 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) makeUsecase() *ScreeningMonito
 	}
 }
 
-func (suite *ScreeningMonitoringUsecaseTestSuite) AssertExpectations() {
+func (suite *ContinuousScreeningUsecaseTestSuite) AssertExpectations() {
 	t := suite.T()
 	suite.enforceSecurity.AssertExpectations(t)
 	suite.repository.AssertExpectations(t)
@@ -81,13 +82,13 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) AssertExpectations() {
 	suite.screeningProvider.AssertExpectations(t)
 }
 
-func TestScreeningMonitoringUsecase(t *testing.T) {
-	suite.Run(t, new(ScreeningMonitoringUsecaseTestSuite))
+func TestContinuousScreeningUsecase(t *testing.T) {
+	suite.Run(t, new(ContinuousScreeningUsecaseTestSuite))
 }
 
-func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringObject_WithObjectId() {
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_WithObjectId() {
 	// Setup test data
-	config := models.ScreeningMonitoringConfig{
+	config := models.ContinuousScreeningConfig{
 		Id:    suite.configId,
 		OrgId: suite.orgId,
 	}
@@ -111,22 +112,26 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 		},
 	}
 
+	objectInternalId := uuid.New()
 	ingestedObjects := []models.DataModelObject{
 		{
 			Data: map[string]any{
 				"object_id": suite.objectId,
 			},
+			Metadata: map[string]any{
+				"id": [16]byte(objectInternalId),
+			},
 		},
 	}
 
 	// Setup expectations
-	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
+	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
-		suite.objectId).Return(ingestedObjects, nil)
+		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
-	suite.clientDbRepository.On("CreateInternalScreeningMonitoringTable", suite.ctx,
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
 		mock.Anything, suite.objectType).Return(nil)
 	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
@@ -135,18 +140,20 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 		InitialHasMatches: false,
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
-	suite.clientDbRepository.On("InsertScreeningMonitoringObject", suite.ctx, mock.Anything,
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
 		suite.objectType, suite.objectId, suite.configId).Return(nil)
+	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
+		suite.orgId, suite.configId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertScreeningMonitoringObject{
+	input := models.InsertContinuousScreeningObject{
 		ObjectType: suite.objectType,
 		ConfigId:   suite.configId,
 		ObjectId:   &suite.objectId,
 	}
 
-	result, err := uc.InsertScreeningMonitoringObject(suite.ctx, input)
+	result, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.NoError(err)
@@ -154,11 +161,11 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 	suite.AssertExpectations()
 }
 
-func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringObject_WithObjectPayload() {
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_WithObjectPayload() {
 	payload := json.RawMessage(`{"object_id": "test-object-id", "amount": 100}`)
 
 	// Setup test data
-	config := models.ScreeningMonitoringConfig{
+	config := models.ContinuousScreeningConfig{
 		Id:    suite.configId,
 		OrgId: suite.orgId,
 	}
@@ -186,23 +193,27 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 		},
 	}
 
+	objectInternalId := uuid.New()
 	ingestedObjects := []models.DataModelObject{
 		{
 			Data: map[string]any{
 				"object_id": suite.objectId,
 			},
+			Metadata: map[string]any{
+				"id": [16]byte(objectInternalId),
+			},
 		},
 	}
 
 	// Setup expectations
-	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
+	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(1, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
-		suite.objectId).Return(ingestedObjects, nil)
+		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
-	suite.clientDbRepository.On("CreateInternalScreeningMonitoringTable", suite.ctx,
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
 		mock.Anything, suite.objectType).Return(nil)
 	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
@@ -211,18 +222,20 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 		InitialHasMatches: false,
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
-	suite.clientDbRepository.On("InsertScreeningMonitoringObject", suite.ctx, mock.Anything,
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
 		suite.objectType, suite.objectId, suite.configId).Return(nil)
+	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
+		suite.orgId, suite.configId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertScreeningMonitoringObject{
+	input := models.InsertContinuousScreeningObject{
 		ObjectType:    suite.objectType,
 		ConfigId:      suite.configId,
 		ObjectPayload: &payload,
 	}
 
-	result, err := uc.InsertScreeningMonitoringObject(suite.ctx, input)
+	result, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.NoError(err)
@@ -230,9 +243,9 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 	suite.AssertExpectations()
 }
 
-func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringObject_TableNotConfigured() {
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_TableNotConfigured() {
 	// Setup test data - table without FTM entity
-	config := models.ScreeningMonitoringConfig{
+	config := models.ContinuousScreeningConfig{
 		Id:    suite.configId,
 		OrgId: suite.orgId,
 	}
@@ -254,19 +267,19 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
+	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertScreeningMonitoringObject{
+	input := models.InsertContinuousScreeningObject{
 		ObjectType: suite.objectType,
 		ConfigId:   suite.configId,
 		ObjectId:   &suite.objectId,
 	}
 
-	_, err := uc.InsertScreeningMonitoringObject(suite.ctx, input)
+	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.Error(err)
@@ -274,9 +287,9 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 	suite.AssertExpectations()
 }
 
-func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringObject_ObjectIdNotFoundInIngestedData() {
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_ObjectIdNotFoundInIngestedData() {
 	// Setup test data
-	config := models.ScreeningMonitoringConfig{
+	config := models.ContinuousScreeningConfig{
 		Id:    suite.configId,
 		OrgId: suite.orgId,
 	}
@@ -301,21 +314,21 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 	}
 
 	// Setup expectations - QueryIngestedObject returns empty list
-	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
+	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
-		suite.objectId).Return([]models.DataModelObject{}, nil)
+		suite.objectId, mock.Anything).Return([]models.DataModelObject{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertScreeningMonitoringObject{
+	input := models.InsertContinuousScreeningObject{
 		ObjectType: suite.objectType,
 		ConfigId:   suite.configId,
 		ObjectId:   &suite.objectId,
 	}
 
-	_, err := uc.InsertScreeningMonitoringObject(suite.ctx, input)
+	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.Error(err)
@@ -323,11 +336,11 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 	suite.AssertExpectations()
 }
 
-func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringObject_ObjectPayloadNotIngested() {
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_ObjectPayloadNotIngested() {
 	// Setup test data - payload with object_id
 	payload := json.RawMessage(`{"object_id": "test-object-id", "amount": 100}`)
 
-	config := models.ScreeningMonitoringConfig{
+	config := models.ContinuousScreeningConfig{
 		Id:    suite.configId,
 		OrgId: suite.orgId,
 	}
@@ -356,20 +369,20 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 	}
 
 	// Setup expectations - IngestObject returns 0 (no objects ingested)
-	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
+	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(0, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertScreeningMonitoringObject{
+	input := models.InsertContinuousScreeningObject{
 		ObjectType:    suite.objectType,
 		ConfigId:      suite.configId,
 		ObjectPayload: &payload,
 	}
 
-	_, err := uc.InsertScreeningMonitoringObject(suite.ctx, input)
+	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.Error(err)
@@ -377,11 +390,11 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 	suite.AssertExpectations()
 }
 
-func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringObject_UniqueViolationWithIgnoreConflictError() {
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_UniqueViolationWithIgnoreConflictError() {
 	// Setup test data - object payload, which will set ignoreConflictError to true
 	payload := json.RawMessage(`{"object_id": "test-object-id", "amount": 100}`)
 
-	config := models.ScreeningMonitoringConfig{
+	config := models.ContinuousScreeningConfig{
 		Id:    suite.configId,
 		OrgId: suite.orgId,
 	}
@@ -409,23 +422,27 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 		},
 	}
 
+	objectInternalId := uuid.New()
 	ingestedObjects := []models.DataModelObject{
 		{
 			Data: map[string]any{
 				"object_id": suite.objectId,
 			},
+			Metadata: map[string]any{
+				"id": [16]byte(objectInternalId),
+			},
 		},
 	}
 
 	// Setup expectations
-	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
+	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(1, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
-		suite.objectId).Return(ingestedObjects, nil)
+		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
-	suite.clientDbRepository.On("CreateInternalScreeningMonitoringTable", suite.ctx,
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
 		mock.Anything, suite.objectType).Return(nil)
 	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
@@ -435,20 +452,22 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
 	// Return a unique violation error
-	suite.clientDbRepository.On("InsertScreeningMonitoringObject", suite.ctx, mock.Anything,
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
 		suite.objectType, suite.objectId, suite.configId).Return(&pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
 	})
+	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
+		suite.orgId, suite.configId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertScreeningMonitoringObject{
+	input := models.InsertContinuousScreeningObject{
 		ObjectType:    suite.objectType,
 		ConfigId:      suite.configId,
 		ObjectPayload: &payload,
 	}
 
-	result, err := uc.InsertScreeningMonitoringObject(suite.ctx, input)
+	result, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
 
 	// Assert - should not error when ignoreConflictError is true and unique violation occurs
 	suite.NoError(err)
@@ -456,9 +475,9 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 	suite.AssertExpectations()
 }
 
-func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringObject_UniqueViolationWithoutIgnoreConflictError() {
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_UniqueViolationWithoutIgnoreConflictError() {
 	// Setup test data - object ID, which will NOT set ignoreConflictError
-	config := models.ScreeningMonitoringConfig{
+	config := models.ContinuousScreeningConfig{
 		Id:    suite.configId,
 		OrgId: suite.orgId,
 	}
@@ -482,49 +501,45 @@ func (suite *ScreeningMonitoringUsecaseTestSuite) TestInsertScreeningMonitoringO
 		},
 	}
 
+	objectInternalId := uuid.New()
 	ingestedObjects := []models.DataModelObject{
 		{
 			Data: map[string]any{
 				"object_id": suite.objectId,
 			},
+			Metadata: map[string]any{
+				"id": [16]byte(objectInternalId),
+			},
 		},
 	}
 
 	// Setup expectations
-	suite.repository.On("GetScreeningMonitoringConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
-	suite.enforceSecurity.On("WriteMonitoredObject", suite.orgId).Return(nil)
+	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
-		suite.objectId).Return(ingestedObjects, nil)
+		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
-	suite.clientDbRepository.On("CreateInternalScreeningMonitoringTable", suite.ctx,
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
 		mock.Anything, suite.objectType).Return(nil)
-	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
-		return len(query.Queries) > 0
-	})).Return(models.ScreeningRawSearchResponseWithMatches{
-		SearchInput:       []byte("{}"),
-		InitialHasMatches: false,
-		Matches:           []models.ScreeningMatch{},
-	}, nil)
-	// Return a unique violation error
-	suite.clientDbRepository.On("InsertScreeningMonitoringObject", suite.ctx, mock.Anything,
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
 		suite.objectType, suite.objectId, suite.configId).Return(&pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
 	})
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertScreeningMonitoringObject{
+	input := models.InsertContinuousScreeningObject{
 		ObjectType: suite.objectType,
 		ConfigId:   suite.configId,
 		ObjectId:   &suite.objectId,
 	}
 
-	_, err := uc.InsertScreeningMonitoringObject(suite.ctx, input)
+	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
 
 	// Assert - should error when ignoreConflictError is false and unique violation occurs
 	suite.Error(err)
-	suite.Contains(err.Error(), "object already exists in screening monitored objects table")
+	suite.True(errors.Is(err, models.ConflictError), "error should be ConflictError")
 	suite.AssertExpectations()
 }
 
@@ -806,7 +821,7 @@ func TestPrepareOpenSanctionsQuery(t *testing.T) {
 		ingestedObject      models.DataModelObject
 		dataModelEntityType string
 		dataModelMapping    map[string]string
-		config              models.ScreeningMonitoringConfig
+		config              models.ContinuousScreeningConfig
 		expectedQuery       models.OpenSanctionsQuery
 		wantError           bool
 		errorContains       string
@@ -822,7 +837,7 @@ func TestPrepareOpenSanctionsQuery(t *testing.T) {
 			dataModelMapping: map[string]string{
 				"name": "name",
 			},
-			config: models.ScreeningMonitoringConfig{
+			config: models.ContinuousScreeningConfig{
 				MatchThreshold: 75,
 				MatchLimit:     10,
 				Datasets:       []string{"default"},
@@ -861,7 +876,7 @@ func TestPrepareOpenSanctionsQuery(t *testing.T) {
 				"last_name":  "name",
 				"country":    "country",
 			},
-			config: models.ScreeningMonitoringConfig{
+			config: models.ContinuousScreeningConfig{
 				MatchThreshold: 80,
 				MatchLimit:     20,
 				Datasets:       []string{"default", "custom"},
@@ -897,7 +912,7 @@ func TestPrepareOpenSanctionsQuery(t *testing.T) {
 			dataModelMapping: map[string]string{
 				"company_name": "name",
 			},
-			config: models.ScreeningMonitoringConfig{
+			config: models.ContinuousScreeningConfig{
 				MatchThreshold: 70,
 				MatchLimit:     5,
 				Datasets:       []string{"default"},
@@ -933,7 +948,7 @@ func TestPrepareOpenSanctionsQuery(t *testing.T) {
 				"name":    "name",
 				"country": "country",
 			},
-			config: models.ScreeningMonitoringConfig{
+			config: models.ContinuousScreeningConfig{
 				MatchThreshold: 75,
 				MatchLimit:     10,
 				Datasets:       []string{"default"},
@@ -958,10 +973,7 @@ func TestPrepareOpenSanctionsQuery(t *testing.T) {
 				assert.Equal(t, len(tt.expectedQuery.Queries), len(result.Queries))
 				if len(result.Queries) > 0 {
 					assert.Equal(t, tt.expectedQuery.Queries[0].Type, result.Queries[0].Type)
-
-					for k, v := range tt.expectedQuery.Queries[0].Filters {
-						assert.ElementsMatch(t, v, result.Queries[0].Filters[k])
-					}
+					assert.Equal(t, tt.expectedQuery.Queries[0].Filters, result.Queries[0].Filters)
 				}
 			}
 		})

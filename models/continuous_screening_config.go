@@ -6,14 +6,16 @@ import (
 	"github.com/google/uuid"
 )
 
-// Configuration for screening monitoring for an organization.
+// Configuration for continuous screening for an organization.
 // Defines a set of datasets that are used for the monitoring.
-type ScreeningMonitoringConfig struct {
+type ContinuousScreeningConfig struct {
 	Id          uuid.UUID
+	StableId    uuid.UUID
 	OrgId       string
 	Name        string
 	Description *string
-
+	ObjectTypes []string
+	Algorithm   string
 	// Dataset that are used for the monitoring
 	Datasets []string
 
@@ -27,18 +29,26 @@ type ScreeningMonitoringConfig struct {
 	UpdatedAt time.Time
 }
 
-type CreateScreeningMonitoringConfig struct {
+type ContinuousScreeningConfigParameters struct {
+	MatchThreshold int
+	MatchLimit     int
+	Datasets       []string
+}
+
+type CreateContinuousScreeningConfig struct {
 	OrgId          string
 	Name           string
 	Description    *string
+	Algorithm      string
 	Datasets       []string
 	MatchThreshold int
 	MatchLimit     int
 }
 
-type UpdateScreeningMonitoringConfig struct {
+type UpdateContinuousScreeningConfig struct {
 	Name           *string
 	Description    *string
+	Algorithm      *string
 	Datasets       *[]string
 	MatchThreshold *int
 	MatchLimit     *int

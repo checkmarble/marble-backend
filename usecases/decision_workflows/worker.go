@@ -49,6 +49,7 @@ type ingestedDataReadRepository interface {
 		exec repositories.Executor,
 		table models.Table,
 		objectId string,
+		metadataFields ...string,
 	) ([]models.DataModelObject, error)
 }
 

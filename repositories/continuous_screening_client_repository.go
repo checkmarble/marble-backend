@@ -22,11 +22,11 @@ func sanitizedTableName(exec Executor, tableName string) string {
 // Table schema
 // id: UUID, primary key
 // object_id: TEXT, foreign key to client_tables.object_id
-// config_id: UUID, foreign key to screening_monitoring_configs.id
+// config_id: UUID, foreign key to continuous_screening_configs.id
 // created_at: TIMESTAMP WITH TIME ZONE
 // Truncate the table name and the uniq index name to the maximum length of 63 characters
 // Add unique index to have a unique object_id for a given config_id
-func (repo *ClientDbRepository) CreateInternalScreeningMonitoringTable(ctx context.Context, exec Executor, tableName string) error {
+func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx context.Context, exec Executor, tableName string) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (repo *ClientDbRepository) CreateInternalScreeningMonitoringTable(ctx conte
 	return err
 }
 
-func (repo *ClientDbRepository) InsertScreeningMonitoringObject(ctx context.Context, exec Executor,
+func (repo *ClientDbRepository) InsertContinuousScreeningObject(ctx context.Context, exec Executor,
 	tableName string, objectId string, configId uuid.UUID,
 ) error {
 	if err := validateClientDbExecutor(exec); err != nil {

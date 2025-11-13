@@ -9,10 +9,13 @@ import (
 	"github.com/google/uuid"
 )
 
-type ScreeningMonitoringConfigDto struct {
-	Id             string    `json:"id"`
+type ContinuousScreeningConfigDto struct {
+	Id             uuid.UUID `json:"id"`
+	StableId       uuid.UUID `json:"stable_id"`
 	Name           string    `json:"name"`
 	Description    *string   `json:"description"`
+	ObjectTypes    []string  `json:"object_types"`
+	Algorithm      string    `json:"algorithm"`
 	Datasets       []string  `json:"datasets"`
 	MatchThreshold int       `json:"match_threshold"`
 	MatchLimit     int       `json:"match_limit"`
@@ -21,11 +24,14 @@ type ScreeningMonitoringConfigDto struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
-func AdaptScreeningMonitoringConfigDto(config models.ScreeningMonitoringConfig) ScreeningMonitoringConfigDto {
-	return ScreeningMonitoringConfigDto{
-		Id:             config.Id.String(),
+func AdaptContinuousScreeningConfigDto(config models.ContinuousScreeningConfig) ContinuousScreeningConfigDto {
+	return ContinuousScreeningConfigDto{
+		Id:             config.Id,
+		StableId:       config.StableId,
 		Name:           config.Name,
 		Description:    config.Description,
+		ObjectTypes:    config.ObjectTypes,
+		Algorithm:      config.Algorithm,
 		Datasets:       config.Datasets,
 		MatchThreshold: config.MatchThreshold,
 		MatchLimit:     config.MatchLimit,
@@ -35,19 +41,20 @@ func AdaptScreeningMonitoringConfigDto(config models.ScreeningMonitoringConfig) 
 	}
 }
 
-type CreateScreeningMonitoringConfigDto struct {
+type CreateContinuousScreeningConfigDto struct {
 	Name           string   `json:"name" binding:"required"`
 	Description    *string  `json:"description"`
+	Algorithm      string   `json:"algorithm" binding:"required"`
 	Datasets       []string `json:"datasets" binding:"required"`
 	MatchThreshold int      `json:"match_threshold" binding:"required"`
 	MatchLimit     int      `json:"match_limit" binding:"required"`
 }
 
-func (dto CreateScreeningMonitoringConfigDto) Validate() error {
+func (dto CreateContinuousScreeningConfigDto) Validate() error {
 	if len(dto.Datasets) == 0 {
 		return errors.Wrap(
 			models.BadParameterError,
-			"datasets are required for screening monitoring config",
+			"datasets are required for continuous screening config",
 		)
 	}
 
@@ -68,26 +75,28 @@ func (dto CreateScreeningMonitoringConfigDto) Validate() error {
 	return nil
 }
 
-func AdaptCreateScreeningMonitoringConfigDtoToModel(dto CreateScreeningMonitoringConfigDto) models.CreateScreeningMonitoringConfig {
-	return models.CreateScreeningMonitoringConfig{
+func AdaptCreateContinuousScreeningConfigDtoToModel(dto CreateContinuousScreeningConfigDto) models.CreateContinuousScreeningConfig {
+	return models.CreateContinuousScreeningConfig{
 		Name:           dto.Name,
 		Description:    dto.Description,
+		Algorithm:      dto.Algorithm,
 		Datasets:       dto.Datasets,
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
 	}
 }
 
-type UpdateScreeningMonitoringConfigDto struct {
+type UpdateContinuousScreeningConfigDto struct {
 	Name           *string   `json:"name"`
 	Description    *string   `json:"description"`
+	Algorithm      *string   `json:"algorithm"`
 	Datasets       *[]string `json:"datasets"`
 	MatchThreshold *int      `json:"match_threshold"`
 	MatchLimit     *int      `json:"match_limit"`
 	Enabled        *bool     `json:"enabled"`
 }
 
-func (dto UpdateScreeningMonitoringConfigDto) Validate() error {
+func (dto UpdateContinuousScreeningConfigDto) Validate() error {
 	if dto.MatchThreshold != nil && (*dto.MatchThreshold < 0 || *dto.MatchThreshold > 100) {
 		return errors.Wrap(
 			models.BadParameterError,
@@ -112,10 +121,11 @@ func (dto UpdateScreeningMonitoringConfigDto) Validate() error {
 	return nil
 }
 
-func AdaptUpdateScreeningMonitoringConfigDtoToModel(dto UpdateScreeningMonitoringConfigDto) models.UpdateScreeningMonitoringConfig {
-	return models.UpdateScreeningMonitoringConfig{
+func AdaptUpdateContinuousScreeningConfigDtoToModel(dto UpdateContinuousScreeningConfigDto) models.UpdateContinuousScreeningConfig {
+	return models.UpdateContinuousScreeningConfig{
 		Name:           dto.Name,
 		Description:    dto.Description,
+		Algorithm:      dto.Algorithm,
 		Datasets:       dto.Datasets,
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
@@ -123,14 +133,14 @@ func AdaptUpdateScreeningMonitoringConfigDtoToModel(dto UpdateScreeningMonitorin
 	}
 }
 
-type InsertScreeningMonitoringObjectDto struct {
+type InsertContinuousScreeningObjectDto struct {
 	ObjectType    string           `json:"object_type" binding:"required"`
 	ConfigId      uuid.UUID        `json:"config_id" binding:"required"`
 	ObjectId      *string          `json:"object_id"`
 	ObjectPayload *json.RawMessage `json:"object_payload"`
 }
 
-func (dto InsertScreeningMonitoringObjectDto) Validate() error {
+func (dto InsertContinuousScreeningObjectDto) Validate() error {
 	if dto.ObjectId == nil && dto.ObjectPayload == nil {
 		return errors.Wrap(
 			models.BadParameterError,
@@ -148,8 +158,8 @@ func (dto InsertScreeningMonitoringObjectDto) Validate() error {
 	return nil
 }
 
-func AdaptInsertScreeningMonitoringObjectDto(dto InsertScreeningMonitoringObjectDto) models.InsertScreeningMonitoringObject {
-	return models.InsertScreeningMonitoringObject{
+func AdaptInsertContinuousScreeningObjectDto(dto InsertContinuousScreeningObjectDto) models.InsertContinuousScreeningObject {
+	return models.InsertContinuousScreeningObject{
 		ObjectType:    dto.ObjectType,
 		ConfigId:      dto.ConfigId,
 		ObjectId:      dto.ObjectId,

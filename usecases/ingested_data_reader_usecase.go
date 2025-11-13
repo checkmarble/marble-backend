@@ -28,6 +28,7 @@ type ingestedDataReaderClientDbRepository interface {
 		table models.Table,
 		uniqueFieldValue string,
 		uniqueFieldName string,
+		metadataFields ...string,
 	) ([]models.DataModelObject, error)
 	GatherFieldStatistics(ctx context.Context, exec repositories.Executor, table models.Table,
 		orgId string) ([]models.FieldStatistics, error)
@@ -49,7 +50,8 @@ type ingestedDataReaderRepository interface {
 }
 
 type ingestedDataReaderDataModelUsecase interface {
-	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions, useCache bool) (models.DataModel, error)
+	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions,
+		useCache bool) (models.DataModel, error)
 }
 
 type IngestedDataReaderUsecase struct {
@@ -96,7 +98,14 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 		return nil, err
 	}
 
-	objects, err := usecase.clientDbRepository.QueryIngestedObjectByUniqueField(ctx, db, table, uniqueFieldValue, uniqueFieldName)
+	objects, err := usecase.clientDbRepository.QueryIngestedObjectByUniqueField(
+		ctx,
+		db,
+		table,
+		uniqueFieldValue,
+		uniqueFieldName,
+		"valid_from",
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -202,17 +202,22 @@ func (e *EnforceSecurity) CanIngest(orgId string) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) ReadScreeningMonitoringConfig(config models.ScreeningMonitoringConfig) error {
+func (e *EnforceSecurity) ReadContinuousScreeningConfig(config models.ContinuousScreeningConfig) error {
 	args := e.Called(config)
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) WriteScreeningMonitoringConfig(orgId string) error {
+func (e *EnforceSecurity) WriteContinuousScreeningConfig(orgId string) error {
 	args := e.Called(orgId)
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) WriteMonitoredObject(orgId string) error {
+func (e *EnforceSecurity) WriteContinuousScreeningObject(orgId string) error {
 	args := e.Called(orgId)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) ReadContinuousScreeningHit(hit models.ContinuousScreeningWithMatches) error {
+	args := e.Called(hit)
 	return args.Error(0)
 }

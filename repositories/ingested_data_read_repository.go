@@ -33,6 +33,7 @@ type IngestedDataReadRepository interface {
 		exec Executor,
 		table models.Table,
 		objectId string,
+		metadataFields ...string,
 	) ([]models.DataModelObject, error)
 	QueryIngestedObjectByUniqueField(
 		ctx context.Context,
@@ -40,6 +41,7 @@ type IngestedDataReadRepository interface {
 		table models.Table,
 		uniqueFieldValue string,
 		uniqueFieldName string,
+		metadataFields ...string,
 	) ([]models.DataModelObject, error)
 	QueryAggregatedValue(
 		ctx context.Context,
@@ -240,11 +242,14 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 	return output, nil
 }
 
+// Return the ingested object by object id
+// Use metadataFields to specify internal fields to return along with the data (Metadata field) (e.g. valid_from, id)
 func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 	ctx context.Context,
 	exec Executor,
 	table models.Table,
 	objectId string,
+	metadataFields ...string,
 ) ([]models.DataModelObject, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
@@ -257,7 +262,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 		ctx,
 		exec,
 		qualifiedTableName,
-		append(columnNames, "valid_from"),
+		append(columnNames, metadataFields...),
 		[]models.Filter{{
 			LeftSql:    fmt.Sprintf("%s.object_id", qualifiedTableName),
 			Operator:   ast.FUNC_EQUAL,
@@ -290,6 +295,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByUniqueField(
 	table models.Table,
 	uniqueFieldValue string,
 	uniqueFieldName string,
+	metadataFields ...string,
 ) ([]models.DataModelObject, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
@@ -302,7 +308,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByUniqueField(
 		ctx,
 		exec,
 		qualifiedTableName,
-		append(columnNames, "valid_from"),
+		append(columnNames, metadataFields...),
 		[]models.Filter{{
 			LeftSql:    fmt.Sprintf("%s.%s", qualifiedTableName, uniqueFieldName),
 			Operator:   ast.FUNC_EQUAL,
