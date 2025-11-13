@@ -96,16 +96,16 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		telemetryExporter:           utils.GetEnv("TRACING_EXPORTER", "otlp"),
 		otelSamplingRates:           utils.GetEnv("TRACING_SAMPLING_RATES", ""),
 		enablePrometheus:            utils.GetEnv("ENABLE_PROMETHEUS", false),
+		enableTracing:               utils.GetEnv("ENABLE_TRACING", false),
 	}
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
 	gcpConfig, err := infra.NewGcpConfig(
-		context.Background(),
+		ctx,
 		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
-		utils.GetEnv("ENABLE_GCP_TRACING", false),
 	)
 	if err != nil {
 		logger.WarnContext(ctx, "could not initialize GCP config", "error", err.Error())
@@ -157,7 +157,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	tracingConfig := infra.TelemetryConfiguration{
 		ApplicationName: workerConfig.appName,
-		Enabled:         gcpConfig.EnableTracing,
+		Enabled:         workerConfig.enableTracing,
 		ProjectID:       gcpConfig.ProjectId,
 		Exporter:        workerConfig.telemetryExporter,
 		SamplingMap:     infra.NewTelemetrySamplingMap(ctx, workerConfig.otelSamplingRates),

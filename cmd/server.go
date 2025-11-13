@@ -49,7 +49,6 @@ func RunServer(config CompiledConfig) error {
 		ctx,
 		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
-		utils.GetEnv("ENABLE_GCP_TRACING", false),
 	)
 	if err != nil {
 		return err
@@ -190,6 +189,7 @@ func RunServer(config CompiledConfig) error {
 		telemetryExporter:                utils.GetEnv("TRACING_EXPORTER", "otlp"),
 		otelSamplingRates:                utils.GetEnv("TRACING_SAMPLING_RATES", ""),
 		similarityThreshold:              utils.GetEnv("SIMILARITY_THRESHOLD", models.DEFAULT_SIMILARITY_THRESHOLD),
+		enableTracing:                    utils.GetEnv("ENABLE_TRACING", false),
 	}
 	if err := serverConfig.Validate(); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -227,7 +227,7 @@ func RunServer(config CompiledConfig) error {
 
 	tracingConfig := infra.TelemetryConfiguration{
 		ApplicationName: apiConfig.AppName,
-		Enabled:         gcpConfig.EnableTracing,
+		Enabled:         serverConfig.enableTracing,
 		ProjectID:       gcpConfig.ProjectId,
 		Exporter:        serverConfig.telemetryExporter,
 		SamplingMap:     infra.NewTelemetrySamplingMap(ctx, serverConfig.otelSamplingRates),

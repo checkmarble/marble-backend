@@ -44,15 +44,7 @@ func InitTelemetry(configuration TelemetryConfiguration, apiVersion string) (Tel
 	var exporter sdktrace.SpanExporter
 
 	switch configuration.Exporter {
-	case "otlp":
-		otlpExporter, err := otlptracegrpc.New(context.Background())
-		if err != nil {
-			return TelemetryRessources{}, fmt.Errorf("otlptracegrpc.New error: %w", err)
-		}
-
-		exporter = otlpExporter
-
-	default:
+	case "gcp":
 		gcpExporter, err := texporter.New(
 			texporter.WithProjectID(configuration.ProjectID), // If empty (env variable GOOGLE_CLOUD_PROJECT not set), it will try to determine the project id from the GCP metadata server
 			texporter.WithTraceClientOptions([]option.ClientOption{option.WithTelemetryDisabled()}),
@@ -62,6 +54,14 @@ func InitTelemetry(configuration TelemetryConfiguration, apiVersion string) (Tel
 		}
 
 		exporter = gcpExporter
+
+	default: // "otlp"
+		otlpExporter, err := otlptracegrpc.New(context.Background())
+		if err != nil {
+			return TelemetryRessources{}, fmt.Errorf("otlptracegrpc.New error: %w", err)
+		}
+
+		exporter = otlpExporter
 	}
 
 	res, err := resource.New(context.Background(),
