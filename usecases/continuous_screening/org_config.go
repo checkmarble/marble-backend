@@ -60,18 +60,30 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 			errors.Wrap(models.BadParameterError, err.Error())
 	}
 
-	// Check if the object_types is not empty then create the internal tables for the object types
-	if len(input.ObjectTypes) < 1 {
+	if len(input.ObjectTypes) == 0 {
 		return models.ContinuousScreeningConfig{},
 			errors.Wrap(models.BadParameterError, "object_types cannot be empty")
 	}
-
 	if err := uc.processObjectTypes(ctx, uc.executorFactory.NewExecutor(), input.OrgId, input.ObjectTypes); err != nil {
 		return models.ContinuousScreeningConfig{}, err
 	}
 
-	configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx,
-		uc.executorFactory.NewExecutor(), input)
+	var configCreated models.ContinuousScreeningConfig
+
+	// Use transaction to ensure atomicity of the operation and avoid race conditions
+	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// Check if the stable ID is already in use
+		exists, err := uc.repository.HasContinuousScreeningConfigStableId(ctx, tx, input.StableId)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return errors.Wrap(models.BadParameterError, "stable ID already in use")
+		}
+
+		configCreated, err = uc.repository.CreateContinuousScreeningConfig(ctx, tx, input)
+		return err
+	})
 	if err != nil {
 		return models.ContinuousScreeningConfig{}, err
 	}
