@@ -19,6 +19,7 @@ type ContinuousScreening struct {
 	OrgId                             uuid.UUID
 	ContinuousScreeningConfigId       uuid.UUID
 	ContinuousScreeningConfigStableId string
+	CaseId                            uuid.UUID
 	ObjectType                        string
 	ObjectId                          string
 	ObjectInternalId                  uuid.UUID

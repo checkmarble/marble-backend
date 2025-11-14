@@ -96,11 +96,12 @@ func (m *ContinuousScreeningRepository) InsertContinuousScreening(
 	orgId string,
 	configId uuid.UUID,
 	configStableId string,
+	caseId uuid.UUID,
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
 ) error {
-	args := m.Called(ctx, exec, screening, orgId, configId, configStableId, objectType, objectId, objectInternalId)
+	args := m.Called(ctx, exec, screening, orgId, configId, configStableId, caseId, objectType, objectId, objectInternalId)
 	return args.Error(0)
 }
 

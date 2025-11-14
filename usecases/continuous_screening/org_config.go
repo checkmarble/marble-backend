@@ -99,6 +99,19 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 			return errors.Wrap(models.BadParameterError, "stable ID already in use")
 		}
 
+		// Check if the inbox exists
+		inbox, err := uc.repository.GetInboxById(ctx, tx, input.InboxId)
+		if err != nil {
+			if errors.Is(err, models.NotFoundError) {
+				return errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+			}
+			return err
+		}
+		if inbox.OrganizationId != input.OrgId {
+			return errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+		}
+		// TODO: Do I need to check the inbox status?
+
 		configCreated, err = uc.repository.CreateContinuousScreeningConfig(ctx, tx, input)
 		return err
 	})
@@ -131,6 +144,17 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 		if !isUpdateDifferent(config, input) {
 			configUpdated = config
 			return nil
+		}
+
+		// Check if the inbox exists
+		if input.InboxId != nil && *input.InboxId != config.InboxId {
+			inbox, err := uc.repository.GetInboxById(ctx, tx, *input.InboxId)
+			if err != nil {
+				return err
+			}
+			if inbox.OrganizationId != config.OrgId {
+				return errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+			}
 		}
 
 		// Check if the algorithm is valid
@@ -240,6 +264,9 @@ func isUpdateDifferent(currentConfig models.ContinuousScreeningConfig, updateInp
 		currentConfig.ObjectTypes, *updateInput.ObjectTypes) {
 		return true
 	}
+	if updateInput.InboxId != nil && *updateInput.InboxId != currentConfig.InboxId {
+		return true
+	}
 	return false
 }
 
@@ -256,5 +283,6 @@ func createUpdatedConfig(config models.ContinuousScreeningConfig,
 		MatchThreshold: pure_utils.PtrValueOrDefault(updateInput.MatchThreshold, config.MatchThreshold),
 		MatchLimit:     pure_utils.PtrValueOrDefault(updateInput.MatchLimit, config.MatchLimit),
 		ObjectTypes:    pure_utils.PtrSliceValueOrDefault(updateInput.ObjectTypes, config.ObjectTypes),
+		InboxId:        pure_utils.PtrValueOrDefault(updateInput.InboxId, config.InboxId),
 	}
 }

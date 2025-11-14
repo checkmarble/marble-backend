@@ -140,6 +140,8 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 
 	screeningWithMatches := screeningResponse.AdaptScreeningFromSearchResponse(query)
 
+	// TODO: create a case and fetch the case ID
+	caseId := uuid.New()
 	if err := uc.repository.InsertContinuousScreening(
 		ctx,
 		exec,
@@ -147,6 +149,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		config.OrgId,
 		config.Id,
 		config.StableId,
+		caseId,
 		input.ObjectType,
 		objectId,
 		ingestedObjectInternalId,

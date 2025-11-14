@@ -37,6 +37,7 @@ type ContinuousScreeningUsecaseTestSuite struct {
 	orgId          string
 	objectType     string
 	objectId       string
+	caseId         uuid.UUID
 }
 
 func (suite *ContinuousScreeningUsecaseTestSuite) SetupTest() {
@@ -57,6 +58,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) SetupTest() {
 	suite.orgId = "test-org-id"
 	suite.objectType = "transactions"
 	suite.objectId = "test-object-id"
+	suite.caseId = uuid.New()
 }
 
 func (suite *ContinuousScreeningUsecaseTestSuite) makeUsecase() *ContinuousScreeningUsecase {
@@ -145,7 +147,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
+		suite.orgId, suite.configId, suite.configStableId, suite.caseId, suite.objectType,
+		suite.objectId, mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -227,7 +230,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
+		suite.orgId, suite.configId, suite.configStableId, suite.caseId, suite.objectType,
+		suite.objectId, mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -468,7 +472,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		Code: pgerrcode.UniqueViolation,
 	})
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
+		suite.orgId, suite.configId, suite.configStableId, suite.caseId, suite.objectType,
+		suite.objectId, mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()

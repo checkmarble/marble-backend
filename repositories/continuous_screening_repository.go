@@ -101,6 +101,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 		Columns(
 			"org_id",
 			"stable_id",
+			"inbox_id",
 			"name",
 			"description",
 			"algorithm",
@@ -112,6 +113,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 		Values(
 			input.OrgId,
 			input.StableId,
+			input.InboxId,
 			input.Name,
 			input.Description,
 			input.Algorithm,
@@ -174,6 +176,10 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningConfig(
 		sql = sql.Set("object_types", *input.ObjectTypes)
 		countUpdate++
 	}
+	if input.InboxId != nil {
+		sql = sql.Set("inbox_id", *input.InboxId)
+		countUpdate++
+	}
 
 	if countUpdate == 0 {
 		config, err := repo.GetContinuousScreeningConfig(ctx, exec, id)
@@ -195,6 +201,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 	orgId string,
 	configId uuid.UUID,
 	configStableId string,
+	caseId uuid.UUID,
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
@@ -212,6 +219,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 			"org_id",
 			"continuous_screening_config_id",
 			"continuous_screening_config_stable_id",
+			"case_id",
 			"object_type",
 			"object_id",
 			"object_internal_id",
@@ -225,6 +233,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 			orgId,
 			configId,
 			configStableId,
+			caseId,
 			objectType,
 			objectId,
 			objectInternalId,

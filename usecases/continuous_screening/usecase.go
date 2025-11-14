@@ -59,6 +59,7 @@ type ContinuousScreeningUsecaseRepository interface {
 		orgId string,
 		configId uuid.UUID,
 		configStableId string,
+		caseId uuid.UUID,
 		objectType string,
 		objectId string,
 		objectInternalId uuid.UUID,
@@ -69,6 +70,9 @@ type ContinuousScreeningUsecaseRepository interface {
 		orgId uuid.UUID,
 		paginationAndSorting models.PaginationAndSorting,
 	) ([]models.ContinuousScreeningWithMatches, error)
+
+	// Inboxes:
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
 }
 
 type ContinuousScreeningClientDbRepository interface {
