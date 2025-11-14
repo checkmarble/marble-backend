@@ -10,10 +10,10 @@ import (
 // Defines a set of datasets that are used for the monitoring.
 type ContinuousScreeningConfig struct {
 	Id          uuid.UUID
-	StableId    uuid.UUID
+	StableId    string
 	OrgId       string
 	Name        string
-	Description *string
+	Description string
 	ObjectTypes []string
 	Algorithm   string
 	// Dataset that are used for the monitoring
@@ -37,8 +37,9 @@ type ContinuousScreeningConfigParameters struct {
 
 type CreateContinuousScreeningConfig struct {
 	OrgId          string
+	StableId       string
 	Name           string
-	Description    *string
+	Description    string
 	Algorithm      string
 	Datasets       []string
 	MatchThreshold int
