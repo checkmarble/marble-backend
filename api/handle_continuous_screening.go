@@ -16,14 +16,10 @@ import (
 func handleGetContinuousScreeningConfig(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		configId, err := uuid.Parse(c.Param("config_id"))
-		if err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
-			return
-		}
+		stableId := c.Param("stable_id")
 
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
-		continuousScreeningConfig, err := uc.GetContinuousScreeningConfig(ctx, configId)
+		continuousScreeningConfig, err := uc.GetContinuousScreeningConfigByStableId(ctx, stableId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -87,11 +83,7 @@ func handleUpdateContinuousScreeningConfig(uc usecases.Usecases) func(c *gin.Con
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		configId, err := uuid.Parse(c.Param("config_id"))
-		if err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
-			return
-		}
+		stableId := c.Param("stable_id")
 
 		var input dto.UpdateContinuousScreeningConfigDto
 		if err := c.ShouldBindJSON(&input); err != nil {
@@ -106,7 +98,7 @@ func handleUpdateContinuousScreeningConfig(uc usecases.Usecases) func(c *gin.Con
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
 		continuousScreeningConfig, err := uc.UpdateContinuousScreeningConfig(
 			ctx,
-			configId,
+			stableId,
 			dto.AdaptUpdateContinuousScreeningConfigDtoToModel(input),
 		)
 		if presentError(ctx, c, err) {

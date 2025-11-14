@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var regexpStableId = regexp.MustCompile(`^[a-zA-Z0-9_]{1,64}$`)
+
 type ContinuousScreeningConfigDto struct {
 	Id             uuid.UUID `json:"id"`
 	StableId       string    `json:"stable_id"`
@@ -83,7 +85,7 @@ func (dto CreateContinuousScreeningConfigDto) Validate() error {
 	}
 
 	// Check stableID is valid
-	if !regexp.MustCompile("^[a-zA-Z0-9_]{1,64}$").MatchString(dto.StableId) {
+	if !regexpStableId.MatchString(dto.StableId) {
 		return errors.Wrap(
 			models.BadParameterError,
 			"stable ID must contain only letters, numbers, underscores and be at most 64 characters",
@@ -124,7 +126,7 @@ func (dto UpdateContinuousScreeningConfigDto) Validate() error {
 		)
 	}
 
-	if dto.MatchLimit != nil && *dto.MatchLimit < 0 {
+	if dto.MatchLimit != nil && *dto.MatchLimit < 1 {
 		return errors.Wrap(
 			models.BadParameterError,
 			"match limit must be at least 1",
