@@ -378,19 +378,35 @@ func preparePrompt(promptPath string, data map[string]any) (prompt string, err e
 
 	// Build the prompt message with the data
 	// Prepare the data for the template execution
-	marshalledMap := make(map[string]string)
+	// Use template.HTML to prevent unwanted HTML escaping by the template engine
+	marshalledMap := make(map[string]template.HTML)
 	for k, v := range data {
-		if printer, ok := v.(agent_dto.AgentPrinter); ok {
-			marshalledMap[k], err = printer.PrintForAgent()
+		switch value := v.(type) {
+		case string:
+			marshalledMap[k] = template.HTML(value)
+		case *string:
+			if value != nil {
+				marshalledMap[k] = template.HTML(*value)
+			} else {
+				marshalledMap[k] = template.HTML("null")
+			}
+		case agent_dto.AgentPrinter:
+			str, err := value.PrintForAgent()
 			if err != nil {
 				return "", errors.Wrapf(err, "could not print %s", k)
 			}
-		} else {
-			b, err := json.Marshal(v)
+			marshalledMap[k] = template.HTML(str)
+		default:
+			// Use json.Encoder with SetEscapeHTML(false) to prevent JSON from escaping HTML
+			var buf bytes.Buffer
+			encoder := json.NewEncoder(&buf)
+			encoder.SetEscapeHTML(false)
+			err := encoder.Encode(v)
 			if err != nil {
 				return "", errors.Wrapf(err, "could not marshal %s", k)
 			}
-			marshalledMap[k] = string(b)
+			// Remove trailing newline added by encoder.Encode and cast to template.HTML
+			marshalledMap[k] = template.HTML(bytes.TrimSpace(buf.Bytes()))
 		}
 	}
 

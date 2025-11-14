@@ -558,7 +558,11 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	// Finally, we can generate the case review
 	if caseReviewContext.CaseReview == nil {
-		astOptions, err := json.Marshal(ast.FuncAttributesMap)
+		var astOptions []ast.FuncAttributes
+		for _, funcAttributes := range ast.FuncAttributesMap {
+			astOptions = append(astOptions, funcAttributes)
+		}
+		astOptionsBytes, err := json.Marshal(astOptions)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not marshal ast options")
 		}
@@ -567,7 +571,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			map[string]any{
 				// Global data
 				"org_activity":     organizationDescription,
-				"rule_ast_options": astOptions,
+				"rule_ast_options": string(astOptionsBytes),
 
 				// Case data
 				"case_detail":           caseData.case_,
@@ -669,7 +673,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	logger.DebugContext(ctx, "Sanity check", "response", *caseReviewContext.SanityCheck)
 
 	// Do custom language and structure instructions
-	var finalOutput = caseReviewContext.CaseReview.CaseReview
+	finalOutput := caseReviewContext.CaseReview.CaseReview
 
 	instructions, modelForInstruction := uc.getOrganizationInstructionsForPrompt(ctx, customOrgInstructions)
 
@@ -826,7 +830,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 
 	hasMoreDecisions := false
 
-	decisionDtos := make([]agent_dto.Decision, MAX_DECISIONS_REVIEW_PER_CASE)
+	decisionDtos := make([]agent_dto.Decision, 0, MAX_DECISIONS_REVIEW_PER_CASE)
 	for i, decision := range decicionsWithRulesExec {
 		// We take only the MAX_DECISIONS_REVIEW_PER_CASE first decisions, in order not to overload the context for large cases.
 		// The template handles a "has_more_alerts" boolean flag to indicate this in the prompt when it happens.
@@ -851,13 +855,13 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 			return caseData{}, casePivotDataByPivot{}, errors.Wrapf(err,
 				"could not retrieve screenings for decision %s", decision.DecisionId)
 		}
-		decisionDtos[i] = agent_dto.AdaptDecision(
+		decisionDtos = append(decisionDtos, agent_dto.AdaptDecision(
 			decision.Decision,
 			decision.RuleExecutions,
 			screenings,
 			iteration,
 			rules,
-		)
+		))
 	}
 
 	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, c.OrganizationId, models.DataModelReadOptions{
