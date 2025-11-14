@@ -11,7 +11,7 @@ import (
 
 type ContinuousScreeningConfigDto struct {
 	Id             uuid.UUID `json:"id"`
-	StableId       uuid.UUID `json:"stable_id"`
+	StableId       string    `json:"stable_id"`
 	Name           string    `json:"name"`
 	Description    *string   `json:"description"`
 	ObjectTypes    []string  `json:"object_types"`
@@ -135,10 +135,10 @@ func AdaptUpdateContinuousScreeningConfigDtoToModel(dto UpdateContinuousScreenin
 }
 
 type InsertContinuousScreeningObjectDto struct {
-	ObjectType    string           `json:"object_type" binding:"required"`
-	ConfigId      uuid.UUID        `json:"config_id" binding:"required"`
-	ObjectId      *string          `json:"object_id"`
-	ObjectPayload *json.RawMessage `json:"object_payload"`
+	ObjectType     string           `json:"object_type" binding:"required"`
+	ConfigStableId string           `json:"config_stable_id" binding:"required"`
+	ObjectId       *string          `json:"object_id"`
+	ObjectPayload  *json.RawMessage `json:"object_payload"`
 }
 
 func (dto InsertContinuousScreeningObjectDto) Validate() error {
@@ -161,9 +161,9 @@ func (dto InsertContinuousScreeningObjectDto) Validate() error {
 
 func AdaptInsertContinuousScreeningObjectDto(dto InsertContinuousScreeningObjectDto) models.InsertContinuousScreeningObject {
 	return models.InsertContinuousScreeningObject{
-		ObjectType:    dto.ObjectType,
-		ConfigId:      dto.ConfigId,
-		ObjectId:      dto.ObjectId,
-		ObjectPayload: dto.ObjectPayload,
+		ObjectType:     dto.ObjectType,
+		ConfigStableId: dto.ConfigStableId,
+		ObjectId:       dto.ObjectId,
+		ObjectPayload:  dto.ObjectPayload,
 	}
 }

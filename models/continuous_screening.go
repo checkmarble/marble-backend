@@ -8,23 +8,24 @@ import (
 )
 
 type InsertContinuousScreeningObject struct {
-	ObjectType    string
-	ConfigId      uuid.UUID
-	ObjectId      *string
-	ObjectPayload *json.RawMessage
+	ObjectType     string
+	ConfigStableId string
+	ObjectId       *string
+	ObjectPayload  *json.RawMessage
 }
 
 type ContinuousScreening struct {
-	Id                          uuid.UUID
-	OrgId                       uuid.UUID
-	ContinuousScreeningConfigId uuid.UUID
-	ObjectType                  string
-	ObjectId                    string
-	ObjectInternalId            uuid.UUID
-	Status                      ScreeningStatus
-	SearchInput                 json.RawMessage
-	IsPartial                   bool
-	NumberOfMatches             int
+	Id                                uuid.UUID
+	OrgId                             uuid.UUID
+	ContinuousScreeningConfigId       uuid.UUID
+	ContinuousScreeningConfigStableId string
+	ObjectType                        string
+	ObjectId                          string
+	ObjectInternalId                  uuid.UUID
+	Status                            ScreeningStatus
+	SearchInput                       json.RawMessage
+	IsPartial                         bool
+	NumberOfMatches                   int
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

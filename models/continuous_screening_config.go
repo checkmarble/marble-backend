@@ -10,7 +10,7 @@ import (
 // Defines a set of datasets that are used for the monitoring.
 type ContinuousScreeningConfig struct {
 	Id          uuid.UUID
-	StableId    uuid.UUID
+	StableId    string
 	OrgId       string
 	Name        string
 	Description *string

@@ -12,7 +12,7 @@ const TABLE_CONTINUOUS_SCREENING_CONFIGS = "continuous_screening_configs"
 
 type DBContinuousScreeningConfig struct {
 	Id             uuid.UUID `db:"id"`
-	StableId       uuid.UUID `db:"stable_id"`
+	StableId       string    `db:"stable_id"`
 	OrgId          string    `db:"org_id"`
 	Name           string    `db:"name"`
 	Description    *string   `db:"description"`

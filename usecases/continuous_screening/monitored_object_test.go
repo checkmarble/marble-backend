@@ -31,11 +31,12 @@ type ContinuousScreeningUsecaseTestSuite struct {
 	executorFactory              executor_factory.ExecutorFactoryStub
 	transactionFactory           executor_factory.TransactionFactoryStub
 
-	ctx        context.Context
-	configId   uuid.UUID
-	orgId      string
-	objectType string
-	objectId   string
+	ctx            context.Context
+	configId       uuid.UUID
+	configStableId string
+	orgId          string
+	objectType     string
+	objectId       string
 }
 
 func (suite *ContinuousScreeningUsecaseTestSuite) SetupTest() {
@@ -52,6 +53,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) SetupTest() {
 
 	suite.ctx = context.Background()
 	suite.configId = uuid.New()
+	suite.configStableId = "test-config-stable-id"
 	suite.orgId = "test-org-id"
 	suite.objectType = "transactions"
 	suite.objectId = "test-object-id"
@@ -90,6 +92,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Setup test data
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
+		StableId:    suite.configStableId,
 		OrgId:       suite.orgId,
 		ObjectTypes: []string{suite.objectType},
 	}
@@ -126,7 +129,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
@@ -139,16 +143,16 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
-		suite.objectType, suite.objectId, suite.configId).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
+		suite.orgId, suite.configId, suite.configStableId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
 	input := models.InsertContinuousScreeningObject{
-		ObjectType: suite.objectType,
-		ConfigId:   suite.configId,
-		ObjectId:   &suite.objectId,
+		ObjectType:     suite.objectType,
+		ConfigStableId: suite.configStableId,
+		ObjectId:       &suite.objectId,
 	}
 
 	result, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
@@ -165,6 +169,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Setup test data
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
+		StableId:    suite.configStableId,
 		OrgId:       suite.orgId,
 		ObjectTypes: []string{suite.objectType},
 	}
@@ -205,7 +210,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(1, nil)
@@ -219,16 +225,16 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
-		suite.objectType, suite.objectId, suite.configId).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
+		suite.orgId, suite.configId, suite.configStableId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
 	input := models.InsertContinuousScreeningObject{
-		ObjectType:    suite.objectType,
-		ConfigId:      suite.configId,
-		ObjectPayload: &payload,
+		ObjectType:     suite.objectType,
+		ConfigStableId: suite.configStableId,
+		ObjectPayload:  &payload,
 	}
 
 	result, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
@@ -243,6 +249,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Setup test data - table without FTM entity
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
+		StableId:    suite.configStableId,
 		OrgId:       suite.orgId,
 		ObjectTypes: []string{suite.objectType},
 	}
@@ -264,16 +271,17 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
 	input := models.InsertContinuousScreeningObject{
-		ObjectType: suite.objectType,
-		ConfigId:   suite.configId,
-		ObjectId:   &suite.objectId,
+		ObjectType:     suite.objectType,
+		ConfigStableId: suite.configStableId,
+		ObjectId:       &suite.objectId,
 	}
 
 	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
@@ -288,6 +296,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Setup test data
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
+		StableId:    suite.configStableId,
 		OrgId:       suite.orgId,
 		ObjectTypes: []string{suite.objectType},
 	}
@@ -312,7 +321,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations - QueryIngestedObject returns empty list
-	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
@@ -321,9 +331,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Execute
 	uc := suite.makeUsecase()
 	input := models.InsertContinuousScreeningObject{
-		ObjectType: suite.objectType,
-		ConfigId:   suite.configId,
-		ObjectId:   &suite.objectId,
+		ObjectType:     suite.objectType,
+		ConfigStableId: suite.configStableId,
+		ObjectId:       &suite.objectId,
 	}
 
 	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
@@ -340,6 +350,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
+		StableId:    suite.configStableId,
 		OrgId:       suite.orgId,
 		ObjectTypes: []string{suite.objectType},
 	}
@@ -368,7 +379,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations - IngestObject returns 0 (no objects ingested)
-	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(0, nil)
@@ -376,9 +388,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Execute
 	uc := suite.makeUsecase()
 	input := models.InsertContinuousScreeningObject{
-		ObjectType:    suite.objectType,
-		ConfigId:      suite.configId,
-		ObjectPayload: &payload,
+		ObjectType:     suite.objectType,
+		ConfigStableId: suite.configStableId,
+		ObjectPayload:  &payload,
 	}
 
 	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
@@ -395,6 +407,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
+		StableId:    suite.configStableId,
 		OrgId:       suite.orgId,
 		ObjectTypes: []string{suite.objectType},
 	}
@@ -435,7 +448,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(1, nil)
@@ -450,18 +464,18 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}, nil)
 	// Return a unique violation error
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
-		suite.objectType, suite.objectId, suite.configId).Return(&pgconn.PgError{
+		suite.objectType, suite.objectId, suite.configStableId).Return(&pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
 	})
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
+		suite.orgId, suite.configId, suite.configStableId, suite.objectType, suite.objectId, mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
 	input := models.InsertContinuousScreeningObject{
-		ObjectType:    suite.objectType,
-		ConfigId:      suite.configId,
-		ObjectPayload: &payload,
+		ObjectType:     suite.objectType,
+		ConfigStableId: suite.configStableId,
+		ObjectPayload:  &payload,
 	}
 
 	result, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
@@ -476,6 +490,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Setup test data - object ID, which will NOT set ignoreConflictError
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
+		StableId:    suite.configStableId,
 		OrgId:       suite.orgId,
 		ObjectTypes: []string{suite.objectType},
 	}
@@ -512,22 +527,23 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
-		suite.objectType, suite.objectId, suite.configId).Return(&pgconn.PgError{
+		suite.objectType, suite.objectId, suite.configStableId).Return(&pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
 	})
 
 	// Execute
 	uc := suite.makeUsecase()
 	input := models.InsertContinuousScreeningObject{
-		ObjectType: suite.objectType,
-		ConfigId:   suite.configId,
-		ObjectId:   &suite.objectId,
+		ObjectType:     suite.objectType,
+		ConfigStableId: suite.configStableId,
+		ObjectId:       &suite.objectId,
 	}
 
 	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
@@ -542,20 +558,22 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Setup test data - config doesn't include the object type
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
+		StableId:    suite.configStableId,
 		OrgId:       suite.orgId,
 		ObjectTypes: []string{"other_table"}, // Config has "other_table" but we're trying to use "transactions"
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfig", suite.ctx, mock.Anything, suite.configId).Return(config, nil)
+	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
 	input := models.InsertContinuousScreeningObject{
-		ObjectType: suite.objectType, // "transactions" which is not in ObjectTypes
-		ConfigId:   suite.configId,
-		ObjectId:   &suite.objectId,
+		ObjectType:     suite.objectType, // "transactions" which is not in ObjectTypes
+		ConfigStableId: suite.configStableId,
+		ObjectId:       &suite.objectId,
 	}
 
 	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)

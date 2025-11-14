@@ -26,6 +26,24 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfig(ctx context.Context
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
 }
 
+// Get the latest continuous screening config by stable id
+func (repo *MarbleDbRepository) GetContinuousScreeningConfigByStableId(ctx context.Context,
+	exec Executor, stableId string,
+) (models.ContinuousScreeningConfig, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.ContinuousScreeningConfigColumnList...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
+		Where(squirrel.Eq{"stable_id": stableId}).
+		OrderBy("created_at DESC").
+		Limit(1)
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
+}
+
 func (repo *MarbleDbRepository) GetContinuousScreeningConfigsByOrgId(
 	ctx context.Context,
 	exec Executor,
@@ -155,6 +173,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 	screening models.ScreeningWithMatches,
 	orgId string,
 	configId uuid.UUID,
+	configStableId string,
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
@@ -171,6 +190,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 			"id",
 			"org_id",
 			"continuous_screening_config_id",
+			"continuous_screening_config_stable_id",
 			"object_type",
 			"object_id",
 			"object_internal_id",
@@ -183,6 +203,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 			id,
 			orgId,
 			configId,
+			configStableId,
 			objectType,
 			objectId,
 			objectInternalId,
