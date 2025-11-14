@@ -94,8 +94,11 @@ type ContinuousScreeningIngestionUsecase interface {
 }
 
 type ContinuousScreeningScreeningProvider interface {
-	Search(ctx context.Context, query models.OpenSanctionsQuery) (
-		models.ScreeningRawSearchResponseWithMatches, error)
+	Search(
+		ctx context.Context,
+		query models.OpenSanctionsQuery,
+	) (models.ScreeningRawSearchResponseWithMatches, error)
+	GetAlgorithms(ctx context.Context) (models.OpenSanctionAlgorithms, error)
 }
 
 type ContinuousScreeningUsecase struct {

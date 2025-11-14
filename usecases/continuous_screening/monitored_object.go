@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -34,6 +35,17 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	}
 
 	if err := uc.enforceSecurity.WriteContinuousScreeningObject(config.OrgId); err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	// Check if the object type is configured
+	if !slices.Contains(config.ObjectTypes, input.ObjectType) {
+		return models.ScreeningWithMatches{},
+			errors.Wrapf(models.BadParameterError, "object type %s is not configured with this config", input.ObjectType)
+	}
+
+	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, config.OrgId)
+	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
 
@@ -75,47 +87,30 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 			errors.New("object_id or object_payload is required")
 	}
 
-	var screeningResponse models.ScreeningRawSearchResponseWithMatches
-	var query models.OpenSanctionsQuery
-	var ingestedObject models.DataModelObject
-	var ingestedObjectInternalId uuid.UUID
-
-	// Check if the object exists in ingested data then insert it into continuous screening table
-	// Create if not exists the continuous screening table and index
-	// TODO: Remove the transaction and use the repository directly (because removing the create schema and table creation from this method)
-	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId, func(tx repositories.Transaction) error {
-		ingestedObjects, err := uc.ingestedDataReader.QueryIngestedObject(ctx, tx, table, objectId, "id")
-		if err != nil {
-			return err
-		}
-		if len(ingestedObjects) == 0 {
-			return errors.Wrap(
-				models.NotFoundError,
-				fmt.Sprintf("object %s not found in ingested data", objectId),
-			)
-		}
-		// TODO: Move this part when configuring the continuous screening config
-		if err := uc.organizationSchemaRepository.CreateSchemaIfNotExists(ctx, tx); err != nil {
-			return err
-		}
-		if err := uc.clientDbRepository.CreateInternalContinuousScreeningTable(ctx, tx, table.Name); err != nil {
-			return err
-		}
-
-		ingestedObject = ingestedObjects[0]
-		ingestedObjectInternalId, err = getIngestedObjectInternalId(ingestedObject)
-		if err != nil {
-			return err
-		}
-
-		return uc.clientDbRepository.InsertContinuousScreeningObject(
-			ctx,
-			tx,
-			table.Name,
-			objectId,
-			input.ConfigId,
+	ingestedObjects, err := uc.ingestedDataReader.QueryIngestedObject(ctx, clientDbExec, table, objectId, "id")
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+	if len(ingestedObjects) == 0 {
+		return models.ScreeningWithMatches{}, errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("object %s not found in ingested data", objectId),
 		)
-	})
+	}
+
+	ingestedObject := ingestedObjects[0]
+	ingestedObjectInternalId, err := getIngestedObjectInternalId(ingestedObject)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	err = uc.clientDbRepository.InsertContinuousScreeningObject(
+		ctx,
+		clientDbExec,
+		table.Name,
+		objectId,
+		input.ConfigId,
+	)
 	// Unique violation error is handled below
 	if err != nil {
 		if repositories.IsUniqueViolationError(err) && ignoreUniqueViolationError {
@@ -131,18 +126,18 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	}
 
 	// Do screening on the object
-	query, err = prepareOpenSanctionsQuery(ingestedObject, dataModelMapping.Entity, dataModelMapping.Properties, config)
+	query, err := prepareOpenSanctionsQuery(ingestedObject, dataModelMapping.Entity, dataModelMapping.Properties, config)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
-	screeningResponse, err = uc.screeningProvider.Search(ctx, query)
+	screeningResponse, err := uc.screeningProvider.Search(ctx, query)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
 
 	screeningWithMatches := screeningResponse.AdaptScreeningFromSearchResponse(query)
 
-	err = uc.repository.InsertContinuousScreening(
+	if err := uc.repository.InsertContinuousScreening(
 		ctx,
 		exec,
 		screeningWithMatches,
@@ -151,10 +146,10 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		input.ObjectType,
 		objectId,
 		ingestedObjectInternalId,
-	)
-	if err != nil {
+	); err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
+
 	return screeningWithMatches, nil
 }
 

@@ -170,3 +170,23 @@ func (dataset *OpenSanctionsDatasetFreshness) CheckIsUpToDate(tp TimeProvider) e
 
 	return nil
 }
+
+type OpenSanctionAlgorithm struct {
+	Name        string
+	Description string
+}
+
+type OpenSanctionAlgorithms struct {
+	Algorithms []OpenSanctionAlgorithm
+	Best       string
+	Default    string
+}
+
+func (algorithms OpenSanctionAlgorithms) GetAlgorithm(name string) (OpenSanctionAlgorithm, error) {
+	for _, algorithm := range algorithms.Algorithms {
+		if algorithm.Name == name {
+			return algorithm, nil
+		}
+	}
+	return OpenSanctionAlgorithm{}, errors.Newf("algorithm %s not found", name)
+}

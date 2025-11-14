@@ -127,6 +127,14 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningConfig(
 		sql = sql.Set("enabled", *input.Enabled)
 		countUpdate++
 	}
+	if input.ObjectTypes != nil {
+		sql = sql.Set("object_types", *input.ObjectTypes)
+		countUpdate++
+	}
+	if input.Algorithm != nil {
+		sql = sql.Set("algorithm", *input.Algorithm)
+		countUpdate++
+	}
 
 	if countUpdate == 0 {
 		config, err := repo.GetContinuousScreeningConfig(ctx, exec, id)
