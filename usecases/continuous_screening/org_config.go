@@ -221,8 +221,7 @@ func isUpdateDifferent(currentConfig models.ContinuousScreeningConfig, updateInp
 	if updateInput.Name != nil && *updateInput.Name != currentConfig.Name {
 		return true
 	}
-	if updateInput.Description != nil && (currentConfig.Description == nil ||
-		(*updateInput.Description != *currentConfig.Description)) {
+	if updateInput.Description != nil && *updateInput.Description != currentConfig.Description {
 		return true
 	}
 	if updateInput.Algorithm != nil && *updateInput.Algorithm != currentConfig.Algorithm {
@@ -247,16 +246,11 @@ func isUpdateDifferent(currentConfig models.ContinuousScreeningConfig, updateInp
 func createUpdatedConfig(config models.ContinuousScreeningConfig,
 	updateInput models.UpdateContinuousScreeningConfig,
 ) models.CreateContinuousScreeningConfig {
-	description := config.Description
-	if updateInput.Description != nil && (config.Description == nil ||
-		(*updateInput.Description != *config.Description)) {
-		description = updateInput.Description
-	}
 	return models.CreateContinuousScreeningConfig{
 		OrgId:          config.OrgId,
 		StableId:       config.StableId,
 		Name:           pure_utils.PtrValueOrDefault(updateInput.Name, config.Name),
-		Description:    description,
+		Description:    pure_utils.PtrValueOrDefault(updateInput.Description, config.Description),
 		Algorithm:      pure_utils.PtrValueOrDefault(updateInput.Algorithm, config.Algorithm),
 		Datasets:       pure_utils.PtrSliceValueOrDefault(updateInput.Datasets, config.Datasets),
 		MatchThreshold: pure_utils.PtrValueOrDefault(updateInput.MatchThreshold, config.MatchThreshold),

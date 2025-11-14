@@ -15,7 +15,7 @@ type DBContinuousScreeningConfig struct {
 	StableId       string    `db:"stable_id"`
 	OrgId          string    `db:"org_id"`
 	Name           string    `db:"name"`
-	Description    *string   `db:"description"`
+	Description    string    `db:"description"`
 	Algorithm      string    `db:"algorithm"`
 	ObjectTypes    []string  `db:"object_types"`
 	Datasets       []string  `db:"datasets"`
