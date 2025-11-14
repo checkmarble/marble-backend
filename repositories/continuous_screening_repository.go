@@ -76,7 +76,8 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfigsByOrgId(
 	sql := NewQueryBuilder().
 		Select(dbmodels.ContinuousScreeningConfigColumnList...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
-		Where(squirrel.Eq{"org_id": orgId})
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Eq{"enabled": true})
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
 }
@@ -171,10 +172,6 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningConfig(
 	}
 	if input.ObjectTypes != nil {
 		sql = sql.Set("object_types", *input.ObjectTypes)
-		countUpdate++
-	}
-	if input.Algorithm != nil {
-		sql = sql.Set("algorithm", *input.Algorithm)
 		countUpdate++
 	}
 
