@@ -31,6 +31,9 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	// Check if the config exists
 	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, exec, input.ConfigStableId)
 	if err != nil {
+		if errors.Is(err, models.NotFoundError) {
+			return models.ScreeningWithMatches{}, errors.Wrap(models.NotFoundError, "configuration not found")
+		}
 		return models.ScreeningWithMatches{}, err
 	}
 

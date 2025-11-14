@@ -93,6 +93,7 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 	// Setup
 	input := models.CreateContinuousScreeningConfig{
 		OrgId:       suite.orgId,
+		StableId:    "test-stable-id",
 		Algorithm:   "valid-algorithm",
 		ObjectTypes: []string{"transactions"},
 	}
@@ -136,6 +137,7 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
 		mock.Anything, "transactions").Return(nil)
+	suite.repository.On("HasContinuousScreeningConfigStableId", suite.ctx, mock.Anything, "test-stable-id").Return(false, nil)
 	suite.repository.On("CreateContinuousScreeningConfig", suite.ctx, mock.Anything, input).Return(expectedConfig, nil)
 
 	// Execute
@@ -180,6 +182,7 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_NonEmptyObj
 	// Setup
 	input := models.CreateContinuousScreeningConfig{
 		OrgId:       suite.orgId,
+		StableId:    "test-stable-id-multi",
 		Algorithm:   "valid-algorithm",
 		ObjectTypes: []string{"transactions", "customers"},
 	}
@@ -234,6 +237,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_NonEmptyObj
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
 		mock.Anything, "transactions").Return(nil)
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx, mock.Anything, "customers").Return(nil)
+	suite.repository.On("HasContinuousScreeningConfigStableId", suite.ctx, mock.Anything,
+		"test-stable-id-multi").Return(false, nil)
 	suite.repository.On("CreateContinuousScreeningConfig", suite.ctx, mock.Anything, input).Return(expectedConfig, nil)
 
 	// Execute
@@ -430,6 +435,60 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_AddObjectTy
 	// Assert
 	suite.NoError(err)
 	suite.Equal(updatedConfig, result)
+	suite.AssertExpectations()
+}
+
+func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_DuplicateStableId() {
+	// Setup - trying to create config with stable ID that already exists
+	input := models.CreateContinuousScreeningConfig{
+		OrgId:       suite.orgId,
+		StableId:    "duplicate-stable-id",
+		Algorithm:   "valid-algorithm",
+		ObjectTypes: []string{"transactions"},
+	}
+
+	ftmEntityValue := models.FollowTheMoneyEntityPerson
+	ftmPropertyValue := models.FollowTheMoneyPropertyName
+	table := models.Table{
+		Name:      "transactions",
+		FTMEntity: &ftmEntityValue,
+		Fields: map[string]models.Field{
+			"object_id": {
+				Name:        "object_id",
+				FTMProperty: &ftmPropertyValue,
+			},
+		},
+	}
+
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			"transactions": table,
+		},
+	}
+
+	algorithms := models.OpenSanctionAlgorithms{
+		Algorithms: []models.OpenSanctionAlgorithm{
+			{Name: "valid-algorithm"},
+		},
+	}
+
+	// Mock expectations
+	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
+	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
+	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
+	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
+		mock.Anything, "transactions").Return(nil)
+	suite.repository.On("HasContinuousScreeningConfigStableId", suite.ctx, mock.Anything,
+		"duplicate-stable-id").Return(true, nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.CreateContinuousScreeningConfig(suite.ctx, input)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "stable ID already in use")
 	suite.AssertExpectations()
 }
 

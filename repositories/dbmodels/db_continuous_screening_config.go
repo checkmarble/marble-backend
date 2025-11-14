@@ -36,6 +36,7 @@ func AdaptContinuousScreeningConfig(db DBContinuousScreeningConfig) (models.Cont
 		Name:           db.Name,
 		Description:    db.Description,
 		Algorithm:      db.Algorithm,
+		ObjectTypes:    db.ObjectTypes,
 		Datasets:       db.Datasets,
 		MatchThreshold: db.MatchThreshold,
 		MatchLimit:     db.MatchLimit,

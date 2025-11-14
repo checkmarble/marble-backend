@@ -37,6 +37,7 @@ type ContinuousScreeningConfigParameters struct {
 
 type CreateContinuousScreeningConfig struct {
 	OrgId          string
+	StableId       string
 	Name           string
 	Description    *string
 	Algorithm      string
