@@ -14,6 +14,15 @@ type ContinuousScreeningRepository struct {
 	mock.Mock
 }
 
+func (m *ContinuousScreeningRepository) HasContinuousScreeningConfigStableId(
+	ctx context.Context,
+	exec repositories.Executor,
+	stableId string,
+) (bool, error) {
+	args := m.Called(ctx, exec, stableId)
+	return args.Get(0).(bool), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) GetContinuousScreeningConfig(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -30,6 +39,15 @@ func (m *ContinuousScreeningRepository) GetContinuousScreeningConfigsByOrgId(
 ) ([]models.ContinuousScreeningConfig, error) {
 	args := m.Called(ctx, exec, orgId)
 	return args.Get(0).([]models.ContinuousScreeningConfig), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) GetContinuousScreeningConfigByStableId(
+	ctx context.Context,
+	exec repositories.Executor,
+	stableId string,
+) (models.ContinuousScreeningConfig, error) {
+	args := m.Called(ctx, exec, stableId)
+	return args.Get(0).(models.ContinuousScreeningConfig), args.Error(1)
 }
 
 func (m *ContinuousScreeningRepository) CreateContinuousScreeningConfig(
@@ -76,12 +94,14 @@ func (m *ContinuousScreeningRepository) InsertContinuousScreening(
 	exec repositories.Executor,
 	screening models.ScreeningWithMatches,
 	orgId string,
-	config uuid.UUID,
+	configId uuid.UUID,
+	configStableId string,
+	caseId uuid.UUID,
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
 ) error {
-	args := m.Called(ctx, exec, screening, orgId, config, objectType, objectId, objectInternalId)
+	args := m.Called(ctx, exec, screening, orgId, configId, configStableId, caseId, objectType, objectId, objectInternalId)
 	return args.Error(0)
 }
 
@@ -113,9 +133,9 @@ func (m *ContinuousScreeningClientDbRepository) InsertContinuousScreeningObject(
 	exec repositories.Executor,
 	tableName string,
 	objectId string,
-	configId uuid.UUID,
+	configStableId string,
 ) error {
-	args := m.Called(ctx, exec, tableName, objectId, configId)
+	args := m.Called(ctx, exec, tableName, objectId, configStableId)
 	return args.Error(0)
 }
 

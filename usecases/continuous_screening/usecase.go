@@ -13,18 +13,26 @@ import (
 )
 
 type ContinuousScreeningUsecaseRepository interface {
+	HasContinuousScreeningConfigStableId(
+		ctx context.Context,
+		exec repositories.Executor,
+		stableId string,
+	) (bool, error)
 	GetContinuousScreeningConfig(
 		ctx context.Context,
 		exec repositories.Executor,
 		Id uuid.UUID,
-	) (
-		models.ContinuousScreeningConfig, error)
+	) (models.ContinuousScreeningConfig, error)
 	GetContinuousScreeningConfigsByOrgId(
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId string,
-	) (
-		[]models.ContinuousScreeningConfig, error)
+	) ([]models.ContinuousScreeningConfig, error)
+	GetContinuousScreeningConfigByStableId(
+		ctx context.Context,
+		exec repositories.Executor,
+		stableId string,
+	) (models.ContinuousScreeningConfig, error)
 	CreateContinuousScreeningConfig(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -50,6 +58,8 @@ type ContinuousScreeningUsecaseRepository interface {
 		screening models.ScreeningWithMatches,
 		orgId string,
 		configId uuid.UUID,
+		configStableId string,
+		caseId uuid.UUID,
 		objectType string,
 		objectId string,
 		objectInternalId uuid.UUID,
@@ -60,6 +70,9 @@ type ContinuousScreeningUsecaseRepository interface {
 		orgId uuid.UUID,
 		paginationAndSorting models.PaginationAndSorting,
 	) ([]models.ContinuousScreeningWithMatches, error)
+
+	// Inboxes:
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
 }
 
 type ContinuousScreeningClientDbRepository interface {
@@ -69,7 +82,7 @@ type ContinuousScreeningClientDbRepository interface {
 		exec repositories.Executor,
 		tableName string,
 		objectId string,
-		configId uuid.UUID,
+		configStableId string,
 	) error
 }
 

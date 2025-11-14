@@ -29,8 +29,11 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	exec := uc.executorFactory.NewExecutor()
 
 	// Check if the config exists
-	config, err := uc.repository.GetContinuousScreeningConfig(ctx, exec, input.ConfigId)
+	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, exec, input.ConfigStableId)
 	if err != nil {
+		if errors.Is(err, models.NotFoundError) {
+			return models.ScreeningWithMatches{}, errors.Wrap(models.NotFoundError, "configuration not found")
+		}
 		return models.ScreeningWithMatches{}, err
 	}
 
@@ -109,7 +112,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		clientDbExec,
 		table.Name,
 		objectId,
-		input.ConfigId,
+		input.ConfigStableId,
 	)
 	// Unique violation error is handled below
 	if err != nil {
@@ -137,12 +140,16 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 
 	screeningWithMatches := screeningResponse.AdaptScreeningFromSearchResponse(query)
 
+	// TODO: create a case and fetch the case ID
+	caseId := uuid.New()
 	if err := uc.repository.InsertContinuousScreening(
 		ctx,
 		exec,
 		screeningWithMatches,
 		config.OrgId,
-		input.ConfigId,
+		config.Id,
+		config.StableId,
+		caseId,
 		input.ObjectType,
 		objectId,
 		ingestedObjectInternalId,
