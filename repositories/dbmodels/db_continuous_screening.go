@@ -18,6 +18,7 @@ type DBContinuousScreening struct {
 	OrgId                             uuid.UUID       `db:"org_id"`
 	ContinuousScreeningConfigId       uuid.UUID       `db:"continuous_screening_config_id"`
 	ContinuousScreeningConfigStableId uuid.UUID       `db:"continuous_screening_config_stable_id"`
+	CaseId                            *uuid.UUID      `db:"case_id"`
 	ObjectType                        string          `db:"object_type"`
 	ObjectId                          string          `db:"object_id"`
 	ObjectInternalId                  uuid.UUID       `db:"object_internal_id"`
@@ -35,6 +36,7 @@ func AdaptContinuousScreening(db DBContinuousScreening) (models.ContinuousScreen
 		OrgId:                             db.OrgId,
 		ContinuousScreeningConfigId:       db.ContinuousScreeningConfigId,
 		ContinuousScreeningConfigStableId: db.ContinuousScreeningConfigStableId,
+		CaseId:                            db.CaseId,
 		ObjectType:                        db.ObjectType,
 		ObjectId:                          db.ObjectId,
 		ObjectInternalId:                  db.ObjectInternalId,

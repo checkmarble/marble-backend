@@ -91,6 +91,21 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 		return models.ContinuousScreeningConfig{}, err
 	}
 
+	// Check if the inbox exists
+	inbox, err := uc.repository.GetInboxById(ctx, exec, input.InboxId)
+	if err != nil {
+		if errors.Is(err, models.NotFoundError) {
+			return models.ContinuousScreeningConfig{},
+				errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+		}
+		return models.ContinuousScreeningConfig{}, err
+	}
+	if inbox.OrganizationId != input.OrgId.String() {
+		return models.ContinuousScreeningConfig{},
+			errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+	}
+	// TODO: Do I need to check the inbox status?
+
 	configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx, exec, input)
 	if err != nil {
 		return models.ContinuousScreeningConfig{}, err
@@ -121,6 +136,17 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 		if !isUpdateDifferent(config, input) {
 			configUpdated = config
 			return nil
+		}
+
+		// Check if the inbox exists
+		if input.InboxId != nil && *input.InboxId != config.InboxId {
+			inbox, err := uc.repository.GetInboxById(ctx, tx, *input.InboxId)
+			if err != nil {
+				return err
+			}
+			if inbox.OrganizationId != config.OrgId.String() {
+				return errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+			}
 		}
 
 		// Check if the algorithm is valid
@@ -227,6 +253,9 @@ func isUpdateDifferent(currentConfig models.ContinuousScreeningConfig, updateInp
 		currentConfig.ObjectTypes, *updateInput.ObjectTypes) {
 		return true
 	}
+	if updateInput.InboxId != nil && *updateInput.InboxId != currentConfig.InboxId {
+		return true
+	}
 	return false
 }
 
@@ -243,5 +272,6 @@ func createUpdatedConfig(config models.ContinuousScreeningConfig,
 		MatchThreshold: pure_utils.PtrValueOrDefault(updateInput.MatchThreshold, config.MatchThreshold),
 		MatchLimit:     pure_utils.PtrValueOrDefault(updateInput.MatchLimit, config.MatchLimit),
 		ObjectTypes:    pure_utils.PtrSliceValueOrDefault(updateInput.ObjectTypes, config.ObjectTypes),
+		InboxId:        pure_utils.PtrValueOrDefault(updateInput.InboxId, config.InboxId),
 	}
 }

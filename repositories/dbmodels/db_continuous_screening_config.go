@@ -14,6 +14,7 @@ type DBContinuousScreeningConfig struct {
 	Id             uuid.UUID `db:"id"`
 	StableId       uuid.UUID `db:"stable_id"`
 	OrgId          uuid.UUID `db:"org_id"`
+	InboxId        uuid.UUID `db:"inbox_id"`
 	Name           string    `db:"name"`
 	Description    string    `db:"description"`
 	Algorithm      string    `db:"algorithm"`
@@ -33,6 +34,7 @@ func AdaptContinuousScreeningConfig(db DBContinuousScreeningConfig) (models.Cont
 		Id:             db.Id,
 		StableId:       db.StableId,
 		OrgId:          db.OrgId,
+		InboxId:        db.InboxId,
 		Name:           db.Name,
 		Description:    db.Description,
 		Algorithm:      db.Algorithm,

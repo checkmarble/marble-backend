@@ -90,9 +90,9 @@ func (m *ContinuousScreeningRepository) InsertContinuousScreening(
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
-) error {
+) (models.ContinuousScreeningWithMatches, error) {
 	args := m.Called(ctx, exec, screening, orgId, configId, configStableId, objectType, objectId, objectInternalId)
-	return args.Error(0)
+	return args.Get(0).(models.ContinuousScreeningWithMatches), args.Error(1)
 }
 
 func (m *ContinuousScreeningRepository) ListContinuousScreeningsForOrg(
@@ -103,6 +103,15 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningsForOrg(
 ) ([]models.ContinuousScreeningWithMatches, error) {
 	args := m.Called(ctx, exec, orgId, paginationAndSorting)
 	return args.Get(0).([]models.ContinuousScreeningWithMatches), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) GetInboxById(
+	ctx context.Context,
+	exec repositories.Executor,
+	inboxId uuid.UUID,
+) (models.Inbox, error) {
+	args := m.Called(ctx, exec, inboxId)
+	return args.Get(0).(models.Inbox), args.Error(1)
 }
 
 type ContinuousScreeningClientDbRepository struct {

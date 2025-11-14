@@ -27,6 +27,7 @@ type OrgConfigTestSuite struct {
 	orgId    uuid.UUID
 	configId uuid.UUID
 	stableId uuid.UUID
+	inboxId  uuid.UUID
 }
 
 func (suite *OrgConfigTestSuite) SetupTest() {
@@ -43,6 +44,7 @@ func (suite *OrgConfigTestSuite) SetupTest() {
 	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
 	suite.configId = uuid.New()
 	suite.stableId = uuid.New()
+	suite.inboxId = uuid.New()
 }
 
 func (suite *OrgConfigTestSuite) makeUsecase() *ContinuousScreeningUsecase {
@@ -95,9 +97,15 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_InvalidAlgo
 func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 	// Setup
 	input := models.CreateContinuousScreeningConfig{
-		OrgId:       suite.orgId,
-		Algorithm:   "valid-algorithm",
-		ObjectTypes: []string{"transactions"},
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "test-config",
+		Description:    "test description",
+		Algorithm:      "valid-algorithm",
+		ObjectTypes:    []string{"transactions"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
 	}
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
@@ -120,10 +128,17 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 	}
 
 	expectedConfig := models.ContinuousScreeningConfig{
-		Id:          suite.configId,
-		OrgId:       suite.orgId,
-		Algorithm:   "valid-algorithm",
-		ObjectTypes: []string{"transactions"},
+		Id:             suite.configId,
+		StableId:       "test-stable-id",
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "test-config",
+		Description:    "test description",
+		Algorithm:      "valid-algorithm",
+		ObjectTypes:    []string{"transactions"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
 	}
 
 	algorithms := models.OpenSanctionAlgorithms{
@@ -138,6 +153,9 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
 		mock.Anything, "transactions").Return(nil)
+	suite.repository.On("GetInboxById", suite.ctx, mock.Anything, suite.inboxId).Return(models.Inbox{
+		Id: suite.inboxId, OrganizationId: suite.orgId.String(),
+	}, nil)
 	suite.repository.On("CreateContinuousScreeningConfig", suite.ctx, mock.Anything, mock.MatchedBy(func(
 		config models.CreateContinuousScreeningConfig,
 	) bool {
@@ -185,9 +203,15 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_EmptyObject
 func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_NonEmptyObjectTypes() {
 	// Setup
 	input := models.CreateContinuousScreeningConfig{
-		OrgId:       suite.orgId,
-		Algorithm:   "valid-algorithm",
-		ObjectTypes: []string{"transactions", "customers"},
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "test-config-multi",
+		Description:    "test description multi",
+		Algorithm:      "valid-algorithm",
+		ObjectTypes:    []string{"transactions", "customers"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
 	}
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
@@ -220,10 +244,17 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_NonEmptyObj
 	}
 
 	expectedConfig := models.ContinuousScreeningConfig{
-		Id:          suite.configId,
-		OrgId:       suite.orgId,
-		Algorithm:   "valid-algorithm",
-		ObjectTypes: []string{"transactions", "customers"},
+		Id:             suite.configId,
+		StableId:       "test-stable-id-multi",
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "test-config-multi",
+		Description:    "test description multi",
+		Algorithm:      "valid-algorithm",
+		ObjectTypes:    []string{"transactions", "customers"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
 	}
 
 	algorithms := models.OpenSanctionAlgorithms{
@@ -239,6 +270,9 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_NonEmptyObj
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
 		mock.Anything, "transactions").Return(nil)
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx, mock.Anything, "customers").Return(nil)
+	suite.repository.On("GetInboxById", suite.ctx, mock.Anything, suite.inboxId).Return(models.Inbox{
+		Id: suite.inboxId, OrganizationId: suite.orgId.String(),
+	}, nil)
 	suite.repository.On("CreateContinuousScreeningConfig", suite.ctx, mock.Anything, mock.MatchedBy(func(
 		config models.CreateContinuousScreeningConfig,
 	) bool {
@@ -621,6 +655,66 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_ObjectTypeN
 	// Assert
 	suite.Error(err)
 	suite.Contains(err.Error(), "table nonexistent_table not found in data model")
+	suite.AssertExpectations()
+}
+
+func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_InboxNotFound() {
+	// Setup
+	input := models.CreateContinuousScreeningConfig{
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "test-config",
+		Description:    "test description",
+		Algorithm:      "valid-algorithm",
+		ObjectTypes:    []string{"transactions"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
+	}
+
+	algorithms := models.OpenSanctionAlgorithms{
+		Algorithms: []models.OpenSanctionAlgorithm{
+			{Name: "valid-algorithm"},
+		},
+	}
+
+	// Mock expectations
+	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
+	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
+
+	// Mock for processObjectTypes
+	ftmEntityValue := models.FollowTheMoneyEntityPerson
+	ftmPropertyValue := models.FollowTheMoneyPropertyName
+	table := models.Table{
+		Name:      "transactions",
+		FTMEntity: &ftmEntityValue,
+		Fields: map[string]models.Field{
+			"object_id": {
+				Name:        "object_id",
+				FTMProperty: &ftmPropertyValue,
+			},
+		},
+	}
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			"transactions": table,
+		},
+	}
+	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
+	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
+		mock.Anything, "transactions").Return(nil)
+
+	suite.repository.On("HasContinuousScreeningConfigStableId", suite.ctx, mock.Anything, "test-stable-id").Return(false, nil)
+	suite.repository.On("GetInboxById", suite.ctx, mock.Anything, suite.inboxId).Return(models.Inbox{}, models.NotFoundError)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.CreateContinuousScreeningConfig(suite.ctx, input)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "inbox not found for the organization")
 	suite.AssertExpectations()
 }
 

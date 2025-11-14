@@ -14,6 +14,7 @@ type ContinuousScreeningDto struct {
 	OrgId                             uuid.UUID                     `json:"org_id"`
 	ContinuousScreeningConfigId       uuid.UUID                     `json:"continuous_screening_config_id"`
 	ContinuousScreeningConfigStableId uuid.UUID                     `json:"continuous_screening_config_stable_id"`
+	CaseId                            *uuid.UUID                    `json:"case_id"`
 	ObjectType                        string                        `json:"object_type"`
 	ObjectId                          string                        `json:"object_id"`
 	ObjectInternalId                  uuid.UUID                     `json:"object_internal_id"`
@@ -32,6 +33,7 @@ func AdaptContinuousScreeningDto(m models.ContinuousScreeningWithMatches) Contin
 		OrgId:                             m.OrgId,
 		ContinuousScreeningConfigId:       m.ContinuousScreeningConfigId,
 		ContinuousScreeningConfigStableId: m.ContinuousScreeningConfigStableId,
+		CaseId:                            m.CaseId,
 		ObjectType:                        m.ObjectType,
 		ObjectId:                          m.ObjectId,
 		ObjectInternalId:                  m.ObjectInternalId,

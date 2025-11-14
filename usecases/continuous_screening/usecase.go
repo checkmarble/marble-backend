@@ -57,13 +57,26 @@ type ContinuousScreeningUsecaseRepository interface {
 		objectType string,
 		objectId string,
 		objectInternalId uuid.UUID,
-	) error
+	) (models.ContinuousScreeningWithMatches, error)
 	ListContinuousScreeningsForOrg(
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId uuid.UUID,
 		paginationAndSorting models.PaginationAndSorting,
 	) ([]models.ContinuousScreeningWithMatches, error)
+
+	// Inboxes:
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
+}
+
+type caseEditor interface {
+	CreateCase(
+		ctx context.Context,
+		tx repositories.Transaction,
+		userId string,
+		createCaseAttributes models.CreateCaseAttributes,
+		fromEndUser bool,
+	) (models.Case, error)
 }
 
 type ContinuousScreeningClientDbRepository interface {
@@ -116,6 +129,7 @@ type ContinuousScreeningUsecase struct {
 	ingestedDataReader           ContinuousScreeningIngestedDataReader
 	ingestionUsecase             ContinuousScreeningIngestionUsecase
 	screeningProvider            ContinuousScreeningScreeningProvider
+	caseEditor                   caseEditor
 }
 
 func NewContinuousScreeningUsecase(
@@ -128,6 +142,7 @@ func NewContinuousScreeningUsecase(
 	ingestedDataReader ContinuousScreeningIngestedDataReader,
 	ingestionUsecase ContinuousScreeningIngestionUsecase,
 	screeningProvider ContinuousScreeningScreeningProvider,
+	caseEditor caseEditor,
 ) ContinuousScreeningUsecase {
 	return ContinuousScreeningUsecase{
 		executorFactory:              executorFactory,
@@ -139,5 +154,6 @@ func NewContinuousScreeningUsecase(
 		ingestedDataReader:           ingestedDataReader,
 		ingestionUsecase:             ingestionUsecase,
 		screeningProvider:            screeningProvider,
+		caseEditor:                   caseEditor,
 	}
 }
