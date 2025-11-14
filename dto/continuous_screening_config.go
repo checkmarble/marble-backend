@@ -16,7 +16,7 @@ type ContinuousScreeningConfigDto struct {
 	Id             uuid.UUID `json:"id"`
 	StableId       string    `json:"stable_id"`
 	Name           string    `json:"name"`
-	Description    *string   `json:"description"`
+	Description    string    `json:"description,omitempty"`
 	ObjectTypes    []string  `json:"object_types"`
 	Algorithm      string    `json:"algorithm"`
 	Datasets       []string  `json:"datasets"`
@@ -46,7 +46,7 @@ func AdaptContinuousScreeningConfigDto(config models.ContinuousScreeningConfig) 
 
 type CreateContinuousScreeningConfigDto struct {
 	Name           string   `json:"name" binding:"required"`
-	Description    *string  `json:"description"`
+	Description    string   `json:"description"`
 	StableId       string   `json:"stable_id" binding:"required"`
 	Algorithm      string   `json:"algorithm" binding:"required"`
 	Datasets       []string `json:"datasets" binding:"required"`
