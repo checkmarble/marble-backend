@@ -14,34 +14,36 @@ const TABLE_CONTINUOUS_SCREENING = "continuous_screening"
 var SelectContinuousScreeningColumn = utils.ColumnList[DBContinuousScreening]()
 
 type DBContinuousScreening struct {
-	Id                          uuid.UUID       `db:"id"`
-	OrgId                       uuid.UUID       `db:"org_id"`
-	ContinuousScreeningConfigId uuid.UUID       `db:"continuous_screening_config_id"`
-	ObjectType                  string          `db:"object_type"`
-	ObjectId                    string          `db:"object_id"`
-	ObjectInternalId            uuid.UUID       `db:"object_internal_id"`
-	Status                      string          `db:"status"`
-	SearchInput                 json.RawMessage `db:"search_input"`
-	IsPartial                   bool            `db:"is_partial"`
-	NumberOfMatches             int             `db:"number_of_matches"`
-	CreatedAt                   time.Time       `db:"created_at"`
-	UpdatedAt                   time.Time       `db:"updated_at"`
+	Id                                uuid.UUID       `db:"id"`
+	OrgId                             uuid.UUID       `db:"org_id"`
+	ContinuousScreeningConfigId       uuid.UUID       `db:"continuous_screening_config_id"`
+	ContinuousScreeningConfigStableId string          `db:"continuous_screening_config_stable_id"`
+	ObjectType                        string          `db:"object_type"`
+	ObjectId                          string          `db:"object_id"`
+	ObjectInternalId                  uuid.UUID       `db:"object_internal_id"`
+	Status                            string          `db:"status"`
+	SearchInput                       json.RawMessage `db:"search_input"`
+	IsPartial                         bool            `db:"is_partial"`
+	NumberOfMatches                   int             `db:"number_of_matches"`
+	CreatedAt                         time.Time       `db:"created_at"`
+	UpdatedAt                         time.Time       `db:"updated_at"`
 }
 
 func AdaptContinuousScreening(db DBContinuousScreening) (models.ContinuousScreening, error) {
 	return models.ContinuousScreening{
-		Id:                          db.Id,
-		OrgId:                       db.OrgId,
-		ContinuousScreeningConfigId: db.ContinuousScreeningConfigId,
-		ObjectType:                  db.ObjectType,
-		ObjectId:                    db.ObjectId,
-		ObjectInternalId:            db.ObjectInternalId,
-		Status:                      models.ScreeningStatusFrom(db.Status),
-		SearchInput:                 db.SearchInput,
-		IsPartial:                   db.IsPartial,
-		NumberOfMatches:             db.NumberOfMatches,
-		CreatedAt:                   db.CreatedAt,
-		UpdatedAt:                   db.UpdatedAt,
+		Id:                                db.Id,
+		OrgId:                             db.OrgId,
+		ContinuousScreeningConfigId:       db.ContinuousScreeningConfigId,
+		ContinuousScreeningConfigStableId: db.ContinuousScreeningConfigStableId,
+		ObjectType:                        db.ObjectType,
+		ObjectId:                          db.ObjectId,
+		ObjectInternalId:                  db.ObjectInternalId,
+		Status:                            models.ScreeningStatusFrom(db.Status),
+		SearchInput:                       db.SearchInput,
+		IsPartial:                         db.IsPartial,
+		NumberOfMatches:                   db.NumberOfMatches,
+		CreatedAt:                         db.CreatedAt,
+		UpdatedAt:                         db.UpdatedAt,
 	}, nil
 }
 
