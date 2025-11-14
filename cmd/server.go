@@ -285,6 +285,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		if !u.IsAbs() {
 			return errors.Newf("cannot parse analytics proxy URL: %s", u)
 		}
+		apiConfig.AnalyticsEnabled = true
 	}
 
 	var lagoConfig infra.LagoConfig
