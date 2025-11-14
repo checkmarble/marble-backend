@@ -12,6 +12,8 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
+const CASES_COUNT_LIMIT = 999
+
 func (repo *MarbleDbRepository) GetInboxById(ctx context.Context, exec Executor, inboxId uuid.UUID) (models.Inbox, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.Inbox{}, err
@@ -40,9 +42,22 @@ func (repo *MarbleDbRepository) ListInboxes(ctx context.Context, exec Executor,
 		query = query.Where(squirrel.Eq{"i.id": inboxIds})
 	}
 
+	// condition MUST be "status IN ('pending', 'investigating')" and not "status!='closed'" because of the index selection
 	if withCaseCount {
-		query = query.Column("(SELECT count(distinct c.id) FROM " + dbmodels.TABLE_CASES +
-			" AS c WHERE c.inbox_id = i.id) AS cases_count")
+		query = query.Column(
+			fmt.Sprintf(`(
+	SELECT count(*)
+	FROM (
+		SELECT 1
+		FROM cases AS c
+		WHERE c.org_id = i.organization_id
+			AND c.inbox_id = i.id
+			AND (status in ('pending', 'investigating'))
+			AND (snoozed_until IS NULL OR snoozed_until < now())
+		LIMIT %d
+		) AS cases_count_inner
+	) AS cases_count`,
+				CASES_COUNT_LIMIT))
 		return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptInboxWithCasesCount)
 	}
 
@@ -69,7 +84,12 @@ func selectInboxesJoinUsers() squirrel.SelectBuilder {
 		OrderBy("i.created_at DESC")
 }
 
-func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, exec Executor, input models.CreateInboxInput, newInboxId uuid.UUID) error {
+func (repo *MarbleDbRepository) CreateInbox(
+	ctx context.Context,
+	exec Executor,
+	input models.CreateInboxInput,
+	newInboxId uuid.UUID,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -94,7 +114,14 @@ func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, exec Executor, 
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, inboxId uuid.UUID, name *string, escalationInboxId *uuid.UUID, autoAssignEnabled *bool) error {
+func (repo *MarbleDbRepository) UpdateInbox(
+	ctx context.Context,
+	exec Executor,
+	inboxId uuid.UUID,
+	name *string,
+	escalationInboxId *uuid.UUID,
+	autoAssignEnabled *bool,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
