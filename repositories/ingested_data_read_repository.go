@@ -391,7 +391,9 @@ func createQueryAggregated(
 ) (squirrel.SelectBuilder, error) {
 	var selectExpression string
 	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
-		selectExpression = fmt.Sprintf("COUNT(DISTINCT %s)", fieldName)
+		// Instead of doing SELECT COUNT(DISTINCT), we will do a SELECT COUNT(*) FROM (SELECT DISTINCT), which
+		// can use a better plan most of the times.
+		selectExpression = fmt.Sprintf("distinct %s", fieldName)
 	} else if aggregator == ast.AGGREGATOR_COUNT {
 		// COUNT(*) is a special case, as it does not take a field name (we do not want to count only non-null
 		// values of a field, but all rows in the table that match the filters)
@@ -419,6 +421,11 @@ func createQueryAggregated(
 			return squirrel.SelectBuilder{}, err
 		}
 	}
+
+	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
+		return NewQueryBuilder().Select("count(*)").FromSelect(query, "q"), nil
+	}
+
 	return query, nil
 }
 
