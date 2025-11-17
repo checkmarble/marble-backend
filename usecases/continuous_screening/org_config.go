@@ -142,6 +142,9 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 		if input.InboxId != nil && *input.InboxId != config.InboxId {
 			inbox, err := uc.repository.GetInboxById(ctx, tx, *input.InboxId)
 			if err != nil {
+				if errors.Is(err, models.NotFoundError) {
+					return errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+				}
 				return err
 			}
 			if inbox.OrganizationId != config.OrgId.String() {

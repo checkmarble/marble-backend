@@ -167,7 +167,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		return models.ScreeningWithMatches{}, err
 	}
 
-	// Create and attached to a case
+	// Create and attach to a case
 	if screeningWithMatches.Status == models.ScreeningStatusInReview {
 		userId := ""
 		if uc.enforceSecurity.UserId() != nil {
