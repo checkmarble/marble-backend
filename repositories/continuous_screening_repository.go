@@ -26,26 +26,6 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfig(ctx context.Context
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
 }
 
-func (repo *MarbleDbRepository) HasContinuousScreeningConfigStableId(ctx context.Context,
-	exec Executor, stableId string,
-) (bool, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return false, err
-	}
-
-	var exists bool
-	query := fmt.Sprintf(
-		"SELECT EXISTS (SELECT 1 FROM %s WHERE stable_id = $1)",
-		dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS,
-	)
-	err := exec.QueryRow(ctx, query, stableId).Scan(&exists)
-	if err != nil {
-		return false, err
-	}
-
-	return exists, nil
-}
-
 // Get the latest continuous screening config by stable id
 func (repo *MarbleDbRepository) GetContinuousScreeningConfigByStableId(ctx context.Context,
 	exec Executor, stableId string,
@@ -206,7 +186,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 	id := uuid.New()
 
 	sql := NewQueryBuilder().
-		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING).
+		Insert(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
 		Columns(
 			"id",
 			"org_id",
@@ -261,7 +241,7 @@ func (repo *MarbleDbRepository) ContinuousScreeningById(ctx context.Context, exe
 
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectContinuousScreeningColumn...).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
 		Where(squirrel.Eq{"id": id})
 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreening)
@@ -315,7 +295,7 @@ func selectContinuousScreeningWithMatches() squirrel.SelectBuilder {
 		Select(columnsNames("cs", dbmodels.SelectContinuousScreeningColumn)...).
 		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s) ORDER BY array_position(array['confirmed_hit', 'pending', 'no_hit', 'skipped'], csm.status), csm.payload->>'score' DESC) FILTER (WHERE csm.id IS NOT NULL) AS matches",
 			strings.Join(columnsNames("csm", dbmodels.SelectContinuousScreeningMatchesColumn), ","))).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING + " AS cs").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS + " AS cs").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES +
 			" AS csm ON (cs.id = csm.continuous_screening_id)").
 		GroupBy(columnsNames("cs", dbmodels.SelectContinuousScreeningColumn)...)

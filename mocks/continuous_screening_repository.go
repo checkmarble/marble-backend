@@ -14,15 +14,6 @@ type ContinuousScreeningRepository struct {
 	mock.Mock
 }
 
-func (m *ContinuousScreeningRepository) HasContinuousScreeningConfigStableId(
-	ctx context.Context,
-	exec repositories.Executor,
-	stableId string,
-) (bool, error) {
-	args := m.Called(ctx, exec, stableId)
-	return args.Get(0).(bool), args.Error(1)
-}
-
 func (m *ContinuousScreeningRepository) GetContinuousScreeningConfig(
 	ctx context.Context,
 	exec repositories.Executor,

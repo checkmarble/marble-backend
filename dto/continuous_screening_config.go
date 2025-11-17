@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var regexpStableId = regexp.MustCompile(`^[a-zA-Z0-9_]{1,64}$`)
+var regexpStableId = regexp.MustCompile(`^[a-zA-Z0-9_]{1,32}$`)
 
 type ContinuousScreeningConfigDto struct {
 	Id             uuid.UUID `json:"id"`

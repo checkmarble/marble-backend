@@ -13,11 +13,6 @@ import (
 )
 
 type ContinuousScreeningUsecaseRepository interface {
-	HasContinuousScreeningConfigStableId(
-		ctx context.Context,
-		exec repositories.Executor,
-		stableId string,
-	) (bool, error)
 	GetContinuousScreeningConfig(
 		ctx context.Context,
 		exec repositories.Executor,

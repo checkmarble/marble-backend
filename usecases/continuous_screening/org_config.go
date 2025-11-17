@@ -64,6 +64,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 	ctx context.Context,
 	input models.CreateContinuousScreeningConfig,
 ) (models.ContinuousScreeningConfig, error) {
+	exec := uc.executorFactory.NewExecutor()
 	if err := uc.enforceSecurity.WriteContinuousScreeningConfig(input.OrgId); err != nil {
 		return models.ContinuousScreeningConfig{}, err
 	}
@@ -82,27 +83,16 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 		return models.ContinuousScreeningConfig{},
 			errors.Wrap(models.BadParameterError, "object_types cannot be empty")
 	}
-	if err := uc.processObjectTypes(ctx, uc.executorFactory.NewExecutor(), input.OrgId, input.ObjectTypes); err != nil {
+	if err := uc.processObjectTypes(ctx, exec, input.OrgId, input.ObjectTypes); err != nil {
 		return models.ContinuousScreeningConfig{}, err
 	}
 
-	var configCreated models.ContinuousScreeningConfig
-
-	// Use transaction to ensure atomicity of the operation and avoid race conditions
-	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		// Check if the stable ID is already in use
-		exists, err := uc.repository.HasContinuousScreeningConfigStableId(ctx, tx, input.StableId)
-		if err != nil {
-			return err
-		}
-		if exists {
-			return errors.Wrap(models.BadParameterError, "stable ID already in use")
-		}
-
-		configCreated, err = uc.repository.CreateContinuousScreeningConfig(ctx, tx, input)
-		return err
-	})
+	configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx, exec, input)
 	if err != nil {
+		if repositories.IsUniqueViolationError(err) {
+			return models.ContinuousScreeningConfig{},
+				errors.Wrap(models.ConflictError, "stable ID already in use")
+		}
 		return models.ContinuousScreeningConfig{}, err
 	}
 
@@ -200,9 +190,6 @@ func (uc *ContinuousScreeningUsecase) processObjectTypes(ctx context.Context,
 				return errors.Wrap(models.BadParameterError, err.Error())
 			}
 
-			if err := uc.organizationSchemaRepository.CreateSchemaIfNotExists(ctx, tx); err != nil {
-				return err
-			}
 			if err := uc.clientDbRepository.CreateInternalContinuousScreeningTable(ctx, tx, table.Name); err != nil {
 				return err
 			}

@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const TABLE_CONTINUOUS_SCREENING = "continuous_screening"
+const TABLE_CONTINUOUS_SCREENINGS = "continuous_screenings"
 
 var SelectContinuousScreeningColumn = utils.ColumnList[DBContinuousScreening]()
 
