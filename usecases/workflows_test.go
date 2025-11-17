@@ -71,7 +71,7 @@ func TestValidateWorkflowCondition(t *testing.T) {
 func TestValidateWorkflowAction(t *testing.T) {
 	tts := []struct {
 		valid  bool
-		fn     models.WorkflowType
+		fn     models.WorkflowActionType
 		params string
 	}{
 		{false, "anything", ""},

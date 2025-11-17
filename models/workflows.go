@@ -8,6 +8,63 @@ import (
 	"github.com/google/uuid"
 )
 
+type WorkflowActionType string
+
+const (
+	// generic
+	WorkflowDisabled WorkflowActionType = "DISABLED"
+
+	// decision workflows
+	WorkflowCreateCase          WorkflowActionType = "CREATE_CASE"
+	WorkflowAddToCaseIfPossible WorkflowActionType = "ADD_TO_CASE_IF_POSSIBLE"
+
+	// case workflows
+	WorkflowGenerateAiCaseReview WorkflowActionType = "GENERATE_AI_CASE_REVIEW"
+)
+
+func WorkflowActionTypeFromString(s string) WorkflowActionType {
+	switch s {
+	case "ADD_TO_CASE_IF_POSSIBLE":
+		return WorkflowAddToCaseIfPossible
+	case "CREATE_CASE":
+		return WorkflowCreateCase
+	case "GENERATE_AI_CASE_REVIEW":
+		return WorkflowGenerateAiCaseReview
+	default:
+		return WorkflowDisabled
+	}
+}
+
+type WorkflowRuleType int
+
+const (
+	WorkflowRuleTypeUnknown WorkflowRuleType = iota
+	WorkflowRuleTypeDecision
+	WorkflowRuleTypeCase
+)
+
+func (t WorkflowRuleType) String() string {
+	switch t {
+	case WorkflowRuleTypeDecision:
+		return "decision"
+	case WorkflowRuleTypeCase:
+		return "case"
+	default:
+		return "unknown"
+	}
+}
+
+func WorkflowRuleTypeFromString(s string) WorkflowRuleType {
+	switch s {
+	case "decision":
+		return WorkflowRuleTypeDecision
+	case "case":
+		return WorkflowRuleTypeCase
+	default:
+		return WorkflowRuleTypeUnknown
+	}
+}
+
 type Workflow struct {
 	WorkflowRule
 
@@ -21,6 +78,7 @@ type WorkflowRule struct {
 	Name        string
 	Priority    int
 	Fallthrough bool
+	Type        WorkflowRuleType
 
 	CreatedAt time.Time
 	UpdatedAt *time.Time
@@ -29,20 +87,20 @@ type WorkflowRule struct {
 type WorkflowConditionType string
 
 const (
-	WorkflowConditionUnknown   WorkflowConditionType = "unknown"
+	// generic
+	WorkflowConditionUnknown WorkflowConditionType = "unknown"
+
+	// scenario (decision) workflows
 	WorkflowConditionAlways    WorkflowConditionType = "always"
 	WorkflowConditionNever     WorkflowConditionType = "never"
 	WorkflowConditionOutcomeIn WorkflowConditionType = "outcome_in"
 	WorkflowConditionRuleHit   WorkflowConditionType = "rule_hit"
 	WorkflowPayloadEvaluates   WorkflowConditionType = "payload_evaluates"
-)
 
-var ValidWorkflowConditions = []WorkflowConditionType{
-	WorkflowConditionAlways,
-	WorkflowConditionNever,
-	WorkflowConditionOutcomeIn,
-	WorkflowConditionRuleHit,
-}
+	// case workflows
+	WorkflowConditionCaseCreated   WorkflowConditionType = "case_created"
+	WorkflowConditionCaseExcalated WorkflowConditionType = "case_excalated"
+)
 
 func (t WorkflowConditionType) String() string {
 	return string(t)
@@ -60,6 +118,10 @@ func WorkflowConditionFromString(s string) WorkflowConditionType {
 		return WorkflowConditionRuleHit
 	case WorkflowPayloadEvaluates.String():
 		return WorkflowPayloadEvaluates
+	case WorkflowConditionCaseCreated.String():
+		return WorkflowConditionCaseCreated
+	case WorkflowConditionCaseExcalated.String():
+		return WorkflowConditionCaseExcalated
 	default:
 		return WorkflowConditionUnknown
 	}
@@ -78,7 +140,7 @@ type WorkflowCondition struct {
 type WorkflowAction struct {
 	Id     uuid.UUID
 	RuleId uuid.UUID
-	Action WorkflowType
+	Action WorkflowActionType
 	Params json.RawMessage
 
 	CreatedAt time.Time
@@ -101,7 +163,7 @@ func ParseWorkflowAction[T any](action WorkflowAction) (WorkflowActionSpec[T], e
 }
 
 type WorkflowActionSpec[T any] struct {
-	Action WorkflowType
+	Action WorkflowActionType
 	Params T
 }
 

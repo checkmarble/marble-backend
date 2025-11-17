@@ -13,7 +13,7 @@ import (
 
 type DecisionWorkflowsCondition func(context.Context, DecisionWorkflowRequest) (bool, error)
 
-func CreateFunction(condition models.WorkflowCondition) (DecisionWorkflowsCondition, error) {
+func CreateDecisionWorkflowFunction(condition models.WorkflowCondition) (DecisionWorkflowsCondition, error) {
 	switch condition.Function {
 	case models.WorkflowConditionAlways:
 		return always, nil
@@ -78,7 +78,9 @@ func ruleHit(ruleIds []uuid.UUID) DecisionWorkflowsCondition {
 		}
 		for _, screeningExec := range req.Decision.ScreeningExecutions {
 			for _, ruleId := range ruleIds {
-				if screeningExec.Config.StableId == ruleId.String() && (screeningExec.Status == models.ScreeningStatusInReview || screeningExec.Status == models.ScreeningStatusConfirmedHit) {
+				if screeningExec.Config.StableId == ruleId.String() &&
+					(screeningExec.Status == models.ScreeningStatusInReview ||
+						screeningExec.Status == models.ScreeningStatusConfirmedHit) {
 					return true, nil
 				}
 			}
@@ -90,7 +92,8 @@ func ruleHit(ruleIds []uuid.UUID) DecisionWorkflowsCondition {
 
 func payloadEvaluates(astNode ast.Node) DecisionWorkflowsCondition {
 	return func(ctx context.Context, req DecisionWorkflowRequest) (bool, error) {
-		eval, err := req.EvaluateAst.EvaluateAstExpression(ctx, nil, astNode, req.Scenario.OrganizationId, req.Params.ClientObject, req.Params.DataModel)
+		eval, err := req.EvaluateAst.EvaluateAstExpression(ctx, nil, astNode,
+			req.Scenario.OrganizationId, req.Params.ClientObject, req.Params.DataModel)
 		if err != nil {
 			return false, err
 		}

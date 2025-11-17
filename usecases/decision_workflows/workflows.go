@@ -14,7 +14,7 @@ import (
 
 type DecisionWorkflowRule struct {
 	Conditions []DecisionWorkflowsCondition `json:"conditions"`
-	Action     models.WorkflowType          `json:"action"`
+	Action     models.WorkflowActionType    `json:"action"`
 }
 
 type DecisionWorkflowRequest struct {
@@ -50,9 +50,10 @@ Rule:
 		}
 
 		for _, cond := range rule.Conditions {
-			fn, err := CreateFunction(cond)
+			fn, err := CreateDecisionWorkflowFunction(cond)
 			if err != nil {
-				return models.WorkflowExecution{}, errors.Wrap(err, "could not evaluate workflow condition")
+				return models.WorkflowExecution{}, errors.Wrap(err,
+					"could not evaluate workflow condition")
 			}
 
 			result, err := fn(ctx, req)
@@ -89,12 +90,14 @@ Rule:
 				if !performed.AddedToCase {
 					params, err := models.ParseWorkflowAction[dto.WorkflowActionCaseParams](action)
 					if err != nil {
-						return models.WorkflowExecution{}, errors.Wrap(err, "could not unmarshal workflow action parameters")
+						return models.WorkflowExecution{}, errors.Wrap(err,
+							"could not unmarshal workflow action parameters")
 					}
 
 					exec, err := d.AutomaticDecisionToCase(ctx, tx, scenario, decision, evalParams, params)
 					if err != nil {
-						return models.WorkflowExecution{}, errors.Wrap(err, "error while executing workflow action")
+						return models.WorkflowExecution{}, errors.Wrap(err,
+							"error while executing workflow action")
 					}
 
 					performed.AddedToCase = performed.AddedToCase || exec.AddedToCase

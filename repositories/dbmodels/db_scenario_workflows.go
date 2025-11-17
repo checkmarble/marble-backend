@@ -17,6 +17,7 @@ type DbWorkflowRule struct {
 	Name        string    `db:"name"`
 	Priority    int       `db:"priority"`
 	Fallthrough bool      `db:"fallthrough"`
+	Type        string    `db:"type"`
 
 	CreatedAt time.Time  `db:"created_at"`
 	UpdatedAt *time.Time `db:"updated_at"`
@@ -49,13 +50,17 @@ type DbWorkflowAction struct {
 	UpdatedAt *time.Time `db:"updated_at"`
 }
 
-const TABLE_WORKFLOW_RULES = "scenario_workflow_rules"
-const TABLE_WORKFLOW_CONDITIONS = "scenario_workflow_conditions"
-const TABLE_WORKFLOW_ACTIONS = "scenario_workflow_actions"
+const (
+	TABLE_WORKFLOW_RULES      = "scenario_workflow_rules"
+	TABLE_WORKFLOW_CONDITIONS = "scenario_workflow_conditions"
+	TABLE_WORKFLOW_ACTIONS    = "scenario_workflow_actions"
+)
 
-var WorkflowRuleColumns = utils.ColumnList[DbWorkflowRule]()
-var WorkflowConditionColumns = utils.ColumnList[DbWorkflowCondition]()
-var WorkflowActionColumns = utils.ColumnList[DbWorkflowAction]()
+var (
+	WorkflowRuleColumns      = utils.ColumnList[DbWorkflowRule]()
+	WorkflowConditionColumns = utils.ColumnList[DbWorkflowCondition]()
+	WorkflowActionColumns    = utils.ColumnList[DbWorkflowAction]()
+)
 
 func AdaptWorkflowRule(db DbWorkflowRule) (models.WorkflowRule, error) {
 	return models.WorkflowRule{
@@ -64,6 +69,7 @@ func AdaptWorkflowRule(db DbWorkflowRule) (models.WorkflowRule, error) {
 		Name:        db.Name,
 		Priority:    db.Priority,
 		Fallthrough: db.Fallthrough,
+		Type:        models.WorkflowRuleTypeFromString(db.Type),
 		CreatedAt:   db.CreatedAt,
 		UpdatedAt:   db.UpdatedAt,
 	}, nil
@@ -84,7 +90,7 @@ func AdaptWorkflowAction(db DbWorkflowAction) (models.WorkflowAction, error) {
 	return models.WorkflowAction{
 		Id:        db.Id,
 		RuleId:    db.RuleId,
-		Action:    models.WorkflowTypeFromString(db.Action),
+		Action:    models.WorkflowActionTypeFromString(db.Action),
 		Params:    db.Params,
 		CreatedAt: db.CreatedAt,
 		UpdatedAt: db.UpdatedAt,

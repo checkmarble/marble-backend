@@ -12,6 +12,7 @@ type WorkflowRuleDto struct {
 	Id          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	Fallthrough bool      `json:"fallthrough"`
+	Type        string    `json:"type"`
 }
 
 type CreateWorkflowRuleDto struct {
@@ -51,8 +52,8 @@ type WorkflowActionDto struct {
 }
 
 type PostWorkflowActionDto struct {
-	Action models.WorkflowType `json:"action" binding:"required"`
-	Params json.RawMessage     `json:"params"`
+	Action models.WorkflowActionType `json:"action" binding:"required"`
+	Params json.RawMessage           `json:"params"`
 }
 
 type WorkflowActionCaseParams struct {
@@ -81,6 +82,7 @@ func AdaptWorkflowRule(m models.WorkflowRule) WorkflowRuleDto {
 		Id:          m.Id,
 		Name:        m.Name,
 		Fallthrough: m.Fallthrough,
+		Type:        m.Type.String(),
 	}
 }
 
