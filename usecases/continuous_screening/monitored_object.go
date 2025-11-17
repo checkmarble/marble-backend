@@ -161,6 +161,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		input.ObjectType,
 		objectId,
 		ingestedObjectInternalId,
+		models.ContinuousScreeningTriggerTypeObjectAdded,
 	)
 	if err != nil {
 		logger.Warn("Continuous Screening - error inserting continuous screening", "error", err.Error())

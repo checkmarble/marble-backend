@@ -57,6 +57,7 @@ type ContinuousScreeningUsecaseRepository interface {
 		objectType string,
 		objectId string,
 		objectInternalId uuid.UUID,
+		triggerType models.ContinuousScreeningTriggerType,
 	) (models.ContinuousScreeningWithMatches, error)
 	ListContinuousScreeningsForOrg(
 		ctx context.Context,

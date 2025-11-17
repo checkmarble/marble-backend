@@ -19,6 +19,7 @@ type ContinuousScreeningDto struct {
 	ObjectId                          string                        `json:"object_id"`
 	ObjectInternalId                  uuid.UUID                     `json:"object_internal_id"`
 	Status                            string                        `json:"status"`
+	TriggerType                       string                        `json:"trigger_type"`
 	Request                           ScreeningRequestDto           `json:"request"`
 	Partial                           bool                          `json:"partial"`
 	NumberOfMatches                   int                           `json:"number_of_matches"`
@@ -38,6 +39,7 @@ func AdaptContinuousScreeningDto(m models.ContinuousScreeningWithMatches) Contin
 		ObjectId:                          m.ObjectId,
 		ObjectInternalId:                  m.ObjectInternalId,
 		Status:                            m.Status.String(),
+		TriggerType:                       m.TriggerType.String(),
 		Request: ScreeningRequestDto{
 			SearchInput: m.SearchInput,
 		},

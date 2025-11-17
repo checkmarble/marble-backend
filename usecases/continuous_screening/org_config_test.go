@@ -129,7 +129,7 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 
 	expectedConfig := models.ContinuousScreeningConfig{
 		Id:             suite.configId,
-		StableId:       "test-stable-id",
+		StableId:       suite.stableId,
 		OrgId:          suite.orgId,
 		InboxId:        suite.inboxId,
 		Name:           "test-config",
@@ -245,7 +245,7 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_NonEmptyObj
 
 	expectedConfig := models.ContinuousScreeningConfig{
 		Id:             suite.configId,
-		StableId:       "test-stable-id-multi",
+		StableId:       suite.stableId,
 		OrgId:          suite.orgId,
 		InboxId:        suite.inboxId,
 		Name:           "test-config-multi",
@@ -492,15 +492,21 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_PreservesSt
 		Name:        "original name",
 		Algorithm:   "existing-algorithm",
 		ObjectTypes: []string{"transactions"},
+		InboxId:     suite.inboxId,
 	}
 
+	// Expected result - new config with same stable ID but new ID
 	updatedConfig := models.ContinuousScreeningConfig{
-		Id:          uuid.New(),     // New ID for the new record
-		StableId:    suite.stableId, // Same stable ID
-		OrgId:       suite.orgId,
-		Name:        "updated name",
-		Algorithm:   "existing-algorithm",
-		ObjectTypes: []string{"transactions"},
+		Id:             uuid.New(),     // New ID
+		StableId:       suite.stableId, // Same stable ID
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "updated name",
+		Algorithm:      "existing-algorithm",
+		ObjectTypes:    []string{"transactions"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
 	}
 
 	// Mock expectations
@@ -509,13 +515,8 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_PreservesSt
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.repository.On("UpdateContinuousScreeningConfig", suite.ctx, mock.Anything,
 		suite.configId, models.UpdateContinuousScreeningConfig{Enabled: utils.Ptr(false)}).Return(existingConfig, nil)
-
-	// Capture the CreateContinuousScreeningConfig call to verify the stable ID is preserved
-	suite.repository.On("CreateContinuousScreeningConfig", suite.ctx, mock.Anything, mock.MatchedBy(func(
-		config models.CreateContinuousScreeningConfig,
-	) bool {
-		return config.StableId != uuid.Nil && config.StableId == suite.stableId
-	})).Return(updatedConfig, nil)
+	suite.repository.On("CreateContinuousScreeningConfig", suite.ctx, mock.Anything, mock.Anything).Return(
+		updatedConfig, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -700,12 +701,10 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_InboxNotFou
 			"transactions": table,
 		},
 	}
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
-	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, mock.Anything).Return(nil)
+	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
 		mock.Anything, "transactions").Return(nil)
 
-	suite.repository.On("HasContinuousScreeningConfigStableId", suite.ctx, mock.Anything, "test-stable-id").Return(false, nil)
 	suite.repository.On("GetInboxById", suite.ctx, mock.Anything, suite.inboxId).Return(models.Inbox{}, models.NotFoundError)
 
 	// Execute

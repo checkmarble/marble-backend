@@ -23,6 +23,7 @@ type DBContinuousScreening struct {
 	ObjectId                          string          `db:"object_id"`
 	ObjectInternalId                  uuid.UUID       `db:"object_internal_id"`
 	Status                            string          `db:"status"`
+	TriggerType                       string          `db:"trigger_type"`
 	SearchInput                       json.RawMessage `db:"search_input"`
 	IsPartial                         bool            `db:"is_partial"`
 	NumberOfMatches                   int             `db:"number_of_matches"`
@@ -41,6 +42,7 @@ func AdaptContinuousScreening(db DBContinuousScreening) (models.ContinuousScreen
 		ObjectId:                          db.ObjectId,
 		ObjectInternalId:                  db.ObjectInternalId,
 		Status:                            models.ScreeningStatusFrom(db.Status),
+		TriggerType:                       models.ContinuousScreeningTriggerTypeFrom(db.TriggerType),
 		SearchInput:                       db.SearchInput,
 		IsPartial:                         db.IsPartial,
 		NumberOfMatches:                   db.NumberOfMatches,

@@ -90,8 +90,10 @@ func (m *ContinuousScreeningRepository) InsertContinuousScreening(
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
+	triggerType models.ContinuousScreeningTriggerType,
 ) (models.ContinuousScreeningWithMatches, error) {
-	args := m.Called(ctx, exec, screening, orgId, configId, configStableId, objectType, objectId, objectInternalId)
+	args := m.Called(ctx, exec, screening, orgId, configId, configStableId, objectType,
+		objectId, objectInternalId, triggerType)
 	return args.Get(0).(models.ContinuousScreeningWithMatches), args.Error(1)
 }
 

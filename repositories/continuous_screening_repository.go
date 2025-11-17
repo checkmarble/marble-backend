@@ -184,6 +184,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
+	triggerType models.ContinuousScreeningTriggerType,
 ) (models.ContinuousScreeningWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ContinuousScreeningWithMatches{}, err
@@ -203,6 +204,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 			"object_id",
 			"object_internal_id",
 			"status",
+			"trigger_type",
 			"search_input",
 			"is_partial",
 			"number_of_matches",
@@ -216,6 +218,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 			objectId,
 			objectInternalId,
 			screening.Status.String(),
+			triggerType.String(),
 			screening.SearchInput,
 			screening.Partial,
 			screening.NumberOfMatches,
