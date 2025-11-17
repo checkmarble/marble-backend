@@ -53,7 +53,13 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (repositories
 
 		switch f.config.Type {
 		case infra.BlobTypeS3, infra.BlobTypeGCS:
-			_, err = db.ExecContext(ctx, fmt.Sprintf(`create secret if not exists analytics (%s);`, f.config.ConnectionString))
+			_, err = db.ExecContext(ctx, fmt.Sprintf(`
+				force install cache_httpfs from community;
+				load cache_httpfs;
+				set global cache_httpfs_type = 'in_mem';
+				set global cache_httpfs_enable_glob_cache = 0;
+				create secret if not exists analytics (%s);
+			`, f.config.ConnectionString))
 		}
 	})
 
