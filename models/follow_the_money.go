@@ -1,31 +1,30 @@
 package models
 
-import "github.com/cockroachdb/errors"
-
 // ///////////////////////////////
 // Follow The Money Entity
 // ///////////////////////////////
 type FollowTheMoneyEntity string
 
 const (
+	FollowTheMoneyEntityUnknown      FollowTheMoneyEntity = "Unknown"
 	FollowTheMoneyEntityPerson       FollowTheMoneyEntity = "Person"
 	FollowTheMoneyEntityCompany      FollowTheMoneyEntity = "Company"
 	FollowTheMoneyEntityOrganization FollowTheMoneyEntity = "Organization"
 	FollowTheMoneyEntityVessel       FollowTheMoneyEntity = "Vessel"
 )
 
-func FollowTheMoneyEntityFrom(s string) (FollowTheMoneyEntity, error) {
+func FollowTheMoneyEntityFrom(s string) FollowTheMoneyEntity {
 	switch s {
 	case "Person":
-		return FollowTheMoneyEntityPerson, nil
+		return FollowTheMoneyEntityPerson
 	case "Company":
-		return FollowTheMoneyEntityCompany, nil
+		return FollowTheMoneyEntityCompany
 	case "Organization":
-		return FollowTheMoneyEntityOrganization, nil
+		return FollowTheMoneyEntityOrganization
 	case "Vessel":
-		return FollowTheMoneyEntityVessel, nil
+		return FollowTheMoneyEntityVessel
 	default:
-		return "", errors.Newf("unknown FTM entity: %s", s)
+		return FollowTheMoneyEntityUnknown
 	}
 }
 
@@ -39,6 +38,7 @@ func (e FollowTheMoneyEntity) String() string {
 type FollowTheMoneyProperty string
 
 const (
+	FollowTheMoneyPropertyUnknown              FollowTheMoneyProperty = "Unknown"
 	FollowTheMoneyPropertyName                 FollowTheMoneyProperty = "name"
 	FollowTheMoneyPropertyEmail                FollowTheMoneyProperty = "email"
 	FollowTheMoneyPropertyPhone                FollowTheMoneyProperty = "phone"
@@ -58,44 +58,44 @@ const (
 	FollowTheMoneyPropertyCountry              FollowTheMoneyProperty = "country"
 )
 
-func FollowTheMoneyPropertyFrom(s string) (FollowTheMoneyProperty, error) {
+func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
 	switch s {
 	case "name":
-		return FollowTheMoneyPropertyName, nil
+		return FollowTheMoneyPropertyName
 	case "email":
-		return FollowTheMoneyPropertyEmail, nil
+		return FollowTheMoneyPropertyEmail
 	case "phone":
-		return FollowTheMoneyPropertyPhone, nil
+		return FollowTheMoneyPropertyPhone
 	case "nationality":
-		return FollowTheMoneyPropertyNationality, nil
+		return FollowTheMoneyPropertyNationality
 	case "birthDate":
-		return FollowTheMoneyPropertyBirthDate, nil
+		return FollowTheMoneyPropertyBirthDate
 	case "birthCountry":
-		return FollowTheMoneyPropertyBirthCountry, nil
+		return FollowTheMoneyPropertyBirthCountry
 	case "deathDate":
-		return FollowTheMoneyPropertyDeathDate, nil
+		return FollowTheMoneyPropertyDeathDate
 	case "citizenship":
-		return FollowTheMoneyPropertyCitizenship, nil
+		return FollowTheMoneyPropertyCitizenship
 	case "passportNumber":
-		return FollowTheMoneyPropertyPassportNumber, nil
+		return FollowTheMoneyPropertyPassportNumber
 	case "socialSecurityNumber":
-		return FollowTheMoneyPropertySocialSecurityNumber, nil
+		return FollowTheMoneyPropertySocialSecurityNumber
 	case "address":
-		return FollowTheMoneyPropertyAddress, nil
+		return FollowTheMoneyPropertyAddress
 	case "imoNumber":
-		return FollowTheMoneyPropertyImoNumber, nil
+		return FollowTheMoneyPropertyImoNumber
 	case "registrationNumber":
-		return FollowTheMoneyPropertyRegistrationNumber, nil
+		return FollowTheMoneyPropertyRegistrationNumber
 	case "jurisdiction":
-		return FollowTheMoneyPropertyJurisdiction, nil
+		return FollowTheMoneyPropertyJurisdiction
 	case "isinCode":
-		return FollowTheMoneyPropertyIsinCode, nil
+		return FollowTheMoneyPropertyIsinCode
 	case "website":
-		return FollowTheMoneyPropertyWebsite, nil
+		return FollowTheMoneyPropertyWebsite
 	case "country":
-		return FollowTheMoneyPropertyCountry, nil
+		return FollowTheMoneyPropertyCountry
 	default:
-		return "", errors.Newf("unknown FTM property: %s", s)
+		return FollowTheMoneyPropertyUnknown
 	}
 }
 

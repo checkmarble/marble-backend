@@ -3,6 +3,7 @@ package dto
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type LinkToSingle struct {
@@ -18,15 +19,16 @@ type LinkToSingle struct {
 }
 
 type Field struct {
-	ID                string `json:"id"`
-	DataType          string `json:"data_type"`
-	Description       string `json:"description"`
-	IsEnum            bool   `json:"is_enum"`
-	Name              string `json:"name"`
-	Nullable          bool   `json:"nullable"`
-	TableId           string `json:"table_id"`
-	Values            []any  `json:"values,omitempty"`
-	UnicityConstraint string `json:"unicity_constraint"`
+	ID                string  `json:"id"`
+	DataType          string  `json:"data_type"`
+	Description       string  `json:"description"`
+	IsEnum            bool    `json:"is_enum"`
+	Name              string  `json:"name"`
+	Nullable          bool    `json:"nullable"`
+	TableId           string  `json:"table_id"`
+	Values            []any   `json:"values,omitempty"`
+	UnicityConstraint string  `json:"unicity_constraint"`
+	FTMProperty       *string `json:"ftm_property,omitempty"`
 }
 
 type NavigationOption struct {
@@ -50,6 +52,7 @@ type Table struct {
 	Fields            map[string]Field        `json:"fields"`
 	LinksToSingle     map[string]LinkToSingle `json:"links_to_single,omitempty"`
 	NavigationOptions []NavigationOption      `json:"navigation_options,omitempty"`
+	FTMEntity         *string                 `json:"ftm_entity,omitempty"`
 }
 
 type DataModel struct {
@@ -57,6 +60,10 @@ type DataModel struct {
 }
 
 func AdaptTableDto(table models.Table) Table {
+	var ftmEntity *string
+	if table.FTMEntity != nil {
+		ftmEntity = utils.Ptr(table.FTMEntity.String())
+	}
 	return Table{
 		Name:              table.Name,
 		ID:                table.ID,
@@ -64,10 +71,15 @@ func AdaptTableDto(table models.Table) Table {
 		LinksToSingle:     pure_utils.MapValues(table.LinksToSingle, adaptDataModelLink),
 		NavigationOptions: pure_utils.Map(table.NavigationOptions, adaptDataModelNavigationOption),
 		Description:       table.Description,
+		FTMEntity:         ftmEntity,
 	}
 }
 
 func adaptDataModelField(field models.Field) Field {
+	var ftmProperty *string
+	if field.FTMProperty != nil {
+		ftmProperty = utils.Ptr(field.FTMProperty.String())
+	}
 	return Field{
 		ID:                field.ID,
 		DataType:          field.DataType.String(),
@@ -78,6 +90,7 @@ func adaptDataModelField(field models.Field) Field {
 		TableId:           field.TableId,
 		Values:            field.Values,
 		UnicityConstraint: field.UnicityConstraint.String(),
+		FTMProperty:       ftmProperty,
 	}
 }
 
