@@ -5,11 +5,13 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 )
 
 type DBCaseEvent struct {
 	Id             string      `db:"id"`
+	OrgId          uuid.UUID   `db:"org_id"`
 	CaseId         string      `db:"case_id"`
 	UserId         null.String `db:"user_id"`
 	CreatedAt      time.Time   `db:"created_at"`
@@ -44,6 +46,7 @@ func AdaptCaseEvent(caseEvent DBCaseEvent) (models.CaseEvent, error) {
 	}
 	return models.CaseEvent{
 		Id:             caseEvent.Id,
+		OrgId:          caseEvent.OrgId,
 		CaseId:         caseEvent.CaseId,
 		UserId:         caseEvent.UserId,
 		CreatedAt:      caseEvent.CreatedAt,

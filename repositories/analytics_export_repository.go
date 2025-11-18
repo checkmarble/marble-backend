@@ -10,6 +10,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
@@ -254,6 +255,95 @@ func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req An
 	}
 	for _, f := range req.ExtraDbFields {
 		inner = analyticsAddExtraField(inner, f, true)
+	}
+
+	innerSql, args, err := inner.ToSql()
+	if err != nil {
+		return 0, err
+	}
+
+	unsafeQuery, err := unsafeBuildSqlQuery(innerSql, args)
+	if err != nil {
+		return 0, err
+	}
+
+	query := fmt.Sprintf(`copy ( select * from postgres_query(?, ?) ) to '%s' (format parquet, compression zstd, partition_by (org_id, year, month, trigger_object_type), append)`, req.Table)
+
+	result, err := exec.ExecContext(ctx, query, "pg", unsafeQuery)
+	if err != nil {
+		return 0, err
+	}
+	nRows, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(nRows), nil
+}
+
+func AnalyticsCopyCaseEvents(ctx context.Context, exec AnalyticsExecutor, req AnalyticsCopyRequest) (int, error) {
+	// The deduplicate column adds a rank to every group of rules returned by the
+	// query, so we can skip the rules with the maximum value of that column.
+	//
+	// The last group of rules might be incomplete because of the limit we add,
+	// so instead of doing weird subqueries, we use that window function to
+	// completely skip the last group, which will be picked up by the next
+	// iteration.
+	cte := WithCtesRaw("q", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+		q := b.Select(
+			"ce.id",
+			"ce.org_id",
+			"d.scenario_id",
+			"dr.rule_id as rule_id",
+			"ce.case_id as case_id",
+			"ce.new_value as outcome",
+			"ce.created_at as created_at",
+			"d.trigger_object_type",
+			"row_number() over (partition by ce.case_id order by ce.created_at desc) rnk",
+		).
+			From(dbmodels.TABLE_CASE_EVENTS+" ce").
+			InnerJoin(dbmodels.TABLE_CASES+" c on c.id = ce.case_id").
+			InnerJoin(dbmodels.TABLE_DECISIONS+" d on d.case_id = c.id").
+			InnerJoin(dbmodels.TABLE_DECISION_RULES+" dr on dr.decision_id = d.id").
+			Where("ce.org_id = ?", req.OrgId).
+			Where("ce.event_type = 'outcome_updated'").
+			Where("c.status = 'closed'").
+			Where("d.trigger_object_type = ?", req.TriggerObject).
+			Where("ce.created_at < ?", req.EndTime).
+			OrderBy("ce.created_at, ce.id").
+			Limit(uint64(req.Limit))
+
+		if req.Watermark != nil {
+			q = q.Where("(ce.created_at, ce.id) > (?::timestamp with time zone, ?)",
+				req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
+		}
+
+		return q
+	})
+
+	inner := squirrel.
+		Select(
+			"q.id",
+			"q.scenario_id",
+			"q.rule_id",
+			"q.case_id",
+			"q.outcome",
+			"q.created_at",
+			"q.org_id",
+			"extract(year from q.created_at)::int as year",
+			"extract(month from q.created_at)::int as month",
+			"q.trigger_object_type",
+		).
+		From("q").
+		PrefixExpr(cte).
+		InnerJoin(dbmodels.TABLE_DECISIONS + " d on d.case_id = q.case_id").
+		Where("q.rnk = 1")
+
+	for _, f := range req.TriggerObjectFields {
+		inner = analyticsAddTriggerObjectField(inner, f, false)
+	}
+	for _, f := range req.ExtraDbFields {
+		inner = analyticsAddExtraField(inner, f, false)
 	}
 
 	innerSql, args, err := inner.ToSql()

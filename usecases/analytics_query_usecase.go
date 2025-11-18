@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
 
@@ -100,6 +101,7 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 			"max(rule_name) as rule_name", // Until any_value() is guaranteed to be here
 			"count() filter (outcome = 'hit') as hit_count",
 			"((count() filter (outcome = 'hit')) / count()) * 100 as hit_ratio",
+			"0 as false_positive_ratio", // Determined in a separate query below
 			"count(distinct pivot_value) filter (outcome = 'hit') as distinct_pivots",
 			"IFNULL(100 - (count(distinct pivot_value) filter (outcome = 'hit') / NULLIF(count() filter (outcome = 'hit'), 0) ) * 100, 0) as repeat_ratio",
 		).
@@ -114,7 +116,61 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 		return nil, err
 	}
 
-	return repositories.AnalyticsScanStruct[analytics.RuleHitTable](ctx, exec, query)
+	ruleHits, err := repositories.AnalyticsScanStruct[analytics.RuleHitTable](ctx, exec, query)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch false positives from another query.
+	//
+	// In case of error (which could happen, for example, because of the
+	// sepatate ingestion between decision rules and case events, return the
+	// initial query, which will have a ratio of false positive of 0).
+	{
+		var cteErr error
+
+		cte := repositories.WithCtes("data", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+			q := b.Select("*").
+				From(uc.analyticsFactory.BuildTarget("rule_hit_outcomes")).
+				Suffix("qualify row_number() over (partition by case_id order by created_at desc) = 1")
+
+			q, cteErr = uc.analyticsFactory.ApplyFilters(q, scenario, filters)
+			if err != nil {
+				return q
+			}
+
+			return q
+		})
+
+		if cteErr != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "could not fetch false positive dataz for rule hit table", "error", cteErr.Error())
+			return ruleHits, nil
+		}
+
+		query := squirrel.
+			Select(
+				"rule_id",
+				"ifnull(count() filter (where outcome = 'false_positive') / nullif(count(), 0) * 100, 0) as false_positive_ratio",
+			).
+			PrefixExpr(cte).
+			From("data").
+			GroupBy("rule_id")
+
+		falsePositives, err := repositories.AnalyticsScanStruct[analytics.FalsePositiveRatio](ctx, exec, query)
+		if err != nil {
+			return ruleHits, nil
+		}
+
+		for _, ratio := range falsePositives {
+			for idx, rule := range ruleHits {
+				if ratio.RuleId == rule.RuleId {
+					ruleHits[idx].FalsePositiveRatio = ratio.FalsePositiveRatio
+				}
+			}
+		}
+	}
+
+	return ruleHits, nil
 }
 
 // TODO: could maybe be optimized by storing (d.outcome) denormalized alongside the decision rule.

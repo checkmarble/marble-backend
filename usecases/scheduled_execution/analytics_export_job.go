@@ -203,6 +203,26 @@ RepeatLoop:
 
 					return err
 				})
+
+				wg.Go(func() error {
+					req := repositories.AnalyticsCopyRequest{
+						OrgId:               job.Args.OrgId,
+						Table:               w.analyticsFactory.BuildTablePrefix("rule_hit_outcomes"),
+						TriggerObject:       table.Name,
+						TriggerObjectFields: triggerFields,
+						ExtraDbFields:       dbFields,
+						EndTime:             job.CreatedAt,
+						Limit:               w.config.ExportBatchSize,
+					}
+
+					nRows, err := w.exportCaseEvents(ctx, exec, req)
+
+					if nRows > 0 {
+						insertedRows = true
+					}
+
+					return err
+				})
 			}
 
 			if err := wg.Wait(); err != nil {
@@ -315,6 +335,35 @@ func (w AnalyticsExportWorker) exportScreenings(
 	nRows, err = repositories.AnalyticsCopyScreenings(ctx, exec, req)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to copy screenings")
+	}
+
+	return nRows, nil
+}
+
+func (w AnalyticsExportWorker) exportCaseEvents(
+	ctx context.Context,
+	exec repositories.AnalyticsExecutor,
+	req repositories.AnalyticsCopyRequest,
+) (nRows int, err error) {
+	start := time.Now()
+	var startWatermark time.Time
+	defer func() {
+		logExportResult(ctx, "rule_hit_outcomes", start, nRows, startWatermark, err)
+	}()
+
+	var id uuid.UUID
+	id, startWatermark, err = repositories.AnalyticsGetLatestRow(ctx, exec,
+		req.OrgId, req.TriggerObject,
+		w.analyticsFactory.BuildTarget("rule_hit_outcomes"))
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get latest exported row")
+	}
+
+	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: startWatermark}
+
+	nRows, err = repositories.AnalyticsCopyCaseEvents(ctx, exec, req)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to copy case events")
 	}
 
 	return nRows, nil
