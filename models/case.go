@@ -9,22 +9,23 @@ import (
 )
 
 type Case struct {
-	Id             string
-	Contributors   []CaseContributor
-	CreatedAt      time.Time
-	Decisions      []Decision
-	DecisionsCount int
-	Events         []CaseEvent
-	InboxId        uuid.UUID
-	OrganizationId string
-	AssignedTo     *UserId
-	Name           string
-	Status         CaseStatus
-	Outcome        CaseOutcome
-	Tags           []CaseTag
-	Files          []CaseFile
-	SnoozedUntil   *time.Time
-	Boost          *BoostReason
+	Id                   string
+	Contributors         []CaseContributor
+	CreatedAt            time.Time
+	Decisions            []Decision
+	DecisionsCount       int
+	ContinuousScreenings []ContinuousScreening
+	Events               []CaseEvent
+	InboxId              uuid.UUID
+	OrganizationId       string
+	AssignedTo           *UserId
+	Name                 string
+	Status               CaseStatus
+	Outcome              CaseOutcome
+	Tags                 []CaseTag
+	Files                []CaseFile
+	SnoozedUntil         *time.Time
+	Boost                *BoostReason
 }
 
 type CaseReferents struct {
@@ -109,11 +110,12 @@ const (
 var ValidCaseOutcomes = []CaseOutcome{CaseOutcomeUnset, CaseConfirmedRisk, CaseValuableAlert, CaseFalsePositive}
 
 type CreateCaseAttributes struct {
-	DecisionIds    []string
-	InboxId        uuid.UUID
-	Name           string
-	OrganizationId string
-	AssigneeId     *string
+	DecisionIds            []string
+	ContinuousScreeningIds []uuid.UUID
+	InboxId                uuid.UUID
+	Name                   string
+	OrganizationId         string
+	AssigneeId             *string
 }
 
 type UpdateCaseAttributes struct {

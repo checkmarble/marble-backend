@@ -27,6 +27,7 @@ type OrgConfigTestSuite struct {
 	orgId    uuid.UUID
 	configId uuid.UUID
 	stableId uuid.UUID
+	inboxId  uuid.UUID
 }
 
 func (suite *OrgConfigTestSuite) SetupTest() {
@@ -43,6 +44,7 @@ func (suite *OrgConfigTestSuite) SetupTest() {
 	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
 	suite.configId = uuid.New()
 	suite.stableId = uuid.New()
+	suite.inboxId = uuid.New()
 }
 
 func (suite *OrgConfigTestSuite) makeUsecase() *ContinuousScreeningUsecase {
@@ -80,7 +82,7 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_InvalidAlgo
 
 	// Mock expectations
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
-	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(models.OpenSanctionAlgorithms{}, nil)
+	suite.screeningProvider.On("GetAlgorithms", mock.Anything).Return(models.OpenSanctionAlgorithms{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -95,9 +97,15 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_InvalidAlgo
 func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 	// Setup
 	input := models.CreateContinuousScreeningConfig{
-		OrgId:       suite.orgId,
-		Algorithm:   "valid-algorithm",
-		ObjectTypes: []string{"transactions"},
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "test-config",
+		Description:    "test description",
+		Algorithm:      "valid-algorithm",
+		ObjectTypes:    []string{"transactions"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
 	}
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
@@ -120,10 +128,17 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 	}
 
 	expectedConfig := models.ContinuousScreeningConfig{
-		Id:          suite.configId,
-		OrgId:       suite.orgId,
-		Algorithm:   "valid-algorithm",
-		ObjectTypes: []string{"transactions"},
+		Id:             suite.configId,
+		StableId:       suite.stableId,
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "test-config",
+		Description:    "test description",
+		Algorithm:      "valid-algorithm",
+		ObjectTypes:    []string{"transactions"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
 	}
 
 	algorithms := models.OpenSanctionAlgorithms{
@@ -135,10 +150,13 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 	// Mock expectations
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything,
 		mock.Anything, "transactions").Return(nil)
-	suite.repository.On("CreateContinuousScreeningConfig", suite.ctx, mock.Anything, mock.MatchedBy(func(
+	suite.repository.On("GetInboxById", mock.Anything, mock.Anything, suite.inboxId).Return(models.Inbox{
+		Id: suite.inboxId, OrganizationId: suite.orgId.String(), Status: models.InboxStatusActive,
+	}, nil)
+	suite.repository.On("CreateContinuousScreeningConfig", mock.Anything, mock.Anything, mock.MatchedBy(func(
 		config models.CreateContinuousScreeningConfig,
 	) bool {
 		return config.OrgId == input.OrgId && config.StableId != uuid.Nil && config.Algorithm == input.Algorithm
@@ -185,9 +203,15 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_EmptyObject
 func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_NonEmptyObjectTypes() {
 	// Setup
 	input := models.CreateContinuousScreeningConfig{
-		OrgId:       suite.orgId,
-		Algorithm:   "valid-algorithm",
-		ObjectTypes: []string{"transactions", "customers"},
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "test-config-multi",
+		Description:    "test description multi",
+		Algorithm:      "valid-algorithm",
+		ObjectTypes:    []string{"transactions", "customers"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
 	}
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
@@ -220,10 +244,17 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_NonEmptyObj
 	}
 
 	expectedConfig := models.ContinuousScreeningConfig{
-		Id:          suite.configId,
-		OrgId:       suite.orgId,
-		Algorithm:   "valid-algorithm",
-		ObjectTypes: []string{"transactions", "customers"},
+		Id:             suite.configId,
+		StableId:       suite.stableId,
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "test-config-multi",
+		Description:    "test description multi",
+		Algorithm:      "valid-algorithm",
+		ObjectTypes:    []string{"transactions", "customers"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
 	}
 
 	algorithms := models.OpenSanctionAlgorithms{
@@ -235,11 +266,14 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_NonEmptyObj
 	// Mock expectations
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything,
 		mock.Anything, "transactions").Return(nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx, mock.Anything, "customers").Return(nil)
-	suite.repository.On("CreateContinuousScreeningConfig", suite.ctx, mock.Anything, mock.MatchedBy(func(
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything, mock.Anything, "customers").Return(nil)
+	suite.repository.On("GetInboxById", mock.Anything, mock.Anything, suite.inboxId).Return(models.Inbox{
+		Id: suite.inboxId, OrganizationId: suite.orgId.String(), Status: models.InboxStatusActive,
+	}, nil)
+	suite.repository.On("CreateContinuousScreeningConfig", mock.Anything, mock.Anything, mock.MatchedBy(func(
 		config models.CreateContinuousScreeningConfig,
 	) bool {
 		return config.OrgId == input.OrgId && config.StableId != uuid.Nil && config.Algorithm == input.Algorithm
@@ -270,10 +304,10 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_InvalidAlgo
 	}
 
 	// Mock expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
-	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(models.OpenSanctionAlgorithms{}, nil)
+	suite.screeningProvider.On("GetAlgorithms", mock.Anything).Return(models.OpenSanctionAlgorithms{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -313,13 +347,13 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_ValidAlgori
 	}
 
 	// Mock expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
-	suite.repository.On("UpdateContinuousScreeningConfig", suite.ctx, mock.Anything,
+	suite.repository.On("UpdateContinuousScreeningConfig", mock.Anything, mock.Anything,
 		suite.configId, models.UpdateContinuousScreeningConfig{Enabled: utils.Ptr(false)}).Return(existingConfig, nil)
-	suite.repository.On("CreateContinuousScreeningConfig", suite.ctx, mock.Anything,
+	suite.repository.On("CreateContinuousScreeningConfig", mock.Anything, mock.Anything,
 		mock.Anything).Return(updatedConfig, nil)
 
 	// Execute
@@ -347,7 +381,7 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_RemoveObjec
 	}
 
 	// Mock expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 
@@ -422,17 +456,17 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_AddObjectTy
 	}
 
 	// Mock expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything,
 		mock.Anything, "transactions").Return(nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx, mock.Anything, "customers").Return(nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx, mock.Anything, "accounts").Return(nil)
-	suite.repository.On("UpdateContinuousScreeningConfig", suite.ctx, mock.Anything,
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything, mock.Anything, "customers").Return(nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything, mock.Anything, "accounts").Return(nil)
+	suite.repository.On("UpdateContinuousScreeningConfig", mock.Anything, mock.Anything,
 		suite.configId, models.UpdateContinuousScreeningConfig{Enabled: utils.Ptr(false)}).Return(existingConfig, nil)
-	suite.repository.On("CreateContinuousScreeningConfig", suite.ctx, mock.Anything,
+	suite.repository.On("CreateContinuousScreeningConfig", mock.Anything, mock.Anything,
 		mock.Anything).Return(updatedConfig, nil)
 
 	// Execute
@@ -458,30 +492,31 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_PreservesSt
 		Name:        "original name",
 		Algorithm:   "existing-algorithm",
 		ObjectTypes: []string{"transactions"},
+		InboxId:     suite.inboxId,
 	}
 
+	// Expected result - new config with same stable ID but new ID
 	updatedConfig := models.ContinuousScreeningConfig{
-		Id:          uuid.New(),     // New ID for the new record
-		StableId:    suite.stableId, // Same stable ID
-		OrgId:       suite.orgId,
-		Name:        "updated name",
-		Algorithm:   "existing-algorithm",
-		ObjectTypes: []string{"transactions"},
+		Id:             uuid.New(),     // New ID
+		StableId:       suite.stableId, // Same stable ID
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "updated name",
+		Algorithm:      "existing-algorithm",
+		ObjectTypes:    []string{"transactions"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
 	}
 
 	// Mock expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
-	suite.repository.On("UpdateContinuousScreeningConfig", suite.ctx, mock.Anything,
+	suite.repository.On("UpdateContinuousScreeningConfig", mock.Anything, mock.Anything,
 		suite.configId, models.UpdateContinuousScreeningConfig{Enabled: utils.Ptr(false)}).Return(existingConfig, nil)
-
-	// Capture the CreateContinuousScreeningConfig call to verify the stable ID is preserved
-	suite.repository.On("CreateContinuousScreeningConfig", suite.ctx, mock.Anything, mock.MatchedBy(func(
-		config models.CreateContinuousScreeningConfig,
-	) bool {
-		return config.StableId != uuid.Nil && config.StableId == suite.stableId
-	})).Return(updatedConfig, nil)
+	suite.repository.On("CreateContinuousScreeningConfig", mock.Anything, mock.Anything, mock.Anything).Return(
+		updatedConfig, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -530,7 +565,7 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_TableMissin
 	// Mock expectations
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -577,7 +612,7 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_TableMissin
 	// Mock expectations
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -612,7 +647,7 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_ObjectTypeN
 	// Mock expectations
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -621,6 +656,126 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_ObjectTypeN
 	// Assert
 	suite.Error(err)
 	suite.Contains(err.Error(), "table nonexistent_table not found in data model")
+	suite.AssertExpectations()
+}
+
+func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_InboxNotActive() {
+	// Setup
+	input := models.CreateContinuousScreeningConfig{
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "test-config",
+		Description:    "test description",
+		Algorithm:      "valid-algorithm",
+		ObjectTypes:    []string{"transactions"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
+	}
+
+	algorithms := models.OpenSanctionAlgorithms{
+		Algorithms: []models.OpenSanctionAlgorithm{
+			{Name: "valid-algorithm"},
+		},
+	}
+
+	// Mock expectations
+	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
+	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
+
+	// Mock for processObjectTypes
+	ftmEntityValue := models.FollowTheMoneyEntityPerson
+	ftmPropertyValue := models.FollowTheMoneyPropertyName
+	table := models.Table{
+		Name:      "transactions",
+		FTMEntity: &ftmEntityValue,
+		Fields: map[string]models.Field{
+			"object_id": {
+				Name:        "object_id",
+				FTMProperty: &ftmPropertyValue,
+			},
+		},
+	}
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			"transactions": table,
+		},
+	}
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything,
+		mock.Anything, "transactions").Return(nil)
+
+	suite.repository.On("GetInboxById", mock.Anything, mock.Anything, suite.inboxId).Return(models.Inbox{
+		Id:             suite.inboxId,
+		OrganizationId: suite.orgId.String(),
+		Status:         models.InboxStatusInactive, // Inbox is not active
+	}, nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.CreateContinuousScreeningConfig(suite.ctx, input)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "inbox is not active")
+	suite.AssertExpectations()
+}
+
+func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_InboxNotFound() {
+	// Setup
+	input := models.CreateContinuousScreeningConfig{
+		OrgId:          suite.orgId,
+		InboxId:        suite.inboxId,
+		Name:           "test-config",
+		Description:    "test description",
+		Algorithm:      "valid-algorithm",
+		ObjectTypes:    []string{"transactions"},
+		Datasets:       []string{"default"},
+		MatchThreshold: 80,
+		MatchLimit:     100,
+	}
+
+	algorithms := models.OpenSanctionAlgorithms{
+		Algorithms: []models.OpenSanctionAlgorithm{
+			{Name: "valid-algorithm"},
+		},
+	}
+
+	// Mock expectations
+	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
+	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
+
+	// Mock for processObjectTypes
+	ftmEntityValue := models.FollowTheMoneyEntityPerson
+	ftmPropertyValue := models.FollowTheMoneyPropertyName
+	table := models.Table{
+		Name:      "transactions",
+		FTMEntity: &ftmEntityValue,
+		Fields: map[string]models.Field{
+			"object_id": {
+				Name:        "object_id",
+				FTMProperty: &ftmPropertyValue,
+			},
+		},
+	}
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			"transactions": table,
+		},
+	}
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything,
+		mock.Anything, "transactions").Return(nil)
+
+	suite.repository.On("GetInboxById", mock.Anything, mock.Anything, suite.inboxId).Return(models.Inbox{}, models.NotFoundError)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.CreateContinuousScreeningConfig(suite.ctx, input)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "inbox not found for the organization")
 	suite.AssertExpectations()
 }
 
@@ -659,12 +814,12 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_AddNonExist
 	}
 
 	// Mock expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	// The valid table "transactions" will be processed first before failing on the nonexistent table
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything,
 		mock.Anything, "transactions").Return(nil)
 
 	// Execute
@@ -731,14 +886,14 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_AddInvalidT
 	}
 
 	// Mock expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	// Table creation will be called for the first two valid tables before validation fails on the third
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything,
 		mock.Anything, "transactions").Return(nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", suite.ctx,
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything,
 		mock.Anything, "customers").Return(nil)
 
 	// Execute

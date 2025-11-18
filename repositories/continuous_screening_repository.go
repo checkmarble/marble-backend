@@ -81,6 +81,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 		Columns(
 			"org_id",
 			"stable_id",
+			"inbox_id",
 			"name",
 			"description",
 			"algorithm",
@@ -92,6 +93,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 		Values(
 			input.OrgId,
 			input.StableId,
+			input.InboxId,
 			input.Name,
 			input.Description,
 			input.Algorithm,
@@ -154,6 +156,10 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningConfig(
 		sql = sql.Set("object_types", *input.ObjectTypes)
 		countUpdate++
 	}
+	if input.InboxId != nil {
+		sql = sql.Set("inbox_id", *input.InboxId)
+		countUpdate++
+	}
 
 	if countUpdate == 0 {
 		config, err := repo.GetContinuousScreeningConfig(ctx, exec, id)
@@ -178,15 +184,17 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
-) error {
+	triggerType models.ContinuousScreeningTriggerType,
+) (models.ContinuousScreeningWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
+		return models.ContinuousScreeningWithMatches{}, err
 	}
 
 	id := uuid.New()
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
+		Suffix("RETURNING *").
 		Columns(
 			"id",
 			"org_id",
@@ -196,6 +204,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 			"object_id",
 			"object_internal_id",
 			"status",
+			"trigger_type",
 			"search_input",
 			"is_partial",
 			"number_of_matches",
@@ -209,32 +218,39 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 			objectId,
 			objectInternalId,
 			screening.Status.String(),
+			triggerType.String(),
 			screening.SearchInput,
 			screening.Partial,
 			screening.NumberOfMatches,
 		)
 
-	err := ExecBuilder(ctx, exec, sql)
+	cs, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreening)
 	if err != nil {
-		return err
+		return models.ContinuousScreeningWithMatches{}, err
 	}
 
 	if len(screening.Matches) == 0 {
-		return nil
+		return models.ContinuousScreeningWithMatches{ContinuousScreening: cs}, nil
 	}
 
 	matchSql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
+		Suffix("RETURNING *").
 		Columns("continuous_screening_id", "opensanction_entity_id", "payload")
 
 	for _, match := range screening.Matches {
 		matchSql = matchSql.Values(id, match.EntityId, match.Payload)
 	}
 
-	return ExecBuilder(ctx, exec, matchSql)
+	matches, err := SqlToListOfModels(ctx, exec, matchSql, dbmodels.AdaptContinuousScreeningMatch)
+	if err != nil {
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
+	return models.ContinuousScreeningWithMatches{ContinuousScreening: cs, Matches: matches}, nil
 }
 
-func (repo *MarbleDbRepository) ContinuousScreeningById(ctx context.Context, exec Executor, id string) (models.ContinuousScreening, error) {
+func (repo *MarbleDbRepository) GetContinuousScreeningById(ctx context.Context, exec Executor, id string) (models.ContinuousScreening, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ContinuousScreening{}, err
 	}
@@ -245,6 +261,36 @@ func (repo *MarbleDbRepository) ContinuousScreeningById(ctx context.Context, exe
 		Where(squirrel.Eq{"id": id})
 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreening)
+}
+
+func (repo *MarbleDbRepository) ListContinuousScreeningsByCaseId(
+	ctx context.Context,
+	exec Executor,
+	caseId string,
+) ([]models.ContinuousScreening, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
+		Where(squirrel.Eq{"case_id": caseId})
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreening)
+}
+
+func (repo *MarbleDbRepository) ListContinuousScreeningsByIds(ctx context.Context, exec Executor, ids []uuid.UUID) ([]models.ContinuousScreening, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
+		Where(squirrel.Eq{"id": ids})
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreening)
 }
 
 func (repo *MarbleDbRepository) ListContinuousScreeningsForOrg(
@@ -272,7 +318,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningsForOrg(
 	var offset models.ContinuousScreening
 	if paginationAndSorting.OffsetId != "" {
 		var err error
-		offset, err = repo.ContinuousScreeningById(ctx, exec, paginationAndSorting.OffsetId)
+		offset, err = repo.GetContinuousScreeningById(ctx, exec, paginationAndSorting.OffsetId)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.Wrap(models.NotFoundError,
 				"No row found matching the provided offsetId")
@@ -325,4 +371,17 @@ func applyPaginationFilters(query squirrel.SelectBuilder, p models.PaginationAnd
 	}
 
 	return query, nil
+}
+
+func (repo *MarbleDbRepository) UpdateContinuousScreeningsCaseId(ctx context.Context, exec Executor, ids []uuid.UUID, caseId string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
+		Where(squirrel.Eq{"id": ids}).
+		Set("case_id", caseId)
+
+	return ExecBuilder(ctx, exec, query)
 }

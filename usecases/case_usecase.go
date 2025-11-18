@@ -45,7 +45,8 @@ type CaseUseCaseRepository interface {
 	BatchCreateCaseEvents(ctx context.Context, exec repositories.Executor,
 		createCaseEventAttributes []models.CreateCaseEventAttributes) error
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
-	ListCaseEventsOfTypes(ctx context.Context, exec repositories.Executor, caseId string, types []models.CaseEventType, paging models.PaginationAndSorting) ([]models.CaseEvent, error)
+	ListCaseEventsOfTypes(ctx context.Context, exec repositories.Executor, caseId string,
+		types []models.CaseEventType, paging models.PaginationAndSorting) ([]models.CaseEvent, error)
 
 	GetCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) (*models.CaseContributor, error)
 	CreateCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) error
@@ -80,6 +81,11 @@ type CaseUseCaseRepository interface {
 	CaseMassAssign(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID,
 		assigneeId uuid.UUID) ([]uuid.UUID, error)
 	CaseMassMoveToInbox(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, inboxId uuid.UUID) ([]uuid.UUID, error)
+
+	// Continuous screenings
+	ListContinuousScreeningsByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.ContinuousScreening, error)
+	ListContinuousScreeningsByIds(ctx context.Context, exec repositories.Executor, ids []uuid.UUID) ([]models.ContinuousScreening, error)
+	UpdateContinuousScreeningsCaseId(ctx context.Context, exec repositories.Executor, ids []uuid.UUID, caseId string) error
 }
 
 type CaseUsecaseScreeningRepository interface {
@@ -202,7 +208,8 @@ func (usecase *CaseUseCase) ListCases(
 }
 
 func (usecase *CaseUseCase) GetCasesReferents(ctx context.Context, caseIds []string) (map[string]models.CaseReferents, error) {
-	referents, err := usecase.repository.GetCaseReferents(ctx, usecase.executorFactory.NewExecutor(), caseIds)
+	referents, err := usecase.repository.GetCaseReferents(ctx,
+		usecase.executorFactory.NewExecutor(), caseIds)
 	if err != nil {
 		return nil, err
 	}
@@ -216,15 +223,19 @@ func (usecase *CaseUseCase) GetCasesReferents(ctx context.Context, caseIds []str
 	return referentMap, nil
 }
 
-func (usecase *CaseUseCase) GetCaseComments(ctx context.Context, caseId string, paging models.PaginationAndSorting) (models.Paginated[models.CaseEvent], error) {
+func (usecase *CaseUseCase) GetCaseComments(ctx context.Context, caseId string,
+	paging models.PaginationAndSorting,
+) (models.Paginated[models.CaseEvent], error) {
 	c, err := usecase.GetCase(ctx, caseId)
 	if err != nil {
-		return models.Paginated[models.CaseEvent]{}, errors.Wrap(err, "could not retrieve requested case")
+		return models.Paginated[models.CaseEvent]{},
+			errors.Wrap(err, "could not retrieve requested case")
 	}
 
 	inboxes, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor(), c.OrganizationId)
 	if err != nil {
-		return models.Paginated[models.CaseEvent]{}, errors.Wrap(err, "could not retrieve available inboxes")
+		return models.Paginated[models.CaseEvent]{},
+			errors.Wrap(err, "could not retrieve available inboxes")
 	}
 
 	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxes); err != nil {
@@ -234,9 +245,13 @@ func (usecase *CaseUseCase) GetCaseComments(ctx context.Context, caseId string, 
 	pagingPlusOne := paging
 	pagingPlusOne.Limit += 1
 
-	comments, err := usecase.repository.ListCaseEventsOfTypes(ctx, usecase.executorFactory.NewExecutor(), caseId, []models.CaseEventType{models.CaseCommentAdded}, pagingPlusOne)
+	comments, err := usecase.repository.ListCaseEventsOfTypes(ctx,
+		usecase.executorFactory.NewExecutor(), caseId, []models.CaseEventType{
+			models.CaseCommentAdded,
+		}, pagingPlusOne)
 	if err != nil {
-		return models.Paginated[models.CaseEvent]{}, errors.Wrap(err, "could not list comment case events")
+		return models.Paginated[models.CaseEvent]{},
+			errors.Wrap(err, "could not list comment case events")
 	}
 
 	return models.Paginated[models.CaseEvent]{
@@ -260,7 +275,8 @@ func (usecase *CaseUseCase) GetCaseFiles(ctx context.Context, caseId string) ([]
 		return nil, err
 	}
 
-	caseFiles, err := usecase.repository.GetCasesFileByCaseId(ctx, usecase.executorFactory.NewExecutor(), caseId)
+	caseFiles, err := usecase.repository.GetCasesFileByCaseId(ctx,
+		usecase.executorFactory.NewExecutor(), caseId)
 	if err != nil {
 		return nil, err
 	}
@@ -323,6 +339,14 @@ func (usecase *CaseUseCase) CreateCase(
 	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.DecisionIds); err != nil {
 		return models.Case{}, err
 	}
+	if err := usecase.validateContinuousScreenings(
+		ctx,
+		tx,
+		createCaseAttributes.ContinuousScreeningIds,
+	); err != nil {
+		return models.Case{}, err
+	}
+
 	newCaseId := uuid.NewString()
 	err := usecase.repository.CreateCase(ctx, tx, createCaseAttributes, newCaseId)
 	if err != nil {
@@ -364,6 +388,16 @@ func (usecase *CaseUseCase) CreateCase(
 	}
 
 	err = usecase.UpdateDecisionsWithEvents(ctx, tx, newCaseId, userId, createCaseAttributes.DecisionIds)
+	if err != nil {
+		return models.Case{}, err
+	}
+	err = usecase.updateContinuousScreeningsWithEvents(
+		ctx,
+		tx,
+		newCaseId,
+		userId,
+		createCaseAttributes.ContinuousScreeningIds,
+	)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -1062,6 +1096,12 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 	}
 	c.Decisions = decisions
 
+	continuousScreenings, err := usecase.repository.ListContinuousScreeningsByCaseId(ctx, exec, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+	c.ContinuousScreenings = continuousScreenings
+
 	caseFiles, err := usecase.repository.GetCasesFileByCaseId(ctx, exec, caseId)
 	if err != nil {
 		return models.Case{}, err
@@ -1095,6 +1135,29 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 	return nil
 }
 
+func (usecase *CaseUseCase) validateContinuousScreenings(
+	ctx context.Context,
+	exec repositories.Executor,
+	continuousScreeningIds []uuid.UUID,
+) error {
+	if len(continuousScreeningIds) == 0 {
+		return nil
+	}
+
+	continuousScreenings, err := usecase.repository.ListContinuousScreeningsByIds(ctx, exec, continuousScreeningIds)
+	if err != nil {
+		return err
+	}
+	for _, continuousScreening := range continuousScreenings {
+		if continuousScreening.CaseId != nil {
+			return fmt.Errorf("continuous screening %s already belongs to a case %s %w",
+				continuousScreening.Id.String(), continuousScreening.CaseId.String(), models.BadParameterError)
+		}
+	}
+
+	return nil
+}
+
 func (usecase *CaseUseCase) UpdateDecisionsWithEvents(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -1119,6 +1182,47 @@ func (usecase *CaseUseCase) UpdateDecisionsWithEvents(
 				UserId:       &userId,
 				EventType:    models.DecisionAdded,
 				ResourceId:   &decisionId,
+				ResourceType: &resourceType,
+			}
+		}
+		if err := usecase.repository.BatchCreateCaseEvents(ctx, exec,
+			createCaseEventAttributes); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (usecase *CaseUseCase) updateContinuousScreeningsWithEvents(
+	ctx context.Context,
+	exec repositories.Executor,
+	caseId string,
+	userId string,
+	continuousScreeningIdsToAdd []uuid.UUID,
+) error {
+	if len(continuousScreeningIdsToAdd) > 0 {
+		if err := usecase.repository.UpdateContinuousScreeningsCaseId(
+			ctx,
+			exec,
+			continuousScreeningIdsToAdd,
+			caseId,
+		); err != nil {
+			return err
+		}
+
+		err := usecase.repository.UnsnoozeCase(ctx, exec, caseId)
+		if err != nil {
+			return err
+		}
+
+		createCaseEventAttributes := make([]models.CreateCaseEventAttributes, len(continuousScreeningIdsToAdd))
+		resourceType := models.ContinuousScreeningResourceType
+		for i, continuousScreeningId := range continuousScreeningIdsToAdd {
+			createCaseEventAttributes[i] = models.CreateCaseEventAttributes{
+				CaseId:       caseId,
+				UserId:       &userId,
+				EventType:    models.ContinuousScreeningAdded,
+				ResourceId:   utils.Ptr(continuousScreeningId.String()),
 				ResourceType: &resourceType,
 			}
 		}

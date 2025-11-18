@@ -10,6 +10,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
@@ -36,6 +37,14 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		}
 		return models.ScreeningWithMatches{}, err
 	}
+
+	logger := utils.LoggerFromContext(ctx).With(
+		"org_id", config.OrgId,
+		"config_stable_id", input.ConfigStableId,
+		"object_type", input.ObjectType,
+		"object_id", input.ObjectId,
+	)
+	ctx = utils.StoreLoggerInContext(ctx, logger)
 
 	if err := uc.enforceSecurity.WriteContinuousScreeningObject(config.OrgId); err != nil {
 		return models.ScreeningWithMatches{}, err
@@ -131,16 +140,18 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	// Do screening on the object
 	query, err := prepareOpenSanctionsQuery(ingestedObject, dataModelMapping.Entity, dataModelMapping.Properties, config)
 	if err != nil {
+		logger.WarnContext(ctx, "Continuous Screening - error preparing open sanctions query", "error", err.Error())
 		return models.ScreeningWithMatches{}, err
 	}
 	screeningResponse, err := uc.screeningProvider.Search(ctx, query)
 	if err != nil {
+		logger.WarnContext(ctx, "Continuous Screening - error searching on open sanctions", "error", err.Error())
 		return models.ScreeningWithMatches{}, err
 	}
 
 	screeningWithMatches := screeningResponse.AdaptScreeningFromSearchResponse(query)
 
-	if err := uc.repository.InsertContinuousScreening(
+	continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
 		ctx,
 		exec,
 		screeningWithMatches,
@@ -150,8 +161,37 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		input.ObjectType,
 		objectId,
 		ingestedObjectInternalId,
-	); err != nil {
+		models.ContinuousScreeningTriggerTypeObjectAdded,
+	)
+	if err != nil {
+		logger.WarnContext(ctx, "Continuous Screening - error inserting continuous screening", "error", err.Error())
 		return models.ScreeningWithMatches{}, err
+	}
+
+	// Create and attach to a case
+	if screeningWithMatches.Status == models.ScreeningStatusInReview {
+		userId := ""
+		if uc.enforceSecurity.UserId() != nil {
+			userId = *uc.enforceSecurity.UserId()
+		}
+		// TODO: TBD
+		caseName := "Continuous Screening - " + objectId
+		err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			_, err := uc.caseEditor.CreateCase(ctx, tx, userId, models.CreateCaseAttributes{
+				ContinuousScreeningIds: []uuid.UUID{continuousScreeningWithMatches.Id},
+				OrganizationId:         config.OrgId.String(),
+				InboxId:                config.InboxId,
+				Name:                   caseName,
+			}, false)
+			if err != nil {
+				logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return models.ScreeningWithMatches{}, err
+		}
 	}
 
 	return screeningWithMatches, nil

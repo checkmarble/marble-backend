@@ -7,6 +7,41 @@ import (
 	"github.com/google/uuid"
 )
 
+type ContinuousScreeningTriggerType int
+
+const (
+	ContinuousScreeningTriggerTypeObjectAdded ContinuousScreeningTriggerType = iota
+	ContinuousScreeningTriggerTypeObjectUpdated
+	ContinuousScreeningTriggerTypeDatasetUpdated
+	ContinuousScreeningTriggerTypeUnknown
+)
+
+func ContinuousScreeningTriggerTypeFrom(s string) ContinuousScreeningTriggerType {
+	switch s {
+	case "object_added":
+		return ContinuousScreeningTriggerTypeObjectAdded
+	case "object_updated":
+		return ContinuousScreeningTriggerTypeObjectUpdated
+	case "dataset_updated":
+		return ContinuousScreeningTriggerTypeDatasetUpdated
+	}
+
+	return ContinuousScreeningTriggerTypeUnknown
+}
+
+func (stt ContinuousScreeningTriggerType) String() string {
+	switch stt {
+	case ContinuousScreeningTriggerTypeObjectAdded:
+		return "object_added"
+	case ContinuousScreeningTriggerTypeObjectUpdated:
+		return "object_updated"
+	case ContinuousScreeningTriggerTypeDatasetUpdated:
+		return "dataset_updated"
+	}
+
+	return "unknown"
+}
+
 type InsertContinuousScreeningObject struct {
 	ObjectType     string
 	ConfigStableId uuid.UUID
@@ -19,10 +54,12 @@ type ContinuousScreening struct {
 	OrgId                             uuid.UUID
 	ContinuousScreeningConfigId       uuid.UUID
 	ContinuousScreeningConfigStableId uuid.UUID
+	CaseId                            *uuid.UUID
 	ObjectType                        string
 	ObjectId                          string
 	ObjectInternalId                  uuid.UUID
 	Status                            ScreeningStatus
+	TriggerType                       ContinuousScreeningTriggerType
 	SearchInput                       json.RawMessage
 	IsPartial                         bool
 	NumberOfMatches                   int

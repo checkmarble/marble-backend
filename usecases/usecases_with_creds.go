@@ -815,5 +815,6 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() continuous_sc
 		usecases.Repositories.IngestedDataReadRepository,
 		utils.Ptr(usecases.NewIngestionUseCase()),
 		usecases.Repositories.OpenSanctionsRepository,
+		usecases.NewCaseUseCase(),
 	)
 }
