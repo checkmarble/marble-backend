@@ -26,7 +26,7 @@ func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfig(ctx context.C
 
 func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigByStableId(
 	ctx context.Context,
-	stableId string,
+	stableId uuid.UUID,
 ) (models.ContinuousScreeningConfig, error) {
 	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx,
 		uc.executorFactory.NewExecutor(), stableId)
@@ -83,16 +83,16 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 		return models.ContinuousScreeningConfig{},
 			errors.Wrap(models.BadParameterError, "object_types cannot be empty")
 	}
+
+	// Set a default stable ID, we don't allow to pass a stable ID in the input
+	input.StableId = uuid.New()
+
 	if err := uc.processObjectTypes(ctx, exec, input.OrgId, input.ObjectTypes); err != nil {
 		return models.ContinuousScreeningConfig{}, err
 	}
 
 	configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx, exec, input)
 	if err != nil {
-		if repositories.IsUniqueViolationError(err) {
-			return models.ContinuousScreeningConfig{},
-				errors.Wrap(models.ConflictError, "stable ID already in use")
-		}
 		return models.ContinuousScreeningConfig{}, err
 	}
 
@@ -104,7 +104,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 // Check if we didn't remove any object types (can only add new object types)
 func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 	ctx context.Context,
-	stableId string,
+	stableId uuid.UUID,
 	input models.UpdateContinuousScreeningConfig,
 ) (models.ContinuousScreeningConfig, error) {
 	var configUpdated models.ContinuousScreeningConfig
@@ -172,13 +172,13 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 }
 
 func (uc *ContinuousScreeningUsecase) processObjectTypes(ctx context.Context,
-	exec repositories.Executor, orgId string, objectTypes []string,
+	exec repositories.Executor, orgId uuid.UUID, objectTypes []string,
 ) error {
-	dataModel, err := uc.repository.GetDataModel(ctx, exec, orgId, false, false)
+	dataModel, err := uc.repository.GetDataModel(ctx, exec, orgId.String(), false, false)
 	if err != nil {
 		return err
 	}
-	return uc.transactionFactory.TransactionInOrgSchema(ctx, orgId, func(tx repositories.Transaction) error {
+	return uc.transactionFactory.TransactionInOrgSchema(ctx, orgId.String(), func(tx repositories.Transaction) error {
 		for _, objectType := range objectTypes {
 			table, ok := dataModel.Tables[objectType]
 			if !ok {

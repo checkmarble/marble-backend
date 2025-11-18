@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -207,12 +208,12 @@ func (e *EnforceSecurity) ReadContinuousScreeningConfig(config models.Continuous
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) WriteContinuousScreeningConfig(orgId string) error {
+func (e *EnforceSecurity) WriteContinuousScreeningConfig(orgId uuid.UUID) error {
 	args := e.Called(orgId)
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) WriteContinuousScreeningObject(orgId string) error {
+func (e *EnforceSecurity) WriteContinuousScreeningObject(orgId uuid.UUID) error {
 	args := e.Called(orgId)
 	return args.Error(0)
 }

@@ -22,7 +22,7 @@ func sanitizedTableName(exec Executor, tableName string) string {
 // Table schema
 // id: UUID, primary key
 // object_id: TEXT, foreign key to client_tables.object_id
-// config_stable_id: TEXT, foreign key to continuous_screening_configs.stable_id
+// config_stable_id: UUID, foreign key to continuous_screening_configs.stable_id
 // created_at: TIMESTAMP WITH TIME ZONE
 // Truncate the table name and the uniq index name to the maximum length of 63 characters
 // Add unique index to have a unique object_id for a given config_id
@@ -46,7 +46,7 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx conte
 		CREATE TABLE IF NOT EXISTS %s (
 			id UUID NOT NULL PRIMARY KEY,
 			object_id TEXT NOT NULL,
-			config_stable_id text NOT NULL,
+			config_stable_id UUID NOT NULL,
 			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 		);
 	`, sanitizedTableName)
@@ -67,7 +67,7 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx conte
 }
 
 func (repo *ClientDbRepository) InsertContinuousScreeningObject(ctx context.Context, exec Executor,
-	tableName string, objectId string, configStableId string,
+	tableName string, objectId string, configStableId uuid.UUID,
 ) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err

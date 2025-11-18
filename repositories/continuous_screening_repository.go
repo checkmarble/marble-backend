@@ -28,7 +28,7 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfig(ctx context.Context
 
 // Get the latest continuous screening config by stable id
 func (repo *MarbleDbRepository) GetContinuousScreeningConfigByStableId(ctx context.Context,
-	exec Executor, stableId string,
+	exec Executor, stableId uuid.UUID,
 ) (models.ContinuousScreeningConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ContinuousScreeningConfig{}, err
@@ -172,9 +172,9 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 	ctx context.Context,
 	exec Executor,
 	screening models.ScreeningWithMatches,
-	orgId string,
+	orgId uuid.UUID,
 	configId uuid.UUID,
-	configStableId string,
+	configStableId uuid.UUID,
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,

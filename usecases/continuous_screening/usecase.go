@@ -26,7 +26,7 @@ type ContinuousScreeningUsecaseRepository interface {
 	GetContinuousScreeningConfigByStableId(
 		ctx context.Context,
 		exec repositories.Executor,
-		stableId string,
+		stableId uuid.UUID,
 	) (models.ContinuousScreeningConfig, error)
 	CreateContinuousScreeningConfig(
 		ctx context.Context,
@@ -51,9 +51,9 @@ type ContinuousScreeningUsecaseRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		screening models.ScreeningWithMatches,
-		orgId string,
+		orgId uuid.UUID,
 		configId uuid.UUID,
-		configStableId string,
+		configStableId uuid.UUID,
 		objectType string,
 		objectId string,
 		objectInternalId uuid.UUID,
@@ -73,7 +73,7 @@ type ContinuousScreeningClientDbRepository interface {
 		exec repositories.Executor,
 		tableName string,
 		objectId string,
-		configStableId string,
+		configStableId uuid.UUID,
 	) error
 }
 

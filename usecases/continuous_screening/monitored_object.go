@@ -47,13 +47,13 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 			errors.Wrapf(models.BadParameterError, "object type %s is not configured with this config", input.ObjectType)
 	}
 
-	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, config.OrgId)
+	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, config.OrgId.String())
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
 
 	// Get Data Model Table
-	dataModel, err := uc.repository.GetDataModel(ctx, exec, config.OrgId, false, false)
+	dataModel, err := uc.repository.GetDataModel(ctx, exec, config.OrgId.String(), false, false)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -174,11 +174,11 @@ func extractObjectIDFromPayload(payload json.RawMessage) (string, error) {
 // Ingest the object from payload and return the object ID from payload
 func (uc *ContinuousScreeningUsecase) ingestObject(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	input models.InsertContinuousScreeningObject,
 ) (string, error) {
 	// Ingestion doesn't return the object after operation.
-	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId, input.ObjectType, *input.ObjectPayload)
+	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId.String(), input.ObjectType, *input.ObjectPayload)
 	if err != nil {
 		return "", err
 	}

@@ -13,7 +13,7 @@ type ContinuousScreeningDto struct {
 	Id                                uuid.UUID                     `json:"id"`
 	OrgId                             uuid.UUID                     `json:"org_id"`
 	ContinuousScreeningConfigId       uuid.UUID                     `json:"continuous_screening_config_id"`
-	ContinuousScreeningConfigStableId string                        `json:"continuous_screening_config_stable_id"`
+	ContinuousScreeningConfigStableId uuid.UUID                     `json:"continuous_screening_config_stable_id"`
 	ObjectType                        string                        `json:"object_type"`
 	ObjectId                          string                        `json:"object_id"`
 	ObjectInternalId                  uuid.UUID                     `json:"object_internal_id"`

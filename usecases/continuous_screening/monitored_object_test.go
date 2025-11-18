@@ -33,8 +33,8 @@ type ContinuousScreeningUsecaseTestSuite struct {
 
 	ctx            context.Context
 	configId       uuid.UUID
-	configStableId string
-	orgId          string
+	configStableId uuid.UUID
+	orgId          uuid.UUID
 	objectType     string
 	objectId       string
 }
@@ -53,8 +53,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) SetupTest() {
 
 	suite.ctx = context.Background()
 	suite.configId = uuid.New()
-	suite.configStableId = "test-config-stable-id"
-	suite.orgId = "test-org-id"
+	suite.configStableId = uuid.New()
+	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
 	suite.objectType = "transactions"
 	suite.objectId = "test-object-id"
 }
@@ -132,7 +132,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
+	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
@@ -213,8 +213,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
-	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(1, nil)
+	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId.String(), suite.objectType, payload).Return(1, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
@@ -274,7 +274,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
+	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -324,7 +324,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
+	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId, mock.Anything).Return([]models.DataModelObject{}, nil)
 
@@ -382,8 +382,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
-	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(0, nil)
+	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId.String(), suite.objectType, payload).Return(0, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -451,8 +451,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
-	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId, suite.objectType, payload).Return(1, nil)
+	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId.String(), suite.objectType, payload).Return(1, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
@@ -530,7 +530,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
+	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,

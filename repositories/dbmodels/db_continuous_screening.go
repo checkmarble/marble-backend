@@ -17,7 +17,7 @@ type DBContinuousScreening struct {
 	Id                                uuid.UUID       `db:"id"`
 	OrgId                             uuid.UUID       `db:"org_id"`
 	ContinuousScreeningConfigId       uuid.UUID       `db:"continuous_screening_config_id"`
-	ContinuousScreeningConfigStableId string          `db:"continuous_screening_config_stable_id"`
+	ContinuousScreeningConfigStableId uuid.UUID       `db:"continuous_screening_config_stable_id"`
 	ObjectType                        string          `db:"object_type"`
 	ObjectId                          string          `db:"object_id"`
 	ObjectInternalId                  uuid.UUID       `db:"object_internal_id"`

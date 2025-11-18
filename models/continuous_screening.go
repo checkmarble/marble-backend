@@ -9,7 +9,7 @@ import (
 
 type InsertContinuousScreeningObject struct {
 	ObjectType     string
-	ConfigStableId string
+	ConfigStableId uuid.UUID
 	ObjectId       *string
 	ObjectPayload  *json.RawMessage
 }
@@ -18,7 +18,7 @@ type ContinuousScreening struct {
 	Id                                uuid.UUID
 	OrgId                             uuid.UUID
 	ContinuousScreeningConfigId       uuid.UUID
-	ContinuousScreeningConfigStableId string
+	ContinuousScreeningConfigStableId uuid.UUID
 	ObjectType                        string
 	ObjectId                          string
 	ObjectInternalId                  uuid.UUID

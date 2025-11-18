@@ -35,7 +35,7 @@ func (m *ContinuousScreeningRepository) GetContinuousScreeningConfigsByOrgId(
 func (m *ContinuousScreeningRepository) GetContinuousScreeningConfigByStableId(
 	ctx context.Context,
 	exec repositories.Executor,
-	stableId string,
+	stableId uuid.UUID,
 ) (models.ContinuousScreeningConfig, error) {
 	args := m.Called(ctx, exec, stableId)
 	return args.Get(0).(models.ContinuousScreeningConfig), args.Error(1)
@@ -84,9 +84,9 @@ func (m *ContinuousScreeningRepository) InsertContinuousScreening(
 	ctx context.Context,
 	exec repositories.Executor,
 	screening models.ScreeningWithMatches,
-	orgId string,
+	orgId uuid.UUID,
 	configId uuid.UUID,
-	configStableId string,
+	configStableId uuid.UUID,
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
@@ -123,7 +123,7 @@ func (m *ContinuousScreeningClientDbRepository) InsertContinuousScreeningObject(
 	exec repositories.Executor,
 	tableName string,
 	objectId string,
-	configStableId string,
+	configStableId uuid.UUID,
 ) error {
 	args := m.Called(ctx, exec, tableName, objectId, configStableId)
 	return args.Error(0)

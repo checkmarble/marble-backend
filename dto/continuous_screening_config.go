@@ -2,7 +2,6 @@ package dto
 
 import (
 	"encoding/json"
-	"regexp"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -10,11 +9,9 @@ import (
 	"github.com/google/uuid"
 )
 
-var regexpStableId = regexp.MustCompile(`^[a-zA-Z0-9_]{1,32}$`)
-
 type ContinuousScreeningConfigDto struct {
 	Id             uuid.UUID `json:"id"`
-	StableId       string    `json:"stable_id"`
+	StableId       uuid.UUID `json:"stable_id"`
 	Name           string    `json:"name"`
 	Description    string    `json:"description,omitempty"`
 	ObjectTypes    []string  `json:"object_types"`
@@ -47,7 +44,6 @@ func AdaptContinuousScreeningConfigDto(config models.ContinuousScreeningConfig) 
 type CreateContinuousScreeningConfigDto struct {
 	Name           string   `json:"name" binding:"required"`
 	Description    string   `json:"description"`
-	StableId       string   `json:"stable_id" binding:"required"`
 	Algorithm      string   `json:"algorithm" binding:"required"`
 	Datasets       []string `json:"datasets" binding:"required"`
 	MatchThreshold int      `json:"match_threshold" binding:"required"`
@@ -84,21 +80,12 @@ func (dto CreateContinuousScreeningConfigDto) Validate() error {
 		)
 	}
 
-	// Check stableID is valid
-	if !regexpStableId.MatchString(dto.StableId) {
-		return errors.Wrap(
-			models.BadParameterError,
-			"stable ID must contain only letters, numbers, underscores and be at most 64 characters",
-		)
-	}
-
 	return nil
 }
 
 func AdaptCreateContinuousScreeningConfigDtoToModel(dto CreateContinuousScreeningConfigDto) models.CreateContinuousScreeningConfig {
 	return models.CreateContinuousScreeningConfig{
 		Name:           dto.Name,
-		StableId:       dto.StableId,
 		ObjectTypes:    dto.ObjectTypes,
 		Description:    dto.Description,
 		Algorithm:      dto.Algorithm,
@@ -157,7 +144,7 @@ func AdaptUpdateContinuousScreeningConfigDtoToModel(dto UpdateContinuousScreenin
 
 type InsertContinuousScreeningObjectDto struct {
 	ObjectType     string           `json:"object_type" binding:"required"`
-	ConfigStableId string           `json:"config_stable_id" binding:"required"`
+	ConfigStableId uuid.UUID        `json:"config_stable_id" binding:"required"`
 	ObjectId       *string          `json:"object_id"`
 	ObjectPayload  *json.RawMessage `json:"object_payload"`
 }

@@ -3,13 +3,14 @@ package security
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type EnforceSecurityContinuousScreening interface {
 	EnforceSecurity
 	ReadContinuousScreeningConfig(config models.ContinuousScreeningConfig) error
-	WriteContinuousScreeningConfig(orgId string) error
-	WriteContinuousScreeningObject(orgId string) error
+	WriteContinuousScreeningConfig(orgId uuid.UUID) error
+	WriteContinuousScreeningObject(orgId uuid.UUID) error
 	ReadContinuousScreeningHit(hit models.ContinuousScreeningWithMatches) error
 }
 
@@ -21,21 +22,21 @@ type EnforceSecurityContinuousScreeningImpl struct {
 func (e *EnforceSecurityContinuousScreeningImpl) ReadContinuousScreeningConfig(config models.ContinuousScreeningConfig) error {
 	return errors.Join(
 		e.Permission(models.CONTINUOUS_SCREENING_CONFIG_READ),
-		e.ReadOrganization(config.OrgId),
+		e.ReadOrganization(config.OrgId.String()),
 	)
 }
 
-func (e *EnforceSecurityContinuousScreeningImpl) WriteContinuousScreeningConfig(orgId string) error {
+func (e *EnforceSecurityContinuousScreeningImpl) WriteContinuousScreeningConfig(orgId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.CONTINUOUS_SCREENING_CONFIG_WRITE),
-		e.ReadOrganization(orgId),
+		e.ReadOrganization(orgId.String()),
 	)
 }
 
-func (e *EnforceSecurityContinuousScreeningImpl) WriteContinuousScreeningObject(orgId string) error {
+func (e *EnforceSecurityContinuousScreeningImpl) WriteContinuousScreeningObject(orgId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.CONTINUOUS_SCREENING_OBJECT_WRITE),
-		e.ReadOrganization(orgId),
+		e.ReadOrganization(orgId.String()),
 	)
 }
 
