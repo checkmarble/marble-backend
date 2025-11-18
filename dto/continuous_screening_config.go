@@ -13,7 +13,7 @@ type ContinuousScreeningConfigDto struct {
 	Id             uuid.UUID `json:"id"`
 	StableId       uuid.UUID `json:"stable_id"`
 	Name           string    `json:"name"`
-	Description    *string   `json:"description"`
+	Description    string    `json:"description,omitempty"`
 	ObjectTypes    []string  `json:"object_types"`
 	Algorithm      string    `json:"algorithm"`
 	Datasets       []string  `json:"datasets"`
@@ -43,7 +43,7 @@ func AdaptContinuousScreeningConfigDto(config models.ContinuousScreeningConfig) 
 
 type CreateContinuousScreeningConfigDto struct {
 	Name           string   `json:"name" binding:"required"`
-	Description    *string  `json:"description"`
+	Description    string   `json:"description"`
 	Algorithm      string   `json:"algorithm" binding:"required"`
 	Datasets       []string `json:"datasets" binding:"required"`
 	MatchThreshold int      `json:"match_threshold" binding:"required"`
@@ -73,12 +73,20 @@ func (dto CreateContinuousScreeningConfigDto) Validate() error {
 		)
 	}
 
+	if len(dto.ObjectTypes) == 0 {
+		return errors.Wrap(
+			models.BadParameterError,
+			"object types are required for continuous screening config",
+		)
+	}
+
 	return nil
 }
 
 func AdaptCreateContinuousScreeningConfigDtoToModel(dto CreateContinuousScreeningConfigDto) models.CreateContinuousScreeningConfig {
 	return models.CreateContinuousScreeningConfig{
 		Name:           dto.Name,
+		ObjectTypes:    dto.ObjectTypes,
 		Description:    dto.Description,
 		Algorithm:      dto.Algorithm,
 		Datasets:       dto.Datasets,
@@ -105,7 +113,7 @@ func (dto UpdateContinuousScreeningConfigDto) Validate() error {
 		)
 	}
 
-	if dto.MatchLimit != nil && *dto.MatchLimit < 0 {
+	if dto.MatchLimit != nil && *dto.MatchLimit < 1 {
 		return errors.Wrap(
 			models.BadParameterError,
 			"match limit must be at least 1",
@@ -135,10 +143,10 @@ func AdaptUpdateContinuousScreeningConfigDtoToModel(dto UpdateContinuousScreenin
 }
 
 type InsertContinuousScreeningObjectDto struct {
-	ObjectType    string           `json:"object_type" binding:"required"`
-	ConfigId      uuid.UUID        `json:"config_id" binding:"required"`
-	ObjectId      *string          `json:"object_id"`
-	ObjectPayload *json.RawMessage `json:"object_payload"`
+	ObjectType     string           `json:"object_type" binding:"required"`
+	ConfigStableId uuid.UUID        `json:"config_stable_id" binding:"required"`
+	ObjectId       *string          `json:"object_id"`
+	ObjectPayload  *json.RawMessage `json:"object_payload"`
 }
 
 func (dto InsertContinuousScreeningObjectDto) Validate() error {
@@ -161,9 +169,9 @@ func (dto InsertContinuousScreeningObjectDto) Validate() error {
 
 func AdaptInsertContinuousScreeningObjectDto(dto InsertContinuousScreeningObjectDto) models.InsertContinuousScreeningObject {
 	return models.InsertContinuousScreeningObject{
-		ObjectType:    dto.ObjectType,
-		ConfigId:      dto.ConfigId,
-		ObjectId:      dto.ObjectId,
-		ObjectPayload: dto.ObjectPayload,
+		ObjectType:     dto.ObjectType,
+		ConfigStableId: dto.ConfigStableId,
+		ObjectId:       dto.ObjectId,
+		ObjectPayload:  dto.ObjectPayload,
 	}
 }

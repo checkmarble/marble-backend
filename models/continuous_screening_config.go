@@ -11,9 +11,9 @@ import (
 type ContinuousScreeningConfig struct {
 	Id          uuid.UUID
 	StableId    uuid.UUID
-	OrgId       string
+	OrgId       uuid.UUID
 	Name        string
-	Description *string
+	Description string
 	ObjectTypes []string
 	Algorithm   string
 	// Dataset that are used for the monitoring
@@ -36,9 +36,10 @@ type ContinuousScreeningConfigParameters struct {
 }
 
 type CreateContinuousScreeningConfig struct {
-	OrgId          string
+	OrgId          uuid.UUID
+	StableId       uuid.UUID
 	Name           string
-	Description    *string
+	Description    string
 	Algorithm      string
 	Datasets       []string
 	MatchThreshold int

@@ -26,6 +26,24 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfig(ctx context.Context
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
 }
 
+// Get the latest continuous screening config by stable id
+func (repo *MarbleDbRepository) GetContinuousScreeningConfigByStableId(ctx context.Context,
+	exec Executor, stableId uuid.UUID,
+) (models.ContinuousScreeningConfig, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.ContinuousScreeningConfigColumnList...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
+		Where(squirrel.Eq{"stable_id": stableId}).
+		OrderBy("created_at DESC").
+		Limit(1)
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
+}
+
 func (repo *MarbleDbRepository) GetContinuousScreeningConfigsByOrgId(
 	ctx context.Context,
 	exec Executor,
@@ -38,7 +56,8 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfigsByOrgId(
 	sql := NewQueryBuilder().
 		Select(dbmodels.ContinuousScreeningConfigColumnList...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
-		Where(squirrel.Eq{"org_id": orgId})
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Eq{"enabled": true})
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
 }
@@ -61,21 +80,25 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 		Suffix("RETURNING *").
 		Columns(
 			"org_id",
+			"stable_id",
 			"name",
 			"description",
 			"algorithm",
 			"datasets",
 			"match_threshold",
 			"match_limit",
+			"object_types",
 		).
 		Values(
 			input.OrgId,
+			input.StableId,
 			input.Name,
 			input.Description,
 			input.Algorithm,
 			input.Datasets,
 			input.MatchThreshold,
 			input.MatchLimit,
+			input.ObjectTypes,
 		)
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
@@ -131,10 +154,6 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningConfig(
 		sql = sql.Set("object_types", *input.ObjectTypes)
 		countUpdate++
 	}
-	if input.Algorithm != nil {
-		sql = sql.Set("algorithm", *input.Algorithm)
-		countUpdate++
-	}
 
 	if countUpdate == 0 {
 		config, err := repo.GetContinuousScreeningConfig(ctx, exec, id)
@@ -153,8 +172,9 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 	ctx context.Context,
 	exec Executor,
 	screening models.ScreeningWithMatches,
-	orgId string,
+	orgId uuid.UUID,
 	configId uuid.UUID,
+	configStableId uuid.UUID,
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
@@ -166,11 +186,12 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 	id := uuid.New()
 
 	sql := NewQueryBuilder().
-		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING).
+		Insert(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
 		Columns(
 			"id",
 			"org_id",
 			"continuous_screening_config_id",
+			"continuous_screening_config_stable_id",
 			"object_type",
 			"object_id",
 			"object_internal_id",
@@ -183,6 +204,7 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 			id,
 			orgId,
 			configId,
+			configStableId,
 			objectType,
 			objectId,
 			objectInternalId,
@@ -219,7 +241,7 @@ func (repo *MarbleDbRepository) ContinuousScreeningById(ctx context.Context, exe
 
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectContinuousScreeningColumn...).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
 		Where(squirrel.Eq{"id": id})
 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreening)
@@ -273,7 +295,7 @@ func selectContinuousScreeningWithMatches() squirrel.SelectBuilder {
 		Select(columnsNames("cs", dbmodels.SelectContinuousScreeningColumn)...).
 		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s) ORDER BY array_position(array['confirmed_hit', 'pending', 'no_hit', 'skipped'], csm.status), csm.payload->>'score' DESC) FILTER (WHERE csm.id IS NOT NULL) AS matches",
 			strings.Join(columnsNames("csm", dbmodels.SelectContinuousScreeningMatchesColumn), ","))).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING + " AS cs").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS + " AS cs").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES +
 			" AS csm ON (cs.id = csm.continuous_screening_id)").
 		GroupBy(columnsNames("cs", dbmodels.SelectContinuousScreeningColumn)...)

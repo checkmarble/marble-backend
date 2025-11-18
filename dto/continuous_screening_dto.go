@@ -10,30 +10,32 @@ import (
 )
 
 type ContinuousScreeningDto struct {
-	Id                          uuid.UUID                     `json:"id"`
-	OrgId                       uuid.UUID                     `json:"org_id"`
-	ContinuousScreeningConfigId uuid.UUID                     `json:"continuous_screening_config_id"`
-	ObjectType                  string                        `json:"object_type"`
-	ObjectId                    string                        `json:"object_id"`
-	ObjectInternalId            uuid.UUID                     `json:"object_internal_id"`
-	Status                      string                        `json:"status"`
-	Request                     ScreeningRequestDto           `json:"request"`
-	Partial                     bool                          `json:"partial"`
-	NumberOfMatches             int                           `json:"number_of_matches"`
-	Matches                     []ContinuousScreeningMatchDto `json:"matches"`
-	CreatedAt                   time.Time                     `json:"created_at"`
-	UpdatedAt                   time.Time                     `json:"updated_at"`
+	Id                                uuid.UUID                     `json:"id"`
+	OrgId                             uuid.UUID                     `json:"org_id"`
+	ContinuousScreeningConfigId       uuid.UUID                     `json:"continuous_screening_config_id"`
+	ContinuousScreeningConfigStableId uuid.UUID                     `json:"continuous_screening_config_stable_id"`
+	ObjectType                        string                        `json:"object_type"`
+	ObjectId                          string                        `json:"object_id"`
+	ObjectInternalId                  uuid.UUID                     `json:"object_internal_id"`
+	Status                            string                        `json:"status"`
+	Request                           ScreeningRequestDto           `json:"request"`
+	Partial                           bool                          `json:"partial"`
+	NumberOfMatches                   int                           `json:"number_of_matches"`
+	Matches                           []ContinuousScreeningMatchDto `json:"matches"`
+	CreatedAt                         time.Time                     `json:"created_at"`
+	UpdatedAt                         time.Time                     `json:"updated_at"`
 }
 
 func AdaptContinuousScreeningDto(m models.ContinuousScreeningWithMatches) ContinuousScreeningDto {
 	return ContinuousScreeningDto{
-		Id:                          m.Id,
-		OrgId:                       m.OrgId,
-		ContinuousScreeningConfigId: m.ContinuousScreeningConfigId,
-		ObjectType:                  m.ObjectType,
-		ObjectId:                    m.ObjectId,
-		ObjectInternalId:            m.ObjectInternalId,
-		Status:                      m.Status.String(),
+		Id:                                m.Id,
+		OrgId:                             m.OrgId,
+		ContinuousScreeningConfigId:       m.ContinuousScreeningConfigId,
+		ContinuousScreeningConfigStableId: m.ContinuousScreeningConfigStableId,
+		ObjectType:                        m.ObjectType,
+		ObjectId:                          m.ObjectId,
+		ObjectInternalId:                  m.ObjectInternalId,
+		Status:                            m.Status.String(),
 		Request: ScreeningRequestDto{
 			SearchInput: m.SearchInput,
 		},

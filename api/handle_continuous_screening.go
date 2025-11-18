@@ -16,14 +16,16 @@ import (
 func handleGetContinuousScreeningConfig(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		configId, err := uuid.Parse(c.Param("config_id"))
+
+		stableIdString := c.Param("stable_id")
+		stableId, err := uuid.Parse(stableIdString)
 		if err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
-		continuousScreeningConfig, err := uc.GetContinuousScreeningConfig(ctx, configId)
+		continuousScreeningConfig, err := uc.GetContinuousScreeningConfigByStableId(ctx, stableId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -53,8 +55,13 @@ func handleListContinuousScreeningConfigs(uc usecases.Usecases) func(c *gin.Cont
 func handleCreateContinuousScreeningConfig(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		organizationIdString, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(ctx, c, err) {
+			return
+		}
+		organizationId, err := uuid.Parse(organizationIdString)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
@@ -87,7 +94,8 @@ func handleUpdateContinuousScreeningConfig(uc usecases.Usecases) func(c *gin.Con
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		configId, err := uuid.Parse(c.Param("config_id"))
+		stableIdString := c.Param("stable_id")
+		stableId, err := uuid.Parse(stableIdString)
 		if err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
@@ -106,7 +114,7 @@ func handleUpdateContinuousScreeningConfig(uc usecases.Usecases) func(c *gin.Con
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
 		continuousScreeningConfig, err := uc.UpdateContinuousScreeningConfig(
 			ctx,
-			configId,
+			stableId,
 			dto.AdaptUpdateContinuousScreeningConfigDtoToModel(input),
 		)
 		if presentError(ctx, c, err) {
@@ -165,8 +173,6 @@ func handleListContinuousScreeningsForOrg(uc usecases.Usecases) func(c *gin.Cont
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
-
-		// TODO: Need to define filters
 
 		var paginationAndSortingDto dto.PaginationAndSorting
 		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
