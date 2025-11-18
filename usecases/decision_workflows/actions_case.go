@@ -212,7 +212,7 @@ func (d DecisionsWorkflows) addToOpenCase(
 		}
 		bestMatchCase = findBestMatchCase(cases)
 	}
-	err = d.caseEditor.UpdateDecisionsWithEvents(ctx, tx, bestMatchCase.Id, "", []string{decision.DecisionId.String()})
+	err = d.caseEditor.UpdateDecisionsWithEvents(ctx, tx, decision.OrganizationId, bestMatchCase.Id, "", []string{decision.DecisionId.String()})
 	if err != nil {
 		return models.CaseMetadata{}, false, errors.Wrap(err, "error updating case")
 	}

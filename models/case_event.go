@@ -3,11 +3,13 @@ package models
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 )
 
 type CaseEvent struct {
 	Id             string
+	OrgId          uuid.UUID
 	CaseId         string
 	UserId         null.String
 	CreatedAt      time.Time
@@ -59,6 +61,7 @@ const (
 )
 
 type CreateCaseEventAttributes struct {
+	OrgId          uuid.UUID
 	CaseId         string
 	UserId         *string
 	EventType      CaseEventType
