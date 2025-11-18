@@ -28,7 +28,6 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	input models.InsertContinuousScreeningObject,
 ) (models.ScreeningWithMatches, error) {
 	exec := uc.executorFactory.NewExecutor()
-	logger := utils.LoggerFromContext(ctx)
 
 	// Check if the config exists
 	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, exec, input.ConfigStableId)
@@ -39,12 +38,13 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		return models.ScreeningWithMatches{}, err
 	}
 
-	logger = logger.With(
+	logger := utils.LoggerFromContext(ctx).With(
 		"org_id", config.OrgId,
 		"config_stable_id", input.ConfigStableId,
 		"object_type", input.ObjectType,
 		"object_id", input.ObjectId,
 	)
+	ctx = utils.StoreLoggerInContext(ctx, logger)
 
 	if err := uc.enforceSecurity.WriteContinuousScreeningObject(config.OrgId); err != nil {
 		return models.ScreeningWithMatches{}, err
@@ -140,12 +140,12 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	// Do screening on the object
 	query, err := prepareOpenSanctionsQuery(ingestedObject, dataModelMapping.Entity, dataModelMapping.Properties, config)
 	if err != nil {
-		logger.Warn("Continuous Screening - error preparing open sanctions query", "error", err.Error())
+		logger.WarnContext(ctx, "Continuous Screening - error preparing open sanctions query", "error", err.Error())
 		return models.ScreeningWithMatches{}, err
 	}
 	screeningResponse, err := uc.screeningProvider.Search(ctx, query)
 	if err != nil {
-		logger.Warn("Continuous Screening - error searching on open sanctions", "error", err.Error())
+		logger.WarnContext(ctx, "Continuous Screening - error searching on open sanctions", "error", err.Error())
 		return models.ScreeningWithMatches{}, err
 	}
 
@@ -164,7 +164,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		models.ContinuousScreeningTriggerTypeObjectAdded,
 	)
 	if err != nil {
-		logger.Warn("Continuous Screening - error inserting continuous screening", "error", err.Error())
+		logger.WarnContext(ctx, "Continuous Screening - error inserting continuous screening", "error", err.Error())
 		return models.ScreeningWithMatches{}, err
 	}
 
@@ -184,7 +184,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 				Name:                   caseName,
 			}, false)
 			if err != nil {
-				logger.Warn("Continuous Screening - error creating case", "error", err.Error())
+				logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
 				return err
 			}
 			return nil
