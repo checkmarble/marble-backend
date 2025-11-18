@@ -308,7 +308,7 @@ func (uc AnalyticsQueryUsecase) CaseStatusByDate(ctx context.Context,
 
 	cte := repositories.WithCtes("case_statuses", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
 		return b.Select(
-			fmt.Sprintf("created_at + interval '%d seconds' as created_at", tzOffset),
+			fmt.Sprintf("created_at + interval '%d s' as created_at", tzOffset),
 			"status",
 			"snoozed_until is not null and snoozed_until > now() as snoozed",
 		).
@@ -318,18 +318,33 @@ func (uc AnalyticsQueryUsecase) CaseStatusByDate(ctx context.Context,
 			Where("created_at >= (now() - interval '10 days')::date")
 	})
 
+	cte = cte.With("data", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+		return b.
+			Select(
+				"created_at::date as date",
+				"count(*) filter (where snoozed) as snoozed",
+				"count(*) filter (where not snoozed  and status = 'pending') as pending",
+				"count(*) filter (where not snoozed and status = 'investigating') as investigating",
+				"count(*) filter (where not snoozed  and status = 'closed') as closed",
+			).
+			From("case_statuses").
+			GroupBy("created_at::date").
+			OrderBy("created_at::date")
+	})
+
 	query := squirrel.
 		Select(
-			"created_at::date as date",
-			"count(*) filter (where snoozed) as snoozed",
-			"count(*) filter (where not snoozed  and status = 'pending') as pending",
-			"count(*) filter (where not snoozed and status = 'investigating') as investigating",
-			"count(*) filter (where not snoozed  and status = 'closed') as closed",
+			"days::date as date",
+			"coalesce(data.snoozed, 0) as snoozed",
+			"coalesce(data.pending, 0) as pending",
+			"coalesce(data.investigating, 0) as investigating",
+			"coalesce(data.closed, 0) as closed",
 		).
 		PrefixExpr(cte).
-		From("case_statuses").
-		GroupBy("created_at::date").
-		OrderBy("created_at::date")
+		From(fmt.Sprintf("generate_series(now() + interval '%[1]d s' - interval '10 days', now() + interval '%[1]d s', '1 day') as days", tzOffset)).
+		LeftJoin("data on data.date = days::date").
+		OrderBy("date").
+		Offset(1)
 
 	sql, args, err := query.ToSql()
 	if err != nil {
