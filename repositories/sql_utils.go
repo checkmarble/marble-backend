@@ -13,11 +13,24 @@ type cte struct {
 }
 
 type QueryCte struct {
+	builder func() squirrel.StatementBuilderType
 	queries []cte
 }
 
 func WithCtes(name string, cb func(b squirrel.StatementBuilderType) squirrel.SelectBuilder) *QueryCte {
-	ctes := &QueryCte{}
+	ctes := &QueryCte{
+		builder: NewQueryBuilder,
+	}
+
+	return ctes.With(name, cb)
+}
+
+func WithCtesRaw(name string, cb func(b squirrel.StatementBuilderType) squirrel.SelectBuilder) *QueryCte {
+	ctes := &QueryCte{
+		builder: func() squirrel.StatementBuilderType {
+			return squirrel.StatementBuilder.PlaceholderFormat(squirrel.Question)
+		},
+	}
 
 	return ctes.With(name, cb)
 }
@@ -25,7 +38,7 @@ func WithCtes(name string, cb func(b squirrel.StatementBuilderType) squirrel.Sel
 func (q *QueryCte) With(name string, cb func(b squirrel.StatementBuilderType) squirrel.SelectBuilder) *QueryCte {
 	q.queries = append(q.queries, cte{
 		name:  pgx.Identifier.Sanitize([]string{name}),
-		query: cb(NewQueryBuilder()),
+		query: cb(q.builder()),
 	})
 
 	return q
