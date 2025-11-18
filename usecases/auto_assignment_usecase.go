@@ -98,6 +98,7 @@ func (uc AutoAssignmentUsecase) assignCase(ctx context.Context, c models.Case, u
 		}
 
 		if err := uc.caseRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			OrgId:     uuid.MustParse(c.OrganizationId),
 			CaseId:    c.Id,
 			UserId:    nil,
 			EventType: models.CaseAssigned,

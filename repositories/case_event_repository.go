@@ -86,6 +86,7 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec 
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_EVENTS).
 		Columns(
+			"org_id",
 			"case_id",
 			"user_id",
 			"event_type",
@@ -105,6 +106,7 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec 
 			userId = pgtype.Text{Valid: false}
 		}
 		query = query.Values(
+			createCaseEventAttribute.OrgId,
 			createCaseEventAttribute.CaseId,
 			userId,
 			createCaseEventAttribute.EventType,
