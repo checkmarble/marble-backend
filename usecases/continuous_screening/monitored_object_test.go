@@ -135,22 +135,22 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       []byte("{}"),
 		InitialHasMatches: false,
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
-	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
-	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
 		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -227,23 +227,24 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId.String(), suite.objectType, payload).Return(1, nil)
-	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.ingestionUsecase.On("IngestObject", mock.Anything, suite.orgId.String(),
+		suite.objectType, payload).Return(1, nil)
+	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       []byte("{}"),
 		InitialHasMatches: false,
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
-	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
-	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
 		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -299,10 +300,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -349,11 +350,11 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations - QueryIngestedObject returns empty list
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return([]models.DataModelObject{}, nil)
 
 	// Execute
@@ -407,11 +408,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations - IngestObject returns 0 (no objects ingested)
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId.String(), suite.objectType, payload).Return(0, nil)
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.ingestionUsecase.On("IngestObject", mock.Anything, suite.orgId.String(),
+		suite.objectType, payload).Return(0, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -476,14 +478,15 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.ingestionUsecase.On("IngestObject", suite.ctx, suite.orgId.String(), suite.objectType, payload).Return(1, nil)
-	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.ingestionUsecase.On("IngestObject", mock.Anything, suite.orgId.String(),
+		suite.objectType, payload).Return(1, nil)
+	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       []byte("{}"),
@@ -491,11 +494,11 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
 	// Return a unique violation error
-	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(&pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
 	})
-	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
 		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -566,13 +569,13 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(&pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
 	})
@@ -603,7 +606,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Setup expectations
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 
@@ -666,14 +669,14 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Mock screening provider to return matches (which should result in "in review" status)
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return(&suite.objectId) // Return a user ID
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       []byte("{}"),
@@ -685,9 +688,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			},
 		},
 	}, nil)
-	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
-	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
 		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -715,7 +718,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		InboxId:        inboxId,
 		OrganizationId: suite.orgId.String(),
 	}
-	suite.caseEditor.On("CreateCase", suite.ctx, mock.Anything, suite.objectId, mock.MatchedBy(func(
+	suite.caseEditor.On("CreateCase", mock.Anything, mock.Anything, suite.objectId, mock.MatchedBy(func(
 		attrs models.CreateCaseAttributes,
 	) bool {
 		return attrs.OrganizationId == suite.orgId.String() &&
@@ -783,14 +786,14 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}
 
 	// Mock screening provider to return matches
-	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return(&suite.objectId)
-	suite.repository.On("GetDataModel", suite.ctx, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, mock.Anything, table,
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.screeningProvider.On("Search", suite.ctx, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       []byte("{}"),
@@ -802,9 +805,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			},
 		},
 	}, nil)
-	suite.clientDbRepository.On("InsertContinuousScreeningObject", suite.ctx, mock.Anything,
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
-	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.Anything,
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
 		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -825,7 +828,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}, nil)
 
 	// Mock case creation to fail
-	suite.caseEditor.On("CreateCase", suite.ctx, mock.Anything, suite.objectId, mock.MatchedBy(func(
+	suite.caseEditor.On("CreateCase", mock.Anything, mock.Anything, suite.objectId, mock.MatchedBy(func(
 		attrs models.CreateCaseAttributes,
 	) bool {
 		return attrs.OrganizationId == suite.orgId.String() &&

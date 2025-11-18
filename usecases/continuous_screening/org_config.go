@@ -104,7 +104,10 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 		return models.ContinuousScreeningConfig{},
 			errors.Wrap(models.BadParameterError, "inbox not found for the organization")
 	}
-	// TODO: Do I need to check the inbox status?
+	if inbox.Status != models.InboxStatusActive {
+		return models.ContinuousScreeningConfig{},
+			errors.Wrap(models.BadParameterError, "inbox is not active")
+	}
 
 	configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx, exec, input)
 	if err != nil {
