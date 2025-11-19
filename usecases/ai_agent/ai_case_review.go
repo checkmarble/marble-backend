@@ -32,8 +32,6 @@ const (
 
 var ReviewLevelEnum = []string{"probable_false_positive", "investigate", "escalate"}
 
-var ErrAiCaseReviewNotEnabled = errors.New("AI case review is not enabled")
-
 // Constants for the case review prompt paths
 const (
 	PROMPT_CASE_REVIEW_PATH                          = "prompts/case_review/case_review.md"
@@ -184,38 +182,37 @@ func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, 
 }
 
 // EnqueueCreateCaseReview enqueues a case review task for a given case.
-// It checks if the organization has AI case review enabled and returns an ErrAiCaseReviewNotEnabled error if not.
-func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId string) error {
+func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId string) (bool, error) {
 	c, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	hasAiCaseReviewEnabled, err := uc.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
 	if err != nil {
-		return errors.Wrap(err, "error checking if AI case review is enabled")
+		return false, errors.Wrap(err, "error checking if AI case review is enabled")
 	}
 	if !hasAiCaseReviewEnabled {
-		return ErrAiCaseReviewNotEnabled
+		return false, nil
+	}
+	inbox, err := uc.inboxReader.GetInboxById(ctx, c.InboxId)
+	if err != nil {
+		return false, errors.Wrap(err, "error getting inbox")
+	}
+	if !inbox.CaseReviewManual {
+		return false, nil
 	}
 
 	caseIdUuid, err := uuid.Parse(caseId)
 	if err != nil {
-		return errors.Wrap(err, "could not parse case id")
+		return false, errors.Wrap(err, "could not parse case id")
 	}
 
-	aiCaseReview := models.NewAiCaseReview(caseIdUuid, uc.caseManagerBucketUrl)
-	err = uc.caseReviewFileRepository.CreateCaseReviewFile(ctx,
-		uc.executorFactory.NewExecutor(),
-		aiCaseReview,
-	)
-	if err != nil {
-		return errors.Wrap(err, "Error while creating case review file")
-	}
-
-	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return uc.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, c.OrganizationId, caseIdUuid, aiCaseReview.Id)
+	caseReviewId := uuid.Must(uuid.NewV7())
+	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return uc.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, c.OrganizationId, caseIdUuid, caseReviewId)
 	})
+	return true, err
 }
 
 // Return a list of instructions to give to the LLM and the model to use for the prompt
@@ -1054,6 +1051,8 @@ func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(
 }
 
 func (uc *AiAgentUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error) {
+	// Add check on license here (is not yet handled in license)
+
 	// Check if the organization has AI case review enabled, fetch the organization and check the flag
 	org, err := uc.repository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId)
 	if err != nil {
