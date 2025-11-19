@@ -383,3 +383,27 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningsCaseId(ctx context.Con
 
 	return ExecBuilder(ctx, exec, query)
 }
+
+// This function is used to check if the screening result is the same as the existing one (if exists)
+// Get the latest screening result in review for a given object id and object type
+func (repo *MarbleDbRepository) GetContinuousScreeningByObjectId(
+	ctx context.Context,
+	exec Executor,
+	objectId string,
+	objectType string,
+	orgId uuid.UUID,
+) (*models.ContinuousScreeningWithMatches, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := selectContinuousScreeningWithMatches().
+		Where(squirrel.Eq{"cs.org_id": orgId}).
+		Where(squirrel.Eq{"cs.object_type": objectType}).
+		Where(squirrel.Eq{"cs.object_id": objectId}).
+		Where(squirrel.Eq{"cs.status": models.ScreeningStatusInReview.String()}).
+		OrderBy("cs.created_at DESC").
+		Limit(1)
+
+	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningWithMatches)
+}

@@ -169,7 +169,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		ctx,
 		organizationId,
 		func(tx repositories.Transaction) error {
-			_, err := usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
+			_, _, err := usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
 				clientObject,
 			}, table)
 			if err != nil {
@@ -311,7 +311,7 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 		previous["status"] = transfer.Status
 		previous["updated_at"] = time.Now()
 
-		_, err = usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
+		_, _, err = usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
 			{Data: previous, TableName: models.TransferCheckTable},
 		}, table)
 		if err != nil {

@@ -28,6 +28,13 @@ type repository interface {
 		objectInternalId uuid.UUID,
 		triggerType models.ContinuousScreeningTriggerType,
 	) (models.ContinuousScreeningWithMatches, error)
+	GetContinuousScreeningByObjectId(
+		ctx context.Context,
+		exec repositories.Executor,
+		objectId string,
+		objectType string,
+		orgId uuid.UUID,
+	) (*models.ContinuousScreeningWithMatches, error)
 }
 
 type clientDbRepository interface {
@@ -112,6 +119,22 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 		return err
 	}
 
+	skipCaseCreation := false
+	// Only in case of Object updated by the user, check if the screening result is the same as the existing one (if exists)
+	if job.Args.TriggerType == int(models.ContinuousScreeningTriggerTypeObjectUpdated) {
+		skipCaseCreation, err = w.isScreeningResultUnchanged(
+			ctx,
+			exec,
+			screeningWithMatches,
+			monitoredObject.ObjectId,
+			job.Args.ObjectType,
+			config.OrgId,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
 	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		// Insert the continuous screening result
 		continuousScreeningWithMatches, err := w.repo.InsertContinuousScreening(
@@ -128,14 +151,77 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 			return err
 		}
 
-		// Create the case if needed
-		return w.usecase.HandleCaseCreation(
-			ctx,
-			tx,
-			screeningWithMatches,
-			config,
-			monitoredObject.ObjectId,
-			continuousScreeningWithMatches,
-		)
+		if !skipCaseCreation {
+			return w.usecase.HandleCaseCreation(
+				ctx,
+				tx,
+				screeningWithMatches,
+				config,
+				monitoredObject.ObjectId,
+				continuousScreeningWithMatches,
+			)
+		}
+		return nil
 	})
+}
+
+func areScreeningMatchesEqual(
+	existingScreeningWithMatches models.ContinuousScreeningWithMatches,
+	newScreeningWithMatches models.ScreeningWithMatches,
+) bool {
+	if len(existingScreeningWithMatches.Matches) != len(newScreeningWithMatches.Matches) {
+		return false
+	}
+
+	existingMatches := make(
+		map[string]bool,
+		len(existingScreeningWithMatches.Matches),
+	)
+	for _, match := range existingScreeningWithMatches.Matches {
+		existingMatches[match.OpenSanctionEntityId] = true
+	}
+
+	newMatches := make(map[string]bool, len(newScreeningWithMatches.Matches))
+	for _, match := range newScreeningWithMatches.Matches {
+		newMatches[match.EntityId] = true
+	}
+
+	matchesAreSame := len(existingMatches) == len(newMatches)
+	if matchesAreSame {
+		for entityId := range existingMatches {
+			if !newMatches[entityId] {
+				matchesAreSame = false
+				break
+			}
+		}
+	}
+	return matchesAreSame
+}
+
+func (w *DoScreeningWorker) isScreeningResultUnchanged(
+	ctx context.Context,
+	exec repositories.Executor,
+	newScreeningWithMatches models.ScreeningWithMatches,
+	objectId string,
+	objectType string,
+	orgId uuid.UUID,
+) (bool, error) {
+	existingScreeningWithMatches, err := w.repo.GetContinuousScreeningByObjectId(
+		ctx,
+		exec,
+		objectId,
+		objectType,
+		orgId,
+	)
+	if err != nil {
+		return false, err
+	}
+
+	if existingScreeningWithMatches != nil {
+		return areScreeningMatchesEqual(
+			*existingScreeningWithMatches,
+			newScreeningWithMatches,
+		), nil
+	}
+	return false, nil
 }

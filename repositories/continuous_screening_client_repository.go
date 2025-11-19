@@ -92,7 +92,7 @@ func (repo *ClientDbRepository) InsertContinuousScreeningObject(
 func (repo *ClientDbRepository) GetMonitoredObject(
 	ctx context.Context,
 	exec Executor,
-	tableName string,
+	objectType string,
 	id uuid.UUID,
 ) (models.ContinuousScreeningMonitoredObject, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
@@ -101,7 +101,7 @@ func (repo *ClientDbRepository) GetMonitoredObject(
 
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectContinuousScreeningMonitoredObjectColumn...).
-		From(sanitizedTableName(exec, utils.TruncateIdentifier(tableNameWithPrefix(tableName)))).
+		From(sanitizedTableName(exec, utils.TruncateIdentifier(tableNameWithPrefix(objectType)))).
 		Where(squirrel.Eq{"id": id})
 
 	model, err := SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
@@ -110,4 +110,27 @@ func (repo *ClientDbRepository) GetMonitoredObject(
 	}
 
 	return model, nil
+}
+
+func (repo *ClientDbRepository) ListMonitoredObjectsByObjectId(
+	ctx context.Context,
+	exec Executor,
+	objectType string,
+	objectIds []string,
+) ([]models.ContinuousScreeningMonitoredObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningMonitoredObjectColumn...).
+		From(sanitizedTableName(exec, utils.TruncateIdentifier(tableNameWithPrefix(objectType)))).
+		Where(squirrel.Eq{"object_id": objectIds})
+
+	models, err := SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
+	if err != nil {
+		return nil, err
+	}
+
+	return models, nil
 }

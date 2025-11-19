@@ -34,16 +34,46 @@ const (
 	DefaultApiBatchIngestionSize = 100
 )
 
+type continuousScreeningClientRepository interface {
+	ListMonitoredObjectsByObjectIds(
+		ctx context.Context,
+		exec repositories.Executor,
+		objectType string,
+		objectIds []string,
+	) ([]models.ContinuousScreeningMonitoredObject, error)
+}
+
+type taskEnqueuer interface {
+	EnqueueContinuousScreeningDoScreeningTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		orgId string,
+		objectType string,
+		monitoringId uuid.UUID,
+		triggerType models.ContinuousScreeningTriggerType,
+	) error
+	EnqueueContinuousScreeningDoScreeningTaskMany(
+		ctx context.Context,
+		tx repositories.Transaction,
+		orgId string,
+		objectType string,
+		monitoringIds []uuid.UUID,
+		triggerType models.ContinuousScreeningTriggerType,
+	) error
+}
+
 type IngestionUseCase struct {
-	transactionFactory    executor_factory.TransactionFactory
-	executorFactory       executor_factory.ExecutorFactory
-	enforceSecurity       security.EnforceSecurityIngestion
-	ingestionRepository   repositories.IngestionRepository
-	blobRepository        repositories.BlobRepository
-	dataModelRepository   repositories.DataModelRepository
-	uploadLogRepository   repositories.UploadLogRepository
-	ingestionBucketUrl    string
-	batchIngestionMaxSize int
+	transactionFactory                  executor_factory.TransactionFactory
+	executorFactory                     executor_factory.ExecutorFactory
+	enforceSecurity                     security.EnforceSecurityIngestion
+	ingestionRepository                 repositories.IngestionRepository
+	blobRepository                      repositories.BlobRepository
+	dataModelRepository                 repositories.DataModelRepository
+	uploadLogRepository                 repositories.UploadLogRepository
+	continuousScreeningClientRepository continuousScreeningClientRepository
+	ingestionBucketUrl                  string
+	batchIngestionMaxSize               int
+	taskEnqueuer                        taskEnqueuer
 }
 
 func (usecase *IngestionUseCase) IngestObject(
@@ -88,8 +118,9 @@ func (usecase *IngestionUseCase) IngestObject(
 	}
 
 	var nb int
+	var insertedObjectIds []string
 	err = retryIngestion(ctx, func() error {
-		nb, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, []models.ClientObject{payload}, table)
+		nb, insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, []models.ClientObject{payload}, table)
 		return err
 	})
 	if err != nil {
@@ -109,6 +140,18 @@ func (usecase *IngestionUseCase) IngestObject(
 		slog.String("object_type", objectType),
 		slog.Int("nb_objects", nb),
 	)
+
+	if err := usecase.checkAndEnqueueMonitoredObjects(ctx, exec, organizationId,
+		insertedObjectIds, objectType); err != nil {
+		// Don't fail the ingestion if we can't enqueue the task
+		logger.WarnContext(
+			ctx,
+			"Error enqueuing continuous screening task for single ingestion",
+			slog.Any("error", err),
+			slog.String("organization_id", organizationId),
+			slog.String("object_type", objectType),
+		)
+	}
 
 	return nb, nil
 }
@@ -186,8 +229,9 @@ func (usecase *IngestionUseCase) IngestObjects(
 	}
 
 	var nb int
+	var insertedObjectIds []string
 	err = retryIngestion(ctx, func() error {
-		nb, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+		nb, insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
 		return err
 	})
 	if err != nil {
@@ -199,6 +243,18 @@ func (usecase *IngestionUseCase) IngestObjects(
 		slog.String("object_type", objectType),
 		slog.Int("nb_objects", nb),
 	)
+
+	if err := usecase.checkAndEnqueueMonitoredObjects(ctx, exec, organizationId,
+		insertedObjectIds, objectType); err != nil {
+		// Don't fail the ingestion if we can't enqueue the task
+		logger.WarnContext(
+			ctx,
+			"Error enqueuing continuous screening task for batch ingestion",
+			slog.Any("error", err),
+			slog.String("organization_id", organizationId),
+			slog.String("object_type", objectType),
+		)
+	}
 
 	return nb, nil
 }
@@ -430,7 +486,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		return err
 	}
 
-	out := usecase.readFileIngestObjects(ctx, file.FileName, file.ReadCloser)
+	out := usecase.readFileIngestObjects(ctx, exec, file.FileName, file.ReadCloser)
 	if out.err != nil {
 		setToFailed(out.numRowsIngested, out.err)
 		return out.err
@@ -457,7 +513,9 @@ type ingestionResult struct {
 
 // This method uses a return value wrapping an error, because we still want to use the number of rows ingested even if
 // an error occurred.
-func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, fileName string, fileReader io.Reader) ingestionResult {
+func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
+	exec repositories.Executor, fileName string, fileReader io.Reader,
+) ingestionResult {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fileName))
 
@@ -476,7 +534,6 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 		}
 	}
 
-	exec := usecase.executorFactory.NewExecutor()
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, true)
 	if err != nil {
 		return ingestionResult{
@@ -491,10 +548,16 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 		}
 	}
 
-	return usecase.ingestObjectsFromCSV(ctx, organizationId, fileReader, table)
+	return usecase.ingestObjectsFromCSV(ctx, exec, organizationId, fileReader, table)
 }
 
-func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, fileReader io.Reader, table models.Table) ingestionResult {
+func (usecase *IngestionUseCase) ingestObjectsFromCSV(
+	ctx context.Context,
+	exec repositories.Executor,
+	organizationId string,
+	fileReader io.Reader,
+	table models.Table,
+) ingestionResult {
 	logger := utils.LoggerFromContext(ctx)
 	total := 0
 	start := time.Now()
@@ -561,14 +624,27 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		}
 
 		var nb int
+		var insertedObjectIds []string
 		if err := retryIngestion(ctx, func() error {
-			nb, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+			nb, insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
 			return err
 		}); err != nil {
 			return ingestionResult{
 				numRowsIngested: total,
 				err:             err,
 			}
+		}
+
+		if err := usecase.checkAndEnqueueMonitoredObjects(ctx, exec, organizationId,
+			insertedObjectIds, table.Name); err != nil {
+			// Don't fail the ingestion if we can't enqueue the task
+			logger.WarnContext(
+				ctx,
+				"Error enqueuing continuous screening task for JSON ingestion",
+				slog.Any("error", err),
+				slog.String("organization_id", organizationId),
+				slog.String("object_type", table.Name),
+			)
 		}
 		total += nb
 	}
@@ -673,17 +749,18 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	organizationId string,
 	payloads []models.ClientObject,
 	table models.Table,
-) (int, error) {
+) (int, []string, error) {
 	start := time.Now()
 
 	var nb int
+	var insertedObjectIds []string
 	var err error
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
-		nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
+		nb, insertedObjectIds, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
 		return err
 	})
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
 	utils.MetricIngestionCount.
@@ -714,7 +791,7 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 		}
 	}()
 
-	return nb, nil
+	return nb, insertedObjectIds, nil
 }
 
 func buildEnumValuesContainersFromTable(table models.Table) models.EnumValues {
@@ -726,4 +803,42 @@ func buildEnumValuesContainersFromTable(table models.Table) models.EnumValues {
 		}
 	}
 	return enumValues
+}
+
+func (usecase *IngestionUseCase) checkAndEnqueueMonitoredObjects(
+	ctx context.Context,
+	exec repositories.Executor,
+	organizationId string,
+	insertedObjectIds []string,
+	objectType string,
+) error {
+	// Check if the inserted objects are in the continuous screening list
+	if len(insertedObjectIds) > 0 {
+		monitoredObjects, err := usecase.continuousScreeningClientRepository.ListMonitoredObjectsByObjectIds(
+			ctx,
+			exec,
+			objectType,
+			insertedObjectIds,
+		)
+		if err != nil {
+			return err
+		}
+
+		monitoringIds := make([]uuid.UUID, len(monitoredObjects))
+		for i, obj := range monitoredObjects {
+			monitoringIds[i] = obj.Id
+		}
+
+		return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			return usecase.taskEnqueuer.EnqueueContinuousScreeningDoScreeningTaskMany(
+				ctx,
+				tx,
+				organizationId,
+				objectType,
+				monitoringIds,
+				models.ContinuousScreeningTriggerTypeObjectUpdated,
+			)
+		})
+	}
+	return nil
 }
