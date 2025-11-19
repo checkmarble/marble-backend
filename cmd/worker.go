@@ -320,6 +320,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
+	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
 	}
@@ -518,6 +519,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "send_billing_event":
 		return uc.NewSendBillingEventWorker().Work(ctx,
 			singleJobCreate[models.SendBillingEventArgs](ctx, jobArgs))
+	case "continuous_screening_do_screening":
+		return uc.NewContinuousScreeningDoScreeningWorker().Work(ctx,
+			singleJobCreate[models.ContinuousScreeningDoScreeningArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

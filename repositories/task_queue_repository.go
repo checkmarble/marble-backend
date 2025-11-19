@@ -331,3 +331,33 @@ func (r riverRepository) EnqueueSendBillingEventTask(
 	logger.DebugContext(ctx, "Enqueued send billing event task", "job_id", res.Job.ID)
 	return nil
 }
+
+func (r riverRepository) EnqueueContinuousScreeningDoScreeningTask(
+	ctx context.Context,
+	tx Transaction,
+	orgId string,
+	objectType string,
+	monitoringId uuid.UUID,
+	triggerType models.ContinuousScreeningTriggerType,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.ContinuousScreeningDoScreeningArgs{
+			ObjectType:   objectType,
+			OrgId:        orgId,
+			TriggerType:  int(triggerType),
+			MonitoringId: monitoringId,
+		},
+		&river.InsertOpts{
+			Queue: orgId,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued continuous screening do screening task", "job_id", res.Job.ID)
+	return nil
+}

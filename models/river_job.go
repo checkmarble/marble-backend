@@ -1,6 +1,8 @@
 package models
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 // run async decision job
 type AsyncDecisionArgs struct {
@@ -104,3 +106,19 @@ type SendBillingEventArgs struct {
 }
 
 func (SendBillingEventArgs) Kind() string { return "send_billing_event" }
+
+type ContinuousScreeningDoScreeningArgs struct {
+	ObjectType string `json:"object_type"`
+	OrgId      string `json:"org_id"`
+
+	// Tell which action triggered the screening
+	// cf: models.ContinuousScreeningTriggerType
+	TriggerType int `json:"trigger_type"`
+
+	// MonitoringId is the ID from the object type specific monitoring table.
+	MonitoringId uuid.UUID `json:"monitoring_id"`
+}
+
+func (ContinuousScreeningDoScreeningArgs) Kind() string {
+	return "continuous_screening_do_screening"
+}
