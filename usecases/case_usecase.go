@@ -114,21 +114,25 @@ type caseUsecaseIngestedDataReader interface {
 	) ([]models.PivotObject, error)
 }
 
+type caseUsecaseAiAgentUsecase interface {
+	HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error)
+}
+
 type CaseUseCase struct {
-	enforceSecurity         security.EnforceSecurityCase
-	enforceSecurityDecision security.EnforceSecurityDecision
-	repository              CaseUseCaseRepository
-	decisionRepository      repositories.DecisionRepository
-	inboxReader             inboxes.InboxReader
-	blobRepository          repositories.BlobRepository
-	caseManagerBucketUrl    string
-	transactionFactory      executor_factory.TransactionFactory
-	executorFactory         executor_factory.ExecutorFactory
-	webhookEventsUsecase    webhookEventsUsecase
-	screeningRepository     CaseUsecaseScreeningRepository
-	ingestedDataReader      caseUsecaseIngestedDataReader
-	taskQueueRepository     repositories.TaskQueueRepository
-	featureAccessReader     feature_access.FeatureAccessReader
+	enforceSecurity      security.EnforceSecurityCase
+	repository           CaseUseCaseRepository
+	decisionRepository   repositories.DecisionRepository
+	inboxReader          inboxes.InboxReader
+	blobRepository       repositories.BlobRepository
+	caseManagerBucketUrl string
+	transactionFactory   executor_factory.TransactionFactory
+	executorFactory      executor_factory.ExecutorFactory
+	webhookEventsUsecase webhookEventsUsecase
+	screeningRepository  CaseUsecaseScreeningRepository
+	ingestedDataReader   caseUsecaseIngestedDataReader
+	taskQueueRepository  repositories.TaskQueueRepository
+	featureAccessReader  feature_access.FeatureAccessReader
+	aiAgentUsecase       caseUsecaseAiAgentUsecase
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -1879,6 +1883,30 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 
 		if err := usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
 			return err
+		}
+
+		hasAiCaseReviewEnabled, err := usecase.aiAgentUsecase.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
+		if err != nil {
+			return errors.Wrap(err, "error checking if AI case review is enabled")
+		}
+		if hasAiCaseReviewEnabled {
+			inbox, err := usecase.inboxReader.GetInboxById(ctx, targetInbox.Id)
+			if err != nil {
+				return errors.Wrap(err, "error getting inbox")
+			}
+			if inbox.CaseReviewOnEscalate {
+				caseReviewId := uuid.Must(uuid.NewV7())
+				caseIdUuid, err := uuid.Parse(c.Id)
+				if err != nil {
+					return errors.Wrap(err, "could not parse case id")
+				}
+				err = usecase.taskQueueRepository.EnqueueCaseReviewTask(ctx, tx,
+					c.OrganizationId, caseIdUuid, caseReviewId)
+				if err != nil {
+					return errors.Wrap(err, "error enqueuing case review task")
+				}
+			}
+
 		}
 
 		return nil

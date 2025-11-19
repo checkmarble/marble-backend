@@ -94,16 +94,14 @@ type AiCaseReview struct {
 }
 
 // For now, we only support v1 of the case review dto
-func NewAiCaseReview(caseId uuid.UUID, bucketName string) AiCaseReview {
-	newId := uuid.Must(uuid.NewV7())
-
+func NewAiCaseReview(caseId uuid.UUID, bucketName string, caseReviewId uuid.UUID) AiCaseReview {
 	return AiCaseReview{
-		Id:                newId,
+		Id:                caseReviewId,
 		CaseId:            caseId,
 		Status:            AiCaseReviewStatusPending,
 		BucketName:        bucketName,
-		FileReference:     fmt.Sprintf("ai_case_reviews/final/%s/%s.json", caseId, newId),
-		FileTempReference: fmt.Sprintf("ai_case_reviews/temp/%s/%s.json", caseId, newId),
+		FileReference:     fmt.Sprintf("ai_case_reviews/final/%s/%s.json", caseId, caseReviewId),
+		FileTempReference: fmt.Sprintf("ai_case_reviews/temp/%s/%s.json", caseId, caseReviewId),
 		DtoVersion:        "v1",
 	}
 }

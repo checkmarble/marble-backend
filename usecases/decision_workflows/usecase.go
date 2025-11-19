@@ -27,7 +27,7 @@ type caseEditor interface {
 	) error
 }
 
-type caseAndDecisionRepository interface {
+type decisionWorkflowsRepository interface {
 	SelectCasesWithPivot(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -39,11 +39,7 @@ type caseAndDecisionRepository interface {
 		organizationId string,
 		caseIds []string,
 	) (map[string]int, error)
-	CreateCaseReviewFile(
-		ctx context.Context,
-		exec repositories.Executor,
-		aiCaseReview models.AiCaseReview,
-	) error
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
 }
 
 type webhookEventCreator interface {
@@ -74,7 +70,7 @@ type aiAgentUsecase interface {
 }
 
 type DecisionsWorkflows struct {
-	repository             caseAndDecisionRepository
+	repository             decisionWorkflowsRepository
 	caseEditor             caseEditor
 	caseNameEvaluator      CaseNameEvaluator
 	webhookEventCreator    webhookEventCreator
@@ -86,7 +82,7 @@ type DecisionsWorkflows struct {
 
 func NewDecisionWorkflows(
 	caseEditor caseEditor,
-	repository caseAndDecisionRepository,
+	repository decisionWorkflowsRepository,
 	webhookEventCreator webhookEventCreator,
 	caseNameEvaluator CaseNameEvaluator,
 	astEvaluator ast_eval.EvaluateAstExpression,
