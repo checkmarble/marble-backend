@@ -28,6 +28,9 @@ var (
 
 	// MissingRequirement means this features required infrastructure or configuration that was not provided
 	MissingRequirement = errors.New("missing requirement")
+
+	// MissingLicenseEntitlement indicates that the features required a license that was not acquired
+	MissingLicenseEntitlementError = errors.New("missing license entitlement")
 )
 
 // Authentication related errors

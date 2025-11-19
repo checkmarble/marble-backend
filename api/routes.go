@@ -407,6 +407,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	} else {
 		addAnalyticsProxyRoutes(router, conf)
 	}
+
+	router.GET("/admin/audit-events", tom, handleListAuditEvents(uc))
 }
 
 func runStandaloneAnalyticsRoutes(router gin.IRoutes, conf Configuration, uc usecases.Usecases, auth utils.Authentication) {
