@@ -819,3 +819,13 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() continuous_sc
 		usecases.NewCaseUseCase(),
 	)
 }
+
+func (usecases *UsecasesWithCreds) NewContinuousScreeningDoScreeningWorker() *continuous_screening.DoScreeningWorker {
+	return continuous_screening.NewDoScreeningWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		&usecases.Repositories.ClientDbRepository,
+		usecases.NewContinuousScreeningUsecase(),
+	)
+}

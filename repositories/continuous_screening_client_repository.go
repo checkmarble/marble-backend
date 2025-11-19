@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -66,8 +69,12 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx conte
 	return err
 }
 
-func (repo *ClientDbRepository) InsertContinuousScreeningObject(ctx context.Context, exec Executor,
-	tableName string, objectId string, configStableId uuid.UUID,
+func (repo *ClientDbRepository) InsertContinuousScreeningObject(
+	ctx context.Context,
+	exec Executor,
+	tableName string,
+	objectId string,
+	configStableId uuid.UUID,
 ) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
@@ -80,4 +87,27 @@ func (repo *ClientDbRepository) InsertContinuousScreeningObject(ctx context.Cont
 
 	_, err := exec.Exec(ctx, sql, uuid.Must(uuid.NewV7()), objectId, configStableId)
 	return err
+}
+
+func (repo *ClientDbRepository) GetMonitoredObject(
+	ctx context.Context,
+	exec Executor,
+	tableName string,
+	id uuid.UUID,
+) (models.ContinuousScreeningMonitoredObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningMonitoredObject{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningMonitoredObjectColumn...).
+		From(sanitizedTableName(exec, utils.TruncateIdentifier(tableNameWithPrefix(tableName)))).
+		Where(squirrel.Eq{"id": id})
+
+	model, err := SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
+	if err != nil {
+		return models.ContinuousScreeningMonitoredObject{}, err
+	}
+
+	return model, nil
 }

@@ -151,7 +151,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
+		config, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
@@ -245,7 +245,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
+		config, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
@@ -499,7 +499,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		Code: pgerrcode.UniqueViolation,
 	})
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
+		config, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
@@ -691,7 +691,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
+		config, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
@@ -808,7 +808,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
+		config, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),

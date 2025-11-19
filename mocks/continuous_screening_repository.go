@@ -84,15 +84,13 @@ func (m *ContinuousScreeningRepository) InsertContinuousScreening(
 	ctx context.Context,
 	exec repositories.Executor,
 	screening models.ScreeningWithMatches,
-	orgId uuid.UUID,
-	configId uuid.UUID,
-	configStableId uuid.UUID,
+	config models.ContinuousScreeningConfig,
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
 	triggerType models.ContinuousScreeningTriggerType,
 ) (models.ContinuousScreeningWithMatches, error) {
-	args := m.Called(ctx, exec, screening, orgId, configId, configStableId, objectType,
+	args := m.Called(ctx, exec, screening, config, objectType,
 		objectId, objectInternalId, triggerType)
 	return args.Get(0).(models.ContinuousScreeningWithMatches), args.Error(1)
 }
