@@ -24,6 +24,12 @@ type Inbox struct {
 	UpdatedAt         time.Time
 	InboxUsers        []InboxUser
 	CasesCount        *int
+
+	// Fields for case review (automatic or manual) settings. May be moved to a separate implementation if or when
+	// we have more advanced automations implemented on cases.
+	CaseReviewManual        bool
+	CaseReviewOnCaseCreated bool
+	CaseReviewOnEscalate    bool
 }
 
 type InboxMetadata struct {
@@ -47,7 +53,10 @@ type CreateInboxInput struct {
 }
 
 type UpdateInboxInput struct {
-	Id                uuid.UUID
-	Name              string
-	EscalationInboxId *uuid.UUID
+	Name                    *string    `json:"name"`
+	EscalationInboxId       *uuid.UUID `json:"escalation_inbox_id"`
+	AutoAssignEnabled       *bool      `json:"auto_assign_enabled"`
+	CaseReviewManual        *bool      `json:"case_review_manual"`
+	CaseReviewOnCaseCreated *bool      `json:"case_review_on_case_created"`
+	CaseReviewOnEscalate    *bool      `json:"case_review_on_escalate"`
 }

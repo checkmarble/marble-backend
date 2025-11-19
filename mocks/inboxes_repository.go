@@ -34,9 +34,9 @@ func (r *InboxRepository) CreateInbox(ctx context.Context, exec repositories.Exe
 }
 
 func (r *InboxRepository) UpdateInbox(ctx context.Context, exec repositories.Executor,
-	inboxId uuid.UUID, name *string, escalationInboxId *uuid.UUID, autoAssignEnabled *bool,
+	inboxId uuid.UUID, input models.UpdateInboxInput,
 ) error {
-	args := r.Called(ctx, exec, inboxId, name, escalationInboxId, autoAssignEnabled)
+	args := r.Called(exec, inboxId, input)
 	return args.Error(0)
 }
 

@@ -19,6 +19,12 @@ type DBInbox struct {
 	Status            string     `db:"status"`
 	EscalationInboxId *uuid.UUID `db:"escalation_inbox_id"`
 	AutoAssignEnabled bool       `db:"auto_assign_enabled"`
+
+	// Fields for case review (automatic or manual) settings. May be moved to a separate implementation if or when
+	// we have more advanced automations implemented on cases.
+	CaseReviewManual        bool `db:"case_review_manual"`
+	CaseReviewOnCaseCreated bool `db:"case_review_on_case_created"`
+	CaseReviewOnEscalate    bool `db:"case_review_on_escalate"`
 }
 
 const TABLE_INBOXES = "inboxes"
@@ -27,14 +33,17 @@ var SelectInboxColumn = utils.ColumnList[DBInbox]()
 
 func AdaptInbox(db DBInbox) (models.Inbox, error) {
 	return models.Inbox{
-		Id:                db.Id,
-		OrganizationId:    db.OrganizationId,
-		CreatedAt:         db.CreatedAt,
-		UpdatedAt:         db.UpdatedAt,
-		Name:              db.Name,
-		Status:            models.InboxStatus(db.Status),
-		EscalationInboxId: db.EscalationInboxId,
-		AutoAssignEnabled: db.AutoAssignEnabled,
+		Id:                      db.Id,
+		OrganizationId:          db.OrganizationId,
+		CreatedAt:               db.CreatedAt,
+		UpdatedAt:               db.UpdatedAt,
+		Name:                    db.Name,
+		Status:                  models.InboxStatus(db.Status),
+		EscalationInboxId:       db.EscalationInboxId,
+		AutoAssignEnabled:       db.AutoAssignEnabled,
+		CaseReviewManual:        db.CaseReviewManual,
+		CaseReviewOnCaseCreated: db.CaseReviewOnCaseCreated,
+		CaseReviewOnEscalate:    db.CaseReviewOnEscalate,
 	}, nil
 }
 

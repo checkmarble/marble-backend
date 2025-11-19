@@ -67,3 +67,23 @@ func AdaptInboxMetadataDto(i models.InboxMetadata) InboxMetadataDto {
 		Name: i.Name,
 	}
 }
+
+type UpdateInboxInput struct {
+	Name                    *string    `json:"name"`
+	EscalationInboxId       *uuid.UUID `json:"escalation_inbox_id"`
+	AutoAssignEnabled       *bool      `json:"auto_assign_enabled"`
+	CaseReviewManual        *bool      `json:"case_review_manual"`
+	CaseReviewOnCaseCreated *bool      `json:"case_review_on_case_created"`
+	CaseReviewOnEscalate    *bool      `json:"case_review_on_escalate"`
+}
+
+func AdaptUpdateInboxInput(i UpdateInboxInput) models.UpdateInboxInput {
+	return models.UpdateInboxInput{
+		Name:                    i.Name,
+		EscalationInboxId:       i.EscalationInboxId,
+		AutoAssignEnabled:       i.AutoAssignEnabled,
+		CaseReviewManual:        i.CaseReviewManual,
+		CaseReviewOnCaseCreated: i.CaseReviewOnCaseCreated,
+		CaseReviewOnEscalate:    i.CaseReviewOnEscalate,
+	}
+}
