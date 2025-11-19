@@ -114,10 +114,7 @@ func (repo MarbleDbRepository) GetDataModel(
 
 		var ftmProperty *models.FollowTheMoneyProperty
 		if field.FieldFTMProperty != nil {
-			property, err := models.FollowTheMoneyPropertyFrom(*field.FieldFTMProperty)
-			if err != nil {
-				return models.DataModel{}, err
-			}
+			property := models.FollowTheMoneyPropertyFrom(*field.FieldFTMProperty)
 			ftmProperty = &property
 		}
 
@@ -125,10 +122,7 @@ func (repo MarbleDbRepository) GetDataModel(
 		if !ok {
 			var ftmEntity *models.FollowTheMoneyEntity
 			if field.TableFTMEntity != nil {
-				entity, err := models.FollowTheMoneyEntityFrom(*field.TableFTMEntity)
-				if err != nil {
-					return models.DataModel{}, err
-				}
+				entity := models.FollowTheMoneyEntityFrom(*field.TableFTMEntity)
 				ftmEntity = &entity
 			}
 			dataModel.Tables[field.TableName] = models.Table{
@@ -532,10 +526,7 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 	field.ID = fieldId
 	field.DataType = models.DataTypeFrom(dataType)
 	if ftmProperty != nil {
-		property, err := models.FollowTheMoneyPropertyFrom(*ftmProperty)
-		if err != nil {
-			return models.FieldMetadata{}, err
-		}
+		property := models.FollowTheMoneyPropertyFrom(*ftmProperty)
 		field.FTMProperty = &property
 	}
 

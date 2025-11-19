@@ -23,10 +23,7 @@ var SelectDataModelTableColumns = utils.ColumnList[DbDataModelTable]()
 func AdaptTableMetadata(dbDataModelTable DbDataModelTable) (models.TableMetadata, error) {
 	var fmtEntity *models.FollowTheMoneyEntity
 	if dbDataModelTable.FTMEntity != nil {
-		entity, err := models.FollowTheMoneyEntityFrom(*dbDataModelTable.FTMEntity)
-		if err != nil {
-			return models.TableMetadata{}, err
-		}
+		entity := models.FollowTheMoneyEntityFrom(*dbDataModelTable.FTMEntity)
 		fmtEntity = &entity
 	}
 
