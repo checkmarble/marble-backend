@@ -174,13 +174,11 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningConfig(
 
 // For this method, we use the ScreeningWithMatches struct to insert the continuous screening.
 // The struct contains all information we need and we reuse the struct which is built from OpenSanction Search Response.
-func (*MarbleDbRepository) InsertContinuousScreening(
+func (repo *MarbleDbRepository) InsertContinuousScreening(
 	ctx context.Context,
 	exec Executor,
 	screening models.ScreeningWithMatches,
-	orgId uuid.UUID,
-	configId uuid.UUID,
-	configStableId uuid.UUID,
+	config models.ContinuousScreeningConfig,
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
@@ -211,9 +209,9 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 		).
 		Values(
 			id,
-			orgId,
-			configId,
-			configStableId,
+			config.OrgId,
+			config.Id,
+			config.StableId,
 			objectType,
 			objectId,
 			objectInternalId,
