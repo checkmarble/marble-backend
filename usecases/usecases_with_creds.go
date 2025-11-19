@@ -331,15 +331,17 @@ func (usecases *UsecasesWithCreds) NewAnalyticsSettingsUsecase() AnalyticsSettin
 
 func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	return IngestionUseCase{
-		enforceSecurity:       usecases.NewEnforceIngestionSecurity(),
-		transactionFactory:    usecases.NewTransactionFactory(),
-		executorFactory:       usecases.NewExecutorFactory(),
-		ingestionRepository:   usecases.Repositories.IngestionRepository,
-		blobRepository:        usecases.Repositories.BlobRepository,
-		dataModelRepository:   usecases.Repositories.MarbleDbRepository,
-		uploadLogRepository:   usecases.Repositories.UploadLogRepository,
-		ingestionBucketUrl:    usecases.ingestionBucketUrl,
-		batchIngestionMaxSize: usecases.Usecases.batchIngestionMaxSize,
+		enforceSecurity:                     usecases.NewEnforceIngestionSecurity(),
+		transactionFactory:                  usecases.NewTransactionFactory(),
+		executorFactory:                     usecases.NewExecutorFactory(),
+		ingestionRepository:                 usecases.Repositories.IngestionRepository,
+		blobRepository:                      usecases.Repositories.BlobRepository,
+		dataModelRepository:                 usecases.Repositories.MarbleDbRepository,
+		uploadLogRepository:                 usecases.Repositories.UploadLogRepository,
+		ingestionBucketUrl:                  usecases.ingestionBucketUrl,
+		continuousScreeningClientRepository: &usecases.Repositories.ClientDbRepository,
+		batchIngestionMaxSize:               usecases.Usecases.batchIngestionMaxSize,
+		taskEnqueuer:                        usecases.Repositories.TaskQueueRepository,
 	}
 }
 
