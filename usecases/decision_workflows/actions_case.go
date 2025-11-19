@@ -24,6 +24,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 ) (models.WorkflowExecution, error) {
 	logger := utils.LoggerFromContext(ctx)
 	webhookEventId := uuid.NewString()
+	orgId := evalParams.Scenario.OrganizationId
 
 	createNewCaseForDecision := func(ctx context.Context) (models.WorkflowExecution, error) {
 		var titleTemplateAst *ast.Node
@@ -50,7 +51,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
-			OrganizationId: newCase.OrganizationId,
+			OrganizationId: orgId,
 			EventContent:   models.NewWebhookEventCaseCreatedWorkflow(newCase.GetMetadata()),
 		})
 		if err != nil {
@@ -68,21 +69,16 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 				"error checking if AI case review is enabled")
 		}
 		if hasAiCaseReviewEnabled {
-			aiCaseReview := models.NewAiCaseReview(caseId, d.caseManagerBucketUrl)
-			err = d.repository.CreateCaseReviewFile(ctx, tx, aiCaseReview)
+			inbox, err := d.repository.GetInboxById(ctx, tx, newCase.InboxId)
 			if err != nil {
-				return models.WorkflowExecution{}, errors.Wrap(err,
-					"error creating case review file for enqueuing case review task")
+				return models.WorkflowExecution{}, errors.Wrap(err, "error getting inbox")
 			}
-			err = d.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(
-				ctx,
-				tx,
-				newCase.OrganizationId,
-				caseId,
-				aiCaseReview.Id,
-			)
-			if err != nil {
-				return models.WorkflowExecution{}, errors.Wrap(err, "error enqueuing case review task")
+			if inbox.CaseReviewOnCaseCreated {
+				caseReviewId := uuid.Must(uuid.NewV7())
+				err = d.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, orgId, caseId, caseReviewId)
+				if err != nil {
+					return models.WorkflowExecution{}, errors.Wrap(err, "error enqueuing case review task")
+				}
 			}
 		}
 
