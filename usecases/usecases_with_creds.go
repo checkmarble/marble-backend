@@ -118,6 +118,13 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurityContinuousScreening() secur
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewEnforceSecurityAudit() security.EnforceSecurityAudit {
+	return &security.EnforceSecurityAuditImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		enforceSecurity:           usecases.NewEnforceDecisionSecurity(),
@@ -845,5 +852,14 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningEvaluateNeedWorker() *c
 		usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.ClientDbRepository,
 		usecases.Repositories.TaskQueueRepository,
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewAuditUsecase() AuditUsecase {
+	return NewAuditUsecase(
+		usecases.NewEnforceSecurityAudit(),
+		usecases.NewExecutorFactory(),
+		usecases.license,
+		usecases.Repositories.MarbleDbRepository,
 	)
 }

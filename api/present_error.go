@@ -64,6 +64,9 @@ func presentError(ctx context.Context, c *gin.Context, err error) bool {
 			c.JSON(http.StatusNotImplemented, errorResponse)
 		}
 
+	case errors.Is(err, models.MissingLicenseEntitlementError):
+		c.JSON(http.StatusForbidden, errorResponse)
+
 	case errors.Is(err, context.DeadlineExceeded):
 		logger.WarnContext(ctx, fmt.Sprintf("Deadline exceeded: %v", err))
 		c.JSON(http.StatusRequestTimeout, dto.APIErrorResponse{Message: timeoutMst})
