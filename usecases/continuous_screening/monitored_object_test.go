@@ -1300,7 +1300,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 	tests := []struct {
 		name            string
 		table           models.Table
-		expectedMapping dataModelMapping
+		expectedMapping models.ContinuousScreeningDataModelMapping
 		wantError       bool
 		errorMsg        string
 	}{
@@ -1316,7 +1316,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 					},
 				},
 			},
-			expectedMapping: dataModelMapping{
+			expectedMapping: models.ContinuousScreeningDataModelMapping{
 				Entity: "Person",
 				Properties: map[string]string{
 					"customer_name": "name",
@@ -1340,7 +1340,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 					},
 				},
 			},
-			expectedMapping: dataModelMapping{
+			expectedMapping: models.ContinuousScreeningDataModelMapping{
 				Entity: "Person",
 				Properties: map[string]string{
 					"first_name":   "name",
@@ -1365,7 +1365,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 					},
 				},
 			},
-			expectedMapping: dataModelMapping{
+			expectedMapping: models.ContinuousScreeningDataModelMapping{
 				Entity: "Company",
 				Properties: map[string]string{
 					"company_name":    "name",
@@ -1390,7 +1390,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 					},
 				},
 			},
-			expectedMapping: dataModelMapping{
+			expectedMapping: models.ContinuousScreeningDataModelMapping{
 				Entity: "Person",
 				Properties: map[string]string{
 					"customer_name": "name",
