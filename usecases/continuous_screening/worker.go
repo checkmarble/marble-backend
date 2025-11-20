@@ -46,6 +46,22 @@ type clientDbRepository interface {
 	) (models.ContinuousScreeningMonitoredObject, error)
 }
 
+type continuousScreeningUsecase interface {
+	GetDataModelTableAndMapping(ctx context.Context, exec repositories.Executor,
+		config models.ContinuousScreeningConfig, objectType string,
+	) (models.Table, models.ContinuousScreeningDataModelMapping, error)
+	GetIngestedObject(ctx context.Context, clientDbExec repositories.Executor, table models.Table,
+		objectId string,
+	) (models.DataModelObject, uuid.UUID, error)
+	DoScreening(ctx context.Context, ingestedObject models.DataModelObject,
+		mapping models.ContinuousScreeningDataModelMapping,
+		config models.ContinuousScreeningConfig,
+	) (models.ScreeningWithMatches, error)
+	HandleCaseCreation(ctx context.Context, tx repositories.Transaction,
+		config models.ContinuousScreeningConfig, objectId string,
+		continuousScreeningWithMatches models.ContinuousScreeningWithMatches) error
+}
+
 type DoScreeningWorker struct {
 	river.WorkerDefaults[models.ContinuousScreeningDoScreeningArgs]
 	executorFactory    executor_factory.ExecutorFactory
@@ -53,7 +69,7 @@ type DoScreeningWorker struct {
 
 	repo         repository
 	clientDbRepo clientDbRepository
-	usecase      ContinuousScreeningUsecase
+	usecase      continuousScreeningUsecase
 }
 
 func NewDoScreeningWorker(
@@ -61,7 +77,7 @@ func NewDoScreeningWorker(
 	transactionFactory executor_factory.TransactionFactory,
 	repo repository,
 	clientDbRepo clientDbRepository,
-	uc ContinuousScreeningUsecase,
+	uc continuousScreeningUsecase,
 ) *DoScreeningWorker {
 	return &DoScreeningWorker{
 		executorFactory:    executorFactory,
