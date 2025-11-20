@@ -812,6 +812,8 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.NewEnforceSecurityContinuousScreening(),
+		usecases.NewEnforceCaseSecurity(),
+		usecases.NewEnforceScreeningSecurity(),
 		usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.ClientDbRepository,
 		usecases.Repositories.OrganizationSchemaRepository,
@@ -819,6 +821,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		utils.Ptr(usecases.NewIngestionUseCase()),
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.NewCaseUseCase(),
+		utils.Ptr(usecases.NewInboxReader()),
 	)
 }
 

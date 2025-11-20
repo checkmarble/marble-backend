@@ -205,6 +205,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	)
 	router.POST("/continuous-screenings/objects", tom,
 		handleInsertContinuousScreeningObject(uc))
+	router.PATCH("/continuous-screenings/matches/:id", tom,
+		handleUpdateContinuousScreeningMatchStatus(uc))
 
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))

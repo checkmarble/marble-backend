@@ -113,7 +113,7 @@ func (suite *InboxReaderTestSuite) Test_GetInboxById_nominal() {
 	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.inboxId).Return(suite.inbox, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(nil)
 
-	result, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.inboxId)
+	result, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.exec, suite.inboxId)
 
 	assert.NoError(t, err)
 	assert.Equal(t, suite.inbox, result)
@@ -125,7 +125,7 @@ func (suite *InboxReaderTestSuite) Test_GetInboxById_repository_error() {
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
 	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.inboxId).Return(models.Inbox{}, suite.repositoryError)
 
-	_, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.inboxId)
+	_, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.exec, suite.inboxId)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.repositoryError)
@@ -138,7 +138,7 @@ func (suite *InboxReaderTestSuite) Test_GetInboxById_security_error() {
 	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.inboxId).Return(suite.inbox, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.inboxId)
+	_, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.exec, suite.inboxId)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.securityError)

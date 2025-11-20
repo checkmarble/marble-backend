@@ -92,7 +92,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 	}
 
 	// Check if the inbox exists
-	inbox, err := uc.repository.GetInboxById(ctx, exec, input.InboxId)
+	inbox, err := uc.inboxReader.GetInboxById(ctx, exec, input.InboxId)
 	if err != nil {
 		if errors.Is(err, models.NotFoundError) {
 			return models.ContinuousScreeningConfig{},
@@ -143,7 +143,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 
 		// Check if the inbox exists
 		if input.InboxId != nil && *input.InboxId != config.InboxId {
-			inbox, err := uc.repository.GetInboxById(ctx, tx, *input.InboxId)
+			inbox, err := uc.inboxReader.GetInboxById(ctx, tx, *input.InboxId)
 			if err != nil {
 				if errors.Is(err, models.NotFoundError) {
 					return errors.Wrap(models.BadParameterError, "inbox not found for the organization")

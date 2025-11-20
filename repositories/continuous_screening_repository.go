@@ -261,6 +261,19 @@ func (repo *MarbleDbRepository) GetContinuousScreeningById(ctx context.Context, 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreening)
 }
 
+func (repo *MarbleDbRepository) GetContinuousScreeningWithMatchesById(ctx context.Context,
+	exec Executor, id uuid.UUID,
+) (models.ContinuousScreeningWithMatches, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
+	query := selectContinuousScreeningWithMatches().
+		Where(squirrel.Eq{"cs.id": id})
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningWithMatches)
+}
+
 func (repo *MarbleDbRepository) ListContinuousScreeningsByCaseId(
 	ctx context.Context,
 	exec Executor,
@@ -407,4 +420,57 @@ func (repo *MarbleDbRepository) GetContinuousScreeningByObjectId(
 		Limit(1)
 
 	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningWithMatches)
+}
+
+func (repo *MarbleDbRepository) GetContinuousScreeningMatch(ctx context.Context, exec Executor, id uuid.UUID) (models.ContinuousScreeningMatch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningMatch{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningMatchesColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
+		Where(squirrel.Eq{"id": id})
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMatch)
+}
+
+func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchStatus(
+	ctx context.Context,
+	exec Executor,
+	id uuid.UUID,
+	newStatus models.ScreeningMatchStatus,
+	reviewedBy *uuid.UUID,
+) (models.ContinuousScreeningMatch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningMatch{}, err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
+		Where(squirrel.Eq{"id": id}).
+		Set("status", newStatus).
+		Set("reviewed_by", reviewedBy).
+		Suffix("RETURNING *")
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMatch)
+}
+
+func (repo *MarbleDbRepository) UpdateContinuousScreeningStatus(
+	ctx context.Context,
+	exec Executor,
+	id uuid.UUID,
+	newStatus models.ScreeningStatus,
+) (models.ContinuousScreening, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreening{}, err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
+		Where(squirrel.Eq{"id": id}).
+		Set("status", newStatus).
+		Suffix("RETURNING *")
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreening)
 }

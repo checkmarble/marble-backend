@@ -60,7 +60,7 @@ func (usecase *InboxUsecase) GetInboxMetadataById(ctx context.Context, inboxId u
 }
 
 func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId uuid.UUID) (models.Inbox, error) {
-	return usecase.inboxReader.GetInboxById(ctx, inboxId)
+	return usecase.inboxReader.GetInboxById(ctx, usecase.executorFactory.NewExecutor(), inboxId)
 }
 
 func (usecase *InboxUsecase) ListInboxes(ctx context.Context, organizationId string, withCaseCount bool) ([]models.Inbox, error) {
