@@ -457,6 +457,51 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 	return c, nil
 }
 
+func (usecase *CaseUseCase) CreateCaseAsApiClient(
+	ctx context.Context,
+	orgId string,
+	createCaseAttributes models.CreateCaseAttributes,
+) (models.Case, error) {
+	webhookEventId := uuid.NewString()
+	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
+		func(tx repositories.Transaction) (models.Case, error) {
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, orgId)
+			if err != nil {
+				return models.Case{}, err
+			}
+			if err := usecase.enforceSecurity.CreateCase(createCaseAttributes, availableInboxIds); err != nil {
+				return models.Case{}, err
+			}
+
+			newCase, err := usecase.CreateCase(ctx, tx, "", createCaseAttributes, false)
+			if err != nil {
+				return models.Case{}, err
+			}
+
+			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId,
+				OrganizationId: newCase.OrganizationId,
+				EventContent:   models.NewWebhookEventCaseCreatedManually(newCase.GetMetadata()),
+			})
+			if err != nil {
+				return models.Case{}, err
+			}
+
+			return newCase, nil
+		})
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
+
+	tracking.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{
+		"case_id": c.Id,
+	})
+
+	return c, nil
+}
+
 func (usecase *CaseUseCase) UpdateCase(
 	ctx context.Context,
 	userId string,
