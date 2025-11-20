@@ -142,8 +142,8 @@ func NewContinuousScreeningUsecase(
 	ingestionUsecase ContinuousScreeningIngestionUsecase,
 	screeningProvider ContinuousScreeningScreeningProvider,
 	caseEditor caseEditor,
-) ContinuousScreeningUsecase {
-	return ContinuousScreeningUsecase{
+) *ContinuousScreeningUsecase {
+	return &ContinuousScreeningUsecase{
 		executorFactory:              executorFactory,
 		transactionFactory:           transactionFactory,
 		enforceSecurity:              enforceSecurity,

@@ -94,3 +94,8 @@ type ContinuousScreeningMonitoredObject struct {
 	ConfigStableId uuid.UUID
 	CreatedAt      time.Time
 }
+
+type ContinuousScreeningDataModelMapping struct {
+	Entity     string
+	Properties map[string]string
+}

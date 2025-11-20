@@ -15,11 +15,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type dataModelMapping struct {
-	Entity     string
-	Properties map[string]string
-}
-
 // Before inserting an object into continuous screening table, we need to check if the table exists, create if not exists the continuous screening table and index
 // then insert the object into the list with the monitoring config ID.
 // 2 modes:
@@ -288,10 +283,10 @@ func checkDataModelTableAndFieldsConfiguration(table models.Table) error {
 }
 
 // Suppose table is configured with a FTM entity and at least one field with a FTM property
-func buildDataModelMapping(table models.Table) (dataModelMapping, error) {
+func buildDataModelMapping(table models.Table) (models.ContinuousScreeningDataModelMapping, error) {
 	// Check if the table is configured correctly
 	if err := checkDataModelTableAndFieldsConfiguration(table); err != nil {
-		return dataModelMapping{}, err
+		return models.ContinuousScreeningDataModelMapping{}, err
 	}
 	// At this point, table has a FTM entity and at least one field with a FTM property
 	properties := make(map[string]string)
@@ -300,7 +295,7 @@ func buildDataModelMapping(table models.Table) (dataModelMapping, error) {
 			properties[field.Name] = field.FTMProperty.String()
 		}
 	}
-	return dataModelMapping{
+	return models.ContinuousScreeningDataModelMapping{
 		Entity:     table.FTMEntity.String(),
 		Properties: properties,
 	}, nil
@@ -340,22 +335,22 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningsForOrg(
 
 func (uc *ContinuousScreeningUsecase) GetDataModelTableAndMapping(ctx context.Context,
 	exec repositories.Executor, config models.ContinuousScreeningConfig, objectType string,
-) (models.Table, dataModelMapping, error) {
+) (models.Table, models.ContinuousScreeningDataModelMapping, error) {
 	// Get Data Model Table
 	dataModel, err := uc.repository.GetDataModel(ctx, exec, config.OrgId.String(), false, false)
 	if err != nil {
-		return models.Table{}, dataModelMapping{}, err
+		return models.Table{}, models.ContinuousScreeningDataModelMapping{}, err
 	}
 	table, ok := dataModel.Tables[objectType]
 	if !ok {
-		return models.Table{}, dataModelMapping{},
+		return models.Table{}, models.ContinuousScreeningDataModelMapping{},
 			errors.Wrapf(models.BadParameterError, "table %s not found in data model", objectType)
 	}
 
 	// Check if data model table and fields are well configured for continuous screening and fetch the mapping
 	mapping, err := buildDataModelMapping(table)
 	if err != nil {
-		return models.Table{}, dataModelMapping{},
+		return models.Table{}, models.ContinuousScreeningDataModelMapping{},
 			errors.Wrap(models.BadParameterError, err.Error())
 	}
 	return table, mapping, nil
@@ -386,7 +381,7 @@ func (uc *ContinuousScreeningUsecase) GetIngestedObject(ctx context.Context,
 
 func (uc *ContinuousScreeningUsecase) DoScreening(ctx context.Context,
 	ingestedObject models.DataModelObject,
-	mapping dataModelMapping,
+	mapping models.ContinuousScreeningDataModelMapping,
 	config models.ContinuousScreeningConfig,
 ) (models.ScreeningWithMatches, error) {
 	query, err := prepareOpenSanctionsQuery(ingestedObject, mapping.Entity, mapping.Properties, config)

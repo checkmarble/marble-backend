@@ -807,7 +807,7 @@ func (usecases *UsecasesWithCreds) NewAnalyticsMetadataUsecase() AnalyticsMetada
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() continuous_screening.ContinuousScreeningUsecase {
+func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_screening.ContinuousScreeningUsecase {
 	return continuous_screening.NewContinuousScreeningUsecase(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),

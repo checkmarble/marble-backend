@@ -816,6 +816,11 @@ func (usecase *IngestionUseCase) checkAndEnqueueMonitoredObjects(
 			return err
 		}
 
+		if len(monitoredObjects) == 0 {
+			// No monitored objects found, no need to enqueue the task
+			return nil
+		}
+
 		monitoringIds := make([]uuid.UUID, len(monitoredObjects))
 		for i, obj := range monitoredObjects {
 			monitoringIds[i] = obj.Id
