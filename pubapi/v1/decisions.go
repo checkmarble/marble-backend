@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 var decisionPaginationDefaults = models.PaginationDefaults{
@@ -242,6 +243,47 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		stats := gdto.AdaptDecisionsMetadata(decisions, skipped)
 
 		pubapi.NewResponse(dtos).WithMetadata(dto.AdaptDecisionsMetadata(stats)).Serve(c)
+	}
+}
+
+type AddDecisionToCaseParams struct {
+	CaseId uuid.UUID `json:"case_id" binding:"required"`
+}
+
+func HandleAddDecisionToCase(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		decisionId, err := pubapi.UuidParam(c, "decisionId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		var params AddDecisionToCaseParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		caseUsecase := uc.NewCaseUseCase()
+		decisionUsecase := uc.NewDecisionUsecase()
+
+		_, err = caseUsecase.AddDecisionsToCase(ctx, "", params.CaseId.String(), []string{decisionId.String()})
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		decision, err := decisionUsecase.GetDecision(ctx, decisionId.String())
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.NewResponse(dto.AdaptDecision(false, nil, nil)(decision.Decision)).Serve(c)
 	}
 }
 

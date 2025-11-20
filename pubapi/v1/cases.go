@@ -150,6 +150,7 @@ type CreateCaseParams struct {
 	Inbox     uuid.UUID   `json:"inbox" binding:"required"`
 	Name      string      `json:"name" binding:"required"`
 	Decisions []uuid.UUID `json:"decisions"`
+	Assignee  string      `json:"assignee"`
 }
 
 func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
@@ -171,12 +172,23 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 
 		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
 		caseUsecase := uc.NewCaseUseCase()
+		userUsecase := uc.NewUserUseCase()
 
 		req := models.CreateCaseAttributes{
 			OrganizationId: orgId,
 			InboxId:        params.Inbox,
 			Name:           params.Name,
 			DecisionIds:    pure_utils.Map(params.Decisions, func(id uuid.UUID) string { return id.String() }),
+		}
+
+		if params.Assignee != "" {
+			user, err := userUsecase.GetUserByEmail(ctx, params.Assignee)
+			if err != nil {
+				pubapi.NewErrorResponse().WithError(err).Serve(c)
+				return
+			}
+
+			req.AssigneeId = utils.Ptr(string(user.UserId))
 		}
 
 		cas, err := caseUsecase.CreateCaseAsApiClient(ctx, orgId, req)

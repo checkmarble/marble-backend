@@ -119,12 +119,13 @@ type CreateCaseAttributes struct {
 }
 
 type UpdateCaseAttributes struct {
-	Id      string
-	InboxId *uuid.UUID
-	Name    string
-	Status  CaseStatus
-	Outcome CaseOutcome
-	Boost   BoostReason
+	Id         string
+	InboxId    *uuid.UUID
+	Name       string
+	Status     CaseStatus
+	Outcome    CaseOutcome
+	Boost      BoostReason
+	AssigneeId *string
 }
 
 type CreateCaseCommentAttributes struct {
