@@ -44,14 +44,6 @@ type continuousScreeningClientRepository interface {
 }
 
 type taskEnqueuer interface {
-	EnqueueContinuousScreeningDoScreeningTask(
-		ctx context.Context,
-		tx repositories.Transaction,
-		orgId string,
-		objectType string,
-		monitoringId uuid.UUID,
-		triggerType models.ContinuousScreeningTriggerType,
-	) error
 	EnqueueContinuousScreeningDoScreeningTaskMany(
 		ctx context.Context,
 		tx repositories.Transaction,

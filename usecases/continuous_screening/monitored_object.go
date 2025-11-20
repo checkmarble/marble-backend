@@ -143,19 +143,20 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		return models.ScreeningWithMatches{}, err
 	}
 
-	// Create and attach to a case
-	if err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return uc.HandleCaseCreation(
-			ctx,
-			tx,
-			screeningWithMatches,
-			config,
-			objectId,
-			continuousScreeningWithMatches,
-		)
-	}); err != nil {
-		logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
-		return models.ScreeningWithMatches{}, err
+	if screeningWithMatches.Status == models.ScreeningStatusInReview {
+		// Create and attach to a case
+		if err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			return uc.HandleCaseCreation(
+				ctx,
+				tx,
+				config,
+				objectId,
+				continuousScreeningWithMatches,
+			)
+		}); err != nil {
+			logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
+			return models.ScreeningWithMatches{}, err
+		}
 	}
 
 	return screeningWithMatches, nil
@@ -403,28 +404,27 @@ func (uc *ContinuousScreeningUsecase) DoScreening(ctx context.Context,
 func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 	ctx context.Context,
 	tx repositories.Transaction,
-	screeningWithMatches models.ScreeningWithMatches,
 	config models.ContinuousScreeningConfig,
 	objectId string,
 	continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
 ) error {
-	if screeningWithMatches.Status == models.ScreeningStatusInReview {
-		userId := ""
-		if uc.enforceSecurity.UserId() != nil {
-			userId = *uc.enforceSecurity.UserId()
-		}
-		// TODO: TBD
-		caseName := "Continuous Screening - " + objectId
-		_, err := uc.caseEditor.CreateCase(ctx, tx, userId, models.CreateCaseAttributes{
+	userId := ""
+	if uc.enforceSecurity.UserId() != nil {
+		userId = *uc.enforceSecurity.UserId()
+	}
+	// TODO: TBD
+	caseName := "Continuous Screening - " + objectId
+	_, err := uc.caseEditor.CreateCase(
+		ctx,
+		tx,
+		userId,
+		models.CreateCaseAttributes{
 			ContinuousScreeningIds: []uuid.UUID{continuousScreeningWithMatches.Id},
 			OrganizationId:         config.OrgId.String(),
 			InboxId:                config.InboxId,
 			Name:                   caseName,
-		}, false)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+		},
+		false,
+	)
+	return err
 }
