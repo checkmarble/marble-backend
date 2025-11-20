@@ -113,19 +113,20 @@ type caseUsecaseIngestedDataReader interface {
 }
 
 type CaseUseCase struct {
-	enforceSecurity      security.EnforceSecurityCase
-	repository           CaseUseCaseRepository
-	decisionRepository   repositories.DecisionRepository
-	inboxReader          inboxes.InboxReader
-	blobRepository       repositories.BlobRepository
-	caseManagerBucketUrl string
-	transactionFactory   executor_factory.TransactionFactory
-	executorFactory      executor_factory.ExecutorFactory
-	webhookEventsUsecase webhookEventsUsecase
-	screeningRepository  CaseUsecaseScreeningRepository
-	ingestedDataReader   caseUsecaseIngestedDataReader
-	taskQueueRepository  repositories.TaskQueueRepository
-	featureAccessReader  feature_access.FeatureAccessReader
+	enforceSecurity         security.EnforceSecurityCase
+	enforceSecurityDecision security.EnforceSecurityDecision
+	repository              CaseUseCaseRepository
+	decisionRepository      repositories.DecisionRepository
+	inboxReader             inboxes.InboxReader
+	blobRepository          repositories.BlobRepository
+	caseManagerBucketUrl    string
+	transactionFactory      executor_factory.TransactionFactory
+	executorFactory         executor_factory.ExecutorFactory
+	webhookEventsUsecase    webhookEventsUsecase
+	screeningRepository     CaseUsecaseScreeningRepository
+	ingestedDataReader      caseUsecaseIngestedDataReader
+	taskQueueRepository     repositories.TaskQueueRepository
+	featureAccessReader     feature_access.FeatureAccessReader
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -336,7 +337,7 @@ func (usecase *CaseUseCase) CreateCase(
 	createCaseAttributes models.CreateCaseAttributes,
 	fromEndUser bool,
 ) (models.Case, error) {
-	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.DecisionIds); err != nil {
+	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.OrganizationId, createCaseAttributes.DecisionIds); err != nil {
 		return models.Case{}, err
 	}
 	if err := usecase.validateContinuousScreenings(
@@ -859,7 +860,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.validateDecisions(ctx, tx, decisionIds); err != nil {
+		if err := usecase.validateDecisions(ctx, tx, c.OrganizationId, decisionIds); err != nil {
 			return models.Case{}, err
 		}
 
@@ -1117,7 +1118,7 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 	return c, nil
 }
 
-func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec repositories.Executor, decisionIds []string) error {
+func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec repositories.Executor, orgId string, decisionIds []string) error {
 	if len(decisionIds) == 0 {
 		return nil
 	}
@@ -1127,11 +1128,20 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 	}
 
 	for _, decision := range decisions {
+		if decision.OrganizationId.String() != orgId {
+			return errors.Wrap(models.ForbiddenError, "provided decision does not belong to the organization")
+		}
+
 		if decision.Case != nil && decision.Case.Id != "" {
 			return fmt.Errorf("decision %s already belongs to a case %s %w",
 				decision.DecisionId, (*decision.Case).Id, models.BadParameterError)
 		}
 	}
+
+	if len(decisionIds) != len(decisions) {
+		return errors.Wrap(models.NotFoundError, "unknown decision")
+	}
+
 	return nil
 }
 
@@ -1559,6 +1569,10 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 		return models.Case{}, errors.Wrapf(models.NotFoundError, "decision %s not found", input.DecisionId)
 	}
 	decision := decisions[0]
+
+	if err := usecase.enforceSecurityDecision.ReadDecision(decision); err != nil {
+		return models.Case{}, errors.Wrapf(models.ForbiddenError, "not allowed to access decision %s", input.DecisionId)
+	}
 
 	err = validateDecisionReview(decision)
 	if err != nil {
