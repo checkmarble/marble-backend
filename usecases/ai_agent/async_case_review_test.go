@@ -230,7 +230,7 @@ func (suite *CaseReviewWorkerTestSuite) TestGetPreviousCaseReviewContext_Invalid
 		ReadCloser: mockReader,
 	}
 
-	suite.blobRepo.On("GetBlob", suite.ctx, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url", aiCaseReview.FileTempReference).
 		Return(blob, nil)
 
 	// Call the method under test
@@ -257,14 +257,14 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_Success() {
 	// Setup mocks
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 
-	suite.workerRepo.On("GetCaseById", suite.ctx, suite.exec, args.CaseId.String()).
+	suite.workerRepo.On("GetCaseById", mock.Anything, suite.exec, args.CaseId.String()).
 		Return(testCase, nil)
 
-	suite.workerRepo.On("GetCaseReviewById", suite.ctx, suite.exec, args.AiCaseReviewId).
+	suite.workerRepo.On("GetCaseReviewById", mock.Anything, suite.exec, args.AiCaseReviewId).
 		Return(aiCaseReview, nil)
 
 	// Mock getPreviousCaseReviewContext - return error to get empty context
-	suite.blobRepo.On("GetBlob", suite.ctx, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url", aiCaseReview.FileTempReference).
 		Return(models.Blob{}, errors.New("file not found"))
 
 	// Mock successful case review creation
@@ -277,21 +277,22 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_Success() {
 		Proofs:      []agent_dto.CaseReviewProof{},
 	}
 
-	suite.caseReviewUsecase.On("CreateCaseReviewSync", suite.ctx, args.CaseId.String(),
+	suite.caseReviewUsecase.On("CreateCaseReviewSync", mock.Anything, args.CaseId.String(),
 		mock.AnythingOfType("*ai_agent.CaseReviewContext")).
 		Return(expectedDto, nil)
 
 	// Mock HasAiCaseReviewEnabled to return true
-	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", suite.ctx, org.Id).
+	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id).
 		Return(true, nil)
 
 	// Mock blob storage for final result
 	mockWriter := newMockWriteCloser()
-	suite.blobRepo.On("OpenStream", suite.ctx, "test-bucket-url", aiCaseReview.FileReference, aiCaseReview.FileReference).
+	suite.blobRepo.On("OpenStream", mock.Anything, "test-bucket-url",
+		aiCaseReview.FileReference, aiCaseReview.FileReference).
 		Return(mockWriter, nil)
 
 	// Mock successful status update
-	suite.workerRepo.On("UpdateCaseReviewFile", suite.ctx, suite.exec, aiCaseReview.Id, models.UpdateAiCaseReview{
+	suite.workerRepo.On("UpdateCaseReviewFile", mock.Anything, suite.exec, aiCaseReview.Id, models.UpdateAiCaseReview{
 		Status: models.AiCaseReviewStatusCompleted,
 	}).Return(nil)
 
@@ -325,10 +326,10 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_CreateCaseReviewSyncError() {
 	// Setup mocks for initial calls
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 
-	suite.workerRepo.On("GetCaseById", suite.ctx, suite.exec, args.CaseId.String()).
+	suite.workerRepo.On("GetCaseById", mock.Anything, suite.exec, args.CaseId.String()).
 		Return(testCase, nil)
 
-	suite.workerRepo.On("GetCaseReviewById", suite.ctx, suite.exec, args.AiCaseReviewId).
+	suite.workerRepo.On("GetCaseReviewById", mock.Anything, suite.exec, args.AiCaseReviewId).
 		Return(aiCaseReview, nil)
 
 	// Mock getPreviousCaseReviewContext - return some context
@@ -341,25 +342,25 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_CreateCaseReviewSyncError() {
 		FileName:   aiCaseReview.FileTempReference,
 		ReadCloser: mockReader,
 	}
-	suite.blobRepo.On("GetBlob", suite.ctx, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url", aiCaseReview.FileTempReference).
 		Return(blob, nil)
 
 	// Mock failed case review creation
-	suite.caseReviewUsecase.On("CreateCaseReviewSync", suite.ctx, args.CaseId.String(),
+	suite.caseReviewUsecase.On("CreateCaseReviewSync", mock.Anything, args.CaseId.String(),
 		mock.AnythingOfType("*ai_agent.CaseReviewContext")).
 		Return(nil, errors.New("AI service unavailable"))
 
-	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", suite.ctx, org.Id).
+	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id).
 		Return(true, nil)
 
 	// Mock blob storage for context save (during error handling)
 	mockWriter := newMockWriteCloser()
-	suite.blobRepo.On("OpenStream", suite.ctx, "test-bucket-url",
+	suite.blobRepo.On("OpenStream", mock.Anything, "test-bucket-url",
 		aiCaseReview.FileTempReference, aiCaseReview.FileTempReference).
 		Return(mockWriter, nil)
 
 	// Mock failed status update
-	suite.workerRepo.On("UpdateCaseReviewFile", suite.ctx, suite.exec, aiCaseReview.Id, models.UpdateAiCaseReview{
+	suite.workerRepo.On("UpdateCaseReviewFile", mock.Anything, suite.exec, aiCaseReview.Id, models.UpdateAiCaseReview{
 		Status: models.AiCaseReviewStatusFailed,
 	}).Return(nil)
 
@@ -396,10 +397,10 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_OrganizationNotEnabled() {
 	// Setup mocks
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 
-	suite.workerRepo.On("GetCaseById", suite.ctx, suite.exec, args.CaseId.String()).
+	suite.workerRepo.On("GetCaseById", mock.Anything, suite.exec, args.CaseId.String()).
 		Return(testCase, nil)
 
-	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", suite.ctx, org.Id).
+	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id).
 		Return(false, nil)
 
 	// Call the method under test
@@ -424,7 +425,7 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_GetCaseError() {
 	// Setup mocks
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 
-	suite.workerRepo.On("GetCaseById", suite.ctx, suite.exec, args.CaseId.String()).
+	suite.workerRepo.On("GetCaseById", mock.Anything, suite.exec, args.CaseId.String()).
 		Return(models.Case{}, errors.New("case not found"))
 
 	// Call the method under test
@@ -451,14 +452,14 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_BlobStreamError() {
 	// Setup mocks for initial calls
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 
-	suite.workerRepo.On("GetCaseById", suite.ctx, suite.exec, args.CaseId.String()).
+	suite.workerRepo.On("GetCaseById", mock.Anything, suite.exec, args.CaseId.String()).
 		Return(testCase, nil)
 
-	suite.workerRepo.On("GetCaseReviewById", suite.ctx, suite.exec, args.AiCaseReviewId).
+	suite.workerRepo.On("GetCaseReviewById", mock.Anything, suite.exec, args.AiCaseReviewId).
 		Return(aiCaseReview, nil)
 
 	// Mock getPreviousCaseReviewContext
-	suite.blobRepo.On("GetBlob", suite.ctx, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url", aiCaseReview.FileTempReference).
 		Return(models.Blob{}, errors.New("file not found"))
 
 	// Mock successful case review creation
@@ -467,25 +468,26 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_BlobStreamError() {
 		Output: "Case review completed successfully",
 	}
 
-	suite.caseReviewUsecase.On("CreateCaseReviewSync", suite.ctx, args.CaseId.String(),
+	suite.caseReviewUsecase.On("CreateCaseReviewSync", mock.Anything, args.CaseId.String(),
 		mock.AnythingOfType("*ai_agent.CaseReviewContext")).
 		Return(expectedDto, nil)
 
-	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", suite.ctx, org.Id).
+	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id).
 		Return(true, nil)
 
 	// Mock blob storage failure for final result
-	suite.blobRepo.On("OpenStream", suite.ctx, "test-bucket-url", aiCaseReview.FileReference, aiCaseReview.FileReference).
+	suite.blobRepo.On("OpenStream", mock.Anything, "test-bucket-url",
+		aiCaseReview.FileReference, aiCaseReview.FileReference).
 		Return(nil, errors.New("blob storage unavailable"))
 
 	// Mock error handling - blob storage for context save
 	mockWriter := newMockWriteCloser()
-	suite.blobRepo.On("OpenStream", suite.ctx, "test-bucket-url",
+	suite.blobRepo.On("OpenStream", mock.Anything, "test-bucket-url",
 		aiCaseReview.FileTempReference, aiCaseReview.FileTempReference).
 		Return(mockWriter, nil)
 
 	// Mock failed status update
-	suite.workerRepo.On("UpdateCaseReviewFile", suite.ctx, suite.exec, aiCaseReview.Id, models.UpdateAiCaseReview{
+	suite.workerRepo.On("UpdateCaseReviewFile", mock.Anything, suite.exec, aiCaseReview.Id, models.UpdateAiCaseReview{
 		Status: models.AiCaseReviewStatusFailed,
 	}).Return(nil)
 
