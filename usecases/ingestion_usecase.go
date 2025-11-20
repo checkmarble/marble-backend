@@ -133,8 +133,12 @@ func (usecase *IngestionUseCase) IngestObject(
 		slog.Int("nb_objects", nb),
 	)
 
-	if err := usecase.checkAndEnqueueMonitoredObjects(ctx, exec, organizationId,
-		insertedObjectIds, objectType); err != nil {
+	if err := usecase.checkAndEnqueueMonitoredObjects(
+		ctx,
+		organizationId,
+		insertedObjectIds,
+		objectType,
+	); err != nil {
 		// Don't fail the ingestion if we can't enqueue the task
 		logger.WarnContext(
 			ctx,
@@ -236,8 +240,12 @@ func (usecase *IngestionUseCase) IngestObjects(
 		slog.Int("nb_objects", nb),
 	)
 
-	if err := usecase.checkAndEnqueueMonitoredObjects(ctx, exec, organizationId,
-		insertedObjectIds, objectType); err != nil {
+	if err := usecase.checkAndEnqueueMonitoredObjects(
+		ctx,
+		organizationId,
+		insertedObjectIds,
+		objectType,
+	); err != nil {
 		// Don't fail the ingestion if we can't enqueue the task
 		logger.WarnContext(
 			ctx,
@@ -627,8 +635,12 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 			}
 		}
 
-		if err := usecase.checkAndEnqueueMonitoredObjects(ctx, exec, organizationId,
-			insertedObjectIds, table.Name); err != nil {
+		if err := usecase.checkAndEnqueueMonitoredObjects(
+			ctx,
+			organizationId,
+			insertedObjectIds,
+			table.Name,
+		); err != nil {
 			// Don't fail the ingestion if we can't enqueue the task
 			logger.WarnContext(
 				ctx,
@@ -797,18 +809,23 @@ func buildEnumValuesContainersFromTable(table models.Table) models.EnumValues {
 	return enumValues
 }
 
+// Check if the inserted objects are in the continuous screening list
+// For those objects, enqueue the continuous screening task to trigger a new screening
 func (usecase *IngestionUseCase) checkAndEnqueueMonitoredObjects(
 	ctx context.Context,
-	exec repositories.Executor,
 	organizationId string,
 	insertedObjectIds []string,
 	objectType string,
 ) error {
 	// Check if the inserted objects are in the continuous screening list
 	if len(insertedObjectIds) > 0 {
+		clientDbExec, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
+		if err != nil {
+			return err
+		}
 		monitoredObjects, err := usecase.continuousScreeningClientRepository.ListMonitoredObjectsByObjectIds(
 			ctx,
-			exec,
+			clientDbExec,
 			objectType,
 			insertedObjectIds,
 		)

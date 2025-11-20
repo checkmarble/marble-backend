@@ -107,6 +107,14 @@ func (repo *ClientDbRepository) GetMonitoredObject(
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
 }
 
+// List monitored objects by object IDs
+// This function is used to check if an object is under continuous screening
+// If not, the result will not contain the Monitored object model for the object ID
+// Example:
+//   - Monitored object: ["object_id_1", "object_id_2"]
+//   - Not monitored object: ["object_id_3", "object_id_4"]
+//   - objectIds: ["object_id_1", "object_id_2", "object_id_3", "object_id_4"]
+//   - Result: ["object_id_1", "object_id_2"]
 func (repo *ClientDbRepository) ListMonitoredObjectsByObjectIds(
 	ctx context.Context,
 	exec Executor,
