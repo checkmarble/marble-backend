@@ -104,15 +104,10 @@ func (repo *ClientDbRepository) GetMonitoredObject(
 		From(sanitizedTableName(exec, utils.TruncateIdentifier(tableNameWithPrefix(objectType)))).
 		Where(squirrel.Eq{"id": id})
 
-	model, err := SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
-	if err != nil {
-		return models.ContinuousScreeningMonitoredObject{}, err
-	}
-
-	return model, nil
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
 }
 
-func (repo *ClientDbRepository) ListMonitoredObjectsByObjectId(
+func (repo *ClientDbRepository) ListMonitoredObjectsByObjectIds(
 	ctx context.Context,
 	exec Executor,
 	objectType string,
@@ -127,10 +122,5 @@ func (repo *ClientDbRepository) ListMonitoredObjectsByObjectId(
 		From(sanitizedTableName(exec, utils.TruncateIdentifier(tableNameWithPrefix(objectType)))).
 		Where(squirrel.Eq{"object_id": objectIds})
 
-	models, err := SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
-	if err != nil {
-		return nil, err
-	}
-
-	return models, nil
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
 }
