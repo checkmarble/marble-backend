@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 var casePaginationDefaults = models.PaginationDefaults{
@@ -142,6 +143,107 @@ func HandleGetCase(uc usecases.Usecases) gin.HandlerFunc {
 		pubapi.
 			NewResponse(dto.AdaptCase(users, tags, referents)(cas)).
 			Serve(c)
+	}
+}
+
+type CreateCaseParams struct {
+	Inbox     uuid.UUID   `json:"inbox" binding:"required"`
+	Name      string      `json:"name" binding:"required"`
+	Decisions []uuid.UUID `json:"decisions"`
+}
+
+func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var params CreateCaseParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		req := models.CreateCaseAttributes{
+			OrganizationId: orgId,
+			InboxId:        params.Inbox,
+			Name:           params.Name,
+			DecisionIds:    pure_utils.Map(params.Decisions, func(id uuid.UUID) string { return id.String() }),
+		}
+
+		cas, err := caseUsecase.CreateCaseAsApiClient(ctx, orgId, req)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
+	}
+}
+
+type UpdateCaseParams struct {
+	Inbox uuid.UUID `json:"inbox"`
+	Name  string    `json:"name"`
+}
+
+func HandleUpdateCase(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		var params UpdateCaseParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		req := models.UpdateCaseAttributes{
+			Id: caseId.String(),
+		}
+
+		if params.Inbox != uuid.Nil {
+			req.InboxId = &params.Inbox
+		}
+		if params.Name != "" {
+			req.Name = params.Name
+		}
+
+		cas, err := caseUsecase.UpdateCase(ctx, "", req)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
 	}
 }
 
