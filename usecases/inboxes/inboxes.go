@@ -33,8 +33,8 @@ type InboxReader struct {
 	ExecutorFactory executor_factory.ExecutorFactory
 }
 
-func (i *InboxReader) GetInboxById(ctx context.Context, inboxId uuid.UUID) (models.Inbox, error) {
-	inbox, err := i.InboxRepository.GetInboxById(ctx, i.ExecutorFactory.NewExecutor(), inboxId)
+func (i *InboxReader) GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error) {
+	inbox, err := i.InboxRepository.GetInboxById(ctx, exec, inboxId)
 	if err != nil {
 		return models.Inbox{}, err
 	}

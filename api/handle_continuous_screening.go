@@ -201,3 +201,33 @@ func handleListContinuousScreeningsForOrg(uc usecases.Usecases) func(c *gin.Cont
 		)
 	}
 }
+
+func handleUpdateContinuousScreeningMatchStatus(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		matchId := c.Param("id")
+
+		var payload dto.ScreeningMatchUpdateDto
+		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
+			return
+		}
+
+		creds, ok := utils.CredentialsFromCtx(ctx)
+		if !ok {
+			presentError(ctx, c, models.ErrUnknownUser)
+			return
+		}
+		update, err := dto.AdaptScreeningMatchUpdateInputDto(matchId, creds.ActorIdentity.UserId, payload)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
+		match, err := uc.UpdateContinuousScreeningMatchStatus(ctx, update)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptContinuousScreeningMatchDto(match))
+	}
+}
