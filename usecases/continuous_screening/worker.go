@@ -180,6 +180,8 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 	})
 }
 
+// Compare matches of the existing and new screening results
+// The check is based on OpenSanction entity ID only and we suppose matches are unique and not duplicated
 func areScreeningMatchesEqual(
 	existingScreeningWithMatches models.ContinuousScreeningWithMatches,
 	newScreeningWithMatches models.ScreeningWithMatches,
@@ -196,23 +198,16 @@ func areScreeningMatchesEqual(
 		existingMatches[match.OpenSanctionEntityId] = true
 	}
 
-	newMatches := make(map[string]bool, len(newScreeningWithMatches.Matches))
 	for _, match := range newScreeningWithMatches.Matches {
-		newMatches[match.EntityId] = true
-	}
-
-	matchesAreSame := len(existingMatches) == len(newMatches)
-	if matchesAreSame {
-		for entityId := range existingMatches {
-			if !newMatches[entityId] {
-				matchesAreSame = false
-				break
-			}
+		if !existingMatches[match.EntityId] {
+			return false
 		}
 	}
-	return matchesAreSame
+
+	return true
 }
 
+// Get the latest in review screening result for the object and compare it with the new screening result
 func (w *DoScreeningWorker) isScreeningResultUnchanged(
 	ctx context.Context,
 	exec repositories.Executor,
