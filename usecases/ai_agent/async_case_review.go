@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -118,6 +119,19 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 
 	cr, err := w.caseReviewUsecase.CreateCaseReviewSync(ctx, job.Args.CaseId.String(), &caseReviewContext)
 	if err != nil {
+		if errors.Is(err, billing.ErrInsufficientFunds) {
+			logger.InfoContext(ctx, "Insufficient funds in wallet to execute case review", "ai_case_review_id", aiCaseReview.Id)
+			err = w.repository.UpdateCaseReviewFile(ctx, w.executorFactory.NewExecutor(),
+				aiCaseReview.Id,
+				models.UpdateAiCaseReview{
+					Status: models.AiCaseReviewStatusInsufficientFunds,
+				},
+			)
+			if err != nil {
+				return errors.Wrap(err, "Error while updating case review file status")
+			}
+			return nil
+		}
 		return w.handleCreateCaseReviewSyncError(
 			ctx,
 			aiCaseReview,

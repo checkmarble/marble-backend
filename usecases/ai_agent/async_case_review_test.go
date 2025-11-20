@@ -17,6 +17,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -497,6 +498,39 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_BlobStreamError() {
 		"Error should contain the expected message")
 
 	// Verify all expectations
+	suite.AssertExpectations()
+}
+
+func (suite *CaseReviewWorkerTestSuite) TestWork_InsufficientFunds() {
+	worker := suite.makeWorker()
+
+	args, testCase, org, aiCaseReview := createTestCaseReviewData()
+
+	job := &river.Job[models.CaseReviewArgs]{
+		Args: args,
+	}
+
+	suite.executorFactory.On("NewExecutor").Return(suite.exec)
+	suite.workerRepo.On("GetCaseById", suite.ctx, suite.exec, args.CaseId.String()).
+		Return(testCase, nil)
+	suite.workerRepo.On("GetCaseReviewById", suite.ctx, suite.exec, args.AiCaseReviewId).
+		Return(aiCaseReview, nil)
+	suite.blobRepo.On("GetBlob", suite.ctx, "test-bucket-url", aiCaseReview.FileTempReference).
+		Return(models.Blob{}, errors.New("file not found"))
+	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", suite.ctx, org.Id).
+		Return(true, nil)
+	// Mock CreateCaseReviewSync to return ErrInsufficientFunds
+	suite.caseReviewUsecase.On("CreateCaseReviewSync", suite.ctx, args.CaseId.String(),
+		mock.AnythingOfType("*ai_agent.CaseReviewContext")).
+		Return(nil, billing.ErrInsufficientFunds)
+	// Mock status update to insufficient_funds
+	suite.workerRepo.On("UpdateCaseReviewFile", suite.ctx, suite.exec, aiCaseReview.Id, models.UpdateAiCaseReview{
+		Status: models.AiCaseReviewStatusInsufficientFunds,
+	}).Return(nil)
+
+	err := worker.Work(suite.ctx, job)
+
+	suite.NoError(err, "Work should return nil (no error) when funds are insufficient")
 	suite.AssertExpectations()
 }
 
