@@ -73,14 +73,14 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 		}
 	}
 
-	playloadsInsertedObjectId := make([]string, 0, len(payloadsToInsert))
+	payloadsInsertedObjectId := make([]string, 0, len(payloadsToInsert))
 	for _, payload := range payloadsToInsert {
 		// Assumes that the object_id is always present as it is a mandatory field
 		objectId := payload.Data["object_id"].(string)
-		playloadsInsertedObjectId = append(playloadsInsertedObjectId, objectId)
+		payloadsInsertedObjectId = append(payloadsInsertedObjectId, objectId)
 	}
 
-	return len(payloadsToInsert), playloadsInsertedObjectId, nil
+	return len(payloadsToInsert), payloadsInsertedObjectId, nil
 }
 
 // Try to only load the fields that are actually missing from the payloads (in the case of a partial update).

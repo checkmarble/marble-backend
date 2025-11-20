@@ -112,8 +112,7 @@ type ContinuousScreeningDoScreeningArgs struct {
 	OrgId      string `json:"org_id"`
 
 	// Tell which action triggered the screening
-	// cf: models.ContinuousScreeningTriggerType
-	TriggerType int `json:"trigger_type"`
+	TriggerType ContinuousScreeningTriggerType `json:"trigger_type"`
 
 	// MonitoringId is the ID from the object type specific monitoring table.
 	MonitoringId uuid.UUID `json:"monitoring_id"`
