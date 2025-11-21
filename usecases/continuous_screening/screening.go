@@ -11,6 +11,20 @@ import (
 	"github.com/google/uuid"
 )
 
+// UpdateContinuousScreeningMatchStatus updates the status of a continuous screening match
+// (e.g., marking it as confirmed_hit or no_hit) and triggers related actions.
+//
+// General flow:
+// 1. Validates the input match ID, reviewer ID, and status (must be confirmed_hit or no_hit). Check if the screening is in case and in review.
+// 2. Checks permissions: requires WriteContinuousScreeningHit permission and access to the associated case
+// 3. Updates the match status in a transaction
+// 4. Performs case action side effects (e.g., updating case status)
+// 5. Based on the decision:
+//   - If confirmed_hit: marks all other pending matches as "skipped" and the screening as "confirmed_hit"
+//   - If no_hit and it's the last pending match: marks the screening as "no_hit"
+//   - If no_hit and whitelist flag is set: adds the match to the whitelist
+//
+// 6. Creates case events to record the screening review action
 func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 	ctx context.Context,
 	update models.ScreeningMatchUpdate,
@@ -101,10 +115,8 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			return err
 		}
 
-		if continuousScreeningWithMatches.CaseId != nil {
-			if err := uc.caseEditor.PerformCaseActionSideEffects(ctx, tx, caseData); err != nil {
-				return err
-			}
+		if err := uc.caseEditor.PerformCaseActionSideEffects(ctx, tx, caseData); err != nil {
+			return err
 		}
 
 		// If the match is confirmed, all other pending matches should be set to "skipped" and the screening to "confirmed_hit"
@@ -135,18 +147,16 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 				return err
 			}
 
-			if continuousScreeningWithMatches.CaseId != nil {
-				err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-					CaseId:       continuousScreeningWithMatches.CaseId.String(),
-					UserId:       (*string)(reviewerId),
-					EventType:    models.ScreeningReviewed,
-					ResourceId:   utils.Ptr(continuousScreeningWithMatches.Id.String()),
-					ResourceType: utils.Ptr(models.ContinuousScreeningResourceType),
-					NewValue:     utils.Ptr(models.ScreeningMatchStatusConfirmedHit.String()),
-				})
-				if err != nil {
-					return err
-				}
+			err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+				CaseId:       continuousScreeningWithMatches.CaseId.String(),
+				UserId:       (*string)(reviewerId),
+				EventType:    models.ScreeningReviewed,
+				ResourceId:   utils.Ptr(continuousScreeningWithMatches.Id.String()),
+				ResourceType: utils.Ptr(models.ContinuousScreeningResourceType),
+				NewValue:     utils.Ptr(models.ScreeningMatchStatusConfirmedHit.String()),
+			})
+			if err != nil {
+				return err
 			}
 		}
 
@@ -166,18 +176,16 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 				return err
 			}
 
-			if continuousScreeningWithMatches.CaseId != nil {
-				err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-					CaseId:       continuousScreeningWithMatches.CaseId.String(),
-					UserId:       (*string)(reviewerId),
-					EventType:    models.ScreeningReviewed,
-					ResourceId:   utils.Ptr(continuousScreeningWithMatches.Id.String()),
-					ResourceType: utils.Ptr(models.ContinuousScreeningResourceType),
-					NewValue:     utils.Ptr(models.ScreeningMatchStatusNoHit.String()),
-				})
-				if err != nil {
-					return err
-				}
+			err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+				CaseId:       continuousScreeningWithMatches.CaseId.String(),
+				UserId:       (*string)(reviewerId),
+				EventType:    models.ScreeningReviewed,
+				ResourceId:   utils.Ptr(continuousScreeningWithMatches.Id.String()),
+				ResourceType: utils.Ptr(models.ContinuousScreeningResourceType),
+				NewValue:     utils.Ptr(models.ScreeningMatchStatusNoHit.String()),
+			})
+			if err != nil {
+				return err
 			}
 		}
 
@@ -203,6 +211,8 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 	return updatedMatch, err
 }
 
+// Check if the user has permission to change continuous screening and match status
+// Check if the user can access and modify the case
 func (uc *ContinuousScreeningUsecase) checkPermissionOnCaseAndContinuousScreening(
 	ctx context.Context,
 	exec repositories.Executor,

@@ -50,7 +50,7 @@ func (e *EnforceSecurityContinuousScreeningImpl) ReadContinuousScreeningHit(hit 
 
 func (e *EnforceSecurityContinuousScreeningImpl) WriteContinuousScreeningHit(orgId uuid.UUID) error {
 	return errors.Join(
-		e.Permission(models.CONTINUOUS_SCREENING_HIT_READ),
+		e.Permission(models.CONTINUOUS_SCREENING_HIT_WRITE),
 		e.ReadOrganization(orgId.String()),
 	)
 }
