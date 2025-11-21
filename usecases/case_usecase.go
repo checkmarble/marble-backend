@@ -533,8 +533,9 @@ func (usecase *CaseUseCase) UpdateCase(
 			// access check on the case's new requested inbox
 			if _, err := usecase.inboxReader.GetInboxById(ctx, tx,
 				*updateCaseAttributes.InboxId); err != nil {
-				return models.Case{}, errors.Wrap(err,
-					fmt.Sprintf("User does not have access the new inbox %s", updateCaseAttributes.InboxId))
+				return models.Case{}, errors.WithDetail(errors.Wrap(err,
+					fmt.Sprintf("User does not have access the new inbox %s", updateCaseAttributes.InboxId)),
+					"assigned user does not have access to the target inbox")
 			}
 		}
 		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
@@ -1177,18 +1178,17 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 
 	for _, decision := range decisions {
 		if decision.OrganizationId.String() != orgId {
-			return errors.Wrap(models.ForbiddenError,
-				"provided decision does not belong to the organization")
+			return errors.WithDetail(errors.Wrap(models.ForbiddenError, "provided decision does not belong to the organization"), "some of the provided decisions do not exist")
 		}
 
 		if decision.Case != nil && decision.Case.Id != "" {
-			return fmt.Errorf("decision %s already belongs to a case %s %w",
-				decision.DecisionId, (*decision.Case).Id, models.BadParameterError)
+			return errors.WithDetailf(errors.Wrapf(models.BadParameterError, "decision %s already belongs to a case %s",
+				decision.DecisionId, (*decision.Case).Id), "provided decision '%s' is already assigned to a case", decision.DecisionId)
 		}
 	}
 
 	if len(decisionIds) != len(decisions) {
-		return errors.Wrap(models.NotFoundError, "unknown decision")
+		return errors.WithDetail(errors.Wrap(models.NotFoundError, "unknown decision"), "some of the provided decisions do not exist")
 	}
 
 	return nil
@@ -1815,7 +1815,7 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 		return err
 	}
 	if c.Status == models.CaseClosed {
-		return errors.New("case is already closed, cannot escalate")
+		return errors.WithDetail(errors.Wrap(models.UnprocessableEntityError, "case is already closed, cannot escalate"), "case is already closed, cannot escalate")
 	}
 
 	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
@@ -1831,7 +1831,8 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 		return errors.Wrap(err, "could not read source inbox")
 	}
 	if sourceInbox.EscalationInboxId == nil {
-		return errors.Wrap(models.UnprocessableEntityError,
+		return errors.WithDetail(errors.Wrap(models.UnprocessableEntityError,
+			"the source inbox does not have escalation configured"),
 			"the source inbox does not have escalation configured")
 	}
 
@@ -1842,7 +1843,7 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 		return errors.Wrap(err, "could not read target inbox")
 	}
 	if targetInbox.Status != models.InboxStatusActive {
-		return errors.Wrap(models.UnprocessableEntityError, "target inbox is inactive")
+		return errors.WithDetail(errors.Wrap(models.UnprocessableEntityError, "target inbox is inactive"), "target inbox is inactive")
 	}
 
 	var userId *string
