@@ -17,6 +17,7 @@ type DBOrganizationFeatureAccess struct {
 	TestRun        string    `db:"test_run"`
 	Sanctions      string    `db:"sanctions"`
 	CaseAutoAssign string    `db:"case_auto_assign"`
+	CaseAiAssist   string    `db:"case_ai_assist"`
 	CreatedAt      time.Time `db:"created_at"`
 	UpdatedAt      time.Time `db:"updated_at"`
 }
@@ -28,6 +29,7 @@ func AdaptOrganizationFeatureAccess(db DBOrganizationFeatureAccess) (models.DbSt
 		TestRun:        models.FeatureAccessFrom(db.TestRun),
 		Sanctions:      models.FeatureAccessFrom(db.Sanctions),
 		CaseAutoAssign: models.FeatureAccessFrom(db.CaseAutoAssign),
+		CaseAiAssist:   models.FeatureAccessFrom(db.CaseAiAssist),
 		CreatedAt:      db.CreatedAt,
 		UpdatedAt:      db.UpdatedAt,
 	}, nil
