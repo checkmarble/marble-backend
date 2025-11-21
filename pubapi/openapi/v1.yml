@@ -105,7 +105,7 @@ paths:
             default: "now"
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/order"
-        - $ref: "#/components/parameters/offset_id"
+        - $ref: "#/components/parameters/after"
       responses:
         "200":
           description: List of decisions
@@ -823,8 +823,8 @@ components:
       schema:
         type: string
         enum: ["ASC", "DESC"]
-    offset_id:
-      name: offset_id
+    after:
+      name: after
       description: |
         Value to start iterating from.
 

@@ -70,7 +70,7 @@ paths:
             format: date-time
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/order"
-        - $ref: "#/components/parameters/offset_id"
+        - $ref: "#/components/parameters/after"
       responses:
         "200":
           description: List of cases
@@ -135,7 +135,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/order"
-        - $ref: "#/components/parameters/offset_id"
+        - $ref: "#/components/parameters/after"
       responses:
         "200":
           description: List of comments
@@ -278,8 +278,8 @@ components:
       schema:
         type: string
         enum: ["ASC", "DESC"]
-    offset_id:
-      name: offset_id
+    after:
+      name: after
       description: |
         Value to start iterating from.
 
