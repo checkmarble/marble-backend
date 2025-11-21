@@ -18,6 +18,7 @@ const (
 	AiCaseReviewStatusPending
 	AiCaseReviewStatusCompleted
 	AiCaseReviewStatusFailed
+	AiCaseReviewStatusInsufficientFunds
 )
 
 func (s AiCaseReviewStatus) String() string {
@@ -28,6 +29,8 @@ func (s AiCaseReviewStatus) String() string {
 		return "completed"
 	case AiCaseReviewStatusFailed:
 		return "failed"
+	case AiCaseReviewStatusInsufficientFunds:
+		return "insufficient_funds"
 	}
 	return "unknown"
 }
@@ -40,6 +43,8 @@ func AiCaseReviewStatusFromString(s string) AiCaseReviewStatus {
 		return AiCaseReviewStatusCompleted
 	case "failed":
 		return AiCaseReviewStatusFailed
+	case "insufficient_funds":
+		return AiCaseReviewStatusInsufficientFunds
 	default:
 		return AiCaseReviewStatusUnknown
 	}
