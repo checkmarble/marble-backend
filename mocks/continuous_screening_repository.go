@@ -159,6 +159,16 @@ func (m *ContinuousScreeningRepository) UpdateContinuousScreeningMatchStatus(
 	return args.Get(0).(models.ContinuousScreeningMatch), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) SearchScreeningMatchWhitelist(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId string,
+	counterpartyId, entityId *string,
+) ([]models.ScreeningWhitelist, error) {
+	args := m.Called(ctx, exec, orgId, counterpartyId, entityId)
+	return args.Get(0).([]models.ScreeningWhitelist), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) GetInboxById(
 	ctx context.Context,
 	exec repositories.Executor,
