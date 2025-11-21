@@ -23,3 +23,8 @@ func (m *CaseEditor) CreateCase(
 	args := m.Called(ctx, tx, userId, createCaseAttributes, fromEndUser)
 	return args.Get(0).(models.Case), args.Error(1)
 }
+
+func (m *CaseEditor) PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, caseModel models.Case) error {
+	args := m.Called(ctx, tx, caseModel)
+	return args.Error(0)
+}

@@ -1,6 +1,8 @@
 package mocks
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
@@ -220,5 +222,35 @@ func (e *EnforceSecurity) WriteContinuousScreeningObject(orgId uuid.UUID) error 
 
 func (e *EnforceSecurity) ReadContinuousScreeningHit(hit models.ContinuousScreeningWithMatches) error {
 	args := e.Called(hit)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) WriteContinuousScreeningHit(orgId uuid.UUID) error {
+	args := e.Called(orgId)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) ReadOrUpdateCase(c models.CaseMetadata, availableInboxIds []uuid.UUID) error {
+	args := e.Called(c, availableInboxIds)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) CreateCase(input models.CreateCaseAttributes, availableInboxIds []uuid.UUID) error {
+	args := e.Called(input, availableInboxIds)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) ReadWhitelist(ctx context.Context) error {
+	args := e.Called(ctx)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) WriteWhitelist(ctx context.Context) error {
+	args := e.Called(ctx)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) PerformFreeformSearch(ctx context.Context) error {
+	args := e.Called(ctx)
 	return args.Error(0)
 }
