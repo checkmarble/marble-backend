@@ -111,6 +111,9 @@ type ContinuousScreeningUsecaseRepository interface {
 		entityId string,
 		reviewerId *models.UserId,
 	) error
+	SearchScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
+		orgId string, counterpartyId, entityId *string,
+	) ([]models.ScreeningWhitelist, error)
 }
 
 type inboxReader interface {

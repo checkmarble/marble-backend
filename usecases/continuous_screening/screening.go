@@ -186,7 +186,10 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 				ctx,
 				tx,
 				continuousScreeningWithMatches.OrgId.String(),
-				counterpartyIdentifier(continuousScreeningWithMatches),
+				counterpartyIdentifier(
+					continuousScreeningWithMatches.ObjectType,
+					continuousScreeningWithMatches.ObjectId,
+				),
 				continuousScreeningMatch.OpenSanctionEntityId,
 				reviewerId,
 			); err != nil {
@@ -198,10 +201,6 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 	})
 
 	return updatedMatch, err
-}
-
-func counterpartyIdentifier(cs models.ContinuousScreeningWithMatches) string {
-	return cs.ObjectType + "_" + cs.ObjectId
 }
 
 func (uc *ContinuousScreeningUsecase) checkPermissionOnCaseAndContinuousScreening(
