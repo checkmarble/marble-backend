@@ -57,7 +57,7 @@ type CaseUseCaseRepository interface {
 	SoftDeleteCaseTag(ctx context.Context, exec repositories.Executor, tagId string) error
 
 	CreateDbCaseFile(ctx context.Context, exec repositories.Executor,
-		createCaseFileInput models.CreateDbCaseFileInput) error
+		createCaseFileInput models.CreateDbCaseFileInput) (models.CaseFile, error)
 	GetCaseFileById(ctx context.Context, exec repositories.Executor, caseFileId string) (models.CaseFile, error)
 	GetCasesFileByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseFile, error)
 
@@ -1317,32 +1317,32 @@ func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttrib
 	}
 }
 
-func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.CreateCaseFilesInput) (models.Case, error) {
+func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.CreateCaseFilesInput) (models.Case, []models.CaseFile, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	creds, found := utils.CredentialsFromCtx(ctx)
 	if !found {
-		return models.Case{}, errors.New("no credentials in context")
+		return models.Case{}, nil, errors.New("no credentials in context")
 	}
 	userId := string(creds.ActorIdentity.UserId)
 
 	for _, fileHeader := range input.Files {
 		if err := validateFileType(fileHeader); err != nil {
-			return models.Case{}, err
+			return models.Case{}, nil, err
 		}
 	}
 
 	// permissions check
 	c, err := usecase.repository.GetCaseById(ctx, exec, input.CaseId)
 	if err != nil {
-		return models.Case{}, err
+		return models.Case{}, nil, err
 	}
 	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
-		return models.Case{}, err
+		return models.Case{}, nil, err
 	}
 	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
-		return models.Case{}, err
+		return models.Case{}, nil, err
 	}
 
 	type uploadedFileMetadata struct {
@@ -1372,16 +1372,18 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 					"error", deleteErr)
 			}
 		}
-		return models.Case{}, err
+		return models.Case{}, nil, err
 	}
+
+	caseFiles := make([]models.CaseFile, len(input.Files))
 
 	webhookEventId := uuid.NewString()
 	err = usecase.transactionFactory.Transaction(ctx, func(
 		tx repositories.Transaction,
 	) error {
-		for _, uploadedFile := range uploadedFilesMetadata {
+		for idx, uploadedFile := range uploadedFilesMetadata {
 			newCaseFileId := uuid.NewString()
-			if err := usecase.repository.CreateDbCaseFile(
+			caseFile, err := usecase.repository.CreateDbCaseFile(
 				ctx,
 				tx,
 				models.CreateDbCaseFileInput{
@@ -1391,9 +1393,12 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 					FileName:      uploadedFile.fileName,
 					FileReference: uploadedFile.fileReference,
 				},
-			); err != nil {
+			)
+			if err != nil {
 				return err
 			}
+
+			caseFiles[idx] = caseFile
 
 			resourceType := models.CaseFileResourceType
 			err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
@@ -1426,7 +1431,7 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 		return nil
 	})
 	if err != nil {
-		return models.Case{}, err
+		return models.Case{}, nil, err
 	}
 
 	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
@@ -1437,7 +1442,12 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 		})
 	}
 
-	return usecase.getCaseWithDetails(ctx, exec, input.CaseId)
+	caseDetails, err := usecase.getCaseWithDetails(ctx, exec, input.CaseId)
+	if err != nil {
+		return models.Case{}, nil, err
+	}
+
+	return caseDetails, caseFiles, nil
 }
 
 func (usecase *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Transaction,
@@ -1463,7 +1473,7 @@ func (usecase *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx reposi
 	for _, file := range files {
 		newFileUuid := uuid.NewString()
 
-		err := usecase.repository.CreateDbCaseFile(ctx, tx, models.CreateDbCaseFileInput{
+		_, err := usecase.repository.CreateDbCaseFile(ctx, tx, models.CreateDbCaseFileInput{
 			Id:            newFileUuid,
 			BucketName:    usecase.caseManagerBucketUrl,
 			CaseId:        *annotationReq.CaseId,
