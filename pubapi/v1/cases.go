@@ -2,6 +2,7 @@ package v1
 
 import (
 	"io"
+	"mime/multipart"
 	"net/http"
 	"time"
 
@@ -485,5 +486,46 @@ func HandleDownloadCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		pubapi.Redirect(c, url)
+	}
+}
+
+type FileForm struct {
+	Files []multipart.FileHeader `form:"file" binding:"required"`
+}
+
+func HandleCreateCaseFile(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		var form FileForm
+
+		if err := c.ShouldBind(&form); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		req := models.CreateCaseFilesInput{
+			CaseId: caseId.String(),
+			Files:  form.Files,
+		}
+
+		_, files, err := caseUsecase.CreateCaseFiles(ctx, req)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.
+			NewResponse(pure_utils.Map(files, dto.AdaptCaseFile)).
+			Serve(c)
 	}
 }

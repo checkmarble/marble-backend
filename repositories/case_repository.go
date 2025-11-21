@@ -401,31 +401,29 @@ func (repo *MarbleDbRepository) SoftDeleteCaseTag(ctx context.Context, exec Exec
 
 func (repo *MarbleDbRepository) CreateDbCaseFile(ctx context.Context, exec Executor,
 	createCaseFileAttributes models.CreateDbCaseFileInput,
-) error {
+) (models.CaseFile, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
+		return models.CaseFile{}, err
 	}
 
-	err := ExecBuilder(
-		ctx,
-		exec,
-		NewQueryBuilder().Insert(dbmodels.TABLE_CASE_FILES).
-			Columns(
-				"id",
-				"bucket_name",
-				"case_id",
-				"file_name",
-				"file_reference",
-			).
-			Values(
-				createCaseFileAttributes.Id,
-				createCaseFileAttributes.BucketName,
-				createCaseFileAttributes.CaseId,
-				createCaseFileAttributes.FileName,
-				createCaseFileAttributes.FileReference,
-			),
-	)
-	return err
+	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_FILES).
+		Columns(
+			"id",
+			"bucket_name",
+			"case_id",
+			"file_name",
+			"file_reference",
+		).
+		Values(
+			createCaseFileAttributes.Id,
+			createCaseFileAttributes.BucketName,
+			createCaseFileAttributes.CaseId,
+			createCaseFileAttributes.FileName,
+			createCaseFileAttributes.FileReference,
+		).
+		Suffix(fmt.Sprintf("returning %s", strings.Join(dbmodels.SelectCaseFileColumn, ", ")))
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptCaseFile)
 }
 
 func (repo *MarbleDbRepository) GetCaseFileById(ctx context.Context, exec Executor, caseFileId string) (models.CaseFile, error) {
