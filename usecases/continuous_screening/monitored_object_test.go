@@ -68,6 +68,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) makeUsecase() *ContinuousScree
 		executorFactory:              suite.executorFactory,
 		transactionFactory:           suite.transactionFactory,
 		enforceSecurity:              suite.enforceSecurity,
+		enforceSecurityCase:          suite.enforceSecurity,
+		enforceSecurityScreening:     suite.enforceSecurity,
 		repository:                   suite.repository,
 		clientDbRepository:           suite.clientDbRepository,
 		organizationSchemaRepository: suite.organizationSchemaRepository,
@@ -75,6 +77,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) makeUsecase() *ContinuousScree
 		ingestionUsecase:             suite.ingestionUsecase,
 		screeningProvider:            suite.screeningProvider,
 		caseEditor:                   suite.caseEditor,
+		inboxReader:                  suite.repository,
 	}
 }
 

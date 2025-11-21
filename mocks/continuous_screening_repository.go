@@ -120,6 +120,45 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningsForOrg(
 	return args.Get(0).([]models.ContinuousScreeningWithMatches), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) GetContinuousScreeningWithMatchesById(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+) (models.ContinuousScreeningWithMatches, error) {
+	args := m.Called(ctx, exec, id)
+	return args.Get(0).(models.ContinuousScreeningWithMatches), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) GetContinuousScreeningMatch(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+) (models.ContinuousScreeningMatch, error) {
+	args := m.Called(ctx, exec, id)
+	return args.Get(0).(models.ContinuousScreeningMatch), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) UpdateContinuousScreeningStatus(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+	newStatus models.ScreeningStatus,
+) (models.ContinuousScreening, error) {
+	args := m.Called(ctx, exec, id, newStatus)
+	return args.Get(0).(models.ContinuousScreening), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) UpdateContinuousScreeningMatchStatus(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+	status models.ScreeningMatchStatus,
+	reviewerId *uuid.UUID,
+) (models.ContinuousScreeningMatch, error) {
+	args := m.Called(ctx, exec, id, status, reviewerId)
+	return args.Get(0).(models.ContinuousScreeningMatch), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) GetInboxById(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -127,6 +166,46 @@ func (m *ContinuousScreeningRepository) GetInboxById(
 ) (models.Inbox, error) {
 	args := m.Called(ctx, exec, inboxId)
 	return args.Get(0).(models.Inbox), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) ListInboxes(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId string,
+	withCaseCount bool,
+) ([]models.Inbox, error) {
+	args := m.Called(ctx, exec, orgId, withCaseCount)
+	return args.Get(0).([]models.Inbox), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) GetCaseById(
+	ctx context.Context,
+	exec repositories.Executor,
+	caseId string,
+) (models.Case, error) {
+	args := m.Called(ctx, exec, caseId)
+	return args.Get(0).(models.Case), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) CreateCaseEvent(
+	ctx context.Context,
+	exec repositories.Executor,
+	createCaseEventAttributes models.CreateCaseEventAttributes,
+) error {
+	args := m.Called(ctx, exec, createCaseEventAttributes)
+	return args.Error(0)
+}
+
+func (m *ContinuousScreeningRepository) AddScreeningMatchWhitelist(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId string,
+	counterpartyId string,
+	entityId string,
+	reviewerId *models.UserId,
+) error {
+	args := m.Called(ctx, exec, orgId, counterpartyId, entityId, reviewerId)
+	return args.Error(0)
 }
 
 type ContinuousScreeningClientDbRepository struct {

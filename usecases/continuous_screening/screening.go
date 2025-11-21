@@ -53,18 +53,6 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 		if err != nil {
 			return err
 		}
-		var caseData *models.Case
-		if continuousScreeningWithMatches.CaseId != nil {
-			caseTmp, err := uc.repository.GetCaseById(
-				ctx,
-				tx,
-				continuousScreeningWithMatches.CaseId.String(),
-			)
-			if err != nil {
-				return err
-			}
-			caseData = &caseTmp
-		}
 
 		// Check if the continuous screening is active and in case
 		if continuousScreeningWithMatches.CaseId == nil {
@@ -73,6 +61,16 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 		if continuousScreeningWithMatches.Status != models.ScreeningStatusInReview {
 			return errors.Wrap(models.UnprocessableEntityError,
 				"continuous screening is not in review")
+		}
+
+		// CaseId exists, we checked above
+		caseData, err := uc.repository.GetCaseById(
+			ctx,
+			tx,
+			continuousScreeningWithMatches.CaseId.String(),
+		)
+		if err != nil {
+			return err
 		}
 
 		// Check permission on case and continuous screening
@@ -104,7 +102,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 		}
 
 		if continuousScreeningWithMatches.CaseId != nil {
-			if err := uc.caseEditor.PerformCaseActionSideEffects(ctx, tx, *caseData); err != nil {
+			if err := uc.caseEditor.PerformCaseActionSideEffects(ctx, tx, caseData); err != nil {
 				return err
 			}
 		}
@@ -124,6 +122,9 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 				}
 			}
 
+			// No huge fan of doing like this because we don't update the continuousScreeningWithMatches object
+			// Bug fine because we don't use it afterwards
+			// We should use the result to update the object
 			_, err = uc.repository.UpdateContinuousScreeningStatus(
 				ctx,
 				tx,
@@ -152,6 +153,9 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 		// else, if it is the last match pending and it is not a hit, the screening should be set to "no_hit"
 		if !continuousScreeningWithMatches.IsPartial && update.Status ==
 			models.ScreeningMatchStatusNoHit && len(pendingMatchesExcludingThis) == 0 {
+			// No huge fan of doing like this because we don't update the continuousScreeningWithMatches object
+			// Bug fine because we don't use it afterwards
+			// We should use the result to update the object
 			_, err = uc.repository.UpdateContinuousScreeningStatus(
 				ctx,
 				tx,
@@ -203,16 +207,11 @@ func counterpartyIdentifier(cs models.ContinuousScreeningWithMatches) string {
 func (uc *ContinuousScreeningUsecase) checkPermissionOnCaseAndContinuousScreening(
 	ctx context.Context,
 	exec repositories.Executor,
-	caseData *models.Case,
+	caseData models.Case,
 	continuousScreening models.ContinuousScreeningWithMatches,
 ) error {
 	if err := uc.enforceSecurity.WriteContinuousScreeningHit(continuousScreening.OrgId); err != nil {
 		return err
-	}
-
-	if caseData == nil {
-		return errors.Wrap(models.UnprocessableEntityError,
-			"this screening is not linked to a case")
 	}
 
 	inboxes, err := uc.inboxReader.ListInboxes(
@@ -229,7 +228,7 @@ func (uc *ContinuousScreeningUsecase) checkPermissionOnCaseAndContinuousScreenin
 		return inbox.Id
 	})
 
-	return uc.enforceSecurityCase.ReadOrUpdateCase((*caseData).GetMetadata(), inboxIds)
+	return uc.enforceSecurityCase.ReadOrUpdateCase(caseData.GetMetadata(), inboxIds)
 }
 
 func (uc *ContinuousScreeningUsecase) createWhitelist(
