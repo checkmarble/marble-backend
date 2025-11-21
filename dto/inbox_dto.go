@@ -17,20 +17,28 @@ type InboxDto struct {
 	EscalationInboxId *uuid.UUID     `json:"escalation_inbox_id,omitempty"`
 	AutoAssignEnabled bool           `json:"auto_assign_enabled"`
 	Users             []InboxUserDto `json:"users"`
-	CasesCount        *int           `json:"cases_count"`
+
+	CaseReviewManual        bool `json:"case_review_manual"`
+	CaseReviewOnCaseCreated bool `json:"case_review_on_case_created"`
+	CaseReviewOnEscalate    bool `json:"case_review_on_escalate"`
+
+	CasesCount *int `json:"cases_count"`
 }
 
 func AdaptInboxDto(i models.Inbox) InboxDto {
 	return InboxDto{
-		Id:                i.Id,
-		CreatedAt:         i.CreatedAt,
-		UpdatedAt:         i.UpdatedAt,
-		Name:              i.Name,
-		Status:            string(i.Status),
-		EscalationInboxId: i.EscalationInboxId,
-		AutoAssignEnabled: i.AutoAssignEnabled,
-		Users:             pure_utils.Map(i.InboxUsers, AdaptInboxUserDto),
-		CasesCount:        i.CasesCount,
+		Id:                      i.Id,
+		CreatedAt:               i.CreatedAt,
+		UpdatedAt:               i.UpdatedAt,
+		Name:                    i.Name,
+		Status:                  string(i.Status),
+		EscalationInboxId:       i.EscalationInboxId,
+		AutoAssignEnabled:       i.AutoAssignEnabled,
+		Users:                   pure_utils.Map(i.InboxUsers, AdaptInboxUserDto),
+		CaseReviewManual:        i.CaseReviewManual,
+		CaseReviewOnCaseCreated: i.CaseReviewOnCaseCreated,
+		CaseReviewOnEscalate:    i.CaseReviewOnEscalate,
+		CasesCount:              i.CasesCount,
 	}
 }
 
