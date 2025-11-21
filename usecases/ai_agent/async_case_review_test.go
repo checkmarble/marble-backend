@@ -513,20 +513,20 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_InsufficientFunds() {
 	}
 
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
-	suite.workerRepo.On("GetCaseById", suite.ctx, suite.exec, args.CaseId.String()).
+	suite.workerRepo.On("GetCaseById", mock.Anything, suite.exec, args.CaseId.String()).
 		Return(testCase, nil)
-	suite.workerRepo.On("GetCaseReviewById", suite.ctx, suite.exec, args.AiCaseReviewId).
+	suite.workerRepo.On("GetCaseReviewById", mock.Anything, suite.exec, args.AiCaseReviewId).
 		Return(aiCaseReview, nil)
-	suite.blobRepo.On("GetBlob", suite.ctx, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url", aiCaseReview.FileTempReference).
 		Return(models.Blob{}, errors.New("file not found"))
-	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", suite.ctx, org.Id).
+	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id).
 		Return(true, nil)
 	// Mock CreateCaseReviewSync to return ErrInsufficientFunds
-	suite.caseReviewUsecase.On("CreateCaseReviewSync", suite.ctx, args.CaseId.String(),
+	suite.caseReviewUsecase.On("CreateCaseReviewSync", mock.Anything, args.CaseId.String(),
 		mock.AnythingOfType("*ai_agent.CaseReviewContext")).
 		Return(nil, billing.ErrInsufficientFunds)
 	// Mock status update to insufficient_funds
-	suite.workerRepo.On("UpdateCaseReviewFile", suite.ctx, suite.exec, aiCaseReview.Id, models.UpdateAiCaseReview{
+	suite.workerRepo.On("UpdateCaseReviewFile", mock.Anything, suite.exec, aiCaseReview.Id, models.UpdateAiCaseReview{
 		Status: models.AiCaseReviewStatusInsufficientFunds,
 	}).Return(nil)
 
