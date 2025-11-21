@@ -119,20 +119,21 @@ type caseUsecaseAiAgentUsecase interface {
 }
 
 type CaseUseCase struct {
-	enforceSecurity      security.EnforceSecurityCase
-	repository           CaseUseCaseRepository
-	decisionRepository   repositories.DecisionRepository
-	inboxReader          inboxes.InboxReader
-	blobRepository       repositories.BlobRepository
-	caseManagerBucketUrl string
-	transactionFactory   executor_factory.TransactionFactory
-	executorFactory      executor_factory.ExecutorFactory
-	webhookEventsUsecase webhookEventsUsecase
-	screeningRepository  CaseUsecaseScreeningRepository
-	ingestedDataReader   caseUsecaseIngestedDataReader
-	taskQueueRepository  repositories.TaskQueueRepository
-	featureAccessReader  feature_access.FeatureAccessReader
-	aiAgentUsecase       caseUsecaseAiAgentUsecase
+	enforceSecurity         security.EnforceSecurityCase
+	enforceSecurityDecision security.EnforceSecurityDecision
+	repository              CaseUseCaseRepository
+	decisionRepository      repositories.DecisionRepository
+	inboxReader             inboxes.InboxReader
+	blobRepository          repositories.BlobRepository
+	caseManagerBucketUrl    string
+	transactionFactory      executor_factory.TransactionFactory
+	executorFactory         executor_factory.ExecutorFactory
+	webhookEventsUsecase    webhookEventsUsecase
+	screeningRepository     CaseUsecaseScreeningRepository
+	ingestedDataReader      caseUsecaseIngestedDataReader
+	taskQueueRepository     repositories.TaskQueueRepository
+	featureAccessReader     feature_access.FeatureAccessReader
+	aiAgentUsecase          caseUsecaseAiAgentUsecase
 }
 
 func (usecase *CaseUseCase) ListCases(

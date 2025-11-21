@@ -390,20 +390,21 @@ func (usecases *UsecasesWithCreds) NewInboxReader() inboxes.InboxReader {
 
 func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 	return &CaseUseCase{
-		enforceSecurity:      usecases.NewEnforceCaseSecurity(),
-		transactionFactory:   usecases.NewTransactionFactory(),
-		executorFactory:      usecases.NewExecutorFactory(),
-		repository:           usecases.Repositories.MarbleDbRepository,
-		decisionRepository:   usecases.Repositories.MarbleDbRepository,
-		inboxReader:          usecases.NewInboxReader(),
-		caseManagerBucketUrl: usecases.caseManagerBucketUrl,
-		blobRepository:       usecases.Repositories.BlobRepository,
-		webhookEventsUsecase: usecases.NewWebhookEventsUsecase(),
-		screeningRepository:  usecases.Repositories.MarbleDbRepository,
-		ingestedDataReader:   usecases.NewIngestedDataReaderUsecase(),
-		taskQueueRepository:  usecases.Repositories.TaskQueueRepository,
-		featureAccessReader:  usecases.NewFeatureAccessReader(),
-		aiAgentUsecase:       utils.Ptr(usecases.NewAiAgentUsecase()),
+		enforceSecurity:         usecases.NewEnforceCaseSecurity(),
+		enforceSecurityDecision: usecases.NewEnforceDecisionSecurity(),
+		transactionFactory:      usecases.NewTransactionFactory(),
+		executorFactory:         usecases.NewExecutorFactory(),
+		repository:              usecases.Repositories.MarbleDbRepository,
+		decisionRepository:      usecases.Repositories.MarbleDbRepository,
+		inboxReader:             usecases.NewInboxReader(),
+		caseManagerBucketUrl:    usecases.caseManagerBucketUrl,
+		blobRepository:          usecases.Repositories.BlobRepository,
+		webhookEventsUsecase:    usecases.NewWebhookEventsUsecase(),
+		screeningRepository:     usecases.Repositories.MarbleDbRepository,
+		ingestedDataReader:      usecases.NewIngestedDataReaderUsecase(),
+		taskQueueRepository:     usecases.Repositories.TaskQueueRepository,
+		featureAccessReader:     usecases.NewFeatureAccessReader(),
+		aiAgentUsecase:          utils.Ptr(usecases.NewAiAgentUsecase()),
 	}
 }
 
