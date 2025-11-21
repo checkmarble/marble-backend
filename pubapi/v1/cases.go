@@ -2,6 +2,7 @@ package v1
 
 import (
 	"io"
+	"net/http"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -398,6 +399,44 @@ func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
 			NewResponse(pure_utils.Map(comments.Items, dto.AdaptCaseComment(users))).
 			WithPagination(comments.HasNextPage, nextPageId).
 			Serve(c)
+	}
+}
+
+type CreateCommentParams struct {
+	Comment string `json:"comment"`
+}
+
+func HandleCreateComment(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		var params CreateCommentParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		req := models.CreateCaseCommentAttributes{
+			Id:      caseId.String(),
+			Comment: params.Comment,
+		}
+
+		if _, err := caseUsecase.CreateCaseComment(ctx, "", req); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		c.Status(http.StatusCreated)
 	}
 }
 
