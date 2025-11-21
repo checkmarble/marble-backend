@@ -52,10 +52,13 @@ func (suite *OrgConfigTestSuite) makeUsecase() *ContinuousScreeningUsecase {
 		executorFactory:              suite.executorFactory,
 		transactionFactory:           suite.transactionFactory,
 		enforceSecurity:              suite.enforceSecurity,
+		enforceSecurityCase:          suite.enforceSecurity,
+		enforceSecurityScreening:     suite.enforceSecurity,
 		repository:                   suite.repository,
 		clientDbRepository:           suite.clientDbRepository,
 		organizationSchemaRepository: suite.organizationSchemaRepository,
 		screeningProvider:            suite.screeningProvider,
+		inboxReader:                  suite.repository,
 	}
 }
 

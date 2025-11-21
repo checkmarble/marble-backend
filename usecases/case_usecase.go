@@ -337,7 +337,8 @@ func (usecase *CaseUseCase) CreateCase(
 	createCaseAttributes models.CreateCaseAttributes,
 	fromEndUser bool,
 ) (models.Case, error) {
-	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.OrganizationId, createCaseAttributes.DecisionIds); err != nil {
+	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.OrganizationId,
+		createCaseAttributes.DecisionIds); err != nil {
 		return models.Case{}, err
 	}
 	if err := usecase.validateContinuousScreenings(
@@ -476,14 +477,14 @@ func (usecase *CaseUseCase) UpdateCase(
 
 		availableInboxIds, err := usecase.getAvailableInboxIds(
 			ctx,
-			usecase.executorFactory.NewExecutor(),
+			tx,
 			c.OrganizationId)
 		if err != nil {
 			return models.Case{}, err
 		}
 		if updateCaseAttributes.InboxId != nil {
 			// access check on the case's new requested inbox
-			if _, err := usecase.inboxReader.GetInboxById(ctx,
+			if _, err := usecase.inboxReader.GetInboxById(ctx, tx,
 				*updateCaseAttributes.InboxId); err != nil {
 				return models.Case{}, errors.Wrap(err,
 					fmt.Sprintf("User does not have access the new inbox %s", updateCaseAttributes.InboxId))
@@ -1129,7 +1130,8 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 
 	for _, decision := range decisions {
 		if decision.OrganizationId.String() != orgId {
-			return errors.Wrap(models.ForbiddenError, "provided decision does not belong to the organization")
+			return errors.Wrap(models.ForbiddenError,
+				"provided decision does not belong to the organization")
 		}
 
 		if decision.Case != nil && decision.Case.Id != "" {
@@ -1571,7 +1573,8 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	decision := decisions[0]
 
 	if err := usecase.enforceSecurityDecision.ReadDecision(decision); err != nil {
-		return models.Case{}, errors.Wrapf(models.ForbiddenError, "not allowed to access decision %s", input.DecisionId)
+		return models.Case{}, errors.Wrapf(models.ForbiddenError,
+			"not allowed to access decision %s", input.DecisionId)
 	}
 
 	err = validateDecisionReview(decision)
@@ -1750,7 +1753,7 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 		return err
 	}
 
-	sourceInbox, err := usecase.inboxReader.GetInboxById(ctx, c.InboxId)
+	sourceInbox, err := usecase.inboxReader.GetInboxById(ctx, exec, c.InboxId)
 	if err != nil {
 		return errors.Wrap(err, "could not read source inbox")
 	}
@@ -1922,7 +1925,7 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 
 	// When changing the cases' inboxes, the user needs to have access to the target inbox.
 	if req.Action == models.CaseMassUpdateMoveToInbox.String() {
-		if _, err := usecase.inboxReader.GetInboxById(ctx, req.MoveToInbox.InboxId); err != nil {
+		if _, err := usecase.inboxReader.GetInboxById(ctx, exec, req.MoveToInbox.InboxId); err != nil {
 			return errors.Wrap(err, fmt.Sprintf("user does not have access the new inbox %s", req.MoveToInbox.InboxId))
 		}
 	}
