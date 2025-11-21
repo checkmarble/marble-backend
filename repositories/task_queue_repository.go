@@ -75,6 +75,14 @@ type TaskQueueRepository interface {
 		ctx context.Context,
 		event models.BillingEvent,
 	) error
+	EnqueueContinuousScreeningDoScreeningTaskMany(
+		ctx context.Context,
+		tx Transaction,
+		orgId string,
+		objectType string,
+		monitoringIds []uuid.UUID,
+		triggerType models.ContinuousScreeningTriggerType,
+	) error
 }
 
 type riverRepository struct {
@@ -329,5 +337,47 @@ func (r riverRepository) EnqueueSendBillingEventTask(
 	}
 
 	logger.DebugContext(ctx, "Enqueued send billing event task", "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
+	ctx context.Context,
+	tx Transaction,
+	orgId string,
+	objectType string,
+	monitoringIds []uuid.UUID,
+	triggerType models.ContinuousScreeningTriggerType,
+) error {
+	if len(monitoringIds) == 0 {
+		return nil
+	}
+
+	params := make([]river.InsertManyParams, len(monitoringIds))
+
+	for i, monitoringId := range monitoringIds {
+		params[i] = river.InsertManyParams{
+			Args: models.ContinuousScreeningDoScreeningArgs{
+				ObjectType:   objectType,
+				OrgId:        orgId,
+				TriggerType:  triggerType,
+				MonitoringId: monitoringId,
+			},
+			InsertOpts: &river.InsertOpts{
+				Queue: orgId,
+			},
+		}
+	}
+
+	res, err := r.client.InsertManyFastTx(
+		ctx,
+		tx.RawTx(),
+		params,
+	)
+	if err != nil {
+		return err
+	}
+
+	utils.LoggerFromContext(ctx).
+		InfoContext(ctx, fmt.Sprintf("Enqueued %d continuous screening do screening tasks", res))
 	return nil
 }

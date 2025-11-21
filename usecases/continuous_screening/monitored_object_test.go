@@ -151,7 +151,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
+		config, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
@@ -245,7 +245,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
+		config, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
@@ -499,7 +499,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		Code: pgerrcode.UniqueViolation,
 	})
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
+		config, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
@@ -691,7 +691,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
+		config, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
@@ -808,7 +808,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		suite.orgId, suite.configId, suite.configStableId, suite.objectType,
+		config, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
@@ -1300,7 +1300,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 	tests := []struct {
 		name            string
 		table           models.Table
-		expectedMapping dataModelMapping
+		expectedMapping models.ContinuousScreeningDataModelMapping
 		wantError       bool
 		errorMsg        string
 	}{
@@ -1316,7 +1316,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 					},
 				},
 			},
-			expectedMapping: dataModelMapping{
+			expectedMapping: models.ContinuousScreeningDataModelMapping{
 				Entity: "Person",
 				Properties: map[string]string{
 					"customer_name": "name",
@@ -1340,7 +1340,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 					},
 				},
 			},
-			expectedMapping: dataModelMapping{
+			expectedMapping: models.ContinuousScreeningDataModelMapping{
 				Entity: "Person",
 				Properties: map[string]string{
 					"first_name":   "name",
@@ -1365,7 +1365,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 					},
 				},
 			},
-			expectedMapping: dataModelMapping{
+			expectedMapping: models.ContinuousScreeningDataModelMapping{
 				Entity: "Company",
 				Properties: map[string]string{
 					"company_name":    "name",
@@ -1390,7 +1390,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 					},
 				},
 			},
-			expectedMapping: dataModelMapping{
+			expectedMapping: models.ContinuousScreeningDataModelMapping{
 				Entity: "Person",
 				Properties: map[string]string{
 					"customer_name": "name",

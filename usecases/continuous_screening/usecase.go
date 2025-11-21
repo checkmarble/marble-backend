@@ -51,9 +51,7 @@ type ContinuousScreeningUsecaseRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		screening models.ScreeningWithMatches,
-		orgId uuid.UUID,
-		configId uuid.UUID,
-		configStableId uuid.UUID,
+		config models.ContinuousScreeningConfig,
 		objectType string,
 		objectId string,
 		objectInternalId uuid.UUID,
@@ -144,8 +142,8 @@ func NewContinuousScreeningUsecase(
 	ingestionUsecase ContinuousScreeningIngestionUsecase,
 	screeningProvider ContinuousScreeningScreeningProvider,
 	caseEditor caseEditor,
-) ContinuousScreeningUsecase {
-	return ContinuousScreeningUsecase{
+) *ContinuousScreeningUsecase {
+	return &ContinuousScreeningUsecase{
 		executorFactory:              executorFactory,
 		transactionFactory:           transactionFactory,
 		enforceSecurity:              enforceSecurity,

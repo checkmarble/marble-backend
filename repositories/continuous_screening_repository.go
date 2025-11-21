@@ -174,13 +174,11 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningConfig(
 
 // For this method, we use the ScreeningWithMatches struct to insert the continuous screening.
 // The struct contains all information we need and we reuse the struct which is built from OpenSanction Search Response.
-func (*MarbleDbRepository) InsertContinuousScreening(
+func (repo *MarbleDbRepository) InsertContinuousScreening(
 	ctx context.Context,
 	exec Executor,
 	screening models.ScreeningWithMatches,
-	orgId uuid.UUID,
-	configId uuid.UUID,
-	configStableId uuid.UUID,
+	config models.ContinuousScreeningConfig,
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
@@ -211,9 +209,9 @@ func (*MarbleDbRepository) InsertContinuousScreening(
 		).
 		Values(
 			id,
-			orgId,
-			configId,
-			configStableId,
+			config.OrgId,
+			config.Id,
+			config.StableId,
 			objectType,
 			objectId,
 			objectInternalId,
@@ -384,4 +382,29 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningsCaseId(ctx context.Con
 		Set("case_id", caseId)
 
 	return ExecBuilder(ctx, exec, query)
+}
+
+// This function is used to check if the screening result is the same as the existing one (if exists)
+// Get the latest screening result in review and in a case for a given object id and object type
+func (repo *MarbleDbRepository) GetContinuousScreeningByObjectId(
+	ctx context.Context,
+	exec Executor,
+	objectId string,
+	objectType string,
+	orgId uuid.UUID,
+) (*models.ContinuousScreeningWithMatches, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := selectContinuousScreeningWithMatches().
+		Where(squirrel.Eq{"cs.org_id": orgId}).
+		Where(squirrel.Eq{"cs.object_type": objectType}).
+		Where(squirrel.Eq{"cs.object_id": objectId}).
+		Where(squirrel.Eq{"cs.status": models.ScreeningStatusInReview.String()}).
+		Where(squirrel.NotEq{"cs.case_id": nil}).
+		OrderBy("cs.created_at DESC").
+		Limit(1)
+
+	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningWithMatches)
 }
