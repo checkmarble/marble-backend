@@ -48,6 +48,7 @@ func NewPostgresConnectionPool(
 		cfg.MaxConns = DEFAULT_MAX_CONNECTIONS
 	}
 	cfg.MaxConnIdleTime = MAX_CONNECTION_IDLE_TIME
+	cfg.MaxConnLifetimeJitter = 5 * time.Minute
 
 	if impersonateRole != "" {
 		cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
