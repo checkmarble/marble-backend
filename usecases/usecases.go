@@ -215,6 +215,7 @@ func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory 
 		usecases.appName,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.ExecutorGetter,
+		"", // No org ID on regular usecases
 	)
 }
 
@@ -223,6 +224,7 @@ func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFa
 		usecases.appName,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.ExecutorGetter,
+		"", // No org ID on regular usecases
 	)
 }
 
