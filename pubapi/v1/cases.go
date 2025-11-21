@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"io"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -244,6 +245,94 @@ func HandleUpdateCase(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		cas, err := caseUsecase.UpdateCase(ctx, "", req)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
+	}
+}
+
+type CloseCaseParams struct {
+	Outcome string `json:"outcome" binding:"omitempty,oneof=unset confirmed_risk valuable_alert false_positive"`
+}
+
+func HandleSetCaseStatus(uc usecases.Usecases, status models.CaseStatus) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		req := models.UpdateCaseAttributes{
+			Id:     caseId.String(),
+			Status: status,
+		}
+
+		if status == models.CaseClosed {
+			var params CloseCaseParams
+
+			if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+				if !errors.Is(err, io.EOF) {
+					pubapi.NewErrorResponse().WithError(err).Serve(c)
+					return
+				}
+			}
+
+			if params.Outcome != "" {
+				req.Outcome = models.CaseOutcome(params.Outcome)
+			}
+		}
+
+		cas, err := caseUsecase.UpdateCase(ctx, "", req)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
+	}
+}
+
+func HandleEscalateCase(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		err = caseUsecase.EscalateCase(ctx, caseId.String())
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		cas, err := caseUsecase.GetCase(ctx, caseId.String())
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
