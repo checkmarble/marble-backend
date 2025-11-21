@@ -112,6 +112,10 @@ type caseUsecaseIngestedDataReader interface {
 	) ([]models.PivotObject, error)
 }
 
+type caseUsecaseAiAgentUsecase interface {
+	HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error)
+}
+
 type CaseUseCase struct {
 	enforceSecurity         security.EnforceSecurityCase
 	enforceSecurityDecision security.EnforceSecurityDecision
@@ -127,6 +131,7 @@ type CaseUseCase struct {
 	ingestedDataReader      caseUsecaseIngestedDataReader
 	taskQueueRepository     repositories.TaskQueueRepository
 	featureAccessReader     feature_access.FeatureAccessReader
+	aiAgentUsecase          caseUsecaseAiAgentUsecase
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -337,7 +342,8 @@ func (usecase *CaseUseCase) CreateCase(
 	createCaseAttributes models.CreateCaseAttributes,
 	fromEndUser bool,
 ) (models.Case, error) {
-	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.OrganizationId, createCaseAttributes.DecisionIds); err != nil {
+	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.OrganizationId,
+		createCaseAttributes.DecisionIds); err != nil {
 		return models.Case{}, err
 	}
 	if err := usecase.validateContinuousScreenings(
@@ -1129,7 +1135,8 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 
 	for _, decision := range decisions {
 		if decision.OrganizationId.String() != orgId {
-			return errors.Wrap(models.ForbiddenError, "provided decision does not belong to the organization")
+			return errors.Wrap(models.ForbiddenError,
+				"provided decision does not belong to the organization")
 		}
 
 		if decision.Case != nil && decision.Case.Id != "" {
@@ -1571,7 +1578,8 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	decision := decisions[0]
 
 	if err := usecase.enforceSecurityDecision.ReadDecision(decision); err != nil {
-		return models.Case{}, errors.Wrapf(models.ForbiddenError, "not allowed to access decision %s", input.DecisionId)
+		return models.Case{}, errors.Wrapf(models.ForbiddenError,
+			"not allowed to access decision %s", input.DecisionId)
 	}
 
 	err = validateDecisionReview(decision)
@@ -1792,6 +1800,30 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 
 		if err := usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
 			return err
+		}
+
+		hasAiCaseReviewEnabled, err := usecase.aiAgentUsecase.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
+		if err != nil {
+			return errors.Wrap(err, "error checking if AI case review is enabled")
+		}
+		if hasAiCaseReviewEnabled {
+			inbox, err := usecase.inboxReader.GetInboxById(ctx, targetInbox.Id)
+			if err != nil {
+				return errors.Wrap(err, "error getting inbox")
+			}
+			if inbox.CaseReviewOnEscalate {
+				caseReviewId := uuid.Must(uuid.NewV7())
+				caseIdUuid, err := uuid.Parse(c.Id)
+				if err != nil {
+					return errors.Wrap(err, "could not parse case id")
+				}
+				err = usecase.taskQueueRepository.EnqueueCaseReviewTask(ctx, tx,
+					c.OrganizationId, caseIdUuid, caseReviewId)
+				if err != nil {
+					return errors.Wrap(err, "error enqueuing case review task")
+				}
+			}
+
 		}
 
 		return nil

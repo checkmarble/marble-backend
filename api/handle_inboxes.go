@@ -153,19 +153,14 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		var data struct {
-			Name              *string    `json:"name"`
-			EscalationInboxId *uuid.UUID `json:"escalation_inbox_id" binding:"omitempty,uuid"`
-			AutoAssignEnabled *bool      `json:"auto_assign_enabled"`
-		}
+		var data dto.UpdateInboxInput
 		if err := c.ShouldBind(&data); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inbox, err := usecase.UpdateInbox(ctx, getInboxInput.InboxId.Uuid(), data.Name,
-			data.EscalationInboxId, data.AutoAssignEnabled)
+		inbox, err := usecase.UpdateInbox(ctx, getInboxInput.InboxId.Uuid(), dto.AdaptUpdateInboxInput(data))
 		if presentError(ctx, c, err) {
 			return
 		}

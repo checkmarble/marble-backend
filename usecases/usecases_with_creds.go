@@ -402,6 +402,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		ingestedDataReader:      usecases.NewIngestedDataReaderUsecase(),
 		taskQueueRepository:     usecases.Repositories.TaskQueueRepository,
 		featureAccessReader:     usecases.NewFeatureAccessReader(),
+		aiAgentUsecase:          utils.Ptr(usecases.NewAiAgentUsecase()),
 	}
 }
 
@@ -749,6 +750,7 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		usecases.Repositories.BlobRepository,
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewTransactionFactory(),
+		usecases.NewFeatureAccessReader(),
 		usecases.aiAgentConfig,
 		usecases.caseManagerBucketUrl, // TODO: I think we could avoid passing the caseManagerBucketURL here only for the creation of the model
 	)

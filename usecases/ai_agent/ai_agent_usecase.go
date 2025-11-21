@@ -137,6 +137,11 @@ type caseReviewTaskEnqueuer interface {
 	) error
 }
 
+type featureAccessReader interface {
+	GetOrganizationFeatureAccess(ctx context.Context, organizationId string, userId *models.UserId) (
+		models.OrganizationFeatureAccess, error)
+}
+
 type AiAgentUsecase struct {
 	enforceSecurityCase         security.EnforceSecurityCase
 	enforceSecurityOrganization security.EnforceSecurityOrganization
@@ -153,6 +158,7 @@ type AiAgentUsecase struct {
 	caseReviewFileRepository    caseReviewWorkerRepository
 	blobRepository              repositories.BlobRepository
 	caseReviewTaskEnqueuer      caseReviewTaskEnqueuer
+	featureAccessReader         featureAccessReader
 	config                      infra.AIAgentConfiguration
 	caseManagerBucketUrl        string
 
@@ -177,6 +183,7 @@ func NewAiAgentUsecase(
 	blobRepository repositories.BlobRepository,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
 	transactionFactory executor_factory.TransactionFactory,
+	featureAccessReader featureAccessReader,
 	config infra.AIAgentConfiguration,
 	caseManagerBucketUrl string,
 ) AiAgentUsecase {
@@ -196,6 +203,7 @@ func NewAiAgentUsecase(
 		blobRepository:              blobRepository,
 		caseReviewTaskEnqueuer:      caseReviewTaskEnqueuer,
 		transactionFactory:          transactionFactory,
+		featureAccessReader:         featureAccessReader,
 		config:                      config,
 		caseManagerBucketUrl:        caseManagerBucketUrl,
 	}

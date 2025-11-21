@@ -118,30 +118,41 @@ func (repo *MarbleDbRepository) UpdateInbox(
 	ctx context.Context,
 	exec Executor,
 	inboxId uuid.UUID,
-	name *string,
-	escalationInboxId *uuid.UUID,
-	autoAssignEnabled *bool,
+	input models.UpdateInboxInput,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
-	sql := NewQueryBuilder().Update(dbmodels.TABLE_INBOXES).
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_INBOXES).
 		Set("updated_at", squirrel.Expr("NOW()")).
 		Where(squirrel.Eq{"id": inboxId})
 
 	hasUpdates := false
 
-	if name != nil {
-		sql = sql.Set("name", *name)
+	if input.Name != nil {
+		sql = sql.Set("name", *input.Name)
 		hasUpdates = true
 	}
-	if escalationInboxId != nil {
-		sql = sql.Set("escalation_inbox_id", *escalationInboxId)
+	if input.EscalationInboxId != nil {
+		sql = sql.Set("escalation_inbox_id", *input.EscalationInboxId)
 		hasUpdates = true
 	}
-	if autoAssignEnabled != nil {
-		sql = sql.Set("auto_assign_enabled", *autoAssignEnabled)
+	if input.AutoAssignEnabled != nil {
+		sql = sql.Set("auto_assign_enabled", *input.AutoAssignEnabled)
+		hasUpdates = true
+	}
+	if input.CaseReviewManual != nil {
+		sql = sql.Set("case_review_manual", *input.CaseReviewManual)
+		hasUpdates = true
+	}
+	if input.CaseReviewOnCaseCreated != nil {
+		sql = sql.Set("case_review_on_case_created", *input.CaseReviewOnCaseCreated)
+		hasUpdates = true
+	}
+	if input.CaseReviewOnEscalate != nil {
+		sql = sql.Set("case_review_on_escalate", *input.CaseReviewOnEscalate)
 		hasUpdates = true
 	}
 

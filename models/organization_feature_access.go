@@ -16,10 +16,12 @@ type OrganizationFeatureAccess struct {
 	Sanctions       FeatureAccess
 	NameRecognition FeatureAccess
 	CaseAutoAssign  FeatureAccess
+	CaseAiAssist    FeatureAccess
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 
-	// user-scoped, temporarily at least
+	// user-scoped
+	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
 	AiAssist FeatureAccess
 }
 
@@ -29,6 +31,7 @@ type DbStoredOrganizationFeatureAccess struct {
 	TestRun        FeatureAccess
 	Sanctions      FeatureAccess
 	CaseAutoAssign FeatureAccess
+	CaseAiAssist   FeatureAccess
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -37,6 +40,8 @@ type UpdateOrganizationFeatureAccessInput struct {
 	OrganizationId string
 	TestRun        *FeatureAccess
 	Sanctions      *FeatureAccess
+	CaseAiAssist   *FeatureAccess
+	CaseAutoAssign *FeatureAccess
 }
 
 type FeaturesConfiguration struct {
@@ -58,6 +63,7 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 		Sanctions:       f.Sanctions,
 		NameRecognition: f.Sanctions,
 		CaseAutoAssign:  f.CaseAutoAssign,
+		CaseAiAssist:    f.CaseAiAssist,
 		CreatedAt:       f.CreatedAt,
 		UpdatedAt:       f.UpdatedAt,
 	}
@@ -89,6 +95,9 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	}
 	if !l.CaseAutoAssign {
 		o.CaseAutoAssign = Restricted
+	}
+	if !l.CaseAiAssist {
+		o.CaseAiAssist = Restricted
 	}
 
 	// remove the feature accesses that are not allowed by the configuration
