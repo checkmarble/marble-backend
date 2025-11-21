@@ -290,7 +290,7 @@ func AnalyticsCopyCaseEvents(ctx context.Context, exec AnalyticsExecutor, req An
 	// completely skip the last group, which will be picked up by the next
 	// iteration.
 	cte := WithCtesRaw("q", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
-		q := b.Select(
+		q1 := b.Select(
 			"ce.id",
 			"ce.org_id",
 			"d.scenario_id",
@@ -300,6 +300,7 @@ func AnalyticsCopyCaseEvents(ctx context.Context, exec AnalyticsExecutor, req An
 			"ce.created_at as created_at",
 			"d.trigger_object_type",
 			"row_number() over (partition by ce.case_id order by ce.created_at desc) rnk",
+			"dense_rank() over (order by ce.created_at, ce.id) as deduplicate",
 		).
 			From(dbmodels.TABLE_CASE_EVENTS+" ce").
 			InnerJoin(dbmodels.TABLE_CASES+" c on c.id = ce.case_id").
@@ -314,11 +315,13 @@ func AnalyticsCopyCaseEvents(ctx context.Context, exec AnalyticsExecutor, req An
 			Limit(uint64(req.Limit))
 
 		if req.Watermark != nil {
-			q = q.Where("(ce.created_at, ce.id) > (?::timestamp with time zone, ?)",
+			q1 = q1.Where("(ce.created_at, ce.id) > (?::timestamp with time zone, ?)",
 				req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
 		}
 
-		return q
+		return b.
+			Select("*", "max(deduplicate) over() as max_deduplicate").
+			FromSelect(q1, "i")
 	})
 
 	inner := squirrel.
@@ -337,7 +340,7 @@ func AnalyticsCopyCaseEvents(ctx context.Context, exec AnalyticsExecutor, req An
 		From("q").
 		PrefixExpr(cte).
 		InnerJoin(dbmodels.TABLE_DECISIONS + " d on d.case_id = q.case_id").
-		Where("q.rnk = 1")
+		Where("q.rnk = 1 and deduplicate < max_deduplicate")
 
 	for _, f := range req.TriggerObjectFields {
 		inner = analyticsAddTriggerObjectField(inner, f, false)
