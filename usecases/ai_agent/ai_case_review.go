@@ -1051,17 +1051,11 @@ func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(
 }
 
 func (uc *AiAgentUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error) {
-	// Add check on license here (is not yet handled in license)
-
-	// Check if the organization has AI case review enabled, fetch the organization and check the flag
-	org, err := uc.repository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId)
+	featureAccess, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
 	if err != nil {
 		return false, err
 	}
-	if !org.AiCaseReviewEnabled {
-		return false, nil
-	}
-	return true, nil
+	return featureAccess.CaseAiAssist.IsAllowed(), nil
 }
 
 var templateFuncMap = template.FuncMap{
