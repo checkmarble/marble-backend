@@ -21,6 +21,7 @@ type LicenseEntitlements struct {
 	TestRun        bool `json:"test_run"`
 	Sanctions      bool `json:"sanctions"`
 	CaseAutoAssign bool `json:"auto_assignment"` //nolint:tagliatelle
+	CaseAiAssist   bool `json:"case_ai_assist"`
 }
 
 func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) LicenseEntitlements {
@@ -35,6 +36,7 @@ func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) Li
 		TestRun:        licenseEntitlements.TestRun,
 		Sanctions:      licenseEntitlements.Sanctions,
 		CaseAutoAssign: licenseEntitlements.CaseAutoAssign,
+		CaseAiAssist:   licenseEntitlements.CaseAiAssist,
 	}
 }
 
