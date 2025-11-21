@@ -92,6 +92,16 @@ func (w *DoScreeningWorker) Timeout(job *river.Job[models.ContinuousScreeningDoS
 	return 10 * time.Second
 }
 
+// Work executes the continuous screening process for a specific monitored object.
+// The flow consists of the following steps:
+//  1. Retrieve the monitored object details from the client's database which contains the object ID and the screening configuration ID.
+//  2. Fetch the associated continuous screening configuration.
+//  3. Determine the data model table and field mapping for the object type for opensanction query.
+//  4. Fetch the actual ingested object data from the client's database.
+//  5. Perform the screening against the configured watchlist/rules.
+//  6. If the trigger is an object update, check if the screening results (matches) have changed compared to the latest in review and attached with a case screening result.
+//     If unchanged, case creation is skipped to avoid redundant case creation.
+//  7. Persist the screening results and, if applicable (and not skipped), handle case creation within a transaction.
 func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.ContinuousScreeningDoScreeningArgs]) error {
 	exec := w.executorFactory.NewExecutor()
 	clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, job.Args.OrgId)
@@ -207,7 +217,8 @@ func areScreeningMatchesEqual(
 	return true
 }
 
-// Get the latest in review screening result for the object and compare it with the new screening result
+// Get the latest in review screening result attached to a case for the object
+// and compare it with the new screening result
 func (w *DoScreeningWorker) isScreeningResultUnchanged(
 	ctx context.Context,
 	exec repositories.Executor,
