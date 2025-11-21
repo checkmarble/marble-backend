@@ -176,3 +176,19 @@ func (usecase *UserUseCase) GetUser(ctx context.Context, userID string) (models.
 
 	return user, nil
 }
+
+func (usecase *UserUseCase) GetUserByEmail(ctx context.Context, email string) (models.User, error) {
+	user, err := usecase.userRepository.UserByEmail(ctx, usecase.executorFactory.NewExecutor(), email)
+	if err != nil {
+		return models.User{}, err
+	}
+	if user == nil {
+		return models.User{}, errors.Wrap(models.NotFoundError, "no user found with this email")
+	}
+
+	if err := usecase.enforceUserSecurity.ReadUser(*user); err != nil {
+		return models.User{}, err
+	}
+
+	return *user, nil
+}

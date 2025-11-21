@@ -474,7 +474,7 @@ func handlePostCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cs, err := usecase.CreateCaseFiles(ctx, models.CreateCaseFilesInput{
+		cs, _, err := usecase.CreateCaseFiles(ctx, models.CreateCaseFilesInput{
 			CaseId: caseInput.Id,
 			Files:  form.Files,
 		})

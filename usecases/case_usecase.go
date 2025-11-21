@@ -57,7 +57,7 @@ type CaseUseCaseRepository interface {
 	SoftDeleteCaseTag(ctx context.Context, exec repositories.Executor, tagId string) error
 
 	CreateDbCaseFile(ctx context.Context, exec repositories.Executor,
-		createCaseFileInput models.CreateDbCaseFileInput) error
+		createCaseFileInput models.CreateDbCaseFileInput) (models.CaseFile, error)
 	GetCaseFileById(ctx context.Context, exec repositories.Executor, caseFileId string) (models.CaseFile, error)
 	GetCasesFileByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseFile, error)
 
@@ -454,6 +454,51 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 	return c, nil
 }
 
+func (usecase *CaseUseCase) CreateCaseAsApiClient(
+	ctx context.Context,
+	orgId string,
+	createCaseAttributes models.CreateCaseAttributes,
+) (models.Case, error) {
+	webhookEventId := uuid.NewString()
+	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
+		func(tx repositories.Transaction) (models.Case, error) {
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, orgId)
+			if err != nil {
+				return models.Case{}, err
+			}
+			if err := usecase.enforceSecurity.CreateCase(createCaseAttributes, availableInboxIds); err != nil {
+				return models.Case{}, err
+			}
+
+			newCase, err := usecase.CreateCase(ctx, tx, "", createCaseAttributes, false)
+			if err != nil {
+				return models.Case{}, err
+			}
+
+			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId,
+				OrganizationId: newCase.OrganizationId,
+				EventContent:   models.NewWebhookEventCaseCreatedManually(newCase.GetMetadata()),
+			})
+			if err != nil {
+				return models.Case{}, err
+			}
+
+			return newCase, nil
+		})
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
+
+	tracking.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{
+		"case_id": c.Id,
+	})
+
+	return c, nil
+}
+
 func (usecase *CaseUseCase) UpdateCase(
 	ctx context.Context,
 	userId string,
@@ -485,8 +530,9 @@ func (usecase *CaseUseCase) UpdateCase(
 			// access check on the case's new requested inbox
 			if _, err := usecase.inboxReader.GetInboxById(ctx,
 				*updateCaseAttributes.InboxId); err != nil {
-				return models.Case{}, errors.Wrap(err,
-					fmt.Sprintf("User does not have access the new inbox %s", updateCaseAttributes.InboxId))
+				return models.Case{}, errors.WithDetail(errors.Wrap(err,
+					fmt.Sprintf("User does not have access the new inbox %s", updateCaseAttributes.InboxId)),
+					"assigned user does not have access to the target inbox")
 			}
 		}
 		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
@@ -1129,17 +1175,17 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 
 	for _, decision := range decisions {
 		if decision.OrganizationId.String() != orgId {
-			return errors.Wrap(models.ForbiddenError, "provided decision does not belong to the organization")
+			return errors.WithDetail(errors.Wrap(models.ForbiddenError, "provided decision does not belong to the organization"), "some of the provided decisions do not exist")
 		}
 
 		if decision.Case != nil && decision.Case.Id != "" {
-			return fmt.Errorf("decision %s already belongs to a case %s %w",
-				decision.DecisionId, (*decision.Case).Id, models.BadParameterError)
+			return errors.WithDetailf(errors.Wrapf(models.BadParameterError, "decision %s already belongs to a case %s",
+				decision.DecisionId, (*decision.Case).Id), "provided decision '%s' is already assigned to a case", decision.DecisionId)
 		}
 	}
 
 	if len(decisionIds) != len(decisions) {
-		return errors.Wrap(models.NotFoundError, "unknown decision")
+		return errors.WithDetail(errors.Wrap(models.NotFoundError, "unknown decision"), "some of the provided decisions do not exist")
 	}
 
 	return nil
@@ -1268,32 +1314,32 @@ func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttrib
 	}
 }
 
-func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.CreateCaseFilesInput) (models.Case, error) {
+func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.CreateCaseFilesInput) (models.Case, []models.CaseFile, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	creds, found := utils.CredentialsFromCtx(ctx)
 	if !found {
-		return models.Case{}, errors.New("no credentials in context")
+		return models.Case{}, nil, errors.New("no credentials in context")
 	}
 	userId := string(creds.ActorIdentity.UserId)
 
 	for _, fileHeader := range input.Files {
 		if err := validateFileType(fileHeader); err != nil {
-			return models.Case{}, err
+			return models.Case{}, nil, err
 		}
 	}
 
 	// permissions check
 	c, err := usecase.repository.GetCaseById(ctx, exec, input.CaseId)
 	if err != nil {
-		return models.Case{}, err
+		return models.Case{}, nil, err
 	}
 	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
-		return models.Case{}, err
+		return models.Case{}, nil, err
 	}
 	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
-		return models.Case{}, err
+		return models.Case{}, nil, err
 	}
 
 	type uploadedFileMetadata struct {
@@ -1323,16 +1369,18 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 					"error", deleteErr)
 			}
 		}
-		return models.Case{}, err
+		return models.Case{}, nil, err
 	}
+
+	caseFiles := make([]models.CaseFile, len(input.Files))
 
 	webhookEventId := uuid.NewString()
 	err = usecase.transactionFactory.Transaction(ctx, func(
 		tx repositories.Transaction,
 	) error {
-		for _, uploadedFile := range uploadedFilesMetadata {
+		for idx, uploadedFile := range uploadedFilesMetadata {
 			newCaseFileId := uuid.NewString()
-			if err := usecase.repository.CreateDbCaseFile(
+			caseFile, err := usecase.repository.CreateDbCaseFile(
 				ctx,
 				tx,
 				models.CreateDbCaseFileInput{
@@ -1342,9 +1390,12 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 					FileName:      uploadedFile.fileName,
 					FileReference: uploadedFile.fileReference,
 				},
-			); err != nil {
+			)
+			if err != nil {
 				return err
 			}
+
+			caseFiles[idx] = caseFile
 
 			resourceType := models.CaseFileResourceType
 			err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
@@ -1377,7 +1428,7 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 		return nil
 	})
 	if err != nil {
-		return models.Case{}, err
+		return models.Case{}, nil, err
 	}
 
 	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
@@ -1388,7 +1439,12 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 		})
 	}
 
-	return usecase.getCaseWithDetails(ctx, exec, input.CaseId)
+	caseDetails, err := usecase.getCaseWithDetails(ctx, exec, input.CaseId)
+	if err != nil {
+		return models.Case{}, nil, err
+	}
+
+	return caseDetails, caseFiles, nil
 }
 
 func (usecase *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Transaction,
@@ -1414,7 +1470,7 @@ func (usecase *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx reposi
 	for _, file := range files {
 		newFileUuid := uuid.NewString()
 
-		err := usecase.repository.CreateDbCaseFile(ctx, tx, models.CreateDbCaseFileInput{
+		_, err := usecase.repository.CreateDbCaseFile(ctx, tx, models.CreateDbCaseFileInput{
 			Id:            newFileUuid,
 			BucketName:    usecase.caseManagerBucketUrl,
 			CaseId:        *annotationReq.CaseId,
@@ -1739,7 +1795,7 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 		return err
 	}
 	if c.Status == models.CaseClosed {
-		return errors.New("case is already closed, cannot escalate")
+		return errors.WithDetail(errors.Wrap(models.UnprocessableEntityError, "case is already closed, cannot escalate"), "case is already closed, cannot escalate")
 	}
 
 	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
@@ -1755,7 +1811,8 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 		return errors.Wrap(err, "could not read source inbox")
 	}
 	if sourceInbox.EscalationInboxId == nil {
-		return errors.Wrap(models.UnprocessableEntityError,
+		return errors.WithDetail(errors.Wrap(models.UnprocessableEntityError,
+			"the source inbox does not have escalation configured"),
 			"the source inbox does not have escalation configured")
 	}
 
@@ -1766,7 +1823,7 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 		return errors.Wrap(err, "could not read target inbox")
 	}
 	if targetInbox.Status != models.InboxStatusActive {
-		return errors.Wrap(models.UnprocessableEntityError, "target inbox is inactive")
+		return errors.WithDetail(errors.Wrap(models.UnprocessableEntityError, "target inbox is inactive"), "target inbox is inactive")
 	}
 
 	var userId *string
