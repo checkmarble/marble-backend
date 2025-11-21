@@ -61,10 +61,14 @@ type continuousScreeningUsecase interface {
 	GetIngestedObject(ctx context.Context, clientDbExec repositories.Executor, table models.Table,
 		objectId string,
 	) (models.DataModelObject, uuid.UUID, error)
-
-	DoScreening(ctx context.Context, ingestedObject models.DataModelObject,
+	DoScreening(
+		ctx context.Context,
+		exec repositories.Executor,
+		ingestedObject models.DataModelObject,
 		mapping models.ContinuousScreeningDataModelMapping,
 		config models.ContinuousScreeningConfig,
+		objectType string,
+		objectId string,
 	) (models.ScreeningWithMatches, error)
 	HandleCaseCreation(ctx context.Context, tx repositories.Transaction,
 		config models.ContinuousScreeningConfig, objectId string,
@@ -182,7 +186,15 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 	}
 
 	// Do the screening
-	screeningWithMatches, err := w.usecase.DoScreening(ctx, ingestedObject, mapping, config)
+	screeningWithMatches, err := w.usecase.DoScreening(
+		ctx,
+		exec,
+		ingestedObject,
+		mapping,
+		config,
+		job.Args.ObjectType,
+		monitoredObject.ObjectId,
+	)
 	if err != nil {
 		return err
 	}

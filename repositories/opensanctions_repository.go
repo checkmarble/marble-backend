@@ -21,10 +21,11 @@ import (
 )
 
 const (
-	OPEN_SANCTIONS_DEFAULT_INDEX_URL    = "https://data.opensanctions.org/datasets/latest/default/index.json"
-	OPEN_SANCTIONS_INDEX_URL            = "https://data.opensanctions.org/datasets/latest/index.json"
-	OPEN_SANCTIONS_CATALOG_CACHE_KEY    = "catalog"
-	OPEN_SANCTIONS_ALGORITHMS_CACHE_KEY = "algorithms"
+	OPEN_SANCTIONS_DEFAULT_INDEX_URL      = "https://data.opensanctions.org/datasets/latest/default/index.json"
+	OPEN_SANCTIONS_INDEX_URL              = "https://data.opensanctions.org/datasets/latest/index.json"
+	OPEN_SANCTIONS_CATALOG_CACHE_KEY      = "catalog"
+	OPEN_SANCTIONS_ALGORITHMS_CACHE_KEY   = "algorithms"
+	OPEN_SANCTIONS_MAX_EXCLUDE_ENTITY_IDS = 50
 )
 
 var (
@@ -251,7 +252,8 @@ func (repo OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.O
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return models.OpenSanctionAlgorithms{}, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return models.OpenSanctionAlgorithms{},
+			fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 	var algorithms httpmodels.HTTPOpenSanctionsAlgorithms
 	if err := json.NewDecoder(resp.Body).Decode(&algorithms); err != nil {
@@ -426,6 +428,21 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg *models.ScreeningConfig
 		qs.Set("cutoff", fmt.Sprintf("%.2f", float64(query.OrgConfig.MatchThreshold)/100))
 
 		qs.Set("limit", fmt.Sprintf("%d", query.OrgConfig.MatchLimit+query.LimitIncrease))
+
+		// cf: `exclude_entity_ids` in the OpenSanctions query
+		// cf: https://api.opensanctions.org/#tag/Matching/operation/match_match__dataset__post
+		// exclude_entity_ids is a global filter that is applied to all queries and the list is limited to 50 elements.
+		// For our use, we think this is enough, in case we need to add more, we need to think about how to handle it.
+		if len(query.WhitelistedEntityIds) > 0 {
+			excludeEntityIds := make([]string, 0, OPEN_SANCTIONS_MAX_EXCLUDE_ENTITY_IDS)
+			for i, entityId := range query.WhitelistedEntityIds {
+				if i >= OPEN_SANCTIONS_MAX_EXCLUDE_ENTITY_IDS {
+					break
+				}
+				excludeEntityIds = append(excludeEntityIds, entityId)
+			}
+			qs["exclude_entity_ids"] = excludeEntityIds
+		}
 	}
 
 	return qs
