@@ -68,7 +68,7 @@ func InitDependencies(
 			return dependencies{}, err
 		}
 
-		idpTokenVerifier = idp.NewOidcClient(oidcConfig.Provider, oidcConfig.Issuer, oidcConfig.Verifier)
+		idpTokenVerifier = idp.NewOidcClient(oidcConfig, oidcConfig.Provider, oidcConfig.Issuer, oidcConfig.Verifier)
 		tokenIssuer = idpTokenVerifier.Issuer()
 	}
 
