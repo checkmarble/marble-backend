@@ -8,10 +8,9 @@ import (
 )
 
 func TestSingleCte(t *testing.T) {
-	ctes :=
-		WithCtes("a", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
-			return b.Select("1")
-		})
+	ctes := WithCtes("a", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+		return b.Select("1")
+	})
 
 	q := NewQueryBuilder().
 		Select("2").
@@ -23,13 +22,12 @@ func TestSingleCte(t *testing.T) {
 }
 
 func TestMultipleCtes(t *testing.T) {
-	ctes :=
-		WithCtes("a", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
-			return b.Select("1")
-		}).
-			With("b", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
-				return b.Select("2")
-			})
+	ctes := WithCtes("a", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+		return b.Select("1")
+	}).
+		With("b", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+			return b.Select("2")
+		})
 
 	q := NewQueryBuilder().
 		Select("3").
