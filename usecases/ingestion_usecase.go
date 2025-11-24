@@ -109,10 +109,9 @@ func (usecase *IngestionUseCase) IngestObject(
 		return 0, errors.WithDetail(err, "error parsing payload in decision usecase validate payload")
 	}
 
-	var nb int
 	var insertedObjectIds []string
 	err = retryIngestion(ctx, func() error {
-		nb, insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, []models.ClientObject{payload}, table)
+		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, []models.ClientObject{payload}, table)
 		return err
 	})
 	if err != nil {
@@ -126,11 +125,12 @@ func (usecase *IngestionUseCase) IngestObject(
 		}
 		return 0, err
 	}
+	nbInsertedObjects := len(insertedObjectIds)
 
-	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nb),
+	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
 		slog.String("organization_id", organizationId),
 		slog.String("object_type", objectType),
-		slog.Int("nb_objects", nb),
+		slog.Int("nb_objects", nbInsertedObjects),
 	)
 
 	if err := usecase.checkAndEnqueueMonitoredObjects(
@@ -149,7 +149,7 @@ func (usecase *IngestionUseCase) IngestObject(
 		)
 	}
 
-	return nb, nil
+	return nbInsertedObjects, nil
 }
 
 func (usecase *IngestionUseCase) IngestObjects(
@@ -224,20 +224,20 @@ func (usecase *IngestionUseCase) IngestObjects(
 		return 0, validationErrorsGroup
 	}
 
-	var nb int
 	var insertedObjectIds []string
 	err = retryIngestion(ctx, func() error {
-		nb, insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
 		return err
 	})
 	if err != nil {
 		return 0, err
 	}
+	nbInsertedObjects := len(insertedObjectIds)
 
-	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nb),
+	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
 		slog.String("organization_id", organizationId),
 		slog.String("object_type", objectType),
-		slog.Int("nb_objects", nb),
+		slog.Int("nb_objects", nbInsertedObjects),
 	)
 
 	if err := usecase.checkAndEnqueueMonitoredObjects(
@@ -256,7 +256,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 		)
 	}
 
-	return nb, nil
+	return nbInsertedObjects, nil
 }
 
 func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context,
@@ -623,10 +623,9 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 			clientObjects = append(clientObjects, clientObject)
 		}
 
-		var nb int
 		var insertedObjectIds []string
 		if err := retryIngestion(ctx, func() error {
-			nb, insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+			insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
 			return err
 		}); err != nil {
 			return ingestionResult{
@@ -634,6 +633,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 				err:             err,
 			}
 		}
+		nbInsertedObjects := len(insertedObjectIds)
 
 		if err := usecase.checkAndEnqueueMonitoredObjects(
 			ctx,
@@ -650,7 +650,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 				slog.String("object_type", table.Name),
 			)
 		}
-		total += nb
+		total += nbInsertedObjects
 	}
 
 	return ingestionResult{
@@ -753,18 +753,17 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	organizationId string,
 	payloads []models.ClientObject,
 	table models.Table,
-) (int, []string, error) {
+) ([]string, error) {
 	start := time.Now()
 
-	var nb int
 	var insertedObjectIds []string
 	var err error
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
-		nb, insertedObjectIds, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
+		insertedObjectIds, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
 		return err
 	})
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	utils.MetricIngestionCount.
@@ -795,7 +794,7 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 		}
 	}()
 
-	return nb, insertedObjectIds, nil
+	return insertedObjectIds, nil
 }
 
 func buildEnumValuesContainersFromTable(table models.Table) models.EnumValues {

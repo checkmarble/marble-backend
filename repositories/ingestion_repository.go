@@ -19,7 +19,7 @@ type IngestionRepository interface {
 		tx Transaction,
 		payloads []models.ClientObject,
 		table models.Table,
-	) (int, []string, error)
+	) ([]string, error)
 }
 
 type IngestionRepositoryImpl struct{}
@@ -33,9 +33,9 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 	tx Transaction,
 	payloads []models.ClientObject,
 	table models.Table,
-) (int, []string, error) {
+) ([]string, error) {
 	if err := validateClientDbExecutor(tx); err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	mostRecentObjectIds, mostRecentPayloads := mostRecentPayloadsByObjectId(payloads)
@@ -44,7 +44,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, tx,
 		mostRecentObjectIds, table, fieldsToLoad)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	payloadsToInsert, obsoleteIngestedObjectIds, validationErrors := compareAndMergePayloadsWithIngestedObjects(
@@ -52,7 +52,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 		previouslyIngestedObjects,
 	)
 	if len(validationErrors) > 0 {
-		return 0, nil, errors.Join(models.BadParameterError, validationErrors)
+		return nil, errors.Join(models.BadParameterError, validationErrors)
 	}
 
 	if len(obsoleteIngestedObjectIds) > 0 {
@@ -63,13 +63,13 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 			obsoleteIngestedObjectIds,
 		)
 		if err != nil {
-			return 0, nil, err
+			return nil, err
 		}
 	}
 
 	if len(payloadsToInsert) > 0 {
 		if err := repo.batchInsertPayloads(ctx, tx, payloadsToInsert, table); err != nil {
-			return 0, nil, err
+			return nil, err
 		}
 	}
 
@@ -80,7 +80,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 		payloadsInsertedObjectId = append(payloadsInsertedObjectId, objectId)
 	}
 
-	return len(payloadsToInsert), payloadsInsertedObjectId, nil
+	return payloadsInsertedObjectId, nil
 }
 
 // Try to only load the fields that are actually missing from the payloads (in the case of a partial update).
