@@ -7,6 +7,8 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
@@ -44,6 +46,13 @@ type clientDbRepository interface {
 		objectType string,
 		monitoringId uuid.UUID,
 	) (models.ContinuousScreeningMonitoredObject, error)
+
+	ListMonitoredObjectsByObjectIds(
+		ctx context.Context,
+		exec repositories.Executor,
+		objectType string,
+		objectIds []string,
+	) ([]models.ContinuousScreeningMonitoredObject, error)
 }
 
 type continuousScreeningUsecase interface {
@@ -53,6 +62,7 @@ type continuousScreeningUsecase interface {
 	GetIngestedObject(ctx context.Context, clientDbExec repositories.Executor, table models.Table,
 		objectId string,
 	) (models.DataModelObject, uuid.UUID, error)
+
 	DoScreening(ctx context.Context, ingestedObject models.DataModelObject,
 		mapping models.ContinuousScreeningDataModelMapping,
 		config models.ContinuousScreeningConfig,
@@ -62,6 +72,7 @@ type continuousScreeningUsecase interface {
 		continuousScreeningWithMatches models.ContinuousScreeningWithMatches) error
 }
 
+// Worker to do the screening for a specific monitored object
 type DoScreeningWorker struct {
 	river.WorkerDefaults[models.ContinuousScreeningDoScreeningArgs]
 	executorFactory    executor_factory.ExecutorFactory
@@ -98,12 +109,15 @@ func (w *DoScreeningWorker) Timeout(job *river.Job[models.ContinuousScreeningDoS
 //  2. Fetch the associated continuous screening configuration.
 //  3. Determine the data model table and field mapping for the object type for opensanction query.
 //  4. Fetch the actual ingested object data from the client's database.
-//  5. Perform the screening against the configured watchlist/rules.
-//  6. If the trigger is an object update, check if the screening results (matches) have changed compared to the latest in review and attached with a case screening result.
+//  5. Fetch the latest screening result for the object and check if the existing screening is more recent than the ingested object's valid_from timestamp.
+//     If so, skip screening to avoid redundant screening on unchanged data.
+//  6. Perform the screening against the configured watchlist/rules.
+//  7. If the trigger is an object update, check if the screening results (matches) have changed compared to the latest in review and attached with a case screening result.
 //     If unchanged, case creation is skipped to avoid redundant case creation.
-//  7. Persist the screening results and, if applicable (and not skipped), handle case creation within a transaction.
+//  8. Persist the screening results and, if applicable (and not skipped), handle case creation within a transaction.
 func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.ContinuousScreeningDoScreeningArgs]) error {
 	exec := w.executorFactory.NewExecutor()
+	logger := utils.LoggerFromContext(ctx)
 	clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, job.Args.OrgId)
 	if err != nil {
 		return err
@@ -139,6 +153,34 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 		return err
 	}
 
+	// Fetch the latest screening result for the object
+	existingScreeningWithMatches, err := w.repo.GetContinuousScreeningByObjectId(
+		ctx,
+		exec,
+		monitoredObject.ObjectId,
+		job.Args.ObjectType,
+		config.OrgId,
+	)
+	if err != nil {
+		return err
+	}
+
+	if existingScreeningWithMatches != nil {
+		ingestedObjectValidFrom, ok := ingestedObject.Metadata["valid_from"].(time.Time)
+		if !ok {
+			return errors.New("valid_from not found in ingested object metadata")
+		}
+		if existingScreeningWithMatches.CreatedAt.After(ingestedObjectValidFrom) {
+			logger.InfoContext(ctx, "Continuous Screening - ingested object valid from is before the latest continuous screening result, skipping screening",
+				"object_id", monitoredObject.ObjectId,
+				"object_type", job.Args.ObjectType,
+				"org_id", config.OrgId,
+				"ingested_object_valid_from", ingestedObjectValidFrom,
+				"screening_creation_date", existingScreeningWithMatches.CreatedAt)
+			return nil
+		}
+	}
+
 	// Do the screening
 	screeningWithMatches, err := w.usecase.DoScreening(ctx, ingestedObject, mapping, config)
 	if err != nil {
@@ -148,17 +190,7 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 	skipCaseCreation := false
 	// Only in case of Object updated by the user, check if the screening result is the same as the existing one (if exists)
 	if job.Args.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated {
-		skipCaseCreation, err = w.isScreeningResultUnchanged(
-			ctx,
-			exec,
-			screeningWithMatches,
-			monitoredObject.ObjectId,
-			job.Args.ObjectType,
-			config.OrgId,
-		)
-		if err != nil {
-			return err
-		}
+		skipCaseCreation = areScreeningMatchesEqual(*existingScreeningWithMatches, screeningWithMatches)
 	}
 
 	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
@@ -217,32 +249,88 @@ func areScreeningMatchesEqual(
 	return true
 }
 
-// Get the latest in review screening result attached to a case for the object
-// and compare it with the new screening result
-func (w *DoScreeningWorker) isScreeningResultUnchanged(
-	ctx context.Context,
-	exec repositories.Executor,
-	newScreeningWithMatches models.ScreeningWithMatches,
-	objectId string,
-	objectType string,
-	orgId uuid.UUID,
-) (bool, error) {
-	existingScreeningWithMatches, err := w.repo.GetContinuousScreeningByObjectId(
-		ctx,
-		exec,
-		objectId,
-		objectType,
-		orgId,
-	)
-	if err != nil {
-		return false, err
-	}
+// Worker to check if the object needs to be screened
+type taskEnqueuer interface {
+	EnqueueContinuousScreeningDoScreeningTaskMany(
+		ctx context.Context,
+		tx repositories.Transaction,
+		orgId string,
+		objectType string,
+		monitoringIds []uuid.UUID,
+		triggerType models.ContinuousScreeningTriggerType,
+	) error
+}
 
-	if existingScreeningWithMatches != nil {
-		return areScreeningMatchesEqual(
-			*existingScreeningWithMatches,
-			newScreeningWithMatches,
-		), nil
+type EvaluateNeedTaskWorker struct {
+	river.WorkerDefaults[models.ContinuousScreeningEvaluateNeedArgs]
+	executorFactory    executor_factory.ExecutorFactory
+	transactionFactory executor_factory.TransactionFactory
+
+	clientDbRepo clientDbRepository
+	taskEnqueuer taskEnqueuer
+}
+
+func NewEvaluateNeedTaskWorker(
+	executorFactory executor_factory.ExecutorFactory,
+	transactionFactory executor_factory.TransactionFactory,
+	clientDbRepo clientDbRepository,
+	taskEnqueuer taskEnqueuer,
+) *EvaluateNeedTaskWorker {
+	return &EvaluateNeedTaskWorker{
+		executorFactory:    executorFactory,
+		transactionFactory: transactionFactory,
+		clientDbRepo:       clientDbRepo,
+		taskEnqueuer:       taskEnqueuer,
 	}
-	return false, nil
+}
+
+func (w *EvaluateNeedTaskWorker) Timeout(job *river.Job[models.ContinuousScreeningEvaluateNeedArgs]) time.Duration {
+	return 10 * time.Second
+}
+
+// Job to check if the objects need to be screened based on the list of monitored objects
+// The screening is done by the DoScreeningWorker called by the task enqueuer at the end of the job
+func (w *EvaluateNeedTaskWorker) Work(
+	ctx context.Context,
+	job *river.Job[models.ContinuousScreeningEvaluateNeedArgs],
+) error {
+	// Check if the inserted objects are in the continuous screening list
+	if len(job.Args.ObjectIds) > 0 {
+		clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, job.Args.OrgId)
+		if err != nil {
+			return err
+		}
+
+		monitoredObjects, err := w.clientDbRepo.ListMonitoredObjectsByObjectIds(
+			ctx,
+			clientDbExec,
+			job.Args.ObjectType,
+			job.Args.ObjectIds,
+		)
+		if err != nil {
+			return err
+		}
+
+		if len(monitoredObjects) == 0 {
+			// No monitored objects found, no need to enqueue the task
+			return nil
+		}
+
+		monitoringIds := make([]uuid.UUID, len(monitoredObjects))
+		for i, monitoredObject := range monitoredObjects {
+			monitoringIds[i] = monitoredObject.Id
+		}
+
+		return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			return w.taskEnqueuer.EnqueueContinuousScreeningDoScreeningTaskMany(
+				ctx,
+				tx,
+				job.Args.OrgId,
+				job.Args.ObjectType,
+				monitoringIds,
+				models.ContinuousScreeningTriggerTypeObjectUpdated,
+			)
+		})
+	}
+	return nil
 }

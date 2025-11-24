@@ -111,3 +111,14 @@ func (m *TaskQueueRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 	args := m.Called(ctx, tx, orgId, objectType, monitoringIds, triggerType)
 	return args.Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueContinuousScreeningEvaluateNeedTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	orgId string,
+	objectType string,
+	objectIds []string,
+) error {
+	args := m.Called(ctx, tx, orgId, objectType, objectIds)
+	return args.Error(0)
+}

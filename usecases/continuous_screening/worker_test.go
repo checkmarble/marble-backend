@@ -3,6 +3,7 @@ package continuous_screening
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/riverqueue/river"
 	"github.com/stretchr/testify/mock"
@@ -98,6 +99,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 	ingestedObject := models.DataModelObject{
 		Data: map[string]any{
 			"id": suite.objectId,
+		},
+		Metadata: map[string]any{
+			"valid_from": time.Now(),
 		},
 	}
 
@@ -209,6 +213,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 		Data: map[string]any{
 			"id": suite.objectId,
 		},
+		Metadata: map[string]any{
+			"valid_from": time.Now(),
+		},
 	}
 
 	ingestedObjectInternalId := uuid.New()
@@ -288,6 +295,93 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 	suite.AssertExpectations()
 }
 
+func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScreening_SkipScreening() {
+	// Setup
+	config := models.ContinuousScreeningConfig{
+		Id:          suite.configId,
+		StableId:    suite.configStableId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
+		Name:        "test-config",
+		Description: "test description",
+	}
+
+	monitoredObject := models.ContinuousScreeningMonitoredObject{
+		Id:             uuid.New(),
+		ObjectId:       suite.objectId,
+		ConfigStableId: suite.configStableId,
+	}
+
+	table := models.Table{
+		Name: suite.objectType,
+	}
+
+	mapping := models.ContinuousScreeningDataModelMapping{
+		Entity:     suite.objectType,
+		Properties: map[string]string{},
+	}
+
+	// Ingested object with valid_from timestamp in the past
+	pastTime := time.Now().Add(-2 * time.Hour)
+	ingestedObject := models.DataModelObject{
+		Data: map[string]any{
+			"id": suite.objectId,
+		},
+		Metadata: map[string]any{
+			"valid_from": pastTime,
+		},
+	}
+
+	ingestedObjectInternalId := uuid.New()
+
+	// Existing screening created more recently than the ingested object
+	existingContinuousScreening := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:        uuid.New(),
+			CreatedAt: time.Now(),
+		},
+		Matches: []models.ContinuousScreeningMatch{
+			{
+				OpenSanctionEntityId: "entity1",
+			},
+		},
+	}
+
+	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
+		Args: models.ContinuousScreeningDoScreeningArgs{
+			ObjectType:   suite.objectType,
+			OrgId:        suite.orgId.String(),
+			TriggerType:  models.ContinuousScreeningTriggerTypeObjectUpdated,
+			MonitoringId: suite.monitoringId,
+		},
+	}
+
+	// Setup mocks
+	suite.clientDbRepository.On("GetMonitoredObject", suite.ctx, mock.Anything,
+		suite.objectType, suite.monitoringId).Return(monitoredObject, nil)
+	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
+		suite.configStableId).Return(config, nil)
+	suite.usecase.On("GetDataModelTableAndMapping", suite.ctx, mock.Anything, config,
+		suite.objectType).Return(table, mapping, nil)
+	suite.usecase.On("GetIngestedObject", suite.ctx, mock.Anything, table, suite.objectId).Return(
+		ingestedObject, ingestedObjectInternalId, nil)
+	// Existing screening is more recent than ingested object
+	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
+		suite.objectId, suite.objectType, suite.orgId).Return(&existingContinuousScreening, nil)
+
+	// Execute
+	worker := suite.makeWorker()
+	err := worker.Work(suite.ctx, job)
+
+	// Assert
+	suite.NoError(err)
+	// Verify that DoScreening is NOT called because the ingested object is outdated
+	suite.usecase.AssertNotCalled(suite.T(), "DoScreening")
+	// Verify that InsertContinuousScreening is NOT called
+	suite.repository.AssertNotCalled(suite.T(), "InsertContinuousScreening")
+	suite.AssertExpectations()
+}
+
 func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation() {
 	// Setup
 	config := models.ContinuousScreeningConfig{
@@ -317,6 +411,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 	ingestedObject := models.DataModelObject{
 		Data: map[string]any{
 			"id": suite.objectId,
+		},
+		Metadata: map[string]any{
+			"valid_from": time.Now(),
 		},
 	}
 
@@ -367,12 +464,149 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 		suite.objectType).Return(table, mapping, nil)
 	suite.usecase.On("GetIngestedObject", suite.ctx, mock.Anything, table, suite.objectId).Return(
 		ingestedObject, ingestedObjectInternalId, nil)
+	// For ObjectAdded trigger, there should be no existing screening
+	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
+		suite.objectId, suite.objectType, suite.orgId).Return(
+		(*models.ContinuousScreeningWithMatches)(nil), nil)
 	suite.usecase.On("DoScreening", suite.ctx, ingestedObject, mapping, config).Return(screeningWithMatches, nil)
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
 		screeningWithMatches, config, suite.objectType, suite.objectId, ingestedObjectInternalId,
 		models.ContinuousScreeningTriggerTypeObjectAdded).Return(continuousScreeningWithMatches, nil)
 	suite.usecase.On("HandleCaseCreation", suite.ctx, mock.Anything, config, suite.objectId,
 		continuousScreeningWithMatches).Return(nil)
+
+	// Execute
+	worker := suite.makeWorker()
+	err := worker.Work(suite.ctx, job)
+
+	// Assert
+	suite.NoError(err)
+	suite.AssertExpectations()
+}
+
+// Tests for CheckIfObjectsNeedScreeningWorker
+
+type CheckIfObjectsNeedScreeningWorkerTestSuite struct {
+	suite.Suite
+	clientDbRepository *mocks.ContinuousScreeningClientDbRepository
+	taskQueueRepo      *mocks.TaskQueueRepository
+	executorFactory    executor_factory.ExecutorFactoryStub
+	transactionFactory executor_factory.TransactionFactoryStub
+
+	ctx        context.Context
+	orgId      string
+	objectType string
+}
+
+func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) SetupTest() {
+	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
+	suite.taskQueueRepo = new(mocks.TaskQueueRepository)
+
+	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
+	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
+
+	suite.ctx = context.Background()
+	suite.orgId = "12345678-1234-1234-1234-123456789012"
+	suite.objectType = "transactions"
+}
+
+func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) makeWorker() *EvaluateNeedTaskWorker {
+	return NewEvaluateNeedTaskWorker(
+		suite.executorFactory,
+		suite.transactionFactory,
+		suite.clientDbRepository,
+		suite.taskQueueRepo,
+	)
+}
+
+func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) AssertExpectations() {
+	t := suite.T()
+	suite.clientDbRepository.AssertExpectations(t)
+	suite.taskQueueRepo.AssertExpectations(t)
+}
+
+func TestCheckIfObjectsNeedScreeningWorker(t *testing.T) {
+	suite.Run(t, new(CheckIfObjectsNeedScreeningWorkerTestSuite))
+}
+
+func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) TestWork_NoMonitoredObjects_NoEnqueue() {
+	// Setup
+	objectIds := []string{"object1", "object2"}
+
+	job := &river.Job[models.ContinuousScreeningEvaluateNeedArgs]{
+		Args: models.ContinuousScreeningEvaluateNeedArgs{
+			OrgId:      suite.orgId,
+			ObjectType: suite.objectType,
+			ObjectIds:  objectIds,
+		},
+	}
+
+	// Setup mocks - ListMonitoredObjectsByObjectIds returns empty list
+	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", suite.ctx, mock.Anything,
+		suite.objectType, objectIds).Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+
+	// Execute
+	worker := suite.makeWorker()
+	err := worker.Work(suite.ctx, job)
+
+	// Assert
+	suite.NoError(err)
+	suite.AssertExpectations()
+}
+
+func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) TestWork_WithMonitoredObjects_EnqueueTasks() {
+	// Setup
+	objectIds := []string{"object1", "object2"}
+	monitoringId1 := uuid.New()
+	monitoringId2 := uuid.New()
+
+	monitoredObjects := []models.ContinuousScreeningMonitoredObject{
+		{
+			Id:       monitoringId1,
+			ObjectId: "object1",
+		},
+		{
+			Id:       monitoringId2,
+			ObjectId: "object2",
+		},
+	}
+
+	job := &river.Job[models.ContinuousScreeningEvaluateNeedArgs]{
+		Args: models.ContinuousScreeningEvaluateNeedArgs{
+			OrgId:      suite.orgId,
+			ObjectType: suite.objectType,
+			ObjectIds:  objectIds,
+		},
+	}
+
+	// Setup mocks
+	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", suite.ctx, mock.Anything,
+		suite.objectType, objectIds).Return(monitoredObjects, nil)
+	suite.taskQueueRepo.On("EnqueueContinuousScreeningDoScreeningTaskMany", suite.ctx, mock.Anything,
+		suite.orgId, suite.objectType,
+		[]uuid.UUID{monitoringId1, monitoringId2},
+		models.ContinuousScreeningTriggerTypeObjectUpdated).Return(nil)
+
+	// Execute
+	worker := suite.makeWorker()
+	err := worker.Work(suite.ctx, job)
+
+	// Assert
+	suite.NoError(err)
+	suite.AssertExpectations()
+}
+
+func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) TestWork_EmptyObjectIds_NoEnqueue() {
+	// Setup - empty object IDs
+	objectIds := []string{}
+
+	job := &river.Job[models.ContinuousScreeningEvaluateNeedArgs]{
+		Args: models.ContinuousScreeningEvaluateNeedArgs{
+			OrgId:      suite.orgId,
+			ObjectType: suite.objectType,
+			ObjectIds:  objectIds,
+		},
+	}
 
 	// Execute
 	worker := suite.makeWorker()

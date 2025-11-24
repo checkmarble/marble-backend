@@ -831,3 +831,12 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningDoScreeningWorker() *co
 		usecases.NewContinuousScreeningUsecase(),
 	)
 }
+
+func (usecases *UsecasesWithCreds) NewContinuousScreeningEvaluateNeedWorker() *continuous_screening.EvaluateNeedTaskWorker {
+	return continuous_screening.NewEvaluateNeedTaskWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		&usecases.Repositories.ClientDbRepository,
+		usecases.Repositories.TaskQueueRepository,
+	)
+}

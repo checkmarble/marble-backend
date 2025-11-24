@@ -195,6 +195,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1"}).
 		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
 
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
+		Return(nil)
+
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId := utils.ByteUuid(rowIdStr)
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
@@ -235,6 +239,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1"}).
 		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
+		Return(nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for this object
@@ -277,6 +285,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1"}).
 		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
 
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
+		Return(nil)
+
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for this object
 	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
@@ -309,6 +321,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
+
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
+		Return(nil)
 
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId := utils.ByteUuid(rowIdStr)
@@ -343,6 +359,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1"}).
 		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
+		Return(nil)
 
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId := utils.ByteUuid(rowIdStr)
@@ -382,6 +402,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_withou
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
+		Return(nil)
+
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is a previous version for this object
 	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
@@ -414,6 +438,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_nomin
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1", "2"}).
 		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1", "2"}).
+		Return(nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for these objects
@@ -451,6 +479,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1", "2"}).
 		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1", "2"}).
+		Return(nil)
 
 	rowIdStr1 := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId1 := utils.ByteUuid(rowIdStr1)
@@ -497,6 +529,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1", "2"}).
 		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1", "2"}).
+		Return(nil)
 
 	rowIdStr1 := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId1 := utils.ByteUuid(rowIdStr1)
@@ -564,6 +600,11 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 			return len(ids) == 2 && ((ids[0] == monitoringId1 && ids[1] == monitoringId3) ||
 				(ids[0] == monitoringId3 && ids[1] == monitoringId1))
 		}), models.ContinuousScreeningTriggerTypeObjectUpdated).
+		Return(nil)
+
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "org_id", "transactions",
+		[]string{"1", "2", "3", "4", "5"}).
 		Return(nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")

@@ -83,6 +83,13 @@ type TaskQueueRepository interface {
 		monitoringIds []uuid.UUID,
 		triggerType models.ContinuousScreeningTriggerType,
 	) error
+	EnqueueContinuousScreeningEvaluateNeedTask(
+		ctx context.Context,
+		tx Transaction,
+		orgId string,
+		objectType string,
+		objectIds []string,
+	) error
 }
 
 type riverRepository struct {
@@ -348,12 +355,7 @@ func (r riverRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 	monitoringIds []uuid.UUID,
 	triggerType models.ContinuousScreeningTriggerType,
 ) error {
-	if len(monitoringIds) == 0 {
-		return nil
-	}
-
 	params := make([]river.InsertManyParams, len(monitoringIds))
-
 	for i, monitoringId := range monitoringIds {
 		params[i] = river.InsertManyParams{
 			Args: models.ContinuousScreeningDoScreeningArgs{
@@ -363,23 +365,47 @@ func (r riverRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 				MonitoringId: monitoringId,
 			},
 			InsertOpts: &river.InsertOpts{
-				Queue: orgId,
-				// Low priority to avoid blocking other tasks
-				Priority: 4,
+				Queue:    orgId,
+				Priority: 4, // Low priority to avoid blocking other tasks
 			},
 		}
 	}
 
-	res, err := r.client.InsertManyFastTx(
+	res, err := r.client.InsertManyFastTx(ctx, tx.RawTx(), params)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued continuous screening do screening tasks", "nb_tasks", res)
+	return nil
+}
+
+func (r riverRepository) EnqueueContinuousScreeningEvaluateNeedTask(
+	ctx context.Context,
+	tx Transaction,
+	orgId string,
+	objectType string,
+	objectIds []string,
+) error {
+	res, err := r.client.InsertTx(
 		ctx,
 		tx.RawTx(),
-		params,
+		models.ContinuousScreeningEvaluateNeedArgs{
+			OrgId:      orgId,
+			ObjectType: objectType,
+			ObjectIds:  objectIds,
+		},
+		&river.InsertOpts{
+			Queue:       orgId,
+			ScheduledAt: time.Now().Add(10 * time.Second), // Delay the task to be scheduled after the ingestion
+		},
 	)
 	if err != nil {
 		return err
 	}
 
-	utils.LoggerFromContext(ctx).
-		InfoContext(ctx, fmt.Sprintf("Enqueued %d continuous screening do screening tasks", res))
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued continuous screening check if object needs screening task", "job_id", res.Job.ID)
 	return nil
 }
