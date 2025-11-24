@@ -364,6 +364,8 @@ func (r riverRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 			},
 			InsertOpts: &river.InsertOpts{
 				Queue: orgId,
+				// Low priority to avoid blocking other tasks
+				Priority: 4,
 			},
 		}
 	}
