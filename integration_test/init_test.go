@@ -172,6 +172,7 @@ func TestMain(m *testing.M) {
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(10*time.Second))
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
+	river.AddWorker(workers, adminUc.NewContinuousScreeningEvaluateNeedWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		log.Fatalln("Could not start river client:", err)

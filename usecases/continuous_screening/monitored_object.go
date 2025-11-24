@@ -360,7 +360,7 @@ func (uc *ContinuousScreeningUsecase) GetDataModelTableAndMapping(ctx context.Co
 func (uc *ContinuousScreeningUsecase) GetIngestedObject(ctx context.Context,
 	clientDbExec repositories.Executor, table models.Table, objectId string,
 ) (models.DataModelObject, uuid.UUID, error) {
-	ingestedObjects, err := uc.ingestedDataReader.QueryIngestedObject(ctx, clientDbExec, table, objectId, "id")
+	ingestedObjects, err := uc.ingestedDataReader.QueryIngestedObject(ctx, clientDbExec, table, objectId, "id", "valid_from")
 	if err != nil {
 		return models.DataModelObject{}, uuid.UUID{}, err
 	}
