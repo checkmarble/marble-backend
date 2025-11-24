@@ -99,6 +99,10 @@ paths:
       summary: Create new case
       description: |
         Create a new case.
+
+        This endpoint enforces the following preconditions:
+
+          - All decisions exist and are not already assigned to a case
       requestBody:
         content:
           application/json:
@@ -232,6 +236,8 @@ paths:
       summary: Close case
       description: |
         Close a case with an optional outcome.
+
+        This endpoint is idempotent and will result in a no-op if the case is already closed with the same outcome.
       requestBody:
         content:
           application/json:
@@ -271,6 +277,8 @@ paths:
       summary: Reopen a closed case
       description: |
         Reopen a closed case.
+
+        This endpoint is idempotent and will result in a no-op if the case is still open.
       responses:
         "200":
           description: Case
@@ -299,6 +307,10 @@ paths:
       summary: Escalate case
       description: |
         Escalate a case, moving it to the configured escalation inbox and marking it as waiting for action.
+
+        This endpoint enforces the following preconditions:
+
+          - The source inbox is configured to have an escalation inbox
       responses:
         "200":
           description: Case
@@ -603,12 +615,18 @@ components:
             - feature_not_configured
             - server_error
         messages:
-          description: List of human-readable descriptions for the error
+          description: |
+            List of human-readable descriptions for the error.
+
+            Those messages are subject to change over time, we do not recommend relying on them.
           type: array
           items:
             type: string
         detail:
-          description: Free-form objects providing details on the error
+          description: |
+            Free-form objects providing details on the error
+
+            Those messages are subject to change over time, we do not recommend relying on them.
           type: object
           additionalProperties: true
 
