@@ -378,38 +378,33 @@ func (uc AnalyticsQueryUsecase) CaseStatusByInbox(ctx context.Context,
 		return nil, err
 	}
 
-	cte := repositories.WithCtes("case_statuses", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
-		return b.Select(
-			"i.name as inbox",
-			"c.status",
-			"snoozed_until is not null and snoozed_until > now() and boost = 'unsnoozed' as snoozed",
-		).
-			From(dbmodels.TABLE_CASES+" c").
-			InnerJoin(dbmodels.TABLE_INBOXES+" i on i.id = c.inbox_id").
-			Where("org_id = ?", filters.OrgId).
-			Where(squirrel.Eq{"inbox_id": inboxes}).
-			Where("c.created_at >= (now() - interval '10 days')::date")
-	})
+	sql := `
+		with case_statuses as (
+			select
+				i.id as inbox_id,
+				c.status,
+				snoozed_until is not null and snoozed_until > now() as snoozed
+            from cases c
+            inner join inboxes i on i.id = c.inbox_id
+            where
+            	org_id = $1
+             	and i.id = any($2)
+             	and c.created_at >= (now() - interval '10 days')::date
+        )
+        select
+        	i.name as inbox,
+	        count(*) filter (where snoozed) as snoozed,
+	        count(*) filter (where not snoozed and cs.status = 'pending') as pending,
+	        count(*) filter (where not snoozed and cs.status = 'investigating') as investigating,
+	        count(*) filter (where not snoozed and cs.status = 'closed') as closed
+		from case_statuses cs
+		right join inboxes i on i.id = inbox_id
+		where i.organization_id = $1 and i.id = any($2)
+		group by i.name
+		order by count(*) desc, i.name;
+	`
 
-	query := squirrel.
-		Select(
-			"inbox",
-			"count(*) filter (where snoozed) as snoozed",
-			"count(*) filter (where not snoozed and status = 'pending') as pending",
-			"count(*) filter (where not snoozed and status = 'investigating') as investigating",
-			"count(*) filter (where not snoozed and status = 'closed') as closed",
-		).
-		PrefixExpr(cte).
-		From("case_statuses").
-		GroupBy("inbox").
-		OrderBy("count(*) desc, inbox")
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, err := exec.Query(ctx, sql, filters.OrgId, inboxes)
 	if err != nil {
 		return nil, err
 	}
