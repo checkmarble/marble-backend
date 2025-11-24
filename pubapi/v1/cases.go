@@ -211,8 +211,9 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 }
 
 type UpdateCaseParams struct {
-	Inbox uuid.UUID `json:"inbox"`
-	Name  string    `json:"name"`
+	Inbox   uuid.UUID `json:"inbox"`
+	Name    string    `json:"name"`
+	Outcome string    `json:"outcome" binding:"omitempty,oneof=unset confirmed_risk valuable_alert false_positive"`
 }
 
 func HandleUpdateCase(uc usecases.Usecases) gin.HandlerFunc {
@@ -244,6 +245,9 @@ func HandleUpdateCase(uc usecases.Usecases) gin.HandlerFunc {
 		}
 		if params.Name != "" {
 			req.Name = params.Name
+		}
+		if params.Outcome != "" {
+			req.Outcome = models.CaseOutcome(params.Outcome)
 		}
 
 		cas, err := caseUsecase.UpdateCase(ctx, "", req)

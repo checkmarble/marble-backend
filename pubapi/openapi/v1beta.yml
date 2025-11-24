@@ -89,6 +89,59 @@ paths:
         "400":
           $ref: "#/components/responses/400"
 
+    post:
+      operationId: createCase
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Create new case
+      description: |
+        Create a new case.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - inbox
+                - name
+              properties:
+                inbox:
+                  description: ID of the inbox to create the case in
+                  type: string
+                  format: uuid
+                name:
+                  description: Name of the case
+                  type: string
+                assignee:
+                  description: Email address of the assignee
+                  type: string
+                  format: email
+                decisions:
+                  description: List of decisions to attach to this case
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        "200":
+          description: New case
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/400"
+        "422":
+          $ref: "#/components/responses/422"
+
   /cases/{caseId}:
     get:
       operationId: getCase
@@ -108,7 +161,7 @@ paths:
             format: uuid
       responses:
         "200":
-          description: List of cases
+          description: Case
           content:
             application/json:
               schema:
@@ -120,6 +173,148 @@ paths:
                         $ref: "#/components/schemas/Case"
         "400":
           $ref: "#/components/responses/400"
+
+    patch:
+      operationId: updateCase
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Update case
+      description: |
+        Update a case.
+
+        Some actions will be available through specific endpoints and will not be updateable from here.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                inbox:
+                  description: ID of the inbox to move the case in
+                  type: string
+                  format: uuid
+                name:
+                  description: Name of the case
+                  type: string
+                outcome:
+                  description: Outcome of the case
+                  type: string
+                  enum: [unset confirmed_risk valuable_alert false_positive]
+
+      responses:
+        "200":
+          description: Case
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/400"
+        "422":
+          $ref: "#/components/responses/422"
+
+  /cases/{caseId}/close:
+    post:
+      operationId: closeCase
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Close case
+      description: |
+        Close a case with an optional outcome.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                outcome:
+                  description: Final outcome of the case
+                  type: string
+                  enum: [unset confirmed_risk valuable_alert false_positive]
+                  default: unset
+      responses:
+        "200":
+          description: Case
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/400"
+        "422":
+          $ref: "#/components/responses/422"
+
+  /cases/{caseId}/reopen:
+    post:
+      operationId: reopenCase
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Reopen a closed case
+      description: |
+        Reopen a closed case.
+      responses:
+        "200":
+          description: Case
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/400"
+        "422":
+          $ref: "#/components/responses/422"
+
+  /cases/{caseId}/escalate:
+    post:
+      operationId: escalateCase
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Escalate case
+      description: |
+        Escalate a case, moving it to the configured escalation inbox and marking it as waiting for action.
+      responses:
+        "200":
+          description: Case
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/400"
+        "422":
+          $ref: "#/components/responses/422"
 
   /cases/{caseId}/comments:
     get:
@@ -154,6 +349,36 @@ paths:
         "400":
           $ref: "#/components/responses/400"
 
+    post:
+      operation: createCaseComment
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Create new case comment
+      description: |
+        Write a new comment on the provided case.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                outcome:
+                  description: |
+                    Body of the comment.
+
+                    You can format the comment with markdown markup.
+                  type: string
+      responses:
+        "201":
+          description: Comment created
+        "400":
+          $ref: "#/components/responses/400"
+        "422":
+          $ref: "#/components/responses/422"
+
   /cases/{caseId}/files:
     get:
       operationId: listCaseFiles
@@ -181,6 +406,43 @@ paths:
                           $ref: "#/components/schemas/CaseFile"
         "400":
           $ref: "#/components/responses/400"
+
+    post:
+      operation: uploadCaseFile
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Upload case file
+      description: |
+        Upload a new file and attach it to an existing case.
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  description: File to upload
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: File reference
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CaseFile"
+        "400":
+          $ref: "#/components/responses/400"
+        "422":
+          $ref: "#/components/responses/422"
 
   /cases/{caseId}/files/{fileId}/download:
     get:
