@@ -76,10 +76,11 @@ type ScreeningConfig struct {
 }
 
 type ScreeningConfigPreprocessing struct {
-	UseNer        bool   `json:"use_ner,omitempty"`
-	SkipIfUnder   int    `json:"skip_if_under,omitempty"`
-	RemoveNumbers bool   `json:"remove_numbers,omitempty"`
-	IgnoreListId  string `json:"ignore_list_id,omitempty"`
+	UseNer                  bool   `json:"use_ner,omitempty"`
+	NerIgnoreClassification bool   `json:"ner_ignore_classification,omitempty"`
+	SkipIfUnder             int    `json:"skip_if_under,omitempty"`
+	RemoveNumbers           bool   `json:"remove_numbers,omitempty"`
+	IgnoreListId            string `json:"ignore_list_id,omitempty"`
 }
 
 func (cfg ScreeningConfigPreprocessing) equal(other ScreeningConfigPreprocessing) bool {

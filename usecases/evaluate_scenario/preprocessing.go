@@ -180,21 +180,30 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId
 		performed = true
 
 		for _, match := range matches {
-			switch match.Type {
-			case "Person":
+			switch scc.Preprocessing.NerIgnoreClassification {
+			case false:
+				switch match.Type {
+				case "Person":
+					out = append(out, models.OpenSanctionsCheckQuery{
+						Type:    "Person",
+						Filters: models.OpenSanctionsFilter{"name": []string{match.Text}},
+					})
+
+				case "Company", "Organization":
+					out = append(out, models.OpenSanctionsCheckQuery{
+						Type:    "Organization",
+						Filters: models.OpenSanctionsFilter{"name": []string{match.Text}},
+					})
+
+				default:
+					out = append(out, query)
+				}
+
+			case true:
 				out = append(out, models.OpenSanctionsCheckQuery{
-					Type:    "Person",
+					Type:    "Thing",
 					Filters: models.OpenSanctionsFilter{"name": []string{match.Text}},
 				})
-
-			case "Company", "Organization":
-				out = append(out, models.OpenSanctionsCheckQuery{
-					Type:    "Organization",
-					Filters: models.OpenSanctionsFilter{"name": []string{match.Text}},
-				})
-
-			default:
-				out = append(out, query)
 			}
 		}
 	}
