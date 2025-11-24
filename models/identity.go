@@ -39,6 +39,8 @@ type OidcIdentity struct {
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
 	Picture       string `json:"picture"`
+
+	SkipEmailVerify bool `json:"-"`
 }
 
 func (i OidcIdentity) GetIssuer() string {
@@ -54,7 +56,7 @@ func (i OidcIdentity) GetProfile() *IdentityUpdatableClaims {
 }
 
 func (i OidcIdentity) GetEmail() string {
-	if !i.EmailVerified {
+	if !i.SkipEmailVerify && !i.EmailVerified {
 		return ""
 	}
 	return i.Email

@@ -17,6 +17,7 @@ type OidcConfig struct {
 	RedirectUri  string
 	Scopes       []string
 	ExtraParams  map[string]string
+	EmailClaim   string
 
 	AllowedDomains []string
 
@@ -59,6 +60,7 @@ func InitializeOidc(ctx context.Context, marbleAppUrl string) (OidcConfig, error
 		Scopes:       strings.Split(utils.GetEnv("AUTH_OIDC_SCOPE", ""), ","),
 		RedirectUri:  fmt.Sprintf("%s/oidc/callback", marbleAppUrl),
 		ExtraParams:  extraParams,
+		EmailClaim:   utils.GetEnv("AUTH_OIDC_EMAIL_CLAIM", ""),
 
 		AllowedDomains: allowedDomains,
 
