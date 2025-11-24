@@ -135,7 +135,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			}
 
 			// No huge fan of doing like this because we don't update the continuousScreeningWithMatches object
-			// Bug fine because we don't use it afterwards
+			// But fine because we don't use it afterwards
 			// We should use the result to update the object
 			_, err = uc.repository.UpdateContinuousScreeningStatus(
 				ctx,
