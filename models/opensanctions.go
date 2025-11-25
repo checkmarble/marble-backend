@@ -39,6 +39,8 @@ type OpenSanctionsQuery struct {
 	InitialQuery       []OpenSanctionsCheckQuery
 	Config             ScreeningConfig
 	OrgConfig          OrganizationOpenSanctionsConfig
+	// cf: `exclude_entity_ids` in the OpenSanctions query
+	WhitelistedEntityIds []string
 }
 
 type OpenSanctionsCheckQuery struct {

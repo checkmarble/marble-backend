@@ -17,68 +17,68 @@ type InboxRepository struct {
 func (r *InboxRepository) ListInboxes(ctx context.Context, exec repositories.Executor,
 	organizationId string, inboxIds []uuid.UUID, withCaseCount bool,
 ) ([]models.Inbox, error) {
-	args := r.Called(exec, organizationId, inboxIds)
+	args := r.Called(ctx, exec, organizationId, inboxIds, withCaseCount)
 	return args.Get(0).([]models.Inbox), args.Error(1)
 }
 
 func (r *InboxRepository) GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error) {
-	args := r.Called(exec, inboxId)
+	args := r.Called(ctx, exec, inboxId)
 	return args.Get(0).(models.Inbox), args.Error(1)
 }
 
 func (r *InboxRepository) CreateInbox(ctx context.Context, exec repositories.Executor,
 	input models.CreateInboxInput, newInboxId uuid.UUID,
 ) error {
-	args := r.Called(exec, input, newInboxId)
+	args := r.Called(ctx, exec, input, newInboxId)
 	return args.Error(0)
 }
 
 func (r *InboxRepository) UpdateInbox(ctx context.Context, exec repositories.Executor,
 	inboxId uuid.UUID, name *string, escalationInboxId *uuid.UUID, autoAssignEnabled *bool,
 ) error {
-	args := r.Called(exec, inboxId, name, escalationInboxId, autoAssignEnabled)
+	args := r.Called(ctx, exec, inboxId, name, escalationInboxId, autoAssignEnabled)
 	return args.Error(0)
 }
 
 func (r *InboxRepository) SoftDeleteInbox(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) error {
-	args := r.Called(exec, inboxId)
+	args := r.Called(ctx, exec, inboxId)
 	return args.Error(0)
 }
 
 func (r *InboxRepository) ListOrganizationCases(ctx context.Context, exec repositories.Executor,
 	filters models.CaseFilters, pagination models.PaginationAndSorting,
 ) ([]models.Case, error) {
-	args := r.Called(exec, filters, pagination)
+	args := r.Called(ctx, exec, filters, pagination)
 	return args.Get(0).([]models.Case), args.Error(1)
 }
 
 func (r *InboxRepository) ListInboxUsers(ctx context.Context, exec repositories.Executor,
 	filters models.InboxUserFilterInput,
 ) ([]models.InboxUser, error) {
-	args := r.Called(exec, filters)
+	args := r.Called(ctx, exec, filters)
 	return args.Get(0).([]models.InboxUser), args.Error(1)
 }
 
 func (r *InboxRepository) GetInboxUserById(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID) (models.InboxUser, error) {
-	args := r.Called(exec, inboxUserId)
+	args := r.Called(ctx, exec, inboxUserId)
 	return args.Get(0).(models.InboxUser), args.Error(1)
 }
 
 func (r *InboxRepository) CreateInboxUser(ctx context.Context, exec repositories.Executor,
 	input models.CreateInboxUserInput, newInboxUserId uuid.UUID,
 ) error {
-	args := r.Called(exec, input, newInboxUserId)
+	args := r.Called(ctx, exec, input, newInboxUserId)
 	return args.Error(0)
 }
 
 func (r *InboxRepository) UpdateInboxUser(ctx context.Context, exec repositories.Executor,
 	inboxUserId uuid.UUID, role *models.InboxUserRole, autoAssignable *bool,
 ) error {
-	args := r.Called(exec, inboxUserId, role, autoAssignable)
+	args := r.Called(ctx, exec, inboxUserId, role, autoAssignable)
 	return args.Error(0)
 }
 
 func (r *InboxRepository) DeleteInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID) error {
-	args := r.Called(exec, inboxUserId)
+	args := r.Called(ctx, exec, inboxUserId)
 	return args.Error(0)
 }

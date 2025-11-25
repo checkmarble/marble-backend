@@ -164,7 +164,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 		suite.objectType).Return(table, mapping, nil)
 	suite.usecase.On("GetIngestedObject", suite.ctx, mock.Anything, table, suite.objectId).Return(
 		ingestedObject, ingestedObjectInternalId, nil)
-	suite.usecase.On("DoScreening", suite.ctx, ingestedObject, mapping, config).Return(screeningWithMatches, nil)
+	suite.usecase.On("DoScreening", suite.ctx, mock.Anything, ingestedObject, mapping, config,
+		"transactions", "test-object-id").Return(screeningWithMatches, nil)
 	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
 		suite.objectId, suite.objectType, suite.orgId).Return(&existingContinuousScreening, nil)
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
@@ -277,7 +278,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 		suite.objectType).Return(table, mapping, nil)
 	suite.usecase.On("GetIngestedObject", suite.ctx, mock.Anything, table, suite.objectId).Return(
 		ingestedObject, ingestedObjectInternalId, nil)
-	suite.usecase.On("DoScreening", suite.ctx, ingestedObject, mapping, config).Return(screeningWithMatches, nil)
+	suite.usecase.On("DoScreening", suite.ctx, mock.Anything, ingestedObject, mapping, config,
+		"transactions", "test-object-id").Return(screeningWithMatches, nil)
 	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
 		suite.objectId, suite.objectType, suite.orgId).Return(&existingContinuousScreening, nil)
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
@@ -468,7 +470,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
 		suite.objectId, suite.objectType, suite.orgId).Return(
 		(*models.ContinuousScreeningWithMatches)(nil), nil)
-	suite.usecase.On("DoScreening", suite.ctx, ingestedObject, mapping, config).Return(screeningWithMatches, nil)
+	suite.usecase.On("DoScreening", suite.ctx, mock.Anything, ingestedObject, mapping, config,
+		"transactions", "test-object-id").Return(screeningWithMatches, nil)
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
 		screeningWithMatches, config, suite.objectType, suite.objectId, ingestedObjectInternalId,
 		models.ContinuousScreeningTriggerTypeObjectAdded).Return(continuousScreeningWithMatches, nil)

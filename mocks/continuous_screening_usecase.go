@@ -36,11 +36,14 @@ func (m *ContinuousScreeningUsecase) GetIngestedObject(
 
 func (m *ContinuousScreeningUsecase) DoScreening(
 	ctx context.Context,
+	exec repositories.Executor,
 	ingestedObject models.DataModelObject,
 	mapping models.ContinuousScreeningDataModelMapping,
 	config models.ContinuousScreeningConfig,
+	objectType string,
+	objectId string,
 ) (models.ScreeningWithMatches, error) {
-	args := m.Called(ctx, ingestedObject, mapping, config)
+	args := m.Called(ctx, exec, ingestedObject, mapping, config, objectType, objectId)
 	return args.Get(0).(models.ScreeningWithMatches), args.Error(1)
 }
 

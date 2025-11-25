@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -117,7 +118,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		}
 	}
 
-	screeningWithMatches, err := uc.DoScreening(ctx, ingestedObject, mapping, config)
+	screeningWithMatches, err := uc.DoScreening(ctx, exec, ingestedObject, mapping, config, input.ObjectType, objectId)
 	if err != nil {
 		logger.WarnContext(ctx, "Continuous Screening - error searching on open sanctions", "error", err.Error())
 		return models.ScreeningWithMatches{}, err
@@ -234,6 +235,7 @@ func prepareOpenSanctionsQuery(
 	dataModelEntityType string,
 	dataModelMapping map[string]string,
 	config models.ContinuousScreeningConfig,
+	whitelistedEntityIds []string,
 ) (models.OpenSanctionsQuery, error) {
 	screeningFilters, err := prepareScreeningFilters(ingestedObject, dataModelMapping)
 	if err != nil {
@@ -254,6 +256,7 @@ func prepareOpenSanctionsQuery(
 				Filters: screeningFilters,
 			},
 		},
+		WhitelistedEntityIds: whitelistedEntityIds,
 	}, nil
 }
 
@@ -379,12 +382,31 @@ func (uc *ContinuousScreeningUsecase) GetIngestedObject(ctx context.Context,
 	return ingestedObject, ingestedObjectInternalId, nil
 }
 
-func (uc *ContinuousScreeningUsecase) DoScreening(ctx context.Context,
+func (uc *ContinuousScreeningUsecase) DoScreening(
+	ctx context.Context,
+	exec repositories.Executor,
 	ingestedObject models.DataModelObject,
 	mapping models.ContinuousScreeningDataModelMapping,
 	config models.ContinuousScreeningConfig,
+	objectType string,
+	objectId string,
 ) (models.ScreeningWithMatches, error) {
-	query, err := prepareOpenSanctionsQuery(ingestedObject, mapping.Entity, mapping.Properties, config)
+	// Get Whitelist element from DB and add it to the screening parameters
+	whitelists, err := uc.repository.SearchScreeningMatchWhitelist(
+		ctx,
+		exec,
+		config.OrgId.String(),
+		utils.Ptr(typedObjectId(objectType, objectId)),
+		nil,
+	)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+	whitelistEntityIds := pure_utils.Map(whitelists, func(whitelist models.ScreeningWhitelist) string {
+		return whitelist.EntityId
+	})
+
+	query, err := prepareOpenSanctionsQuery(ingestedObject, mapping.Entity, mapping.Properties, config, whitelistEntityIds)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
