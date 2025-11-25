@@ -189,7 +189,7 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 
 	skipCaseCreation := false
 	// Only in case of Object updated by the user, check if the screening result is the same as the existing one (if exists)
-	if job.Args.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated {
+	if job.Args.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated && existingScreeningWithMatches != nil {
 		skipCaseCreation = areScreeningMatchesEqual(*existingScreeningWithMatches, screeningWithMatches)
 	}
 
