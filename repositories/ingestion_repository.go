@@ -25,7 +25,6 @@ type IngestionRepository interface {
 type IngestionRepositoryImpl struct{}
 
 // Ingest objects and return:
-//   - Number of inserted objects
 //   - List of object_id of inserted objects
 //   - Error if any
 func (repo *IngestionRepositoryImpl) IngestObjects(
