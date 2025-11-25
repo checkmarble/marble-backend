@@ -8,7 +8,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
@@ -168,7 +167,8 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 	if existingScreeningWithMatches != nil {
 		ingestedObjectValidFrom, ok := ingestedObject.Metadata["valid_from"].(time.Time)
 		if !ok {
-			return errors.New("valid_from not found in ingested object metadata")
+			logger.WarnContext(ctx, "Continuous Screening - valid_from not found in ingested object metadata, skipping screening")
+			return nil
 		}
 		if existingScreeningWithMatches.CreatedAt.After(ingestedObjectValidFrom) {
 			logger.InfoContext(ctx, "Continuous Screening - ingested object valid from is before the latest continuous screening result, skipping screening",

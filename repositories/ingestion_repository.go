@@ -72,11 +72,11 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 		}
 	}
 
-	payloadsInsertedObjectId := make([]string, 0, len(payloadsToInsert))
-	for _, payload := range payloadsToInsert {
+	payloadsInsertedObjectId := make([]string, len(payloadsToInsert))
+	for i, payload := range payloadsToInsert {
 		// Assumes that the object_id is always present as it is a mandatory field
 		objectId := payload.Data["object_id"].(string)
-		payloadsInsertedObjectId = append(payloadsInsertedObjectId, objectId)
+		payloadsInsertedObjectId[i] = objectId
 	}
 
 	return payloadsInsertedObjectId, nil

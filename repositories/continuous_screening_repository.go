@@ -385,7 +385,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningsCaseId(ctx context.Con
 }
 
 // This function is used to check if the screening result is the same as the existing one (if exists)
-// Get the latest screening result in review and in a case for a given object id and object type
+// Get the latest screening result in review and attached to a case for a given object id and object type
 func (repo *MarbleDbRepository) GetContinuousScreeningByObjectId(
 	ctx context.Context,
 	exec Executor,

@@ -32,6 +32,8 @@ import (
 const (
 	csvIngestionBatchSize        = 1000
 	DefaultApiBatchIngestionSize = 100
+
+	CSV_INGESTION_ITERATION_TIMEOUT = 10 * time.Second
 )
 
 type continuousScreeningClientRepository interface {
@@ -546,12 +548,11 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
 		}
 	}
 
-	return usecase.ingestObjectsFromCSV(ctx, exec, organizationId, fileReader, table)
+	return usecase.ingestObjectsFromCSV(ctx, organizationId, fileReader, table)
 }
 
 func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 	ctx context.Context,
-	exec repositories.Executor,
 	organizationId string,
 	fileReader io.Reader,
 	table models.Table,
@@ -593,11 +594,14 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 	keepParsingFile := true
 	objectIdx := 0
 	for keepParsingFile {
+		iterationCtx, iterationCancel := context.WithTimeout(ctx, CSV_INGESTION_ITERATION_TIMEOUT)
+		defer iterationCancel()
+
 		windowEnd := objectIdx + csvIngestionBatchSize
 		clientObjects := make([]models.ClientObject, 0, csvIngestionBatchSize)
 		objectIds := make([]string, 0, csvIngestionBatchSize)
 		for ; objectIdx < windowEnd; objectIdx++ {
-			logger.DebugContext(ctx, fmt.Sprintf("Start reading line %v", objectIdx))
+			logger.DebugContext(iterationCtx, fmt.Sprintf("Start reading line %v", objectIdx))
 			record, err := r.Read()
 			if err == io.EOF { //nolint:errorlint
 				keepParsingFile = false
@@ -616,16 +620,16 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 					err:             fmt.Errorf("error parsing line %d of CSV: %w", objectIdx, err),
 				}
 			}
-			logger.DebugContext(ctx, fmt.Sprintf("Object to ingest %d: %+v", objectIdx, object))
+			logger.DebugContext(iterationCtx, fmt.Sprintf("Object to ingest %d: %+v", objectIdx, object))
 
 			clientObject := models.ClientObject{TableName: table.Name, Data: object}
 			clientObjects = append(clientObjects, clientObject)
 			objectIds = append(objectIds, object["object_id"].(string))
 		}
 
-		err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		err = usecase.transactionFactory.Transaction(iterationCtx, func(tx repositories.Transaction) error {
 			return usecase.taskEnqueuer.EnqueueContinuousScreeningEvaluateNeedTask(
-				ctx,
+				iterationCtx,
 				tx,
 				organizationId,
 				table.Name,
@@ -640,8 +644,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 		}
 
 		var insertedObjectIds []string
-		if err := retryIngestion(ctx, func() error {
-			insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+		if err := retryIngestion(iterationCtx, func() error {
+			insertedObjectIds, err = usecase.insertEnumValuesAndIngest(iterationCtx, organizationId, clientObjects, table)
 			return err
 		}); err != nil {
 			return ingestionResult{

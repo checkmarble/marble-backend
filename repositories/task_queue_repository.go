@@ -397,8 +397,14 @@ func (r riverRepository) EnqueueContinuousScreeningEvaluateNeedTask(
 			ObjectIds:  objectIds,
 		},
 		&river.InsertOpts{
-			Queue:       orgId,
-			ScheduledAt: time.Now().Add(10 * time.Second), // Delay the task to be scheduled after the ingestion
+			Queue: orgId,
+			// Delay the task just after the deadline to be sure it's executed after the caller execution
+			ScheduledAt: func() time.Time {
+				if deadline, ok := ctx.Deadline(); ok {
+					return deadline.Add(time.Second)
+				}
+				return time.Now().Add(10 * time.Second)
+			}(),
 		},
 	)
 	if err != nil {
