@@ -98,13 +98,31 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		return models.ScreeningWithMatches{}, err
 	}
 
-	err = uc.clientDbRepository.InsertContinuousScreeningObject(
-		ctx,
-		clientDbExec,
-		table.Name,
-		objectId,
-		input.ConfigStableId,
-	)
+	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId.String(), func(tx repositories.Transaction) error {
+		if err := uc.clientDbRepository.InsertContinuousScreeningObject(
+			ctx,
+			clientDbExec,
+			table.Name,
+			objectId,
+			input.ConfigStableId,
+		); err != nil {
+			return err
+		}
+
+		return uc.clientDbRepository.InsertContinuousScreeningAudit(
+			ctx,
+			clientDbExec,
+			models.CreateContinuousScreeningAudit{
+				ObjectType:     table.Name,
+				ObjectId:       objectId,
+				ConfigStableId: input.ConfigStableId,
+				Action:         models.ContinuousScreeningAuditActionAdd,
+				UserId:         uc.enforceSecurity.UserId(),
+				ApiKeyId:       uc.enforceSecurity.ApiKeyId(),
+			},
+		)
+	})
+	// Unique violation error is handled below
 	if err != nil {
 		if repositories.IsUniqueViolationError(err) && ignoreUniqueViolationError {
 			// Do nothing, normal case

@@ -38,6 +38,11 @@ func (e *EnforceSecurity) UserId() *string {
 	return args.Get(0).(*string)
 }
 
+func (e *EnforceSecurity) ApiKeyId() *string {
+	args := e.Called()
+	return args.Get(0).(*string)
+}
+
 func (e *EnforceSecurity) ReadDecision(decision models.Decision) error {
 	args := e.Called(decision)
 	return args.Error(0)
