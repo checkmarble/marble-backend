@@ -434,14 +434,8 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg *models.ScreeningConfig
 		// exclude_entity_ids is a global filter that is applied to all queries and the list is limited to 50 elements.
 		// For our use, we think this is enough, in case we need to add more, we need to think about how to handle it.
 		if len(query.WhitelistedEntityIds) > 0 {
-			excludeEntityIds := make([]string, 0, OPEN_SANCTIONS_MAX_EXCLUDE_ENTITY_IDS)
-			for i, entityId := range query.WhitelistedEntityIds {
-				if i >= OPEN_SANCTIONS_MAX_EXCLUDE_ENTITY_IDS {
-					break
-				}
-				excludeEntityIds = append(excludeEntityIds, entityId)
-			}
-			qs["exclude_entity_ids"] = excludeEntityIds
+			qs["exclude_entity_ids"] = query.WhitelistedEntityIds[:min(
+				OPEN_SANCTIONS_MAX_EXCLUDE_ENTITY_IDS, len(query.WhitelistedEntityIds))]
 		}
 	}
 

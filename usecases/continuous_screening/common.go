@@ -1,5 +1,5 @@
 package continuous_screening
 
-func counterpartyIdentifier(objectType, objectId string) string {
+func typedObjectId(objectType, objectId string) string {
 	return objectType + "_" + objectId
 }

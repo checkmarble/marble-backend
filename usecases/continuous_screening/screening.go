@@ -194,7 +194,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 				ctx,
 				tx,
 				continuousScreeningWithMatches.OrgId.String(),
-				counterpartyIdentifier(
+				typedObjectId(
 					continuousScreeningWithMatches.ObjectType,
 					continuousScreeningWithMatches.ObjectId,
 				),

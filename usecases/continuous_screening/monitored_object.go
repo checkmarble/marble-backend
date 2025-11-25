@@ -396,7 +396,7 @@ func (uc *ContinuousScreeningUsecase) DoScreening(
 		ctx,
 		exec,
 		config.OrgId.String(),
-		utils.Ptr(counterpartyIdentifier(objectType, objectId)),
+		utils.Ptr(typedObjectId(objectType, objectId)),
 		nil,
 	)
 	if err != nil {
