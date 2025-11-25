@@ -167,7 +167,13 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 	suite.usecase.On("DoScreening", suite.ctx, mock.Anything, ingestedObject, mapping, config,
 		"transactions", "test-object-id").Return(screeningWithMatches, nil)
 	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
-		suite.objectId, suite.objectType, suite.orgId).Return(&existingContinuousScreening, nil)
+		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
+			return status == nil
+		}), false).Return(&existingContinuousScreening, nil)
+	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
+		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
+			return status != nil && *status == models.ScreeningStatusInReview
+		}), true).Return(&existingContinuousScreening, nil)
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
 		screeningWithMatches, config, suite.objectType, suite.objectId, ingestedObjectInternalId,
 		models.ContinuousScreeningTriggerTypeObjectUpdated).Return(continuousScreeningWithMatches, nil)
@@ -281,7 +287,13 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 	suite.usecase.On("DoScreening", suite.ctx, mock.Anything, ingestedObject, mapping, config,
 		"transactions", "test-object-id").Return(screeningWithMatches, nil)
 	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
-		suite.objectId, suite.objectType, suite.orgId).Return(&existingContinuousScreening, nil)
+		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
+			return status == nil
+		}), false).Return(&existingContinuousScreening, nil)
+	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
+		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
+			return status != nil && *status == models.ScreeningStatusInReview
+		}), true).Return((*models.ContinuousScreeningWithMatches)(nil), nil)
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
 		screeningWithMatches, config, suite.objectType, suite.objectId, ingestedObjectInternalId,
 		models.ContinuousScreeningTriggerTypeObjectUpdated).Return(continuousScreeningWithMatches, nil)
@@ -369,7 +381,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 		ingestedObject, ingestedObjectInternalId, nil)
 	// Existing screening is more recent than ingested object
 	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
-		suite.objectId, suite.objectType, suite.orgId).Return(&existingContinuousScreening, nil)
+		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
+			return status == nil
+		}), false).Return(&existingContinuousScreening, nil)
 
 	// Execute
 	worker := suite.makeWorker()
@@ -381,6 +395,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 	suite.usecase.AssertNotCalled(suite.T(), "DoScreening")
 	// Verify that InsertContinuousScreening is NOT called
 	suite.repository.AssertNotCalled(suite.T(), "InsertContinuousScreening")
+	// Verify that GetContinuousScreeningByObjectId is NOT called a second time (with ScreeningStatusInReview filter)
+	suite.usecase.AssertNotCalled(suite.T(), "HandleCaseCreation")
 	suite.AssertExpectations()
 }
 
@@ -468,7 +484,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 		ingestedObject, ingestedObjectInternalId, nil)
 	// For ObjectAdded trigger, there should be no existing screening
 	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
-		suite.objectId, suite.objectType, suite.orgId).Return(
+		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
+			return status == nil
+		}), false).Return(
 		(*models.ContinuousScreeningWithMatches)(nil), nil)
 	suite.usecase.On("DoScreening", suite.ctx, mock.Anything, ingestedObject, mapping, config,
 		"transactions", "test-object-id").Return(screeningWithMatches, nil)
@@ -484,7 +502,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 
 	// Assert
 	suite.NoError(err)
-	suite.AssertExpectations()
+	// For ObjectAdded trigger, the second GetContinuousScreeningByObjectId call is NOT made
+	suite.usecase.AssertExpectations(suite.T())
 }
 
 // Tests for CheckIfObjectsNeedScreeningWorker

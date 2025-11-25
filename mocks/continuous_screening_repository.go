@@ -101,8 +101,10 @@ func (m *ContinuousScreeningRepository) GetContinuousScreeningByObjectId(
 	objectId string,
 	objectType string,
 	orgId uuid.UUID,
+	status *models.ScreeningStatus,
+	inCase bool,
 ) (*models.ContinuousScreeningWithMatches, error) {
-	args := m.Called(ctx, exec, objectId, objectType, orgId)
+	args := m.Called(ctx, exec, objectId, objectType, orgId, status, inCase)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

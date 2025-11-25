@@ -405,6 +405,8 @@ func (repo *MarbleDbRepository) GetContinuousScreeningByObjectId(
 	objectId string,
 	objectType string,
 	orgId uuid.UUID,
+	status *models.ScreeningStatus,
+	inCase bool,
 ) (*models.ContinuousScreeningWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -414,10 +416,15 @@ func (repo *MarbleDbRepository) GetContinuousScreeningByObjectId(
 		Where(squirrel.Eq{"cs.org_id": orgId}).
 		Where(squirrel.Eq{"cs.object_type": objectType}).
 		Where(squirrel.Eq{"cs.object_id": objectId}).
-		Where(squirrel.Eq{"cs.status": models.ScreeningStatusInReview.String()}).
-		Where(squirrel.NotEq{"cs.case_id": nil}).
 		OrderBy("cs.created_at DESC").
 		Limit(1)
+
+	if status != nil {
+		query = query.Where(squirrel.Eq{"cs.status": status.String()})
+	}
+	if inCase {
+		query = query.Where("cs.case_id IS NOT NULL")
+	}
 
 	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningWithMatches)
 }

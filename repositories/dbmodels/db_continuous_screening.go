@@ -74,6 +74,8 @@ func AdaptContinuousScreeningMatch(dto DBContinuousScreeningMatches) (models.Con
 		Status:                models.ScreeningMatchStatusFrom(dto.Status),
 		Payload:               dto.Payload,
 		ReviewedBy:            dto.ReviewedBy,
+		CreatedAt:             dto.CreatedAt,
+		UpdatedAt:             dto.UpdatedAt,
 	}, nil
 }
 

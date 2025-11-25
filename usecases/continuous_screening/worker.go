@@ -35,6 +35,8 @@ type repository interface {
 		objectId string,
 		objectType string,
 		orgId uuid.UUID,
+		status *models.ScreeningStatus,
+		inCase bool,
 	) (*models.ContinuousScreeningWithMatches, error)
 }
 
@@ -163,6 +165,8 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 		monitoredObject.ObjectId,
 		job.Args.ObjectType,
 		config.OrgId,
+		nil,
+		false,
 	)
 	if err != nil {
 		return err
@@ -201,8 +205,27 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 
 	skipCaseCreation := false
 	// Only in case of Object updated by the user, check if the screening result is the same as the existing one (if exists)
-	if job.Args.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated && existingScreeningWithMatches != nil {
-		skipCaseCreation = areScreeningMatchesEqual(*existingScreeningWithMatches, screeningWithMatches)
+	if job.Args.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated {
+		// This time, we fetch the latest screening result in review and attached to a case to determine if we can skip case creation
+		// In case of same matches, we don't need to create a new case for the same result
+		lastScreeningWithMatchesInReviewAndInCase, err := w.repo.GetContinuousScreeningByObjectId(
+			ctx,
+			exec,
+			monitoredObject.ObjectId,
+			job.Args.ObjectType,
+			config.OrgId,
+			utils.Ptr(models.ScreeningStatusInReview),
+			true,
+		)
+		if err != nil {
+			return err
+		}
+		if lastScreeningWithMatchesInReviewAndInCase != nil {
+			skipCaseCreation = areScreeningMatchesEqual(
+				*lastScreeningWithMatchesInReviewAndInCase,
+				screeningWithMatches,
+			)
+		}
 	}
 
 	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
