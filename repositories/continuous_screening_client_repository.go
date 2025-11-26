@@ -98,7 +98,7 @@ func (repo *ClientDbRepository) InsertContinuousScreeningObject(
 // object_type: TEXT, type of the object
 // object_id: TEXT
 // config_stable_id: UUID, foreign key to continuous_screening_configs.stable_id
-// action: TEXT, INSERT or DELETE
+// action: TEXT, "add" or "remove"
 // user_id: UUID NULLABLE, id of the user who performed the action
 // api_key_id: UUID NULLABLE, id of the api key who performed the action
 // created_at: TIMESTAMP WITH TIME ZONE
