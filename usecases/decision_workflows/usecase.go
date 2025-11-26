@@ -22,6 +22,7 @@ type caseEditor interface {
 	UpdateDecisionsWithEvents(
 		ctx context.Context,
 		exec repositories.Executor,
+		orgId uuid.UUID,
 		caseId, userId string,
 		decisionIdsToAdd []string,
 	) error
