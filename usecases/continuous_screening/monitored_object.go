@@ -26,7 +26,7 @@ import (
 // The updated object should be ingested, we check if the object has been ingested before resume the continuous screening operation.
 func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	ctx context.Context,
-	input models.InsertContinuousScreeningObject,
+	input models.CreateContinuousScreeningObject,
 ) (models.ScreeningWithMatches, error) {
 	exec := uc.executorFactory.NewExecutor()
 
@@ -212,7 +212,7 @@ func extractObjectIDFromPayload(payload json.RawMessage) (string, error) {
 func (uc *ContinuousScreeningUsecase) ingestObject(
 	ctx context.Context,
 	orgId uuid.UUID,
-	input models.InsertContinuousScreeningObject,
+	input models.CreateContinuousScreeningObject,
 ) (string, error) {
 	// Ingestion doesn't return the object after operation.
 	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId.String(), input.ObjectType, *input.ObjectPayload)
@@ -461,16 +461,12 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 	objectId string,
 	continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
 ) error {
-	userId := ""
-	if uc.enforceSecurity.UserId() != nil {
-		userId = *uc.enforceSecurity.UserId()
-	}
 	// TODO: TBD
 	caseName := "Continuous Screening - " + objectId
 	_, err := uc.caseEditor.CreateCase(
 		ctx,
 		tx,
-		userId,
+		pure_utils.PtrValueOrDefault(uc.enforceSecurity.UserId(), ""),
 		models.CreateCaseAttributes{
 			ContinuousScreeningIds: []uuid.UUID{continuousScreeningWithMatches.Id},
 			OrganizationId:         config.OrgId.String(),
@@ -480,4 +476,66 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 		false,
 	)
 	return err
+}
+
+func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
+	ctx context.Context,
+	input models.DeleteContinuousScreeningObject,
+) error {
+	exec := uc.executorFactory.NewExecutor()
+
+	var userId *uuid.UUID
+	if uc.enforceSecurity.UserId() != nil {
+		parsed, err := uuid.Parse(*uc.enforceSecurity.UserId())
+		if err != nil {
+			return err
+		}
+		userId = &parsed
+	}
+	var apiKeyId *uuid.UUID
+	if uc.enforceSecurity.ApiKeyId() != nil {
+		parsed, err := uuid.Parse(*uc.enforceSecurity.ApiKeyId())
+		if err != nil {
+			return err
+		}
+		apiKeyId = &parsed
+	}
+	orgId, err := uuid.Parse(uc.enforceSecurity.OrgId())
+	if err != nil {
+		// Should never happen
+		return err
+	}
+
+	// Check if the config exists and linked to the right organization
+	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, exec, input.ConfigStableId)
+	if err != nil {
+		return err
+	}
+	if config.OrgId != orgId {
+		return errors.Wrap(models.BadParameterError,
+			"config not found for the organization")
+	}
+
+	err = uc.enforceSecurity.WriteContinuousScreeningObject(orgId)
+	if err != nil {
+		return err
+	}
+	return uc.transactionFactory.TransactionInOrgSchema(ctx, orgId.String(), func(tx repositories.Transaction) error {
+		if err := uc.clientDbRepository.DeleteContinuousScreeningObject(ctx, tx, input); err != nil {
+			return err
+		}
+
+		return uc.clientDbRepository.InsertContinuousScreeningAudit(
+			ctx,
+			tx,
+			models.CreateContinuousScreeningAudit{
+				ObjectType:     input.ObjectType,
+				ObjectId:       input.ObjectId,
+				ConfigStableId: input.ConfigStableId,
+				Action:         models.ContinuousScreeningAuditActionRemove,
+				UserId:         userId,
+				ApiKeyId:       apiKeyId,
+			},
+		)
+	})
 }

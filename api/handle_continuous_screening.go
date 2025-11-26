@@ -125,11 +125,11 @@ func handleUpdateContinuousScreeningConfig(uc usecases.Usecases) func(c *gin.Con
 	}
 }
 
-func handleInsertContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		var input dto.InsertContinuousScreeningObjectDto
+		var input dto.CreateContinuousScreeningObjectDto
 		if err := c.ShouldBindJSON(&input); err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
@@ -229,5 +229,28 @@ func handleUpdateContinuousScreeningMatchStatus(uc usecases.Usecases) func(c *gi
 		}
 
 		c.JSON(http.StatusOK, dto.AdaptContinuousScreeningMatchDto(match))
+	}
+}
+
+func handleDeleteContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var input dto.DeleteContinuousScreeningObjectDto
+		if err := c.ShouldBindJSON(&input); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
+		err := uc.DeleteContinuousScreeningObject(
+			ctx,
+			dto.AdaptDeleteContinuousScreeningObjectDto(input),
+		)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.Status(http.StatusNoContent)
 	}
 }

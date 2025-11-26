@@ -3,7 +3,6 @@ package continuous_screening
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"slices"
 	"sort"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -176,7 +176,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertContinuousScreeningObject{
+	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
@@ -276,7 +276,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertContinuousScreeningObject{
+	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectPayload:  &payload,
@@ -325,7 +325,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertContinuousScreeningObject{
+	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
@@ -379,7 +379,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertContinuousScreeningObject{
+	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
@@ -439,7 +439,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertContinuousScreeningObject{
+	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectPayload:  &payload,
@@ -540,7 +540,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertContinuousScreeningObject{
+	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectPayload:  &payload,
@@ -610,7 +610,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertContinuousScreeningObject{
+	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
@@ -642,7 +642,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertContinuousScreeningObject{
+	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType, // "transactions" which is not in ObjectTypes
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
@@ -764,7 +764,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertContinuousScreeningObject{
+	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
@@ -879,7 +879,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertContinuousScreeningObject{
+	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
@@ -1425,7 +1425,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Execute
 	uc := suite.makeUsecase()
-	input := models.InsertContinuousScreeningObject{
+	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
@@ -1436,6 +1436,116 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(result)
+}
+
+func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningObject_ConfigNotLinkedToOrganization() {
+	// Setup test data - config with different org ID
+	differentOrgId := uuid.New()
+	config := models.ContinuousScreeningConfig{
+		Id:          suite.configId,
+		StableId:    suite.configStableId,
+		OrgId:       differentOrgId, // Different org ID than what security returns
+		ObjectTypes: []string{suite.objectType},
+	}
+
+	// Setup expectations
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
+		suite.configStableId).Return(config, nil)
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("UserId").Return((*string)(nil))
+	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
+
+	// Execute
+	uc := suite.makeUsecase()
+	input := models.DeleteContinuousScreeningObject{
+		ObjectType:     suite.objectType,
+		ObjectId:       suite.objectId,
+		ConfigStableId: suite.configStableId,
+	}
+
+	err := uc.DeleteContinuousScreeningObject(suite.ctx, input)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "config not found for the organization")
+	suite.AssertExpectations()
+}
+
+func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningObject_HappyPath() {
+	// Setup test data
+	config := models.ContinuousScreeningConfig{
+		Id:          suite.configId,
+		StableId:    suite.configStableId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
+	}
+
+	// Setup expectations
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
+		suite.configStableId).Return(config, nil)
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("UserId").Return((*string)(nil))
+	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
+	input := models.DeleteContinuousScreeningObject{
+		ObjectType:     suite.objectType,
+		ObjectId:       suite.objectId,
+		ConfigStableId: suite.configStableId,
+	}
+	suite.clientDbRepository.On("DeleteContinuousScreeningObject", mock.Anything, mock.Anything,
+		input).Return(nil)
+	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(audit models.CreateContinuousScreeningAudit) bool {
+			return audit.ObjectType == suite.objectType &&
+				audit.ObjectId == suite.objectId &&
+				audit.ConfigStableId == suite.configStableId &&
+				audit.Action == models.ContinuousScreeningAuditActionRemove
+		})).Return(nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	err := uc.DeleteContinuousScreeningObject(suite.ctx, input)
+
+	// Assert
+	suite.NoError(err)
+	suite.AssertExpectations()
+}
+
+func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningObject_ObjectNotFound() {
+	// Setup test data
+	config := models.ContinuousScreeningConfig{
+		Id:          suite.configId,
+		StableId:    suite.configStableId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
+	}
+
+	// Setup expectations
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
+		suite.configStableId).Return(config, nil)
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("UserId").Return((*string)(nil))
+	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
+	// DeleteContinuousScreeningObject returns NotFoundError when object not found
+	suite.clientDbRepository.On("DeleteContinuousScreeningObject", mock.Anything, mock.Anything,
+		mock.Anything).Return(errors.Wrap(models.NotFoundError, "object not found"))
+	// InsertContinuousScreeningAudit should NOT be called when object is not found
+
+	// Execute
+	uc := suite.makeUsecase()
+	input := models.DeleteContinuousScreeningObject{
+		ObjectType:     suite.objectType,
+		ObjectId:       suite.objectId,
+		ConfigStableId: suite.configStableId,
+	}
+
+	err := uc.DeleteContinuousScreeningObject(suite.ctx, input)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "object not found")
+	suite.AssertExpectations()
 }
 
 func TestBuildDataModelMapping(t *testing.T) {
