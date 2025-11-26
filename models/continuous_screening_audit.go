@@ -54,7 +54,7 @@ type CreateContinuousScreeningAudit struct {
 	ObjectId       string
 	ConfigStableId uuid.UUID
 	Action         ContinuousScreeningAuditAction
-	UserId         *string
-	ApiKeyId       *string
+	UserId         *uuid.UUID
+	ApiKeyId       *uuid.UUID
 	Extra          json.RawMessage
 }

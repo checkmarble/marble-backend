@@ -30,6 +30,24 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 ) (models.ScreeningWithMatches, error) {
 	exec := uc.executorFactory.NewExecutor()
 
+	var userId *uuid.UUID
+	if uc.enforceSecurity.UserId() != nil {
+		parsed, err := uuid.Parse(*uc.enforceSecurity.UserId())
+		if err != nil {
+			return models.ScreeningWithMatches{}, err
+		}
+		userId = &parsed
+	}
+
+	var apiKeyId *uuid.UUID
+	if uc.enforceSecurity.ApiKeyId() != nil {
+		parsed, err := uuid.Parse(*uc.enforceSecurity.ApiKeyId())
+		if err != nil {
+			return models.ScreeningWithMatches{}, err
+		}
+		apiKeyId = &parsed
+	}
+
 	// Check if the config exists
 	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, exec, input.ConfigStableId)
 	if err != nil {
@@ -101,7 +119,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId.String(), func(tx repositories.Transaction) error {
 		if err := uc.clientDbRepository.InsertContinuousScreeningObject(
 			ctx,
-			clientDbExec,
+			tx,
 			table.Name,
 			objectId,
 			input.ConfigStableId,
@@ -111,14 +129,14 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 
 		return uc.clientDbRepository.InsertContinuousScreeningAudit(
 			ctx,
-			clientDbExec,
+			tx,
 			models.CreateContinuousScreeningAudit{
 				ObjectType:     table.Name,
 				ObjectId:       objectId,
 				ConfigStableId: input.ConfigStableId,
 				Action:         models.ContinuousScreeningAuditActionAdd,
-				UserId:         uc.enforceSecurity.UserId(),
-				ApiKeyId:       uc.enforceSecurity.ApiKeyId(),
+				UserId:         userId,
+				ApiKeyId:       apiKeyId,
 			},
 		)
 	})

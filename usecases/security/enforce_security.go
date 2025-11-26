@@ -44,7 +44,7 @@ func (e *EnforceSecurityImpl) ApiKeyId() *string {
 		return nil
 	}
 
-	return utils.Ptr(string(e.Credentials.ActorIdentity.ApiKeyId))
+	return utils.Ptr(e.Credentials.ActorIdentity.ApiKeyId)
 }
 
 func (e *EnforceSecurityImpl) ReadOrganization(organizationId string) error {
