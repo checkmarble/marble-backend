@@ -133,11 +133,11 @@ type caseEditor interface {
 }
 
 type ContinuousScreeningClientDbRepository interface {
-	CreateInternalContinuousScreeningTable(ctx context.Context, exec repositories.Executor, tableName string) error
+	CreateInternalContinuousScreeningTable(ctx context.Context, exec repositories.Executor) error
 	InsertContinuousScreeningObject(
 		ctx context.Context,
 		exec repositories.Executor,
-		tableName string,
+		objectType string,
 		objectId string,
 		configStableId uuid.UUID,
 	) error

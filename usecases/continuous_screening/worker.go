@@ -44,7 +44,6 @@ type clientDbRepository interface {
 	GetMonitoredObject(
 		ctx context.Context,
 		clientExec repositories.Executor,
-		objectType string,
 		monitoringId uuid.UUID,
 	) (models.ContinuousScreeningMonitoredObject, error)
 
@@ -132,7 +131,6 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 	monitoredObject, err := w.clientDbRepo.GetMonitoredObject(
 		ctx,
 		clientDbExec,
-		job.Args.ObjectType,
 		job.Args.MonitoringId,
 	)
 	if err != nil {
