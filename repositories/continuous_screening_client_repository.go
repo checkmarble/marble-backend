@@ -111,7 +111,7 @@ func (repo *ClientDbRepository) InsertContinuousScreeningObject(
 //   - idx_monitored_objects_audit_config: Config Usage (e.g. "Activity for this specific configuration")
 //
 // CreateInternalContinuousScreeningAuditTable creates the audit table for monitored objects
-// It is a single table for all object types, containing the history of actions (INSERT/DELETE)
+// It is a single table for all object types, containing the history of actions (add/remove)
 func (repo *ClientDbRepository) CreateInternalContinuousScreeningAuditTable(ctx context.Context, exec Executor) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
