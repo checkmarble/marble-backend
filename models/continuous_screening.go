@@ -90,6 +90,7 @@ const ContinuousScreeningSortingCreatedAt SortingField = SortingFieldCreatedAt
 
 type ContinuousScreeningMonitoredObject struct {
 	Id             uuid.UUID
+	ObjectType     string
 	ObjectId       string
 	ConfigStableId uuid.UUID
 	CreatedAt      time.Time

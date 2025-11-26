@@ -65,6 +65,10 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 	input models.CreateContinuousScreeningConfig,
 ) (models.ContinuousScreeningConfig, error) {
 	exec := uc.executorFactory.NewExecutor()
+	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, input.OrgId.String())
+	if err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
 	if err := uc.enforceSecurity.WriteContinuousScreeningConfig(input.OrgId); err != nil {
 		return models.ContinuousScreeningConfig{}, err
 	}
@@ -87,7 +91,12 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 	// Set a default stable ID, we don't allow to pass a stable ID in the input
 	input.StableId = uuid.New()
 
-	if err := uc.processObjectTypes(ctx, exec, input.OrgId, input.ObjectTypes); err != nil {
+	if err := uc.checkDataModelConfiguration(ctx, exec, input.OrgId, input.ObjectTypes); err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
+
+	// Create the internal tables for monitored objects if not exists
+	if err := uc.clientDbRepository.CreateInternalContinuousScreeningTable(ctx, clientDbExec); err != nil {
 		return models.ContinuousScreeningConfig{}, err
 	}
 
@@ -173,7 +182,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 			}
 			if len(*input.ObjectTypes) > len(config.ObjectTypes) {
 				// Only if there is new object types to add, process them the `if exists` will ignore existing ones
-				if err := uc.processObjectTypes(ctx, tx, config.OrgId, *input.ObjectTypes); err != nil {
+				if err := uc.checkDataModelConfiguration(ctx, tx, config.OrgId, *input.ObjectTypes); err != nil {
 					return err
 				}
 			}
@@ -203,31 +212,26 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 	return configUpdated, nil
 }
 
-func (uc *ContinuousScreeningUsecase) processObjectTypes(ctx context.Context,
+func (uc *ContinuousScreeningUsecase) checkDataModelConfiguration(ctx context.Context,
 	exec repositories.Executor, orgId uuid.UUID, objectTypes []string,
 ) error {
 	dataModel, err := uc.repository.GetDataModel(ctx, exec, orgId.String(), false, false)
 	if err != nil {
 		return err
 	}
-	return uc.transactionFactory.TransactionInOrgSchema(ctx, orgId.String(), func(tx repositories.Transaction) error {
-		for _, objectType := range objectTypes {
-			table, ok := dataModel.Tables[objectType]
-			if !ok {
-				return errors.Wrapf(models.BadParameterError,
-					"table %s not found in data model", objectType)
-			}
 
-			if err := checkDataModelTableAndFieldsConfiguration(table); err != nil {
-				return errors.Wrap(models.BadParameterError, err.Error())
-			}
-
-			if err := uc.clientDbRepository.CreateInternalContinuousScreeningTable(ctx, tx, table.Name); err != nil {
-				return err
-			}
+	for _, objectType := range objectTypes {
+		table, ok := dataModel.Tables[objectType]
+		if !ok {
+			return errors.Wrapf(models.BadParameterError,
+				"table %s not found in data model", objectType)
 		}
-		return nil
-	})
+
+		if err := checkDataModelTableAndFieldsConfiguration(table); err != nil {
+			return errors.Wrap(models.BadParameterError, err.Error())
+		}
+	}
+	return nil
 }
 
 func isUpdateDifferent(currentConfig models.ContinuousScreeningConfig, updateInput models.UpdateContinuousScreeningConfig) bool {
