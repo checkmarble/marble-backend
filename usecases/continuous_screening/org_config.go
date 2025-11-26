@@ -91,11 +91,6 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 	// Set a default stable ID, we don't allow to pass a stable ID in the input
 	input.StableId = uuid.New()
 
-	// Create the audit table if not exists
-	if err := uc.clientDbRepository.CreateInternalContinuousScreeningAuditTable(ctx, clientDbExec); err != nil {
-		return models.ContinuousScreeningConfig{}, err
-	}
-
 	if err := uc.checkDataModelConfiguration(ctx, exec, input.OrgId, input.ObjectTypes); err != nil {
 		return models.ContinuousScreeningConfig{}, err
 	}
