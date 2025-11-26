@@ -155,7 +155,7 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything,
-		mock.Anything, "transactions").Return(nil)
+		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
 		mock.Anything).Return(nil)
 	suite.repository.On("GetInboxById", mock.Anything, mock.Anything, suite.inboxId).Return(models.Inbox{
@@ -465,8 +465,6 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_AddObjectTy
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
-		mock.Anything).Return(nil)
 	suite.repository.On("UpdateContinuousScreeningConfig", mock.Anything, mock.Anything,
 		suite.configId, models.UpdateContinuousScreeningConfig{Enabled: utils.Ptr(false)}).Return(existingConfig, nil)
 	suite.repository.On("CreateContinuousScreeningConfig", mock.Anything, mock.Anything,
@@ -569,6 +567,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_TableMissin
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
+		mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -616,6 +616,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_TableMissin
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
+		mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -651,6 +653,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_ObjectTypeN
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
+		mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -823,8 +827,6 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_AddNonExist
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
-		mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -894,8 +896,6 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_AddInvalidT
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
-		mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
