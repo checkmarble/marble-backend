@@ -567,8 +567,6 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_TableMissin
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
-		mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -616,8 +614,6 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_TableMissin
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
-		mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -653,8 +649,6 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_ObjectTypeN
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
-		mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
