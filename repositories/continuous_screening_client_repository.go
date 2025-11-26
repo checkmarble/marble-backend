@@ -21,7 +21,7 @@ func sanitizedTableName(exec Executor, tableName string) string {
 // object_id: TEXT
 // config_stable_id: UUID
 // created_at: TIMESTAMP WITH TIME ZONE
-// Add unique index to have a unique object_id for a given config_id
+// Add unique index to ensure a unique combination of (config_stable_id, object_type, object_id)
 func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx context.Context, exec Executor) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
