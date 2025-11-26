@@ -42,7 +42,7 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx conte
 		return err
 	}
 
-	// Unique index to have a unique object_id for a given config_id
+	// Unique index to have a unique (object_type, object_id) combination for a given config_stable_id
 	uniqIndexName := fmt.Sprintf(
 		"uniq_idx_config_object_type_id%s",
 		dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS,
