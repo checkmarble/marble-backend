@@ -391,12 +391,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/settings/ai", tom, HandleGetAiSettingForOrganization(uc))
 	router.PUT("/settings/ai", tom, HandlePutAiSettingForOrganization(uc))
 
-	if conf.AnalyticsEnabled {
-		if conf.AnalyticsProxyApiUrl == "" {
-			addAnalyticsRoutes(router, conf, uc)
-		} else {
-			addAnalyticsProxyRoutes(router, conf)
-		}
+	if conf.AnalyticsProxyApiUrl == "" {
+		addAnalyticsRoutes(router, conf, uc)
+	} else {
+		addAnalyticsProxyRoutes(router, conf)
 	}
 }
 

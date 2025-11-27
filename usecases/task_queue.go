@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
@@ -190,18 +188,7 @@ func QueuesFromOrgs(ctx context.Context, appName string,
 		}
 
 		if analyticsConfig.Enabled {
-			enabledOrgIds := make([]string, 0)
-
-			// TODO: during QA, only run on specified org IDs, skip errors because this is for production
-			for analyticsOrgId := range strings.SplitSeq(os.Getenv("ANALYTICS_ONLY_ORG"), ",") {
-				if _, err := uuid.Parse(analyticsOrgId); err == nil {
-					enabledOrgIds = append(enabledOrgIds, analyticsOrgId)
-				}
-			}
-
-			if slices.Contains(enabledOrgIds, org.Id) {
-				periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(org.Id, analyticsConfig.JobInterval))
-			}
+			periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(org.Id, analyticsConfig.JobInterval))
 		}
 
 		queues[org.Id] = river.QueueConfig{

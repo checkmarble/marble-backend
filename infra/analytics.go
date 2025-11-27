@@ -44,8 +44,7 @@ func InitAnalyticsConfig(pgConfig PgConfig, bucket string) (AnalyticsConfig, err
 	}
 
 	cfg := AnalyticsConfig{
-		Enabled: utils.GetEnv("ANALYTICS_ONLY_ORG", "") != "",
-		// TODO: during QA phase, analytics is only enabled if we set it for a single organization
+		Enabled:         !utils.GetEnv("DISABLE_ANALYTICS", false),
 		JobInterval:     utils.GetEnvDuration("ANALYTICS_JOB_INTERVAL", time.Hour),
 		ExportBatchSize: utils.GetEnv("ANALYTICS_BATCH_SIZE", 10000),
 		Bucket:          bucket,
