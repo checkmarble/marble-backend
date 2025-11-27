@@ -152,6 +152,12 @@ type ContinuousScreeningClientDbRepository interface {
 		exec repositories.Executor,
 		input models.DeleteContinuousScreeningObject,
 	) error
+	ListMonitoredObjects(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters models.ListMonitoredObjectsFilters,
+		pagination models.PaginationAndSorting,
+	) ([]models.ContinuousScreeningMonitoredObject, error)
 }
 
 type ContinuousScreeningIngestedDataReader interface {

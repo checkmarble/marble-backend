@@ -71,6 +71,20 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx conte
 		return err
 	}
 
+	// Index for list queries with filtering and pagination (created_at DESC for ordering)
+	listIndexName := fmt.Sprintf(
+		"idx_monitored_objects_list_%s",
+		dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS,
+	)
+	sql = fmt.Sprintf(
+		"CREATE INDEX IF NOT EXISTS %s ON %s (config_stable_id, object_type, object_id, created_at DESC, id DESC)",
+		listIndexName,
+		tableName,
+	)
+	if _, err := exec.Exec(ctx, sql); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -281,4 +295,72 @@ func (repo *ClientDbRepository) DeleteContinuousScreeningObject(
 	}
 
 	return nil
+}
+
+func (repo *ClientDbRepository) ListMonitoredObjects(
+	ctx context.Context,
+	exec Executor,
+	filters models.ListMonitoredObjectsFilters,
+	pagination models.PaginationAndSorting,
+) ([]models.ContinuousScreeningMonitoredObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	tableName := sanitizedTableName(exec, dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS)
+
+	if pagination.Sorting != models.SortingFieldCreatedAt {
+		return nil, errors.Wrapf(models.BadParameterError, "invalid sorting field: %s", pagination.Sorting)
+	}
+
+	orderCond := fmt.Sprintf("%s %s, id %s", pagination.Sorting, pagination.Order, pagination.Order)
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningMonitoredObjectColumn...).
+		From(tableName).
+		OrderBy(orderCond).
+		Limit(uint64(pagination.Limit))
+
+	// Apply filters
+	if len(filters.ConfigStableIds) > 0 {
+		query = query.Where(squirrel.Eq{"config_stable_id": filters.ConfigStableIds})
+	}
+	if len(filters.ObjectTypes) > 0 {
+		query = query.Where(squirrel.Eq{"object_type": filters.ObjectTypes})
+	}
+	if len(filters.ObjectIds) > 0 {
+		query = query.Where(squirrel.Eq{"object_id": filters.ObjectIds})
+	}
+	if !filters.StartDate.IsZero() {
+		query = query.Where(squirrel.GtOrEq{"created_at": filters.StartDate})
+	}
+	if !filters.EndDate.IsZero() {
+		query = query.Where(squirrel.LtOrEq{"created_at": filters.EndDate})
+	}
+
+	if pagination.OffsetId != "" {
+		offsetId, err := uuid.Parse(pagination.OffsetId)
+		if err != nil {
+			return nil, errors.Wrap(models.BadParameterError, "invalid offset_id")
+		}
+		offsetObject, err := repo.GetMonitoredObject(ctx, exec, offsetId)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, errors.Wrap(models.NotFoundError,
+					"No row found matching the provided offset_id")
+			}
+			return nil, errors.Wrap(err, "error fetching offset monitored object")
+		}
+		if pagination.Order == models.SortingOrderDesc {
+			query = query.Where(
+				squirrel.Expr("(created_at, id) < (?, ?)", offsetObject.CreatedAt, offsetObject.Id),
+			)
+		} else {
+			query = query.Where(
+				squirrel.Expr("(created_at, id) > (?, ?)", offsetObject.CreatedAt, offsetObject.Id),
+			)
+		}
+	}
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
 }
