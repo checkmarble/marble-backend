@@ -97,7 +97,7 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 
 	query := squirrel.
 		Select(
-			"rule_name",
+			"max(rule_name) as rule_name", // Until any_value() is guaranteed to be here
 			"count() filter (outcome = 'hit') as hit_count",
 			"((count() filter (outcome = 'hit')) / count()) * 100 as hit_ratio",
 			"count(distinct pivot_value) filter (outcome = 'hit') as distinct_pivots",
@@ -106,7 +106,7 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 		From(uc.analyticsFactory.BuildTarget("decision_rules")).
 		Where("created_at between ? and ?", filters.Start, filters.End).
 		Where("rule_name is not null").
-		GroupBy("rule_id", "rule_name").
+		GroupBy("stable_rule_id").
 		OrderBy("hit_ratio desc")
 
 	query, err = uc.analyticsFactory.ApplyFilters(query, scenario, filters)
@@ -132,7 +132,7 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context,
 
 	query := squirrel.
 		Select(
-			"rule_name",
+			"max(rule_name) as rule_name", // Until any_value() is guaranteed to be here
 			"d.outcome",
 			"count() as decisions",
 		).
@@ -140,7 +140,7 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context,
 		InnerJoin(uc.analyticsFactory.BuildTarget("decisions", "d")+" on d.id = dr.decision_id").
 		Where("dr.created_at between ? and ?", filters.Start, filters.End).
 		Where("rule_name is not null and dr.outcome = 'hit'").
-		GroupBy("stable_rule_id", "rule_name", "d.outcome")
+		GroupBy("stable_rule_id", "d.outcome")
 
 	query, err = uc.analyticsFactory.ApplyFilters(query, scenario, filters, "dr")
 	if err != nil {
