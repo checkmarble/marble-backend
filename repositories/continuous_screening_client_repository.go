@@ -72,19 +72,33 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx conte
 	}
 
 	// Index for list queries with filtering and pagination (created_at DESC for ordering)
-	listIndexName := fmt.Sprintf(
-		"idx_monitored_objects_list_%s",
+	// Index for filtering by config_stable_id
+	configIndexName := fmt.Sprintf(
+		"idx_monitored_objects_config%s",
 		dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS,
 	)
 	sql = fmt.Sprintf(
-		"CREATE INDEX IF NOT EXISTS %s ON %s (config_stable_id, object_type, object_id, created_at DESC, id DESC)",
-		listIndexName,
+		"CREATE INDEX IF NOT EXISTS %s ON %s (config_stable_id, created_at DESC, id DESC)",
+		configIndexName,
 		tableName,
 	)
 	if _, err := exec.Exec(ctx, sql); err != nil {
 		return err
 	}
 
+	// Index for filtering by object_type
+	typeIndexName := fmt.Sprintf(
+		"idx_monitored_objects_type%s",
+		dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS,
+	)
+	sql = fmt.Sprintf(
+		"CREATE INDEX IF NOT EXISTS %s ON %s (object_type, created_at DESC, id DESC)",
+		typeIndexName,
+		tableName,
+	)
+	if _, err := exec.Exec(ctx, sql); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -331,11 +345,11 @@ func (repo *ClientDbRepository) ListMonitoredObjects(
 	if len(filters.ObjectIds) > 0 {
 		query = query.Where(squirrel.Eq{"object_id": filters.ObjectIds})
 	}
-	if !filters.StartDate.IsZero() {
-		query = query.Where(squirrel.GtOrEq{"created_at": filters.StartDate})
+	if filters.StartDate != nil {
+		query = query.Where(squirrel.GtOrEq{"created_at": *filters.StartDate})
 	}
-	if !filters.EndDate.IsZero() {
-		query = query.Where(squirrel.LtOrEq{"created_at": filters.EndDate})
+	if filters.EndDate != nil {
+		query = query.Where(squirrel.LtOrEq{"created_at": *filters.EndDate})
 	}
 
 	if pagination.OffsetId != "" {

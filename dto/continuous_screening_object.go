@@ -61,36 +61,18 @@ type ListContinuousScreeningObjectsFilters struct {
 	ObjectTypes     []string    `form:"object_type[]"`
 	ObjectIds       []string    `form:"object_id[]"`
 	ConfigStableIds []uuid.UUID `form:"config_stable_id[]"`
-	StartDate       string      `form:"start_date"`
-	EndDate         string      `form:"end_date"`
+	StartDate       *time.Time  `form:"start_date"`
+	EndDate         *time.Time  `form:"end_date"`
 }
 
-func (dto ListContinuousScreeningObjectsFilters) Parse() (models.ListMonitoredObjectsFilters, error) {
-	out := models.ListMonitoredObjectsFilters{
+func AdaptListContinuousScreeningObjectsFiltersDto(dto ListContinuousScreeningObjectsFilters) models.ListMonitoredObjectsFilters {
+	return models.ListMonitoredObjectsFilters{
 		ObjectTypes:     dto.ObjectTypes,
 		ObjectIds:       dto.ObjectIds,
 		ConfigStableIds: dto.ConfigStableIds,
+		StartDate:       dto.StartDate,
+		EndDate:         dto.EndDate,
 	}
-
-	if dto.StartDate != "" {
-		startDate, err := time.Parse(time.RFC3339, dto.StartDate)
-		if err != nil {
-			return out, errors.Wrap(models.BadParameterError,
-				"invalid start_date format, expected RFC3339")
-		}
-		out.StartDate = startDate
-	}
-
-	if dto.EndDate != "" {
-		endDate, err := time.Parse(time.RFC3339, dto.EndDate)
-		if err != nil {
-			return out, errors.Wrap(models.BadParameterError,
-				"invalid end_date format, expected RFC3339")
-		}
-		out.EndDate = endDate
-	}
-
-	return out, nil
 }
 
 type ContinuousScreeningObjectDto struct {

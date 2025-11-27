@@ -271,12 +271,6 @@ func handleListContinuousScreeningObjects(uc usecases.Usecases) func(c *gin.Cont
 			return
 		}
 
-		filters, err := filtersDto.Parse()
-		if err != nil {
-			presentError(ctx, c, err)
-			return
-		}
-
 		var paginationAndSortingDto dto.PaginationAndSorting
 		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
@@ -288,7 +282,11 @@ func handleListContinuousScreeningObjects(uc usecases.Usecases) func(c *gin.Cont
 		)
 
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
-		objects, err := uc.ListMonitoredObjects(ctx, filters, paginationAndSorting)
+		objects, err := uc.ListMonitoredObjects(
+			ctx,
+			dto.AdaptListContinuousScreeningObjectsFiltersDto(filtersDto),
+			paginationAndSorting,
+		)
 		if presentError(ctx, c, err) {
 			return
 		}
