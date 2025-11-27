@@ -70,6 +70,8 @@ type CaseUseCaseRepository interface {
 
 	GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor,
 		orgId, pivotValue string) ([]models.Case, error)
+	GetContinuousScreeningCasesWithObjectAttr(ctx context.Context, exec repositories.Executor,
+		orgId, objectType, objectId string) ([]models.Case, error)
 
 	GetNextCase(ctx context.Context, exec repositories.Executor, c models.Case) (string, error)
 
@@ -1650,7 +1652,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	return c, nil
 }
 
-func (usecase *CaseUseCase) GetRelatedCases(ctx context.Context, orgId, pivotValue string) ([]models.Case, error) {
+func (usecase *CaseUseCase) GetRelatedCasesByPivotValue(ctx context.Context, orgId, pivotValue string) ([]models.Case, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
 	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
@@ -1659,6 +1661,32 @@ func (usecase *CaseUseCase) GetRelatedCases(ctx context.Context, orgId, pivotVal
 	}
 
 	cases, err := usecase.repository.GetCasesWithPivotValue(ctx, exec, orgId, pivotValue)
+	if err != nil {
+		return nil, err
+	}
+
+	allowedCases := make([]models.Case, 0, len(cases))
+
+	for _, c := range cases {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err == nil {
+			allowedCases = append(allowedCases, c)
+		}
+	}
+
+	return allowedCases, nil
+}
+
+func (usecase *CaseUseCase) GetRelatedContinuousScreeningCasesByObjectAttr(
+	ctx context.Context, orgId string, objectType, objectId string,
+) ([]models.Case, error) {
+	exec := usecase.executorFactory.NewExecutor()
+
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	cases, err := usecase.repository.GetContinuousScreeningCasesWithObjectAttr(ctx, exec, orgId, objectType, objectId)
 	if err != nil {
 		return nil, err
 	}
