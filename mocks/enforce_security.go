@@ -240,6 +240,11 @@ func (e *EnforceSecurity) WriteContinuousScreeningHit(orgId uuid.UUID) error {
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) DismissContinuousScreeningHits(orgId uuid.UUID) error {
+	args := e.Called(orgId)
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) ReadOrUpdateCase(c models.CaseMetadata, availableInboxIds []uuid.UUID) error {
 	args := e.Called(c, availableInboxIds)
 	return args.Error(0)

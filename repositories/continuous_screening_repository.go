@@ -463,6 +463,31 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchStatus(
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMatch)
 }
 
+func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchStatusByBatch(
+	ctx context.Context,
+	exec Executor,
+	ids []uuid.UUID,
+	newStatus models.ScreeningMatchStatus,
+	reviewedBy *uuid.UUID,
+) ([]models.ContinuousScreeningMatch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
+		Where(squirrel.Eq{"id": ids}).
+		Set("status", newStatus).
+		Set("reviewed_by", reviewedBy).
+		Suffix("RETURNING *")
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMatch)
+}
+
 func (repo *MarbleDbRepository) UpdateContinuousScreeningStatus(
 	ctx context.Context,
 	exec Executor,
