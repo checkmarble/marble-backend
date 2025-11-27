@@ -43,6 +43,7 @@ var (
 		TAG_DELETE,
 		ORGANIZATIONS_UPDATE,
 		ANNOTATION_DELETE,
+		CONTINUOUS_SCREENING_HIT_DISMISS, // Only admin can dismiss all hits for a continuous screening
 	)
 )
 
