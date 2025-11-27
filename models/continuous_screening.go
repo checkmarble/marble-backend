@@ -106,3 +106,11 @@ type ContinuousScreeningDataModelMapping struct {
 	Entity     string
 	Properties map[string]string
 }
+
+type ListMonitoredObjectsFilters struct {
+	ObjectTypes     []string    // Optional: filter by object types
+	ObjectIds       []string    // Optional: filter by object IDs
+	ConfigStableIds []uuid.UUID // Optional: filter by config stable IDs
+	StartDate       time.Time   // Optional: filter objects created on/after this date
+	EndDate         time.Time   // Optional: filter objects created on/before this date
+}
