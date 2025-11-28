@@ -190,10 +190,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
 		suite.matchId, models.ScreeningMatchStatusConfirmedHit, mock.Anything).Return(updatedMatch, nil)
 	suite.caseEditor.On("PerformCaseActionSideEffects", mock.Anything, mock.Anything, caseData).Return(nil)
-	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
-		continuousScreeningMatch2.Id, models.ScreeningMatchStatusSkipped, mock.Anything).Return(models.ContinuousScreeningMatch{}, nil)
-	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
-		continuousScreeningMatch3.Id, models.ScreeningMatchStatusSkipped, mock.Anything).Return(models.ContinuousScreeningMatch{}, nil)
+	suite.repository.On("UpdateContinuousScreeningMatchStatusByBatch", mock.Anything, mock.Anything,
+		[]uuid.UUID{continuousScreeningMatch2.Id, continuousScreeningMatch3.Id},
+		models.ScreeningMatchStatusSkipped, mock.Anything).Return(
+		[]models.ContinuousScreeningMatch{}, nil)
 	suite.repository.On("UpdateContinuousScreeningStatus", mock.Anything, mock.Anything,
 		suite.screeningId, models.ScreeningStatusConfirmedHit).Return(models.ContinuousScreening{}, nil)
 	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
@@ -259,6 +259,9 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
 		suite.matchId, models.ScreeningMatchStatusConfirmedHit, mock.Anything).Return(updatedMatch, nil)
 	suite.caseEditor.On("PerformCaseActionSideEffects", mock.Anything, mock.Anything, caseData).Return(nil)
+	suite.repository.On("UpdateContinuousScreeningMatchStatusByBatch", mock.Anything, mock.Anything,
+		[]uuid.UUID{}, models.ScreeningMatchStatusSkipped, mock.Anything).Return(
+		[]models.ContinuousScreeningMatch{}, nil)
 	suite.repository.On("UpdateContinuousScreeningStatus", mock.Anything, mock.Anything,
 		suite.screeningId, models.ScreeningStatusConfirmedHit).Return(models.ContinuousScreening{}, nil)
 	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
@@ -487,5 +490,191 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Invali
 	// Assert
 	suite.Error(err)
 	suite.Contains(err.Error(), "invalid status received for screening match")
+	suite.AssertExpectations()
+}
+
+func (suite *ScreeningTestSuite) TestDismissContinuousScreening_InsufficientPermissions() {
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:    suite.screeningId,
+			OrgId: suite.orgId,
+		},
+		Matches: []models.ContinuousScreeningMatch{},
+	}
+
+	// Mock expectations
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(models.ForbiddenError)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.DismissContinuousScreening(suite.ctx, suite.screeningId, &suite.userId)
+
+	// Assert
+	suite.Error(err)
+	suite.Equal(models.ForbiddenError, err)
+	suite.AssertExpectations()
+}
+
+func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NoHitChangesOthersToSkipped() {
+	// Setup
+	match1 := models.ContinuousScreeningMatch{
+		Id:                    uuid.New(),
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusNoHit,
+	}
+	match2 := models.ContinuousScreeningMatch{
+		Id:                    uuid.New(),
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusPending,
+	}
+	match3 := models.ContinuousScreeningMatch{
+		Id:                    uuid.New(),
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusPending,
+	}
+
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:     suite.screeningId,
+			OrgId:  suite.orgId,
+			CaseId: &suite.caseId,
+			Status: models.ScreeningStatusInReview,
+		},
+		Matches: []models.ContinuousScreeningMatch{match1, match2, match3},
+	}
+
+	// Expected result after dismissal
+	expectedMatch2 := match2
+	expectedMatch2.Status = models.ScreeningMatchStatusSkipped
+	expectedMatch3 := match3
+	expectedMatch3.Status = models.ScreeningMatchStatusSkipped
+
+	expectedResult := continuousScreeningWithMatches
+	expectedResult.Matches = []models.ContinuousScreeningMatch{match1, expectedMatch2, expectedMatch3}
+
+	// Mock expectations
+	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil).Once()
+	suite.repository.On("UpdateContinuousScreeningMatchStatusByBatch",
+		mock.Anything, mock.Anything, []uuid.UUID{match2.Id, match3.Id},
+		models.ScreeningMatchStatusSkipped, mock.Anything).Return(
+		[]models.ContinuousScreeningMatch{}, nil)
+	suite.repository.On("UpdateContinuousScreeningStatus", mock.Anything, mock.Anything,
+		suite.screeningId, models.ScreeningStatusNoHit).Return(models.ContinuousScreening{}, nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(expectedResult, nil).Once()
+
+	// Execute
+	uc := suite.makeUsecase()
+	result, err := uc.DismissContinuousScreening(suite.ctx, suite.screeningId, &suite.userId)
+
+	// Assert
+	suite.NoError(err)
+	suite.Equal(expectedResult, result)
+	suite.AssertExpectations()
+}
+
+func (suite *ScreeningTestSuite) TestDismissContinuousScreening_ConfirmedHit_NoUpdates() {
+	// Setup
+	match1 := models.ContinuousScreeningMatch{
+		Id:                    uuid.New(),
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusConfirmedHit,
+	}
+	match2 := models.ContinuousScreeningMatch{
+		Id:                    uuid.New(),
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusSkipped,
+	}
+	match3 := models.ContinuousScreeningMatch{
+		Id:                    uuid.New(),
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusSkipped,
+	}
+
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:     suite.screeningId,
+			OrgId:  suite.orgId,
+			CaseId: &suite.caseId,
+			Status: models.ScreeningStatusInReview,
+		},
+		Matches: []models.ContinuousScreeningMatch{match1, match2, match3},
+	}
+
+	// Mock expectations - no pending matches, so batch update with empty slice
+	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil).Once()
+	suite.repository.On("UpdateContinuousScreeningMatchStatusByBatch",
+		mock.Anything, mock.Anything, []uuid.UUID{}, models.ScreeningMatchStatusSkipped,
+		mock.Anything).Return([]models.ContinuousScreeningMatch{}, nil)
+	suite.repository.On("UpdateContinuousScreeningStatus", mock.Anything, mock.Anything,
+		suite.screeningId, models.ScreeningStatusNoHit).Return(models.ContinuousScreening{}, nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil).Once()
+
+	// Execute
+	uc := suite.makeUsecase()
+	result, err := uc.DismissContinuousScreening(suite.ctx, suite.screeningId, &suite.userId)
+
+	// Assert
+	suite.NoError(err)
+	suite.Equal(continuousScreeningWithMatches, result)
+	suite.AssertExpectations()
+}
+
+func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NotInCase() {
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:     suite.screeningId,
+			OrgId:  suite.orgId,
+			CaseId: nil, // Not in case
+			Status: models.ScreeningStatusInReview,
+		},
+		Matches: []models.ContinuousScreeningMatch{},
+	}
+
+	// Mock expectations
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.DismissContinuousScreening(suite.ctx, suite.screeningId, &suite.userId)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "continuous screening is not in case, can't dismiss")
+	suite.AssertExpectations()
+}
+
+func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NotInReview() {
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:     suite.screeningId,
+			OrgId:  suite.orgId,
+			CaseId: &suite.caseId,
+			Status: models.ScreeningStatusConfirmedHit, // Not in review
+		},
+		Matches: []models.ContinuousScreeningMatch{},
+	}
+
+	// Mock expectations
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.DismissContinuousScreening(suite.ctx, suite.screeningId, &suite.userId)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "continuous screening is not in review, can't dismiss")
 	suite.AssertExpectations()
 }
