@@ -626,3 +626,55 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_ConfirmedHit_NoU
 	suite.Equal(continuousScreeningWithMatches, result)
 	suite.AssertExpectations()
 }
+
+func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NotInCase() {
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:     suite.screeningId,
+			OrgId:  suite.orgId,
+			CaseId: nil, // Not in case
+			Status: models.ScreeningStatusInReview,
+		},
+		Matches: []models.ContinuousScreeningMatch{},
+	}
+
+	// Mock expectations
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.DismissContinuousScreening(suite.ctx, suite.screeningId, &suite.userId)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "continuous screening is not in case, can't dismiss")
+	suite.AssertExpectations()
+}
+
+func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NotInReview() {
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:     suite.screeningId,
+			OrgId:  suite.orgId,
+			CaseId: &suite.caseId,
+			Status: models.ScreeningStatusConfirmedHit, // Not in review
+		},
+		Matches: []models.ContinuousScreeningMatch{},
+	}
+
+	// Mock expectations
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.DismissContinuousScreening(suite.ctx, suite.screeningId, &suite.userId)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "continuous screening is not in review, can't dismiss")
+	suite.AssertExpectations()
+}
