@@ -25,7 +25,7 @@ require (
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/getsentry/sentry-go v0.28.1
-	github.com/gin-contrib/cors v1.7.2
+	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-contrib/size v1.0.2
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-faker/faker/v4 v4.6.1
