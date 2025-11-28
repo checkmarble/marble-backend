@@ -231,6 +231,26 @@ func (m *ContinuousScreeningRepository) AddScreeningMatchWhitelist(
 	return args.Error(0)
 }
 
+func (m *ContinuousScreeningRepository) InsertContinuousScreeningMatches(
+	ctx context.Context,
+	exec repositories.Executor,
+	screeningId uuid.UUID,
+	matches []models.ContinuousScreeningMatch,
+) ([]models.ContinuousScreeningMatch, error) {
+	args := m.Called(ctx, exec, screeningId, matches)
+	return args.Get(0).([]models.ContinuousScreeningMatch), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) UpdateContinuousScreening(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+	input models.UpdateContinuousScreeningInput,
+) (models.ContinuousScreening, error) {
+	args := m.Called(ctx, exec, id, input)
+	return args.Get(0).(models.ContinuousScreening), args.Error(1)
+}
+
 type ContinuousScreeningClientDbRepository struct {
 	mock.Mock
 }
