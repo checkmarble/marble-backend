@@ -126,13 +126,16 @@ func (w AnalyticsMergeWorker) Work(ctx context.Context, job *river.Job[models.An
 		}
 
 		for _, table := range dataModel.Tables {
-			if err := w.merge(ctx, job, org.Id, dbExec, exec, models.WatermarkTypeMergedAnalyticsDecisions, "decisions", table.Name); err != nil {
+			if err := w.merge(ctx, job, org.Id, dbExec, exec,
+				models.WatermarkTypeMergedAnalyticsDecisions, "decisions", table.Name); err != nil {
 				return err
 			}
-			if err := w.merge(ctx, job, org.Id, dbExec, exec, models.WatermarkTypeMergedAnalyticsDecisionRules, "decision_rules", table.Name); err != nil {
+			if err := w.merge(ctx, job, org.Id, dbExec, exec,
+				models.WatermarkTypeMergedAnalyticsDecisionRules, "decision_rules", table.Name); err != nil {
 				return err
 			}
-			if err := w.merge(ctx, job, org.Id, dbExec, exec, models.WatermarkTypeMergedAnalyticsScreenings, "screenings", table.Name); err != nil {
+			if err := w.merge(ctx, job, org.Id, dbExec, exec,
+				models.WatermarkTypeMergedAnalyticsScreenings, "screenings", table.Name); err != nil {
 				return err
 			}
 		}
@@ -184,7 +187,7 @@ func (w AnalyticsMergeWorker) merge(
 	if !isMerged {
 		inner := repositories.NewQueryBuilder().
 			Select("*").
-			From(w.analyticsFactory.BuildTarget(kind)).
+			From(w.analyticsFactory.BuildTarget(kind, orgId, tableName)).
 			Where("org_id = ?", orgId).
 			Where("trigger_object_type = ?", tableName).
 			Where("(year, month) = (?, ?)", lhs.Year(), lhs.Month())
@@ -210,7 +213,8 @@ func (w AnalyticsMergeWorker) merge(
 		return errors.Wrap(err, "could not delete merged files")
 	}
 
-	if err := w.repository.SaveWatermark(ctx, dbExec, &orgId, models.SpecializedWatermark(watermarkType, tableName), utils.Ptr(uuid.NewString()), lhs, nil); err != nil {
+	if err := w.repository.SaveWatermark(ctx, dbExec, &orgId,
+		models.SpecializedWatermark(watermarkType, tableName), utils.Ptr(uuid.NewString()), lhs, nil); err != nil {
 		return errors.Wrap(err, "failed to save watermark")
 	}
 
@@ -227,7 +231,8 @@ func (w AnalyticsMergeWorker) findFirstMergeablePartition(
 	kind, tableName string,
 ) (time.Time, bool, error) {
 	// The watermark represents the lower bound of our search for a month to compact
-	wm, err := w.repository.GetWatermark(ctx, dbExec, &orgId, models.SpecializedWatermark(watermarkType, tableName))
+	wm, err := w.repository.GetWatermark(ctx, dbExec, &orgId,
+		models.SpecializedWatermark(watermarkType, tableName))
 	if err != nil {
 		return time.Time{}, false, errors.Wrap(err, "failed to get watermark")
 	}
@@ -237,7 +242,7 @@ func (w AnalyticsMergeWorker) findFirstMergeablePartition(
 	// columns.
 	minQuery := repositories.NewQueryBuilder().
 		Select("unnest(coalesce(min((year, month)), (0, 0)))").
-		From(w.analyticsFactory.BuildTarget(kind)).
+		From(w.analyticsFactory.BuildTarget(kind, orgId, tableName)).
 		Where("org_id = ?", orgId).
 		Where("trigger_object_type = ?", tableName)
 

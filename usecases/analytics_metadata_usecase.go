@@ -23,8 +23,11 @@ type AnalyticsMetadataUsecase struct {
 	scenarioRepository repositories.ScenarioUsecaseRepository
 }
 
-func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req dto.AnalyticsAvailableFiltersRequest) ([]models.AnalyticsFilter, error) {
-	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, uc.executorFactory.NewExecutor(), req.ScenarioId.String())
+func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context,
+	req dto.AnalyticsAvailableFiltersRequest,
+) ([]models.AnalyticsFilter, error) {
+	scenario, err := uc.scenarioRepository.GetScenarioById(ctx,
+		uc.executorFactory.NewExecutor(), req.ScenarioId.String())
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +40,10 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req 
 		return nil, err
 	}
 
-	inner := squirrel.Select("*").From(uc.analyticsFactory.BuildTarget("decisions"))
-	inner = uc.analyticsFactory.BuildPushdownFilter(inner, uc.enforceSecurity.OrgId(), req.Start, req.End, scenario.TriggerObjectType)
+	inner := squirrel.Select("*").From(uc.analyticsFactory.BuildTarget("decisions",
+		scenario.OrganizationId, scenario.TriggerObjectType))
+	inner = uc.analyticsFactory.BuildPushdownFilter(inner, uc.enforceSecurity.OrgId(),
+		req.Start, req.End, scenario.TriggerObjectType)
 
 	innerSql, innerArgs, _ := inner.ToSql()
 
@@ -67,7 +72,7 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req 
 			) i
 			on i.name = o.column_name;
 		`,
-		uc.analyticsFactory.BuildTarget("decisions"),
+		uc.analyticsFactory.BuildTarget("decisions", scenario.OrganizationId, scenario.TriggerObjectType),
 		innerSql,
 	), innerArgs...)
 	if err != nil {
@@ -85,7 +90,8 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context, req 
 			return nil, err
 		}
 
-		if strings.HasPrefix(tmp.Name, analytics.TriggerObjectFieldPrefix) || strings.HasPrefix(tmp.Name, analytics.DatabaseFieldPrefix) {
+		if strings.HasPrefix(tmp.Name, analytics.TriggerObjectFieldPrefix) ||
+			strings.HasPrefix(tmp.Name, analytics.DatabaseFieldPrefix) {
 			filters = append(filters, tmp)
 		}
 	}

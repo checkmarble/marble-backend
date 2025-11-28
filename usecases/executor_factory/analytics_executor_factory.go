@@ -95,20 +95,26 @@ func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, ali
 	return exportDb, nil
 }
 
-func (f AnalyticsExecutorFactory) BuildTarget(table string, aliases ...string) string {
+func (f AnalyticsExecutorFactory) BuildTarget(table string, orgId string, triggerObjectType string, aliases ...string) string {
 	alias := "main"
 	if len(aliases) > 0 {
 		alias = aliases[0]
 	}
 
-	return fmt.Sprintf(`read_parquet('%s/**/*.parquet', hive_partitioning = true, union_by_name = true) %s`, f.BuildTablePrefix(table), pgx.Identifier.Sanitize([]string{alias}))
+	return fmt.Sprintf(`read_parquet('%s/org_id=%s/year=*/month=*/trigger_object_type=%s/*.parquet', hive_partitioning = true, union_by_name = true) %s`,
+		f.BuildTablePrefix(table),
+		orgId,
+		triggerObjectType,
+		pgx.Identifier.Sanitize([]string{alias}))
 }
 
 func (f AnalyticsExecutorFactory) BuildTablePrefix(table string) string {
 	return fmt.Sprintf(`%s/%s`, f.config.Bucket, table)
 }
 
-func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuilder, orgId string, start, end time.Time, triggerObjectType string, aliases ...string) squirrel.SelectBuilder {
+func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuilder, orgId string,
+	start, end time.Time, triggerObjectType string, aliases ...string,
+) squirrel.SelectBuilder {
 	// Align time range on UTC to select the proper list of partitions
 	start, end = start.UTC(), end.UTC()
 
@@ -136,22 +142,27 @@ func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuild
 			betweens[y] = firstBetweenYears + y
 		}
 
-		or = append(or, squirrel.Expr(fmt.Sprintf("%s in ?", pgx.Identifier.Sanitize([]string{alias, "year"})), betweens))
+		or = append(or, squirrel.Expr(fmt.Sprintf("%s in ?",
+			pgx.Identifier.Sanitize([]string{alias, "year"})), betweens))
 	}
 
 	if start.Year() == end.Year() {
 		or = append(or, squirrel.Expr(
-			fmt.Sprintf("%s = ? and %s between ? and ?", pgx.Identifier.Sanitize([]string{alias, "year"}), pgx.Identifier.Sanitize([]string{alias, "month"})),
+			fmt.Sprintf("%s = ? and %s between ? and ?",
+				pgx.Identifier.Sanitize([]string{alias, "year"}),
+				pgx.Identifier.Sanitize([]string{alias, "month"})),
 			start.Year(), start.Month(), end.Month()))
 	} else {
 		or = append(or, squirrel.Or{
 			squirrel.And{
 				squirrel.Eq{pgx.Identifier.Sanitize([]string{alias, "year"}): start.Year()},
-				squirrel.Expr(fmt.Sprintf("%s between ? and 12", pgx.Identifier.Sanitize([]string{alias, "month"})), start.Month()),
+				squirrel.Expr(fmt.Sprintf("%s between ? and 12",
+					pgx.Identifier.Sanitize([]string{alias, "month"})), start.Month()),
 			},
 			squirrel.And{
 				squirrel.Eq{pgx.Identifier.Sanitize([]string{alias, "year"}): end.Year()},
-				squirrel.Expr(fmt.Sprintf("%s between 1 and ?", pgx.Identifier.Sanitize([]string{alias, "month"})), end.Month()),
+				squirrel.Expr(fmt.Sprintf("%s between 1 and ?",
+					pgx.Identifier.Sanitize([]string{alias, "month"})), end.Month()),
 			},
 		})
 	}
@@ -161,17 +172,21 @@ func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuild
 	return query
 }
 
-func (f AnalyticsExecutorFactory) ApplyFilters(query squirrel.SelectBuilder, scenario models.Scenario, filters dto.AnalyticsQueryFilters, aliases ...string) (squirrel.SelectBuilder, error) {
+func (f AnalyticsExecutorFactory) ApplyFilters(query squirrel.SelectBuilder,
+	scenario models.Scenario, filters dto.AnalyticsQueryFilters, aliases ...string,
+) (squirrel.SelectBuilder, error) {
 	alias := "main"
 	if len(aliases) > 0 {
 		alias = aliases[0]
 	}
 
 	query = f.BuildPushdownFilter(query, scenario.OrganizationId, filters.Start, filters.End, scenario.TriggerObjectType, aliases...)
-	query = query.Where(fmt.Sprintf("%s = ?", pgx.Identifier.Sanitize([]string{alias, "scenario_id"})), filters.ScenarioId)
+	query = query.Where(fmt.Sprintf("%s = ?",
+		pgx.Identifier.Sanitize([]string{alias, "scenario_id"})), filters.ScenarioId)
 
 	if len(filters.ScenarioVersions) > 0 {
-		query = query.Where(fmt.Sprintf("%s in ?", pgx.Identifier.Sanitize([]string{alias, "version"})), filters.ScenarioVersions)
+		query = query.Where(fmt.Sprintf("%s in ?",
+			pgx.Identifier.Sanitize([]string{alias, "version"})), filters.ScenarioVersions)
 	}
 
 	for _, f := range filters.Fields {
