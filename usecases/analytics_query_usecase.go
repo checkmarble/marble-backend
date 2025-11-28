@@ -35,7 +35,7 @@ func (uc AnalyticsQueryUsecase) DecisionOutcomePerDay(ctx context.Context,
 	_, tzOffset := filters.End.In(filters.Timezone).Zone()
 
 	subquery := squirrel.Select(fmt.Sprintf("(created_at + interval %d seconds)::date as date, outcome, count() as decisions", tzOffset)).
-		From(uc.analyticsFactory.BuildTarget("decisions")).
+		From(uc.analyticsFactory.BuildTarget("decisions", scenario.OrganizationId, scenario.TriggerObjectType)).
 		Where("created_at between ? and ?", filters.Start, filters.End).
 		GroupBy("date", "outcome")
 
@@ -72,7 +72,7 @@ func (uc AnalyticsQueryUsecase) DecisionsScoreDistribution(ctx context.Context,
 	}
 
 	query := squirrel.Select("score, count() as decisions").
-		From(uc.analyticsFactory.BuildTarget("decisions")).
+		From(uc.analyticsFactory.BuildTarget("decisions", scenario.OrganizationId, scenario.TriggerObjectType)).
 		Where("created_at between ? and ?", filters.Start, filters.End).
 		GroupBy("score").
 		OrderBy("score")
@@ -103,7 +103,7 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 			"count(distinct pivot_value) filter (outcome = 'hit') as distinct_pivots",
 			"IFNULL(100 - (count(distinct pivot_value) filter (outcome = 'hit') / NULLIF(count() filter (outcome = 'hit'), 0) ) * 100, 0) as repeat_ratio",
 		).
-		From(uc.analyticsFactory.BuildTarget("decision_rules")).
+		From(uc.analyticsFactory.BuildTarget("decision_rules", scenario.OrganizationId, scenario.TriggerObjectType)).
 		Where("created_at between ? and ?", filters.Start, filters.End).
 		Where("rule_name is not null").
 		GroupBy("stable_rule_id").
@@ -136,8 +136,9 @@ func (uc AnalyticsQueryUsecase) RuleVsDecisionOutcome(ctx context.Context,
 			"d.outcome",
 			"count() as decisions",
 		).
-		From(uc.analyticsFactory.BuildTarget("decision_rules", "dr")).
-		InnerJoin(uc.analyticsFactory.BuildTarget("decisions", "d")+" on d.id = dr.decision_id").
+		From(uc.analyticsFactory.BuildTarget("decision_rules", scenario.OrganizationId, scenario.TriggerObjectType, "dr")).
+		InnerJoin(uc.analyticsFactory.BuildTarget("decisions", scenario.OrganizationId,
+			scenario.TriggerObjectType, "d")+" on d.id = dr.decision_id").
 		Where("dr.created_at between ? and ?", filters.Start, filters.End).
 		Where("rule_name is not null and dr.outcome = 'hit'").
 		GroupBy("stable_rule_id", "d.outcome")
@@ -173,8 +174,9 @@ func (uc AnalyticsQueryUsecase) RuleCoOccurenceMatrix(ctx context.Context,
 			"any_value(t2.rule_name) as rule_y_name",
 			"count() as decisions",
 		).
-		From(uc.analyticsFactory.BuildTarget("decision_rules", "t1")).
-		Join(uc.analyticsFactory.BuildTarget("decision_rules", "t2")+" on t1.decision_id = t2.decision_id").
+		From(uc.analyticsFactory.BuildTarget("decision_rules", scenario.OrganizationId, scenario.TriggerObjectType, "t1")).
+		Join(uc.analyticsFactory.BuildTarget("decision_rules", scenario.OrganizationId,
+			scenario.TriggerObjectType, "t2")+" on t1.decision_id = t2.decision_id").
 		Where("t1.created_at between ? and ?", filters.Start, filters.End).
 		Where("t1.rule_id >= t2.rule_id").
 		Where("t1.outcome = 'hit' and t2.outcome = 'hit'").
@@ -214,7 +216,7 @@ func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context,
 			"coalesce((hits / execs) * 100, 0.0) as hit_ratio",
 			"coalesce(avg(matches) filter (matches > 0), 0) as avg_hits",
 		).
-		From(uc.analyticsFactory.BuildTarget("screenings")).
+		From(uc.analyticsFactory.BuildTarget("screenings", scenario.OrganizationId, scenario.TriggerObjectType)).
 		Where("created_at between ? and ?", filters.Start, filters.End).
 		GroupBy("screening_config_id")
 
