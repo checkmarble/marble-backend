@@ -14,19 +14,27 @@ import (
 )
 
 type IngestionRepository interface {
-	IngestObjects(ctx context.Context, tx Transaction, payloads []models.ClientObject, table models.Table) (int, error)
+	IngestObjects(
+		ctx context.Context,
+		tx Transaction,
+		payloads []models.ClientObject,
+		table models.Table,
+	) ([]string, error)
 }
 
 type IngestionRepositoryImpl struct{}
 
+// Ingest objects and return:
+//   - List of object_id of inserted objects
+//   - Error if any
 func (repo *IngestionRepositoryImpl) IngestObjects(
 	ctx context.Context,
 	tx Transaction,
 	payloads []models.ClientObject,
 	table models.Table,
-) (int, error) {
+) ([]string, error) {
 	if err := validateClientDbExecutor(tx); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	mostRecentObjectIds, mostRecentPayloads := mostRecentPayloadsByObjectId(payloads)
@@ -35,7 +43,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, tx,
 		mostRecentObjectIds, table, fieldsToLoad)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	payloadsToInsert, obsoleteIngestedObjectIds, validationErrors := compareAndMergePayloadsWithIngestedObjects(
@@ -43,7 +51,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 		previouslyIngestedObjects,
 	)
 	if len(validationErrors) > 0 {
-		return 0, errors.Join(models.BadParameterError, validationErrors)
+		return nil, errors.Join(models.BadParameterError, validationErrors)
 	}
 
 	if len(obsoleteIngestedObjectIds) > 0 {
@@ -54,17 +62,24 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 			obsoleteIngestedObjectIds,
 		)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 	}
 
 	if len(payloadsToInsert) > 0 {
 		if err := repo.batchInsertPayloads(ctx, tx, payloadsToInsert, table); err != nil {
-			return 0, err
+			return nil, err
 		}
 	}
 
-	return len(payloadsToInsert), nil
+	payloadsInsertedObjectId := make([]string, len(payloadsToInsert))
+	for i, payload := range payloadsToInsert {
+		// Assumes that the object_id is always present as it is a mandatory field
+		objectId := payload.Data["object_id"].(string)
+		payloadsInsertedObjectId[i] = objectId
+	}
+
+	return payloadsInsertedObjectId, nil
 }
 
 // Try to only load the fields that are actually missing from the payloads (in the case of a partial update).

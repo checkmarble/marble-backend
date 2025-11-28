@@ -75,6 +75,21 @@ type TaskQueueRepository interface {
 		ctx context.Context,
 		event models.BillingEvent,
 	) error
+	EnqueueContinuousScreeningDoScreeningTaskMany(
+		ctx context.Context,
+		tx Transaction,
+		orgId string,
+		objectType string,
+		monitoringIds []uuid.UUID,
+		triggerType models.ContinuousScreeningTriggerType,
+	) error
+	EnqueueContinuousScreeningEvaluateNeedTask(
+		ctx context.Context,
+		tx Transaction,
+		orgId string,
+		objectType string,
+		objectIds []string,
+	) error
 }
 
 type riverRepository struct {
@@ -329,5 +344,74 @@ func (r riverRepository) EnqueueSendBillingEventTask(
 	}
 
 	logger.DebugContext(ctx, "Enqueued send billing event task", "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
+	ctx context.Context,
+	tx Transaction,
+	orgId string,
+	objectType string,
+	monitoringIds []uuid.UUID,
+	triggerType models.ContinuousScreeningTriggerType,
+) error {
+	params := make([]river.InsertManyParams, len(monitoringIds))
+	for i, monitoringId := range monitoringIds {
+		params[i] = river.InsertManyParams{
+			Args: models.ContinuousScreeningDoScreeningArgs{
+				ObjectType:   objectType,
+				OrgId:        orgId,
+				TriggerType:  triggerType,
+				MonitoringId: monitoringId,
+			},
+			InsertOpts: &river.InsertOpts{
+				Queue:    orgId,
+				Priority: 4, // Low priority to avoid blocking other tasks
+			},
+		}
+	}
+
+	res, err := r.client.InsertManyFastTx(ctx, tx.RawTx(), params)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued continuous screening do screening tasks", "nb_tasks", res)
+	return nil
+}
+
+func (r riverRepository) EnqueueContinuousScreeningEvaluateNeedTask(
+	ctx context.Context,
+	tx Transaction,
+	orgId string,
+	objectType string,
+	objectIds []string,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.ContinuousScreeningEvaluateNeedArgs{
+			OrgId:      orgId,
+			ObjectType: objectType,
+			ObjectIds:  objectIds,
+		},
+		&river.InsertOpts{
+			Queue: orgId,
+			// Delay the task just after the deadline to be sure it's executed after the caller execution
+			ScheduledAt: func() time.Time {
+				if deadline, ok := ctx.Deadline(); ok {
+					return deadline.Add(time.Second)
+				}
+				return time.Now().Add(10 * time.Second)
+			}(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued continuous screening check if object needs screening task", "job_id", res.Job.ID)
 	return nil
 }

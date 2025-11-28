@@ -74,6 +74,8 @@ func AdaptContinuousScreeningMatch(dto DBContinuousScreeningMatches) (models.Con
 		Status:                models.ScreeningMatchStatusFrom(dto.Status),
 		Payload:               dto.Payload,
 		ReviewedBy:            dto.ReviewedBy,
+		CreatedAt:             dto.CreatedAt,
+		UpdatedAt:             dto.UpdatedAt,
 	}, nil
 }
 
@@ -101,5 +103,23 @@ func AdaptContinuousScreeningWithMatches(dto DBContinuousScreeningWithMatches) (
 	return models.ContinuousScreeningWithMatches{
 		ContinuousScreening: sm,
 		Matches:             matches,
+	}, nil
+}
+
+type DBContinuousScreeningMonitoredObject struct {
+	Id             uuid.UUID `db:"id"`
+	ObjectId       string    `db:"object_id"`
+	ConfigStableId uuid.UUID `db:"config_stable_id"`
+	CreatedAt      time.Time `db:"created_at"`
+}
+
+var SelectContinuousScreeningMonitoredObjectColumn = utils.ColumnList[DBContinuousScreeningMonitoredObject]()
+
+func AdaptContinuousScreeningMonitoredObject(dto DBContinuousScreeningMonitoredObject) (models.ContinuousScreeningMonitoredObject, error) {
+	return models.ContinuousScreeningMonitoredObject{
+		Id:             dto.Id,
+		ObjectId:       dto.ObjectId,
+		ConfigStableId: dto.ConfigStableId,
+		CreatedAt:      dto.CreatedAt,
 	}, nil
 }

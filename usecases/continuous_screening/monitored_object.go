@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -61,21 +62,9 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		return models.ScreeningWithMatches{}, err
 	}
 
-	// Get Data Model Table
-	dataModel, err := uc.repository.GetDataModel(ctx, exec, config.OrgId.String(), false, false)
+	table, mapping, err := uc.GetDataModelTableAndMapping(ctx, exec, config, input.ObjectType)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
-	}
-	table, ok := dataModel.Tables[input.ObjectType]
-	if !ok {
-		return models.ScreeningWithMatches{},
-			errors.Wrapf(models.BadParameterError, "table %s not found in data model", input.ObjectType)
-	}
-
-	// Check if data model table and fields are well configured for continuous screening and fetch the mapping
-	dataModelMapping, err := buildDataModelMapping(table)
-	if err != nil {
-		return models.ScreeningWithMatches{}, errors.Wrap(models.BadParameterError, err.Error())
 	}
 
 	var objectId string
@@ -99,19 +88,12 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 			errors.New("object_id or object_payload is required")
 	}
 
-	ingestedObjects, err := uc.ingestedDataReader.QueryIngestedObject(ctx, clientDbExec, table, objectId, "id")
-	if err != nil {
-		return models.ScreeningWithMatches{}, err
-	}
-	if len(ingestedObjects) == 0 {
-		return models.ScreeningWithMatches{}, errors.Wrap(
-			models.NotFoundError,
-			fmt.Sprintf("object %s not found in ingested data", objectId),
-		)
-	}
-
-	ingestedObject := ingestedObjects[0]
-	ingestedObjectInternalId, err := getIngestedObjectInternalId(ingestedObject)
+	ingestedObject, ingestedObjectInternalId, err := uc.GetIngestedObject(
+		ctx,
+		clientDbExec,
+		table,
+		objectId,
+	)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -123,7 +105,6 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		objectId,
 		input.ConfigStableId,
 	)
-	// Unique violation error is handled below
 	if err != nil {
 		if repositories.IsUniqueViolationError(err) && ignoreUniqueViolationError {
 			// Do nothing, normal case
@@ -137,27 +118,17 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		}
 	}
 
-	// Do screening on the object
-	query, err := prepareOpenSanctionsQuery(ingestedObject, dataModelMapping.Entity, dataModelMapping.Properties, config)
-	if err != nil {
-		logger.WarnContext(ctx, "Continuous Screening - error preparing open sanctions query", "error", err.Error())
-		return models.ScreeningWithMatches{}, err
-	}
-	screeningResponse, err := uc.screeningProvider.Search(ctx, query)
+	screeningWithMatches, err := uc.DoScreening(ctx, exec, ingestedObject, mapping, config, input.ObjectType, objectId)
 	if err != nil {
 		logger.WarnContext(ctx, "Continuous Screening - error searching on open sanctions", "error", err.Error())
 		return models.ScreeningWithMatches{}, err
 	}
 
-	screeningWithMatches := screeningResponse.AdaptScreeningFromSearchResponse(query)
-
 	continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
 		ctx,
 		exec,
 		screeningWithMatches,
-		config.OrgId,
-		config.Id,
-		config.StableId,
+		config,
 		input.ObjectType,
 		objectId,
 		ingestedObjectInternalId,
@@ -168,28 +139,18 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		return models.ScreeningWithMatches{}, err
 	}
 
-	// Create and attach to a case
 	if screeningWithMatches.Status == models.ScreeningStatusInReview {
-		userId := ""
-		if uc.enforceSecurity.UserId() != nil {
-			userId = *uc.enforceSecurity.UserId()
-		}
-		// TODO: TBD
-		caseName := "Continuous Screening - " + objectId
-		err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-			_, err := uc.caseEditor.CreateCase(ctx, tx, userId, models.CreateCaseAttributes{
-				ContinuousScreeningIds: []uuid.UUID{continuousScreeningWithMatches.Id},
-				OrganizationId:         config.OrgId.String(),
-				InboxId:                config.InboxId,
-				Name:                   caseName,
-			}, false)
-			if err != nil {
-				logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
-				return err
-			}
-			return nil
-		})
-		if err != nil {
+		// Create and attach to a case
+		if err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			return uc.HandleCaseCreation(
+				ctx,
+				tx,
+				config,
+				objectId,
+				continuousScreeningWithMatches,
+			)
+		}); err != nil {
+			logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
 			return models.ScreeningWithMatches{}, err
 		}
 	}
@@ -274,6 +235,7 @@ func prepareOpenSanctionsQuery(
 	dataModelEntityType string,
 	dataModelMapping map[string]string,
 	config models.ContinuousScreeningConfig,
+	whitelistedEntityIds []string,
 ) (models.OpenSanctionsQuery, error) {
 	screeningFilters, err := prepareScreeningFilters(ingestedObject, dataModelMapping)
 	if err != nil {
@@ -294,12 +256,8 @@ func prepareOpenSanctionsQuery(
 				Filters: screeningFilters,
 			},
 		},
+		WhitelistedEntityIds: whitelistedEntityIds,
 	}, nil
-}
-
-type dataModelMapping struct {
-	Entity     string
-	Properties map[string]string
 }
 
 func checkDataModelTableAndFieldsConfiguration(table models.Table) error {
@@ -328,10 +286,10 @@ func checkDataModelTableAndFieldsConfiguration(table models.Table) error {
 }
 
 // Suppose table is configured with a FTM entity and at least one field with a FTM property
-func buildDataModelMapping(table models.Table) (dataModelMapping, error) {
+func buildDataModelMapping(table models.Table) (models.ContinuousScreeningDataModelMapping, error) {
 	// Check if the table is configured correctly
 	if err := checkDataModelTableAndFieldsConfiguration(table); err != nil {
-		return dataModelMapping{}, err
+		return models.ContinuousScreeningDataModelMapping{}, err
 	}
 	// At this point, table has a FTM entity and at least one field with a FTM property
 	properties := make(map[string]string)
@@ -340,7 +298,7 @@ func buildDataModelMapping(table models.Table) (dataModelMapping, error) {
 			properties[field.Name] = field.FTMProperty.String()
 		}
 	}
-	return dataModelMapping{
+	return models.ContinuousScreeningDataModelMapping{
 		Entity:     table.FTMEntity.String(),
 		Properties: properties,
 	}, nil
@@ -376,4 +334,114 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningsForOrg(
 		}
 	}
 	return monitorings, nil
+}
+
+func (uc *ContinuousScreeningUsecase) GetDataModelTableAndMapping(ctx context.Context,
+	exec repositories.Executor, config models.ContinuousScreeningConfig, objectType string,
+) (models.Table, models.ContinuousScreeningDataModelMapping, error) {
+	// Get Data Model Table
+	dataModel, err := uc.repository.GetDataModel(ctx, exec, config.OrgId.String(), false, false)
+	if err != nil {
+		return models.Table{}, models.ContinuousScreeningDataModelMapping{}, err
+	}
+	table, ok := dataModel.Tables[objectType]
+	if !ok {
+		return models.Table{}, models.ContinuousScreeningDataModelMapping{},
+			errors.Wrapf(models.BadParameterError, "table %s not found in data model", objectType)
+	}
+
+	// Check if data model table and fields are well configured for continuous screening and fetch the mapping
+	mapping, err := buildDataModelMapping(table)
+	if err != nil {
+		return models.Table{}, models.ContinuousScreeningDataModelMapping{},
+			errors.Wrap(models.BadParameterError, err.Error())
+	}
+	return table, mapping, nil
+}
+
+// Get the ingested object from the client DB and return the object and the internal ID
+func (uc *ContinuousScreeningUsecase) GetIngestedObject(ctx context.Context,
+	clientDbExec repositories.Executor, table models.Table, objectId string,
+) (models.DataModelObject, uuid.UUID, error) {
+	ingestedObjects, err := uc.ingestedDataReader.QueryIngestedObject(ctx, clientDbExec, table, objectId, "id", "valid_from")
+	if err != nil {
+		return models.DataModelObject{}, uuid.UUID{}, err
+	}
+	if len(ingestedObjects) == 0 {
+		return models.DataModelObject{}, uuid.UUID{}, errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("object %s not found in ingested data", objectId),
+		)
+	}
+
+	ingestedObject := ingestedObjects[0]
+	ingestedObjectInternalId, err := getIngestedObjectInternalId(ingestedObject)
+	if err != nil {
+		return models.DataModelObject{}, uuid.UUID{}, err
+	}
+	return ingestedObject, ingestedObjectInternalId, nil
+}
+
+func (uc *ContinuousScreeningUsecase) DoScreening(
+	ctx context.Context,
+	exec repositories.Executor,
+	ingestedObject models.DataModelObject,
+	mapping models.ContinuousScreeningDataModelMapping,
+	config models.ContinuousScreeningConfig,
+	objectType string,
+	objectId string,
+) (models.ScreeningWithMatches, error) {
+	// Get Whitelist element from DB and add it to the screening parameters
+	whitelists, err := uc.repository.SearchScreeningMatchWhitelist(
+		ctx,
+		exec,
+		config.OrgId.String(),
+		utils.Ptr(typedObjectId(objectType, objectId)),
+		nil,
+	)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+	whitelistEntityIds := pure_utils.Map(whitelists, func(whitelist models.ScreeningWhitelist) string {
+		return whitelist.EntityId
+	})
+
+	query, err := prepareOpenSanctionsQuery(ingestedObject, mapping.Entity, mapping.Properties, config, whitelistEntityIds)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+	screeningResponse, err := uc.screeningProvider.Search(ctx, query)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	return screeningResponse.AdaptScreeningFromSearchResponse(query), nil
+}
+
+func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
+	ctx context.Context,
+	tx repositories.Transaction,
+	config models.ContinuousScreeningConfig,
+	objectId string,
+	continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
+) error {
+	userId := ""
+	if uc.enforceSecurity.UserId() != nil {
+		userId = *uc.enforceSecurity.UserId()
+	}
+	// TODO: TBD
+	caseName := "Continuous Screening - " + objectId
+	_, err := uc.caseEditor.CreateCase(
+		ctx,
+		tx,
+		userId,
+		models.CreateCaseAttributes{
+			ContinuousScreeningIds: []uuid.UUID{continuousScreeningWithMatches.Id},
+			OrganizationId:         config.OrgId.String(),
+			InboxId:                config.InboxId,
+			Name:                   caseName,
+		},
+		false,
+	)
+	return err
 }

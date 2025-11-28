@@ -99,3 +99,26 @@ func (m *TaskQueueRepository) EnqueueSendBillingEventTask(
 ) error {
 	return m.Called(ctx, event).Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
+	ctx context.Context,
+	tx repositories.Transaction,
+	orgId string,
+	objectType string,
+	monitoringIds []uuid.UUID,
+	triggerType models.ContinuousScreeningTriggerType,
+) error {
+	args := m.Called(ctx, tx, orgId, objectType, monitoringIds, triggerType)
+	return args.Error(0)
+}
+
+func (m *TaskQueueRepository) EnqueueContinuousScreeningEvaluateNeedTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	orgId string,
+	objectType string,
+	objectIds []string,
+) error {
+	args := m.Called(ctx, tx, orgId, objectType, objectIds)
+	return args.Error(0)
+}

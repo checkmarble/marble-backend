@@ -13,6 +13,7 @@ import (
 )
 
 type ContinuousScreeningUsecaseRepository interface {
+	// Configs
 	GetContinuousScreeningConfig(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -39,6 +40,8 @@ type ContinuousScreeningUsecaseRepository interface {
 		id uuid.UUID,
 		input models.UpdateContinuousScreeningConfig,
 	) (models.ContinuousScreeningConfig, error)
+
+	// Data model
 	GetDataModelTable(ctx context.Context, exec repositories.Executor, tableId string) (models.TableMetadata, error)
 	GetDataModel(
 		ctx context.Context,
@@ -47,13 +50,13 @@ type ContinuousScreeningUsecaseRepository interface {
 		fetchEnumValues bool,
 		useCache bool,
 	) (models.DataModel, error)
+
+	// Continuous screenings
 	InsertContinuousScreening(
 		ctx context.Context,
 		exec repositories.Executor,
 		screening models.ScreeningWithMatches,
-		orgId uuid.UUID,
-		configId uuid.UUID,
-		configStableId uuid.UUID,
+		config models.ContinuousScreeningConfig,
 		objectType string,
 		objectId string,
 		objectInternalId uuid.UUID,
@@ -65,9 +68,57 @@ type ContinuousScreeningUsecaseRepository interface {
 		orgId uuid.UUID,
 		paginationAndSorting models.PaginationAndSorting,
 	) ([]models.ContinuousScreeningWithMatches, error)
+	GetContinuousScreeningWithMatchesById(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+	) (models.ContinuousScreeningWithMatches, error)
+	UpdateContinuousScreeningStatus(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+		newStatus models.ScreeningStatus,
+	) (models.ContinuousScreening, error)
 
-	// Inboxes:
+	// Continuous screening matches
+	GetContinuousScreeningMatch(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+	) (models.ContinuousScreeningMatch, error)
+	UpdateContinuousScreeningMatchStatus(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+		status models.ScreeningMatchStatus,
+		reviewerId *uuid.UUID,
+	) (models.ContinuousScreeningMatch, error)
+
+	// Cases:
+	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
+	CreateCaseEvent(
+		ctx context.Context,
+		exec repositories.Executor,
+		createCaseEventAttributes models.CreateCaseEventAttributes,
+	) error
+
+	// Whitelist:
+	AddScreeningMatchWhitelist(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId string,
+		counterpartyId string,
+		entityId string,
+		reviewerId *models.UserId,
+	) error
+	SearchScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
+		orgId string, counterpartyId, entityId *string,
+	) ([]models.ScreeningWhitelist, error)
+}
+
+type inboxReader interface {
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
+	ListInboxes(ctx context.Context, exec repositories.Executor, orgId string, withCaseCount bool) ([]models.Inbox, error)
 }
 
 type caseEditor interface {
@@ -78,6 +129,7 @@ type caseEditor interface {
 		createCaseAttributes models.CreateCaseAttributes,
 		fromEndUser bool,
 	) (models.Case, error)
+	PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, caseModel models.Case) error
 }
 
 type ContinuousScreeningClientDbRepository interface {
@@ -124,6 +176,8 @@ type ContinuousScreeningUsecase struct {
 	transactionFactory executor_factory.TransactionFactory
 
 	enforceSecurity              security.EnforceSecurityContinuousScreening
+	enforceSecurityCase          security.EnforceSecurityCase
+	enforceSecurityScreening     security.EnforceSecurityScreening
 	repository                   ContinuousScreeningUsecaseRepository
 	clientDbRepository           ContinuousScreeningClientDbRepository
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
@@ -131,12 +185,15 @@ type ContinuousScreeningUsecase struct {
 	ingestionUsecase             ContinuousScreeningIngestionUsecase
 	screeningProvider            ContinuousScreeningScreeningProvider
 	caseEditor                   caseEditor
+	inboxReader                  inboxReader
 }
 
 func NewContinuousScreeningUsecase(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
 	enforceSecurity security.EnforceSecurityContinuousScreening,
+	enforceSecurityCase security.EnforceSecurityCase,
+	enforceSecurityScreening security.EnforceSecurityScreening,
 	repository ContinuousScreeningUsecaseRepository,
 	clientDbRepository ContinuousScreeningClientDbRepository,
 	organizationSchemaRepository repositories.OrganizationSchemaRepository,
@@ -144,11 +201,14 @@ func NewContinuousScreeningUsecase(
 	ingestionUsecase ContinuousScreeningIngestionUsecase,
 	screeningProvider ContinuousScreeningScreeningProvider,
 	caseEditor caseEditor,
-) ContinuousScreeningUsecase {
-	return ContinuousScreeningUsecase{
+	inboxReader inboxReader,
+) *ContinuousScreeningUsecase {
+	return &ContinuousScreeningUsecase{
 		executorFactory:              executorFactory,
 		transactionFactory:           transactionFactory,
 		enforceSecurity:              enforceSecurity,
+		enforceSecurityCase:          enforceSecurityCase,
+		enforceSecurityScreening:     enforceSecurityScreening,
 		repository:                   repository,
 		clientDbRepository:           clientDbRepository,
 		organizationSchemaRepository: organizationSchemaRepository,
@@ -156,5 +216,6 @@ func NewContinuousScreeningUsecase(
 		ingestionUsecase:             ingestionUsecase,
 		screeningProvider:            screeningProvider,
 		caseEditor:                   caseEditor,
+		inboxReader:                  inboxReader,
 	}
 }

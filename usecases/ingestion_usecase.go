@@ -32,18 +32,41 @@ import (
 const (
 	csvIngestionBatchSize        = 1000
 	DefaultApiBatchIngestionSize = 100
+
+	CSV_INGESTION_ITERATION_TIMEOUT = 10 * time.Second
 )
 
+type continuousScreeningClientRepository interface {
+	ListMonitoredObjectsByObjectIds(
+		ctx context.Context,
+		exec repositories.Executor,
+		objectType string,
+		objectIds []string,
+	) ([]models.ContinuousScreeningMonitoredObject, error)
+}
+
+type taskEnqueuer interface {
+	EnqueueContinuousScreeningEvaluateNeedTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		orgId string,
+		objectType string,
+		objectIds []string,
+	) error
+}
+
 type IngestionUseCase struct {
-	transactionFactory    executor_factory.TransactionFactory
-	executorFactory       executor_factory.ExecutorFactory
-	enforceSecurity       security.EnforceSecurityIngestion
-	ingestionRepository   repositories.IngestionRepository
-	blobRepository        repositories.BlobRepository
-	dataModelRepository   repositories.DataModelRepository
-	uploadLogRepository   repositories.UploadLogRepository
-	ingestionBucketUrl    string
-	batchIngestionMaxSize int
+	transactionFactory                  executor_factory.TransactionFactory
+	executorFactory                     executor_factory.ExecutorFactory
+	enforceSecurity                     security.EnforceSecurityIngestion
+	ingestionRepository                 repositories.IngestionRepository
+	blobRepository                      repositories.BlobRepository
+	dataModelRepository                 repositories.DataModelRepository
+	uploadLogRepository                 repositories.UploadLogRepository
+	continuousScreeningClientRepository continuousScreeningClientRepository
+	ingestionBucketUrl                  string
+	batchIngestionMaxSize               int
+	taskEnqueuer                        taskEnqueuer
 }
 
 func (usecase *IngestionUseCase) IngestObject(
@@ -87,9 +110,24 @@ func (usecase *IngestionUseCase) IngestObject(
 		return 0, errors.WithDetail(err, "error parsing payload in decision usecase validate payload")
 	}
 
-	var nb int
+	// `object_id` is a mandatory field, so it should be present in the payload
+	objectId := payload.Data["object_id"].(string)
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return usecase.taskEnqueuer.EnqueueContinuousScreeningEvaluateNeedTask(
+			ctx,
+			tx,
+			organizationId,
+			objectType,
+			[]string{objectId},
+		)
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	var insertedObjectIds []string
 	err = retryIngestion(ctx, func() error {
-		nb, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, []models.ClientObject{payload}, table)
+		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, []models.ClientObject{payload}, table)
 		return err
 	})
 	if err != nil {
@@ -103,14 +141,15 @@ func (usecase *IngestionUseCase) IngestObject(
 		}
 		return 0, err
 	}
+	nbInsertedObjects := len(insertedObjectIds)
 
-	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nb),
+	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
 		slog.String("organization_id", organizationId),
 		slog.String("object_type", objectType),
-		slog.Int("nb_objects", nb),
+		slog.Int("nb_objects", nbInsertedObjects),
 	)
 
-	return nb, nil
+	return nbInsertedObjects, nil
 }
 
 func (usecase *IngestionUseCase) IngestObjects(
@@ -158,6 +197,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	clientObjects := make([]models.ClientObject, 0, len(rawMessages))
 	objectIds := make(map[string]struct{}, len(rawMessages))
+	objectIdsList := make([]string, 0, len(rawMessages))
 	parser := payload_parser.NewParser(parserOpts...)
 	validationErrorsGroup := make(models.IngestionValidationErrors)
 	for _, rawMsg := range rawMessages {
@@ -179,28 +219,44 @@ func (usecase *IngestionUseCase) IngestObjects(
 				"duplicate object_id %s in the batch", objectId)
 		}
 		objectIds[objectId] = struct{}{}
+		objectIdsList = append(objectIdsList, objectId)
 		clientObjects = append(clientObjects, payload)
 	}
 	if len(validationErrorsGroup) > 0 {
 		return 0, validationErrorsGroup
 	}
 
-	var nb int
-	err = retryIngestion(ctx, func() error {
-		nb, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
-		return err
+	// `object_id` is a mandatory field, so it should be present in the payload
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return usecase.taskEnqueuer.EnqueueContinuousScreeningEvaluateNeedTask(
+			ctx,
+			tx,
+			organizationId,
+			objectType,
+			objectIdsList,
+		)
 	})
 	if err != nil {
 		return 0, err
 	}
 
-	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nb),
+	var insertedObjectIds []string
+	err = retryIngestion(ctx, func() error {
+		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+	nbInsertedObjects := len(insertedObjectIds)
+
+	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
 		slog.String("organization_id", organizationId),
 		slog.String("object_type", objectType),
-		slog.Int("nb_objects", nb),
+		slog.Int("nb_objects", nbInsertedObjects),
 	)
 
-	return nb, nil
+	return nbInsertedObjects, nil
 }
 
 func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context,
@@ -430,7 +486,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		return err
 	}
 
-	out := usecase.readFileIngestObjects(ctx, file.FileName, file.ReadCloser)
+	out := usecase.readFileIngestObjects(ctx, exec, file.FileName, file.ReadCloser)
 	if out.err != nil {
 		setToFailed(out.numRowsIngested, out.err)
 		return out.err
@@ -457,7 +513,9 @@ type ingestionResult struct {
 
 // This method uses a return value wrapping an error, because we still want to use the number of rows ingested even if
 // an error occurred.
-func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, fileName string, fileReader io.Reader) ingestionResult {
+func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
+	exec repositories.Executor, fileName string, fileReader io.Reader,
+) ingestionResult {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fileName))
 
@@ -476,7 +534,6 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 		}
 	}
 
-	exec := usecase.executorFactory.NewExecutor()
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, true)
 	if err != nil {
 		return ingestionResult{
@@ -494,7 +551,12 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 	return usecase.ingestObjectsFromCSV(ctx, organizationId, fileReader, table)
 }
 
-func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, fileReader io.Reader, table models.Table) ingestionResult {
+func (usecase *IngestionUseCase) ingestObjectsFromCSV(
+	ctx context.Context,
+	organizationId string,
+	fileReader io.Reader,
+	table models.Table,
+) ingestionResult {
 	logger := utils.LoggerFromContext(ctx)
 	total := 0
 	start := time.Now()
@@ -532,10 +594,14 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 	keepParsingFile := true
 	objectIdx := 0
 	for keepParsingFile {
+		iterationCtx, iterationCancel := context.WithTimeout(ctx, CSV_INGESTION_ITERATION_TIMEOUT)
+		defer iterationCancel()
+
 		windowEnd := objectIdx + csvIngestionBatchSize
 		clientObjects := make([]models.ClientObject, 0, csvIngestionBatchSize)
+		objectIds := make([]string, 0, csvIngestionBatchSize)
 		for ; objectIdx < windowEnd; objectIdx++ {
-			logger.DebugContext(ctx, fmt.Sprintf("Start reading line %v", objectIdx))
+			logger.DebugContext(iterationCtx, fmt.Sprintf("Start reading line %v", objectIdx))
 			record, err := r.Read()
 			if err == io.EOF { //nolint:errorlint
 				keepParsingFile = false
@@ -554,15 +620,32 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 					err:             fmt.Errorf("error parsing line %d of CSV: %w", objectIdx, err),
 				}
 			}
-			logger.DebugContext(ctx, fmt.Sprintf("Object to ingest %d: %+v", objectIdx, object))
+			logger.DebugContext(iterationCtx, fmt.Sprintf("Object to ingest %d: %+v", objectIdx, object))
 
 			clientObject := models.ClientObject{TableName: table.Name, Data: object}
 			clientObjects = append(clientObjects, clientObject)
+			objectIds = append(objectIds, object["object_id"].(string))
 		}
 
-		var nb int
-		if err := retryIngestion(ctx, func() error {
-			nb, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+		err = usecase.transactionFactory.Transaction(iterationCtx, func(tx repositories.Transaction) error {
+			return usecase.taskEnqueuer.EnqueueContinuousScreeningEvaluateNeedTask(
+				iterationCtx,
+				tx,
+				organizationId,
+				table.Name,
+				objectIds,
+			)
+		})
+		if err != nil {
+			return ingestionResult{
+				numRowsIngested: total,
+				err:             err,
+			}
+		}
+
+		var insertedObjectIds []string
+		if err := retryIngestion(iterationCtx, func() error {
+			insertedObjectIds, err = usecase.insertEnumValuesAndIngest(iterationCtx, organizationId, clientObjects, table)
 			return err
 		}); err != nil {
 			return ingestionResult{
@@ -570,7 +653,9 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 				err:             err,
 			}
 		}
-		total += nb
+		nbInsertedObjects := len(insertedObjectIds)
+
+		total += nbInsertedObjects
 	}
 
 	return ingestionResult{
@@ -673,17 +758,17 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	organizationId string,
 	payloads []models.ClientObject,
 	table models.Table,
-) (int, error) {
+) ([]string, error) {
 	start := time.Now()
 
-	var nb int
+	var insertedObjectIds []string
 	var err error
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
-		nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
+		insertedObjectIds, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
 		return err
 	})
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	utils.MetricIngestionCount.
@@ -714,7 +799,7 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 		}
 	}()
 
-	return nb, nil
+	return insertedObjectIds, nil
 }
 
 func buildEnumValuesContainersFromTable(table models.Table) models.EnumValues {

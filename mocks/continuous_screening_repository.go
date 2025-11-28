@@ -84,17 +84,32 @@ func (m *ContinuousScreeningRepository) InsertContinuousScreening(
 	ctx context.Context,
 	exec repositories.Executor,
 	screening models.ScreeningWithMatches,
-	orgId uuid.UUID,
-	configId uuid.UUID,
-	configStableId uuid.UUID,
+	config models.ContinuousScreeningConfig,
 	objectType string,
 	objectId string,
 	objectInternalId uuid.UUID,
 	triggerType models.ContinuousScreeningTriggerType,
 ) (models.ContinuousScreeningWithMatches, error) {
-	args := m.Called(ctx, exec, screening, orgId, configId, configStableId, objectType,
+	args := m.Called(ctx, exec, screening, config, objectType,
 		objectId, objectInternalId, triggerType)
 	return args.Get(0).(models.ContinuousScreeningWithMatches), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) GetContinuousScreeningByObjectId(
+	ctx context.Context,
+	exec repositories.Executor,
+	objectId string,
+	objectType string,
+	orgId uuid.UUID,
+	status *models.ScreeningStatus,
+	inCase bool,
+) (*models.ContinuousScreeningWithMatches, error) {
+	args := m.Called(ctx, exec, objectId, objectType, orgId, status, inCase)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	result := args.Get(0).(*models.ContinuousScreeningWithMatches)
+	return result, args.Error(1)
 }
 
 func (m *ContinuousScreeningRepository) ListContinuousScreeningsForOrg(
@@ -107,6 +122,55 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningsForOrg(
 	return args.Get(0).([]models.ContinuousScreeningWithMatches), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) GetContinuousScreeningWithMatchesById(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+) (models.ContinuousScreeningWithMatches, error) {
+	args := m.Called(ctx, exec, id)
+	return args.Get(0).(models.ContinuousScreeningWithMatches), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) GetContinuousScreeningMatch(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+) (models.ContinuousScreeningMatch, error) {
+	args := m.Called(ctx, exec, id)
+	return args.Get(0).(models.ContinuousScreeningMatch), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) UpdateContinuousScreeningStatus(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+	newStatus models.ScreeningStatus,
+) (models.ContinuousScreening, error) {
+	args := m.Called(ctx, exec, id, newStatus)
+	return args.Get(0).(models.ContinuousScreening), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) UpdateContinuousScreeningMatchStatus(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+	status models.ScreeningMatchStatus,
+	reviewerId *uuid.UUID,
+) (models.ContinuousScreeningMatch, error) {
+	args := m.Called(ctx, exec, id, status, reviewerId)
+	return args.Get(0).(models.ContinuousScreeningMatch), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) SearchScreeningMatchWhitelist(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId string,
+	counterpartyId, entityId *string,
+) ([]models.ScreeningWhitelist, error) {
+	args := m.Called(ctx, exec, orgId, counterpartyId, entityId)
+	return args.Get(0).([]models.ScreeningWhitelist), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) GetInboxById(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -114,6 +178,46 @@ func (m *ContinuousScreeningRepository) GetInboxById(
 ) (models.Inbox, error) {
 	args := m.Called(ctx, exec, inboxId)
 	return args.Get(0).(models.Inbox), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) ListInboxes(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId string,
+	withCaseCount bool,
+) ([]models.Inbox, error) {
+	args := m.Called(ctx, exec, orgId, withCaseCount)
+	return args.Get(0).([]models.Inbox), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) GetCaseById(
+	ctx context.Context,
+	exec repositories.Executor,
+	caseId string,
+) (models.Case, error) {
+	args := m.Called(ctx, exec, caseId)
+	return args.Get(0).(models.Case), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) CreateCaseEvent(
+	ctx context.Context,
+	exec repositories.Executor,
+	createCaseEventAttributes models.CreateCaseEventAttributes,
+) error {
+	args := m.Called(ctx, exec, createCaseEventAttributes)
+	return args.Error(0)
+}
+
+func (m *ContinuousScreeningRepository) AddScreeningMatchWhitelist(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId string,
+	counterpartyId string,
+	entityId string,
+	reviewerId *models.UserId,
+) error {
+	args := m.Called(ctx, exec, orgId, counterpartyId, entityId, reviewerId)
+	return args.Error(0)
 }
 
 type ContinuousScreeningClientDbRepository struct {
@@ -138,6 +242,26 @@ func (m *ContinuousScreeningClientDbRepository) InsertContinuousScreeningObject(
 ) error {
 	args := m.Called(ctx, exec, tableName, objectId, configStableId)
 	return args.Error(0)
+}
+
+func (m *ContinuousScreeningClientDbRepository) ListMonitoredObjectsByObjectIds(
+	ctx context.Context,
+	exec repositories.Executor,
+	objectType string,
+	objectIds []string,
+) ([]models.ContinuousScreeningMonitoredObject, error) {
+	args := m.Called(ctx, exec, objectType, objectIds)
+	return args.Get(0).([]models.ContinuousScreeningMonitoredObject), args.Error(1)
+}
+
+func (m *ContinuousScreeningClientDbRepository) GetMonitoredObject(
+	ctx context.Context,
+	clientExec repositories.Executor,
+	objectType string,
+	monitoringId uuid.UUID,
+) (models.ContinuousScreeningMonitoredObject, error) {
+	args := m.Called(ctx, clientExec, objectType, monitoringId)
+	return args.Get(0).(models.ContinuousScreeningMonitoredObject), args.Error(1)
 }
 
 type ContinuousScreeningScreeningProvider struct {

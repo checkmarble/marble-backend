@@ -87,3 +87,15 @@ type ContinuousScreeningWithMatches struct {
 }
 
 const ContinuousScreeningSortingCreatedAt SortingField = SortingFieldCreatedAt
+
+type ContinuousScreeningMonitoredObject struct {
+	Id             uuid.UUID
+	ObjectId       string
+	ConfigStableId uuid.UUID
+	CreatedAt      time.Time
+}
+
+type ContinuousScreeningDataModelMapping struct {
+	Entity     string
+	Properties map[string]string
+}

@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -66,8 +69,12 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx conte
 	return err
 }
 
-func (repo *ClientDbRepository) InsertContinuousScreeningObject(ctx context.Context, exec Executor,
-	tableName string, objectId string, configStableId uuid.UUID,
+func (repo *ClientDbRepository) InsertContinuousScreeningObject(
+	ctx context.Context,
+	exec Executor,
+	tableName string,
+	objectId string,
+	configStableId uuid.UUID,
 ) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
@@ -80,4 +87,48 @@ func (repo *ClientDbRepository) InsertContinuousScreeningObject(ctx context.Cont
 
 	_, err := exec.Exec(ctx, sql, uuid.Must(uuid.NewV7()), objectId, configStableId)
 	return err
+}
+
+func (repo *ClientDbRepository) GetMonitoredObject(
+	ctx context.Context,
+	exec Executor,
+	objectType string,
+	id uuid.UUID,
+) (models.ContinuousScreeningMonitoredObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningMonitoredObject{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningMonitoredObjectColumn...).
+		From(sanitizedTableName(exec, utils.TruncateIdentifier(tableNameWithPrefix(objectType)))).
+		Where(squirrel.Eq{"id": id})
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
+}
+
+// List monitored objects by object IDs
+// This function is used to check if an object is under continuous screening
+// If not, the result will not contain the Monitored object model for the object ID
+// Example:
+//   - Monitored object: ["object_id_1", "object_id_2"]
+//   - Not monitored object: ["object_id_3", "object_id_4"]
+//   - objectIds: ["object_id_1", "object_id_2", "object_id_3", "object_id_4"]
+//   - Result: ["object_id_1", "object_id_2"]
+func (repo *ClientDbRepository) ListMonitoredObjectsByObjectIds(
+	ctx context.Context,
+	exec Executor,
+	objectType string,
+	objectIds []string,
+) ([]models.ContinuousScreeningMonitoredObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningMonitoredObjectColumn...).
+		From(sanitizedTableName(exec, utils.TruncateIdentifier(tableNameWithPrefix(objectType)))).
+		Where(squirrel.Eq{"object_id": objectIds})
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
 }

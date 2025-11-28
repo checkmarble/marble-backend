@@ -331,15 +331,17 @@ func (usecases *UsecasesWithCreds) NewAnalyticsSettingsUsecase() AnalyticsSettin
 
 func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	return IngestionUseCase{
-		enforceSecurity:       usecases.NewEnforceIngestionSecurity(),
-		transactionFactory:    usecases.NewTransactionFactory(),
-		executorFactory:       usecases.NewExecutorFactory(),
-		ingestionRepository:   usecases.Repositories.IngestionRepository,
-		blobRepository:        usecases.Repositories.BlobRepository,
-		dataModelRepository:   usecases.Repositories.MarbleDbRepository,
-		uploadLogRepository:   usecases.Repositories.UploadLogRepository,
-		ingestionBucketUrl:    usecases.ingestionBucketUrl,
-		batchIngestionMaxSize: usecases.Usecases.batchIngestionMaxSize,
+		enforceSecurity:                     usecases.NewEnforceIngestionSecurity(),
+		transactionFactory:                  usecases.NewTransactionFactory(),
+		executorFactory:                     usecases.NewExecutorFactory(),
+		ingestionRepository:                 usecases.Repositories.IngestionRepository,
+		blobRepository:                      usecases.Repositories.BlobRepository,
+		dataModelRepository:                 usecases.Repositories.MarbleDbRepository,
+		uploadLogRepository:                 usecases.Repositories.UploadLogRepository,
+		ingestionBucketUrl:                  usecases.ingestionBucketUrl,
+		continuousScreeningClientRepository: &usecases.Repositories.ClientDbRepository,
+		batchIngestionMaxSize:               usecases.Usecases.batchIngestionMaxSize,
+		taskEnqueuer:                        usecases.Repositories.TaskQueueRepository,
 	}
 }
 
@@ -805,11 +807,13 @@ func (usecases *UsecasesWithCreds) NewAnalyticsMetadataUsecase() AnalyticsMetada
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() continuous_screening.ContinuousScreeningUsecase {
+func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_screening.ContinuousScreeningUsecase {
 	return continuous_screening.NewContinuousScreeningUsecase(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.NewEnforceSecurityContinuousScreening(),
+		usecases.NewEnforceCaseSecurity(),
+		usecases.NewEnforceScreeningSecurity(),
 		usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.ClientDbRepository,
 		usecases.Repositories.OrganizationSchemaRepository,
@@ -817,5 +821,25 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() continuous_sc
 		utils.Ptr(usecases.NewIngestionUseCase()),
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.NewCaseUseCase(),
+		utils.Ptr(usecases.NewInboxReader()),
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewContinuousScreeningDoScreeningWorker() *continuous_screening.DoScreeningWorker {
+	return continuous_screening.NewDoScreeningWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		&usecases.Repositories.ClientDbRepository,
+		usecases.NewContinuousScreeningUsecase(),
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewContinuousScreeningEvaluateNeedWorker() *continuous_screening.EvaluateNeedTaskWorker {
+	return continuous_screening.NewEvaluateNeedTaskWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		&usecases.Repositories.ClientDbRepository,
+		usecases.Repositories.TaskQueueRepository,
 	)
 }
