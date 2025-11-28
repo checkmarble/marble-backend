@@ -199,6 +199,32 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 }
 
 func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req AnalyticsCopyRequest) (int, error) {
+	innerInner := squirrel.
+		Select(
+			"sc.id",
+			"s.id as scenario_id",
+			"s.trigger_object_type",
+			"sc.org_id",
+			"sc.decision_id",
+			"sc.screening_config_id",
+			"sc.status",
+			"sc.created_at",
+		).
+		From("marble.screenings sc").
+		InnerJoin("marble.screening_configs scc on scc.id = sc.screening_config_id").
+		InnerJoin("marble.scenario_iterations si on si.id = scc.scenario_iteration_id").
+		InnerJoin("marble.scenarios s on s.id = si.scenario_id").
+		Where("sc.org_id = ?", req.OrgId).
+		Where("s.trigger_object_type = ?", req.TriggerObject).
+		Where("sc.created_at < ?", req.EndTime).
+		OrderBy("sc.created_at, sc.id").
+		Limit(uint64(req.Limit))
+
+	if req.Watermark != nil {
+		innerInner = innerInner.Where("(sc.created_at, sc.id) > (?::timestamp with time zone, ?)",
+			req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
+	}
+
 	inner := squirrel.
 		Select(
 			"sc.id",
@@ -206,31 +232,22 @@ func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req An
 			"min(sc.status) as status",
 			"min(scc.stable_id::text)::uuid as screening_config_id",
 			"min(scc.name) as screening_name",
-			"count(*) filter (where scm.id is not null) as matches",
-			"min(s.id::text)::uuid as scenario_id",
+			"(select count(*) from screening_matches m where m.screening_id = sc.id) as matches",
+			"min(sc.scenario_id::text)::uuid as scenario_id",
 			"min(sc.created_at) as created_at",
 			"min(sc.org_id::text)::uuid as org_id",
 			"extract(year from min(sc.created_at))::int as year",
 			"extract(month from min(sc.created_at))::int as month",
-			"min(s.trigger_object_type) as trigger_object_type",
+			"min(sc.trigger_object_type) as trigger_object_type",
 		).
-		From("marble.screenings sc").
+		FromSelect(innerInner, "sc").
 		InnerJoin("marble.screening_configs scc on scc.id = sc.screening_config_id").
-		LeftJoin("marble.screening_matches scm on scm.screening_id = sc.id").
-		InnerJoin("marble.scenario_iterations si on si.id = scc.scenario_iteration_id").
-		InnerJoin("marble.scenarios s on s.id = si.scenario_id").
 		InnerJoin("marble.decisions d on d.id = sc.decision_id").
 		Where("sc.org_id = ?", req.OrgId).
-		Where("s.trigger_object_type = ?", req.TriggerObject).
+		Where("sc.trigger_object_type = ?", req.TriggerObject).
 		Where("sc.created_at < ?", req.EndTime).
 		GroupBy("sc.id").
-		OrderBy("min(sc.created_at), sc.id").
-		Limit(uint64(req.Limit))
-
-	if req.Watermark != nil {
-		inner = inner.Where("(sc.created_at, sc.id) > (?::timestamp with time zone, ?)",
-			req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
-	}
+		OrderBy("created_at, id")
 
 	for _, f := range req.TriggerObjectFields {
 		inner = analyticsAddTriggerObjectField(inner, f, true)
