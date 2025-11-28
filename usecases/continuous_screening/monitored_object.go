@@ -539,3 +539,27 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 		)
 	})
 }
+
+func (uc *ContinuousScreeningUsecase) ListMonitoredObjects(
+	ctx context.Context,
+	filters models.ListMonitoredObjectsFilters,
+	pagination models.PaginationAndSorting,
+) ([]models.ContinuousScreeningMonitoredObject, error) {
+	orgId, err := uuid.Parse(uc.enforceSecurity.OrgId())
+	if err != nil {
+		return nil, err
+	}
+
+	// Since we fetch data from the client DB, we don't need to test the permission on
+	// all objects fetched from the client DB.
+	if err := uc.enforceSecurity.ReadContinuousScreeningObject(orgId); err != nil {
+		return nil, err
+	}
+
+	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId.String())
+	if err != nil {
+		return nil, err
+	}
+
+	return uc.clientDbRepository.ListMonitoredObjects(ctx, clientDbExec, filters, pagination)
+}

@@ -142,7 +142,7 @@ func handleCreateContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
 		screeningResponse, err := uc.InsertContinuousScreeningObject(
 			ctx,
-			dto.AdaptInsertContinuousScreeningObjectDto(input),
+			dto.AdaptCreateContinuousScreeningObjectDto(input),
 		)
 		if presentError(ctx, c, err) {
 			return
@@ -252,5 +252,50 @@ func handleDeleteContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 		}
 
 		c.Status(http.StatusNoContent)
+	}
+}
+
+var continuousScreeningObjectsPaginationDefaults = models.PaginationDefaults{
+	Limit:  25,
+	SortBy: models.SortingFieldCreatedAt,
+	Order:  models.SortingOrderDesc,
+}
+
+func handleListContinuousScreeningObjects(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var filtersDto dto.ListContinuousScreeningObjectsFilters
+		if err := c.ShouldBind(&filtersDto); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		filters, err := filtersDto.Parse()
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		var paginationAndSortingDto dto.PaginationAndSorting
+		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+		paginationAndSorting := models.WithPaginationDefaults(
+			dto.AdaptPaginationAndSorting(paginationAndSortingDto),
+			continuousScreeningObjectsPaginationDefaults,
+		)
+
+		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
+		objects, err := uc.ListMonitoredObjects(ctx, filters, paginationAndSorting)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(
+			http.StatusOK,
+			pure_utils.Map(objects, dto.AdaptContinuousScreeningObjectDto),
+		)
 	}
 }

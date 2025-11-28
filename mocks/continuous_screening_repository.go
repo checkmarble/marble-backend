@@ -288,6 +288,16 @@ func (m *ContinuousScreeningClientDbRepository) GetMonitoredObject(
 	return args.Get(0).(models.ContinuousScreeningMonitoredObject), args.Error(1)
 }
 
+func (m *ContinuousScreeningClientDbRepository) ListMonitoredObjects(
+	ctx context.Context,
+	exec repositories.Executor,
+	filters models.ListMonitoredObjectsFilters,
+	pagination models.PaginationAndSorting,
+) ([]models.ContinuousScreeningMonitoredObject, error) {
+	args := m.Called(ctx, exec, filters, pagination)
+	return args.Get(0).([]models.ContinuousScreeningMonitoredObject), args.Error(1)
+}
+
 type ContinuousScreeningScreeningProvider struct {
 	mock.Mock
 }
