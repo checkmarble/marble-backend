@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -249,4 +250,35 @@ func (repo *ClientDbRepository) ListMonitoredObjectsByObjectIds(
 		Where(squirrel.Eq{"object_id": objectIds})
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
+}
+
+func (repo *ClientDbRepository) DeleteContinuousScreeningObject(
+	ctx context.Context,
+	exec Executor,
+	input models.DeleteContinuousScreeningObject,
+) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Delete(sanitizedTableName(exec, dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS)).
+		Where(squirrel.Eq{"object_type": input.ObjectType}).
+		Where(squirrel.Eq{"object_id": input.ObjectId}).
+		Where(squirrel.Eq{"config_stable_id": input.ConfigStableId})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return err
+	}
+
+	tag, err := exec.Exec(ctx, sql, args...)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errors.Wrap(models.NotFoundError, "object not found")
+	}
+
+	return nil
 }

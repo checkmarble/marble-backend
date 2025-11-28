@@ -42,11 +42,17 @@ func (stt ContinuousScreeningTriggerType) String() string {
 	return "unknown"
 }
 
-type InsertContinuousScreeningObject struct {
+type CreateContinuousScreeningObject struct {
 	ObjectType     string
 	ConfigStableId uuid.UUID
 	ObjectId       *string
 	ObjectPayload  *json.RawMessage
+}
+
+type DeleteContinuousScreeningObject struct {
+	ObjectType     string
+	ObjectId       string
+	ConfigStableId uuid.UUID
 }
 
 type ContinuousScreening struct {

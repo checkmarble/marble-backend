@@ -147,6 +147,11 @@ type ContinuousScreeningClientDbRepository interface {
 		exec repositories.Executor,
 		input models.CreateContinuousScreeningAudit,
 	) error
+	DeleteContinuousScreeningObject(
+		ctx context.Context,
+		exec repositories.Executor,
+		input models.DeleteContinuousScreeningObject,
+	) error
 }
 
 type ContinuousScreeningIngestedDataReader interface {

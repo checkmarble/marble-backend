@@ -204,7 +204,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleUpdateContinuousScreeningConfig(uc),
 	)
 	router.POST("/continuous-screenings/objects", tom,
-		handleInsertContinuousScreeningObject(uc))
+		handleCreateContinuousScreeningObject(uc))
+	router.DELETE("/continuous-screenings/objects", tom,
+		handleDeleteContinuousScreeningObject(uc))
 	router.PATCH("/continuous-screenings/matches/:id", tom,
 		handleUpdateContinuousScreeningMatchStatus(uc))
 
