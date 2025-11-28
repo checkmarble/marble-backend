@@ -44,6 +44,10 @@ func (stub PgExecutorStub) DatabaseSchema() models.DatabaseSchema {
 	return models.DatabaseSchema{}
 }
 
+func (stub PgExecutorStub) Cache() *repositories.RedisExecutor {
+	return nil
+}
+
 // TransactionFactoryStub is a stub for the transaction factory
 
 type TransactionFactoryStub struct {
@@ -121,5 +125,9 @@ func (stub dbExecFactoryStub) Commit(ctx context.Context) error {
 }
 
 func (stub dbExecFactoryStub) Rollback(ctx context.Context) error {
+	return nil
+}
+
+func (stub dbExecFactoryStub) Cache() *repositories.RedisExecutor {
 	return nil
 }

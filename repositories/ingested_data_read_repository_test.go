@@ -40,6 +40,10 @@ func (tx TransactionTest) Begin(ctx context.Context) (Transaction, error) {
 	return PgTx{}, nil
 }
 
+func (tx TransactionTest) Cache() *RedisExecutor {
+	return nil
+}
+
 func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 	path := []string{utils.DummyTableNameSecond}
 
@@ -190,7 +194,7 @@ func TestIngestedDataQueryAggregatedValueWithSimpleFilter(t *testing.T) {
 	}
 	expected := `
 	SELECT AVG(int_var)::float8
-	FROM "test_schema"."first" 
+	FROM "test_schema"."first"
 	WHERE "test_schema"."first".valid_until = $1
 	AND "test_schema"."first"."int_var" = $2
 	AND "test_schema"."first"."bool_var" <> $3

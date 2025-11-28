@@ -9,11 +9,12 @@ import (
 
 // interfaces used by the class
 type executorFactoryRepository interface {
-	GetExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization) (repositories.Executor, error)
+	GetExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization, orgId string) (repositories.Executor, error)
 	Transaction(
 		ctx context.Context,
 		typ models.DatabaseSchemaType,
 		org *models.Organization,
+		orgId string,
 		fn func(tx repositories.Transaction) error,
 	) error
 }
@@ -26,17 +27,20 @@ type DbExecutorFactory struct {
 	appName                      string
 	orgGetter                    organizationGetter
 	transactionFactoryRepository executorFactoryRepository
+	orgId                        string
 }
 
 func NewDbExecutorFactory(
 	appName string,
 	orgGetter organizationGetter,
 	transactionFactoryRepository executorFactoryRepository,
+	orgId string,
 ) DbExecutorFactory {
 	return DbExecutorFactory{
 		appName:                      appName,
 		orgGetter:                    orgGetter,
 		transactionFactoryRepository: transactionFactoryRepository,
+		orgId:                        orgId,
 	}
 }
 
@@ -51,7 +55,7 @@ func (factory DbExecutorFactory) TransactionInOrgSchema(
 	}
 
 	return factory.transactionFactoryRepository.Transaction(ctx,
-		models.DATABASE_SCHEMA_TYPE_CLIENT, &org, f)
+		models.DATABASE_SCHEMA_TYPE_CLIENT, &org, factory.orgId, f)
 }
 
 func (factory DbExecutorFactory) Transaction(
@@ -63,6 +67,7 @@ func (factory DbExecutorFactory) Transaction(
 	return factory.transactionFactoryRepository.Transaction(
 		ctx,
 		models.DATABASE_SCHEMA_TYPE_MARBLE, nil,
+		factory.orgId,
 		f)
 }
 
@@ -79,6 +84,7 @@ func (factory DbExecutorFactory) NewClientDbExecutor(
 		ctx,
 		models.DATABASE_SCHEMA_TYPE_CLIENT,
 		&org,
+		org.Id,
 	)
 }
 
@@ -87,6 +93,7 @@ func (factory DbExecutorFactory) NewExecutor() repositories.Executor {
 	exec, _ := factory.transactionFactoryRepository.GetExecutor(
 		context.Background(),
 		models.DATABASE_SCHEMA_TYPE_MARBLE,
-		nil)
+		nil,
+		factory.orgId)
 	return exec
 }

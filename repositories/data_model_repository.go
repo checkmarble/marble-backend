@@ -3,7 +3,9 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
@@ -73,6 +75,12 @@ func (repo MarbleDbRepository) GetDataModel(
 	fetchEnumValues bool,
 	useCache bool,
 ) (models.DataModel, error) {
+	cacheKey := exec.Cache().Key("data-model", strconv.FormatBool(fetchEnumValues))
+
+	if dataModel, err := RedisLoadModel[models.DataModel](ctx, exec.Cache(), cacheKey); err == nil {
+		return dataModel, nil
+	}
+
 	var cache *expirable.LRU[string, models.DataModel]
 	if fetchEnumValues {
 		cache = dataModelCacheEnum
@@ -154,6 +162,8 @@ func (repo MarbleDbRepository) GetDataModel(
 	if useCache && repo.withCache {
 		cache.Add(organizationID, dataModel)
 	}
+
+	_ = exec.Cache().SaveModel(ctx, cacheKey, dataModel, time.Minute)
 
 	return dataModel, nil
 }
