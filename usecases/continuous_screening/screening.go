@@ -292,7 +292,7 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 
 		if continuousScreening.CaseId == nil {
 			return errors.Wrap(models.UnprocessableEntityError,
-				"continuous screening is not in case, can't dismis'")
+				"continuous screening is not in case, can't dismiss")
 		}
 		if continuousScreening.Status != models.ScreeningStatusInReview {
 			return errors.Wrap(models.UnprocessableEntityError,
