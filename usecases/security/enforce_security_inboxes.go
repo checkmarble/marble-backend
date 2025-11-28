@@ -28,17 +28,7 @@ func (e EnforceSecurityInboxes) ReadInbox(i models.Inbox) error {
 }
 
 func (e EnforceSecurityInboxes) ReadInboxMetadata(inbox models.Inbox) error {
-	// org admins can read all inboxes
-	err := e.Permission(models.INBOX_EDITOR)
-	if err == nil {
-		return errors.Join(err, e.ReadOrganization(inbox.OrganizationId))
-	}
-
-	if inbox.OrganizationId != e.Credentials.OrganizationId {
-		return errors.New("user is not authorized to read metadata of the inbox")
-	}
-
-	return nil
+	return e.ReadOrganization(inbox.OrganizationId)
 }
 
 func (e EnforceSecurityInboxes) CreateInbox(organizationId string) error {

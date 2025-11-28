@@ -16,7 +16,8 @@ type APIOrganizationFeatureAccess struct {
 	NameRecognition string `json:"name_recognition"`
 	CaseAutoAssign  string `json:"case_auto_assign"`
 
-	// user-scoped - temporarly at least
+	// user-scoped
+	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
 	AiAssist string `json:"ai_assist"`
 }
 

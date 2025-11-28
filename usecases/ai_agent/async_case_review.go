@@ -86,6 +86,7 @@ func (w *CaseReviewWorker) Timeout(job *river.Job[models.CaseReviewArgs]) time.D
 
 func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseReviewArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
+	exec := w.executorFactory.NewExecutor()
 	c, err := w.repository.GetCaseById(ctx, w.executorFactory.NewExecutor(), job.Args.CaseId.String())
 	if err != nil {
 		return errors.Wrap(err, "Error while getting case")
@@ -94,6 +95,7 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		"organization_id", c.OrganizationId,
 		"case_id", job.Args.CaseId,
 	)
+	ctx = utils.StoreLoggerInContext(ctx, logger)
 
 	// Check if the organization has AI case review enabled
 	hasAiCaseReviewEnabled, err := w.caseReviewUsecase.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
@@ -105,9 +107,16 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		return nil
 	}
 
-	// Get the case review file object from the database
-	aiCaseReview, err := w.repository.GetCaseReviewById(ctx, w.executorFactory.NewExecutor(), job.Args.AiCaseReviewId)
-	if err != nil {
+	var aiCaseReview models.AiCaseReview
+	aiCaseReview, err = w.repository.GetCaseReviewById(ctx, exec, job.Args.AiCaseReviewId)
+	switch {
+	case errors.Is(err, models.NotFoundError):
+		aiCaseReview = models.NewAiCaseReview(job.Args.CaseId, w.bucketUrl, job.Args.AiCaseReviewId)
+		err = w.repository.CreateCaseReviewFile(ctx, exec, aiCaseReview)
+		if err != nil {
+			return errors.Wrap(err, "Error while creating case review file")
+		}
+	case err != nil:
 		return errors.Wrap(err, "Error while getting case review file")
 	}
 
@@ -163,10 +172,9 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		)
 	}
 
-	err = w.repository.UpdateCaseReviewFile(ctx, w.executorFactory.NewExecutor(),
-		aiCaseReview.Id, models.UpdateAiCaseReview{
-			Status: models.AiCaseReviewStatusCompleted,
-		})
+	err = w.repository.UpdateCaseReviewFile(ctx, exec, aiCaseReview.Id, models.UpdateAiCaseReview{
+		Status: models.AiCaseReviewStatusCompleted,
+	})
 	if err != nil {
 		return w.handleCreateCaseReviewSyncError(
 			ctx,
