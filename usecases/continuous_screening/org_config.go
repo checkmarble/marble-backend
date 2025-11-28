@@ -100,6 +100,11 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 		return models.ContinuousScreeningConfig{}, err
 	}
 
+	// Create the audit table if not exists
+	if err := uc.clientDbRepository.CreateInternalContinuousScreeningAuditTable(ctx, clientDbExec); err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
+
 	// Check if the inbox exists
 	inbox, err := uc.inboxReader.GetInboxById(ctx, exec, input.InboxId)
 	if err != nil {
