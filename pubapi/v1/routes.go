@@ -2,6 +2,7 @@ package v1
 
 import (
 	"github.com/checkmarble/marble-backend/api/middleware"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/gin-gonic/gin"
@@ -50,10 +51,19 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 	{
 		root := authed.Group("/", pubapi.TimeoutMiddleware(conf.DefaultTimeout))
 
+		root.POST("/decisions/:decisionId/case", HandleAddDecisionToCase(uc))
+
 		root.GET("/cases", HandleListCases(uc))
 		root.GET("/cases/:caseId", HandleGetCase(uc))
+		root.POST("/cases", HandleCreateCase(uc))
+		root.PATCH("/cases/:caseId", HandleUpdateCase(uc))
+		root.POST("/cases/:caseId/close", HandleSetCaseStatus(uc, models.CaseClosed))
+		root.POST("/cases/:caseId/reopen", HandleSetCaseStatus(uc, models.CaseInvestigating))
+		root.POST("/cases/:caseId/escalate", HandleEscalateCase(uc))
 		root.GET("/cases/:caseId/comments", HandleListCaseComments(uc))
+		root.POST("/cases/:caseId/comments", HandleCreateComment(uc))
 		root.GET("/cases/:caseId/files", HandleListCaseFiles(uc))
+		root.POST("/cases/:caseId/files", HandleCreateCaseFile(uc))
 		root.GET("/cases/:caseId/files/:fileId/download", HandleDownloadCaseFile(uc))
 	}
 }

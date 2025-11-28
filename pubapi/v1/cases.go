@@ -1,6 +1,9 @@
 package v1
 
 import (
+	"io"
+	"mime/multipart"
+	"net/http"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -12,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 var casePaginationDefaults = models.PaginationDefaults{
@@ -145,6 +149,211 @@ func HandleGetCase(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+type CreateCaseParams struct {
+	Inbox     uuid.UUID   `json:"inbox" binding:"required"`
+	Name      string      `json:"name" binding:"required"`
+	Decisions []uuid.UUID `json:"decisions"`
+	Assignee  string      `json:"assignee"`
+}
+
+func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var params CreateCaseParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		caseUsecase := uc.NewCaseUseCase()
+		userUsecase := uc.NewUserUseCase()
+
+		req := models.CreateCaseAttributes{
+			OrganizationId: orgId,
+			InboxId:        params.Inbox,
+			Name:           params.Name,
+			DecisionIds:    pure_utils.Map(params.Decisions, func(id uuid.UUID) string { return id.String() }),
+		}
+
+		if params.Assignee != "" {
+			user, err := userUsecase.GetUserByEmail(ctx, params.Assignee)
+			if err != nil {
+				pubapi.NewErrorResponse().WithError(err).Serve(c)
+				return
+			}
+
+			req.AssigneeId = utils.Ptr(string(user.UserId))
+		}
+
+		cas, err := caseUsecase.CreateCaseAsApiClient(ctx, orgId, req)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
+	}
+}
+
+type UpdateCaseParams struct {
+	Inbox   uuid.UUID `json:"inbox"`
+	Name    string    `json:"name"`
+	Outcome string    `json:"outcome" binding:"omitempty,oneof=unset confirmed_risk valuable_alert false_positive"`
+}
+
+func HandleUpdateCase(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		var params UpdateCaseParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		req := models.UpdateCaseAttributes{
+			Id: caseId.String(),
+		}
+
+		if params.Inbox != uuid.Nil {
+			req.InboxId = &params.Inbox
+		}
+		if params.Name != "" {
+			req.Name = params.Name
+		}
+		if params.Outcome != "" {
+			req.Outcome = models.CaseOutcome(params.Outcome)
+		}
+
+		cas, err := caseUsecase.UpdateCase(ctx, "", req)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
+	}
+}
+
+type CloseCaseParams struct {
+	Outcome string `json:"outcome" binding:"omitempty,oneof=unset confirmed_risk valuable_alert false_positive"`
+}
+
+func HandleSetCaseStatus(uc usecases.Usecases, status models.CaseStatus) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		req := models.UpdateCaseAttributes{
+			Id:     caseId.String(),
+			Status: status,
+		}
+
+		if status == models.CaseClosed {
+			var params CloseCaseParams
+
+			if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+				if !errors.Is(err, io.EOF) {
+					pubapi.NewErrorResponse().WithError(err).Serve(c)
+					return
+				}
+			}
+
+			if params.Outcome != "" {
+				req.Outcome = models.CaseOutcome(params.Outcome)
+			}
+		}
+
+		cas, err := caseUsecase.UpdateCase(ctx, "", req)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
+	}
+}
+
+func HandleEscalateCase(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		err = caseUsecase.EscalateCase(ctx, caseId.String())
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		cas, err := caseUsecase.GetCase(ctx, caseId.String())
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
+	}
+}
+
 func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -198,6 +407,44 @@ func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+type CreateCommentParams struct {
+	Comment string `json:"comment"`
+}
+
+func HandleCreateComment(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		var params CreateCommentParams
+
+		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(c.Request.Context(), uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		req := models.CreateCaseCommentAttributes{
+			Id:      caseId.String(),
+			Comment: params.Comment,
+		}
+
+		if _, err := caseUsecase.CreateCaseComment(ctx, "", req); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		c.Status(http.StatusCreated)
+	}
+}
+
 func HandleListCaseFiles(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -243,5 +490,46 @@ func HandleDownloadCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		pubapi.Redirect(c, url)
+	}
+}
+
+type FileForm struct {
+	Files []multipart.FileHeader `form:"file" binding:"required"`
+}
+
+func HandleCreateCaseFile(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := pubapi.UuidParam(c, "caseId")
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		var form FileForm
+
+		if err := c.ShouldBind(&form); err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		req := models.CreateCaseFilesInput{
+			CaseId: caseId.String(),
+			Files:  form.Files,
+		}
+
+		_, files, err := caseUsecase.CreateCaseFiles(ctx, req)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pubapi.
+			NewResponse(pure_utils.Map(files, dto.AdaptCaseFile)).
+			Serve(c)
 	}
 }
