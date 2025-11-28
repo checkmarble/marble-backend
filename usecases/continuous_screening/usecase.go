@@ -79,6 +79,12 @@ type ContinuousScreeningUsecaseRepository interface {
 		id uuid.UUID,
 		newStatus models.ScreeningStatus,
 	) (models.ContinuousScreening, error)
+	UpdateContinuousScreening(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+		input models.UpdateContinuousScreeningInput,
+	) (models.ContinuousScreening, error)
 
 	// Continuous screening matches
 	GetContinuousScreeningMatch(
@@ -99,6 +105,12 @@ type ContinuousScreeningUsecaseRepository interface {
 		ids []uuid.UUID,
 		status models.ScreeningMatchStatus,
 		reviewerId *uuid.UUID,
+	) ([]models.ContinuousScreeningMatch, error)
+	InsertContinuousScreeningMatches(
+		ctx context.Context,
+		exec repositories.Executor,
+		screeningId uuid.UUID,
+		matches []models.ContinuousScreeningMatch,
 	) ([]models.ContinuousScreeningMatch, error)
 
 	// Cases:

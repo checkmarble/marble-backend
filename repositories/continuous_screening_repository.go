@@ -248,6 +248,32 @@ func (repo *MarbleDbRepository) InsertContinuousScreening(
 	return models.ContinuousScreeningWithMatches{ContinuousScreening: cs, Matches: matches}, nil
 }
 
+func (repo *MarbleDbRepository) InsertContinuousScreeningMatches(
+	ctx context.Context,
+	exec Executor,
+	screeningId uuid.UUID,
+	matches []models.ContinuousScreeningMatch,
+) ([]models.ContinuousScreeningMatch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	if len(matches) == 0 {
+		return nil, nil
+	}
+
+	matchSql := NewQueryBuilder().
+		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
+		Suffix("RETURNING *").
+		Columns("continuous_screening_id", "opensanction_entity_id", "payload")
+
+	for _, match := range matches {
+		matchSql = matchSql.Values(screeningId, match.OpenSanctionEntityId, match.Payload)
+	}
+
+	return SqlToListOfModels(ctx, exec, matchSql, dbmodels.AdaptContinuousScreeningMatch)
+}
+
 func (repo *MarbleDbRepository) GetContinuousScreeningById(ctx context.Context, exec Executor, id string) (models.ContinuousScreening, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ContinuousScreening{}, err
@@ -505,4 +531,44 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningStatus(
 		Suffix("RETURNING *")
 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreening)
+}
+
+func (repo *MarbleDbRepository) UpdateContinuousScreening(
+	ctx context.Context,
+	exec Executor,
+	id uuid.UUID,
+	input models.UpdateContinuousScreeningInput,
+) (models.ContinuousScreening, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreening{}, err
+	}
+
+	updated := false
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
+		Where(squirrel.Eq{"id": id}).
+		Suffix("RETURNING *")
+
+	if input.Status != nil {
+		sql = sql.Set("status", *input.Status)
+		updated = true
+	}
+	if input.IsPartial != nil {
+		sql = sql.Set("is_partial", *input.IsPartial)
+		updated = true
+	}
+	if input.NumberOfMatches != nil {
+		sql = sql.Set("number_of_matches", *input.NumberOfMatches)
+		updated = true
+	}
+	if input.CaseId != nil {
+		sql = sql.Set("case_id", *input.CaseId)
+		updated = true
+	}
+
+	if !updated {
+		return repo.GetContinuousScreeningById(ctx, exec, id.String())
+	}
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreening)
 }
