@@ -11,3 +11,5 @@ updates:
       riverqueue:
         patterns:
           - "github.com/riverqueue/river*"
+    cooldown:
+      default-days: 14
