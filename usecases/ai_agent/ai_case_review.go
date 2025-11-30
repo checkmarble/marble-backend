@@ -195,7 +195,7 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 	if !hasAiCaseReviewEnabled {
 		return false, nil
 	}
-	inbox, err := uc.inboxReader.GetInboxById(ctx, c.InboxId)
+	inbox, err := uc.inboxReader.GetInboxById(ctx, uc.executorFactory.NewExecutor(), c.InboxId)
 	if err != nil {
 		return false, errors.Wrap(err, "error getting inbox")
 	}
