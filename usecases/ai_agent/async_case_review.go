@@ -107,8 +107,7 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		return nil
 	}
 
-	var aiCaseReview models.AiCaseReview
-	aiCaseReview, err = w.repository.GetCaseReviewById(ctx, exec, job.Args.AiCaseReviewId)
+	aiCaseReview, err := w.repository.GetCaseReviewById(ctx, exec, job.Args.AiCaseReviewId)
 	switch {
 	case errors.Is(err, models.NotFoundError):
 		aiCaseReview = models.NewAiCaseReview(job.Args.CaseId, w.bucketUrl, job.Args.AiCaseReviewId)
