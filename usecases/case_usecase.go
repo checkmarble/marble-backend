@@ -88,6 +88,9 @@ type CaseUseCaseRepository interface {
 	ListContinuousScreeningsByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.ContinuousScreening, error)
 	ListContinuousScreeningsByIds(ctx context.Context, exec repositories.Executor, ids []uuid.UUID) ([]models.ContinuousScreening, error)
 	UpdateContinuousScreeningsCaseId(ctx context.Context, exec repositories.Executor, ids []uuid.UUID, caseId string) error
+
+	// inboxes
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
 }
 
 type CaseUsecaseScreeningRepository interface {
@@ -1891,7 +1894,8 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 			return errors.Wrap(err, "error checking if AI case review is enabled")
 		}
 		if hasAiCaseReviewEnabled {
-			inbox, err := usecase.inboxReader.GetInboxById(ctx, targetInbox.Id)
+			// direct read through repository, because we may not have permission on this inbox in this situation.
+			inbox, err := usecase.repository.GetInboxById(ctx, exec, targetInbox.Id)
 			if err != nil {
 				return errors.Wrap(err, "error getting inbox")
 			}
