@@ -195,7 +195,7 @@ RepeatLoop:
 						Limit:               w.config.ExportBatchSize,
 					}
 
-					nRows, err := w.exportScreenings(ctx, exec, req)
+					nRows, err := w.exportScreenings(ctx, exec, dbExec, req)
 
 					if nRows > 0 {
 						insertedRows = true
@@ -317,6 +317,7 @@ func (w AnalyticsExportWorker) exportDecisionRules(
 func (w AnalyticsExportWorker) exportScreenings(
 	ctx context.Context,
 	exec repositories.AnalyticsExecutor,
+	dbExec repositories.Executor,
 	req repositories.AnalyticsCopyRequest,
 ) (nRows int, err error) {
 	start := time.Now()
@@ -335,7 +336,7 @@ func (w AnalyticsExportWorker) exportScreenings(
 
 	req.Watermark = &models.Watermark{WatermarkId: utils.Ptr(id.String()), WatermarkTime: startWatermark}
 
-	nRows, err = repositories.AnalyticsCopyScreenings(ctx, exec, req)
+	nRows, err = repositories.AnalyticsCopyScreenings(ctx, exec, dbExec, req)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to copy screenings")
 	}
