@@ -3,9 +3,11 @@ package executor_factory
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"net/url"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +18,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/duckdb/duckdb-go/v2"
 	"github.com/jackc/pgx/v5"
 )
@@ -44,20 +47,36 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (repositories
 	ddbOnce.Do(func() {
 		var ddb *duckdb.Connector
 
-		ddb, err = duckdb.NewConnector("", nil)
+		// NB for future reference: we tried with cache_httpfs, which for our disk-less containers was a net drag on performance
+		// compared to the native httpfs cache. We will come back to this in the future to give an option for deployments of
+		// Marble that have a persistent disk. It should then be setup at connection dial and configured here.
+		ddb, err = duckdb.NewConnector("", func(execer driver.ExecerContext) error {
+			_, err := execer.ExecContext(ctx, `set threads = @threads;`, []driver.NamedValue{
+				{
+					Name: "threads",
+					// We use a number of threads higher than the number of CPUs to account for the fact that, on the volumes we have been testing,
+					// the response time is IO rather than CPU bound. An even higher value may even make sense.
+					Value:   utils.GetEnv("DUCKDB_THREADS", runtime.NumCPU()*4),
+					Ordinal: 0,
+				},
+			})
+			return err
+		})
 		if err != nil {
 			return
 		}
 
-		db = repositories.NewDuckDbExecutor(sql.OpenDB(ddb))
+		sqlDb := sql.OpenDB(ddb)
+		// This is essentially saying that I want no concurrency on the analytics connector, because the cache (which we want to hit consistently)
+		// is per-connection.
+		// This could also be tuned differently if using cache_httpfs with a disk.
+		sqlDb.SetMaxOpenConns(utils.GetEnv("DUCKDB_MAX_OPEN_CONNS", 1))
+
+		db = repositories.NewDuckDbExecutor(sqlDb)
 
 		switch f.config.Type {
 		case infra.BlobTypeS3, infra.BlobTypeGCS:
 			_, err = db.ExecContext(ctx, fmt.Sprintf(`
-				force install cache_httpfs from community;
-				load cache_httpfs;
-				set global cache_httpfs_type = 'in_mem';
-				set global cache_httpfs_enable_glob_cache = 0;
 				create secret if not exists analytics (%s);
 			`, f.config.ConnectionString))
 		}
