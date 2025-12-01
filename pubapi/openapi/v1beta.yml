@@ -348,6 +348,8 @@ paths:
                           $ref: "#/components/schemas/CaseComment"
         "400":
           $ref: "#/components/responses/400"
+        "413":
+          $ref: "#/components/responses/413"
 
     post:
       operation: createCaseComment
@@ -369,8 +371,9 @@ paths:
                   description: |
                     Body of the comment.
 
-                    You can format the comment with markdown markup.
+                    You can format the comment with markdown markup. The comment must be up to 2048 characters.
                   type: string
+                  maxLength: 2048
       responses:
         "201":
           description: Comment created
@@ -424,9 +427,10 @@ paths:
               type: object
               properties:
                 file:
-                  description: File to upload
+                  description: File to upload, maximum 5MB.
                   type: string
                   format: binary
+                  maxLength: 5242880
       responses:
         "200":
           description: File reference
@@ -512,6 +516,12 @@ components:
             $ref: "#/components/schemas/Error"
     "409":
       description: The resource being created conflicts with an existing resource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    "413":
+      description: The request body exceeds maximum allowed size.
       content:
         application/json:
           schema:
