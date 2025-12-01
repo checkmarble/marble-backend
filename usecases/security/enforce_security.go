@@ -14,6 +14,7 @@ type EnforceSecurity interface {
 
 	OrgId() string
 	UserId() *string
+	ApiKeyId() *string
 }
 
 type EnforceSecurityImpl struct {
@@ -36,6 +37,14 @@ func (e *EnforceSecurityImpl) UserId() *string {
 	}
 
 	return utils.Ptr(string(e.Credentials.ActorIdentity.UserId))
+}
+
+func (e *EnforceSecurityImpl) ApiKeyId() *string {
+	if e.Credentials.ActorIdentity.ApiKeyId == "" {
+		return nil
+	}
+
+	return utils.Ptr(e.Credentials.ActorIdentity.ApiKeyId)
 }
 
 func (e *EnforceSecurityImpl) ReadOrganization(organizationId string) error {

@@ -154,7 +154,10 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
-	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything, mock.Anything).Return(nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything,
+		mock.Anything).Return(nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
+		mock.Anything).Return(nil)
 	suite.repository.On("GetInboxById", mock.Anything, mock.Anything, suite.inboxId).Return(models.Inbox{
 		Id: suite.inboxId, OrganizationId: suite.orgId.String(), Status: models.InboxStatusActive,
 	}, nil)
@@ -270,6 +273,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_NonEmptyObj
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything, mock.Anything).Return(nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
+		mock.Anything).Return(nil)
 	suite.repository.On("GetInboxById", mock.Anything, mock.Anything, suite.inboxId).Return(models.Inbox{
 		Id: suite.inboxId, OrganizationId: suite.orgId.String(), Status: models.InboxStatusActive,
 	}, nil)
@@ -699,6 +704,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_InboxNotAct
 	}
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything, mock.Anything).Return(nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
+		mock.Anything).Return(nil)
 
 	suite.repository.On("GetInboxById", mock.Anything, mock.Anything, suite.inboxId).Return(models.Inbox{
 		Id:             suite.inboxId,
@@ -760,6 +767,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_InboxNotFou
 	}
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	suite.clientDbRepository.On("CreateInternalContinuousScreeningTable", mock.Anything, mock.Anything).Return(nil)
+	suite.clientDbRepository.On("CreateInternalContinuousScreeningAuditTable", mock.Anything,
+		mock.Anything).Return(nil)
 
 	suite.repository.On("GetInboxById", mock.Anything, mock.Anything, suite.inboxId).Return(models.Inbox{}, models.NotFoundError)
 

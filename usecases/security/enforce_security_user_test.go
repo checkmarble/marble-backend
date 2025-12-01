@@ -25,6 +25,10 @@ func (mockUserEnforceSecurity) UserId() *string {
 	return nil
 }
 
+func (mockUserEnforceSecurity) ApiKeyId() *string {
+	return nil
+}
+
 func (mockUserEnforceSecurity) OrgId() string {
 	return ""
 }

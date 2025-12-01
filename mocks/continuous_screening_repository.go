@@ -232,6 +232,14 @@ func (m *ContinuousScreeningClientDbRepository) CreateInternalContinuousScreenin
 	return args.Error(0)
 }
 
+func (m *ContinuousScreeningClientDbRepository) CreateInternalContinuousScreeningAuditTable(
+	ctx context.Context,
+	exec repositories.Executor,
+) error {
+	args := m.Called(ctx, exec)
+	return args.Error(0)
+}
+
 func (m *ContinuousScreeningClientDbRepository) InsertContinuousScreeningObject(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -240,6 +248,15 @@ func (m *ContinuousScreeningClientDbRepository) InsertContinuousScreeningObject(
 	configStableId uuid.UUID,
 ) error {
 	args := m.Called(ctx, exec, tableName, objectId, configStableId)
+	return args.Error(0)
+}
+
+func (m *ContinuousScreeningClientDbRepository) InsertContinuousScreeningAudit(
+	ctx context.Context,
+	exec repositories.Executor,
+	audit models.CreateContinuousScreeningAudit,
+) error {
+	args := m.Called(ctx, exec, audit)
 	return args.Error(0)
 }
 
