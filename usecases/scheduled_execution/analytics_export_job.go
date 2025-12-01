@@ -241,15 +241,18 @@ RepeatLoop:
 }
 
 func logExportResult(ctx context.Context, table string, start time.Time, nRows int, startWatermark time.Time, err error) {
-	logger := utils.LoggerFromContext(ctx)
+	durMs := fmt.Sprintf("%dms", time.Since(start).Milliseconds())
+	logger := utils.LoggerFromContext(ctx).With(
+		"duration", durMs,
+		"start_watermark", startWatermark,
+	)
 	switch {
 	case err != nil:
-		logger.ErrorContext(ctx, fmt.Sprintf("%s export failed", table), "duration",
-			time.Since(start), "error", err.Error())
+		logger.ErrorContext(ctx, fmt.Sprintf("%s export failed", table), "error", err.Error())
 	case nRows > 0:
-		logger.DebugContext(ctx, fmt.Sprintf("%s export succeeded", table), "duration", time.Since(start), "rows", nRows)
+		logger.DebugContext(ctx, fmt.Sprintf("%s export succeeded", table), "rows", nRows)
 	default:
-		logger.DebugContext(ctx, fmt.Sprintf("%s export is up to date", table), "duration", time.Since(start))
+		logger.DebugContext(ctx, fmt.Sprintf("%s export is up to date", table))
 	}
 }
 
