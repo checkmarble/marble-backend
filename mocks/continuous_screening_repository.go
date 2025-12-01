@@ -260,6 +260,15 @@ func (m *ContinuousScreeningClientDbRepository) InsertContinuousScreeningAudit(
 	return args.Error(0)
 }
 
+func (m *ContinuousScreeningClientDbRepository) DeleteContinuousScreeningObject(
+	ctx context.Context,
+	exec repositories.Executor,
+	input models.DeleteContinuousScreeningObject,
+) error {
+	args := m.Called(ctx, exec, input)
+	return args.Error(0)
+}
+
 func (m *ContinuousScreeningClientDbRepository) ListMonitoredObjectsByObjectIds(
 	ctx context.Context,
 	exec repositories.Executor,
