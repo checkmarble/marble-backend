@@ -146,7 +146,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	if err != nil {
 		if repositories.IsUniqueViolationError(err) && ignoreUniqueViolationError {
 			// Do nothing, normal case
-			// That mean the object is already in monitoring list and we updated the object data
+			// That means the object is already in monitoring list and we updated the object data
 			triggerType = models.ContinuousScreeningTriggerTypeObjectUpdated
 		} else if repositories.IsUniqueViolationError(err) {
 			return models.ScreeningWithMatches{}, errors.Wrap(
