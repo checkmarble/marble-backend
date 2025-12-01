@@ -35,26 +35,23 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 
 	authProvider := auth.ParseTokenProvider(utils.GetEnv("AUTH_PROVIDER", "firebase"))
 	oidcProvider := infra.OidcConfig{}
+	firebaseConfig := api.FirebaseConfig{}
 
-	gcpConfig, ok := infra.NewGcpConfig(
-		ctx,
-		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
-	)
+	gcpProjectId := utils.GetEnv("GOOGLE_CLOUD_PROJECT", "")
+	gcpConfig, ok := infra.NewGcpConfig(ctx, gcpProjectId)
 	if !ok {
-		logger.InfoContext(ctx, "could not initialize GCP config")
+		logger.InfoContext(ctx, "Could not initialize GCP config. This is not blocking unless you are deploying with Firebase Auth, or use GCP as a provider for blob storage, tracing or profiling.")
 	}
 
-	if authProvider == auth.TokenProviderOidc {
+	switch authProvider {
+	case auth.TokenProviderOidc:
 		oidc, err := infra.InitializeOidc(ctx, marbleAppUrl)
 		if err != nil {
 			return err
 		}
 
 		oidcProvider = oidc
-	}
-	var firebaseConfig api.FirebaseConfig
-	if authProvider == auth.TokenProviderFirebase {
+	case auth.TokenProviderFirebase:
 		firebaseConfig = api.FirebaseConfig{
 			ProjectId:    utils.GetEnv("FIREBASE_PROJECT_ID", ""),
 			EmulatorHost: utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
@@ -62,9 +59,9 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 			AuthDomain:   utils.GetEnv("FIREBASE_AUTH_DOMAIN", ""),
 		}
 		if firebaseConfig.ProjectId == "" {
-			logger.Info("FIREBASE_PROJECT_ID was not provided, falling back to Google Cloud project", "project", gcpConfig.ProjectId)
+			logger.Info("FIREBASE_PROJECT_ID was not provided, falling back to Google Cloud project", "project", gcpProjectId)
 
-			firebaseConfig.ProjectId = gcpConfig.ProjectId
+			firebaseConfig.ProjectId = gcpProjectId
 		}
 
 		if !firebaseConfig.IsEmulator() {
@@ -78,6 +75,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}
 
 		logger.Info("firebase project configured", "project", firebaseConfig.ProjectId)
+	default:
+		return errors.Newf("unsupported token provider: %s", authProvider)
 	}
 
 	// This is where we read the environment variables and set up the configuration for the application.

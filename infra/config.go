@@ -21,23 +21,25 @@ const (
 )
 
 type GcpConfig struct {
-	ProjectId                    string
-	PrincipalEmail               string
-	GoogleApplicationCredentials string
+	ProjectId      string
+	PrincipalEmail string
 }
 
-func NewGcpConfig(ctx context.Context, gcpProjectId string, googleApplicationCredentials string) (GcpConfig, bool) {
+func NewGcpConfig(ctx context.Context, gcpProjectId string) (GcpConfig, bool) {
 	// Errors to validate GCP credentials do not have to be a hard fail.
 	// They are common when trying out the product with the emulator (no service account required).
 	// So long as the GCP project is defined in the configuration, most things will work.
 	// Failing to retrieve the principal is OK for now, but will become an error when we implement keyless signing.
+
+	logger := utils.LoggerFromContext(ctx)
 	adcProjectId, adcPrincipal, err := FindServiceAccountPrincipal(ctx)
 	if err != nil {
-		utils.LoggerFromContext(ctx).Warn("could not validate Google Cloud credentials, some features might not work properly", "error", err)
+		logger.InfoContext(ctx, "Could not validate Google Cloud credentials, some features might not work properly", "error", err)
+		return GcpConfig{}, false
 	}
 
 	if !strings.HasSuffix(adcPrincipal, GcpServiceAccountSuffix) {
-		utils.LoggerFromContext(ctx).Warn("you might be authenticated with user Google user account (instead of a service account), file downloads will not be functional")
+		logger.WarnContext(ctx, "You might be authenticated with user Google user account (instead of a service account), file downloads will not be functional")
 	}
 
 	// We determine the Google Cloud project in the following priority:
@@ -67,9 +69,8 @@ func NewGcpConfig(ctx context.Context, gcpProjectId string, googleApplicationCre
 
 	utils.LoggerFromContext(ctx).InfoContext(ctx, "Authenticated in GCP", "principal", adcPrincipal, "project", projectId)
 	cfg := GcpConfig{
-		ProjectId:                    projectId,
-		PrincipalEmail:               adcPrincipal,
-		GoogleApplicationCredentials: googleApplicationCredentials,
+		ProjectId:      projectId,
+		PrincipalEmail: adcPrincipal,
 	}
 	return cfg, true
 }

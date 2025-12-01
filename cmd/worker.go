@@ -103,11 +103,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	logger := utils.NewLogger(workerConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
-	gcpConfig, ok := infra.NewGcpConfig(
-		ctx,
-		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
-	)
+	gcpConfig, ok := infra.NewGcpConfig(ctx, utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""))
 	if !ok {
 		logger.InfoContext(ctx, "could not initialize GCP config")
 	}
