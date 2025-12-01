@@ -26,7 +26,7 @@ type GcpConfig struct {
 	GoogleApplicationCredentials string
 }
 
-func NewGcpConfig(ctx context.Context, gcpProjectId string, googleApplicationCredentials string) (GcpConfig, error) {
+func NewGcpConfig(ctx context.Context, gcpProjectId string, googleApplicationCredentials string) (GcpConfig, bool) {
 	// Errors to validate GCP credentials do not have to be a hard fail.
 	// They are common when trying out the product with the emulator (no service account required).
 	// So long as the GCP project is defined in the configuration, most things will work.
@@ -62,16 +62,16 @@ func NewGcpConfig(ctx context.Context, gcpProjectId string, googleApplicationCre
 	}
 
 	if projectId == "" {
-		return GcpConfig{}, errors.New("could not detect Google Cloud project ID, you must set GOOGLE_CLOUD_PROJECT")
+		return GcpConfig{}, false
 	}
 
+	utils.LoggerFromContext(ctx).InfoContext(ctx, "Authenticated in GCP", "principal", adcPrincipal, "project", projectId)
 	cfg := GcpConfig{
 		ProjectId:                    projectId,
 		PrincipalEmail:               adcPrincipal,
 		GoogleApplicationCredentials: googleApplicationCredentials,
 	}
-
-	return cfg, nil
+	return cfg, true
 }
 
 func FindServiceAccountPrincipal(ctx context.Context) (string, string, error) {

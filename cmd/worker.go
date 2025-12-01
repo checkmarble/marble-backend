@@ -103,13 +103,13 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	logger := utils.NewLogger(workerConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
-	gcpConfig, err := infra.NewGcpConfig(
+	gcpConfig, ok := infra.NewGcpConfig(
 		ctx,
 		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
 	)
-	if err != nil {
-		logger.WarnContext(ctx, "could not initialize GCP config", "error", err.Error())
+	if !ok {
+		logger.InfoContext(ctx, "could not initialize GCP config")
 	}
 	isMarbleSaasProject := infra.IsMarbleSaasProject()
 
@@ -123,9 +123,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		WritesPerSecond: utils.GetEnv("OFFLOADING_WRITES_PER_SEC", 200),
 	}
 
-	var analyticsConfig infra.AnalyticsConfig
-
-	if analyticsConfig, err = infra.InitAnalyticsConfig(pgConfig, workerConfig.analyticsBucket); err != nil {
+	analyticsConfig, err := infra.InitAnalyticsConfig(pgConfig, workerConfig.analyticsBucket)
+	if err != nil {
 		return err
 	}
 
