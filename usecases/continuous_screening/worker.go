@@ -13,6 +13,12 @@ import (
 )
 
 type repository interface {
+	ListContinuousScreeningConfigByObjectType(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		objectType string,
+	) ([]models.ContinuousScreeningConfig, error)
 	GetContinuousScreeningConfigByStableId(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -299,6 +305,7 @@ type EvaluateNeedTaskWorker struct {
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 
+	repo         repository
 	clientDbRepo clientDbRepository
 	taskEnqueuer taskEnqueuer
 }
@@ -306,12 +313,14 @@ type EvaluateNeedTaskWorker struct {
 func NewEvaluateNeedTaskWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	repo repository,
 	clientDbRepo clientDbRepository,
 	taskEnqueuer taskEnqueuer,
 ) *EvaluateNeedTaskWorker {
 	return &EvaluateNeedTaskWorker{
 		executorFactory:    executorFactory,
 		transactionFactory: transactionFactory,
+		repo:               repo,
 		clientDbRepo:       clientDbRepo,
 		taskEnqueuer:       taskEnqueuer,
 	}
@@ -329,9 +338,24 @@ func (w *EvaluateNeedTaskWorker) Work(
 ) error {
 	// Check if the inserted objects are in the continuous screening list
 	if len(job.Args.ObjectIds) > 0 {
+		exec := w.executorFactory.NewExecutor()
 		clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, job.Args.OrgId)
 		if err != nil {
 			return err
+		}
+
+		// Check if the object type is configured in the continuous screening config
+		orgId, err := uuid.Parse(job.Args.OrgId)
+		if err != nil {
+			return err
+		}
+		configs, err := w.repo.ListContinuousScreeningConfigByObjectType(ctx, exec, orgId, job.Args.ObjectType)
+		if err != nil {
+			return err
+		}
+		if len(configs) == 0 {
+			// No continuous screening config found, no need to enqueue the task
+			return nil
 		}
 
 		monitoredObjects, err := w.clientDbRepo.ListMonitoredObjectsByObjectIds(

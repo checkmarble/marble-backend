@@ -841,6 +841,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningEvaluateNeedWorker() *c
 	return continuous_screening.NewEvaluateNeedTaskWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.ClientDbRepository,
 		usecases.Repositories.TaskQueueRepository,
 	)

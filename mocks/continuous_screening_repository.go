@@ -41,6 +41,16 @@ func (m *ContinuousScreeningRepository) GetContinuousScreeningConfigByStableId(
 	return args.Get(0).(models.ContinuousScreeningConfig), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) ListContinuousScreeningConfigByObjectType(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	objectType string,
+) ([]models.ContinuousScreeningConfig, error) {
+	args := m.Called(ctx, exec, orgId, objectType)
+	return args.Get(0).([]models.ContinuousScreeningConfig), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) CreateContinuousScreeningConfig(
 	ctx context.Context,
 	exec repositories.Executor,
