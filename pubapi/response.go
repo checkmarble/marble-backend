@@ -145,6 +145,10 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 
 	default:
 		switch {
+		case errors.Is(err, &http.MaxBytesError{}):
+			resp.setErrorCode(ErrInvalidPayload.Error())
+			resp.Error.status = http.StatusRequestEntityTooLarge
+
 		case errors.Is(err, models.ForbiddenError):
 			resp.Error.status = http.StatusForbidden
 			resp.setErrorCode(ErrForbidden.Error())

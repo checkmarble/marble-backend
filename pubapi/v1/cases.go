@@ -408,7 +408,7 @@ func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
 }
 
 type CreateCommentParams struct {
-	Comment string `json:"comment"`
+	Comment string `json:"comment" binding:"required,lte=2048"`
 }
 
 func HandleCreateComment(uc usecases.Usecases) gin.HandlerFunc {
@@ -493,9 +493,7 @@ func HandleDownloadCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
-type FileForm struct {
-	Files []multipart.FileHeader `form:"file" binding:"required"`
-}
+const CaseFileUploadMaxSize = 5 << 20 // 5 MB
 
 func HandleCreateCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -507,9 +505,22 @@ func HandleCreateCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		var form FileForm
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, CaseFileUploadMaxSize)
 
-		if err := c.ShouldBind(&form); err != nil {
+		if err := c.Request.ParseMultipartForm(CaseFileUploadMaxSize); err != nil {
+			if errors.Is(err, &http.MaxBytesError{}) {
+				pubapi.NewErrorResponse().
+					WithError(errors.WithDetail(err, "uploaded file too large")).
+					Serve(c)
+				return
+			}
+
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		_, file, err := c.Request.FormFile("file")
+		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
@@ -519,7 +530,7 @@ func HandleCreateCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 
 		req := models.CreateCaseFilesInput{
 			CaseId: caseId.String(),
-			Files:  form.Files,
+			Files:  []multipart.FileHeader{*file},
 		}
 
 		_, files, err := caseUsecase.CreateCaseFiles(ctx, req)
