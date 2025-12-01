@@ -115,7 +115,9 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	})
 }
 
-func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSorting, offsetCase models.Case, useLinearOrdering bool) (squirrel.SelectBuilder, error) {
+func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSorting,
+	offsetCase models.Case, useLinearOrdering bool,
+) (squirrel.SelectBuilder, error) {
 	if p.OffsetId == "" {
 		return query, nil
 	}
@@ -205,8 +207,10 @@ func (repo *MarbleDbRepository) GetCaseReferents(ctx context.Context, exec Execu
 
 	query := NewQueryBuilder().
 		Select("c.id as id").
-		Column(fmt.Sprintf("case when c.assigned_to is null then null else row(%s) end as assignee", strings.Join(columnsNames("u", dbmodels.UserFields), ","))).
-		Column(fmt.Sprintf("row(%s) as inbox", strings.Join(columnsNames("i", dbmodels.SelectInboxColumn), ","))).
+		Column(fmt.Sprintf("case when c.assigned_to is null then null else row(%s) end as assignee",
+			strings.Join(columnsNames("u", dbmodels.UserFields), ","))).
+		Column(fmt.Sprintf("row(%s) as inbox", strings.Join(
+			columnsNames("i", dbmodels.SelectInboxColumn), ","))).
 		From(dbmodels.TABLE_CASES + " c").
 		LeftJoin(dbmodels.TABLE_USERS + " u on u.id = c.assigned_to").
 		InnerJoin(dbmodels.TABLE_INBOXES + " i on i.id = c.inbox_id").
@@ -470,6 +474,29 @@ func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec
 		Where(squirrel.Eq{
 			"d.org_id":      orgId,
 			"d.pivot_value": pivotValue,
+		}).
+		OrderBy("c.created_at DESC").
+		Limit(100)
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptCase)
+}
+
+func (repo *MarbleDbRepository) GetContinuousScreeningCasesWithObjectAttr(ctx context.Context, exec Executor,
+	orgId, objectType, objectId string,
+) ([]models.Case, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(columnsNames("c", dbmodels.SelectCaseColumn)...).
+		Distinct().
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS + " cs").
+		InnerJoin(dbmodels.TABLE_CASES + " c on c.id = cs.case_id").
+		Where(squirrel.Eq{
+			"cs.org_id":      orgId,
+			"cs.object_type": objectType,
+			"cs.object_id":   objectId,
 		}).
 		OrderBy("c.created_at DESC").
 		Limit(100)
