@@ -106,8 +106,11 @@ func AdaptContinuousScreeningWithMatches(dto DBContinuousScreeningWithMatches) (
 	}, nil
 }
 
+const TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS = "_monitored_objects"
+
 type DBContinuousScreeningMonitoredObject struct {
 	Id             uuid.UUID `db:"id"`
+	ObjectType     string    `db:"object_type"`
 	ObjectId       string    `db:"object_id"`
 	ConfigStableId uuid.UUID `db:"config_stable_id"`
 	CreatedAt      time.Time `db:"created_at"`
@@ -118,6 +121,7 @@ var SelectContinuousScreeningMonitoredObjectColumn = utils.ColumnList[DBContinuo
 func AdaptContinuousScreeningMonitoredObject(dto DBContinuousScreeningMonitoredObject) (models.ContinuousScreeningMonitoredObject, error) {
 	return models.ContinuousScreeningMonitoredObject{
 		Id:             dto.Id,
+		ObjectType:     dto.ObjectType,
 		ObjectId:       dto.ObjectId,
 		ConfigStableId: dto.ConfigStableId,
 		CreatedAt:      dto.CreatedAt,

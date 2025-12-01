@@ -157,7 +157,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 
 	// Setup mocks
 	suite.clientDbRepository.On("GetMonitoredObject", suite.ctx, mock.Anything,
-		suite.objectType, suite.monitoringId).Return(monitoredObject, nil)
+		suite.monitoringId).Return(monitoredObject, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.usecase.On("GetDataModelTableAndMapping", suite.ctx, mock.Anything, config,
@@ -277,7 +277,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 
 	// Setup mocks
 	suite.clientDbRepository.On("GetMonitoredObject", suite.ctx, mock.Anything,
-		suite.objectType, suite.monitoringId).Return(monitoredObject, nil)
+		suite.monitoringId).Return(monitoredObject, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.usecase.On("GetDataModelTableAndMapping", suite.ctx, mock.Anything, config,
@@ -372,7 +372,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 
 	// Setup mocks
 	suite.clientDbRepository.On("GetMonitoredObject", suite.ctx, mock.Anything,
-		suite.objectType, suite.monitoringId).Return(monitoredObject, nil)
+		suite.monitoringId).Return(monitoredObject, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.usecase.On("GetDataModelTableAndMapping", suite.ctx, mock.Anything, config,
@@ -475,7 +475,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 
 	// Setup mocks
 	suite.clientDbRepository.On("GetMonitoredObject", suite.ctx, mock.Anything,
-		suite.objectType, suite.monitoringId).Return(monitoredObject, nil)
+		suite.monitoringId).Return(monitoredObject, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.usecase.On("GetDataModelTableAndMapping", suite.ctx, mock.Anything, config,

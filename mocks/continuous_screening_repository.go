@@ -227,9 +227,8 @@ type ContinuousScreeningClientDbRepository struct {
 func (m *ContinuousScreeningClientDbRepository) CreateInternalContinuousScreeningTable(
 	ctx context.Context,
 	exec repositories.Executor,
-	tableName string,
 ) error {
-	args := m.Called(ctx, exec, tableName)
+	args := m.Called(ctx, exec)
 	return args.Error(0)
 }
 
@@ -257,10 +256,9 @@ func (m *ContinuousScreeningClientDbRepository) ListMonitoredObjectsByObjectIds(
 func (m *ContinuousScreeningClientDbRepository) GetMonitoredObject(
 	ctx context.Context,
 	clientExec repositories.Executor,
-	objectType string,
 	monitoringId uuid.UUID,
 ) (models.ContinuousScreeningMonitoredObject, error) {
-	args := m.Called(ctx, clientExec, objectType, monitoringId)
+	args := m.Called(ctx, clientExec, monitoringId)
 	return args.Get(0).(models.ContinuousScreeningMonitoredObject), args.Error(1)
 }
 
