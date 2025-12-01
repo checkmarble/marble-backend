@@ -14,6 +14,7 @@ type EnforceSecurityContinuousScreening interface {
 	WriteContinuousScreeningObject(orgId uuid.UUID) error
 	ReadContinuousScreeningHit(hit models.ContinuousScreeningWithMatches) error
 	WriteContinuousScreeningHit(orgId uuid.UUID) error
+	DismissContinuousScreeningHits(orgId uuid.UUID) error
 }
 
 type EnforceSecurityContinuousScreeningImpl struct {
@@ -59,6 +60,13 @@ func (e *EnforceSecurityContinuousScreeningImpl) ReadContinuousScreeningHit(hit 
 func (e *EnforceSecurityContinuousScreeningImpl) WriteContinuousScreeningHit(orgId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.CONTINUOUS_SCREENING_HIT_WRITE),
+		e.ReadOrganization(orgId.String()),
+	)
+}
+
+func (e *EnforceSecurityContinuousScreeningImpl) DismissContinuousScreeningHits(orgId uuid.UUID) error {
+	return errors.Join(
+		e.Permission(models.CONTINUOUS_SCREENING_HIT_DISMISS),
 		e.ReadOrganization(orgId.String()),
 	)
 }

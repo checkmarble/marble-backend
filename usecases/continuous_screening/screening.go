@@ -121,17 +121,20 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 
 		// If the match is confirmed, all other pending matches should be set to "skipped" and the screening to "confirmed_hit"
 		if update.Status == models.ScreeningMatchStatusConfirmedHit {
-			for _, m := range pendingMatchesExcludingThis {
-				_, err = uc.repository.UpdateContinuousScreeningMatchStatus(
-					ctx,
-					tx,
-					m.Id,
-					models.ScreeningMatchStatusSkipped,
-					reviewerUuid,
-				)
-				if err != nil {
-					return err
-				}
+			pendingMatchesIds := pure_utils.Map(pendingMatchesExcludingThis, func(
+				m models.ContinuousScreeningMatch,
+			) uuid.UUID {
+				return m.Id
+			})
+			_, err = uc.repository.UpdateContinuousScreeningMatchStatusByBatch(
+				ctx,
+				tx,
+				pendingMatchesIds,
+				models.ScreeningMatchStatusSkipped,
+				reviewerUuid,
+			)
+			if err != nil {
+				return err
 			}
 
 			// No huge fan of doing like this because we don't update the continuousScreeningWithMatches object
@@ -251,4 +254,95 @@ func (uc *ContinuousScreeningUsecase) createWhitelist(
 	}
 
 	return uc.repository.AddScreeningMatchWhitelist(ctx, exec, orgId, counterpartyId, entityId, reviewerId)
+}
+
+// Dismiss function can only be called if the continuous screening is in review and in case and by an admin user
+// - Get the continuous screening with matches by id
+// - Check if the user has permission to dismiss the continuous screening
+// - Check if the continuous screening is in review and in case
+// - Update the match statuses to skipped
+// - Update the continuous screening status to no_hit
+// Return the continuous screening with matches
+func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Context,
+	continuousScreeningId uuid.UUID, reviewerId *models.UserId,
+) (models.ContinuousScreeningWithMatches, error) {
+	var reviewerUuid *uuid.UUID
+	if reviewerId != nil {
+		tmpUuid, err := uuid.Parse(string(*reviewerId))
+		if err != nil {
+			return models.ContinuousScreeningWithMatches{},
+				errors.Wrap(models.BadParameterError, "invalid reviewer id")
+		}
+		reviewerUuid = &tmpUuid
+	}
+	var continuousScreening models.ContinuousScreeningWithMatches
+
+	err := uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		var err error
+		continuousScreening, err = uc.repository.GetContinuousScreeningWithMatchesById(ctx, tx, continuousScreeningId)
+		if err != nil {
+			return err
+		}
+
+		if err := uc.enforceSecurity.DismissContinuousScreeningHits(
+			continuousScreening.OrgId,
+		); err != nil {
+			return err
+		}
+
+		if continuousScreening.CaseId == nil {
+			return errors.Wrap(models.UnprocessableEntityError,
+				"continuous screening is not in case, can't dismiss")
+		}
+		if continuousScreening.Status != models.ScreeningStatusInReview {
+			return errors.Wrap(models.UnprocessableEntityError,
+				"continuous screening is not in review, can't dismiss")
+		}
+
+		matchesToUpdate := utils.Filter(continuousScreening.Matches, func(
+			m models.ContinuousScreeningMatch,
+		) bool {
+			return m.Status == models.ScreeningMatchStatusPending
+		})
+		matchIdsToUpdate := pure_utils.Map(matchesToUpdate, func(
+			m models.ContinuousScreeningMatch,
+		) uuid.UUID {
+			return m.Id
+		})
+
+		// Update the match statuses
+		_, err = uc.repository.UpdateContinuousScreeningMatchStatusByBatch(
+			ctx,
+			tx,
+			matchIdsToUpdate,
+			models.ScreeningMatchStatusSkipped,
+			reviewerUuid,
+		)
+		if err != nil {
+			return err
+		}
+
+		// Update the continuous screening status
+		_, err = uc.repository.UpdateContinuousScreeningStatus(
+			ctx,
+			tx,
+			continuousScreeningId,
+			models.ScreeningStatusNoHit,
+		)
+		if err != nil {
+			return err
+		}
+
+		// Fetch again to have the latest state
+		continuousScreening, err = uc.repository.GetContinuousScreeningWithMatchesById(ctx, tx, continuousScreeningId)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
+	return continuousScreening, nil
 }

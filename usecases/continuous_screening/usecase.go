@@ -93,6 +93,13 @@ type ContinuousScreeningUsecaseRepository interface {
 		status models.ScreeningMatchStatus,
 		reviewerId *uuid.UUID,
 	) (models.ContinuousScreeningMatch, error)
+	UpdateContinuousScreeningMatchStatusByBatch(
+		ctx context.Context,
+		exec repositories.Executor,
+		ids []uuid.UUID,
+		status models.ScreeningMatchStatus,
+		reviewerId *uuid.UUID,
+	) ([]models.ContinuousScreeningMatch, error)
 
 	// Cases:
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)

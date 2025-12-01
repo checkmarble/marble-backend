@@ -195,7 +195,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/screenings/matches/:id", tom, handleUpdateScreeningMatchStatus(uc))
 	router.POST("/screenings/matches/:id/enrich", tom, handleEnrichScreeningMatch(uc))
 
-	router.GET("/continuous-screenings", tom, handleListContinuousScreeningsForOrg(uc))
 	router.GET("/continuous-screenings/configs", tom, handleListContinuousScreeningConfigs(uc))
 	router.POST("/continuous-screenings/configs", tom,
 		handleCreateContinuousScreeningConfig(uc))
@@ -210,6 +209,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleDeleteContinuousScreeningObject(uc))
 	router.PATCH("/continuous-screenings/matches/:id", tom,
 		handleUpdateContinuousScreeningMatchStatus(uc))
+	router.GET("/continuous-screenings", tom, handleListContinuousScreeningsForOrg(uc))
+	router.PATCH("/continuous-screenings/:id/dismiss", tom,
+		handleDismissContinuousScreening(uc))
 
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))

@@ -297,3 +297,28 @@ func handleListContinuousScreeningObjects(uc usecases.Usecases) func(c *gin.Cont
 		)
 	}
 }
+
+func handleDismissContinuousScreening(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		continuousScreeningId, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		creds, ok := utils.CredentialsFromCtx(ctx)
+		if !ok {
+			presentError(ctx, c, models.ErrUnknownUser)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
+		csWithMatches, err := uc.DismissContinuousScreening(ctx, continuousScreeningId, &creds.ActorIdentity.UserId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptContinuousScreeningDto(csWithMatches))
+	}
+}

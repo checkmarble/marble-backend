@@ -161,6 +161,17 @@ func (m *ContinuousScreeningRepository) UpdateContinuousScreeningMatchStatus(
 	return args.Get(0).(models.ContinuousScreeningMatch), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) UpdateContinuousScreeningMatchStatusByBatch(
+	ctx context.Context,
+	exec repositories.Executor,
+	ids []uuid.UUID,
+	status models.ScreeningMatchStatus,
+	reviewerId *uuid.UUID,
+) ([]models.ContinuousScreeningMatch, error) {
+	args := m.Called(ctx, exec, ids, status, reviewerId)
+	return args.Get(0).([]models.ContinuousScreeningMatch), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) SearchScreeningMatchWhitelist(
 	ctx context.Context,
 	exec repositories.Executor,
