@@ -203,6 +203,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/continuous-screenings/configs/:stable_id", tom,
 		handleUpdateContinuousScreeningConfig(uc),
 	)
+	router.GET("/continuous-screenings/objects", tom, handleListContinuousScreeningObjects(uc))
 	router.POST("/continuous-screenings/objects", tom,
 		handleCreateContinuousScreeningObject(uc))
 	router.DELETE("/continuous-screenings/objects", tom,
@@ -293,7 +294,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/cases/review_decision", tom, handleReviewCaseDecisions(uc))
 	router.GET("/cases/:case_id/annotations", tom, handleGetAnnotationByCase(uc))
 	router.GET("/cases/:case_id/pivot_objects", tom, handleReadCasePivotObjects(uc))
-	router.GET("/cases/related/pivot/:pivotValue", tom, handleGetRelatedCases(uc))
+	router.GET("/cases/related/pivot/:pivotValue", tom, handleGetRelatedCasesByPivotValue(uc))
+	router.GET("/cases/related/object_type/:objectType/object_id/:objectId", tom,
+		handleGetRelatedContinuousScreeningCasesByObjectAttr(uc))
 	router.GET("/cases/:case_id/sar", tom, handleListSuspiciousActivityReports(uc))
 	router.POST("/cases/:case_id/sar", tom, handleCreateSuspiciousActivityReport(uc))
 	router.PATCH("/cases/:case_id/sar/:reportId", tom, handleUpdateSuspiciousActivityReport(uc))

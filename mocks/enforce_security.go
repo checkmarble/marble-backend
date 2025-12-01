@@ -225,6 +225,11 @@ func (e *EnforceSecurity) WriteContinuousScreeningObject(orgId uuid.UUID) error 
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) ReadContinuousScreeningObject(orgId uuid.UUID) error {
+	args := e.Called(orgId)
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) ReadContinuousScreeningHit(hit models.ContinuousScreeningWithMatches) error {
 	args := e.Called(hit)
 	return args.Error(0)

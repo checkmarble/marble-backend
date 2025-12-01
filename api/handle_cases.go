@@ -541,7 +541,7 @@ func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetRelatedCases(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetRelatedCasesByPivotValue(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
@@ -553,9 +553,39 @@ func handleGetRelatedCases(uc usecases.Usecases) func(c *gin.Context) {
 		pivotValue := c.Param("pivotValue")
 
 		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cases, err := uc.GetRelatedCases(ctx, creds.OrganizationId, pivotValue)
-		if err != nil {
-			presentError(ctx, c, err)
+		cases, err := uc.GetRelatedCasesByPivotValue(ctx, creds.OrganizationId, pivotValue)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(cases, dto.AdaptCaseDto))
+	}
+}
+
+func handleGetRelatedContinuousScreeningCasesByObjectAttr(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, found := utils.CredentialsFromCtx(ctx)
+		if !found {
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			return
+		}
+
+		objectType := c.Param("objectType")
+		if objectType == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "objectType is required"))
+			return
+		}
+		objectId := c.Param("objectId")
+		if objectId == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "objectId is required"))
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
+		cases, err := uc.GetRelatedContinuousScreeningCasesByObjectAttr(ctx,
+			creds.OrganizationId, objectType, objectId)
+		if presentError(ctx, c, err) {
 			return
 		}
 
