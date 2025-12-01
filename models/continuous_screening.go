@@ -74,6 +74,13 @@ type ContinuousScreening struct {
 	UpdatedAt time.Time
 }
 
+type UpdateContinuousScreeningInput struct {
+	Status          *ScreeningStatus
+	IsPartial       *bool
+	NumberOfMatches *int
+	CaseId          *uuid.UUID
+}
+
 type ContinuousScreeningMatch struct {
 	Id                    uuid.UUID
 	ContinuousScreeningId uuid.UUID
