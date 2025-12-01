@@ -1895,7 +1895,7 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 		}
 		if hasAiCaseReviewEnabled {
 			// direct read through repository, because we may not have permission on this inbox in this situation.
-			inbox, err := usecase.repository.GetInboxById(ctx, exec, targetInbox.Id)
+			inbox, err := usecase.repository.GetInboxById(ctx, tx, targetInbox.Id)
 			if err != nil {
 				return errors.Wrap(err, "error getting inbox")
 			}
