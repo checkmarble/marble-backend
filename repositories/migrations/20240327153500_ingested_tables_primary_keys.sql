@@ -3,11 +3,12 @@
 DO $$
 DECLARE rec record;
 BEGIN
-	FOR rec IN 
+	FOR rec IN
 	    SELECT table_schema, table_name, concat(table_name,'_pkey') AS constraint_name
-	    FROM information_schema.tables 
-	    WHERE table_schema NOT IN ('marble','analytics','public', 'pg_catalog', 'information_schema')
-	LOOP 
+	    FROM information_schema.tables
+	    WHERE table_schema NOT IN ('marble','analytics','public', 'pg_catalog', 'information_schema', 'google_ml')
+	    AND has_table_privilege(current_user, quote_ident(table_schema) || '.' || quote_ident(table_name), 'UPDATE')
+	LOOP
 		EXECUTE format('ALTER TABLE %I.%I drop constraint if exists %I;', rec.table_schema, rec.table_name, rec.constraint_name);
 		RAISE NOTICE 'done for %', rec.table_name;
 	END LOOP;
@@ -17,11 +18,12 @@ $$ LANGUAGE plpgsql;
 DO $$
 DECLARE rec record;
 BEGIN
-	FOR rec IN 
+	FOR rec IN
 	    SELECT table_schema, table_name
-	    FROM information_schema.tables 
-	    WHERE table_schema NOT IN ('marble','analytics','public', 'pg_catalog', 'information_schema')
-	LOOP 
+	    FROM information_schema.tables
+	    WHERE table_schema NOT IN ('marble','analytics','public', 'pg_catalog', 'information_schema', 'google_ml')
+	    AND has_table_privilege(current_user, quote_ident(table_schema) || '.' || quote_ident(table_name), 'UPDATE')
+	LOOP
 		EXECUTE format('ALTER TABLE %I.%I ADD PRIMARY KEY (ID);', rec.table_schema, rec.table_name);
 		RAISE NOTICE 'done for %', rec.table_name;
 	END LOOP;
