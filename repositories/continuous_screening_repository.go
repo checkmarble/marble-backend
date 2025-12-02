@@ -44,6 +44,27 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfigByStableId(ctx conte
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
 }
 
+// Fetch enabled continuous screening configs for a given object type and org id
+func (repo *MarbleDbRepository) ListContinuousScreeningConfigByObjectType(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	objectType string,
+) ([]models.ContinuousScreeningConfig, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.ContinuousScreeningConfigColumnList...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Expr("? = ANY(object_types)", objectType)).
+		Where(squirrel.Eq{"enabled": true})
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
+}
+
 func (repo *MarbleDbRepository) GetContinuousScreeningConfigsByOrgId(
 	ctx context.Context,
 	exec Executor,

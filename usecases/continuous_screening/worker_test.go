@@ -510,6 +510,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 
 type CheckIfObjectsNeedScreeningWorkerTestSuite struct {
 	suite.Suite
+	repository         *mocks.ContinuousScreeningRepository
 	clientDbRepository *mocks.ContinuousScreeningClientDbRepository
 	taskQueueRepo      *mocks.TaskQueueRepository
 	executorFactory    executor_factory.ExecutorFactoryStub
@@ -521,6 +522,7 @@ type CheckIfObjectsNeedScreeningWorkerTestSuite struct {
 }
 
 func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) SetupTest() {
+	suite.repository = new(mocks.ContinuousScreeningRepository)
 	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.taskQueueRepo = new(mocks.TaskQueueRepository)
 
@@ -536,6 +538,7 @@ func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) makeWorker() *EvaluateN
 	return NewEvaluateNeedTaskWorker(
 		suite.executorFactory,
 		suite.transactionFactory,
+		suite.repository,
 		suite.clientDbRepository,
 		suite.taskQueueRepo,
 	)
@@ -543,6 +546,7 @@ func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) makeWorker() *EvaluateN
 
 func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) AssertExpectations() {
 	t := suite.T()
+	suite.repository.AssertExpectations(t)
 	suite.clientDbRepository.AssertExpectations(t)
 	suite.taskQueueRepo.AssertExpectations(t)
 }
@@ -563,7 +567,17 @@ func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) TestWork_NoMonitoredObj
 		},
 	}
 
-	// Setup mocks - ListMonitoredObjectsByObjectIds returns empty list
+	// Setup mocks
+	orgId := uuid.MustParse(suite.orgId)
+	suite.repository.On("ListContinuousScreeningConfigByObjectType", suite.ctx, mock.Anything,
+		orgId, suite.objectType).Return([]models.ContinuousScreeningConfig{
+		{
+			Id:          uuid.New(),
+			StableId:    uuid.New(),
+			ObjectTypes: []string{suite.objectType},
+			Enabled:     true,
+		},
+	}, nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", suite.ctx, mock.Anything,
 		suite.objectType, objectIds).Return([]models.ContinuousScreeningMonitoredObject{}, nil)
 
@@ -602,12 +616,48 @@ func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) TestWork_WithMonitoredO
 	}
 
 	// Setup mocks
+	orgId := uuid.MustParse(suite.orgId)
+	suite.repository.On("ListContinuousScreeningConfigByObjectType", suite.ctx, mock.Anything,
+		orgId, suite.objectType).Return([]models.ContinuousScreeningConfig{
+		{
+			Id:          uuid.New(),
+			StableId:    uuid.New(),
+			ObjectTypes: []string{suite.objectType},
+			Enabled:     true,
+		},
+	}, nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", suite.ctx, mock.Anything,
 		suite.objectType, objectIds).Return(monitoredObjects, nil)
 	suite.taskQueueRepo.On("EnqueueContinuousScreeningDoScreeningTaskMany", suite.ctx, mock.Anything,
 		suite.orgId, suite.objectType,
 		[]uuid.UUID{monitoringId1, monitoringId2},
 		models.ContinuousScreeningTriggerTypeObjectUpdated).Return(nil)
+
+	// Execute
+	worker := suite.makeWorker()
+	err := worker.Work(suite.ctx, job)
+
+	// Assert
+	suite.NoError(err)
+	suite.AssertExpectations()
+}
+
+func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) TestWork_NoContinuousScreeningConfig_NoEnqueue() {
+	// Setup
+	objectIds := []string{"object1", "object2"}
+
+	job := &river.Job[models.ContinuousScreeningEvaluateNeedArgs]{
+		Args: models.ContinuousScreeningEvaluateNeedArgs{
+			OrgId:      suite.orgId,
+			ObjectType: suite.objectType,
+			ObjectIds:  objectIds,
+		},
+	}
+
+	// Setup mocks - ListContinuousScreeningConfigByObjectType returns empty list
+	orgId := uuid.MustParse(suite.orgId)
+	suite.repository.On("ListContinuousScreeningConfigByObjectType", suite.ctx, mock.Anything,
+		orgId, suite.objectType).Return([]models.ContinuousScreeningConfig{}, nil)
 
 	// Execute
 	worker := suite.makeWorker()
