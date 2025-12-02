@@ -528,7 +528,7 @@ paths:
           $ref: '#/components/responses/400'
         '403':
           $ref: '#/components/responses/403'
-        '409': 
+        '409':
           $ref: '#/components/responses/409'
 
     delete:
@@ -892,7 +892,7 @@ components:
           type: string
         status:
           type: string
-          enum: 
+          enum:
             - pending
             - confirmed_hit
             - no_hit
@@ -952,14 +952,14 @@ components:
           format: uuid
         status:
           type: string
-          enum: 
+          enum:
             - in_review
             - error
             - confirmed_hit
             - no_hit
         trigger_type:
           type: string
-          enum: 
+          enum:
             - object_added
             - object_updated
             - dataset_updated

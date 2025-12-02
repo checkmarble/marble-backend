@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type ScreeningRequest struct {
+type ContinuousScreeningRequest struct {
 	SearchInput json.RawMessage `json:"search_input"`
 }
 
@@ -48,7 +48,7 @@ type ContinuousScreening struct {
 	ObjectInternalId                  uuid.UUID                  `json:"object_internal_id"`
 	Status                            string                     `json:"status"`
 	TriggerType                       string                     `json:"trigger_type"`
-	Request                           ScreeningRequest           `json:"request"`
+	Request                           ContinuousScreeningRequest `json:"request"`
 	Partial                           bool                       `json:"partial"`
 	NumberOfMatches                   int                        `json:"number_of_matches"`
 	Matches                           []ContinuousScreeningMatch `json:"matches"`
@@ -68,7 +68,7 @@ func AdaptContinuousScreening(m models.ContinuousScreeningWithMatches) Continuou
 		ObjectInternalId:                  m.ObjectInternalId,
 		Status:                            m.Status.String(),
 		TriggerType:                       m.TriggerType.String(),
-		Request: ScreeningRequest{
+		Request: ContinuousScreeningRequest{
 			SearchInput: m.SearchInput,
 		},
 		Partial:         m.IsPartial,
