@@ -51,13 +51,12 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (repositories
 		// compared to the native httpfs cache. We will come back to this in the future to give an option for deployments of
 		// Marble that have a persistent disk. It should then be setup at connection dial and configured here.
 		ddb, err = duckdb.NewConnector("", func(execer driver.ExecerContext) error {
-			_, err := execer.ExecContext(ctx, `set threads = @threads;`, []driver.NamedValue{
+			_, err := execer.ExecContext(ctx, `set threads = $1;`, []driver.NamedValue{
 				{
-					Name: "threads",
 					// We use a number of threads higher than the number of CPUs to account for the fact that, on the volumes we have been testing,
 					// the response time is IO rather than CPU bound. An even higher value may even make sense.
 					Value:   utils.GetEnv("DUCKDB_THREADS", runtime.NumCPU()*4),
-					Ordinal: 0,
+					Ordinal: 1,
 				},
 			})
 			return err
