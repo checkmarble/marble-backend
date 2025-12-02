@@ -32,8 +32,6 @@ func SetupSentry(dsn, env, apiVersion string) {
 			}
 			return 0.2
 		}),
-		// Experimental - value to be adjusted in prod once volumes go up - relative to the trace sampling rate
-		ProfilesSampleRate: 0.2,
 		BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 			if event.Request != nil {
 				event.Request.Headers["X-Api-Key"] = "[redacted]"
