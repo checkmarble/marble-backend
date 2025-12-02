@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -35,23 +36,49 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 
 	authProvider := auth.ParseTokenProvider(utils.GetEnv("AUTH_PROVIDER", "firebase"))
 	oidcProvider := infra.OidcConfig{}
+	firebaseConfig := api.FirebaseConfig{}
 
-	if authProvider == auth.TokenProviderOidc {
+	_, firebaseConfigured := os.LookupEnv("FIREBASE_API_KEY")
+	gcpProjectId := utils.GetEnv("GOOGLE_CLOUD_PROJECT", "")
+	gcpConfig, ok := infra.NewGcpConfig(ctx, gcpProjectId, firebaseConfigured)
+	if !ok {
+		logger.InfoContext(ctx, "Could not initialize GCP config. This is not blocking unless you are deploying with Firebase Auth, or use GCP as a provider for blob storage, tracing or profiling.")
+	}
+
+	switch authProvider {
+	case auth.TokenProviderOidc:
 		oidc, err := infra.InitializeOidc(ctx, marbleAppUrl)
 		if err != nil {
 			return err
 		}
 
 		oidcProvider = oidc
-	}
+	case auth.TokenProviderFirebase:
+		firebaseConfig = api.FirebaseConfig{
+			ProjectId:    utils.GetEnv("FIREBASE_PROJECT_ID", ""),
+			EmulatorHost: utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
+			ApiKey:       utils.GetRequiredEnv[string]("FIREBASE_API_KEY"),
+			AuthDomain:   utils.GetEnv("FIREBASE_AUTH_DOMAIN", ""),
+		}
+		if firebaseConfig.ProjectId == "" {
+			logger.Info("FIREBASE_PROJECT_ID was not provided, falling back to Google Cloud project", "project", gcpProjectId)
 
-	gcpConfig, err := infra.NewGcpConfig(
-		ctx,
-		utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
-	)
-	if err != nil {
-		return err
+			firebaseConfig.ProjectId = gcpProjectId
+		}
+
+		if !firebaseConfig.IsEmulator() {
+			if firebaseConfig.AuthDomain == "" {
+				firebaseConfig.AuthDomain = fmt.Sprintf("%s.firebaseapp.com", firebaseConfig.ProjectId)
+				logger.Warn(fmt.Sprintf("no FIREBASE_AUTH_DOMAIN specified, defaulting to %s", firebaseConfig.AuthDomain))
+			}
+		} else {
+			// The auth domain, when using the emulator, is always the emulator host itself
+			firebaseConfig.AuthDomain = firebaseConfig.EmulatorHost
+		}
+
+		logger.Info("firebase project configured", "project", firebaseConfig.ProjectId)
+	default:
+		return errors.Newf("unsupported token provider: %s", authProvider)
 	}
 
 	// This is where we read the environment variables and set up the configuration for the application.
@@ -87,14 +114,9 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 
 		EnablePrometheus: utils.GetEnv("ENABLE_PROMETHEUS", false),
 
-		TokenProvider: authProvider,
-		FirebaseConfig: api.FirebaseConfig{
-			ProjectId:    utils.GetEnv("FIREBASE_PROJECT_ID", ""),
-			EmulatorHost: utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
-			ApiKey:       utils.GetRequiredEnv[string]("FIREBASE_API_KEY"),
-			AuthDomain:   utils.GetEnv("FIREBASE_AUTH_DOMAIN", ""),
-		},
-		OidcConfig: oidcProvider,
+		TokenProvider:  authProvider,
+		FirebaseConfig: firebaseConfig,
+		OidcConfig:     oidcProvider,
 	}
 	if apiConfig.DisableSegment {
 		apiConfig.SegmentWriteKey = ""
@@ -199,30 +221,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
-
-	logger.Info("successfully authenticated in GCP", "principal", gcpConfig.PrincipalEmail, "project", gcpConfig.ProjectId)
-
-	if apiConfig.FirebaseConfig.ProjectId == "" {
-		logger.Info("FIREBASE_PROJECT_ID was not provided, falling back to Google Cloud project", "project", gcpConfig.ProjectId)
-
-		apiConfig.FirebaseConfig.ProjectId = gcpConfig.ProjectId
-	}
-
-	if !apiConfig.FirebaseConfig.IsEmulator() {
-		if apiConfig.FirebaseConfig.ApiKey == "" {
-			logger.Warn("no FIREBASE_API_KEY specified, this will be an error in the future")
-		}
-
-		if apiConfig.FirebaseConfig.AuthDomain == "" {
-			apiConfig.FirebaseConfig.AuthDomain = fmt.Sprintf("%s.firebaseapp.com", apiConfig.FirebaseConfig.ProjectId)
-			logger.Warn(fmt.Sprintf("no FIREBASE_AUTH_DOMAIN specified, defaulting to %s", apiConfig.FirebaseConfig.AuthDomain))
-		}
-	} else {
-		// The auth domain, when using the emulator, is always the emulator host itself
-		apiConfig.FirebaseConfig.AuthDomain = apiConfig.FirebaseConfig.EmulatorHost
-	}
-
-	logger.Info("firebase project configured", "project", apiConfig.FirebaseConfig.ProjectId)
 
 	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env, config.Version)
 	defer sentry.Flush(3 * time.Second)

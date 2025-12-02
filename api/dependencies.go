@@ -41,13 +41,6 @@ func InitDependencies(
 
 	var firebaseAdmin idp.Adminer
 
-	if len(optTokenVerifier) == 0 {
-		firebaseApp := infra.InitializeFirebase(ctx, conf.FirebaseConfig.ProjectId)
-
-		optTokenVerifier = append(optTokenVerifier, firebaseApp)
-		firebaseAdmin = idp.NewAdminClient(conf.FirebaseConfig.ApiKey, firebaseApp, conf.MarbleAppUrl)
-	}
-
 	if conf.DisableSegment {
 		conf.SegmentWriteKey = ""
 	}
@@ -60,6 +53,13 @@ func InitDependencies(
 
 	switch conf.TokenProvider {
 	case auth.TokenProviderFirebase:
+		if len(optTokenVerifier) == 0 {
+			firebaseApp := infra.InitializeFirebase(ctx, conf.FirebaseConfig.ProjectId)
+
+			optTokenVerifier = append(optTokenVerifier, firebaseApp)
+			firebaseAdmin = idp.NewAdminClient(conf.FirebaseConfig.ApiKey, firebaseApp, conf.MarbleAppUrl)
+		}
+
 		idpTokenVerifier = idp.NewFirebaseClient(conf.FirebaseConfig.ProjectId, optTokenVerifier[0])
 		tokenIssuer = idpTokenVerifier.Issuer()
 	case auth.TokenProviderOidc:
