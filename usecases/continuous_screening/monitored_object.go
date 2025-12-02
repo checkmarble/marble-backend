@@ -155,9 +155,9 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		} else if repositories.IsUniqueViolationError(err) {
 			return models.ContinuousScreeningWithMatches{}, errors.WithDetail(errors.Wrap(
 				models.ConflictError,
-				"object already exists in continuous screening table",
+				"object is already monitored with this configuration",
 			),
-				"object already exists in the continuous screening table",
+				"object is already monitored with this configuration",
 			)
 		} else {
 			return models.ContinuousScreeningWithMatches{}, err
