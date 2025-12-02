@@ -106,7 +106,10 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 	} else {
 		// Should never happen if the input is validated
 		return models.ContinuousScreeningWithMatches{},
-			errors.New("object_id or object_payload is required")
+			errors.WithDetail(
+				models.BadParameterError,
+				"object_id or object_payload is required",
+			)
 	}
 
 	ingestedObject, ingestedObjectInternalId, err := uc.GetIngestedObject(
@@ -150,9 +153,11 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 			// That means the object is already in monitoring list and we updated the object data
 			triggerType = models.ContinuousScreeningTriggerTypeObjectUpdated
 		} else if repositories.IsUniqueViolationError(err) {
-			return models.ContinuousScreeningWithMatches{}, errors.Wrap(
+			return models.ContinuousScreeningWithMatches{}, errors.WithDetail(errors.Wrap(
 				models.ConflictError,
 				"object already exists in continuous screening table",
+			),
+				"object already exists in the continuous screening table",
 			)
 		} else {
 			return models.ContinuousScreeningWithMatches{}, err
