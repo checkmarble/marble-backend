@@ -294,7 +294,7 @@ func AnalyticsCopyCaseEvents(ctx context.Context, exec AnalyticsExecutor, req An
 			"ce.id",
 			"ce.org_id",
 			"d.scenario_id",
-			"dr.rule_id as rule_id",
+			"r.stable_rule_id as rule_id",
 			"ce.case_id as case_id",
 			"ce.new_value as outcome",
 			"ce.created_at as created_at",
@@ -306,6 +306,7 @@ func AnalyticsCopyCaseEvents(ctx context.Context, exec AnalyticsExecutor, req An
 			InnerJoin(dbmodels.TABLE_CASES+" c on c.id = ce.case_id").
 			InnerJoin(dbmodels.TABLE_DECISIONS+" d on d.case_id = c.id").
 			InnerJoin(dbmodels.TABLE_DECISION_RULES+" dr on dr.decision_id = d.id").
+			InnerJoin(dbmodels.TABLE_RULES+" r on r.id = dr.rule_id").
 			Where("ce.org_id = ?", req.OrgId).
 			Where("ce.event_type = 'outcome_updated'").
 			Where("c.status = 'closed'").

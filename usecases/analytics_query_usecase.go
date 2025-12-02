@@ -98,6 +98,7 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 
 	query := squirrel.
 		Select(
+			"stable_rule_id as rule_id",
 			"max(rule_name) as rule_name", // Until any_value() is guaranteed to be here
 			"count() filter (outcome = 'hit') as hit_count",
 			"((count() filter (outcome = 'hit')) / count()) * 100 as hit_ratio",
@@ -131,7 +132,7 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 
 		cte := repositories.WithCtes("data", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
 			q := b.Select("*").
-				From(uc.analyticsFactory.BuildTarget("rule_hit_outcomes")).
+				From(uc.analyticsFactory.BuildTarget("rule_hit_outcomes", scenario.OrganizationId, scenario.TriggerObjectType)).
 				Suffix("qualify row_number() over (partition by case_id order by created_at desc) = 1")
 
 			q, cteErr = uc.analyticsFactory.ApplyFilters(q, scenario, filters)

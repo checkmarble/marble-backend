@@ -354,7 +354,7 @@ func (w AnalyticsExportWorker) exportCaseEvents(
 	var id uuid.UUID
 	id, startWatermark, err = repositories.AnalyticsGetLatestRow(ctx, exec,
 		req.OrgId, req.TriggerObject,
-		w.analyticsFactory.BuildTarget("rule_hit_outcomes"))
+		w.analyticsFactory.BuildTarget("rule_hit_outcomes", req.OrgId, req.TriggerObject))
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get latest exported row")
 	}
