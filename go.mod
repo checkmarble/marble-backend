@@ -30,7 +30,7 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-faker/faker/v4 v4.6.1
 	github.com/go-playground/validator/v10 v10.28.0
-	github.com/go-testfixtures/testfixtures/v3 v3.18.0
+	github.com/go-testfixtures/testfixtures/v3 v3.19.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
