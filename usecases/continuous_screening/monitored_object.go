@@ -24,17 +24,17 @@ import (
 //
 // If the object already ingested and it is a new version, we will ignore the conflict error and consider the object as a new one and force the screening on the updated object.
 // The updated object should be ingested, we check if the object has been ingested before resume the continuous screening operation.
-func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
+func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 	ctx context.Context,
 	input models.CreateContinuousScreeningObject,
-) (models.ScreeningWithMatches, error) {
+) (models.ContinuousScreeningWithMatches, error) {
 	exec := uc.executorFactory.NewExecutor()
 
 	var userId *uuid.UUID
 	if uc.enforceSecurity.UserId() != nil {
 		parsed, err := uuid.Parse(*uc.enforceSecurity.UserId())
 		if err != nil {
-			return models.ScreeningWithMatches{}, err
+			return models.ContinuousScreeningWithMatches{}, err
 		}
 		userId = &parsed
 	}
@@ -43,7 +43,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	if uc.enforceSecurity.ApiKeyId() != nil {
 		parsed, err := uuid.Parse(*uc.enforceSecurity.ApiKeyId())
 		if err != nil {
-			return models.ScreeningWithMatches{}, err
+			return models.ContinuousScreeningWithMatches{}, err
 		}
 		apiKeyId = &parsed
 	}
@@ -54,9 +54,10 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, exec, input.ConfigStableId)
 	if err != nil {
 		if errors.Is(err, models.NotFoundError) {
-			return models.ScreeningWithMatches{}, errors.Wrap(models.NotFoundError, "configuration not found")
+			return models.ContinuousScreeningWithMatches{},
+				errors.Wrap(models.NotFoundError, "configuration not found")
 		}
-		return models.ScreeningWithMatches{}, err
+		return models.ContinuousScreeningWithMatches{}, err
 	}
 
 	logger := utils.LoggerFromContext(ctx).With(
@@ -68,23 +69,23 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
 	if err := uc.enforceSecurity.WriteContinuousScreeningObject(config.OrgId); err != nil {
-		return models.ScreeningWithMatches{}, err
+		return models.ContinuousScreeningWithMatches{}, err
 	}
 
 	// Check if the object type is configured
 	if !slices.Contains(config.ObjectTypes, input.ObjectType) {
-		return models.ScreeningWithMatches{},
+		return models.ContinuousScreeningWithMatches{},
 			errors.Wrapf(models.BadParameterError, "object type %s is not configured with this config", input.ObjectType)
 	}
 
 	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, config.OrgId.String())
 	if err != nil {
-		return models.ScreeningWithMatches{}, err
+		return models.ContinuousScreeningWithMatches{}, err
 	}
 
 	table, mapping, err := uc.GetDataModelTableAndMapping(ctx, exec, config, input.ObjectType)
 	if err != nil {
-		return models.ScreeningWithMatches{}, err
+		return models.ContinuousScreeningWithMatches{}, err
 	}
 
 	var objectId string
@@ -97,14 +98,14 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	if input.ObjectPayload != nil {
 		objectId, err = uc.ingestObject(ctx, config.OrgId, input)
 		if err != nil {
-			return models.ScreeningWithMatches{}, err
+			return models.ContinuousScreeningWithMatches{}, err
 		}
 		ignoreUniqueViolationError = true
 	} else if input.ObjectId != nil {
 		objectId = *input.ObjectId
 	} else {
 		// Should never happen if the input is validated
-		return models.ScreeningWithMatches{},
+		return models.ContinuousScreeningWithMatches{},
 			errors.New("object_id or object_payload is required")
 	}
 
@@ -115,7 +116,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		objectId,
 	)
 	if err != nil {
-		return models.ScreeningWithMatches{}, err
+		return models.ContinuousScreeningWithMatches{}, err
 	}
 
 	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId.String(), func(tx repositories.Transaction) error {
@@ -149,19 +150,19 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 			// That means the object is already in monitoring list and we updated the object data
 			triggerType = models.ContinuousScreeningTriggerTypeObjectUpdated
 		} else if repositories.IsUniqueViolationError(err) {
-			return models.ScreeningWithMatches{}, errors.Wrap(
+			return models.ContinuousScreeningWithMatches{}, errors.Wrap(
 				models.ConflictError,
 				"object already exists in continuous screening table",
 			)
 		} else {
-			return models.ScreeningWithMatches{}, err
+			return models.ContinuousScreeningWithMatches{}, err
 		}
 	}
 
 	screeningWithMatches, err := uc.DoScreening(ctx, exec, ingestedObject, mapping, config, input.ObjectType, objectId)
 	if err != nil {
 		logger.WarnContext(ctx, "Continuous Screening - error searching on open sanctions", "error", err.Error())
-		return models.ScreeningWithMatches{}, err
+		return models.ContinuousScreeningWithMatches{}, err
 	}
 
 	continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
@@ -176,10 +177,10 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	)
 	if err != nil {
 		logger.WarnContext(ctx, "Continuous Screening - error inserting continuous screening", "error", err.Error())
-		return models.ScreeningWithMatches{}, err
+		return models.ContinuousScreeningWithMatches{}, err
 	}
 
-	if screeningWithMatches.Status == models.ScreeningStatusInReview {
+	if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
 		// Create and attach to a case
 		if err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 			return uc.HandleCaseCreation(
@@ -191,11 +192,11 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 			)
 		}); err != nil {
 			logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
-			return models.ScreeningWithMatches{}, err
+			return models.ContinuousScreeningWithMatches{}, err
 		}
 	}
 
-	return screeningWithMatches, nil
+	return continuousScreeningWithMatches, nil
 }
 
 type payloadObjectID struct {

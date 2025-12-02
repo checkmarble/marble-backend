@@ -140,7 +140,7 @@ func handleCreateContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
-		screeningResponse, err := uc.InsertContinuousScreeningObject(
+		continuousScreening, err := uc.CreateContinuousScreeningObject(
 			ctx,
 			dto.AdaptCreateContinuousScreeningObjectDto(input),
 		)
@@ -148,9 +148,7 @@ func handleCreateContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 			return
 		}
 
-		c.JSON(http.StatusCreated, dto.AdaptScreeningDto(
-			screeningResponse,
-		))
+		c.JSON(http.StatusCreated, dto.AdaptContinuousScreeningDto(continuousScreening))
 	}
 }
 

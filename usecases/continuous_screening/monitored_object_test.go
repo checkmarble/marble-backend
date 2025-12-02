@@ -182,7 +182,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectId:       &suite.objectId,
 	}
 
-	result, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.NoError(err)
@@ -282,7 +282,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectPayload:  &payload,
 	}
 
-	result, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.NoError(err)
@@ -331,7 +331,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectId:       &suite.objectId,
 	}
 
-	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.Error(err)
@@ -385,7 +385,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectId:       &suite.objectId,
 	}
 
-	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.Error(err)
@@ -445,7 +445,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectPayload:  &payload,
 	}
 
-	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.Error(err)
@@ -528,10 +528,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	})
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
 		config, suite.objectType,
-		suite.objectId, mock.Anything, mock.MatchedBy(func(triggerType models.ContinuousScreeningTriggerType) bool {
-		// Verify that trigger type is ObjectUpdated when there's a unique violation (object being updated)
-		return triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated
-	})).Return(models.ContinuousScreeningWithMatches{
+		suite.objectId, mock.Anything, mock.MatchedBy(func(
+			triggerType models.ContinuousScreeningTriggerType,
+		) bool {
+			// Verify that trigger type is ObjectUpdated when there's a unique violation (object being updated)
+			return triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated
+		})).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             uuid.New(),
@@ -551,7 +553,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectPayload:  &payload,
 	}
 
-	result, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
 	// Assert - should not error when ignoreConflictError is true and unique violation occurs
 	suite.NoError(err)
@@ -621,7 +623,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectId:       &suite.objectId,
 	}
 
-	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
 	// Assert - should error when ignoreConflictError is false and unique violation occurs
 	suite.Error(err)
@@ -653,7 +655,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectId:       &suite.objectId,
 	}
 
-	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.Error(err)
@@ -740,6 +742,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			ContinuousScreeningConfigStableId: suite.configStableId,
 			ObjectType:                        suite.objectType,
 			ObjectId:                          suite.objectId,
+			Status:                            models.ScreeningStatusInReview,
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{
@@ -775,7 +778,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectId:       &suite.objectId,
 	}
 
-	result, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.NoError(err)
@@ -862,6 +865,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			ContinuousScreeningConfigStableId: suite.configStableId,
 			ObjectType:                        suite.objectType,
 			ObjectId:                          suite.objectId,
+			Status:                            models.ScreeningStatusInReview,
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{
@@ -890,7 +894,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectId:       &suite.objectId,
 	}
 
-	_, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
 	// Assert - should still succeed despite case creation failure (logged as warning)
 	suite.Error(err)
@@ -1436,7 +1440,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectId:       &suite.objectId,
 	}
 
-	result, err := uc.InsertContinuousScreeningObject(suite.ctx, input)
+	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
 	// Assert
 	suite.NoError(err)
