@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -37,8 +38,9 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	oidcProvider := infra.OidcConfig{}
 	firebaseConfig := api.FirebaseConfig{}
 
+	_, firebaseConfigured := os.LookupEnv("FIREBASE_API_KEY")
 	gcpProjectId := utils.GetEnv("GOOGLE_CLOUD_PROJECT", "")
-	gcpConfig, ok := infra.NewGcpConfig(ctx, gcpProjectId)
+	gcpConfig, ok := infra.NewGcpConfig(ctx, gcpProjectId, firebaseConfigured)
 	if !ok {
 		logger.InfoContext(ctx, "Could not initialize GCP config. This is not blocking unless you are deploying with Firebase Auth, or use GCP as a provider for blob storage, tracing or profiling.")
 	}

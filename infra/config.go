@@ -25,7 +25,7 @@ type GcpConfig struct {
 	PrincipalEmail string
 }
 
-func NewGcpConfig(ctx context.Context, gcpProjectId string) (GcpConfig, bool) {
+func NewGcpConfig(ctx context.Context, gcpProjectId string, useFirebase bool) (GcpConfig, bool) {
 	// Errors to validate GCP credentials do not have to be a hard fail.
 	// They are common when trying out the product with the emulator (no service account required).
 	// So long as the GCP project is defined in the configuration, most things will work.
@@ -34,11 +34,16 @@ func NewGcpConfig(ctx context.Context, gcpProjectId string) (GcpConfig, bool) {
 	logger := utils.LoggerFromContext(ctx)
 	adcProjectId, adcPrincipal, err := FindServiceAccountPrincipal(ctx)
 	if err != nil {
-		logger.InfoContext(ctx, "Could not validate Google Cloud credentials, some features might not work properly", "error", err)
+		switch useFirebase {
+		case true:
+			logger.ErrorContext(ctx, "Could not validate Google Cloud credentials, some features might not work properly", "error", err)
+		case false:
+			logger.DebugContext(ctx, "Could not validate Google Cloud credentials, some specific features may be disabled (GCP tracing, profiling, and GCS-backed file storage)")
+		}
 		return GcpConfig{}, false
 	}
 
-	if !strings.HasSuffix(adcPrincipal, GcpServiceAccountSuffix) {
+	if adcPrincipal != "" && !strings.HasSuffix(adcPrincipal, GcpServiceAccountSuffix) {
 		logger.WarnContext(ctx, "You might be authenticated with user Google user account (instead of a service account), file downloads will not be functional")
 	}
 
