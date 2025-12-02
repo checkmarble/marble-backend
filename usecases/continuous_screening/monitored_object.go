@@ -48,6 +48,8 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		apiKeyId = &parsed
 	}
 
+	triggerType := models.ContinuousScreeningTriggerTypeObjectAdded
+
 	// Check if the config exists
 	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, exec, input.ConfigStableId)
 	if err != nil {
@@ -144,6 +146,8 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 	if err != nil {
 		if repositories.IsUniqueViolationError(err) && ignoreUniqueViolationError {
 			// Do nothing, normal case
+			// That means the object is already in monitoring list and we updated the object data
+			triggerType = models.ContinuousScreeningTriggerTypeObjectUpdated
 		} else if repositories.IsUniqueViolationError(err) {
 			return models.ScreeningWithMatches{}, errors.Wrap(
 				models.ConflictError,
@@ -168,7 +172,7 @@ func (uc *ContinuousScreeningUsecase) InsertContinuousScreeningObject(
 		input.ObjectType,
 		objectId,
 		ingestedObjectInternalId,
-		models.ContinuousScreeningTriggerTypeObjectAdded,
+		triggerType,
 	)
 	if err != nil {
 		logger.WarnContext(ctx, "Continuous Screening - error inserting continuous screening", "error", err.Error())

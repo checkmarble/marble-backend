@@ -454,7 +454,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 }
 
 func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_UniqueViolationWithIgnoreConflictError() {
-	// Setup test data - object payload, which will set ignoreConflictError to true
+	// Setup test data - object payload, which will set ignoreUniqueViolationError to true
+	// This tests the case where an object is already in monitoring list and user wants to update data
+	// In this case, we don't add it to list, we do a new screening on the new data and save result with trigger type "updated"
 	payload := json.RawMessage(`{"object_id": "test-object-id", "amount": 100}`)
 
 	config := models.ContinuousScreeningConfig{
@@ -526,7 +528,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	})
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
 		config, suite.objectType,
-		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+		suite.objectId, mock.Anything, mock.MatchedBy(func(triggerType models.ContinuousScreeningTriggerType) bool {
+		// Verify that trigger type is ObjectUpdated when there's a unique violation (object being updated)
+		return triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated
+	})).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             uuid.New(),
