@@ -320,3 +320,22 @@ func handleDismissContinuousScreening(uc usecases.Usecases) func(c *gin.Context)
 		c.JSON(http.StatusOK, dto.AdaptContinuousScreeningDto(csWithMatches))
 	}
 }
+
+func handleLoadMoreContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		id, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
+		screening, err := uc.LoadMoreContinuousScreeningMatches(ctx, id)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptContinuousScreeningDto(screening))
+	}
+}
