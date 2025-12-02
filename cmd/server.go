@@ -44,6 +44,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	if !ok {
 		logger.InfoContext(ctx, "Could not initialize GCP config. This is not blocking unless you are deploying with Firebase Auth, or use GCP as a provider for blob storage, tracing or profiling.")
 	}
+	gcpProjectId = gcpConfig.ProjectId
 
 	switch authProvider {
 	case auth.TokenProviderOidc:
