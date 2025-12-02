@@ -29,7 +29,9 @@ type AnalyticsCopyRequest struct {
 	Limit int
 }
 
-func AnalyticsGetLatestRow(ctx context.Context, exec AnalyticsExecutor, orgId, triggerObjectType, table string) (uuid.UUID, time.Time, error) {
+func AnalyticsGetLatestRow(ctx context.Context, exec AnalyticsExecutor,
+	orgId, triggerObjectType, table string,
+) (uuid.UUID, time.Time, error) {
 	query := squirrel.
 		Select("id", "created_at").
 		From(table).
@@ -198,75 +200,174 @@ func AnalyticsCopyDecisionRules(ctx context.Context, exec AnalyticsExecutor, req
 	return int(nRows), nil
 }
 
-func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, req AnalyticsCopyRequest) (int, error) {
-	innerInner := squirrel.
-		Select(
-			"sc.id",
-			"s.id as scenario_id",
-			"s.trigger_object_type",
-			"sc.org_id",
-			"sc.decision_id",
-			"sc.screening_config_id",
-			"sc.status",
-			"sc.created_at",
-		).
-		From("marble.screenings sc").
-		InnerJoin("marble.screening_configs scc on scc.id = sc.screening_config_id").
-		InnerJoin("marble.scenario_iterations si on si.id = scc.scenario_iteration_id").
-		InnerJoin("marble.scenarios s on s.id = si.scenario_id").
-		Where("sc.org_id = ?", req.OrgId).
-		Where("s.trigger_object_type = ?", req.TriggerObject).
-		Where("sc.created_at < ?", req.EndTime).
-		OrderBy("sc.created_at, sc.id").
-		Limit(uint64(req.Limit))
-
-	if req.Watermark != nil {
-		innerInner = innerInner.Where("(sc.created_at, sc.id) > (?::timestamp with time zone, ?)",
-			req.Watermark.WatermarkTime, req.Watermark.WatermarkId)
+// returns a query with question placeholders, for use with unsafeBuildSqlQuery to generate a duckdb compatible query
+func generateScreeningsExportQuery(req AnalyticsCopyRequest, endOverride *time.Time) (sql string, args []any) {
+	if endOverride != nil && endOverride.Before(req.EndTime) {
+		req.EndTime = *endOverride
 	}
 
-	inner := squirrel.
-		Select(
-			"sc.id",
-			"min(sc.decision_id::text)::uuid as decision_id",
-			"min(sc.status) as status",
-			"min(scc.stable_id::text)::uuid as screening_config_id",
-			"min(scc.name) as screening_name",
-			"(select count(*) from screening_matches m where m.screening_id = sc.id) as matches",
-			"min(sc.scenario_id::text)::uuid as scenario_id",
-			"min(sc.created_at) as created_at",
-			"min(sc.org_id::text)::uuid as org_id",
-			"extract(year from min(sc.created_at))::int as year",
-			"extract(month from min(sc.created_at))::int as month",
-			"min(sc.trigger_object_type) as trigger_object_type",
-		).
-		FromSelect(innerInner, "sc").
-		InnerJoin("marble.screening_configs scc on scc.id = sc.screening_config_id").
-		InnerJoin("marble.decisions d on d.id = sc.decision_id").
-		Where("sc.org_id = ?", req.OrgId).
-		Where("sc.trigger_object_type = ?", req.TriggerObject).
-		Where("sc.created_at < ?", req.EndTime).
-		GroupBy("sc.id").
-		OrderBy("created_at, id")
+	rawQuery := `
+with "configs" as (
+    SELECT
+        scc.id AS screening_config_id,
+        scc.stable_id,
+        scc.name,
+        s.id AS scenario_id,
+        s.trigger_object_type
+    FROM scenarios AS s
+        INNER JOIN scenario_iterations AS si ON si.scenario_id = s.id
+        INNER JOIN screening_configs AS scc ON scc.scenario_iteration_id = si.id
+    WHERE s.org_id = ?
+        AND s.trigger_object_type = ?
+),
+"screenings_by_config" as (
+    SELECT
+        scs.*,
+        configs.name AS config_name,
+        configs.stable_id AS config_stable_id
+    FROM configs
+	CROSS JOIN LATERAL (
+		SELECT
+			scs.id,
+			scs.decision_id,
+			scs.created_at,
+			scs.status,
+			scs.org_id,
+			configs.scenario_id,
+			configs.trigger_object_type
+		FROM screenings AS scs
+		WHERE scs.screening_config_id = configs.screening_config_id
+			AND scs.created_at < ?
+			AND (scs.created_at, scs.id) > (?::timestamp with time zone, ?)
+		ORDER BY scs.created_at, scs.id
+		LIMIT %[1]d
+	) as scs
+),
+"limited_screenings" as (
+    SELECT *
+    FROM screenings_by_config
+    ORDER BY created_at, id
+    LIMIT %[1]d
+)
+SELECT
+    limited_screenings.id,
+    MIN(limited_screenings.decision_id::text)::uuid AS decision_id,
+    MIN(limited_screenings.status) AS status,
+    MIN(limited_screenings.scenario_id::text)::uuid AS scenario_id,
+    MIN(limited_screenings.created_at) AS created_at,
+    MIN(limited_screenings.org_id::text)::uuid AS org_id,
+    EXTRACT(year FROM MIN(limited_screenings.created_at))::int AS year,
+    EXTRACT(month FROM MIN(limited_screenings.created_at))::int AS month,
+    MIN(limited_screenings.trigger_object_type) AS trigger_object_type,
+    MIN(limited_screenings.config_stable_id::text)::uuid AS screening_config_id,
+    MIN(limited_screenings.config_name) AS screening_name,
+    (
+        SELECT count(*)
+        FROM screening_matches m
+        WHERE m.screening_id = limited_screenings.id
+    ) AS matches
+FROM limited_screenings
+INNER JOIN decisions AS d ON d.id = limited_screenings.decision_id
+GROUP BY limited_screenings.id;
+	`
 
-	for _, f := range req.TriggerObjectFields {
-		inner = analyticsAddTriggerObjectField(inner, f, true)
+	return fmt.Sprintf(rawQuery, req.Limit), []any{
+		req.OrgId, req.TriggerObject, req.EndTime,
+		req.Watermark.WatermarkTime, req.Watermark.WatermarkId,
 	}
-	for _, f := range req.ExtraDbFields {
-		inner = analyticsAddExtraField(inner, f, true)
-	}
+}
 
-	innerSql, args, err := inner.ToSql()
+// returns a postgres format query with dollar placeholders
+func generateMinimialLookupScreeningsQuery(req AnalyticsCopyRequest) (sql string, args []any) {
+	rawQuery := `
+with "configs" as (
+    SELECT scc.id AS screening_config_id
+    FROM scenarios AS s
+	INNER JOIN scenario_iterations AS si ON si.scenario_id = s.id
+	INNER JOIN screening_configs AS scc ON scc.scenario_iteration_id = si.id
+    WHERE s.org_id = $1
+        AND s.trigger_object_type = $2
+),
+"screenings_by_config" as (
+    SELECT scs.id
+    FROM configs
+	CROSS JOIN LATERAL (
+		SELECT scs.id
+		FROM screenings AS scs
+		WHERE scs.screening_config_id = configs.screening_config_id
+			AND scs.created_at < $3
+			AND (scs.created_at, scs.id) > ($4::timestamp with time zone, $5)
+		ORDER BY scs.created_at, scs.id
+		LIMIT 1
+	) as scs
+)
+SELECT EXISTS(SELECT 1 FROM screenings_by_config);
+	`
+
+	return rawQuery, []any{
+		req.OrgId, req.TriggerObject, req.EndTime,
+		req.Watermark.WatermarkTime, req.Watermark.WatermarkId,
+	}
+}
+
+// The function does three steps:
+//   - check if there are any screenings to export at all
+//   - try to export them using a limited size (1 month at most) time window from which to read those screenings, to avoid infinite inflation
+//     of screenigns related to distinct configurations as scenario versions are created
+//   - if the previous step did not find any, or if the watermark is at zero, just run the most general query (possibly more expensive, but should not be so on a scale
+//     that breaks the system)
+func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, dbExec Executor, req AnalyticsCopyRequest) (int, error) {
+	// First, run the query with limit 1 to see if there are even rows to export. If not, early exit.
+	// This is to avoid running large queries in a loop for organizations (or tables) that are used with decisions but not with screenings.
+	sql, args := generateMinimialLookupScreeningsQuery(req)
+
+	row := dbExec.QueryRow(ctx, sql, args...)
+	found := false
+	err := row.Scan(&found)
 	if err != nil {
 		return 0, err
 	}
+	if !found {
+		return 0, nil
+	}
 
-	unsafeQuery, err := unsafeBuildSqlQuery(innerSql, args)
+	// Then, if the watermark is not at zero, try to run the export with an end date at most one month after the watermark.
+	// This handles the case where the watermark is not zero so there are screenings to export, but we want to avoid running the query with
+	// a time window too large to avoid matching screenings on too many configurations. If we find any:
+	// - either we find many, and we got what we wanted for a low cost
+	// - or we find few, and we advanced the watermark by at least a day (otherwise, we would be in the case above)
+	// - or we find none, and we fall back to running the full query without max end date, at which point we it is run once and the watermark advances,
+	//   guaranteeing no doom loop of high load, no progress queries.
+	if req.Watermark != nil && !req.Watermark.WatermarkTime.IsZero() {
+		end := req.Watermark.WatermarkTime.AddDate(0, 1, 0)
+		innerSql, args := generateScreeningsExportQuery(req, &end)
+
+		num, err := exportScreeningsRun(ctx, exec, innerSql, args, req.Table)
+		if err != nil {
+			return 0, errors.Wrap(err, "failed to export screenings using limited time window")
+		}
+		if num > 0 {
+			return num, nil
+		}
+	}
+
+	// Finally, run the export with no limit or end date.
+	innerSql, args := generateScreeningsExportQuery(req, nil)
+	num, err := exportScreeningsRun(ctx, exec, innerSql, args, req.Table)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to export screenings using full time window")
+	}
+	return num, nil
+}
+
+// utility function that actually runs the export query and returns the number of rows exported. Factorized because we call two versions of it
+// with a modified end date.
+func exportScreeningsRun(ctx context.Context, exec AnalyticsExecutor, sql string, args []any, table string) (int, error) {
+	unsafeQuery, err := unsafeBuildSqlQuery(sql, args)
 	if err != nil {
 		return 0, err
 	}
-
-	query := fmt.Sprintf(`copy ( select * from postgres_query(?, ?) ) to '%s' (format parquet, compression zstd, partition_by (org_id, year, month, trigger_object_type), append)`, req.Table)
+	query := fmt.Sprintf(`copy ( select * from postgres_query(?, ?) ) to '%s' (format parquet, compression zstd, partition_by (org_id, year, month, trigger_object_type), append)`, table)
 
 	result, err := exec.ExecContext(ctx, query, "pg", unsafeQuery)
 	if err != nil {

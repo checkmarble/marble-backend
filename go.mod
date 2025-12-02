@@ -19,8 +19,8 @@ require (
 	github.com/biter777/countries v1.7.5
 	github.com/checkmarble/llmberjack v0.0.0-20250918140151-35a7e6d6fe5a
 	github.com/cockroachdb/errors v1.12.0
-	github.com/coreos/go-oidc/v3 v3.15.0
-	github.com/duckdb/duckdb-go/v2 v2.5.1
+	github.com/coreos/go-oidc/v3 v3.17.0
+	github.com/duckdb/duckdb-go/v2 v2.5.3
 	github.com/exaring/otelpgx v0.9.3
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/getkin/kin-openapi v0.133.0
@@ -155,14 +155,14 @@ require (
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
-	github.com/duckdb/duckdb-go-bindings v0.1.22 // indirect
-	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.22 // indirect
-	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.22 // indirect
-	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.22 // indirect
-	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.22 // indirect
-	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.22 // indirect
-	github.com/duckdb/duckdb-go/arrowmapping v0.0.24 // indirect
-	github.com/duckdb/duckdb-go/mapping v0.0.24 // indirect
+	github.com/duckdb/duckdb-go-bindings v0.1.23 // indirect
+	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.23 // indirect
+	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.23 // indirect
+	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.23 // indirect
+	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.23 // indirect
+	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.23 // indirect
+	github.com/duckdb/duckdb-go/arrowmapping v0.0.26 // indirect
+	github.com/duckdb/duckdb-go/mapping v0.0.25 // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
@@ -171,7 +171,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.1 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
