@@ -182,16 +182,35 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 
 	if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
 		// Create and attach to a case
+		// Update the continuousScreeningWithMatches with the created case ID
 		if err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-			return uc.HandleCaseCreation(
+			err := uc.HandleCaseCreation(
 				ctx,
 				tx,
 				config,
 				objectId,
 				continuousScreeningWithMatches,
 			)
+			if err != nil {
+				logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
+				return err
+			}
+
+			continuousScreeningWithMatches, err = uc.repository.GetContinuousScreeningWithMatchesById(
+				ctx,
+				tx,
+				continuousScreeningWithMatches.Id,
+			)
+			if err != nil {
+				logger.WarnContext(
+					ctx,
+					"Continuous Screening - error when refreshing continuous screening with case ID",
+					"error", err.Error(),
+				)
+				return err
+			}
+			return nil
 		}); err != nil {
-			logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
 			return models.ContinuousScreeningWithMatches{}, err
 		}
 	}
