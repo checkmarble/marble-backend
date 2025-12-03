@@ -19,24 +19,22 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+// To be deprecated once we move the backoffice from the legacy react SPA to a new app with BFF
 func corsOption(ctx context.Context, conf Configuration) cors.Config {
 	logger := utils.LoggerFromContext(ctx)
 	allowedOrigins := []string{}
-	for i, s := range []string{conf.MarbleAppUrl, conf.MarbleBackofficeUrl} {
-		parsedUrl, err := url.Parse(s)
+
+	if conf.MarbleBackofficeUrl != "" {
+		parsedUrl, err := url.Parse(conf.MarbleBackofficeUrl)
 		switch {
 		case err != nil:
-			m := map[int]string{
-				0: "marble app url",
-				1: "marble backoffice url",
-			}
-			logger.Error(
-				fmt.Sprintf("Failed to parse the URL environment variable %s for CORS. Requests made from the browser from this url to the API will be rejected.", m[i]),
-				"url", s)
+			logger.ErrorContext(ctx,
+				"Failed to parse the URL environment variable Marble backoffice url for CORS. Requests made from the browser from this url to the API will be rejected.",
+				"url", conf.MarbleBackofficeUrl)
 		case !slices.Contains([]string{"http", "https"}, parsedUrl.Scheme):
-			logger.Error(
-				fmt.Sprintf("The url %s does not contain a scheme (http or https), so it cannot be used for CORS.", s),
-				"url", s)
+			logger.DebugContext(ctx,
+				fmt.Sprintf(`The url "%s" does not contain a scheme (http or https), so it cannot be used for CORS.`, conf.MarbleBackofficeUrl),
+			)
 		default:
 			u := url.URL{
 				Scheme: parsedUrl.Scheme,
