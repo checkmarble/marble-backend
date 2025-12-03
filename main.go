@@ -53,7 +53,7 @@ func main() {
 	}
 
 	logger := utils.NewLogger("text")
-	logger.Info("Flags",
+	logger.Debug("Flags",
 		slog.Bool("shouldRunMigrations", *shouldRunMigrations),
 		slog.Bool("shouldRunServer", *shouldRunServer),
 		slog.Bool("shouldRunWorker", *shouldRunWorker),
