@@ -20,7 +20,7 @@ import (
 )
 
 // To be deprecated once we move the backoffice from the legacy react SPA to a new app with BFF
-func corsOption(ctx context.Context, conf Configuration) cors.Config {
+func buildCorsOptions(ctx context.Context, conf Configuration) (cors.Config, bool) {
 	logger := utils.LoggerFromContext(ctx)
 	allowedOrigins := []string{}
 
@@ -59,7 +59,7 @@ func corsOption(ctx context.Context, conf Configuration) cors.Config {
 		AllowHeaders:     []string{"Authorization", "Content-Type", "X-Api-Key", "baggage", "sentry-trace"},
 		AllowCredentials: false,
 		MaxAge:           12 * time.Hour,
-	}
+	}, len(allowedOrigins) > 0
 }
 
 func InitRouterMiddlewares(
@@ -77,9 +77,13 @@ func InitRouterMiddlewares(
 
 	r := gin.New()
 
+	corsOpts, hasCors := buildCorsOptions(ctx, conf)
+
 	r.Use(gin.Recovery())
 	r.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
-	r.Use(cors.New(corsOption(ctx, conf)))
+	if hasCors {
+		r.Use(cors.New(corsOpts))
+	}
 	r.Use(middleware.NewLogging(logger, conf.RequestLoggingLevel))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
 	if !disableSegment {
