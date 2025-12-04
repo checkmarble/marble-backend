@@ -51,6 +51,7 @@ type IngestedDataReadRepository interface {
 		fieldType models.DataType,
 		aggregator ast.Aggregator,
 		filters []models.FilterWithType,
+		options map[string]any,
 	) (any, error)
 	ListIngestedObjects(
 		ctx context.Context,
@@ -388,6 +389,7 @@ func createQueryAggregated(
 	fieldType models.DataType,
 	aggregator ast.Aggregator,
 	filters []models.FilterWithType,
+	options map[string]any,
 ) (squirrel.SelectBuilder, error) {
 	var selectExpression string
 	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
@@ -398,6 +400,17 @@ func createQueryAggregated(
 		// COUNT(*) is a special case, as it does not take a field name (we do not want to count only non-null
 		// values of a field, but all rows in the table that match the filters)
 		selectExpression = "COUNT(*)"
+	} else if aggregator == ast.AGGREGATOR_STDDEV {
+		selectExpression = fmt.Sprintf("stddev(%s)", fieldName)
+	} else if aggregator == ast.AGGREGATOR_PERCENTILE {
+		pct := 0.5
+		if p, ok := options["percentile"].(float64); ok {
+			pct = p
+		}
+
+		selectExpression = fmt.Sprintf("percentile_disc(%.2f) within group (order by %s)", pct, fieldName)
+	} else if aggregator == ast.AGGREGATOR_MEDIAN {
+		selectExpression = fmt.Sprintf("percentile_disc(0.5) within group (order by %s)", fieldName)
 	} else if fieldType == models.Int {
 		// pgx will build a math/big.Int if we sum postgresql "bigint" (int64) values - we'd rather have a float64.
 		selectExpression = fmt.Sprintf("%s(%s)::float8", aggregator, fieldName)
@@ -437,12 +450,13 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(
 	fieldType models.DataType,
 	aggregator ast.Aggregator,
 	filters []models.FilterWithType,
+	options map[string]any,
 ) (any, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	query, err := createQueryAggregated(exec, tableName, fieldName, fieldType, aggregator, filters)
+	query, err := createQueryAggregated(exec, tableName, fieldName, fieldType, aggregator, filters, options)
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
