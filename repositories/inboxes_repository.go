@@ -135,8 +135,12 @@ func (repo *MarbleDbRepository) UpdateInbox(
 		sql = sql.Set("name", *input.Name)
 		hasUpdates = true
 	}
-	if input.EscalationInboxId != nil {
-		sql = sql.Set("escalation_inbox_id", *input.EscalationInboxId)
+	if input.EscalationInboxId.Set {
+		if input.EscalationInboxId.Valid {
+			sql = sql.Set("escalation_inbox_id", input.EscalationInboxId.Value())
+		} else {
+			sql = sql.Set("escalation_inbox_id", nil)
+		}
 		hasUpdates = true
 	}
 	if input.AutoAssignEnabled != nil {
