@@ -182,16 +182,26 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 
 	if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
 		// Create and attach to a case
+		// Update the continuousScreeningWithMatches with the created case ID
 		if err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-			return uc.HandleCaseCreation(
+			caseCreated, err := uc.HandleCaseCreation(
 				ctx,
 				tx,
 				config,
 				objectId,
 				continuousScreeningWithMatches,
 			)
+			if err != nil {
+				logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
+				return err
+			}
+			caseUuid, err := uuid.Parse(caseCreated.Id)
+			if err != nil {
+				return err
+			}
+			continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
+			return nil
 		}); err != nil {
-			logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
 			return models.ContinuousScreeningWithMatches{}, err
 		}
 	}
@@ -465,10 +475,10 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 	config models.ContinuousScreeningConfig,
 	objectId string,
 	continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
-) error {
+) (models.Case, error) {
 	// TODO: TBD
 	caseName := "Continuous Screening - " + objectId
-	_, err := uc.caseEditor.CreateCase(
+	return uc.caseEditor.CreateCase(
 		ctx,
 		tx,
 		pure_utils.PtrValueOrDefault(uc.enforceSecurity.UserId(), ""),
@@ -480,7 +490,6 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 		},
 		false,
 	)
-	return err
 }
 
 func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(

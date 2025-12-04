@@ -666,6 +666,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_WithMatches_CreatesCase() {
 	// Setup test data with config that has inbox
 	inboxId := uuid.New()
+	continuousScreeningId := uuid.New()
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
 		StableId:    suite.configStableId,
@@ -736,7 +737,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		config, suite.objectType,
 		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id:                                uuid.New(),
+			Id:                                continuousScreeningId,
 			OrgId:                             uuid.New(),
 			ContinuousScreeningConfigId:       suite.configId,
 			ContinuousScreeningConfigStableId: suite.configStableId,
@@ -746,7 +747,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{
-				ContinuousScreeningId: uuid.New(),
+				ContinuousScreeningId: continuousScreeningId,
 				OpenSanctionEntityId:  "test-entity-id",
 				Payload:               json.RawMessage(`{"name": "Test Entity"}`),
 			},
@@ -783,6 +784,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(result)
+	suite.Equal(caseId, *result.CaseId)
 	suite.AssertExpectations()
 }
 

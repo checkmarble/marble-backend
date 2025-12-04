@@ -77,9 +77,13 @@ type continuousScreeningUsecase interface {
 		objectType string,
 		objectId string,
 	) (models.ScreeningWithMatches, error)
-	HandleCaseCreation(ctx context.Context, tx repositories.Transaction,
-		config models.ContinuousScreeningConfig, objectId string,
-		continuousScreeningWithMatches models.ContinuousScreeningWithMatches) error
+	HandleCaseCreation(
+		ctx context.Context,
+		tx repositories.Transaction,
+		config models.ContinuousScreeningConfig,
+		objectId string,
+		continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
+	) (models.Case, error)
 }
 
 // Worker to do the screening for a specific monitored object
@@ -249,13 +253,14 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 		}
 
 		if !skipCaseCreation && screeningWithMatches.Status == models.ScreeningStatusInReview {
-			return w.usecase.HandleCaseCreation(
+			_, err = w.usecase.HandleCaseCreation(
 				ctx,
 				tx,
 				config,
 				monitoredObject.ObjectId,
 				continuousScreeningWithMatches,
 			)
+			return err
 		}
 		return nil
 	})
