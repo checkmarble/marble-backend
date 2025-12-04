@@ -273,6 +273,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 						RuleGroup:                scc.RuleGroup,
 						EntityType:               &scc.EntityType,
 						Datasets:                 scc.Datasets,
+						Threshold:                scc.Threshold,
 						TriggerRule:              scc.TriggerRule,
 						CounterpartyIdExpression: scc.CounterpartyIdExpression,
 						Query:                    scc.Query,
