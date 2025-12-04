@@ -88,6 +88,7 @@ func screenings(t *testing.T, e *httpexpect.Expect) {
 					}
 				}
 			}`)
+	defer gock.Off()
 
 	{
 		matches := e.POST("/screening/search").
