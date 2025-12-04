@@ -142,6 +142,7 @@ type CaseFilters struct {
 	IncludeSnoozed  bool
 	ExcludeAssigned bool
 	AssigneeId      UserId
+	TagId           *uuid.UUID
 
 	UseLinearOrdering bool
 }

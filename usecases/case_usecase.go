@@ -181,6 +181,7 @@ func (usecase *CaseUseCase) ListCases(
 				ExcludeAssigned:   filters.ExcludeAssigned,
 				AssigneeId:        filters.AssigneeId,
 				UseLinearOrdering: filters.UseLinearOrdering,
+				TagId:             filters.TagId,
 			}
 			if len(filters.InboxIds) > 0 {
 				repoFilters.InboxIds = filters.InboxIds
@@ -402,7 +403,8 @@ func (usecase *CaseUseCase) CreateCase(
 		}
 	}
 
-	err = usecase.UpdateDecisionsWithEvents(ctx, tx, uuid.MustParse(createCaseAttributes.OrganizationId), newCaseId, userId, createCaseAttributes.DecisionIds)
+	err = usecase.UpdateDecisionsWithEvents(ctx, tx,
+		uuid.MustParse(createCaseAttributes.OrganizationId), newCaseId, userId, createCaseAttributes.DecisionIds)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -1147,9 +1149,6 @@ func (usecase *CaseUseCase) createCaseTag(ctx context.Context, exec repositories
 	}
 
 	if err = usecase.repository.CreateCaseTag(ctx, exec, caseId, tagId); err != nil {
-		if repositories.IsUniqueViolationError(err) {
-			return fmt.Errorf("tag %s already added to case %s %w", tag.Id, caseId, models.ConflictError)
-		}
 		return err
 	}
 
@@ -1200,17 +1199,22 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 
 	for _, decision := range decisions {
 		if decision.OrganizationId.String() != orgId {
-			return errors.WithDetail(errors.Wrap(models.ForbiddenError, "provided decision does not belong to the organization"), "some of the provided decisions do not exist")
+			return errors.WithDetail(errors.Wrap(models.ForbiddenError,
+				"provided decision does not belong to the organization"),
+				"some of the provided decisions do not exist")
 		}
 
 		if decision.Case != nil && decision.Case.Id != "" {
-			return errors.WithDetailf(errors.Wrapf(models.BadParameterError, "decision %s already belongs to a case %s",
-				decision.DecisionId, (*decision.Case).Id), "provided decision '%s' is already assigned to a case", decision.DecisionId)
+			return errors.WithDetailf(errors.Wrapf(models.BadParameterError,
+				"decision %s already belongs to a case %s",
+				decision.DecisionId, (*decision.Case).Id),
+				"provided decision '%s' is already assigned to a case", decision.DecisionId)
 		}
 	}
 
 	if len(decisionIds) != len(decisions) {
-		return errors.WithDetail(errors.Wrap(models.NotFoundError, "unknown decision"), "some of the provided decisions do not exist")
+		return errors.WithDetail(errors.Wrap(models.NotFoundError, "unknown decision"),
+			"some of the provided decisions do not exist")
 	}
 
 	return nil
@@ -1854,7 +1858,9 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 		return err
 	}
 	if c.Status == models.CaseClosed {
-		return errors.WithDetail(errors.Wrap(models.UnprocessableEntityError, "case is already closed, cannot escalate"), "case is already closed, cannot escalate")
+		return errors.WithDetail(errors.Wrap(models.UnprocessableEntityError,
+			"case is already closed, cannot escalate"),
+			"case is already closed, cannot escalate")
 	}
 
 	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
@@ -1882,7 +1888,8 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 		return errors.Wrap(err, "could not read target inbox")
 	}
 	if targetInbox.Status != models.InboxStatusActive {
-		return errors.WithDetail(errors.Wrap(models.UnprocessableEntityError, "target inbox is inactive"), "target inbox is inactive")
+		return errors.WithDetail(errors.Wrap(models.UnprocessableEntityError,
+			"target inbox is inactive"), "target inbox is inactive")
 	}
 
 	var userId *string

@@ -32,7 +32,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	}
 
 	query := NewQueryBuilder().
-		Select(dbmodels.SelectCaseColumn...).
+		Select(columnsNames("c", dbmodels.SelectCaseColumn)...).
 		Column(
 			fmt.Sprintf(
 				"(SELECT array_agg(row(%s) ORDER BY cc.created_at) AS contributors FROM %s AS cc WHERE cc.case_id=c.id)",
@@ -76,15 +76,20 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	}
 	if !filters.IncludeSnoozed {
 		query = query.Where(squirrel.Or{
-			squirrel.Eq{"snoozed_until": nil},
-			squirrel.LtOrEq{"snoozed_until": time.Now()},
+			squirrel.Eq{"c.snoozed_until": nil},
+			squirrel.LtOrEq{"c.snoozed_until": time.Now()},
 		})
 	}
 	if filters.ExcludeAssigned {
-		query = query.Where(squirrel.Eq{"assigned_to": nil})
+		query = query.Where(squirrel.Eq{"c.assigned_to": nil})
 	}
 	if filters.AssigneeId != "" {
-		query = query.Where(squirrel.Eq{"assigned_to": filters.AssigneeId})
+		query = query.Where(squirrel.Eq{"c.assigned_to": filters.AssigneeId})
+	}
+	if filters.TagId != nil {
+		query = query.
+			InnerJoin(dbmodels.TABLE_CASE_TAGS + " ct on ct.case_id = c.id").
+			Where(squirrel.Eq{"ct.tag_id": filters.TagId})
 	}
 
 	// Apply pagination, by fetching the offset case (error if not found)
@@ -352,7 +357,7 @@ func (repo *MarbleDbRepository) CreateCaseTag(ctx context.Context, exec Executor
 				caseId,
 				tagId,
 				nil,
-			),
+			).Suffix("ON CONFLICT DO NOTHING"),
 	)
 	return err
 }

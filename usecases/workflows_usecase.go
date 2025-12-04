@@ -36,13 +36,16 @@ type workflowRepository interface {
 	InsertWorkflowRule(ctx context.Context, exec repositories.Executor, rule models.WorkflowRule) (models.WorkflowRule, error)
 	UpdateWorkflowRule(ctx context.Context, exec repositories.Executor, rule models.WorkflowRule) (models.WorkflowRule, error)
 	DeleteWorkflowRule(ctx context.Context, exec repositories.Executor, ruleId uuid.UUID) error
-	InsertWorkflowCondition(ctx context.Context, exec repositories.Executor, condition models.WorkflowCondition) (models.WorkflowCondition, error)
-	UpdateWorkflowCondition(ctx context.Context, exec repositories.Executor, condition models.WorkflowCondition) (models.WorkflowCondition, error)
+	InsertWorkflowCondition(ctx context.Context, exec repositories.Executor,
+		condition models.WorkflowCondition) (models.WorkflowCondition, error)
+	UpdateWorkflowCondition(ctx context.Context, exec repositories.Executor,
+		condition models.WorkflowCondition) (models.WorkflowCondition, error)
 	DeleteWorkflowCondition(ctx context.Context, exec repositories.Executor, ruleId, conditionId uuid.UUID) error
 	InsertWorkflowAction(ctx context.Context, exec repositories.Executor, action models.WorkflowAction) (models.WorkflowAction, error)
 	UpdateWorkflowAction(ctx context.Context, exec repositories.Executor, action models.WorkflowAction) (models.WorkflowAction, error)
 	DeleteWorkflowAction(ctx context.Context, exec repositories.Executor, ruleId, actionId uuid.UUID) error
 	ReorderWorkflowRules(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID, ids []uuid.UUID) error
+	GetTagById(ctx context.Context, exec repositories.Executor, tagId string) (models.Tag, error)
 }
 
 func (uc *WorkflowUsecase) ListWorkflowsForScenario(ctx context.Context, scenarioId uuid.UUID) ([]models.Workflow, error) {
@@ -140,7 +143,9 @@ func (uc *WorkflowUsecase) DeleteWorkflowRule(ctx context.Context, ruleId uuid.U
 	return uc.repository.DeleteWorkflowRule(ctx, exec, ruleId)
 }
 
-func (uc *WorkflowUsecase) CreateWorkflowCondition(ctx context.Context, cond models.WorkflowCondition) (models.WorkflowCondition, error) {
+func (uc *WorkflowUsecase) CreateWorkflowCondition(ctx context.Context,
+	cond models.WorkflowCondition,
+) (models.WorkflowCondition, error) {
 	exec := uc.executorFactory.NewExecutor()
 
 	rule, err := uc.repository.GetWorkflowRule(ctx, exec, cond.RuleId)
@@ -164,7 +169,9 @@ func (uc *WorkflowUsecase) CreateWorkflowCondition(ctx context.Context, cond mod
 	return uc.repository.InsertWorkflowCondition(ctx, exec, cond)
 }
 
-func (uc *WorkflowUsecase) UpdateWorkflowCondition(ctx context.Context, cond models.WorkflowCondition) (models.WorkflowCondition, error) {
+func (uc *WorkflowUsecase) UpdateWorkflowCondition(ctx context.Context,
+	cond models.WorkflowCondition,
+) (models.WorkflowCondition, error) {
 	exec := uc.executorFactory.NewExecutor()
 
 	rule, err := uc.repository.GetWorkflowRule(ctx, exec, cond.RuleId)
@@ -172,7 +179,8 @@ func (uc *WorkflowUsecase) UpdateWorkflowCondition(ctx context.Context, cond mod
 		return models.WorkflowCondition{}, err
 	}
 	if cond.RuleId != rule.Id {
-		return models.WorkflowCondition{}, errors.Wrap(models.NotFoundError, "could not find condition linked to rule")
+		return models.WorkflowCondition{}, errors.Wrap(models.NotFoundError,
+			"could not find condition linked to rule")
 	}
 
 	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, rule.ScenarioId.String())
@@ -251,7 +259,8 @@ func (uc *WorkflowUsecase) UpdateWorkflowAction(ctx context.Context, action mode
 		return models.WorkflowAction{}, err
 	}
 	if action.RuleId != rule.Id {
-		return models.WorkflowAction{}, errors.Wrap(models.NotFoundError, "could not find condition linked to rule")
+		return models.WorkflowAction{}, errors.Wrap(models.NotFoundError,
+			"could not find condition linked to rule")
 	}
 
 	scenario, err := uc.scenarioRepository.GetScenarioById(ctx, exec, rule.ScenarioId.String())
@@ -320,7 +329,8 @@ func (uc *WorkflowUsecase) ValidateWorkflowCondition(ctx context.Context, scenar
 		models.WorkflowConditionNever:
 
 		if cond.Params != nil {
-			return errors.Wrapf(models.BadParameterError, "workflow condition %s does not take parameters", cond.Function)
+			return errors.Wrapf(models.BadParameterError,
+				"workflow condition %s does not take parameters", cond.Function)
 		}
 	case models.WorkflowConditionOutcomeIn:
 		var params []string
@@ -330,11 +340,13 @@ func (uc *WorkflowUsecase) ValidateWorkflowCondition(ctx context.Context, scenar
 		}
 
 		if len(params) == 0 {
-			return errors.Wrap(models.BadParameterError, "at least one outcome must be provided")
+			return errors.Wrap(models.BadParameterError,
+				"at least one outcome must be provided")
 		}
 		for _, outcome := range params {
 			if models.OutcomeFrom(outcome) == models.UnknownOutcome {
-				return errors.Wrap(models.BadParameterError, fmt.Sprintf("invalid outcome '%s'", outcome))
+				return errors.Wrap(models.BadParameterError,
+					fmt.Sprintf("invalid outcome '%s'", outcome))
 			}
 		}
 	case models.WorkflowConditionRuleHit:
@@ -397,10 +409,31 @@ func (uc *WorkflowUsecase) ValidateWorkflowAction(ctx context.Context, scenario 
 
 			if len(validation.Errors) > 0 {
 				return errors.Wrap(errors.Join(
-					pure_utils.Map(validation.Errors, func(e models.ScenarioValidationError) error { return e.Error })...),
+					pure_utils.Map(validation.Errors, func(
+						e models.ScenarioValidationError,
+					) error {
+						return e.Error
+					})...),
 					"invalid AST in field 'title_template'")
 			}
 		}
+
+		if params.TagsToAdd != nil {
+			for _, tagId := range params.TagsToAdd {
+				tag, err := uc.repository.GetTagById(ctx,
+					uc.executorFactory.NewExecutor(), tagId.String())
+				if err != nil {
+					return errors.Wrap(models.BadParameterError, err.Error())
+				}
+				if tag.OrganizationId != scenario.OrganizationId {
+					return errors.Wrap(models.NotFoundError, "tag not found")
+				}
+				if tag.Target != models.TagTargetCase {
+					return errors.Wrap(models.BadParameterError, "tag is not targeting cases")
+				}
+			}
+		}
+
 	case models.WorkflowDisabled:
 		return nil
 	default:

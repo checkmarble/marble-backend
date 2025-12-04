@@ -109,9 +109,21 @@ type CaseFilters struct {
 	IncludeSnoozed  bool          `form:"include_snoozed"`
 	ExcludeAssigned bool          `form:"exclude_assigned"`
 	AssigneeId      models.UserId `form:"assignee_id"`
+	TagId           []string      `form:"tag_id,lte=1,dive,uuid"`
 }
 
 func (f CaseFilters) Parse() (models.CaseFilters, error) {
+	var tagId *uuid.UUID
+	if len(f.TagId) > 1 {
+		return models.CaseFilters{}, errors.Wrap(models.BadParameterError, "multiple tag IDs are not supported")
+	}
+	if len(f.TagId) > 0 {
+		tagIdVal, err := uuid.Parse(f.TagId[0])
+		if err != nil {
+			return models.CaseFilters{}, errors.Wrap(models.BadParameterError, "failed to parse tag ID")
+		}
+		tagId = &tagIdVal
+	}
 	out := models.CaseFilters{
 		EndDate:         f.EndDate,
 		StartDate:       f.StartDate,
@@ -119,6 +131,7 @@ func (f CaseFilters) Parse() (models.CaseFilters, error) {
 		IncludeSnoozed:  f.IncludeSnoozed,
 		ExcludeAssigned: f.ExcludeAssigned,
 		AssigneeId:      f.AssigneeId,
+		TagId:           tagId,
 	}
 
 	var err error

@@ -3,10 +3,13 @@ package decision_workflows
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/utils"
@@ -47,6 +50,31 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		newCase, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
 		if err != nil {
 			return models.WorkflowExecution{}, errors.Wrap(err, "error creating case for decision")
+		}
+
+		if len(action.Params.TagsToAdd) > 0 {
+			for _, tagId := range action.Params.TagsToAdd {
+				err = d.repository.CreateCaseTag(ctx, tx, newCase.Id, tagId.String())
+				if err != nil {
+					return models.WorkflowExecution{}, errors.Wrap(err,
+						"error creating case tag in automatic decision to case")
+				}
+			}
+
+			newValue := strings.Join(pure_utils.Map(action.Params.TagsToAdd,
+				func(tagId uuid.UUID) string { return tagId.String() }), ",")
+			err = d.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+				OrgId:         uuid.MustParse(scenario.OrganizationId),
+				CaseId:        newCase.Id,
+				EventType:     models.CaseTagsUpdated,
+				PreviousValue: utils.Ptr(""),
+				NewValue:      &newValue,
+			})
+			if err != nil {
+				return models.WorkflowExecution{}, errors.Wrap(err,
+					"error creating tag update case event in automatic decision to case")
+			}
+			// No webhook to send here, it's a new case.
 		}
 
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
@@ -208,7 +236,48 @@ func (d DecisionsWorkflows) addToOpenCase(
 		}
 		bestMatchCase = findBestMatchCase(cases)
 	}
-	err = d.caseEditor.UpdateDecisionsWithEvents(ctx, tx, decision.OrganizationId, bestMatchCase.Id, "", []string{decision.DecisionId.String()})
+
+	if len(action.Params.TagsToAdd) > 0 {
+		previousCaseTags, err := d.repository.ListCaseTagsByCaseId(ctx, tx, bestMatchCase.Id)
+		if err != nil {
+			return models.CaseMetadata{}, false, errors.Wrap(err,
+				"error listing case tags by case id in add to open case")
+		}
+		previousTagIds := pure_utils.Map(previousCaseTags,
+			func(caseTag models.CaseTag) string { return caseTag.TagId })
+
+		newIds := make([]string, 0, len(action.Params.TagsToAdd))
+		for _, tagId := range action.Params.TagsToAdd {
+			if !slices.Contains(previousTagIds, tagId.String()) {
+				err = d.repository.CreateCaseTag(ctx, tx, bestMatchCase.Id, tagId.String())
+				if err != nil {
+					return models.CaseMetadata{}, false, errors.Wrap(err,
+						"error creating case tag in add to open case")
+				}
+				newIds = append(newIds, tagId.String())
+			}
+		}
+
+		if len(newIds) > 0 {
+			previousValue := strings.Join(previousTagIds, ",")
+			newValue := previousValue + "," + strings.Join(newIds, ",")
+			err = d.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+				OrgId:         uuid.MustParse(scenario.OrganizationId),
+				CaseId:        bestMatchCase.Id,
+				EventType:     models.CaseTagsUpdated,
+				PreviousValue: &previousValue,
+				NewValue:      &newValue,
+			})
+			if err != nil {
+				return models.CaseMetadata{}, false, errors.Wrap(err,
+					"error creating tag update case event in add to open case")
+			}
+		}
+		// I'm not adding the webhooks sending for this yet... To be finished.
+	}
+
+	err = d.caseEditor.UpdateDecisionsWithEvents(ctx, tx, decision.OrganizationId,
+		bestMatchCase.Id, "", []string{decision.DecisionId.String()})
 	if err != nil {
 		return models.CaseMetadata{}, false, errors.Wrap(err, "error updating case")
 	}
