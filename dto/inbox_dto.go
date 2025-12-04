@@ -14,7 +14,7 @@ type InboxDto struct {
 	UpdatedAt         time.Time      `json:"updated_at"`
 	Name              string         `json:"name"`
 	Status            string         `json:"status"`
-	EscalationInboxId *uuid.UUID     `json:"escalation_inbox_id,omitempty"`
+	EscalationInboxId *uuid.UUID     `json:"escalation_inbox_id"`
 	AutoAssignEnabled bool           `json:"auto_assign_enabled"`
 	Users             []InboxUserDto `json:"users"`
 
@@ -77,12 +77,12 @@ func AdaptInboxMetadataDto(i models.InboxMetadata) InboxMetadataDto {
 }
 
 type UpdateInboxInput struct {
-	Name                    *string    `json:"name"`
-	EscalationInboxId       *uuid.UUID `json:"escalation_inbox_id"`
-	AutoAssignEnabled       *bool      `json:"auto_assign_enabled"`
-	CaseReviewManual        *bool      `json:"case_review_manual"`
-	CaseReviewOnCaseCreated *bool      `json:"case_review_on_case_created"`
-	CaseReviewOnEscalate    *bool      `json:"case_review_on_escalate"`
+	Name                    *string                    `json:"name"`
+	EscalationInboxId       pure_utils.Null[uuid.UUID] `json:"escalation_inbox_id"`
+	AutoAssignEnabled       *bool                      `json:"auto_assign_enabled"`
+	CaseReviewManual        *bool                      `json:"case_review_manual"`
+	CaseReviewOnCaseCreated *bool                      `json:"case_review_on_case_created"`
+	CaseReviewOnEscalate    *bool                      `json:"case_review_on_escalate"`
 }
 
 func AdaptUpdateInboxInput(i UpdateInboxInput) models.UpdateInboxInput {

@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
 
@@ -53,10 +54,10 @@ type CreateInboxInput struct {
 }
 
 type UpdateInboxInput struct {
-	Name                    *string    `json:"name"`
-	EscalationInboxId       *uuid.UUID `json:"escalation_inbox_id"`
-	AutoAssignEnabled       *bool      `json:"auto_assign_enabled"`
-	CaseReviewManual        *bool      `json:"case_review_manual"`
-	CaseReviewOnCaseCreated *bool      `json:"case_review_on_case_created"`
-	CaseReviewOnEscalate    *bool      `json:"case_review_on_escalate"`
+	Name                    *string                    `json:"name"`
+	EscalationInboxId       pure_utils.Null[uuid.UUID] `json:"escalation_inbox_id"`
+	AutoAssignEnabled       *bool                      `json:"auto_assign_enabled"`
+	CaseReviewManual        *bool                      `json:"case_review_manual"`
+	CaseReviewOnCaseCreated *bool                      `json:"case_review_on_case_created"`
+	CaseReviewOnEscalate    *bool                      `json:"case_review_on_escalate"`
 }
