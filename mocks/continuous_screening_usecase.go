@@ -53,7 +53,7 @@ func (m *ContinuousScreeningUsecase) HandleCaseCreation(
 	config models.ContinuousScreeningConfig,
 	objectId string,
 	continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
-) error {
+) (models.Case, error) {
 	args := m.Called(ctx, tx, config, objectId, continuousScreeningWithMatches)
-	return args.Error(0)
+	return args.Get(0).(models.Case), args.Error(1)
 }

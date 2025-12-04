@@ -297,8 +297,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
 		screeningWithMatches, config, suite.objectType, suite.objectId, ingestedObjectInternalId,
 		models.ContinuousScreeningTriggerTypeObjectUpdated).Return(continuousScreeningWithMatches, nil)
+	// Return empty case for simplicity because it is not used for this test
 	suite.usecase.On("HandleCaseCreation", suite.ctx, mock.Anything, config, suite.objectId,
-		continuousScreeningWithMatches).Return(nil)
+		continuousScreeningWithMatches).Return(models.Case{}, nil)
 
 	// Execute
 	worker := suite.makeWorker()
@@ -493,8 +494,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
 		screeningWithMatches, config, suite.objectType, suite.objectId, ingestedObjectInternalId,
 		models.ContinuousScreeningTriggerTypeObjectAdded).Return(continuousScreeningWithMatches, nil)
+	// Return empty case for simplicity because it is not used for this test
 	suite.usecase.On("HandleCaseCreation", suite.ctx, mock.Anything, config, suite.objectId,
-		continuousScreeningWithMatches).Return(nil)
+		continuousScreeningWithMatches).Return(models.Case{}, nil)
 
 	// Execute
 	worker := suite.makeWorker()

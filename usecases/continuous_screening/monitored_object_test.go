@@ -770,9 +770,6 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			attrs.Name == "Continuous Screening - "+suite.objectId &&
 			len(attrs.ContinuousScreeningIds) == 1
 	}), false).Return(expectedCase, nil)
-	// Return empty value because we don't need to use it in the test
-	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
-		continuousScreeningId).Return(models.ContinuousScreeningWithMatches{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -787,6 +784,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(result)
+	suite.Equal(caseId, *result.CaseId)
 	suite.AssertExpectations()
 }
 
