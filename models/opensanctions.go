@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/adhocore/gronx"
@@ -62,19 +61,19 @@ func (q *OpenSanctionsCheckQuery) SetName(name string) {
 	q.Filters["name"] = []string{name}
 }
 
-func (q OpenSanctionsCheckQuery) String() string {
-	m := make(map[string][]string, len(q.Filters))
+// func (q OpenSanctionsCheckQuery) String() string {
+// 	m := make(map[string][]string, len(q.Filters))
 
-	for k := range q.Filters {
-		m[k] = make([]string, len(q.Filters[k]))
+// 	for k := range q.Filters {
+// 		m[k] = make([]string, len(q.Filters[k]))
 
-		for idx := range q.Filters[k] {
-			m[k][idx] = "[redacted]"
-		}
-	}
+// 		for idx := range q.Filters[k] {
+// 			m[k][idx] = "[redacted]"
+// 		}
+// 	}
 
-	return fmt.Sprintf("%s (%s)", q.Type, m)
-}
+// 	return fmt.Sprintf("%s (%s)", q.Type, m)
+// }
 
 type OpenSanctionsFilter map[string][]string
 

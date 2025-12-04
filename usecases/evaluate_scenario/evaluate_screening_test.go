@@ -269,6 +269,12 @@ func TestScreeningCalledWithNameRecognizedLabel(t *testing.T) {
 		Config: iteration.ScreeningConfigs[0],
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
+				Type: "Thing",
+				Filters: models.OpenSanctionsFilter{
+					"name": []string{"dinner with joe finnigan"},
+				},
+			},
+			{
 				Type: "Person",
 				Filters: models.OpenSanctionsFilter{
 					"name": []string{"joe finnigan"},
@@ -349,6 +355,12 @@ func TestScreeningCalledWithNumbersPreprocessing(t *testing.T) {
 	expectedQuery := models.OpenSanctionsQuery{
 		Config: iteration.ScreeningConfigs[0],
 		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Thing",
+				Filters: models.OpenSanctionsFilter{
+					"name": []string{"dinner  with  joe finnigan"},
+				},
+			},
 			{
 				Type: "Person",
 				Filters: models.OpenSanctionsFilter{
@@ -508,7 +520,7 @@ func TestScreeningWithAllPreprocessing(t *testing.T) {
 	eval, exec := getScreeningEvaluator()
 	exec.Mock.On("IsConfigured").Return(true)
 	exec.Mock.
-		On("PerformNameRecognition", mock.Anything, "does not matter").
+		On("PerformNameRecognition", mock.Anything, "original query").
 		Return(names, nil)
 
 	iteration := models.ScenarioIteration{
@@ -516,7 +528,7 @@ func TestScreeningWithAllPreprocessing(t *testing.T) {
 			{
 				TriggerRule: &ast.Node{Constant: true},
 				EntityType:  "Thing",
-				Query:       map[string]ast.Node{"name": {Constant: "does not matter"}},
+				Query:       map[string]ast.Node{"name": {Constant: "original query"}},
 				Preprocessing: models.ScreeningConfigPreprocessing{
 					UseNer:        true,
 					SkipIfUnder:   6,
@@ -541,6 +553,12 @@ func TestScreeningWithAllPreprocessing(t *testing.T) {
 		Config: iteration.ScreeningConfigs[0],
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
+				Type: "Thing",
+				Filters: models.OpenSanctionsFilter{
+					"name": []string{"original query"},
+				},
+			},
+			{
 				Type: "Person",
 				Filters: models.OpenSanctionsFilter{
 					"name": []string{"joe bill"},
@@ -554,7 +572,7 @@ func TestScreeningWithAllPreprocessing(t *testing.T) {
 			},
 		},
 		InitialQuery: []models.OpenSanctionsCheckQuery{
-			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"does not matter"}}},
+			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"original query"}}},
 		},
 	}
 

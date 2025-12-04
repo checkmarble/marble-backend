@@ -218,5 +218,14 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId
 			}))
 	}
 
-	return out, nil
+	for _, newQuery := range out {
+		if !slices.ContainsFunc(queries, func(q models.OpenSanctionsCheckQuery) bool {
+			return newQuery.GetName() == q.GetName()
+		}) {
+			queries = append(queries, newQuery)
+		}
+	}
+
+	return queries, nil
+	// return append(queries, out...), nil
 }
