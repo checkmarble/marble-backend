@@ -114,6 +114,7 @@ func TestIngestedDataQueryAggregatedValueWithoutFilter(t *testing.T) {
 		models.Int,
 		ast.AGGREGATOR_AVG,
 		[]models.FilterWithType{},
+		map[string]any{},
 	)
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
@@ -136,7 +137,8 @@ func TestIngestedDataQueryCountWithoutFilter(t *testing.T) {
 		utils.DummyFieldNameForInt,
 		models.Int,
 		ast.AGGREGATOR_COUNT,
-		[]models.FilterWithType{})
+		[]models.FilterWithType{},
+		map[string]any{})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
@@ -179,7 +181,8 @@ func TestIngestedDataQueryAggregatedValueWithSimpleFilter(t *testing.T) {
 		utils.DummyFieldNameForInt,
 		models.Int,
 		ast.AGGREGATOR_AVG,
-		filters)
+		filters,
+		map[string]any{})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
@@ -190,7 +193,7 @@ func TestIngestedDataQueryAggregatedValueWithSimpleFilter(t *testing.T) {
 	}
 	expected := `
 	SELECT AVG(int_var)::float8
-	FROM "test_schema"."first" 
+	FROM "test_schema"."first"
 	WHERE "test_schema"."first".valid_until = $1
 	AND "test_schema"."first"."int_var" = $2
 	AND "test_schema"."first"."bool_var" <> $3
@@ -223,7 +226,8 @@ func TestIngestedDataQueryAggregatedValueWithFuzzyMatchFilter_1(t *testing.T) {
 		"stringFieldName",
 		models.Int,
 		ast.AGGREGATOR_COUNT,
-		filters)
+		filters,
+		map[string]any{})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
@@ -273,7 +277,8 @@ func TestIngestedDataQueryAggregatedValueWithFuzzyMatchFilter_2(t *testing.T) {
 		"stringFieldName",
 		models.Int,
 		ast.AGGREGATOR_COUNT,
-		filters)
+		filters,
+		map[string]any{})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)

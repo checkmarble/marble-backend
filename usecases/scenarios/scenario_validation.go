@@ -163,8 +163,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 				queryNameValidation := models.NewRuleValidation()
 				providedFields += 1
 
-				queryNameValidation.RuleEvaluation, _ =
-					ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, fieldAst)
+				queryNameValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, fieldAst)
 
 				if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(string); !ok {
 					queryNameValidation.Errors = append(
