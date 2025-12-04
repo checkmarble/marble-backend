@@ -1,0 +1,7 @@
+# Client data for organization ACME (loaded with search_path=org-ACME)
+- id: 11111111-1111-1111-1111-111111111111
+  object_id: account-001
+  updated_at: "2025-01-01T00:00:00Z"
+  valid_from: "2025-01-01T00:00:00Z"
+  name: John Doe
+  country: US
