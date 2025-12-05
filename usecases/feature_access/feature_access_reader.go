@@ -56,8 +56,11 @@ func (f FeatureAccessReader) GetOrganizationFeatureAccess(
 	organizationId uuid.UUID,
 	userId *models.UserId,
 ) (models.OrganizationFeatureAccess, error) {
-	dbStoredFeatureAccess, err := f.repository.GetOrganizationFeatureAccess(ctx,
-		f.executorFactory.NewExecutor(), organizationId)
+	if err := f.enforceSecurity.ReadOrganization(organizationId); err != nil {
+		return models.OrganizationFeatureAccess{}, err
+	}
+
+	dbStoredFeatureAccess, err := f.repository.GetOrganizationFeatureAccess(ctx, f.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return models.OrganizationFeatureAccess{}, err
 	}

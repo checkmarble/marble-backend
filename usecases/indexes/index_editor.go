@@ -76,6 +76,7 @@ func (editor ClientDbIndexEditor) GetIndexesToCreate(
 	scenarioIterationId string,
 ) (toCreate []models.ConcreteIndex, numPending int, err error) {
 	exec := editor.executorFactory.NewExecutor()
+
 	iterationToActivate, err := editor.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, scenarioIterationId)
 	if err != nil {
 		return toCreate, numPending, err
