@@ -56,9 +56,10 @@ type PostWorkflowActionDto struct {
 }
 
 type WorkflowActionCaseParams struct {
-	InboxId       uuid.UUID `json:"inbox_id" binding:"required,uuid"`
-	AnyInbox      bool      `json:"any_inbox"`
-	TitleTemplate *NodeDto  `json:"title_template"`
+	InboxId       uuid.UUID   `json:"inbox_id" binding:"required,uuid"`
+	AnyInbox      bool        `json:"any_inbox"`
+	TitleTemplate *NodeDto    `json:"title_template"`
+	TagsToAdd     []uuid.UUID `json:"tags_to_add"`
 }
 
 type WorkflowDto struct {

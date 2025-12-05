@@ -41,6 +41,10 @@ type decisionWorkflowsRepository interface {
 		caseIds []string,
 	) (map[string]int, error)
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
+	CreateCaseTag(ctx context.Context, exec repositories.Executor, caseId, tagId string) error
+	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
+		createCaseEventAttributes models.CreateCaseEventAttributes) error
+	ListCaseTagsByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseTag, error)
 }
 
 type webhookEventCreator interface {
