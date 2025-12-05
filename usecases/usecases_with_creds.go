@@ -4,11 +4,13 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
@@ -21,6 +23,19 @@ import (
 type UsecasesWithCreds struct {
 	Usecases
 	Credentials models.Credentials
+}
+
+type UsecaseTransactionWrapper func(tx repositories.Transaction, org models.Organization) *UsecasesWithCreds
+
+// Used to recreate the whole usecase hierarchy from a transaction for Marble
+// database and and organization for the ingested data database.
+func (usecases *UsecasesWithCreds) NewWithRootExecutor(tx repositories.Transaction, org models.Organization) *UsecasesWithCreds {
+	executorFactory := executor_factory.NewIdentityExecutorFactory(tx, usecases.Repositories.ExecutorGetter, org)
+
+	return &UsecasesWithCreds{
+		Usecases:    usecases.Usecases.WithRootExecutor(executorFactory),
+		Credentials: usecases.Credentials,
+	}
 }
 
 func (usecases *UsecasesWithCreds) NewEnforceSecurity() security.EnforceSecurity {
@@ -861,6 +876,26 @@ func (usecases *UsecasesWithCreds) NewAuditUsecase() AuditUsecase {
 		usecases.NewEnforceSecurityAudit(),
 		usecases.NewExecutorFactory(),
 		usecases.license,
+		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
+	return NewOrgImportUsecase(
+		usecases.NewWithRootExecutor,
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.OrganizationSchemaRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.CustomListRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewScenarioPublicationUsecase(),
+		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 	)
 }
