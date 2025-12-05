@@ -44,7 +44,9 @@ func parseEnvVar[T envVarType](envVar string, envValue string) T {
 func GetEnv[T envVarType](envVar string, defaultValue T) T {
 	envValue, ok := os.LookupEnv(envVar)
 	if !ok || envValue == "" {
-		log.Printf("%s environment variable is not set, using default value '%v'", envVar, defaultValue)
+		if os.Getenv("LOG_LEVEL") == "debug" {
+			log.Printf("%s environment variable is not set, using default value '%v'", envVar, defaultValue)
+		}
 		return defaultValue
 	}
 	return parseEnvVar[T](envVar, envValue)
@@ -61,7 +63,9 @@ func GetRequiredEnv[T envVarType](envVar string) T {
 func GetEnvDuration(envVar string, defaultValue time.Duration) time.Duration {
 	envValue, ok := os.LookupEnv(envVar)
 	if !ok || envValue == "" {
-		log.Printf("%s environment variable is not set, using default value '%v'", envVar, defaultValue)
+		if os.Getenv("LOG_LEVEL") == "debug" {
+			log.Printf("%s environment variable is not set, using default value '%v'", envVar, defaultValue)
+		}
 		return defaultValue
 	}
 
