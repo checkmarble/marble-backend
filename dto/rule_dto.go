@@ -10,6 +10,7 @@ import (
 
 type RuleDto struct {
 	Id                   string    `json:"id"`
+	StableId             string    `json:"stable_id"`
 	ScenarioIterationId  string    `json:"scenario_iteration_id"`
 	DisplayOrder         int       `json:"display_order"`
 	Name                 string    `json:"name"`
@@ -63,6 +64,7 @@ func AdaptRuleDto(rule models.Rule) (RuleDto, error) {
 
 	return RuleDto{
 		Id:                   rule.Id,
+		StableId:             rule.StableRuleId,
 		ScenarioIterationId:  rule.ScenarioIterationId,
 		DisplayOrder:         rule.DisplayOrder,
 		Name:                 rule.Name,

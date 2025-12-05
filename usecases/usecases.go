@@ -46,6 +46,9 @@ type Usecases struct {
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
+	datasetDeltafileBucketUrl    string
+
+	rootExecutorFactory *executor_factory.IdentityExecutorFactory
 }
 
 type Option func(*options)
@@ -240,7 +243,17 @@ func NewUsecases(repositories repositories.Repositories, opts ...Option) Usecase
 	return newUsecasesWithOptions(repositories, o)
 }
 
+func (usecases Usecases) WithRootExecutor(exec executor_factory.IdentityExecutorFactory) Usecases {
+	usecases.rootExecutorFactory = &exec
+
+	return usecases
+}
+
 func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory {
+	if usecases.rootExecutorFactory != nil {
+		return usecases.rootExecutorFactory
+	}
+
 	return executor_factory.NewDbExecutorFactory(
 		usecases.appName,
 		usecases.Repositories.MarbleDbRepository,
@@ -249,6 +262,10 @@ func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory 
 }
 
 func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFactory {
+	if usecases.rootExecutorFactory != nil {
+		return usecases.rootExecutorFactory
+	}
+
 	return executor_factory.NewDbExecutorFactory(
 		usecases.appName,
 		usecases.Repositories.MarbleDbRepository,
