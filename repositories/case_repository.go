@@ -88,7 +88,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	}
 	if filters.TagId != nil {
 		query = query.
-			InnerJoin(dbmodels.TABLE_CASE_TAGS + " ct on ct.case_id = c.id").
+			InnerJoin(dbmodels.TABLE_CASE_TAGS + " ct on ct.case_id = c.id AND ct.deleted_at IS NULL").
 			Where(squirrel.Eq{"ct.tag_id": filters.TagId})
 	}
 
