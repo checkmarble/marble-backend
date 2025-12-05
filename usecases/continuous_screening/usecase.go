@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
@@ -133,11 +134,30 @@ type ContinuousScreeningUsecaseRepository interface {
 	SearchScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
 		orgId string, counterpartyId, entityId *string,
 	) ([]models.ScreeningWhitelist, error)
+
+	// Data model
+	UpdateDataModelTable(
+		ctx context.Context,
+		exec repositories.Executor,
+		tableID string,
+		description pure_utils.Null[string],
+		ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
+	) error
+	UpdateDataModelField(
+		ctx context.Context,
+		exec repositories.Executor,
+		fieldId string,
+		input models.UpdateFieldInput,
+	) error
 }
 
 type inboxReader interface {
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
 	ListInboxes(ctx context.Context, exec repositories.Executor, orgId string, withCaseCount bool) ([]models.Inbox, error)
+}
+
+type inboxEditor interface {
+	CreateInbox(ctx context.Context, input models.CreateInboxInput) (models.Inbox, error)
 }
 
 type caseEditor interface {
@@ -222,6 +242,7 @@ type ContinuousScreeningUsecase struct {
 	screeningProvider            ContinuousScreeningScreeningProvider
 	caseEditor                   caseEditor
 	inboxReader                  inboxReader
+	inboxEditor                  inboxEditor
 }
 
 func NewContinuousScreeningUsecase(

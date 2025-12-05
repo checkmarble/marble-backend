@@ -180,7 +180,8 @@ func (usecase *usecase) CreateDataModelTable(ctx context.Context,
 
 func (usecase *usecase) UpdateDataModelTable(
 	ctx context.Context,
-	tableID, description string,
+	tableID string,
+	description pure_utils.Null[string],
 	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
 ) error {
 	exec := usecase.executorFactory.NewExecutor()
