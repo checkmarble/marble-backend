@@ -298,8 +298,7 @@ func (validator *AstValidatorImpl) MakeDryRunEnvironment(ctx context.Context,
 ) (ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError) {
 	organizationId := scenario.OrganizationId
 
-	dataModel, err := validator.DataModelRepository.GetDataModel(ctx,
-		validator.ExecutorFactory.NewExecutor(), organizationId, false, false)
+	dataModel, err := validator.DataModelRepository.GetDataModel(ctx, validator.ExecutorFactory.NewExecutor(), organizationId, false, false)
 	if err != nil {
 		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
 			Error: errors.Wrap(err, "could not get data model for dry run"),
