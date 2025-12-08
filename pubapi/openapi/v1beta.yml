@@ -109,22 +109,22 @@ paths:
             schema:
               type: object
               required:
-                - inbox
+                - inbox_id
                 - name
               properties:
-                inbox:
+                inbox_id:
                   description: ID of the inbox to create the case in
                   type: string
                   format: uuid
                 name:
                   description: Name of the case
                   type: string
-                assignee:
+                assignee_email:
                   description: Email address of the assignee
                   type: string
                   format: email
                 decisions:
-                  description: List of decisions to attach to this case
+                  description: List of decision_ids to attach to this case. Must not already be assigned to a case.
                   type: array
                   items:
                     type: string
@@ -378,8 +378,10 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - comment
               properties:
-                outcome:
+                comment:
                   description: |
                     Body of the comment.
 
