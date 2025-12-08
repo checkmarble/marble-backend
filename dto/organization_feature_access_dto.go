@@ -15,6 +15,7 @@ type APIOrganizationFeatureAccess struct {
 	Sanctions       string `json:"sanctions"`
 	NameRecognition string `json:"name_recognition"`
 	CaseAutoAssign  string `json:"case_auto_assign"`
+	CaseAiAssist    string `json:"case_ai_assist"`
 
 	// user-scoped
 	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
@@ -32,6 +33,7 @@ func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOr
 		Sanctions:       f.Sanctions.String(),
 		NameRecognition: f.NameRecognition.String(),
 		CaseAutoAssign:  f.CaseAutoAssign.String(),
+		CaseAiAssist:    f.CaseAiAssist.String(),
 		AiAssist:        f.AiAssist.String(),
 	}
 }
