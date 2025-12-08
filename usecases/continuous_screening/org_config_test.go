@@ -358,11 +358,31 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_ValidAlgori
 		},
 	}
 
+	ftmEntityValue := models.FollowTheMoneyEntityPerson
+	ftmPropertyValue := models.FollowTheMoneyPropertyName
+	table := models.Table{
+		Name:      "transactions",
+		FTMEntity: &ftmEntityValue,
+		Fields: map[string]models.Field{
+			"object_id": {
+				Name:        "object_id",
+				FTMProperty: &ftmPropertyValue,
+			},
+		},
+	}
+
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			"transactions": table,
+		},
+	}
+
 	// Mock expectations
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
 	suite.screeningProvider.On("GetAlgorithms", suite.ctx).Return(algorithms, nil)
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	suite.repository.On("UpdateContinuousScreeningConfig", mock.Anything, mock.Anything,
 		suite.configId, models.UpdateContinuousScreeningConfig{Enabled: utils.Ptr(false)}).Return(existingConfig, nil)
 	suite.repository.On("CreateContinuousScreeningConfig", mock.Anything, mock.Anything,
@@ -392,48 +412,47 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_RemoveObjec
 		ObjectTypes: []string{"transactions", "customers"}, // Original has both
 	}
 
+	ftmEntityValue := models.FollowTheMoneyEntityPerson
+	ftmPropertyValue := models.FollowTheMoneyPropertyName
+	tables := map[string]models.Table{
+		"transactions": {
+			Name:      "transactions",
+			FTMEntity: &ftmEntityValue,
+			Fields: map[string]models.Field{
+				"object_id": {
+					Name:        "object_id",
+					FTMProperty: &ftmPropertyValue,
+				},
+			},
+		},
+		"customers": {
+			Name:      "customers",
+			FTMEntity: &ftmEntityValue,
+			Fields: map[string]models.Field{
+				"object_id": {
+					Name:        "object_id",
+					FTMProperty: &ftmPropertyValue,
+				},
+			},
+		},
+	}
+
+	dataModel := models.DataModel{
+		Tables: tables,
+	}
+
 	// Mock expectations
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
-	ftmEntity := models.FollowTheMoneyEntityPerson
-	ftmProperty := models.FollowTheMoneyPropertyName
-	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(models.DataModel{
-		Tables: map[string]models.Table{
-			"transactions": {
-				Name:      "transactions",
-				FTMEntity: &ftmEntity,
-				Fields: map[string]models.Field{
-					"object_id": {
-						Name:        "object_id",
-						FTMProperty: &ftmProperty,
-					},
-				},
-			},
-		},
-	}, nil)
-	suite.repository.On("UpdateContinuousScreeningConfig", mock.Anything, mock.Anything,
-		suite.configId, mock.MatchedBy(func(update models.UpdateContinuousScreeningConfig) bool {
-			return update.Enabled != nil && *update.Enabled == false
-		})).Return(models.ContinuousScreeningConfig{}, nil)
-	suite.repository.On("CreateContinuousScreeningConfig", mock.Anything, mock.Anything, mock.MatchedBy(func(
-		create models.CreateContinuousScreeningConfig,
-	) bool {
-		return len(create.ObjectTypes) == 1 && create.ObjectTypes[0] == "transactions"
-	})).Return(models.ContinuousScreeningConfig{
-		Id:          uuid.New(),
-		StableId:    suite.stableId,
-		OrgId:       suite.orgId,
-		ObjectTypes: []string{"transactions"},
-	}, nil)
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
-	result, err := uc.UpdateContinuousScreeningConfig(suite.ctx, suite.stableId, input)
+	_, err := uc.UpdateContinuousScreeningConfig(suite.ctx, suite.stableId, input)
 
 	// Assert
-	suite.NoError(err)
-	suite.Equal([]string{"transactions"}, result.ObjectTypes)
+	suite.ErrorContains(err, "removing object types is not allowed during update")
 	suite.AssertExpectations()
 }
 
@@ -547,10 +566,30 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_PreservesSt
 		MatchLimit:     100,
 	}
 
+	ftmEntityValue := models.FollowTheMoneyEntityPerson
+	ftmPropertyValue := models.FollowTheMoneyPropertyName
+	table := models.Table{
+		Name:      "transactions",
+		FTMEntity: &ftmEntityValue,
+		Fields: map[string]models.Field{
+			"object_id": {
+				Name:        "object_id",
+				FTMProperty: &ftmPropertyValue,
+			},
+		},
+	}
+
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			"transactions": table,
+		},
+	}
+
 	// Mock expectations
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.stableId).Return(existingConfig, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningConfig", suite.orgId).Return(nil)
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
 	suite.repository.On("UpdateContinuousScreeningConfig", mock.Anything, mock.Anything,
 		suite.configId, models.UpdateContinuousScreeningConfig{Enabled: utils.Ptr(false)}).Return(existingConfig, nil)
 	suite.repository.On("CreateContinuousScreeningConfig", mock.Anything, mock.Anything, mock.Anything).Return(
@@ -828,7 +867,7 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_WithInboxNa
 		mock.Anything).Return(nil)
 
 	// Mock Inbox Creation
-	suite.inboxEditor.On("CreateInbox", suite.ctx, models.CreateInboxInput{
+	suite.inboxEditor.On("CreateInboxWithExecutor", suite.ctx, mock.Anything, models.CreateInboxInput{
 		Name:           inboxName,
 		OrganizationId: suite.orgId.String(),
 	}).Return(createdInbox, nil)

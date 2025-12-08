@@ -29,7 +29,7 @@ type DataModelRepository interface {
 		ctx context.Context,
 		exec Executor,
 		tableID string,
-		description pure_utils.Null[string],
+		description *string,
 		ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
 	) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
@@ -200,7 +200,7 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 	ctx context.Context,
 	exec Executor,
 	tableID string,
-	description pure_utils.Null[string],
+	description *string,
 	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -212,9 +212,9 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 	query := NewQueryBuilder().
 		Update(dbmodels.TableDataModelTables)
 
-	if description.Set {
+	if description != nil {
 		updated = true
-		query = query.Set("description", description.Ptr())
+		query = query.Set("description", *description)
 	}
 
 	if ftmEntity.Set {

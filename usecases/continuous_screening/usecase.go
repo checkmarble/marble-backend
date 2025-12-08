@@ -140,7 +140,7 @@ type ContinuousScreeningUsecaseRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		tableID string,
-		description pure_utils.Null[string],
+		description *string,
 		ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
 	) error
 	UpdateDataModelField(
@@ -157,7 +157,11 @@ type inboxReader interface {
 }
 
 type inboxEditor interface {
-	CreateInbox(ctx context.Context, input models.CreateInboxInput) (models.Inbox, error)
+	CreateInboxWithExecutor(
+		ctx context.Context,
+		exec repositories.Executor,
+		input models.CreateInboxInput,
+	) (models.Inbox, error)
 }
 
 type caseEditor interface {
@@ -259,6 +263,7 @@ func NewContinuousScreeningUsecase(
 	screeningProvider ContinuousScreeningScreeningProvider,
 	caseEditor caseEditor,
 	inboxReader inboxReader,
+	inboxEditor inboxEditor,
 ) *ContinuousScreeningUsecase {
 	return &ContinuousScreeningUsecase{
 		executorFactory:              executorFactory,
@@ -274,5 +279,6 @@ func NewContinuousScreeningUsecase(
 		screeningProvider:            screeningProvider,
 		caseEditor:                   caseEditor,
 		inboxReader:                  inboxReader,
+		inboxEditor:                  inboxEditor,
 	}
 }

@@ -419,12 +419,12 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal() {
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("UpdateDataModelTable",
-		suite.ctx, suite.transaction, tableId, pure_utils.NullFrom("description"),
+		suite.ctx, suite.transaction, tableId, utils.Ptr("description"),
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil)).
 		Return(nil)
 
 	err := usecase.UpdateDataModelTable(suite.ctx, tableId,
-		pure_utils.NullFrom("description"),
+		utils.Ptr("description"),
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 	)
 	suite.Require().NoError(err, "no error expected")
@@ -445,7 +445,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_security_error(
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
 
-	err := usecase.UpdateDataModelTable(suite.ctx, tableId, pure_utils.NullFrom("description"),
+	err := usecase.UpdateDataModelTable(suite.ctx, tableId, utils.Ptr("description"),
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 	)
 	suite.Require().Error(err, "error expected")
@@ -467,13 +467,13 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_repository_erro
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("UpdateDataModelTable",
-		suite.ctx, suite.transaction, tableId, pure_utils.NullFrom("description"),
+		suite.ctx, suite.transaction, tableId, utils.Ptr("description"),
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 	).
 		Return(suite.repositoryError)
 
 	err := usecase.UpdateDataModelTable(suite.ctx, tableId,
-		pure_utils.NullFrom("description"),
+		utils.Ptr("description"),
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 	)
 	suite.Require().Error(err, "error expected")
@@ -497,11 +497,11 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal_set_ftm
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("UpdateDataModelTable",
-		suite.ctx, suite.transaction, tableId, pure_utils.NullFrom("description"),
+		suite.ctx, suite.transaction, tableId, utils.Ptr("description"),
 		pure_utils.NullFrom(ftmEntity)).
 		Return(nil)
 
-	err := usecase.UpdateDataModelTable(suite.ctx, tableId, pure_utils.NullFrom("description"),
+	err := usecase.UpdateDataModelTable(suite.ctx, tableId, utils.Ptr("description"),
 		pure_utils.NullFrom(ftmEntity),
 	)
 	suite.Require().NoError(err, "no error expected when setting FTM entity on table without one")

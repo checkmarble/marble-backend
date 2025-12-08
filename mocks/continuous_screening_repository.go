@@ -266,7 +266,7 @@ func (m *ContinuousScreeningRepository) UpdateDataModelTable(
 	ctx context.Context,
 	exec repositories.Executor,
 	tableID string,
-	description pure_utils.Null[string],
+	description *string,
 	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
 ) error {
 	args := m.Called(ctx, exec, tableID, description, ftmEntity)

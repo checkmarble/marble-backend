@@ -37,7 +37,6 @@ type ContinuousScreeningConfigParameters struct {
 }
 
 type ContinuousScreeningMappingField struct {
-	ObjectField   string
 	ObjectFieldId uuid.UUID
 	FtmProperty   FollowTheMoneyProperty
 }
@@ -65,6 +64,7 @@ type CreateContinuousScreeningConfig struct {
 
 type UpdateContinuousScreeningConfig struct {
 	InboxId        *uuid.UUID
+	InboxName      *string
 	Name           *string
 	Description    *string
 	Algorithm      *string

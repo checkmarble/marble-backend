@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const DefaultContinuousScreeningAlgorithm = "logic-v2"
+const DefaultContinuousScreeningAlgorithm = "logic-v1"
 
 type ContinuousScreeningConfigDto struct {
 	Id             uuid.UUID `json:"id"`
@@ -48,14 +48,12 @@ func AdaptContinuousScreeningConfigDto(config models.ContinuousScreeningConfig) 
 }
 
 type ContinuousScreeningMappingFieldDto struct {
-	ObjectField   string    `json:"object_field" binding:"required"`
 	ObjectFieldId uuid.UUID `json:"object_field_id" binding:"required"`
 	FtmProperty   string    `json:"ftm_property" binding:"required"`
 }
 
 func AdaptContinuousScreeningMappingFieldDtoToModel(dto ContinuousScreeningMappingFieldDto) models.ContinuousScreeningMappingField {
 	return models.ContinuousScreeningMappingField{
-		ObjectField:   dto.ObjectField,
 		ObjectFieldId: dto.ObjectFieldId,
 		FtmProperty:   models.FollowTheMoneyPropertyFrom(dto.FtmProperty),
 	}
@@ -200,6 +198,7 @@ type UpdateContinuousScreeningConfigDto struct {
 	Name           *string                               `json:"name"`
 	Description    *string                               `json:"description"`
 	InboxId        *uuid.UUID                            `json:"inbox_id"`
+	InboxName      *string                               `json:"inbox_name"`
 	Algorithm      *string                               `json:"algorithm"`
 	Datasets       *[]string                             `json:"datasets"`
 	MatchThreshold *int                                  `json:"match_threshold"`
@@ -231,6 +230,13 @@ func (dto UpdateContinuousScreeningConfigDto) Validate() error {
 		)
 	}
 
+	if dto.InboxId != nil && dto.InboxName != nil {
+		return errors.Wrap(
+			models.BadParameterError,
+			"only one of inbox_id or inbox_name should be provided",
+		)
+	}
+
 	if dto.ObjectTypes != nil && len(*dto.ObjectTypes) == 0 {
 		return errors.Wrap(
 			models.BadParameterError,
@@ -255,6 +261,7 @@ func AdaptUpdateContinuousScreeningConfigDtoToModel(dto UpdateContinuousScreenin
 		Name:           dto.Name,
 		Description:    dto.Description,
 		InboxId:        dto.InboxId,
+		InboxName:      dto.InboxName,
 		Algorithm:      dto.Algorithm,
 		Datasets:       dto.Datasets,
 		MatchThreshold: dto.MatchThreshold,
