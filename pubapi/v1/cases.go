@@ -150,10 +150,10 @@ func HandleGetCase(uc usecases.Usecases) gin.HandlerFunc {
 }
 
 type CreateCaseParams struct {
-	Inbox     uuid.UUID   `json:"inbox" binding:"required"`
-	Name      string      `json:"name" binding:"required"`
-	Decisions []uuid.UUID `json:"decisions"`
-	Assignee  string      `json:"assignee"`
+	InboxId       string   `json:"inbox_id" binding:"required,uuid"`
+	Name          string   `json:"name" binding:"required"`
+	Decisions     []string `json:"decisions" binding:"omitempty,dive,uuid"`
+	AssigneeEmail string   `json:"assignee_email"`
 }
 
 func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
@@ -177,15 +177,22 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 		caseUsecase := uc.NewCaseUseCase()
 		userUsecase := uc.NewUserUseCase()
 
-		req := models.CreateCaseAttributes{
-			OrganizationId: orgId,
-			InboxId:        params.Inbox,
-			Name:           params.Name,
-			DecisionIds:    pure_utils.Map(params.Decisions, func(id uuid.UUID) string { return id.String() }),
+		inboxId, err := uuid.Parse(params.InboxId)
+		if err != nil {
+			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			return
 		}
 
-		if params.Assignee != "" {
-			user, err := userUsecase.GetUserByEmail(ctx, params.Assignee)
+		req := models.CreateCaseAttributes{
+			OrganizationId: orgId,
+			InboxId:        inboxId,
+			Name:           params.Name,
+			DecisionIds: pure_utils.Map(params.Decisions,
+				func(id string) string { return id }),
+		}
+
+		if params.AssigneeEmail != "" {
+			user, err := userUsecase.GetUserByEmail(ctx, params.AssigneeEmail)
 			if err != nil {
 				pubapi.NewErrorResponse().WithError(err).Serve(c)
 				return
@@ -211,9 +218,9 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 }
 
 type UpdateCaseParams struct {
-	Inbox   uuid.UUID `json:"inbox"`
-	Name    string    `json:"name"`
-	Outcome string    `json:"outcome" binding:"omitempty,oneof=unset confirmed_risk valuable_alert false_positive"`
+	InboxId string `json:"inbox_id" binding:"omitempty,uuid"`
+	Name    string `json:"name"`
+	Outcome string `json:"outcome" binding:"omitempty,oneof=unset confirmed_risk valuable_alert false_positive"`
 }
 
 func HandleUpdateCase(uc usecases.Usecases) gin.HandlerFunc {
@@ -240,8 +247,13 @@ func HandleUpdateCase(uc usecases.Usecases) gin.HandlerFunc {
 			Id: caseId.String(),
 		}
 
-		if params.Inbox != uuid.Nil {
-			req.InboxId = &params.Inbox
+		if params.InboxId != "" {
+			inboxId, err := uuid.Parse(params.InboxId)
+			if err != nil {
+				pubapi.NewErrorResponse().WithError(err).Serve(c)
+				return
+			}
+			req.InboxId = &inboxId
 		}
 		if params.Name != "" {
 			req.Name = params.Name
