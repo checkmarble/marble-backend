@@ -84,7 +84,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 			errors.Wrap(models.BadParameterError, err.Error())
 	}
 
-	// Check if object types is not empty
+	// Check if object types are not empty
 	if len(input.ObjectTypes) == 0 {
 		return models.ContinuousScreeningConfig{},
 			errors.Wrap(models.BadParameterError, "object_types cannot be empty")
@@ -140,13 +140,15 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 		ctx,
 		uc.transactionFactory,
 		func(tx repositories.Transaction) (models.ContinuousScreeningConfig, error) {
-			err = uc.applyMappingConfiguration(ctx, tx, input.MappingConfigs)
-
-			if err := uc.checkDataModelConfiguration(ctx, exec, input.OrgId, input.ObjectTypes); err != nil {
+			if err := uc.applyMappingConfiguration(ctx, tx, input.MappingConfigs); err != nil {
 				return models.ContinuousScreeningConfig{}, err
 			}
 
-			configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx, exec, input)
+			if err := uc.checkDataModelConfiguration(ctx, tx, input.OrgId, input.ObjectTypes); err != nil {
+				return models.ContinuousScreeningConfig{}, err
+			}
+
+			configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx, tx, input)
 			if err != nil {
 				return models.ContinuousScreeningConfig{}, err
 			}
@@ -210,7 +212,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 			return err
 		}
 
-		// Check if all object types has a valid data model configuration
+		// Check if all object types have a valid data model configuration
 		if input.ObjectTypes != nil {
 			if err := uc.checkDataModelConfiguration(ctx, tx, config.OrgId, *input.ObjectTypes); err != nil {
 				return err
