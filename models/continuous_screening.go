@@ -121,3 +121,80 @@ type ListMonitoredObjectsFilters struct {
 	StartDate       *time.Time  // Optional: filter objects created on/after this date
 	EndDate         *time.Time  // Optional: filter objects created on/before this date
 }
+
+type ContinuousScreeningDatasetUpdate struct {
+	Id            uuid.UUID
+	DatasetName   string
+	Version       string
+	DeltaFilePath string
+	CreatedAt     time.Time
+}
+
+type ContinuousScreeningUpdateJobStatus int
+
+const (
+	ContinuousScreeningUpdateJobStatusPending ContinuousScreeningUpdateJobStatus = iota
+	ContinuousScreeningUpdateJobStatusProcessing
+	ContinuousScreeningUpdateJobStatusCompleted
+	ContinuousScreeningUpdateJobStatusFailed
+	ContinuousScreeningUpdateJobStatusUnknown
+)
+
+func ContinuousScreeningUpdateJobStatusFrom(s string) ContinuousScreeningUpdateJobStatus {
+	switch s {
+	case "pending":
+		return ContinuousScreeningUpdateJobStatusPending
+	case "processing":
+		return ContinuousScreeningUpdateJobStatusProcessing
+	case "completed":
+		return ContinuousScreeningUpdateJobStatusCompleted
+	case "failed":
+		return ContinuousScreeningUpdateJobStatusFailed
+	}
+	return ContinuousScreeningUpdateJobStatusUnknown
+}
+
+func (s ContinuousScreeningUpdateJobStatus) String() string {
+	switch s {
+	case ContinuousScreeningUpdateJobStatusPending:
+		return "pending"
+	case ContinuousScreeningUpdateJobStatusProcessing:
+		return "processing"
+	case ContinuousScreeningUpdateJobStatusCompleted:
+		return "completed"
+	case ContinuousScreeningUpdateJobStatusFailed:
+		return "failed"
+	}
+	return "unknown"
+}
+
+// ContinuousScreeningUpdateJob represents a job to process dataset updates
+type ContinuousScreeningUpdateJob struct {
+	Id                uuid.UUID
+	CSDatasetUpdateId uuid.UUID
+	CSConfigId        uuid.UUID
+	OrgId             uuid.UUID
+	Status            ContinuousScreeningUpdateJobStatus
+	TotalLines        int
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+// ContinuousScreeningJobOffset tracks the progress of processing a dataset update
+type ContinuousScreeningJobOffset struct {
+	Id            uuid.UUID
+	CSUpdateJobId uuid.UUID
+	Offset        int64
+	LineProcessed int
+	TotalLines    int
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+// ContinuousScreeningJobError tracks errors encountered during job processing
+type ContinuousScreeningJobError struct {
+	Id            uuid.UUID
+	CSUpdateJobId uuid.UUID
+	Details       json.RawMessage
+	CreatedAt     time.Time
+}
