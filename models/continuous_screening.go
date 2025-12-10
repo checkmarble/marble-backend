@@ -130,6 +130,12 @@ type ContinuousScreeningDatasetUpdate struct {
 	CreatedAt     time.Time
 }
 
+type CreateContinuousScreeningDatasetUpdate struct {
+	DatasetName   string
+	Version       string
+	DeltaFilePath string // In our storage
+}
+
 type ContinuousScreeningUpdateJobStatus int
 
 const (

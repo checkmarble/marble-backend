@@ -130,6 +130,8 @@ func AdaptContinuousScreeningMonitoredObject(dto DBContinuousScreeningMonitoredO
 
 const TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES = "continuous_screening_dataset_updates"
 
+var SelectContinuousScreeningDatasetUpdateColumn = utils.ColumnList[DBContinuousScreeningDatasetUpdate]()
+
 type DBContinuousScreeningDatasetUpdate struct {
 	Id            uuid.UUID `db:"id"`
 	DatasetName   string    `db:"dataset_name"`

@@ -103,6 +103,27 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, err
 	return true, nil
 }
 
+func (repo OpenSanctionsRepository) GetRawCatalog(ctx context.Context) (models.OpenSanctionsRawCatalog, error) {
+	catalogUrl := fmt.Sprintf("%s/catalog", repo.opensanctions.Host())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
+	if err != nil {
+		return models.OpenSanctionsRawCatalog{}, err
+	}
+	resp, err := repo.opensanctions.Client().Do(req)
+	if err != nil {
+		return models.OpenSanctionsRawCatalog{}, err
+	}
+	defer resp.Body.Close()
+
+	var httpCatalog httpmodels.HTTPOpenSanctionCatalogResponse
+	if err := json.NewDecoder(resp.Body).Decode(&httpCatalog); err != nil {
+		return models.OpenSanctionsRawCatalog{}, err
+	}
+
+	return httpmodels.AdaptOpenSanctionCatalogResponse(httpCatalog), nil
+}
+
 func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
 	if cached, ok := OPEN_SANCTIONS_DATASET_CACHE.Get(OPEN_SANCTIONS_CATALOG_CACHE_KEY); ok {
 		return cached, nil

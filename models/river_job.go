@@ -131,3 +131,9 @@ type ContinuousScreeningEvaluateNeedArgs struct {
 func (ContinuousScreeningEvaluateNeedArgs) Kind() string {
 	return "continuous_screening_evaluate_need"
 }
+
+type ContinuousScreeningUpdateDatasetArgs struct{}
+
+func (ContinuousScreeningUpdateDatasetArgs) Kind() string {
+	return "continuous_screening_update_dataset"
+}
