@@ -161,6 +161,7 @@ paths:
         Get case by its ID.
       parameters:
         - name: caseId
+          required: true
           in: path
           schema:
             type: string
@@ -192,6 +193,13 @@ paths:
         Update a case.
 
         Some actions will be available through specific endpoints and will not be updateable from here.
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
       requestBody:
         content:
           application/json:
@@ -240,6 +248,13 @@ paths:
         Close a case with an optional outcome.
 
         This endpoint is idempotent and will result in a no-op if the case is already closed with the same outcome.
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
       requestBody:
         content:
           application/json:
@@ -281,6 +296,13 @@ paths:
         Reopen a closed case.
 
         This endpoint is idempotent and will result in a no-op if the case is still open.
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: Case
@@ -313,6 +335,13 @@ paths:
         This endpoint enforces the following preconditions:
 
           - The source inbox is configured to have an escalation inbox
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: Case
@@ -345,6 +374,12 @@ paths:
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/order"
         - $ref: "#/components/parameters/after"
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: List of comments
@@ -375,6 +410,13 @@ paths:
       summary: Create new case comment
       description: |
         Write a new comment on the provided case.
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
       requestBody:
         content:
           application/json:
@@ -409,6 +451,13 @@ paths:
       summary: List case files
       description: |
         List files that were uploaded and attached to the provided case.
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: List of files
@@ -436,6 +485,13 @@ paths:
       summary: Upload case file
       description: |
         Upload a new file and attach it to an existing case.
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
       requestBody:
         content:
           multipart/form-data:
@@ -480,6 +536,19 @@ paths:
 
            - It will be included in the response body
            - It will be part of a redirect status flow in the response
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+        - name: fileId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
       responses:
         "302":
           $ref: "#/components/responses/302"
@@ -582,9 +651,10 @@ components:
       description: Resource can be downloaded elsewhere
       headers:
         location:
-          description: The download URL of the file. If your HTTP client follows redirects, it will be downloaded directly.
-          schema: string
-          format: url
+          schema: 
+            type: string
+            format: url
+            description: The download URL of the file. If your HTTP client follows redirects, it will be downloaded directly.
       content:
         application/json:
           schema:
