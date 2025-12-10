@@ -83,6 +83,23 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfigsByOrgId(
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
 }
 
+func (repo *MarbleDbRepository) ListContinuousScreeningConfigs(
+	ctx context.Context,
+	exec Executor,
+) ([]models.ContinuousScreeningConfig, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.ContinuousScreeningConfigColumnList...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
+		Where(squirrel.Eq{"enabled": true}).
+		OrderBy("id")
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningConfig)
+}
+
 // `enabled` is set to true by default (see: `20251105100110_continuous_screening_config.sql` migration)
 func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Context, exec Executor,
 	input models.CreateContinuousScreeningConfig,
@@ -590,4 +607,80 @@ func (repo *MarbleDbRepository) UpdateContinuousScreening(
 	}
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreening)
+}
+
+func (repo *MarbleDbRepository) GetLastProcessedVersion(
+	ctx context.Context,
+	exec Executor,
+	datasetName string,
+) (models.ContinuousScreeningDatasetUpdate, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningDatasetUpdate{}, err
+	}
+
+	// Use order by version descending to get the latest version because the version from OpenSanctions use date based versioning
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningDatasetUpdateColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES).
+		Where(squirrel.Eq{"dataset_name": datasetName}).
+		OrderBy("version DESC").
+		Limit(1)
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetUpdate)
+}
+
+func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetUpdate(
+	ctx context.Context,
+	exec Executor,
+	input models.CreateContinuousScreeningDatasetUpdate,
+) (models.ContinuousScreeningDatasetUpdate, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningDatasetUpdate{}, err
+	}
+
+	query := NewQueryBuilder().
+		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES).
+		Suffix("RETURNING *").
+		Columns(
+			"dataset_name",
+			"version",
+			"delta_file_path",
+			"total_items",
+		).
+		Values(
+			input.DatasetName,
+			input.Version,
+			input.DeltaFilePath,
+			input.TotalItems,
+		)
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetUpdate)
+}
+
+func (repo *MarbleDbRepository) CreateContinuousScreeningUpdateJob(
+	ctx context.Context,
+	exec Executor,
+	input models.CreateContinuousScreeningUpdateJob,
+) (models.ContinuousScreeningUpdateJob, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningUpdateJob{}, err
+	}
+
+	query := NewQueryBuilder().
+		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS).
+		Suffix("RETURNING *").
+		Columns(
+			"continuous_screening_dataset_update_id",
+			"continuous_screening_config_id",
+			"org_id",
+			"status",
+		).
+		Values(
+			input.DatasetUpdateId,
+			input.ConfigId,
+			input.OrgId,
+			models.ContinuousScreeningUpdateJobStatusPending.String(),
+		)
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningUpdateJob)
 }

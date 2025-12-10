@@ -30,6 +30,8 @@ var (
 
 type HTTPOpenSanctionCatalogResponse struct {
 	Datasets []HTTPOpenSanctionCatalogDataset `json:"datasets"`
+	Current  []string                         `json:"current"`
+	Outdated []string                         `json:"outdated"`
 }
 
 type HTTPOpenSanctionCatalogDataset struct {
@@ -39,9 +41,32 @@ type HTTPOpenSanctionCatalogDataset struct {
 	IndexVersion *string  `json:"index_version"`
 	Children     []string `json:"children"`
 	Tags         []string `json:"tags"`
+	DeltaUrl     *string  `json:"delta_url"`
+	Version      string   `json:"version"`
 }
 
-func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset, tags *expirable.LRU[string, []string]) models.OpenSanctionsCatalog {
+func AdaptOpenSanctionCatalogResponse(datasets HTTPOpenSanctionCatalogResponse) models.OpenSanctionsRawCatalog {
+	rawCatalog := models.OpenSanctionsRawCatalog{
+		Datasets: make(map[string]models.OpenSanctionsRawDataset, len(datasets.Datasets)),
+		Current:  datasets.Current,
+		Outdated: datasets.Outdated,
+	}
+
+	for _, dataset := range datasets.Datasets {
+		rawCatalog.Datasets[dataset.Name] = models.OpenSanctionsRawDataset{
+			Name:     dataset.Name,
+			Version:  dataset.Version,
+			Load:     dataset.Load,
+			DeltaUrl: dataset.DeltaUrl,
+		}
+	}
+
+	return rawCatalog
+}
+
+func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset,
+	tags *expirable.LRU[string, []string],
+) models.OpenSanctionsCatalog {
 	sections := make(map[string]*models.OpenSanctionsCatalogSection, len(OPEN_SANCTIONS_CONTINENT_CODES))
 	datasetMap := make(map[string]*HTTPOpenSanctionCatalogDataset, len(datasets))
 	loadedDatasets := make(map[string]*set.Set[string])
@@ -56,7 +81,8 @@ func AdaptOpenSanctionCatalog(datasets []HTTPOpenSanctionCatalogDataset, tags *e
 
 	for _, dataset := range datasets {
 		if dataset.Load {
-			findLoadedDatasets(dataset.IndexVersion != nil, loadedDatasets, set.New[string](0), datasetMap, &dataset)
+			findLoadedDatasets(dataset.IndexVersion != nil, loadedDatasets,
+				set.New[string](0), datasetMap, &dataset)
 		}
 	}
 
@@ -183,4 +209,8 @@ func regionFromDatasetName(name string) (string, string) {
 	}
 
 	return "other", "Others"
+}
+
+type HTTPOpenSanctionDeltaList struct {
+	Versions map[string]string `json:"versions"`
 }

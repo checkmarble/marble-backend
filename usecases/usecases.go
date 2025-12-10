@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/usecases/billing"
+	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
 	"github.com/checkmarble/marble-backend/usecases/organization"
@@ -40,6 +41,7 @@ type Usecases struct {
 	firebaseAdmin               idp.Adminer
 	aiAgentConfig               infra.AIAgentConfiguration
 	analyticsConfig             infra.AnalyticsConfig
+	datasetDeltafileBucketUrl   string
 }
 
 type Option func(*options)
@@ -156,6 +158,12 @@ func WithAIAgentConfig(config infra.AIAgentConfiguration) Option {
 	}
 }
 
+func WithDatasetDeltafileBucketUrl(bucket string) Option {
+	return func(o *options) {
+		o.datasetDeltafileBucketUrl = bucket
+	}
+}
+
 type options struct {
 	appName                     string
 	apiVersion                  string
@@ -174,6 +182,7 @@ type options struct {
 	firebaseClient              idp.Adminer
 	aiAgentConfig               infra.AIAgentConfiguration
 	analyticsConfig             infra.AnalyticsConfig
+	datasetDeltafileBucketUrl   string
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -199,6 +208,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		firebaseAdmin:               o.firebaseClient,
 		aiAgentConfig:               o.aiAgentConfig,
 		analyticsConfig:             o.analyticsConfig,
+		datasetDeltafileBucketUrl:   o.datasetDeltafileBucketUrl,
 	}
 }
 
@@ -439,5 +449,23 @@ func (usecases *Usecases) NewBillingUsecase() billing.BillingUsecase {
 func (usecases *Usecases) NewSendBillingEventWorker() *billing.SendLagoBillingEventWorker {
 	return billing.NewSendLagoBillingEventWorker(
 		usecases.Repositories.LagoRepository,
+	)
+}
+
+func (usecases *Usecases) NewContinuousScreeningScanDatasetUpdatesWorker() *continuous_screening.ScanDatasetUpdatesWorker {
+	return continuous_screening.NewScanDatasetUpdatesWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.OpenSanctionsRepository,
+		usecases.Repositories.BlobRepository,
+		usecases.Repositories.TaskQueueRepository,
+		usecases.datasetDeltafileBucketUrl,
+	)
+}
+
+func (usecases *Usecases) NewContinuousScreeningApplyDeltaFileWorker() *continuous_screening.ApplyDeltaFileWorker {
+	return continuous_screening.NewApplyDeltaFileWorker(
+		usecases.NewExecutorFactory(),
 	)
 }

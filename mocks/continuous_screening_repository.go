@@ -42,6 +42,41 @@ func (m *ContinuousScreeningRepository) GetContinuousScreeningConfigByStableId(
 	return args.Get(0).(models.ContinuousScreeningConfig), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) GetLastProcessedVersion(
+	ctx context.Context,
+	exec repositories.Executor,
+	datasetName string,
+) (models.ContinuousScreeningDatasetUpdate, error) {
+	args := m.Called(ctx, exec, datasetName)
+	return args.Get(0).(models.ContinuousScreeningDatasetUpdate), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) CreateContinuousScreeningDatasetUpdate(
+	ctx context.Context,
+	exec repositories.Executor,
+	input models.CreateContinuousScreeningDatasetUpdate,
+) (models.ContinuousScreeningDatasetUpdate, error) {
+	args := m.Called(ctx, exec, input)
+	return args.Get(0).(models.ContinuousScreeningDatasetUpdate), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) ListContinuousScreeningConfigs(
+	ctx context.Context,
+	exec repositories.Executor,
+) ([]models.ContinuousScreeningConfig, error) {
+	args := m.Called(ctx, exec)
+	return args.Get(0).([]models.ContinuousScreeningConfig), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) CreateContinuousScreeningUpdateJob(
+	ctx context.Context,
+	exec repositories.Executor,
+	input models.CreateContinuousScreeningUpdateJob,
+) (models.ContinuousScreeningUpdateJob, error) {
+	args := m.Called(ctx, exec, input)
+	return args.Get(0).(models.ContinuousScreeningUpdateJob), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) ListContinuousScreeningConfigByObjectType(
 	ctx context.Context,
 	exec repositories.Executor,

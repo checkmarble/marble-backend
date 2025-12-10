@@ -122,3 +122,13 @@ func (m *TaskQueueRepository) EnqueueContinuousScreeningEvaluateNeedTask(
 	args := m.Called(ctx, tx, orgId, objectType, objectIds)
 	return args.Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueContinuousScreeningApplyDeltaFileTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	orgId uuid.UUID,
+	updateId uuid.UUID,
+) error {
+	args := m.Called(ctx, tx, orgId, updateId)
+	return args.Error(0)
+}
