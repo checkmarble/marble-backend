@@ -60,7 +60,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.40.0
 	github.com/tidwall/gjson v1.18.0
-	github.com/vearne/gin-timeout v0.2.2
+	github.com/vearne/gin-timeout v0.2.3
 	go.opentelemetry.io/contrib/detectors/gcp v1.38.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.63.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
