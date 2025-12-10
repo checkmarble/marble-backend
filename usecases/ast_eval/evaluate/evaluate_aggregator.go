@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/cockroachdb/errors"
 
@@ -29,6 +30,9 @@ var ValidTypesForAggregator = map[ast.Aggregator][]models.DataType{
 	ast.AGGREGATOR_MAX:            {models.Int, models.Float, models.Timestamp},
 	ast.AGGREGATOR_MIN:            {models.Int, models.Float, models.Timestamp},
 	ast.AGGREGATOR_SUM:            {models.Int, models.Float},
+	ast.AGGREGATOR_STDDEV:         {models.Int, models.Float},
+	ast.AGGREGATOR_PERCENTILE:     {models.Int, models.Float},
+	ast.AGGREGATOR_MEDIAN:         {models.Int, models.Float},
 }
 
 func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
@@ -112,7 +116,23 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 		}
 	}
 
-	result, err := a.runQueryInRepository(ctx, tableName, fieldName, fieldType, aggregator, filtersWithType)
+	options := make(map[string]any)
+
+	switch aggregator {
+	case ast.AGGREGATOR_PERCENTILE:
+		arg, err := AdaptNamedArgument(arguments.NamedArgs, "percentile", adaptArgumentToString)
+		if err != nil {
+			return MakeEvaluateError(errors.Wrap(ast.NewNamedArgumentError("percentile"), "missing or invalid value for percentile"))
+		}
+		fPct, err := strconv.ParseFloat(arg, 64)
+		if err != nil {
+			return MakeEvaluateError(errors.Wrap(ast.NewNamedArgumentError("percentile"), "invalid float value for percentile"))
+		}
+
+		options["percentile"] = fPct
+	}
+
+	result, err := a.runQueryInRepository(ctx, tableName, fieldName, fieldType, aggregator, filtersWithType, options)
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err, "Error running aggregation query in repository"))
 	}
@@ -131,6 +151,7 @@ func (a AggregatorEvaluator) runQueryInRepository(
 	fieldType models.DataType,
 	aggregator ast.Aggregator,
 	filters []models.FilterWithType,
+	options map[string]any,
 ) (any, error) {
 	if a.ReturnFakeValue {
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)
@@ -141,7 +162,7 @@ func (a AggregatorEvaluator) runQueryInRepository(
 		return nil, err
 	}
 	return a.IngestedDataReadRepository.QueryAggregatedValue(ctx, db, tableName,
-		fieldName, fieldType, aggregator, filters)
+		fieldName, fieldType, aggregator, filters, options)
 }
 
 func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator) (any, []error) {
@@ -150,7 +171,7 @@ func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator
 		return 0.0, nil
 	case ast.AGGREGATOR_COUNT, ast.AGGREGATOR_COUNT_DISTINCT:
 		return 0, nil
-	case ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN:
+	case ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN, ast.AGGREGATOR_STDDEV, ast.AGGREGATOR_PERCENTILE, ast.AGGREGATOR_MEDIAN:
 		return nil, nil
 	default:
 		return MakeEvaluateError(errors.Wrap(ast.ErrRuntimeExpression,

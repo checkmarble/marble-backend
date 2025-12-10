@@ -79,7 +79,7 @@ func DryRunQueryAggregatedValue(datamodel models.DataModel, tableName string, fi
 	switch aggregator {
 	case ast.AGGREGATOR_COUNT, ast.AGGREGATOR_COUNT_DISTINCT:
 		return 10, nil
-	case ast.AGGREGATOR_SUM, ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN:
+	case ast.AGGREGATOR_SUM, ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN, ast.AGGREGATOR_STDDEV, ast.AGGREGATOR_PERCENTILE, ast.AGGREGATOR_MEDIAN:
 		return DryRunValue("Aggregator", fmt.Sprintf("%s.%s", tableName, fieldName), field), nil
 	default:
 		return nil, errors.New(fmt.Sprintf("aggregator %s not supported", aggregator))
