@@ -127,7 +127,15 @@ type ContinuousScreeningDatasetUpdate struct {
 	DatasetName   string
 	Version       string
 	DeltaFilePath string
+	TotalItems    int
 	CreatedAt     time.Time
+}
+
+type CreateContinuousScreeningDatasetUpdate struct {
+	DatasetName   string
+	Version       string
+	DeltaFilePath string // In our storage
+	TotalItems    int
 }
 
 type ContinuousScreeningUpdateJobStatus int
@@ -170,31 +178,35 @@ func (s ContinuousScreeningUpdateJobStatus) String() string {
 
 // ContinuousScreeningUpdateJob represents a job to process dataset updates
 type ContinuousScreeningUpdateJob struct {
-	Id                uuid.UUID
-	CSDatasetUpdateId uuid.UUID
-	CSConfigId        uuid.UUID
-	OrgId             uuid.UUID
-	Status            ContinuousScreeningUpdateJobStatus
-	TotalLines        int
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	Id              uuid.UUID
+	DatasetUpdateId uuid.UUID
+	ConfigId        uuid.UUID
+	OrgId           uuid.UUID
+	Status          ContinuousScreeningUpdateJobStatus
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+type CreateContinuousScreeningUpdateJob struct {
+	DatasetUpdateId uuid.UUID
+	ConfigId        uuid.UUID
+	OrgId           uuid.UUID
 }
 
 // ContinuousScreeningJobOffset tracks the progress of processing a dataset update
 type ContinuousScreeningJobOffset struct {
-	Id            uuid.UUID
-	CSUpdateJobId uuid.UUID
-	Offset        int64
-	LineProcessed int
-	TotalLines    int
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	Id             uuid.UUID
+	UpdateJobId    uuid.UUID
+	Offset         int64
+	ItemsProcessed int
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // ContinuousScreeningJobError tracks errors encountered during job processing
 type ContinuousScreeningJobError struct {
-	Id            uuid.UUID
-	CSUpdateJobId uuid.UUID
-	Details       json.RawMessage
-	CreatedAt     time.Time
+	Id          uuid.UUID
+	UpdateJobId uuid.UUID
+	Details     json.RawMessage
+	CreatedAt   time.Time
 }

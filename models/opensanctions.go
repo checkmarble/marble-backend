@@ -12,6 +12,23 @@ import (
 
 const OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
 
+// Row structure representing a dataset in the OpenSanctions catalog
+// Note: I didn't declare all fields, only those needed for our logic, don't hesitate to add more if needed
+type OpenSanctionsRawDataset struct {
+	Name     string
+	Version  string
+	Load     bool
+	DeltaUrl *string
+}
+
+// Define a raw catalog structure, close to the OpenSanctions API response
+// compared to the OpenSanctionsCatalog struct
+type OpenSanctionsRawCatalog struct {
+	Datasets map[string]OpenSanctionsRawDataset
+	Current  []string
+	Outdated []string
+}
+
 type OpenSanctionsCatalog struct {
 	Sections []OpenSanctionsCatalogSection
 	Tags     *expirable.LRU[string, []string]

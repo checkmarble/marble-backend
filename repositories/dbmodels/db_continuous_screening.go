@@ -130,11 +130,14 @@ func AdaptContinuousScreeningMonitoredObject(dto DBContinuousScreeningMonitoredO
 
 const TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES = "continuous_screening_dataset_updates"
 
+var SelectContinuousScreeningDatasetUpdateColumn = utils.ColumnList[DBContinuousScreeningDatasetUpdate]()
+
 type DBContinuousScreeningDatasetUpdate struct {
 	Id            uuid.UUID `db:"id"`
 	DatasetName   string    `db:"dataset_name"`
 	Version       string    `db:"version"`
 	DeltaFilePath string    `db:"delta_file_path"`
+	TotalItems    int       `db:"total_items"`
 	CreatedAt     time.Time `db:"created_at"`
 }
 
@@ -144,6 +147,7 @@ func AdaptContinuousScreeningDatasetUpdate(dto DBContinuousScreeningDatasetUpdat
 		DatasetName:   dto.DatasetName,
 		Version:       dto.Version,
 		DeltaFilePath: dto.DeltaFilePath,
+		TotalItems:    dto.TotalItems,
 		CreatedAt:     dto.CreatedAt,
 	}, nil
 }
@@ -153,26 +157,24 @@ const TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS = "continuous_screening_update_jobs
 var SelectContinuousScreeningUpdateJobColumn = utils.ColumnList[DBContinuousScreeningUpdateJob]()
 
 type DBContinuousScreeningUpdateJob struct {
-	Id                uuid.UUID `db:"id"`
-	CSDatasetUpdateId uuid.UUID `db:"cs_dataset_update_id"` // ref to continuous_screening_dataset_updates.id
-	CSConfigId        uuid.UUID `db:"cs_config_id"`         // ref to continuous_screening_configs.id
-	OrgId             uuid.UUID `db:"org_id"`
-	Status            string    `db:"status"`
-	TotalLines        int       `db:"total_lines"`
-	CreatedAt         time.Time `db:"created_at"`
-	UpdatedAt         time.Time `db:"updated_at"`
+	Id                                 uuid.UUID `db:"id"`
+	ContinuousScreeningDatasetUpdateId uuid.UUID `db:"continuous_screening_dataset_update_id"`
+	ContinuousScreeningConfigId        uuid.UUID `db:"continuous_screening_config_id"`
+	OrgId                              uuid.UUID `db:"org_id"`
+	Status                             string    `db:"status"`
+	CreatedAt                          time.Time `db:"created_at"`
+	UpdatedAt                          time.Time `db:"updated_at"`
 }
 
 func AdaptContinuousScreeningUpdateJob(dto DBContinuousScreeningUpdateJob) (models.ContinuousScreeningUpdateJob, error) {
 	return models.ContinuousScreeningUpdateJob{
-		Id:                dto.Id,
-		CSDatasetUpdateId: dto.CSDatasetUpdateId,
-		CSConfigId:        dto.CSConfigId,
-		OrgId:             dto.OrgId,
-		Status:            models.ContinuousScreeningUpdateJobStatusFrom(dto.Status),
-		TotalLines:        dto.TotalLines,
-		CreatedAt:         dto.CreatedAt,
-		UpdatedAt:         dto.UpdatedAt,
+		Id:              dto.Id,
+		DatasetUpdateId: dto.ContinuousScreeningDatasetUpdateId,
+		ConfigId:        dto.ContinuousScreeningConfigId,
+		OrgId:           dto.OrgId,
+		Status:          models.ContinuousScreeningUpdateJobStatusFrom(dto.Status),
+		CreatedAt:       dto.CreatedAt,
+		UpdatedAt:       dto.UpdatedAt,
 	}, nil
 }
 
@@ -181,24 +183,22 @@ const TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS = "continuous_screening_job_offsets
 var SelectContinuousScreeningJobOffsetColumn = utils.ColumnList[DBContinuousScreeningJobOffset]()
 
 type DBContinuousScreeningJobOffset struct {
-	Id            uuid.UUID `db:"id"`
-	CSUpdateJobId uuid.UUID `db:"cs_update_job_id"` // ref to continuous_screening_update_jobs.id
-	Offset        int64     `db:"offset"`           // Byte offset in the delta file
-	LineProcessed int       `db:"line_processed"`   // Number of lines processed
-	TotalLines    int       `db:"total_lines"`      // Total number of lines in the delta file (????)
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
+	Id                             uuid.UUID `db:"id"`
+	ContinuousScreeningUpdateJobId uuid.UUID `db:"continuous_screening_update_job_id"`
+	Offset                         int64     `db:"offset"`          // Byte offset in the delta file
+	ItemsProcessed                 int       `db:"items_processed"` // Number of items processed
+	CreatedAt                      time.Time `db:"created_at"`
+	UpdatedAt                      time.Time `db:"updated_at"`
 }
 
 func AdaptContinuousScreeningJobOffset(dto DBContinuousScreeningJobOffset) (models.ContinuousScreeningJobOffset, error) {
 	return models.ContinuousScreeningJobOffset{
-		Id:            dto.Id,
-		CSUpdateJobId: dto.CSUpdateJobId,
-		Offset:        dto.Offset,
-		LineProcessed: dto.LineProcessed,
-		TotalLines:    dto.TotalLines,
-		CreatedAt:     dto.CreatedAt,
-		UpdatedAt:     dto.UpdatedAt,
+		Id:             dto.Id,
+		UpdateJobId:    dto.ContinuousScreeningUpdateJobId,
+		Offset:         dto.Offset,
+		ItemsProcessed: dto.ItemsProcessed,
+		CreatedAt:      dto.CreatedAt,
+		UpdatedAt:      dto.UpdatedAt,
 	}, nil
 }
 
@@ -207,17 +207,17 @@ const TABLE_CONTINUOUS_SCREENING_JOB_ERRORS = "continuous_screening_job_errors"
 var SelectContinuousScreeningJobErrorColumn = utils.ColumnList[DBContinuousScreeningJobError]()
 
 type DBContinuousScreeningJobError struct {
-	Id            uuid.UUID       `db:"id"`
-	CSUpdateJobId uuid.UUID       `db:"cs_update_job_id"` // ref to continuous_screening_update_jobs.id
-	Details       json.RawMessage `db:"details"`
-	CreatedAt     time.Time       `db:"created_at"`
+	Id                             uuid.UUID       `db:"id"`
+	ContinuousScreeningUpdateJobId uuid.UUID       `db:"continuous_screening_update_job_id"`
+	Details                        json.RawMessage `db:"details"`
+	CreatedAt                      time.Time       `db:"created_at"`
 }
 
 func AdaptContinuousScreeningJobError(dto DBContinuousScreeningJobError) (models.ContinuousScreeningJobError, error) {
 	return models.ContinuousScreeningJobError{
-		Id:            dto.Id,
-		CSUpdateJobId: dto.CSUpdateJobId,
-		Details:       dto.Details,
-		CreatedAt:     dto.CreatedAt,
+		Id:          dto.Id,
+		UpdateJobId: dto.ContinuousScreeningUpdateJobId,
+		Details:     dto.Details,
+		CreatedAt:   dto.CreatedAt,
 	}, nil
 }
