@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const DefaultContinuousScreeningAlgorithm = "logic-v1"
+const DefaultContinuousScreeningAlgorithm = "best"
 
 type ContinuousScreeningConfigDto struct {
 	Id             uuid.UUID `json:"id"`

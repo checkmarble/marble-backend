@@ -71,13 +71,15 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 	}
 
 	// Check if the algorithm is valid
-	algorithms, err := uc.screeningProvider.GetAlgorithms(ctx)
-	if err != nil {
-		return models.ContinuousScreeningConfig{}, err
-	}
-	if _, err := algorithms.GetAlgorithm(input.Algorithm); err != nil {
-		return models.ContinuousScreeningConfig{},
-			errors.Wrap(models.BadParameterError, err.Error())
+	if input.Algorithm != "best" {
+		algorithms, err := uc.screeningProvider.GetAlgorithms(ctx)
+		if err != nil {
+			return models.ContinuousScreeningConfig{}, err
+		}
+		if _, err := algorithms.GetAlgorithm(input.Algorithm); err != nil {
+			return models.ContinuousScreeningConfig{},
+				errors.Wrap(models.BadParameterError, err.Error())
+		}
 	}
 
 	// Check if object types are not empty
