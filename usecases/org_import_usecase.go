@@ -31,6 +31,8 @@ type OrgImportUsecase struct {
 	publicationUsecase   *ScenarioPublicationUsecase
 	inboxRepository      InboxRepository
 	workflowRepository   workflowRepository
+
+	ingestionUsecase IngestionUseCase
 }
 
 func NewOrgImportUsecase(
@@ -49,6 +51,7 @@ func NewOrgImportUsecase(
 	publicationUsecase *ScenarioPublicationUsecase,
 	inboxRepository InboxRepository,
 	workflowRepository workflowRepository,
+	ingestionUsecase IngestionUseCase,
 ) OrgImportUsecase {
 	return OrgImportUsecase{
 		transactionWrapper:   wrapper,
@@ -66,14 +69,26 @@ func NewOrgImportUsecase(
 		publicationUsecase:   publicationUsecase,
 		inboxRepository:      inboxRepository,
 		workflowRepository:   workflowRepository,
+		ingestionUsecase:     ingestionUsecase,
 	}
 }
 
-func (uc OrgImportUsecase) Import(ctx context.Context, spec dto.OrgImport) (uuid.UUID, error) {
+func (uc OrgImportUsecase) Import(ctx context.Context, spec dto.OrgImport, seed bool) (uuid.UUID, error) {
 	// TODO: what permissions are required to do this?
 
 	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (uuid.UUID, error) {
-		return uc.createOrganization(ctx, tx, spec)
+		orgId, err := uc.createOrganization(ctx, tx, spec)
+		if err != nil {
+			return orgId, err
+		}
+
+		if seed {
+			if err := uc.Seed(ctx, spec, orgId); err != nil {
+				return orgId, nil
+			}
+		}
+
+		return orgId, nil
 	})
 }
 
@@ -90,7 +105,17 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 		return uuid.Nil, err
 	}
 
-	*uc = uc.transactionWrapper(tx, org).NewOrgImportUsecase()
+	admins, err := uc.createAdmins(ctx, tx, orgId, spec.Admins)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	admin, err := uc.userRepository.UserById(ctx, tx, admins[0])
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	*uc = uc.transactionWrapper(tx, org, admin).NewOrgImportUsecase()
 
 	err = uc.orgRepository.UpdateOrganization(ctx, tx, models.UpdateOrganizationInput{
 		Id:                      orgId,
@@ -104,9 +129,6 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 		return uuid.Nil, err
 	}
 
-	if err := uc.createAdmins(ctx, tx, orgId, spec.Admins); err != nil {
-		return uuid.Nil, err
-	}
 	if err := uc.createDataModel(ctx, tx, nil, orgId, ids, spec.DataModel); err != nil {
 		return uuid.Nil, err
 	}
@@ -129,9 +151,11 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 	return orgId, nil
 }
 
-func (uc OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, admins []dto.CreateUser) error {
-	for _, admin := range admins {
-		_, err := uc.userRepository.CreateUser(ctx, tx, models.CreateUser{
+func (uc OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, admins []dto.CreateUser) ([]string, error) {
+	users := make([]string, len(admins))
+
+	for idx, admin := range admins {
+		user, err := uc.userRepository.CreateUser(ctx, tx, models.CreateUser{
 			OrganizationId: orgId,
 			Email:          admin.Email,
 			FirstName:      admin.FirstName,
@@ -139,11 +163,13 @@ func (uc OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Tra
 			Role:           models.ADMIN,
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
+
+		users[idx] = user
 	}
 
-	return nil
+	return users, nil
 }
 
 func (uc OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.Transaction, clientDbExec repositories.Executor, orgId uuid.UUID, ids map[string]string, dataModel dto.ImportDataModel) error {
