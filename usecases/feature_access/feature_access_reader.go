@@ -59,8 +59,7 @@ func (f FeatureAccessReader) GetOrganizationFeatureAccess(
 		return models.OrganizationFeatureAccess{}, err
 	}
 
-	dbStoredFeatureAccess, err := f.repository.GetOrganizationFeatureAccess(ctx,
-		f.executorFactory.NewExecutor(), organizationId)
+	dbStoredFeatureAccess, err := f.repository.GetOrganizationFeatureAccess(ctx, f.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return models.OrganizationFeatureAccess{}, err
 	}
