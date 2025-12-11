@@ -22,11 +22,6 @@ const (
 	INDEX_DELETION_DRY_RUN         = true
 )
 
-var indexRolloverWhitelistPrefixes = []string{
-	"uniq_idx",
-	"nav_",
-}
-
 func NewIndexDeletionPeriodicJob(orgId string) *river.PeriodicJob {
 	return river.NewPeriodicJob(
 		river.PeriodicInterval(INDEX_DELETION_WORKER_INTERVAL),
@@ -131,9 +126,6 @@ IndexDeletion:
 			continue
 		}
 		if strings.HasSuffix(index.Name(), "_pkey") {
-			continue
-		}
-		if slices.Contains(indexRolloverWhitelistPrefixes, index.Name()) {
 			continue
 		}
 
