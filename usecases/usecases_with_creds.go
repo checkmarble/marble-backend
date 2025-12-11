@@ -25,16 +25,23 @@ type UsecasesWithCreds struct {
 	Credentials models.Credentials
 }
 
-type UsecaseTransactionWrapper func(tx repositories.Transaction, org models.Organization) *UsecasesWithCreds
+type UsecaseTransactionWrapper func(tx repositories.Transaction, org models.Organization, user models.User) *UsecasesWithCreds
 
 // Used to recreate the whole usecase hierarchy from a transaction for Marble
-// database and and organization for the ingested data database.
-func (usecases *UsecasesWithCreds) NewWithRootExecutor(tx repositories.Transaction, org models.Organization) *UsecasesWithCreds {
+// database and and organization for the ingested data database, impersonating
+// the provided user.
+func (usecases *UsecasesWithCreds) NewWithRootImpersonatedExecutor(tx repositories.Transaction, org models.Organization, user models.User) *UsecasesWithCreds {
 	executorFactory := executor_factory.NewIdentityExecutorFactory(tx, usecases.Repositories.ExecutorGetter, org)
 
 	return &UsecasesWithCreds{
-		Usecases:    usecases.Usecases.WithRootExecutor(executorFactory),
-		Credentials: usecases.Credentials,
+		Usecases: usecases.Usecases.WithRootExecutor(executorFactory),
+		Credentials: models.Credentials{
+			OrganizationId: org.Id,
+			Role:           usecases.Credentials.Role,
+			ActorIdentity: models.Identity{
+				UserId: user.UserId,
+			},
+		},
 	}
 }
 
@@ -957,7 +964,7 @@ func (usecases *UsecasesWithCreds) NewPublicApiAdapterUsecase() PublicApiAdapter
 
 func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 	return NewOrgImportUsecase(
-		usecases.NewWithRootExecutor,
+		usecases.NewWithRootImpersonatedExecutor,
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
@@ -972,5 +979,6 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 		usecases.NewScenarioPublicationUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.NewIngestionUseCase(),
 	)
 }

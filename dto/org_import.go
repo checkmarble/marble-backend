@@ -11,6 +11,8 @@ type OrgImport struct {
 	CustomLists []ImportCustomList `json:"custom_lists"`
 	Inboxes     []InboxDto         `json:"inboxes"`
 	Workflows   []ImportWorkflow   `json:"workflows"`
+
+	Seeds ImportSeeds `json:"seeds"`
 }
 
 type ImportOrg struct {
@@ -47,4 +49,21 @@ type ImportWorkflow struct {
 	ScenarioId uuid.UUID              `json:"scenario_id"`
 	Conditions []WorkflowConditionDto `json:"conditions"`
 	Actions    []WorkflowActionDto    `json:"actions"`
+}
+
+type ImportSeeds struct {
+	Ingestion map[string]ImportSeedsIngestion `json:"ingestion"`
+}
+
+type ImportSeedsIngestion struct {
+	Count  int                         `json:"count"`
+	Fields map[string]ImportSeedsField `json:"fields"`
+}
+
+type ImportSeedsField struct {
+	Constant   any       `json:"constant"`
+	Enum       []any     `json:"enum"`
+	IntRange   []int     `json:"int_range"`
+	FloatRange []float64 `json:"float_range"`
+	Generator  string    `json:"generator"`
 }
