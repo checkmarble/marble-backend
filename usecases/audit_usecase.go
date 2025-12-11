@@ -12,6 +12,7 @@ import (
 
 type auditRepository interface {
 	ListAuditEvents(ctx context.Context, exec repositories.Executor, pagination models.PaginationAndSorting, filters dto.AuditEventFilters) ([]models.AuditEvent, error)
+	DownloadAuditEvents(ctx context.Context, exec repositories.Executor, filters dto.AuditEventFilters) (models.ChannelOfModels[models.AuditEvent], error)
 }
 
 type AuditUsecase struct {
@@ -53,4 +54,21 @@ func (uc AuditUsecase) ListAuditEvents(ctx context.Context, filters dto.AuditEve
 		Items:       events[:min(filters.Limit, len(events))],
 		HasNextPage: len(events) > filters.Limit,
 	}, nil
+}
+
+func (uc AuditUsecase) DownloadAuditEvents(ctx context.Context, filters dto.AuditEventFilters) (models.ChannelOfModels[models.AuditEvent], error) {
+	if uc.license.LicenseValidationCode != models.VALID {
+		return models.ChannelOfModels[models.AuditEvent]{}, models.MissingLicenseEntitlementError
+	}
+
+	if err := uc.enforceSecurity.ReadAuditEvents(); err != nil {
+		return models.ChannelOfModels[models.AuditEvent]{}, err
+	}
+
+	events, err := uc.repository.DownloadAuditEvents(ctx, uc.executorFactory.NewExecutor(), filters)
+	if err != nil {
+		return models.ChannelOfModels[models.AuditEvent]{}, err
+	}
+
+	return events, nil
 }

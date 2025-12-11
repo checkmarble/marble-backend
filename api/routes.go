@@ -409,6 +409,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	}
 
 	router.GET("/admin/audit-events", tom, handleListAuditEvents(uc))
+	router.GET(AuditEventDownloadPath, handleListAuditEvents(uc)) // No timeout middleware on purpose, it prevents streaming.
 }
 
 func runStandaloneAnalyticsRoutes(router gin.IRoutes, conf Configuration, uc usecases.Usecases, auth utils.Authentication) {
