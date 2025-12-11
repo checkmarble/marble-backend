@@ -16,7 +16,7 @@ type AuditEventFilters struct {
 	ApiKeyId string    `form:"api_key_id"`
 	Table    string    `form:"table"`
 	EntityId string    `form:"entity_id"`
-	Limit    int       `form:"limit" binding:"omitempty,gte=1,lte=100"`
+	Limit    int       `form:"limit" binding:"omitempty,gte=1"`
 	After    string    `form:"after"`
 }
 
