@@ -2,9 +2,9 @@ package dto
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
@@ -20,8 +20,8 @@ type ContinuousScreeningMatch struct {
 	Status                string          `json:"status"`
 	Payload               json.RawMessage `json:"payload"`
 	ReviewedBy            *uuid.UUID      `json:"reviewed_by"`
-	CreatedAt             time.Time       `json:"created_at"`
-	UpdatedAt             time.Time       `json:"updated_at"`
+	CreatedAt             pubapi.DateTime `json:"created_at"`
+	UpdatedAt             pubapi.DateTime `json:"updated_at"`
 }
 
 func AdaptContinuousScreeningMatch(m models.ContinuousScreeningMatch) ContinuousScreeningMatch {
@@ -32,8 +32,8 @@ func AdaptContinuousScreeningMatch(m models.ContinuousScreeningMatch) Continuous
 		Status:                m.Status.String(),
 		Payload:               m.Payload,
 		ReviewedBy:            m.ReviewedBy,
-		CreatedAt:             m.CreatedAt,
-		UpdatedAt:             m.UpdatedAt,
+		CreatedAt:             pubapi.DateTime(m.CreatedAt),
+		UpdatedAt:             pubapi.DateTime(m.UpdatedAt),
 	}
 }
 
@@ -52,8 +52,8 @@ type ContinuousScreening struct {
 	Partial                           bool                       `json:"partial"`
 	NumberOfMatches                   int                        `json:"number_of_matches"`
 	Matches                           []ContinuousScreeningMatch `json:"matches"`
-	CreatedAt                         time.Time                  `json:"created_at"`
-	UpdatedAt                         time.Time                  `json:"updated_at"`
+	CreatedAt                         pubapi.DateTime            `json:"created_at"`
+	UpdatedAt                         pubapi.DateTime            `json:"updated_at"`
 }
 
 func AdaptContinuousScreening(m models.ContinuousScreeningWithMatches) ContinuousScreening {
@@ -74,7 +74,7 @@ func AdaptContinuousScreening(m models.ContinuousScreeningWithMatches) Continuou
 		Partial:         m.IsPartial,
 		NumberOfMatches: m.NumberOfMatches,
 		Matches:         pure_utils.Map(m.Matches, AdaptContinuousScreeningMatch),
-		CreatedAt:       m.CreatedAt,
-		UpdatedAt:       m.UpdatedAt,
+		CreatedAt:       pubapi.DateTime(m.CreatedAt),
+		UpdatedAt:       pubapi.DateTime(m.UpdatedAt),
 	}
 }

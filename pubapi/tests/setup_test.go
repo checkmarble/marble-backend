@@ -112,7 +112,19 @@ func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContaine
 		t.Fatal(err)
 	}
 
-	setupClientDbSchema(t, ctx, conn, dsn)
+	setupClientDbSchema(t, ctx, conn)
+
+	fixturesClient, err := testfixtures.New(
+		testfixtures.Database(conn),
+		testfixtures.Dialect("postgres"),
+		testfixtures.Directory("fixtures/client"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixturesClient.Load(); err != nil {
+		t.Fatal(err)
+	}
 
 	return pg
 }
@@ -120,7 +132,7 @@ func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContaine
 // setupClientDbSchema creates the client DB schema and tables for organization "ACME" (default org created by fixtures)
 // This includes the data model table (account) and continuous screening tables
 // Those tables are created by code when creating a new organization, we don't have migration file for them
-func setupClientDbSchema(t *testing.T, ctx context.Context, conn *sql.DB, dsn string) {
+func setupClientDbSchema(t *testing.T, ctx context.Context, conn *sql.DB) {
 	t.Helper()
 
 	// Based on the organization created in fixtures/base/organizations.yml
@@ -187,27 +199,6 @@ func setupClientDbSchema(t *testing.T, ctx context.Context, conn *sql.DB, dsn st
 		)
 	`, schemaName))
 	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Load client data using testfixtures with search_path set to client schema
-	// Use connection string parameter to set search_path for all connections in the pool
-	clientDsn := dsn + "&search_path=\"org-ACME\""
-	clientConn, err := sql.Open("pgx", clientDsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer clientConn.Close()
-
-	clientFixtures, err := testfixtures.New(
-		testfixtures.Database(clientConn),
-		testfixtures.Dialect("postgres"),
-		testfixtures.Directory("fixtures/client"),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := clientFixtures.Load(); err != nil {
 		t.Fatal(err)
 	}
 }
