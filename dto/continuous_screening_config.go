@@ -108,8 +108,8 @@ func AdaptContinuousScreeningMappingConfigDtoToModel(dto ContinuousScreeningMapp
 type CreateContinuousScreeningConfigDto struct {
 	Name           string                                `json:"name" binding:"required"`
 	Description    string                                `json:"description"`
-	InboxId        *uuid.UUID                            `json:"inbox_id"`
-	InboxName      *string                               `json:"inbox_name"`
+	InboxId        *uuid.UUID                            `json:"inbox_id" binding:"required_without_all=InboxName,excluded_with=InboxName"`
+	InboxName      *string                               `json:"inbox_name" binding:"required_without_all=InboxId,excluded_with=InboxId"`
 	Algorithm      *string                               `json:"algorithm"`
 	Datasets       []string                              `json:"datasets" binding:"required"`
 	MatchThreshold int                                   `json:"match_threshold" binding:"required"`
@@ -140,17 +140,10 @@ func (dto CreateContinuousScreeningConfigDto) Validate() error {
 		)
 	}
 
-	if dto.InboxId == nil && (dto.InboxName == nil || *dto.InboxName == "") {
+	if dto.InboxName != nil && *dto.InboxName == "" {
 		return errors.Wrap(
 			models.BadParameterError,
-			"either inbox_id or inbox_name must be provided",
-		)
-	}
-
-	if dto.InboxId != nil && dto.InboxName != nil {
-		return errors.Wrap(
-			models.BadParameterError,
-			"only one of inbox_id or inbox_name should be provided",
+			"inbox_name cannot be empty",
 		)
 	}
 
@@ -197,8 +190,8 @@ func AdaptCreateContinuousScreeningConfigDtoToModel(dto CreateContinuousScreenin
 type UpdateContinuousScreeningConfigDto struct {
 	Name           *string                               `json:"name"`
 	Description    *string                               `json:"description"`
-	InboxId        *uuid.UUID                            `json:"inbox_id"`
-	InboxName      *string                               `json:"inbox_name"`
+	InboxId        *uuid.UUID                            `json:"inbox_id" binding:"required_without_all=InboxName,excluded_with=InboxName"`
+	InboxName      *string                               `json:"inbox_name" binding:"required_without_all=InboxId,excluded_with=InboxId"`
 	Algorithm      *string                               `json:"algorithm"`
 	Datasets       *[]string                             `json:"datasets"`
 	MatchThreshold *int                                  `json:"match_threshold"`
@@ -230,10 +223,10 @@ func (dto UpdateContinuousScreeningConfigDto) Validate() error {
 		)
 	}
 
-	if dto.InboxId != nil && dto.InboxName != nil {
+	if dto.InboxName != nil && *dto.InboxName == "" {
 		return errors.Wrap(
 			models.BadParameterError,
-			"only one of inbox_id or inbox_name should be provided",
+			"inbox_name cannot be empty",
 		)
 	}
 
