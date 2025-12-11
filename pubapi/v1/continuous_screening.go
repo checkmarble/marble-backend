@@ -19,10 +19,6 @@ func HandleCreateContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
-		if err := param.Validate(); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
-			return
-		}
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
 		continuousScreening, err := uc.CreateContinuousScreeningObject(

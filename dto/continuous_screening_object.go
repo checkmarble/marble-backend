@@ -5,33 +5,14 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
 type CreateContinuousScreeningObjectDto struct {
 	ObjectType     string           `json:"object_type" binding:"required"`
 	ConfigStableId uuid.UUID        `json:"config_stable_id" binding:"required"`
-	ObjectId       *string          `json:"object_id"`
-	ObjectPayload  *json.RawMessage `json:"object_payload"`
-}
-
-func (dto CreateContinuousScreeningObjectDto) Validate() error {
-	if dto.ObjectId == nil && dto.ObjectPayload == nil {
-		return errors.Wrap(
-			models.BadParameterError,
-			"object_id or object_payload is required",
-		)
-	}
-
-	if dto.ObjectId != nil && dto.ObjectPayload != nil {
-		return errors.Wrap(
-			models.BadParameterError,
-			"object_id and object_payload cannot be provided together",
-		)
-	}
-
-	return nil
+	ObjectId       *string          `json:"object_id" binding:"required_without_all=ObjectPayload,excluded_with=ObjectPayload"`
+	ObjectPayload  *json.RawMessage `json:"object_payload" binding:"required_without_all=ObjectId,excluded_with=ObjectId"`
 }
 
 func AdaptCreateContinuousScreeningObjectDto(dto CreateContinuousScreeningObjectDto) models.CreateContinuousScreeningObject {
