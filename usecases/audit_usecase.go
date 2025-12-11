@@ -11,7 +11,7 @@ import (
 )
 
 type auditRepository interface {
-	ListAuditEvents(ctx context.Context, exec repositories.Executor, filters dto.AuditEventFilters) ([]models.AuditEvent, error)
+	ListAuditEvents(ctx context.Context, exec repositories.Executor, pagination models.PaginationAndSorting, filters dto.AuditEventFilters) ([]models.AuditEvent, error)
 }
 
 type AuditUsecase struct {
@@ -30,14 +30,27 @@ func NewAuditUsecase(enforceSecurity security.EnforceSecurityAudit, executorFact
 	}
 }
 
-func (uc AuditUsecase) ListAuditEvents(ctx context.Context, filters dto.AuditEventFilters) ([]models.AuditEvent, error) {
+func (uc AuditUsecase) ListAuditEvents(ctx context.Context, filters dto.AuditEventFilters) (models.Paginated[models.AuditEvent], error) {
 	if uc.license.LicenseValidationCode != models.VALID {
-		return nil, models.MissingLicenseEntitlementError
+		return models.Paginated[models.AuditEvent]{}, models.MissingLicenseEntitlementError
 	}
 
 	if err := uc.enforceSecurity.ReadAuditEvents(); err != nil {
-		return nil, err
+		return models.Paginated[models.AuditEvent]{}, err
 	}
 
-	return uc.repository.ListAuditEvents(ctx, uc.executorFactory.NewExecutor(), filters)
+	pagination := models.PaginationAndSorting{
+		Limit:    filters.Limit + 1,
+		OffsetId: filters.After,
+	}
+
+	events, err := uc.repository.ListAuditEvents(ctx, uc.executorFactory.NewExecutor(), pagination, filters)
+	if err != nil {
+		return models.Paginated[models.AuditEvent]{}, err
+	}
+
+	return models.Paginated[models.AuditEvent]{
+		Items:       events[:min(filters.Limit, len(events))],
+		HasNextPage: len(events) > filters.Limit,
+	}, nil
 }

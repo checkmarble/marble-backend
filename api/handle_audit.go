@@ -28,6 +28,10 @@ func handleListAuditEvents(uc usecases.Usecases) gin.HandlerFunc {
 
 		filters.OrgId = uuid.MustParse(orgId)
 
+		if filters.Limit == 0 {
+			filters.Limit = 10
+		}
+
 		uc := usecasesWithCreds(ctx, uc)
 		auditUsecase := uc.NewAuditUsecase()
 
@@ -36,6 +40,9 @@ func handleListAuditEvents(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, pure_utils.Map(events, dto.AdaptAuditEvent))
+		c.JSON(http.StatusOK, dto.PaginatedAuditEvents{
+			Events:      pure_utils.Map(events.Items, dto.AdaptAuditEvent),
+			HasNextPage: events.HasNextPage,
+		})
 	}
 }

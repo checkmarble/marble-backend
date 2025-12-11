@@ -12,13 +12,13 @@ import (
 func (repo MarbleDbRepository) GetAuditEvent(ctx context.Context, exec Executor, id string) (models.AuditEvent, error) {
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectAuditEventColumns...).
-		From(dbmodels.TABLE_AUDIT_EVENTS+" ae").
+		From(dbmodels.TABLE_AUDIT_EVENTS).
 		Where("id = ?", id)
 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptAuditEvent)
 }
 
-func (repo MarbleDbRepository) ListAuditEvents(ctx context.Context, exec Executor, filters dto.AuditEventFilters) ([]models.AuditEvent, error) {
+func (repo MarbleDbRepository) ListAuditEvents(ctx context.Context, exec Executor, pagination models.PaginationAndSorting, filters dto.AuditEventFilters) ([]models.AuditEvent, error) {
 	query := NewQueryBuilder().
 		Select(append(
 			columnsNames("ae", dbmodels.SelectAuditEventColumns),
@@ -31,10 +31,10 @@ func (repo MarbleDbRepository) ListAuditEvents(ctx context.Context, exec Executo
 		Where("ae.org_id = ?", filters.OrgId).
 		Where("ae.created_at between ? and ?", filters.From, filters.To).
 		OrderBy("ae.created_at desc, id desc").
-		Limit(10)
+		Limit(uint64(pagination.Limit))
 
-	if filters.After != "" {
-		cursor, err := repo.GetAuditEvent(ctx, exec, filters.After)
+	if pagination.OffsetId != "" {
+		cursor, err := repo.GetAuditEvent(ctx, exec, pagination.OffsetId)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not retrieve cursor event")
 		}
