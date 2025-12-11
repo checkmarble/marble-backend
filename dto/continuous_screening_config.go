@@ -108,8 +108,7 @@ func AdaptContinuousScreeningMappingConfigDtoToModel(dto ContinuousScreeningMapp
 type CreateContinuousScreeningConfigDto struct {
 	Name           string                                `json:"name" binding:"required"`
 	Description    string                                `json:"description"`
-	InboxId        *uuid.UUID                            `json:"inbox_id" binding:"required_without_all=InboxName,excluded_with=InboxName"`
-	InboxName      *string                               `json:"inbox_name" binding:"required_without_all=InboxId,excluded_with=InboxId"`
+	InboxId        uuid.UUID                             `json:"inbox_id"`
 	Algorithm      *string                               `json:"algorithm"`
 	Datasets       []string                              `json:"datasets" binding:"required"`
 	MatchThreshold int                                   `json:"match_threshold" binding:"required"`
@@ -140,13 +139,6 @@ func (dto CreateContinuousScreeningConfigDto) Validate() error {
 		)
 	}
 
-	if dto.InboxName != nil && *dto.InboxName == "" {
-		return errors.Wrap(
-			models.BadParameterError,
-			"inbox_name cannot be empty",
-		)
-	}
-
 	if len(dto.ObjectTypes) == 0 {
 		return errors.Wrap(
 			models.BadParameterError,
@@ -173,7 +165,6 @@ func AdaptCreateContinuousScreeningConfigDtoToModel(dto CreateContinuousScreenin
 	return models.CreateContinuousScreeningConfig{
 		Name:           dto.Name,
 		InboxId:        dto.InboxId,
-		InboxName:      dto.InboxName,
 		Description:    dto.Description,
 		Algorithm:      *dto.Algorithm,
 		Datasets:       dto.Datasets,
@@ -190,8 +181,7 @@ func AdaptCreateContinuousScreeningConfigDtoToModel(dto CreateContinuousScreenin
 type UpdateContinuousScreeningConfigDto struct {
 	Name           *string                               `json:"name"`
 	Description    *string                               `json:"description"`
-	InboxId        *uuid.UUID                            `json:"inbox_id" binding:"required_without_all=InboxName,excluded_with=InboxName"`
-	InboxName      *string                               `json:"inbox_name" binding:"required_without_all=InboxId,excluded_with=InboxId"`
+	InboxId        *uuid.UUID                            `json:"inbox_id"`
 	Algorithm      *string                               `json:"algorithm"`
 	Datasets       *[]string                             `json:"datasets"`
 	MatchThreshold *int                                  `json:"match_threshold"`
@@ -223,13 +213,6 @@ func (dto UpdateContinuousScreeningConfigDto) Validate() error {
 		)
 	}
 
-	if dto.InboxName != nil && *dto.InboxName == "" {
-		return errors.Wrap(
-			models.BadParameterError,
-			"inbox_name cannot be empty",
-		)
-	}
-
 	if dto.ObjectTypes != nil && len(*dto.ObjectTypes) == 0 {
 		return errors.Wrap(
 			models.BadParameterError,
@@ -254,7 +237,6 @@ func AdaptUpdateContinuousScreeningConfigDtoToModel(dto UpdateContinuousScreenin
 		Name:           dto.Name,
 		Description:    dto.Description,
 		InboxId:        dto.InboxId,
-		InboxName:      dto.InboxName,
 		Algorithm:      dto.Algorithm,
 		Datasets:       dto.Datasets,
 		MatchThreshold: dto.MatchThreshold,

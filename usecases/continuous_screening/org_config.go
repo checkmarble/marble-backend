@@ -105,52 +105,36 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 		ctx,
 		uc.transactionFactory,
 		func(tx repositories.Transaction) (models.ContinuousScreeningConfig, error) {
-			scopedInput := input
 			var inbox models.Inbox
 			var err error
-			if scopedInput.InboxId != nil {
-				// Check if the inbox exists
-				inbox, err = uc.inboxReader.GetInboxById(ctx, tx, *scopedInput.InboxId)
-				if err != nil {
-					if errors.Is(err, models.NotFoundError) {
-						return models.ContinuousScreeningConfig{},
-							errors.Wrap(models.BadParameterError, "inbox not found for the organization")
-					}
-					return models.ContinuousScreeningConfig{}, err
-				}
-				if inbox.OrganizationId != scopedInput.OrgId.String() {
+			// Check if the inbox exists
+			inbox, err = uc.inboxReader.GetInboxById(ctx, tx, input.InboxId)
+			if err != nil {
+				if errors.Is(err, models.NotFoundError) {
 					return models.ContinuousScreeningConfig{},
 						errors.Wrap(models.BadParameterError, "inbox not found for the organization")
 				}
-				if inbox.Status != models.InboxStatusActive {
-					return models.ContinuousScreeningConfig{},
-						errors.Wrap(models.BadParameterError, "inbox is not active")
-				}
-			} else if scopedInput.InboxName != nil {
-				// Create a new inbox
-				inbox, err = uc.inboxEditor.CreateInboxWithExecutor(
-					ctx,
-					tx,
-					models.CreateInboxInput{
-						Name:           *scopedInput.InboxName,
-						OrganizationId: scopedInput.OrgId.String(),
-					})
-				if err != nil {
-					return models.ContinuousScreeningConfig{}, err
-				}
-				scopedInput.InboxId = &inbox.Id
+				return models.ContinuousScreeningConfig{}, err
+			}
+			if inbox.OrganizationId != input.OrgId.String() {
+				return models.ContinuousScreeningConfig{},
+					errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+			}
+			if inbox.Status != models.InboxStatusActive {
+				return models.ContinuousScreeningConfig{},
+					errors.Wrap(models.BadParameterError, "inbox is not active")
 			}
 
-			if err := uc.applyMappingConfiguration(ctx, tx, scopedInput.OrgId,
-				scopedInput.MappingConfigs); err != nil {
+			if err := uc.applyMappingConfiguration(ctx, tx, input.OrgId,
+				input.MappingConfigs); err != nil {
 				return models.ContinuousScreeningConfig{}, err
 			}
 
-			if err := uc.checkDataModelConfiguration(ctx, tx, scopedInput.OrgId, scopedInput.ObjectTypes); err != nil {
+			if err := uc.checkDataModelConfiguration(ctx, tx, input.OrgId, input.ObjectTypes); err != nil {
 				return models.ContinuousScreeningConfig{}, err
 			}
 
-			configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx, tx, scopedInput)
+			configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx, tx, input)
 			if err != nil {
 				return models.ContinuousScreeningConfig{}, err
 			}
@@ -169,7 +153,6 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 		ctx,
 		uc.transactionFactory,
 		func(tx repositories.Transaction) (models.ContinuousScreeningConfig, error) {
-			scopedInput := input
 			config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, tx, stableId)
 			if err != nil {
 				return models.ContinuousScreeningConfig{}, err
@@ -179,20 +162,13 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 				return models.ContinuousScreeningConfig{}, err
 			}
 
-			if !isUpdateDifferent(config, scopedInput) {
+			if !isUpdateDifferent(config, input) {
 				return config, nil
 			}
 
 			// Deal with inbox changes, in case we need to create a new inbox, add the new ID in scopedInput.InboxId to be used
-			// when creating the new config via createUpdatedConfig
-			if scopedInput.InboxId != nil && scopedInput.InboxName != nil {
-				return models.ContinuousScreeningConfig{}, errors.Wrap(
-					models.BadParameterError,
-					"only one of inbox_id or inbox_name should be provided",
-				)
-			}
-			if scopedInput.InboxId != nil && *scopedInput.InboxId != config.InboxId {
-				inbox, err := uc.inboxReader.GetInboxById(ctx, tx, *scopedInput.InboxId)
+			if input.InboxId != nil && *input.InboxId != config.InboxId {
+				inbox, err := uc.inboxReader.GetInboxById(ctx, tx, *input.InboxId)
 				if err != nil {
 					if errors.Is(err, models.NotFoundError) {
 						return models.ContinuousScreeningConfig{},
@@ -205,28 +181,14 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 						errors.Wrap(models.BadParameterError, "inbox not found for the organization")
 				}
 			}
-			if scopedInput.InboxName != nil {
-				// Create a new inbox
-				inbox, err := uc.inboxEditor.CreateInboxWithExecutor(
-					ctx,
-					tx,
-					models.CreateInboxInput{
-						Name:           *scopedInput.InboxName,
-						OrganizationId: config.OrgId.String(),
-					})
-				if err != nil {
-					return models.ContinuousScreeningConfig{}, err
-				}
-				scopedInput.InboxId = utils.Ptr(inbox.Id)
-			}
 
 			// Check if the algorithm is valid
-			if scopedInput.Algorithm != nil {
+			if input.Algorithm != nil {
 				algorithms, err := uc.screeningProvider.GetAlgorithms(ctx)
 				if err != nil {
 					return models.ContinuousScreeningConfig{}, err
 				}
-				if _, err := algorithms.GetAlgorithm(*scopedInput.Algorithm); err != nil {
+				if _, err := algorithms.GetAlgorithm(*input.Algorithm); err != nil {
 					return models.ContinuousScreeningConfig{},
 						errors.Wrap(models.BadParameterError, err.Error())
 				}
@@ -238,21 +200,21 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 				ctx,
 				tx,
 				config.OrgId,
-				scopedInput.MappingConfigs,
+				input.MappingConfigs,
 			); err != nil {
 				return models.ContinuousScreeningConfig{}, err
 			}
 
 			// Check if all object types have a valid data model configuration
 			// Check if we only add new object types, not remove existing ones
-			if scopedInput.ObjectTypes != nil {
-				if !pure_utils.AllElementsIn(config.ObjectTypes, *scopedInput.ObjectTypes) {
+			if input.ObjectTypes != nil {
+				if !pure_utils.AllElementsIn(config.ObjectTypes, *input.ObjectTypes) {
 					return models.ContinuousScreeningConfig{}, errors.Wrap(
 						models.BadParameterError,
 						"removing object types is not allowed during update",
 					)
 				}
-				if err := uc.checkDataModelConfiguration(ctx, tx, config.OrgId, *scopedInput.ObjectTypes); err != nil {
+				if err := uc.checkDataModelConfiguration(ctx, tx, config.OrgId, *input.ObjectTypes); err != nil {
 					return models.ContinuousScreeningConfig{}, err
 				}
 			}
@@ -268,8 +230,11 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 			}
 
 			// Create a new config with the same stable ID
-			return uc.repository.CreateContinuousScreeningConfig(ctx, tx,
-				createUpdatedConfig(config, scopedInput))
+			return uc.repository.CreateContinuousScreeningConfig(
+				ctx,
+				tx,
+				createUpdatedConfig(config, input),
+			)
 		})
 }
 
@@ -299,7 +264,7 @@ func isUpdateDifferent(currentConfig models.ContinuousScreeningConfig, updateInp
 	if updateInput.Name == nil && updateInput.Description == nil && updateInput.Algorithm == nil &&
 		updateInput.Datasets == nil && updateInput.MatchThreshold == nil &&
 		updateInput.MatchLimit == nil && updateInput.ObjectTypes == nil &&
-		updateInput.InboxId == nil && updateInput.InboxName == nil && len(updateInput.MappingConfigs) == 0 {
+		updateInput.InboxId == nil && len(updateInput.MappingConfigs) == 0 {
 		return false
 	}
 
@@ -331,19 +296,12 @@ func isUpdateDifferent(currentConfig models.ContinuousScreeningConfig, updateInp
 	if updateInput.InboxId != nil && *updateInput.InboxId != currentConfig.InboxId {
 		return true
 	}
-	// Ask to create a new inbox and attached to the config
-	if updateInput.InboxName != nil {
-		return true
-	}
 	return false
 }
 
 func createUpdatedConfig(config models.ContinuousScreeningConfig,
 	updateInput models.UpdateContinuousScreeningConfig,
 ) models.CreateContinuousScreeningConfig {
-	if updateInput.InboxId == nil {
-		updateInput.InboxId = &config.InboxId
-	}
 	return models.CreateContinuousScreeningConfig{
 		OrgId:          config.OrgId,
 		StableId:       config.StableId,
@@ -354,7 +312,7 @@ func createUpdatedConfig(config models.ContinuousScreeningConfig,
 		MatchThreshold: pure_utils.PtrValueOrDefault(updateInput.MatchThreshold, config.MatchThreshold),
 		MatchLimit:     pure_utils.PtrValueOrDefault(updateInput.MatchLimit, config.MatchLimit),
 		ObjectTypes:    pure_utils.PtrSliceValueOrDefault(updateInput.ObjectTypes, config.ObjectTypes),
-		InboxId:        updateInput.InboxId,
+		InboxId:        pure_utils.PtrValueOrDefault(updateInput.InboxId, config.InboxId),
 	}
 }
 

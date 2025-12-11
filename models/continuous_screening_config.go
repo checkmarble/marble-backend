@@ -50,8 +50,7 @@ type ContinuousScreeningMappingConfig struct {
 type CreateContinuousScreeningConfig struct {
 	OrgId          uuid.UUID
 	StableId       uuid.UUID
-	InboxId        *uuid.UUID
-	InboxName      *string
+	InboxId        uuid.UUID
 	Name           string
 	Description    string
 	Algorithm      string
@@ -64,7 +63,6 @@ type CreateContinuousScreeningConfig struct {
 
 type UpdateContinuousScreeningConfig struct {
 	InboxId        *uuid.UUID
-	InboxName      *string
 	Name           *string
 	Description    *string
 	Algorithm      *string
