@@ -17,6 +17,8 @@ servers:
 tags:
   - name: Cases
     description: Routes for cases
+  - name: Continuous Screenings
+    description: Routes for continuous screenings
 paths:
   /cases:
     get:
@@ -364,7 +366,7 @@ paths:
           $ref: "#/components/responses/413"
 
     post:
-      operation: createCaseComment
+      operationId: createCaseComment
       tags:
         - Cases
       security:
@@ -425,7 +427,7 @@ paths:
           $ref: "#/components/responses/400"
 
     post:
-      operation: uploadCaseFile
+      operationId: uploadCaseFile
       tags:
         - Cases
       security:
@@ -481,6 +483,89 @@ paths:
       responses:
         "302":
           $ref: "#/components/responses/302"
+  
+  /continuous-screenings/objects:
+    post:
+      summary: Add an object under continuous screening with given configuration
+      operationId: addContinuousScreeningObject
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      tags:
+        - Continuous Screenings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - object_type
+                - config_stable_id
+              properties:
+                object_type:
+                  type: string
+                config_stable_id:
+                  type: string
+                  format: uuid
+                object_id:
+                  type: string
+                object_payload:
+                  type: object
+              oneOf:
+                - required:
+                    - object_id
+                - required:
+                    - object_payload
+      responses:
+        '201':
+          description: Created monitored object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContinuousScreening'
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '409':
+          $ref: '#/components/responses/409'
+
+    delete:
+      summary: Remove an object from continuous screening
+      operationId: removeContinuousScreeningObject
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      tags:
+        - Continuous Screenings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+                type: object
+                required:
+                  - object_type
+                  - object_id
+                  - config_stable_id
+                properties:
+                  object_type:
+                    type: string
+                  object_id:
+                    type: string
+                  config_stable_id:
+                    type: string
+                    format: uuid
+      responses:
+        '204':
+          description: Monitored object deleted
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
 
 components:
   securitySchemes:
@@ -720,5 +805,177 @@ components:
         filename:
           type: string
         created_at:
+          type: string
+          format: date-time
+
+    ScreeningEntity:
+      type: string
+      enum:
+        [
+          'Thing',
+          'Address',
+          'Airplane',
+          'Asset',
+          'Associate',
+          'Company',
+          'CryptoWallet',
+          'Debt',
+          'Directorship',
+          'Employment',
+          'Family',
+          'Identification',
+          'LegalEntity',
+          'Membership',
+          'Occupancy',
+          'Organization',
+          'Ownership',
+          'Passport',
+          'Payment',
+          'Person',
+          'Position',
+          'PublicBody',
+          'Representation',
+          'Sanction',
+          'Security',
+          'Succession',
+          'UnknownLink',
+          'Vessel',
+          'Vehicle',
+        ]
+    ScreeningQuery:
+      type: object
+      required:
+        - schema
+        - properties
+      properties:
+        schema:
+          $ref: '#/components/schemas/ScreeningEntity'
+        properties:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    ScreeningRequest:
+      type: object
+      required:
+        - search_input
+      properties:
+        search_input:
+          type: object
+          required:
+            - queries
+          properties:
+            queries:
+              type: object
+              additionalProperties:
+                $ref: '#/components/schemas/ScreeningQuery'
+
+    ContinuousScreeningMatch:
+      type: object
+      required:
+        - id
+        - continuous_screening_id
+        - opensanction_entity_id
+        - status
+        - payload
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        continuous_screening_id:
+          type: string
+          format: uuid
+        opensanction_entity_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - confirmed_hit
+            - no_hit
+            - skipped
+        payload:
+          type: object
+        reviewed_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ContinuousScreening:
+      type: object
+      required:
+        - id
+        - org_id
+        - continuous_screening_config_id
+        - continuous_screening_config_stable_id
+        - object_type
+        - object_id
+        - object_internal_id
+        - status
+        - trigger_type
+        - request
+        - partial
+        - number_of_matches
+        - matches
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        org_id:
+          type: string
+          format: uuid
+        continuous_screening_config_id:
+          type: string
+          format: uuid
+        continuous_screening_config_stable_id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        object_type:
+          type: string
+        object_id:
+          type: string
+        object_internal_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - in_review
+            - error
+            - confirmed_hit
+            - no_hit
+        trigger_type:
+          type: string
+          enum:
+            - object_added
+            - object_updated
+            - dataset_updated
+        request:
+          $ref: '#/components/schemas/ScreeningRequest'
+        partial:
+          type: boolean
+        number_of_matches:
+          type: integer
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContinuousScreeningMatch'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
           type: string
           format: date-time

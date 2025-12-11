@@ -112,7 +112,95 @@ func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContaine
 		t.Fatal(err)
 	}
 
+	setupClientDbSchema(t, ctx, conn)
+
+	fixturesClient, err := testfixtures.New(
+		testfixtures.Database(conn),
+		testfixtures.Dialect("postgres"),
+		testfixtures.Directory("fixtures/client"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixturesClient.Load(); err != nil {
+		t.Fatal(err)
+	}
+
 	return pg
+}
+
+// setupClientDbSchema creates the client DB schema and tables for organization "ACME" (default org created by fixtures)
+// This includes the data model table (account) and continuous screening tables
+// Those tables are created by code when creating a new organization, we don't have migration file for them
+func setupClientDbSchema(t *testing.T, ctx context.Context, conn *sql.DB) {
+	t.Helper()
+
+	// Based on the organization created in fixtures/base/organizations.yml
+	schemaName := "\"org-ACME\""
+
+	// Create the PostgreSQL schema
+	_, err := conn.ExecContext(ctx, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schemaName))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create the "account" table in the client schema
+	// See fixtures/data_model_tables.yml for the data model table definition
+	_, err = conn.ExecContext(ctx, fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS %s.account (
+			id UUID NOT NULL PRIMARY KEY,
+			object_id TEXT NOT NULL,
+			updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+			valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+			valid_until TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT 'INFINITY',
+			name TEXT,
+			country TEXT
+		)
+	`, schemaName))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create the _monitored_objects table for continuous screening
+	_, err = conn.ExecContext(ctx, fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS %s._monitored_objects (
+			id UUID NOT NULL PRIMARY KEY,
+			object_type TEXT NOT NULL,
+			object_id TEXT NOT NULL,
+			config_stable_id UUID NOT NULL,
+			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+		)
+	`, schemaName))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create unique index for _monitored_objects
+	_, err = conn.ExecContext(ctx, fmt.Sprintf(`
+		CREATE UNIQUE INDEX IF NOT EXISTS uniq_idx_config_object_type_id_monitored_objects 
+		ON %s._monitored_objects (config_stable_id, object_type, object_id)
+	`, schemaName))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create the _monitored_objects_audit table
+	_, err = conn.ExecContext(ctx, fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS %s._monitored_objects_audit (
+			id UUID NOT NULL PRIMARY KEY,
+			object_type TEXT NOT NULL,
+			object_id TEXT NOT NULL,
+			config_stable_id UUID NOT NULL,
+			action TEXT NOT NULL,
+			user_id UUID,
+			api_key_id UUID,
+			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+			extra JSONB
+		)
+	`, schemaName))
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func setupApi(t *testing.T, ctx context.Context, dsn string) string {
