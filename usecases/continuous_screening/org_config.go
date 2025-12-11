@@ -374,12 +374,16 @@ func (uc *ContinuousScreeningUsecase) applyMappingConfiguration(
 			return errors.Wrapf(models.BadParameterError,
 				"table %s not found in data model", mapping.ObjectType)
 		}
-		if table.FTMEntity != nil && *table.FTMEntity != mapping.FtmEntity {
-			return errors.Wrapf(models.BadParameterError,
-				"table %s is already mapped", mapping.ObjectType)
-		} else if table.FTMEntity != nil && *table.FTMEntity == mapping.FtmEntity {
-			// Do nothing
+		if table.FTMEntity != nil {
+			if *table.FTMEntity == mapping.FtmEntity {
+				// Already mapped correctly, skip
+			} else {
+				// Already mapped to a different entity, error
+				return errors.Wrapf(models.BadParameterError,
+					"table %s is already mapped", mapping.ObjectType)
+			}
 		} else {
+			// Table is not mapped yet, update it
 			err = uc.repository.UpdateDataModelTable(
 				ctx,
 				exec,
@@ -398,25 +402,28 @@ func (uc *ContinuousScreeningUsecase) applyMappingConfiguration(
 				return errors.Wrapf(models.BadParameterError,
 					"field %s not found in table %s", fieldMapping.ObjectFieldId.String(), mapping.ObjectType)
 			}
-			if field.FTMProperty != nil && *field.FTMProperty != fieldMapping.FtmProperty {
+			if field.FTMProperty != nil {
+				if *field.FTMProperty == fieldMapping.FtmProperty {
+					// Already mapped correctly, skip
+					continue
+				}
+				// Already mapped to a different property, error
 				return errors.Wrapf(models.BadParameterError,
 					"field %s in table %s is already mapped",
 					fieldMapping.ObjectFieldId.String(), mapping.ObjectType)
-			} else if field.FTMProperty != nil && *field.FTMProperty == fieldMapping.FtmProperty {
-				// Do nothing
-				continue
-			} else {
-				err = uc.repository.UpdateDataModelField(
-					ctx,
-					exec,
-					fieldMapping.ObjectFieldId.String(),
-					models.UpdateFieldInput{
-						FTMProperty: pure_utils.NullFrom(fieldMapping.FtmProperty),
-					},
-				)
-				if err != nil {
-					return err
-				}
+			}
+
+			// Field is not mapped yet, update it
+			err = uc.repository.UpdateDataModelField(
+				ctx,
+				exec,
+				fieldMapping.ObjectFieldId.String(),
+				models.UpdateFieldInput{
+					FTMProperty: pure_utils.NullFrom(fieldMapping.FtmProperty),
+				},
+			)
+			if err != nil {
+				return err
 			}
 		}
 	}
