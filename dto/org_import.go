@@ -21,9 +21,10 @@ type ImportOrg struct {
 }
 
 type ImportDataModel struct {
-	Tables []Table        `json:"tables"`
-	Links  []LinkToSingle `json:"links"`
-	Pivots []Pivot        `json:"pivots"`
+	Tables            []Table                                `json:"tables"`
+	Links             []LinkToSingle                         `json:"links"`
+	Pivots            []Pivot                                `json:"pivots"`
+	NavigationOptions map[string]CreateNavigationOptionInput `json:"navigation_options"`
 }
 
 type ImportTag struct {
@@ -53,6 +54,7 @@ type ImportWorkflow struct {
 
 type ImportSeeds struct {
 	Ingestion map[string]ImportSeedsIngestion `json:"ingestion"`
+	Decisions map[string]int                  `json:"decisions"`
 }
 
 type ImportSeedsIngestion struct {
