@@ -593,3 +593,48 @@ func (repo *MarbleDbRepository) UpdateContinuousScreening(
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreening)
 }
+
+func (repo *MarbleDbRepository) GetLastProcessedVersion(
+	ctx context.Context,
+	exec Executor,
+	datasetName string,
+) (models.ContinuousScreeningDatasetUpdate, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningDatasetUpdate{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningDatasetUpdateColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES).
+		Where(squirrel.Eq{"dataset_name": datasetName}).
+		OrderBy("created_at DESC").
+		Limit(1)
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetUpdate)
+}
+
+func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetUpdate(
+	ctx context.Context,
+	exec Executor,
+	input models.CreateContinuousScreeningDatasetUpdate,
+) (models.ContinuousScreeningDatasetUpdate, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningDatasetUpdate{}, err
+	}
+
+	query := NewQueryBuilder().
+		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES).
+		Suffix("RETURNING *").
+		Columns(
+			"dataset_name",
+			"version",
+			"delta_file_path",
+		).
+		Values(
+			input.DatasetName,
+			input.Version,
+			input.DeltaFilePath,
+		)
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetUpdate)
+}

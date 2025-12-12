@@ -222,3 +222,11 @@ func QueueAnalyticsMerge() map[string]river.QueueConfig {
 	}
 	return queues
 }
+
+func QueueContinuousScreeningDatasetUpdate() map[string]river.QueueConfig {
+	queues := make(map[string]river.QueueConfig, 1)
+	queues[models.CONTINUOUS_SCREENING_DATASET_UPDATE_QUEUE_NAME] = river.QueueConfig{
+		MaxWorkers: 1,
+	}
+	return queues
+}
