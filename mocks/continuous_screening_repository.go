@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/google/uuid"
 )
@@ -259,6 +260,27 @@ func (m *ContinuousScreeningRepository) UpdateContinuousScreening(
 ) (models.ContinuousScreening, error) {
 	args := m.Called(ctx, exec, id, input)
 	return args.Get(0).(models.ContinuousScreening), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) UpdateDataModelTable(
+	ctx context.Context,
+	exec repositories.Executor,
+	tableID string,
+	description *string,
+	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
+) error {
+	args := m.Called(ctx, exec, tableID, description, ftmEntity)
+	return args.Error(0)
+}
+
+func (m *ContinuousScreeningRepository) UpdateDataModelField(
+	ctx context.Context,
+	exec repositories.Executor,
+	fieldId string,
+	input models.UpdateFieldInput,
+) error {
+	args := m.Called(ctx, exec, fieldId, input)
+	return args.Error(0)
 }
 
 type ContinuousScreeningClientDbRepository struct {

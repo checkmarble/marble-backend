@@ -832,6 +832,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.NewCaseUseCase(),
 		utils.Ptr(usecases.NewInboxReader()),
+		utils.Ptr(usecases.NewInboxUsecase()),
 	)
 }
 

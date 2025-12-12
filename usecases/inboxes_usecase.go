@@ -87,29 +87,42 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Inbox, error) {
-			if err := usecase.enforceSecurity.CreateInbox(input.OrganizationId); err != nil {
-				return models.Inbox{}, err
-			}
-
-			newInboxIdStr := pure_utils.NewPrimaryKey(input.OrganizationId)
-			newInboxUUID, err := uuid.Parse(newInboxIdStr)
-			if err != nil {
-				return models.Inbox{}, errors.Wrap(err, "failed to parse new inbox ID")
-			}
-			if err := usecase.inboxRepository.CreateInbox(ctx, tx, input, newInboxUUID); err != nil {
-				return models.Inbox{}, err
-			}
-
-			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, newInboxUUID)
-			return inbox, err
+			return usecase.CreateInboxWithExecutor(ctx, tx, input)
 		})
 	if err != nil {
 		return models.Inbox{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsInboxCreated, map[string]interface{}{
+	return inbox, nil
+}
+
+func (usecase *InboxUsecase) CreateInboxWithExecutor(
+	ctx context.Context,
+	exec repositories.Executor,
+	input models.CreateInboxInput,
+) (models.Inbox, error) {
+	if err := usecase.enforceSecurity.CreateInbox(input.OrganizationId); err != nil {
+		return models.Inbox{}, err
+	}
+
+	newInboxIdStr := pure_utils.NewPrimaryKey(input.OrganizationId)
+	newInboxUUID, err := uuid.Parse(newInboxIdStr)
+	if err != nil {
+		return models.Inbox{}, errors.Wrap(err, "failed to parse new inbox ID")
+	}
+	if err := usecase.inboxRepository.CreateInbox(ctx, exec, input, newInboxUUID); err != nil {
+		return models.Inbox{}, err
+	}
+
+	inbox, err := usecase.inboxRepository.GetInboxById(ctx, exec, newInboxUUID)
+	if err != nil {
+		return models.Inbox{}, err
+	}
+
+	tracking.TrackEvent(ctx, models.AnalyticsInboxCreated, map[string]any{
 		"inbox_id": inbox.Id,
 	})
+
 	return inbox, nil
 }
 

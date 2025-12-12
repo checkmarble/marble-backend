@@ -28,7 +28,8 @@ type DataModelRepository interface {
 	UpdateDataModelTable(
 		ctx context.Context,
 		exec Executor,
-		tableID, description string,
+		tableID string,
+		description *string,
 		ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
 	) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
@@ -198,23 +199,34 @@ func (repo MarbleDbRepository) GetDataModelTable(ctx context.Context, exec Execu
 func (repo MarbleDbRepository) UpdateDataModelTable(
 	ctx context.Context,
 	exec Executor,
-	tableID, description string,
+	tableID string,
+	description *string,
 	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
+	updated := false
+
 	query := NewQueryBuilder().
-		Update(dbmodels.TableDataModelTables).
-		Set("description", description)
+		Update(dbmodels.TableDataModelTables)
+
+	if description != nil {
+		updated = true
+		query = query.Set("description", *description)
+	}
 
 	if ftmEntity.Set {
+		updated = true
 		query = query.Set("ftm_entity", ftmEntity.Ptr())
 	}
 
-	query = query.Where(squirrel.Eq{"id": tableID})
+	if !updated {
+		return nil
+	}
 
+	query = query.Where(squirrel.Eq{"id": tableID})
 	return ExecBuilder(
 		ctx,
 		exec,

@@ -43,7 +43,8 @@ func (d *DataModelRepository) CreateDataModelTable(
 func (d *DataModelRepository) UpdateDataModelTable(
 	ctx context.Context,
 	exec repositories.Executor,
-	tableID, description string,
+	tableID string,
+	description *string,
 	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
 ) error {
 	args := d.Called(ctx, exec, tableID, description, ftmEntity)

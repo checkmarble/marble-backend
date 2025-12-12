@@ -1,12 +1,17 @@
 package dto
 
 import (
+	"slices"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
+
+const DefaultContinuousScreeningAlgorithm = "best"
 
 type ContinuousScreeningConfigDto struct {
 	Id             uuid.UUID `json:"id"`
@@ -42,15 +47,74 @@ func AdaptContinuousScreeningConfigDto(config models.ContinuousScreeningConfig) 
 	}
 }
 
+type ContinuousScreeningMappingFieldDto struct {
+	ObjectFieldId uuid.UUID `json:"object_field_id" binding:"required"`
+	FtmProperty   string    `json:"ftm_property" binding:"required"`
+}
+
+func AdaptContinuousScreeningMappingFieldDtoToModel(dto ContinuousScreeningMappingFieldDto) models.ContinuousScreeningMappingField {
+	return models.ContinuousScreeningMappingField{
+		ObjectFieldId: dto.ObjectFieldId,
+		FtmProperty:   models.FollowTheMoneyPropertyFrom(dto.FtmProperty),
+	}
+}
+
+type ContinuousScreeningMappingConfigDto struct {
+	ObjectType          string                               `json:"object_type" binding:"required"`
+	FtmEntity           string                               `json:"ftm_entity" binding:"required"`
+	ObjectFieldMappings []ContinuousScreeningMappingFieldDto `json:"object_field_mappings"`
+}
+
+func (mapping ContinuousScreeningMappingConfigDto) Validate() error {
+	// Check each mapping config
+	// 1. Check if the entity is valid
+	// 2. For each field mapping, check if the property is valid and belongs to the entity
+	entity := models.FollowTheMoneyEntityFrom(mapping.FtmEntity)
+	if entity == models.FollowTheMoneyEntityUnknown {
+		return errors.Wrap(
+			models.BadParameterError,
+			"invalid FTM entity in mapping config",
+		)
+	}
+	for _, fieldMapping := range mapping.ObjectFieldMappings {
+		property := models.FollowTheMoneyPropertyFrom(fieldMapping.FtmProperty)
+		if property == models.FollowTheMoneyPropertyUnknown {
+			return errors.Wrap(
+				models.BadParameterError,
+				"invalid FTM property in mapping field",
+			)
+		}
+		if !slices.Contains(models.FollowTheMoneyEntityProperties[entity], property) {
+			return errors.Wrap(
+				models.BadParameterError,
+				"FTM property does not belong to the specified FTM entity",
+			)
+		}
+	}
+	return nil
+}
+
+func AdaptContinuousScreeningMappingConfigDtoToModel(dto ContinuousScreeningMappingConfigDto) models.ContinuousScreeningMappingConfig {
+	return models.ContinuousScreeningMappingConfig{
+		ObjectType: dto.ObjectType,
+		FtmEntity:  models.FollowTheMoneyEntityFrom(dto.FtmEntity),
+		ObjectFieldMappings: pure_utils.Map(
+			dto.ObjectFieldMappings,
+			AdaptContinuousScreeningMappingFieldDtoToModel,
+		),
+	}
+}
+
 type CreateContinuousScreeningConfigDto struct {
-	Name           string    `json:"name" binding:"required"`
-	Description    string    `json:"description"`
-	InboxId        uuid.UUID `json:"inbox_id" binding:"required"`
-	Algorithm      string    `json:"algorithm" binding:"required"`
-	Datasets       []string  `json:"datasets" binding:"required"`
-	MatchThreshold int       `json:"match_threshold" binding:"required"`
-	MatchLimit     int       `json:"match_limit" binding:"required"`
-	ObjectTypes    []string  `json:"object_types" binding:"required"`
+	Name           string                                `json:"name" binding:"required"`
+	Description    string                                `json:"description"`
+	InboxId        uuid.UUID                             `json:"inbox_id"`
+	Algorithm      *string                               `json:"algorithm"`
+	Datasets       []string                              `json:"datasets" binding:"required"`
+	MatchThreshold int                                   `json:"match_threshold" binding:"required"`
+	MatchLimit     int                                   `json:"match_limit" binding:"required"`
+	ObjectTypes    []string                              `json:"object_types" binding:"required"`
+	MappingConfigs []ContinuousScreeningMappingConfigDto `json:"mapping_configs"`
 }
 
 func (dto CreateContinuousScreeningConfigDto) Validate() error {
@@ -78,35 +142,53 @@ func (dto CreateContinuousScreeningConfigDto) Validate() error {
 	if len(dto.ObjectTypes) == 0 {
 		return errors.Wrap(
 			models.BadParameterError,
-			"object types are required for continuous screening config",
+			"object_types cannot be empty",
 		)
+	}
+
+	// Check each mapping config
+	// 1. Check if the entity is valid
+	// 2. For each field mapping, check if the property is valid and belongs to the entity
+	for _, mappingConfig := range dto.MappingConfigs {
+		if err := mappingConfig.Validate(); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func AdaptCreateContinuousScreeningConfigDtoToModel(dto CreateContinuousScreeningConfigDto) models.CreateContinuousScreeningConfig {
+	if dto.Algorithm == nil {
+		dto.Algorithm = utils.Ptr(DefaultContinuousScreeningAlgorithm)
+	}
 	return models.CreateContinuousScreeningConfig{
 		Name:           dto.Name,
 		InboxId:        dto.InboxId,
-		ObjectTypes:    dto.ObjectTypes,
 		Description:    dto.Description,
-		Algorithm:      dto.Algorithm,
+		Algorithm:      *dto.Algorithm,
 		Datasets:       dto.Datasets,
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
+		ObjectTypes:    dto.ObjectTypes,
+		MappingConfigs: pure_utils.Map(
+			dto.MappingConfigs,
+			AdaptContinuousScreeningMappingConfigDtoToModel,
+		),
 	}
 }
 
 type UpdateContinuousScreeningConfigDto struct {
-	Name           *string    `json:"name"`
-	Description    *string    `json:"description"`
-	InboxId        *uuid.UUID `json:"inbox_id"`
-	Algorithm      *string    `json:"algorithm"`
-	Datasets       *[]string  `json:"datasets"`
-	MatchThreshold *int       `json:"match_threshold"`
-	MatchLimit     *int       `json:"match_limit"`
-	Enabled        *bool      `json:"enabled"`
+	Name           *string                               `json:"name"`
+	Description    *string                               `json:"description"`
+	InboxId        *uuid.UUID                            `json:"inbox_id"`
+	Algorithm      *string                               `json:"algorithm"`
+	Datasets       *[]string                             `json:"datasets"`
+	MatchThreshold *int                                  `json:"match_threshold"`
+	MatchLimit     *int                                  `json:"match_limit"`
+	Enabled        *bool                                 `json:"enabled"`
+	ObjectTypes    *[]string                             `json:"object_types"`
+	MappingConfigs []ContinuousScreeningMappingConfigDto `json:"mapping_configs"`
 }
 
 func (dto UpdateContinuousScreeningConfigDto) Validate() error {
@@ -131,10 +213,26 @@ func (dto UpdateContinuousScreeningConfigDto) Validate() error {
 		)
 	}
 
+	if dto.ObjectTypes != nil && len(*dto.ObjectTypes) == 0 {
+		return errors.Wrap(
+			models.BadParameterError,
+			"object_types cannot be empty",
+		)
+	}
+
+	for _, mapping := range dto.MappingConfigs {
+		if err := mapping.Validate(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func AdaptUpdateContinuousScreeningConfigDtoToModel(dto UpdateContinuousScreeningConfigDto) models.UpdateContinuousScreeningConfig {
+	mappingConfigs := pure_utils.Map(dto.MappingConfigs,
+		AdaptContinuousScreeningMappingConfigDtoToModel)
+
 	return models.UpdateContinuousScreeningConfig{
 		Name:           dto.Name,
 		Description:    dto.Description,
@@ -144,5 +242,7 @@ func AdaptUpdateContinuousScreeningConfigDtoToModel(dto UpdateContinuousScreenin
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
 		Enabled:        dto.Enabled,
+		ObjectTypes:    dto.ObjectTypes,
+		MappingConfigs: mappingConfigs,
 	}
 }

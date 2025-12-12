@@ -137,7 +137,7 @@ type CreateTableInput struct {
 }
 
 type UpdateTableInput struct {
-	Description string                  `json:"description"`
+	Description *string                 `json:"description"`
 	FTMEntity   pure_utils.Null[string] `json:"ftm_entity"`
 }
 

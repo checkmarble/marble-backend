@@ -6,6 +6,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -57,14 +58,10 @@ func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigsByOrgId(ctx c
 	return configs, nil
 }
 
-// Create a continuous screening config
-// Check if the algorithm is valid
-// Check if the object_types is not empty then create the internal tables for the object types
 func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 	ctx context.Context,
 	input models.CreateContinuousScreeningConfig,
 ) (models.ContinuousScreeningConfig, error) {
-	exec := uc.executorFactory.NewExecutor()
 	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, input.OrgId.String())
 	if err != nil {
 		return models.ContinuousScreeningConfig{}, err
@@ -74,25 +71,21 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 	}
 
 	// Check if the algorithm is valid
-	algorithms, err := uc.screeningProvider.GetAlgorithms(ctx)
-	if err != nil {
-		return models.ContinuousScreeningConfig{}, err
-	}
-	if _, err := algorithms.GetAlgorithm(input.Algorithm); err != nil {
-		return models.ContinuousScreeningConfig{},
-			errors.Wrap(models.BadParameterError, err.Error())
+	if input.Algorithm != "best" {
+		algorithms, err := uc.screeningProvider.GetAlgorithms(ctx)
+		if err != nil {
+			return models.ContinuousScreeningConfig{}, err
+		}
+		if _, err := algorithms.GetAlgorithm(input.Algorithm); err != nil {
+			return models.ContinuousScreeningConfig{},
+				errors.Wrap(models.BadParameterError, err.Error())
+		}
 	}
 
+	// Check if object types are not empty
 	if len(input.ObjectTypes) == 0 {
 		return models.ContinuousScreeningConfig{},
 			errors.Wrap(models.BadParameterError, "object_types cannot be empty")
-	}
-
-	// Set a default stable ID, we don't allow to pass a stable ID in the input
-	input.StableId = uuid.New()
-
-	if err := uc.checkDataModelConfiguration(ctx, exec, input.OrgId, input.ObjectTypes); err != nil {
-		return models.ContinuousScreeningConfig{}, err
 	}
 
 	// Create the internal tables for monitored objects if not exists
@@ -105,116 +98,144 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 		return models.ContinuousScreeningConfig{}, err
 	}
 
-	// Check if the inbox exists
-	inbox, err := uc.inboxReader.GetInboxById(ctx, exec, input.InboxId)
-	if err != nil {
-		if errors.Is(err, models.NotFoundError) {
-			return models.ContinuousScreeningConfig{},
-				errors.Wrap(models.BadParameterError, "inbox not found for the organization")
-		}
-		return models.ContinuousScreeningConfig{}, err
-	}
-	if inbox.OrganizationId != input.OrgId.String() {
-		return models.ContinuousScreeningConfig{},
-			errors.Wrap(models.BadParameterError, "inbox not found for the organization")
-	}
-	if inbox.Status != models.InboxStatusActive {
-		return models.ContinuousScreeningConfig{},
-			errors.Wrap(models.BadParameterError, "inbox is not active")
-	}
+	// Set a default stable ID, we don't allow to pass a stable ID in the input
+	input.StableId = uuid.New()
 
-	configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx, exec, input)
-	if err != nil {
-		return models.ContinuousScreeningConfig{}, err
-	}
+	return executor_factory.TransactionReturnValue(
+		ctx,
+		uc.transactionFactory,
+		func(tx repositories.Transaction) (models.ContinuousScreeningConfig, error) {
+			var inbox models.Inbox
+			var err error
+			// Check if the inbox exists
+			inbox, err = uc.inboxReader.GetInboxById(ctx, tx, input.InboxId)
+			if err != nil {
+				if errors.Is(err, models.NotFoundError) {
+					return models.ContinuousScreeningConfig{},
+						errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+				}
+				return models.ContinuousScreeningConfig{}, err
+			}
+			if inbox.OrganizationId != input.OrgId.String() {
+				return models.ContinuousScreeningConfig{},
+					errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+			}
+			if inbox.Status != models.InboxStatusActive {
+				return models.ContinuousScreeningConfig{},
+					errors.Wrap(models.BadParameterError, "inbox is not active")
+			}
 
-	return configCreated, nil
+			if err := uc.applyMappingConfiguration(ctx, tx, input.OrgId,
+				input.MappingConfigs); err != nil {
+				return models.ContinuousScreeningConfig{}, err
+			}
+
+			if err := uc.checkDataModelConfiguration(ctx, tx, input.OrgId, input.ObjectTypes); err != nil {
+				return models.ContinuousScreeningConfig{}, err
+			}
+
+			configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx, tx, input)
+			if err != nil {
+				return models.ContinuousScreeningConfig{}, err
+			}
+
+			return configCreated, nil
+		},
+	)
 }
 
-// Update a continuous screening config
-// Check if the algorithm is valid
-// Check if we didn't remove any object types (can only add new object types)
 func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 	ctx context.Context,
 	stableId uuid.UUID,
 	input models.UpdateContinuousScreeningConfig,
 ) (models.ContinuousScreeningConfig, error) {
-	var configUpdated models.ContinuousScreeningConfig
-	err := uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, tx, stableId)
-		if err != nil {
-			return err
-		}
-
-		if err := uc.enforceSecurity.WriteContinuousScreeningConfig(config.OrgId); err != nil {
-			return err
-		}
-
-		if !isUpdateDifferent(config, input) {
-			configUpdated = config
-			return nil
-		}
-
-		// Check if the inbox exists
-		if input.InboxId != nil && *input.InboxId != config.InboxId {
-			inbox, err := uc.inboxReader.GetInboxById(ctx, tx, *input.InboxId)
+	return executor_factory.TransactionReturnValue(
+		ctx,
+		uc.transactionFactory,
+		func(tx repositories.Transaction) (models.ContinuousScreeningConfig, error) {
+			config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, tx, stableId)
 			if err != nil {
-				if errors.Is(err, models.NotFoundError) {
-					return errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+				return models.ContinuousScreeningConfig{}, err
+			}
+
+			if err := uc.enforceSecurity.WriteContinuousScreeningConfig(config.OrgId); err != nil {
+				return models.ContinuousScreeningConfig{}, err
+			}
+
+			if !isUpdateDifferent(config, input) {
+				return config, nil
+			}
+
+			// Deal with inbox changes, in case we need to create a new inbox, add the new ID in scopedInput.InboxId to be used
+			if input.InboxId != nil && *input.InboxId != config.InboxId {
+				inbox, err := uc.inboxReader.GetInboxById(ctx, tx, *input.InboxId)
+				if err != nil {
+					if errors.Is(err, models.NotFoundError) {
+						return models.ContinuousScreeningConfig{},
+							errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+					}
+					return models.ContinuousScreeningConfig{}, err
 				}
-				return err
+				if inbox.OrganizationId != config.OrgId.String() {
+					return models.ContinuousScreeningConfig{},
+						errors.Wrap(models.BadParameterError, "inbox not found for the organization")
+				}
 			}
-			if inbox.OrganizationId != config.OrgId.String() {
-				return errors.Wrap(models.BadParameterError, "inbox not found for the organization")
-			}
-		}
 
-		// Check if the algorithm is valid
-		if input.Algorithm != nil {
-			algorithms, err := uc.screeningProvider.GetAlgorithms(ctx)
-			if err != nil {
-				return err
+			// Check if the algorithm is valid
+			if input.Algorithm != nil {
+				algorithms, err := uc.screeningProvider.GetAlgorithms(ctx)
+				if err != nil {
+					return models.ContinuousScreeningConfig{}, err
+				}
+				if _, err := algorithms.GetAlgorithm(*input.Algorithm); err != nil {
+					return models.ContinuousScreeningConfig{},
+						errors.Wrap(models.BadParameterError, err.Error())
+				}
 			}
-			if _, err := algorithms.GetAlgorithm(*input.Algorithm); err != nil {
-				return errors.Wrap(models.BadParameterError, err.Error())
-			}
-		}
 
-		// Check if we didn't remove any object types (can only add new object types)
-		if input.ObjectTypes != nil {
-			if !pure_utils.AllElementsIn(config.ObjectTypes, *input.ObjectTypes) {
-				return errors.Wrap(models.BadParameterError, "cannot remove object types")
+			// Apply the mapping configuration to the data model
+			// Can only add new mappings to element which are not mapped yet
+			if err := uc.applyMappingConfiguration(
+				ctx,
+				tx,
+				config.OrgId,
+				input.MappingConfigs,
+			); err != nil {
+				return models.ContinuousScreeningConfig{}, err
 			}
-			if len(*input.ObjectTypes) > len(config.ObjectTypes) {
-				// Only if there is new object types to add, process them the `if exists` will ignore existing ones
+
+			// Check if all object types have a valid data model configuration
+			// Check if we only add new object types, not remove existing ones
+			if input.ObjectTypes != nil {
+				if !pure_utils.AllElementsIn(config.ObjectTypes, *input.ObjectTypes) {
+					return models.ContinuousScreeningConfig{}, errors.Wrap(
+						models.BadParameterError,
+						"removing object types is not allowed during update",
+					)
+				}
 				if err := uc.checkDataModelConfiguration(ctx, tx, config.OrgId, *input.ObjectTypes); err != nil {
-					return err
+					return models.ContinuousScreeningConfig{}, err
 				}
 			}
-		}
 
-		// Disable the previous config
-		_, err = uc.repository.UpdateContinuousScreeningConfig(ctx, tx,
-			config.Id, models.UpdateContinuousScreeningConfig{
-				Enabled: utils.Ptr(false),
-			},
-		)
-		if err != nil {
-			return err
-		}
+			// Disable the previous config
+			_, err = uc.repository.UpdateContinuousScreeningConfig(ctx, tx,
+				config.Id, models.UpdateContinuousScreeningConfig{
+					Enabled: utils.Ptr(false),
+				},
+			)
+			if err != nil {
+				return models.ContinuousScreeningConfig{}, err
+			}
 
-		// Create a new config with the same stable ID
-		configUpdated, err = uc.repository.CreateContinuousScreeningConfig(ctx, tx, createUpdatedConfig(config, input))
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return models.ContinuousScreeningConfig{}, err
-	}
-
-	return configUpdated, nil
+			// Create a new config with the same stable ID
+			return uc.repository.CreateContinuousScreeningConfig(
+				ctx,
+				tx,
+				createUpdatedConfig(config, input),
+			)
+		})
 }
 
 func (uc *ContinuousScreeningUsecase) checkDataModelConfiguration(ctx context.Context,
@@ -242,10 +263,14 @@ func (uc *ContinuousScreeningUsecase) checkDataModelConfiguration(ctx context.Co
 func isUpdateDifferent(currentConfig models.ContinuousScreeningConfig, updateInput models.UpdateContinuousScreeningConfig) bool {
 	if updateInput.Name == nil && updateInput.Description == nil && updateInput.Algorithm == nil &&
 		updateInput.Datasets == nil && updateInput.MatchThreshold == nil &&
-		updateInput.MatchLimit == nil && updateInput.ObjectTypes == nil {
+		updateInput.MatchLimit == nil && updateInput.ObjectTypes == nil &&
+		updateInput.InboxId == nil && len(updateInput.MappingConfigs) == 0 {
 		return false
 	}
 
+	if len(updateInput.MappingConfigs) > 0 {
+		return true
+	}
 	if updateInput.Name != nil && *updateInput.Name != currentConfig.Name {
 		return true
 	}
@@ -289,4 +314,76 @@ func createUpdatedConfig(config models.ContinuousScreeningConfig,
 		ObjectTypes:    pure_utils.PtrSliceValueOrDefault(updateInput.ObjectTypes, config.ObjectTypes),
 		InboxId:        pure_utils.PtrValueOrDefault(updateInput.InboxId, config.InboxId),
 	}
+}
+
+func (uc *ContinuousScreeningUsecase) applyMappingConfiguration(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	mappingConfigs []models.ContinuousScreeningMappingConfig,
+) error {
+	dataModel, err := uc.repository.GetDataModel(ctx, exec, orgId.String(), false, false)
+	if err != nil {
+		return err
+	}
+	for _, mapping := range mappingConfigs {
+		table, ok := dataModel.Tables[mapping.ObjectType]
+		if !ok {
+			return errors.Wrapf(models.BadParameterError,
+				"table %s not found in data model", mapping.ObjectType)
+		}
+		if table.FTMEntity != nil {
+			if *table.FTMEntity == mapping.FtmEntity {
+				// Already mapped correctly, skip
+			} else {
+				// Already mapped to a different entity, error
+				return errors.Wrapf(models.BadParameterError,
+					"table %s is already mapped", mapping.ObjectType)
+			}
+		} else {
+			// Table is not mapped yet, update it
+			err = uc.repository.UpdateDataModelTable(
+				ctx,
+				exec,
+				table.ID,
+				nil,
+				pure_utils.NullFrom(mapping.FtmEntity),
+			)
+			if err != nil {
+				return err
+			}
+		}
+
+		for _, fieldMapping := range mapping.ObjectFieldMappings {
+			field, ok := table.GetFieldById(fieldMapping.ObjectFieldId.String())
+			if !ok {
+				return errors.Wrapf(models.BadParameterError,
+					"field %s not found in table %s", fieldMapping.ObjectFieldId.String(), mapping.ObjectType)
+			}
+			if field.FTMProperty != nil {
+				if *field.FTMProperty == fieldMapping.FtmProperty {
+					// Already mapped correctly, skip
+					continue
+				}
+				// Already mapped to a different property, error
+				return errors.Wrapf(models.BadParameterError,
+					"field %s in table %s is already mapped",
+					fieldMapping.ObjectFieldId.String(), mapping.ObjectType)
+			}
+
+			// Field is not mapped yet, update it
+			err = uc.repository.UpdateDataModelField(
+				ctx,
+				exec,
+				fieldMapping.ObjectFieldId.String(),
+				models.UpdateFieldInput{
+					FTMProperty: pure_utils.NullFrom(fieldMapping.FtmProperty),
+				},
+			)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
