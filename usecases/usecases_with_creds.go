@@ -970,7 +970,9 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.OrganizationSchemaRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.firebaseAdmin,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.NewDataModelUseCase(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.CustomListRepository,
 		usecases.Repositories.MarbleDbRepository,
@@ -980,5 +982,6 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewIngestionUseCase(),
+		usecases.NewDecisionUsecase(),
 	)
 }

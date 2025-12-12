@@ -3,12 +3,14 @@ package usecases
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -22,7 +24,9 @@ type OrgImportUsecase struct {
 	orgRepository        repositories.OrganizationRepository
 	schemaRepository     repositories.OrganizationSchemaRepository
 	userRepository       repositories.UserRepository
+	firebaseAdminer      idp.Adminer
 	dataModelRepository  repositories.DataModelRepository
+	dataModelUsecase     usecase
 	tagRepository        TagUseCaseRepository
 	customListRepository repositories.CustomListRepository
 	scenarioRepository   repositories.ScenarioUsecaseRepository
@@ -33,6 +37,7 @@ type OrgImportUsecase struct {
 	workflowRepository   workflowRepository
 
 	ingestionUsecase IngestionUseCase
+	decisionUsecase  DecisionUsecase
 }
 
 func NewOrgImportUsecase(
@@ -42,7 +47,9 @@ func NewOrgImportUsecase(
 	organizationRepository repositories.OrganizationRepository,
 	schemaRepository repositories.OrganizationSchemaRepository,
 	userRepository repositories.UserRepository,
+	firebaseAdminer idp.Adminer,
 	dataModelRepository repositories.DataModelRepository,
+	dataModelUsecase usecase,
 	tagRepository TagUseCaseRepository,
 	customListRepository repositories.CustomListRepository,
 	scenarioRepository repositories.ScenarioUsecaseRepository,
@@ -52,6 +59,7 @@ func NewOrgImportUsecase(
 	inboxRepository InboxRepository,
 	workflowRepository workflowRepository,
 	ingestionUsecase IngestionUseCase,
+	decisionUsecase DecisionUsecase,
 ) OrgImportUsecase {
 	return OrgImportUsecase{
 		transactionWrapper:   wrapper,
@@ -60,7 +68,9 @@ func NewOrgImportUsecase(
 		orgRepository:        organizationRepository,
 		schemaRepository:     schemaRepository,
 		userRepository:       userRepository,
+		firebaseAdminer:      firebaseAdminer,
 		dataModelRepository:  dataModelRepository,
+		dataModelUsecase:     dataModelUsecase,
 		tagRepository:        tagRepository,
 		customListRepository: customListRepository,
 		scenarioRepository:   scenarioRepository,
@@ -70,6 +80,7 @@ func NewOrgImportUsecase(
 		inboxRepository:      inboxRepository,
 		workflowRepository:   workflowRepository,
 		ingestionUsecase:     ingestionUsecase,
+		decisionUsecase:      decisionUsecase,
 	}
 }
 
@@ -115,7 +126,12 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 		return uuid.Nil, err
 	}
 
+	// webhookEventsSender is used in goroutines, so cannot rely on the master
+	// transaction used in this usecase (which may be closed when the goroutine
+	// ends up using it).
+	webhookUsecase := uc.decisionUsecase.webhookEventsSender
 	*uc = uc.transactionWrapper(tx, org, admin).NewOrgImportUsecase()
+	uc.decisionUsecase.webhookEventsSender = webhookUsecase
 
 	err = uc.orgRepository.UpdateOrganization(ctx, tx, models.UpdateOrganizationInput{
 		Id:                      orgId,
@@ -155,7 +171,7 @@ func (uc OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Tra
 	users := make([]string, len(admins))
 
 	for idx, admin := range admins {
-		user, err := uc.userRepository.CreateUser(ctx, tx, models.CreateUser{
+		userId, err := uc.userRepository.CreateUser(ctx, tx, models.CreateUser{
 			OrganizationId: orgId,
 			Email:          admin.Email,
 			FirstName:      admin.FirstName,
@@ -166,7 +182,13 @@ func (uc OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Tra
 			return nil, err
 		}
 
-		users[idx] = user
+		if uc.firebaseAdminer != nil {
+			if err := uc.firebaseAdminer.CreateUser(ctx, admin.Email, fmt.Sprintf("%s %s", admin.FirstName, admin.LastName)); err != nil {
+				return nil, err
+			}
+		}
+
+		users[idx] = userId
 	}
 
 	return users, nil
@@ -196,13 +218,13 @@ func (uc OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.
 			return err
 		}
 
-		for _, field := range table.Fields {
+		for name, field := range table.Fields {
 			fieldId, _ := uuid.NewV7()
 			ids[field.ID] = fieldId.String()
 
 			field := models.CreateFieldInput{
 				TableId:     tableId.String(),
-				Name:        field.Name,
+				Name:        name,
 				Description: field.Description,
 				DataType:    models.DataTypeFrom(field.DataType),
 				Nullable:    field.Nullable,
@@ -227,7 +249,7 @@ func (uc OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.
 
 		err := uc.dataModelRepository.CreateDataModelLink(ctx, tx, linkId.String(), models.DataModelLinkCreateInput{
 			OrganizationID: orgId,
-			Name:           "", // ?
+			Name:           fmt.Sprintf("%s_%s", link.ChildTableName, link.ParentTableName),
 			ParentTableID:  ids[link.ParentTableId],
 			ParentFieldID:  ids[link.ParentFieldId],
 			ChildTableID:   ids[link.ChildTableId],
@@ -254,6 +276,19 @@ func (uc OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.
 			PathLinkIds: pure_utils.Map(pivot.PathLinkIds, func(id string) string {
 				return ids[id]
 			}),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	for navTable, navOptions := range dataModel.NavigationOptions {
+		err := uc.dataModelUsecase.CreateNavigationOption(ctx, models.CreateNavigationOptionInput{
+			SourceTableId:   ids[navTable],
+			SourceFieldId:   ids[navOptions.SourceFieldId],
+			TargetTableId:   ids[navOptions.TargetTableId],
+			FilterFieldId:   ids[navOptions.FilterFieldId],
+			OrderingFieldId: ids[navOptions.OrderingFieldId],
 		})
 		if err != nil {
 			return err
