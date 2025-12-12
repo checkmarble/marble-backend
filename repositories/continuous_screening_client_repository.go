@@ -22,7 +22,14 @@ func sanitizedTableName(exec Executor, tableName string) string {
 // object_id: TEXT
 // config_stable_id: UUID
 // created_at: TIMESTAMP WITH TIME ZONE
-// Add unique index to ensure a unique combination of (config_stable_id, object_type, object_id)
+//
+// Indexes:
+//   - internal_uniq_idx_monitored_objects_config_type_id: Unique index on (config_stable_id, object_type, object_id)
+//   - internal_idx_monitored_objects_type_id: Index on (object_type, object_id)
+//   - internal_idx_monitored_objects_config: Index on (config_stable_id, created_at DESC, id DESC)
+//   - internal_idx_monitored_objects_type: Index on (object_type, created_at DESC, id DESC)
+//
+// ⚠️ Careful about the indexes prefixes to avoid deletion by IndexDeletionWorker (see: IndexDeletionWorker)
 func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx context.Context, exec Executor) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
@@ -44,10 +51,7 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx conte
 	}
 
 	// Unique index to have a unique (object_type, object_id) combination for a given config_stable_id
-	uniqIndexName := fmt.Sprintf(
-		"uniq_idx_config_object_type_id%s",
-		dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS,
-	)
+	uniqIndexName := "internal_uniq_idx_monitored_objects_config_type_id"
 	sql = fmt.Sprintf(
 		"CREATE UNIQUE INDEX IF NOT EXISTS %s ON %s (config_stable_id, object_type, object_id)",
 		uniqIndexName,
@@ -58,10 +62,7 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx conte
 	}
 
 	// Index on object_type and object_id
-	indexName := fmt.Sprintf(
-		"idx_object_type_object_id%s",
-		dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS,
-	)
+	indexName := "internal_idx_monitored_objects_type_id"
 	sql = fmt.Sprintf(
 		"CREATE INDEX IF NOT EXISTS %s ON %s (object_type, object_id)",
 		indexName,
@@ -73,10 +74,7 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx conte
 
 	// Index for list queries with filtering and pagination (created_at DESC for ordering)
 	// Index for filtering by config_stable_id
-	configIndexName := fmt.Sprintf(
-		"idx_monitored_objects_config%s",
-		dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS,
-	)
+	configIndexName := "internal_idx_monitored_objects_config"
 	sql = fmt.Sprintf(
 		"CREATE INDEX IF NOT EXISTS %s ON %s (config_stable_id, created_at DESC, id DESC)",
 		configIndexName,
@@ -87,10 +85,7 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningTable(ctx conte
 	}
 
 	// Index for filtering by object_type
-	typeIndexName := fmt.Sprintf(
-		"idx_monitored_objects_type%s",
-		dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS,
-	)
+	typeIndexName := "internal_idx_monitored_objects_type"
 	sql = fmt.Sprintf(
 		"CREATE INDEX IF NOT EXISTS %s ON %s (object_type, created_at DESC, id DESC)",
 		typeIndexName,
@@ -134,10 +129,12 @@ func (repo *ClientDbRepository) InsertContinuousScreeningObject(
 // extra: JSONB, extra information
 //
 // Indexes:
-//   - idx_monitored_objects_audit_obj: History of a specific object (e.g. "Show me history for Company:123")
-//   - idx_monitored_objects_audit_user: User Activity (e.g. "What did User X do?")
-//   - idx_monitored_objects_audit_api_key: API Key Activity
-//   - idx_monitored_objects_audit_config: Config Usage (e.g. "Activity for this specific configuration")
+//   - internal_idx_monitored_objects_audit_obj: History of a specific object (e.g. "Show me history for Company:123")
+//   - internal_idx_monitored_objects_audit_user: User Activity (e.g. "What did User X do?")
+//   - internal_idx_monitored_objects_audit_api_key: API Key Activity
+//   - internal_idx_monitored_objects_audit_config: Config Usage (e.g. "Activity for this specific configuration")
+//
+// ⚠️ Careful about the indexes prefixes to avoid deletion by IndexDeletionWorker (see: IndexDeletionWorker)
 //
 // CreateInternalContinuousScreeningAuditTable creates the audit table for monitored objects
 // It is a single table for all object types, containing the history of actions (add/remove)
@@ -171,7 +168,7 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningAuditTable(ctx 
 	// Index: History of a specific object (e.g. "Show me history for Company:123")
 	// We include created_at DESC to get the latest actions first
 	sql = fmt.Sprintf(
-		"CREATE INDEX IF NOT EXISTS idx_monitored_objects_audit_obj ON %s (object_type, object_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS internal_idx_monitored_objects_audit_obj ON %s (object_type, object_id, created_at DESC)",
 		tableName,
 	)
 	if _, err := exec.Exec(ctx, sql); err != nil {
@@ -180,7 +177,7 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningAuditTable(ctx 
 
 	// Index: User Activity (e.g. "What did User X do?")
 	sql = fmt.Sprintf(
-		"CREATE INDEX IF NOT EXISTS idx_monitored_objects_audit_user ON %s (user_id, created_at DESC) WHERE user_id IS NOT NULL",
+		"CREATE INDEX IF NOT EXISTS internal_idx_monitored_objects_audit_user ON %s (user_id, created_at DESC) WHERE user_id IS NOT NULL",
 		tableName,
 	)
 	if _, err := exec.Exec(ctx, sql); err != nil {
@@ -189,7 +186,7 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningAuditTable(ctx 
 
 	// Index: API Key Activity
 	sql = fmt.Sprintf(
-		"CREATE INDEX IF NOT EXISTS idx_monitored_objects_audit_api_key ON %s (api_key_id, created_at DESC) WHERE api_key_id IS NOT NULL",
+		"CREATE INDEX IF NOT EXISTS internal_idx_monitored_objects_audit_api_key ON %s (api_key_id, created_at DESC) WHERE api_key_id IS NOT NULL",
 		tableName,
 	)
 	if _, err := exec.Exec(ctx, sql); err != nil {
@@ -198,7 +195,7 @@ func (repo *ClientDbRepository) CreateInternalContinuousScreeningAuditTable(ctx 
 
 	// Index: Config Usage (e.g. "Activity for this specific configuration")
 	sql = fmt.Sprintf(
-		"CREATE INDEX IF NOT EXISTS idx_monitored_objects_audit_config ON %s (config_stable_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS internal_idx_monitored_objects_audit_config ON %s (config_stable_id, created_at DESC)",
 		tableName,
 	)
 	if _, err := exec.Exec(ctx, sql); err != nil {
