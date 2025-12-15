@@ -250,7 +250,7 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 	includedColumns := index.Included
 
 	sql := fmt.Sprintf(
-		"CREATE INDEX CONCURRENTLY %s ON %s USING btree (%s)",
+		"CREATE INDEX CONCURRENTLY IF NOT EXISTS %s ON %s USING btree (%s)",
 		pgx.Identifier.Sanitize([]string{index.Name()}),
 		qualifiedTableName,
 		strings.Join(pure_utils.Map(indexedColumns, withDesc), ","),
