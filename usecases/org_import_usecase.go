@@ -12,15 +12,18 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
 type OrgImportUsecase struct {
-	transactionWrapper   UsecaseTransactionWrapper
-	executorFactory      executor_factory.ExecutorFactory
-	transactionFactory   executor_factory.TransactionFactory
+	transactionWrapper UsecaseTransactionWrapper
+	executorFactory    executor_factory.ExecutorFactory
+	transactionFactory executor_factory.TransactionFactory
+	security           security.EnforceSecurityOrgImportImpl
+
 	orgRepository        repositories.OrganizationRepository
 	schemaRepository     repositories.OrganizationSchemaRepository
 	userRepository       repositories.UserRepository
@@ -44,6 +47,7 @@ func NewOrgImportUsecase(
 	wrapper UsecaseTransactionWrapper,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	security security.EnforceSecurityOrgImportImpl,
 	organizationRepository repositories.OrganizationRepository,
 	schemaRepository repositories.OrganizationSchemaRepository,
 	userRepository repositories.UserRepository,
@@ -65,6 +69,7 @@ func NewOrgImportUsecase(
 		transactionWrapper:   wrapper,
 		executorFactory:      executorFactory,
 		transactionFactory:   transactionFactory,
+		security:             security,
 		orgRepository:        organizationRepository,
 		schemaRepository:     schemaRepository,
 		userRepository:       userRepository,
@@ -85,7 +90,9 @@ func NewOrgImportUsecase(
 }
 
 func (uc OrgImportUsecase) Import(ctx context.Context, spec dto.OrgImport, seed bool) (uuid.UUID, error) {
-	// TODO: what permissions are required to do this?
+	if err := uc.security.ImportOrg(); err != nil {
+		return uuid.Nil, err
+	}
 
 	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (uuid.UUID, error) {
 		orgId, err := uc.createOrganization(ctx, tx, spec)
@@ -291,7 +298,10 @@ func (uc OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.
 			OrderingFieldId: ids[navOptions.OrderingFieldId],
 		})
 		if err != nil {
-			return err
+			// Navigation options are checked for duplication, we want to ignore that
+			if !errors.Is(err, models.ConflictError) {
+				return err
+			}
 		}
 	}
 
