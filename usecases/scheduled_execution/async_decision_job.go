@@ -179,8 +179,7 @@ func (w *AsyncDecisionWorker) handleDecision(
 		return nil, nil, nil
 	}
 
-	decisionCreated, webhookEventIds, testRunCallback, err :=
-		w.createSingleDecisionForObjectId(ctx, args, tx)
+	decisionCreated, webhookEventIds, testRunCallback, err := w.createSingleDecisionForObjectId(ctx, args, tx)
 	if err != nil {
 		statusErr := w.repository.UpdateDecisionToCreateStatus(
 			ctx,
@@ -315,8 +314,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		}
 	}
 
-	triggerPassed, scenarioExecution, err :=
-		w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+	triggerPassed, scenarioExecution, err := w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, nil, nil, errors.Wrapf(err, "error evaluating scenario in AsyncDecisionWorker %s", scenario.Id)
 	}
