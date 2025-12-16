@@ -55,6 +55,7 @@ type OpenSanctionsQuery struct {
 	InitialQuery       []OpenSanctionsCheckQuery
 	Config             ScreeningConfig
 	OrgConfig          OrganizationOpenSanctionsConfig
+	Scope              string
 	// cf: `exclude_entity_ids` in the OpenSanctions query
 	WhitelistedEntityIds []string
 }
@@ -207,4 +208,57 @@ func (algorithms OpenSanctionAlgorithms) GetAlgorithm(name string) (OpenSanction
 		}
 	}
 	return OpenSanctionAlgorithm{}, errors.Newf("algorithm %s not found", name)
+}
+
+type OpenSanctionsDeltaFileRecordOp int
+
+const (
+	OpenSanctionsDeltaFileRecordOpAdd OpenSanctionsDeltaFileRecordOp = iota
+	OpenSanctionsDeltaFileRecordOpMod
+	OpenSanctionsDeltaFileRecordOpDel
+	OpenSanctionsDeltaFileRecordOpUnknown
+)
+
+func (op OpenSanctionsDeltaFileRecordOp) String() string {
+	switch op {
+	case OpenSanctionsDeltaFileRecordOpAdd:
+		return "ADD"
+	case OpenSanctionsDeltaFileRecordOpMod:
+		return "MOD"
+	case OpenSanctionsDeltaFileRecordOpDel:
+		return "DEL"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func OpenSanctionsDeltaFileRecordOpFromString(s string) OpenSanctionsDeltaFileRecordOp {
+	switch s {
+	case "ADD":
+		return OpenSanctionsDeltaFileRecordOpAdd
+	case "MOD":
+		return OpenSanctionsDeltaFileRecordOpMod
+	case "DEL":
+		return OpenSanctionsDeltaFileRecordOpDel
+	default:
+		return OpenSanctionsDeltaFileRecordOpUnknown
+	}
+}
+
+type OpenSanctionsDeltaFileEntity struct {
+	Id         string
+	Caption    string
+	Schema     string
+	Referents  []string
+	Datasets   []string
+	FirstSeen  string
+	LastSeen   string
+	LastChange string
+	Properties map[string][]string
+	Target     bool
+}
+
+type OpenSanctionsDeltaFileRecord struct {
+	Op     OpenSanctionsDeltaFileRecordOp
+	Entity OpenSanctionsDeltaFileEntity
 }

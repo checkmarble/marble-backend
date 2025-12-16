@@ -316,50 +316,6 @@ func prepareOpenSanctionsQuery(
 	}, nil
 }
 
-func checkDataModelTableAndFieldsConfiguration(table models.Table) error {
-	// Check if the table has a FTM entity
-	if table.FTMEntity == nil {
-		return errors.Wrap(models.BadParameterError,
-			"table is not configured for the use case")
-	}
-
-	atLeastOneFieldWithFTMProperty := false
-	for _, field := range table.Fields {
-		if field.FTMProperty != nil {
-			atLeastOneFieldWithFTMProperty = true
-			break
-		}
-	}
-
-	if !atLeastOneFieldWithFTMProperty {
-		return errors.Wrap(
-			models.BadParameterError,
-			"table's fields are not configured for the use case",
-		)
-	}
-
-	return nil
-}
-
-// Suppose table is configured with a FTM entity and at least one field with a FTM property
-func buildDataModelMapping(table models.Table) (models.ContinuousScreeningDataModelMapping, error) {
-	// Check if the table is configured correctly
-	if err := checkDataModelTableAndFieldsConfiguration(table); err != nil {
-		return models.ContinuousScreeningDataModelMapping{}, err
-	}
-	// At this point, table has a FTM entity and at least one field with a FTM property
-	properties := make(map[string]string)
-	for _, field := range table.Fields {
-		if field.FTMProperty != nil {
-			properties[field.Name] = field.FTMProperty.String()
-		}
-	}
-	return models.ContinuousScreeningDataModelMapping{
-		Entity:     table.FTMEntity.String(),
-		Properties: properties,
-	}, nil
-}
-
 func getIngestedObjectInternalId(ingestedObject models.DataModelObject) (uuid.UUID, error) {
 	if _, ok := ingestedObject.Metadata["id"]; !ok {
 		return uuid.UUID{}, errors.New(

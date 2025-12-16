@@ -209,10 +209,21 @@ type ContinuousScreeningJobOffset struct {
 	UpdatedAt      time.Time
 }
 
+type CreateContinuousScreeningJobOffset struct {
+	UpdateJobId    uuid.UUID
+	Offset         int64
+	ItemsProcessed int
+}
+
 // ContinuousScreeningJobError tracks errors encountered during job processing
 type ContinuousScreeningJobError struct {
 	Id          uuid.UUID
 	UpdateJobId uuid.UUID
 	Details     json.RawMessage
 	CreatedAt   time.Time
+}
+
+type CreateContinuousScreeningJobError struct {
+	UpdateJobId uuid.UUID
+	Details     json.RawMessage
 }

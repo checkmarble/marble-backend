@@ -729,3 +729,75 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningUpdateJob(
 
 	return ExecBuilder(ctx, exec, query)
 }
+
+func (repo *MarbleDbRepository) GetContinuousScreeningJobOffset(
+	ctx context.Context,
+	exec Executor,
+	updateJobId uuid.UUID,
+) (*models.ContinuousScreeningJobOffset, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningJobOffsetColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS).
+		Where(squirrel.Eq{"continuous_screening_update_job_id": updateJobId}).
+		Limit(1)
+
+	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningJobOffset)
+}
+
+func (repo *MarbleDbRepository) UpsertContinuousScreeningJobOffset(
+	ctx context.Context,
+	exec Executor,
+	input models.CreateContinuousScreeningJobOffset,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS).
+		Columns(
+			"continuous_screening_update_job_id",
+			"offset",
+			"items_processed",
+		).
+		Values(
+			input.UpdateJobId,
+			input.Offset,
+			input.ItemsProcessed,
+		).
+		Suffix(
+			"ON CONFLICT (continuous_screening_update_job_id) DO UPDATE SET " +
+				"offset = EXCLUDED.offset, " +
+				"items_processed = EXCLUDED.items_processed, " +
+				"updated_at = NOW()",
+		)
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo *MarbleDbRepository) CreateContinuousScreeningJobError(
+	ctx context.Context,
+	exec Executor,
+	input models.CreateContinuousScreeningJobError,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_ERRORS).
+		Columns(
+			"continuous_screening_update_job_id",
+			"details",
+		).
+		Values(
+			input.UpdateJobId,
+			input.Details,
+		)
+
+	return ExecBuilder(ctx, exec, query)
+}
