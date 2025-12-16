@@ -747,18 +747,19 @@ func (usecase *usecase) CreateNavigationOption(ctx context.Context, input models
 		if navOption.SourceFieldName == sourceField.Name &&
 			navOption.FilterFieldName == filterField.Name &&
 			navOption.OrderingFieldName == orderingField.Name &&
-			navOption.TargetTableName == targetTable.Name &&
-			navOption.Status == models.IndexStatusValid {
-			return errors.Wrap(
-				models.ConflictError,
-				fmt.Sprintf("navigation option %s.%s -> %s.%s (order on %s) already exists",
-					sourceTable.Name, sourceField.Name,
-					targetTable.Name, filterField.Name, orderingField.Name),
-			)
-		}
-		// index already pending creation, early return for noop
-		if navOption.Status == models.IndexStatusPending {
-			return nil
+			navOption.TargetTableName == targetTable.Name {
+			if navOption.Status == models.IndexStatusValid {
+				return errors.Wrap(
+					models.ConflictError,
+					fmt.Sprintf("navigation option %s.%s -> %s.%s (order on %s) already exists",
+						sourceTable.Name, sourceField.Name,
+						targetTable.Name, filterField.Name, orderingField.Name),
+				)
+			}
+			// index already pending creation, early return for noop
+			if navOption.Status == models.IndexStatusPending {
+				return nil
+			}
 		}
 	}
 
