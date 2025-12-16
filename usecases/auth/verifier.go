@@ -92,9 +92,10 @@ func (v MarbleVerifier) Verify(ctx context.Context, creds Credentials) (models.I
 		}
 
 		if p := identity.GetProfile(); p != nil {
-			user, err = v.repository.UpdateUser(ctx, user, *p)
+			user, err = v.repository.UpdateUserProfileFromClaims(ctx, user, *p)
 			if err != nil {
-				utils.LoggerFromContext(ctx).WarnContext(ctx, "could not update user's name", "error", err.Error())
+				utils.LoggerFromContext(ctx).WarnContext(ctx,
+					"could not update user's name", "error", err.Error())
 
 				return user, identity, nil
 			}

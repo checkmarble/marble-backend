@@ -36,7 +36,9 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 
 	ctx := t.Context()
 
-	idpTokenVerifier := mocks.NewStaticIdpTokenVerifier(infra.MockFirebaseIssuer, models.FirebaseIdentity{Issuer: infra.MockFirebaseIssuer, Email: "user@email.com"})
+	idpTokenVerifier := mocks.NewStaticIdpTokenVerifier(infra.MockFirebaseIssuer, models.FirebaseIdentity{
+		Issuer: infra.MockFirebaseIssuer, Email: "user@email.com",
+	})
 
 	t.Run("nominal", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
@@ -46,7 +48,9 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 			Return(organization, nil)
 
 		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
-		intoCreds, _, err := verifier.Verify(ctx, auth.Credentials{Type: auth.CredentialsApiKey, Value: key})
+		intoCreds, _, err := verifier.Verify(ctx, auth.Credentials{
+			Type: auth.CredentialsApiKey, Value: key,
+		})
 
 		assert.NoError(t, err)
 		assert.Equal(t, apiKey.Id, intoCreds.IntoCredentials().ActorIdentity.ApiKeyId)
@@ -106,7 +110,7 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 			Return(models.Organization{}, nil)
 		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
 			Return(user, nil)
-		mockRepository.On("UpdateUser", mock.Anything, user, models.IdentityUpdatableClaims{}).
+		mockRepository.On("UpdateUserProfileFromClaims", mock.Anything, user, models.IdentityUpdatableClaims{}).
 			Return(user, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
@@ -176,5 +180,4 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		assert.Error(t, err)
 		mockRepository.AssertExpectations(t)
 	})
-
 }

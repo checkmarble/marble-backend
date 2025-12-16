@@ -14,7 +14,11 @@ type marbleRepository interface {
 	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
 	GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error)
 	UserByEmail(ctx context.Context, email string) (models.User, error)
-	UpdateUser(ctx context.Context, user models.User, profile models.IdentityUpdatableClaims) (models.User, error)
+	UpdateUserProfileFromClaims(
+		ctx context.Context,
+		user models.User,
+		profile models.IdentityUpdatableClaims,
+	) (models.User, error)
 }
 
 type encoder interface {
@@ -22,7 +26,8 @@ type encoder interface {
 }
 
 type TokenGenerator interface {
-	GenerateToken(ctx context.Context, creds Credentials, intoCredentials models.IntoCredentials, claims models.IdentityClaims) (Token, error)
+	GenerateToken(ctx context.Context, creds Credentials, intoCredentials models.IntoCredentials,
+		claims models.IdentityClaims) (Token, error)
 }
 
 type Token struct {
@@ -48,7 +53,9 @@ func NewGenerator(repository marbleRepository, encoder encoder, lifetime time.Du
 	}
 }
 
-func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentials, intoCredentials models.IntoCredentials, claims models.IdentityClaims) (Token, error) {
+func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentials,
+	intoCredentials models.IntoCredentials, claims models.IdentityClaims,
+) (Token, error) {
 	expirationTime := g.clock.Now().Add(g.tokenLifetime)
 	credentials := intoCredentials.IntoCredentials()
 
@@ -63,9 +70,10 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 			tracking.Identify(ctx, credentials.ActorIdentity.UserId, map[string]any{
 				"email": credentials.ActorIdentity.Email,
 			})
-			tracking.Group(ctx, credentials.ActorIdentity.UserId, credentials.OrganizationId, map[string]any{
-				"name": organization.Name,
-			})
+			tracking.Group(ctx, credentials.ActorIdentity.UserId,
+				credentials.OrganizationId, map[string]any{
+					"name": organization.Name,
+				})
 			tracking.TrackEventWithUserId(ctx, models.AnalyticsTokenCreated,
 				credentials.ActorIdentity.UserId, map[string]any{
 					"organization_id": credentials.OrganizationId,
