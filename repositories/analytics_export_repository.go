@@ -30,11 +30,18 @@ type AnalyticsCopyRequest struct {
 	Limit int
 }
 
-func AnalyticsGetLatestRow(ctx context.Context, exec AnalyticsExecutor,
+func AnalyticsGetLatestRow(
+	ctx context.Context,
+	exec AnalyticsExecutor,
 	orgId, triggerObjectType, table string,
+	alternativeIdField ...string,
 ) (uuid.UUID, time.Time, error) {
+	idField := "id"
+	if len(alternativeIdField) > 0 {
+		idField = alternativeIdField[0]
+	}
 	query := squirrel.
-		Select("id", "created_at").
+		Select(idField, "created_at").
 		From(table).
 		Where("org_id = ?", orgId).
 		Where("trigger_object_type = ?", triggerObjectType).
