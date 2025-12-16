@@ -3,7 +3,7 @@ package dto
 import "github.com/google/uuid"
 
 type OrgImport struct {
-	Org         ImportOrg          `json:"org"`
+	Org         ImportOrg          `json:"org" binding:"required"`
 	Admins      []CreateUser       `json:"admins"`
 	DataModel   ImportDataModel    `json:"data_model"`
 	Scenarios   []ImportScenario   `json:"scenarios"`
@@ -16,7 +16,7 @@ type OrgImport struct {
 }
 
 type ImportOrg struct {
-	Name string `json:"name"`
+	Name string `json:"name" binding:"required"`
 	UpdateOrganizationBodyDto
 }
 
@@ -53,19 +53,22 @@ type ImportWorkflow struct {
 }
 
 type ImportSeeds struct {
-	Ingestion map[string]ImportSeedsIngestion `json:"ingestion"`
-	Decisions map[string]int                  `json:"decisions"`
+	Ingestion []ImportSeedsIngestion `json:"ingestion"`
+	Decisions map[string]int         `json:"decisions"`
 }
 
 type ImportSeedsIngestion struct {
+	Table  string                      `json:"table"`
 	Count  int                         `json:"count"`
 	Fields map[string]ImportSeedsField `json:"fields"`
 }
 
 type ImportSeedsField struct {
+	Ref        string    `json:"ref"`
 	Constant   any       `json:"constant"`
 	Enum       []any     `json:"enum"`
 	IntRange   []int     `json:"int_range"`
 	FloatRange []float64 `json:"float_range"`
 	Generator  string    `json:"generator"`
+	Cast       string    `json:"cast"`
 }
