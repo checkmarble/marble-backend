@@ -297,9 +297,14 @@ func (w AnalyticsExportWorker) exportDecisionRules(
 	}()
 
 	var id uuid.UUID
-	id, startWatermark, err = repositories.AnalyticsGetLatestRow(ctx, exec,
+	// To export decision rules, we use the decision_id instead of the id field to paginate, because we export batches of decision rules based on a
+	// prefilter of decision rows.
+	id, startWatermark, err = repositories.AnalyticsGetLatestRow(
+		ctx,
+		exec,
 		req.OrgId, req.TriggerObject,
-		w.analyticsFactory.BuildTarget("decision_rules", req.OrgId, req.TriggerObject))
+		w.analyticsFactory.BuildTarget("decision_rules", req.OrgId, req.TriggerObject),
+		"decision_id")
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get latest exported row")
 	}
