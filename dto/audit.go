@@ -9,15 +9,15 @@ import (
 )
 
 type AuditEventFilters struct {
-	OrgId    uuid.UUID `form:"-"`
-	From     time.Time `form:"from" binding:"required"`
-	To       time.Time `form:"to" binding:"required"`
-	UserId   string    `form:"user_id"`
-	ApiKeyId string    `form:"api_key_id"`
-	Table    string    `form:"table"`
-	EntityId string    `form:"entity_id"`
-	Limit    int       `form:"limit" binding:"omitempty,gte=1,lte=100"`
-	After    string    `form:"after"`
+	OrgId    uuid.UUID  `form:"-"`
+	From     *time.Time `form:"from"`
+	To       *time.Time `form:"to"`
+	UserId   string     `form:"user_id"`
+	ApiKeyId string     `form:"api_key_id"`
+	Table    string     `form:"table"`
+	EntityId string     `form:"entity_id"`
+	Limit    int        `form:"limit" binding:"omitempty,gte=1,lte=100"`
+	After    string     `form:"after"`
 }
 
 type PaginatedAuditEvents struct {

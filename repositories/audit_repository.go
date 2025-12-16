@@ -18,7 +18,9 @@ func (repo MarbleDbRepository) GetAuditEvent(ctx context.Context, exec Executor,
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptAuditEvent)
 }
 
-func (repo MarbleDbRepository) ListAuditEvents(ctx context.Context, exec Executor, pagination models.PaginationAndSorting, filters dto.AuditEventFilters) ([]models.AuditEvent, error) {
+func (repo MarbleDbRepository) ListAuditEvents(ctx context.Context, exec Executor,
+	pagination models.PaginationAndSorting, filters dto.AuditEventFilters,
+) ([]models.AuditEvent, error) {
 	query := NewQueryBuilder().
 		Select(append(
 			columnsNames("ae", dbmodels.SelectAuditEventColumns),
@@ -29,9 +31,15 @@ func (repo MarbleDbRepository) ListAuditEvents(ctx context.Context, exec Executo
 		LeftJoin(dbmodels.TABLE_USERS+" u on u.id = ae.user_id::uuid").
 		LeftJoin(dbmodels.TABLE_APIKEYS+" ak on ak.id = ae.api_key_id").
 		Where("ae.org_id = ?", filters.OrgId).
-		Where("ae.created_at between ? and ?", filters.From, filters.To).
 		OrderBy("ae.created_at desc, id desc").
 		Limit(uint64(pagination.Limit))
+
+	if filters.From != nil {
+		query = query.Where("ae.created_at >= ?", *filters.From)
+	}
+	if filters.To != nil {
+		query = query.Where("ae.created_at <= ?", *filters.To)
+	}
 
 	if pagination.OffsetId != "" {
 		cursor, err := repo.GetAuditEvent(ctx, exec, pagination.OffsetId)
