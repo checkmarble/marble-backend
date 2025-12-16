@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -50,8 +51,19 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 	return user, nil
 }
 
-func (db *Database) UpdateUser(ctx context.Context, user models.User, profile models.IdentityUpdatableClaims) (models.User, error) {
-	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where("id = ?", user.UserId)
+func (db *Database) UpdateUserProfileFromClaims(
+	ctx context.Context,
+	user models.User,
+	profile models.IdentityUpdatableClaims,
+) (models.User, error) {
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_USERS).
+		Where("id = ?", user.UserId).
+		Where(squirrel.Or{
+			squirrel.NotEq{"picture": profile.Picture},
+			squirrel.NotEq{"first_name": profile.Firstname},
+			squirrel.NotEq{"last_name": profile.Lastname},
+		})
 	updated := false
 
 	if profile.Firstname != "" && profile.Lastname != "" {
@@ -71,9 +83,12 @@ func (db *Database) UpdateUser(ctx context.Context, user models.User, profile mo
 	if err != nil {
 		return user, err
 	}
-
-	if _, err := db.pool.Exec(ctx, sql, args...); err != nil {
+	tag, err := db.pool.Exec(ctx, sql, args...)
+	if err != nil {
 		return user, err
+	}
+	if tag.RowsAffected() == 0 {
+		return user, nil
 	}
 
 	return db.UserByEmail(ctx, user.Email)
