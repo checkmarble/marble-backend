@@ -614,13 +614,12 @@ func createDecisions(
 			ruleId = r.Rule.Id
 		}
 	}
-	beforeSnooze := time.Now()
 	// Now snooze the rules and rerun the decision in Decline status
 	ruleSnoozeUsecase := usecasesWithUserCreds.NewRuleSnoozeUsecase()
 	_, err = ruleSnoozeUsecase.SnoozeDecision(ctx, models.SnoozeDecisionInput{
 		Comment:        "this is a test snooze",
 		DecisionId:     declineDecision.DecisionId.String(),
-		Duration:       "500ms", // snooze for 0.5 sec, after this wait for the snooze to end before moving on
+		Duration:       "5s", // snooze for 5 seconds, after this wait for the snooze to end before moving on
 		OrganizationId: organizationId,
 		RuleId:         ruleId, // snooze the "Check on account name" rule
 		UserId:         utils.Ptr(usecasesWithUserCreds.Credentials.ActorIdentity.UserId),
@@ -639,11 +638,6 @@ func createDecisions(
 		organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve.String(), approvedDecisionAfternooze.Outcome.String(),
 		"Expected decision to be Approve, got %s", approvedDecisionAfternooze.Outcome)
-	if approvedDecisionAfternooze.Outcome != models.Approve {
-		assert.Greater(t, time.Now(), beforeSnooze.Add(500*time.Millisecond),
-			"if the test failed because of flaky cpu, at least i can confirm that the decision was created too late !!?")
-	}
-	time.Sleep(time.Millisecond * 500)
 }
 
 func createAndTestDecision(
