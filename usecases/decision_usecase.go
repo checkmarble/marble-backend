@@ -348,10 +348,11 @@ func (usecase *DecisionUsecase) CreateDecision(
 	pivot := models.FindPivot(pivotsMeta, input.TriggerObjectTable, dataModel)
 
 	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
-		Scenario:     scenario,
-		ClientObject: payload,
-		DataModel:    dataModel,
-		Pivot:        pivot,
+		Scenario:        scenario,
+		ClientObject:    payload,
+		DataModel:       dataModel,
+		Pivot:           pivot,
+		ConcurrentRules: params.ConcurrentRules,
 	}
 
 	triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
@@ -548,10 +549,11 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	var items []decisionAndScenario
 	for _, scenario := range filteredScenarios {
 		evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
-			Scenario:     scenario,
-			ClientObject: payload,
-			DataModel:    dataModel,
-			Pivot:        pivot,
+			Scenario:        scenario,
+			ClientObject:    payload,
+			DataModel:       dataModel,
+			Pivot:           pivot,
+			ConcurrentRules: params.ConcurrentRules,
 		}
 
 		ctx, cancel := context.WithTimeout(ctx, models.DECISION_TIMEOUT)
@@ -642,16 +644,18 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			}
 			decisions[i] = item.decision
 
-			webhookEventId := uuid.NewString()
-			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-				Id:             webhookEventId,
-				OrganizationId: item.decision.OrganizationId,
-				EventContent:   models.NewWebhookEventDecisionCreated(item.decision),
-			})
-			if err != nil {
-				return err
+			if params.WithDecisionWebhooks {
+				webhookEventId := uuid.NewString()
+				err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+					Id:             webhookEventId,
+					OrganizationId: item.decision.OrganizationId,
+					EventContent:   models.NewWebhookEventDecisionCreated(item.decision),
+				})
+				if err != nil {
+					return err
+				}
+				sendWebhookEventIds = append(sendWebhookEventIds, webhookEventId)
 			}
-			sendWebhookEventIds = append(sendWebhookEventIds, webhookEventId)
 
 			err = usecase.taskQueueRepository.EnqueueDecisionWorkflowTask(
 				ctx,

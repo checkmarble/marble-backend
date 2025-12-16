@@ -25,6 +25,7 @@ type IngestedDataIndexesRepository interface {
 		indexTypes ...models.IndexType,
 	) ([]models.ConcreteIndex, error)
 	ListAllUniqueIndexes(ctx context.Context, exec repositories.Executor) ([]models.UnicityIndex, error)
+	CreateIndexesBlocking(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) error
 	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) error
 	CreateIndexesWithCallback(
 		ctx context.Context,
@@ -137,6 +138,34 @@ func (editor ClientDbIndexEditor) GetRequiredIndices(
 	}
 
 	return
+}
+
+func (editor ClientDbIndexEditor) CreateIndexesBlocking(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	indexes []models.ConcreteIndex,
+) error {
+	logger := utils.LoggerFromContext(ctx)
+
+	if err := editor.enforceSecurityDataModel.WriteDataModelIndexes(organizationId); err != nil {
+		return err
+	}
+
+	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return errors.Wrap(
+			err,
+			"Error while creating client schema executor in StartPublicationPreparation")
+	}
+	err = editor.ingestedDataIndexesRepository.CreateIndexesBlocking(ctx, db, indexes)
+	if err != nil {
+		return errors.Wrap(err, "Error while creating indexes in StartPublicationPreparation")
+	}
+	logger.InfoContext(
+		ctx,
+		fmt.Sprintf("%d indexes pending creation in: %+v", len(indexes), indexes), "org_id", organizationId,
+	)
+	return nil
 }
 
 func (editor ClientDbIndexEditor) CreateIndexesAsync(

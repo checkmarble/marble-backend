@@ -499,6 +499,7 @@ type NavigationOption struct {
 }
 
 type CreateNavigationOptionInput struct {
+	Blocking        bool
 	SourceTableId   string
 	SourceFieldId   string
 	TargetTableId   string

@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -35,6 +37,7 @@ type OrgImportUsecase struct {
 	scenarioRepository   repositories.ScenarioUsecaseRepository
 	iterationRepository  IterationUsecaseRepository
 	screeningRepository  ScreeningConfigRepository
+	indexEditor          indexes.ClientDbIndexEditor
 	publicationUsecase   *ScenarioPublicationUsecase
 	inboxRepository      InboxRepository
 	workflowRepository   workflowRepository
@@ -59,6 +62,7 @@ func NewOrgImportUsecase(
 	scenarioRepository repositories.ScenarioUsecaseRepository,
 	iterationRepository IterationUsecaseRepository,
 	screeningRepository ScreeningConfigRepository,
+	indexEditor indexes.ClientDbIndexEditor,
 	publicationUsecase *ScenarioPublicationUsecase,
 	inboxRepository InboxRepository,
 	workflowRepository workflowRepository,
@@ -81,6 +85,7 @@ func NewOrgImportUsecase(
 		scenarioRepository:   scenarioRepository,
 		iterationRepository:  iterationRepository,
 		screeningRepository:  screeningRepository,
+		indexEditor:          indexEditor,
 		publicationUsecase:   publicationUsecase,
 		inboxRepository:      inboxRepository,
 		workflowRepository:   workflowRepository,
@@ -89,7 +94,28 @@ func NewOrgImportUsecase(
 	}
 }
 
-func (uc OrgImportUsecase) Import(ctx context.Context, spec dto.OrgImport, seed bool) (uuid.UUID, error) {
+//go:embed archetypes/*.json
+var ARCHETYPES embed.FS
+
+func (uc *OrgImportUsecase) ImportFromArchetype(ctx context.Context, archetype string, spec dto.OrgImport, seed bool) (uuid.UUID, error) {
+	d, err := ARCHETYPES.ReadFile(fmt.Sprintf("archetypes/%s.json", archetype))
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	var pattern dto.OrgImport
+
+	if err := json.Unmarshal(d, &pattern); err != nil {
+		return uuid.Nil, err
+	}
+
+	pattern.Org.Name = spec.Org.Name
+	pattern.Admins = spec.Admins
+
+	return uc.Import(ctx, pattern, seed)
+}
+
+func (uc *OrgImportUsecase) Import(ctx context.Context, spec dto.OrgImport, seed bool) (uuid.UUID, error) {
 	if err := uc.security.ImportOrg(); err != nil {
 		return uuid.Nil, err
 	}
@@ -133,12 +159,7 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 		return uuid.Nil, err
 	}
 
-	// webhookEventsSender is used in goroutines, so cannot rely on the master
-	// transaction used in this usecase (which may be closed when the goroutine
-	// ends up using it).
-	webhookUsecase := uc.decisionUsecase.webhookEventsSender
 	*uc = uc.transactionWrapper(tx, org, admin).NewOrgImportUsecase()
-	uc.decisionUsecase.webhookEventsSender = webhookUsecase
 
 	err = uc.orgRepository.UpdateOrganization(ctx, tx, models.UpdateOrganizationInput{
 		Id:                      orgId,
@@ -152,7 +173,7 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 		return uuid.Nil, err
 	}
 
-	if err := uc.createDataModel(ctx, tx, nil, orgId, ids, spec.DataModel); err != nil {
+	if err := uc.createDataModel(ctx, tx, orgId, ids, spec.DataModel); err != nil {
 		return uuid.Nil, err
 	}
 	if err := uc.createTags(ctx, tx, orgId, ids, spec.Tags); err != nil {
@@ -174,7 +195,7 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 	return orgId, nil
 }
 
-func (uc OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, admins []dto.CreateUser) ([]string, error) {
+func (uc *OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, admins []dto.CreateUser) ([]string, error) {
 	users := make([]string, len(admins))
 
 	for idx, admin := range admins {
@@ -201,9 +222,7 @@ func (uc OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Tra
 	return users, nil
 }
 
-func (uc OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.Transaction, clientDbExec repositories.Executor, orgId uuid.UUID, ids map[string]string, dataModel dto.ImportDataModel) error {
-	// TODO: navigation options
-
+func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, dataModel dto.ImportDataModel) error {
 	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
 	if err != nil {
 		return err
@@ -291,6 +310,7 @@ func (uc OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.
 
 	for navTable, navOptions := range dataModel.NavigationOptions {
 		err := uc.dataModelUsecase.CreateNavigationOption(ctx, models.CreateNavigationOptionInput{
+			Blocking:        true,
 			SourceTableId:   ids[navTable],
 			SourceFieldId:   ids[navOptions.SourceFieldId],
 			TargetTableId:   ids[navOptions.TargetTableId],
@@ -308,7 +328,7 @@ func (uc OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.
 	return nil
 }
 
-func (uc OrgImportUsecase) createTags(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, tags []dto.ImportTag) error {
+func (uc *OrgImportUsecase) createTags(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, tags []dto.ImportTag) error {
 	for _, tag := range tags {
 		tagId, _ := uuid.NewV7()
 		ids[tag.Id] = tagId.String()
@@ -353,7 +373,7 @@ func (uc OrgImportUsecase) createCustomLists(ctx context.Context, tx repositorie
 	return nil
 }
 
-func (uc OrgImportUsecase) createScenarios(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, scenarios []dto.ImportScenario) error {
+func (uc *OrgImportUsecase) createScenarios(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, scenarios []dto.ImportScenario) error {
 	for _, scenario := range scenarios {
 		scenarioId, _ := uuid.NewV7()
 		ids[scenario.Scenario.Id] = scenarioId.String()
@@ -503,9 +523,17 @@ func (uc OrgImportUsecase) createScenarios(ctx context.Context, tx repositories.
 		if err = uc.iterationRepository.UpdateScenarioIterationVersion(ctx, tx, iteration.Id, 1); err != nil {
 			return err
 		}
-		if err := uc.publicationUsecase.StartPublicationPreparation(ctx, orgId, iteration.Id); err != nil {
+		indexes, pending, err := uc.indexEditor.GetIndexesToCreate(ctx, orgId, iteration.Id)
+		if err != nil {
 			return err
 		}
+
+		if len(indexes) > 0 || pending > 0 {
+			if err := uc.indexEditor.CreateIndexesBlocking(ctx, orgId, indexes); err != nil {
+				return err
+			}
+		}
+
 		_, err = uc.publicationUsecase.ExecuteScenarioPublicationAction(ctx, orgId, models.PublishScenarioIterationInput{
 			ScenarioIterationId: iteration.Id,
 			PublicationAction:   models.Publish,
@@ -518,7 +546,7 @@ func (uc OrgImportUsecase) createScenarios(ctx context.Context, tx repositories.
 	return nil
 }
 
-func (uc OrgImportUsecase) createInboxes(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, inboxes []dto.InboxDto) error {
+func (uc *OrgImportUsecase) createInboxes(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, inboxes []dto.InboxDto) error {
 	for _, inbox := range inboxes {
 		inboxId, _ := uuid.NewV7()
 		ids[inbox.Id.String()] = inboxId.String()
@@ -617,7 +645,7 @@ func (uc OrgImportUsecase) createWorkflows(ctx context.Context, tx repositories.
 	return nil
 }
 
-func (uc OrgImportUsecase) adaptAstNodeIds(ctx context.Context, ids map[string]string, node *ast.Node) error {
+func (uc *OrgImportUsecase) adaptAstNodeIds(ctx context.Context, ids map[string]string, node *ast.Node) error {
 	if node.Function == ast.FUNC_CUSTOM_LIST_ACCESS {
 		args, ok := node.NamedChildren["customListId"].Constant.(string)
 		if !ok {

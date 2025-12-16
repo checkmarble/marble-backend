@@ -53,11 +53,6 @@ func (e *EnforceSecurityScenarioImpl) ReadScenarioPublication(scenarioPublicatio
 }
 
 func (e *EnforceSecurityScenarioImpl) PublishScenario(scenario models.Scenario) error {
-	// TODO: added to test org import, to remove once we figure our proper permissions for it.
-	if e.Credentials.Role == models.MARBLE_ADMIN {
-		return nil
-	}
-
 	return errors.Join(
 		e.Permission(models.SCENARIO_PUBLISH),
 		e.ReadOrganization(scenario.OrganizationId),

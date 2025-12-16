@@ -1,0 +1,1382 @@
+{
+  "org": {
+    "name": "New org",
+    "default_scenario_timezone": "Europe/Paris",
+    "sanctions_threshold": 70,
+    "sanctions_limit": 10
+  },
+  "admins": [
+    {
+      "email": "admin@demo-financial.com",
+      "first_name": "Demo",
+      "last_name": "Administrator"
+    }
+  ],
+  "data_model": {
+    "tables": [
+      {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "name": "companies",
+        "description": "Contains the info on the company details",
+        "fields": {
+          "object_id": {
+            "id": "11111111-1111-1111-1111-111111111001",
+            "data_type": "String",
+            "description": "The object ID"
+          },
+          "updated_at": {
+            "id": "11111111-1111-1111-1111-111111111002",
+            "data_type": "Timestamp",
+            "description": "The timestamp"
+          },
+          "name": {
+            "id": "11111111-1111-1111-1111-111111111103",
+            "data_type": "String",
+            "description": "Company legal name"
+          },
+          "country": {
+            "id": "11111111-1111-1111-1111-111111111004",
+            "data_type": "String",
+            "description": "Country of incorporation"
+          },
+          "city": {
+            "id": "11111111-1111-1111-1111-111111111005",
+            "data_type": "String",
+            "description": "City where the company main office is registered"
+          },
+          "zip": {
+            "id": "11111111-1111-1111-1111-111111111006",
+            "data_type": "String",
+            "description": "Zip code used for the company main office"
+          },
+          "legal_form": {
+            "id": "11111111-1111-1111-1111-111111111007",
+            "data_type": "String",
+            "description": "Legal form registered for the company"
+          },
+          "activity_type": {
+            "id": "11111111-1111-1111-1111-111111111008",
+            "data_type": "String",
+            "description": "NAF code. Main activity declared for the company"
+          },
+          "registration_number": {
+            "id": "11111111-1111-1111-1111-111111111009",
+            "data_type": "String",
+            "description": "identification in the local commercial register"
+          },
+          "registration_month": {
+            "id": "11111111-1111-1111-1111-111111111010",
+            "data_type": "Timestamp",
+            "description": "Earlier date of registration of the company"
+          },
+          "aml_score": {
+            "id": "11111111-1111-1111-1111-111111111011",
+            "data_type": "Float",
+            "description": "Sensitivity score to money laundering risks"
+          },
+          "created_at": {
+            "id": "11111111-1111-1111-1111-111111111012",
+            "data_type": "Timestamp",
+            "description": "date of creation in the system"
+          }
+        }
+      },
+      {
+        "id": "22222222-2222-2222-2222-222222222222",
+        "name": "accounts",
+        "description": "Bank accounts owned by the company",
+        "fields": {
+          "object_id": {
+            "id": "22222222-2222-2222-2222-222222222201",
+            "data_type": "String",
+            "description": "The object ID"
+          },
+          "updated_at": {
+            "id": "22222222-2222-2222-2222-222222222202",
+            "data_type": "Timestamp",
+            "description": "The timestamp"
+          },
+          "balance": {
+            "id": "22222222-2222-2222-2222-222222222203",
+            "data_type": "Float",
+            "description": "Account balance in EUR cents (no decimals)"
+          },
+          "past_balance": {
+            "id": "22222222-2222-2222-2222-222222222204",
+            "data_type": "Float",
+            "description": "Balance before the last update"
+          },
+          "iban": {
+            "id": "22222222-2222-2222-2222-222222222205",
+            "data_type": "String",
+            "description": "IBAN of the company's account"
+          },
+          "bic": {
+            "id": "22222222-2222-2222-2222-222222222206",
+            "data_type": "String",
+            "description": "BIC of the company's account"
+          },
+          "company_id": {
+            "id": "22222222-2222-2222-2222-222222222207",
+            "data_type": "String",
+            "description": "Company owning the account"
+          },
+          "created_at": {
+            "id": "22222222-2222-2222-2222-222222222208",
+            "data_type": "Timestamp",
+            "description": "Account date of creation"
+          }
+        }
+      },
+      {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "name": "users",
+        "description": "Information on the users attached to each Company",
+        "fields": {
+          "object_id": {
+            "id": "33333333-3333-3333-3333-333333333301",
+            "data_type": "String",
+            "description": "The object ID"
+          },
+          "updated_at": {
+            "id": "33333333-3333-3333-3333-333333333302",
+            "data_type": "Timestamp",
+            "description": "The timestamp"
+          },
+          "name": {
+            "id": "33333333-3333-3333-3333-333333333303",
+            "data_type": "String",
+            "description": "Name of the user"
+          },
+          "email": {
+            "id": "33333333-3333-3333-3333-333333333304",
+            "data_type": "String",
+            "description": "User's email"
+          },
+          "phone": {
+            "id": "33333333-3333-3333-3333-333333333305",
+            "data_type": "String",
+            "description": "Phone number of the user, international format"
+          },
+          "city": {
+            "id": "33333333-3333-3333-3333-333333333306",
+            "data_type": "String",
+            "description": "City of residence"
+          },
+          "country": {
+            "id": "33333333-3333-3333-3333-333333333307",
+            "data_type": "String",
+            "description": "ISO code of the country of residence of the user"
+          },
+          "zip": {
+            "id": "33333333-3333-3333-3333-333333333308",
+            "data_type": "String",
+            "description": "Zip of residence of the user"
+          },
+          "is_frozen": {
+            "id": "33333333-3333-3333-3333-333333333309",
+            "data_type": "Bool",
+            "description": "flag for user frozen by the system"
+          },
+          "is_pep": {
+            "id": "33333333-3333-3333-3333-333333333310",
+            "data_type": "Bool",
+            "description": "Flag for user identified as PEP"
+          },
+          "is_under_sanctions": {
+            "id": "33333333-3333-3333-3333-333333333311",
+            "data_type": "Bool",
+            "description": "flag for user under sanctions"
+          },
+          "device_token": {
+            "id": "33333333-3333-3333-3333-333333333312",
+            "data_type": "String",
+            "description": "Device token associated with the user"
+          },
+          "company_id": {
+            "id": "33333333-3333-3333-3333-333333333313",
+            "data_type": "String",
+            "description": "Link to parent company"
+          },
+          "created_at": {
+            "id": "33333333-3333-3333-3333-333333333314",
+            "data_type": "Timestamp",
+            "description": "user date of creation in the system"
+          }
+        }
+      },
+      {
+        "id": "44444444-4444-4444-4444-444444444444",
+        "name": "transactions",
+        "description": "All transactions linked to an account or a company",
+        "fields": {
+          "object_id": {
+            "id": "44444444-4444-4444-4444-444444444401",
+            "data_type": "String",
+            "description": "The object ID"
+          },
+          "updated_at": {
+            "id": "44444444-4444-4444-4444-444444444402",
+            "data_type": "Timestamp",
+            "description": "The timestamp"
+          },
+          "account_id": {
+            "id": "44444444-4444-4444-4444-444444444403",
+            "data_type": "String",
+            "description": "Account that sent or received the transaction"
+          },
+          "company_id": {
+            "id": "44444444-4444-4444-4444-444444444404",
+            "data_type": "String",
+            "description": "Company related to the transaction"
+          },
+          "direction": {
+            "id": "44444444-4444-4444-4444-444444444405",
+            "data_type": "String",
+            "description": "direction of the transaction. Can be PAYIN or PAYOUT"
+          },
+          "value": {
+            "id": "44444444-4444-4444-4444-444444444406",
+            "data_type": "Float",
+            "description": "Amount of the transaction, in EUR cents, no decimals"
+          },
+          "status": {
+            "id": "44444444-4444-4444-4444-444444444407",
+            "data_type": "String",
+            "description": "status of the transaction. can be: VALIDATED, PENDING or CANCELED"
+          },
+          "transaction_at": {
+            "id": "44444444-4444-4444-4444-444444444408",
+            "data_type": "Timestamp",
+            "description": "timestamp of the transaction date"
+          },
+          "created_at": {
+            "id": "44444444-4444-4444-4444-444444444409",
+            "data_type": "Timestamp",
+            "description": "date of creation of the transaction in the system"
+          },
+          "payment_method": {
+            "id": "44444444-4444-4444-4444-444444444410",
+            "data_type": "String",
+            "description": "type of transaction. Can be: TRANSFER, CARD, DIRECT_DEBIT, WALLET_TRANSFER"
+          },
+          "card_is_3ds": {
+            "id": "44444444-4444-4444-4444-444444444411",
+            "data_type": "Bool",
+            "description": "Flag indicates if the card transaction has been secured by 3DS"
+          },
+          "card_merchant_id": {
+            "id": "44444444-4444-4444-4444-444444444412",
+            "data_type": "String",
+            "description": "Merchant code of a card transaction"
+          },
+          "card_merchant_name": {
+            "id": "44444444-4444-4444-4444-444444444413",
+            "data_type": "String",
+            "description": "Merchant name provided by the card scheme"
+          },
+          "card_payment_country": {
+            "id": "44444444-4444-4444-4444-444444444414",
+            "data_type": "String",
+            "description": "country of the merchant, for card transaction only"
+          },
+          "card_payment_currency": {
+            "id": "44444444-4444-4444-4444-444444444415",
+            "data_type": "String",
+            "description": "ISO code of the currency used for a card transaction"
+          },
+          "card_payment_type": {
+            "id": "44444444-4444-4444-4444-444444444416",
+            "data_type": "String",
+            "description": "indicates how the card transaction was processed and validated"
+          },
+          "category": {
+            "id": "44444444-4444-4444-4444-444444444417",
+            "data_type": "String",
+            "description": "MCC code of a card transaction. Empty for transfers and direct debit"
+          },
+          "counterparty_iban": {
+            "id": "44444444-4444-4444-4444-444444444418",
+            "data_type": "String",
+            "description": "IBAN of a counterparty (sender or beneficiary), used for transfers only"
+          },
+          "counterparty_bic": {
+            "id": "44444444-4444-4444-4444-444444444419",
+            "data_type": "String",
+            "description": "BIC of a counterparty. Used for transfers only"
+          },
+          "creditor_identifier": {
+            "id": "44444444-4444-4444-4444-444444444420",
+            "data_type": "String",
+            "description": "Information provided by the creditor when sending a Direct Debit"
+          },
+          "scheme": {
+            "id": "44444444-4444-4444-4444-444444444421",
+            "data_type": "String",
+            "description": "indicates the type of direct debit received. Can be either B2B or CORE"
+          },
+          "is_recuring": {
+            "id": "44444444-4444-4444-4444-444444444422",
+            "data_type": "Bool",
+            "description": "Flag used for direct debit mandates, indicates if recurring"
+          }
+        }
+      }
+    ],
+    "links": [
+      {
+        "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "parent_table_name": "companies",
+        "parent_table_id": "11111111-1111-1111-1111-111111111111",
+        "parent_field_id": "11111111-1111-1111-1111-111111111001",
+        "child_table_name": "accounts",
+        "child_table_id": "22222222-2222-2222-2222-222222222222",
+        "child_field_id": "22222222-2222-2222-2222-222222222207"
+      },
+      {
+        "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        "parent_table_name": "companies",
+        "parent_table_id": "11111111-1111-1111-1111-111111111111",
+        "parent_field_id": "11111111-1111-1111-1111-111111111001",
+        "child_table_name": "users",
+        "child_table_id": "33333333-3333-3333-3333-333333333333",
+        "child_field_id": "33333333-3333-3333-3333-333333333313"
+      },
+      {
+        "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+        "parent_table_name": "accounts",
+        "parent_table_id": "22222222-2222-2222-2222-222222222222",
+        "parent_field_id": "22222222-2222-2222-2222-222222222201",
+        "child_table_name": "transactions",
+        "child_table_id": "44444444-4444-4444-4444-444444444444",
+        "child_field_id": "44444444-4444-4444-4444-444444444403"
+      },
+      {
+        "id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+        "parent_table_name": "companies",
+        "parent_table_id": "11111111-1111-1111-1111-111111111111",
+        "parent_field_id": "11111111-1111-1111-1111-111111111001",
+        "child_table_name": "transactions",
+        "child_table_id": "44444444-4444-4444-4444-444444444444",
+        "child_field_id": "44444444-4444-4444-4444-444444444404"
+      }
+    ],
+    "pivots": [
+      {
+        "id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        "base_table_id": "44444444-4444-4444-4444-444444444444",
+        "path_link_ids": [
+          "cccccccc-cccc-cccc-cccc-cccccccccccc",
+          "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        ]
+      }
+    ],
+    "navigation_options": {
+      "22222222-2222-2222-2222-222222222222": {
+        "source_field_id": "22222222-2222-2222-2222-222222222201",
+        "target_table_id": "44444444-4444-4444-4444-444444444444",
+        "filter_field_id": "44444444-4444-4444-4444-444444444403",
+        "ordering_field_id": "44444444-4444-4444-4444-444444444408"
+      },
+      "11111111-1111-1111-1111-111111111111": {
+        "source_field_id": "11111111-1111-1111-1111-111111111001",
+        "target_table_id": "22222222-2222-2222-2222-222222222222",
+        "filter_field_id": "22222222-2222-2222-2222-222222222207",
+        "ordering_field_id": "22222222-2222-2222-2222-222222222208"
+      }
+    }
+  },
+  "scenarios": [
+    {
+      "scenario": {
+        "id": "55555555-5555-5555-5555-555555555551",
+        "name": "German - Validate card payouts",
+        "description": "Authorize transaction for german cardholders",
+        "trigger_object_type": "transactions"
+      },
+      "iteration": {
+        "trigger_condition_ast_expression": {
+          "name": "And",
+          "children": [
+            {
+              "name": "=",
+              "children": [
+                {
+                  "name": "Payload",
+                  "children": [{ "constant": "payment_method" }]
+                },
+                { "constant": "CARD" }
+              ]
+            },
+            {
+              "name": "=",
+              "children": [
+                {
+                  "name": "DatabaseAccess",
+                  "named_children": {
+                    "fieldName": { "constant": "country" },
+                    "path": {
+                      "constant": [
+                        "transactions_accounts",
+                        "accounts_companies"
+                      ]
+                    },
+                    "tableName": { "constant": "transactions" }
+                  }
+                },
+                { "constant": "DE" }
+              ]
+            },
+            {
+              "name": "=",
+              "children": [
+                {
+                  "name": "Payload",
+                  "children": [{ "constant": "direction" }]
+                },
+                { "constant": "PAYOUT" }
+              ]
+            },
+            {
+              "name": ">",
+              "children": [
+                {
+                  "name": "DatabaseAccess",
+                  "named_children": {
+                    "fieldName": { "constant": "balance" },
+                    "path": { "constant": ["transactions_accounts"] },
+                    "tableName": { "constant": "transactions" }
+                  }
+                },
+                { "constant": 10000 }
+              ]
+            }
+          ]
+        },
+        "rules": [
+          {
+            "id": "55555555-5555-5555-5555-555555555501",
+            "stable_id": "55555555-5555-5555-5555-555555555511",
+            "name": "Quick transactions in less than 5 minutes",
+            "description": "Check if there's a important nb of transactions in less than 5 minutes, for a significant amount",
+            "formula_ast_expression": {
+              "name": "Or",
+              "children": [
+                {
+                  "name": "And",
+                  "children": [
+                    {
+                      "name": "<",
+                      "children": [
+                        { "constant": 5 },
+                        {
+                          "name": "Aggregator",
+                          "named_children": {
+                            "aggregator": { "constant": "COUNT_DISTINCT" },
+                            "fieldName": { "constant": "object_id" },
+                            "filters": {
+                              "name": "List",
+                              "children": [
+                                {
+                                  "name": "Filter",
+                                  "named_children": {
+                                    "fieldName": { "constant": "created_at" },
+                                    "operator": { "constant": "<" },
+                                    "tableName": { "constant": "transactions" },
+                                    "value": {
+                                      "name": "TimeAdd",
+                                      "named_children": {
+                                        "duration": { "constant": "PT5M" },
+                                        "sign": { "constant": "-" },
+                                        "timestampField": {
+                                          "name": "Payload",
+                                          "children": [
+                                            { "constant": "created_at" }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              ]
+                            },
+                            "label": {
+                              "constant": "Nb of transactions within the last 5 minutes"
+                            },
+                            "tableName": { "constant": "transactions" }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "<",
+                      "children": [
+                        { "constant": 10000 },
+                        {
+                          "name": "Aggregator",
+                          "named_children": {
+                            "aggregator": { "constant": "SUM" },
+                            "fieldName": { "constant": "value" },
+                            "filters": {
+                              "name": "List",
+                              "children": [
+                                {
+                                  "name": "Filter",
+                                  "named_children": {
+                                    "fieldName": { "constant": "created_at" },
+                                    "operator": { "constant": "<" },
+                                    "tableName": { "constant": "transactions" },
+                                    "value": {
+                                      "name": "TimeAdd",
+                                      "named_children": {
+                                        "duration": { "constant": "PT5M" },
+                                        "sign": { "constant": "-" },
+                                        "timestampField": {
+                                          "name": "Payload",
+                                          "children": [
+                                            { "constant": "transaction_at" }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              ]
+                            },
+                            "label": {
+                              "constant": "Sum of transaction value created within 5 minutes"
+                            },
+                            "tableName": { "constant": "transactions" }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "score_modifier": 10,
+            "rule_group": null
+          },
+          {
+            "id": "55555555-5555-5555-5555-555555555502",
+            "stable_id": "55555555-5555-5555-5555-555555555512",
+            "name": "Merchant risk : MCC codes",
+            "description": "Check if the Merchant code provided by the transaction is an increased risk (gambling, tobacco...)",
+            "formula_ast_expression": {
+              "name": "Or",
+              "children": [
+                {
+                  "name": "And",
+                  "children": [
+                    {
+                      "name": "IsInList",
+                      "children": [
+                        {
+                          "name": "Payload",
+                          "children": [{ "constant": "category" }]
+                        },
+                        {
+                          "name": "CustomListAccess",
+                          "named_children": {
+                            "customListId": {
+                              "constant": "88888888-8888-8888-8888-888888888881"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "score_modifier": 20,
+            "rule_group": null
+          },
+          {
+            "id": "55555555-5555-5555-5555-555555555503",
+            "stable_id": "55555555-5555-5555-5555-555555555513",
+            "name": "Large amount",
+            "description": "Check if the transaction has a large amount compared to the max amount of past 30 days transactions",
+            "formula_ast_expression": {
+              "name": "Or",
+              "children": [
+                {
+                  "name": "And",
+                  "children": [
+                    {
+                      "name": ">",
+                      "children": [
+                        {
+                          "name": "Payload",
+                          "children": [{ "constant": "value" }]
+                        },
+                        {
+                          "name": "*",
+                          "children": [
+                            {
+                              "name": "Aggregator",
+                              "named_children": {
+                                "aggregator": { "constant": "MAX" },
+                                "fieldName": { "constant": "value" },
+                                "filters": {
+                                  "name": "List",
+                                  "children": [
+                                    {
+                                      "name": "Filter",
+                                      "named_children": {
+                                        "fieldName": {
+                                          "constant": "account_id"
+                                        },
+                                        "operator": { "constant": "=" },
+                                        "tableName": {
+                                          "constant": "transactions"
+                                        },
+                                        "value": {
+                                          "name": "DatabaseAccess",
+                                          "named_children": {
+                                            "fieldName": {
+                                              "constant": "object_id"
+                                            },
+                                            "path": {
+                                              "constant": [
+                                                "transactions_accounts"
+                                              ]
+                                            },
+                                            "tableName": {
+                                              "constant": "transactions"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "name": "Filter",
+                                      "named_children": {
+                                        "fieldName": {
+                                          "constant": "payment_method"
+                                        },
+                                        "operator": { "constant": "=" },
+                                        "tableName": {
+                                          "constant": "transactions"
+                                        },
+                                        "value": { "constant": "CARD" }
+                                      }
+                                    },
+                                    {
+                                      "name": "Filter",
+                                      "named_children": {
+                                        "fieldName": {
+                                          "constant": "created_at"
+                                        },
+                                        "operator": { "constant": ">=" },
+                                        "tableName": {
+                                          "constant": "transactions"
+                                        },
+                                        "value": {
+                                          "name": "TimeAdd",
+                                          "named_children": {
+                                            "duration": { "constant": "P30D" },
+                                            "sign": { "constant": "-" },
+                                            "timestampField": {
+                                              "name": "Payload",
+                                              "children": [
+                                                { "constant": "created_at" }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                },
+                                "label": {
+                                  "constant": "max amount of past card transaction in last 30 days"
+                                },
+                                "tableName": { "constant": "transactions" }
+                              }
+                            },
+                            { "constant": 0.8 }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "score_modifier": 10,
+            "rule_group": "Amount"
+          },
+          {
+            "id": "55555555-5555-5555-5555-555555555504",
+            "stable_id": "55555555-5555-5555-5555-555555555514",
+            "name": "Check transaction value",
+            "description": "check if the value of the transaction is over 1000€",
+            "formula_ast_expression": {
+              "name": "Or",
+              "children": [
+                {
+                  "name": "And",
+                  "children": [
+                    {
+                      "name": ">",
+                      "children": [
+                        {
+                          "name": "Payload",
+                          "children": [{ "constant": "value" }]
+                        },
+                        { "constant": 1000 }
+                      ]
+                    },
+                    {
+                      "name": "=",
+                      "children": [
+                        {
+                          "name": "DatabaseAccess",
+                          "named_children": {
+                            "fieldName": { "constant": "city" },
+                            "path": {
+                              "constant": [
+                                "transactions_accounts",
+                                "accounts_companies"
+                              ]
+                            },
+                            "tableName": { "constant": "transactions" }
+                          }
+                        },
+                        { "constant": "BERLIN" }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "score_modifier": 10,
+            "rule_group": "Amount"
+          }
+        ],
+        "screening_configs": [],
+        "score_review_threshold": 20,
+        "score_block_and_review_threshold": 20,
+        "score_decline_threshold": 20,
+        "schedule": ""
+      }
+    },
+    {
+      "scenario": {
+        "id": "55555555-5555-5555-5555-555555555552",
+        "name": "France - Validate card payouts",
+        "description": "Authorize transaction for french cardholders",
+        "trigger_object_type": "transactions"
+      },
+      "iteration": {
+        "trigger_condition_ast_expression": {
+          "name": "And",
+          "children": [
+            {
+              "name": "=",
+              "children": [
+                {
+                  "name": "DatabaseAccess",
+                  "named_children": {
+                    "fieldName": { "constant": "country" },
+                    "path": {
+                      "constant": [
+                        "transactions_accounts",
+                        "accounts_companies"
+                      ]
+                    },
+                    "tableName": { "constant": "transactions" }
+                  }
+                },
+                { "constant": "FR" }
+              ]
+            },
+            {
+              "name": "=",
+              "children": [
+                {
+                  "name": "Payload",
+                  "children": [{ "constant": "direction" }]
+                },
+                { "constant": "PAYOUT" }
+              ]
+            },
+            {
+              "name": "=",
+              "children": [
+                {
+                  "name": "Payload",
+                  "children": [{ "constant": "payment_method" }]
+                },
+                { "constant": "CARD" }
+              ]
+            }
+          ]
+        },
+        "rules": [
+          {
+            "id": "55555555-5555-5555-5555-555555555521",
+            "stable_id": "55555555-5555-5555-5555-555555555531",
+            "name": "Is_transaction_3DS",
+            "description": "Check if transaction is 3DS",
+            "formula_ast_expression": {
+              "name": "Or",
+              "children": [
+                {
+                  "name": "And",
+                  "children": [
+                    {
+                      "name": "=",
+                      "children": [
+                        {
+                          "name": "Payload",
+                          "children": [{ "constant": "card_is_3ds" }]
+                        },
+                        { "constant": true }
+                      ]
+                    },
+                    {
+                      "name": ">",
+                      "children": [
+                        {
+                          "name": "Aggregator",
+                          "named_children": {
+                            "aggregator": { "constant": "COUNT" },
+                            "fieldName": { "constant": "card_is_3ds" },
+                            "filters": {
+                              "name": "List",
+                              "children": [
+                                {
+                                  "name": "Filter",
+                                  "named_children": {
+                                    "fieldName": {
+                                      "constant": "card_payment_country"
+                                    },
+                                    "operator": { "constant": "=" },
+                                    "tableName": { "constant": "transactions" },
+                                    "value": { "constant": "FR" }
+                                  }
+                                }
+                              ]
+                            },
+                            "label": { "constant": "past_transaction_3DS" },
+                            "tableName": { "constant": "transactions" }
+                          }
+                        },
+                        { "constant": 0 }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "score_modifier": -20,
+            "rule_group": null
+          },
+          {
+            "id": "55555555-5555-5555-5555-555555555522",
+            "stable_id": "55555555-5555-5555-5555-555555555532",
+            "name": "Blacklisted token",
+            "description": "check if the card token is already blacklisted",
+            "formula_ast_expression": {
+              "name": "Or",
+              "children": [
+                {
+                  "name": "And",
+                  "children": [
+                    {
+                      "name": "IsInList",
+                      "children": [
+                        {
+                          "name": "Payload",
+                          "children": [{ "constant": "creditor_identifier" }]
+                        },
+                        {
+                          "name": "CustomListAccess",
+                          "named_children": {
+                            "customListId": {
+                              "constant": "88888888-8888-8888-8888-888888888882"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "score_modifier": 100,
+            "rule_group": null
+          }
+        ],
+        "screening_configs": [],
+        "score_review_threshold": 0,
+        "score_block_and_review_threshold": 10,
+        "score_decline_threshold": 10,
+        "schedule": ""
+      }
+    },
+    {
+      "scenario": {
+        "id": "55555555-5555-5555-5555-555555555553",
+        "name": "Validate SEPA Payouts",
+        "description": "SEPA payout validation",
+        "trigger_object_type": "transactions"
+      },
+      "iteration": {
+        "trigger_condition_ast_expression": {
+          "name": "And",
+          "children": [
+            {
+              "name": "=",
+              "children": [
+                {
+                  "name": "Payload",
+                  "children": [{ "constant": "payment_method" }]
+                },
+                { "constant": "TRANSFER" }
+              ]
+            },
+            {
+              "name": "=",
+              "children": [
+                {
+                  "name": "Payload",
+                  "children": [{ "constant": "direction" }]
+                },
+                { "constant": "PAYOUT" }
+              ]
+            }
+          ]
+        },
+        "rules": [
+          {
+            "id": "55555555-5555-5555-5555-555555555541",
+            "stable_id": "65555555-5555-5555-5555-555555555551",
+            "name": "check if customer is in blacklist",
+            "description": "check if customer is in blacklist",
+            "formula_ast_expression": {
+              "name": "Or",
+              "children": [
+                {
+                  "name": "And",
+                  "children": [
+                    {
+                      "name": "IsInList",
+                      "children": [
+                        {
+                          "name": "DatabaseAccess",
+                          "named_children": {
+                            "fieldName": { "constant": "object_id" },
+                            "path": { "constant": ["transactions_accounts"] },
+                            "tableName": { "constant": "transactions" }
+                          }
+                        },
+                        {
+                          "name": "CustomListAccess",
+                          "named_children": {
+                            "customListId": {
+                              "constant": "88888888-8888-8888-8888-888888888884"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "score_modifier": 30,
+            "rule_group": "Checklist"
+          },
+          {
+            "id": "55555555-5555-5555-5555-555555555542",
+            "stable_id": "65555555-5555-5555-5555-555555555552",
+            "name": "check if company is in whitelist",
+            "description": "check if company is in whitelist of non targeted users",
+            "formula_ast_expression": {
+              "name": "Or",
+              "children": [
+                {
+                  "name": "And",
+                  "children": [
+                    {
+                      "name": "IsInList",
+                      "children": [
+                        {
+                          "name": "DatabaseAccess",
+                          "named_children": {
+                            "fieldName": { "constant": "object_id" },
+                            "path": {
+                              "constant": [
+                                "transactions_accounts",
+                                "accounts_companies"
+                              ]
+                            },
+                            "tableName": { "constant": "transactions" }
+                          }
+                        },
+                        {
+                          "name": "CustomListAccess",
+                          "named_children": {
+                            "customListId": {
+                              "constant": "88888888-8888-8888-8888-888888888883"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "score_modifier": -20,
+            "rule_group": "Checklist"
+          },
+          {
+            "id": "55555555-5555-5555-5555-555555555543",
+            "stable_id": "65555555-5555-5555-5555-555555555553",
+            "name": "check account past balance",
+            "description": "check if past balance is above tx amount",
+            "formula_ast_expression": {
+              "name": "Or",
+              "children": [
+                {
+                  "name": "And",
+                  "children": [
+                    {
+                      "name": ">",
+                      "children": [
+                        {
+                          "name": "DatabaseAccess",
+                          "named_children": {
+                            "fieldName": { "constant": "past_balance" },
+                            "path": { "constant": ["transactions_accounts"] },
+                            "tableName": { "constant": "transactions" }
+                          }
+                        },
+                        {
+                          "name": "Payload",
+                          "children": [{ "constant": "value" }]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "score_modifier": 20,
+            "rule_group": null
+          }
+        ],
+        "screening_configs": [],
+        "score_review_threshold": 10,
+        "score_block_and_review_threshold": 40,
+        "score_decline_threshold": 40,
+        "schedule": ""
+      }
+    }
+  ],
+  "tags": [
+    {
+      "id": "66666666-6666-6666-6666-666666666661",
+      "target": "case",
+      "name": "High Risk",
+      "color": "#ff0000"
+    },
+    {
+      "id": "66666666-6666-6666-6666-666666666662",
+      "target": "case",
+      "name": "Review Required",
+      "color": "#ff9900"
+    },
+    {
+      "id": "66666666-6666-6666-6666-666666666663",
+      "target": "case",
+      "name": "Approved",
+      "color": "#00ff00"
+    }
+  ],
+  "custom_lists": [
+    {
+      "id": "88888888-8888-8888-8888-888888888881",
+      "name": "High_risk_MCC",
+      "description": "List of MCC codes with high risk profile",
+      "values": ["7995", "8821"]
+    },
+    {
+      "id": "88888888-8888-8888-8888-888888888882",
+      "name": "blacklist_Card_tokens",
+      "description": "Blacklisted card tokens",
+      "values": ["5975", "1794", "5840"]
+    },
+    {
+      "id": "88888888-8888-8888-8888-888888888883",
+      "name": "whitelist_companies",
+      "description": "Whitelist of non targeted companies",
+      "values": [
+        "bafc2b76-ffef-4663-8d10-9324eb3dcabb",
+        "7ba618bf-6c53-4db8-a0c9-e6ddf6d18282",
+        "f18c04c3-4637-4dae-9d58-d7c6d2467d2c",
+        "3e12ea1a-e601-477c-b7ee-15124b239f8f",
+        "b0997c43-cc4f-42d9-a3f0-d475a6388f63"
+      ]
+    },
+    {
+      "id": "88888888-8888-8888-8888-888888888884",
+      "name": "blacklist_users",
+      "description": "Blacklisted users",
+      "values": [
+        "e345cdd3-eed9-4362-99b7-d63accebe112",
+        "8a852da6-52ae-409e-a83c-5a3a7aa3de62",
+        "c8edc6b7-cc99-4842-b832-620188258209",
+        "4f611faa-2e06-4e99-8e73-4771738a8cb5",
+        "b52e29d8-1b07-48dd-8aff-2b38f767febf",
+        "0c97fcd8-0758-46f6-8a55-bd6bc9517898"
+      ]
+    }
+  ],
+  "inboxes": [
+    {
+      "id": "77777777-7777-7777-7777-777777777771",
+      "name": "Fraud Review"
+    },
+    {
+      "id": "77777777-7777-7777-7777-777777777772",
+      "name": "AML Compliance"
+    },
+    {
+      "id": "77777777-7777-7777-7777-777777777773",
+      "name": "General Review"
+    }
+  ],
+  "workflows": [
+    {
+      "id": "99999999-9999-9999-9999-999999999991",
+      "scenario_id": "55555555-5555-5555-5555-555555555551",
+      "name": "German Card Payout Review",
+      "fallthrough": false,
+      "conditions": [
+        {
+          "function": "outcome_in",
+          "params": ["review", "block_and_review"]
+        },
+        {
+          "function": "rule_hit",
+          "params": {
+            "rule_id": ["55555555-5555-5555-5555-555555555511"]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "action": "CREATE_CASE",
+          "params": {
+            "inbox_id": "77777777-7777-7777-7777-777777777771",
+            "tags_to_add": ["66666666-6666-6666-6666-666666666661"],
+            "title_template": {
+              "name": "StringTemplate",
+              "children": [
+                { "constant": "German Card Fraud Alert - %object_id%" }
+              ],
+              "named_children": {
+                "object_id": {
+                  "name": "Payload",
+                  "children": [{ "constant": "object_id" }],
+                  "named_children": {}
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "99999999-9999-9999-9999-999999999992",
+      "scenario_id": "55555555-5555-5555-5555-555555555552",
+      "name": "France Card Blacklist Hit",
+      "fallthrough": false,
+      "conditions": [
+        {
+          "function": "outcome_in",
+          "params": ["block_and_review"]
+        },
+        {
+          "function": "rule_hit",
+          "params": {
+            "rule_id": ["55555555-5555-5555-5555-555555555532"]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "action": "CREATE_CASE",
+          "params": {
+            "inbox_id": "77777777-7777-7777-7777-777777777771",
+            "tags_to_add": [
+              "66666666-6666-6666-6666-666666666661",
+              "66666666-6666-6666-6666-666666666662"
+            ],
+            "title_template": {
+              "name": "StringTemplate",
+              "children": [
+                { "constant": "Blacklisted Token Detection - %object_id%" }
+              ],
+              "named_children": {
+                "object_id": {
+                  "name": "Payload",
+                  "children": [{ "constant": "object_id" }],
+                  "named_children": {}
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "99999999-9999-9999-9999-999999999993",
+      "scenario_id": "55555555-5555-5555-5555-555555555553",
+      "name": "SEPA Transfer Review",
+      "fallthrough": false,
+      "conditions": [
+        {
+          "function": "outcome_in",
+          "params": ["review", "block_and_review"]
+        },
+        {
+          "function": "payload_evaluates",
+          "params": {
+            "expression": {
+              "name": ">",
+              "children": [
+                {
+                  "name": "Payload",
+                  "children": [{ "constant": "value" }]
+                },
+                { "constant": 5000 }
+              ]
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "action": "CREATE_CASE",
+          "params": {
+            "inbox_id": "77777777-7777-7777-7777-777777777772",
+            "tags_to_add": ["66666666-6666-6666-6666-666666666662"],
+            "title_template": {
+              "name": "StringTemplate",
+              "children": [
+                {
+                  "constant": "SEPA Transfer Review - %value% EUR - %object_id%"
+                }
+              ],
+              "named_children": {
+                "object_id": {
+                  "name": "Payload",
+                  "children": [{ "constant": "object_id" }],
+                  "named_children": {}
+                },
+                "value": {
+                  "name": "Payload",
+                  "children": [{ "constant": "value" }],
+                  "named_children": {}
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "seeds": {
+    "ingestion": {
+      "companies": {
+        "table": "companies",
+        "count": 20,
+        "fields": {
+          "name": { "generator": "name" },
+          "country": { "enum": ["FR", "UK", "DE"] },
+          "city": { "generator": "city" },
+          "zip": { "int_range": [10000, 99999], "cast": "int_to_string" },
+          "legal_form": { "enum": ["SAS", "SARL", "SA", "EURL", "SNC"] },
+          "activity_type": {
+            "enum": ["6201Z", "6202A", "4791A", "6619A", "7022Z"]
+          },
+          "registration_number": { "generator": "name" },
+          "aml_score": { "float_range": [0, 100] },
+          "registration_month": { "generator": "datetime" },
+          "created_at": { "generator": "datetime" }
+        }
+      },
+      "accounts": {
+        "table": "accounts",
+        "count": 50,
+        "fields": {
+          "company_id": { "ref": "companies" },
+          "iban": { "generator": "iban" },
+          "bic": { "generator": "bic" },
+          "balance": { "float_range": [1000, 100000] },
+          "past_balance": { "float_range": [1000, 100000] },
+          "created_at": { "generator": "datetime" }
+        }
+      },
+      "users": {
+        "table": "users",
+        "count": 100,
+        "fields": {
+          "name": { "generator": "name" },
+          "email": { "generator": "email" },
+          "phone": { "generator": "phone" },
+          "city": { "generator": "city" },
+          "country": { "generator": "country" },
+          "zip": { "int_range": [10000, 99999], "cast": "int_to_string" },
+          "company_id": { "ref": "companies" },
+          "device_token": { "generator": "uuid" },
+          "is_frozen": { "enum": [true, false] },
+          "is_pep": { "enum": [true, false] },
+          "is_under_sanctions": { "enum": [true, false] },
+          "created_at": { "generator": "datetime" }
+        }
+      },
+      "transactions": {
+        "table": "transactions",
+        "count": 500,
+        "fields": {
+          "account_id": { "ref": "accounts" },
+          "company_id": { "ref": "companies" },
+          "direction": { "enum": ["PAYIN", "PAYOUT"] },
+          "value": { "float_range": [100, 10000] },
+          "status": { "enum": ["VALIDATED", "PENDING", "CANCELED"] },
+          "payment_method": {
+            "enum": ["TRANSFER", "CARD", "DIRECT_DEBIT", "WALLET_TRANSFER"]
+          },
+          "card_is_3ds": { "enum": [true, false] },
+          "card_merchant_id": {
+            "int_range": [1000, 9999],
+            "cast": "int_to_string"
+          },
+          "card_merchant_name": { "generator": "name" },
+          "card_payment_country": { "generator": "country" },
+          "card_payment_currency": { "generator": "currency" },
+          "card_payment_type": { "constant": "OK" },
+          "category": { "enum": ["7995", "8821", "5411", "5812", "5999"] },
+          "counterparty_iban": { "generator": "iban" },
+          "counterparty_bic": { "generator": "bic" },
+          "creditor_identifier": { "generator": "name" },
+          "scheme": { "enum": ["B2B", "CORE"] },
+          "is_recuring": { "enum": [false, true] },
+          "created_at": { "generator": "datetime" },
+          "transaction_at": { "generator": "datetime" }
+        }
+      }
+    },
+    "decisions": {
+      "transactions": 1000
+    }
+  }
+}

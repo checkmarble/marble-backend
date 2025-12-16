@@ -175,6 +175,18 @@ func (repo *ClientDbRepository) listAllPgIndexes(
 	return pgIndexRows, nil
 }
 
+func (repo *ClientDbRepository) CreateIndexesBlocking(
+	ctx context.Context,
+	exec Executor,
+	indexes []models.ConcreteIndex,
+) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
+
+	return CreateIndexesBlocking(ctx, exec, indexes)
+}
+
 func (repo *ClientDbRepository) CreateIndexesAsync(
 	ctx context.Context,
 	exec Executor,
@@ -204,7 +216,7 @@ func (repo *ClientDbRepository) CreateIndexesWithCallback(
 		ctx, cancel := context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT)
 		defer cancel()
 		for _, index := range indexes {
-			err := createIndexSQL(ctx, exec, index)
+			err := createIndexSQL(ctx, exec, index, false)
 			if err != nil {
 				utils.LogAndReportSentryError(ctx, err)
 				return
@@ -237,20 +249,40 @@ func asynchronouslyCreateIndexes(
 		// in particular, if it just finishes.
 		// We still put a high timeout on it to protect agains an index creation that takes probihitively long
 		// An error log is sent from within createIndexSQL and should be monitored
-		_ = createIndexSQL(ctx, exec, index)
+		_ = createIndexSQL(ctx, exec, index, false)
 	}
+}
+
+func CreateIndexesBlocking(
+	ctx context.Context,
+	exec Executor,
+	indexes []models.ConcreteIndex,
+) error {
+	for _, index := range indexes {
+		if err := createIndexSQL(ctx, exec, index, true); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ⚠️ ⚠️ WARNING ⚠️ ⚠️ : if we change how we create indexes (including, but not only, if we every allow to create indexes on something else than table columns),
 // We need to review the index parsing logic in repositories/pg_indexes.go.
-func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteIndex) error {
+func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteIndex, blocking bool) error {
 	logger := utils.LoggerFromContext(ctx)
 	qualifiedTableName := pgIdentifierWithSchema(exec, index.TableName)
 	indexedColumns := index.Indexed
 	includedColumns := index.Included
 
+	concurrently := " concurrently "
+	if blocking {
+		concurrently = ""
+	}
+
 	sql := fmt.Sprintf(
-		"CREATE INDEX CONCURRENTLY IF NOT EXISTS %s ON %s USING btree (%s)",
+		"CREATE INDEX %s IF NOT EXISTS %s ON %s USING btree (%s)",
+		concurrently,
 		pgx.Identifier.Sanitize([]string{index.Name()}),
 		qualifiedTableName,
 		strings.Join(pure_utils.Map(indexedColumns, withDesc), ","),
