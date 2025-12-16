@@ -22,6 +22,15 @@ func (editor *ClientDbIndexEditor) GetIndexesToCreate(
 	return args.Get(0).([]models.ConcreteIndex), args.Int(1), args.Error(2)
 }
 
+func (editor *ClientDbIndexEditor) CreateIndexesBlocking(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	indexes []models.ConcreteIndex,
+) error {
+	args := editor.Called(ctx, organizationId, indexes)
+	return args.Error(0)
+}
+
 func (editor *ClientDbIndexEditor) CreateIndexesAsync(
 	ctx context.Context,
 	organizationId uuid.UUID,

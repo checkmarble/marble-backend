@@ -46,7 +46,6 @@ type Usecases struct {
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
-	datasetDeltafileBucketUrl    string
 
 	rootExecutorFactory *executor_factory.IdentityExecutorFactory
 }

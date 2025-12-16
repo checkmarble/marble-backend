@@ -982,6 +982,7 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.NewClientDbIndexEditor(),
 		usecases.NewScenarioPublicationUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,

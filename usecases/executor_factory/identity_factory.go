@@ -42,9 +42,7 @@ func (f IdentityExecutorFactory) NewClientDbExecutor(ctx context.Context, orgId 
 	)
 }
 
-func (factory IdentityExecutorFactory) NewPinnedExecutor(
-	ctx context.Context,
-) (repositories.Executor, func(), error) {
+func (f IdentityExecutorFactory) NewPinnedExecutor(ctx context.Context) (repositories.Executor, func(), error) {
 	return nil, nil, errors.New("cannot create pinned executor on identity factory")
 }
 

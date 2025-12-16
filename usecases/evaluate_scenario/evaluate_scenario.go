@@ -46,6 +46,7 @@ type ScenarioEvaluationParameters struct {
 	DataModel         models.DataModel
 	Pivot             *models.Pivot
 	CachedScreenings  map[string]models.ScreeningWithMatches
+	ConcurrentRules   int
 }
 
 type EvalScreeningUsecase interface {
@@ -243,7 +244,8 @@ func (e ScenarioEvaluator) processScenarioIteration(
 			iteration.Rules,
 			dataAccessor,
 			params.DataModel,
-			snoozes)
+			snoozes,
+			params.ConcurrentRules)
 
 		score = inScore
 		ruleExecutions = inExec
@@ -687,14 +689,20 @@ func (e ScenarioEvaluator) evalAllScenarioRules(
 	dataAccessor DataAccessor,
 	dataModel models.DataModel,
 	snoozes []models.RuleSnooze,
+	concurrency int,
 ) (int, []models.RuleExecution, error) {
 	// Results
 	runningSumOfScores := 0
 	ruleExecutions := make([]models.RuleExecution, len(rules))
 
+	limit := MAX_CONCURRENT_RULE_EXECUTIONS
+	if concurrency > 0 {
+		limit = concurrency
+	}
+
 	// Set max number of concurrent rule executions
 	group, ctx := errgroup.WithContext(ctx)
-	group.SetLimit(MAX_CONCURRENT_RULE_EXECUTIONS)
+	group.SetLimit(limit)
 
 	// Launch rules concurrently
 	for i, rule := range rules {

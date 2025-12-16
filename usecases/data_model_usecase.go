@@ -27,6 +27,11 @@ type dataModelUsecaseIndexEditor interface {
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID, index models.UnicityIndex) error
 	CreateUniqueIndexAsync(ctx context.Context, organizationId uuid.UUID, index models.UnicityIndex) error
 	DeleteUniqueIndex(ctx context.Context, organizationId uuid.UUID, index models.UnicityIndex) error
+	CreateIndexesBlocking(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		indexes []models.ConcreteIndex,
+	) error
 	CreateIndexesAsync(
 		ctx context.Context,
 		organizationId uuid.UUID,
@@ -764,13 +769,27 @@ func (usecase *usecase) CreateNavigationOption(ctx context.Context, input models
 	}
 
 	// Finally, create the index
-	return usecase.clientDbIndexEditor.CreateIndexesAsync(ctx, orgId, []models.ConcreteIndex{
-		{
-			Type:      models.IndexTypeNavigation,
-			TableName: targetTable.Name,
-			Indexed:   []string{filterField.Name, orderingField.Name},
-		},
-	})
+	switch input.Blocking {
+	case true:
+		return usecase.clientDbIndexEditor.CreateIndexesBlocking(ctx, orgId, []models.ConcreteIndex{
+			{
+				Type:      models.IndexTypeNavigation,
+				TableName: targetTable.Name,
+				Indexed:   []string{filterField.Name, orderingField.Name},
+			},
+		})
+
+	case false:
+		return usecase.clientDbIndexEditor.CreateIndexesAsync(ctx, orgId, []models.ConcreteIndex{
+			{
+				Type:      models.IndexTypeNavigation,
+				TableName: targetTable.Name,
+				Indexed:   []string{filterField.Name, orderingField.Name},
+			},
+		})
+	}
+
+	return nil
 }
 
 func (usecase usecase) GetDataModelOptions(ctx context.Context, orgId uuid.UUID, tableId string) (models.DataModelOptions, error) {
