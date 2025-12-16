@@ -34,7 +34,7 @@ create table continuous_screening_job_offsets (
     created_at timestamp with time zone not null default current_timestamp,
     updated_at timestamp with time zone not null default current_timestamp,
 
-    constraint fk_continuous_screening_update_job foreign key (continuous_screening_update_job_id) references continuous_screening_update_jobs (id) on delete cascade
+    constraint fk_continuous_screening_update_job foreign key (continuous_screening_update_job_id) references continuous_screening_update_jobs (id) on delete cascade,
     constraint unique_continuous_screening_job_offsets_update_job_id unique (continuous_screening_update_job_id)
 );
 

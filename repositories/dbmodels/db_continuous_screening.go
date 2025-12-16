@@ -178,6 +178,32 @@ func AdaptContinuousScreeningUpdateJob(dto DBContinuousScreeningUpdateJob) (mode
 	}, nil
 }
 
+type DBEnrichedContinuousScreeningUpdateJob struct {
+	UpdateJob     DBContinuousScreeningUpdateJob     `db:"update_job"`
+	Config        DBContinuousScreeningConfig        `db:"config"`
+	DatasetUpdate DBContinuousScreeningDatasetUpdate `db:"dataset_update"`
+}
+
+func AdaptEnrichedContinuousScreeningUpdateJob(dto DBEnrichedContinuousScreeningUpdateJob) (models.EnrichedContinuousScreeningUpdateJob, error) {
+	config, err := AdaptContinuousScreeningConfig(dto.Config)
+	if err != nil {
+		return models.EnrichedContinuousScreeningUpdateJob{}, err
+	}
+	datasetUpdate, err := AdaptContinuousScreeningDatasetUpdate(dto.DatasetUpdate)
+	if err != nil {
+		return models.EnrichedContinuousScreeningUpdateJob{}, err
+	}
+	updateJob, err := AdaptContinuousScreeningUpdateJob(dto.UpdateJob)
+	if err != nil {
+		return models.EnrichedContinuousScreeningUpdateJob{}, err
+	}
+	return models.EnrichedContinuousScreeningUpdateJob{
+		ContinuousScreeningUpdateJob: updateJob,
+		Config:                       config,
+		DatasetUpdate:                datasetUpdate,
+	}, nil
+}
+
 const TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS = "continuous_screening_job_offsets"
 
 var SelectContinuousScreeningJobOffsetColumn = utils.ColumnList[DBContinuousScreeningJobOffset]()

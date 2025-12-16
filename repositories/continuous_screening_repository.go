@@ -19,7 +19,7 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfig(ctx context.Context
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.ContinuousScreeningConfigColumnList...).
+		Select(dbmodels.SelectContinuousScreeningConfigColumnList...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
 		Where(squirrel.Eq{"id": Id})
 
@@ -35,7 +35,7 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfigByStableId(ctx conte
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.ContinuousScreeningConfigColumnList...).
+		Select(dbmodels.SelectContinuousScreeningConfigColumnList...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
 		Where(squirrel.Eq{"stable_id": stableId}).
 		OrderBy("created_at DESC").
@@ -56,7 +56,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigByObjectType(
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.ContinuousScreeningConfigColumnList...).
+		Select(dbmodels.SelectContinuousScreeningConfigColumnList...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
 		Where(squirrel.Eq{"org_id": orgId}).
 		Where(squirrel.Expr("? = ANY(object_types)", objectType)).
@@ -75,7 +75,7 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfigsByOrgId(
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.ContinuousScreeningConfigColumnList...).
+		Select(dbmodels.SelectContinuousScreeningConfigColumnList...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
 		Where(squirrel.Eq{"org_id": orgId}).
 		Where(squirrel.Eq{"enabled": true})
@@ -92,7 +92,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigs(
 	}
 
 	query := NewQueryBuilder().
-		Select(dbmodels.ContinuousScreeningConfigColumnList...).
+		Select(dbmodels.SelectContinuousScreeningConfigColumnList...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
 		Where(squirrel.Eq{"enabled": true}).
 		OrderBy("id")
@@ -683,4 +683,56 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningUpdateJob(
 		)
 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningUpdateJob)
+}
+
+func (repo *MarbleDbRepository) GetEnrichedContinuousScreeningUpdateJob(
+	ctx context.Context,
+	exec Executor,
+	id uuid.UUID,
+) (models.EnrichedContinuousScreeningUpdateJob, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.EnrichedContinuousScreeningUpdateJob{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(fmt.Sprintf("ROW(%s) AS update_job", strings.Join(
+			columnsNames("ucs", dbmodels.SelectContinuousScreeningUpdateJobColumn), ","))).
+		Column(fmt.Sprintf("ROW(%s) AS config", strings.Join(columnsNames("cs",
+			dbmodels.SelectContinuousScreeningConfigColumnList), ","))).
+		Column(fmt.Sprintf("ROW(%s) AS dataset_update", strings.Join(columnsNames("ds",
+			dbmodels.SelectContinuousScreeningDatasetUpdateColumn), ","))).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS + " AS ucs").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS +
+			" AS cs ON (ucs.continuous_screening_config_id = cs.id)").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES +
+			" AS ds ON (ucs.continuous_screening_dataset_update_id = ds.id)").
+		Where(squirrel.Eq{"ucs.id": id})
+
+	// For debugging
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return models.EnrichedContinuousScreeningUpdateJob{}, err
+	}
+	fmt.Println(sql, args)
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptEnrichedContinuousScreeningUpdateJob)
+}
+
+func (repo *MarbleDbRepository) UpdateContinuousScreeningUpdateJob(
+	ctx context.Context,
+	exec Executor,
+	updateId uuid.UUID,
+	status models.ContinuousScreeningUpdateJobStatus,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS).
+		Where(squirrel.Eq{"id": updateId}).
+		Set("status", status.String()).
+		Set("updated_at", "NOW()")
+
+	return ExecBuilder(ctx, exec, query)
 }

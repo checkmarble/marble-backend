@@ -193,6 +193,12 @@ type CreateContinuousScreeningUpdateJob struct {
 	OrgId           uuid.UUID
 }
 
+type EnrichedContinuousScreeningUpdateJob struct {
+	ContinuousScreeningUpdateJob
+	Config        ContinuousScreeningConfig
+	DatasetUpdate ContinuousScreeningDatasetUpdate
+}
+
 // ContinuousScreeningJobOffset tracks the progress of processing a dataset update
 type ContinuousScreeningJobOffset struct {
 	Id             uuid.UUID

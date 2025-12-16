@@ -48,10 +48,6 @@ type scanDatasetUpdatesWorkerScreeningProvider interface {
 	GetRawCatalog(ctx context.Context) (models.OpenSanctionsRawCatalog, error)
 }
 
-type scanDatasetUpdatesWorkerBlobRepository interface {
-	OpenStream(ctx context.Context, bucketUrl, key string, fileName string) (io.WriteCloser, error)
-}
-
 type scanDatasetUpdatesWorkerTaskEnqueuer interface {
 	EnqueueContinuousScreeningApplyDeltaFileTask(
 		ctx context.Context,
@@ -85,7 +81,7 @@ type ScanDatasetUpdatesWorker struct {
 
 	repo              scanDatasetUpdatesWorkerRepository
 	screeningProvider scanDatasetUpdatesWorkerScreeningProvider
-	blobRepo          scanDatasetUpdatesWorkerBlobRepository
+	blobRepo          repositories.BlobRepository
 	taskEnqueuer      scanDatasetUpdatesWorkerTaskEnqueuer
 
 	bucketUrl string
@@ -96,7 +92,7 @@ func NewScanDatasetUpdatesWorker(
 	transactionFactory executor_factory.TransactionFactory,
 	repo scanDatasetUpdatesWorkerRepository,
 	screeningProvider scanDatasetUpdatesWorkerScreeningProvider,
-	blobRepo scanDatasetUpdatesWorkerBlobRepository,
+	blobRepo repositories.BlobRepository,
 	taskEnqueuer scanDatasetUpdatesWorkerTaskEnqueuer,
 	bucketUrl string,
 ) *ScanDatasetUpdatesWorker {

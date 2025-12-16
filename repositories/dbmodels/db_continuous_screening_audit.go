@@ -24,7 +24,7 @@ type DBContinuousScreeningAudit struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
-var ContinuousScreeningAuditColumnList = utils.ColumnList[DBContinuousScreeningAudit]()
+var SelectContinuousScreeningAuditColumnList = utils.ColumnList[DBContinuousScreeningAudit]()
 
 func AdaptContinuousScreeningAudit(db DBContinuousScreeningAudit) (models.ContinuousScreeningAudit, error) {
 	return models.ContinuousScreeningAudit{

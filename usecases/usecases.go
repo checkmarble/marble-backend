@@ -467,5 +467,6 @@ func (usecases *Usecases) NewContinuousScreeningScanDatasetUpdatesWorker() *cont
 func (usecases *Usecases) NewContinuousScreeningApplyDeltaFileWorker() *continuous_screening.ApplyDeltaFileWorker {
 	return continuous_screening.NewApplyDeltaFileWorker(
 		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
 	)
 }
