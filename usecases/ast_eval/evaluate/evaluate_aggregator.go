@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strconv"
 
 	"github.com/cockroachdb/errors"
 
@@ -120,16 +119,12 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 
 	switch aggregator {
 	case ast.AGGREGATOR_PERCENTILE:
-		arg, err := AdaptNamedArgument(arguments.NamedArgs, "percentile", adaptArgumentToString)
+		arg, err := AdaptNamedArgument(arguments.NamedArgs, "percentile", promoteArgumentToFloat64)
 		if err != nil {
 			return MakeEvaluateError(errors.Wrap(ast.NewNamedArgumentError("percentile"), "missing or invalid value for percentile"))
 		}
-		fPct, err := strconv.ParseFloat(arg, 64)
-		if err != nil {
-			return MakeEvaluateError(errors.Wrap(ast.NewNamedArgumentError("percentile"), "invalid float value for percentile"))
-		}
 
-		options["percentile"] = fPct
+		options["percentile"] = arg
 	}
 
 	result, err := a.runQueryInRepository(ctx, tableName, fieldName, fieldType, aggregator, filtersWithType, options)
