@@ -54,28 +54,27 @@ func injectDbSessionConfig(ctx context.Context, exec executor, query string) (pg
 	cmds := []auditCommands{
 		{"set_config($1, null, false)", []any{postgres_audit_user_id_parameter}},
 		{"set_config($2, null, false)", []any{postgres_audit_api_key_id_parameter}},
+		{"set_config($3, null, false)", []any{postgres_audit_org_id_parameter}},
 	}
 
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
 		switch {
 		case creds.ActorIdentity.UserId != "":
-			cmds = append(cmds, auditCommands{"SET_CONFIG($3, $4, false)", []any{
+			cmds = append(cmds, auditCommands{"SET_CONFIG($4, $5, false)", []any{
 				postgres_audit_user_id_parameter, creds.ActorIdentity.UserId,
 			}})
 		case creds.ActorIdentity.ApiKeyId != "":
-			cmds = append(cmds, auditCommands{"SET_CONFIG($3, $4, false)", []any{
+			cmds = append(cmds, auditCommands{"SET_CONFIG($4, $5, false)", []any{
 				postgres_audit_api_key_id_parameter, creds.ActorIdentity.ApiKeyId,
 			}})
 		default:
 			// We need to select dummy values so we simplify the arguments logic
-			cmds = append(cmds, auditCommands{"$3, $4", []any{0, 0}})
+			cmds = append(cmds, auditCommands{"$4, $5", []any{0, 0}})
 		}
 
-		if creds.OrganizationId != "" {
-			cmds = append(cmds, auditCommands{"SET_CONFIG($5, $6, false)", []any{
-				postgres_audit_org_id_parameter, creds.OrganizationId,
-			}})
-		}
+		cmds = append(cmds, auditCommands{"SET_CONFIG($6, $7, false)", []any{
+			postgres_audit_org_id_parameter, creds.OrganizationId,
+		}})
 	}
 
 	if len(cmds) > 0 {

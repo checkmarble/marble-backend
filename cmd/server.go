@@ -244,6 +244,15 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
+	// TODO: this is a temporary fixup until we can merge `repositories/postgres` into our usual
+	// repositories setup. As it is, it does not use the query injecter for audit events and would
+	// produce invalid values.
+	authPool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
+		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole)
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+	}
+
 	clientDbConfig, err := infra.ParseClientDbConfig(pgConfig.ClientDbConfigFile)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -314,7 +323,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		repositories.WithLagoConfig(lagoConfig),
 	)
 
-	deps, err := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
+	deps, err := api.InitDependencies(ctx, apiConfig, authPool, marbleJwtSigningKey)
 	if err != nil {
 		return err
 	}
