@@ -492,6 +492,7 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 			OrganizationId:         config.OrgId.String(),
 			InboxId:                config.InboxId,
 			Name:                   caseName,
+			Type:                   models.CaseTypeContinuousScreening,
 		},
 		false,
 	)

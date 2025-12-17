@@ -86,7 +86,7 @@ func handleGetCase(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptCaseWithDecisionsDto(inboxCase))
+		c.JSON(http.StatusOK, dto.AdaptCaseWithDetailsDto(inboxCase))
 	}
 }
 
@@ -122,13 +122,14 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 				Name:           data.Name,
 				OrganizationId: organizationId,
 				AssigneeId:     &userId,
+				Type:           models.CaseTypeDecision, // By default, we can only create cases from decisions
 			})
 
 		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusCreated, gin.H{
-			"case": dto.AdaptCaseWithDecisionsDto(inboxCase),
+			"case": dto.AdaptCaseWithDetailsDto(inboxCase),
 		})
 	}
 }
@@ -168,7 +169,7 @@ func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"case": dto.AdaptCaseWithDecisionsDto(inboxCase),
+			"case": dto.AdaptCaseWithDetailsDto(inboxCase),
 		})
 	}
 }
@@ -320,7 +321,7 @@ func handlePostCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(inboxCase)})
+		c.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDetailsDto(inboxCase)})
 	}
 }
 
@@ -356,7 +357,7 @@ func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"case": dto.AdaptCaseWithDecisionsDto(inboxCase),
+			"case": dto.AdaptCaseWithDetailsDto(inboxCase),
 		})
 	}
 }
@@ -392,7 +393,7 @@ func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDecisionsDto(inboxCase)})
+		c.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDetailsDto(inboxCase)})
 	}
 }
 
@@ -482,7 +483,7 @@ func handlePostCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDecisionsDto(cs)})
+		c.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDetailsDto(cs)})
 	}
 }
 
@@ -537,7 +538,7 @@ func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(case_)})
+		c.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDetailsDto(case_)})
 	}
 }
 

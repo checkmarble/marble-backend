@@ -97,6 +97,13 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 	)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
+	// NOTE: we only support case reviews for decisions
+	// Remove this check when we support case reviews for continuous screenings
+	if c.Type != models.CaseTypeDecision {
+		logger.DebugContext(ctx, "Case type is not a decision, skipping case review")
+		return nil
+	}
+
 	// Check if the organization has AI case review enabled
 	hasAiCaseReviewEnabled, err := w.caseReviewUsecase.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
 	if err != nil {

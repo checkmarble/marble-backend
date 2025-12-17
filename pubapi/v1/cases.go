@@ -189,6 +189,7 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 			Name:           params.Name,
 			DecisionIds: pure_utils.Map(params.Decisions,
 				func(id string) string { return id }),
+			Type: models.CaseTypeDecision, // By default, we can only create cases from decisions
 		}
 
 		if params.AssigneeEmail != "" {

@@ -241,6 +241,7 @@ func (repo *MarbleDbRepository) CreateCase(ctx context.Context, exec Executor,
 				"name",
 				"org_id",
 				"assigned_to",
+				"type",
 			).
 			Values(
 				newCaseId,
@@ -248,6 +249,7 @@ func (repo *MarbleDbRepository) CreateCase(ctx context.Context, exec Executor,
 				createCaseAttributes.Name,
 				createCaseAttributes.OrganizationId,
 				createCaseAttributes.AssigneeId,
+				createCaseAttributes.Type.String(),
 			),
 	)
 	return err

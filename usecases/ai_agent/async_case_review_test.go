@@ -137,6 +137,7 @@ func createTestCaseReviewData() (models.CaseReviewArgs, models.Case, models.Orga
 	testCase := models.Case{
 		Id:             caseId.String(),
 		OrganizationId: "test-org-id",
+		Type:           models.CaseTypeDecision,
 	}
 
 	org := models.Organization{

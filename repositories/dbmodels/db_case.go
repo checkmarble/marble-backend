@@ -20,6 +20,7 @@ type DBCase struct {
 	Outcome        pgtype.Text      `db:"outcome"`
 	SnoozedUntil   *time.Time       `db:"snoozed_until"`
 	Boost          *string          `db:"boost"`
+	Type           pgtype.Text      `db:"type"`
 }
 
 type DBCaseWithContributorsAndTags struct {
@@ -31,10 +32,7 @@ type DBCaseWithContributorsAndTags struct {
 
 const TABLE_CASES = "cases"
 
-var SelectCaseColumn = []string{
-	"id", "created_at", "inbox_id", "name", "org_id", "assigned_to",
-	"status", "outcome", "snoozed_until", "boost",
-}
+var SelectCaseColumn = utils.ColumnList[DBCase]()
 
 func AdaptCase(db DBCase) (models.Case, error) {
 	var assigneeId *models.UserId
@@ -45,6 +43,14 @@ func AdaptCase(db DBCase) (models.Case, error) {
 	var boostReason *models.BoostReason
 	if db.Boost != nil {
 		boostReason = utils.Ptr(models.BoostReason(*db.Boost))
+	}
+
+	var caseType models.CaseType
+	if db.Type.Valid {
+		caseType = models.CaseTypeFromString(db.Type.String)
+	} else {
+		// This occurs when LEFT JOIN returns no case (decision has no case_id)
+		caseType = models.CaseTypeUnknown
 	}
 
 	return models.Case{
@@ -58,6 +64,7 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		Outcome:        models.CaseOutcome(db.Outcome.String),
 		SnoozedUntil:   db.SnoozedUntil,
 		Boost:          boostReason,
+		Type:           caseType,
 	}, nil
 }
 

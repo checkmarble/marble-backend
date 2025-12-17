@@ -321,21 +321,19 @@ func (repo *MarbleDbRepository) GetContinuousScreeningWithMatchesById(ctx contex
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningWithMatches)
 }
 
-func (repo *MarbleDbRepository) ListContinuousScreeningsByCaseId(
+func (repo *MarbleDbRepository) ListContinuousScreeningsWithMatchesByCaseId(
 	ctx context.Context,
 	exec Executor,
 	caseId string,
-) ([]models.ContinuousScreening, error) {
+) ([]models.ContinuousScreeningWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	query := NewQueryBuilder().
-		Select(dbmodels.SelectContinuousScreeningColumn...).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
-		Where(squirrel.Eq{"case_id": caseId})
+	query := selectContinuousScreeningWithMatches().
+		Where(squirrel.Eq{"cs.case_id": caseId})
 
-	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreening)
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningWithMatches)
 }
 
 func (repo *MarbleDbRepository) ListContinuousScreeningsByIds(ctx context.Context, exec Executor, ids []uuid.UUID) ([]models.ContinuousScreening, error) {
