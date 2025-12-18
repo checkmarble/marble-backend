@@ -38,7 +38,6 @@ func AdaptTableMetadata(dbDataModelTable DbDataModelTable) (models.TableMetadata
 }
 
 type DbDataModelTableJoinField struct {
-	TableID          string    `db:"data_model_tables.id"`
 	OrganizationID   uuid.UUID `db:"data_model_tables.organization_id"`
 	TableName        string    `db:"data_model_tables.name"`
 	TableDescription string    `db:"data_model_tables.description"`
@@ -50,6 +49,7 @@ type DbDataModelTableJoinField struct {
 	FieldDescription string    `db:"data_model_fields.description"`
 	FieldIsEnum      bool      `db:"data_model_fields.is_enum"`
 	FieldFTMProperty *string   `db:"data_model_fields.ftm_property"`
+	FieldArchived    bool      `db:"data_model_fields.archived"`
 }
 
 var SelectDataModelTableJoinFieldColumns = utils.ColumnList[DbDataModelTableJoinField]()

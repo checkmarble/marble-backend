@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
@@ -42,4 +43,14 @@ func ParseSliceUUID(slice []string) ([]uuid.UUID, error) {
 //	assert.Equal(t, uuid, uuid2) // ✅ equal
 func TextToUUID(text string) uuid.UUID {
 	return uuid.NewSHA1(uuid.NameSpaceURL, []byte(text))
+}
+
+const nonceAlpha = "abcdefghijklmnopqrstuvwxyz"
+
+func GenNonce(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = nonceAlpha[rand.Intn(len(nonceAlpha))]
+	}
+	return string(b)
 }

@@ -869,3 +869,18 @@ func (usecases *UsecasesWithCreds) NewAuditUsecase() AuditUsecase {
 		usecases.Repositories.MarbleDbRepository,
 	)
 }
+
+func (usecases *UsecasesWithCreds) NewDataModelDestroyUsecase() DataModelDestroyUsecase {
+	return NewDataModelDestroyUsecase(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewEnforceOrganizationSecurity(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.OrganizationSchemaRepository,
+	)
+}
