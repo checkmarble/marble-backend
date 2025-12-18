@@ -49,6 +49,7 @@ type DbDataModelTableJoinField struct {
 	FieldDescription string  `db:"data_model_fields.description"`
 	FieldIsEnum      bool    `db:"data_model_fields.is_enum"`
 	FieldFTMProperty *string `db:"data_model_fields.ftm_property"`
+	FieldArchived    bool    `db:"data_model_fields.archived"`
 }
 
 var SelectDataModelTableJoinFieldColumns = utils.ColumnList[DbDataModelTableJoinField]()
