@@ -904,3 +904,18 @@ func (usecases UsecasesWithCreds) NewWebhookRetryWorker() *worker_jobs.WebhookRe
 	webhookEventsUsecase := usecases.NewWebhookEventsUsecase()
 	return worker_jobs.NewWebhookRetryWorker(&webhookEventsUsecase)
 }
+
+func (usecases *UsecasesWithCreds) NewDataModelDestroyUsecase() DataModelDestroyUsecase {
+	return NewDataModelDestroyUsecase(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewEnforceOrganizationSecurity(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.OrganizationSchemaRepository,
+	)
+}

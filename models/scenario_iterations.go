@@ -25,6 +25,7 @@ type ScenarioIteration struct {
 	ScoreBlockAndReviewThreshold  *int
 	ScoreDeclineThreshold         *int
 	Schedule                      string
+	Archived                      bool
 }
 
 func (si ScenarioIteration) ToMetadata() ScenarioIterationMetadata {
@@ -35,6 +36,7 @@ func (si ScenarioIteration) ToMetadata() ScenarioIterationMetadata {
 		Version:        si.Version,
 		CreatedAt:      si.CreatedAt,
 		UpdatedAt:      si.UpdatedAt,
+		Archived:       si.Archived,
 	}
 }
 
@@ -45,6 +47,7 @@ type ScenarioIterationMetadata struct {
 	Version        *int
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	Archived       bool
 }
 
 type GetScenarioIterationFilters struct {
@@ -204,4 +207,16 @@ type UpdateScreeningConfigInput struct {
 	ForcedOutcome            *Outcome
 	Preprocessing            *ScreeningConfigPreprocessing
 	ConfigVersion            string
+}
+
+type RulesAndScreenings struct {
+	ScenarioIterationId      uuid.UUID
+	ScenarioId               uuid.UUID
+	RuleId                   uuid.UUID
+	Version                  *int
+	TriggerAst               *ast.Node
+	RuleAst                  *ast.Node
+	ScreeningTriggerAst      *ast.Node
+	ScreeningCounterpartyAst *ast.Node
+	ScreeningAst             map[string]ast.Node
 }

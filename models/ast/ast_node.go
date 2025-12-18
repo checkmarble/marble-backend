@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 	"github.com/mitchellh/hashstructure/v2"
 )
@@ -53,6 +54,22 @@ func (node Node) ReadConstantNamedChildString(name string) (string, error) {
 		return "", errors.New(fmt.Sprintf("\"%s\" constant is not a string: takes value %v", name, child.Constant))
 	}
 	return value, nil
+}
+
+func (node Node) ReadConstantNamedChildStringSlice(name string) ([]string, error) {
+	child, ok := node.NamedChildren[name]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("Node does not have a %s child", name))
+	}
+	value, ok := child.Constant.([]any)
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("\"%s\" constant is not a slice: takes value %v", name, child.Constant))
+	}
+	slice, ok := pure_utils.CastAnySlice[string](value)
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("\"%s\" constant is not a []string: takes value %v", name, child.Constant))
+	}
+	return slice, nil
 }
 
 func (node Node) Hash() uint64 {
