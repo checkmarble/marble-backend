@@ -59,8 +59,8 @@ func (repo MarbleDbRepository) ListAuditEvents(ctx context.Context, exec Executo
 	if filters.Table != "" {
 		query = query.Where("ae.table = ?", filters.Table)
 	}
-	if filters.EntityId != "" {
-		query = query.Where("ae.entity_id = ?", filters.EntityId)
+	if filters.EntityId != nil {
+		query = query.Where("ae.entity_id = ?", *filters.EntityId)
 	}
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptAuditEventWithActor)
