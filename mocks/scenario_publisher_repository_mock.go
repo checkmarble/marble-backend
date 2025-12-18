@@ -14,6 +14,11 @@ type ScenarioPublisherRepository struct {
 	mock.Mock
 }
 
+func (s *ScenarioPublisherRepository) ListAllRulesAndScreenings(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.RulesAndScreenings, error) {
+	args := s.Called(ctx, exec, organizationId)
+	return args.Get(0).([]models.RulesAndScreenings), args.Error(1)
+}
+
 func (s *ScenarioPublisherRepository) UpdateScenarioLiveIterationId(ctx context.Context,
 	exec repositories.Executor, scenarioId string, scenarioIterationId *string,
 ) error {
@@ -32,5 +37,10 @@ func (s *ScenarioPublisherRepository) UpdateScenarioIterationVersion(ctx context
 	exec repositories.Executor, scenarioIterationId string, newVersion int,
 ) error {
 	args := s.Called(ctx, exec, scenarioIterationId, newVersion)
+	return args.Error(0)
+}
+
+func (s *ScenarioPublisherRepository) ArchiveScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) error {
+	args := s.Called(ctx, exec, scenarioIterationId)
 	return args.Error(0)
 }
