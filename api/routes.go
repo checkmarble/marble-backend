@@ -342,6 +342,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/data-model/links", tom, handleCreateLink(uc))
 	router.POST("/data-model/tables/:tableID/fields", tom, handleCreateField(uc))
 	router.PATCH("/data-model/fields/:fieldID", tom, handleUpdateDataModelField(uc))
+	router.DELETE("/data-model/fields/:fieldID", tom, handleDeleteDataModelField(uc))
 	router.DELETE("/data-model", tom, handleDeleteDataModel(uc))
 	router.GET("/data-model/openapi", tom, handleGetOpenAPI(uc))
 	router.GET("/data-model/openapi/:version", tom, handleGetOpenAPI(uc))
