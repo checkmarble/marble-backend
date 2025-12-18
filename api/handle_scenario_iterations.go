@@ -217,6 +217,12 @@ func handleGetScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
+		// TODO: maybe do something nicer when archived (omit the body)
+		if si.Archived {
+			c.Status(http.StatusNotFound)
+			return
+		}
+
 		scenarioIterationDto, err := dto.AdaptScenarioIterationWithBodyDto(si)
 		if presentError(ctx, c, err) {
 			return

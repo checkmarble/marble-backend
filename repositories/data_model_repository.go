@@ -59,6 +59,9 @@ type DataModelRepository interface {
 	GetDataModelOptionsForTable(ctx context.Context, exec Executor, tableId string) (*models.DataModelOptions, error)
 	UpsertDataModelOptions(ctx context.Context, exec Executor,
 		req models.UpdateDataModelOptionsRequest) (models.DataModelOptions, error)
+
+	ArchiveDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error
+	DeleteDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error
 }
 
 var (
@@ -362,7 +365,7 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 	query, args, err := NewQueryBuilder().
 		Select(dbmodels.SelectDataModelTableJoinFieldColumns...).
 		From(dbmodels.TableDataModelTables).
-		Join(fmt.Sprintf("%s ON (data_model_tables.id = data_model_fields.table_id)", dbmodels.TableDataModelFields)).
+		Join(fmt.Sprintf("%s ON data_model_fields.archived is false and (data_model_tables.id = data_model_fields.table_id)", dbmodels.TableDataModelFields)).
 		Where(squirrel.Eq{"organization_id": organizationID}).
 		ToSql()
 	if err != nil {
@@ -390,6 +393,7 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 			&dbModel.FieldDescription,
 			&dbModel.FieldIsEnum,
 			&dbModel.FieldFTMProperty,
+			&dbModel.FieldArchived,
 		); err != nil {
 			return dbmodels.DbDataModelTableJoinField{}, err
 		}
@@ -512,9 +516,10 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 			data_model_fields.nullable,
 			data_model_fields.table_id,
 			data_model_fields.type,
-			data_model_fields.ftm_property
+			data_model_fields.ftm_property,
+			data_model_fields.archived
 		FROM data_model_fields
-		WHERE id = $1
+		WHERE id = $1 and archived is false
 	`
 
 	row := exec.QueryRow(ctx, query, fieldId)
@@ -530,6 +535,7 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 		&field.TableId,
 		&dataType,
 		&ftmProperty,
+		&field.Archived,
 	); errors.Is(err, pgx.ErrNoRows) {
 		return models.FieldMetadata{}, fmt.Errorf("error in GetDataModelField: %w", models.NotFoundError)
 	} else if err != nil {
@@ -685,4 +691,29 @@ func (repo MarbleDbRepository) BatchInsertEnumValues(ctx context.Context, exec E
 	}
 
 	return nil
+}
+
+func (repo MarbleDbRepository) ArchiveDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TableDataModelFields).
+		Set("archived", true).
+		Where("table_id = ? and id = ?", table.ID, field.ID)
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo MarbleDbRepository) DeleteDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Delete(dbmodels.TableDataModelFields).
+		Where("table_id = ? and id = ?", table.ID, field.ID)
+
+	return ExecBuilder(ctx, exec, query)
 }

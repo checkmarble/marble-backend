@@ -208,6 +208,7 @@ type Field struct {
 	FieldStatistics   FieldStatistics
 	UnicityConstraint UnicityConstraint
 	FTMProperty       *FollowTheMoneyProperty
+	Archived          bool
 }
 
 type FieldMetadata struct {
@@ -219,6 +220,7 @@ type FieldMetadata struct {
 	Nullable    bool
 	TableId     string
 	FTMProperty *FollowTheMoneyProperty
+	Archived    bool
 }
 
 type UnicityConstraint int
@@ -403,8 +405,7 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 			if _, ok := navigationOptions[link.ParentTableName]; !ok {
 				navigationOptions[link.ParentTableName] = []NavigationOption{}
 			}
-			navigationOptions[link.ParentTableName] =
-				append(navigationOptions[link.ParentTableName], navOption)
+			navigationOptions[link.ParentTableName] = append(navigationOptions[link.ParentTableName], navOption)
 		}
 
 		for _, pivot := range pivots {
@@ -432,8 +433,7 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 			if _, ok := navigationOptions[pivot.BaseTable]; !ok {
 				navigationOptions[pivot.BaseTable] = []NavigationOption{}
 			}
-			navigationOptions[pivot.BaseTable] =
-				append(navigationOptions[pivot.BaseTable], navOption)
+			navigationOptions[pivot.BaseTable] = append(navigationOptions[pivot.BaseTable], navOption)
 		}
 	}
 

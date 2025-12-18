@@ -163,3 +163,18 @@ func (repo *MarbleDbRepository) UpdateScenarioIterationVersion(ctx context.Conte
 	)
 	return err
 }
+
+func (repo *MarbleDbRepository) ArchiveScenarioIteration(ctx context.Context, exec Executor, scenarioIterationId string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	return ExecBuilder(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Update(dbmodels.TABLE_SCENARIO_ITERATIONS).
+			Set("archived", true).
+			Where(squirrel.Eq{"id": scenarioIterationId}),
+	)
+}

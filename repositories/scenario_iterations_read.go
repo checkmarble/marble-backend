@@ -70,7 +70,7 @@ func (repo *MarbleDbRepository) ListScenarioIterations(
 }
 
 func selectScenarioIterations() squirrel.SelectBuilder {
-	return NewQueryBuilder().
+	query := NewQueryBuilder().
 		Select(columnsNames("si", dbmodels.SelectScenarioIterationColumn)...).
 		Column(
 			fmt.Sprintf(
@@ -82,4 +82,47 @@ func selectScenarioIterations() squirrel.SelectBuilder {
 		LeftJoin(dbmodels.TABLE_RULES + " AS sir ON sir.scenario_iteration_id = si.id").
 		GroupBy("si.id").
 		OrderBy("si.created_at DESC")
+
+	return query
+}
+
+func (repo *MarbleDbRepository) ListAllRulesAndScreenings(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+) ([]models.RulesAndScreenings, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	rules := NewQueryBuilder().
+		Select(
+			"si.id", "si.scenario_id", "si.version", "si.trigger_condition_ast_expression as trigger_ast",
+			"sir.id as rule_id",
+			"sir.formula_ast_expression as rule_ast",
+			"null as screening_trigger_ast", "null as screening_counterparty_ast", "null as screening_ast",
+		).
+		From(dbmodels.TABLE_SCENARIO_ITERATIONS+" si").
+		LeftJoin(dbmodels.TABLE_RULES+" sir on si.id = sir.scenario_iteration_id").
+		Where("si.org_id = ?", organizationId)
+
+	screenings := NewQueryBuilder().
+		Select(
+			"si.id", "si.scenario_id", "si.version", "si.trigger_condition_ast_expression as trigger_ast",
+			"sc.id as rule_id",
+			"null as rule_ast",
+			"sc.trigger_rule as screening_trigger_ast", "sc.counterparty_id_expression as screening_counterparty_ast", "sc.query as screening_ast",
+		).
+		From(dbmodels.TABLE_SCENARIO_ITERATIONS+" si").
+		LeftJoin(dbmodels.TABLE_SCREENING_CONFIGS+" sc on si.id = sc.scenario_iteration_id").
+		Where("si.org_id = ?", organizationId)
+
+	sql := rules.SuffixExpr(screenings.Prefix(" UNION ALL "))
+
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		sql,
+		dbmodels.AdaptRulesAndScreenings,
+	)
 }

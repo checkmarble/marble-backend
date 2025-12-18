@@ -9,6 +9,25 @@ import (
 	"github.com/google/uuid"
 )
 
+func (repo *MarbleDbRepository) ListAllOrgWorkflows(ctx context.Context, exec Executor, orgId string) ([]models.Workflow, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(columnsNames("r", dbmodels.WorkflowRuleColumns)...).
+		Column("array_agg(distinct row(c.*)) filter (where c.id is not null) as conditions").
+		Column("array_agg(distinct row(a.*)) filter (where a.id is not null) as actions").
+		From(dbmodels.TABLE_WORKFLOW_RULES+" r").
+		LeftJoin(dbmodels.TABLE_WORKFLOW_CONDITIONS+" c on c.rule_id = r.id").
+		LeftJoin(dbmodels.TABLE_WORKFLOW_ACTIONS+" a on a.rule_id = r.id").
+		LeftJoin(dbmodels.TABLE_SCENARIOS+" s on s.id = r.scenario_id").
+		Where("s.org_id = ?", orgId).
+		GroupBy("r.id")
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptWorkflowRuleWithConditions)
+}
+
 func (repo *MarbleDbRepository) ListWorkflowsForScenario(ctx context.Context, exec Executor, scenarioId uuid.UUID) ([]models.Workflow, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

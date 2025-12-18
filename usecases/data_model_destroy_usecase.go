@@ -1,0 +1,388 @@
+package usecases
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"slices"
+
+	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
+	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/cockroachdb/errors"
+	"github.com/hashicorp/go-set/v2"
+)
+
+type DataModelDestroyUsecase struct {
+	executorFactory     executor_factory.ExecutorFactory
+	transactionFactory  executor_factory.TransactionFactory
+	enforceSecurity     security.EnforceSecurityOrganization
+	dataModelRepository repositories.DataModelRepository
+
+	scenarioRepository          repositories.ScenarioUsecaseRepository
+	iterationsRepository        scenarios.ScenarioPublisherRepository
+	workflowRepository          workflowRepository
+	analyticsSettingsRepository analyticsSettingsRepository
+	testRunRepository           repositories.ScenarioTestRunRepository
+	clientDbRepository          repositories.OrganizationSchemaRepository
+}
+
+func NewDataModelDestroyUsecase(
+	executorFactory executor_factory.ExecutorFactory,
+	transactionFactory executor_factory.TransactionFactory,
+	enforceSecurity security.EnforceSecurityOrganization,
+	dataModelRepository repositories.DataModelRepository,
+	scenarioRepository repositories.ScenarioUsecaseRepository,
+	iterationsRepository scenarios.ScenarioPublisherRepository,
+	workflowRepository workflowRepository,
+	analyticsSettingsRepository analyticsSettingsRepository,
+	testRunRepository repositories.ScenarioTestRunRepository,
+	clientDbRepository repositories.OrganizationSchemaRepository,
+) DataModelDestroyUsecase {
+	return DataModelDestroyUsecase{
+		executorFactory:             executorFactory,
+		transactionFactory:          transactionFactory,
+		enforceSecurity:             enforceSecurity,
+		dataModelRepository:         dataModelRepository,
+		scenarioRepository:          scenarioRepository,
+		iterationsRepository:        iterationsRepository,
+		workflowRepository:          workflowRepository,
+		analyticsSettingsRepository: analyticsSettingsRepository,
+		testRunRepository:           testRunRepository,
+		clientDbRepository:          clientDbRepository,
+	}
+}
+
+func (uc DataModelDestroyUsecase) RenameField(ctx context.Context, fieldId string) error {
+	return nil
+}
+
+func (uc DataModelDestroyUsecase) DeleteField(ctx context.Context, fieldId string) (models.DataModelDeleteFieldReport, error) {
+	exec := uc.executorFactory.NewExecutor()
+
+	field, err := uc.dataModelRepository.GetDataModelField(ctx, exec, fieldId)
+	if err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+	table, err := uc.dataModelRepository.GetDataModelTable(ctx, exec, field.TableId)
+	if err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	if err := uc.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	canDelete, report, err := uc.canDeleteField(ctx, table.OrganizationID, exec, table, field)
+	if err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	if !canDelete {
+		report.ArchivedIterations = set.New[string](0)
+
+		return report, errors.Wrap(models.ConflictError, "field is used and cannot be deleted")
+	}
+
+	// GO-GO GADGETO VANISH
+	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, table.OrganizationID)
+		if err != nil {
+			return err
+		}
+
+		// If the field was least in at least one iteration, we archive both the field and those iterations
+		if report.ArchivedIterations.Size() > 0 {
+			for _, it := range report.ArchivedIterations.Slice() {
+				if err := uc.iterationsRepository.ArchiveScenarioIteration(ctx, tx, it); err != nil {
+					return err
+				}
+			}
+
+			if err := uc.dataModelRepository.ArchiveDataModelField(ctx, tx, table, field); err != nil {
+				return err
+			}
+
+			if err := uc.clientDbRepository.RenameField(ctx, clientDbExec, table.Name, field.Name); err != nil {
+				return err
+			}
+		}
+
+		// Otherwise, it was not used anywhere and we can safely delete its metadata as well as the physical column
+		if report.ArchivedIterations.Size() == 0 {
+			if err := uc.dataModelRepository.DeleteDataModelField(ctx, tx, table, field); err != nil {
+				return err
+			}
+
+			if err := uc.clientDbRepository.DeleteField(ctx, clientDbExec, table.Name, field.Name); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	report.Performed = true
+
+	return report, nil
+}
+
+func (uc DataModelDestroyUsecase) canDeleteField(
+	ctx context.Context,
+	orgId string,
+	exec repositories.Executor,
+	table models.TableMetadata,
+	field models.FieldMetadata,
+) (bool, models.DataModelDeleteFieldReport, error) {
+	report := models.NewDataModelDeleteFieldReport()
+	canDelete := true
+
+	// TODO: add continuous screening fields
+
+	analyticsSettings, err := uc.analyticsSettingsRepository.GetAnalyticsSettings(ctx, exec, orgId)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	// Analytics settings can embed fields in exported data.
+	for _, setting := range analyticsSettings {
+		if setting.TriggerObjectType == table.Name {
+			if slices.Contains(setting.TriggerFields, field.Name) {
+				canDelete = false
+				report.Conflicts.AnalyticsSettings += 1
+			}
+		}
+	}
+
+	links, err := uc.dataModelRepository.GetLinks(ctx, exec, orgId)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	// If any link starts or ends with the field we want to delete.
+	for _, link := range links {
+		if link.ParentTableId == table.ID && link.ParentFieldName == field.Name {
+			canDelete = false
+			report.Conflicts.Links.Insert(link.Id)
+		}
+		if link.ChildTableId == table.ID && link.ChildFieldName == field.Name {
+			canDelete = false
+			report.Conflicts.Links.Insert(link.Id)
+		}
+
+		// For each link that starts with our table, we need to check if there is an
+		// analytics setting using it, adding **another field** from that table.
+		if link.ParentTableId == table.ID {
+			for _, setting := range analyticsSettings {
+				for _, dbField := range setting.DbFields {
+					if len(dbField.Path) > 0 {
+						if dbField.Path[len(dbField.Path)-1] == link.Name && dbField.Name == field.Name {
+							canDelete = false
+							report.Conflicts.AnalyticsSettings += 1
+						}
+					}
+				}
+			}
+		}
+	}
+
+	scenarios, err := uc.scenarioRepository.ListScenariosOfOrganization(ctx, exec, orgId)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	scenarioMap := make(map[string]models.Scenario)
+	for _, s := range scenarios {
+		scenarioMap[s.Id] = s
+	}
+
+	iterations, err := uc.iterationsRepository.ListAllRulesAndScreenings(ctx, exec, orgId)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	// Check all scenario iterations for if the field we want to delete is used in a rule.
+	for _, it := range iterations {
+		found := false
+		scenario := scenarioMap[it.ScenarioId.String()]
+
+		iterationReport := models.DataModelDeleteFieldConflictIteration{
+			Rules:     set.New[string](0),
+			Screening: set.New[string](0),
+		}
+
+		if previousReport, ok := report.Conflicts.ScenarioIterations[it.ScenarioIterationId.String()]; ok {
+			iterationReport = *previousReport
+		}
+
+		// Checking trigger conditions is only relevant on scenarios for the
+		// same object type as the field to delete.
+		if table.Name == scenario.TriggerObjectType {
+			if uc.isFieldUsedInAst(it.TriggerAst, links, table, field) {
+				iterationReport.TriggerCondition = true
+				found = true
+			}
+
+			if it.ScreeningTriggerAst != nil {
+				if uc.isFieldUsedInAst(it.ScreeningTriggerAst, links, table, field) {
+					iterationReport.Screening.Insert(it.RuleId.String())
+					found = true
+				}
+			}
+		}
+
+		if it.RuleAst != nil {
+			if uc.isFieldUsedInAst(it.RuleAst, links, table, field) {
+				iterationReport.Rules.Insert(it.RuleId.String())
+				found = true
+			}
+		}
+		if it.ScreeningCounterpartyAst != nil {
+			if uc.isFieldUsedInAst(it.ScreeningCounterpartyAst, links, table, field) {
+				iterationReport.Screening.Insert(it.RuleId.String())
+				found = true
+			}
+		}
+		for _, sc := range it.ScreeningAst {
+			if uc.isFieldUsedInAst(&sc, links, table, field) {
+				iterationReport.Screening.Insert(it.RuleId.String())
+				found = true
+			}
+		}
+
+		if found {
+			// We cannot delete a field if it is used in a draft or a live scenario iteration
+			if it.Version == nil || (scenario.LiveVersionID != nil && fmt.Sprintf("%d", *it.Version) == *scenario.LiveVersionID) {
+				canDelete = false
+				report.Conflicts.ScenarioIterations[it.ScenarioIterationId.String()] = &iterationReport
+				continue
+			}
+
+			// Otherwise, we can delete it but matching iterations will be marked as archived
+			report.ArchivedIterations.Insert(it.ScenarioIterationId.String())
+		}
+	}
+
+	workflows, err := uc.workflowRepository.ListAllOrgWorkflows(ctx, exec, orgId)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	// Workflows can use fields in PayloadEvaluates and case title templates.
+	for _, wk := range workflows {
+		for _, cond := range wk.Conditions {
+			switch cond.Function {
+			case models.WorkflowPayloadEvaluates:
+				var params dto.WorkflowConditionEvaluatesParams
+				if err := json.Unmarshal(cond.Params, &params); err != nil {
+					return false, models.DataModelDeleteFieldReport{}, err
+				}
+				payloadExpression, err := dto.AdaptASTNode(params.Expression)
+				if err != nil {
+					return false, models.DataModelDeleteFieldReport{}, err
+				}
+				if uc.isFieldUsedInAst(&payloadExpression, links, table, field) {
+					canDelete = false
+					report.Conflicts.Workflows.Insert(wk.ScenarioId.String())
+				}
+			}
+		}
+
+		for _, act := range wk.Actions {
+			switch act.Action {
+			case models.WorkflowCreateCase, models.WorkflowAddToCaseIfPossible:
+				a, err := models.ParseWorkflowAction[dto.WorkflowActionCaseParams](act)
+				if err != nil {
+					return false, models.DataModelDeleteFieldReport{}, err
+				}
+				if a.Params.TitleTemplate != nil {
+					titleTemplateAst, err := dto.AdaptASTNode(*a.Params.TitleTemplate)
+					if err != nil {
+						return false, models.DataModelDeleteFieldReport{}, err
+					}
+					if uc.isFieldUsedInAst(&titleTemplateAst, links, table, field) {
+						canDelete = false
+						report.Conflicts.Workflows.Insert(wk.ScenarioId.String())
+					}
+				}
+			}
+		}
+	}
+
+	testRuns, err := uc.testRunRepository.ListRunningTestRun(ctx, exec, orgId)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	for _, testRun := range testRuns {
+		if report.ArchivedIterations.Contains(testRun.ScenarioIterationId) || report.ArchivedIterations.Contains(testRun.ScenarioLiveIterationId) {
+			canDelete = false
+			report.Conflicts.TestRuns = true
+		}
+	}
+
+	return canDelete, report, nil
+}
+
+func (uc DataModelDestroyUsecase) isFieldUsedInAst(tree *ast.Node, links []models.LinkToSingle, table models.TableMetadata, field models.FieldMetadata) bool {
+	if tree == nil {
+		return false
+	}
+
+	switch tree.Function {
+	case ast.FUNC_PAYLOAD:
+		if len(tree.Children) > 0 {
+			if value, ok := tree.Children[0].Constant.(string); ok && value == field.Name {
+				return true
+			}
+		}
+
+	case ast.FUNC_DB_ACCESS, ast.FUNC_AGGREGATOR:
+		tableRef, err := tree.ReadConstantNamedChildString("tableName")
+		if err != nil {
+			return false
+		}
+
+		pathsToWalk, err := tree.ReadConstantNamedChildStringSlice("path")
+		if err != nil {
+			return false
+		}
+
+		for _, path := range pathsToWalk {
+			for _, link := range links {
+				if link.Name == path {
+					tableRef = link.ParentTableName
+					break
+				}
+			}
+		}
+
+		if tableRef != table.Name {
+			return false
+		}
+		if value, err := tree.ReadConstantNamedChildString("fieldName"); err == nil && value == field.Name {
+			return true
+		}
+
+	default:
+		for _, ch := range tree.Children {
+			if found := uc.isFieldUsedInAst(&ch, links, table, field); found {
+				return found
+			}
+		}
+		for _, ch := range tree.NamedChildren {
+			if found := uc.isFieldUsedInAst(&ch, links, table, field); found {
+				return found
+			}
+		}
+	}
+
+	return false
+}

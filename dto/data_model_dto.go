@@ -195,3 +195,47 @@ func AdaptDataModelOptions(m models.DataModelOptions) DataModelOptions {
 		FieldOrder:      m.FieldOrder,
 	}
 }
+
+type DataModelDeleteFieldReport struct {
+	Performed          bool                          `json:"performed"`
+	Conflicts          DataModelDeleteFieldConflicts `json:"conflicts"`
+	ArchivedIterations []string                      `json:"archived_iterations"`
+}
+
+type DataModelDeleteFieldConflicts struct {
+	Links              []string                                          `json:"links"`
+	AnalyticsSettings  int                                               `json:"analytics_settings"`
+	ScenarioIterations map[string]*DataModelDeleteFieldConflictIteration `json:"scenario_iterations"`
+	Workflows          []string                                          `json:"workflows"`
+	TestRuns           bool                                              `json:"test_runs"`
+}
+
+type DataModelDeleteFieldConflictIteration struct {
+	TriggerCondition bool     `json:"trigger_condition"`
+	Rules            []string `json:"rules"`
+	Screenings       []string `json:"screenings"`
+}
+
+func AdaptDataModelDeleteFieldReport(m models.DataModelDeleteFieldReport) DataModelDeleteFieldReport {
+	r := DataModelDeleteFieldReport{
+		Performed: m.Performed,
+		Conflicts: DataModelDeleteFieldConflicts{
+			Links:              m.Conflicts.Links.Slice(),
+			AnalyticsSettings:  m.Conflicts.AnalyticsSettings,
+			Workflows:          m.Conflicts.Workflows.Slice(),
+			ScenarioIterations: map[string]*DataModelDeleteFieldConflictIteration{},
+			TestRuns:           m.Conflicts.TestRuns,
+		},
+		ArchivedIterations: m.ArchivedIterations.Slice(),
+	}
+
+	for iterationId, conflicts := range m.Conflicts.ScenarioIterations {
+		r.Conflicts.ScenarioIterations[iterationId] = &DataModelDeleteFieldConflictIteration{
+			TriggerCondition: conflicts.TriggerCondition,
+			Rules:            conflicts.Rules.Slice(),
+			Screenings:       conflicts.Screening.Slice(),
+		}
+	}
+
+	return r
+}
