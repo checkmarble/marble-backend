@@ -1171,21 +1171,24 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		return models.Case{}, err
 	}
 
-	if c.Type == models.CaseTypeDecision {
+	switch c.Type {
+	case models.CaseTypeDecision:
 		decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
 		if err != nil {
 			return models.Case{}, err
 		}
 		c.Decisions = decisions
-	}
 
-	if c.Type == models.CaseTypeContinuousScreening {
+	case models.CaseTypeContinuousScreening:
 		continuousScreeningsWithMatches, err :=
 			usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
 		if err != nil {
 			return models.Case{}, err
 		}
 		c.ContinuousScreenings = continuousScreeningsWithMatches
+
+	default:
+		return models.Case{}, errors.Errorf("case type %s is not supported", c.Type)
 	}
 
 	caseFiles, err := usecase.repository.GetCasesFileByCaseId(ctx, exec, caseId)

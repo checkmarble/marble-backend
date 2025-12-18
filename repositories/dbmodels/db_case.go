@@ -45,14 +45,6 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		boostReason = utils.Ptr(models.BoostReason(*db.Boost))
 	}
 
-	var caseType models.CaseType
-	if db.Type.Valid {
-		caseType = models.CaseTypeFromString(db.Type.String)
-	} else {
-		// This occurs when LEFT JOIN returns no case (decision has no case_id)
-		caseType = models.CaseTypeUnknown
-	}
-
 	return models.Case{
 		Id:             db.Id.String,
 		CreatedAt:      db.CreatedAt.Time,
@@ -64,7 +56,7 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		Outcome:        models.CaseOutcome(db.Outcome.String),
 		SnoozedUntil:   db.SnoozedUntil,
 		Boost:          boostReason,
-		Type:           caseType,
+		Type:           models.CaseTypeFromString(db.Type.String),
 	}, nil
 }
 
