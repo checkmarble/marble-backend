@@ -115,6 +115,7 @@ type IngestionUsecaseTestSuite struct {
 	executorFactory                     executor_factory.ExecutorFactoryStub
 	transactionFactory                  executor_factory.TransactionFactoryStub
 	dataModelRepository                 *mocks.DataModelRepository
+	continuousScreeningRepository       *mocks.ContinuousScreeningRepository
 	continuousScreeningClientRepository *mocks.ContinuousScreeningClientDbRepository
 	taskQueueRepository                 *mocks.TaskQueueRepository
 
@@ -131,6 +132,7 @@ func (suite *IngestionUsecaseTestSuite) makeUsecase() *IngestionUseCase {
 		enforceSecurity:                     suite.enforceSecurity,
 		ingestionRepository:                 &repositories.IngestionRepositoryImpl{},
 		dataModelRepository:                 suite.dataModelRepository,
+		continuousScreeningRepository:       suite.continuousScreeningRepository,
 		continuousScreeningClientRepository: suite.continuousScreeningClientRepository,
 		batchIngestionMaxSize:               100,
 		taskEnqueuer:                        suite.taskQueueRepository,
@@ -142,10 +144,11 @@ func (suite *IngestionUsecaseTestSuite) SetupTest() {
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
 	suite.dataModelRepository = new(mocks.DataModelRepository)
+	suite.continuousScreeningRepository = new(mocks.ContinuousScreeningRepository)
 	suite.continuousScreeningClientRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
 
-	suite.organizationId = "org_id"
+	suite.organizationId = uuid.NewString()
 	suite.dataModel = models.DataModel{
 		Tables: map[string]models.Table{
 			"transactions": {
@@ -176,8 +179,8 @@ func (suite *IngestionUsecaseTestSuite) AssertExpectations() {
 	asserts.NoError(suite.executorFactory.Mock.ExpectationsWereMet(),
 		"ExecutorFactory expectations were not met")
 	suite.dataModelRepository.AssertExpectations(t)
-	suite.dataModelRepository.AssertExpectations(t)
 	suite.enforceSecurity.AssertExpectations(t)
+	suite.continuousScreeningRepository.AssertExpectations(t)
 	suite.continuousScreeningClientRepository.AssertExpectations(t)
 	suite.taskQueueRepository.AssertExpectations(t)
 }
@@ -191,19 +194,15 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
-	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1"}).
-		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
-
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
-		Return(nil)
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
+		Return([]models.ContinuousScreeningConfig{}, nil)
 
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId := utils.ByteUuid(rowIdStr)
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is a previous version for this object
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id  FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
 		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}).
 			AddRow("1", updAt, rowId))
@@ -236,19 +235,15 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
-	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1"}).
-		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
-
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
-		Return(nil)
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
+		Return([]models.ContinuousScreeningConfig{}, nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for this object
 	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}))
 	// insert the new version
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5)`)).
 		WithArgs("1", "OK", updAt, 1.0, anyUuid{}).
@@ -281,13 +276,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(dataModel, nil)
 
-	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1"}).
-		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
-
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
-		Return(nil)
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
+		Return([]models.ContinuousScreeningConfig{}, nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for this object
@@ -322,9 +313,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
-		Return(nil)
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
+		Return([]models.ContinuousScreeningConfig{}, nil)
 
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId := utils.ByteUuid(rowIdStr)
@@ -356,13 +347,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
-	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1"}).
-		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
-
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
-		Return(nil)
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
+		Return([]models.ContinuousScreeningConfig{}, nil)
 
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId := utils.ByteUuid(rowIdStr)
@@ -402,23 +389,14 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_withou
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1"}).
-		Return(nil)
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
+		Return([]models.ContinuousScreeningConfig{}, nil)
 
-	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is a previous version for this object
 	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
 		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}))
-	// insert the new version
-	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5)`)).
-		WithArgs("1", "OK", updAt, 1.0, anyUuid{}).
-		WillReturnResult(pgxmock.NewResult("INSERT", 1))
-
-	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
-		Return(nil)
 
 	_, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
 		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z"}`), payload_parser.WithAllowPatch())
@@ -435,13 +413,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_nomin
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
-	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1", "2"}).
-		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
-
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1", "2"}).
-		Return(nil)
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
+		Return([]models.ContinuousScreeningConfig{}, nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for these objects
@@ -476,13 +450,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
-	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1", "2"}).
-		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
-
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1", "2"}).
-		Return(nil)
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
+		Return([]models.ContinuousScreeningConfig{}, nil)
 
 	rowIdStr1 := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId1 := utils.ByteUuid(rowIdStr1)
@@ -526,13 +496,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
-	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "transactions", []string{"1", "2"}).
-		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
-
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions", []string{"1", "2"}).
-		Return(nil)
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
+		Return([]models.ContinuousScreeningConfig{}, nil)
 
 	rowIdStr1 := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId1 := utils.ByteUuid(rowIdStr1)
@@ -571,6 +537,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
+		Return([]models.ContinuousScreeningConfig{{}}, nil) // Return one config to enable feature
+
 	// Setup continuous screening mocks - only objects "1" and "3" are monitored out of 5 total
 	monitoringId1 := uuid.New()
 	monitoringId3 := uuid.New()
@@ -595,16 +565,11 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 
 	// Setup task queue mock to expect the continuous screening task to be enqueued for only the 2 monitored objects
 	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "org_id", "transactions",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions",
 		mock.MatchedBy(func(ids []uuid.UUID) bool {
 			return len(ids) == 2 && ((ids[0] == monitoringId1 && ids[1] == monitoringId3) ||
 				(ids[0] == monitoringId3 && ids[1] == monitoringId1))
 		}), models.ContinuousScreeningTriggerTypeObjectUpdated).
-		Return(nil)
-
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "org_id", "transactions",
-		[]string{"1", "2", "3", "4", "5"}).
 		Return(nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
@@ -641,6 +606,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
+
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
+		Return([]models.ContinuousScreeningConfig{}, nil)
 
 	_, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",
 		json.RawMessage(`[{"object_id": "", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}]`))

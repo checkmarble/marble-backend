@@ -36,7 +36,16 @@ const (
 	CSV_INGESTION_ITERATION_TIMEOUT = 10 * time.Second
 )
 
-type continuousScreeningClientRepository interface {
+type continuousScreeningRepository interface {
+	ListContinuousScreeningConfigByObjectType(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		objectType string,
+	) ([]models.ContinuousScreeningConfig, error)
+}
+
+type continuousScreeningClientDbRepository interface {
 	ListMonitoredObjectsByObjectIds(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -46,12 +55,13 @@ type continuousScreeningClientRepository interface {
 }
 
 type taskEnqueuer interface {
-	EnqueueContinuousScreeningEvaluateNeedTask(
+	EnqueueContinuousScreeningDoScreeningTaskMany(
 		ctx context.Context,
 		tx repositories.Transaction,
 		orgId string,
 		objectType string,
-		objectIds []string,
+		monitoringIds []uuid.UUID,
+		triggerType models.ContinuousScreeningTriggerType,
 	) error
 }
 
@@ -63,7 +73,8 @@ type IngestionUseCase struct {
 	blobRepository                      repositories.BlobRepository
 	dataModelRepository                 repositories.DataModelRepository
 	uploadLogRepository                 repositories.UploadLogRepository
-	continuousScreeningClientRepository continuousScreeningClientRepository
+	continuousScreeningRepository       continuousScreeningRepository
+	continuousScreeningClientRepository continuousScreeningClientDbRepository
 	ingestionBucketUrl                  string
 	batchIngestionMaxSize               int
 	taskEnqueuer                        taskEnqueuer
@@ -89,6 +100,11 @@ func (usecase *IngestionUseCase) IngestObject(
 		return 0, err
 	}
 
+	orgId, err := uuid.Parse(organizationId)
+	if err != nil {
+		return 0, err
+	}
+
 	exec := usecase.executorFactory.NewExecutor()
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, true)
 	if err != nil {
@@ -110,17 +126,7 @@ func (usecase *IngestionUseCase) IngestObject(
 		return 0, errors.WithDetail(err, "error parsing payload in decision usecase validate payload")
 	}
 
-	// `object_id` is a mandatory field, so it should be present in the payload
-	objectId := payload.Data["object_id"].(string)
-	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return usecase.taskEnqueuer.EnqueueContinuousScreeningEvaluateNeedTask(
-			ctx,
-			tx,
-			organizationId,
-			objectType,
-			[]string{objectId},
-		)
-	})
+	configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, orgId, objectType)
 	if err != nil {
 		return 0, err
 	}
@@ -142,6 +148,10 @@ func (usecase *IngestionUseCase) IngestObject(
 		return 0, err
 	}
 	nbInsertedObjects := len(insertedObjectIds)
+	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId, objectType, insertedObjectIds)
+	if err != nil {
+		return 0, err
+	}
 
 	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
 		slog.String("organization_id", organizationId),
@@ -168,6 +178,11 @@ func (usecase *IngestionUseCase) IngestObjects(
 		trace.WithAttributes(attribute.String("organization_id", organizationId)))
 	defer span.End()
 
+	orgId, err := uuid.Parse(organizationId)
+	if err != nil {
+		return 0, err
+	}
+
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return 0, err
 	}
@@ -193,6 +208,11 @@ func (usecase *IngestionUseCase) IngestObjects(
 			models.NotFoundError,
 			"table %s not found in data model in IngestObjects", objectType,
 		)
+	}
+
+	configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, orgId, objectType)
+	if err != nil {
+		return 0, err
 	}
 
 	clientObjects := make([]models.ClientObject, 0, len(rawMessages))
@@ -226,20 +246,6 @@ func (usecase *IngestionUseCase) IngestObjects(
 		return 0, validationErrorsGroup
 	}
 
-	// `object_id` is a mandatory field, so it should be present in the payload
-	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return usecase.taskEnqueuer.EnqueueContinuousScreeningEvaluateNeedTask(
-			ctx,
-			tx,
-			organizationId,
-			objectType,
-			objectIdsList,
-		)
-	})
-	if err != nil {
-		return 0, err
-	}
-
 	var insertedObjectIds []string
 	err = retryIngestion(ctx, func() error {
 		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
@@ -249,6 +255,11 @@ func (usecase *IngestionUseCase) IngestObjects(
 		return 0, err
 	}
 	nbInsertedObjects := len(insertedObjectIds)
+
+	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId, objectType, insertedObjectIds)
+	if err != nil {
+		return 0, err
+	}
 
 	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
 		slog.String("organization_id", organizationId),
@@ -557,6 +568,13 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 	fileReader io.Reader,
 	table models.Table,
 ) ingestionResult {
+	exec := usecase.executorFactory.NewExecutor()
+	orgId, err := uuid.Parse(organizationId)
+	if err != nil {
+		return ingestionResult{
+			err: err,
+		}
+	}
 	logger := utils.LoggerFromContext(ctx)
 	total := 0
 	start := time.Now()
@@ -588,6 +606,13 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 					err: fmt.Errorf("missing required field %s in CSV", name),
 				}
 			}
+		}
+	}
+
+	configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, orgId, table.Name)
+	if err != nil {
+		return ingestionResult{
+			err: err,
 		}
 	}
 
@@ -627,22 +652,6 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 			objectIds = append(objectIds, object["object_id"].(string))
 		}
 
-		err = usecase.transactionFactory.Transaction(iterationCtx, func(tx repositories.Transaction) error {
-			return usecase.taskEnqueuer.EnqueueContinuousScreeningEvaluateNeedTask(
-				iterationCtx,
-				tx,
-				organizationId,
-				table.Name,
-				objectIds,
-			)
-		})
-		if err != nil {
-			return ingestionResult{
-				numRowsIngested: total,
-				err:             err,
-			}
-		}
-
 		var insertedObjectIds []string
 		if err := retryIngestion(iterationCtx, func() error {
 			insertedObjectIds, err = usecase.insertEnumValuesAndIngest(iterationCtx, organizationId, clientObjects, table)
@@ -654,13 +663,75 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 			}
 		}
 		nbInsertedObjects := len(insertedObjectIds)
-
 		total += nbInsertedObjects
+
+		err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(
+			iterationCtx,
+			configs,
+			organizationId,
+			table.Name,
+			insertedObjectIds,
+		)
+		if err != nil {
+			return ingestionResult{
+				numRowsIngested: total,
+				err:             err,
+			}
+		}
 	}
 
 	return ingestionResult{
 		numRowsIngested: total,
 	}
+}
+
+func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
+	ctx context.Context,
+	configs []models.ContinuousScreeningConfig,
+	organizationId string,
+	objectType string,
+	objectIds []string,
+) error {
+	if len(configs) == 0 {
+		// No continuous screening config found, the feature is not enabled for this organization and object type
+		return nil
+	}
+
+	clientDbExec, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return err
+	}
+
+	monitoredObjects, err := usecase.continuousScreeningClientRepository.ListMonitoredObjectsByObjectIds(
+		ctx,
+		clientDbExec,
+		objectType,
+		objectIds,
+	)
+	if err != nil {
+		return err
+	}
+
+	if len(monitoredObjects) == 0 {
+		// No monitored objects found, no need to enqueue the task
+		return nil
+	}
+
+	monitoringIds := make([]uuid.UUID, len(monitoredObjects))
+	for i, monitoredObject := range monitoredObjects {
+		monitoringIds[i] = monitoredObject.Id
+	}
+
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return usecase.taskEnqueuer.EnqueueContinuousScreeningDoScreeningTaskMany(
+			ctx,
+			tx,
+			organizationId,
+			objectType,
+			monitoringIds,
+			models.ContinuousScreeningTriggerTypeObjectUpdated,
+		)
+	})
 }
 
 func containsString(arr []string, s string) bool {

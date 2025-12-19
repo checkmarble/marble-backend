@@ -83,13 +83,6 @@ type TaskQueueRepository interface {
 		monitoringIds []uuid.UUID,
 		triggerType models.ContinuousScreeningTriggerType,
 	) error
-	EnqueueContinuousScreeningEvaluateNeedTask(
-		ctx context.Context,
-		tx Transaction,
-		orgId string,
-		objectType string,
-		objectIds []string,
-	) error
 	EnqueueContinuousScreeningApplyDeltaFileTask(
 		ctx context.Context,
 		tx Transaction,
@@ -384,41 +377,6 @@ func (r riverRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued continuous screening do screening tasks", "nb_tasks", res)
-	return nil
-}
-
-func (r riverRepository) EnqueueContinuousScreeningEvaluateNeedTask(
-	ctx context.Context,
-	tx Transaction,
-	orgId string,
-	objectType string,
-	objectIds []string,
-) error {
-	res, err := r.client.InsertTx(
-		ctx,
-		tx.RawTx(),
-		models.ContinuousScreeningEvaluateNeedArgs{
-			OrgId:      orgId,
-			ObjectType: objectType,
-			ObjectIds:  objectIds,
-		},
-		&river.InsertOpts{
-			Queue: orgId,
-			// Delay the task just after the deadline to be sure it's executed after the caller execution
-			ScheduledAt: func() time.Time {
-				if deadline, ok := ctx.Deadline(); ok {
-					return deadline.Add(time.Second)
-				}
-				return time.Now().Add(10 * time.Second)
-			}(),
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	logger := utils.LoggerFromContext(ctx)
-	logger.DebugContext(ctx, "Enqueued continuous screening check if object needs screening task", "job_id", res.Job.ID)
 	return nil
 }
 
