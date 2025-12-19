@@ -1500,6 +1500,23 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 func (usecase *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositories.Transaction,
 	annotationId string, annotationReq models.CreateEntityAnnotationRequest,
 ) error {
+	if annotationReq.CaseId == nil {
+		return errors.New("tried to attach annotation to a case without a case ID")
+	}
+
+	inboxes, err := usecase.getAvailableInboxIds(ctx, tx, annotationReq.OrgId)
+	if err != nil {
+		return err
+	}
+	c, err := usecase.GetCase(ctx, *annotationReq.CaseId)
+	if err != nil {
+		return err
+	}
+
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxes); err != nil {
+		return errors.Wrap(models.ForbiddenError, err.Error())
+	}
+
 	return usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		OrgId:          uuid.MustParse(annotationReq.OrgId),
 		CaseId:         *annotationReq.CaseId,
@@ -1518,6 +1535,19 @@ func (usecase *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx reposi
 		return errors.New("tried to attach file annotation to a case without a case ID")
 	}
 
+	inboxes, err := usecase.getAvailableInboxIds(ctx, tx, annotationReq.OrgId)
+	if err != nil {
+		return err
+	}
+	c, err := usecase.GetCase(ctx, *annotationReq.CaseId)
+	if err != nil {
+		return err
+	}
+
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxes); err != nil {
+		return errors.Wrap(models.ForbiddenError, err.Error())
+	}
+
 	for _, file := range files {
 		newFileUuid := uuid.NewString()
 
@@ -1533,7 +1563,7 @@ func (usecase *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx reposi
 		}
 	}
 
-	err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+	return usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		OrgId:          uuid.MustParse(annotationReq.OrgId),
 		CaseId:         *annotationReq.CaseId,
 		UserId:         (*string)(annotationReq.AnnotatedBy),
@@ -1542,11 +1572,6 @@ func (usecase *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx reposi
 		ResourceId:     &annotationId,
 		AdditionalNote: utils.Ptr(annotationReq.AnnotationType.String()),
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func validateFileType(file multipart.FileHeader) error {
