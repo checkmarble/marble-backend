@@ -136,6 +136,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	)
 	router.GET("/scenarios/:scenario_id/rules/latest", tom, listLatestScenarioRules(uc))
 
+	router.GET("/scenario-iterations/metadata", tom, handleListScenarioIterationsMetadata(uc))
 	router.GET("/scenario-iterations", tom, handleListScenarioIterations(uc))
 	router.POST("/scenario-iterations", tom, handleCreateScenarioIteration(uc))
 	router.GET("/scenario-iterations/:iteration_id", tom, handleGetScenarioIteration(uc))

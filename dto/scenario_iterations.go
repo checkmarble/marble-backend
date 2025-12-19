@@ -24,6 +24,16 @@ type ScenarioIterationDto struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+func AdaptScenarioIterationMetadataDto(si models.ScenarioIterationMetadata) ScenarioIterationDto {
+	return ScenarioIterationDto{
+		Id:         si.Id,
+		ScenarioId: si.ScenarioId,
+		Version:    si.Version,
+		CreatedAt:  si.CreatedAt,
+		UpdatedAt:  si.UpdatedAt,
+	}
+}
+
 type ScenarioIterationBodyDto struct {
 	TriggerConditionAstExpression *NodeDto          `json:"trigger_condition_ast_expression"`
 	Rules                         []RuleDto         `json:"rules"`
