@@ -1,16 +1,18 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -18,7 +20,12 @@ import (
 func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		scenarioId := c.Query("scenario_id")
+		qs := c.Query("scenario_id")
+		scenarioId, err := uuid.Parse(qs)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+		}
+
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(ctx, c, err) {
 			return
@@ -29,7 +36,7 @@ func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 			ctx,
 			organizationId,
 			models.GetScenarioIterationFilters{
-				ScenarioId: utils.PtrTo(scenarioId, &utils.PtrToOptions{OmitZero: true}),
+				ScenarioId: scenarioId,
 			})
 		if presentError(ctx, c, err) {
 			return
@@ -45,6 +52,33 @@ func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 			scenarioIterationsDtos[i] = scenarioIterationDTO
 		}
 		c.JSON(http.StatusOK, scenarioIterationsDtos)
+	}
+}
+
+func handleListScenarioIterationsMetadata(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		qs := c.Query("scenario_id")
+		scenarioId, err := uuid.Parse(qs)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+		}
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
+		scenarioIterations, err := usecase.ListScenarioIterationsMetadata(
+			ctx,
+			organizationId,
+			models.GetScenarioIterationFilters{ScenarioId: scenarioId})
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(scenarioIterations, dto.AdaptScenarioIterationMetadataDto))
 	}
 }
 

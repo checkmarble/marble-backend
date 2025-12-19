@@ -6,6 +6,7 @@ import (
 
 	"github.com/adhocore/gronx"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -31,6 +32,12 @@ type IterationUsecaseRepository interface {
 		organizationId string,
 		filters models.GetScenarioIterationFilters,
 	) ([]models.ScenarioIteration, error)
+	ListScenarioIterationsMetadata(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		filters models.GetScenarioIterationFilters,
+	) ([]models.ScenarioIterationMetadata, error)
 
 	CreateScenarioIterationAndRules(
 		ctx context.Context,
@@ -83,6 +90,24 @@ func (usecase *ScenarioIterationUsecase) ListScenarioIterations(
 		return nil, err
 	}
 	for _, si := range scenarioIterations {
+		if err := usecase.enforceSecurity.ReadScenarioIteration(si.ToMetadata()); err != nil {
+			return nil, err
+		}
+	}
+	return scenarioIterations, nil
+}
+
+func (usecase *ScenarioIterationUsecase) ListScenarioIterationsMetadata(
+	ctx context.Context,
+	organizationId string,
+	filters models.GetScenarioIterationFilters,
+) ([]models.ScenarioIterationMetadata, error) {
+	scenarioIterations, err := usecase.repository.ListScenarioIterationsMetadata(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId, filters)
+	if err != nil {
+		return nil, err
+	}
+	for _, si := range scenarioIterations {
 		if err := usecase.enforceSecurity.ReadScenarioIteration(si); err != nil {
 			return nil, err
 		}
@@ -107,7 +132,7 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 	}
 	si.ScreeningConfigs = scc
 
-	if err := usecase.enforceSecurity.ReadScenarioIteration(si); err != nil {
+	if err := usecase.enforceSecurity.ReadScenarioIteration(si.ToMetadata()); err != nil {
 		return models.ScenarioIteration{}, err
 	}
 	return si, nil
@@ -218,11 +243,15 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 					"could not retrieve screening config while creating draft")
 			}
 
+			scenarioId, err := uuid.Parse(si.ScenarioId)
+			if err != nil {
+				return models.ScenarioIteration{}, err
+			}
 			iterations, err := usecase.repository.ListScenarioIterations(
 				ctx,
 				tx,
 				organizationId,
-				models.GetScenarioIterationFilters{ScenarioId: &si.ScenarioId},
+				models.GetScenarioIterationFilters{ScenarioId: scenarioId},
 			)
 			if err != nil {
 				return models.ScenarioIteration{}, err
@@ -318,7 +347,8 @@ func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(ctx context.C
 		return validation, err
 	}
 
-	if err := usecase.enforceSecurity.ReadScenarioIteration(scenarioAndIteration.Iteration); err != nil {
+	if err := usecase.enforceSecurity.ReadScenarioIteration(
+		scenarioAndIteration.Iteration.ToMetadata()); err != nil {
 		return validation, err
 	}
 
@@ -404,11 +434,16 @@ func (usecase *ScenarioIterationUsecase) getScenarioVersion(
 	exec repositories.Executor,
 	organizationId, scenarioId string,
 ) (int, error) {
+	scenarioIdUuid, err := uuid.Parse(scenarioId)
+	if err != nil {
+		return 0, err
+	}
 	scenarioIterations, err := usecase.repository.ListScenarioIterations(
 		ctx,
 		exec,
 		organizationId,
-		models.GetScenarioIterationFilters{ScenarioId: &scenarioId})
+		models.GetScenarioIterationFilters{ScenarioId: scenarioIdUuid},
+	)
 	if err != nil {
 		return 0, err
 	}
