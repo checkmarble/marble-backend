@@ -68,7 +68,7 @@ func (e *EnforceSecurity) ReadScenario(scenario models.Scenario) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) ReadScenarioIteration(scenarioIteration models.ScenarioIteration) error {
+func (e *EnforceSecurity) ReadScenarioIteration(scenarioIteration models.ScenarioIterationMetadata) error {
 	args := e.Called(scenarioIteration)
 	return args.Error(0)
 }

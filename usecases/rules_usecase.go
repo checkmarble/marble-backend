@@ -67,7 +67,7 @@ func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) (
 				return nil, err
 			}
 			if err := usecase.enforceSecurity.ReadScenarioIteration(
-				scenarioAndIteration.Iteration); err != nil {
+				scenarioAndIteration.Iteration.ToMetadata()); err != nil {
 				return nil, err
 			}
 			return usecase.repository.ListRulesByIterationId(ctx, tx, iterationId)
@@ -145,7 +145,7 @@ func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.
 				return models.Rule{}, err
 			}
 			if err := usecase.enforceSecurity.ReadScenarioIteration(
-				scenarioAndIteration.Iteration); err != nil {
+				scenarioAndIteration.Iteration.ToMetadata()); err != nil {
 				return models.Rule{}, err
 			}
 			return rule, nil
