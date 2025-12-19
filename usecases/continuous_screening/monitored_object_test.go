@@ -768,7 +768,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		return attrs.OrganizationId == suite.orgId.String() &&
 			attrs.InboxId == inboxId &&
 			attrs.Name == "Continuous Screening - "+suite.objectId &&
-			len(attrs.ContinuousScreeningIds) == 1
+			len(attrs.ContinuousScreeningIds) == 1 &&
+			attrs.Type == models.CaseTypeContinuousScreening
 	}), false).Return(expectedCase, nil)
 
 	// Execute
@@ -885,7 +886,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		return attrs.OrganizationId == suite.orgId.String() &&
 			attrs.InboxId == inboxId &&
 			attrs.Name == "Continuous Screening - "+suite.objectId &&
-			len(attrs.ContinuousScreeningIds) == 1
+			len(attrs.ContinuousScreeningIds) == 1 &&
+			attrs.Type == models.CaseTypeContinuousScreening
 	}), false).Return(models.Case{}, errors.New("case creation failed"))
 
 	// Execute

@@ -25,11 +25,13 @@ type APICase struct {
 	SnoozedUntil   *time.Time           `json:"snoozed_until,omitempty"`
 	AssignedTo     *string              `json:"assigned_to,omitempty"`
 	Boost          string               `json:"boost,omitempty"`
+	Type           string               `json:"type"`
 }
 
-type APICaseWithDecisions struct {
+type APICaseWithDetails struct {
 	APICase
-	Decisions []Decision `json:"decisions"`
+	Decisions            []Decision               `json:"decisions"`
+	ContinuousScreenings []ContinuousScreeningDto `json:"continuous_screenings"`
 }
 
 func AdaptCaseDto(c models.Case) APICase {
@@ -46,6 +48,7 @@ func AdaptCaseDto(c models.Case) APICase {
 		Tags:           pure_utils.Map(c.Tags, NewAPICaseTag),
 		Files:          pure_utils.Map(c.Files, NewAPICaseFile),
 		Boost:          c.Boost.String(),
+		Type:           c.Type.String(),
 	}
 
 	if c.SnoozedUntil != nil && c.SnoozedUntil.After(time.Now()) {
@@ -70,12 +73,13 @@ func AdaptCaseListPage(casesPage models.CaseListPage) CastListPage {
 	}
 }
 
-func AdaptCaseWithDecisionsDto(c models.Case) APICaseWithDecisions {
-	return APICaseWithDecisions{
+func AdaptCaseWithDetailsDto(c models.Case) APICaseWithDetails {
+	return APICaseWithDetails{
 		APICase: AdaptCaseDto(c),
 		Decisions: pure_utils.Map(c.Decisions, func(d models.Decision) Decision {
 			return NewDecisionDto(d, nil)
 		}),
+		ContinuousScreenings: pure_utils.Map(c.ContinuousScreenings, AdaptContinuousScreeningDto),
 	}
 }
 

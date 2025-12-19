@@ -8,13 +8,43 @@ import (
 	"github.com/google/uuid"
 )
 
+type CaseType int
+
+const (
+	CaseTypeUnknown CaseType = iota
+	CaseTypeDecision
+	CaseTypeContinuousScreening
+)
+
+func (t CaseType) String() string {
+	switch t {
+	case CaseTypeDecision:
+		return "decision"
+	case CaseTypeContinuousScreening:
+		return "continuous_screening"
+	default:
+		return "unknown"
+	}
+}
+
+func CaseTypeFromString(s string) CaseType {
+	switch s {
+	case "decision":
+		return CaseTypeDecision
+	case "continuous_screening":
+		return CaseTypeContinuousScreening
+	default:
+		return CaseTypeUnknown
+	}
+}
+
 type Case struct {
 	Id                   string
 	Contributors         []CaseContributor
 	CreatedAt            time.Time
 	Decisions            []Decision
 	DecisionsCount       int
-	ContinuousScreenings []ContinuousScreening
+	ContinuousScreenings []ContinuousScreeningWithMatches
 	Events               []CaseEvent
 	InboxId              uuid.UUID
 	OrganizationId       string
@@ -26,6 +56,7 @@ type Case struct {
 	Files                []CaseFile
 	SnoozedUntil         *time.Time
 	Boost                *BoostReason
+	Type                 CaseType
 }
 
 type CaseReferents struct {
@@ -116,6 +147,7 @@ type CreateCaseAttributes struct {
 	Name                   string
 	OrganizationId         string
 	AssigneeId             *string
+	Type                   CaseType
 }
 
 type UpdateCaseAttributes struct {

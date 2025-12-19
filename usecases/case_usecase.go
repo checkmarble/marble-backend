@@ -85,7 +85,11 @@ type CaseUseCaseRepository interface {
 	CaseMassMoveToInbox(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, inboxId uuid.UUID) ([]uuid.UUID, error)
 
 	// Continuous screenings
-	ListContinuousScreeningsByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.ContinuousScreening, error)
+	ListContinuousScreeningsWithMatchesByCaseId(
+		ctx context.Context,
+		exec repositories.Executor,
+		caseId string,
+	) ([]models.ContinuousScreeningWithMatches, error)
 	ListContinuousScreeningsByIds(ctx context.Context, exec repositories.Executor, ids []uuid.UUID) ([]models.ContinuousScreening, error)
 	UpdateContinuousScreeningsCaseId(ctx context.Context, exec repositories.Executor, ids []uuid.UUID, caseId string) error
 
@@ -931,6 +935,12 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
+		if c.Type != models.CaseTypeDecision {
+			return models.Case{}, errors.Wrap(
+				models.BadParameterError,
+				"can not add decisions to this case type",
+			)
+		}
 		if err := usecase.validateDecisions(ctx, tx, c.OrganizationId, decisionIds); err != nil {
 			return models.Case{}, err
 		}
@@ -1161,17 +1171,25 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		return models.Case{}, err
 	}
 
-	decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
-	if err != nil {
-		return models.Case{}, err
-	}
-	c.Decisions = decisions
+	switch c.Type {
+	case models.CaseTypeDecision:
+		decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		c.Decisions = decisions
 
-	continuousScreenings, err := usecase.repository.ListContinuousScreeningsByCaseId(ctx, exec, caseId)
-	if err != nil {
-		return models.Case{}, err
+	case models.CaseTypeContinuousScreening:
+		continuousScreeningsWithMatches, err :=
+			usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		c.ContinuousScreenings = continuousScreeningsWithMatches
+
+	default:
+		return models.Case{}, errors.Errorf("case type %s is not supported", c.Type)
 	}
-	c.ContinuousScreenings = continuousScreenings
 
 	caseFiles, err := usecase.repository.GetCasesFileByCaseId(ctx, exec, caseId)
 	if err != nil {
@@ -1676,12 +1694,19 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	if err != nil {
 		return models.Case{}, err
 	}
+
 	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
 		return models.Case{}, err
 	}
 	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return models.Case{}, err
+	}
+	if c.Type != models.CaseTypeDecision {
+		return models.Case{}, errors.Wrap(
+			models.BadParameterError,
+			"can not review decisions on this case type",
+		)
 	}
 
 	webhookEventId := uuid.NewString()

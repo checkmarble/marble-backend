@@ -46,7 +46,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			return models.WorkflowExecution{}, errors.Wrap(err, "error creating case for decision")
 		}
 
-		input := automaticCreateCaseAttributes(scenario, decision, action, caseName)
+		input := automaticCreateCaseAttributes(scenario, decision, action, caseName, models.CaseTypeDecision)
 		newCase, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
 		if err != nil {
 			return models.WorkflowExecution{}, errors.Wrap(err, "error creating case for decision")
@@ -176,12 +176,14 @@ func automaticCreateCaseAttributes(
 	decision models.DecisionWithRuleExecutions,
 	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
 	name string,
+	caseType models.CaseType,
 ) models.CreateCaseAttributes {
 	return models.CreateCaseAttributes{
 		DecisionIds:    []string{decision.DecisionId.String()},
 		InboxId:        action.Params.InboxId,
 		Name:           name,
 		OrganizationId: scenario.OrganizationId,
+		Type:           caseType,
 	}
 }
 
