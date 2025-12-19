@@ -708,13 +708,6 @@ func (repo *MarbleDbRepository) GetEnrichedContinuousScreeningUpdateJob(
 			" AS ds ON (ucs.continuous_screening_dataset_update_id = ds.id)").
 		Where(squirrel.Eq{"ucs.id": id})
 
-	// For debugging
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return models.EnrichedContinuousScreeningUpdateJob{}, err
-	}
-	fmt.Println(sql, args)
-
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptEnrichedContinuousScreeningUpdateJob)
 }
 
