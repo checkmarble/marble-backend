@@ -37,7 +37,7 @@ const (
 )
 
 type BlobRepository interface {
-	GetBlob(ctx context.Context, bucketUrl, key string) (models.Blob, error)
+	GetBlob(ctx context.Context, bucketUrl, key string, opts ...GetBlobOption) (models.Blob, error)
 	OpenStream(ctx context.Context, bucketUrl, key string, fileName string) (io.WriteCloser, error)
 	OpenStreamWithOptions(ctx context.Context, bucketUrl, key string, opts *blob.WriterOptions) (io.WriteCloser, error)
 	RawBucket(ctx context.Context, bucketUrl string) (*blob.Bucket, error)
@@ -157,7 +157,26 @@ func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl 
 	return repository.buckets[bucketUrl], nil
 }
 
-func (repository *blobRepository) GetBlob(ctx context.Context, bucketUrl, key string) (models.Blob, error) {
+type getBlobOptions struct {
+	BeginOffset int64
+	EndOffset   int64
+}
+
+type GetBlobOption func(*getBlobOptions)
+
+func WithBeginOffset(offset int64) GetBlobOption {
+	return func(opts *getBlobOptions) {
+		opts.BeginOffset = offset
+	}
+}
+
+func WithEndOffset(offset int64) GetBlobOption {
+	return func(opts *getBlobOptions) {
+		opts.EndOffset = offset
+	}
+}
+
+func (repository *blobRepository) GetBlob(ctx context.Context, bucketUrl, key string, opts ...GetBlobOption) (models.Blob, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
 		ctx,
@@ -188,7 +207,17 @@ func (repository *blobRepository) GetBlob(ctx context.Context, bucketUrl, key st
 		)
 	}
 
-	reader, err := bucket.NewReader(ctx, key, nil)
+	getBlobOptions := &getBlobOptions{}
+	for _, opt := range opts {
+		opt(getBlobOptions)
+	}
+	beginOffset := getBlobOptions.BeginOffset
+	endOffset := int64(-1)
+	if getBlobOptions.EndOffset != 0 {
+		endOffset = getBlobOptions.EndOffset
+	}
+
+	reader, err := bucket.NewRangeReader(ctx, key, beginOffset, endOffset, nil)
 	if err != nil {
 		return models.Blob{}, errors.Wrapf(err, "failed to read blob %s/%s", bucketUrl, key)
 	}

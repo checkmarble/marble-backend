@@ -87,7 +87,7 @@ func (w *CaseReviewWorker) Timeout(job *river.Job[models.CaseReviewArgs]) time.D
 func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseReviewArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
 	exec := w.executorFactory.NewExecutor()
-	c, err := w.repository.GetCaseById(ctx, w.executorFactory.NewExecutor(), job.Args.CaseId.String())
+	c, err := w.repository.GetCaseById(ctx, exec, job.Args.CaseId.String())
 	if err != nil {
 		return errors.Wrap(err, "Error while getting case")
 	}
@@ -136,7 +136,7 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 	if err != nil {
 		if errors.Is(err, billing.ErrInsufficientFunds) {
 			logger.InfoContext(ctx, "Insufficient funds in wallet to execute case review", "ai_case_review_id", aiCaseReview.Id)
-			err = w.repository.UpdateCaseReviewFile(ctx, w.executorFactory.NewExecutor(),
+			err = w.repository.UpdateCaseReviewFile(ctx, exec,
 				aiCaseReview.Id,
 				models.UpdateAiCaseReview{
 					Status: models.AiCaseReviewStatusInsufficientFunds,

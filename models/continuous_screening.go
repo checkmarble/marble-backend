@@ -203,10 +203,16 @@ type EnrichedContinuousScreeningUpdateJob struct {
 type ContinuousScreeningJobOffset struct {
 	Id             uuid.UUID
 	UpdateJobId    uuid.UUID
-	Offset         int64
+	ByteOffset     int64
 	ItemsProcessed int
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+}
+
+type CreateContinuousScreeningJobOffset struct {
+	UpdateJobId    uuid.UUID
+	ByteOffset     int64
+	ItemsProcessed int
 }
 
 // ContinuousScreeningJobError tracks errors encountered during job processing
@@ -215,4 +221,9 @@ type ContinuousScreeningJobError struct {
 	UpdateJobId uuid.UUID
 	Details     json.RawMessage
 	CreatedAt   time.Time
+}
+
+type CreateContinuousScreeningJobError struct {
+	UpdateJobId uuid.UUID
+	Details     json.RawMessage
 }

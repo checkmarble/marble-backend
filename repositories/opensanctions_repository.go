@@ -409,6 +409,11 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 		}
 	}
 
+	scope := repo.opensanctions.Scope()
+	if query.Scope != "" {
+		scope = query.Scope
+	}
+
 	var body, rawQuery bytes.Buffer
 
 	if err := json.NewEncoder(io.MultiWriter(&body, &rawQuery)).Encode(q); err != nil {
@@ -416,7 +421,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 			"could not parse OpenSanctions response")
 	}
 
-	requestUrl := fmt.Sprintf("%s/match/%s", repo.opensanctions.Host(), repo.opensanctions.Scope())
+	requestUrl := fmt.Sprintf("%s/match/%s", repo.opensanctions.Host(), scope)
 
 	if qs := repo.buildQueryString(&query.Config, query); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())

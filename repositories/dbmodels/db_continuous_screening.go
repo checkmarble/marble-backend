@@ -211,7 +211,7 @@ var SelectContinuousScreeningJobOffsetColumn = utils.ColumnList[DBContinuousScre
 type DBContinuousScreeningJobOffset struct {
 	Id                             uuid.UUID `db:"id"`
 	ContinuousScreeningUpdateJobId uuid.UUID `db:"continuous_screening_update_job_id"`
-	Offset                         int64     `db:"offset"`          // Byte offset in the delta file
+	ByteOffset                     int64     `db:"byte_offset"`
 	ItemsProcessed                 int       `db:"items_processed"` // Number of items processed
 	CreatedAt                      time.Time `db:"created_at"`
 	UpdatedAt                      time.Time `db:"updated_at"`
@@ -221,7 +221,7 @@ func AdaptContinuousScreeningJobOffset(dto DBContinuousScreeningJobOffset) (mode
 	return models.ContinuousScreeningJobOffset{
 		Id:             dto.Id,
 		UpdateJobId:    dto.ContinuousScreeningUpdateJobId,
-		Offset:         dto.Offset,
+		ByteOffset:     dto.ByteOffset,
 		ItemsProcessed: dto.ItemsProcessed,
 		CreatedAt:      dto.CreatedAt,
 		UpdatedAt:      dto.UpdatedAt,

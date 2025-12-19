@@ -468,5 +468,8 @@ func (usecases *Usecases) NewContinuousScreeningApplyDeltaFileWorker() *continuo
 	return continuous_screening.NewApplyDeltaFileWorker(
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.BlobRepository,
+		usecases.Repositories.OpenSanctionsRepository,
+		usecases.datasetDeltafileBucketUrl,
 	)
 }

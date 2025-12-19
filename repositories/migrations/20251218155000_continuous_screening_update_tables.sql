@@ -29,7 +29,7 @@ create table continuous_screening_update_jobs (
 create table continuous_screening_job_offsets (
     id uuid primary key default uuid_generate_v4(),
     continuous_screening_update_job_id uuid not null,
-    "offset" bigint not null,
+    byte_offset bigint not null,
     items_processed integer not null,
     created_at timestamp with time zone not null default current_timestamp,
     updated_at timestamp with time zone not null default current_timestamp,
