@@ -83,7 +83,6 @@
         "analytics_export",
         "send_billing_event",
         "continuous_screening_do_screening",
-        "continuous_screening_evaluate_need",
         "continuous_screening_scan_dataset_updates",
         "continuous_screening_apply_delta_file"
       ]
