@@ -19,6 +19,18 @@ type RuleDto struct {
 	RuleGroup            string    `json:"rule_group"`
 }
 
+type RuleMetadataDto struct {
+	Id                  string    `json:"id"`
+	ScenarioIterationId string    `json:"scenario_iteration_id"`
+	DisplayOrder        int       `json:"display_order"`
+	Name                string    `json:"name"`
+	Description         string    `json:"description"`
+	ScoreModifier       int       `json:"score_modifier"`
+	CreatedAt           time.Time `json:"created_at"`
+	RuleGroup           string    `json:"rule_group"`
+	StableRuleId        string    `json:"stable_rule_id"`
+}
+
 type CreateRuleInputBody struct {
 	ScenarioIterationId  string   `json:"scenario_iteration_id"`
 	DisplayOrder         int      `json:"display_order"`
@@ -59,6 +71,20 @@ func AdaptRuleDto(rule models.Rule) (RuleDto, error) {
 		CreatedAt:            rule.CreatedAt,
 		RuleGroup:            rule.RuleGroup,
 	}, nil
+}
+
+func AdaptRuleMetadataDto(rule models.RuleMetadata) RuleMetadataDto {
+	return RuleMetadataDto{
+		Id:                  rule.Id,
+		ScenarioIterationId: rule.ScenarioIterationId,
+		DisplayOrder:        rule.DisplayOrder,
+		Name:                rule.Name,
+		Description:         rule.Description,
+		ScoreModifier:       rule.ScoreModifier,
+		CreatedAt:           rule.CreatedAt,
+		RuleGroup:           rule.RuleGroup,
+		StableRuleId:        rule.StableRuleId,
+	}
 }
 
 func AdaptCreateRuleInput(body CreateRuleInputBody, organizationId string) (models.CreateRuleInput, error) {

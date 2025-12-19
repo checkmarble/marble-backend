@@ -25,6 +25,34 @@ type Rule struct {
 	StableRuleId         string
 }
 
+func (r Rule) ToMetadata() RuleMetadata {
+	return RuleMetadata{
+		Id:                  r.Id,
+		ScenarioIterationId: r.ScenarioIterationId,
+		OrganizationId:      r.OrganizationId,
+		DisplayOrder:        r.DisplayOrder,
+		Name:                r.Name,
+		Description:         r.Description,
+		ScoreModifier:       r.ScoreModifier,
+		CreatedAt:           r.CreatedAt,
+		RuleGroup:           r.RuleGroup,
+		StableRuleId:        r.StableRuleId,
+	}
+}
+
+type RuleMetadata struct {
+	Id                  string
+	ScenarioIterationId string
+	OrganizationId      string
+	DisplayOrder        int
+	Name                string
+	Description         string
+	ScoreModifier       int
+	CreatedAt           time.Time
+	RuleGroup           string
+	StableRuleId        string
+}
+
 type CreateRuleInput struct {
 	Id                   string
 	OrganizationId       string
