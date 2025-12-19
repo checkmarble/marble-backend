@@ -50,6 +50,23 @@ func (repo *MarbleDbRepository) ListRulesByIterationId(ctx context.Context, exec
 	)
 }
 
+func (repo *MarbleDbRepository) ListRulesMetadataByIterationId(ctx context.Context, exec Executor, iterationId string) ([]models.RuleMetadata, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.SelectRuleMetadataColumn...).
+			From(dbmodels.TABLE_RULES).
+			Where(squirrel.Eq{"scenario_iteration_id": iterationId}).
+			OrderBy("created_at DESC"),
+		dbmodels.AdaptRuleMetadata,
+	)
+}
+
 // This method expects to be run in a transaction, because we set some local settings
 // that should not be changed for the whole connection.
 func (repo *MarbleDbRepository) RulesExecutionStats(

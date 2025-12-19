@@ -3,9 +3,12 @@ package api
 import (
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -14,9 +17,10 @@ import (
 func handleListRules(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		iterationID := c.Query("scenarioIterationId")
-		if iterationID == "" {
-			c.Status(http.StatusBadRequest)
+		qs := c.Query("scenarioIterationId")
+		iterationID, err := uuid.Parse(qs)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
@@ -31,6 +35,26 @@ func handleListRules(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, apiRules)
+	}
+}
+
+func handleListRulesMetadata(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		qs := c.Query("scenarioIterationId")
+		iterationID, err := uuid.Parse(qs)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
+		rules, err := usecase.ListRulesMetadata(ctx, iterationID)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(rules, dto.AdaptRuleMetadataDto))
 	}
 }
 

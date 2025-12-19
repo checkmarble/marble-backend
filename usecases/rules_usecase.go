@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -18,6 +20,7 @@ import (
 type RuleUsecaseRepository interface {
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
+	ListRulesMetadataByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.RuleMetadata, error)
 	RulesExecutionStats(
 		ctx context.Context,
 		exec repositories.Transaction,
@@ -58,19 +61,35 @@ type RuleUsecase struct {
 	scenarioTestRunRepository repositories.ScenarioTestRunRepository
 }
 
-func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) ([]models.Rule, error) {
+func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId uuid.UUID) ([]models.Rule, error) {
 	return executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) ([]models.Rule, error) {
-			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, iterationId)
+			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, iterationId.String())
 			if err != nil {
 				return nil, err
 			}
 			if err := usecase.enforceSecurity.ReadScenarioIteration(
-				scenarioAndIteration.Iteration); err != nil {
+				scenarioAndIteration.Iteration.ToMetadata()); err != nil {
 				return nil, err
 			}
-			return usecase.repository.ListRulesByIterationId(ctx, tx, iterationId)
+			return usecase.repository.ListRulesByIterationId(ctx, tx, iterationId.String())
+		})
+}
+
+func (usecase *RuleUsecase) ListRulesMetadata(ctx context.Context, iterationId uuid.UUID) ([]models.RuleMetadata, error) {
+	return executor_factory.TransactionReturnValue(ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Transaction) ([]models.RuleMetadata, error) {
+			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, iterationId.String())
+			if err != nil {
+				return nil, err
+			}
+			if err := usecase.enforceSecurity.ReadScenarioIteration(
+				scenarioAndIteration.Iteration.ToMetadata()); err != nil {
+				return nil, err
+			}
+			return usecase.repository.ListRulesMetadataByIterationId(ctx, tx, iterationId.String())
 		})
 }
 
@@ -145,7 +164,7 @@ func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.
 				return models.Rule{}, err
 			}
 			if err := usecase.enforceSecurity.ReadScenarioIteration(
-				scenarioAndIteration.Iteration); err != nil {
+				scenarioAndIteration.Iteration.ToMetadata()); err != nil {
 				return models.Rule{}, err
 			}
 			return rule, nil
