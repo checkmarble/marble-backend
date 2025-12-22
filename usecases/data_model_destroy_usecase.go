@@ -61,6 +61,57 @@ func (uc DataModelDestroyUsecase) RenameField(ctx context.Context, fieldId strin
 	return nil
 }
 
+func (uc DataModelDestroyUsecase) DeleteTable(ctx context.Context, tableId string) (models.DataModelDeleteFieldReport, error) {
+	exec := uc.executorFactory.NewExecutor()
+
+	table, err := uc.dataModelRepository.GetDataModelTable(ctx, exec, tableId)
+	if err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	if err := uc.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	canDelete, report, err := uc.canDeleteRef(ctx, table.OrganizationID, exec, table, nil)
+	if err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	if !canDelete {
+		report.ArchivedIterations = set.New[string](0)
+
+		return report, errors.Wrap(models.ConflictError, "table is used and cannot be deleted")
+	}
+
+	// GO-GO GADGETO VANISH
+	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, table.OrganizationID)
+		if err != nil {
+			return err
+		}
+
+		if report.ArchivedIterations.Size() == 0 {
+			if err := uc.dataModelRepository.DeleteDataModelTable(ctx, tx, table); err != nil {
+				return err
+			}
+
+			if err := uc.clientDbRepository.DeleteTable(ctx, clientDbExec, table.Name); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	report.Performed = true
+
+	return report, nil
+}
+
 func (uc DataModelDestroyUsecase) DeleteField(ctx context.Context, fieldId string) (models.DataModelDeleteFieldReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
@@ -77,7 +128,7 @@ func (uc DataModelDestroyUsecase) DeleteField(ctx context.Context, fieldId strin
 		return models.DataModelDeleteFieldReport{}, err
 	}
 
-	canDelete, report, err := uc.canDeleteField(ctx, table.OrganizationID, exec, table, field)
+	canDelete, report, err := uc.canDeleteRef(ctx, table.OrganizationID, exec, table, &field)
 	if err != nil {
 		return models.DataModelDeleteFieldReport{}, err
 	}
@@ -134,17 +185,17 @@ func (uc DataModelDestroyUsecase) DeleteField(ctx context.Context, fieldId strin
 	return report, nil
 }
 
-func (uc DataModelDestroyUsecase) canDeleteField(
+func (uc DataModelDestroyUsecase) canDeleteRef(
 	ctx context.Context,
 	orgId string,
 	exec repositories.Executor,
 	table models.TableMetadata,
-	field models.FieldMetadata,
+	field *models.FieldMetadata,
 ) (bool, models.DataModelDeleteFieldReport, error) {
+	// TODO: add continuous screening fields
+
 	report := models.NewDataModelDeleteFieldReport()
 	canDelete := true
-
-	// TODO: add continuous screening fields
 
 	analyticsSettings, err := uc.analyticsSettingsRepository.GetAnalyticsSettings(ctx, exec, orgId)
 	if err != nil {
@@ -154,9 +205,15 @@ func (uc DataModelDestroyUsecase) canDeleteField(
 	// Analytics settings can embed fields in exported data.
 	for _, setting := range analyticsSettings {
 		if setting.TriggerObjectType == table.Name {
-			if slices.Contains(setting.TriggerFields, field.Name) {
+			switch field {
+			case nil:
 				canDelete = false
 				report.Conflicts.AnalyticsSettings += 1
+			default:
+				if slices.Contains(setting.TriggerFields, field.Name) {
+					canDelete = false
+					report.Conflicts.AnalyticsSettings += 1
+				}
 			}
 		}
 	}
@@ -168,24 +225,44 @@ func (uc DataModelDestroyUsecase) canDeleteField(
 
 	// If any link starts or ends with the field we want to delete.
 	for _, link := range links {
-		if link.ParentTableId == table.ID && link.ParentFieldName == field.Name {
-			canDelete = false
-			report.Conflicts.Links.Insert(link.Id)
-		}
-		if link.ChildTableId == table.ID && link.ChildFieldName == field.Name {
-			canDelete = false
-			report.Conflicts.Links.Insert(link.Id)
+		switch field {
+		case nil:
+			if link.ParentTableId == table.ID {
+				canDelete = false
+				report.Conflicts.Links.Insert(link.Id)
+			}
+			if link.ChildTableId == table.ID {
+				canDelete = false
+				report.Conflicts.Links.Insert(link.Id)
+			}
+
+		default:
+			if link.ParentTableId == table.ID && link.ParentFieldName == field.Name {
+				canDelete = false
+				report.Conflicts.Links.Insert(link.Id)
+			}
+			if link.ChildTableId == table.ID && link.ChildFieldName == field.Name {
+				canDelete = false
+				report.Conflicts.Links.Insert(link.Id)
+			}
 		}
 
 		// For each link that starts with our table, we need to check if there is an
 		// analytics setting using it, adding **another field** from that table.
 		if link.ParentTableId == table.ID {
-			for _, setting := range analyticsSettings {
-				for _, dbField := range setting.DbFields {
-					if len(dbField.Path) > 0 {
-						if dbField.Path[len(dbField.Path)-1] == link.Name && dbField.Name == field.Name {
-							canDelete = false
-							report.Conflicts.AnalyticsSettings += 1
+			switch field {
+			case nil:
+				canDelete = false
+				report.Conflicts.AnalyticsSettings += 1
+
+			default:
+				for _, setting := range analyticsSettings {
+					for _, dbField := range setting.DbFields {
+						if len(dbField.Path) > 0 {
+							if dbField.Path[len(dbField.Path)-1] == link.Name && dbField.Name == field.Name {
+								canDelete = false
+								report.Conflicts.AnalyticsSettings += 1
+							}
 						}
 					}
 				}
@@ -200,6 +277,12 @@ func (uc DataModelDestroyUsecase) canDeleteField(
 
 	scenarioMap := make(map[string]models.Scenario)
 	for _, s := range scenarios {
+		// When deleting a table, we abort if any scenario exists on that trigger object type
+		if field == nil && s.TriggerObjectType == table.Name {
+			canDelete = false
+			report.Conflicts.Scenario.Insert(s.Id)
+		}
+
 		scenarioMap[s.Id] = s
 	}
 
@@ -225,13 +308,13 @@ func (uc DataModelDestroyUsecase) canDeleteField(
 		// Checking trigger conditions is only relevant on scenarios for the
 		// same object type as the field to delete.
 		if table.Name == scenario.TriggerObjectType {
-			if uc.isFieldUsedInAst(it.TriggerAst, links, table, field) {
+			if uc.isRefUsedInAst(it.TriggerAst, links, table, field) {
 				iterationReport.TriggerCondition = true
 				found = true
 			}
 
 			if it.ScreeningTriggerAst != nil {
-				if uc.isFieldUsedInAst(it.ScreeningTriggerAst, links, table, field) {
+				if uc.isRefUsedInAst(it.ScreeningTriggerAst, links, table, field) {
 					iterationReport.Screening.Insert(it.RuleId.String())
 					found = true
 				}
@@ -239,19 +322,19 @@ func (uc DataModelDestroyUsecase) canDeleteField(
 		}
 
 		if it.RuleAst != nil {
-			if uc.isFieldUsedInAst(it.RuleAst, links, table, field) {
+			if uc.isRefUsedInAst(it.RuleAst, links, table, field) {
 				iterationReport.Rules.Insert(it.RuleId.String())
 				found = true
 			}
 		}
 		if it.ScreeningCounterpartyAst != nil {
-			if uc.isFieldUsedInAst(it.ScreeningCounterpartyAst, links, table, field) {
+			if uc.isRefUsedInAst(it.ScreeningCounterpartyAst, links, table, field) {
 				iterationReport.Screening.Insert(it.RuleId.String())
 				found = true
 			}
 		}
 		for _, sc := range it.ScreeningAst {
-			if uc.isFieldUsedInAst(&sc, links, table, field) {
+			if uc.isRefUsedInAst(&sc, links, table, field) {
 				iterationReport.Screening.Insert(it.RuleId.String())
 				found = true
 			}
@@ -288,7 +371,7 @@ func (uc DataModelDestroyUsecase) canDeleteField(
 				if err != nil {
 					return false, models.DataModelDeleteFieldReport{}, err
 				}
-				if uc.isFieldUsedInAst(&payloadExpression, links, table, field) {
+				if uc.isRefUsedInAst(&payloadExpression, links, table, field) {
 					canDelete = false
 					report.Conflicts.Workflows.Insert(wk.ScenarioId.String())
 				}
@@ -307,7 +390,7 @@ func (uc DataModelDestroyUsecase) canDeleteField(
 					if err != nil {
 						return false, models.DataModelDeleteFieldReport{}, err
 					}
-					if uc.isFieldUsedInAst(&titleTemplateAst, links, table, field) {
+					if uc.isRefUsedInAst(&titleTemplateAst, links, table, field) {
 						canDelete = false
 						report.Conflicts.Workflows.Insert(wk.ScenarioId.String())
 					}
@@ -331,16 +414,18 @@ func (uc DataModelDestroyUsecase) canDeleteField(
 	return canDelete, report, nil
 }
 
-func (uc DataModelDestroyUsecase) isFieldUsedInAst(tree *ast.Node, links []models.LinkToSingle, table models.TableMetadata, field models.FieldMetadata) bool {
+func (uc DataModelDestroyUsecase) isRefUsedInAst(tree *ast.Node, links []models.LinkToSingle, table models.TableMetadata, field *models.FieldMetadata) bool {
 	if tree == nil {
 		return false
 	}
 
 	switch tree.Function {
 	case ast.FUNC_PAYLOAD:
-		if len(tree.Children) > 0 {
-			if value, ok := tree.Children[0].Constant.(string); ok && value == field.Name {
-				return true
+		if field != nil {
+			if len(tree.Children) > 0 {
+				if value, ok := tree.Children[0].Constant.(string); ok && value == field.Name {
+					return true
+				}
 			}
 		}
 
@@ -358,6 +443,12 @@ func (uc DataModelDestroyUsecase) isFieldUsedInAst(tree *ast.Node, links []model
 		for _, path := range pathsToWalk {
 			for _, link := range links {
 				if link.Name == path {
+					if field == nil {
+						if link.ParentTableName == table.Name || link.ChildTableName == table.Name {
+							return true
+						}
+					}
+
 					tableRef = link.ParentTableName
 					break
 				}
@@ -367,18 +458,21 @@ func (uc DataModelDestroyUsecase) isFieldUsedInAst(tree *ast.Node, links []model
 		if tableRef != table.Name {
 			return false
 		}
-		if value, err := tree.ReadConstantNamedChildString("fieldName"); err == nil && value == field.Name {
-			return true
+
+		if field != nil {
+			if value, err := tree.ReadConstantNamedChildString("fieldName"); err == nil && value == field.Name {
+				return true
+			}
 		}
 
 	default:
 		for _, ch := range tree.Children {
-			if found := uc.isFieldUsedInAst(&ch, links, table, field); found {
+			if found := uc.isRefUsedInAst(&ch, links, table, field); found {
 				return found
 			}
 		}
 		for _, ch := range tree.NamedChildren {
-			if found := uc.isFieldUsedInAst(&ch, links, table, field); found {
+			if found := uc.isRefUsedInAst(&ch, links, table, field); found {
 				return found
 			}
 		}
