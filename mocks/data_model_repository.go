@@ -156,3 +156,8 @@ func (d *DataModelRepository) DeleteDataModelField(ctx context.Context, exec rep
 	args := d.Called(ctx, exec, table, field)
 	return args.Error(0)
 }
+
+func (d *DataModelRepository) DeleteDataModelLink(ctx context.Context, exec repositories.Executor, id string) error {
+	args := d.Called(ctx, exec, id)
+	return args.Error(0)
+}
