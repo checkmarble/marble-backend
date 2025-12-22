@@ -3,6 +3,8 @@
 alter table scenario_iterations
     add column archived boolean default false;
 
+alter table data_model_tables
+    add column archived boolean default false;
 
 alter table data_model_fields
     add column archived boolean default false;
@@ -19,6 +21,9 @@ create unique index data_model_fields_table_id_name
 -- +goose Down
 
 alter table scenario_iterations
+    drop column archived;
+
+alter table data_model_tables
     drop column archived;
 
 alter table data_model_fields
