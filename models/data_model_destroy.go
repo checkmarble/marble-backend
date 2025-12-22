@@ -12,6 +12,7 @@ func NewDataModelDeleteFieldReport() DataModelDeleteFieldReport {
 	return DataModelDeleteFieldReport{
 		Conflicts: DataModelDeleteFieldConflicts{
 			Links:              set.New[string](0),
+			Pivots:             set.New[string](0),
 			Workflows:          set.New[string](0),
 			Scenario:           set.New[string](0),
 			ScenarioIterations: make(map[string]*DataModelDeleteFieldConflictIteration),
@@ -22,6 +23,7 @@ func NewDataModelDeleteFieldReport() DataModelDeleteFieldReport {
 
 type DataModelDeleteFieldConflicts struct {
 	Links              *set.Set[string]
+	Pivots             *set.Set[string]
 	AnalyticsSettings  int
 	Scenario           *set.Set[string]
 	ScenarioIterations map[string]*DataModelDeleteFieldConflictIteration
