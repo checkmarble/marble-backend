@@ -356,6 +356,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	// Data model destructive actions
 	router.DELETE("/data-model/tables/:tableID", tom, handleDeleteDataModelTable(uc))
 	router.DELETE("/data-model/fields/:fieldID", tom, handleDeleteDataModelField(uc))
+	router.DELETE("/data-model/links/:linkID", tom, handleDeleteDataModelLink(uc))
 
 	router.POST("/transfers", tom, handleCreateTransfer(uc))
 	router.GET("/transfers", tom, handleQueryTransfers(uc))
