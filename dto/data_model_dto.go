@@ -205,6 +205,7 @@ type DataModelDeleteFieldReport struct {
 type DataModelDeleteFieldConflicts struct {
 	Links              []string                                          `json:"links"`
 	AnalyticsSettings  int                                               `json:"analytics_settings"`
+	Scenarios          []string                                          `json:"scenarios"`
 	ScenarioIterations map[string]*DataModelDeleteFieldConflictIteration `json:"scenario_iterations"`
 	Workflows          []string                                          `json:"workflows"`
 	TestRuns           bool                                              `json:"test_runs"`
@@ -223,6 +224,7 @@ func AdaptDataModelDeleteFieldReport(m models.DataModelDeleteFieldReport) DataMo
 			Links:              m.Conflicts.Links.Slice(),
 			AnalyticsSettings:  m.Conflicts.AnalyticsSettings,
 			Workflows:          m.Conflicts.Workflows.Slice(),
+			Scenarios:          m.Conflicts.Scenario.Slice(),
 			ScenarioIterations: map[string]*DataModelDeleteFieldConflictIteration{},
 			TestRuns:           m.Conflicts.TestRuns,
 		},
