@@ -62,6 +62,8 @@ type DataModelRepository interface {
 	UpsertDataModelOptions(ctx context.Context, exec Executor,
 		req models.UpdateDataModelOptionsRequest) (models.DataModelOptions, error)
 
+	ArchiveDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error
+	DeleteDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error
 	ArchiveDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error
 	DeleteDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error
 }
@@ -694,6 +696,31 @@ func (repo MarbleDbRepository) BatchInsertEnumValues(ctx context.Context, exec E
 	}
 
 	return nil
+}
+
+func (repo MarbleDbRepository) ArchiveDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TableDataModelTables).
+		Set("archived", true).
+		Where("id = ?", table.ID)
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo MarbleDbRepository) DeleteDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Delete(dbmodels.TableDataModelTables).
+		Where("id = ?", table.ID)
+
+	return ExecBuilder(ctx, exec, query)
 }
 
 func (repo MarbleDbRepository) ArchiveDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error {
