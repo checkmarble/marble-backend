@@ -185,6 +185,42 @@ func (uc DataModelDestroyUsecase) DeleteField(ctx context.Context, fieldId strin
 	return report, nil
 }
 
+func (uc DataModelDestroyUsecase) DeleteLink(ctx context.Context, linkId string) (models.DataModelDeleteFieldReport, error) {
+	orgId := uc.enforceSecurity.OrgId()
+	exec := uc.executorFactory.NewExecutor()
+
+	if err := uc.enforceSecurity.WriteDataModel(orgId); err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	canDelete, report, err := uc.canDeleteLink(ctx, orgId, exec, linkId)
+	if err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	if !canDelete {
+		report.ArchivedIterations = set.New[string](0)
+
+		return report, errors.Wrap(models.ConflictError, "table is used and cannot be deleted")
+	}
+
+	// GO-GO GADGETO VANISH
+	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := uc.dataModelRepository.DeleteDataModelLink(ctx, tx, linkId); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	report.Performed = true
+
+	return report, nil
+}
+
 func (uc DataModelDestroyUsecase) canDeleteRef(
 	ctx context.Context,
 	orgId string,
@@ -210,6 +246,7 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 				canDelete = false
 				report.Conflicts.AnalyticsSettings += 1
 			default:
+				// TODO: bad logic, names are not unique
 				if slices.Contains(setting.TriggerFields, field.Name) {
 					canDelete = false
 					report.Conflicts.AnalyticsSettings += 1
@@ -223,7 +260,8 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 		return false, models.DataModelDeleteFieldReport{}, err
 	}
 
-	// If any link starts or ends with the field we want to delete.
+	// If any link starts or ends with the field we want to delete, or,
+	// When deleting a table, if any link path contains the table.
 	for _, link := range links {
 		switch field {
 		case nil:
@@ -257,14 +295,44 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 
 			default:
 				for _, setting := range analyticsSettings {
+					tableRef := setting.TriggerObjectType
+
 					for _, dbField := range setting.DbFields {
 						if len(dbField.Path) > 0 {
-							if dbField.Path[len(dbField.Path)-1] == link.Name && dbField.Name == field.Name {
+							for _, linkName := range dbField.Path {
+								for _, link := range links {
+									if link.ChildTableName == tableRef && link.Name == linkName {
+										tableRef = link.ParentTableName
+									}
+								}
+							}
+
+							if tableRef == table.Name && dbField.Name == field.Name {
 								canDelete = false
 								report.Conflicts.AnalyticsSettings += 1
 							}
 						}
 					}
+				}
+			}
+		}
+	}
+
+	pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	// This only covers table referencing themselves, pivots to other tables are covered by the check on links.
+	for _, pivot := range pivots {
+		if pivot.BaseTableId == table.ID {
+			switch field {
+			case nil:
+				canDelete = false
+			default:
+				if pivot.FieldId != nil && *pivot.FieldId == field.ID {
+					canDelete = false
+					report.Conflicts.Pivots.Insert(pivot.Id.String())
 				}
 			}
 		}
@@ -305,19 +373,15 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 			iterationReport = *previousReport
 		}
 
-		// Checking trigger conditions is only relevant on scenarios for the
-		// same object type as the field to delete.
-		if table.Name == scenario.TriggerObjectType {
-			if uc.isRefUsedInAst(it.TriggerAst, links, table, field) {
-				iterationReport.TriggerCondition = true
-				found = true
-			}
+		if uc.isRefUsedInAst(it.TriggerAst, links, table, field) {
+			iterationReport.TriggerCondition = true
+			found = true
+		}
 
-			if it.ScreeningTriggerAst != nil {
-				if uc.isRefUsedInAst(it.ScreeningTriggerAst, links, table, field) {
-					iterationReport.Screening.Insert(it.RuleId.String())
-					found = true
-				}
+		if it.ScreeningTriggerAst != nil {
+			if uc.isRefUsedInAst(it.ScreeningTriggerAst, links, table, field) {
+				iterationReport.Screening.Insert(it.RuleId.String())
+				found = true
 			}
 		}
 
@@ -404,10 +468,191 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 		return false, models.DataModelDeleteFieldReport{}, err
 	}
 
+	// We don't want to delete a table or field used by a running test run
 	for _, testRun := range testRuns {
 		if report.ArchivedIterations.Contains(testRun.ScenarioIterationId) || report.ArchivedIterations.Contains(testRun.ScenarioLiveIterationId) {
 			canDelete = false
 			report.Conflicts.TestRuns = true
+		}
+	}
+
+	return canDelete, report, nil
+}
+
+func (uc DataModelDestroyUsecase) canDeleteLink(
+	ctx context.Context,
+	orgId string,
+	exec repositories.Executor,
+	linkId string,
+) (bool, models.DataModelDeleteFieldReport, error) {
+	report := models.NewDataModelDeleteFieldReport()
+	canDelete := true
+
+	links, err := uc.dataModelRepository.GetLinks(ctx, exec, orgId)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	analyticsSettings, err := uc.analyticsSettingsRepository.GetAnalyticsSettings(ctx, exec, orgId)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	for _, link := range links {
+		if link.Id != linkId {
+			continue
+		}
+
+		for _, setting := range analyticsSettings {
+			tableRef := setting.TriggerObjectType
+
+			for _, dbField := range setting.DbFields {
+				if len(dbField.Path) > 0 {
+					for _, linkName := range dbField.Path {
+						for _, link := range links {
+							if link.ChildTableName == tableRef && link.Name == linkName {
+								canDelete = false
+								report.Conflicts.AnalyticsSettings += 1
+							}
+
+							tableRef = link.ParentTableName
+						}
+					}
+				}
+			}
+		}
+	}
+
+	pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	for _, pivot := range pivots {
+		for _, pathLinkId := range pivot.PathLinkIds {
+			if pathLinkId == linkId {
+				canDelete = false
+				report.Conflicts.Pivots.Insert(pivot.Id.String())
+			}
+		}
+	}
+
+	scenarios, err := uc.scenarioRepository.ListScenariosOfOrganization(ctx, exec, orgId)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	scenarioMap := make(map[string]models.Scenario)
+	for _, s := range scenarios {
+		scenarioMap[s.Id] = s
+	}
+
+	iterations, err := uc.iterationsRepository.ListAllRulesAndScreenings(ctx, exec, orgId)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	// Check all scenario iterations for if the link we want to delete is used in a rule.
+	for _, it := range iterations {
+		found := false
+		scenario := scenarioMap[it.ScenarioId.String()]
+
+		iterationReport := models.DataModelDeleteFieldConflictIteration{
+			Rules:     set.New[string](0),
+			Screening: set.New[string](0),
+		}
+
+		if previousReport, ok := report.Conflicts.ScenarioIterations[it.ScenarioIterationId.String()]; ok {
+			iterationReport = *previousReport
+		}
+
+		if uc.isLinkUsedInAst(it.TriggerAst, links, linkId) {
+			iterationReport.TriggerCondition = true
+			found = true
+		}
+
+		if it.ScreeningTriggerAst != nil {
+			if uc.isLinkUsedInAst(it.ScreeningTriggerAst, links, linkId) {
+				iterationReport.Screening.Insert(it.RuleId.String())
+				found = true
+			}
+		}
+
+		if it.RuleAst != nil {
+			if uc.isLinkUsedInAst(it.RuleAst, links, linkId) {
+				iterationReport.Rules.Insert(it.RuleId.String())
+				found = true
+			}
+		}
+		if it.ScreeningCounterpartyAst != nil {
+			if uc.isLinkUsedInAst(it.ScreeningCounterpartyAst, links, linkId) {
+				iterationReport.Screening.Insert(it.RuleId.String())
+				found = true
+			}
+		}
+		for _, sc := range it.ScreeningAst {
+			if uc.isLinkUsedInAst(&sc, links, linkId) {
+				iterationReport.Screening.Insert(it.RuleId.String())
+				found = true
+			}
+		}
+
+		if found {
+			// We cannot delete a field if it is used in a draft or a live scenario iteration
+			if it.Version == nil || (scenario.LiveVersionID != nil && fmt.Sprintf("%d", *it.Version) == *scenario.LiveVersionID) {
+				canDelete = false
+				report.Conflicts.ScenarioIterations[it.ScenarioIterationId.String()] = &iterationReport
+				continue
+			}
+
+			// Otherwise, we can delete it but matching iterations will be marked as archived
+			report.ArchivedIterations.Insert(it.ScenarioIterationId.String())
+		}
+	}
+
+	workflows, err := uc.workflowRepository.ListAllOrgWorkflows(ctx, exec, orgId)
+	if err != nil {
+		return false, models.DataModelDeleteFieldReport{}, err
+	}
+
+	// Workflows can use fields in PayloadEvaluates and case title templates.
+	for _, wk := range workflows {
+		for _, cond := range wk.Conditions {
+			switch cond.Function {
+			case models.WorkflowPayloadEvaluates:
+				var params dto.WorkflowConditionEvaluatesParams
+				if err := json.Unmarshal(cond.Params, &params); err != nil {
+					return false, models.DataModelDeleteFieldReport{}, err
+				}
+				payloadExpression, err := dto.AdaptASTNode(params.Expression)
+				if err != nil {
+					return false, models.DataModelDeleteFieldReport{}, err
+				}
+				if uc.isLinkUsedInAst(&payloadExpression, links, linkId) {
+					canDelete = false
+					report.Conflicts.Workflows.Insert(wk.ScenarioId.String())
+				}
+			}
+		}
+
+		for _, act := range wk.Actions {
+			switch act.Action {
+			case models.WorkflowCreateCase, models.WorkflowAddToCaseIfPossible:
+				a, err := models.ParseWorkflowAction[dto.WorkflowActionCaseParams](act)
+				if err != nil {
+					return false, models.DataModelDeleteFieldReport{}, err
+				}
+				if a.Params.TitleTemplate != nil {
+					titleTemplateAst, err := dto.AdaptASTNode(*a.Params.TitleTemplate)
+					if err != nil {
+						return false, models.DataModelDeleteFieldReport{}, err
+					}
+					if uc.isLinkUsedInAst(&titleTemplateAst, links, linkId) {
+						canDelete = false
+						report.Conflicts.Workflows.Insert(wk.ScenarioId.String())
+					}
+				}
+			}
 		}
 	}
 
@@ -473,6 +718,49 @@ func (uc DataModelDestroyUsecase) isRefUsedInAst(tree *ast.Node, links []models.
 		}
 		for _, ch := range tree.NamedChildren {
 			if found := uc.isRefUsedInAst(&ch, links, table, field); found {
+				return found
+			}
+		}
+	}
+
+	return false
+}
+
+func (uc DataModelDestroyUsecase) isLinkUsedInAst(tree *ast.Node, links []models.LinkToSingle, linkId string) bool {
+	if tree == nil {
+		return false
+	}
+
+	switch tree.Function {
+	case ast.FUNC_DB_ACCESS, ast.FUNC_AGGREGATOR:
+		tableRef, err := tree.ReadConstantNamedChildString("tableName")
+		if err != nil {
+			return false
+		}
+
+		pathsToWalk, err := tree.ReadConstantNamedChildStringSlice("path")
+		if err != nil {
+			return false
+		}
+
+		for _, path := range pathsToWalk {
+			for _, link := range links {
+				if link.ChildTableName == tableRef && link.Name == path {
+					return true
+				}
+
+				tableRef = link.ParentTableName
+			}
+		}
+
+	default:
+		for _, ch := range tree.Children {
+			if found := uc.isLinkUsedInAst(&ch, links, linkId); found {
+				return found
+			}
+		}
+		for _, ch := range tree.NamedChildren {
+			if found := uc.isLinkUsedInAst(&ch, links, linkId); found {
 				return found
 			}
 		}

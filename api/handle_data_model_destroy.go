@@ -51,3 +51,24 @@ func handleDeleteDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 		c.Status(http.StatusNoContent)
 	}
 }
+
+func handleDeleteDataModelLink(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelDestroyUsecase()
+		linkId := c.Param("linkID")
+
+		report, err := usecase.DeleteLink(ctx, linkId)
+		if err != nil {
+			if errors.Is(err, models.ConflictError) {
+				c.JSON(http.StatusConflict, dto.AdaptDataModelDeleteFieldReport(report))
+				return
+			}
+			if presentError(ctx, c, err) {
+				return
+			}
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
