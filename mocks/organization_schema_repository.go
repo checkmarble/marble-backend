@@ -37,6 +37,16 @@ func (m *OrganizationSchemaRepository) CreateField(
 	return args.Error(0)
 }
 
+func (m *OrganizationSchemaRepository) RenameTable(ctx context.Context, exec repositories.Executor, tableName string) error {
+	args := m.Called(ctx, exec, tableName)
+	return args.Error(0)
+}
+
+func (m *OrganizationSchemaRepository) DeleteTable(ctx context.Context, exec repositories.Executor, tableName string) error {
+	args := m.Called(ctx, exec, tableName)
+	return args.Error(0)
+}
+
 func (m *OrganizationSchemaRepository) RenameField(ctx context.Context, exec repositories.Executor, tableName string, fieldName string) error {
 	args := m.Called(ctx, exec, tableName, fieldName)
 	return args.Error(0)

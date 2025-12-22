@@ -16,6 +16,8 @@ type OrganizationSchemaRepository interface {
 	DeleteSchema(ctx context.Context, exec Executor) error
 	CreateTable(ctx context.Context, exec Executor, tableName string) error
 	CreateField(ctx context.Context, exec Executor, tableName string, field models.CreateFieldInput) error
+	RenameTable(ctx context.Context, exec Executor, tableName string) error
+	DeleteTable(ctx context.Context, exec Executor, tableName string) error
 	RenameField(ctx context.Context, exec Executor, tableName string, fieldName string) error
 	DeleteField(ctx context.Context, exec Executor, tableName string, fieldName string) error
 }
@@ -79,6 +81,49 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(
 	builder := strings.Builder{}
 	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s",
 		sanitizedTableName, field.Name, fieldType))
+
+	_, err := exec.Exec(ctx, builder.String())
+	return err
+}
+
+func (repo *OrganizationSchemaRepositoryPostgresql) RenameTable(
+	ctx context.Context,
+	exec Executor,
+	tableName string,
+) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
+
+	nonce := utils.GenNonce(8)
+	padding := len(nonce) + len("old_") + 1
+	trimmedName := tableName[:min(len(tableName), 63-padding)]
+
+	sanitizedTableName := pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
+	sanitizeNewFieldName := pgx.Identifier.Sanitize([]string{fmt.Sprintf("old_%s_%s", trimmedName, nonce)})
+
+	builder := strings.Builder{}
+	builder.WriteString(fmt.Sprintf("ALTER TABLE %s RENAME TO %s",
+		sanitizedTableName, sanitizeNewFieldName))
+
+	_, err := exec.Exec(ctx, builder.String())
+	return err
+}
+
+func (repo *OrganizationSchemaRepositoryPostgresql) DeleteTable(
+	ctx context.Context,
+	exec Executor,
+	tableName string,
+) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sanitizedTableName := pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
+
+	builder := strings.Builder{}
+	builder.WriteString(fmt.Sprintf("DROP TABLE %s",
+		sanitizedTableName))
 
 	_, err := exec.Exec(ctx, builder.String())
 	return err
