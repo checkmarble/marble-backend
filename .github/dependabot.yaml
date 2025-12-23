@@ -11,5 +11,8 @@ updates:
       riverqueue:
         patterns:
           - "github.com/riverqueue/river*"
+      opentelemetry:
+        patterns:
+          - "go.opentelemetry.io/*"
     cooldown:
       default-days: 14
