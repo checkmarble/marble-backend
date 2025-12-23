@@ -12,6 +12,23 @@ import (
 
 const OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
 
+// Row structure representing a dataset in the OpenSanctions catalog
+// Note: I didn't declare all fields, only those needed for our logic, don't hesitate to add more if needed
+type OpenSanctionsRawDataset struct {
+	Name     string
+	Version  string
+	Load     bool
+	DeltaUrl *string
+}
+
+// Define a raw catalog structure, close to the OpenSanctions API response
+// compared to the OpenSanctionsCatalog struct
+type OpenSanctionsRawCatalog struct {
+	Datasets map[string]OpenSanctionsRawDataset
+	Current  []string
+	Outdated []string
+}
+
 type OpenSanctionsCatalog struct {
 	Sections []OpenSanctionsCatalogSection
 	Tags     *expirable.LRU[string, []string]
@@ -38,6 +55,7 @@ type OpenSanctionsQuery struct {
 	InitialQuery       []OpenSanctionsCheckQuery
 	Config             ScreeningConfig
 	OrgConfig          OrganizationOpenSanctionsConfig
+	Scope              string
 	// cf: `exclude_entity_ids` in the OpenSanctions query
 	WhitelistedEntityIds []string
 }
@@ -190,4 +208,57 @@ func (algorithms OpenSanctionAlgorithms) GetAlgorithm(name string) (OpenSanction
 		}
 	}
 	return OpenSanctionAlgorithm{}, errors.Newf("algorithm %s not found", name)
+}
+
+type OpenSanctionsDeltaFileRecordOp int
+
+const (
+	OpenSanctionsDeltaFileRecordOpAdd OpenSanctionsDeltaFileRecordOp = iota
+	OpenSanctionsDeltaFileRecordOpMod
+	OpenSanctionsDeltaFileRecordOpDel
+	OpenSanctionsDeltaFileRecordOpUnknown
+)
+
+func (op OpenSanctionsDeltaFileRecordOp) String() string {
+	switch op {
+	case OpenSanctionsDeltaFileRecordOpAdd:
+		return "ADD"
+	case OpenSanctionsDeltaFileRecordOpMod:
+		return "MOD"
+	case OpenSanctionsDeltaFileRecordOpDel:
+		return "DEL"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func OpenSanctionsDeltaFileRecordOpFromString(s string) OpenSanctionsDeltaFileRecordOp {
+	switch s {
+	case "ADD":
+		return OpenSanctionsDeltaFileRecordOpAdd
+	case "MOD":
+		return OpenSanctionsDeltaFileRecordOpMod
+	case "DEL":
+		return OpenSanctionsDeltaFileRecordOpDel
+	default:
+		return OpenSanctionsDeltaFileRecordOpUnknown
+	}
+}
+
+type OpenSanctionsDeltaFileEntity struct {
+	Id         string
+	Caption    string
+	Schema     string
+	Referents  []string
+	Datasets   []string
+	FirstSeen  string
+	LastSeen   string
+	LastChange string
+	Properties map[string][]string
+	Target     bool
+}
+
+type OpenSanctionsDeltaFileRecord struct {
+	Op     OpenSanctionsDeltaFileRecordOp
+	Entity OpenSanctionsDeltaFileEntity
 }

@@ -43,7 +43,6 @@ type ContinuousScreeningUsecaseRepository interface {
 	) (models.ContinuousScreeningConfig, error)
 
 	// Data model
-	GetDataModelTable(ctx context.Context, exec repositories.Executor, tableId string) (models.TableMetadata, error)
 	GetDataModel(
 		ctx context.Context,
 		exec repositories.Executor,

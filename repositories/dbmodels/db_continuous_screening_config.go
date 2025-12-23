@@ -27,7 +27,7 @@ type DBContinuousScreeningConfig struct {
 	UpdatedAt      time.Time `db:"updated_at"`
 }
 
-var ContinuousScreeningConfigColumnList = utils.ColumnList[DBContinuousScreeningConfig]()
+var SelectContinuousScreeningConfigColumnList = utils.ColumnList[DBContinuousScreeningConfig]()
 
 func AdaptContinuousScreeningConfig(db DBContinuousScreeningConfig) (models.ContinuousScreeningConfig, error) {
 	return models.ContinuousScreeningConfig{

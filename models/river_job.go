@@ -131,3 +131,18 @@ type ContinuousScreeningEvaluateNeedArgs struct {
 func (ContinuousScreeningEvaluateNeedArgs) Kind() string {
 	return "continuous_screening_evaluate_need"
 }
+
+type ContinuousScreeningScanDatasetUpdatesArgs struct{}
+
+func (ContinuousScreeningScanDatasetUpdatesArgs) Kind() string {
+	return "continuous_screening_scan_dataset_updates"
+}
+
+type ContinuousScreeningApplyDeltaFileArgs struct {
+	OrgId    uuid.UUID `json:"org_id"`
+	UpdateId uuid.UUID `json:"update_id"`
+}
+
+func (ContinuousScreeningApplyDeltaFileArgs) Kind() string {
+	return "continuous_screening_apply_delta_file"
+}

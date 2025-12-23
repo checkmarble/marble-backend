@@ -12,13 +12,7 @@ import (
 	"github.com/riverqueue/river"
 )
 
-type repository interface {
-	ListContinuousScreeningConfigByObjectType(
-		ctx context.Context,
-		exec repositories.Executor,
-		orgId uuid.UUID,
-		objectType string,
-	) ([]models.ContinuousScreeningConfig, error)
+type doScreeningWorkerRepository interface {
 	GetContinuousScreeningConfigByStableId(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -46,22 +40,15 @@ type repository interface {
 	) (*models.ContinuousScreeningWithMatches, error)
 }
 
-type clientDbRepository interface {
+type doScreeningWorkerClientDbRepository interface {
 	GetMonitoredObject(
 		ctx context.Context,
 		clientExec repositories.Executor,
 		monitoringId uuid.UUID,
 	) (models.ContinuousScreeningMonitoredObject, error)
-
-	ListMonitoredObjectsByObjectIds(
-		ctx context.Context,
-		exec repositories.Executor,
-		objectType string,
-		objectIds []string,
-	) ([]models.ContinuousScreeningMonitoredObject, error)
 }
 
-type continuousScreeningUsecase interface {
+type doScreeningWorkerCSUsecase interface {
 	GetDataModelTableAndMapping(ctx context.Context, exec repositories.Executor,
 		config models.ContinuousScreeningConfig, objectType string,
 	) (models.Table, models.ContinuousScreeningDataModelMapping, error)
@@ -92,17 +79,17 @@ type DoScreeningWorker struct {
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 
-	repo         repository
-	clientDbRepo clientDbRepository
-	usecase      continuousScreeningUsecase
+	repo         doScreeningWorkerRepository
+	clientDbRepo doScreeningWorkerClientDbRepository
+	usecase      doScreeningWorkerCSUsecase
 }
 
 func NewDoScreeningWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
-	repo repository,
-	clientDbRepo clientDbRepository,
-	uc continuousScreeningUsecase,
+	repo doScreeningWorkerRepository,
+	clientDbRepo doScreeningWorkerClientDbRepository,
+	uc doScreeningWorkerCSUsecase,
 ) *DoScreeningWorker {
 	return &DoScreeningWorker{
 		executorFactory:    executorFactory,
@@ -291,108 +278,4 @@ func areScreeningMatchesEqual(
 	}
 
 	return true
-}
-
-// Worker to check if the object needs to be screened
-type taskEnqueuer interface {
-	EnqueueContinuousScreeningDoScreeningTaskMany(
-		ctx context.Context,
-		tx repositories.Transaction,
-		orgId string,
-		objectType string,
-		monitoringIds []uuid.UUID,
-		triggerType models.ContinuousScreeningTriggerType,
-	) error
-}
-
-type EvaluateNeedTaskWorker struct {
-	river.WorkerDefaults[models.ContinuousScreeningEvaluateNeedArgs]
-	executorFactory    executor_factory.ExecutorFactory
-	transactionFactory executor_factory.TransactionFactory
-
-	repo         repository
-	clientDbRepo clientDbRepository
-	taskEnqueuer taskEnqueuer
-}
-
-func NewEvaluateNeedTaskWorker(
-	executorFactory executor_factory.ExecutorFactory,
-	transactionFactory executor_factory.TransactionFactory,
-	repo repository,
-	clientDbRepo clientDbRepository,
-	taskEnqueuer taskEnqueuer,
-) *EvaluateNeedTaskWorker {
-	return &EvaluateNeedTaskWorker{
-		executorFactory:    executorFactory,
-		transactionFactory: transactionFactory,
-		repo:               repo,
-		clientDbRepo:       clientDbRepo,
-		taskEnqueuer:       taskEnqueuer,
-	}
-}
-
-func (w *EvaluateNeedTaskWorker) Timeout(job *river.Job[models.ContinuousScreeningEvaluateNeedArgs]) time.Duration {
-	return 10 * time.Second
-}
-
-// Job to check if the objects need to be screened based on the list of monitored objects
-// The screening is done by the DoScreeningWorker called by the task enqueuer at the end of the job
-func (w *EvaluateNeedTaskWorker) Work(
-	ctx context.Context,
-	job *river.Job[models.ContinuousScreeningEvaluateNeedArgs],
-) error {
-	// Check if the inserted objects are in the continuous screening list
-	if len(job.Args.ObjectIds) > 0 {
-		exec := w.executorFactory.NewExecutor()
-		clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, job.Args.OrgId)
-		if err != nil {
-			return err
-		}
-
-		// Check if the object type is configured in the continuous screening config
-		orgId, err := uuid.Parse(job.Args.OrgId)
-		if err != nil {
-			return err
-		}
-		configs, err := w.repo.ListContinuousScreeningConfigByObjectType(ctx, exec, orgId, job.Args.ObjectType)
-		if err != nil {
-			return err
-		}
-		if len(configs) == 0 {
-			// No continuous screening config found, no need to enqueue the task
-			return nil
-		}
-
-		monitoredObjects, err := w.clientDbRepo.ListMonitoredObjectsByObjectIds(
-			ctx,
-			clientDbExec,
-			job.Args.ObjectType,
-			job.Args.ObjectIds,
-		)
-		if err != nil {
-			return err
-		}
-
-		if len(monitoredObjects) == 0 {
-			// No monitored objects found, no need to enqueue the task
-			return nil
-		}
-
-		monitoringIds := make([]uuid.UUID, len(monitoredObjects))
-		for i, monitoredObject := range monitoredObjects {
-			monitoringIds[i] = monitoredObject.Id
-		}
-
-		return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-			return w.taskEnqueuer.EnqueueContinuousScreeningDoScreeningTaskMany(
-				ctx,
-				tx,
-				job.Args.OrgId,
-				job.Args.ObjectType,
-				monitoringIds,
-				models.ContinuousScreeningTriggerTypeObjectUpdated,
-			)
-		})
-	}
-	return nil
 }

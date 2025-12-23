@@ -90,6 +90,12 @@ type TaskQueueRepository interface {
 		objectType string,
 		objectIds []string,
 	) error
+	EnqueueContinuousScreeningApplyDeltaFileTask(
+		ctx context.Context,
+		tx Transaction,
+		orgId uuid.UUID,
+		updateId uuid.UUID,
+	) error
 }
 
 type riverRepository struct {
@@ -413,5 +419,27 @@ func (r riverRepository) EnqueueContinuousScreeningEvaluateNeedTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued continuous screening check if object needs screening task", "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueContinuousScreeningApplyDeltaFileTask(
+	ctx context.Context,
+	tx Transaction,
+	orgId uuid.UUID,
+	updateId uuid.UUID,
+) error {
+	res, err := r.client.InsertTx(ctx, tx.RawTx(), models.ContinuousScreeningApplyDeltaFileArgs{
+		OrgId:    orgId,
+		UpdateId: updateId,
+	}, &river.InsertOpts{
+		Queue:    orgId.String(),
+		Priority: 4, // Low priority to avoid blocking other tasks
+	})
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued continuous screening process delta file task", "job_id", res.Job.ID)
 	return nil
 }

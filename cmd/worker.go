@@ -21,6 +21,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
@@ -98,6 +99,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		otelSamplingRates:           utils.GetEnv("TRACING_SAMPLING_RATES", ""),
 		enablePrometheus:            utils.GetEnv("ENABLE_PROMETHEUS", false),
 		enableTracing:               utils.GetEnv("ENABLE_TRACING", false),
+		datasetDeltafileBucketUrl:   utils.GetEnv("DATASET_DELTAFILE_BUCKET_URL", ""),
+		ScanDatasetUpdatesInterval:  utils.GetEnvDuration("SCAN_DATASET_UPDATES_INTERVAL", 24*time.Hour),
 	}
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
@@ -228,6 +231,11 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	nonOrgQueues := make(map[string]river.QueueConfig)
 	globalPeriodics := []*river.PeriodicJob{}
 
+	maps.Copy(nonOrgQueues, usecases.QueueContinuousScreeningDatasetUpdate())
+	globalPeriodics = append(globalPeriodics,
+		continuous_screening.NewContinuousScreeningUpdateDatasetJob(
+			workerConfig.ScanDatasetUpdatesInterval),
+	)
 	if !metricCollectionConfig.Disabled {
 		maps.Copy(nonOrgQueues, usecases.QueueMetrics())
 		globalPeriodics = append(globalPeriodics,
@@ -293,6 +301,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithCaseManagerBucketUrl(workerConfig.caseManagerBucket),
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
+		usecases.WithDatasetDeltafileBucketUrl(workerConfig.datasetDeltafileBucketUrl),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 
@@ -331,6 +340,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if isMarbleSaasProject && lagoConfig.IsConfigured() {
 		river.AddWorker(workers, uc.NewSendBillingEventWorker())
 	}
+	river.AddWorker(workers, uc.NewContinuousScreeningScanDatasetUpdatesWorker())
+	river.AddWorker(workers, uc.NewContinuousScreeningApplyDeltaFileWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -522,6 +533,12 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "continuous_screening_evaluate_need":
 		return uc.NewContinuousScreeningEvaluateNeedWorker().Work(ctx,
 			singleJobCreate[models.ContinuousScreeningEvaluateNeedArgs](ctx, jobArgs))
+	case "continuous_screening_scan_dataset_updates":
+		return uc.NewContinuousScreeningScanDatasetUpdatesWorker().Work(ctx,
+			singleJobCreate[models.ContinuousScreeningScanDatasetUpdatesArgs](ctx, jobArgs))
+	case "continuous_screening_apply_delta_file":
+		return uc.NewContinuousScreeningApplyDeltaFileWorker().Work(ctx,
+			singleJobCreate[models.ContinuousScreeningApplyDeltaFileArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

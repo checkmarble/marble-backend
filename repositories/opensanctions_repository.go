@@ -103,6 +103,31 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, err
 	return true, nil
 }
 
+func (repo OpenSanctionsRepository) GetRawCatalog(ctx context.Context) (models.OpenSanctionsRawCatalog, error) {
+	catalogUrl := fmt.Sprintf("%s/catalog", repo.opensanctions.Host())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
+	if err != nil {
+		return models.OpenSanctionsRawCatalog{}, err
+	}
+	resp, err := repo.opensanctions.Client().Do(req)
+	if err != nil {
+		return models.OpenSanctionsRawCatalog{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return models.OpenSanctionsRawCatalog{},
+			fmt.Errorf("failed to get raw catalog: %d", resp.StatusCode)
+	}
+
+	var httpCatalog httpmodels.HTTPOpenSanctionCatalogResponse
+	if err := json.NewDecoder(resp.Body).Decode(&httpCatalog); err != nil {
+		return models.OpenSanctionsRawCatalog{}, err
+	}
+
+	return httpmodels.AdaptOpenSanctionCatalogResponse(httpCatalog), nil
+}
+
 func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
 	if cached, ok := OPEN_SANCTIONS_DATASET_CACHE.Get(OPEN_SANCTIONS_CATALOG_CACHE_KEY); ok {
 		return cached, nil
@@ -384,6 +409,11 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 		}
 	}
 
+	scope := repo.opensanctions.Scope()
+	if query.Scope != "" {
+		scope = query.Scope
+	}
+
 	var body, rawQuery bytes.Buffer
 
 	if err := json.NewEncoder(io.MultiWriter(&body, &rawQuery)).Encode(q); err != nil {
@@ -391,7 +421,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 			"could not parse OpenSanctions response")
 	}
 
-	requestUrl := fmt.Sprintf("%s/match/%s", repo.opensanctions.Host(), repo.opensanctions.Scope())
+	requestUrl := fmt.Sprintf("%s/match/%s", repo.opensanctions.Host(), scope)
 
 	if qs := repo.buildQueryString(&query.Config, query); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())

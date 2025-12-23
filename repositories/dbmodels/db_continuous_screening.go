@@ -127,3 +127,123 @@ func AdaptContinuousScreeningMonitoredObject(dto DBContinuousScreeningMonitoredO
 		CreatedAt:      dto.CreatedAt,
 	}, nil
 }
+
+const TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES = "continuous_screening_dataset_updates"
+
+var SelectContinuousScreeningDatasetUpdateColumn = utils.ColumnList[DBContinuousScreeningDatasetUpdate]()
+
+type DBContinuousScreeningDatasetUpdate struct {
+	Id            uuid.UUID `db:"id"`
+	DatasetName   string    `db:"dataset_name"`
+	Version       string    `db:"version"`
+	DeltaFilePath string    `db:"delta_file_path"`
+	TotalItems    int       `db:"total_items"`
+	CreatedAt     time.Time `db:"created_at"`
+}
+
+func AdaptContinuousScreeningDatasetUpdate(dto DBContinuousScreeningDatasetUpdate) (models.ContinuousScreeningDatasetUpdate, error) {
+	return models.ContinuousScreeningDatasetUpdate{
+		Id:            dto.Id,
+		DatasetName:   dto.DatasetName,
+		Version:       dto.Version,
+		DeltaFilePath: dto.DeltaFilePath,
+		TotalItems:    dto.TotalItems,
+		CreatedAt:     dto.CreatedAt,
+	}, nil
+}
+
+const TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS = "continuous_screening_update_jobs"
+
+var SelectContinuousScreeningUpdateJobColumn = utils.ColumnList[DBContinuousScreeningUpdateJob]()
+
+type DBContinuousScreeningUpdateJob struct {
+	Id                                 uuid.UUID `db:"id"`
+	ContinuousScreeningDatasetUpdateId uuid.UUID `db:"continuous_screening_dataset_update_id"`
+	ContinuousScreeningConfigId        uuid.UUID `db:"continuous_screening_config_id"`
+	OrgId                              uuid.UUID `db:"org_id"`
+	Status                             string    `db:"status"`
+	CreatedAt                          time.Time `db:"created_at"`
+	UpdatedAt                          time.Time `db:"updated_at"`
+}
+
+func AdaptContinuousScreeningUpdateJob(dto DBContinuousScreeningUpdateJob) (models.ContinuousScreeningUpdateJob, error) {
+	return models.ContinuousScreeningUpdateJob{
+		Id:              dto.Id,
+		DatasetUpdateId: dto.ContinuousScreeningDatasetUpdateId,
+		ConfigId:        dto.ContinuousScreeningConfigId,
+		OrgId:           dto.OrgId,
+		Status:          models.ContinuousScreeningUpdateJobStatusFrom(dto.Status),
+		CreatedAt:       dto.CreatedAt,
+		UpdatedAt:       dto.UpdatedAt,
+	}, nil
+}
+
+type DBEnrichedContinuousScreeningUpdateJob struct {
+	UpdateJob     DBContinuousScreeningUpdateJob     `db:"update_job"`
+	Config        DBContinuousScreeningConfig        `db:"config"`
+	DatasetUpdate DBContinuousScreeningDatasetUpdate `db:"dataset_update"`
+}
+
+func AdaptEnrichedContinuousScreeningUpdateJob(dto DBEnrichedContinuousScreeningUpdateJob) (models.EnrichedContinuousScreeningUpdateJob, error) {
+	config, err := AdaptContinuousScreeningConfig(dto.Config)
+	if err != nil {
+		return models.EnrichedContinuousScreeningUpdateJob{}, err
+	}
+	datasetUpdate, err := AdaptContinuousScreeningDatasetUpdate(dto.DatasetUpdate)
+	if err != nil {
+		return models.EnrichedContinuousScreeningUpdateJob{}, err
+	}
+	updateJob, err := AdaptContinuousScreeningUpdateJob(dto.UpdateJob)
+	if err != nil {
+		return models.EnrichedContinuousScreeningUpdateJob{}, err
+	}
+	return models.EnrichedContinuousScreeningUpdateJob{
+		ContinuousScreeningUpdateJob: updateJob,
+		Config:                       config,
+		DatasetUpdate:                datasetUpdate,
+	}, nil
+}
+
+const TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS = "continuous_screening_job_offsets"
+
+var SelectContinuousScreeningJobOffsetColumn = utils.ColumnList[DBContinuousScreeningJobOffset]()
+
+type DBContinuousScreeningJobOffset struct {
+	Id                             uuid.UUID `db:"id"`
+	ContinuousScreeningUpdateJobId uuid.UUID `db:"continuous_screening_update_job_id"`
+	ByteOffset                     int64     `db:"byte_offset"`
+	ItemsProcessed                 int       `db:"items_processed"` // Number of items processed
+	CreatedAt                      time.Time `db:"created_at"`
+	UpdatedAt                      time.Time `db:"updated_at"`
+}
+
+func AdaptContinuousScreeningJobOffset(dto DBContinuousScreeningJobOffset) (models.ContinuousScreeningJobOffset, error) {
+	return models.ContinuousScreeningJobOffset{
+		Id:             dto.Id,
+		UpdateJobId:    dto.ContinuousScreeningUpdateJobId,
+		ByteOffset:     dto.ByteOffset,
+		ItemsProcessed: dto.ItemsProcessed,
+		CreatedAt:      dto.CreatedAt,
+		UpdatedAt:      dto.UpdatedAt,
+	}, nil
+}
+
+const TABLE_CONTINUOUS_SCREENING_JOB_ERRORS = "continuous_screening_job_errors"
+
+var SelectContinuousScreeningJobErrorColumn = utils.ColumnList[DBContinuousScreeningJobError]()
+
+type DBContinuousScreeningJobError struct {
+	Id                             uuid.UUID       `db:"id"`
+	ContinuousScreeningUpdateJobId uuid.UUID       `db:"continuous_screening_update_job_id"`
+	Details                        json.RawMessage `db:"details"`
+	CreatedAt                      time.Time       `db:"created_at"`
+}
+
+func AdaptContinuousScreeningJobError(dto DBContinuousScreeningJobError) (models.ContinuousScreeningJobError, error) {
+	return models.ContinuousScreeningJobError{
+		Id:          dto.Id,
+		UpdateJobId: dto.ContinuousScreeningUpdateJobId,
+		Details:     dto.Details,
+		CreatedAt:   dto.CreatedAt,
+	}, nil
+}

@@ -48,4 +48,6 @@ type WorkerConfig struct {
 	otelSamplingRates           string
 	enablePrometheus            bool
 	enableTracing               bool
+	datasetDeltafileBucketUrl   string
+	ScanDatasetUpdatesInterval  time.Duration
 }

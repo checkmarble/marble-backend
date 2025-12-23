@@ -165,7 +165,7 @@ func (suite *CaseReviewWorkerTestSuite) TestGetPreviousCaseReviewContext_NoFile(
 	_, _, _, aiCaseReview := createTestCaseReviewData()
 
 	// Mock blob repository to return an error (file not found)
-	suite.blobRepo.On("GetBlob", ctx, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", ctx, "test-bucket-url", aiCaseReview.FileTempReference, mock.Anything).
 		Return(models.Blob{}, errors.New("file not found"))
 
 	// Call the method under test
@@ -204,7 +204,7 @@ func (suite *CaseReviewWorkerTestSuite) TestGetPreviousCaseReviewContext_ValidFi
 		ReadCloser: mockReader,
 	}
 
-	suite.blobRepo.On("GetBlob", ctx, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", ctx, "test-bucket-url", aiCaseReview.FileTempReference, mock.Anything).
 		Return(blob, nil)
 
 	// Call the method under test
@@ -231,7 +231,8 @@ func (suite *CaseReviewWorkerTestSuite) TestGetPreviousCaseReviewContext_Invalid
 		ReadCloser: mockReader,
 	}
 
-	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url",
+		aiCaseReview.FileTempReference, mock.Anything).
 		Return(blob, nil)
 
 	// Call the method under test
@@ -265,7 +266,8 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_Success() {
 		Return(aiCaseReview, nil)
 
 	// Mock getPreviousCaseReviewContext - return error to get empty context
-	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url",
+		aiCaseReview.FileTempReference, mock.Anything).
 		Return(models.Blob{}, errors.New("file not found"))
 
 	// Mock successful case review creation
@@ -343,7 +345,8 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_CreateCaseReviewSyncError() {
 		FileName:   aiCaseReview.FileTempReference,
 		ReadCloser: mockReader,
 	}
-	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url",
+		aiCaseReview.FileTempReference, mock.Anything).
 		Return(blob, nil)
 
 	// Mock failed case review creation
@@ -460,7 +463,8 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_BlobStreamError() {
 		Return(aiCaseReview, nil)
 
 	// Mock getPreviousCaseReviewContext
-	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url",
+		aiCaseReview.FileTempReference, mock.Anything).
 		Return(models.Blob{}, errors.New("file not found"))
 
 	// Mock successful case review creation
@@ -518,7 +522,8 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_InsufficientFunds() {
 		Return(testCase, nil)
 	suite.workerRepo.On("GetCaseReviewById", mock.Anything, suite.exec, args.AiCaseReviewId).
 		Return(aiCaseReview, nil)
-	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url", aiCaseReview.FileTempReference).
+	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url",
+		aiCaseReview.FileTempReference, mock.Anything).
 		Return(models.Blob{}, errors.New("file not found"))
 	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id).
 		Return(true, nil)
