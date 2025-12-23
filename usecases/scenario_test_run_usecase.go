@@ -21,14 +21,15 @@ type TestRunUsecaseFeatureAccessReader interface {
 }
 
 type ScenarioTestRunUsecase struct {
-	transactionFactory        executor_factory.TransactionFactory
-	executorFactory           executor_factory.ExecutorFactory
-	enforceSecurity           security.EnforceSecurityTestRun
-	repository                repositories.ScenarioTestRunRepository
-	scenarioRepository        repositories.ScenarioUsecaseRepository
-	clientDbIndexEditor       clientDbIndexEditor
-	featureAccessReader       TestRunUsecaseFeatureAccessReader
-	screeningConfigRepository ScreeningConfigRepository
+	transactionFactory         executor_factory.TransactionFactory
+	executorFactory            executor_factory.ExecutorFactory
+	enforceSecurity            security.EnforceSecurityTestRun
+	repository                 repositories.ScenarioTestRunRepository
+	scenarioRepository         repositories.ScenarioUsecaseRepository
+	scenarioIteratorRepository IterationUsecaseRepository
+	clientDbIndexEditor        clientDbIndexEditor
+	featureAccessReader        TestRunUsecaseFeatureAccessReader
+	screeningConfigRepository  ScreeningConfigRepository
 }
 
 func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
@@ -52,6 +53,14 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 	// the live version must not be the one on which we want to start a testrun
 	if *scenario.LiveVersionID == input.PhantomIterationId {
 		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
+	}
+
+	phantomIteration, err := usecase.scenarioIteratorRepository.GetScenarioIteration(ctx, exec, input.PhantomIterationId, false)
+	if err != nil {
+		return models.ScenarioTestRun{}, models.ErrScenarioIterationNotValid
+	}
+	if phantomIteration.Archived {
+		return models.ScenarioTestRun{}, models.ErrScenarioIterationNotValid
 	}
 
 	sccs, err := usecase.screeningConfigRepository.ListScreeningConfigs(ctx, exec, input.PhantomIterationId, true)
