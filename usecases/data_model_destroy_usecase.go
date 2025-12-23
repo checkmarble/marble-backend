@@ -221,6 +221,22 @@ func (uc DataModelDestroyUsecase) DeleteLink(ctx context.Context, linkId string)
 	return report, nil
 }
 
+func (uc DataModelDestroyUsecase) DeletePivot(ctx context.Context, pivotId string) (models.DataModelDeleteFieldReport, error) {
+	orgId := uc.enforceSecurity.OrgId()
+	exec := uc.executorFactory.NewExecutor()
+
+	if err := uc.enforceSecurity.WriteDataModel(orgId); err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	// GO-GO GADGETO VANISH
+	if err := uc.dataModelRepository.DeleteDataModelPivot(ctx, exec, pivotId); err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	return models.NewDataModelDeleteFieldReport(), nil
+}
+
 func (uc DataModelDestroyUsecase) canDeleteRef(
 	ctx context.Context,
 	orgId string,
