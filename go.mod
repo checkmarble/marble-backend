@@ -71,8 +71,8 @@ require (
 	gocloud.dev v0.43.0
 	golang.org/x/net v0.47.0
 	golang.org/x/oauth2 v0.34.0
-	golang.org/x/sync v0.18.0
-	golang.org/x/text v0.31.0
+	golang.org/x/sync v0.19.0
+	golang.org/x/text v0.32.0
 	golang.org/x/time v0.14.0
 	google.golang.org/api v0.256.0
 	google.golang.org/genai v1.36.0
@@ -299,8 +299,8 @@ require (
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/telemetry v0.0.0-20251008203120-078029d740a8 // indirect
-	golang.org/x/tools v0.38.0 // indirect
+	golang.org/x/telemetry v0.0.0-20251111182119-bc8e575c7b54 // indirect
+	golang.org/x/tools v0.39.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/appengine/v2 v2.0.6 // indirect
 	google.golang.org/genproto v0.0.0-20250922171735-9219d122eba9 // indirect
