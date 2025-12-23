@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"slices"
 	"time"
 
@@ -19,22 +20,23 @@ type IngestionRepository interface {
 		tx Transaction,
 		payloads []models.ClientObject,
 		table models.Table,
-	) ([]string, error)
+	) ([]string, map[string][]string, error)
 }
 
 type IngestionRepositoryImpl struct{}
 
 // Ingest objects and return:
 //   - List of object_id of inserted objects
+//   - Map of object_id to list of fields that the value was changed
 //   - Error if any
 func (repo *IngestionRepositoryImpl) IngestObjects(
 	ctx context.Context,
 	tx Transaction,
 	payloads []models.ClientObject,
 	table models.Table,
-) ([]string, error) {
+) ([]string, map[string][]string, error) {
 	if err := validateClientDbExecutor(tx); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	mostRecentObjectIds, mostRecentPayloads := mostRecentPayloadsByObjectId(payloads)
@@ -43,15 +45,15 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, tx,
 		mostRecentObjectIds, table, fieldsToLoad)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	payloadsToInsert, obsoleteIngestedObjectIds, validationErrors := compareAndMergePayloadsWithIngestedObjects(
+	payloadsToInsert, obsoleteIngestedObjectIds, validationErrors, existingObjectFieldsChanged := compareAndMergePayloadsWithIngestedObjects(
 		mostRecentPayloads,
 		previouslyIngestedObjects,
 	)
 	if len(validationErrors) > 0 {
-		return nil, errors.Join(models.BadParameterError, validationErrors)
+		return nil, nil, errors.Join(models.BadParameterError, validationErrors)
 	}
 
 	if len(obsoleteIngestedObjectIds) > 0 {
@@ -62,13 +64,13 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 			obsoleteIngestedObjectIds,
 		)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	if len(payloadsToInsert) > 0 {
 		if err := repo.batchInsertPayloads(ctx, tx, payloadsToInsert, table); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -79,7 +81,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 		payloadsInsertedObjectId[i] = objectId
 	}
 
-	return payloadsInsertedObjectId, nil
+	return payloadsInsertedObjectId, existingObjectFieldsChanged, nil
 }
 
 // Try to only load the fields that are actually missing from the payloads (in the case of a partial update).
@@ -218,12 +220,13 @@ func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(
 // - a list of complete payloads that should be inserted, obtained by merging the payloads with the missing fields from the previously ingested objects
 // - a list of IDs of objects that should be marked as obsolete
 // - a map of validation errors for each payload (if any required missing fields are also missing in the ingested objects)
+// - a map of object_id to list of fields that the value was changed
 // The "previouslyIngestedObjects" slice contains objects where the "data" map only contains the fields that were loaded from the DB,
 // not necessarily all the fields that are present in the data model.
 func compareAndMergePayloadsWithIngestedObjects(
 	payloads []models.ClientObject,
 	previouslyIngestedObjects []ingestedObject,
-) ([]models.ClientObject, []string, models.IngestionValidationErrors) {
+) ([]models.ClientObject, []string, models.IngestionValidationErrors, map[string][]string) {
 	previouslyIngestedMap := make(map[string]ingestedObject)
 	for _, obj := range previouslyIngestedObjects {
 		previouslyIngestedMap[obj.objectId] = obj
@@ -232,6 +235,7 @@ func compareAndMergePayloadsWithIngestedObjects(
 	payloadsToInsert := make([]models.ClientObject, 0, len(payloads))
 	obsoleteIngestedObjectIds := make([]string, 0, len(previouslyIngestedMap))
 	validationErrors := make(models.IngestionValidationErrors, len(payloads))
+	existingObjectFieldsChanged := make(map[string][]string, len(payloads))
 
 	for _, payload := range payloads {
 		objectId, updatedAt := objectIdAndUpdatedAtFromPayload(payload)
@@ -251,16 +255,26 @@ func compareAndMergePayloadsWithIngestedObjects(
 			payload.Data[field.Field.Name] = existingObject.data[field.Field.Name]
 		}
 
+		var fieldsChangedValue []string
+		if exists {
+			for fieldName, fieldValue := range payload.Data {
+				if !reflect.DeepEqual(fieldValue, existingObject.data[fieldName]) {
+					fieldsChangedValue = append(fieldsChangedValue, fieldName)
+				}
+			}
+		}
+
 		if !exists {
 			payloadsToInsert = append(payloadsToInsert, payload)
 		} else if updatedAt.After(existingObject.updatedAt) ||
 			updatedAt.Equal(existingObject.updatedAt) {
 			payloadsToInsert = append(payloadsToInsert, payload)
 			obsoleteIngestedObjectIds = append(obsoleteIngestedObjectIds, existingObject.id)
+			existingObjectFieldsChanged[objectId] = fieldsChangedValue
 		}
 	}
 
-	return payloadsToInsert, obsoleteIngestedObjectIds, validationErrors
+	return payloadsToInsert, obsoleteIngestedObjectIds, validationErrors, existingObjectFieldsChanged
 }
 
 func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx context.Context,

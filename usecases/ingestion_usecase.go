@@ -132,8 +132,10 @@ func (usecase *IngestionUseCase) IngestObject(
 	}
 
 	var insertedObjectIds []string
+	var existingObjectFieldsChanged map[string][]string
 	err = retryIngestion(ctx, func() error {
-		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, []models.ClientObject{payload}, table)
+		insertedObjectIds, existingObjectFieldsChanged, err =
+			usecase.insertEnumValuesAndIngest(ctx, organizationId, []models.ClientObject{payload}, table)
 		return err
 	})
 	if err != nil {
@@ -148,7 +150,8 @@ func (usecase *IngestionUseCase) IngestObject(
 		return 0, err
 	}
 	nbInsertedObjects := len(insertedObjectIds)
-	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId, objectType, insertedObjectIds)
+	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId,
+		table, existingObjectFieldsChanged)
 	if err != nil {
 		return 0, err
 	}
@@ -217,7 +220,6 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	clientObjects := make([]models.ClientObject, 0, len(rawMessages))
 	objectIds := make(map[string]struct{}, len(rawMessages))
-	objectIdsList := make([]string, 0, len(rawMessages))
 	parser := payload_parser.NewParser(parserOpts...)
 	validationErrorsGroup := make(models.IngestionValidationErrors)
 	for _, rawMsg := range rawMessages {
@@ -239,7 +241,6 @@ func (usecase *IngestionUseCase) IngestObjects(
 				"duplicate object_id %s in the batch", objectId)
 		}
 		objectIds[objectId] = struct{}{}
-		objectIdsList = append(objectIdsList, objectId)
 		clientObjects = append(clientObjects, payload)
 	}
 	if len(validationErrorsGroup) > 0 {
@@ -247,8 +248,10 @@ func (usecase *IngestionUseCase) IngestObjects(
 	}
 
 	var insertedObjectIds []string
+	var existingObjectFieldsChanged map[string][]string
 	err = retryIngestion(ctx, func() error {
-		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+		insertedObjectIds, existingObjectFieldsChanged, err =
+			usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
 		return err
 	})
 	if err != nil {
@@ -256,7 +259,8 @@ func (usecase *IngestionUseCase) IngestObjects(
 	}
 	nbInsertedObjects := len(insertedObjectIds)
 
-	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId, objectType, insertedObjectIds)
+	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId,
+		table, existingObjectFieldsChanged)
 	if err != nil {
 		return 0, err
 	}
@@ -624,7 +628,6 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 
 		windowEnd := objectIdx + csvIngestionBatchSize
 		clientObjects := make([]models.ClientObject, 0, csvIngestionBatchSize)
-		objectIds := make([]string, 0, csvIngestionBatchSize)
 		for ; objectIdx < windowEnd; objectIdx++ {
 			logger.DebugContext(iterationCtx, fmt.Sprintf("Start reading line %v", objectIdx))
 			record, err := r.Read()
@@ -649,12 +652,13 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 
 			clientObject := models.ClientObject{TableName: table.Name, Data: object}
 			clientObjects = append(clientObjects, clientObject)
-			objectIds = append(objectIds, object["object_id"].(string))
 		}
 
 		var insertedObjectIds []string
+		var existingObjectFieldsChanged map[string][]string
 		if err := retryIngestion(iterationCtx, func() error {
-			insertedObjectIds, err = usecase.insertEnumValuesAndIngest(iterationCtx, organizationId, clientObjects, table)
+			insertedObjectIds, existingObjectFieldsChanged, err =
+				usecase.insertEnumValuesAndIngest(iterationCtx, organizationId, clientObjects, table)
 			return err
 		}); err != nil {
 			return ingestionResult{
@@ -669,8 +673,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 			iterationCtx,
 			configs,
 			organizationId,
-			table.Name,
-			insertedObjectIds,
+			table,
+			existingObjectFieldsChanged,
 		)
 		if err != nil {
 			return ingestionResult{
@@ -689,8 +693,8 @@ func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 	ctx context.Context,
 	configs []models.ContinuousScreeningConfig,
 	organizationId string,
-	objectType string,
-	objectIds []string,
+	table models.Table,
+	existingObjectFieldsChanged map[string][]string,
 ) error {
 	if len(configs) == 0 {
 		// No continuous screening config found, the feature is not enabled for this organization and object type
@@ -702,10 +706,25 @@ func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 		return err
 	}
 
+	// Filter existingObjectFieldsChanged to only objects that have changed fields with FTM properties set
+	objectIds := make([]string, 0, len(existingObjectFieldsChanged))
+	for objectId, changedFields := range existingObjectFieldsChanged {
+		for _, field := range changedFields {
+			tableField, ok := table.Fields[field]
+			if !ok {
+				// Should not happen, but just in case
+				return errors.Newf("field %s not found in table %s when filtering for objects with changed fields with FTM properties set", field, table.Name)
+			} else if tableField.FTMProperty != nil {
+				objectIds = append(objectIds, objectId)
+				break
+			}
+		}
+	}
+
 	monitoredObjects, err := usecase.continuousScreeningClientRepository.ListMonitoredObjectsByObjectIds(
 		ctx,
 		clientDbExec,
-		objectType,
+		table.Name,
 		objectIds,
 	)
 	if err != nil {
@@ -727,7 +746,7 @@ func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 			ctx,
 			tx,
 			organizationId,
-			objectType,
+			table.Name,
 			monitoringIds,
 			models.ContinuousScreeningTriggerTypeObjectUpdated,
 		)
@@ -829,17 +848,19 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	organizationId string,
 	payloads []models.ClientObject,
 	table models.Table,
-) ([]string, error) {
+) ([]string, map[string][]string, error) {
 	start := time.Now()
 
 	var insertedObjectIds []string
+	var existingObjectFieldsChanged map[string][]string
 	var err error
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
-		insertedObjectIds, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
+		insertedObjectIds, existingObjectFieldsChanged, err =
+			usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
 		return err
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	utils.MetricIngestionCount.
@@ -870,7 +891,7 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 		}
 	}()
 
-	return insertedObjectIds, nil
+	return insertedObjectIds, existingObjectFieldsChanged, nil
 }
 
 func buildEnumValuesContainersFromTable(table models.Table) models.EnumValues {

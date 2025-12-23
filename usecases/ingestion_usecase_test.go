@@ -532,10 +532,17 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	t := suite.T()
 	uc := suite.makeUsecase()
 
+	dataModel := suite.dataModel.Copy()
+	table := dataModel.Tables["transactions"]
+	field := table.Fields["status"]
+	field.FTMProperty = utils.Ptr(models.FollowTheMoneyPropertyName)
+	table.Fields["status"] = field
+	dataModel.Tables["transactions"] = table
+
 	suite.enforceSecurity.On("CanIngest", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
-		Return(suite.dataModel, nil)
+		Return(dataModel, nil)
 
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
@@ -573,10 +580,27 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		Return(nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
-	// there are no previous versions for these objects
+	rowId1 := uuid.New()
+	rowId2 := uuid.New()
+	rowId3 := uuid.New()
+	rowId4 := uuid.New()
+	rowId5 := uuid.New()
+
+	// there ARE previous versions for these objects (otherwise they wouldn't be in existingObjectFieldsChanged and thus screened)
 	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2,$3,$4,$5,$6)`)).
 		WithArgs("Infinity", "1", "2", "3", "4", "5").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}).
+			AddRow("1", updAt, [16]byte(rowId1)).
+			AddRow("2", updAt, [16]byte(rowId2)).
+			AddRow("3", updAt, [16]byte(rowId3)).
+			AddRow("4", updAt, [16]byte(rowId4)).
+			AddRow("5", updAt, [16]byte(rowId5)))
+
+	// update the previous versions
+	suite.executorFactory.Mock.ExpectExec(escapeSql(`UPDATE "test"."transactions" SET valid_until = $1 WHERE id IN ($2,$3,$4,$5,$6)`)).
+		WithArgs("now()", rowId1.String(), rowId2.String(), rowId3.String(), rowId4.String(), rowId5.String()).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 5))
+
 	// insert the new versions (5 objects)
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10),($11,$12,$13,$14,$15),($16,$17,$18,$19,$20),($21,$22,$23,$24,$25)`)).
 		WithArgs(
@@ -588,7 +612,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		WillReturnResult(pgxmock.NewResult("INSERT", 5))
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
+		mock.MatchedBy(matchExec), models.EnumValues{}, dataModel.Tables["transactions"]).
 		Return(nil)
 
 	nb, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",
