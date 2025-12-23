@@ -134,3 +134,28 @@ func (d *DataModelRepository) UpsertDataModelOptions(ctx context.Context, exec r
 	args := d.Called(ctx, exec, req)
 	return args.Get(0).(models.DataModelOptions), args.Error(1)
 }
+
+func (d *DataModelRepository) ArchiveDataModelTable(ctx context.Context, exec repositories.Executor, table models.TableMetadata) error {
+	args := d.Called(ctx, exec, table)
+	return args.Error(1)
+}
+
+func (d *DataModelRepository) DeleteDataModelTable(ctx context.Context, exec repositories.Executor, table models.TableMetadata) error {
+	args := d.Called(ctx, exec, table)
+	return args.Error(0)
+}
+
+func (d *DataModelRepository) ArchiveDataModelField(ctx context.Context, exec repositories.Executor, table models.TableMetadata, field models.FieldMetadata) error {
+	args := d.Called(ctx, exec, table, field)
+	return args.Error(1)
+}
+
+func (d *DataModelRepository) DeleteDataModelField(ctx context.Context, exec repositories.Executor, table models.TableMetadata, field models.FieldMetadata) error {
+	args := d.Called(ctx, exec, table, field)
+	return args.Error(0)
+}
+
+func (d *DataModelRepository) DeleteDataModelLink(ctx context.Context, exec repositories.Executor, id string) error {
+	args := d.Called(ctx, exec, id)
+	return args.Error(0)
+}

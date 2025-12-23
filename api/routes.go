@@ -353,6 +353,12 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/data-model/tables/:tableID/exported-fields", tom, handleGetFieldExportedFields(uc))
 	router.POST("/data-model/tables/:tableID/exported-fields", tom, handleCreateFieldExportedFields(uc))
 
+	// Data model destructive actions
+	router.DELETE("/data-model/tables/:tableID", tom, handleDeleteDataModelTable(uc))
+	router.DELETE("/data-model/fields/:fieldID", tom, handleDeleteDataModelField(uc))
+	router.DELETE("/data-model/links/:linkID", tom, handleDeleteDataModelLink(uc))
+	router.DELETE("/data-model/pivots/:pivotID", tom, handleDeleteDataModelPivot(uc))
+
 	router.POST("/transfers", tom, handleCreateTransfer(uc))
 	router.GET("/transfers", tom, handleQueryTransfers(uc))
 	router.PATCH("/transfers/:transfer_id", tom, handleUpdateTransfer(uc))

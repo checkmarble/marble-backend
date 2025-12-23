@@ -58,6 +58,10 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 	}
 
 	for name, field := range table.Fields {
+		if field.Archived {
+			continue
+		}
+
 		value := result.Get(name)
 		if !value.Exists() {
 			// specific case for updated_at which is always required, because it is necessary for proper ingestion at the repository level
