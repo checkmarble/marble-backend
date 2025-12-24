@@ -277,7 +277,7 @@ type DBContinuousScreeningDeltaTrack struct {
 	OrgId            uuid.UUID  `db:"org_id"`
 	ObjectType       string     `db:"object_type"`
 	ObjectId         string     `db:"object_id"`
-	ObjectInternalId uuid.UUID  `db:"object_internal_id"`
+	ObjectInternalId *uuid.UUID `db:"object_internal_id"`
 	EntityId         string     `db:"entity_id"`
 	Operation        string     `db:"operation"`
 	DatasetFileId    *uuid.UUID `db:"dataset_file_id"`

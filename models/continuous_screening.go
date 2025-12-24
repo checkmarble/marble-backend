@@ -314,7 +314,7 @@ type ContinuousScreeningDeltaTrack struct {
 	OrgId            uuid.UUID
 	ObjectType       string
 	ObjectId         string
-	ObjectInternalId uuid.UUID
+	ObjectInternalId *uuid.UUID
 	EntityId         string // ID in Screening Provider DB
 	Operation        DeltaTrackOperation
 	DatasetFileId    *uuid.UUID
@@ -326,7 +326,7 @@ type CreateContinuousScreeningDeltaTrack struct {
 	OrgId            uuid.UUID
 	ObjectType       string
 	ObjectId         string
-	ObjectInternalId uuid.UUID
+	ObjectInternalId *uuid.UUID
 	EntityId         string
 	Operation        DeltaTrackOperation
 }

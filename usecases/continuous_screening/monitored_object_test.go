@@ -1538,6 +1538,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningO
 				audit.ConfigStableId == suite.configStableId &&
 				audit.Action == models.ContinuousScreeningAuditActionRemove
 		})).Return(nil)
+	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
+			return input.Operation == models.DeltaTrackOperationDelete
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
