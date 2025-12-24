@@ -302,7 +302,7 @@ func (ft ContinuousScreeningDatasetFileType) String() string {
 type ContinuousScreeningDatasetFile struct {
 	Id        uuid.UUID
 	OrgId     uuid.UUID
-	FileType  string
+	FileType  ContinuousScreeningDatasetFileType
 	Version   string
 	FilePath  string
 	CreatedAt time.Time

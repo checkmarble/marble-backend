@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -98,6 +99,41 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigs(
 		OrderBy("id")
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningConfig)
+}
+
+func (repo *MarbleDbRepository) ListOrgsWithContinuousScreeningConfigs(ctx context.Context, exec Executor) ([]uuid.UUID, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id").
+		Distinct().
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
+		Where(squirrel.Eq{"enabled": true})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var tmp uuid.UUID
+	ids, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (uuid.UUID, error) {
+		if err := row.Scan(&tmp); err != nil {
+			return uuid.Nil, err
+		}
+
+		return tmp, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
 }
 
 // `enabled` is set to true by default (see: `20251105100110_continuous_screening_config.sql` migration)
@@ -833,4 +869,58 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningDeltaTrack(
 		)
 
 	return ExecBuilder(ctx, exec, query)
+}
+
+// Fetch entity IDs which have been changed and not processed yet.
+// Only fetch the last change for each entity ID, and consider previous changes have been processed in the same version.
+// CursorEntityId is the entity ID of the last change that has been processed.
+func (repo *MarbleDbRepository) ListContinuousScreeningLastChangeByEntityIds(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	limit uint64,
+	toDate time.Time,
+	cursorEntityId string,
+) ([]models.ContinuousScreeningDeltaTrack, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningDeltaTrackColumn...).
+		Options("DISTINCT ON (entity_id)").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS).
+		Where(squirrel.Eq{"dataset_file_id": nil}).
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Lt{"created_at": toDate})
+
+	if cursorEntityId != "" {
+		query = query.Where(squirrel.Gt{"entity_id": cursorEntityId})
+	}
+
+	query = query.OrderBy("entity_id, created_at DESC").
+		Limit(limit)
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDeltaTrack)
+}
+
+func (repo *MarbleDbRepository) GetContinuousScreeningLatestDatasetFileByOrgId(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	fileType models.ContinuousScreeningDatasetFileType,
+) (*models.ContinuousScreeningDatasetFile, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningDatasetFileColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES).
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Eq{"file_type": fileType.String()}).
+		OrderBy("created_at DESC").
+		Limit(1)
+
+	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetFile)
 }

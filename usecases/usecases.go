@@ -42,6 +42,7 @@ type Usecases struct {
 	aiAgentConfig               infra.AIAgentConfiguration
 	analyticsConfig             infra.AnalyticsConfig
 	datasetDeltafileBucketUrl   string
+	datasetBucketUrl            string
 }
 
 type Option func(*options)
@@ -164,6 +165,12 @@ func WithDatasetDeltafileBucketUrl(bucket string) Option {
 	}
 }
 
+func WithDatasetBucketUrl(bucket string) Option {
+	return func(o *options) {
+		o.datasetBucketUrl = bucket
+	}
+}
+
 type options struct {
 	appName                     string
 	apiVersion                  string
@@ -183,6 +190,7 @@ type options struct {
 	aiAgentConfig               infra.AIAgentConfiguration
 	analyticsConfig             infra.AnalyticsConfig
 	datasetDeltafileBucketUrl   string
+	datasetBucketUrl            string
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -209,6 +217,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		aiAgentConfig:               o.aiAgentConfig,
 		analyticsConfig:             o.analyticsConfig,
 		datasetDeltafileBucketUrl:   o.datasetDeltafileBucketUrl,
+		datasetBucketUrl:            o.datasetBucketUrl,
 	}
 }
 
@@ -471,5 +480,16 @@ func (usecases *Usecases) NewContinuousScreeningApplyDeltaFileWorker() *continuo
 		usecases.Repositories.BlobRepository,
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.datasetDeltafileBucketUrl,
+	)
+}
+
+func (usecases *Usecases) NewContinuousScreeningCreateFullDatasetWorker() *continuous_screening.CreateFullDatasetWorker {
+	return continuous_screening.NewCreateFullDatasetWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.Repositories.BlobRepository,
+		usecases.datasetBucketUrl,
 	)
 }
