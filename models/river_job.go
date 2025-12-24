@@ -122,16 +122,6 @@ func (ContinuousScreeningDoScreeningArgs) Kind() string {
 	return "continuous_screening_do_screening"
 }
 
-type ContinuousScreeningEvaluateNeedArgs struct {
-	OrgId      string   `json:"org_id"`
-	ObjectType string   `json:"object_type"`
-	ObjectIds  []string `json:"object_ids"`
-}
-
-func (ContinuousScreeningEvaluateNeedArgs) Kind() string {
-	return "continuous_screening_evaluate_need"
-}
-
 type ContinuousScreeningScanDatasetUpdatesArgs struct{}
 
 func (ContinuousScreeningScanDatasetUpdatesArgs) Kind() string {
