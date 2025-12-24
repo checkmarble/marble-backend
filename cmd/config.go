@@ -50,4 +50,5 @@ type WorkerConfig struct {
 	enableTracing               bool
 	datasetDeltafileBucketUrl   string
 	ScanDatasetUpdatesInterval  time.Duration
+	CreateFullDatasetInterval   time.Duration
 }

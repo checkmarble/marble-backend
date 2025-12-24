@@ -473,3 +473,10 @@ func (usecases *Usecases) NewContinuousScreeningApplyDeltaFileWorker() *continuo
 		usecases.datasetDeltafileBucketUrl,
 	)
 }
+
+func (usecases *Usecases) NewContinuousScreeningCreateFullDatasetWorker() *continuous_screening.CreateFullDatasetWorker {
+	return continuous_screening.NewCreateFullDatasetWorker(
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
+	)
+}

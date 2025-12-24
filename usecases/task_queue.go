@@ -230,3 +230,11 @@ func QueueContinuousScreeningDatasetUpdate() map[string]river.QueueConfig {
 	}
 	return queues
 }
+
+func QueueContinuousScreeningCreateFullDataset() map[string]river.QueueConfig {
+	queues := make(map[string]river.QueueConfig, 1)
+	queues[models.CONTINUOUS_SCREENING_CREATE_FULL_DATASET_QUEUE_NAME] = river.QueueConfig{
+		MaxWorkers: 1,
+	}
+	return queues
+}

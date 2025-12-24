@@ -101,6 +101,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		enableTracing:               utils.GetEnv("ENABLE_TRACING", false),
 		datasetDeltafileBucketUrl:   utils.GetEnv("DATASET_DELTAFILE_BUCKET_URL", ""),
 		ScanDatasetUpdatesInterval:  utils.GetEnvDuration("SCAN_DATASET_UPDATES_INTERVAL", 24*time.Hour),
+		CreateFullDatasetInterval:   utils.GetEnvDuration("CREATE_FULL_DATASET_INTERVAL", 24*time.Hour),
 	}
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
@@ -236,6 +237,11 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		continuous_screening.NewContinuousScreeningUpdateDatasetJob(
 			workerConfig.ScanDatasetUpdatesInterval),
 	)
+	maps.Copy(nonOrgQueues, usecases.QueueContinuousScreeningCreateFullDataset())
+	globalPeriodics = append(globalPeriodics,
+		continuous_screening.NewContinuousScreeningCreateFullDatasetJob(
+			workerConfig.CreateFullDatasetInterval),
+	)
 	if !metricCollectionConfig.Disabled {
 		maps.Copy(nonOrgQueues, usecases.QueueMetrics())
 		globalPeriodics = append(globalPeriodics,
@@ -325,6 +331,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
+	river.AddWorker(workers, adminUc.NewContinuousScreeningCreateFullDatasetWorker())
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
@@ -341,6 +348,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 	river.AddWorker(workers, uc.NewContinuousScreeningScanDatasetUpdatesWorker())
 	river.AddWorker(workers, uc.NewContinuousScreeningApplyDeltaFileWorker())
+	river.AddWorker(workers, uc.NewContinuousScreeningCreateFullDatasetWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -535,6 +543,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "continuous_screening_apply_delta_file":
 		return uc.NewContinuousScreeningApplyDeltaFileWorker().Work(ctx,
 			singleJobCreate[models.ContinuousScreeningApplyDeltaFileArgs](ctx, jobArgs))
+	case "continuous_screening_create_full_dataset":
+		return uc.NewContinuousScreeningCreateFullDatasetWorker().Work(ctx,
+			singleJobCreate[models.ContinuousScreeningCreateFullDatasetArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}
