@@ -200,7 +200,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 					OrgId:            config.OrgId,
 					ObjectType:       input.ObjectType,
 					ObjectId:         objectId,
-					ObjectInternalId: ingestedObjectInternalId,
+					ObjectInternalId: &ingestedObjectInternalId,
 					EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, objectId),
 					Operation:        deltaTrackOperation,
 				},
@@ -515,7 +515,7 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 	if err != nil {
 		return err
 	}
-	return uc.transactionFactory.TransactionInOrgSchema(ctx, orgId.String(), func(tx repositories.Transaction) error {
+	err = uc.transactionFactory.TransactionInOrgSchema(ctx, orgId.String(), func(tx repositories.Transaction) error {
 		if err := uc.clientDbRepository.DeleteContinuousScreeningObject(ctx, tx, input); err != nil {
 			return err
 		}
@@ -533,6 +533,23 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 			},
 		)
 	})
+	if err != nil {
+		return err
+	}
+
+	err = uc.repository.CreateContinuousScreeningDeltaTrack(ctx, exec, models.CreateContinuousScreeningDeltaTrack{
+		OrgId:            orgId,
+		ObjectType:       input.ObjectType,
+		ObjectId:         input.ObjectId,
+		ObjectInternalId: nil,
+		EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, input.ObjectId),
+		Operation:        models.DeltaTrackOperationDelete,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (uc *ContinuousScreeningUsecase) ListMonitoredObjects(
