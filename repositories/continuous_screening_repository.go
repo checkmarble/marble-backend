@@ -100,6 +100,41 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigs(
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningConfig)
 }
 
+func (repo *MarbleDbRepository) ListOrgsWithContinuousScreeningConfigs(ctx context.Context, exec Executor) ([]uuid.UUID, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id").
+		Distinct().
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
+		Where(squirrel.Eq{"enabled": true})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var tmp uuid.UUID
+	ids, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (uuid.UUID, error) {
+		if err := row.Scan(&tmp); err != nil {
+			return uuid.Nil, err
+		}
+
+		return tmp, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
 // `enabled` is set to true by default (see: `20251105100110_continuous_screening_config.sql` migration)
 func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Context, exec Executor,
 	input models.CreateContinuousScreeningConfig,
@@ -838,6 +873,8 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningDeltaTrack(
 func (repo *MarbleDbRepository) ListContinuousScreeningDeltaTracksPendingByOrg(
 	ctx context.Context,
 	exec Executor,
+	orgId uuid.UUID,
+	limit uint64,
 ) ([]models.ContinuousScreeningDeltaTrack, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -847,7 +884,9 @@ func (repo *MarbleDbRepository) ListContinuousScreeningDeltaTracksPendingByOrg(
 		Select(dbmodels.SelectContinuousScreeningDeltaTrackColumn...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS).
 		Where(squirrel.Eq{"dataset_file_id": nil}).
-		GroupBy("org_id")
+		Where(squirrel.Eq{"org_id": orgId}).
+		OrderBy("created_at").
+		Limit(limit)
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDeltaTrack)
 }
