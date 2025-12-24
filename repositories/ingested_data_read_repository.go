@@ -28,6 +28,13 @@ type IngestedDataReadRepository interface {
 		tableName string,
 		filters ...models.Filter,
 	) ([]string, error)
+	QueryIngestedObjectByInternalIds(
+		ctx context.Context,
+		exec Executor,
+		table models.Table,
+		internalObjectIds []uuid.UUID,
+		metadataFields ...string,
+	) ([]models.DataModelObject, error)
 	QueryIngestedObject(
 		ctx context.Context,
 		exec Executor,
@@ -241,6 +248,58 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 	}
 
 	return output, nil
+}
+
+// Return the ingested object by internal object ids
+// Use metadataFields to specify internal fields to return along with the data (Metadata field) (e.g. valid_from, id)
+func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByInternalIds(
+	ctx context.Context,
+	exec Executor,
+	table models.Table,
+	internalObjectIds []uuid.UUID,
+	metadataFields ...string,
+) ([]models.DataModelObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	columnNames := models.ColumnNames(table)
+
+	// id is mandatory for the query and to identify the object
+	if !slices.Contains(metadataFields, "id") {
+		metadataFields = append(metadataFields, "id")
+	}
+
+	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
+	objectsAsMap, err := queryWithDynamicColumnList(
+		ctx,
+		exec,
+		qualifiedTableName,
+		append(columnNames, metadataFields...),
+		[]models.Filter{{
+			LeftSql:    fmt.Sprintf("%s.id", qualifiedTableName),
+			Operator:   ast.FUNC_IS_IN_LIST,
+			RightValue: internalObjectIds,
+		}}...,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	ingestedObjects := make([]models.DataModelObject, len(objectsAsMap))
+	for i, object := range objectsAsMap {
+		ingestedObject := models.DataModelObject{Data: map[string]any{}, Metadata: map[string]any{}}
+		for fieldName, fieldValue := range object {
+			if slices.Contains(columnNames, fieldName) {
+				ingestedObject.Data[fieldName] = fieldValue
+			} else {
+				ingestedObject.Metadata[fieldName] = fieldValue
+			}
+		}
+		ingestedObjects[i] = ingestedObject
+	}
+
+	return ingestedObjects, nil
 }
 
 // Return the ingested object by object id
