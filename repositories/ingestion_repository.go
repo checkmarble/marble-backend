@@ -41,7 +41,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 
 	mostRecentObjectIds, mostRecentPayloads := mostRecentPayloadsByObjectId(payloads)
 
-	fieldsToLoad := fieldsToLoadFromDb(payloads)
+	fieldsToLoad := models.ColumnNames(table)
 	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, tx,
 		mostRecentObjectIds, table, fieldsToLoad)
 	if err != nil {
@@ -82,27 +82,6 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 	}
 
 	return payloadsInsertedObjectId, existingObjectFieldsChanged, nil
-}
-
-// Try to only load the fields that are actually missing from the payloads (in the case of a partial update).
-// The same method is used for the POST and PATCH endpoints, but if no fields are missing then there is a
-// covering index on the object_id and updated_at columns that can be used.
-// This makes the POST endpoint possibly faster to respond than the PATCH endpoint for ingestion (when there
-// is data present and some payload have missing fields).
-func fieldsToLoadFromDb(payloads []models.ClientObject) []string {
-	missingFields := make(map[string]struct{})
-	missingFields["object_id"] = struct{}{}
-	missingFields["updated_at"] = struct{}{}
-	for _, payload := range payloads {
-		for _, field := range payload.MissingFieldsToLookup {
-			missingFields[field.Field.Name] = struct{}{}
-		}
-	}
-	missingFieldsList := make([]string, 0, len(missingFields))
-	for field := range missingFields {
-		missingFieldsList = append(missingFieldsList, field)
-	}
-	return missingFieldsList
 }
 
 func objectIdAndUpdatedAtFromPayload(payload models.ClientObject) (string, time.Time) {
@@ -221,8 +200,8 @@ func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(
 // - a list of IDs of objects that should be marked as obsolete
 // - a map of validation errors for each payload (if any required missing fields are also missing in the ingested objects)
 // - a map of object_id to list of fields that the value was changed
-// The "previouslyIngestedObjects" slice contains objects where the "data" map only contains the fields that were loaded from the DB,
-// not necessarily all the fields that are present in the data model.
+// The "previouslyIngestedObjects" slice contains objects where the "data" map contains all fields from the data model
+// that were loaded from the DB (i.e., all columns selected via models.ColumnNames(table)).
 func compareAndMergePayloadsWithIngestedObjects(
 	payloads []models.ClientObject,
 	previouslyIngestedObjects []ingestedObject,
