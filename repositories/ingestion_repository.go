@@ -220,6 +220,18 @@ func compareAndMergePayloadsWithIngestedObjects(
 		objectId, updatedAt := objectIdAndUpdatedAtFromPayload(payload)
 
 		existingObject, exists := previouslyIngestedMap[objectId]
+
+		// Check if the payload has any fields that are different from the previously ingested object
+		var fieldsChangedValue []string
+		if exists {
+			for fieldName, fieldValue := range payload.Data {
+				if !reflect.DeepEqual(fieldValue, existingObject.data[fieldName]) {
+					fieldsChangedValue = append(fieldsChangedValue, fieldName)
+				}
+			}
+		}
+
+		// Merge the payload with the previously ingested object to fill in the missing fields
 		for _, field := range payload.MissingFieldsToLookup {
 			foundInPreviousVersion := exists && existingObject.data[field.Field.Name] != nil
 			if !field.Field.Nullable && !foundInPreviousVersion {
@@ -232,15 +244,6 @@ func compareAndMergePayloadsWithIngestedObjects(
 			}
 			// In any case, add the field to the payload
 			payload.Data[field.Field.Name] = existingObject.data[field.Field.Name]
-		}
-
-		var fieldsChangedValue []string
-		if exists {
-			for fieldName, fieldValue := range payload.Data {
-				if !reflect.DeepEqual(fieldValue, existingObject.data[fieldName]) {
-					fieldsChangedValue = append(fieldsChangedValue, fieldName)
-				}
-			}
 		}
 
 		if !exists {

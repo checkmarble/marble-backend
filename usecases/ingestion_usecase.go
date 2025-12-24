@@ -721,6 +721,10 @@ func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 		}
 	}
 
+	if len(objectIds) == 0 {
+		// No objects with changed FTM fields, nothing to look up or enqueue
+		return nil
+	}
 	monitoredObjects, err := usecase.continuousScreeningClientRepository.ListMonitoredObjectsByObjectIds(
 		ctx,
 		clientDbExec,
