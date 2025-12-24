@@ -27,7 +27,7 @@ type PgExecutorStub struct {
 }
 
 func (stub ExecutorFactoryStub) NewClientDbExecutor(ctx context.Context, organizationId string) (repositories.Executor, error) {
-	return NewDbExecFactoryStub(stub.Mock).withClientSchema(), nil
+	return nil, nil
 }
 
 func (stub PgExecutorStub) Begin(ctx context.Context) (repositories.Transaction, error) {
