@@ -318,6 +318,15 @@ func (m *ContinuousScreeningRepository) UpdateDataModelField(
 	return args.Error(0)
 }
 
+func (m *ContinuousScreeningRepository) CreateContinuousScreeningDeltaTrack(
+	ctx context.Context,
+	exec repositories.Executor,
+	input models.CreateContinuousScreeningDeltaTrack,
+) error {
+	args := m.Called(ctx, exec, input)
+	return args.Error(0)
+}
+
 type ContinuousScreeningClientDbRepository struct {
 	mock.Mock
 }
