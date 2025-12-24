@@ -247,3 +247,59 @@ func AdaptContinuousScreeningJobError(dto DBContinuousScreeningJobError) (models
 		CreatedAt:   dto.CreatedAt,
 	}, nil
 }
+
+type DBContinuousScreeningDatasetFile struct {
+	Id        uuid.UUID `db:"id"`
+	OrgId     uuid.UUID `db:"org_id"`
+	FileType  string    `db:"file_type"`
+	Version   string    `db:"version"`
+	FilePath  string    `db:"file_path"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+}
+
+const TABLE_CONTINUOUS_SCREENING_DATASET_FILES = "continuous_screening_dataset_files"
+
+func AdaptContinuousScreeningDatasetFile(dto DBContinuousScreeningDatasetFile) (models.ContinuousScreeningDatasetFile, error) {
+	return models.ContinuousScreeningDatasetFile{
+		Id:        dto.Id,
+		OrgId:     dto.OrgId,
+		FileType:  dto.FileType,
+		Version:   dto.Version,
+		FilePath:  dto.FilePath,
+		CreatedAt: dto.CreatedAt,
+		UpdatedAt: dto.UpdatedAt,
+	}, nil
+}
+
+type DBContinuousScreeningDeltaTrack struct {
+	Id               uuid.UUID  `db:"id"`
+	OrgId            uuid.UUID  `db:"org_id"`
+	ObjectType       string     `db:"object_type"`
+	ObjectId         string     `db:"object_id"`
+	ObjectInternalId uuid.UUID  `db:"object_internal_id"`
+	EntityId         string     `db:"entity_id"`
+	Operation        string     `db:"operation"`
+	DatasetFileId    *uuid.UUID `db:"dataset_file_id"`
+	CreatedAt        time.Time  `db:"created_at"`
+	UpdatedAt        time.Time  `db:"updated_at"`
+}
+
+const TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS = "continuous_screening_delta_tracks"
+
+var SelectContinuousScreeningDeltaTrackColumn = utils.ColumnList[DBContinuousScreeningDeltaTrack]()
+
+func AdaptContinuousScreeningDeltaTrack(dto DBContinuousScreeningDeltaTrack) (models.ContinuousScreeningDeltaTrack, error) {
+	return models.ContinuousScreeningDeltaTrack{
+		Id:               dto.Id,
+		OrgId:            dto.OrgId,
+		ObjectType:       dto.ObjectType,
+		ObjectId:         dto.ObjectId,
+		ObjectInternalId: dto.ObjectInternalId,
+		EntityId:         dto.EntityId,
+		Operation:        models.DeltaTrackOperationFrom(dto.Operation),
+		DatasetFileId:    dto.DatasetFileId,
+		CreatedAt:        dto.CreatedAt,
+		UpdatedAt:        dto.UpdatedAt,
+	}, nil
+}

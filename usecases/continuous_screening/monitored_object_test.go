@@ -173,6 +173,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)
+	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
+			return input.Operation == models.DeltaTrackOperationAdd
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -273,6 +277,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)
+	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
+			return input.Operation == models.DeltaTrackOperationAdd
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -544,6 +552,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)
+	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
+			return input.Operation == models.DeltaTrackOperationUpdate
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -753,6 +765,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			},
 		},
 	}, nil)
+	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
+			return input.Operation == models.DeltaTrackOperationAdd
+		})).Return(nil)
 
 	// Mock case creation
 	caseId := uuid.New()
@@ -878,6 +894,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			},
 		},
 	}, nil)
+	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
+			return input.Operation == models.DeltaTrackOperationAdd
+		})).Return(nil)
 
 	// Mock case creation to fail
 	suite.caseEditor.On("CreateCase", mock.Anything, mock.Anything, "", mock.MatchedBy(func(
@@ -1435,6 +1455,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)
+	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
+			return input.Operation == models.DeltaTrackOperationAdd
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
