@@ -176,6 +176,10 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
 		screeningWithMatches, config, suite.objectType, suite.objectId, ingestedObjectInternalId,
 		models.ContinuousScreeningTriggerTypeObjectUpdated).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
+			return input.Operation == models.DeltaTrackOperationUpdate
+		})).Return(nil)
 
 	// Execute
 	worker := suite.makeWorker()
@@ -299,6 +303,10 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 	// Return empty case for simplicity because it is not used for this test
 	suite.usecase.On("HandleCaseCreation", suite.ctx, mock.Anything, config, suite.objectId,
 		continuousScreeningWithMatches).Return(models.Case{}, nil)
+	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
+			return input.Operation == models.DeltaTrackOperationUpdate
+		})).Return(nil)
 
 	// Execute
 	worker := suite.makeWorker()
@@ -496,6 +504,10 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 	// Return empty case for simplicity because it is not used for this test
 	suite.usecase.On("HandleCaseCreation", suite.ctx, mock.Anything, config, suite.objectId,
 		continuousScreeningWithMatches).Return(models.Case{}, nil)
+	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
+			return input.Operation == models.DeltaTrackOperationUpdate
+		})).Return(nil)
 
 	// Execute
 	worker := suite.makeWorker()

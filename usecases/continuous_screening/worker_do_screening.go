@@ -38,6 +38,13 @@ type doScreeningWorkerRepository interface {
 		status *models.ScreeningStatus,
 		inCase bool,
 	) (*models.ContinuousScreeningWithMatches, error)
+
+	// Dataset files
+	CreateContinuousScreeningDeltaTrack(
+		ctx context.Context,
+		exec repositories.Executor,
+		input models.CreateContinuousScreeningDeltaTrack,
+	) error
 }
 
 type doScreeningWorkerClientDbRepository interface {
@@ -235,6 +242,18 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 			ingestedObjectInternalId,
 			job.Args.TriggerType,
 		)
+		if err != nil {
+			return err
+		}
+
+		err = w.repo.CreateContinuousScreeningDeltaTrack(ctx, tx, models.CreateContinuousScreeningDeltaTrack{
+			OrgId:            config.OrgId,
+			ObjectType:       job.Args.ObjectType,
+			ObjectId:         monitoredObject.ObjectId,
+			ObjectInternalId: &ingestedObjectInternalId,
+			EntityId:         deltaTrackEntityIdBuilder(job.Args.ObjectType, monitoredObject.ObjectId),
+			Operation:        models.DeltaTrackOperationUpdate,
+		})
 		if err != nil {
 			return err
 		}

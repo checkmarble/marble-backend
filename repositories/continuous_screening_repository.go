@@ -834,20 +834,3 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningDeltaTrack(
 
 	return ExecBuilder(ctx, exec, query)
 }
-
-func (repo *MarbleDbRepository) ListContinuousScreeningDeltaTracksPendingByOrg(
-	ctx context.Context,
-	exec Executor,
-) ([]models.ContinuousScreeningDeltaTrack, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
-	}
-
-	query := NewQueryBuilder().
-		Select(dbmodels.SelectContinuousScreeningDeltaTrackColumn...).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS).
-		Where(squirrel.Eq{"dataset_file_id": nil}).
-		GroupBy("org_id")
-
-	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDeltaTrack)
-}
