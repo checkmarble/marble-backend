@@ -227,3 +227,111 @@ type CreateContinuousScreeningJobError struct {
 	UpdateJobId uuid.UUID
 	Details     json.RawMessage
 }
+
+type DeltaTrackOperation int
+
+const (
+	DeltaTrackOperationAdd DeltaTrackOperation = iota
+	DeltaTrackOperationUpdate
+	DeltaTrackOperationDelete
+	DeltaTrackOperationUnknown
+)
+
+func (o DeltaTrackOperation) String() string {
+	switch o {
+	case DeltaTrackOperationAdd:
+		return "add"
+	case DeltaTrackOperationUpdate:
+		return "update"
+	case DeltaTrackOperationDelete:
+		return "delete"
+	default:
+		return "unknown"
+	}
+}
+
+func DeltaTrackOperationFrom(s string) DeltaTrackOperation {
+	switch s {
+	case "add":
+		return DeltaTrackOperationAdd
+	case "update":
+		return DeltaTrackOperationUpdate
+	case "delete":
+		return DeltaTrackOperationDelete
+	default:
+		return DeltaTrackOperationUnknown
+	}
+}
+
+type ContinuousScreeningDatasetFileStatus int
+
+const (
+	ContinuousScreeningDatasetFileStatusPending ContinuousScreeningDatasetFileStatus = iota
+	ContinuousScreeningDatasetFileStatusProcessing
+	ContinuousScreeningDatasetFileStatusUploaded
+	ContinuousScreeningDatasetFileStatusFailed
+	ContinuousScreeningDatasetFileStatusUnknown
+)
+
+func ContinuousScreeningDatasetFileStatusFrom(s string) ContinuousScreeningDatasetFileStatus {
+	switch s {
+	case "pending":
+		return ContinuousScreeningDatasetFileStatusPending
+	case "processing":
+		return ContinuousScreeningDatasetFileStatusProcessing
+	case "uploaded":
+		return ContinuousScreeningDatasetFileStatusUploaded
+	case "failed":
+		return ContinuousScreeningDatasetFileStatusFailed
+	default:
+		return ContinuousScreeningDatasetFileStatusUnknown
+	}
+}
+
+func (s ContinuousScreeningDatasetFileStatus) String() string {
+	switch s {
+	case ContinuousScreeningDatasetFileStatusPending:
+		return "pending"
+	case ContinuousScreeningDatasetFileStatusProcessing:
+		return "processing"
+	case ContinuousScreeningDatasetFileStatusUploaded:
+		return "uploaded"
+	case ContinuousScreeningDatasetFileStatusFailed:
+		return "failed"
+	default:
+		return "unknown"
+	}
+}
+
+type ContinuousScreeningDatasetFile struct {
+	Id        uuid.UUID
+	OrgId     uuid.UUID
+	FileType  string
+	Version   string
+	FilePath  string
+	Status    ContinuousScreeningDatasetFileStatus
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type ContinuousScreeningDeltaTrack struct {
+	Id               uuid.UUID
+	OrgId            uuid.UUID
+	ObjectType       string
+	ObjectId         string
+	ObjectInternalId uuid.UUID
+	EntityId         string // ID in Screening Provider DB
+	Operation        DeltaTrackOperation
+	DatasetFileId    *uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type CreateContinuousScreeningDeltaTrack struct {
+	OrgId            uuid.UUID
+	ObjectType       string
+	ObjectId         string
+	ObjectInternalId uuid.UUID
+	EntityId         string
+	Operation        DeltaTrackOperation
+}
