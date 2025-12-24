@@ -8,7 +8,6 @@ create table continuous_screening_dataset_files (
     file_type text not null,
     version text not null,
     file_path text not null,
-    status text not null check (status in ('pending', 'processing', 'uploaded', 'failed')),
     created_at timestamp with time zone not null default now(),
     updated_at timestamp with time zone not null default now(),
 
@@ -24,13 +23,13 @@ create table continuous_screening_delta_tracks (
     object_id text not null,
     object_internal_id uuid,
     entity_id text not null,
-    operation text not null,
+    operation text not null constraint delta_tracks_operation_check check (operation in ('add', 'update', 'delete')),    
     dataset_file_id uuid,
     created_at timestamp with time zone not null default now(),
     updated_at timestamp with time zone not null default now(),
 
-    constraint fk_org foreign key (org_id) references organizations (id),
-    constraint fk_dataset_file_id foreign key (dataset_file_id) references continuous_screening_dataset_files (id)
+    constraint fk_org foreign key (org_id) references organizations (id) on delete cascade,
+    constraint fk_dataset_file_id foreign key (dataset_file_id) references continuous_screening_dataset_files (id) on delete cascade
 );
 
 -- Get all unprocessed delta tracks grouped by org
