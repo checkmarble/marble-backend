@@ -365,3 +365,11 @@ type CreateContinuousScreeningDeltaTrack struct {
 	EntityId         string
 	Operation        DeltaTrackOperation
 }
+
+type CreateContinuousScreeningDatasetFile struct {
+	OrgId    uuid.UUID
+	FileType ContinuousScreeningDatasetFileType
+	Version  string
+	FilePath string
+	Status   ContinuousScreeningDatasetFileStatus
+}
