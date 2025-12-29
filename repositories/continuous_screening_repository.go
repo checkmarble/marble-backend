@@ -924,3 +924,53 @@ func (repo *MarbleDbRepository) GetContinuousScreeningLatestDatasetFileByOrgId(
 
 	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetFile)
 }
+
+func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetFile(
+	ctx context.Context,
+	exec Executor,
+	input models.CreateContinuousScreeningDatasetFile,
+) (models.ContinuousScreeningDatasetFile, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningDatasetFile{}, err
+	}
+
+	query := NewQueryBuilder().
+		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES).
+		Suffix("RETURNING *").
+		Columns(
+			"org_id",
+			"file_type",
+			"version",
+			"file_path",
+		).
+		Values(
+			input.OrgId,
+			input.FileType.String(),
+			input.Version,
+			input.FilePath,
+		)
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetFile)
+}
+
+func (repo *MarbleDbRepository) UpdateDeltaTracksDatasetFileId(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	datasetFileId uuid.UUID,
+	toDate time.Time,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS).
+		Set("dataset_file_id", datasetFileId).
+		Set("updated_at", squirrel.Expr("NOW()")).
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Eq{"dataset_file_id": nil}).
+		Where(squirrel.Lt{"created_at": toDate})
+
+	return ExecBuilder(ctx, exec, query)
+}

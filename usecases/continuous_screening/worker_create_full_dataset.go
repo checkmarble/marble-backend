@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -70,6 +71,20 @@ type createFullDatasetWorkerRepository interface {
 		fetchEnumValues bool,
 		useCache bool,
 	) (models.DataModel, error)
+
+	CreateContinuousScreeningDatasetFile(
+		ctx context.Context,
+		exec repositories.Executor,
+		input models.CreateContinuousScreeningDatasetFile,
+	) (models.ContinuousScreeningDatasetFile, error)
+
+	UpdateDeltaTracksDatasetFileId(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		datasetFileId uuid.UUID,
+		toDate time.Time,
+	) error
 }
 
 type createFullDatasetWorkerIngestedDataReader interface {
@@ -270,6 +285,36 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context, ex
 		cursorEntityId = deltaTracks[len(deltaTracks)-1].EntityId
 	}
 
+	// Create dataset file record and update delta tracks in a transaction
+	// to ensure consistency
+	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// Create a new dataset file record
+		datasetFile, err := w.repo.CreateContinuousScreeningDatasetFile(ctx, tx,
+			models.CreateContinuousScreeningDatasetFile{
+				OrgId:    orgId,
+				FileType: models.ContinuousScreeningDatasetFileTypeFull,
+				Version:  version,
+				FilePath: fullDatasetFileName,
+			})
+		if err != nil {
+			return errors.Wrap(err, "failed to create dataset file record")
+		}
+
+		// Update all delta tracks without dataset_file_id for this org to reference the new dataset file
+		err = w.repo.UpdateDeltaTracksDatasetFileId(ctx, tx, orgId, datasetFile.Id, now)
+		if err != nil {
+			return errors.Wrap(err, "failed to update delta tracks dataset file id")
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	logger.DebugContext(ctx, "Successfully created first full dataset",
+		"orgId", orgId, "filePath", fullDatasetFileName)
+
 	return nil
 }
 
@@ -284,9 +329,54 @@ func buildDatasetEntity(orgId uuid.UUID, table models.Table,
 	track models.ContinuousScreeningDeltaTrack, ingestedObjectData models.DataModelObject,
 ) datasetEntity {
 	properties := make(map[string]any)
-	for _, field := range table.Fields {
+
+	// Sort field names for deterministic output
+	fieldNames := make([]string, 0, len(table.Fields))
+	for name := range table.Fields {
+		fieldNames = append(fieldNames, name)
+	}
+	sort.Strings(fieldNames)
+
+	for _, fieldName := range fieldNames {
+		field := table.Fields[fieldName]
 		if field.FTMProperty != nil {
-			properties[field.FTMProperty.String()] = ingestedObjectData.Data[field.Name]
+			val := ingestedObjectData.Data[field.Name]
+			if val == nil {
+				continue
+			}
+
+			var strVal string
+			switch v := val.(type) {
+			case string:
+				strVal = v
+			case time.Time:
+				if field.DataType == models.Timestamp {
+					strVal = v.Format(time.RFC3339)
+				} else {
+					strVal = v.Format("2006-01-02")
+				}
+			case int, int8, int16, int32, int64:
+				strVal = fmt.Sprintf("%d", v)
+			case uint, uint8, uint16, uint32, uint64:
+				strVal = fmt.Sprintf("%d", v)
+			case float32, float64:
+				strVal = fmt.Sprintf("%g", v)
+			case bool:
+				strVal = fmt.Sprintf("%t", v)
+			default:
+				strVal = fmt.Sprintf("%v", v)
+			}
+
+			if strVal != "" {
+				propertyKey := field.FTMProperty.String()
+				if existing, ok := properties[propertyKey]; ok {
+					if list, ok := existing.([]string); ok {
+						properties[propertyKey] = append(list, strVal)
+					}
+				} else {
+					properties[propertyKey] = []string{strVal}
+				}
+			}
 		}
 	}
 
