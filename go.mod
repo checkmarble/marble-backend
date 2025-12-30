@@ -75,7 +75,7 @@ require (
 	golang.org/x/text v0.32.0
 	golang.org/x/time v0.14.0
 	google.golang.org/api v0.257.0
-	google.golang.org/genai v1.36.0
+	google.golang.org/genai v1.39.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
 )
