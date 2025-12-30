@@ -267,7 +267,6 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context, ex
 					deltaTrack.ObjectType, deltaTrack.ObjectInternalId)
 			}
 			datasetEntity := buildDatasetEntity(
-				orgId,
 				dataModel.Tables[deltaTrack.ObjectType],
 				deltaTrack,
 				ingestedObjectData,
@@ -321,12 +320,13 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context, ex
 type datasetEntity struct {
 	Id         string         `json:"id"`
 	Schema     string         `json:"schema"`
-	Datasets   []string       `json:"datasets"`
 	Properties map[string]any `json:"properties"`
 }
 
-func buildDatasetEntity(orgId uuid.UUID, table models.Table,
-	track models.ContinuousScreeningDeltaTrack, ingestedObjectData models.DataModelObject,
+func buildDatasetEntity(
+	table models.Table,
+	track models.ContinuousScreeningDeltaTrack,
+	ingestedObjectData models.DataModelObject,
 ) datasetEntity {
 	properties := make(map[string]any)
 
@@ -383,7 +383,6 @@ func buildDatasetEntity(orgId uuid.UUID, table models.Table,
 	return datasetEntity{
 		Id:         track.EntityId,
 		Schema:     table.FTMEntity.String(),
-		Datasets:   []string{orgId.String()},
 		Properties: properties,
 	}
 }
