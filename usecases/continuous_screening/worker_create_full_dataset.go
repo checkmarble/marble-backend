@@ -1,9 +1,11 @@
 package continuous_screening
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
 	"time"
 
@@ -15,15 +17,42 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-set/v2"
 	"github.com/riverqueue/river"
+	"gopkg.in/yaml.v3"
 )
 
 const (
 	MaxDeltaTracksPerOrg   = 1000
-	ManifestFileName       = "manifest.json"
+	ManifestFileName       = "manifest.yml"
 	DeltaFilesName         = "delta.json"
 	FullDatasetFolderName  = "full-dataset"
 	DeltaDatasetFolderName = "delta-dataset"
 )
+
+type ManifestDataset struct {
+	Name    string `yaml:"name"`    // org UUID
+	Path    string `yaml:"path"`    // path to entities file
+	Version string `yaml:"version"` // version string e.g. "20251230-001"
+}
+
+type Manifest struct {
+	Catalogs []any             `yaml:"catalogs,omitempty"`
+	Datasets []ManifestDataset `yaml:"datasets"`
+}
+
+func (m *Manifest) upsertDataset(orgId string, datasetFile models.ContinuousScreeningDatasetFile) {
+	for i, ds := range m.Datasets {
+		if ds.Name == orgId {
+			m.Datasets[i].Path = datasetFile.FilePath
+			m.Datasets[i].Version = datasetFile.Version
+			return
+		}
+	}
+	m.Datasets = append(m.Datasets, ManifestDataset{
+		Name:    orgId,
+		Path:    datasetFile.FilePath,
+		Version: datasetFile.Version,
+	})
+}
 
 // Periodic job
 func NewContinuousScreeningCreateFullDatasetJob(interval time.Duration) *river.PeriodicJob {
@@ -137,10 +166,15 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	exec := w.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Creating full dataset", "job", job)
+
 	orgIdsWithConfigs, err := w.repo.ListOrgsWithContinuousScreeningConfigs(ctx, exec)
 	if err != nil {
 		return errors.Wrap(err, "failed to list orgs with continuous screening configs")
 	}
+
+	// Map to store dataset files from handleFirstFullDataset for manifest update
+	orgDatasetFiles := make(map[uuid.UUID]models.ContinuousScreeningDatasetFile)
+
 	for _, orgId := range orgIdsWithConfigs {
 		// Check if the dataset file for this org exists
 		datasetFile, err := w.repo.GetContinuousScreeningLatestDatasetFileByOrgId(ctx, exec,
@@ -151,13 +185,24 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 
 		if datasetFile == nil {
 			logger.DebugContext(ctx, "No dataset file found for org, creating new one", "orgId", orgId)
-			err = w.handleFirstFullDataset(ctx, exec, orgId)
+			newDatasetFile, err := w.handleFirstFullDataset(ctx, exec, orgId)
 			if err != nil {
 				return errors.Wrap(err, "failed to handle first full dataset")
 			}
+			orgDatasetFiles[orgId] = newDatasetFile
 		} else {
 			logger.DebugContext(ctx, "Dataset file found for org, patching it and creating new version",
 				"orgId", orgId, "datasetFile", datasetFile)
+			// TODO: handle patching existing dataset and storing datasetFile
+		}
+	}
+
+	// Update manifest with all org dataset files
+	if len(orgDatasetFiles) > 0 {
+		if err := w.updateManifest(ctx, orgDatasetFiles); err != nil {
+			logger.ErrorContext(ctx, "Failed to update manifest", "error", err)
+			// Don't return error to avoid job retries because the retry will not update the manifest
+			return nil
 		}
 	}
 
@@ -165,18 +210,22 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	return nil
 }
 
-func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) error {
+func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
+	exec repositories.Executor, orgId uuid.UUID,
+) (models.ContinuousScreeningDatasetFile, error) {
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Creating first full dataset", "orgId", orgId)
 
 	clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, orgId.String())
 	if err != nil {
-		return errors.Wrap(err, "failed to get client db executor")
+		return models.ContinuousScreeningDatasetFile{},
+			errors.Wrap(err, "failed to get client db executor")
 	}
 
 	dataModel, err := w.repo.GetDataModel(ctx, exec, orgId.String(), false, false)
 	if err != nil {
-		return errors.Wrap(err, "failed to get data model")
+		return models.ContinuousScreeningDatasetFile{},
+			errors.Wrap(err, "failed to get data model")
 	}
 
 	now := time.Now()
@@ -188,7 +237,8 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context, ex
 
 	blob, err := w.blobRepository.OpenStream(ctx, w.bucketUrl, fullDatasetFileName, fileName)
 	if err != nil {
-		return errors.Wrap(err, "failed to open stream")
+		return models.ContinuousScreeningDatasetFile{},
+			errors.Wrap(err, "failed to open stream")
 	}
 	defer blob.Close()
 
@@ -202,7 +252,8 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context, ex
 			cursorEntityId,
 		)
 		if err != nil {
-			return errors.Wrap(err, "failed to list continuous screening last change by entity ids")
+			return models.ContinuousScreeningDatasetFile{},
+				errors.Wrap(err, "failed to list continuous screening last change by entity ids")
 		}
 
 		if len(deltaTracks) == 0 {
@@ -229,19 +280,21 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context, ex
 			dataModelTable, ok := dataModel.Tables[objectType]
 			// Check datamodel is correctly configured for the use case
 			if !ok {
-				return errors.Wrapf(models.NotFoundError,
+				return models.ContinuousScreeningDatasetFile{}, errors.Wrapf(models.NotFoundError,
 					"table %s not found in data model", objectType)
 			}
 			if err := checkDataModelTableAndFieldsConfiguration(dataModelTable); err != nil {
-				return errors.Wrap(err, "data model table is not correctly configured for the use case")
+				return models.ContinuousScreeningDatasetFile{},
+					errors.Wrap(err, "data model table is not correctly configured for the use case")
 			}
 			ingestedObjectsFromDb, err := w.ingestedDataReader.QueryIngestedObjectByInternalIds(
 				ctx, clientDbExec, dataModelTable, objectInternalIds)
 			if err != nil {
-				return errors.Wrap(err, "failed to query ingested objects by internal ids")
+				return models.ContinuousScreeningDatasetFile{},
+					errors.Wrap(err, "failed to query ingested objects by internal ids")
 			}
 			if len(ingestedObjectsFromDb) != len(objectInternalIds) {
-				return errors.Wrapf(models.NotFoundError,
+				return models.ContinuousScreeningDatasetFile{}, errors.Wrapf(models.NotFoundError,
 					"number of ingested objects by internal ids %d does not match the number of object internal ids %d",
 					len(ingestedObjectsFromDb), len(objectInternalIds))
 			}
@@ -262,7 +315,7 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context, ex
 			}
 			ingestedObjectData, ok := ingestedObjectsByType[deltaTrack.ObjectType][*deltaTrack.ObjectInternalId]
 			if !ok {
-				return errors.Wrapf(models.NotFoundError,
+				return models.ContinuousScreeningDatasetFile{}, errors.Wrapf(models.NotFoundError,
 					"ingested object not found for object type %s and object internal id %s",
 					deltaTrack.ObjectType, deltaTrack.ObjectInternalId)
 			}
@@ -273,11 +326,13 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context, ex
 			)
 			entityJson, err := json.Marshal(datasetEntity)
 			if err != nil {
-				return errors.Wrap(err, "failed to marshal dataset entity")
+				return models.ContinuousScreeningDatasetFile{},
+					errors.Wrap(err, "failed to marshal dataset entity")
 			}
 			_, err = blob.Write(append(entityJson, '\n'))
 			if err != nil {
-				return errors.Wrap(err, "failed to write dataset entity to blob")
+				return models.ContinuousScreeningDatasetFile{},
+					errors.Wrap(err, "failed to write dataset entity to blob")
 			}
 		}
 
@@ -286,6 +341,7 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context, ex
 
 	// Create dataset file record and update delta tracks in a transaction
 	// to ensure consistency
+	var createdDatasetFile models.ContinuousScreeningDatasetFile
 	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		// Create a new dataset file record
 		datasetFile, err := w.repo.CreateContinuousScreeningDatasetFile(ctx, tx,
@@ -305,14 +361,78 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context, ex
 			return errors.Wrap(err, "failed to update delta tracks dataset file id")
 		}
 
+		createdDatasetFile = datasetFile
 		return nil
 	})
 	if err != nil {
-		return err
+		return models.ContinuousScreeningDatasetFile{}, err
 	}
 
 	logger.DebugContext(ctx, "Successfully created first full dataset",
 		"orgId", orgId, "filePath", fullDatasetFileName)
+
+	return createdDatasetFile, nil
+}
+
+func (w *CreateFullDatasetWorker) getOrCreateManifest(ctx context.Context) (Manifest, error) {
+	logger := utils.LoggerFromContext(ctx)
+
+	blob, err := w.blobRepository.GetBlob(ctx, w.bucketUrl, ManifestFileName)
+	if err != nil {
+		if errors.Is(err, models.NotFoundError) {
+			logger.DebugContext(ctx, "Manifest file not found, creating new one")
+			return Manifest{Datasets: []ManifestDataset{}}, nil
+		}
+		return Manifest{}, errors.Wrap(err, "failed to get manifest blob")
+	}
+	defer blob.ReadCloser.Close()
+
+	data, err := io.ReadAll(blob.ReadCloser)
+	if err != nil {
+		return Manifest{}, errors.Wrap(err, "failed to read manifest blob")
+	}
+
+	var manifest Manifest
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		return Manifest{}, errors.Wrap(err, "failed to unmarshal manifest")
+	}
+
+	return manifest, nil
+}
+
+// Update or create manifest file with organization dataset information (version and path)
+func (w *CreateFullDatasetWorker) updateManifest(
+	ctx context.Context,
+	orgDatasetFiles map[uuid.UUID]models.ContinuousScreeningDatasetFile,
+) error {
+	logger := utils.LoggerFromContext(ctx)
+
+	manifest, err := w.getOrCreateManifest(ctx)
+	if err != nil {
+		return err
+	}
+
+	for orgId, datasetFile := range orgDatasetFiles {
+		manifest.upsertDataset(orgId.String(), datasetFile)
+	}
+
+	manifestData, err := yaml.Marshal(&manifest)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal manifest")
+	}
+
+	writer, err := w.blobRepository.OpenStream(ctx, w.bucketUrl, ManifestFileName, ManifestFileName)
+	if err != nil {
+		return errors.Wrap(err, "failed to open stream for manifest")
+	}
+	defer writer.Close()
+
+	if _, err := io.Copy(writer, bytes.NewReader(manifestData)); err != nil {
+		return errors.Wrap(err, "failed to write manifest")
+	}
+
+	logger.DebugContext(ctx, "Successfully updated manifest",
+		"datasetsCount", len(manifest.Datasets))
 
 	return nil
 }
