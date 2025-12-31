@@ -327,6 +327,19 @@ func (m *ContinuousScreeningRepository) CreateContinuousScreeningDeltaTrack(
 	return args.Error(0)
 }
 
+func (m *ContinuousScreeningRepository) GetContinuousScreeningLastDeltaTrackByEntityId(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	entityId string,
+) (*models.ContinuousScreeningDeltaTrack, error) {
+	args := m.Called(ctx, exec, orgId, entityId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.ContinuousScreeningDeltaTrack), args.Error(1)
+}
+
 type ContinuousScreeningClientDbRepository struct {
 	mock.Mock
 }

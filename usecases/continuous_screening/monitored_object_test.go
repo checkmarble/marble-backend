@@ -173,6 +173,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)
+	suite.repository.On("GetContinuousScreeningLastDeltaTrackByEntityId", mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything).Return((*models.ContinuousScreeningDeltaTrack)(nil), nil)
 	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
 			return input.Operation == models.DeltaTrackOperationAdd
@@ -277,6 +279,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)
+	suite.repository.On("GetContinuousScreeningLastDeltaTrackByEntityId", mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything).Return((*models.ContinuousScreeningDeltaTrack)(nil), nil)
 	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
 			return input.Operation == models.DeltaTrackOperationAdd
@@ -765,6 +769,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			},
 		},
 	}, nil)
+	suite.repository.On("GetContinuousScreeningLastDeltaTrackByEntityId", mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything).Return((*models.ContinuousScreeningDeltaTrack)(nil), nil)
 	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
 			return input.Operation == models.DeltaTrackOperationAdd
@@ -894,6 +900,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			},
 		},
 	}, nil)
+	suite.repository.On("GetContinuousScreeningLastDeltaTrackByEntityId", mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything).Return((*models.ContinuousScreeningDeltaTrack)(nil), nil)
 	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
 			return input.Operation == models.DeltaTrackOperationAdd
@@ -1455,6 +1463,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)
+	suite.repository.On("GetContinuousScreeningLastDeltaTrackByEntityId", mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything).Return((*models.ContinuousScreeningDeltaTrack)(nil), nil)
 	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
 			return input.Operation == models.DeltaTrackOperationAdd
@@ -1586,6 +1596,302 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningO
 	// Assert
 	suite.Error(err)
 	suite.Contains(err.Error(), "object not found")
+	suite.AssertExpectations()
+}
+
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_DeltaTrackAlreadyExistsAdd_SkipCreation() {
+	// Setup test data
+	config := models.ContinuousScreeningConfig{
+		Id:          suite.configId,
+		StableId:    suite.configStableId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
+	}
+
+	ftmEntityValue := models.FollowTheMoneyEntityPerson
+	ftmPropertyValue := models.FollowTheMoneyPropertyName
+	table := models.Table{
+		Name:      suite.objectType,
+		FTMEntity: &ftmEntityValue,
+		Fields: map[string]models.Field{
+			"object_id": {
+				Name:        "object_id",
+				FTMProperty: &ftmPropertyValue,
+			},
+		},
+	}
+
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			suite.objectType: table,
+		},
+	}
+
+	objectInternalId := uuid.New()
+	ingestedObjects := []models.DataModelObject{
+		{
+			Data: map[string]any{
+				"object_id": suite.objectId,
+			},
+			Metadata: map[string]any{
+				"id": [16]byte(objectInternalId),
+			},
+		},
+	}
+
+	// Setup expectations
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
+		suite.configStableId).Return(config, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("UserId").Return((*string)(nil))
+	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
+		suite.orgId.String(), mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
+	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
+		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.Anything).Return(models.ScreeningRawSearchResponseWithMatches{
+		SearchInput:       []byte("{}"),
+		InitialHasMatches: false,
+		Matches:           []models.ScreeningMatch{},
+	}, nil)
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
+		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
+	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
+		mock.Anything).Return(nil)
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
+		config, suite.objectType,
+		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:                                uuid.New(),
+			OrgId:                             suite.orgId,
+			ContinuousScreeningConfigId:       suite.configId,
+			ContinuousScreeningConfigStableId: suite.configStableId,
+			ObjectType:                        suite.objectType,
+			ObjectId:                          suite.objectId,
+		},
+		Matches: []models.ContinuousScreeningMatch{},
+	}, nil)
+
+	// Mock existing ADD track
+	suite.repository.On("GetContinuousScreeningLastDeltaTrackByEntityId", mock.Anything, mock.Anything,
+		suite.orgId, mock.Anything).Return(&models.ContinuousScreeningDeltaTrack{
+		Operation: models.DeltaTrackOperationAdd,
+	}, nil)
+
+	// CreateContinuousScreeningDeltaTrack should NOT be called because ADD track already exists
+	// Execute
+	uc := suite.makeUsecase()
+	input := models.CreateContinuousScreeningObject{
+		ObjectType:     suite.objectType,
+		ConfigStableId: suite.configStableId,
+		ObjectId:       &suite.objectId,
+	}
+
+	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(result)
+	suite.AssertExpectations()
+}
+
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_DeltaTrackAlreadyExistsUpdate_SkipCreation() {
+	// Setup test data
+	config := models.ContinuousScreeningConfig{
+		Id:          suite.configId,
+		StableId:    suite.configStableId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
+	}
+
+	ftmEntityValue := models.FollowTheMoneyEntityPerson
+	ftmPropertyValue := models.FollowTheMoneyPropertyName
+	table := models.Table{
+		Name:      suite.objectType,
+		FTMEntity: &ftmEntityValue,
+		Fields: map[string]models.Field{
+			"object_id": {
+				Name:        "object_id",
+				FTMProperty: &ftmPropertyValue,
+			},
+		},
+	}
+
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			suite.objectType: table,
+		},
+	}
+
+	objectInternalId := uuid.New()
+	ingestedObjects := []models.DataModelObject{
+		{
+			Data: map[string]any{
+				"object_id": suite.objectId,
+			},
+			Metadata: map[string]any{
+				"id": [16]byte(objectInternalId),
+			},
+		},
+	}
+
+	// Setup expectations
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
+		suite.configStableId).Return(config, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("UserId").Return((*string)(nil))
+	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
+		suite.orgId.String(), mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
+	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
+		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.Anything).Return(models.ScreeningRawSearchResponseWithMatches{
+		SearchInput:       []byte("{}"),
+		InitialHasMatches: false,
+		Matches:           []models.ScreeningMatch{},
+	}, nil)
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
+		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
+	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
+		mock.Anything).Return(nil)
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
+		config, suite.objectType,
+		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:                                uuid.New(),
+			OrgId:                             suite.orgId,
+			ContinuousScreeningConfigId:       suite.configId,
+			ContinuousScreeningConfigStableId: suite.configStableId,
+			ObjectType:                        suite.objectType,
+			ObjectId:                          suite.objectId,
+		},
+		Matches: []models.ContinuousScreeningMatch{},
+	}, nil)
+
+	// Mock existing UPDATE track
+	suite.repository.On("GetContinuousScreeningLastDeltaTrackByEntityId", mock.Anything, mock.Anything,
+		suite.orgId, mock.Anything).Return(&models.ContinuousScreeningDeltaTrack{
+		Operation: models.DeltaTrackOperationUpdate,
+	}, nil)
+
+	// CreateContinuousScreeningDeltaTrack should NOT be called because UPDATE track already exists
+	// Execute
+	uc := suite.makeUsecase()
+	input := models.CreateContinuousScreeningObject{
+		ObjectType:     suite.objectType,
+		ConfigStableId: suite.configStableId,
+		ObjectId:       &suite.objectId,
+	}
+
+	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(result)
+	suite.AssertExpectations()
+}
+
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_DeltaTrackExistsDelete_CreateNew() {
+	// Setup test data
+	config := models.ContinuousScreeningConfig{
+		Id:          suite.configId,
+		StableId:    suite.configStableId,
+		OrgId:       suite.orgId,
+		ObjectTypes: []string{suite.objectType},
+	}
+
+	ftmEntityValue := models.FollowTheMoneyEntityPerson
+	ftmPropertyValue := models.FollowTheMoneyPropertyName
+	table := models.Table{
+		Name:      suite.objectType,
+		FTMEntity: &ftmEntityValue,
+		Fields: map[string]models.Field{
+			"object_id": {
+				Name:        "object_id",
+				FTMProperty: &ftmPropertyValue,
+			},
+		},
+	}
+
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			suite.objectType: table,
+		},
+	}
+
+	objectInternalId := uuid.New()
+	ingestedObjects := []models.DataModelObject{
+		{
+			Data: map[string]any{
+				"object_id": suite.objectId,
+			},
+			Metadata: map[string]any{
+				"id": [16]byte(objectInternalId),
+			},
+		},
+	}
+
+	// Setup expectations
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
+		suite.configStableId).Return(config, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("UserId").Return((*string)(nil))
+	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).Return(dataModel, nil)
+	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
+		suite.orgId.String(), mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
+	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
+		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.Anything).Return(models.ScreeningRawSearchResponseWithMatches{
+		SearchInput:       []byte("{}"),
+		InitialHasMatches: false,
+		Matches:           []models.ScreeningMatch{},
+	}, nil)
+	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
+		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
+	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
+		mock.Anything).Return(nil)
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
+		config, suite.objectType,
+		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:                                uuid.New(),
+			OrgId:                             suite.orgId,
+			ContinuousScreeningConfigId:       suite.configId,
+			ContinuousScreeningConfigStableId: suite.configStableId,
+			ObjectType:                        suite.objectType,
+			ObjectId:                          suite.objectId,
+		},
+		Matches: []models.ContinuousScreeningMatch{},
+	}, nil)
+
+	// Mock existing DELETE track
+	suite.repository.On("GetContinuousScreeningLastDeltaTrackByEntityId", mock.Anything, mock.Anything,
+		suite.orgId, mock.Anything).Return(&models.ContinuousScreeningDeltaTrack{
+		Operation: models.DeltaTrackOperationDelete,
+	}, nil)
+
+	// CreateContinuousScreeningDeltaTrack SHOULD be called because existing track is DELETE
+	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
+			return input.Operation == models.DeltaTrackOperationAdd
+		})).Return(nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	input := models.CreateContinuousScreeningObject{
+		ObjectType:     suite.objectType,
+		ConfigStableId: suite.configStableId,
+		ObjectId:       &suite.objectId,
+	}
+
+	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(result)
 	suite.AssertExpectations()
 }
 
