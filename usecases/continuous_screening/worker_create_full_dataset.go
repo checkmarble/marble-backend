@@ -35,8 +35,8 @@ const (
 // TODO: Manifest can contains the `delta_url` fields, but this field only support URL and not local path.
 // Don't fill this field for now, until we know how to provide the delta file to the indexer.
 type ManifestDataset struct {
-	Name    string `yaml:"name"`    // org UUID
-	Path    string `yaml:"path"`    // path to entities file
+	Name string `yaml:"name"` // org UUID
+	// EntitiesUrl string `yaml:"entities_url"` // path to entities file, NOTE: IGNORE THIS FIELD FOR NOW, WE WILL CALL MARBLE INSTEAD
 	Version string `yaml:"version"` // version string e.g. "20251230-001"
 }
 
@@ -48,14 +48,14 @@ type Manifest struct {
 func (m *Manifest) upsertDataset(orgId string, datasetFile models.ContinuousScreeningDatasetFile) {
 	for i, ds := range m.Datasets {
 		if ds.Name == orgId {
-			m.Datasets[i].Path = datasetFile.FilePath
+			// m.Datasets[i].EntitiesUrl = datasetFile.FilePath
 			m.Datasets[i].Version = datasetFile.Version
 			return
 		}
 	}
 	m.Datasets = append(m.Datasets, ManifestDataset{
-		Name:    orgId,
-		Path:    datasetFile.FilePath,
+		Name: orgId,
+		// EntitiesUrl: datasetFile.FilePath,
 		Version: datasetFile.Version,
 	})
 }
