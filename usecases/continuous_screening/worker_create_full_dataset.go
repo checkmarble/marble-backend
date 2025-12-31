@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -1035,6 +1036,8 @@ func buildDatasetEntity(
 			}
 
 			if strVal != "" {
+				strVal = normalizeFTMPropertyValue(*field.FTMProperty, strVal)
+
 				propertyKey := field.FTMProperty.String()
 				if existing, ok := properties[propertyKey]; ok {
 					if list, ok := existing.([]string); ok {
@@ -1097,4 +1100,84 @@ func generateNextVersion(previousVersion string, now time.Time) string {
 
 	// Current time is newer than previous version's time prefix, start fresh with "001"
 	return currentPrefix + "-001"
+}
+
+// normalizeFTMPropertyValue applies all necessary normalizations (country, date, etc.)
+// to a FTM property value based on its type.
+func normalizeFTMPropertyValue(property models.FollowTheMoneyProperty, value string) string {
+	value = normalizeCountryFTMPropertyValue(property, value)
+	value = normalizeDateFTMPropertyValue(property, value)
+	return value
+}
+
+// countryFTMProperties contains FTM properties that should be normalized to lowercase 2-letter country codes
+var countryFTMProperties = map[models.FollowTheMoneyProperty]bool{
+	models.FollowTheMoneyPropertyCountry:      true,
+	models.FollowTheMoneyPropertyNationality:  true,
+	models.FollowTheMoneyPropertyBirthCountry: true,
+	models.FollowTheMoneyPropertyCitizenship:  true,
+	models.FollowTheMoneyPropertyJurisdiction: true,
+}
+
+// normalizeCountryFTMPropertyValue converts country-related FTM property values to lowercase 2-letter ISO codes.
+// For non-country properties, the value is returned unchanged.
+// If the country cannot be identified, returns the original value unchanged.
+func normalizeCountryFTMPropertyValue(property models.FollowTheMoneyProperty, value string) string {
+	if !countryFTMProperties[property] {
+		return value
+	}
+
+	alpha2 := pure_utils.CountryToAlpha2(value)
+	if alpha2 == "" {
+		return value
+	}
+
+	return strings.ToLower(alpha2)
+}
+
+// dateFTMProperties contains FTM properties that should be normalized to YYYY-MM-DD format
+var dateFTMProperties = map[models.FollowTheMoneyProperty]bool{
+	models.FollowTheMoneyPropertyBirthDate: true,
+	models.FollowTheMoneyPropertyDeathDate: true,
+}
+
+// Common date formats to try when parsing date strings
+var dateFormats = []string{
+	"2006-01-02",          // ISO 8601: YYYY-MM-DD
+	"2006/01/02",          // YYYY/MM/DD
+	"02-01-2006",          // DD-MM-YYYY
+	"02/01/2006",          // DD/MM/YYYY
+	"01-02-2006",          // MM-DD-YYYY (US format)
+	"01/02/2006",          // MM/DD/YYYY (US format)
+	"2006-01-02T15:04:05", // ISO 8601 with time
+	time.RFC3339,          // RFC 3339
+	"Jan 2, 2006",         // Month Day, Year
+	"January 2, 2006",     // Full month name
+	"2 Jan 2006",          // Day Month Year
+	"2 January 2006",      // Day Full month Year
+	"20060102",            // YYYYMMDD compact
+}
+
+// normalizeDateFTMPropertyValue converts date-related FTM property values to YYYY-MM-DD format.
+// For non-date properties, the value is returned unchanged.
+// If the date cannot be parsed, returns the original value unchanged.
+func normalizeDateFTMPropertyValue(property models.FollowTheMoneyProperty, value string) string {
+	if !dateFTMProperties[property] {
+		return value
+	}
+
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return value
+	}
+
+	// Try to parse the date using various formats
+	for _, format := range dateFormats {
+		if t, err := time.Parse(format, value); err == nil {
+			return t.Format("2006-01-02")
+		}
+	}
+
+	// If no format matched, return the original value
+	return value
 }
