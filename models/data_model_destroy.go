@@ -22,13 +22,14 @@ func NewDataModelDeleteFieldReport() DataModelDeleteFieldReport {
 }
 
 type DataModelDeleteFieldConflicts struct {
-	Links              *set.Set[string]
-	Pivots             *set.Set[string]
-	AnalyticsSettings  int
-	Scenario           *set.Set[string]
-	ScenarioIterations map[string]*DataModelDeleteFieldConflictIteration
-	Workflows          *set.Set[string]
-	TestRuns           bool
+	ContinuousScreening bool
+	Links               *set.Set[string]
+	Pivots              *set.Set[string]
+	AnalyticsSettings   int
+	Scenario            *set.Set[string]
+	ScenarioIterations  map[string]*DataModelDeleteFieldConflictIteration
+	Workflows           *set.Set[string]
+	TestRuns            bool
 }
 
 type DataModelDeleteFieldConflictIteration struct {

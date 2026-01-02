@@ -203,13 +203,14 @@ type DataModelDeleteFieldReport struct {
 }
 
 type DataModelDeleteFieldConflicts struct {
-	Links              []string                                          `json:"links"`
-	Pivots             []string                                          `json:"pivots"`
-	AnalyticsSettings  int                                               `json:"analytics_settings"`
-	Scenarios          []string                                          `json:"scenarios"`
-	ScenarioIterations map[string]*DataModelDeleteFieldConflictIteration `json:"scenario_iterations"`
-	Workflows          []string                                          `json:"workflows"`
-	TestRuns           bool                                              `json:"test_runs"`
+	ContinuousScreening bool                                              `json:"continuous_screening"`
+	Links               []string                                          `json:"links"`
+	Pivots              []string                                          `json:"pivots"`
+	AnalyticsSettings   int                                               `json:"analytics_settings"`
+	Scenarios           []string                                          `json:"scenarios"`
+	ScenarioIterations  map[string]*DataModelDeleteFieldConflictIteration `json:"scenario_iterations"`
+	Workflows           []string                                          `json:"workflows"`
+	TestRuns            bool                                              `json:"test_runs"`
 }
 
 type DataModelDeleteFieldConflictIteration struct {
@@ -222,13 +223,14 @@ func AdaptDataModelDeleteFieldReport(m models.DataModelDeleteFieldReport) DataMo
 	r := DataModelDeleteFieldReport{
 		Performed: m.Performed,
 		Conflicts: DataModelDeleteFieldConflicts{
-			Links:              m.Conflicts.Links.Slice(),
-			Pivots:             m.Conflicts.Pivots.Slice(),
-			AnalyticsSettings:  m.Conflicts.AnalyticsSettings,
-			Workflows:          m.Conflicts.Workflows.Slice(),
-			Scenarios:          m.Conflicts.Scenario.Slice(),
-			ScenarioIterations: map[string]*DataModelDeleteFieldConflictIteration{},
-			TestRuns:           m.Conflicts.TestRuns,
+			ContinuousScreening: m.Conflicts.ContinuousScreening,
+			Links:               m.Conflicts.Links.Slice(),
+			Pivots:              m.Conflicts.Pivots.Slice(),
+			AnalyticsSettings:   m.Conflicts.AnalyticsSettings,
+			Workflows:           m.Conflicts.Workflows.Slice(),
+			Scenarios:           m.Conflicts.Scenario.Slice(),
+			ScenarioIterations:  map[string]*DataModelDeleteFieldConflictIteration{},
+			TestRuns:            m.Conflicts.TestRuns,
 		},
 		ArchivedIterations: m.ArchivedIterations.Slice(),
 	}
