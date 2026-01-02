@@ -102,7 +102,7 @@ func getFieldType(dataModel models.DataModel, tableName string, fieldName string
 		)
 	}
 
-	field, ok := table.Fields[fieldName]
+	field, ok := table.Field(fieldName)
 	if !ok {
 		return models.UnknownDataType, errors.Wrap(
 			ast.ErrRuntimeExpression,

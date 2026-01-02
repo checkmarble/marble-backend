@@ -526,6 +526,9 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_nominal_not_uni
 	}
 	usecase := suite.makeUsecase()
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModel, nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
@@ -562,6 +565,9 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_nominal_unique(
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModelWithUnique, nil)
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
 		Return(nil)
@@ -622,6 +628,9 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_repository_erro
 	}
 	usecase := suite.makeUsecase()
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModel, nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
@@ -652,6 +661,9 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_client_schema_r
 	}
 	usecase := suite.makeUsecase()
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModel, nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
@@ -1048,6 +1060,9 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_with_ftm_proper
 	}
 	usecase := suite.makeUsecase()
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModel, nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
@@ -1172,6 +1187,9 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_with_invalid_ft
 	}
 	usecase := suite.makeUsecase()
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModel, nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)

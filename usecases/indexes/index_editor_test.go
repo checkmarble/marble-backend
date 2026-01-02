@@ -22,6 +22,7 @@ type ClientDbIndexEditorTestSuite struct {
 	executorFactory               *mocks.ExecutorFactory
 	ingestedDataIndexesRepository *mocks.IngestedDataIndexesRepository
 	scenarioFetcher               *mocks.ScenarioFetcher
+	dataModelRepository           *mocks.DataModelRepository
 	transaction                   *mocks.Executor
 
 	organizationId                string
@@ -31,6 +32,7 @@ type ClientDbIndexEditorTestSuite struct {
 	scenarioPublication           models.ScenarioPublication
 	scenario                      models.Scenario
 	scenarioIteration             models.ScenarioIteration
+	dataModel                     models.DataModel
 	scenarioAndIteration          models.ScenarioAndIteration
 	scenarioAndIterationWithQuery models.ScenarioAndIteration
 	existingIndexes               []models.ConcreteIndex
@@ -46,6 +48,7 @@ func (suite *ClientDbIndexEditorTestSuite) SetupTest() {
 	suite.executorFactory = new(mocks.ExecutorFactory)
 	suite.ingestedDataIndexesRepository = new(mocks.IngestedDataIndexesRepository)
 	suite.scenarioFetcher = new(mocks.ScenarioFetcher)
+	suite.dataModelRepository = new(mocks.DataModelRepository)
 	suite.transaction = new(mocks.Executor)
 
 	suite.organizationId = "organizationId"
@@ -78,6 +81,15 @@ func (suite *ClientDbIndexEditorTestSuite) SetupTest() {
 	suite.scenarioAndIterationWithQuery = models.ScenarioAndIteration{
 		Scenario:  suite.scenario,
 		Iteration: suite.scenarioIteration,
+	}
+	suite.dataModel = models.DataModel{
+		Tables: map[string]models.Table{
+			"table": {
+				Fields: map[string]models.Field{
+					"new_field": {},
+				},
+			},
+		},
 	}
 	astJson := `{
 		"name": "Or",
@@ -140,6 +152,7 @@ func (suite *ClientDbIndexEditorTestSuite) makeUsecase() ClientDbIndexEditor {
 	return NewClientDbIndexEditor(
 		suite.executorFactory,
 		suite.scenarioFetcher,
+		suite.dataModelRepository,
 		suite.ingestedDataIndexesRepository,
 		suite.enforceSecurity,
 		suite.enforceSecurityDataModel,
@@ -166,6 +179,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_GetIndexesToCreate_nominal_1() {
 	suite.ingestedDataIndexesRepository.On("ListAllValidIndexes", suite.ctx, suite.transaction, models.IndexTypeAggregation).
 		Return(suite.existingIndexes, nil)
 	suite.ingestedDataIndexesRepository.On("CountPendingIndexes", suite.ctx, suite.transaction).Return(0, nil)
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).Return(models.DataModel{}, nil)
 
 	toCreate, numPending, err := suite.makeUsecase().GetIndexesToCreate(
 		suite.ctx,
@@ -189,6 +203,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_GetIndexesToCreate_nominal_2() {
 	suite.ingestedDataIndexesRepository.On("ListAllValidIndexes", suite.ctx, suite.transaction, models.IndexTypeAggregation).
 		Return(suite.existingIndexes, nil)
 	suite.ingestedDataIndexesRepository.On("CountPendingIndexes", suite.ctx, suite.transaction).Return(1, nil)
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).Return(models.DataModel{}, nil)
 
 	toCreate, numPending, err := suite.makeUsecase().GetIndexesToCreate(
 		suite.ctx,
@@ -212,6 +227,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_GetIndexesToCreate_nominal_3() {
 	suite.ingestedDataIndexesRepository.On("ListAllValidIndexes", suite.ctx, suite.transaction, models.IndexTypeAggregation).
 		Return(suite.existingIndexes, nil)
 	suite.ingestedDataIndexesRepository.On("CountPendingIndexes", suite.ctx, suite.transaction).Return(1, nil)
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).Return(suite.dataModel, nil)
 
 	toCreate, numPending, err := suite.makeUsecase().GetIndexesToCreate(
 		suite.ctx,

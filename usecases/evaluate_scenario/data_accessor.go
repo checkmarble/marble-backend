@@ -45,6 +45,18 @@ func (d DataAccessor) GetAnalyticsFields(ctx context.Context, exec repositories.
 			fields := make(map[string]any, len(setting.DbFields))
 
 			for _, pf := range setting.DbFields {
+				tableName := setting.TriggerObjectType
+
+				for _, linkName := range pf.Path {
+					if tn, ok := evalParameters.DataModel.Tables[tableName].LinksToSingle[linkName]; ok {
+						tableName = tn.ParentTableName
+					}
+				}
+
+				if tn, ok := evalParameters.DataModel.Tables[tableName].FieldAliases[pf.Name]; ok {
+					pf.Name = tn.PhysicalName
+				}
+
 				out, err := d.GetDbField(ctx, evalParameters.Scenario.TriggerObjectType, pf.Path, pf.Name)
 
 				if err == nil {

@@ -498,10 +498,10 @@ func analyticsAddTriggerObjectField(b squirrel.SelectBuilder, field models.Field
 
 	if anyValue {
 		return b.Column(fmt.Sprintf(`(min(d.trigger_object::text)::jsonb->>'%s')::%s as "%s%s"`,
-			field.Name, sqlType, analytics.TriggerObjectFieldPrefix, field.Name))
+			field.PhysicalName, sqlType, analytics.TriggerObjectFieldPrefix, field.PhysicalName))
 	} else {
-		return b.Column(fmt.Sprintf(`(d.trigger_object->>'%s')::%s as "%s%s"`, field.Name,
-			sqlType, analytics.TriggerObjectFieldPrefix, field.Name))
+		return b.Column(fmt.Sprintf(`(d.trigger_object->>'%s')::%s as "%s%s"`, field.PhysicalName,
+			sqlType, analytics.TriggerObjectFieldPrefix, field.PhysicalName))
 	}
 }
 

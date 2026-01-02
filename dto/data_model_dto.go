@@ -19,16 +19,17 @@ type LinkToSingle struct {
 }
 
 type Field struct {
-	ID                string  `json:"id"`
-	DataType          string  `json:"data_type"`
-	Description       string  `json:"description"`
-	IsEnum            bool    `json:"is_enum"`
-	Name              string  `json:"name"`
-	Nullable          bool    `json:"nullable"`
-	TableId           string  `json:"table_id"`
-	Values            []any   `json:"values,omitempty"`
-	UnicityConstraint string  `json:"unicity_constraint"`
-	FTMProperty       *string `json:"ftm_property,omitempty"`
+	ID                string   `json:"id"`
+	DataType          string   `json:"data_type"`
+	Description       string   `json:"description"`
+	IsEnum            bool     `json:"is_enum"`
+	Name              string   `json:"name"`
+	Nullable          bool     `json:"nullable"`
+	TableId           string   `json:"table_id"`
+	Values            []any    `json:"values,omitempty"`
+	UnicityConstraint string   `json:"unicity_constraint"`
+	FTMProperty       *string  `json:"ftm_property,omitempty"`
+	Aliases           []string `json:"aliases"`
 }
 
 type NavigationOption struct {
@@ -91,6 +92,7 @@ func adaptDataModelField(field models.Field) Field {
 		Values:            field.Values,
 		UnicityConstraint: field.UnicityConstraint.String(),
 		FTMProperty:       ftmProperty,
+		Aliases:           field.Aliases,
 	}
 }
 

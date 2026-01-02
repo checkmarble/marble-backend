@@ -48,6 +48,7 @@ type ScenarioFetcher interface {
 type ClientDbIndexEditor struct {
 	executorFactory               executor_factory.ExecutorFactory
 	scenarioFetcher               ScenarioFetcher
+	dataModelRepository           repositories.DataModelRepository
 	ingestedDataIndexesRepository IngestedDataIndexesRepository
 	enforceSecurity               security.EnforceSecurityScenario
 	enforceSecurityDataModel      security.EnforceSecurityOrganization
@@ -56,6 +57,7 @@ type ClientDbIndexEditor struct {
 func NewClientDbIndexEditor(
 	executorFactory executor_factory.ExecutorFactory,
 	scenarioFetcher ScenarioFetcher,
+	dataModelRepository repositories.DataModelRepository,
 	ingestedDataIndexesRepository IngestedDataIndexesRepository,
 	enforceSecurity security.EnforceSecurityScenario,
 	enforceSecurityDataModel security.EnforceSecurityOrganization,
@@ -63,6 +65,7 @@ func NewClientDbIndexEditor(
 	return ClientDbIndexEditor{
 		executorFactory:               executorFactory,
 		scenarioFetcher:               scenarioFetcher,
+		dataModelRepository:           dataModelRepository,
 		ingestedDataIndexesRepository: ingestedDataIndexesRepository,
 		enforceSecurity:               enforceSecurity,
 		enforceSecurityDataModel:      enforceSecurityDataModel,
@@ -95,8 +98,15 @@ func (editor ClientDbIndexEditor) GetIndexesToCreate(
 			"Error while fetching existing indexes in CreateDatamodelIndexesForScenarioPublication")
 	}
 
+	dataModel, err := editor.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, false)
+	if err != nil {
+		return toCreate, numPending, errors.Wrap(err,
+			"Error while fetching data model in CreateDatamodelIndexesForScenarioPublication")
+	}
+
 	toCreate, err = indexesToCreateFromScenarioIterations(
 		ctx,
+		dataModel,
 		[]models.ScenarioIteration{iterationToActivate.Iteration},
 		existingIndexes,
 	)
@@ -124,8 +134,14 @@ func (editor ClientDbIndexEditor) GetRequiredIndices(
 		return requiredIndices, err
 	}
 
+	dataModel, err := editor.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, false)
+	if err != nil {
+		return nil, errors.Wrap(err,
+			"Error while fetching data model in CreateDatamodelIndexesForScenarioPublication")
+	}
+
 	for _, iteration := range iterations {
-		required, err := indexFamiliesToCreateFromScenarioIterations(ctx, []models.ScenarioIteration{iteration})
+		required, err := indexFamiliesToCreateFromScenarioIterations(ctx, dataModel, []models.ScenarioIteration{iteration})
 		if err != nil {
 			return required, errors.Wrap(err,
 				"Error while finding indexes to create from scenario iterations in CreateDatamodelIndexesForScenarioPublication")

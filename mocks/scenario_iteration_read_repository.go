@@ -14,15 +14,15 @@ type ScenarioIterationReadRepository struct {
 }
 
 func (s *ScenarioIterationReadRepository) GetScenarioIteration(ctx context.Context, exec repositories.Executor,
-	scenarioIterationId string,
+	scenarioIterationId string, useCache bool,
 ) (models.ScenarioIteration, error) {
-	args := s.Called(exec, scenarioIterationId)
+	args := s.Called(ctx, exec, scenarioIterationId, useCache)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }
 
 func (s *ScenarioIterationReadRepository) ListScenarioIterations(ctx context.Context, exec repositories.Executor,
 	organizationId string, filters models.GetScenarioIterationFilters,
 ) ([]models.ScenarioIteration, error) {
-	args := s.Called(exec, organizationId, filters)
+	args := s.Called(ctx, exec, organizationId, filters)
 	return args.Get(0).([]models.ScenarioIteration), args.Error(1)
 }

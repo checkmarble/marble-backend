@@ -591,6 +591,12 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 		}
 	}
 
+	for idx, csvHeader := range firstRow {
+		if alias, ok := table.FieldAliases[csvHeader]; ok {
+			firstRow[idx] = alias.PhysicalName
+		}
+	}
+
 	keepParsingFile := true
 	objectIdx := 0
 	for keepParsingFile {
@@ -677,7 +683,7 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 
 	for i, value := range values {
 		fieldName := headers[i]
-		field, ok := table.Fields[fieldName]
+		field, ok := table.Field(fieldName)
 		if !ok {
 			return nil, fmt.Errorf("field %s not found in table %s", fieldName, table.Name)
 		}

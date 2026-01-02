@@ -296,6 +296,7 @@ func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() indexes.ClientDbInde
 	return indexes.NewClientDbIndexEditor(
 		usecases.NewExecutorFactory(),
 		usecases.NewScenarioFetcher(),
+		usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.ClientDbRepository,
 		usecases.NewEnforceScenarioSecurity(),
 		usecases.NewEnforceOrganizationSecurity(),
@@ -716,15 +717,15 @@ func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.Featur
 
 func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUsecase {
 	return ScenarioTestRunUsecase{
-		transactionFactory:         usecases.NewTransactionFactory(),
-		executorFactory:            usecases.NewExecutorFactory(),
-		enforceSecurity:            usecases.NewEnforceTestRunScenarioSecurity(),
-		repository:                 usecases.Repositories.MarbleDbRepository,
-		clientDbIndexEditor:        usecases.NewClientDbIndexEditor(),
-		scenarioRepository:         usecases.Repositories.MarbleDbRepository,
-		scenarioIteratorRepository: usecases.Repositories.MarbleDbRepository,
-		featureAccessReader:        usecases.NewFeatureAccessReader(),
-		screeningConfigRepository:  usecases.Repositories.MarbleDbRepository,
+		transactionFactory:          usecases.NewTransactionFactory(),
+		executorFactory:             usecases.NewExecutorFactory(),
+		enforceSecurity:             usecases.NewEnforceTestRunScenarioSecurity(),
+		repository:                  usecases.Repositories.MarbleDbRepository,
+		clientDbIndexEditor:         usecases.NewClientDbIndexEditor(),
+		scenarioRepository:          usecases.Repositories.MarbleDbRepository,
+		scenarioIterationRepository: usecases.Repositories.MarbleDbRepository,
+		featureAccessReader:         usecases.NewFeatureAccessReader(),
+		screeningConfigRepository:   usecases.Repositories.MarbleDbRepository,
 	}
 }
 

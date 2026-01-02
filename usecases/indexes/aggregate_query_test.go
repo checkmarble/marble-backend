@@ -19,6 +19,40 @@ func makeTestContext() context.Context {
 }
 
 func TestAggregationNodeToQueryFamily(t *testing.T) {
+	dm := models.DataModel{
+		Tables: map[string]models.Table{
+			"table": {
+				Fields: map[string]models.Field{
+					"field": {
+						Name:         "field",
+						PhysicalName: "field",
+					},
+					"field 0": {
+						Name:         "field 0",
+						PhysicalName: "field 0",
+					},
+					"field 1": {
+						Name:         "field 1",
+						PhysicalName: "field 1",
+					},
+					"field 2": {
+						Name:         "field 2",
+						PhysicalName: "field 2",
+					},
+					"field 3": {
+						Name:         "field 3",
+						PhysicalName: "field 3",
+					},
+					"new_name": {
+						Name:         "new_name",
+						PhysicalName: "old_name",
+						Aliases:      []string{"new_name", "old_name"},
+					},
+				},
+			},
+		},
+	}
+
 	t.Run("empty filters", func(t *testing.T) {
 		asserts := assert.New(t)
 		node := ast.Node{
@@ -31,7 +65,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		aggregateFamily, err := aggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(dm, node)
 		asserts.NoError(err)
 		asserts.Equal("table", aggregateFamily.TableName,
 			"table name should be input table name")
@@ -46,7 +80,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				"fieldName": ast.NewNodeConstant("field 0"),
 			},
 		}
-		aggregateFamily, err := aggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(dm, node)
 		asserts.NoError(err)
 		asserts.Equal(0, aggregateFamily.EqConditions.Size(), "EqConditions should be empty")
 		asserts.Equal(0, aggregateFamily.IneqConditions.Size(), "IneqConditions should be empty")
@@ -75,11 +109,42 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		aggregateFamily, err := aggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(dm, node)
 		asserts.NoError(err)
 		asserts.Equal("table", aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
 		asserts.True(aggregateFamily.EqConditions.Contains("field"))
+		asserts.Equal(0, aggregateFamily.IneqConditions.Size())
+		asserts.Equal(1, aggregateFamily.SelectOrOtherConditions.Size(),
+			"SelectOrOtherConditions should contain field 0")
+	})
+
+	t.Run("with renamed field", func(t *testing.T) {
+		asserts := assert.New(t)
+		node := ast.Node{
+			Function: ast.FUNC_AGGREGATOR,
+			NamedChildren: map[string]ast.Node{
+				"tableName": ast.NewNodeConstant("table"),
+				"fieldName": ast.NewNodeConstant("new_name"),
+				"filters": {
+					Children: []ast.Node{
+						{
+							Function: ast.FUNC_FILTER,
+							NamedChildren: map[string]ast.Node{
+								"tableName": ast.NewNodeConstant("table"),
+								"fieldName": ast.NewNodeConstant("new_name"),
+								"operator":  ast.NewNodeConstant("="),
+							},
+						},
+					},
+				},
+			},
+		}
+		aggregateFamily, err := aggregationNodeToQueryFamily(dm, node)
+		asserts.NoError(err)
+		asserts.Equal("table", aggregateFamily.TableName)
+		asserts.Equal(1, aggregateFamily.EqConditions.Size())
+		asserts.True(aggregateFamily.EqConditions.Contains("old_name"))
 		asserts.Equal(0, aggregateFamily.IneqConditions.Size())
 		asserts.Equal(1, aggregateFamily.SelectOrOtherConditions.Size(),
 			"SelectOrOtherConditions should contain field 0")
@@ -114,7 +179,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		aggregateFamily, err := aggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(dm, node)
 		asserts.NoError(err)
 		asserts.Equal("table", aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
@@ -153,7 +218,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		aggregateFamily, err := aggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(dm, node)
 		asserts.NoError(err)
 		asserts.Equal("table", aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
@@ -185,7 +250,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		_, err := aggregationNodeToQueryFamily(node)
+		_, err := aggregationNodeToQueryFamily(models.DataModel{}, node)
 		asserts.Error(err)
 	})
 
@@ -234,7 +299,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		aggregateFamily, err := aggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(dm, node)
 		asserts.NoError(err)
 		asserts.Equal("table", aggregateFamily.TableName)
 		asserts.Equal(2, aggregateFamily.EqConditions.Size(),
@@ -254,9 +319,39 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 
 func TestAstNodeToQueryFamilies(t *testing.T) {
 	ctx := makeTestContext()
+
+	dm := models.DataModel{
+		Tables: map[string]models.Table{
+			"table": {
+				Fields: map[string]models.Field{
+					"field": {
+						Name:         "field",
+						PhysicalName: "field",
+					},
+					"field 0": {
+						Name:         "field 0",
+						PhysicalName: "field 0",
+					},
+					"field 1": {
+						Name:         "field 1",
+						PhysicalName: "field 1",
+					},
+					"field 2": {
+						Name:         "field 2",
+						PhysicalName: "field 2",
+					},
+					"field 3": {
+						Name:         "field 3",
+						PhysicalName: "field 3",
+					},
+				},
+			},
+		},
+	}
+
 	t.Run("empty node", func(t *testing.T) {
 		asserts := assert.New(t)
-		output, err := extractQueryFamiliesFromAst(ctx, ast.Node{})
+		output, err := extractQueryFamiliesFromAst(ctx, dm, ast.Node{})
 		asserts.NoError(err)
 		asserts.Equal(0, output.Size())
 	})
@@ -302,7 +397,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 				},
 			},
 		}
-		output, err := extractQueryFamiliesFromAst(ctx, ast)
+		output, err := extractQueryFamiliesFromAst(ctx, dm, ast)
 		asserts.NoError(err)
 		asserts.Equal(1, output.Size(), "There should be only 1 query family in the output set")
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)
@@ -388,7 +483,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 				},
 			},
 		}
-		output, err := extractQueryFamiliesFromAst(ctx, ast)
+		output, err := extractQueryFamiliesFromAst(ctx, dm, ast)
 		asserts.NoError(err)
 		asserts.Equal(3, output.Size(), "There should be 2 query families in the output set")
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)
@@ -439,7 +534,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 				},
 			},
 		}
-		out, err := extractQueryFamiliesFromAst(ctx, ast)
+		out, err := extractQueryFamiliesFromAst(ctx, dm, ast)
 		asserts.NoError(err)
 		asserts.Equal(0, out.Size(), "There should be no query families in the output set")
 	})
@@ -447,16 +542,46 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 
 func Test_indexesToCreateFromScenarioIterations(t *testing.T) {
 	ctx := makeTestContext()
+
+	dm := models.DataModel{
+		Tables: map[string]models.Table{
+			"table": {
+				Fields: map[string]models.Field{
+					"field": {
+						Name:         "field",
+						PhysicalName: "field",
+					},
+					"field 0": {
+						Name:         "field 0",
+						PhysicalName: "field 0",
+					},
+					"field 1": {
+						Name:         "field 1",
+						PhysicalName: "field 1",
+					},
+					"field 2": {
+						Name:         "field 2",
+						PhysicalName: "field 2",
+					},
+					"field 3": {
+						Name:         "field 3",
+						PhysicalName: "field 3",
+					},
+				},
+			},
+		},
+	}
+
 	t.Run("empty input", func(t *testing.T) {
 		asserts := assert.New(t)
-		out, err := indexesToCreateFromScenarioIterations(ctx, []models.ScenarioIteration{}, nil)
+		out, err := indexesToCreateFromScenarioIterations(ctx, dm, []models.ScenarioIteration{}, nil)
 		asserts.NoError(err)
 		asserts.Equal(0, len(out), "There should be no indexes to create")
 	})
 
 	t.Run("with one iteration and no existing indexes", func(t *testing.T) {
 		asserts := assert.New(t)
-		out, err := indexesToCreateFromScenarioIterations(ctx, []models.ScenarioIteration{
+		out, err := indexesToCreateFromScenarioIterations(ctx, dm, []models.ScenarioIteration{
 			{
 				TriggerConditionAstExpression: &ast.Node{
 					Function: ast.FUNC_AGGREGATOR,
@@ -491,7 +616,7 @@ func Test_indexesToCreateFromScenarioIterations(t *testing.T) {
 
 	t.Run("with one iteration, invalid aggregation (missing field name)", func(t *testing.T) {
 		asserts := assert.New(t)
-		out, err := indexesToCreateFromScenarioIterations(ctx, []models.ScenarioIteration{
+		out, err := indexesToCreateFromScenarioIterations(ctx, dm, []models.ScenarioIteration{
 			{
 				TriggerConditionAstExpression: &ast.Node{
 					Function: ast.FUNC_AGGREGATOR,
@@ -520,7 +645,7 @@ func Test_indexesToCreateFromScenarioIterations(t *testing.T) {
 
 	t.Run("scenario iteration without ASTs", func(t *testing.T) {
 		asserts := assert.New(t)
-		out, err := indexesToCreateFromScenarioIterations(ctx, []models.ScenarioIteration{
+		out, err := indexesToCreateFromScenarioIterations(ctx, dm, []models.ScenarioIteration{
 			{
 				TriggerConditionAstExpression: nil,
 			},

@@ -25,11 +25,14 @@ func TestParseStringValuesToMap(t *testing.T) {
 		Name: "transactions",
 		Fields: map[string]models.Field{
 			"object_id": {
-				DataType: models.String, Nullable: false,
+				Name:         "object_id",
+				PhysicalName: "object_id",
+				DataType:     models.String, Nullable: false,
+				Aliases: []string{"object_id"},
 			},
-			"updated_at": {DataType: models.Timestamp, Nullable: false},
-			"value":      {DataType: models.Float, Nullable: true},
-			"status":     {DataType: models.String, Nullable: true},
+			"updated_at": {Name: "updated_at", PhysicalName: "updated_at", DataType: models.Timestamp, Nullable: false, Aliases: []string{"updated_at"}},
+			"value":      {Name: "value", PhysicalName: "value", DataType: models.Float, Nullable: true, Aliases: []string{"value"}},
+			"status":     {Name: "status", PhysicalName: "status", DataType: models.String, Nullable: true, Aliases: []string{"status"}},
 		},
 		LinksToSingle: nil,
 	}
@@ -152,11 +155,14 @@ func (suite *IngestionUsecaseTestSuite) SetupTest() {
 				Name: "transactions",
 				Fields: map[string]models.Field{
 					"object_id": {
-						DataType: models.String, Nullable: false, Name: "object_id",
+						Name:         "object_id",
+						PhysicalName: "object_id",
+						DataType:     models.String, Nullable: false,
+						Aliases: []string{"object_id"},
 					},
-					"updated_at": {DataType: models.Timestamp, Nullable: false, Name: "updated_at"},
-					"value":      {DataType: models.Float, Nullable: true, Name: "value"},
-					"status":     {DataType: models.String, Nullable: false, Name: "status"},
+					"updated_at": {Name: "updated_at", PhysicalName: "updated_at", DataType: models.Timestamp, Nullable: false, Aliases: []string{"updated_at"}},
+					"value":      {Name: "value", PhysicalName: "value", DataType: models.Float, Nullable: true, Aliases: []string{"value"}},
+					"status":     {Name: "status", PhysicalName: "status", DataType: models.String, Nullable: false, Aliases: []string{"status"}},
 				},
 				LinksToSingle: nil,
 			},

@@ -39,7 +39,7 @@ func DryRunGetDbField(dataModel models.DataModel, triggerTableName string, path 
 		}
 	}
 
-	field, ok := table.Fields[fieldName]
+	field, ok := table.Field(fieldName)
 	if !ok {
 		return nil, errors.New(fmt.Sprintf("field %s not found in table %s", fieldName, table.Name))
 	}
@@ -71,7 +71,7 @@ func DryRunQueryAggregatedValue(datamodel models.DataModel, tableName string, fi
 		return nil, fmt.Errorf("table %s not found in data model", tableName)
 	}
 
-	field, ok := table.Fields[fieldName]
+	field, ok := table.Field(fieldName)
 	if !ok {
 		return nil, fmt.Errorf("field %s not found in table %s", fieldName, table.Name)
 	}
