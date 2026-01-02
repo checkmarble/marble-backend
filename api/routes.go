@@ -402,6 +402,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/settings/ai", tom, HandleGetAiSettingForOrganization(uc))
 	router.PUT("/settings/ai", tom, HandlePutAiSettingForOrganization(uc))
 
+	router.POST("/org-import", tom, handleOrgImport(uc))
+	router.POST("/org-import/archetype/:archetype", tom, handleOrgImportFromArchetype(uc))
+
 	if conf.AnalyticsProxyApiUrl == "" {
 		addAnalyticsRoutes(router, conf, uc)
 	} else {
