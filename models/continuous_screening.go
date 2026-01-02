@@ -303,10 +303,40 @@ func (s ContinuousScreeningDatasetFileStatus) String() string {
 	}
 }
 
+type ContinuousScreeningDatasetFileType int
+
+const (
+	ContinuousScreeningDatasetFileTypeFull ContinuousScreeningDatasetFileType = iota
+	ContinuousScreeningDatasetFileTypeDelta
+	ContinuousScreeningDatasetFileTypeUnknown
+)
+
+func ContinuousScreeningDatasetFileTypeFrom(s string) ContinuousScreeningDatasetFileType {
+	switch s {
+	case "full":
+		return ContinuousScreeningDatasetFileTypeFull
+	case "delta":
+		return ContinuousScreeningDatasetFileTypeDelta
+	default:
+		return ContinuousScreeningDatasetFileTypeUnknown
+	}
+}
+
+func (ft ContinuousScreeningDatasetFileType) String() string {
+	switch ft {
+	case ContinuousScreeningDatasetFileTypeFull:
+		return "full"
+	case ContinuousScreeningDatasetFileTypeDelta:
+		return "delta"
+	default:
+		return "unknown"
+	}
+}
+
 type ContinuousScreeningDatasetFile struct {
 	Id        uuid.UUID
 	OrgId     uuid.UUID
-	FileType  string
+	FileType  ContinuousScreeningDatasetFileType
 	Version   string
 	FilePath  string
 	Status    ContinuousScreeningDatasetFileStatus
@@ -334,4 +364,12 @@ type CreateContinuousScreeningDeltaTrack struct {
 	ObjectInternalId *uuid.UUID
 	EntityId         string
 	Operation        DeltaTrackOperation
+}
+
+type CreateContinuousScreeningDatasetFile struct {
+	OrgId    uuid.UUID
+	FileType ContinuousScreeningDatasetFileType
+	Version  string
+	FilePath string
+	Status   ContinuousScreeningDatasetFileStatus
 }

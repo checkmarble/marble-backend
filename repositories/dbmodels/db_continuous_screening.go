@@ -261,11 +261,13 @@ type DBContinuousScreeningDatasetFile struct {
 
 const TABLE_CONTINUOUS_SCREENING_DATASET_FILES = "continuous_screening_dataset_files"
 
+var SelectContinuousScreeningDatasetFileColumn = utils.ColumnList[DBContinuousScreeningDatasetFile]()
+
 func AdaptContinuousScreeningDatasetFile(dto DBContinuousScreeningDatasetFile) (models.ContinuousScreeningDatasetFile, error) {
 	return models.ContinuousScreeningDatasetFile{
 		Id:        dto.Id,
 		OrgId:     dto.OrgId,
-		FileType:  dto.FileType,
+		FileType:  models.ContinuousScreeningDatasetFileTypeFrom(dto.FileType),
 		Version:   dto.Version,
 		FilePath:  dto.FilePath,
 		Status:    models.ContinuousScreeningDatasetFileStatusFrom(dto.Status),
