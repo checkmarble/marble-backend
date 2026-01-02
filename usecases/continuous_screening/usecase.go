@@ -155,14 +155,6 @@ type ContinuousScreeningUsecaseRepository interface {
 		exec repositories.Executor,
 		input models.CreateContinuousScreeningDeltaTrack,
 	) error
-
-	// Delta tracks
-	GetContinuousScreeningLastDeltaTrackByEntityId(
-		ctx context.Context,
-		exec repositories.Executor,
-		orgId uuid.UUID,
-		entityId string,
-	) (*models.ContinuousScreeningDeltaTrack, error)
 }
 
 type inboxReader interface {
@@ -214,6 +206,12 @@ type ContinuousScreeningClientDbRepository interface {
 		exec repositories.Executor,
 		filters models.ListMonitoredObjectsFilters,
 		pagination models.PaginationAndSorting,
+	) ([]models.ContinuousScreeningMonitoredObject, error)
+	ListMonitoredObjectsByObjectIds(
+		ctx context.Context,
+		exec repositories.Executor,
+		objectType string,
+		objectIds []string,
 	) ([]models.ContinuousScreeningMonitoredObject, error)
 }
 

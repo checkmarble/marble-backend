@@ -123,6 +123,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
+	var objectMonitoredInOtherConfigs bool
 	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId.String(), func(tx repositories.Transaction) error {
 		if err := uc.clientDbRepository.InsertContinuousScreeningObject(
 			ctx,
@@ -134,7 +135,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 			return err
 		}
 
-		return uc.clientDbRepository.InsertContinuousScreeningAudit(
+		err = uc.clientDbRepository.InsertContinuousScreeningAudit(
 			ctx,
 			tx,
 			models.CreateContinuousScreeningAudit{
@@ -146,6 +147,24 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				ApiKeyId:       apiKeyId,
 			},
 		)
+		if err != nil {
+			return err
+		}
+
+		// Check if the object is monitored in other configs
+		// If yes, don't create the ADD track
+		monitoredObjects, err := uc.clientDbRepository.ListMonitoredObjectsByObjectIds(
+			ctx,
+			tx,
+			table.Name,
+			[]string{objectId},
+		)
+		if err != nil {
+			return err
+		}
+		// > 1 because the object is already monitored in this config, check if it is monitored in other configs
+		objectMonitoredInOtherConfigs = len(monitoredObjects) > 1
+		return nil
 	})
 	// Unique violation error is handled below
 	if err != nil {
@@ -193,27 +212,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 			if triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated {
 				deltaTrackOperation = models.DeltaTrackOperationUpdate
 			}
-			needAddTrack := true
-			if deltaTrackOperation == models.DeltaTrackOperationAdd {
-				deltaTrack, err := uc.repository.GetContinuousScreeningLastDeltaTrackByEntityId(
-					ctx,
-					tx,
-					config.OrgId,
-					deltaTrackEntityIdBuilder(input.ObjectType, objectId),
-				)
-				if err != nil {
-					return models.ContinuousScreeningWithMatches{}, err
-				}
-				if deltaTrack != nil &&
-					(deltaTrack.Operation == models.DeltaTrackOperationAdd ||
-						deltaTrack.Operation == models.DeltaTrackOperationUpdate) {
-					needAddTrack = false
-					logger.DebugContext(ctx, "Delta track already exists, doesn't need to add again",
-						"object_id", objectId)
-				}
-			}
-
-			if needAddTrack {
+			if !objectMonitoredInOtherConfigs {
 				err = uc.repository.CreateContinuousScreeningDeltaTrack(
 					ctx,
 					tx,
@@ -537,12 +536,13 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 	if err != nil {
 		return err
 	}
+	var objectMonitoredInOtherConfigs bool
 	err = uc.transactionFactory.TransactionInOrgSchema(ctx, orgId.String(), func(tx repositories.Transaction) error {
 		if err := uc.clientDbRepository.DeleteContinuousScreeningObject(ctx, tx, input); err != nil {
 			return err
 		}
 
-		return uc.clientDbRepository.InsertContinuousScreeningAudit(
+		err := uc.clientDbRepository.InsertContinuousScreeningAudit(
 			ctx,
 			tx,
 			models.CreateContinuousScreeningAudit{
@@ -554,21 +554,40 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 				ApiKeyId:       apiKeyId,
 			},
 		)
+		if err != nil {
+			return err
+		}
+
+		// Check if the object is monitored in other configs
+		// If yes, don't create the DELETE track
+		monitoredObjects, err := uc.clientDbRepository.ListMonitoredObjectsByObjectIds(
+			ctx,
+			tx,
+			input.ObjectType,
+			[]string{input.ObjectId},
+		)
+		if err != nil {
+			return err
+		}
+		objectMonitoredInOtherConfigs = len(monitoredObjects) > 0
+		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	err = uc.repository.CreateContinuousScreeningDeltaTrack(ctx, exec, models.CreateContinuousScreeningDeltaTrack{
-		OrgId:            orgId,
-		ObjectType:       input.ObjectType,
-		ObjectId:         input.ObjectId,
-		ObjectInternalId: nil,
-		EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, input.ObjectId),
-		Operation:        models.DeltaTrackOperationDelete,
-	})
-	if err != nil {
-		return err
+	if !objectMonitoredInOtherConfigs {
+		err = uc.repository.CreateContinuousScreeningDeltaTrack(ctx, exec, models.CreateContinuousScreeningDeltaTrack{
+			OrgId:            orgId,
+			ObjectType:       input.ObjectType,
+			ObjectId:         input.ObjectId,
+			ObjectInternalId: nil,
+			EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, input.ObjectId),
+			Operation:        models.DeltaTrackOperationDelete,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
