@@ -255,7 +255,7 @@ func TestParser_ParsePayload(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewParser()
 
-			out, err := p.ParsePayload(context.TODO(), tt.table, tt.input)
+			out, err := p.ParsePayload(context.TODO(), tt.table, tt.input, false)
 			var validationErrors models.IngestionValidationErrors
 			var otherErr error
 			if !errors.As(err, &validationErrors) {

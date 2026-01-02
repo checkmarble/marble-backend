@@ -19,16 +19,17 @@ type LinkToSingle struct {
 }
 
 type Field struct {
-	ID                string  `json:"id"`
-	DataType          string  `json:"data_type"`
-	Description       string  `json:"description"`
-	IsEnum            bool    `json:"is_enum"`
-	Name              string  `json:"name"`
-	Nullable          bool    `json:"nullable"`
-	TableId           string  `json:"table_id"`
-	Values            []any   `json:"values,omitempty"`
-	UnicityConstraint string  `json:"unicity_constraint"`
-	FTMProperty       *string `json:"ftm_property,omitempty"`
+	ID                string   `json:"id"`
+	DataType          string   `json:"data_type"`
+	Description       string   `json:"description"`
+	IsEnum            bool     `json:"is_enum"`
+	Name              string   `json:"name"`
+	Nullable          bool     `json:"nullable"`
+	TableId           string   `json:"table_id"`
+	Values            []any    `json:"values,omitempty"`
+	UnicityConstraint string   `json:"unicity_constraint"`
+	FTMProperty       *string  `json:"ftm_property,omitempty"`
+	Aliases           []string `json:"aliases"`
 }
 
 type NavigationOption struct {
@@ -91,6 +92,7 @@ func adaptDataModelField(field models.Field) Field {
 		Values:            field.Values,
 		UnicityConstraint: field.UnicityConstraint.String(),
 		FTMProperty:       ftmProperty,
+		Aliases:           field.Aliases,
 	}
 }
 
@@ -194,4 +196,54 @@ func AdaptDataModelOptions(m models.DataModelOptions) DataModelOptions {
 		DisplayedFields: m.DisplayedFields,
 		FieldOrder:      m.FieldOrder,
 	}
+}
+
+type DataModelDeleteFieldReport struct {
+	Performed          bool                          `json:"performed"`
+	Conflicts          DataModelDeleteFieldConflicts `json:"conflicts"`
+	ArchivedIterations []string                      `json:"archived_iterations"`
+}
+
+type DataModelDeleteFieldConflicts struct {
+	ContinuousScreening bool                                              `json:"continuous_screening"`
+	Links               []string                                          `json:"links"`
+	Pivots              []string                                          `json:"pivots"`
+	AnalyticsSettings   int                                               `json:"analytics_settings"`
+	Scenarios           []string                                          `json:"scenarios"`
+	ScenarioIterations  map[string]*DataModelDeleteFieldConflictIteration `json:"scenario_iterations"`
+	Workflows           []string                                          `json:"workflows"`
+	TestRuns            bool                                              `json:"test_runs"`
+}
+
+type DataModelDeleteFieldConflictIteration struct {
+	TriggerCondition bool     `json:"trigger_condition"`
+	Rules            []string `json:"rules"`
+	Screenings       []string `json:"screenings"`
+}
+
+func AdaptDataModelDeleteFieldReport(m models.DataModelDeleteFieldReport) DataModelDeleteFieldReport {
+	r := DataModelDeleteFieldReport{
+		Performed: m.Performed,
+		Conflicts: DataModelDeleteFieldConflicts{
+			ContinuousScreening: m.Conflicts.ContinuousScreening,
+			Links:               m.Conflicts.Links.Slice(),
+			Pivots:              m.Conflicts.Pivots.Slice(),
+			AnalyticsSettings:   m.Conflicts.AnalyticsSettings,
+			Workflows:           m.Conflicts.Workflows.Slice(),
+			Scenarios:           m.Conflicts.Scenario.Slice(),
+			ScenarioIterations:  map[string]*DataModelDeleteFieldConflictIteration{},
+			TestRuns:            m.Conflicts.TestRuns,
+		},
+		ArchivedIterations: m.ArchivedIterations.Slice(),
+	}
+
+	for iterationId, conflicts := range m.Conflicts.ScenarioIterations {
+		r.Conflicts.ScenarioIterations[iterationId] = &DataModelDeleteFieldConflictIteration{
+			TriggerCondition: conflicts.TriggerCondition,
+			Rules:            conflicts.Rules.Slice(),
+			Screenings:       conflicts.Screening.Slice(),
+		}
+	}
+
+	return r
 }

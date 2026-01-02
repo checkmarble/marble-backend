@@ -14,8 +14,9 @@ type DbDataModelTable struct {
 }
 
 const (
-	TableDataModelTables = "data_model_tables"
-	TableDataModelFields = "data_model_fields"
+	TableDataModelTables  = "data_model_tables"
+	TableDataModelFields  = "data_model_fields"
+	TableDataModelAliases = "data_model_field_aliases"
 )
 
 var SelectDataModelTableColumns = utils.ColumnList[DbDataModelTable]()
@@ -43,12 +44,16 @@ type DbDataModelTableJoinField struct {
 	TableDescription string  `db:"data_model_tables.description"`
 	TableFTMEntity   *string `db:"data_model_tables.ftm_entity"`
 	FieldID          string  `db:"data_model_fields.id"`
-	FieldName        string  `db:"data_model_fields.name"`
+	PhysicalName     string  `db:"data_model_fields.name"`
 	FieldType        string  `db:"data_model_fields.type"`
 	FieldNullable    bool    `db:"data_model_fields.nullable"`
 	FieldDescription string  `db:"data_model_fields.description"`
 	FieldIsEnum      bool    `db:"data_model_fields.is_enum"`
 	FieldFTMProperty *string `db:"data_model_fields.ftm_property"`
+	FieldArchived    bool    `db:"data_model_fields.archived"`
+
+	FieldName string   `db:"-"`
+	Aliases   []string `db:"-"`
 }
 
 var SelectDataModelTableJoinFieldColumns = utils.ColumnList[DbDataModelTableJoinField]()

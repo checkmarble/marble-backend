@@ -105,7 +105,7 @@ func (usecase *IngestionUseCase) IngestObject(
 	}
 
 	parser := payload_parser.NewParser(parserOpts...)
-	payload, err := parser.ParsePayload(ctx, table, objectBody)
+	payload, err := parser.ParsePayload(ctx, table, objectBody, true)
 	if err != nil {
 		return 0, errors.WithDetail(err, "error parsing payload in decision usecase validate payload")
 	}
@@ -201,7 +201,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 	parser := payload_parser.NewParser(parserOpts...)
 	validationErrorsGroup := make(models.IngestionValidationErrors)
 	for _, rawMsg := range rawMessages {
-		payload, err := parser.ParsePayload(ctx, table, rawMsg)
+		payload, err := parser.ParsePayload(ctx, table, rawMsg, true)
 		var validationErrors models.IngestionValidationErrors
 		if errors.As(err, &validationErrors) {
 			objectId, errMap := validationErrors.GetSomeItem()
@@ -677,7 +677,7 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 
 	for i, value := range values {
 		fieldName := headers[i]
-		field, ok := table.Fields[fieldName]
+		field, ok := table.Field(fieldName)
 		if !ok {
 			return nil, fmt.Errorf("field %s not found in table %s", fieldName, table.Name)
 		}

@@ -130,7 +130,8 @@ RepeatLoop:
 			if settings, err := w.repository.GetAnalyticsSettings(ctx, dbExec, job.Args.OrgId); err == nil {
 				if setting, ok := settings[table.Name]; ok {
 					triggerFields = pure_utils.Map(setting.TriggerFields, func(name string) models.Field {
-						return table.Fields[name]
+						field, _ := table.Field(name)
+						return field
 					})
 
 					for _, f := range setting.DbFields {

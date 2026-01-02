@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jackc/pgx/v5"
 
@@ -59,6 +60,14 @@ type DataModelRepository interface {
 	GetDataModelOptionsForTable(ctx context.Context, exec Executor, tableId string) (*models.DataModelOptions, error)
 	UpsertDataModelOptions(ctx context.Context, exec Executor,
 		req models.UpdateDataModelOptionsRequest) (models.DataModelOptions, error)
+
+	ArchiveDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error
+	DeleteDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error
+	ArchiveDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error
+	RenameDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata, newName string) error
+	DeleteDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error
+	DeleteDataModelLink(ctx context.Context, exec Executor, id string) error
+	DeleteDataModelPivot(ctx context.Context, exec Executor, id string) error
 }
 
 var (
@@ -131,20 +140,29 @@ func (repo MarbleDbRepository) GetDataModel(
 				Name:          field.TableName,
 				Description:   field.TableDescription,
 				Fields:        map[string]models.Field{},
+				FieldAliases:  make(map[string]*models.Field),
 				LinksToSingle: make(map[string]models.LinkToSingle),
 				FTMEntity:     ftmEntity,
 			}
 		}
-		dataModel.Tables[field.TableName].Fields[field.FieldName] = models.Field{
-			ID:          field.FieldID,
-			DataType:    models.DataTypeFrom(field.FieldType),
-			Description: field.FieldDescription,
-			Name:        field.FieldName,
-			Nullable:    field.FieldNullable,
-			IsEnum:      field.FieldIsEnum,
-			TableId:     field.TableID,
-			Values:      values,
-			FTMProperty: ftmProperty,
+		f := models.Field{
+			ID:           field.FieldID,
+			DataType:     models.DataTypeFrom(field.FieldType),
+			Description:  field.FieldDescription,
+			PhysicalName: field.PhysicalName,
+			Name:         field.FieldName,
+			Nullable:     field.FieldNullable,
+			IsEnum:       field.FieldIsEnum,
+			TableId:      field.TableID,
+			Values:       values,
+			FTMProperty:  ftmProperty,
+			Aliases:      field.Aliases,
+		}
+
+		dataModel.Tables[field.TableName].Fields[field.FieldName] = f
+
+		for _, alias := range field.Aliases {
+			dataModel.Tables[field.TableName].FieldAliases[alias] = &f
 		}
 	}
 
@@ -361,9 +379,13 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 
 	query, args, err := NewQueryBuilder().
 		Select(dbmodels.SelectDataModelTableJoinFieldColumns...).
+		Column("coalesce(a.name, data_model_fields.name) as field_name").
+		Options("distinct on (data_model_fields.id)").
 		From(dbmodels.TableDataModelTables).
-		Join(fmt.Sprintf("%s ON (data_model_tables.id = data_model_fields.table_id)", dbmodels.TableDataModelFields)).
+		Join(fmt.Sprintf("%s ON data_model_fields.archived is false and (data_model_tables.id = data_model_fields.table_id)", dbmodels.TableDataModelFields)).
+		LeftJoin(dbmodels.TableDataModelAliases + " a on a.field_id = data_model_fields.id").
 		Where(squirrel.Eq{"organization_id": organizationID}).
+		OrderBy("data_model_fields.id, a.created_at desc").
 		ToSql()
 	if err != nil {
 		return nil, err
@@ -384,17 +406,52 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 			&dbModel.TableDescription,
 			&dbModel.TableFTMEntity,
 			&dbModel.FieldID,
-			&dbModel.FieldName,
+			&dbModel.PhysicalName,
 			&dbModel.FieldType,
 			&dbModel.FieldNullable,
 			&dbModel.FieldDescription,
 			&dbModel.FieldIsEnum,
 			&dbModel.FieldFTMProperty,
+			&dbModel.FieldArchived,
+			&dbModel.FieldName,
 		); err != nil {
 			return dbmodels.DbDataModelTableJoinField{}, err
 		}
 		return dbModel, nil
 	})
+
+	aliasesQuery, args, err := NewQueryBuilder().
+		Select("f.id", "array_remove(array_append(array_agg(a.name), max(f.name)), null)").
+		From(dbmodels.TableDataModelFields+" f").
+		LeftJoin(dbmodels.TableDataModelAliases+" a on a.field_id = f.id").
+		InnerJoin(dbmodels.TableDataModelTables+" t on f.table_id = t.id").
+		Where("t.organization_id = ?", organizationID).
+		GroupBy("f.id").
+		ToSql()
+
+	aliasesRows, err := exec.Query(ctx, aliasesQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		aliasId uuid.UUID
+		names   []string
+	)
+
+	_, err = pgx.ForEachRow(aliasesRows, []any{&aliasId, &names}, func() error {
+		for idx, field := range fields {
+			if field.FieldID == aliasId.String() {
+				fields[idx].Aliases = names
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return fields, err
 }
 
@@ -512,9 +569,10 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 			data_model_fields.nullable,
 			data_model_fields.table_id,
 			data_model_fields.type,
-			data_model_fields.ftm_property
+			data_model_fields.ftm_property,
+			data_model_fields.archived
 		FROM data_model_fields
-		WHERE id = $1
+		WHERE id = $1 and archived is false
 	`
 
 	row := exec.QueryRow(ctx, query, fieldId)
@@ -530,6 +588,7 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 		&field.TableId,
 		&dataType,
 		&ftmProperty,
+		&field.Archived,
 	); errors.Is(err, pgx.ErrNoRows) {
 		return models.FieldMetadata{}, fmt.Errorf("error in GetDataModelField: %w", models.NotFoundError)
 	} else if err != nil {
@@ -656,8 +715,13 @@ func (repo MarbleDbRepository) BatchInsertEnumValues(ctx context.Context, exec E
 	var shouldInsertFloatValues bool
 
 	for fieldName, values := range enumValues {
-		fieldId := table.Fields[fieldName].ID
-		dataType := table.Fields[fieldName].DataType
+		field, ok := table.Field(fieldName)
+		if !ok {
+			continue
+		}
+
+		fieldId := table.Fields[field.Name].ID
+		dataType := table.Fields[field.Name].DataType
 
 		for value := range values {
 			switch dataType {
@@ -685,4 +749,91 @@ func (repo MarbleDbRepository) BatchInsertEnumValues(ctx context.Context, exec E
 	}
 
 	return nil
+}
+
+func (repo MarbleDbRepository) ArchiveDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TableDataModelTables).
+		Set("archived", true).
+		Where("id = ?", table.ID)
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo MarbleDbRepository) DeleteDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Delete(dbmodels.TableDataModelTables).
+		Where("id = ?", table.ID)
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo MarbleDbRepository) ArchiveDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TableDataModelFields).
+		Set("archived", true).
+		Where("table_id = ? and id = ?", table.ID, field.ID)
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo MarbleDbRepository) RenameDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata, newName string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Insert(dbmodels.TableDataModelAliases).
+		Columns("table_id", "field_id", "name").
+		Values(table.ID, field.ID, newName)
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo MarbleDbRepository) DeleteDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Delete(dbmodels.TableDataModelFields).
+		Where("table_id = ? and id = ?", table.ID, field.ID)
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo MarbleDbRepository) DeleteDataModelLink(ctx context.Context, exec Executor, id string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Delete("data_model_links").
+		Where("id = ?", id)
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo MarbleDbRepository) DeleteDataModelPivot(ctx context.Context, exec Executor, id string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Delete("data_model_pivots").
+		Where("id = ?", id)
+
+	return ExecBuilder(ctx, exec, query)
 }

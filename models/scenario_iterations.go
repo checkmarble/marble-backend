@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-set/v2"
 )
 
@@ -24,6 +25,7 @@ type ScenarioIteration struct {
 	ScoreBlockAndReviewThreshold  *int
 	ScoreDeclineThreshold         *int
 	Schedule                      string
+	Archived                      bool
 }
 
 type GetScenarioIterationFilters struct {
@@ -183,4 +185,16 @@ type UpdateScreeningConfigInput struct {
 	ForcedOutcome            *Outcome
 	Preprocessing            *ScreeningConfigPreprocessing
 	ConfigVersion            string
+}
+
+type RulesAndScreenings struct {
+	ScenarioIterationId      uuid.UUID
+	ScenarioId               uuid.UUID
+	RuleId                   uuid.UUID
+	Version                  *int
+	TriggerAst               *ast.Node
+	RuleAst                  *ast.Node
+	ScreeningTriggerAst      *ast.Node
+	ScreeningCounterpartyAst *ast.Node
+	ScreeningAst             map[string]ast.Node
 }

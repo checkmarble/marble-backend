@@ -338,8 +338,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		Pivot:        pivot,
 	}
 
-	triggerPassed, scenarioExecution, err :=
-		usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+	triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{},
 			fmt.Errorf("error evaluating scenario: %w", err)
@@ -540,8 +539,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		)
 		defer span.End()
 
-		triggerPassed, scenarioExecution, err :=
-			usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+		triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 		switch {
 		case err != nil:
 			return nil, 0, errors.Wrapf(err, `error evaluating scenario "%s" in CreateAllDecisions`, scenario.Name)
@@ -759,7 +757,7 @@ func (usecase DecisionUsecase) validatePayload(
 		parser = payload_parser.NewParser(payload_parser.DisallowUnknownFields())
 	}
 
-	payload, err = parser.ParsePayload(ctx, table, rawPayload)
+	payload, err = parser.ParsePayload(ctx, table, rawPayload, false)
 	if err != nil {
 		err = errors.Wrap(err, "error parsing payload in decision usecase validate payload")
 		return

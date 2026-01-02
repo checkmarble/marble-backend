@@ -36,6 +36,20 @@ func AnySliceAtIndex[T any](input any, index int) (T, bool) {
 	return item, true
 }
 
+func CastAnySlice[T any](input []any) ([]T, bool) {
+	out := make([]T, len(input))
+
+	for idx, anyValue := range input {
+		value, ok := anyValue.(T)
+		if !ok {
+			return nil, false
+		}
+		out[idx] = value
+	}
+
+	return out, true
+}
+
 // Check if all elements of a are present in b
 func AllElementsIn[T comparable](a, b []T) bool {
 	bSet := make(map[T]bool, len(b))
