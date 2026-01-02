@@ -238,11 +238,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		continuous_screening.NewContinuousScreeningUpdateDatasetJob(
 			workerConfig.ScanDatasetUpdatesInterval),
 	)
-	maps.Copy(nonOrgQueues, usecases.QueueContinuousScreeningCreateFullDataset())
-	globalPeriodics = append(globalPeriodics,
-		continuous_screening.NewContinuousScreeningCreateFullDatasetJob(
-			workerConfig.CreateFullDatasetInterval),
-	)
 	if !metricCollectionConfig.Disabled {
 		maps.Copy(nonOrgQueues, usecases.QueueMetrics())
 		globalPeriodics = append(globalPeriodics,
@@ -388,7 +383,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	taskQueueWorker := uc.NewTaskQueueWorker(riverClient,
 		slices.Collect(maps.Keys(nonOrgQueues)),
 	)
-	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx)
+	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx, offloadingConfig, analyticsConfig)
 
 	// Start the cron jobs using the old entrypoint.
 	// This will progressively be replaced by the new task queue system.

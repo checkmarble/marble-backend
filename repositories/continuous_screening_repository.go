@@ -939,3 +939,24 @@ func (repo *MarbleDbRepository) UpdateDeltaTracksDatasetFileId(
 
 	return ExecBuilder(ctx, exec, query)
 }
+
+func (repo *MarbleDbRepository) GetContinuousScreeningLastDeltaTrackByEntityId(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	entityId string,
+) (*models.ContinuousScreeningDeltaTrack, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningDeltaTrackColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS).
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Eq{"entity_id": entityId}).
+		OrderBy("created_at DESC").
+		Limit(1)
+
+	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDeltaTrack)
+}

@@ -74,17 +74,19 @@ func (d *DeltasIndex) addVersion(version string, filePath string) {
 }
 
 // Periodic job
-func NewContinuousScreeningCreateFullDatasetJob(interval time.Duration) *river.PeriodicJob {
+func NewContinuousScreeningCreateFullDatasetPeriodicJob(orgId string, interval time.Duration) *river.PeriodicJob {
 	return river.NewPeriodicJob(
 		river.PeriodicInterval(interval),
 		func() (river.JobArgs, *river.InsertOpts) {
-			return models.ContinuousScreeningCreateFullDatasetArgs{}, &river.InsertOpts{
-				Queue: models.CONTINUOUS_SCREENING_CREATE_FULL_DATASET_QUEUE_NAME,
-				UniqueOpts: river.UniqueOpts{
-					ByQueue:  true,
-					ByPeriod: interval,
-				},
-			}
+			return models.ContinuousScreeningCreateFullDatasetArgs{
+					OrgId: orgId,
+				}, &river.InsertOpts{
+					Queue: orgId,
+					UniqueOpts: river.UniqueOpts{
+						ByQueue:  true,
+						ByPeriod: interval,
+					},
+				}
 		},
 		&river.PeriodicJobOpts{RunOnStart: true},
 	)
@@ -100,10 +102,11 @@ type createFullDatasetWorkerRepository interface {
 		cursorEntityId string,
 	) ([]models.ContinuousScreeningDeltaTrack, error)
 
-	ListOrgsWithContinuousScreeningConfigs(
+	GetContinuousScreeningConfigsByOrgId(
 		ctx context.Context,
 		exec repositories.Executor,
-	) ([]uuid.UUID, error)
+		orgId string,
+	) ([]models.ContinuousScreeningConfig, error)
 
 	GetContinuousScreeningLatestDatasetFileByOrgId(
 		ctx context.Context,
@@ -186,47 +189,52 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Creating full dataset", "job", job)
 
-	orgIdsWithConfigs, err := w.repo.ListOrgsWithContinuousScreeningConfigs(ctx, exec)
+	orgId, err := uuid.Parse(job.Args.OrgId)
 	if err != nil {
-		return errors.Wrap(err, "failed to list orgs with continuous screening configs")
+		return errors.Wrap(err, "failed to parse org id")
 	}
 
-	// Map to store dataset files from handleFirstFullDataset for manifest update
-	orgDatasetFiles := make(map[uuid.UUID]models.ContinuousScreeningDatasetFile)
+	// Check if the org has a continuous screening config
+	configs, err := w.repo.GetContinuousScreeningConfigsByOrgId(ctx, exec, orgId.String())
+	if err != nil {
+		return errors.Wrap(err, "failed to get continuous screening configs by org id")
+	}
+	if len(configs) == 0 {
+		logger.DebugContext(ctx, "No continuous screening config found for org, skipping", "orgId", orgId)
+		return nil
+	}
 
-	for _, orgId := range orgIdsWithConfigs {
-		// Check if the dataset file for this org exists
-		datasetFile, err := w.repo.GetContinuousScreeningLatestDatasetFileByOrgId(ctx, exec,
-			orgId, models.ContinuousScreeningDatasetFileTypeFull)
+	// Check if the dataset file for this org exists
+	datasetFile, err := w.repo.GetContinuousScreeningLatestDatasetFileByOrgId(ctx, exec,
+		orgId, models.ContinuousScreeningDatasetFileTypeFull)
+	if err != nil {
+		return errors.Wrap(err, "failed to get dataset file by org id")
+	}
+
+	orgDatasetFile := models.ContinuousScreeningDatasetFile{}
+
+	if datasetFile == nil {
+		logger.DebugContext(ctx, "No dataset file found for org, creating new one", "orgId", orgId)
+		newDatasetFile, err := w.handleFirstFullDataset(ctx, exec, orgId)
 		if err != nil {
-			return errors.Wrap(err, "failed to get dataset file by org id")
+			return errors.Wrap(err, "failed to handle first full dataset")
 		}
-
-		if datasetFile == nil {
-			logger.DebugContext(ctx, "No dataset file found for org, creating new one", "orgId", orgId)
-			newDatasetFile, err := w.handleFirstFullDataset(ctx, exec, orgId)
-			if err != nil {
-				return errors.Wrap(err, "failed to handle first full dataset")
-			}
-			orgDatasetFiles[orgId] = newDatasetFile
-		} else {
-			logger.DebugContext(ctx, "Dataset file found for org, patching it and creating new version",
-				"orgId", orgId, "datasetFile", datasetFile)
-			newDatasetFile, err := w.handlePatchDataset(ctx, exec, orgId, *datasetFile)
-			if err != nil {
-				return errors.Wrap(err, "failed to handle patch dataset")
-			}
-			orgDatasetFiles[orgId] = newDatasetFile
+		orgDatasetFile = newDatasetFile
+	} else {
+		logger.DebugContext(ctx, "Dataset file found for org, patching it and creating new version",
+			"orgId", orgId, "datasetFile", datasetFile)
+		newDatasetFile, err := w.handlePatchDataset(ctx, exec, orgId, *datasetFile)
+		if err != nil {
+			return errors.Wrap(err, "failed to handle patch dataset")
 		}
+		orgDatasetFile = newDatasetFile
 	}
 
 	// Update manifest with all org dataset files
-	if len(orgDatasetFiles) > 0 {
-		if err := w.updateManifest(ctx, orgDatasetFiles); err != nil {
-			logger.ErrorContext(ctx, "Failed to update manifest", "error", err)
-			// Don't return error to avoid job retries because the retry will not update the manifest
-			return nil
-		}
+	if err := w.updateManifest(ctx, orgId, orgDatasetFile); err != nil {
+		logger.ErrorContext(ctx, "Failed to update manifest", "error", err)
+		// Don't return error to avoid job retries because the retry will not update the manifest
+		return nil
 	}
 
 	logger.DebugContext(ctx, "Successfully created full dataset")
@@ -862,7 +870,8 @@ func (w *CreateFullDatasetWorker) getOrCreateManifest(ctx context.Context) (Mani
 // Update or create manifest file with organization dataset information (version and path)
 func (w *CreateFullDatasetWorker) updateManifest(
 	ctx context.Context,
-	orgDatasetFiles map[uuid.UUID]models.ContinuousScreeningDatasetFile,
+	orgId uuid.UUID,
+	datasetFile models.ContinuousScreeningDatasetFile,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
@@ -871,9 +880,7 @@ func (w *CreateFullDatasetWorker) updateManifest(
 		return err
 	}
 
-	for orgId, datasetFile := range orgDatasetFiles {
-		manifest.upsertDataset(orgId.String(), datasetFile)
-	}
+	manifest.upsertDataset(orgId.String(), datasetFile)
 
 	manifestData, err := yaml.Marshal(&manifest)
 	if err != nil {

@@ -140,7 +140,9 @@ func (ContinuousScreeningApplyDeltaFileArgs) Kind() string {
 	return "continuous_screening_apply_delta_file"
 }
 
-type ContinuousScreeningCreateFullDatasetArgs struct{}
+type ContinuousScreeningCreateFullDatasetArgs struct {
+	OrgId string `json:"org_id"`
+}
 
 func (ContinuousScreeningCreateFullDatasetArgs) Kind() string {
 	return "continuous_screening_create_full_dataset"
