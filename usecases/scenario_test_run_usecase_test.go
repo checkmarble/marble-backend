@@ -12,22 +12,28 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+type mockScenarioIterationUsecaseRepository struct {
+	mocks.ScenarioIterationReadRepository
+	mocks.ScenarioIterationWriteRepository
+}
+
 type ScenarioTestrunTestSuite struct {
 	suite.Suite
 	transactionFactory *mocks.TransactionFactory
 	transaction        *mocks.Transaction
 
-	executorFactory       *mocks.ExecutorFactory
-	scenarioRepository    *mocks.ScenarioRepository
-	enforceSecurity       *mocks.EnforceSecurity
-	repository            *mocks.ScenarioTestrunRepository
-	clientDbIndexEditor   *mocks.ClientDbIndexEditor
-	featureAccessReader   *mocks.FeatureAccessReader
-	screeningConfig       *mocks.ScreeningConfigRepository
-	organizationId        string
-	scenarioId            string
-	scenarioPublicationId string
-	ctx                   context.Context
+	executorFactory             *mocks.ExecutorFactory
+	scenarioRepository          *mocks.ScenarioRepository
+	scenarioIterationRepository *mockScenarioIterationUsecaseRepository
+	enforceSecurity             *mocks.EnforceSecurity
+	repository                  *mocks.ScenarioTestrunRepository
+	clientDbIndexEditor         *mocks.ClientDbIndexEditor
+	featureAccessReader         *mocks.FeatureAccessReader
+	screeningConfig             *mocks.ScreeningConfigRepository
+	organizationId              string
+	scenarioId                  string
+	scenarioPublicationId       string
+	ctx                         context.Context
 }
 
 func (suite *ScenarioTestrunTestSuite) SetupTest() {
@@ -36,6 +42,7 @@ func (suite *ScenarioTestrunTestSuite) SetupTest() {
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.executorFactory = new(mocks.ExecutorFactory)
 	suite.scenarioRepository = new(mocks.ScenarioRepository)
+	suite.scenarioIterationRepository = new(mockScenarioIterationUsecaseRepository)
 	suite.repository = new(mocks.ScenarioTestrunRepository)
 	suite.featureAccessReader = new(mocks.FeatureAccessReader)
 	suite.screeningConfig = new(mocks.ScreeningConfigRepository)
@@ -48,14 +55,15 @@ func (suite *ScenarioTestrunTestSuite) SetupTest() {
 
 func (suite *ScenarioTestrunTestSuite) makeUsecase() *ScenarioTestRunUsecase {
 	return &ScenarioTestRunUsecase{
-		transactionFactory:        suite.transactionFactory,
-		executorFactory:           suite.executorFactory,
-		enforceSecurity:           suite.enforceSecurity,
-		repository:                suite.repository,
-		scenarioRepository:        suite.scenarioRepository,
-		clientDbIndexEditor:       suite.clientDbIndexEditor,
-		featureAccessReader:       suite.featureAccessReader,
-		screeningConfigRepository: suite.screeningConfig,
+		transactionFactory:          suite.transactionFactory,
+		executorFactory:             suite.executorFactory,
+		enforceSecurity:             suite.enforceSecurity,
+		repository:                  suite.repository,
+		scenarioRepository:          suite.scenarioRepository,
+		scenarioIterationRepository: suite.scenarioIterationRepository,
+		clientDbIndexEditor:         suite.clientDbIndexEditor,
+		featureAccessReader:         suite.featureAccessReader,
+		screeningConfigRepository:   suite.screeningConfig,
 	}
 }
 
@@ -95,6 +103,9 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		suite.organizationId).Return(nil, nil)
 	suite.screeningConfig.On("ListScreeningConfigs", suite.ctx, suite.transaction,
 		input.PhantomIterationId, mock.Anything).Return(nil, nil)
+	suite.scenarioIterationRepository.ScenarioIterationReadRepository.
+		On("GetScenarioIteration", mock.Anything, suite.transaction, input.PhantomIterationId, false).
+		Return(models.ScenarioIteration{}, nil)
 
 	suite.clientDbIndexEditor.On("CreateIndexesAsyncForScenarioWithCallback", suite.ctx,
 		suite.organizationId, []models.ConcreteIndex{

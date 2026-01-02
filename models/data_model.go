@@ -2,8 +2,10 @@ package models
 
 import (
 	"slices"
+	"time"
 
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 )
 
 // ///////////////////////////////
@@ -102,7 +104,7 @@ func (d DataModel) AllFieldsAsMap() map[string]Field {
 
 func (d DataModel) FindField(table Table, path []string, field string) (Field, bool) {
 	if len(path) == 0 {
-		f, ok := table.Fields[field]
+		f, ok := table.Field(field)
 
 		return f, ok
 	}
@@ -125,6 +127,7 @@ type Table struct {
 	Name              string
 	Description       string
 	Fields            map[string]Field
+	FieldAliases      map[string]*Field
 	LinksToSingle     map[string]LinkToSingle
 	NavigationOptions []NavigationOption
 	FTMEntity         *FollowTheMoneyEntity
@@ -136,6 +139,16 @@ func (t Table) FieldNames() []string {
 		fieldNames = append(fieldNames, fieldName)
 	}
 	return fieldNames
+}
+
+func (t Table) Field(name string) (Field, bool) {
+	if f, ok := t.Fields[name]; ok {
+		return f, true
+	}
+	if a, ok := t.FieldAliases[name]; ok {
+		return *a, true
+	}
+	return Field{}, false
 }
 
 func (t Table) Copy() Table {
@@ -173,8 +186,8 @@ type TableMetadata struct {
 func ColumnNames(table Table) []string {
 	columnNames := make([]string, len(table.Fields))
 	i := 0
-	for fieldName := range table.Fields {
-		columnNames[i] = fieldName
+	for _, field := range table.Fields {
+		columnNames[i] = field.PhysicalName
 		i++
 	}
 	slices.Sort(columnNames)
@@ -184,9 +197,9 @@ func ColumnNames(table Table) []string {
 func (t Table) WithFieldStatistics(fieldStats []FieldStatistics) Table {
 	// This method mutates the table to add sample values to the fields that have them
 	for _, fieldStat := range fieldStats {
-		if field, ok := t.Fields[fieldStat.FieldName]; ok {
+		if field, ok := t.Field(fieldStat.FieldName); ok {
 			field.FieldStatistics = fieldStat
-			t.Fields[fieldStat.FieldName] = field
+			t.Fields[field.Name] = field
 		}
 	}
 	return t
@@ -201,6 +214,7 @@ type Field struct {
 	DataType          DataType
 	Description       string
 	IsEnum            bool
+	PhysicalName      string
 	Name              string
 	Nullable          bool
 	TableId           string
@@ -209,6 +223,7 @@ type Field struct {
 	UnicityConstraint UnicityConstraint
 	FTMProperty       *FollowTheMoneyProperty
 	Archived          bool
+	Aliases           []string
 }
 
 type FieldMetadata struct {
@@ -370,12 +385,12 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 			continue
 		}
 		fieldName := index.Indexed[0]
-		field, ok := childTable.Fields[fieldName]
+		field, ok := childTable.Field(fieldName)
 		if !ok {
 			continue
 		}
 
-		childOrderingField, ok := childTable.Fields[index.Indexed[1]]
+		childOrderingField, ok := childTable.Field(index.Indexed[1])
 		if !ok {
 			continue
 		}
@@ -493,4 +508,12 @@ type CreateNavigationOptionInput struct {
 	TargetTableId   string
 	FilterFieldId   string
 	OrderingFieldId string
+}
+
+type DataModelFieldAlias struct {
+	Id        uuid.UUID
+	TableId   uuid.UUID
+	FieldId   uuid.UUID
+	Name      string
+	CreatedAt time.Time
 }

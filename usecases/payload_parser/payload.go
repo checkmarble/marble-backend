@@ -57,49 +57,61 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 		addError(allErrors, objectId, "object_id", errIsNotNullable)
 	}
 
-	for name, field := range table.Fields {
+FieldLoop:
+	for _, field := range table.Fields {
 		if field.Archived {
 			continue
 		}
 
-		value := result.Get(name)
-		if !value.Exists() {
-			// specific case for updated_at which is always required, because it is necessary for proper ingestion at the repository level
-			if p.allowPatch && name != "updated_at" {
-				missingFields = append(missingFields, models.MissingField{
-					Field:          field,
-					ErrorIfMissing: errIsNotNullable.Error(),
-				})
-			} else if !field.Nullable {
-				addError(allErrors, objectId, name, errIsNotNullable)
+		fieldName := field.PhysicalName
+		notFound := false
+
+		for _, name := range field.Aliases {
+			value := result.Get(name)
+			if !value.Exists() {
+				// specific case for updated_at which is always required, because it is necessary for proper ingestion at the repository level
+				if p.allowPatch && name != "updated_at" {
+					missingFields = append(missingFields, models.MissingField{
+						Field:          field,
+						ErrorIfMissing: errIsNotNullable.Error(),
+					})
+				} else if !field.Nullable {
+					notFound = true
+				}
+				continue
 			}
-			continue
+
+			if value.Type == gjson.Null {
+				if !field.Nullable {
+					notFound = true
+				}
+				out[fieldName] = nil
+				continue FieldLoop
+			}
+
+			notFound = false
+
+			parseField, ok := p.parsers[field.DataType]
+			if !ok {
+				return models.ClientObject{}, fmt.Errorf("%w: %s",
+					errIsInvalidDataType, field.DataType.String())
+			}
+			if val, err := parseField(value); err != nil {
+				addError(allErrors, objectId, name, err)
+			} else {
+				out[fieldName] = val
+			}
 		}
 
-		if value.Type == gjson.Null {
-			if !field.Nullable {
-				addError(allErrors, objectId, name, errIsNotNullable)
-			}
-			out[name] = nil
-			continue
-		}
-
-		parseField, ok := p.parsers[field.DataType]
-		if !ok {
-			return models.ClientObject{}, fmt.Errorf("%w: %s",
-				errIsInvalidDataType, field.DataType.String())
-		}
-		if val, err := parseField(value); err != nil {
-			addError(allErrors, objectId, name, err)
-		} else {
-			out[name] = val
+		if notFound {
+			addError(allErrors, objectId, field.Name, errIsNotNullable)
 		}
 	}
 
 	extraFields := make([]string, 0)
 
 	for field := range result.Map() {
-		if _, ok := table.Fields[field]; !ok {
+		if _, ok := table.Field(field); !ok {
 			extraFields = append(extraFields, field)
 
 			if p.disallowUnknownFields {
