@@ -244,10 +244,34 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 	table models.TableMetadata,
 	field *models.FieldMetadata,
 ) (bool, models.DataModelDeleteFieldReport, error) {
-	// TODO: add continuous screening fields
-
 	report := models.NewDataModelDeleteFieldReport()
 	canDelete := true
+
+	switch field {
+	case nil:
+		if table.FTMEntity != nil {
+			report.Conflicts.ContinuousScreening = true
+			canDelete = false
+		}
+
+		dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, table.OrganizationID, false, false)
+		if err != nil {
+			return false, models.DataModelDeleteFieldReport{}, err
+		}
+
+		for _, field := range dataModel.Tables[table.Name].Fields {
+			if field.FTMProperty != nil {
+				report.Conflicts.ContinuousScreening = true
+				canDelete = false
+			}
+		}
+
+	default:
+		if field.FTMProperty != nil {
+			report.Conflicts.ContinuousScreening = true
+			canDelete = false
+		}
+	}
 
 	analyticsSettings, err := uc.analyticsSettingsRepository.GetAnalyticsSettings(ctx, exec, orgId)
 	if err != nil {
