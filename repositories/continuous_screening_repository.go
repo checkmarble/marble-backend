@@ -801,3 +801,36 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningJobError(
 
 	return ExecBuilder(ctx, exec, query)
 }
+
+func (repo *MarbleDbRepository) CreateContinuousScreeningDeltaTrack(
+	ctx context.Context,
+	exec Executor,
+	input models.CreateContinuousScreeningDeltaTrack,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS).
+		Columns(
+			"id",
+			"org_id",
+			"object_type",
+			"object_id",
+			"object_internal_id",
+			"entity_id",
+			"operation",
+		).
+		Values(
+			uuid.Must(uuid.NewV7()),
+			input.OrgId,
+			input.ObjectType,
+			input.ObjectId,
+			input.ObjectInternalId,
+			input.EntityId,
+			input.Operation.String(),
+		)
+
+	return ExecBuilder(ctx, exec, query)
+}
