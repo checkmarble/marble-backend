@@ -30,19 +30,6 @@ func TestNormalizeFTMPropertyValue(t *testing.T) {
 		},
 		// Date normalization
 		{
-			name:     "BirthDate - European format to ISO",
-			property: models.FollowTheMoneyPropertyBirthDate,
-			value:    "15/05/1990",
-			expected: "1990-05-15",
-		},
-		{
-			name:     "DeathDate - US format to ISO",
-			property: models.FollowTheMoneyPropertyDeathDate,
-			value:    "12/31/2020",
-			expected: "2020-12-31",
-		},
-		// Combined (not that there's a field that is both, but shows the wrapper works)
-		{
 			name:     "Unchanged property",
 			property: models.FollowTheMoneyPropertyName,
 			value:    "John Doe",
@@ -317,18 +304,6 @@ func TestNormalizeDateFTMPropertyValue(t *testing.T) {
 			expected: "1990-05-15",
 		},
 		{
-			name:     "BirthDate - European DD-MM-YYYY",
-			property: models.FollowTheMoneyPropertyBirthDate,
-			value:    "15-05-1990",
-			expected: "1990-05-15",
-		},
-		{
-			name:     "BirthDate - European DD/MM/YYYY",
-			property: models.FollowTheMoneyPropertyBirthDate,
-			value:    "15/05/1990",
-			expected: "1990-05-15",
-		},
-		{
 			name:     "BirthDate - ISO 8601 with time",
 			property: models.FollowTheMoneyPropertyBirthDate,
 			value:    "1990-05-15T10:30:00",
@@ -338,24 +313,6 @@ func TestNormalizeDateFTMPropertyValue(t *testing.T) {
 			name:     "BirthDate - RFC3339",
 			property: models.FollowTheMoneyPropertyBirthDate,
 			value:    "1990-05-15T10:30:00Z",
-			expected: "1990-05-15",
-		},
-		{
-			name:     "BirthDate - Month Day Year",
-			property: models.FollowTheMoneyPropertyBirthDate,
-			value:    "May 15, 1990",
-			expected: "1990-05-15",
-		},
-		{
-			name:     "BirthDate - Full month name",
-			property: models.FollowTheMoneyPropertyBirthDate,
-			value:    "January 1, 2000",
-			expected: "2000-01-01",
-		},
-		{
-			name:     "BirthDate - Day Month Year",
-			property: models.FollowTheMoneyPropertyBirthDate,
-			value:    "15 May 1990",
 			expected: "1990-05-15",
 		},
 		{
@@ -376,12 +333,6 @@ func TestNormalizeDateFTMPropertyValue(t *testing.T) {
 			name:     "DeathDate - ISO 8601 format",
 			property: models.FollowTheMoneyPropertyDeathDate,
 			value:    "2020-12-31",
-			expected: "2020-12-31",
-		},
-		{
-			name:     "DeathDate - European format",
-			property: models.FollowTheMoneyPropertyDeathDate,
-			value:    "31-12-2020",
 			expected: "2020-12-31",
 		},
 
@@ -444,22 +395,6 @@ func TestBuildDatasetEntity_DateNormalization(t *testing.T) {
 				"birth_date": "1990-05-15",
 			},
 			expectedBirthDate: []string{"1990-05-15"},
-		},
-		{
-			name: "European date format normalized",
-			ingestedData: map[string]any{
-				"name":       "Jane Doe",
-				"birth_date": "15/05/1990",
-			},
-			expectedBirthDate: []string{"1990-05-15"},
-		},
-		{
-			name: "Full month name normalized",
-			ingestedData: map[string]any{
-				"name":       "Bob Smith",
-				"birth_date": "January 1, 2000",
-			},
-			expectedBirthDate: []string{"2000-01-01"},
 		},
 	}
 

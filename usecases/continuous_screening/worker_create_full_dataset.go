@@ -1152,16 +1152,8 @@ var dateFTMProperties = map[models.FollowTheMoneyProperty]bool{
 var dateFormats = []string{
 	"2006-01-02",          // ISO 8601: YYYY-MM-DD
 	"2006/01/02",          // YYYY/MM/DD
-	"02-01-2006",          // DD-MM-YYYY
-	"02/01/2006",          // DD/MM/YYYY
-	"01-02-2006",          // MM-DD-YYYY (US format)
-	"01/02/2006",          // MM/DD/YYYY (US format)
 	"2006-01-02T15:04:05", // ISO 8601 with time
 	time.RFC3339,          // RFC 3339
-	"Jan 2, 2006",         // Month Day, Year
-	"January 2, 2006",     // Full month name
-	"2 Jan 2006",          // Day Month Year
-	"2 January 2006",      // Day Full month Year
 	"20060102",            // YYYYMMDD compact
 }
 
