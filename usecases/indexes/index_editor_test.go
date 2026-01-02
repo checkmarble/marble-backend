@@ -22,6 +22,7 @@ type ClientDbIndexEditorTestSuite struct {
 	executorFactory               *mocks.ExecutorFactory
 	ingestedDataIndexesRepository *mocks.IngestedDataIndexesRepository
 	scenarioFetcher               *mocks.ScenarioFetcher
+	dataModelRepository           *mocks.DataModelRepository
 	transaction                   *mocks.Executor
 
 	organizationId                string
@@ -46,6 +47,7 @@ func (suite *ClientDbIndexEditorTestSuite) SetupTest() {
 	suite.executorFactory = new(mocks.ExecutorFactory)
 	suite.ingestedDataIndexesRepository = new(mocks.IngestedDataIndexesRepository)
 	suite.scenarioFetcher = new(mocks.ScenarioFetcher)
+	suite.dataModelRepository = new(mocks.DataModelRepository)
 	suite.transaction = new(mocks.Executor)
 
 	suite.organizationId = "organizationId"
@@ -140,6 +142,7 @@ func (suite *ClientDbIndexEditorTestSuite) makeUsecase() ClientDbIndexEditor {
 	return NewClientDbIndexEditor(
 		suite.executorFactory,
 		suite.scenarioFetcher,
+		suite.dataModelRepository,
 		suite.ingestedDataIndexesRepository,
 		suite.enforceSecurity,
 		suite.enforceSecurityDataModel,

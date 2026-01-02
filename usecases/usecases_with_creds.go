@@ -296,6 +296,7 @@ func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() indexes.ClientDbInde
 	return indexes.NewClientDbIndexEditor(
 		usecases.NewExecutorFactory(),
 		usecases.NewScenarioFetcher(),
+		usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.ClientDbRepository,
 		usecases.NewEnforceScenarioSecurity(),
 		usecases.NewEnforceOrganizationSecurity(),

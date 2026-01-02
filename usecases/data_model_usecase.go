@@ -768,7 +768,7 @@ func (usecase *usecase) CreateNavigationOption(ctx context.Context, input models
 		{
 			Type:      models.IndexTypeNavigation,
 			TableName: targetTable.Name,
-			Indexed:   []string{filterField.Name, orderingField.Name},
+			Indexed:   []string{filterField.PhysicalName, orderingField.PhysicalName},
 		},
 	})
 }

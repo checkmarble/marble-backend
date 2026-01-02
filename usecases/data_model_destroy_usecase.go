@@ -57,8 +57,24 @@ func NewDataModelDestroyUsecase(
 	}
 }
 
-func (uc DataModelDestroyUsecase) RenameField(ctx context.Context, fieldId string) error {
-	return nil
+func (uc DataModelDestroyUsecase) RenameField(ctx context.Context, fieldId, newName string) error {
+	exec := uc.executorFactory.NewExecutor()
+
+	field, err := uc.dataModelRepository.GetDataModelField(ctx, exec, fieldId)
+	if err != nil {
+		return err
+	}
+
+	table, err := uc.dataModelRepository.GetDataModelTable(ctx, exec, field.TableId)
+	if err != nil {
+		return err
+	}
+
+	if err := uc.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+		return err
+	}
+
+	return uc.dataModelRepository.RenameDataModelField(ctx, exec, table, field, newName)
 }
 
 func (uc DataModelDestroyUsecase) DeleteTable(ctx context.Context, tableId string) (models.DataModelDeleteFieldReport, error) {

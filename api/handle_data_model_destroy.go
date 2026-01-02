@@ -31,6 +31,23 @@ func handleDeleteDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleRenameDataModelField(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelDestroyUsecase()
+		fieldId := c.Param("fieldID")
+		newName := c.Param("name")
+
+		if err := usecase.RenameField(ctx, fieldId, newName); presentError(ctx, c, err) {
+			if presentError(ctx, c, err) {
+				return
+			}
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
 func handleDeleteDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

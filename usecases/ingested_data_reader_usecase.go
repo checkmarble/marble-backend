@@ -112,9 +112,19 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 
 	clientObjects := make([]models.ClientObjectDetail, len(objects))
 	for i, object := range objects {
+		data := make(map[string]any)
+
+		for key, value := range object.Data {
+			field, ok := table.Field(key)
+			if !ok {
+				continue
+			}
+			data[field.Name] = value
+		}
+
 		validFrom, _ := object.Metadata["valid_from"].(time.Time)
 		clientObject := models.ClientObjectDetail{
-			Data:     object.Data,
+			Data:     data,
 			Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: objectType},
 		}
 		clientObjects[i] = clientObject
@@ -322,14 +332,14 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 			"Source table '%s' not found in ReadIngestedClientObjects", explo.SourceTableName)
 		return
 	}
-	filterField, ok := targetTable.Fields[explo.FilterFieldName]
+	filterField, ok := targetTable.Field(explo.FilterFieldName)
 	if !ok {
 		err = errors.Wrapf(models.NotFoundError,
 			"Field '%s' not found in table '%s' in ReadIngestedClientObjects",
 			explo.FilterFieldName, targetTable.Name)
 		return
 	}
-	_, ok = targetTable.Fields[explo.OrderingFieldName]
+	_, ok = targetTable.Field(explo.OrderingFieldName)
 	if !ok {
 		err = errors.Wrapf(models.NotFoundError,
 			"Field '%s' not found in table '%s' in ReadIngestedClientObjects",

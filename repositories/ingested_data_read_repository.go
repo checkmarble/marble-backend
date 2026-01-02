@@ -140,12 +140,20 @@ func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (
 
 	// setup the end table we read the field from, the beginning table we join from, and relevant filters on the latter
 	query := NewQueryBuilder().
-		Select(fmt.Sprintf("%s.%s", lastTableAlias, readParams.FieldName)).
+		Select().
 		From(fmt.Sprintf("%s AS %s", firstTableName, firstTableAlias)).
 		Where(squirrel.Eq{fmt.Sprintf("%s.%s", firstTableAlias, link.ParentFieldName): firstTableLinkValue}).
 		Where(rowIsValid(firstTableAlias))
 
-	b, err = addJoinsOnIntermediateTables(exec, query, readParams, firstTable)
+	b, lastTable, err := addJoinsOnIntermediateTables(exec, query, readParams, firstTable)
+
+	lastField, ok := lastTable.Field(readParams.FieldName)
+	if !ok {
+		return false, b, fmt.Errorf("no field found with name %s", readParams.FieldName)
+	}
+
+	b = b.Column(fmt.Sprintf("%s.%s", lastTableAlias, lastField.PhysicalName))
+
 	return false, b, err
 }
 
@@ -154,19 +162,19 @@ func addJoinsOnIntermediateTables(
 	query squirrel.SelectBuilder,
 	readParams models.DbFieldReadParams,
 	firstTable models.Table,
-) (squirrel.SelectBuilder, error) {
+) (squirrel.SelectBuilder, models.Table, error) {
 	currentTable := firstTable
 	// ignore the first element of the path, as it is the starting table of the query
 	for i := 1; i < len(readParams.Path); i++ {
 		linkName := readParams.Path[i]
 		link, ok := currentTable.LinksToSingle[linkName]
 		if !ok {
-			return squirrel.SelectBuilder{}, fmt.Errorf(
+			return squirrel.SelectBuilder{}, models.Table{}, fmt.Errorf(
 				"no link with name %s on table %s: %w", linkName, currentTable.Name, models.NotFoundError)
 		}
 		nextTable, ok := readParams.DataModel.Tables[link.ParentTableName]
 		if !ok {
-			return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w",
+			return squirrel.SelectBuilder{}, models.Table{}, fmt.Errorf("no table with name %s: %w",
 				link.ParentTableName, models.NotFoundError)
 		}
 
@@ -188,7 +196,7 @@ func addJoinsOnIntermediateTables(
 
 		currentTable = nextTable
 	}
-	return query, nil
+	return query, currentTable, nil
 }
 
 func rowIsValid(tableName string) squirrel.Eq {
@@ -570,6 +578,18 @@ func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
+
+	filterField, ok := table.Field(params.FilterFieldName)
+	if !ok {
+		return nil, errors.Newf("unknown field %s", params.FilterFieldName)
+	}
+	orderingField, ok := table.Field(params.OrderingFieldName)
+	if !ok {
+		return nil, errors.Newf("unknown field %s", params.OrderingFieldName)
+	}
+
+	params.FilterFieldName = filterField.PhysicalName
+	params.OrderingFieldName = orderingField.PhysicalName
 
 	tableColumnNames := models.ColumnNames(table)
 	columnNames := make([]string, 0, len(tableColumnNames))

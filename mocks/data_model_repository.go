@@ -150,12 +150,22 @@ func (d *DataModelRepository) ArchiveDataModelField(ctx context.Context, exec re
 	return args.Error(1)
 }
 
+func (d *DataModelRepository) RenameDataModelField(ctx context.Context, exec repositories.Executor, table models.TableMetadata, field models.FieldMetadata, newName string) error {
+	args := d.Called(ctx, exec, table, field)
+	return args.Error(0)
+}
+
 func (d *DataModelRepository) DeleteDataModelField(ctx context.Context, exec repositories.Executor, table models.TableMetadata, field models.FieldMetadata) error {
 	args := d.Called(ctx, exec, table, field)
 	return args.Error(0)
 }
 
 func (d *DataModelRepository) DeleteDataModelLink(ctx context.Context, exec repositories.Executor, id string) error {
+	args := d.Called(ctx, exec, id)
+	return args.Error(0)
+}
+
+func (d *DataModelRepository) DeleteDataModelPivot(ctx context.Context, exec repositories.Executor, id string) error {
 	args := d.Called(ctx, exec, id)
 	return args.Error(0)
 }
