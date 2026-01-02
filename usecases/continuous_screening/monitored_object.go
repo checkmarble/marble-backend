@@ -193,20 +193,42 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 			if triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated {
 				deltaTrackOperation = models.DeltaTrackOperationUpdate
 			}
-			err = uc.repository.CreateContinuousScreeningDeltaTrack(
-				ctx,
-				tx,
-				models.CreateContinuousScreeningDeltaTrack{
-					OrgId:            config.OrgId,
-					ObjectType:       input.ObjectType,
-					ObjectId:         objectId,
-					ObjectInternalId: &ingestedObjectInternalId,
-					EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, objectId),
-					Operation:        deltaTrackOperation,
-				},
-			)
-			if err != nil {
-				return models.ContinuousScreeningWithMatches{}, err
+			needAddTrack := true
+			if deltaTrackOperation == models.DeltaTrackOperationAdd {
+				deltaTrack, err := uc.repository.GetContinuousScreeningLastDeltaTrackByEntityId(
+					ctx,
+					tx,
+					config.OrgId,
+					deltaTrackEntityIdBuilder(input.ObjectType, objectId),
+				)
+				if err != nil {
+					return models.ContinuousScreeningWithMatches{}, err
+				}
+				if deltaTrack != nil &&
+					(deltaTrack.Operation == models.DeltaTrackOperationAdd ||
+						deltaTrack.Operation == models.DeltaTrackOperationUpdate) {
+					needAddTrack = false
+					logger.DebugContext(ctx, "Delta track already exists, doesn't need to add again",
+						"object_id", objectId)
+				}
+			}
+
+			if needAddTrack {
+				err = uc.repository.CreateContinuousScreeningDeltaTrack(
+					ctx,
+					tx,
+					models.CreateContinuousScreeningDeltaTrack{
+						OrgId:            config.OrgId,
+						ObjectType:       input.ObjectType,
+						ObjectId:         objectId,
+						ObjectInternalId: &ingestedObjectInternalId,
+						EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, objectId),
+						Operation:        deltaTrackOperation,
+					},
+				)
+				if err != nil {
+					return models.ContinuousScreeningWithMatches{}, err
+				}
 			}
 
 			if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
