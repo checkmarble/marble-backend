@@ -18,6 +18,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -114,6 +115,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		},
 
 		EnablePrometheus: utils.GetEnv("ENABLE_PROMETHEUS", false),
+
+		ScreeningIndexerToken: utils.GetEnv("SCREENING_INDEXER_TOKEN", ""),
 
 		TokenProvider:  authProvider,
 		FirebaseConfig: firebaseConfig,
@@ -216,12 +219,16 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		similarityThreshold:              utils.GetEnv("SIMILARITY_THRESHOLD", models.DEFAULT_SIMILARITY_THRESHOLD),
 		enableTracing:                    utils.GetEnv("ENABLE_TRACING", false),
 		continuousScreeningManifestUrl:   utils.GetEnv("CONTINUOUS_SCREENING_MANIFEST_URL", ""),
-		marbleBackendUrl:                 utils.GetEnv("MARBLE_BACKEND_URL", ""),
 		datasetBucketUrl:                 utils.GetEnv("DATASET_BUCKET_URL", ""),
 	}
 	if err := serverConfig.Validate(); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
+	}
+
+	if apiConfig.ScreeningIndexerToken == "" {
+		apiConfig.ScreeningIndexerToken = uuid.NewString()
+		logger.Info("SCREENING_INDEXER_TOKEN is not set, setting it to a random token")
 	}
 
 	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
@@ -358,8 +365,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
 		usecases.WithContinuousScreeningManifestUrl(serverConfig.continuousScreeningManifestUrl),
-		usecases.WithMarbleBackendUrl(serverConfig.marbleBackendUrl),
 		usecases.WithDatasetBucketUrl(serverConfig.datasetBucketUrl),
+		usecases.WithMarbleApiUrl(apiConfig.MarbleApiUrl),
 	)
 
 	////////////////////////////////////////////////////////////

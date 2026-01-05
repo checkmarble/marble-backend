@@ -39,9 +39,10 @@ type Configuration struct {
 	FirebaseConfig FirebaseConfig
 	OidcConfig     infra.OidcConfig
 
-	GcpConfig        infra.GcpConfig
-	MetabaseConfig   infra.MetabaseConfiguration
-	EnablePrometheus bool
+	GcpConfig             infra.GcpConfig
+	MetabaseConfig        infra.MetabaseConfiguration
+	EnablePrometheus      bool
+	ScreeningIndexerToken string
 }
 
 type FirebaseConfig struct {

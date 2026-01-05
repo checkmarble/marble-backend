@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	pubapiv1 "github.com/checkmarble/marble-backend/pubapi/v1"
 	uauth "github.com/checkmarble/marble-backend/usecases/auth"
@@ -54,10 +55,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	r.GET("/signup-status", tom, handleSignupStatus(uc))
 	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
 
-	// Non-authenticated endpoints for continuous screening, used by the indexer to download the manifest files
-	// The manifest files will contain datasets configuration with URLs which are protected by a token (see: /continuous-screening/datasets/*)
-	r.GET("/continuous-screenings/manifest", tom, handleGetContinuousScreeningManifest(uc))
-
 	if conf.TokenProvider == uauth.TokenProviderOidc {
 		r.POST("/oidc/token", tom, handleOidcTokenExchange(uc, conf.OidcConfig))
 	}
@@ -93,13 +90,24 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 			auth.AuthedBy(utils.PublicApiKey, utils.ApiKeyAsBearerToken), uc)
 	}
 
-	screeningIndexerRouter := r.Use()
-	screeningIndexerRouter.GET("/continuous-screenings/org/:public_org_id/delta", tom,
-		handleGetContinuousScreeningDeltaList(uc))
-	screeningIndexerRouter.GET("/continuous-screenings/org/:public_org_id/delta/:delta_id",
-		handleGetContinuousScreeningDelta(uc))
-	screeningIndexerRouter.GET("/continuous-screenings/org/:public_org_id/full", tom,
-		handleGetContinuousScreeningFull(uc))
+	// Screening Indexer endpoints
+	{
+		indexerGroup := r.Group("/" + models.ScreeningIndexerKey)
+
+		// Non-authenticated endpoint used by the indexer to download the manifest files
+		// The manifest files will contain datasets configuration with URLs which are protected by a token (see: /screening-indexer/org/*)
+		indexerGroup.GET("/manifest", tom, handleGetContinuousScreeningManifest(uc))
+
+		// Authenticated endpoints for downloading the actual dataset files
+		authedIndexerGroup := indexerGroup.Group("/",
+			auth.AuthedBy(utils.ScreeningIndexerToken))
+		authedIndexerGroup.GET("/org/:public_org_id/delta", tom,
+			handleGetContinuousScreeningDeltaList(uc))
+		authedIndexerGroup.GET("/org/:public_org_id/delta/:delta_id",
+			handleGetContinuousScreeningDelta(uc))
+		authedIndexerGroup.GET("/org/:public_org_id/full", tom,
+			handleGetContinuousScreeningFull(uc))
+	}
 
 	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
 		allowedNetworksGuard.Guard(usecases.AllowedNetworksOther))

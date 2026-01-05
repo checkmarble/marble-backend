@@ -136,7 +136,7 @@ func TestAuthedBy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			validator := new(MockValidator)
 			tt.setupValidator(validator)
-			auth := NewAuthentication(validator)
+			auth := NewAuthentication(validator, "test-indexer-token")
 
 			w := httptest.NewRecorder()
 			_, engine := gin.CreateTestContext(w)

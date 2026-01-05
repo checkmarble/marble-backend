@@ -20,6 +20,7 @@ const (
 	FederatedBearerToken AuthType = iota
 	PublicApiKey
 	ApiKeyAsBearerToken
+	ScreeningIndexerToken
 )
 
 func ParseApiKeyHeader(header http.Header) string {
@@ -41,7 +42,8 @@ type tokenAndKeyValidator interface {
 }
 
 type Authentication struct {
-	validator tokenAndKeyValidator
+	validator    tokenAndKeyValidator
+	indexerToken string
 }
 
 func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
@@ -57,6 +59,19 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 
 		key := ""
 		jwtToken := ""
+
+		if slices.Contains(methods, ScreeningIndexerToken) {
+			token, err := ParseAuthorizationBearerHeader(c.Request.Header)
+			if err != nil {
+				_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+			if token != "" && token == a.indexerToken {
+				c.Next()
+				return
+			}
+		}
 
 		if slices.Contains(methods, PublicApiKey) {
 			key = ParseApiKeyHeader(c.Request.Header)
@@ -115,9 +130,10 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 	}
 }
 
-func NewAuthentication(validator tokenAndKeyValidator) Authentication {
+func NewAuthentication(validator tokenAndKeyValidator, indexerToken string) Authentication {
 	return Authentication{
-		validator: validator,
+		validator:    validator,
+		indexerToken: indexerToken,
 	}
 }
 

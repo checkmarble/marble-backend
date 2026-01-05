@@ -2,6 +2,7 @@ package continuous_screening
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
@@ -10,7 +11,7 @@ import (
 
 const (
 	MARBLE_CONTINUOUS_SCREENING_TAG = "marble_continuous_screening"
-	ManifestAuthTokenFieldName      = "${MARBLE_MANIFEST_TOKEN}"
+	ManifestAuthTokenFieldName      = "${MARBLE_SCREENING_INDEXER_TOKEN}"
 )
 
 func typedObjectId(objectType, objectId string) string {
@@ -61,10 +62,9 @@ func buildDataModelMapping(table models.Table) (models.ContinuousScreeningDataMo
 	}, nil
 }
 
-// TODO: To be defined when creating custom org datasets
 // orgId can be orgId or org.PublicId
 func orgCustomDatasetName(orgId uuid.UUID) string {
-	return fmt.Sprintf("internal-marble-org-%s", orgId.String())
+	return fmt.Sprintf("internal_marble_org_%s", strings.ReplaceAll(orgId.String(), "-", ""))
 }
 
 func deltaTrackEntityIdBuilder(objectType, objectId string) string {
@@ -72,13 +72,13 @@ func deltaTrackEntityIdBuilder(objectType, objectId string) string {
 }
 
 func datasetFileUrlBuilder(backendUrl string, orgId uuid.UUID) string {
-	return fmt.Sprintf("%s/continuous-screenings/org/%s/full", backendUrl, orgId.String())
+	return fmt.Sprintf("%s/%s/org/%s/full", backendUrl, models.ScreeningIndexerKey, orgId.String())
 }
 
 func deltaFileUrlBuilder(backendUrl string, orgId uuid.UUID) string {
-	return fmt.Sprintf("%s/continuous-screenings/org/%s/delta", backendUrl, orgId.String())
+	return fmt.Sprintf("%s/%s/org/%s/delta", backendUrl, models.ScreeningIndexerKey, orgId.String())
 }
 
 func deltaFileVersionUrlBuilder(backendUrl string, orgId uuid.UUID, deltaId uuid.UUID) string {
-	return fmt.Sprintf("%s/continuous-screenings/org/%s/delta/%s", backendUrl, orgId.String(), deltaId.String())
+	return fmt.Sprintf("%s/%s/org/%s/delta/%s", backendUrl, models.ScreeningIndexerKey, orgId.String(), deltaId.String())
 }

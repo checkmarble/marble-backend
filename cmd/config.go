@@ -25,7 +25,6 @@ type ServerConfig struct {
 	similarityThreshold              float64
 	enableTracing                    bool
 	continuousScreeningManifestUrl   string
-	marbleBackendUrl                 string
 	datasetBucketUrl                 string
 }
 

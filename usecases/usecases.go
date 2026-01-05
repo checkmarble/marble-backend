@@ -44,7 +44,7 @@ type Usecases struct {
 	datasetDeltafileBucketUrl      string
 	datasetBucketUrl               string
 	continuousScreeningManifestUrl string
-	marbleBackendUrl               string
+	marbleApiUrl                   string
 }
 
 type Option func(*options)
@@ -179,9 +179,9 @@ func WithContinuousScreeningManifestUrl(url string) Option {
 	}
 }
 
-func WithMarbleBackendUrl(url string) Option {
+func WithMarbleApiUrl(url string) Option {
 	return func(o *options) {
-		o.marbleBackendUrl = url
+		o.marbleApiUrl = url
 	}
 }
 
@@ -206,7 +206,7 @@ type options struct {
 	datasetDeltafileBucketUrl      string
 	datasetBucketUrl               string
 	continuousScreeningManifestUrl string
-	marbleBackendUrl               string
+	marbleApiUrl                   string
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -235,7 +235,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		datasetDeltafileBucketUrl:      o.datasetDeltafileBucketUrl,
 		datasetBucketUrl:               o.datasetBucketUrl,
 		continuousScreeningManifestUrl: o.continuousScreeningManifestUrl,
-		marbleBackendUrl:               o.marbleBackendUrl,
+		marbleApiUrl:                   o.marbleApiUrl,
 	}
 }
 
@@ -485,7 +485,7 @@ func (usecases *Usecases) NewContinuousScreeningManifestUsecase() *continuous_sc
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.BlobRepository,
 		usecases.continuousScreeningManifestUrl,
-		usecases.marbleBackendUrl,
+		usecases.marbleApiUrl,
 		usecases.datasetBucketUrl,
 	)
 }
