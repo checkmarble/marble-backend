@@ -24,6 +24,7 @@ func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 		scenarioId, err := uuid.Parse(qs)
 		if err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
 		}
 
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -63,6 +64,7 @@ func handleListScenarioIterationsMetadata(uc usecases.Usecases) func(c *gin.Cont
 		scenarioId, err := uuid.Parse(qs)
 		if err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
 		}
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(ctx, c, err) {
