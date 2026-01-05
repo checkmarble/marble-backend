@@ -890,6 +890,23 @@ func (repo *MarbleDbRepository) GetContinuousScreeningLatestDatasetFileByOrgId(
 	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetFile)
 }
 
+func (repo *MarbleDbRepository) ListContinuousScreeningLatestDatasetFiles(
+	ctx context.Context,
+	exec Executor,
+) ([]models.ContinuousScreeningDatasetFile, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningDatasetFileColumn...).
+		Options("DISTINCT ON (org_id)").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES).
+		OrderBy("org_id", "created_at DESC")
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetFile)
+}
+
 func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetFile(
 	ctx context.Context,
 	exec Executor,

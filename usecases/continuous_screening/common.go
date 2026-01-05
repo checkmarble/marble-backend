@@ -8,7 +8,10 @@ import (
 	"github.com/google/uuid"
 )
 
-const MARBLE_CONTINUOUS_SCREENING_TAG = "marble_continuous_screening"
+const (
+	MARBLE_CONTINUOUS_SCREENING_TAG = "marble_continuous_screening"
+	ManifestAuthTokenFieldName      = "${MARBLE_MANIFEST_TOKEN}"
+)
 
 func typedObjectId(objectType, objectId string) string {
 	return objectType + "_" + objectId
@@ -59,10 +62,23 @@ func buildDataModelMapping(table models.Table) (models.ContinuousScreeningDataMo
 }
 
 // TODO: To be defined when creating custom org datasets
+// orgId can be orgId or org.PublicId
 func orgCustomDatasetName(orgId uuid.UUID) string {
 	return fmt.Sprintf("internal-marble-org-%s", orgId.String())
 }
 
 func deltaTrackEntityIdBuilder(objectType, objectId string) string {
 	return fmt.Sprintf("marble_%s_%s", objectType, objectId)
+}
+
+func datasetFileUrlBuilder(backendUrl string, orgId uuid.UUID) string {
+	return fmt.Sprintf("%s/continuous-screening/datasets/org/%s", backendUrl, orgId.String())
+}
+
+func deltaFileUrlBuilder(backendUrl string, orgId uuid.UUID) string {
+	return fmt.Sprintf("%s/continuous-screening/delta/org/%s", backendUrl, orgId.String())
+}
+
+func deltaFilVersionUrlBuilder(backendUrl string, orgId uuid.UUID, version string) string {
+	return fmt.Sprintf("%s/continuous-screening/delta/org/%s/version/%s", backendUrl, orgId.String(), version)
 }

@@ -54,6 +54,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	r.GET("/signup-status", tom, handleSignupStatus(uc))
 	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
 
+	// Non-authenticated endpoints for continuous screening, used by the indexer to download the manifest files
+	// The manifest files will contain datasets configuration with URLs which are protected by a token (see: /continuous-screening/datasets/*)
+	r.GET("/continuous-screenings/manifest", tom, handleGetContinuousScreeningManifest(uc))
+
 	if conf.TokenProvider == uauth.TokenProviderOidc {
 		r.POST("/oidc/token", tom, handleOidcTokenExchange(uc, conf.OidcConfig))
 	}

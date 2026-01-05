@@ -335,3 +335,18 @@ func handleLoadMoreContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.
 		c.JSON(http.StatusOK, dto.AdaptContinuousScreeningDto(screening))
 	}
 }
+
+// Manifest and Dataset
+func handleGetContinuousScreeningManifest(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		usecase := uc.NewContinuousScreeningManifestUsecase()
+		manifest, err := usecase.GetContinuousScreeningManifest(ctx)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, manifest)
+	}
+}
