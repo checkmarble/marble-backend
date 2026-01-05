@@ -9,12 +9,14 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type OrganizationRepository interface {
 	// organization
 	AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error)
 	GetOrganizationById(ctx context.Context, exec Executor, organizationId string) (models.Organization, error)
+	GetOrganizationIdByPublicId(ctx context.Context, exec Executor, publicOrgId uuid.UUID) (models.Organization, error)
 	CreateOrganization(ctx context.Context, exec Executor, newOrganizationId, name string) error
 	UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error
 	DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error
@@ -62,6 +64,22 @@ func (repo *MarbleDbRepository) GetOrganizationById(ctx context.Context,
 			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
 			Where("id = ?", organizationId),
+		dbmodels.AdaptOrganization,
+	)
+}
+
+func (repo *MarbleDbRepository) GetOrganizationIdByPublicId(ctx context.Context, exec Executor, publicOrgId uuid.UUID) (models.Organization, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.Organization{}, err
+	}
+
+	return SqlToModel(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.ColumnsSelectOrganization...).
+			From(dbmodels.TABLE_ORGANIZATION).
+			Where("public_id = ?", publicOrgId),
 		dbmodels.AdaptOrganization,
 	)
 }

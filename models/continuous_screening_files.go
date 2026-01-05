@@ -31,3 +31,7 @@ func (m *Manifest) UpsertDataset(orgId string, name string, version string, enti
 		AuthToken:   authToken,
 	})
 }
+
+type ContinuousScreeningDeltaList struct {
+	Versions map[string]string `json:"versions"`
+}

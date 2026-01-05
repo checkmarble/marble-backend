@@ -72,13 +72,13 @@ func deltaTrackEntityIdBuilder(objectType, objectId string) string {
 }
 
 func datasetFileUrlBuilder(backendUrl string, orgId uuid.UUID) string {
-	return fmt.Sprintf("%s/continuous-screening/datasets/org/%s", backendUrl, orgId.String())
+	return fmt.Sprintf("%s/continuous-screenings/org/%s/full", backendUrl, orgId.String())
 }
 
 func deltaFileUrlBuilder(backendUrl string, orgId uuid.UUID) string {
-	return fmt.Sprintf("%s/continuous-screening/delta/org/%s", backendUrl, orgId.String())
+	return fmt.Sprintf("%s/continuous-screenings/org/%s/delta", backendUrl, orgId.String())
 }
 
-func deltaFilVersionUrlBuilder(backendUrl string, orgId uuid.UUID, version string) string {
-	return fmt.Sprintf("%s/continuous-screening/delta/org/%s/version/%s", backendUrl, orgId.String(), version)
+func deltaFileVersionUrlBuilder(backendUrl string, orgId uuid.UUID, deltaId uuid.UUID) string {
+	return fmt.Sprintf("%s/continuous-screenings/org/%s/delta/%s", backendUrl, orgId.String(), deltaId.String())
 }

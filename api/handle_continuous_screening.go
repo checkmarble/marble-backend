@@ -350,3 +350,50 @@ func handleGetContinuousScreeningManifest(uc usecases.Usecases) func(c *gin.Cont
 		c.JSON(http.StatusOK, manifest)
 	}
 }
+
+func handleGetContinuousScreeningDeltaList(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		publicOrgIdStr := c.Param("public_org_id")
+		publicOrgId, err := uuid.Parse(publicOrgIdStr)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := uc.NewContinuousScreeningManifestUsecase()
+		deltas, err := usecase.GetContinuousScreeningDeltaList(ctx, publicOrgId)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, deltas)
+	}
+}
+
+func handleGetContinuousScreeningDelta(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		publicOrgIdStr := c.Param("public_org_id")
+		publicOrgId, err := uuid.Parse(publicOrgIdStr)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+		deltaIdStr := c.Param("delta_id")
+		deltaId, err := uuid.Parse(deltaIdStr)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError,
+				"delta_id is required and must be a valid UUID"))
+			return
+		}
+		usecase := uc.NewContinuousScreeningManifestUsecase()
+		deltaBlob, err := usecase.GetContinuousScreeningDeltaBlob(ctx, publicOrgId, deltaId)
+		if presentError(ctx, c, err) {
+			return
+		}
+		defer deltaBlob.ReadCloser.Close()
+		c.DataFromReader(http.StatusOK, -1, "application/json", deltaBlob.ReadCloser, nil)
+	}
+}

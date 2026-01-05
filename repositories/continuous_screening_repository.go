@@ -890,7 +890,7 @@ func (repo *MarbleDbRepository) GetContinuousScreeningLatestDatasetFileByOrgId(
 	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetFile)
 }
 
-func (repo *MarbleDbRepository) ListContinuousScreeningLatestDatasetFiles(
+func (repo *MarbleDbRepository) ListContinuousScreeningLatestFullFiles(
 	ctx context.Context,
 	exec Executor,
 ) ([]models.ContinuousScreeningDatasetFile, error) {
@@ -902,9 +902,49 @@ func (repo *MarbleDbRepository) ListContinuousScreeningLatestDatasetFiles(
 		Select(dbmodels.SelectContinuousScreeningDatasetFileColumn...).
 		Options("DISTINCT ON (org_id)").
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES).
+		Where(squirrel.Eq{"file_type": models.ContinuousScreeningDatasetFileTypeFull.String()}).
 		OrderBy("org_id", "created_at DESC")
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetFile)
+}
+
+// List the limit latest delta files by org
+func (repo *MarbleDbRepository) ListContinuousScreeningLatestDeltaFiles(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	limit uint64,
+) ([]models.ContinuousScreeningDatasetFile, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningDatasetFileColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES).
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Eq{"file_type": models.ContinuousScreeningDatasetFileTypeDelta.String()}).
+		OrderBy("version DESC").
+		Limit(limit)
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetFile)
+}
+
+func (repo *MarbleDbRepository) GetContinuousScreeningDatasetFileById(
+	ctx context.Context,
+	exec Executor,
+	id uuid.UUID,
+) (models.ContinuousScreeningDatasetFile, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ContinuousScreeningDatasetFile{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningDatasetFileColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES).
+		Where(squirrel.Eq{"id": id})
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetFile)
 }
 
 func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetFile(

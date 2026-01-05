@@ -26,6 +26,7 @@ type ServerConfig struct {
 	enableTracing                    bool
 	continuousScreeningManifestUrl   string
 	marbleBackendUrl                 string
+	datasetBucketUrl                 string
 }
 
 func (config ServerConfig) Validate() error {

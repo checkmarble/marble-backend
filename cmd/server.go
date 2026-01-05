@@ -217,6 +217,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		enableTracing:                    utils.GetEnv("ENABLE_TRACING", false),
 		continuousScreeningManifestUrl:   utils.GetEnv("CONTINUOUS_SCREENING_MANIFEST_URL", ""),
 		marbleBackendUrl:                 utils.GetEnv("MARBLE_BACKEND_URL", ""),
+		datasetBucketUrl:                 utils.GetEnv("DATASET_BUCKET_URL", ""),
 	}
 	if err := serverConfig.Validate(); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -358,6 +359,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithAnalyticsConfig(analyticsConfig),
 		usecases.WithContinuousScreeningManifestUrl(serverConfig.continuousScreeningManifestUrl),
 		usecases.WithMarbleBackendUrl(serverConfig.marbleBackendUrl),
+		usecases.WithDatasetBucketUrl(serverConfig.datasetBucketUrl),
 	)
 
 	////////////////////////////////////////////////////////////

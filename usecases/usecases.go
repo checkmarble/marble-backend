@@ -483,8 +483,10 @@ func (usecases *Usecases) NewContinuousScreeningManifestUsecase() *continuous_sc
 	return continuous_screening.NewContinuousScreeningManifestUsecase(
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.BlobRepository,
 		usecases.continuousScreeningManifestUrl,
 		usecases.marbleBackendUrl,
+		usecases.datasetBucketUrl,
 	)
 }
 
