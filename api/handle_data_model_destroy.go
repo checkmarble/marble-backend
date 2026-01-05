@@ -1,0 +1,123 @@
+package api
+
+import (
+	"net/http"
+
+	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/cockroachdb/errors"
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
+)
+
+func handleDeleteDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelDestroyUsecase()
+		tableId := c.Param("tableID")
+
+		report, err := usecase.DeleteTable(ctx, tableId)
+		if err != nil {
+			if errors.Is(err, models.ConflictError) {
+				c.JSON(http.StatusConflict, dto.AdaptDataModelDeleteFieldReport(report))
+				return
+			}
+			if presentError(ctx, c, err) {
+				return
+			}
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func handleRenameDataModelField(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelDestroyUsecase()
+		fieldId := c.Param("fieldID")
+		newName := c.Param("name")
+
+		if err := usecase.RenameField(ctx, fieldId, newName); err != nil {
+			var pgErr *pgconn.PgError
+
+			if errors.As(err, &pgErr) {
+				if pgErr.Code == pgerrcode.UniqueViolation {
+					c.Status(http.StatusConflict)
+					return
+				}
+			}
+
+			if presentError(ctx, c, err) {
+				return
+			}
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func handleDeleteDataModelField(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelDestroyUsecase()
+		fieldId := c.Param("fieldID")
+
+		report, err := usecase.DeleteField(ctx, fieldId)
+		if err != nil {
+			if errors.Is(err, models.ConflictError) {
+				c.JSON(http.StatusConflict, dto.AdaptDataModelDeleteFieldReport(report))
+				return
+			}
+			if presentError(ctx, c, err) {
+				return
+			}
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func handleDeleteDataModelLink(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelDestroyUsecase()
+		linkId := c.Param("linkID")
+
+		report, err := usecase.DeleteLink(ctx, linkId)
+		if err != nil {
+			if errors.Is(err, models.ConflictError) {
+				c.JSON(http.StatusConflict, dto.AdaptDataModelDeleteFieldReport(report))
+				return
+			}
+			if presentError(ctx, c, err) {
+				return
+			}
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func handleDeleteDataModelPivot(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelDestroyUsecase()
+		linkId := c.Param("pivotID")
+
+		report, err := usecase.DeletePivot(ctx, linkId)
+		if err != nil {
+			if errors.Is(err, models.ConflictError) {
+				c.JSON(http.StatusConflict, dto.AdaptDataModelDeleteFieldReport(report))
+				return
+			}
+			if presentError(ctx, c, err) {
+				return
+			}
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}

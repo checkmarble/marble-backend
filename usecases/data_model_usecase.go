@@ -224,6 +224,17 @@ func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.C
 				return err
 			}
 
+			dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, tx, table.OrganizationID, false, false)
+			if err != nil {
+				return err
+			}
+
+			for otherFieldName, otherField := range dataModel.Tables[table.Name].FieldAliases {
+				if field.Name == otherField.Name || field.Name == otherField.PhysicalName || field.Name == otherFieldName {
+					return errors.Wrap(models.ConflictError, "new name for field already exists")
+				}
+			}
+
 			if err := validateFTMProperty(table, pure_utils.NullFromPtr(field.FTMProperty)); err != nil {
 				return err
 			}
@@ -768,7 +779,7 @@ func (usecase *usecase) CreateNavigationOption(ctx context.Context, input models
 		{
 			Type:      models.IndexTypeNavigation,
 			TableName: targetTable.Name,
-			Indexed:   []string{filterField.Name, orderingField.Name},
+			Indexed:   []string{filterField.PhysicalName, orderingField.PhysicalName},
 		},
 	})
 }

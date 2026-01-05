@@ -22,22 +22,30 @@ func GetDummyDataModel() models.DataModel {
 		Nullable: false,
 	}
 	dummyFieldInt := models.Field{
-		DataType: 1,
-		Nullable: false,
+		Name:         DummyFieldNameForInt,
+		PhysicalName: DummyFieldNameForInt,
+		DataType:     1,
+		Nullable:     false,
 	}
 	dummyFieldFloat := models.Field{
-		DataType: 2,
-		Nullable: false,
+		Name:         DummyFieldNameForFloat,
+		PhysicalName: DummyFieldNameForFloat,
+		DataType:     2,
+		Nullable:     false,
 	}
 
 	dummyFieldString := models.Field{
-		DataType: 3,
-		Nullable: false,
+		Name:         DummyFieldNameId,
+		PhysicalName: DummyFieldNameId,
+		DataType:     3,
+		Nullable:     false,
 	}
 
 	dummyFieldTimestamp := models.Field{
-		DataType: 4,
-		Nullable: false,
+		Name:         DummyFieldNameForTimestamp,
+		PhysicalName: DummyFieldNameForTimestamp,
+		DataType:     4,
+		Nullable:     false,
 	}
 
 	dummyFirstLinkToSingle := map[string]models.LinkToSingle{
