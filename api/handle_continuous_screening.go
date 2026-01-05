@@ -397,3 +397,23 @@ func handleGetContinuousScreeningDelta(uc usecases.Usecases) func(c *gin.Context
 		c.DataFromReader(http.StatusOK, -1, "application/json", deltaBlob.ReadCloser, nil)
 	}
 }
+
+func handleGetContinuousScreeningFull(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		publicOrgIdStr := c.Param("public_org_id")
+		publicOrgId, err := uuid.Parse(publicOrgIdStr)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := uc.NewContinuousScreeningManifestUsecase()
+		fullBlob, err := usecase.GetContinuousScreeningFullBlob(ctx, publicOrgId)
+		if presentError(ctx, c, err) {
+			return
+		}
+		defer fullBlob.ReadCloser.Close()
+		c.DataFromReader(http.StatusOK, -1, "application/json", fullBlob.ReadCloser, nil)
+	}
+}

@@ -98,6 +98,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleGetContinuousScreeningDeltaList(uc))
 	screeningIndexerRouter.GET("/continuous-screenings/org/:public_org_id/delta/:delta_id",
 		handleGetContinuousScreeningDelta(uc))
+	screeningIndexerRouter.GET("/continuous-screenings/org/:public_org_id/full", tom,
+		handleGetContinuousScreeningFull(uc))
 
 	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
 		allowedNetworksGuard.Guard(usecases.AllowedNetworksOther))

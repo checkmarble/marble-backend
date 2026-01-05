@@ -167,3 +167,40 @@ func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningDeltaBlob(
 
 	return blob, nil
 }
+
+func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningFullBlob(
+	ctx context.Context,
+	publicOrgId uuid.UUID,
+) (models.Blob, error) {
+	exec := u.executorFactory.NewExecutor()
+	org, err := u.repository.GetOrganizationIdByPublicId(ctx, exec, publicOrgId)
+	if err != nil {
+		return models.Blob{},
+			errors.Wrap(err, "failed to get organization id by public id")
+	}
+	orgId, err := uuid.Parse(org.Id)
+	if err != nil {
+		return models.Blob{},
+			errors.Wrap(err, "failed to parse organization id")
+	}
+
+	fullFile, err := u.repository.GetContinuousScreeningLatestDatasetFileByOrgId(ctx, exec, orgId,
+		models.ContinuousScreeningDatasetFileTypeFull)
+	if err != nil {
+		return models.Blob{},
+			errors.Wrap(err, "failed to get latest full dataset file")
+	}
+
+	if fullFile == nil {
+		return models.Blob{},
+			errors.Wrap(models.NotFoundError, "no full dataset file found for organization")
+	}
+
+	blob, err := u.blobRepository.GetBlob(ctx, u.datasetBucketUrl, fullFile.FilePath)
+	if err != nil {
+		return models.Blob{},
+			errors.Wrap(err, "failed to get full dataset file blob")
+	}
+
+	return blob, nil
+}
