@@ -12,16 +12,9 @@ import (
 )
 
 const (
-	// FuzzyMatchThreshold is the minimum similarity score (0.0-1.0) required
-	// for a fuzzy match to be considered valid. 0.85 provides good balance
-	// between catching typos and avoiding false positives.
 	FuzzyMatchThreshold = 0.85
-
-	// countryCacheSize is the maximum number of fuzzy match results to cache
-	countryCacheSize = 1000
-
-	// countryCacheTTL is how long fuzzy match results are cached
-	countryCacheTTL = time.Hour
+	countryCacheSize    = 1000
+	countryCacheTTL     = time.Hour
 )
 
 var (
@@ -68,14 +61,14 @@ func getCountryNames() []countryNameEntry {
 // to its ISO 3166-1 Alpha-2 code. It handles misspellings and variations using
 // fuzzy matching as a fallback.
 //
-// Returns an empty string if the country cannot be identified.
+// Returns the initial input if the country cannot be identified.
 //
 // Examples:
 //
 //	CountryToAlpha2("United States") // "US"
 //	CountryToAlpha2("USA")           // "US"
 //	CountryToAlpha2("US")            // "US"
-//	CountryToAlpha2("Frence")        // "FR" (fuzzy match)
+//	CountryToAlpha2("Frence")        // "FR" (fuzzy match for typo)
 //	CountryToAlpha2("")              // ""
 func CountryToAlpha2(input string) string {
 	input = strings.TrimSpace(input)
@@ -100,7 +93,6 @@ func CountryToAlpha2(input string) string {
 		}
 	}
 
-	// Check cache for previously resolved fuzzy matches
 	cache := getCountryCache()
 	if cached, ok := cache.Get(input); ok {
 		return cached
@@ -108,8 +100,11 @@ func CountryToAlpha2(input string) string {
 
 	// Fuzzy matching fallback
 	result := fuzzyMatchCountry(input)
+	if result == "" {
+		// In case of fuzzy match failure, return the initial input
+		result = input
+	}
 
-	// Cache the result (including empty results to avoid repeated computation)
 	cache.Add(input, result)
 
 	return result

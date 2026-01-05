@@ -1,7 +1,6 @@
 package continuous_screening
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -21,7 +20,6 @@ import (
 	"github.com/hashicorp/go-set/v2"
 	"github.com/riverqueue/river"
 	"gocloud.dev/blob"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -32,46 +30,6 @@ const (
 	DeltaDatasetFolderName = "delta-dataset"
 	DatasetFileContentType = "application/x-ndjson"
 )
-
-// TODO: Manifest can contains the `delta_url` fields, but this field only support URL and not local path.
-// Don't fill this field for now, until we know how to provide the delta file to the indexer.
-type ManifestDataset struct {
-	Name string `yaml:"name"` // org UUID
-	// EntitiesUrl string `yaml:"entities_url"` // path to entities file, NOTE: IGNORE THIS FIELD FOR NOW, WE WILL CALL MARBLE INSTEAD
-	Version string `yaml:"version"` // version string e.g. "20251230-001"
-}
-
-type Manifest struct {
-	Catalogs []any             `yaml:"catalogs,omitempty"`
-	Datasets []ManifestDataset `yaml:"datasets"`
-}
-
-func (m *Manifest) upsertDataset(orgId string, datasetFile models.ContinuousScreeningDatasetFile) {
-	for i, ds := range m.Datasets {
-		if ds.Name == orgId {
-			// m.Datasets[i].EntitiesUrl = datasetFile.FilePath
-			m.Datasets[i].Version = datasetFile.Version
-			return
-		}
-	}
-	m.Datasets = append(m.Datasets, ManifestDataset{
-		Name: orgId,
-		// EntitiesUrl: datasetFile.FilePath,
-		Version: datasetFile.Version,
-	})
-}
-
-// DeltasIndex is the structure for deltas.json file that tracks all delta file versions
-type DeltasIndex struct {
-	Versions map[string]string `json:"versions"`
-}
-
-func (d *DeltasIndex) addVersion(version string, filePath string) {
-	if d.Versions == nil {
-		d.Versions = make(map[string]string)
-	}
-	d.Versions[version] = filePath
-}
 
 // Periodic job
 func NewContinuousScreeningCreateFullDatasetPeriodicJob(orgId string, interval time.Duration) *river.PeriodicJob {
@@ -88,7 +46,7 @@ func NewContinuousScreeningCreateFullDatasetPeriodicJob(orgId string, interval t
 					},
 				}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
+		nil,
 	)
 }
 
@@ -182,6 +140,10 @@ func (w *CreateFullDatasetWorker) Timeout(job *river.Job[models.ContinuousScreen
 	return 1 * time.Hour
 }
 
+// For an org, create the full and delta dataset files.
+// Check if there is a full dataset for this org, if not create it with handleFirstFullDataset.
+// If there is a full dataset, patch it with handlePatchDataset and create a new delta dataset file.
+// The full dataset is supposed to be sorted by entityID to be able to merge the previous dataset file with the new delta tracks.
 func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	job *river.Job[models.ContinuousScreeningCreateFullDatasetArgs],
 ) error {
@@ -211,52 +173,41 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 		return errors.Wrap(err, "failed to get dataset file by org id")
 	}
 
-	orgDatasetFile := models.ContinuousScreeningDatasetFile{}
-
 	if datasetFile == nil {
 		logger.DebugContext(ctx, "No dataset file found for org, creating new one", "orgId", orgId)
-		newDatasetFile, err := w.handleFirstFullDataset(ctx, exec, orgId)
+		err := w.handleFirstFullDataset(ctx, exec, orgId)
 		if err != nil {
 			return errors.Wrap(err, "failed to handle first full dataset")
 		}
-		orgDatasetFile = newDatasetFile
 	} else {
 		logger.DebugContext(ctx, "Dataset file found for org, patching it and creating new version",
 			"orgId", orgId, "datasetFile", datasetFile)
-		newDatasetFile, err := w.handlePatchDataset(ctx, exec, orgId, *datasetFile)
+		err := w.handlePatchDataset(ctx, exec, orgId, *datasetFile)
 		if err != nil {
 			return errors.Wrap(err, "failed to handle patch dataset")
 		}
-		orgDatasetFile = newDatasetFile
-	}
-
-	// Update manifest with all org dataset files
-	if err := w.updateManifest(ctx, orgId, orgDatasetFile); err != nil {
-		logger.ErrorContext(ctx, "Failed to update manifest", "error", err)
-		// Don't return error to avoid job retries because the retry will not update the manifest
-		return nil
 	}
 
 	logger.DebugContext(ctx, "Successfully created full dataset")
 	return nil
 }
 
+// Create the first full dataset for the org.
+// The flow is simpler than the patch dataset and we don't need to create a delta dataset file.
 func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 	exec repositories.Executor, orgId uuid.UUID,
-) (models.ContinuousScreeningDatasetFile, error) {
+) error {
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Creating first full dataset", "orgId", orgId)
 
 	clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, orgId.String())
 	if err != nil {
-		return models.ContinuousScreeningDatasetFile{},
-			errors.Wrap(err, "failed to get client db executor")
+		return errors.Wrap(err, "failed to get client db executor")
 	}
 
 	dataModel, err := w.repo.GetDataModel(ctx, exec, orgId.String(), false, false)
 	if err != nil {
-		return models.ContinuousScreeningDatasetFile{},
-			errors.Wrap(err, "failed to get data model")
+		return errors.Wrap(err, "failed to get data model")
 	}
 
 	now := time.Now()
@@ -271,12 +222,12 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 			ContentType: DatasetFileContentType,
 		})
 	if err != nil {
-		return models.ContinuousScreeningDatasetFile{},
-			errors.Wrap(err, "failed to open stream")
+		return errors.Wrap(err, "failed to open stream")
 	}
 	defer blobWriter.Close()
 
 	for {
+		// Delta tracks are sorted by entityID, limit the number of tracks to fetch to avoid memory issues
 		deltaTracks, err := w.repo.ListContinuousScreeningLastChangeByEntityIds(
 			ctx,
 			exec,
@@ -286,17 +237,22 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 			cursorEntityId,
 		)
 		if err != nil {
-			return models.ContinuousScreeningDatasetFile{},
-				errors.Wrap(err, "failed to list continuous screening last change by entity ids")
+			return errors.Wrap(err, "failed to list continuous screening last change by entity ids")
 		}
 
 		if len(deltaTracks) == 0 {
 			break
 		}
 
+		// Build a map of object types and their internal ids to be able to fetch the ingested objects by type
+		// We can't fetch the ingested objects by mixing object types
 		typesAndObjectInternalIds := make(map[string]*set.Set[uuid.UUID])
+
+		// Build a map to easily fetch the ingested objects by type and internal id
+		// The first level of object type is not mandatory but we avoid any collision with object InternalIds (should not happen)
 		ingestedObjectsByType := make(map[string]map[uuid.UUID]models.DataModelObject)
 
+		// Build the map for the fetching of the ingested objects by type
 		for _, deltaTrack := range deltaTracks {
 			if deltaTrack.Operation == models.DeltaTrackOperationDelete {
 				// Ignore deleted objects for the first full dataset creation
@@ -309,47 +265,54 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 			typesAndObjectInternalIds[deltaTrack.ObjectType].Insert(*deltaTrack.ObjectInternalId)
 		}
 
+		// For each object type, fetch the ingested objects by internal ids
 		for objectType, objectInternalIdsSet := range typesAndObjectInternalIds {
 			objectInternalIds := objectInternalIdsSet.Slice()
 			dataModelTable, ok := dataModel.Tables[objectType]
 			// Check datamodel is correctly configured for the use case
 			if !ok {
-				return models.ContinuousScreeningDatasetFile{}, errors.Wrapf(models.NotFoundError,
+				return errors.Wrapf(models.NotFoundError,
 					"table %s not found in data model", objectType)
 			}
 			if err := checkDataModelTableAndFieldsConfiguration(dataModelTable); err != nil {
-				return models.ContinuousScreeningDatasetFile{},
-					errors.Wrap(err, "data model table is not correctly configured for the use case")
+				return errors.Wrap(err, "data model table is not correctly configured for the use case")
 			}
 			ingestedObjectsFromDb, err := w.ingestedDataReader.QueryIngestedObjectByInternalIds(
 				ctx, clientDbExec, dataModelTable, objectInternalIds)
 			if err != nil {
-				return models.ContinuousScreeningDatasetFile{},
-					errors.Wrap(err, "failed to query ingested objects by internal ids")
+				return errors.Wrap(err, "failed to query ingested objects by internal ids")
 			}
 			if len(ingestedObjectsFromDb) != len(objectInternalIds) {
-				return models.ContinuousScreeningDatasetFile{}, errors.Wrapf(models.NotFoundError,
+				return errors.Wrapf(models.NotFoundError,
 					"number of ingested objects by internal ids %d does not match the number of object internal ids %d",
 					len(ingestedObjectsFromDb), len(objectInternalIds))
 			}
 
 			ingestedObjects := make(map[uuid.UUID]models.DataModelObject, len(ingestedObjectsFromDb))
 			for _, ingestedObject := range ingestedObjectsFromDb {
-				id := toUUID(ingestedObject.Metadata["id"])
+				id, err := getIngestedObjectInternalId(ingestedObject)
+				if err != nil {
+					return errors.Wrap(err, "failed to get ingested object internal id")
+				}
 				ingestedObjects[id] = ingestedObject
 			}
 			ingestedObjectsByType[objectType] = ingestedObjects
 		}
 
-		// Delta tracks are sorted by entity id, so we can iterate over them and build the full dataset
+		// Delta tracks are sorted by entity id, so we can iterate over them and build the full dataset keeping the entity id order
 		for _, deltaTrack := range deltaTracks {
 			if deltaTrack.Operation == models.DeltaTrackOperationDelete {
 				// Ignore deleted objects for the first full dataset creation
 				continue
 			}
+			if deltaTrack.ObjectInternalId == nil {
+				// Should never happen
+				return errors.Wrapf(models.NotFoundError,
+					"delta track %s has no object internal id for non-delete operation", deltaTrack.EntityId)
+			}
 			ingestedObjectData, ok := ingestedObjectsByType[deltaTrack.ObjectType][*deltaTrack.ObjectInternalId]
 			if !ok {
-				return models.ContinuousScreeningDatasetFile{}, errors.Wrapf(models.NotFoundError,
+				return errors.Wrapf(models.NotFoundError,
 					"ingested object not found for object type %s and object internal id %s",
 					deltaTrack.ObjectType, deltaTrack.ObjectInternalId)
 			}
@@ -358,15 +321,8 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 				deltaTrack,
 				ingestedObjectData,
 			)
-			entityJson, err := json.Marshal(datasetEntity)
-			if err != nil {
-				return models.ContinuousScreeningDatasetFile{},
-					errors.Wrap(err, "failed to marshal dataset entity")
-			}
-			_, err = blobWriter.Write(append(entityJson, '\n'))
-			if err != nil {
-				return models.ContinuousScreeningDatasetFile{},
-					errors.Wrap(err, "failed to write dataset entity to blob")
+			if err := writeDatasetEntity(blobWriter, datasetEntity); err != nil {
+				return errors.Wrap(err, "failed to write dataset entity to blob")
 			}
 		}
 
@@ -375,7 +331,6 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 
 	// Create dataset file record and update delta tracks in a transaction
 	// to ensure consistency
-	var createdDatasetFile models.ContinuousScreeningDatasetFile
 	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		// Create a new dataset file record
 		datasetFile, err := w.repo.CreateContinuousScreeningDatasetFile(ctx, tx,
@@ -394,74 +349,68 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 		if err != nil {
 			return errors.Wrap(err, "failed to update delta tracks dataset file id")
 		}
-
-		createdDatasetFile = datasetFile
 		return nil
 	})
 	if err != nil {
-		return models.ContinuousScreeningDatasetFile{}, err
+		return errors.Wrap(err, "failed to create dataset file record")
 	}
 
 	logger.DebugContext(ctx, "Successfully created first full dataset",
 		"orgId", orgId, "filePath", fullDatasetFileName)
 
-	return createdDatasetFile, nil
+	return nil
 }
 
 // handlePatchDataset handles patching an existing dataset by merging the previous dataset file
 // with new delta tracks. Both sources are sorted by entity_id, enabling an efficient merge.
 func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 	exec repositories.Executor, orgId uuid.UUID, previousDatasetFile models.ContinuousScreeningDatasetFile,
-) (models.ContinuousScreeningDatasetFile, error) {
+) error {
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Patching dataset", "orgId", orgId, "previousVersion", previousDatasetFile.Version)
 
 	clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, orgId.String())
 	if err != nil {
-		return models.ContinuousScreeningDatasetFile{},
-			errors.Wrap(err, "failed to get client db executor")
+		return errors.Wrap(err, "failed to get client db executor")
 	}
 
 	dataModel, err := w.repo.GetDataModel(ctx, exec, orgId.String(), false, false)
 	if err != nil {
-		return models.ContinuousScreeningDatasetFile{},
-			errors.Wrap(err, "failed to get data model")
+		return errors.Wrap(err, "failed to get data model")
 	}
 
 	now := time.Now()
 	version := generateNextVersion(previousDatasetFile.Version, now)
+
 	fileName := fmt.Sprintf("%s-entities.ftm.json", version)
 	fullDatasetFileName := fmt.Sprintf("%s/%s/%s", orgId.String(), FullDatasetFolderName, fileName)
+
 	deltaFileName := fmt.Sprintf("%s-delta.ftm.json", version)
 	deltaDatasetFileName := fmt.Sprintf("%s/%s/%s", orgId.String(), DeltaDatasetFolderName, deltaFileName)
 
-	// Open previous dataset file for reading
 	previousBlob, err := w.blobRepository.GetBlob(ctx, w.bucketUrl, previousDatasetFile.FilePath)
 	if err != nil {
-		return models.ContinuousScreeningDatasetFile{},
-			errors.Wrap(err, "failed to get previous dataset blob")
+		return errors.Wrap(err, "failed to get previous dataset blob")
 	}
 	defer previousBlob.ReadCloser.Close()
 
-	// Open new dataset file for writing
+	// Full dataset file
 	newBlobWriter, err := w.blobRepository.OpenStreamWithOptions(ctx, w.bucketUrl, fullDatasetFileName,
 		&blob.WriterOptions{
 			ContentType: DatasetFileContentType,
 		})
 	if err != nil {
-		return models.ContinuousScreeningDatasetFile{},
-			errors.Wrap(err, "failed to open stream for new dataset")
+		return errors.Wrap(err, "failed to open stream for new dataset")
 	}
 	defer newBlobWriter.Close()
 
-	// Open delta file for writing
+	// Delta dataset file
 	deltaBlobWriter, err := w.blobRepository.OpenStreamWithOptions(ctx, w.bucketUrl, deltaDatasetFileName,
 		&blob.WriterOptions{
 			ContentType: DatasetFileContentType,
 		})
 	if err != nil {
-		return models.ContinuousScreeningDatasetFile{},
-			errors.Wrap(err, "failed to open stream for delta dataset")
+		return errors.Wrap(err, "failed to open stream for delta dataset")
 	}
 	defer deltaBlobWriter.Close()
 
@@ -477,21 +426,23 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 
 	// Load first batch of tracks
 	if err := w.loadNextTrackBatch(ctx, exec, clientDbExec, orgId, now, dataModel, trackBatch); err != nil {
-		return models.ContinuousScreeningDatasetFile{},
-			errors.Wrap(err, "failed to load first track batch")
+		return errors.Wrap(err, "failed to load first track batch")
 	}
 
 	// Read and merge old file with tracks using JSON decoder
 	decoder := json.NewDecoder(previousBlob.ReadCloser)
 
+	// This loop reads the previous dataset file and merges it with the new tracks
+	// Read an entity from the previous dataset file and process the tracks that come before it (new ADDs)
+	// Then determine if the current track affects the old entity (update or delete)
+	// If not, the entity is re-encoded and written to the new dataset file because not impacted by modifications from the tracks
 	for {
 		var oldEntity datasetEntity
 		if err := decoder.Decode(&oldEntity); err != nil {
 			if err == io.EOF {
 				break
 			}
-			return models.ContinuousScreeningDatasetFile{},
-				errors.Wrap(err, "failed to decode old entity")
+			return errors.Wrap(err, "failed to decode old entity")
 		}
 
 		// Process any tracks that come before this old entity (new ADDs)
@@ -503,15 +454,18 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 
 			// This track's entity_id < old entity's id, so it's a new ADD
 			if currentTrack.Operation != models.DeltaTrackOperationDelete {
-				if err := w.writeTrackEntity(newBlobWriter, dataModel, trackBatch, currentTrack); err != nil {
-					return models.ContinuousScreeningDatasetFile{},
-						errors.Wrap(err, "failed to write new entity from track")
+				entity, err := w.getDatasetEntityFromTrack(dataModel,
+					trackBatch.ingestedObjectsByType, currentTrack)
+				if err != nil {
+					return errors.Wrap(err, "failed to get dataset entity from track")
+				}
+
+				if err := writeDatasetEntity(newBlobWriter, entity); err != nil {
+					return errors.Wrap(err, "failed to write new entity from track")
 				}
 				// Write ADD to delta file
-				if err := writeDeltaEntityFromTrack(deltaBlobWriter, DeltaOperationAdd,
-					dataModel, trackBatch, currentTrack); err != nil {
-					return models.ContinuousScreeningDatasetFile{},
-						errors.Wrap(err, "failed to write ADD delta entry")
+				if err := writeDeltaEntry(deltaBlobWriter, DeltaOperationAdd, entity); err != nil {
+					return errors.Wrap(err, "failed to write ADD delta entry")
 				}
 			}
 			trackBatch.currentIndex++
@@ -519,8 +473,7 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 			// Load next batch if current is exhausted
 			if trackBatch.currentIndex >= len(trackBatch.tracks) {
 				if err := w.loadNextTrackBatch(ctx, exec, clientDbExec, orgId, now, dataModel, trackBatch); err != nil {
-					return models.ContinuousScreeningDatasetFile{},
-						errors.Wrap(err, "failed to load next track batch")
+					return errors.Wrap(err, "failed to load next track batch")
 				}
 			}
 		}
@@ -535,20 +488,23 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 					// Skip writing this entity (delete it)
 					// Write DEL to delta file
 					if err := writeDeltaDelete(deltaBlobWriter, currentTrack.EntityId); err != nil {
-						return models.ContinuousScreeningDatasetFile{},
-							errors.Wrap(err, "failed to write DEL delta entry")
+						return errors.Wrap(err, "failed to write DEL delta entry")
 					}
 				case models.DeltaTrackOperationUpdate, models.DeltaTrackOperationAdd:
+					entity, err := w.getDatasetEntityFromTrack(dataModel,
+						trackBatch.ingestedObjectsByType, currentTrack)
+					if err != nil {
+						return errors.Wrap(err, "failed to get dataset entity from track")
+					}
+
 					// Write updated entity from track
-					if err := w.writeTrackEntity(newBlobWriter, dataModel, trackBatch, currentTrack); err != nil {
-						return models.ContinuousScreeningDatasetFile{},
-							errors.Wrap(err, "failed to write updated entity from track")
+					if err := writeDatasetEntity(newBlobWriter, entity); err != nil {
+						return errors.Wrap(err, "failed to write updated entity from track")
 					}
 					// Write MOD to delta file (entity existed in old dataset)
-					if err := writeDeltaEntityFromTrack(deltaBlobWriter, DeltaOperationMod,
-						dataModel, trackBatch, currentTrack); err != nil {
-						return models.ContinuousScreeningDatasetFile{},
-							errors.Wrap(err, "failed to write MOD delta entry")
+					if err := writeDeltaEntry(deltaBlobWriter,
+						DeltaOperationMod, entity); err != nil {
+						return errors.Wrap(err, "failed to write MOD delta entry")
 					}
 				}
 				trackBatch.currentIndex++
@@ -557,8 +513,7 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 				if trackBatch.currentIndex >= len(trackBatch.tracks) {
 					if err := w.loadNextTrackBatch(ctx, exec, clientDbExec,
 						orgId, now, dataModel, trackBatch); err != nil {
-						return models.ContinuousScreeningDatasetFile{},
-							errors.Wrap(err, "failed to load next track batch")
+						return errors.Wrap(err, "failed to load next track batch")
 					}
 				}
 				continue
@@ -568,12 +523,10 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 		// Old entity not affected, re-encode and write
 		entityJson, err := json.Marshal(oldEntity)
 		if err != nil {
-			return models.ContinuousScreeningDatasetFile{},
-				errors.Wrap(err, "failed to marshal old entity")
+			return errors.Wrap(err, "failed to marshal old entity")
 		}
 		if _, err := newBlobWriter.Write(append(entityJson, '\n')); err != nil {
-			return models.ContinuousScreeningDatasetFile{},
-				errors.Wrap(err, "failed to write old entity to new blob")
+			return errors.Wrap(err, "failed to write old entity to new blob")
 		}
 	}
 
@@ -582,28 +535,29 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 		for trackBatch.currentIndex < len(trackBatch.tracks) {
 			currentTrack := trackBatch.tracks[trackBatch.currentIndex]
 			if currentTrack.Operation != models.DeltaTrackOperationDelete {
-				if err := w.writeTrackEntity(newBlobWriter, dataModel, trackBatch, currentTrack); err != nil {
-					return models.ContinuousScreeningDatasetFile{},
-						errors.Wrap(err, "failed to write remaining entity from track")
+				entity, err := w.getDatasetEntityFromTrack(dataModel,
+					trackBatch.ingestedObjectsByType, currentTrack)
+				if err != nil {
+					return errors.Wrap(err, "failed to get dataset entity from track")
+				}
+
+				if err := writeDatasetEntity(newBlobWriter, entity); err != nil {
+					return errors.Wrap(err, "failed to write remaining entity from track")
 				}
 				// Write ADD to delta file
-				if err := writeDeltaEntityFromTrack(deltaBlobWriter, DeltaOperationAdd,
-					dataModel, trackBatch, currentTrack); err != nil {
-					return models.ContinuousScreeningDatasetFile{},
-						errors.Wrap(err, "failed to write ADD delta entry for remaining track")
+				if err := writeDeltaEntry(deltaBlobWriter, DeltaOperationAdd, entity); err != nil {
+					return errors.Wrap(err, "failed to write ADD delta entry for remaining track")
 				}
 			}
 			trackBatch.currentIndex++
 		}
 
 		if err := w.loadNextTrackBatch(ctx, exec, clientDbExec, orgId, now, dataModel, trackBatch); err != nil {
-			return models.ContinuousScreeningDatasetFile{},
-				errors.Wrap(err, "failed to load next track batch")
+			return errors.Wrap(err, "failed to load next track batch")
 		}
 	}
 
 	// Create dataset file records and update delta tracks in a transaction
-	var createdDatasetFile models.ContinuousScreeningDatasetFile
 	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		datasetFile, err := w.repo.CreateContinuousScreeningDatasetFile(ctx, tx,
 			models.CreateContinuousScreeningDatasetFile{
@@ -633,24 +587,17 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 			return errors.Wrap(err, "failed to update delta tracks dataset file id")
 		}
 
-		createdDatasetFile = datasetFile
 		return nil
 	})
 	if err != nil {
-		return models.ContinuousScreeningDatasetFile{}, err
-	}
-
-	// Update the deltas.json index file with the new delta file
-	if err := w.updateDeltasIndex(ctx, orgId, version, deltaDatasetFileName); err != nil {
-		logger.ErrorContext(ctx, "Failed to update deltas index", "error", err, "orgId", orgId)
-		// Don't return error to avoid job retries as the main dataset files are already created
+		return errors.Wrap(err, "failed to create dataset file record")
 	}
 
 	logger.DebugContext(ctx, "Successfully patched dataset",
 		"orgId", orgId, "previousVersion", previousDatasetFile.Version, "newVersion", version,
 		"deltaFile", deltaDatasetFileName)
 
-	return createdDatasetFile, nil
+	return nil
 }
 
 // trackBatchState holds the current state of the track batch being processed
@@ -740,7 +687,10 @@ func (w *CreateFullDatasetWorker) loadNextTrackBatch(
 
 		ingestedObjects := make(map[uuid.UUID]models.DataModelObject, len(ingestedObjectsFromDb))
 		for _, obj := range ingestedObjectsFromDb {
-			id := toUUID(obj.Metadata["id"])
+			id, err := getIngestedObjectInternalId(obj)
+			if err != nil {
+				return err
+			}
 			ingestedObjects[id] = obj
 		}
 		state.ingestedObjectsByType[objectType] = ingestedObjects
@@ -752,32 +702,36 @@ func (w *CreateFullDatasetWorker) loadNextTrackBatch(
 	return nil
 }
 
-// writeTrackEntity writes an entity from a track to the output blob
-func (w *CreateFullDatasetWorker) writeTrackEntity(
-	writer io.Writer,
+// getDatasetEntityFromTrack builds a datasetEntity from a track and its associated ingested data
+// Use for building the dataset entities to write to the new dataset file and the delta file
+func (w *CreateFullDatasetWorker) getDatasetEntityFromTrack(
 	dataModel models.DataModel,
-	state *trackBatchState,
+	ingestedObjectsByType map[string]map[uuid.UUID]models.DataModelObject,
 	track models.ContinuousScreeningDeltaTrack,
-) error {
+) (datasetEntity, error) {
 	if track.ObjectInternalId == nil {
-		return errors.Wrapf(models.NotFoundError,
+		return datasetEntity{}, errors.Wrapf(models.NotFoundError,
 			"track %s has no object internal id for non-delete operation", track.EntityId)
 	}
 
-	ingestedObjects, ok := state.ingestedObjectsByType[track.ObjectType]
+	ingestedObjects, ok := ingestedObjectsByType[track.ObjectType]
 	if !ok {
-		return errors.Wrapf(models.NotFoundError,
+		return datasetEntity{}, errors.Wrapf(models.NotFoundError,
 			"no ingested objects for object type %s", track.ObjectType)
 	}
 
 	ingestedObjectData, ok := ingestedObjects[*track.ObjectInternalId]
 	if !ok {
-		return errors.Wrapf(models.NotFoundError,
+		return datasetEntity{}, errors.Wrapf(models.NotFoundError,
 			"ingested object not found for object type %s and internal id %s",
 			track.ObjectType, track.ObjectInternalId)
 	}
 
-	entity := buildDatasetEntity(dataModel.Tables[track.ObjectType], track, ingestedObjectData)
+	return buildDatasetEntity(dataModel.Tables[track.ObjectType], track, ingestedObjectData), nil
+}
+
+// writeDatasetEntity writes a datasetEntity to the output blob in NDJSON format
+func writeDatasetEntity(writer io.Writer, entity datasetEntity) error {
 	entityJson, err := json.Marshal(entity)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal entity")
@@ -806,171 +760,9 @@ func writeDeltaEntry(writer io.Writer, op deltaOperation, entity any) error {
 	return nil
 }
 
-// writeDeltaEntityFromTrack writes a full entity delta entry (ADD or MOD)
-func writeDeltaEntityFromTrack(
-	writer io.Writer,
-	op deltaOperation,
-	dataModel models.DataModel,
-	state *trackBatchState,
-	track models.ContinuousScreeningDeltaTrack,
-) error {
-	if track.ObjectInternalId == nil {
-		return errors.Wrapf(models.NotFoundError,
-			"track %s has no object internal id for non-delete operation", track.EntityId)
-	}
-
-	ingestedObjects, ok := state.ingestedObjectsByType[track.ObjectType]
-	if !ok {
-		return errors.Wrapf(models.NotFoundError,
-			"no ingested objects for object type %s", track.ObjectType)
-	}
-
-	ingestedObjectData, ok := ingestedObjects[*track.ObjectInternalId]
-	if !ok {
-		return errors.Wrapf(models.NotFoundError,
-			"ingested object not found for object type %s and internal id %s",
-			track.ObjectType, track.ObjectInternalId)
-	}
-
-	entity := buildDatasetEntity(dataModel.Tables[track.ObjectType], track, ingestedObjectData)
-	return writeDeltaEntry(writer, op, entity)
-}
-
 // writeDeltaDelete writes a DEL delta entry with minimal entity (only id)
 func writeDeltaDelete(writer io.Writer, entityId string) error {
 	return writeDeltaEntry(writer, DeltaOperationDel, deltaEntityMinimal{Id: entityId})
-}
-
-func (w *CreateFullDatasetWorker) getOrCreateManifest(ctx context.Context) (Manifest, error) {
-	logger := utils.LoggerFromContext(ctx)
-
-	blob, err := w.blobRepository.GetBlob(ctx, w.bucketUrl, ManifestFileName)
-	if err != nil {
-		if errors.Is(err, models.NotFoundError) {
-			logger.DebugContext(ctx, "Manifest file not found, creating new one")
-			return Manifest{Datasets: []ManifestDataset{}}, nil
-		}
-		return Manifest{}, errors.Wrap(err, "failed to get manifest blob")
-	}
-	defer blob.ReadCloser.Close()
-
-	data, err := io.ReadAll(blob.ReadCloser)
-	if err != nil {
-		return Manifest{}, errors.Wrap(err, "failed to read manifest blob")
-	}
-
-	var manifest Manifest
-	if err := yaml.Unmarshal(data, &manifest); err != nil {
-		return Manifest{}, errors.Wrap(err, "failed to unmarshal manifest")
-	}
-
-	return manifest, nil
-}
-
-// Update or create manifest file with organization dataset information (version and path)
-func (w *CreateFullDatasetWorker) updateManifest(
-	ctx context.Context,
-	orgId uuid.UUID,
-	datasetFile models.ContinuousScreeningDatasetFile,
-) error {
-	logger := utils.LoggerFromContext(ctx)
-
-	manifest, err := w.getOrCreateManifest(ctx)
-	if err != nil {
-		return err
-	}
-
-	manifest.upsertDataset(orgId.String(), datasetFile)
-
-	manifestData, err := yaml.Marshal(&manifest)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal manifest")
-	}
-
-	writer, err := w.blobRepository.OpenStream(ctx, w.bucketUrl, ManifestFileName, ManifestFileName)
-	if err != nil {
-		return errors.Wrap(err, "failed to open stream for manifest")
-	}
-	defer writer.Close()
-
-	if _, err := io.Copy(writer, bytes.NewReader(manifestData)); err != nil {
-		return errors.Wrap(err, "failed to write manifest")
-	}
-
-	logger.DebugContext(ctx, "Successfully updated manifest",
-		"datasetsCount", len(manifest.Datasets))
-
-	return nil
-}
-
-// getOrCreateDeltasIndex reads the deltas.json file for an org or creates an empty one
-func (w *CreateFullDatasetWorker) getOrCreateDeltasIndex(ctx context.Context, orgId uuid.UUID) (DeltasIndex, error) {
-	logger := utils.LoggerFromContext(ctx)
-	deltasIndexPath := fmt.Sprintf("%s/%s/%s", orgId.String(), DeltaDatasetFolderName, DeltasIndexFileName)
-
-	blob, err := w.blobRepository.GetBlob(ctx, w.bucketUrl, deltasIndexPath)
-	if err != nil {
-		if errors.Is(err, models.NotFoundError) {
-			logger.DebugContext(ctx, "Deltas index file not found, creating new one", "orgId", orgId)
-			return DeltasIndex{Versions: make(map[string]string)}, nil
-		}
-		return DeltasIndex{}, errors.Wrap(err, "failed to get deltas index blob")
-	}
-	defer blob.ReadCloser.Close()
-
-	data, err := io.ReadAll(blob.ReadCloser)
-	if err != nil {
-		return DeltasIndex{}, errors.Wrap(err, "failed to read deltas index blob")
-	}
-
-	var deltasIndex DeltasIndex
-	if err := json.Unmarshal(data, &deltasIndex); err != nil {
-		return DeltasIndex{}, errors.Wrap(err, "failed to unmarshal deltas index")
-	}
-
-	if deltasIndex.Versions == nil {
-		deltasIndex.Versions = make(map[string]string)
-	}
-
-	return deltasIndex, nil
-}
-
-// updateDeltasIndex updates the deltas.json file with a new delta file version
-func (w *CreateFullDatasetWorker) updateDeltasIndex(
-	ctx context.Context,
-	orgId uuid.UUID,
-	version string,
-	deltaFilePath string,
-) error {
-	logger := utils.LoggerFromContext(ctx)
-
-	deltasIndex, err := w.getOrCreateDeltasIndex(ctx, orgId)
-	if err != nil {
-		return err
-	}
-
-	deltasIndex.addVersion(version, deltaFilePath)
-
-	deltasIndexData, err := json.Marshal(&deltasIndex)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal deltas index")
-	}
-
-	deltasIndexPath := fmt.Sprintf("%s/%s/%s", orgId.String(), DeltaDatasetFolderName, DeltasIndexFileName)
-	writer, err := w.blobRepository.OpenStream(ctx, w.bucketUrl, deltasIndexPath, deltasIndexPath)
-	if err != nil {
-		return errors.Wrap(err, "failed to open stream for deltas index")
-	}
-	defer writer.Close()
-
-	if _, err := io.Copy(writer, bytes.NewReader(deltasIndexData)); err != nil {
-		return errors.Wrap(err, "failed to write deltas index")
-	}
-
-	logger.DebugContext(ctx, "Successfully updated deltas index",
-		"orgId", orgId, "version", version, "versionsCount", len(deltasIndex.Versions))
-
-	return nil
 }
 
 type datasetEntity struct {
@@ -998,6 +790,8 @@ type deltaEntityMinimal struct {
 	Id string `json:"id"`
 }
 
+// From ingested data, build the dataset entity.
+// Normalize the FTM properties values.
 func buildDatasetEntity(
 	table models.Table,
 	track models.ContinuousScreeningDeltaTrack,
@@ -1061,23 +855,6 @@ func buildDatasetEntity(
 		Id:         track.EntityId,
 		Schema:     table.FTMEntity.String(),
 		Properties: properties,
-	}
-}
-
-func toUUID(v any) uuid.UUID {
-	switch val := v.(type) {
-	case uuid.UUID:
-		return val
-	case [16]byte:
-		return uuid.UUID(val)
-	case []byte:
-		id, _ := uuid.FromBytes(val)
-		return id
-	case string:
-		id, _ := uuid.Parse(val)
-		return id
-	default:
-		return uuid.Nil
 	}
 }
 

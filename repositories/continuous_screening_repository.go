@@ -863,7 +863,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningLastChangeByEntityIds(
 		query = query.Where(squirrel.Gt{"entity_id": cursorEntityId})
 	}
 
-	query = query.OrderBy("entity_id, created_at DESC").
+	query = query.OrderBy("entity_id", "created_at DESC").
 		Limit(limit)
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDeltaTrack)
@@ -884,7 +884,7 @@ func (repo *MarbleDbRepository) GetContinuousScreeningLatestDatasetFileByOrgId(
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES).
 		Where(squirrel.Eq{"org_id": orgId}).
 		Where(squirrel.Eq{"file_type": fileType.String()}).
-		OrderBy("created_at DESC").
+		OrderBy("version DESC").
 		Limit(1)
 
 	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetFile)

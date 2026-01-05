@@ -146,12 +146,12 @@ func TestCountryToAlpha2(t *testing.T) {
 		{
 			name:     "Unrecognizable input",
 			input:    "xyzabc123",
-			expected: "",
+			expected: "xyzabc123",
 		},
 		{
 			name:     "Too short to match",
 			input:    "X",
-			expected: "",
+			expected: "X",
 		},
 	}
 

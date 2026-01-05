@@ -52,7 +52,7 @@ func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(
 	ctx context.Context,
 	offloadingConfig infra.OffloadingConfig,
 	analyticsConfig infra.AnalyticsConfig,
-) error {
+) {
 	logger := utils.LoggerFromContext(ctx)
 	refreshOrgs := func() error {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -184,8 +184,8 @@ func listOrgPeriodics(
 		scheduled_execution.NewTestRunSummaryPeriodicJob(org.Id),
 		continuous_screening.NewContinuousScreeningCreateFullDatasetPeriodicJob(
 			org.Id,
-			// TODO Configurable per Org
-			time.Duration(24*time.Hour),
+			// TODO: Configurable per Org
+			24*time.Hour,
 		),
 	}
 	if offloadingConfig.Enabled {
@@ -218,7 +218,7 @@ func QueuesFromOrgs(
 	}
 
 	queues = make(map[string]river.QueueConfig, len(orgs))
-	periodics = make([]*river.PeriodicJob, 0, len(orgs)*5) // 5 = maximum number of periodics per org, see: listOrgPeriodics function
+	periodics = make([]*river.PeriodicJob, 0, len(orgs)*6) // 6 = maximum number of periodics per org, see: listOrgPeriodics function
 
 	for _, org := range orgs {
 		periodics = append(periodics, listOrgPeriodics(org, offloadingConfig, analyticsConfig)...)
@@ -258,14 +258,6 @@ func QueueAnalyticsMerge() map[string]river.QueueConfig {
 func QueueContinuousScreeningDatasetUpdate() map[string]river.QueueConfig {
 	queues := make(map[string]river.QueueConfig, 1)
 	queues[models.CONTINUOUS_SCREENING_DATASET_UPDATE_QUEUE_NAME] = river.QueueConfig{
-		MaxWorkers: 1,
-	}
-	return queues
-}
-
-func QueueContinuousScreeningCreateFullDataset() map[string]river.QueueConfig {
-	queues := make(map[string]river.QueueConfig, 1)
-	queues[models.CONTINUOUS_SCREENING_CREATE_FULL_DATASET_QUEUE_NAME] = river.QueueConfig{
 		MaxWorkers: 1,
 	}
 	return queues

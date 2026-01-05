@@ -212,7 +212,11 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 			if triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated {
 				deltaTrackOperation = models.DeltaTrackOperationUpdate
 			}
-			if !objectMonitoredInOtherConfigs {
+
+			// Check if we should record this activity in the delta tracks
+			isNewMonitoring := deltaTrackOperation == models.DeltaTrackOperationAdd && !objectMonitoredInOtherConfigs
+			isUpdate := deltaTrackOperation == models.DeltaTrackOperationUpdate
+			if isNewMonitoring || isUpdate {
 				err = uc.repository.CreateContinuousScreeningDeltaTrack(
 					ctx,
 					tx,
