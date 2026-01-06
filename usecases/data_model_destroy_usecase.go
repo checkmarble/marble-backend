@@ -397,10 +397,25 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 		return false, models.DataModelDeleteFieldReport{}, err
 	}
 
+	type scenarioConflict struct {
+		hasDraftOrLive        bool
+		hasSurvivingIteration bool
+	}
+
+	scenarioConflicts := make(map[string]*scenarioConflict)
+
 	// Check all scenario iterations for if the field we want to delete is used in a rule.
 	for _, it := range iterations {
 		found := false
 		scenario := scenarioMap[it.ScenarioId.String()]
+
+		if _, ok := scenarioConflicts[scenario.Id]; !ok {
+			scenarioConflicts[scenario.Id] = &scenarioConflict{}
+		}
+
+		if it.Version == nil || (scenario.LiveVersionID != nil && fmt.Sprintf("%d", *it.Version) == *scenario.LiveVersionID) {
+			scenarioConflicts[scenario.Id].hasDraftOrLive = true
+		}
 
 		iterationReport := models.DataModelDeleteFieldConflictIteration{
 			Rules:     set.New[string](0),
@@ -452,6 +467,14 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 
 			// Otherwise, we can delete it but matching iterations will be marked as archived
 			report.ArchivedIterations.Insert(it.ScenarioIterationId.String())
+		} else {
+			scenarioConflicts[scenario.Id].hasSurvivingIteration = true
+		}
+	}
+
+	for scenarioId, sc := range scenarioConflicts {
+		if !sc.hasDraftOrLive && !sc.hasSurvivingIteration {
+			report.Conflicts.EmptyScenarios.Insert(scenarioId)
 		}
 	}
 
@@ -590,10 +613,25 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 		return false, models.DataModelDeleteFieldReport{}, err
 	}
 
+	type scenarioConflict struct {
+		hasDraftOrLive        bool
+		hasSurvivingIteration bool
+	}
+
+	scenarioConflicts := make(map[string]*scenarioConflict)
+
 	// Check all scenario iterations for if the link we want to delete is used in a rule.
 	for _, it := range iterations {
 		found := false
 		scenario := scenarioMap[it.ScenarioId.String()]
+
+		if _, ok := scenarioConflicts[scenario.Id]; !ok {
+			scenarioConflicts[scenario.Id] = &scenarioConflict{}
+		}
+
+		if it.Version == nil || (scenario.LiveVersionID != nil && fmt.Sprintf("%d", *it.Version) == *scenario.LiveVersionID) {
+			scenarioConflicts[scenario.Id].hasDraftOrLive = true
+		}
 
 		iterationReport := models.DataModelDeleteFieldConflictIteration{
 			Rules:     set.New[string](0),
@@ -645,6 +683,14 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 
 			// Otherwise, we can delete it but matching iterations will be marked as archived
 			report.ArchivedIterations.Insert(it.ScenarioIterationId.String())
+		} else {
+			scenarioConflicts[scenario.Id].hasSurvivingIteration = true
+		}
+	}
+
+	for scenarioId, sc := range scenarioConflicts {
+		if !sc.hasDraftOrLive && !sc.hasSurvivingIteration {
+			report.Conflicts.EmptyScenarios.Insert(scenarioId)
 		}
 	}
 

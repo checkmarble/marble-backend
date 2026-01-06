@@ -208,6 +208,7 @@ type DataModelDeleteFieldConflicts struct {
 	Pivots              []string                                          `json:"pivots"`
 	AnalyticsSettings   int                                               `json:"analytics_settings"`
 	Scenarios           []string                                          `json:"scenarios"`
+	EmptyScenarios      []string                                          `json:"empty_scenarios"`
 	ScenarioIterations  map[string]*DataModelDeleteFieldConflictIteration `json:"scenario_iterations"`
 	Workflows           []string                                          `json:"workflows"`
 	TestRuns            bool                                              `json:"test_runs"`
@@ -229,6 +230,7 @@ func AdaptDataModelDeleteFieldReport(m models.DataModelDeleteFieldReport) DataMo
 			AnalyticsSettings:   m.Conflicts.AnalyticsSettings,
 			Workflows:           m.Conflicts.Workflows.Slice(),
 			Scenarios:           m.Conflicts.Scenario.Slice(),
+			EmptyScenarios:      m.Conflicts.EmptyScenarios.Slice(),
 			ScenarioIterations:  map[string]*DataModelDeleteFieldConflictIteration{},
 			TestRuns:            m.Conflicts.TestRuns,
 		},
