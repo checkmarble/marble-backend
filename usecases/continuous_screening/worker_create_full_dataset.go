@@ -211,11 +211,22 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 	}
 
 	now := time.Now()
-	cursorEntityId := ""
-
 	version := generateNextVersion("", now)
+
 	fileName := fmt.Sprintf("%s-entities.ftm.json", version)
 	fullDatasetFileName := fmt.Sprintf("%s/%s/%s", orgId.String(), FullDatasetFolderName, fileName)
+
+	trackBatch := &trackBatchState{}
+
+	// Load first batch of tracks to check if we have anything to do
+	if err := w.loadNextTrackBatch(ctx, exec, clientDbExec, orgId, now, dataModel, trackBatch); err != nil {
+		return errors.Wrap(err, "failed to load first track batch")
+	}
+
+	if trackBatch.exhausted {
+		logger.DebugContext(ctx, "No delta tracks found for first full dataset, skipping", "orgId", orgId)
+		return nil
+	}
 
 	blobWriter, err := w.blobRepository.OpenStreamWithOptions(ctx, w.bucketUrl, fullDatasetFileName,
 		&blob.WriterOptions{
@@ -226,107 +237,30 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 	}
 	defer blobWriter.Close()
 
-	for {
-		// Delta tracks are sorted by entityID, limit the number of tracks to fetch to avoid memory issues
-		deltaTracks, err := w.repo.ListContinuousScreeningLastChangeByEntityIds(
-			ctx,
-			exec,
-			orgId,
-			MaxDeltaTracksPerOrg,
-			now,
-			cursorEntityId,
-		)
-		if err != nil {
-			return errors.Wrap(err, "failed to list continuous screening last change by entity ids")
-		}
-
-		if len(deltaTracks) == 0 {
-			break
-		}
-
-		// Build a map of object types and their internal ids to be able to fetch the ingested objects by type
-		// We can't fetch the ingested objects by mixing object types
-		typesAndObjectInternalIds := make(map[string]*set.Set[uuid.UUID])
-
-		// Build a map to easily fetch the ingested objects by type and internal id
-		// The first level of object type is not mandatory but we avoid any collision with object InternalIds (should not happen)
-		ingestedObjectsByType := make(map[string]map[uuid.UUID]models.DataModelObject)
-
-		// Build the map for the fetching of the ingested objects by type
-		for _, deltaTrack := range deltaTracks {
-			if deltaTrack.Operation == models.DeltaTrackOperationDelete {
+	for !trackBatch.exhausted {
+		for trackBatch.currentIndex < len(trackBatch.tracks) {
+			currentTrack := trackBatch.tracks[trackBatch.currentIndex]
+			if currentTrack.Operation == models.DeltaTrackOperationDelete {
 				// Ignore deleted objects for the first full dataset creation
+				trackBatch.currentIndex++
 				continue
 			}
-			// Should always have an object internal id if the operation is not delete
-			if _, ok := typesAndObjectInternalIds[deltaTrack.ObjectType]; !ok {
-				typesAndObjectInternalIds[deltaTrack.ObjectType] = set.New[uuid.UUID](0)
-			}
-			typesAndObjectInternalIds[deltaTrack.ObjectType].Insert(*deltaTrack.ObjectInternalId)
-		}
 
-		// For each object type, fetch the ingested objects by internal ids
-		for objectType, objectInternalIdsSet := range typesAndObjectInternalIds {
-			objectInternalIds := objectInternalIdsSet.Slice()
-			dataModelTable, ok := dataModel.Tables[objectType]
-			// Check datamodel is correctly configured for the use case
-			if !ok {
-				return errors.Wrapf(models.NotFoundError,
-					"table %s not found in data model", objectType)
-			}
-			if err := checkDataModelTableAndFieldsConfiguration(dataModelTable); err != nil {
-				return errors.Wrap(err, "data model table is not correctly configured for the use case")
-			}
-			ingestedObjectsFromDb, err := w.ingestedDataReader.QueryIngestedObjectByInternalIds(
-				ctx, clientDbExec, dataModelTable, objectInternalIds)
+			entity, err := w.getDatasetEntityFromTrack(dataModel,
+				trackBatch.ingestedObjectsByType, currentTrack)
 			if err != nil {
-				return errors.Wrap(err, "failed to query ingested objects by internal ids")
-			}
-			if len(ingestedObjectsFromDb) != len(objectInternalIds) {
-				return errors.Wrapf(models.NotFoundError,
-					"number of ingested objects by internal ids %d does not match the number of object internal ids %d",
-					len(ingestedObjectsFromDb), len(objectInternalIds))
+				return errors.Wrap(err, "failed to get dataset entity from track")
 			}
 
-			ingestedObjects := make(map[uuid.UUID]models.DataModelObject, len(ingestedObjectsFromDb))
-			for _, ingestedObject := range ingestedObjectsFromDb {
-				id, err := getIngestedObjectInternalId(ingestedObject)
-				if err != nil {
-					return errors.Wrap(err, "failed to get ingested object internal id")
-				}
-				ingestedObjects[id] = ingestedObject
-			}
-			ingestedObjectsByType[objectType] = ingestedObjects
-		}
-
-		// Delta tracks are sorted by entity id, so we can iterate over them and build the full dataset keeping the entity id order
-		for _, deltaTrack := range deltaTracks {
-			if deltaTrack.Operation == models.DeltaTrackOperationDelete {
-				// Ignore deleted objects for the first full dataset creation
-				continue
-			}
-			if deltaTrack.ObjectInternalId == nil {
-				// Should never happen
-				return errors.Wrapf(models.NotFoundError,
-					"delta track %s has no object internal id for non-delete operation", deltaTrack.EntityId)
-			}
-			ingestedObjectData, ok := ingestedObjectsByType[deltaTrack.ObjectType][*deltaTrack.ObjectInternalId]
-			if !ok {
-				return errors.Wrapf(models.NotFoundError,
-					"ingested object not found for object type %s and object internal id %s",
-					deltaTrack.ObjectType, deltaTrack.ObjectInternalId)
-			}
-			datasetEntity := buildDatasetEntity(
-				dataModel.Tables[deltaTrack.ObjectType],
-				deltaTrack,
-				ingestedObjectData,
-			)
-			if err := writeDatasetEntity(blobWriter, datasetEntity); err != nil {
+			if err := writeDatasetEntity(blobWriter, entity); err != nil {
 				return errors.Wrap(err, "failed to write dataset entity to blob")
 			}
+			trackBatch.currentIndex++
 		}
 
-		cursorEntityId = deltaTracks[len(deltaTracks)-1].EntityId
+		if err := w.loadNextTrackBatch(ctx, exec, clientDbExec, orgId, now, dataModel, trackBatch); err != nil {
+			return errors.Wrap(err, "failed to load next track batch")
+		}
 	}
 
 	// Create dataset file record and update delta tracks in a transaction
@@ -394,6 +328,18 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 	}
 	defer previousBlob.ReadCloser.Close()
 
+	trackBatch := &trackBatchState{}
+
+	// Load first batch of tracks
+	if err := w.loadNextTrackBatch(ctx, exec, clientDbExec, orgId, now, dataModel, trackBatch); err != nil {
+		return errors.Wrap(err, "failed to load first track batch")
+	}
+
+	if trackBatch.exhausted {
+		logger.DebugContext(ctx, "No new tracks to process for dataset patch, skipping", "orgId", orgId)
+		return nil
+	}
+
 	// Full dataset file
 	newBlobWriter, err := w.blobRepository.OpenStreamWithOptions(ctx, w.bucketUrl, fullDatasetFileName,
 		&blob.WriterOptions{
@@ -413,21 +359,6 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 		return errors.Wrap(err, "failed to open stream for delta dataset")
 	}
 	defer deltaBlobWriter.Close()
-
-	// Initialize the track batch state
-	trackBatch := &trackBatchState{
-		tracks:                nil,
-		tracksByEntityId:      make(map[string]models.ContinuousScreeningDeltaTrack),
-		ingestedObjectsByType: make(map[string]map[uuid.UUID]models.DataModelObject),
-		currentIndex:          0,
-		cursorEntityId:        "",
-		exhausted:             false,
-	}
-
-	// Load first batch of tracks
-	if err := w.loadNextTrackBatch(ctx, exec, clientDbExec, orgId, now, dataModel, trackBatch); err != nil {
-		return errors.Wrap(err, "failed to load first track batch")
-	}
 
 	// Read and merge old file with tracks using JSON decoder
 	decoder := json.NewDecoder(previousBlob.ReadCloser)
