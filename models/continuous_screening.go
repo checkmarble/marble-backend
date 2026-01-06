@@ -10,10 +10,10 @@ import (
 type ContinuousScreeningTriggerType int
 
 const (
-	ContinuousScreeningTriggerTypeObjectAdded ContinuousScreeningTriggerType = iota
+	ContinuousScreeningTriggerTypeUnknown ContinuousScreeningTriggerType = iota
+	ContinuousScreeningTriggerTypeObjectAdded
 	ContinuousScreeningTriggerTypeObjectUpdated
 	ContinuousScreeningTriggerTypeDatasetUpdated
-	ContinuousScreeningTriggerTypeUnknown
 )
 
 func ContinuousScreeningTriggerTypeFrom(s string) ContinuousScreeningTriggerType {
@@ -141,11 +141,11 @@ type CreateContinuousScreeningDatasetUpdate struct {
 type ContinuousScreeningUpdateJobStatus int
 
 const (
-	ContinuousScreeningUpdateJobStatusPending ContinuousScreeningUpdateJobStatus = iota
+	ContinuousScreeningUpdateJobStatusUnknown ContinuousScreeningUpdateJobStatus = iota
+	ContinuousScreeningUpdateJobStatusPending
 	ContinuousScreeningUpdateJobStatusProcessing
 	ContinuousScreeningUpdateJobStatusCompleted
 	ContinuousScreeningUpdateJobStatusFailed
-	ContinuousScreeningUpdateJobStatusUnknown
 )
 
 func ContinuousScreeningUpdateJobStatusFrom(s string) ContinuousScreeningUpdateJobStatus {
@@ -237,10 +237,10 @@ type ContinuousScreeningEnqueueObjectUpdateTask struct {
 type DeltaTrackOperation int
 
 const (
-	DeltaTrackOperationAdd DeltaTrackOperation = iota
+	DeltaTrackOperationUnknown DeltaTrackOperation = iota
+	DeltaTrackOperationAdd
 	DeltaTrackOperationUpdate
 	DeltaTrackOperationDelete
-	DeltaTrackOperationUnknown
 )
 
 func (o DeltaTrackOperation) String() string {
@@ -272,9 +272,9 @@ func DeltaTrackOperationFrom(s string) DeltaTrackOperation {
 type ContinuousScreeningDatasetFileType int
 
 const (
-	ContinuousScreeningDatasetFileTypeFull ContinuousScreeningDatasetFileType = iota
+	ContinuousScreeningDatasetFileTypeUnknown ContinuousScreeningDatasetFileType = iota
+	ContinuousScreeningDatasetFileTypeFull
 	ContinuousScreeningDatasetFileTypeDelta
-	ContinuousScreeningDatasetFileTypeUnknown
 )
 
 func ContinuousScreeningDatasetFileTypeFrom(s string) ContinuousScreeningDatasetFileType {
