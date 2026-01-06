@@ -104,7 +104,7 @@ func (repo *MarbleDbRepository) ListAllRulesAndScreenings(
 		).
 		From(dbmodels.TABLE_SCENARIO_ITERATIONS+" si").
 		LeftJoin(dbmodels.TABLE_RULES+" sir on si.id = sir.scenario_iteration_id").
-		Where("si.org_id = ?", organizationId)
+		Where("si.org_id = ? and sir.id is not null", organizationId)
 
 	screenings := NewQueryBuilder().
 		Select(
@@ -115,7 +115,7 @@ func (repo *MarbleDbRepository) ListAllRulesAndScreenings(
 		).
 		From(dbmodels.TABLE_SCENARIO_ITERATIONS+" si").
 		LeftJoin(dbmodels.TABLE_SCREENING_CONFIGS+" sc on si.id = sc.scenario_iteration_id").
-		Where("si.org_id = ?", organizationId)
+		Where("si.org_id = ? and sc.id is not null", organizationId)
 
 	sql := rules.SuffixExpr(screenings.Prefix(" UNION ALL "))
 
