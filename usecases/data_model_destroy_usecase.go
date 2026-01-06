@@ -57,11 +57,11 @@ func NewDataModelDestroyUsecase(
 	}
 }
 
-func (uc DataModelDestroyUsecase) RenameField(ctx context.Context, fieldId string) error {
+func (uc DataModelDestroyUsecase) RenameField(ctx context.Context, dryRun bool, fieldId string) error {
 	return nil
 }
 
-func (uc DataModelDestroyUsecase) DeleteTable(ctx context.Context, tableId string) (models.DataModelDeleteFieldReport, error) {
+func (uc DataModelDestroyUsecase) DeleteTable(ctx context.Context, dryRun bool, tableId string) (models.DataModelDeleteFieldReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
 	table, err := uc.dataModelRepository.GetDataModelTable(ctx, exec, tableId)
@@ -78,9 +78,7 @@ func (uc DataModelDestroyUsecase) DeleteTable(ctx context.Context, tableId strin
 		return models.DataModelDeleteFieldReport{}, err
 	}
 
-	if !canDelete {
-		report.ArchivedIterations = set.New[string](0)
-
+	if !canDelete || dryRun {
 		return report, errors.Wrap(models.ConflictError, "table is used and cannot be deleted")
 	}
 
@@ -112,7 +110,7 @@ func (uc DataModelDestroyUsecase) DeleteTable(ctx context.Context, tableId strin
 	return report, nil
 }
 
-func (uc DataModelDestroyUsecase) DeleteField(ctx context.Context, fieldId string) (models.DataModelDeleteFieldReport, error) {
+func (uc DataModelDestroyUsecase) DeleteField(ctx context.Context, dryRun bool, fieldId string) (models.DataModelDeleteFieldReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
 	field, err := uc.dataModelRepository.GetDataModelField(ctx, exec, fieldId)
@@ -133,9 +131,7 @@ func (uc DataModelDestroyUsecase) DeleteField(ctx context.Context, fieldId strin
 		return models.DataModelDeleteFieldReport{}, err
 	}
 
-	if !canDelete {
-		report.ArchivedIterations = set.New[string](0)
-
+	if !canDelete || dryRun {
 		return report, errors.Wrap(models.ConflictError, "field is used and cannot be deleted")
 	}
 
@@ -185,7 +181,7 @@ func (uc DataModelDestroyUsecase) DeleteField(ctx context.Context, fieldId strin
 	return report, nil
 }
 
-func (uc DataModelDestroyUsecase) DeleteLink(ctx context.Context, linkId string) (models.DataModelDeleteFieldReport, error) {
+func (uc DataModelDestroyUsecase) DeleteLink(ctx context.Context, dryRun bool, linkId string) (models.DataModelDeleteFieldReport, error) {
 	orgId := uc.enforceSecurity.OrgId()
 	exec := uc.executorFactory.NewExecutor()
 
@@ -198,9 +194,7 @@ func (uc DataModelDestroyUsecase) DeleteLink(ctx context.Context, linkId string)
 		return models.DataModelDeleteFieldReport{}, err
 	}
 
-	if !canDelete {
-		report.ArchivedIterations = set.New[string](0)
-
+	if !canDelete || dryRun {
 		return report, errors.Wrap(models.ConflictError, "table is used and cannot be deleted")
 	}
 
@@ -221,12 +215,16 @@ func (uc DataModelDestroyUsecase) DeleteLink(ctx context.Context, linkId string)
 	return report, nil
 }
 
-func (uc DataModelDestroyUsecase) DeletePivot(ctx context.Context, pivotId string) (models.DataModelDeleteFieldReport, error) {
+func (uc DataModelDestroyUsecase) DeletePivot(ctx context.Context, dryRun bool, pivotId string) (models.DataModelDeleteFieldReport, error) {
 	orgId := uc.enforceSecurity.OrgId()
 	exec := uc.executorFactory.NewExecutor()
 
 	if err := uc.enforceSecurity.WriteDataModel(orgId); err != nil {
 		return models.DataModelDeleteFieldReport{}, err
+	}
+
+	if dryRun {
+		return models.NewDataModelDeleteFieldReport(), nil
 	}
 
 	// GO-GO GADGETO VANISH
