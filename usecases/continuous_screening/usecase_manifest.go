@@ -2,8 +2,6 @@ package continuous_screening
 
 import (
 	"context"
-	"encoding/json"
-	"os"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -35,72 +33,56 @@ type ContinuousScreeningManifestRepository interface {
 }
 
 type ContinuousScreeningManifestUsecase struct {
-	executorFactory                executor_factory.ExecutorFactory
-	repository                     ContinuousScreeningManifestRepository
-	blobRepository                 repositories.BlobRepository
-	continuousScreeningManifestUrl string
-	marbleBackendUrl               string
-	datasetBucketUrl               string
+	executorFactory  executor_factory.ExecutorFactory
+	repository       ContinuousScreeningManifestRepository
+	blobRepository   repositories.BlobRepository
+	marbleBackendUrl string
+	datasetBucketUrl string
 }
 
 func NewContinuousScreeningManifestUsecase(
 	executorFactory executor_factory.ExecutorFactory,
 	repository ContinuousScreeningManifestRepository,
 	blobRepository repositories.BlobRepository,
-	continuousScreeningManifestUrl string,
 	marbleBackendUrl string,
 	datasetBucketUrl string,
 ) *ContinuousScreeningManifestUsecase {
 	return &ContinuousScreeningManifestUsecase{
-		executorFactory:                executorFactory,
-		repository:                     repository,
-		blobRepository:                 blobRepository,
-		continuousScreeningManifestUrl: continuousScreeningManifestUrl,
-		marbleBackendUrl:               marbleBackendUrl,
-		datasetBucketUrl:               datasetBucketUrl,
+		executorFactory:  executorFactory,
+		repository:       repository,
+		blobRepository:   blobRepository,
+		marbleBackendUrl: marbleBackendUrl,
+		datasetBucketUrl: datasetBucketUrl,
 	}
 }
 
-func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningManifest(ctx context.Context) (models.Manifest, error) {
+func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningCatalog(ctx context.Context) (models.CatalogResponse, error) {
 	exec := u.executorFactory.NewExecutor()
-
-	// Fetch the manifest file from configuration
-	if u.continuousScreeningManifestUrl == "" {
-		return models.Manifest{}, errors.New("continuous screening manifest URL is not set")
-	}
-
-	file, err := os.Open(u.continuousScreeningManifestUrl)
-	if err != nil {
-		return models.Manifest{}, errors.Wrap(err, "failed to open manifest file")
-	}
-	defer file.Close()
-
-	var manifest models.Manifest
-	if err := json.NewDecoder(file).Decode(&manifest); err != nil {
-		return models.Manifest{}, errors.Wrap(err, "failed to decode manifest")
-	}
 
 	datasetFiles, err := u.repository.ListContinuousScreeningLatestFullFiles(ctx, exec)
 	if err != nil {
-		return models.Manifest{}, errors.Wrap(err, "failed to list continuous screening latest dataset files")
+		return models.CatalogResponse{}, errors.Wrap(err,
+			"failed to list continuous screening latest dataset files")
 	}
+
+	var catalog models.CatalogResponse
 
 	for _, datasetFile := range datasetFiles {
 		org, err := u.repository.GetOrganizationById(ctx, exec, datasetFile.OrgId.String())
 		if err != nil {
-			return models.Manifest{}, errors.Wrap(err, "failed to get organization by id")
+			return models.CatalogResponse{}, errors.Wrap(err, "failed to get organization by id")
 		}
-		manifest.UpsertDataset(
-			org.Id,
+
+		catalog.UpsertDataset(
 			orgCustomDatasetName(org.PublicId),
 			datasetFile.Version,
 			datasetFileUrlBuilder(u.marbleBackendUrl, org.PublicId),
 			deltaFileUrlBuilder(u.marbleBackendUrl, org.PublicId),
-			ManifestAuthTokenFieldName,
+			[]string{"marble_continuous_screening"},
 		)
 	}
 
-	return manifest, nil
+	return catalog, nil
 }
 
 func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningDeltaList(

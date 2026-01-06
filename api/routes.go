@@ -94,13 +94,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	{
 		indexerGroup := r.Group("/" + models.ScreeningIndexerKey)
 
-		// Non-authenticated endpoint used by the indexer to download the manifest files
-		// The manifest files will contain datasets configuration with URLs which are protected by a token (see: /screening-indexer/org/*)
-		indexerGroup.GET("/manifest", tom, handleGetContinuousScreeningManifest(uc))
-
 		// Authenticated endpoints for downloading the actual dataset files
 		authedIndexerGroup := indexerGroup.Group("/",
 			auth.AuthedBy(utils.ScreeningIndexerToken))
+		authedIndexerGroup.GET("/catalogs", tom, handleGetContinuousScreeningCatalog(uc))
 		authedIndexerGroup.GET("/org/:public_org_id/delta", tom,
 			handleGetContinuousScreeningDeltaList(uc))
 		authedIndexerGroup.GET("/org/:public_org_id/delta/:delta_id",

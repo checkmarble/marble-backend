@@ -218,7 +218,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		otelSamplingRates:                utils.GetEnv("TRACING_SAMPLING_RATES", ""),
 		similarityThreshold:              utils.GetEnv("SIMILARITY_THRESHOLD", models.DEFAULT_SIMILARITY_THRESHOLD),
 		enableTracing:                    utils.GetEnv("ENABLE_TRACING", false),
-		continuousScreeningManifestUrl:   utils.GetEnv("CONTINUOUS_SCREENING_MANIFEST_URL", ""),
 		datasetBucketUrl:                 utils.GetEnv("DATASET_BUCKET_URL", ""),
 	}
 	if err := serverConfig.Validate(); err != nil {
@@ -364,7 +363,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithFirebaseAdmin(apiConfig.TokenProvider, deps.FirebaseAdmin),
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
-		usecases.WithContinuousScreeningManifestUrl(serverConfig.continuousScreeningManifestUrl),
 		usecases.WithDatasetBucketUrl(serverConfig.datasetBucketUrl),
 		usecases.WithMarbleApiUrl(apiConfig.MarbleApiUrl),
 	)

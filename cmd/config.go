@@ -24,7 +24,6 @@ type ServerConfig struct {
 	otelSamplingRates                string
 	similarityThreshold              float64
 	enableTracing                    bool
-	continuousScreeningManifestUrl   string
 	datasetBucketUrl                 string
 }
 

@@ -337,17 +337,17 @@ func handleLoadMoreContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.
 }
 
 // Manifest and Dataset
-func handleGetContinuousScreeningManifest(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetContinuousScreeningCatalog(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
 		usecase := uc.NewContinuousScreeningManifestUsecase()
-		manifest, err := usecase.GetContinuousScreeningManifest(ctx)
+		catalog, err := usecase.GetContinuousScreeningCatalog(ctx)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, manifest)
+		c.JSON(http.StatusOK, catalog)
 	}
 }
 
@@ -384,8 +384,7 @@ func handleGetContinuousScreeningDelta(uc usecases.Usecases) func(c *gin.Context
 		deltaIdStr := c.Param("delta_id")
 		deltaId, err := uuid.Parse(deltaIdStr)
 		if err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError,
-				"delta_id is required and must be a valid UUID"))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 		usecase := uc.NewContinuousScreeningManifestUsecase()
@@ -394,7 +393,7 @@ func handleGetContinuousScreeningDelta(uc usecases.Usecases) func(c *gin.Context
 			return
 		}
 		defer deltaBlob.ReadCloser.Close()
-		c.DataFromReader(http.StatusOK, -1, "application/json", deltaBlob.ReadCloser, nil)
+		c.DataFromReader(http.StatusOK, -1, "application/x-ndjson", deltaBlob.ReadCloser, nil)
 	}
 }
 
@@ -414,6 +413,6 @@ func handleGetContinuousScreeningFull(uc usecases.Usecases) func(c *gin.Context)
 			return
 		}
 		defer fullBlob.ReadCloser.Close()
-		c.DataFromReader(http.StatusOK, -1, "application/json", fullBlob.ReadCloser, nil)
+		c.DataFromReader(http.StatusOK, -1, "application/x-ndjson", fullBlob.ReadCloser, nil)
 	}
 }

@@ -903,7 +903,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningLatestFullFiles(
 		Options("DISTINCT ON (org_id)").
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES).
 		Where(squirrel.Eq{"file_type": models.ContinuousScreeningDatasetFileTypeFull.String()}).
-		OrderBy("org_id", "created_at DESC")
+		OrderBy("org_id", "version DESC")
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetFile)
 }

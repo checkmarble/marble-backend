@@ -9,10 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	MARBLE_CONTINUOUS_SCREENING_TAG = "marble_continuous_screening"
-	ManifestAuthTokenFieldName      = "$MARBLE_SCREENING_INDEXER_TOKEN"
-)
+const MARBLE_CONTINUOUS_SCREENING_TAG = "marble_continuous_screening"
 
 func typedObjectId(objectType, objectId string) string {
 	return objectType + "_" + objectId
@@ -62,23 +59,24 @@ func buildDataModelMapping(table models.Table) (models.ContinuousScreeningDataMo
 	}, nil
 }
 
-// orgId can be orgId or org.PublicId
-func orgCustomDatasetName(orgId uuid.UUID) string {
-	return fmt.Sprintf("internal_marble_org_%s", strings.ReplaceAll(orgId.String(), "-", ""))
+// Use public org ID when building links to dataset and delta files
+func orgCustomDatasetName(publicOrgId uuid.UUID) string {
+	return fmt.Sprintf("internal_marble_org_%s",
+		strings.ReplaceAll(publicOrgId.String(), "-", ""))
 }
 
 func deltaTrackEntityIdBuilder(objectType, objectId string) string {
 	return fmt.Sprintf("marble_%s_%s", objectType, objectId)
 }
 
-func datasetFileUrlBuilder(backendUrl string, orgId uuid.UUID) string {
-	return fmt.Sprintf("%s/%s/org/%s/full", backendUrl, models.ScreeningIndexerKey, orgId.String())
+func datasetFileUrlBuilder(backendUrl string, publicOrgId uuid.UUID) string {
+	return fmt.Sprintf("%s/%s/org/%s/full", backendUrl, models.ScreeningIndexerKey, publicOrgId.String())
 }
 
-func deltaFileUrlBuilder(backendUrl string, orgId uuid.UUID) string {
-	return fmt.Sprintf("%s/%s/org/%s/delta", backendUrl, models.ScreeningIndexerKey, orgId.String())
+func deltaFileUrlBuilder(backendUrl string, publicOrgId uuid.UUID) string {
+	return fmt.Sprintf("%s/%s/org/%s/delta", backendUrl, models.ScreeningIndexerKey, publicOrgId.String())
 }
 
-func deltaFileVersionUrlBuilder(backendUrl string, orgId uuid.UUID, deltaId uuid.UUID) string {
-	return fmt.Sprintf("%s/%s/org/%s/delta/%s", backendUrl, models.ScreeningIndexerKey, orgId.String(), deltaId.String())
+func deltaFileVersionUrlBuilder(backendUrl string, publicOrgId uuid.UUID, deltaId uuid.UUID) string {
+	return fmt.Sprintf("%s/%s/org/%s/delta/%s", backendUrl, models.ScreeningIndexerKey, publicOrgId.String(), deltaId.String())
 }

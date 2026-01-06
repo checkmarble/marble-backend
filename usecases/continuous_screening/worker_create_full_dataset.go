@@ -25,8 +25,6 @@ import (
 
 const (
 	MaxDeltaTracksPerOrg   = 1000
-	ManifestFileName       = "manifest.yml"
-	DeltasIndexFileName    = "deltas.json"
 	FullDatasetFolderName  = "full-dataset"
 	DeltaDatasetFolderName = "delta-dataset"
 	DatasetFileContentType = "application/x-ndjson"

@@ -1,37 +1,36 @@
 package models
 
-type ManifestDataset struct {
-	Name        string `json:"name"`         // prefix + org Public ID without hyphens
-	Version     string `json:"version"`      // version string e.g. "yyyyMMddhhmmss-xxx"
-	EntitiesUrl string `json:"entities_url"` // URL to the entities file (marble backend URL)
-	DeltaUrl    string `json:"delta_url"`    // URL to the delta file (marble backend URL)
-	AuthToken   string `json:"auth_token"`   // Auth token to access the entities and delta files
+type ContinuousScreeningDeltaList struct {
+	Versions map[string]string `json:"versions"`
 }
 
-type Manifest struct {
-	Catalogs []any             `json:"catalogs,omitempty"`
-	Datasets []ManifestDataset `json:"datasets"`
+type CatalogDataset struct {
+	Name        string   `json:"name"`         // prefix + org Public ID without hyphens
+	Version     string   `json:"version"`      // version string e.g. "yyyyMMddhhmmss-xxx"
+	EntitiesUrl string   `json:"entities_url"` // URL to the entities file (marble backend URL)
+	DeltaUrl    string   `json:"delta_url"`    // URL to the delta file (marble backend URL)
+	Tags        []string `json:"tags"`
 }
 
-func (m *Manifest) UpsertDataset(orgId string, name string, version string, entitiesUrl string, deltaUrl string, authToken string) {
-	for i, ds := range m.Datasets {
+type CatalogResponse struct {
+	Datasets []CatalogDataset `json:"datasets"`
+}
+
+func (c *CatalogResponse) UpsertDataset(name string, version string, entitiesUrl string, deltaUrl string, tags []string) {
+	for i, ds := range c.Datasets {
 		if ds.Name == name {
-			m.Datasets[i].Version = version
-			m.Datasets[i].EntitiesUrl = entitiesUrl
-			m.Datasets[i].DeltaUrl = deltaUrl
-			m.Datasets[i].AuthToken = authToken
+			c.Datasets[i].Version = version
+			c.Datasets[i].EntitiesUrl = entitiesUrl
+			c.Datasets[i].DeltaUrl = deltaUrl
+			c.Datasets[i].Tags = tags
 			return
 		}
 	}
-	m.Datasets = append(m.Datasets, ManifestDataset{
+	c.Datasets = append(c.Datasets, CatalogDataset{
 		Name:        name,
 		EntitiesUrl: entitiesUrl,
 		Version:     version,
 		DeltaUrl:    deltaUrl,
-		AuthToken:   authToken,
+		Tags:        tags,
 	})
-}
-
-type ContinuousScreeningDeltaList struct {
-	Versions map[string]string `json:"versions"`
 }

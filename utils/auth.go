@@ -23,6 +23,8 @@ const (
 	ScreeningIndexerToken
 )
 
+const screeningIndexerTokenPrefix = "Token "
+
 func ParseApiKeyHeader(header http.Header) string {
 	return strings.TrimSpace(header.Get("X-API-Key"))
 }
@@ -42,8 +44,8 @@ type tokenAndKeyValidator interface {
 }
 
 type Authentication struct {
-	validator    tokenAndKeyValidator
-	indexerToken string
+	validator             tokenAndKeyValidator
+	screeningIndexerToken string
 }
 
 func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
@@ -67,7 +69,7 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 				c.AbortWithStatus(http.StatusBadRequest)
 				return
 			}
-			if token != "" && token == a.indexerToken {
+			if token != "" && token == a.screeningIndexerToken {
 				c.Next()
 				return
 			}
@@ -130,10 +132,10 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 	}
 }
 
-func NewAuthentication(validator tokenAndKeyValidator, indexerToken string) Authentication {
+func NewAuthentication(validator tokenAndKeyValidator, screeningIndexerToken string) Authentication {
 	return Authentication{
-		validator:    validator,
-		indexerToken: indexerToken,
+		validator:             validator,
+		screeningIndexerToken: screeningIndexerToken,
 	}
 }
 
@@ -156,9 +158,9 @@ func ParseAuthorizationTokenHeader(header http.Header) (string, error) {
 		return "", nil
 	}
 
-	authHeader := strings.Split(header.Get("Authorization"), "Token ")
-	if len(authHeader) != 2 {
+	if !strings.HasPrefix(authorization, screeningIndexerTokenPrefix) {
 		return "", fmt.Errorf("malformed token: %w", models.UnAuthorizedError)
 	}
-	return authHeader[1], nil
+
+	return strings.TrimPrefix(authorization, screeningIndexerTokenPrefix), nil
 }
