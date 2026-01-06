@@ -11,6 +11,7 @@ type DataModelDeleteFieldReport struct {
 func NewDataModelDeleteFieldReport() DataModelDeleteFieldReport {
 	return DataModelDeleteFieldReport{
 		Conflicts: DataModelDeleteFieldConflicts{
+			EmptyScenarios:     set.New[string](0),
 			Links:              set.New[string](0),
 			Pivots:             set.New[string](0),
 			Workflows:          set.New[string](0),
@@ -22,6 +23,7 @@ func NewDataModelDeleteFieldReport() DataModelDeleteFieldReport {
 }
 
 type DataModelDeleteFieldConflicts struct {
+	EmptyScenarios      *set.Set[string]
 	ContinuousScreening bool
 	Links               *set.Set[string]
 	Pivots              *set.Set[string]
