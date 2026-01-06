@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
@@ -144,12 +145,11 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewOffloadedReader() OffloadedReader {
-	return OffloadedReader{
-		executorFactory:     usecases.NewExecutorFactory(),
-		repository:          usecases.Repositories.MarbleDbRepository,
-		blobRepository:      usecases.Repositories.BlobRepository,
-		offloadingBucketUrl: usecases.offloadingBucketUrl,
+func (usecases *UsecasesWithCreds) NewOffloadedReader() repositories.OffloadedReadWriter {
+	return repositories.OffloadedReadWriter{
+		Repository:          usecases.Repositories.MarbleDbRepository,
+		BlobRepository:      usecases.Repositories.BlobRepository,
+		OffloadingBucketUrl: usecases.offloadingBucketUrl,
 	}
 }
 
@@ -583,6 +583,7 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *scheduled_execution.
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewTransactionFactory(),
+		usecases.NewOffloadedReader(),
 		usecases.NewWebhookEventsUsecase(),
 		usecases.NewScenarioFetcher(),
 		usecases.NewPhantomDecisionUseCase(),

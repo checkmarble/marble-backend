@@ -43,6 +43,7 @@ type DecisionUsecaseRepository interface {
 	StoreDecision(
 		ctx context.Context,
 		exec repositories.Executor,
+		offloaderWriter repositories.OffloadedReadWriter,
 		decision models.DecisionWithRuleExecutions,
 		organizationId string,
 		newDecisionId string,
@@ -90,7 +91,7 @@ type DecisionUsecase struct {
 	repository                DecisionUsecaseRepository
 	screeningRepository       decisionUsecaseScreeningWriter
 	scenarioTestRunRepository repositories.ScenarioTestRunRepository
-	offloadedReader           OffloadedReader
+	offloadedReader           repositories.OffloadedReadWriter
 	webhookEventsSender       webhookEventsUsecase
 	phantomUseCase            decision_phantom.PhantomDecisionUsecase
 	scenarioEvaluator         ScenarioEvaluator
@@ -104,8 +105,8 @@ var (
 )
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
-	decision, err := usecase.repository.DecisionWithRuleExecutionsById(ctx,
-		usecase.executorFactory.NewExecutor(), decisionId)
+	exec := usecase.executorFactory.NewExecutor()
+	decision, err := usecase.repository.DecisionWithRuleExecutionsById(ctx, exec, decisionId)
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
@@ -114,7 +115,7 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
-	if err := usecase.offloadedReader.MutateWithOffloadedDecisionRules(ctx,
+	if err := usecase.offloadedReader.MutateWithOffloadedDecisionRules(ctx, exec,
 		decision.OrganizationId.String(), decision); err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
@@ -383,6 +384,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		if err = usecase.repository.StoreDecision(
 			ctx,
 			tx,
+			usecase.offloadedReader,
 			decision,
 			input.OrganizationId,
 			decision.DecisionId.String(),
@@ -599,6 +601,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			if err = usecase.repository.StoreDecision(
 				ctx,
 				tx,
+				usecase.offloadedReader,
 				item.decision,
 				input.OrganizationId,
 				item.decision.DecisionId.String(),
