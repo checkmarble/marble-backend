@@ -11,7 +11,7 @@ import (
 
 const (
 	MARBLE_CONTINUOUS_SCREENING_TAG = "marble_continuous_screening"
-	ManifestAuthTokenFieldName      = "${MARBLE_SCREENING_INDEXER_TOKEN}"
+	ManifestAuthTokenFieldName      = "$MARBLE_SCREENING_INDEXER_TOKEN"
 )
 
 func typedObjectId(objectType, objectId string) string {

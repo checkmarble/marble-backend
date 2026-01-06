@@ -61,7 +61,7 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 		jwtToken := ""
 
 		if slices.Contains(methods, ScreeningIndexerToken) {
-			token, err := ParseAuthorizationBearerHeader(c.Request.Header)
+			token, err := ParseAuthorizationTokenHeader(c.Request.Header)
 			if err != nil {
 				_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
 				c.AbortWithStatus(http.StatusBadRequest)
@@ -144,6 +144,19 @@ func ParseAuthorizationBearerHeader(header http.Header) (string, error) {
 	}
 
 	authHeader := strings.Split(header.Get("Authorization"), "Bearer ")
+	if len(authHeader) != 2 {
+		return "", fmt.Errorf("malformed token: %w", models.UnAuthorizedError)
+	}
+	return authHeader[1], nil
+}
+
+func ParseAuthorizationTokenHeader(header http.Header) (string, error) {
+	authorization := header.Get("Authorization")
+	if authorization == "" {
+		return "", nil
+	}
+
+	authHeader := strings.Split(header.Get("Authorization"), "Token ")
 	if len(authHeader) != 2 {
 		return "", fmt.Errorf("malformed token: %w", models.UnAuthorizedError)
 	}
