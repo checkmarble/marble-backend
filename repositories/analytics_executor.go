@@ -42,6 +42,10 @@ func (e DuckDbExecutor) ExecContext(ctx context.Context, query string, args ...a
 func AnalyticsScanStruct[T any](ctx context.Context, exec AnalyticsExecutor, query squirrel.SelectBuilder) ([]T, error) {
 	sql, args, err := query.ToSql()
 	if err != nil {
+		if IsDuckDBNoFilesError(err) {
+			return make([]T, 0), nil
+		}
+
 		return nil, err
 	}
 
@@ -61,6 +65,10 @@ func AnalyticsRawScanStruct[T any](ctx context.Context, exec AnalyticsExecutor, 
 
 	rows, err := exec.QueryContext(ctx, sql, args...)
 	if err != nil {
+		if IsDuckDBNoFilesError(err) {
+			return make([]T, 0), nil
+		}
+
 		return nil, err
 	}
 
