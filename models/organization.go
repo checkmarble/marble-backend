@@ -7,7 +7,7 @@ import (
 )
 
 type Organization struct {
-	Id string
+	Id uuid.UUID
 
 	PublicId uuid.UUID
 
@@ -47,7 +47,7 @@ type CreateOrganizationInput struct {
 }
 
 type UpdateOrganizationInput struct {
-	Id                      string
+	Id                      uuid.UUID
 	DefaultScenarioTimezone *string
 	ScreeningConfig         OrganizationOpenSanctionsConfigUpdateInput
 	AutoAssignQueueLimit    *int

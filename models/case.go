@@ -47,7 +47,7 @@ type Case struct {
 	ContinuousScreenings []ContinuousScreeningWithMatches
 	Events               []CaseEvent
 	InboxId              uuid.UUID
-	OrganizationId       string
+	OrganizationId       uuid.UUID
 	AssignedTo           *UserId
 	Name                 string
 	Status               CaseStatus
@@ -86,7 +86,7 @@ func (s CaseStatus) IsFinalized() bool {
 type CaseMetadata struct {
 	Id             string
 	CreatedAt      time.Time
-	OrganizationId string
+	OrganizationId uuid.UUID
 	Status         CaseStatus
 	InboxId        uuid.UUID
 	Outcome        CaseOutcome
@@ -145,7 +145,7 @@ type CreateCaseAttributes struct {
 	ContinuousScreeningIds []uuid.UUID
 	InboxId                uuid.UUID
 	Name                   string
-	OrganizationId         string
+	OrganizationId         uuid.UUID
 	AssigneeId             *string
 	Type                   CaseType
 }
@@ -165,7 +165,7 @@ type CreateCaseCommentAttributes struct {
 }
 
 type CaseFilters struct {
-	OrganizationId  string
+	OrganizationId  uuid.UUID
 	Name            string
 	StartDate       time.Time
 	EndDate         time.Time
