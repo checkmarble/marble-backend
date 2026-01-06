@@ -161,3 +161,8 @@ func (d *DataModelRepository) DeleteDataModelLink(ctx context.Context, exec repo
 	args := d.Called(ctx, exec, id)
 	return args.Error(0)
 }
+
+func (d *DataModelRepository) DeleteDataModelPivot(ctx context.Context, exec repositories.Executor, id string) error {
+	args := d.Called(ctx, exec, id)
+	return args.Error(0)
+}
