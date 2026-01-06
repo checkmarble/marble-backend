@@ -135,6 +135,16 @@ func (d *DataModelRepository) UpsertDataModelOptions(ctx context.Context, exec r
 	return args.Get(0).(models.DataModelOptions), args.Error(1)
 }
 
+func (d *DataModelRepository) ListDataModelFieldAliases(ctx context.Context, exec repositories.Executor, table models.TableMetadata) ([]models.DataModelFieldAlias, error) {
+	args := d.Called(ctx, exec, table)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]models.DataModelFieldAlias), args.Error(1)
+}
+
 func (d *DataModelRepository) ArchiveDataModelTable(ctx context.Context, exec repositories.Executor, table models.TableMetadata) error {
 	args := d.Called(ctx, exec, table)
 	return args.Error(1)
@@ -148,6 +158,11 @@ func (d *DataModelRepository) DeleteDataModelTable(ctx context.Context, exec rep
 func (d *DataModelRepository) ArchiveDataModelField(ctx context.Context, exec repositories.Executor, table models.TableMetadata, field models.FieldMetadata) error {
 	args := d.Called(ctx, exec, table, field)
 	return args.Error(1)
+}
+
+func (d *DataModelRepository) RenameDataModelField(ctx context.Context, exec repositories.Executor, table models.TableMetadata, field models.FieldMetadata, newName string) error {
+	args := d.Called(ctx, exec, table, field)
+	return args.Error(0)
 }
 
 func (d *DataModelRepository) DeleteDataModelField(ctx context.Context, exec repositories.Executor, table models.TableMetadata, field models.FieldMetadata) error {

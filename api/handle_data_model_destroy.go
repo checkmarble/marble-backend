@@ -8,6 +8,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func handleDeleteDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
@@ -23,6 +25,33 @@ func handleDeleteDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 				c.JSON(http.StatusConflict, dto.AdaptDataModelDeleteFieldReport(report))
 				return
 			}
+			if presentError(ctx, c, err) {
+				return
+			}
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func handleRenameDataModelField(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelDestroyUsecase()
+		fieldId := c.Param("fieldID")
+		newName := c.Param("name")
+		dryRun := c.Param("dry_run") == "true"
+
+		if err := usecase.RenameField(ctx, dryRun, fieldId, newName); err != nil {
+			var pgErr *pgconn.PgError
+
+			if errors.As(err, &pgErr) {
+				if pgErr.Code == pgerrcode.UniqueViolation {
+					c.Status(http.StatusConflict)
+					return
+				}
+			}
+
 			if presentError(ctx, c, err) {
 				return
 			}

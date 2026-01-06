@@ -1,8 +1,11 @@
 package dbmodels
 
 import (
+	"time"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type DbDataModelTable struct {
@@ -14,11 +17,15 @@ type DbDataModelTable struct {
 }
 
 const (
-	TableDataModelTables = "data_model_tables"
-	TableDataModelFields = "data_model_fields"
+	TableDataModelTables  = "data_model_tables"
+	TableDataModelFields  = "data_model_fields"
+	TableDataModelAliases = "data_model_field_aliases"
 )
 
-var SelectDataModelTableColumns = utils.ColumnList[DbDataModelTable]()
+var (
+	SelectDataModelTableColumns      = utils.ColumnList[DbDataModelTable]()
+	SelectDataModelFieldAliasColumns = utils.ColumnList[DbDataModelFieldAlias]()
+)
 
 func AdaptTableMetadata(dbDataModelTable DbDataModelTable) (models.TableMetadata, error) {
 	var fmtEntity *models.FollowTheMoneyEntity
@@ -43,13 +50,16 @@ type DbDataModelTableJoinField struct {
 	TableDescription string  `db:"data_model_tables.description"`
 	TableFTMEntity   *string `db:"data_model_tables.ftm_entity"`
 	FieldID          string  `db:"data_model_fields.id"`
-	FieldName        string  `db:"data_model_fields.name"`
+	PhysicalName     string  `db:"data_model_fields.name"`
 	FieldType        string  `db:"data_model_fields.type"`
 	FieldNullable    bool    `db:"data_model_fields.nullable"`
 	FieldDescription string  `db:"data_model_fields.description"`
 	FieldIsEnum      bool    `db:"data_model_fields.is_enum"`
 	FieldFTMProperty *string `db:"data_model_fields.ftm_property"`
 	FieldArchived    bool    `db:"data_model_fields.archived"`
+
+	FieldName string   `db:"-"`
+	Aliases   []string `db:"-"`
 }
 
 var SelectDataModelTableJoinFieldColumns = utils.ColumnList[DbDataModelTableJoinField]()
@@ -82,4 +92,22 @@ func AdaptLinkToSingle(dbDataModelLink DbDataModelLink) models.LinkToSingle {
 		ChildFieldName:  dbDataModelLink.ChildFieldName,
 		ChildFieldId:    dbDataModelLink.ChildFieldId,
 	}
+}
+
+type DbDataModelFieldAlias struct {
+	Id        uuid.UUID `db:"id"`
+	TableId   uuid.UUID `db:"table_id"`
+	FieldId   uuid.UUID `db:"field_id"`
+	Name      string    `db:"name"`
+	CreatedAt time.Time `db:"created_at"`
+}
+
+func AdaptDataModelFieldAlias(db DbDataModelFieldAlias) (models.DataModelFieldAlias, error) {
+	return models.DataModelFieldAlias{
+		Id:        db.Id,
+		TableId:   db.TableId,
+		FieldId:   db.FieldId,
+		Name:      db.Name,
+		CreatedAt: db.CreatedAt,
+	}, nil
 }

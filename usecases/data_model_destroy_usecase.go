@@ -57,8 +57,42 @@ func NewDataModelDestroyUsecase(
 	}
 }
 
-func (uc DataModelDestroyUsecase) RenameField(ctx context.Context, dryRun bool, fieldId string) error {
-	return nil
+func (uc DataModelDestroyUsecase) RenameField(ctx context.Context, dryRun bool, fieldId, newName string) error {
+	exec := uc.executorFactory.NewExecutor()
+
+	field, err := uc.dataModelRepository.GetDataModelField(ctx, exec, fieldId)
+	if err != nil {
+		return err
+	}
+	table, err := uc.dataModelRepository.GetDataModelTable(ctx, exec, field.TableId)
+	if err != nil {
+		return err
+	}
+
+	if field.Name == "object_id" || field.Name == "updated_at" {
+		return errors.Wrap(models.UnprocessableEntityError, "cannot create an alias for internal columns")
+	}
+
+	if err := uc.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+		return err
+	}
+
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, table.OrganizationID, false, false)
+	if err != nil {
+		return err
+	}
+
+	for otherFieldName, otherField := range dataModel.Tables[table.Name].FieldAliases {
+		if newName == otherField.Name || newName == otherField.PhysicalName || newName == otherFieldName {
+			return errors.Wrap(models.ConflictError, "new name for field already exists")
+		}
+	}
+
+	if dryRun {
+		return nil
+	}
+
+	return uc.dataModelRepository.RenameDataModelField(ctx, exec, table, field, newName)
 }
 
 func (uc DataModelDestroyUsecase) DeleteTable(ctx context.Context, dryRun bool, tableId string) (models.DataModelDeleteFieldReport, error) {

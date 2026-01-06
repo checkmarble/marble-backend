@@ -91,6 +91,17 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 				))
 			}
 
+			field, ok := a.DataModel.Tables[filter.TableName].Field(filter.FieldName)
+			if !ok {
+				errs = append(errs, errors.Join(
+					ast.ErrFilterUnknownField,
+					ast.NewNamedArgumentError(fmt.Sprintf("filters.%d.fieldName", idx)),
+				))
+				continue
+			}
+
+			filter.FieldName = field.PhysicalName
+
 			// At the first nil filter value found if we're not on an unary operator, stop and just return the default value for the aggregator
 			if filter.Value == nil && !filter.Operator.IsUnary() {
 				return a.defaultValueForAggregator(aggregator)
@@ -126,6 +137,16 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 
 		options["percentile"] = arg
 	}
+
+	field, ok := a.DataModel.Tables[tableName].Field(fieldName)
+	if !ok {
+		return MakeEvaluateError(errors.Join(
+			ast.ErrFilterUnknownField,
+			ast.NewNamedArgumentError("fieldName"),
+		))
+	}
+
+	fieldName = field.PhysicalName
 
 	result, err := a.runQueryInRepository(ctx, tableName, fieldName, fieldType, aggregator, filtersWithType, options)
 	if err != nil {

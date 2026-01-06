@@ -34,6 +34,11 @@ func (uc AnalyticsSettingsUsecase) GetAnalyticsSettings(ctx context.Context, tab
 
 	exec := uc.executorFactory.NewExecutor()
 
+	dataModel, err := uc.repository.GetDataModel(ctx, exec, orgId, false, false)
+	if err != nil {
+		return analytics.Settings{}, err
+	}
+
 	table, err := uc.repository.GetDataModelTable(ctx, exec, tableId)
 	if err != nil {
 		return analytics.Settings{}, err
@@ -45,6 +50,25 @@ func (uc AnalyticsSettingsUsecase) GetAnalyticsSettings(ctx context.Context, tab
 	}
 
 	if setting, ok := settings[table.Name]; ok {
+		for idx, f := range setting.TriggerFields {
+			if alias, ok := dataModel.Tables[setting.TriggerObjectType].FieldAliases[f]; ok {
+				setting.TriggerFields[idx] = alias.PhysicalName
+			}
+		}
+		for idx, f := range setting.DbFields {
+			tableName := setting.TriggerObjectType
+
+			for _, linkName := range f.Path {
+				if tn, ok := dataModel.Tables[tableName].LinksToSingle[linkName]; ok {
+					tableName = tn.ParentTableName
+				}
+			}
+
+			if tn, ok := dataModel.Tables[tableName].FieldAliases[f.Name]; ok {
+				setting.DbFields[idx].Name = tn.PhysicalName
+			}
+		}
+
 		return setting, nil
 	}
 
@@ -71,7 +95,6 @@ func (uc AnalyticsSettingsUsecase) UpdateAnalyticsSettings(ctx context.Context, 
 
 	if _, ok := dm.Tables[table.Name]; !ok {
 		return analytics.Settings{}, errors.Wrapf(err, "table %s does not exist", table.Name)
-
 	}
 
 TriggerFieldCheck:
