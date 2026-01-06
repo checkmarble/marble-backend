@@ -9,6 +9,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -96,6 +97,11 @@ type DecisionUsecase struct {
 	openSanctionsRepository   repositories.OpenSanctionsRepository
 	taskQueueRepository       repositories.TaskQueueRepository
 }
+
+var (
+	singleScenarioCache = expirable.NewLRU[string, models.Scenario](500, nil, time.Minute)
+	orgScenariosCache   = expirable.NewLRU[string, []models.Scenario](100, nil, time.Minute)
+)
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
 	decision, err := usecase.repository.DecisionWithRuleExecutionsById(ctx,
@@ -299,14 +305,21 @@ func (usecase *DecisionUsecase) CreateDecision(
 	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
 		return false, models.DecisionWithRuleExecutions{}, err
 	}
-	scenario, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
-	if errors.Is(err, models.NotFoundError) {
-		return false, models.DecisionWithRuleExecutions{},
-			errors.WithDetail(err, "scenario not found")
-	} else if err != nil {
-		return false, models.DecisionWithRuleExecutions{},
-			errors.Wrap(err, "error getting scenario")
+
+	scenario, ok := singleScenarioCache.Get(input.ScenarioId)
+	if !ok {
+		s, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
+		if errors.Is(err, models.NotFoundError) {
+			return false, models.DecisionWithRuleExecutions{},
+				errors.WithDetail(err, "scenario not found")
+		} else if err != nil {
+			return false, models.DecisionWithRuleExecutions{},
+				errors.Wrap(err, "error getting scenario")
+		}
+		singleScenarioCache.Add(input.ScenarioId, s)
+		scenario = s
 	}
+
 	if params.WithScenarioPermissionCheck {
 		if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
 			return false, models.DecisionWithRuleExecutions{}, err
@@ -338,8 +351,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		Pivot:        pivot,
 	}
 
-	triggerPassed, scenarioExecution, err :=
-		usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+	triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{},
 			fmt.Errorf("error evaluating scenario: %w", err)
@@ -502,10 +514,16 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	}
 	pivot := models.FindPivot(pivotsMeta, input.TriggerObjectTable, dataModel)
 
-	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, input.OrganizationId)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "error getting scenarios in CreateAllDecisions")
+	scenarios, ok := orgScenariosCache.Get(input.OrganizationId)
+	if !ok {
+		s, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, input.OrganizationId)
+		if err != nil {
+			return nil, 0, errors.Wrap(err, "error getting scenarios in CreateAllDecisions")
+		}
+		orgScenariosCache.Add(input.OrganizationId, s)
+		scenarios = s
 	}
+
 	var filteredScenarios []models.Scenario
 	for _, scenario := range scenarios {
 		if scenario.TriggerObjectType == input.TriggerObjectTable && scenario.LiveVersionID != nil {
@@ -540,8 +558,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		)
 		defer span.End()
 
-		triggerPassed, scenarioExecution, err :=
-			usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+		triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 		switch {
 		case err != nil:
 			return nil, 0, errors.Wrapf(err, `error evaluating scenario "%s" in CreateAllDecisions`, scenario.Name)
