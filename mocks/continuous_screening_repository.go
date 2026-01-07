@@ -354,15 +354,6 @@ func (m *ContinuousScreeningRepository) GetOrganizationById(
 	return args.Get(0).(models.Organization), args.Error(1)
 }
 
-func (m *ContinuousScreeningRepository) GetOrganizationIdByPublicId(
-	ctx context.Context,
-	exec repositories.Executor,
-	publicOrgId uuid.UUID,
-) (models.Organization, error) {
-	args := m.Called(ctx, exec, publicOrgId)
-	return args.Get(0).(models.Organization), args.Error(1)
-}
-
 func (m *ContinuousScreeningRepository) GetContinuousScreeningDatasetFileById(
 	ctx context.Context,
 	exec repositories.Executor,

@@ -354,15 +354,15 @@ func handleGetContinuousScreeningCatalog(uc usecases.Usecases) func(c *gin.Conte
 func handleGetContinuousScreeningDeltaList(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		publicOrgIdStr := c.Param("public_org_id")
-		publicOrgId, err := uuid.Parse(publicOrgIdStr)
+		orgIdStr := c.Param("org_id")
+		orgId, err := uuid.Parse(orgIdStr)
 		if err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
 		usecase := uc.NewContinuousScreeningManifestUsecase()
-		deltas, err := usecase.GetContinuousScreeningDeltaList(ctx, publicOrgId)
+		deltas, err := usecase.GetContinuousScreeningDeltaList(ctx, orgId)
 
 		if presentError(ctx, c, err) {
 			return
@@ -375,8 +375,8 @@ func handleGetContinuousScreeningDeltaList(uc usecases.Usecases) func(c *gin.Con
 func handleGetContinuousScreeningDelta(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		publicOrgIdStr := c.Param("public_org_id")
-		publicOrgId, err := uuid.Parse(publicOrgIdStr)
+		orgIdStr := c.Param("org_id")
+		orgId, err := uuid.Parse(orgIdStr)
 		if err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
@@ -388,7 +388,7 @@ func handleGetContinuousScreeningDelta(uc usecases.Usecases) func(c *gin.Context
 			return
 		}
 		usecase := uc.NewContinuousScreeningManifestUsecase()
-		deltaBlob, err := usecase.GetContinuousScreeningDeltaBlob(ctx, publicOrgId, deltaId)
+		deltaBlob, err := usecase.GetContinuousScreeningDeltaBlob(ctx, orgId, deltaId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -400,15 +400,15 @@ func handleGetContinuousScreeningDelta(uc usecases.Usecases) func(c *gin.Context
 func handleGetContinuousScreeningFull(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		publicOrgIdStr := c.Param("public_org_id")
-		publicOrgId, err := uuid.Parse(publicOrgIdStr)
+		orgIdStr := c.Param("org_id")
+		orgId, err := uuid.Parse(orgIdStr)
 		if err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
 		usecase := uc.NewContinuousScreeningManifestUsecase()
-		fullBlob, err := usecase.GetContinuousScreeningFullBlob(ctx, publicOrgId)
+		fullBlob, err := usecase.GetContinuousScreeningFullBlob(ctx, orgId)
 		if presentError(ctx, c, err) {
 			return
 		}

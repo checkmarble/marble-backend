@@ -217,8 +217,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		telemetryExporter:                utils.GetEnv("TRACING_EXPORTER", "otlp"),
 		otelSamplingRates:                utils.GetEnv("TRACING_SAMPLING_RATES", ""),
 		similarityThreshold:              utils.GetEnv("SIMILARITY_THRESHOLD", models.DEFAULT_SIMILARITY_THRESHOLD),
-		enableTracing:                    utils.GetEnv("ENABLE_TRACING", false),
-		datasetBucketUrl:                 utils.GetEnv("DATASET_BUCKET_URL", ""),
+		enableTracing:                           utils.GetEnv("ENABLE_TRACING", false),
+		continuousScreeningEntitiesBucketUrl:    utils.GetEnv("CONTINUOUS_SCREENING_ENTITIES_BUCKET_URL", ""),
 	}
 	if err := serverConfig.Validate(); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -363,7 +363,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithFirebaseAdmin(apiConfig.TokenProvider, deps.FirebaseAdmin),
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
-		usecases.WithDatasetBucketUrl(serverConfig.datasetBucketUrl),
+		usecases.WithContinuousScreeningEntitiesBucketUrl(serverConfig.continuousScreeningEntitiesBucketUrl),
 		usecases.WithMarbleApiUrl(apiConfig.MarbleApiUrl),
 	)
 

@@ -98,11 +98,11 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		authedIndexerGroup := indexerGroup.Group("/",
 			auth.AuthedBy(utils.ScreeningIndexerToken))
 		authedIndexerGroup.GET("/catalogs", tom, handleGetContinuousScreeningCatalog(uc))
-		authedIndexerGroup.GET("/org/:public_org_id/delta", tom,
+		authedIndexerGroup.GET("/org/:org_id/delta", tom,
 			handleGetContinuousScreeningDeltaList(uc))
-		authedIndexerGroup.GET("/org/:public_org_id/delta/:delta_id",
+		authedIndexerGroup.GET("/org/:org_id/delta/:delta_id",
 			handleGetContinuousScreeningDelta(uc))
-		authedIndexerGroup.GET("/org/:public_org_id/full", tom,
+		authedIndexerGroup.GET("/org/:org_id/full", tom,
 			handleGetContinuousScreeningFull(uc))
 	}
 

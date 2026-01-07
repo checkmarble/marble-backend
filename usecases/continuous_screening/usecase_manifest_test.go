@@ -18,9 +18,9 @@ type ContinuousScreeningManifestTestSuite struct {
 	blobRepository  *mocks.MockBlobRepository
 	executorFactory executor_factory.ExecutorFactoryStub
 
-	ctx              context.Context
-	marbleBackendUrl string
-	datasetBucketUrl string
+	ctx                                  context.Context
+	marbleBackendUrl                     string
+	continuousScreeningEntitiesBucketUrl string
 }
 
 func (suite *ContinuousScreeningManifestTestSuite) SetupTest() {
@@ -30,7 +30,7 @@ func (suite *ContinuousScreeningManifestTestSuite) SetupTest() {
 
 	suite.ctx = context.Background()
 	suite.marbleBackendUrl = "https://api.marble.test"
-	suite.datasetBucketUrl = "gs://marble-datasets"
+	suite.continuousScreeningEntitiesBucketUrl = "gs://marble-continuous-screening-entities"
 }
 
 func (suite *ContinuousScreeningManifestTestSuite) makeUsecase() *ContinuousScreeningManifestUsecase {
@@ -39,7 +39,7 @@ func (suite *ContinuousScreeningManifestTestSuite) makeUsecase() *ContinuousScre
 		suite.repository,
 		suite.blobRepository,
 		suite.marbleBackendUrl,
-		suite.datasetBucketUrl,
+		suite.continuousScreeningEntitiesBucketUrl,
 	)
 }
 
@@ -50,18 +50,7 @@ func TestContinuousScreeningManifestTestSuite(t *testing.T) {
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningCatalog() {
 	// Setup
 	org1Id := uuid.New()
-	org1PublicId := uuid.New()
-	org1 := models.Organization{
-		Id:       org1Id.String(),
-		PublicId: org1PublicId,
-	}
-
 	org2Id := uuid.New()
-	org2PublicId := uuid.New()
-	org2 := models.Organization{
-		Id:       org2Id.String(),
-		PublicId: org2PublicId,
-	}
 
 	datasetFiles := []models.ContinuousScreeningDatasetFile{
 		{
@@ -76,10 +65,6 @@ func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningCat
 
 	suite.repository.On("ListContinuousScreeningLatestFullFiles", suite.ctx, suite.executorFactory.NewExecutor()).
 		Return(datasetFiles, nil)
-	suite.repository.On("GetOrganizationById", suite.ctx, suite.executorFactory.NewExecutor(), org1Id.String()).
-		Return(org1, nil)
-	suite.repository.On("GetOrganizationById", suite.ctx, suite.executorFactory.NewExecutor(), org2Id.String()).
-		Return(org2, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -100,30 +85,25 @@ func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningCat
 	}
 
 	// Check org1 dataset
-	dataset1Name := orgCustomDatasetName(org1PublicId)
+	dataset1Name := orgCustomDatasetName(org1Id)
 	ds1 := getDataset(dataset1Name)
 	suite.NotNil(ds1)
 	suite.Equal("v1-org1", ds1.Version)
-	suite.Equal(fmt.Sprintf("https://api.marble.test/screening-indexer/org/%s/full", org1PublicId), ds1.EntitiesUrl)
-	suite.Equal(fmt.Sprintf("https://api.marble.test/screening-indexer/org/%s/delta", org1PublicId), ds1.DeltaUrl)
+	suite.Equal(fmt.Sprintf("https://api.marble.test/screening-indexer/org/%s/full", org1Id), ds1.EntitiesUrl)
+	suite.Equal(fmt.Sprintf("https://api.marble.test/screening-indexer/org/%s/delta", org1Id), ds1.DeltaUrl)
 
 	// Check org2 dataset
-	dataset2Name := orgCustomDatasetName(org2PublicId)
+	dataset2Name := orgCustomDatasetName(org2Id)
 	ds2 := getDataset(dataset2Name)
 	suite.NotNil(ds2)
 	suite.Equal("v1-org2", ds2.Version)
-	suite.Equal(fmt.Sprintf("https://api.marble.test/screening-indexer/org/%s/full", org2PublicId), ds2.EntitiesUrl)
-	suite.Equal(fmt.Sprintf("https://api.marble.test/screening-indexer/org/%s/delta", org2PublicId), ds2.DeltaUrl)
+	suite.Equal(fmt.Sprintf("https://api.marble.test/screening-indexer/org/%s/full", org2Id), ds2.EntitiesUrl)
+	suite.Equal(fmt.Sprintf("https://api.marble.test/screening-indexer/org/%s/delta", org2Id), ds2.DeltaUrl)
 }
 
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDeltaList() {
 	// Setup
 	orgId := uuid.New()
-	orgPublicId := uuid.New()
-	org := models.Organization{
-		Id:       orgId.String(),
-		PublicId: orgPublicId,
-	}
 
 	delta1Id := uuid.New()
 	delta2Id := uuid.New()
@@ -140,24 +120,21 @@ func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDel
 		},
 	}
 
-	suite.repository.On("GetOrganizationIdByPublicId", suite.ctx,
-		suite.executorFactory.NewExecutor(), orgPublicId).
-		Return(org, nil)
 	suite.repository.On("ListContinuousScreeningLatestDeltaFiles", suite.ctx,
 		suite.executorFactory.NewExecutor(), orgId, uint64(LatestDeltaFilesLimit)).
 		Return(deltas, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
-	deltaList, err := uc.GetContinuousScreeningDeltaList(suite.ctx, orgPublicId)
+	deltaList, err := uc.GetContinuousScreeningDeltaList(suite.ctx, orgId)
 
 	// Assert
 	suite.NoError(err)
 	suite.Len(deltaList.Versions, 2)
 	suite.Equal(fmt.Sprintf("https://api.marble.test/screening-indexer/org/%s/delta/%s",
-		orgPublicId, delta1Id), deltaList.Versions["v1-delta"])
+		orgId, delta1Id), deltaList.Versions["v1-delta"])
 	suite.Equal(fmt.Sprintf("https://api.marble.test/screening-indexer/org/%s/delta/%s",
-		orgPublicId, delta2Id), deltaList.Versions["v2-delta"])
+		orgId, delta2Id), deltaList.Versions["v2-delta"])
 }
 
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningCatalog_Empty() {
@@ -177,41 +154,33 @@ func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningCat
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDeltaList_Empty() {
 	// Setup
 	orgId := uuid.New()
-	orgPublicId := uuid.New()
-	org := models.Organization{
-		Id:       orgId.String(),
-		PublicId: orgPublicId,
-	}
 
-	suite.repository.On("GetOrganizationIdByPublicId", suite.ctx,
-		suite.executorFactory.NewExecutor(), orgPublicId).
-		Return(org, nil)
 	suite.repository.On("ListContinuousScreeningLatestDeltaFiles", suite.ctx,
 		suite.executorFactory.NewExecutor(), orgId, uint64(LatestDeltaFilesLimit)).
 		Return([]models.ContinuousScreeningDatasetFile{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
-	deltaList, err := uc.GetContinuousScreeningDeltaList(suite.ctx, orgPublicId)
+	deltaList, err := uc.GetContinuousScreeningDeltaList(suite.ctx, orgId)
 
 	// Assert
 	suite.NoError(err)
 	suite.Empty(deltaList.Versions)
 }
 
-func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDeltaList_OrgNotFound() {
+func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDeltaList_Error() {
 	// Setup
-	orgPublicId := uuid.New()
+	orgId := uuid.New()
 
-	suite.repository.On("GetOrganizationIdByPublicId", suite.ctx,
-		suite.executorFactory.NewExecutor(), orgPublicId).
-		Return(models.Organization{}, models.NotFoundError)
+	suite.repository.On("ListContinuousScreeningLatestDeltaFiles", suite.ctx,
+		suite.executorFactory.NewExecutor(), orgId, uint64(LatestDeltaFilesLimit)).
+		Return([]models.ContinuousScreeningDatasetFile{}, fmt.Errorf("db error"))
 
 	// Execute
 	uc := suite.makeUsecase()
-	_, err := uc.GetContinuousScreeningDeltaList(suite.ctx, orgPublicId)
+	_, err := uc.GetContinuousScreeningDeltaList(suite.ctx, orgId)
 
 	// Assert
 	suite.Error(err)
-	suite.Contains(err.Error(), "failed to get organization id by public id")
+	suite.Contains(err.Error(), "failed to get continuous screening deltas")
 }
