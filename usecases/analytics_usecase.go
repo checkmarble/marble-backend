@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type AnalyticsRepository interface {
@@ -19,8 +20,8 @@ type AnalyticsUseCase struct {
 	analyticsRepository AnalyticsRepository
 }
 
-func (usecase *AnalyticsUseCase) ListAnalytics(ctx context.Context, organizationId string) ([]models.Analytics, error) {
-	analyticsList, err := usecase.analyticsRepository.ListAnalytics(ctx, organizationId)
+func (usecase *AnalyticsUseCase) ListAnalytics(ctx context.Context, organizationId uuid.UUID) ([]models.Analytics, error) {
+	analyticsList, err := usecase.analyticsRepository.ListAnalytics(ctx, organizationId.String())
 	if err != nil {
 		return []models.Analytics{}, err
 	}

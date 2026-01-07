@@ -1051,8 +1051,8 @@ func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(
 	return caseReview, nil
 }
 
-func (uc *AiAgentUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error) {
-	featureAccess, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+func (uc *AiAgentUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId uuid.UUID) (bool, error) {
+	featureAccess, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId.String(), nil)
 	if err != nil {
 		return false, err
 	}

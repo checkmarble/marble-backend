@@ -56,11 +56,11 @@ type PivotDataForEnrichment struct {
 	PivotData       map[string]any `json:"pivot_data"`
 }
 
-func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, orgId string, caseId string) ([]models.AiEnrichmentKYC, error) {
+func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, orgId uuid.UUID, caseId string) ([]models.AiEnrichmentKYC, error) {
 	logger := utils.LoggerFromContext(ctx)
 
 	// Get setting
-	aiSetting, err := uc.getAiSetting(ctx, orgId)
+	aiSetting, err := uc.getAiSetting(ctx, orgId.String())
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get ai setting")
 	}

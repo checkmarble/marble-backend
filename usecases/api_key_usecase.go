@@ -34,9 +34,9 @@ type ApiKeyUseCase struct {
 	apiKeyRepository ApiKeyRepository
 }
 
-func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context, organizationId string) ([]models.ApiKey, error) {
+func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context, organizationId uuid.UUID) ([]models.ApiKey, error) {
 	apiKeys, err := usecase.apiKeyRepository.ListApiKeys(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId)
+		usecase.executorFactory.NewExecutor(), organizationId.String())
 	if err != nil {
 		return []models.ApiKey{}, err
 	}

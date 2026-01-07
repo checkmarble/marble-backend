@@ -25,7 +25,7 @@ func handleListAnalytics(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAnalyticsUseCase()
-		analytics, err := usecase.ListAnalytics(ctx, organizationId.String())
+		analytics, err := usecase.ListAnalytics(ctx, organizationId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -66,7 +66,7 @@ func handleAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		filters.OrgId = orgId.String()
+		filters.OrgId = orgId
 
 		var results any
 

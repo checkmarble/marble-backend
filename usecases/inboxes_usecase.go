@@ -62,13 +62,13 @@ func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId uuid.UUID
 	return usecase.inboxReader.GetInboxById(ctx, usecase.executorFactory.NewExecutor(), inboxId)
 }
 
-func (usecase *InboxUsecase) ListInboxes(ctx context.Context, organizationId string, withCaseCount bool) ([]models.Inbox, error) {
-	return usecase.inboxReader.ListInboxes(ctx, usecase.executorFactory.NewExecutor(), organizationId, withCaseCount)
+func (usecase *InboxUsecase) ListInboxes(ctx context.Context, organizationId uuid.UUID, withCaseCount bool) ([]models.Inbox, error) {
+	return usecase.inboxReader.ListInboxes(ctx, usecase.executorFactory.NewExecutor(), organizationId.String(), withCaseCount)
 }
 
-func (usecase *InboxUsecase) ListInboxesMetadata(ctx context.Context, organizationId string) ([]models.InboxMetadata, error) {
+func (usecase *InboxUsecase) ListInboxesMetadata(ctx context.Context, organizationId uuid.UUID) ([]models.InboxMetadata, error) {
 	inboxes, err := usecase.inboxRepository.ListInboxes(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId, nil, false)
+		usecase.executorFactory.NewExecutor(), organizationId.String(), nil, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not list inboxes")
 	}

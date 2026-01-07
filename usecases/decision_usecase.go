@@ -226,9 +226,9 @@ func (usecase *DecisionUsecase) ListDecisions(
 	}, nil
 }
 
-func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenarioIds []string, organizationId string) error {
+func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenarioIds []string, organizationId uuid.UUID) error {
 	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId)
+		usecase.executorFactory.NewExecutor(), organizationId.String())
 	if err != nil {
 		return err
 	}
@@ -240,7 +240,7 @@ func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenari
 	for _, scenarioId := range scenarioIds {
 		if !slices.Contains(organizationScenarioIds, scenarioId) {
 			return fmt.Errorf("scenario id %s not found in organization %s: %w",
-				scenarioId, organizationId, models.BadParameterError)
+				scenarioId, organizationId.String(), models.BadParameterError)
 		}
 	}
 	return nil

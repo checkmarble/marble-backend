@@ -30,11 +30,11 @@ type TagUseCase struct {
 	repository         TagUseCaseRepository
 }
 
-func (usecase *TagUseCase) ListAllTags(ctx context.Context, organizationId string,
+func (usecase *TagUseCase) ListAllTags(ctx context.Context, organizationId uuid.UUID,
 	target models.TagTarget, withCaseCount bool,
 ) ([]models.Tag, error) {
 	tags, err := usecase.repository.ListOrganizationTags(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId, target, withCaseCount)
+		usecase.executorFactory.NewExecutor(), organizationId.String(), target, withCaseCount)
 	if err != nil {
 		return nil, err
 	}

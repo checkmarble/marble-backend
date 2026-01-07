@@ -59,7 +59,7 @@ func handleListCases(uc usecases.Usecases) func(c *gin.Context) {
 			dto.AdaptPaginationAndSorting(paginationAndSortingDto), casesPaginationDefaults)
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cases, err := usecase.ListCases(ctx, organizationId.String(), paginationAndSorting, parsedFilters)
+		cases, err := usecase.ListCases(ctx, organizationId, paginationAndSorting, parsedFilters)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -114,7 +114,7 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 
 		inboxCase, err := usecase.CreateCaseAsUser(
 			ctx,
-			organizationId.String(),
+			organizationId,
 			userId,
 			models.CreateCaseAttributes{
 				DecisionIds:    data.DecisionIds,
@@ -262,7 +262,7 @@ func handleListCaseDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c
 		}
 
 		req := models.CaseDecisionsRequest{
-			OrgId:    orgId.String(),
+			OrgId:    orgId,
 			CaseId:   caseId,
 			CursorId: cursorId,
 			Limit:    limit,
@@ -648,7 +648,7 @@ func handleGetNextCase(uc usecases.Usecases) func(c *gin.Context) {
 		caseId := c.Param("case_id")
 
 		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		nextCaseId, err := uc.GetNextCaseId(ctx, orgId.String(), caseId)
+		nextCaseId, err := uc.GetNextCaseId(ctx, orgId, caseId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -758,7 +758,7 @@ func handleEnrichCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		responses, err := usecase.EnrichCasePivotObjects(ctx, orgId.String(), caseId)
+		responses, err := usecase.EnrichCasePivotObjects(ctx, orgId, caseId)
 		if err != nil {
 			if errors.Is(err, ai_agent.ErrKYCEnrichmentNotEnabled) {
 				presentError(ctx, c, errors.Wrap(models.ForbiddenError, "KYC enrichment is not enabled"))

@@ -42,9 +42,9 @@ func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigByStableId(
 }
 
 // Get only enabled continuous screening configs for an organization
-func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigsByOrgId(ctx context.Context, orgId string) ([]models.ContinuousScreeningConfig, error) {
+func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigsByOrgId(ctx context.Context, orgId uuid.UUID) ([]models.ContinuousScreeningConfig, error) {
 	configs, err := uc.repository.GetContinuousScreeningConfigsByOrgId(ctx,
-		uc.executorFactory.NewExecutor(), orgId)
+		uc.executorFactory.NewExecutor(), orgId.String())
 	if err != nil {
 		return []models.ContinuousScreeningConfig{}, err
 	}

@@ -45,8 +45,8 @@ func NewWebhooksUsecase(
 	}
 }
 
-func (usecase WebhooksUsecase) ListWebhooks(ctx context.Context, organizationId string, partnerId null.String) ([]models.Webhook, error) {
-	webhooks, err := usecase.convoyRepository.ListWebhooks(ctx, organizationId, partnerId)
+func (usecase WebhooksUsecase) ListWebhooks(ctx context.Context, organizationId uuid.UUID, partnerId null.String) ([]models.Webhook, error) {
+	webhooks, err := usecase.convoyRepository.ListWebhooks(ctx, organizationId.String(), partnerId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error listing webhooks")
 	}

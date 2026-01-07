@@ -73,13 +73,12 @@ func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, name
 	return usecase.organizationCreator.CreateOrganization(ctx, name)
 }
 
-func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationId string) (models.Organization, error) {
-	orgId, _ := uuid.Parse(organizationId)
-	if err := usecase.enforceSecurity.ReadOrganization(orgId); err != nil {
+func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationId uuid.UUID) (models.Organization, error) {
+	if err := usecase.enforceSecurity.ReadOrganization(organizationId); err != nil {
 		return models.Organization{}, err
 	}
 	return usecase.organizationRepository.GetOrganizationById(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId)
+		usecase.executorFactory.NewExecutor(), organizationId.String())
 }
 
 func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
@@ -121,18 +120,18 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 	})
 }
 
-func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, organizationId string) error {
+func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, organizationId uuid.UUID) error {
 	if err := usecase.enforceSecurity.DeleteOrganization(); err != nil {
 		return err
 	}
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		// delete all users
-		err := usecase.userRepository.DeleteUsersOfOrganization(ctx, tx, organizationId)
+		err := usecase.userRepository.DeleteUsersOfOrganization(ctx, tx, organizationId.String())
 		if err != nil {
 			return err
 		}
 
-		err = usecase.organizationRepository.DeleteOrganization(ctx, tx, organizationId)
+		err = usecase.organizationRepository.DeleteOrganization(ctx, tx, organizationId.String())
 		if err != nil {
 			return err
 		}

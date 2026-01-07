@@ -35,16 +35,16 @@ type AutoAssignmentUsecase struct {
 	repository         autoAssignmentRepository
 }
 
-func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId string, inboxId uuid.UUID) error {
+func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId uuid.UUID, inboxId uuid.UUID) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	org, err := uc.orgRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId)
+	org, err := uc.orgRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId.String())
 	if err != nil {
 		return errors.Wrap(err, "could not retrieve organization settings")
 	}
 
 	// Find maximum slots across inboxes (to limit how many cases to consider).
-	assignableUsers, err := uc.repository.FindAutoAssignableUsers(ctx, uc.executorFactory.NewExecutor(), orgId, org.AutoAssignQueueLimit)
+	assignableUsers, err := uc.repository.FindAutoAssignableUsers(ctx, uc.executorFactory.NewExecutor(), orgId.String(), org.AutoAssignQueueLimit)
 	if err != nil {
 		return errors.Wrap(err, "could not find assignable users")
 	}
@@ -60,7 +60,7 @@ func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId strin
 
 	logger.DebugContext(ctx, fmt.Sprintf("case auto-assignment: found %d empty queue slots", slots))
 
-	cases, err := uc.repository.FindAutoAssignableCases(ctx, uc.executorFactory.NewExecutor(), orgId, slots)
+	cases, err := uc.repository.FindAutoAssignableCases(ctx, uc.executorFactory.NewExecutor(), orgId.String(), slots)
 	if err != nil {
 		return errors.Wrap(err, "could not find assignable cases")
 	}

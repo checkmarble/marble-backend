@@ -21,7 +21,7 @@ func handleListApiKeys(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewApiKeyUseCase()
-		apiKeys, err := usecase.ListApiKeys(ctx, organizationId.String())
+		apiKeys, err := usecase.ListApiKeys(ctx, organizationId)
 		if presentError(ctx, c, err) {
 			return
 		}

@@ -26,7 +26,7 @@ func handleGetAllCustomLists(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
-		lists, err := usecase.GetCustomLists(ctx, organizationId.String())
+		lists, err := usecase.GetCustomLists(ctx, organizationId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -54,7 +54,7 @@ func handlePostCustomList(uc usecases.Usecases) func(c *gin.Context) {
 		customList, err := usecase.CreateCustomList(ctx, models.CreateCustomListInput{
 			Name:           data.Name,
 			Description:    data.Description,
-			OrganizationId: organizationId.String(),
+			OrganizationId: organizationId,
 		})
 		if presentError(ctx, c, err) {
 			return

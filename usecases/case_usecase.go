@@ -145,7 +145,7 @@ type CaseUseCase struct {
 
 func (usecase *CaseUseCase) ListCases(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	pagination models.PaginationAndSorting,
 	filters models.CaseFilters,
 ) (models.CaseListPage, error) {
@@ -162,7 +162,7 @@ func (usecase *CaseUseCase) ListCases(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.CaseListPage, error) {
-			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, organizationId)
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, organizationId.String())
 			if err != nil {
 				return models.CaseListPage{}, err
 			}
@@ -175,15 +175,11 @@ func (usecase *CaseUseCase) ListCases(
 				}
 			}
 
-			orgId, err := uuid.Parse(organizationId)
-			if err != nil {
-				return models.CaseListPage{}, err
-			}
 			repoFilters := models.CaseFilters{
 				StartDate:         filters.StartDate,
 				EndDate:           filters.EndDate,
 				Statuses:          filters.Statuses,
-				OrganizationId:    orgId,
+				OrganizationId:    organizationId,
 				Name:              filters.Name,
 				IncludeSnoozed:    filters.IncludeSnoozed,
 				ExcludeAssigned:   filters.ExcludeAssigned,
@@ -432,7 +428,7 @@ func (usecase *CaseUseCase) CreateCase(
 
 func (usecase *CaseUseCase) CreateCaseAsUser(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	userId string,
 	createCaseAttributes models.CreateCaseAttributes,
 ) (models.Case, error) {
@@ -441,7 +437,7 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Case, error) {
 			// permission check on the inbox as end user
-			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, organizationId)
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, organizationId.String())
 			if err != nil {
 				return models.Case{}, err
 			}
@@ -480,13 +476,13 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 
 func (usecase *CaseUseCase) CreateCaseAsApiClient(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	createCaseAttributes models.CreateCaseAttributes,
 ) (models.Case, error) {
 	webhookEventId := uuid.NewString()
 	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Case, error) {
-			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, orgId)
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, orgId.String())
 			if err != nil {
 				return models.Case{}, err
 			}
@@ -1794,15 +1790,15 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	return c, nil
 }
 
-func (usecase *CaseUseCase) GetRelatedCasesByPivotValue(ctx context.Context, orgId, pivotValue string) ([]models.Case, error) {
+func (usecase *CaseUseCase) GetRelatedCasesByPivotValue(ctx context.Context, orgId uuid.UUID, pivotValue string) ([]models.Case, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId.String())
 	if err != nil {
 		return nil, err
 	}
 
-	cases, err := usecase.repository.GetCasesWithPivotValue(ctx, exec, orgId, pivotValue)
+	cases, err := usecase.repository.GetCasesWithPivotValue(ctx, exec, orgId.String(), pivotValue)
 	if err != nil {
 		return nil, err
 	}
@@ -1819,16 +1815,16 @@ func (usecase *CaseUseCase) GetRelatedCasesByPivotValue(ctx context.Context, org
 }
 
 func (usecase *CaseUseCase) GetRelatedContinuousScreeningCasesByObjectAttr(
-	ctx context.Context, orgId string, objectType, objectId string,
+	ctx context.Context, orgId uuid.UUID, objectType, objectId string,
 ) ([]models.Case, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId.String())
 	if err != nil {
 		return nil, err
 	}
 
-	cases, err := usecase.repository.GetContinuousScreeningCasesWithObjectAttr(ctx, exec, orgId, objectType, objectId)
+	cases, err := usecase.repository.GetContinuousScreeningCasesWithObjectAttr(ctx, exec, orgId.String(), objectType, objectId)
 	if err != nil {
 		return nil, err
 	}
@@ -1844,10 +1840,10 @@ func (usecase *CaseUseCase) GetRelatedContinuousScreeningCasesByObjectAttr(
 	return allowedCases, nil
 }
 
-func (usecase *CaseUseCase) GetNextCaseId(ctx context.Context, orgId, caseId string) (string, error) {
+func (usecase *CaseUseCase) GetNextCaseId(ctx context.Context, orgId uuid.UUID, caseId string) (string, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId.String())
 	if err != nil {
 		return "", err
 	}
