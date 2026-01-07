@@ -11,13 +11,12 @@ import (
 func TestCompareAndMergePayloadsWithIngestedObjects(t *testing.T) {
 	testTime := time.Now()
 	tests := []struct {
-		name                                string
-		payloads                            []models.ClientObject
-		previouslyIngestedObjects           []ingestedObject
-		expectedPayloadsToInsert            []models.ClientObject
-		expectedObsoleteIds                 []string
-		expectedValidationErrors            models.IngestionValidationErrors
-		expectedExistingObjectFieldsChanged map[string][]string
+		name                      string
+		payloads                  []models.ClientObject
+		previouslyIngestedObjects []ingestedObject
+		expectedPayloadsToInsert  []models.ClientObject
+		expectedObsoleteIds       []string
+		expectedValidationErrors  models.IngestionValidationErrors
 	}{
 		{
 			name: "New payloads with no previously ingested objects",
@@ -38,9 +37,8 @@ func TestCompareAndMergePayloadsWithIngestedObjects(t *testing.T) {
 					},
 				},
 			},
-			expectedObsoleteIds:                 []string{},
-			expectedValidationErrors:            models.IngestionValidationErrors{},
-			expectedExistingObjectFieldsChanged: map[string][]string{},
+			expectedObsoleteIds:      []string{},
+			expectedValidationErrors: models.IngestionValidationErrors{},
 		},
 		{
 			name: "Payloads with previously ingested objects",
@@ -70,9 +68,6 @@ func TestCompareAndMergePayloadsWithIngestedObjects(t *testing.T) {
 			},
 			expectedObsoleteIds:      []string{"1"},
 			expectedValidationErrors: models.IngestionValidationErrors{},
-			expectedExistingObjectFieldsChanged: map[string][]string{
-				"1": {"updated_at"},
-			},
 		},
 		{
 			name: "Payloads with missing required fields, previously ingested",
@@ -121,9 +116,6 @@ func TestCompareAndMergePayloadsWithIngestedObjects(t *testing.T) {
 			},
 			expectedObsoleteIds:      []string{"1"},
 			expectedValidationErrors: models.IngestionValidationErrors{},
-			expectedExistingObjectFieldsChanged: map[string][]string{
-				"1": {"updated_at"},
-			},
 		},
 		{
 			name: "Payloads with missing required fields, not previously ingested",
@@ -176,9 +168,6 @@ func TestCompareAndMergePayloadsWithIngestedObjects(t *testing.T) {
 					"required_field": "required_field is missing",
 				},
 			},
-			expectedExistingObjectFieldsChanged: map[string][]string{
-				"1": {"updated_at"},
-			},
 		},
 		{
 			name: "Payloads with multiple fields changed",
@@ -217,9 +206,6 @@ func TestCompareAndMergePayloadsWithIngestedObjects(t *testing.T) {
 			},
 			expectedObsoleteIds:      []string{"1"},
 			expectedValidationErrors: models.IngestionValidationErrors{},
-			expectedExistingObjectFieldsChanged: map[string][]string{
-				"1": {"updated_at", "name", "age", "email"},
-			},
 		},
 		{
 			name: "Payloads with partial update (missing fields merged)",
@@ -287,25 +273,17 @@ func TestCompareAndMergePayloadsWithIngestedObjects(t *testing.T) {
 			},
 			expectedObsoleteIds:      []string{"1"},
 			expectedValidationErrors: models.IngestionValidationErrors{},
-			expectedExistingObjectFieldsChanged: map[string][]string{
-				"1": {"updated_at", "name"},
-			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			payloadsToInsert, obsoleteIds, validationErrors,
-				existingObjectFieldsChanged := compareAndMergePayloadsWithIngestedObjects(
+			payloadsToInsert, obsoleteIds, validationErrors := compareAndMergePayloadsWithIngestedObjects(
 				tt.payloads, tt.previouslyIngestedObjects)
 
 			assert.Equal(t, tt.expectedPayloadsToInsert, payloadsToInsert)
 			assert.Equal(t, tt.expectedObsoleteIds, obsoleteIds)
 			assert.Equal(t, tt.expectedValidationErrors, validationErrors)
-			assert.Equal(t, len(tt.expectedExistingObjectFieldsChanged), len(existingObjectFieldsChanged))
-			for k, v := range tt.expectedExistingObjectFieldsChanged {
-				assert.ElementsMatch(t, v, existingObjectFieldsChanged[k])
-			}
 		})
 	}
 }

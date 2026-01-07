@@ -202,10 +202,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 	rowId := utils.ByteUuid(rowIdStr)
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is a previous version for this object
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}).
-			AddRow("1", "old_status", updAt, 0.5, rowId))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}).
+			AddRow("1", updAt, rowId))
 	// update the previous version
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`UPDATE "test"."transactions" SET valid_until = $1 WHERE id IN ($2)`)).
 		WithArgs("now()", rowIdStr).
@@ -241,9 +241,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for this object
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}))
 	// insert the new version
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5)`)).
 		WithArgs("1", "OK", updAt, 1.0, anyUuid{}).
@@ -282,9 +282,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for this object
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}))
 	// insert the new version
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5)`)).
 		WithArgs("1", "OK", updAt, 1.0, anyUuid{}).
@@ -321,10 +321,10 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 	rowId := utils.ByteUuid(rowIdStr)
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is a previous version for this object
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}).
-			AddRow("1", "old_status", updAt.Add(time.Hour), 0.5, rowId))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}).
+			AddRow("1", updAt.Add(time.Hour), rowId))
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
 		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
@@ -419,9 +419,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_nomin
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for these objects
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2,$3)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2,$3)`)).
 		WithArgs("Infinity", "1", "2").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}))
 	// insert the new versions
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)`)).
 		WithArgs(
@@ -460,11 +460,11 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	rowId2 := utils.ByteUuid(rowIdStr2)
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there are previous versions for these objects
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2,$3)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2,$3)`)).
 		WithArgs("Infinity", "1", "2").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}).
-			AddRow("1", "old_status", updAt, 0.5, rowId1).
-			AddRow("2", "old_status", updAt, 1.5, rowId2))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}).
+			AddRow("1", updAt, rowId1).
+			AddRow("2", updAt, rowId2))
 	// update the previous versions
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`UPDATE "test"."transactions" SET valid_until = $1 WHERE id IN ($2,$3)`)).
 		WithArgs("now()", rowIdStr1, rowIdStr2).
@@ -552,6 +552,13 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	monitoringId1 := uuid.New()
 	monitoringId3 := uuid.New()
 	configStableId := uuid.New()
+
+	rowId1 := uuid.New()
+	rowId2 := uuid.New()
+	rowId3 := uuid.New()
+	rowId4 := uuid.New()
+	rowId5 := uuid.New()
+
 	monitoredObjects := []models.ContinuousScreeningMonitoredObject{
 		{
 			Id:             monitoringId1,
@@ -592,28 +599,43 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	// Setup task queue mock to expect the continuous screening task to be enqueued for only the 2 monitored objects
 	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions",
-		mock.MatchedBy(func(ids []uuid.UUID) bool {
-			return len(ids) == 2 && ((ids[0] == monitoringId1 && ids[1] == monitoringId3) ||
-				(ids[0] == monitoringId3 && ids[1] == monitoringId1))
+		mock.MatchedBy(func(tasks []models.ContinuousScreeningEnqueueObjectUpdateTask) bool {
+			if len(tasks) != 2 {
+				return false
+			}
+			// Map monitoring ID to task for easier verification
+			taskMap := make(map[uuid.UUID]models.ContinuousScreeningEnqueueObjectUpdateTask)
+			for _, t := range tasks {
+				taskMap[t.MonitoringId] = t
+			}
+
+			// Verify object 1
+			task1, ok := taskMap[monitoringId1]
+			if !ok || task1.PreviousInternalId != rowId1.String() || task1.NewInternalId == "" {
+				return false
+			}
+
+			// Verify object 3
+			task3, ok := taskMap[monitoringId3]
+			if !ok || task3.PreviousInternalId != rowId3.String() || task3.NewInternalId == "" {
+				return false
+			}
+
+			return true
 		}), models.ContinuousScreeningTriggerTypeObjectUpdated).
 		Return(nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
-	rowId1 := uuid.New()
-	rowId2 := uuid.New()
-	rowId3 := uuid.New()
-	rowId4 := uuid.New()
-	rowId5 := uuid.New()
 
 	// there ARE previous versions for these objects (otherwise they wouldn't be in existingObjectFieldsChanged and thus screened)
-	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2,$3,$4,$5,$6)`)).
+	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2,$3,$4,$5,$6)`)).
 		WithArgs("Infinity", "1", "2", "3", "4", "5").
-		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}).
-			AddRow("1", "old_status", updAt, 0.5, [16]byte(rowId1)).
-			AddRow("2", "old_status", updAt, 1.5, [16]byte(rowId2)).
-			AddRow("3", "old_status", updAt, 2.5, [16]byte(rowId3)).
-			AddRow("4", "old_status", updAt, 3.5, [16]byte(rowId4)).
-			AddRow("5", "old_status", updAt, 4.5, [16]byte(rowId5)))
+		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}).
+			AddRow("1", updAt, [16]byte(rowId1)).
+			AddRow("2", updAt, [16]byte(rowId2)).
+			AddRow("3", updAt, [16]byte(rowId3)).
+			AddRow("4", updAt, [16]byte(rowId4)).
+			AddRow("5", updAt, [16]byte(rowId5)))
 
 	// update the previous versions
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`UPDATE "test"."transactions" SET valid_until = $1 WHERE id IN ($2,$3,$4,$5,$6)`)).

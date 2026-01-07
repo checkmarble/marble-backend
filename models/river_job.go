@@ -116,6 +116,10 @@ type ContinuousScreeningDoScreeningArgs struct {
 
 	// MonitoringId is the ID from the object type specific monitoring table.
 	MonitoringId uuid.UUID `json:"monitoring_id"`
+
+	// Used only for update trigger type to know if the object has been updated or not
+	PreviousInternalId string `json:"previous_internal_id"`
+	NewInternalId      string `json:"new_internal_id"`
 }
 
 func (ContinuousScreeningDoScreeningArgs) Kind() string {

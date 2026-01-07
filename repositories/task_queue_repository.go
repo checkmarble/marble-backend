@@ -80,7 +80,7 @@ type TaskQueueRepository interface {
 		tx Transaction,
 		orgId string,
 		objectType string,
-		monitoringIds []uuid.UUID,
+		enqueueObjectUpdateTasks []models.ContinuousScreeningEnqueueObjectUpdateTask,
 		triggerType models.ContinuousScreeningTriggerType,
 	) error
 	EnqueueContinuousScreeningApplyDeltaFileTask(
@@ -351,17 +351,19 @@ func (r riverRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 	tx Transaction,
 	orgId string,
 	objectType string,
-	monitoringIds []uuid.UUID,
+	enqueueObjectUpdateTasks []models.ContinuousScreeningEnqueueObjectUpdateTask,
 	triggerType models.ContinuousScreeningTriggerType,
 ) error {
-	params := make([]river.InsertManyParams, len(monitoringIds))
-	for i, monitoringId := range monitoringIds {
+	params := make([]river.InsertManyParams, len(enqueueObjectUpdateTasks))
+	for i, enqueueObjectUpdateTask := range enqueueObjectUpdateTasks {
 		params[i] = river.InsertManyParams{
 			Args: models.ContinuousScreeningDoScreeningArgs{
-				ObjectType:   objectType,
-				OrgId:        orgId,
-				TriggerType:  triggerType,
-				MonitoringId: monitoringId,
+				ObjectType:         objectType,
+				OrgId:              orgId,
+				TriggerType:        triggerType,
+				MonitoringId:       enqueueObjectUpdateTask.MonitoringId,
+				PreviousInternalId: enqueueObjectUpdateTask.PreviousInternalId,
+				NewInternalId:      enqueueObjectUpdateTask.NewInternalId,
 			},
 			InsertOpts: &river.InsertOpts{
 				Queue:    orgId,
