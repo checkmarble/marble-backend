@@ -26,7 +26,7 @@ func handleGetAllCustomLists(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
-		lists, err := usecase.GetCustomLists(ctx, organizationId)
+		lists, err := usecase.GetCustomLists(ctx, organizationId.String())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -54,7 +54,7 @@ func handlePostCustomList(uc usecases.Usecases) func(c *gin.Context) {
 		customList, err := usecase.CreateCustomList(ctx, models.CreateCustomListInput{
 			Name:           data.Name,
 			Description:    data.Description,
-			OrganizationId: organizationId,
+			OrganizationId: organizationId.String(),
 		})
 		if presentError(ctx, c, err) {
 			return
@@ -98,7 +98,7 @@ func handlePatchCustomList(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		logger = logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId.String()))
 
 		customListID := c.Param("list_id")
 		var data dto.UpdateCustomListBodyDto
@@ -133,7 +133,7 @@ func handleDeleteCustomList(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		logger = logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId.String()))
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
 		err = usecase.SoftDeleteCustomList(ctx, c.Param("list_id"))
@@ -154,7 +154,7 @@ func handleGetCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		logger = logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId.String()))
 
 		customListID := c.Param("list_id")
 
@@ -185,7 +185,7 @@ func handlePostCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		logger = logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId.String()))
 
 		customListID := c.Param("list_id")
 		var data dto.CreateCustomListValueBodyDto
@@ -244,7 +244,7 @@ func handleDeleteCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		logger = logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId.String()))
 		customListID := c.Param("list_id")
 		valueID := c.Param("value_id")
 

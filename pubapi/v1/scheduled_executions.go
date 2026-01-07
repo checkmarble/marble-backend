@@ -37,10 +37,10 @@ func HandleListBatchExecutions(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		scheduledExecutionsUsecase := uc.NewScheduledExecutionUsecase()
 
-		filters := params.ToFilters(orgId)
+		filters := params.ToFilters(orgId.String())
 		paging := params.PaginationParams.ToModel(batchExecutionsPaginationDefaults)
 
-		scheduledExecutions, err := scheduledExecutionsUsecase.ListScheduledExecutions(ctx, orgId, filters, &paging)
+		scheduledExecutions, err := scheduledExecutionsUsecase.ListScheduledExecutions(ctx, orgId.String(), filters, &paging)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return

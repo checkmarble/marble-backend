@@ -28,7 +28,7 @@ func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ListScenarioPublications(
 			ctx,
-			organizationId,
+			organizationId.String(),
 			models.ListScenarioPublicationsFilters{
 				ScenarioId:          utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
 				ScenarioIterationId: utils.PtrTo(scenarioIterationID, &utils.PtrToOptions{OmitZero: true}),
@@ -57,7 +57,7 @@ func handleCreateScenarioPublication(uc usecases.Usecases) func(c *gin.Context) 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(
 			ctx,
-			organizationId,
+			organizationId.String(),
 			dto.AdaptCreateScenarioPublicationBody(data))
 		if handleExpectedPublicationError(c, err) || presentError(ctx, c, err) {
 			return
@@ -99,7 +99,7 @@ func handleGetPublicationPreparationStatus(uc usecases.Usecases) func(c *gin.Con
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
 		status, err := usecase.GetPublicationPreparationStatus(
 			ctx,
-			organizationId,
+			organizationId.String(),
 			data.ScenarioIterationId)
 		if presentError(ctx, c, err) {
 			return
@@ -125,7 +125,7 @@ func handleStartPublicationPreparation(uc usecases.Usecases) func(c *gin.Context
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
-		err = usecase.StartPublicationPreparation(ctx, organizationId, data.ScenarioIterationId)
+		err = usecase.StartPublicationPreparation(ctx, organizationId.String(), data.ScenarioIterationId)
 		if handleExpectedPublicationError(c, err) || presentError(ctx, c, err) {
 			return
 		}

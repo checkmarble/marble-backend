@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -22,7 +21,7 @@ func handleListApiKeys(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewApiKeyUseCase()
-		apiKeys, err := usecase.ListApiKeys(ctx, organizationId)
+		apiKeys, err := usecase.ListApiKeys(ctx, organizationId.String())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -47,9 +46,8 @@ func handlePostApiKey(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewApiKeyUseCase()
-		orgIdUUID, _ := uuid.Parse(organizationId)
 		apiKey, err := usecase.CreateApiKey(ctx, models.CreateApiKeyInput{
-			OrganizationId: orgIdUUID,
+			OrganizationId: organizationId,
 			Description:    input.Description,
 			Role:           models.RoleFromString(input.Role),
 		})

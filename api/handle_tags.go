@@ -40,7 +40,7 @@ func handleListTags(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
-		tags, err := usecase.ListAllTags(ctx, organizationId, target, params.WithCaseCount)
+		tags, err := usecase.ListAllTags(ctx, organizationId.String(), target, params.WithCaseCount)
 
 		if presentError(ctx, c, err) {
 			return
@@ -65,7 +65,7 @@ func handlePostTag(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
 		tag, err := usecase.CreateTag(ctx, models.CreateTagAttributes{
-			OrganizationId: organizationId,
+			OrganizationId: organizationId.String(),
 			Target:         models.TagTargetFromString(data.Target),
 			Name:           data.Name,
 			Color:          data.Color,
@@ -145,7 +145,7 @@ func handleDeleteTag(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
-		err = usecase.DeleteTag(ctx, organizationId, tagInput.TagId)
+		err = usecase.DeleteTag(ctx, organizationId.String(), tagInput.TagId)
 
 		if presentError(ctx, c, err) {
 			return

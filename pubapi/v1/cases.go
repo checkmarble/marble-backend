@@ -63,7 +63,7 @@ func HandleListCases(uc usecases.Usecases) gin.HandlerFunc {
 		userUsecase := uc.NewUserUseCase()
 		tagUsecase := uc.NewTagUseCase()
 
-		cases, err := caseUsecase.ListCases(ctx, orgId, paging, filters)
+		cases, err := caseUsecase.ListCases(ctx, orgId.String(), paging, filters)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -71,7 +71,7 @@ func HandleListCases(uc usecases.Usecases) gin.HandlerFunc {
 
 		caseIds := pure_utils.Map(cases.Cases, func(cas models.Case) string { return cas.Id })
 
-		users, err := userUsecase.ListUsers(ctx, &orgId)
+		users, err := userUsecase.ListUsers(ctx, utils.Ptr(orgId.String()))
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -81,7 +81,7 @@ func HandleListCases(uc usecases.Usecases) gin.HandlerFunc {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
-		tags, err := tagUsecase.ListAllTags(ctx, orgId, models.TagTargetCase, false)
+		tags, err := tagUsecase.ListAllTags(ctx, orgId.String(), models.TagTargetCase, false)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -127,7 +127,7 @@ func HandleGetCase(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		users, err := userUsecase.ListUsers(ctx, &orgId)
+		users, err := userUsecase.ListUsers(ctx, utils.Ptr(orgId.String()))
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -137,7 +137,7 @@ func HandleGetCase(uc usecases.Usecases) gin.HandlerFunc {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
-		tags, err := tagUsecase.ListAllTags(ctx, orgId, models.TagTargetCase, false)
+		tags, err := tagUsecase.ListAllTags(ctx, orgId.String(), models.TagTargetCase, false)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -183,9 +183,8 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		orgIdUUID, _ := uuid.Parse(orgId)
 		req := models.CreateCaseAttributes{
-			OrganizationId: orgIdUUID,
+			OrganizationId: orgId,
 			InboxId:        inboxId,
 			Name:           params.Name,
 			DecisionIds: pure_utils.Map(params.Decisions,
@@ -203,7 +202,7 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 			req.AssigneeId = utils.Ptr(string(user.UserId))
 		}
 
-		cas, err := caseUsecase.CreateCaseAsApiClient(ctx, orgId, req)
+		cas, err := caseUsecase.CreateCaseAsApiClient(ctx, orgId.String(), req)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -396,7 +395,7 @@ func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
 		caseUsecase := uc.NewCaseUseCase()
 		userUsecase := uc.NewUserUseCase()
 
-		users, err := userUsecase.ListUsers(ctx, &orgId)
+		users, err := userUsecase.ListUsers(ctx, utils.Ptr(orgId.String()))
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return

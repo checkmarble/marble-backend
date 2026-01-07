@@ -59,7 +59,7 @@ func handleListDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gi
 			dto.AdaptPaginationAndSorting(paginationAndSortingDto), decisionPaginationDefaults)
 
 		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decisions, err := usecase.ListDecisions(ctx, organizationId, paginationAndSorting, filters)
+		decisions, err := usecase.ListDecisions(ctx, organizationId.String(), paginationAndSorting, filters)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -89,7 +89,7 @@ func handlePostDecision(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin
 		triggerPassed, decision, err := decisionUsecase.CreateDecision(
 			ctx,
 			models.CreateDecisionInput{
-				OrganizationId:     organizationId,
+				OrganizationId:     organizationId.String(),
 				PayloadRaw:         requestData.TriggerObject,
 				ScenarioId:         requestData.ScenarioId,
 				TriggerObjectTable: requestData.ObjectType,
@@ -134,7 +134,7 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c 
 		decisions, nbSkipped, err := decisionUsecase.CreateAllDecisions(
 			ctx,
 			models.CreateAllDecisionsInput{
-				OrganizationId:     organizationId,
+				OrganizationId:     organizationId.String(),
 				PayloadRaw:         requestData.TriggerObject,
 				TriggerObjectTable: requestData.ObjectType,
 			},

@@ -27,7 +27,7 @@ func handleCreateDataModelPivot(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		pivot, err := usecase.CreatePivot(
 			ctx,
-			dto.AdaptCreatePivotInput(input, organizationID),
+			dto.AdaptCreatePivotInput(input, organizationID.String()),
 		)
 		if presentError(ctx, c, err) {
 			return
@@ -55,7 +55,7 @@ func handleListDataModelPivots(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		pivots, err := usecase.ListPivots(ctx, organizationID, filters.TableId)
+		pivots, err := usecase.ListPivots(ctx, organizationID.String(), filters.TableId)
 		if presentError(ctx, c, err) {
 			return
 		}

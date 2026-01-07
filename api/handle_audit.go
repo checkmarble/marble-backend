@@ -12,7 +12,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 const AuditEventDownloadPath = "/admin/audit-events/download"
@@ -32,7 +31,7 @@ func handleListAuditEvents(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		filters.OrgId = uuid.MustParse(orgId)
+		filters.OrgId = orgId
 
 		if filters.Limit == 0 {
 			filters.Limit = 10

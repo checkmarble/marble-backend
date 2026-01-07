@@ -74,7 +74,7 @@ func handleListInboxes(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxes, err := usecase.ListInboxes(ctx, organizationId, withCaseCountFilter.WithCaseCount)
+		inboxes, err := usecase.ListInboxes(ctx, organizationId.String(), withCaseCountFilter.WithCaseCount)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -100,7 +100,7 @@ func handleListInboxesMetadata(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxes, err := usecase.ListInboxesMetadata(ctx, organizationId)
+		inboxes, err := usecase.ListInboxesMetadata(ctx, organizationId.String())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -131,7 +131,7 @@ func handlePostInbox(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inbox, err := usecase.CreateInbox(ctx, models.CreateInboxInput{
 			Name:              createInboxInput.Name,
-			OrganizationId:    organizationId,
+			OrganizationId:    organizationId.String(),
 			EscalationInboxId: createInboxInput.EscalationInboxId,
 		})
 		if presentError(ctx, c, err) {

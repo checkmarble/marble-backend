@@ -24,7 +24,7 @@ func handleGetIngestedObject(uc usecases.Usecases) func(c *gin.Context) {
 		objectId := c.Param("object_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestedDataReaderUsecase()
-		objects, err := usecase.GetIngestedObject(ctx, organizationID, nil, objectType, objectId, "object_id")
+		objects, err := usecase.GetIngestedObject(ctx, organizationID.String(), nil, objectType, objectId, "object_id")
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -60,7 +60,7 @@ func handleReadClientDataAsList(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestedDataReaderUsecase()
 
-		clientObjects, fieldStats, nextPagination, err := usecase.ReadIngestedClientObjects(ctx, orgId,
+		clientObjects, fieldStats, nextPagination, err := usecase.ReadIngestedClientObjects(ctx, orgId.String(),
 			objectType, dto.AdaptClientDataListRequestBody(input))
 		if presentError(ctx, c, err) {
 			return

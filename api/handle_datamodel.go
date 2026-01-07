@@ -25,7 +25,7 @@ func handleGetDataModel(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		dataModel, err := usecase.GetDataModel(ctx, organizationID, models.DataModelReadOptions{
+		dataModel, err := usecase.GetDataModel(ctx, organizationID.String(), models.DataModelReadOptions{
 			IncludeEnums:              true,
 			IncludeNavigationOptions:  true,
 			IncludeUnicityConstraints: true,
@@ -64,7 +64,7 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		tableID, err := usecase.CreateDataModelTable(ctx, organizationID, input.Name, input.Description, ftmEntity)
+		tableID, err := usecase.CreateDataModelTable(ctx, organizationID.String(), input.Name, input.Description, ftmEntity)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -203,7 +203,7 @@ func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		link := models.DataModelLinkCreateInput{
-			OrganizationID: organizationID,
+			OrganizationID: organizationID.String(),
 			Name:           input.Name,
 			ParentTableID:  input.ParentTableId,
 			ParentFieldID:  input.ParentFieldId,
@@ -229,7 +229,7 @@ func handleDeleteDataModel(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		err = usecase.DeleteDataModel(ctx, organizationID)
+		err = usecase.DeleteDataModel(ctx, organizationID.String())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -246,7 +246,7 @@ func legacy_handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		dataModel, err := usecase.GetDataModel(ctx, organizationID, models.DataModelReadOptions{
+		dataModel, err := usecase.GetDataModel(ctx, organizationID.String(), models.DataModelReadOptions{
 			IncludeEnums:              false,
 			IncludeNavigationOptions:  false,
 			IncludeUnicityConstraints: false,
@@ -285,7 +285,7 @@ func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		dataModel, err := usecase.GetDataModel(ctx, organizationID, models.DataModelReadOptions{
+		dataModel, err := usecase.GetDataModel(ctx, organizationID.String(), models.DataModelReadOptions{
 			IncludeEnums:              false,
 			IncludeNavigationOptions:  false,
 			IncludeUnicityConstraints: false,

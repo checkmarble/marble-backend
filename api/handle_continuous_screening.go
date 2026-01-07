@@ -43,7 +43,7 @@ func handleListContinuousScreeningConfigs(uc usecases.Usecases) func(c *gin.Cont
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
-		continuousScreeningConfigs, err := uc.GetContinuousScreeningConfigsByOrgId(ctx, organizationId)
+		continuousScreeningConfigs, err := uc.GetContinuousScreeningConfigsByOrgId(ctx, organizationId.String())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -55,13 +55,8 @@ func handleListContinuousScreeningConfigs(uc usecases.Usecases) func(c *gin.Cont
 func handleCreateContinuousScreeningConfig(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		organizationIdString, err := utils.OrganizationIdFromRequest(c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(ctx, c, err) {
-			return
-		}
-		organizationId, err := uuid.Parse(organizationIdString)
-		if err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
@@ -162,12 +157,6 @@ func handleListContinuousScreeningsForOrg(uc usecases.Usecases) func(c *gin.Cont
 			return
 		}
 
-		orgId, err := uuid.Parse(organizationId)
-		if err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
-			return
-		}
-
 		var paginationAndSortingDto dto.PaginationAndSorting
 		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
 			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
@@ -181,7 +170,7 @@ func handleListContinuousScreeningsForOrg(uc usecases.Usecases) func(c *gin.Cont
 		)
 
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
-		screenings, err := uc.ListContinuousScreeningsForOrg(ctx, orgId, paginationAndSorting)
+		screenings, err := uc.ListContinuousScreeningsForOrg(ctx, organizationId, paginationAndSorting)
 		if presentError(ctx, c, err) {
 			return
 		}

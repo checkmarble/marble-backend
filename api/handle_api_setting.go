@@ -20,7 +20,7 @@ func HandleGetAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Context
 		}
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
 
-		aiSetting, err := usecase.GetAiSetting(ctx, organizationId)
+		aiSetting, err := usecase.GetAiSetting(ctx, organizationId.String())
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -49,7 +49,7 @@ func HandlePutAiSettingForOrganization(uc usecases.Usecases) func(c *gin.Context
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		aiSetting, err := usecase.PutAiSetting(ctx, organizationId, dto.AdaptPutAiSetting(payload))
+		aiSetting, err := usecase.PutAiSetting(ctx, organizationId.String(), dto.AdaptPutAiSetting(payload))
 		if presentError(ctx, c, err) {
 			return
 		}

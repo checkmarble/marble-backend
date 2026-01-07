@@ -59,7 +59,7 @@ func handleListCases(uc usecases.Usecases) func(c *gin.Context) {
 			dto.AdaptPaginationAndSorting(paginationAndSortingDto), casesPaginationDefaults)
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cases, err := usecase.ListCases(ctx, organizationId, paginationAndSorting, parsedFilters)
+		cases, err := usecase.ListCases(ctx, organizationId.String(), paginationAndSorting, parsedFilters)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -112,16 +112,15 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		orgIdUUID, _ := uuid.Parse(organizationId)
 		inboxCase, err := usecase.CreateCaseAsUser(
 			ctx,
-			organizationId,
+			organizationId.String(),
 			userId,
 			models.CreateCaseAttributes{
 				DecisionIds:    data.DecisionIds,
 				InboxId:        data.InboxId,
 				Name:           data.Name,
-				OrganizationId: orgIdUUID,
+				OrganizationId: organizationId,
 				AssigneeId:     &userId,
 				Type:           models.CaseTypeDecision, // By default, we can only create cases from decisions
 			})
@@ -263,7 +262,7 @@ func handleListCaseDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c
 		}
 
 		req := models.CaseDecisionsRequest{
-			OrgId:    orgId,
+			OrgId:    orgId.String(),
 			CaseId:   caseId,
 			CursorId: cursorId,
 			Limit:    limit,
@@ -649,7 +648,7 @@ func handleGetNextCase(uc usecases.Usecases) func(c *gin.Context) {
 		caseId := c.Param("case_id")
 
 		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		nextCaseId, err := uc.GetNextCaseId(ctx, orgId, caseId)
+		nextCaseId, err := uc.GetNextCaseId(ctx, orgId.String(), caseId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -759,7 +758,7 @@ func handleEnrichCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		responses, err := usecase.EnrichCasePivotObjects(ctx, orgId, caseId)
+		responses, err := usecase.EnrichCasePivotObjects(ctx, orgId.String(), caseId)
 		if err != nil {
 			if errors.Is(err, ai_agent.ErrKYCEnrichmentNotEnabled) {
 				presentError(ctx, c, errors.Wrap(models.ForbiddenError, "KYC enrichment is not enabled"))
