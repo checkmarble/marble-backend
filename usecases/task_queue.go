@@ -58,7 +58,7 @@ func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(ctx context.Context) {
 		}
 		queues := make(map[string]river.QueueConfig, len(orgs))
 		for _, org := range orgs {
-			queues[org.Id] = river.QueueConfig{
+			queues[org.Id.String()] = river.QueueConfig{
 				MaxWorkers: numberWorkersPerQueue,
 			}
 		}
@@ -128,7 +128,7 @@ func (w *TaskQueueWorker) removeQueuesFromMissingOrgs(ctx context.Context,
 
 	orgMap := make(map[string]struct{})
 	for _, org := range orgs {
-		orgMap[org.Id] = struct{}{}
+		orgMap[org.Id.String()] = struct{}{}
 	}
 
 	runningQueues, err := w.riverClient.QueueList(ctx, river.NewQueueListParams().First(10000))
@@ -174,24 +174,25 @@ func QueuesFromOrgs(ctx context.Context, appName string,
 	periodics = make([]*river.PeriodicJob, 0, len(orgs)*2)
 
 	for _, org := range orgs {
+		orgIdStr := org.Id.String()
 		periodics = append(periodics, []*river.PeriodicJob{
-			scheduled_execution.NewIndexCleanupPeriodicJob(org.Id),
-			scheduled_execution.NewIndexDeletionPeriodicJob(org.Id),
-			scheduled_execution.NewTestRunSummaryPeriodicJob(org.Id),
+			scheduled_execution.NewIndexCleanupPeriodicJob(orgIdStr),
+			scheduled_execution.NewIndexDeletionPeriodicJob(orgIdStr),
+			scheduled_execution.NewTestRunSummaryPeriodicJob(orgIdStr),
 		}...)
 
 		if offloadingConfig.Enabled {
 			// Undocumented debug setting to only enable offloading for a specific organization
-			if onlyOffloadOrg := os.Getenv("OFFLOADING_ONLY_ORG"); onlyOffloadOrg == "" || onlyOffloadOrg == org.Id {
-				periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(org.Id, offloadingConfig.JobInterval))
+			if onlyOffloadOrg := os.Getenv("OFFLOADING_ONLY_ORG"); onlyOffloadOrg == "" || onlyOffloadOrg == orgIdStr {
+				periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(orgIdStr, offloadingConfig.JobInterval))
 			}
 		}
 
 		if analyticsConfig.Enabled {
-			periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(org.Id, analyticsConfig.JobInterval))
+			periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(orgIdStr, analyticsConfig.JobInterval))
 		}
 
-		queues[org.Id] = river.QueueConfig{
+		queues[orgIdStr] = river.QueueConfig{
 			MaxWorkers: numberWorkersPerQueue,
 		}
 	}

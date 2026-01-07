@@ -3,6 +3,7 @@ package dbmodels
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -33,7 +34,11 @@ func AdaptUser(db DBUserResult) (models.User, error) {
 		Picture:         db.Picture,
 	}
 	if db.OrganizationId != nil {
-		user.OrganizationId = *db.OrganizationId
+		orgId, err := uuid.Parse(*db.OrganizationId)
+		if err != nil {
+			return models.User{}, err
+		}
+		user.OrganizationId = orgId
 	}
 	if db.FirstName.Valid {
 		user.FirstName = db.FirstName.String

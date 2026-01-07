@@ -116,7 +116,7 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 		}
 
 		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-			OrgId:        uuid.MustParse(c.OrganizationId),
+			OrgId:        c.OrganizationId,
 			CaseId:       sar.CaseId,
 			UserId:       userId,
 			EventType:    models.SarCreated,
@@ -128,7 +128,7 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 
 		if req.File != nil {
 			if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-				OrgId:        uuid.MustParse(c.OrganizationId),
+				OrgId:        c.OrganizationId,
 				CaseId:       sar.CaseId,
 				UserId:       userId,
 				EventType:    models.SarFileUploaded,
@@ -206,7 +206,7 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 		}
 
 		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-			OrgId:         uuid.MustParse(c.OrganizationId),
+			OrgId:         c.OrganizationId,
 			CaseId:        sar.CaseId,
 			UserId:        userId,
 			EventType:     models.SarStatusChanged,
@@ -275,7 +275,7 @@ func (uc SuspiciousActivityReportUsecase) DeleteReport(
 
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-			OrgId:        uuid.MustParse(c.OrganizationId),
+			OrgId:        c.OrganizationId,
 			CaseId:       sar.CaseId,
 			UserId:       userId,
 			EventType:    models.SarDeleted,

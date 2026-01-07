@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/clock"
 	"github.com/checkmarble/marble-backend/usecases/auth"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func TestGenerator_GenerateToken_APIKey(t *testing.T) {
@@ -20,7 +21,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 
 	apiKey := models.ApiKey{
 		Id:             "api_key_id",
-		OrganizationId: "organization_id",
+		OrganizationId: utils.TextToUUID("organization_id"),
 		Prefix:         "abc",
 		Role:           models.ADMIN,
 		DisplayString: "Api key abc*** of organization",
@@ -36,7 +37,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", "", mock.Anything, models.Credentials{
-			OrganizationId: "organization_id",
+			OrganizationId: utils.TextToUUID("organization_id"),
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
 				ApiKeyId:   "api_key_id",
@@ -66,7 +67,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", "", mock.Anything, models.Credentials{
-			OrganizationId: "organization_id",
+			OrganizationId: utils.TextToUUID("organization_id"),
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
 				ApiKeyId:   "api_key_id",
@@ -105,8 +106,9 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		UserId:         "user_id",
 		Email:          "user@email.com",
 		Role:           models.ADMIN,
-		OrganizationId: "organization_id",
+		OrganizationId: utils.TextToUUID("organization_id"),
 	}
+	orgIdString := user.OrganizationId.String()
 
 	t.Run("nominal", func(t *testing.T) {
 		mockVerifier := new(mocks.FirebaseTokenVerifier)
@@ -114,12 +116,12 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			Return(user, firebaseIdentity, nil)
 
 		mockRepository := new(mocks.Database)
-		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
+		mockRepository.On("GetOrganizationByID", mock.Anything, orgIdString).
 			Return(models.Organization{}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
-			OrganizationId: "organization_id",
+			OrganizationId: utils.TextToUUID("organization_id"),
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
@@ -152,12 +154,12 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			Return(user, firebaseIdentity, nil)
 
 		mockRepository := new(mocks.Database)
-		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
+		mockRepository.On("GetOrganizationByID", mock.Anything, orgIdString).
 			Return(models.Organization{}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
-			OrganizationId: "organization_id",
+			OrganizationId: utils.TextToUUID("organization_id"),
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
@@ -190,12 +192,12 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			Return(user, firebaseIdentity, nil)
 
 		mockRepository := new(mocks.Database)
-		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
+		mockRepository.On("GetOrganizationByID", mock.Anything, orgIdString).
 			Return(models.Organization{}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
-			OrganizationId: "organization_id",
+			OrganizationId: utils.TextToUUID("organization_id"),
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,

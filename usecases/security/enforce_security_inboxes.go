@@ -3,6 +3,7 @@ package security
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type EnforceSecurityInboxes struct {
@@ -14,7 +15,8 @@ func (e EnforceSecurityInboxes) ReadInbox(i models.Inbox) error {
 	// org admins can read all inboxes
 	err := e.Permission(models.INBOX_EDITOR)
 	if err == nil {
-		return errors.Join(err, e.ReadOrganization(i.OrganizationId))
+		orgId, _ := uuid.Parse(i.OrganizationId)
+		return errors.Join(err, e.ReadOrganization(orgId))
 	}
 
 	// any other user can read an inbox if he is a member of the inbox
@@ -28,12 +30,14 @@ func (e EnforceSecurityInboxes) ReadInbox(i models.Inbox) error {
 }
 
 func (e EnforceSecurityInboxes) ReadInboxMetadata(inbox models.Inbox) error {
-	return e.ReadOrganization(inbox.OrganizationId)
+	orgId, _ := uuid.Parse(inbox.OrganizationId)
+	return e.ReadOrganization(orgId)
 }
 
 func (e EnforceSecurityInboxes) CreateInbox(organizationId string) error {
 	// Only org admins can create inboxes
-	return errors.Join(e.Permission(models.INBOX_EDITOR), e.ReadOrganization(organizationId))
+	orgId, _ := uuid.Parse(organizationId)
+	return errors.Join(e.Permission(models.INBOX_EDITOR), e.ReadOrganization(orgId))
 }
 
 func (e EnforceSecurityInboxes) UpdateInbox(inbox models.Inbox) error {
@@ -46,15 +50,17 @@ func (e EnforceSecurityInboxes) UpdateInbox(inbox models.Inbox) error {
 		}
 	}
 
+	orgId, _ := uuid.Parse(inbox.OrganizationId)
 	return errors.Join(e.Permission(models.INBOX_EDITOR),
-		e.ReadOrganization(inbox.OrganizationId))
+		e.ReadOrganization(orgId))
 }
 
 func (e EnforceSecurityInboxes) ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error {
 	// org admins can read all inbox users
 	err := e.Permission(models.INBOX_EDITOR)
 	if err == nil {
-		return errors.Join(err, e.ReadOrganization(inboxUser.OrganizationId))
+		orgId, _ := uuid.Parse(inboxUser.OrganizationId)
+		return errors.Join(err, e.ReadOrganization(orgId))
 	}
 
 	// any other user can read an inbox user if he is a member of the inbox
@@ -73,14 +79,16 @@ func (e EnforceSecurityInboxes) CreateInboxUser(
 	if targetUser.OrganizationId != organizationId {
 		return errors.Wrap(models.ForbiddenError, "Target user does not belong to the right organization")
 	}
-	if targetInbox.OrganizationId != organizationId {
+	targetInboxOrgId, _ := uuid.Parse(targetInbox.OrganizationId)
+	if targetInboxOrgId != organizationId {
 		return errors.Wrap(models.ForbiddenError, "Target inbox does not belong to the right organization")
 	}
 
 	// org admins can create users in all inboxes
 	err := e.Permission(models.INBOX_EDITOR)
 	if err == nil {
-		return errors.Join(err, e.ReadOrganization(targetInbox.OrganizationId))
+		orgId, _ := uuid.Parse(targetInbox.OrganizationId)
+		return errors.Join(err, e.ReadOrganization(orgId))
 	}
 
 	// any other user can create an inbox user if he is an admin of the inbox
@@ -96,7 +104,8 @@ func (e EnforceSecurityInboxes) UpdateInboxUser(inboxUser models.InboxUser, acto
 	// org admins can update all inbox users
 	err := e.Permission(models.INBOX_EDITOR)
 	if err == nil {
-		return errors.Join(err, e.ReadOrganization(inboxUser.OrganizationId))
+		orgId, _ := uuid.Parse(inboxUser.OrganizationId)
+		return errors.Join(err, e.ReadOrganization(orgId))
 	}
 
 	// any other user can update an inbox user if he is an admin of the inbox

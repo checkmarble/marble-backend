@@ -5,28 +5,33 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
 
 func Test_ReadInbox(t *testing.T) {
 	organizationId := "orgId"
 	anotherOrganizationId := "anotherOrgId"
+	orgIdUUID := utils.TextToUUID(organizationId)
+	anotherOrgIdUUID := utils.TextToUUID(anotherOrganizationId)
+	orgIdUUIDString := orgIdUUID.String()
+	anotherOrgIdUUIDString := anotherOrgIdUUID.String()
 
 	t.Run("admin", func(t *testing.T) {
-		creds := models.Credentials{Role: models.ADMIN, OrganizationId: organizationId}
+		creds := models.Credentials{Role: models.ADMIN, OrganizationId: orgIdUUID}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
 		}
 
 		t.Run("right org", func(t *testing.T) {
-			err := sec.ReadInbox(models.Inbox{OrganizationId: organizationId})
+			err := sec.ReadInbox(models.Inbox{OrganizationId: orgIdUUIDString})
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
 		})
 		t.Run("wrong org", func(t *testing.T) {
-			err := sec.ReadInbox(models.Inbox{OrganizationId: anotherOrganizationId})
+			err := sec.ReadInbox(models.Inbox{OrganizationId: anotherOrgIdUUIDString})
 			if err == nil {
 				t.Errorf("Expected error, got nil")
 			}
@@ -34,20 +39,20 @@ func Test_ReadInbox(t *testing.T) {
 	})
 
 	t.Run("Marble admin", func(t *testing.T) {
-		creds := models.Credentials{Role: models.MARBLE_ADMIN, OrganizationId: organizationId}
+		creds := models.Credentials{Role: models.MARBLE_ADMIN, OrganizationId: orgIdUUID}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
 		}
 
 		t.Run("right org", func(t *testing.T) {
-			err := sec.ReadInbox(models.Inbox{OrganizationId: organizationId})
+			err := sec.ReadInbox(models.Inbox{OrganizationId: orgIdUUIDString})
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
 		})
 		t.Run("wrong org", func(t *testing.T) {
-			err := sec.ReadInbox(models.Inbox{OrganizationId: anotherOrganizationId})
+			err := sec.ReadInbox(models.Inbox{OrganizationId: anotherOrgIdUUIDString})
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
@@ -59,7 +64,7 @@ func Test_ReadInbox(t *testing.T) {
 		actorParsedUUID := uuid.MustParse(actorUserIdString)
 		specificActorIdentity := models.Identity{UserId: models.UserId(actorUserIdString)}
 
-		creds := models.Credentials{Role: models.BUILDER, OrganizationId: organizationId, ActorIdentity: specificActorIdentity}
+		creds := models.Credentials{Role: models.BUILDER, OrganizationId: orgIdUUID, ActorIdentity: specificActorIdentity}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
@@ -67,7 +72,7 @@ func Test_ReadInbox(t *testing.T) {
 
 		t.Run("User is member of the inbox", func(t *testing.T) {
 			err := sec.ReadInbox(models.Inbox{
-				OrganizationId: organizationId,
+				OrganizationId: orgIdUUIDString,
 				InboxUsers:     []models.InboxUser{{UserId: actorParsedUUID}},
 			})
 			if err != nil {
@@ -75,7 +80,7 @@ func Test_ReadInbox(t *testing.T) {
 			}
 		})
 		t.Run("User is not member of the inbox", func(t *testing.T) {
-			err := sec.ReadInbox(models.Inbox{OrganizationId: organizationId})
+			err := sec.ReadInbox(models.Inbox{OrganizationId: orgIdUUIDString})
 			if err == nil {
 				t.Errorf("Expected error, got nil")
 			}
@@ -86,26 +91,30 @@ func Test_ReadInbox(t *testing.T) {
 func Test_CreateInbox(t *testing.T) {
 	organizationId := "orgId"
 	anotherOrganizationId := "anotherOrgId"
+	orgIdUUID := utils.TextToUUID(organizationId)
+	anotherOrgIdUUID := utils.TextToUUID(anotherOrganizationId)
+	orgIdUUIDString := orgIdUUID.String()
+	anotherOrgIdUUIDString := anotherOrgIdUUID.String()
 	userId := models.UserId("userId")
 	actorIdentity := models.Identity{
 		UserId: userId,
 	}
 
 	t.Run("admin", func(t *testing.T) {
-		creds := models.Credentials{Role: models.ADMIN, OrganizationId: organizationId}
+		creds := models.Credentials{Role: models.ADMIN, OrganizationId: orgIdUUID}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
 		}
 
 		t.Run("creating an inbox in the same org should succeed", func(t *testing.T) {
-			err := sec.CreateInbox(organizationId)
+			err := sec.CreateInbox(orgIdUUIDString)
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
 		})
 		t.Run("creating an inbox in a different org should fail", func(t *testing.T) {
-			err := sec.CreateInbox(anotherOrganizationId)
+			err := sec.CreateInbox(anotherOrgIdUUIDString)
 			if err == nil {
 				t.Errorf("Expected error, got nil")
 			}
@@ -113,13 +122,13 @@ func Test_CreateInbox(t *testing.T) {
 	})
 
 	t.Run("non admin: creating an inbox in the same org should fail", func(t *testing.T) {
-		creds := models.Credentials{Role: models.BUILDER, OrganizationId: organizationId, ActorIdentity: actorIdentity}
+		creds := models.Credentials{Role: models.BUILDER, OrganizationId: orgIdUUID, ActorIdentity: actorIdentity}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
 		}
 
-		err := sec.CreateInbox(organizationId)
+		err := sec.CreateInbox(orgIdUUIDString)
 		if err == nil {
 			t.Errorf("Expected error, got nil")
 		}
@@ -129,6 +138,10 @@ func Test_CreateInbox(t *testing.T) {
 func Test_ReadInboxUser(t *testing.T) {
 	organizationId := "orgId"
 	anotherOrganizationId := "anotherOrgId"
+	orgIdUUID := utils.TextToUUID(organizationId)
+	anotherOrgIdUUID := utils.TextToUUID(anotherOrganizationId)
+	orgIdUUIDString := orgIdUUID.String()
+	anotherOrgIdUUIDString := anotherOrgIdUUID.String()
 	userId := models.UserId("userId")
 	actorIdentity := models.Identity{
 		UserId: userId,
@@ -138,14 +151,14 @@ func Test_ReadInboxUser(t *testing.T) {
 	inboxId2 := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
 	t.Run("admin", func(t *testing.T) {
-		creds := models.Credentials{Role: models.ADMIN, OrganizationId: organizationId}
+		creds := models.Credentials{Role: models.ADMIN, OrganizationId: orgIdUUID}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
 		}
 
 		t.Run("Should be able to read any inbox user from the org", func(t *testing.T) {
-			err := sec.ReadInboxUser(models.InboxUser{InboxId: inboxId1, OrganizationId: organizationId}, nil)
+			err := sec.ReadInboxUser(models.InboxUser{InboxId: inboxId1, OrganizationId: orgIdUUIDString}, nil)
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
@@ -153,7 +166,7 @@ func Test_ReadInboxUser(t *testing.T) {
 		t.Run("Should not be able to read any inbox user from another org", func(t *testing.T) {
 			err := sec.ReadInboxUser(models.InboxUser{
 				InboxId:        inboxId1,
-				OrganizationId: anotherOrganizationId,
+				OrganizationId: anotherOrgIdUUIDString,
 			}, nil)
 			if err == nil {
 				t.Errorf("Expected error, got nil")
@@ -162,7 +175,7 @@ func Test_ReadInboxUser(t *testing.T) {
 	})
 
 	t.Run("non admin", func(t *testing.T) {
-		creds := models.Credentials{Role: models.BUILDER, OrganizationId: organizationId, ActorIdentity: actorIdentity}
+		creds := models.Credentials{Role: models.BUILDER, OrganizationId: orgIdUUID, ActorIdentity: actorIdentity}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
@@ -193,7 +206,9 @@ func Test_CreateInboxUser(t *testing.T) {
 		anotherOrganizationId := "anotherOrgId"
 		adminTestInboxId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
-		creds := models.Credentials{Role: models.ADMIN, OrganizationId: organizationId}
+		creds := models.Credentials{Role: models.ADMIN, OrganizationId: utils.TextToUUID(organizationId)}
+		orgIdUUIDString := creds.OrganizationId.String()
+		anotherOrgIdUUIDString := utils.TextToUUID(anotherOrganizationId).String()
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
@@ -207,8 +222,8 @@ func Test_CreateInboxUser(t *testing.T) {
 					InboxId: adminTestInboxId,
 					UserId:  createInputTargetUserId,
 				}, nil, models.Inbox{
-					Id: adminTestInboxId, OrganizationId: organizationId,
-				}, models.User{UserId: models.UserId(userIdString), OrganizationId: organizationId},
+					Id: adminTestInboxId, OrganizationId: orgIdUUIDString,
+				}, models.User{UserId: models.UserId(userIdString), OrganizationId: utils.TextToUUID(organizationId)},
 			)
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
@@ -223,8 +238,8 @@ func Test_CreateInboxUser(t *testing.T) {
 					InboxId: adminTestInboxId,
 					UserId:  userIdParsed,
 				}, nil, models.Inbox{
-					Id: adminTestInboxId, OrganizationId: anotherOrganizationId,
-				}, models.User{UserId: models.UserId(userIdString), OrganizationId: organizationId},
+					Id: adminTestInboxId, OrganizationId: anotherOrgIdUUIDString,
+				}, models.User{UserId: models.UserId(userIdString), OrganizationId: utils.TextToUUID(organizationId)},
 			)
 			if err == nil {
 				t.Errorf("Expected an error, got %v", err)
@@ -245,8 +260,9 @@ func Test_CreateInboxUser(t *testing.T) {
 
 		creds := models.Credentials{
 			Role:           models.BUILDER,
-			OrganizationId: organizationId_nonadmin, ActorIdentity: actorIdentity_nonadmin,
+			OrganizationId: utils.TextToUUID(organizationId_nonadmin), ActorIdentity: actorIdentity_nonadmin,
 		}
+		orgIdUUIDString_nonadmin := creds.OrganizationId.String()
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
@@ -265,10 +281,10 @@ func Test_CreateInboxUser(t *testing.T) {
 					InboxId: targetInboxId,
 					Role:    models.InboxUserRoleAdmin, UserId: actorMemberUserId,
 				}}, // Actor is admin of targetInboxId
-				models.Inbox{Id: targetInboxId, OrganizationId: organizationId_nonadmin},
+				models.Inbox{Id: targetInboxId, OrganizationId: orgIdUUIDString_nonadmin},
 				models.User{
 					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: organizationId_nonadmin,
+					OrganizationId: utils.TextToUUID(organizationId_nonadmin),
 				},
 			)
 			if err != nil {
@@ -288,10 +304,10 @@ func Test_CreateInboxUser(t *testing.T) {
 					InboxId: actorsOwnInboxId,
 					Role:    models.InboxUserRoleAdmin, UserId: actorMemberUserId,
 				}}, // Actor is admin of a *different* inbox
-				models.Inbox{Id: targetInboxId, OrganizationId: organizationId_nonadmin},
+				models.Inbox{Id: targetInboxId, OrganizationId: orgIdUUIDString_nonadmin},
 				models.User{
 					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: organizationId_nonadmin,
+					OrganizationId: utils.TextToUUID(organizationId_nonadmin),
 				},
 			)
 			if err == nil {
@@ -311,10 +327,10 @@ func Test_CreateInboxUser(t *testing.T) {
 					InboxId: targetInboxId,
 					Role:    models.InboxUserRoleMember, UserId: actorMemberUserId,
 				}}, // Actor is only a member, not admin
-				models.Inbox{Id: targetInboxId, OrganizationId: organizationId_nonadmin},
+				models.Inbox{Id: targetInboxId, OrganizationId: orgIdUUIDString_nonadmin},
 				models.User{
 					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: organizationId_nonadmin,
+					OrganizationId: utils.TextToUUID(organizationId_nonadmin),
 				},
 			)
 			if err == nil {
@@ -331,10 +347,10 @@ func Test_CreateInboxUser(t *testing.T) {
 					InboxId: targetInboxId,
 					Role:    models.InboxUserRoleAdmin, UserId: actorMemberUserId,
 				}}, // Actor is admin of the target inbox
-				models.Inbox{Id: targetInboxId, OrganizationId: organizationId_nonadmin},
+				models.Inbox{Id: targetInboxId, OrganizationId: orgIdUUIDString_nonadmin},
 				models.User{
 					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: anotherOrganizationId_nonadmin,
+					OrganizationId: utils.TextToUUID(anotherOrganizationId_nonadmin),
 				}, // Target user in different org
 			)
 			if err == nil {

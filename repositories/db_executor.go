@@ -46,7 +46,7 @@ func (e PgExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.C
 
 	orgId := ""
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
-		orgId = creds.OrganizationId
+		orgId = creds.OrganizationId.String()
 	}
 
 	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{"org_id": orgId, "schema": e.databaseSchema.Schema}, func() (pgconn.CommandTag, error) {
@@ -61,7 +61,7 @@ func (e PgExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Row
 
 	orgId := ""
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
-		orgId = creds.OrganizationId
+		orgId = creds.OrganizationId.String()
 	}
 
 	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{"org_id": orgId, "schema": e.databaseSchema.Schema}, func() (pgx.Rows, error) {
@@ -76,7 +76,7 @@ func (e PgExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.R
 
 	orgId := ""
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
-		orgId = creds.OrganizationId
+		orgId = creds.OrganizationId.String()
 	}
 
 	return utils.MeasureLatency(utils.MetricQueryLatency, prometheus.Labels{"org_id": orgId, "schema": e.databaseSchema.Schema}, func() pgx.Row {
@@ -111,7 +111,7 @@ func (t PgTx) DatabaseSchema() models.DatabaseSchema {
 func (t PgTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	orgId := ""
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
-		orgId = creds.OrganizationId
+		orgId = creds.OrganizationId.String()
 	}
 
 	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{"org_id": orgId, "schema": t.databaseSchema.Schema}, func() (pgconn.CommandTag, error) {
@@ -122,7 +122,7 @@ func (t PgTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.Command
 func (t PgTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	orgId := ""
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
-		orgId = creds.OrganizationId
+		orgId = creds.OrganizationId.String()
 	}
 
 	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{"org_id": orgId, "schema": t.databaseSchema.Schema}, func() (pgx.Rows, error) {
@@ -133,7 +133,7 @@ func (t PgTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, err
 func (t PgTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
 	orgId := ""
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
-		orgId = creds.OrganizationId
+		orgId = creds.OrganizationId.String()
 	}
 
 	return utils.MeasureLatency(utils.MetricQueryLatency, prometheus.Labels{"org_id": orgId, "schema": t.databaseSchema.Schema}, func() pgx.Row {

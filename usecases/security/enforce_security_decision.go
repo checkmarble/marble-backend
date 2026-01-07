@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type EnforceSecurityDecision interface {
@@ -22,27 +23,30 @@ type EnforceSecurityDecisionImpl struct {
 func (e *EnforceSecurityDecisionImpl) ReadDecision(decision models.Decision) error {
 	return errors.Join(
 		e.Permission(models.DECISION_READ),
-		e.ReadOrganization(decision.OrganizationId.String()),
+		e.ReadOrganization(decision.OrganizationId),
 	)
 }
 
 func (e *EnforceSecurityDecisionImpl) CreateDecision(organizationId string) error {
+	orgId, _ := uuid.Parse(organizationId)
 	return errors.Join(
 		e.Permission(models.DECISION_CREATE),
-		e.ReadOrganization(organizationId),
+		e.ReadOrganization(orgId),
 	)
 }
 
 func (e *EnforceSecurityDecisionImpl) ReadScheduledExecution(scheduledExecution models.ScheduledExecution) error {
+	orgId, _ := uuid.Parse(scheduledExecution.OrganizationId)
 	return errors.Join(
 		e.Permission(models.DECISION_READ),
-		e.ReadOrganization(scheduledExecution.OrganizationId),
+		e.ReadOrganization(orgId),
 	)
 }
 
 func (e *EnforceSecurityDecisionImpl) CreateScheduledExecution(organizationId string) error {
+	orgId, _ := uuid.Parse(organizationId)
 	return errors.Join(
 		e.Permission(models.DECISION_CREATE),
-		e.ReadOrganization(organizationId),
+		e.ReadOrganization(orgId),
 	)
 }

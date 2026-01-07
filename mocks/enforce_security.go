@@ -13,7 +13,7 @@ type EnforceSecurity struct {
 	mock.Mock
 }
 
-func (e *EnforceSecurity) ReadOrganization(organizationId string) error {
+func (e *EnforceSecurity) ReadOrganization(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
@@ -28,9 +28,9 @@ func (e *EnforceSecurity) Permissions(permissions []models.Permission) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) OrgId() string {
+func (e *EnforceSecurity) OrgId() uuid.UUID {
 	args := e.Called()
-	return args.String(0)
+	return args.Get(0).(uuid.UUID)
 }
 
 func (e *EnforceSecurity) UserId() *string {
@@ -155,7 +155,7 @@ func (e *EnforceSecurity) ReadApiKey(apiKey models.ApiKey) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) CreateApiKey(organizationId string) error {
+func (e *EnforceSecurity) CreateApiKey(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }

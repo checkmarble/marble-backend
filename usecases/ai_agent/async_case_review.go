@@ -105,7 +105,7 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 	}
 
 	// Check if the organization has AI case review enabled
-	hasAiCaseReviewEnabled, err := w.caseReviewUsecase.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
+	hasAiCaseReviewEnabled, err := w.caseReviewUsecase.HasAiCaseReviewEnabled(ctx, c.OrganizationId.String())
 	if err != nil {
 		return errors.Wrap(err, "Error while checking if AI case review is enabled")
 	}

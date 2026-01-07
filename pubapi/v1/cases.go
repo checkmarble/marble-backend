@@ -183,8 +183,9 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
+		orgIdUUID, _ := uuid.Parse(orgId)
 		req := models.CreateCaseAttributes{
-			OrganizationId: orgId,
+			OrganizationId: orgIdUUID,
 			InboxId:        inboxId,
 			Name:           params.Name,
 			DecisionIds: pure_utils.Map(params.Decisions,

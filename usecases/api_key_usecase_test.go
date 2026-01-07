@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -20,7 +21,7 @@ type ApiKeyUsecaseTestSuite struct {
 	executorFactory  *mocks.ExecutorFactory
 	apiKeyRepository *mocks.ApiKeyRepository
 
-	organizationId  string
+	organizationId  uuid.UUID
 	repositoryError error
 	securityError   error
 }
@@ -31,7 +32,7 @@ func (suite *ApiKeyUsecaseTestSuite) SetupTest() {
 	suite.transaction = new(mocks.Executor)
 	suite.executorFactory = new(mocks.ExecutorFactory)
 
-	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
+	suite.organizationId = uuid.MustParse("25ab6323-1657-4a52-923a-ef6983fe4532")
 
 	suite.repositoryError = errors.New("some repository error")
 	suite.securityError = errors.New("some security error")

@@ -65,14 +65,14 @@ func (suite *InboxReaderTestSuite) SetupTest() {
 		ActorIdentity: models.Identity{
 			UserId: suite.nonAdminUserId,
 		},
-		OrganizationId: suite.organizationId,
+		OrganizationId: uuid.MustParse(suite.organizationId),
 		Role:           models.BUILDER,
 	}
 	suite.adminCredentials = models.Credentials{
 		ActorIdentity: models.Identity{
 			UserId: suite.adminUserId,
 		},
-		OrganizationId: suite.organizationId,
+		OrganizationId: uuid.MustParse(suite.organizationId),
 		Role:           models.ADMIN,
 	}
 	suite.repositoryError = errors.New("some repository error")

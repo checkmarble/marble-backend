@@ -112,6 +112,7 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
+		orgIdUUID, _ := uuid.Parse(organizationId)
 		inboxCase, err := usecase.CreateCaseAsUser(
 			ctx,
 			organizationId,
@@ -120,7 +121,7 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 				DecisionIds:    data.DecisionIds,
 				InboxId:        data.InboxId,
 				Name:           data.Name,
-				OrganizationId: organizationId,
+				OrganizationId: orgIdUUID,
 				AssigneeId:     &userId,
 				Type:           models.CaseTypeDecision, // By default, we can only create cases from decisions
 			})
@@ -554,7 +555,7 @@ func handleGetRelatedCasesByPivotValue(uc usecases.Usecases) func(c *gin.Context
 		pivotValue := c.Param("pivotValue")
 
 		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cases, err := uc.GetRelatedCasesByPivotValue(ctx, creds.OrganizationId, pivotValue)
+		cases, err := uc.GetRelatedCasesByPivotValue(ctx, creds.OrganizationId.String(), pivotValue)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -585,7 +586,7 @@ func handleGetRelatedContinuousScreeningCasesByObjectAttr(uc usecases.Usecases) 
 
 		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		cases, err := uc.GetRelatedContinuousScreeningCasesByObjectAttr(ctx,
-			creds.OrganizationId, objectType, objectId)
+			creds.OrganizationId.String(), objectType, objectId)
 		if presentError(ctx, c, err) {
 			return
 		}

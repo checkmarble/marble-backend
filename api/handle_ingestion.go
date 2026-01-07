@@ -213,7 +213,7 @@ func handleListUploadLogs(uc usecases.Usecases) func(c *gin.Context) {
 
 		objectType := c.Param("object_type")
 		ingestionUseCase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		uploadLogs, err := ingestionUseCase.ListUploadLogs(ctx, creds.OrganizationId, objectType)
+		uploadLogs, err := ingestionUseCase.ListUploadLogs(ctx, creds.OrganizationId.String(), objectType)
 
 		if presentError(ctx, c, err) {
 			return

@@ -10,7 +10,7 @@ func CheckFeatureAccess(c *gin.Context, uc *usecases.UsecasesWithCreds) bool {
 	featureAccessReader := uc.NewFeatureAccessReader()
 
 	// Does not take into account access to AI features that are per-user - any per-user permissions do not make sense in the context of public API
-	features, err := featureAccessReader.GetOrganizationFeatureAccess(c.Request.Context(), uc.Credentials.OrganizationId, nil)
+	features, err := featureAccessReader.GetOrganizationFeatureAccess(c.Request.Context(), uc.Credentials.OrganizationId.String(), nil)
 	if err != nil {
 		NewErrorResponse().WithError(err).Serve(c)
 		return false

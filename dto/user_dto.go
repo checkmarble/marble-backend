@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type User struct {
@@ -23,7 +24,7 @@ func AdaptUserDto(user models.User) User {
 		UserId:         string(user.UserId),
 		Email:          user.Email,
 		Role:           user.Role.String(),
-		OrganizationId: user.OrganizationId,
+		OrganizationId: user.OrganizationId.String(),
 		PartnerId:      user.PartnerId,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
@@ -49,10 +50,11 @@ type UpdateUser struct {
 }
 
 func AdaptCreateUser(dto CreateUser) models.CreateUser {
+	orgId, _ := uuid.Parse(dto.OrganizationId) // Ignore error, will be uuid.Nil if invalid
 	return models.CreateUser{
 		Email:          dto.Email,
 		Role:           models.RoleFromString(dto.Role),
-		OrganizationId: dto.OrganizationId,
+		OrganizationId: orgId,
 		PartnerId:      dto.PartnerId,
 		FirstName:      dto.FirstName,
 		LastName:       dto.LastName,

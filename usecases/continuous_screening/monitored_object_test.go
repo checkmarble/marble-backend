@@ -760,12 +760,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		Id:             caseId.String(), // Case ID is a string
 		Name:           "Continuous Screening - " + suite.objectId,
 		InboxId:        inboxId,
-		OrganizationId: suite.orgId.String(),
+		OrganizationId: suite.orgId,
 	}
 	suite.caseEditor.On("CreateCase", mock.Anything, mock.Anything, "", mock.MatchedBy(func(
 		attrs models.CreateCaseAttributes,
 	) bool {
-		return attrs.OrganizationId == suite.orgId.String() &&
+		return attrs.OrganizationId == suite.orgId &&
 			attrs.InboxId == inboxId &&
 			attrs.Name == "Continuous Screening - "+suite.objectId &&
 			len(attrs.ContinuousScreeningIds) == 1 &&
@@ -883,7 +883,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.caseEditor.On("CreateCase", mock.Anything, mock.Anything, "", mock.MatchedBy(func(
 		attrs models.CreateCaseAttributes,
 	) bool {
-		return attrs.OrganizationId == suite.orgId.String() &&
+		return attrs.OrganizationId == suite.orgId &&
 			attrs.InboxId == inboxId &&
 			attrs.Name == "Continuous Screening - "+suite.objectId &&
 			len(attrs.ContinuousScreeningIds) == 1 &&
@@ -1464,7 +1464,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningO
 	// Setup expectations
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
 
@@ -1496,7 +1496,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningO
 	// Setup expectations
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -1536,7 +1536,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningO
 	// Setup expectations
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))

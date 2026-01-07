@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 	"github.com/cockroachdb/errors"
 )
 
@@ -31,15 +32,20 @@ func OrganizationIdFromRequest(request *http.Request) (organizationId string, er
 			return "", err
 		}
 
+		requestOrgUUID, err := uuid.Parse(requestOrganizationId)
+		if err != nil {
+			return "", err
+		}
+
 		// technically, any user can pass an org id in query params, but it can be different from the credentials org id
 		// only for a marble admin user
-		if err := EnforceOrganizationAccess(creds, requestOrganizationId); err != nil {
+		if err := EnforceOrganizationAccess(creds, requestOrgUUID); err != nil {
 			return "", err
 		}
 		return requestOrganizationId, nil
 	}
 
-	if creds.OrganizationId == "" {
+	if creds.OrganizationId == uuid.Nil {
 		if creds.Role == models.MARBLE_ADMIN {
 			return "", errors.Wrap(
 				models.ForbiddenError,
@@ -50,5 +56,5 @@ func OrganizationIdFromRequest(request *http.Request) (organizationId string, er
 			"Unexpected error: credentials does not grant access to any organization")
 	}
 
-	return creds.OrganizationId, nil
+	return creds.OrganizationId.String(), nil
 }

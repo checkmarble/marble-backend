@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/google/uuid"
 )
 
 type FeatureAccessReaderRepository interface {
@@ -55,7 +56,8 @@ func (f FeatureAccessReader) GetOrganizationFeatureAccess(
 	organizationId string,
 	userId *models.UserId,
 ) (models.OrganizationFeatureAccess, error) {
-	if err := f.enforceSecurity.ReadOrganization(organizationId); err != nil {
+	orgId, _ := uuid.Parse(organizationId)
+	if err := f.enforceSecurity.ReadOrganization(orgId); err != nil {
 		return models.OrganizationFeatureAccess{}, err
 	}
 

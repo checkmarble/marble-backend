@@ -45,12 +45,17 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		boostReason = utils.Ptr(models.BoostReason(*db.Boost))
 	}
 
+	orgId, err := uuid.Parse(db.OrganizationId.String)
+	if err != nil {
+		return models.Case{}, err
+	}
+
 	return models.Case{
 		Id:             db.Id.String,
 		CreatedAt:      db.CreatedAt.Time,
 		InboxId:        db.InboxId,
 		Name:           db.Name.String,
-		OrganizationId: db.OrganizationId.String,
+		OrganizationId: orgId,
 		AssignedTo:     assigneeId,
 		Status:         models.CaseStatus(db.Status.String),
 		Outcome:        models.CaseOutcome(db.Outcome.String),

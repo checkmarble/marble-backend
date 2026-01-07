@@ -7,6 +7,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -79,8 +80,9 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
+		orgIdUUID, _ := uuid.Parse(organizationID)
 		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
-			Id:                      organizationID,
+			Id:                      orgIdUUID,
 			DefaultScenarioTimezone: data.DefaultScenarioTimezone,
 			ScreeningConfig: models.OrganizationOpenSanctionsConfigUpdateInput{
 				MatchThreshold: data.SanctionsThreshold,
@@ -124,10 +126,10 @@ func handleGetOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Contex
 
 		organizationIdFromPath := c.Param("organization_id")
 		organizationIdFromQuery := c.Query("organization_id")
-		orgId := creds.OrganizationId
-		if orgId == "" && organizationIdFromQuery != "" {
+		orgId := creds.OrganizationId.String()
+		if orgId == uuid.Nil.String() && organizationIdFromQuery != "" {
 			orgId = organizationIdFromQuery
-		} else if orgId == "" && organizationIdFromPath != "" {
+		} else if orgId == uuid.Nil.String() && organizationIdFromPath != "" {
 			orgId = organizationIdFromPath
 		}
 

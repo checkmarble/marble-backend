@@ -178,8 +178,9 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId uuid.UUID)
 				return err
 			}
 
+			orgId, _ := uuid.Parse(inbox.OrganizationId)
 			cases, err := usecase.inboxRepository.ListOrganizationCases(ctx, tx,
-				models.CaseFilters{InboxIds: []uuid.UUID{inboxId}, OrganizationId: inbox.OrganizationId},
+				models.CaseFilters{InboxIds: []uuid.UUID{inboxId}, OrganizationId: orgId},
 				models.PaginationAndSorting{Limit: 1, Order: models.SortingOrderDesc, Sorting: models.CasesSortingCreatedAt},
 			)
 			if err != nil {

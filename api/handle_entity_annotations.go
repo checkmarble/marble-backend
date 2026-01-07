@@ -24,7 +24,7 @@ func handleListEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
 		req := models.EntityAnnotationRequest{
-			OrgId:      creds.OrganizationId,
+			OrgId:      creds.OrganizationId.String(),
 			ObjectType: objectType,
 			ObjectId:   objectId,
 		}
@@ -66,7 +66,7 @@ func handleGetEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
-		annotations, err := annotationsUsecase.Get(ctx, creds.OrganizationId, id)
+		annotations, err := annotationsUsecase.Get(ctx, creds.OrganizationId.String(), id)
 		if err != nil {
 			presentError(ctx, c, err)
 			return
@@ -98,7 +98,7 @@ func handleListEntityAnnotationsForObjects(uc usecases.Usecases) gin.HandlerFunc
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
 		req := models.EntityAnnotationRequestForObjects{
-			OrgId:      creds.OrganizationId,
+			OrgId:      creds.OrganizationId.String(),
 			ObjectType: params.ObjectType,
 			ObjectIds:  params.ObjectIds,
 		}
@@ -136,7 +136,7 @@ func handleGetAnnotationByCase(uc usecases.Usecases) gin.HandlerFunc {
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
 		req := models.CaseEntityAnnotationRequest{
-			OrgId:  creds.OrganizationId,
+			OrgId:  creds.OrganizationId.String(),
 			CaseId: caseId,
 		}
 
@@ -193,7 +193,7 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		req := models.CreateEntityAnnotationRequest{
-			OrgId:          creds.OrganizationId,
+			OrgId:          creds.OrganizationId.String(),
 			ObjectType:     objectType,
 			ObjectId:       objectId,
 			CaseId:         payload.CaseId,
@@ -252,7 +252,7 @@ func handleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
 		req := models.CreateEntityAnnotationRequest{
-			OrgId:          creds.OrganizationId,
+			OrgId:          creds.OrganizationId.String(),
 			CaseId:         payload.CaseId,
 			ObjectType:     objectType,
 			ObjectId:       objectId,
@@ -291,7 +291,7 @@ func handleGetEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
 		req := models.AnnotationByIdRequest{
-			OrgId:        creds.OrganizationId,
+			OrgId:        creds.OrganizationId.String(),
 			AnnotationId: annotationId,
 		}
 
@@ -315,7 +315,7 @@ func handleDeleteEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
 		req := models.AnnotationByIdRequest{
-			OrgId:        creds.OrganizationId,
+			OrgId:        creds.OrganizationId.String(),
 			AnnotationId: annotationId,
 		}
 

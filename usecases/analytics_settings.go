@@ -28,7 +28,7 @@ type AnalyticsSettingsUsecase struct {
 func (uc AnalyticsSettingsUsecase) GetAnalyticsSettings(ctx context.Context, tableId string) (analytics.Settings, error) {
 	orgId := uc.enforceSecurity.OrgId()
 
-	if err := uc.enforceSecurity.WriteDataModel(orgId); err != nil {
+	if err := uc.enforceSecurity.WriteDataModel(orgId.String()); err != nil {
 		return analytics.Settings{}, err
 	}
 
@@ -39,7 +39,7 @@ func (uc AnalyticsSettingsUsecase) GetAnalyticsSettings(ctx context.Context, tab
 		return analytics.Settings{}, err
 	}
 
-	settings, err := uc.repository.GetAnalyticsSettings(ctx, exec, orgId)
+	settings, err := uc.repository.GetAnalyticsSettings(ctx, exec, orgId.String())
 	if err != nil {
 		return analytics.Settings{}, err
 	}
@@ -54,7 +54,7 @@ func (uc AnalyticsSettingsUsecase) GetAnalyticsSettings(ctx context.Context, tab
 func (uc AnalyticsSettingsUsecase) UpdateAnalyticsSettings(ctx context.Context, tableId string, newSettings dto.AnalyticsSettingDto) (analytics.Settings, error) {
 	orgId := uc.enforceSecurity.OrgId()
 
-	if err := uc.enforceSecurity.WriteDataModel(orgId); err != nil {
+	if err := uc.enforceSecurity.WriteDataModel(orgId.String()); err != nil {
 		return analytics.Settings{}, err
 	}
 
@@ -64,7 +64,7 @@ func (uc AnalyticsSettingsUsecase) UpdateAnalyticsSettings(ctx context.Context, 
 	if err != nil {
 		return analytics.Settings{}, err
 	}
-	dm, err := uc.repository.GetDataModel(ctx, exec, orgId, false, false)
+	dm, err := uc.repository.GetDataModel(ctx, exec, orgId.String(), false, false)
 	if err != nil {
 		return analytics.Settings{}, err
 	}
@@ -91,5 +91,5 @@ TriggerFieldCheck:
 		}
 	}
 
-	return uc.repository.UpdateAnalyticsSettings(ctx, exec, orgId, table.Name, newSettings)
+	return uc.repository.UpdateAnalyticsSettings(ctx, exec, orgId.String(), table.Name, newSettings)
 }

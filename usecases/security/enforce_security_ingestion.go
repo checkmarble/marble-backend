@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type EnforceSecurityIngestion interface {
@@ -17,8 +18,9 @@ type EnforceSecurityIngestionImpl struct {
 }
 
 func (e *EnforceSecurityIngestionImpl) CanIngest(organizationId string) error {
+	orgId, _ := uuid.Parse(organizationId)
 	return errors.Join(
 		e.Permission(models.INGESTION),
-		e.ReadOrganization(organizationId),
+		e.ReadOrganization(orgId),
 	)
 }

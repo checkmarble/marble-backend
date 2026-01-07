@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -73,7 +74,8 @@ func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, name
 }
 
 func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationId string) (models.Organization, error) {
-	if err := usecase.enforceSecurity.ReadOrganization(organizationId); err != nil {
+	orgId, _ := uuid.Parse(organizationId)
+	if err := usecase.enforceSecurity.ReadOrganization(orgId); err != nil {
 		return models.Organization{}, err
 	}
 	return usecase.organizationRepository.GetOrganizationById(ctx,
@@ -102,7 +104,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.Organization, error) {
-		org, err := usecase.organizationRepository.GetOrganizationById(ctx, tx, organization.Id)
+		org, err := usecase.organizationRepository.GetOrganizationById(ctx, tx, organization.Id.String())
 		if err != nil {
 			return models.Organization{}, err
 		}
@@ -115,7 +117,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 		if err != nil {
 			return models.Organization{}, err
 		}
-		return usecase.organizationRepository.GetOrganizationById(ctx, tx, organization.Id)
+		return usecase.organizationRepository.GetOrganizationById(ctx, tx, organization.Id.String())
 	})
 }
 
@@ -181,7 +183,7 @@ func (usecase OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context
 	orgId := usecase.enforceSecurity.OrgId()
 
 	org, err := usecase.organizationRepository.GetOrganizationById(ctx,
-		usecase.executorFactory.NewExecutor(), orgId)
+		usecase.executorFactory.NewExecutor(), orgId.String())
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +212,7 @@ func (usecase OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context
 	}
 
 	subnets, err = usecase.organizationRepository.UpdateOrganizationAllowedNetworks(ctx,
-		usecase.executorFactory.NewExecutor(), orgId, subnets)
+		usecase.executorFactory.NewExecutor(), orgId.String(), subnets)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not update whitelisted subnets")
 	}

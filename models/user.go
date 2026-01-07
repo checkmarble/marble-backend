@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type UserId string
 
@@ -8,7 +12,7 @@ type User struct {
 	UserId         UserId
 	Email          string
 	Role           Role
-	OrganizationId string
+	OrganizationId uuid.UUID
 	PartnerId      *string
 	FirstName      string
 	LastName       string
@@ -29,7 +33,7 @@ func (u User) FullName() string {
 type CreateUser struct {
 	Email          string
 	Role           Role
-	OrganizationId string
+	OrganizationId uuid.UUID
 	PartnerId      *string
 	FirstName      string
 	LastName       string

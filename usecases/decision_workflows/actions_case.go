@@ -91,7 +91,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			return models.WorkflowExecution{}, errors.Wrap(err, "error parsing case id")
 		}
 
-		hasAiCaseReviewEnabled, err := d.aiAgentUsecase.HasAiCaseReviewEnabled(ctx, newCase.OrganizationId)
+		hasAiCaseReviewEnabled, err := d.aiAgentUsecase.HasAiCaseReviewEnabled(ctx, newCase.OrganizationId.String())
 		if err != nil {
 			return models.WorkflowExecution{}, errors.Wrap(err,
 				"error checking if AI case review is enabled")
@@ -154,7 +154,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
-			OrganizationId: matchedCase.OrganizationId,
+			OrganizationId: matchedCase.OrganizationId.String(),
 			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(matchedCase),
 		})
 		if err != nil {
@@ -178,11 +178,12 @@ func automaticCreateCaseAttributes(
 	name string,
 	caseType models.CaseType,
 ) models.CreateCaseAttributes {
+	orgId, _ := uuid.Parse(scenario.OrganizationId)
 	return models.CreateCaseAttributes{
 		DecisionIds:    []string{decision.DecisionId.String()},
 		InboxId:        action.Params.InboxId,
 		Name:           name,
-		OrganizationId: scenario.OrganizationId,
+		OrganizationId: orgId,
 		Type:           caseType,
 	}
 }

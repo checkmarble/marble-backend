@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,11 +18,11 @@ func TestTimestampExtract_Evaluate(t *testing.T) {
 		orgRepo := new(mocks.OrganizationRepository)
 		execFac := &mocks.ExecutorFactory{}
 		transaction := &mocks.Transaction{}
-		orgId := "0193721e-88d9-7f67-9221-f7fbeb1a1e9e"
-		te := NewTimestampExtract(execFac, orgRepo, orgId)
+		orgId := uuid.MustParse("0193721e-88d9-7f67-9221-f7fbeb1a1e9e")
+		te := NewTimestampExtract(execFac, orgRepo, orgId.String())
 		execFac.On("NewExecutor").Once().Return(transaction)
 		ctx := context.Background()
-		orgRepo.On("GetOrganizationById", ctx, transaction, orgId).Return(models.Organization{
+		orgRepo.On("GetOrganizationById", ctx, transaction, orgId.String()).Return(models.Organization{
 			Id:                      orgId,
 			Name:                    "Name",
 			DefaultScenarioTimezone: utils.Ptr("UTC"),

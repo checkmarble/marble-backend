@@ -445,7 +445,7 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 		pure_utils.PtrValueOrDefault(uc.enforceSecurity.UserId(), ""),
 		models.CreateCaseAttributes{
 			ContinuousScreeningIds: []uuid.UUID{continuousScreeningWithMatches.Id},
-			OrganizationId:         config.OrgId.String(),
+			OrganizationId:         config.OrgId,
 			InboxId:                config.InboxId,
 			Name:                   caseName,
 			Type:                   models.CaseTypeContinuousScreening,
@@ -476,11 +476,7 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 		}
 		apiKeyId = &parsed
 	}
-	orgId, err := uuid.Parse(uc.enforceSecurity.OrgId())
-	if err != nil {
-		// Should never happen
-		return err
-	}
+	orgId := uc.enforceSecurity.OrgId()
 
 	// Check if the config exists and linked to the right organization
 	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, exec, input.ConfigStableId)
@@ -521,10 +517,7 @@ func (uc *ContinuousScreeningUsecase) ListMonitoredObjects(
 	filters models.ListMonitoredObjectsFilters,
 	pagination models.PaginationAndSorting,
 ) ([]models.ContinuousScreeningMonitoredObject, error) {
-	orgId, err := uuid.Parse(uc.enforceSecurity.OrgId())
-	if err != nil {
-		return nil, err
-	}
+	orgId := uc.enforceSecurity.OrgId()
 
 	// Since we fetch data from the client DB, we don't need to test the permission on
 	// all objects fetched from the client DB.

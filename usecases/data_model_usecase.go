@@ -608,7 +608,8 @@ func (usecase *usecase) ListPivots(ctx context.Context, organizationId string, t
 
 	pivots := make([]models.Pivot, 0, len(pivotsMeta))
 	for _, pivot := range pivotsMeta {
-		err = usecase.enforceSecurity.ReadOrganization(pivot.OrganizationId)
+		orgId, _ := uuid.Parse(pivot.OrganizationId)
+		err = usecase.enforceSecurity.ReadOrganization(orgId)
 		if err != nil {
 			return nil, err
 		}

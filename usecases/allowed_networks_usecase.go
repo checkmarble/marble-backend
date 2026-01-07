@@ -81,7 +81,7 @@ func (uc AllowedNetworksUsecase) Guard(use AllowedNetworksUse) gin.HandlerFunc {
 		// let the user configure the feature.
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), utils.ContextKeyClientIp, clientIp))
 
-		subnets, err := uc.repository.GetOrganizationAllowedNetworks(ctx, uc.executorFactory.NewExecutor(), creds.OrganizationId)
+		subnets, err := uc.repository.GetOrganizationAllowedNetworks(ctx, uc.executorFactory.NewExecutor(), creds.OrganizationId.String())
 
 		// TODO: here we might want to separate those two predicates, fail close
 		// on error but open on empty whitelist.

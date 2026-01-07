@@ -36,7 +36,7 @@ func (screeningRepositoryMock) GetOrganizationById(ctx context.Context,
 	exec repositories.Executor, organizationId string,
 ) (models.Organization, error) {
 	return models.Organization{
-		Id:   "orgid",
+		Id:   utils.TextToUUID("orgid"),
 		Name: "ACME Inc.",
 		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{
 			MatchThreshold: 42,

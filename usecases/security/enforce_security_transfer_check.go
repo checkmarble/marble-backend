@@ -4,31 +4,35 @@ import (
 	"context"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 func (e *EnforceSecurityImpl) CreateTransfer(ctx context.Context, organizationId string, partnerId string) error {
+	orgId, _ := uuid.Parse(organizationId)
 	return errors.Join(
 		e.Permission(models.TRANSFER_CREATE),
-		utils.EnforceOrganizationAccess(e.Credentials, organizationId),
+		utils.EnforceOrganizationAccess(e.Credentials, orgId),
 		utils.EnforcePartnerAccess(e.Credentials, partnerId),
 	)
 }
 
 func (e *EnforceSecurityImpl) ReadTransfer(ctx context.Context, transferMapping models.TransferMapping) error {
+	orgId, _ := uuid.Parse(transferMapping.OrganizationId)
 	return errors.Join(
 		e.Permission(models.TRANSFER_READ),
-		utils.EnforceOrganizationAccess(e.Credentials, transferMapping.OrganizationId),
+		utils.EnforceOrganizationAccess(e.Credentials, orgId),
 		utils.EnforcePartnerAccess(e.Credentials, transferMapping.PartnerId),
 	)
 }
 
 func (e *EnforceSecurityImpl) UpdateTransfer(ctx context.Context, transferMapping models.TransferMapping) error {
+	orgId, _ := uuid.Parse(transferMapping.OrganizationId)
 	return errors.Join(
 		e.Permission(models.TRANSFER_UPDATE),
-		utils.EnforceOrganizationAccess(e.Credentials, transferMapping.OrganizationId),
+		utils.EnforceOrganizationAccess(e.Credentials, orgId),
 		utils.EnforcePartnerAccess(e.Credentials, transferMapping.PartnerId),
 	)
 }
@@ -56,10 +60,11 @@ func (e *EnforceSecurityImpl) ReadTransferAlert(
 		err = errors.Newf("invalid access type %s", senderOrBeneficiary)
 	}
 
+	orgId, _ := uuid.Parse(transferAlert.OrganizationId)
 	return errors.Join(
 		err,
 		e.Permission(models.TRANSFER_ALERT_READ),
-		utils.EnforceOrganizationAccess(e.Credentials, transferAlert.OrganizationId),
+		utils.EnforceOrganizationAccess(e.Credentials, orgId),
 	)
 }
 
@@ -79,17 +84,19 @@ func (e *EnforceSecurityImpl) UpdateTransferAlert(
 		err = errors.Newf("invalid access type %s", senderOrBeneficiary)
 	}
 
+	orgId, _ := uuid.Parse(transferAlert.OrganizationId)
 	return errors.Join(
 		err,
 		e.Permission(models.TRANSFER_ALERT_UPDATE),
-		utils.EnforceOrganizationAccess(e.Credentials, transferAlert.OrganizationId),
+		utils.EnforceOrganizationAccess(e.Credentials, orgId),
 	)
 }
 
 func (e *EnforceSecurityImpl) CreateTransferAlert(ctx context.Context, organizationId string, partnerId string) error {
+	orgId, _ := uuid.Parse(organizationId)
 	return errors.Join(
 		e.Permission(models.TRANSFER_ALERT_CREATE),
-		utils.EnforceOrganizationAccess(e.Credentials, organizationId),
+		utils.EnforceOrganizationAccess(e.Credentials, orgId),
 		utils.EnforcePartnerAccess(e.Credentials, partnerId),
 	)
 }

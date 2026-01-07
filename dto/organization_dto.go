@@ -22,7 +22,7 @@ type APIOrganization struct {
 
 func AdaptOrganizationDto(org models.Organization) APIOrganization {
 	return APIOrganization{
-		Id:                      org.Id,
+		Id:                      org.Id.String(),
 		Name:                    org.Name,
 		DefaultScenarioTimezone: org.DefaultScenarioTimezone,
 		SanctionsThreshold:      org.OpenSanctionsConfig.MatchThreshold,

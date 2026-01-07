@@ -3,6 +3,7 @@ package security
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type EnforceSecurityPhantomDecision interface {
@@ -16,8 +17,9 @@ type EnforceSecurityPhantomDecisionImpl struct {
 }
 
 func (e *EnforceSecurityPhantomDecisionImpl) CreatePhantomDecision(organizationId string) error {
+	orgId, _ := uuid.Parse(organizationId)
 	return errors.Join(
 		e.Permission(models.PHANTOM_DECISION_CREATE),
-		e.ReadOrganization(organizationId),
+		e.ReadOrganization(orgId),
 	)
 }

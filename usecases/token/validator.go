@@ -29,7 +29,7 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 		return models.Credentials{}, fmt.Errorf("getter.GetApiKeyByHash error: %w", err)
 	}
 
-	organization, err := v.getter.GetOrganizationByID(ctx, apiKey.OrganizationId)
+	organization, err := v.getter.GetOrganizationByID(ctx, apiKey.OrganizationId.String())
 	if err != nil {
 		return models.Credentials{}, fmt.Errorf("getter.GetOrganizationByID error: %w", err)
 	}

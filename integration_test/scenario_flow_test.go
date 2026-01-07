@@ -51,35 +51,37 @@ func TestScenarioEndToEnd(t *testing.T) {
 	// Setup an organization and user credentials
 	userCreds, dataModel, inboxId := setupOrgAndCreds(ctx, t, "test org with api usage")
 	organizationId := userCreds.OrganizationId
+	organizationIdString := organizationId.String()
 
 	// Now that we have a user and credentials, create a container for usecases with these credentials
 	usecasesWithCreds := generateUsecaseWithCreds(testUsecases, userCreds)
 
 	rules := getRulesForFullApiTest()
 	// Scenario setup
-	scenarioId, _ := setupScenarioAndPublish(ctx, t, usecasesWithCreds, organizationId, inboxId, rules)
+	scenarioId, _ := setupScenarioAndPublish(ctx, t, usecasesWithCreds, organizationIdString, inboxId, rules)
 
 	rivertest.RequireManyInserted(ctx, t, riverClient.Driver(), []rivertest.ExpectedJob{
-		{Args: &models.IndexCreationArgs{}, Opts: &rivertest.RequireInsertedOpts{Queue: organizationId}},
-		{Args: &models.IndexCreationStatusArgs{}, Opts: &rivertest.RequireInsertedOpts{Queue: organizationId}},
+		{Args: &models.IndexCreationArgs{}, Opts: &rivertest.RequireInsertedOpts{Queue: organizationIdString}},
+		{Args: &models.IndexCreationStatusArgs{}, Opts: &rivertest.RequireInsertedOpts{Queue: organizationIdString}},
 	})
 
-	apiCreds := setupApiCreds(ctx, t, usecasesWithCreds, organizationId)
+	apiCreds := setupApiCreds(ctx, t, usecasesWithCreds, organizationIdString)
 	usecasesWithApiCreds := generateUsecaseWithCreds(testUsecases, apiCreds)
 
 	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be declined, one to be approved
-	ingestAccounts(ctx, t, usecasesWithApiCreds, "accounts", organizationId)
+	ingestAccounts(ctx, t, usecasesWithApiCreds, "accounts", organizationIdString)
 
 	// Create a pair of decision and check that the outcome matches the expectation
 	createDecisions(ctx, t, usecasesWithApiCreds, usecasesWithCreds,
-		dataModel.Tables["transactions"], organizationId, scenarioId)
+		dataModel.Tables["transactions"], organizationIdString, scenarioId)
 }
 
 func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) models.Credentials {
 	// Create an API Key for this org
 	apiKeyUsecase := usecasesWithCreds.NewApiKeyUseCase()
+	orgIdUUID := uuid.MustParse(organizationId)
 	apiKey, err := apiKeyUsecase.CreateApiKey(ctx, models.CreateApiKeyInput{
-		OrganizationId: organizationId,
+		OrganizationId: orgIdUUID,
 		Description:    "Test API key",
 		Role:           models.API_CLIENT,
 	})
@@ -115,11 +117,12 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 	testAdminUsecase = generateUsecaseWithCredForMarbleAdmin(testUsecases)
 
 	// add the river worker queue for this organization. It's used to run the asynchronous decisions for batch mode.
-	err = riverClient.Queues().Add(organizationId, river.QueueConfig{MaxWorkers: 3})
+	organizationIdString := organizationId.String()
+	err = riverClient.Queues().Add(organizationIdString, river.QueueConfig{MaxWorkers: 3})
 	assert.NoError(t, err)
 
 	// Check that there are no users on the organization yet
-	users, err := userUsecase.ListUsers(ctx, &organizationId)
+	users, err := userUsecase.ListUsers(ctx, &organizationIdString)
 	if err != nil {
 		assert.FailNow(t, "Could not get users of organization", err)
 	}
@@ -148,7 +151,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 	usecases := generateUsecaseWithCreds(testUsecases, creds)
 
 	// Create a data model for the organization
-	dataModel, inboxId := createDataModelAndSetupCaseManager(ctx, t, usecases, organizationId)
+	dataModel, inboxId := createDataModelAndSetupCaseManager(ctx, t, usecases, organizationIdString)
 	fmt.Println("Created data model")
 
 	return creds, dataModel, inboxId

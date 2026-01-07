@@ -29,8 +29,9 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 	}
 
 	var organizationId *string
-	if len(createUser.OrganizationId) != 0 {
-		organizationId = &createUser.OrganizationId
+	if createUser.OrganizationId != uuid.Nil {
+		orgIdStr := createUser.OrganizationId.String()
+		organizationId = &orgIdStr
 	}
 
 	err := ExecBuilder(

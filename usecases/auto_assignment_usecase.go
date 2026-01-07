@@ -69,7 +69,7 @@ func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId strin
 
 	for _, c := range cases {
 		// Look for the user with the least number of assigned cases, who has access to the case's inbox
-		user, err := uc.repository.FindNextAutoAssignableUserForInbox(ctx, uc.executorFactory.NewExecutor(), c.OrganizationId, c.InboxId, org.AutoAssignQueueLimit)
+		user, err := uc.repository.FindNextAutoAssignableUserForInbox(ctx, uc.executorFactory.NewExecutor(), c.OrganizationId.String(), c.InboxId, org.AutoAssignQueueLimit)
 		if err != nil {
 			return err
 		}
@@ -98,7 +98,7 @@ func (uc AutoAssignmentUsecase) assignCase(ctx context.Context, c models.Case, u
 		}
 
 		if err := uc.caseRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-			OrgId:     uuid.MustParse(c.OrganizationId),
+			OrgId:     c.OrganizationId,
 			CaseId:    c.Id,
 			UserId:    nil,
 			EventType: models.CaseAssigned,

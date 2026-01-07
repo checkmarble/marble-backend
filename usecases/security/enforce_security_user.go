@@ -2,6 +2,7 @@ package security
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 
 	"github.com/cockroachdb/errors"
 )
@@ -130,8 +131,9 @@ func (e *EnforceSecurityUserImpl) ListUsers(organizationId *string) error {
 		return errors.Wrap(models.ForbiddenError, "non-admin cannot list users without organization_id")
 	}
 
+	orgId, _ := uuid.Parse(*organizationId)
 	return errors.Join(
 		e.Permission(models.MARBLE_USER_LIST),
-		e.ReadOrganization(*organizationId),
+		e.ReadOrganization(orgId),
 	)
 }

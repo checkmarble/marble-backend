@@ -27,7 +27,7 @@ type InboxUsecaseTestSuite struct {
 	credentials        models.Credentials
 	adminCredentials   models.Credentials
 
-	organizationId       string
+	organizationId       uuid.UUID
 	inboxId              string
 	parsedInboxId        uuid.UUID
 	inbox                models.Inbox
@@ -49,7 +49,7 @@ func (suite *InboxUsecaseTestSuite) SetupTest() {
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.executorFactory = new(mocks.ExecutorFactory)
 
-	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
+	suite.organizationId = uuid.MustParse("25ab6323-1657-4a52-923a-ef6983fe4532")
 	suite.inboxId = "0ae6fda7-f7b3-4218-9fc3-4efa329432a7"
 	var err error
 	suite.parsedInboxId, err = uuid.Parse(suite.inboxId)
@@ -69,7 +69,7 @@ func (suite *InboxUsecaseTestSuite) SetupTest() {
 	}
 	suite.inbox = models.Inbox{
 		Id:             suite.parsedInboxId, // Use parsed UUID
-		OrganizationId: suite.organizationId,
+		OrganizationId: suite.organizationId.String(),
 		Name:           "test inbox",
 	}
 	suite.credentials = models.Credentials{
@@ -139,9 +139,9 @@ func (suite *InboxUsecaseTestSuite) AssertExpectations() {
 }
 
 func (suite *InboxUsecaseTestSuite) Test_CreateInbox_nominal() {
-	input := models.CreateInboxInput{Name: "test inbox", OrganizationId: suite.organizationId}
+	input := models.CreateInboxInput{Name: "test inbox", OrganizationId: suite.organizationId.String()}
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
-	suite.enforceSecurity.On("CreateInbox", suite.organizationId).Return(nil)
+	suite.enforceSecurity.On("CreateInbox", suite.organizationId.String()).Return(nil)
 	suite.inboxRepository.On("CreateInbox", suite.ctx, suite.transaction, input,
 		mock.AnythingOfType("uuid.UUID")).Return(nil)
 	suite.inboxRepository.On("GetInboxById", suite.ctx, suite.transaction,
@@ -157,9 +157,9 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInbox_nominal() {
 }
 
 func (suite *InboxUsecaseTestSuite) Test_CreateInbox_security_error() {
-	input := models.CreateInboxInput{Name: "test inbox", OrganizationId: suite.organizationId}
+	input := models.CreateInboxInput{Name: "test inbox", OrganizationId: suite.organizationId.String()}
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
-	suite.enforceSecurity.On("CreateInbox", suite.organizationId).Return(suite.securityError)
+	suite.enforceSecurity.On("CreateInbox", suite.organizationId.String()).Return(suite.securityError)
 
 	_, err := suite.makeUsecase().CreateInbox(suite.ctx, input)
 
@@ -170,9 +170,9 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInbox_security_error() {
 }
 
 func (suite *InboxUsecaseTestSuite) Test_CreateInbox_repository_error() {
-	input := models.CreateInboxInput{Name: "test inbox", OrganizationId: suite.organizationId}
+	input := models.CreateInboxInput{Name: "test inbox", OrganizationId: suite.organizationId.String()}
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
-	suite.enforceSecurity.On("CreateInbox", suite.organizationId).Return(nil)
+	suite.enforceSecurity.On("CreateInbox", suite.organizationId.String()).Return(nil)
 	suite.inboxRepository.On("CreateInbox", suite.ctx, suite.transaction, input,
 		mock.AnythingOfType("uuid.UUID")).Return(suite.repositoryError)
 
@@ -269,7 +269,7 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInboxUser_nominal_non_admin() {
 		OrganizationId: suite.organizationId,
 		UserId:         models.UserId(suite.nonAdminUserId),
 	}
-	targetInbox := models.Inbox{OrganizationId: suite.organizationId, Id: suite.parsedInboxId}
+	targetInbox := models.Inbox{OrganizationId: suite.organizationId.String(), Id: suite.parsedInboxId}
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateInboxUser", input,
 		mock.AnythingOfType("[]models.InboxUser"), targetInbox, targetUser).Return(nil)

@@ -111,7 +111,7 @@ func (v MarbleVerifier) Verify(ctx context.Context, creds Credentials) (models.I
 			return nil, nil, fmt.Errorf("getter.GetApiKeyByHash error: %w", err)
 		}
 
-		organization, err := v.repository.GetOrganizationByID(ctx, apiKey.OrganizationId)
+		organization, err := v.repository.GetOrganizationByID(ctx, apiKey.OrganizationId.String())
 		if err != nil {
 			return nil, nil, fmt.Errorf("getter.GetOrganizationByID error: %w", err)
 		}

@@ -5,10 +5,12 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 func (uc *AiAgentUsecase) GetAiSetting(ctx context.Context, orgId string) (models.AiSetting, error) {
-	if err := uc.enforceSecurityOrganization.ReadOrganization(orgId); err != nil {
+	orgIdUUID, _ := uuid.Parse(orgId)
+	if err := uc.enforceSecurityOrganization.ReadOrganization(orgIdUUID); err != nil {
 		return models.AiSetting{}, errors.Wrap(err,
 			"don't have permission to see organization setting")
 	}

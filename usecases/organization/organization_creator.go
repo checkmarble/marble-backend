@@ -30,7 +30,7 @@ func (creator *OrganizationCreator) CreateOrganization(ctx context.Context, name
 		return models.Organization{}, err
 	}
 
-	if err = creator.seedDefaultList(ctx, organization.Id); err != nil {
+	if err = creator.seedDefaultList(ctx, organization.Id.String()); err != nil {
 		return models.Organization{}, err
 	}
 

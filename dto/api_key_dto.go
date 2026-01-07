@@ -20,7 +20,7 @@ func AdaptApiKeyDto(apiKey models.ApiKey) ApiKey {
 		Id:             apiKey.Id,
 		CreatedAt:      apiKey.CreatedAt,
 		Description:    apiKey.Description,
-		OrganizationId: apiKey.OrganizationId,
+		OrganizationId: apiKey.OrganizationId.String(),
 		Prefix:         apiKey.Prefix,
 		Role:           apiKey.Role.String(),
 	}

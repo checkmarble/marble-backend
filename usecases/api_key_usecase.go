@@ -24,7 +24,7 @@ type ApiKeyRepository interface {
 
 type EnforceSecurityApiKey interface {
 	ReadApiKey(apiKey models.ApiKey) error
-	CreateApiKey(organizationId string) error
+	CreateApiKey(organizationId uuid.UUID) error
 	DeleteApiKey(apiKey models.ApiKey) error
 }
 

@@ -24,7 +24,8 @@ func ipWhitelistTestHarness(t *testing.T, use AllowedNetworksUse, cidrs []string
 
 	gin.SetMode(gin.ReleaseMode)
 
-	creds := models.Credentials{OrganizationId: "orgid"}
+	creds := models.Credentials{OrganizationId: utils.TextToUUID("orgid")}
+	orgIdString := creds.OrganizationId.String()
 
 	subnets := make([]net.IPNet, 0)
 
@@ -37,10 +38,10 @@ func ipWhitelistTestHarness(t *testing.T, use AllowedNetworksUse, cidrs []string
 	repo := new(mocks.OrganizationRepository)
 
 	if cidrs != nil {
-		repo.On("GetOrganizationAllowedNetworks", mock.Anything, mock.Anything, "orgid").
+		repo.On("GetOrganizationAllowedNetworks", mock.Anything, mock.Anything, orgIdString).
 			Return(subnets, nil)
 	} else {
-		repo.On("GetOrganizationAllowedNetworks", mock.Anything, mock.Anything, "orgid").
+		repo.On("GetOrganizationAllowedNetworks", mock.Anything, mock.Anything, orgIdString).
 			Return(nil, errors.New("could not retrieve whitelist"))
 	}
 

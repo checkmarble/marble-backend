@@ -62,7 +62,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	switch creds.Type {
 	case CredentialsBearer:
 		if credentials.Role != models.MARBLE_ADMIN {
-			organization, err := g.repository.GetOrganizationByID(ctx, credentials.OrganizationId)
+			organization, err := g.repository.GetOrganizationByID(ctx, credentials.OrganizationId.String())
 			if err != nil {
 				return Token{}, fmt.Errorf("GetOrganizationByID error: %w", err)
 			}
@@ -71,7 +71,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 				"email": credentials.ActorIdentity.Email,
 			})
 			tracking.Group(ctx, credentials.ActorIdentity.UserId,
-				credentials.OrganizationId, map[string]any{
+				credentials.OrganizationId.String(), map[string]any{
 					"name": organization.Name,
 				})
 			tracking.TrackEventWithUserId(ctx, models.AnalyticsTokenCreated,

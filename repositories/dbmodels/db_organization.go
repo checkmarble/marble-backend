@@ -27,8 +27,13 @@ const TABLE_ORGANIZATION = "organizations"
 var ColumnsSelectOrganization = utils.ColumnList[DBOrganizationResult]()
 
 func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
+	orgId, err := uuid.Parse(db.Id)
+	if err != nil {
+		return models.Organization{}, err
+	}
+
 	return models.Organization{
-		Id:                      db.Id,
+		Id:                      orgId,
 		PublicId:                db.PublicId,
 		Name:                    db.Name,
 		WhitelistedSubnets:      db.AllowedNetworks,

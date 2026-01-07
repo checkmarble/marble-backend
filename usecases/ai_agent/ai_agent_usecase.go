@@ -458,7 +458,7 @@ func (uc *AiAgentUsecase) getCaseWithPermissions(ctx context.Context, caseId str
 		return models.Case{}, err
 	}
 
-	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, c.OrganizationId, false)
+	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, c.OrganizationId.String(), false)
 	if err != nil {
 		return models.Case{},
 			errors.Wrap(err, "failed to list available inboxes in AiAgentUsecase")

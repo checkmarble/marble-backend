@@ -3,6 +3,7 @@ package dto
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 )
 
 type Identity struct {
@@ -38,7 +39,7 @@ func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
 			LastName:   creds.ActorIdentity.LastName,
 			ApiKeyName: creds.ActorIdentity.ApiKeyName,
 		},
-		OrganizationId: creds.OrganizationId,
+		OrganizationId: creds.OrganizationId.String(),
 		PartnerId:      creds.PartnerId,
 		Permissions:    permissions,
 		Role:           creds.Role.String(),
@@ -46,6 +47,7 @@ func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
 }
 
 func AdaptCredential(dto Credentials) models.Credentials {
+	orgId, _ := uuid.Parse(dto.OrganizationId) // Ignore error, will be uuid.Nil if invalid
 	return models.Credentials{
 		ActorIdentity: models.Identity{
 			UserId:     models.UserId(dto.ActorIdentity.UserId),
@@ -54,7 +56,7 @@ func AdaptCredential(dto Credentials) models.Credentials {
 			LastName:   dto.ActorIdentity.LastName,
 			ApiKeyName: dto.ActorIdentity.ApiKeyName,
 		},
-		OrganizationId: dto.OrganizationId,
+		OrganizationId: orgId,
 		PartnerId:      dto.PartnerId,
 		Role:           models.RoleFromString(dto.Role),
 	}

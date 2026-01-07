@@ -136,12 +136,12 @@ func createTestCaseReviewData() (models.CaseReviewArgs, models.Case, models.Orga
 
 	testCase := models.Case{
 		Id:             caseId.String(),
-		OrganizationId: "test-org-id",
+		OrganizationId: utils.TextToUUID("test-org-id"),
 		Type:           models.CaseTypeDecision,
 	}
 
 	org := models.Organization{
-		Id:                  "test-org-id",
+		Id:                  utils.TextToUUID("test-org-id"),
 		AiCaseReviewEnabled: true,
 	}
 
@@ -285,7 +285,7 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_Success() {
 		Return(expectedDto, nil)
 
 	// Mock HasAiCaseReviewEnabled to return true
-	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id).
+	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id.String()).
 		Return(true, nil)
 
 	// Mock blob storage for final result
@@ -354,7 +354,7 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_CreateCaseReviewSyncError() {
 		mock.AnythingOfType("*ai_agent.CaseReviewContext")).
 		Return(nil, errors.New("AI service unavailable"))
 
-	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id).
+	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id.String()).
 		Return(true, nil)
 
 	// Mock blob storage for context save (during error handling)
@@ -404,7 +404,7 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_OrganizationNotEnabled() {
 	suite.workerRepo.On("GetCaseById", mock.Anything, suite.exec, args.CaseId.String()).
 		Return(testCase, nil)
 
-	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id).
+	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id.String()).
 		Return(false, nil)
 
 	// Call the method under test
@@ -477,7 +477,7 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_BlobStreamError() {
 		mock.AnythingOfType("*ai_agent.CaseReviewContext")).
 		Return(expectedDto, nil)
 
-	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id).
+	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id.String()).
 		Return(true, nil)
 
 	// Mock blob storage failure for final result
@@ -525,7 +525,7 @@ func (suite *CaseReviewWorkerTestSuite) TestWork_InsufficientFunds() {
 	suite.blobRepo.On("GetBlob", mock.Anything, "test-bucket-url",
 		aiCaseReview.FileTempReference, mock.Anything).
 		Return(models.Blob{}, errors.New("file not found"))
-	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id).
+	suite.caseReviewUsecase.On("HasAiCaseReviewEnabled", mock.Anything, org.Id.String()).
 		Return(true, nil)
 	// Mock CreateCaseReviewSync to return ErrInsufficientFunds
 	suite.caseReviewUsecase.On("CreateCaseReviewSync", mock.Anything, args.CaseId.String(),
