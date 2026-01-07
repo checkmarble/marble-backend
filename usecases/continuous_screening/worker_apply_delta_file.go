@@ -76,6 +76,12 @@ type applyDeltaFileWorkerRepository interface {
 		orgId string,
 		counterpartyId, entityId *string,
 	) ([]models.ScreeningWhitelist, error)
+
+	InsertContinuousScreening(
+		ctx context.Context,
+		exec repositories.Executor,
+		input models.CreateContinuousScreening,
+	) (models.ContinuousScreeningWithMatches, error)
 }
 
 type applyDeltaFileWorkerScreeningProvider interface {
@@ -85,30 +91,45 @@ type applyDeltaFileWorkerScreeningProvider interface {
 	) (models.ScreeningRawSearchResponseWithMatches, error)
 }
 
+type applyDeltaFileWorkerUsecase interface {
+	HandleCaseCreation(
+		ctx context.Context,
+		tx repositories.Transaction,
+		config models.ContinuousScreeningConfig,
+		objectId string,
+		continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
+	) (models.Case, error)
+}
+
 type ApplyDeltaFileWorker struct {
 	river.WorkerDefaults[models.ContinuousScreeningApplyDeltaFileArgs]
 
-	executorFactory   executor_factory.ExecutorFactory
-	repository        applyDeltaFileWorkerRepository
-	blobRepository    repositories.BlobRepository
-	screeningProvider applyDeltaFileWorkerScreeningProvider
-
-	bucketUrl string
+	executorFactory    executor_factory.ExecutorFactory
+	transactionFactory executor_factory.TransactionFactory
+	repository         applyDeltaFileWorkerRepository
+	blobRepository     repositories.BlobRepository
+	screeningProvider  applyDeltaFileWorkerScreeningProvider
+	usecase            applyDeltaFileWorkerUsecase
+	bucketUrl          string
 }
 
 func NewApplyDeltaFileWorker(
 	executorFactory executor_factory.ExecutorFactory,
+	transactionFactory executor_factory.TransactionFactory,
 	repository applyDeltaFileWorkerRepository,
 	blobRepository repositories.BlobRepository,
 	screeningProvider applyDeltaFileWorkerScreeningProvider,
 	bucketUrl string,
+	usecase applyDeltaFileWorkerUsecase,
 ) *ApplyDeltaFileWorker {
 	return &ApplyDeltaFileWorker{
-		executorFactory:   executorFactory,
-		repository:        repository,
-		blobRepository:    blobRepository,
-		screeningProvider: screeningProvider,
-		bucketUrl:         bucketUrl,
+		executorFactory:    executorFactory,
+		transactionFactory: transactionFactory,
+		repository:         repository,
+		blobRepository:     blobRepository,
+		screeningProvider:  screeningProvider,
+		bucketUrl:          bucketUrl,
+		usecase:            usecase,
 	}
 }
 
@@ -203,6 +224,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 
 		record := httpmodels.AdaptOpenSanctionDeltaFileRecordToModel(recordHttp)
 		iteration++
+		logger.DebugContext(ctx, "Entity to process", "entity", record.Entity)
 
 		if !slices.Contains(AllowedRecordOperations, record.Op) {
 			logger.DebugContext(ctx, "Skipping record because op is not allowed", "op", record.Op)
@@ -227,11 +249,53 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		if err != nil {
 			return err
 		}
-		_, err = w.screeningProvider.Search(ctx, query)
+		logger.DebugContext(ctx, "Query to search", "query", query)
+		screeningResponse, err := w.screeningProvider.Search(ctx, query)
 		if err != nil {
-			// NOTE: The search will always return an error because org dataset is not created
-			// Remove this logic and handle the error
-			logger.DebugContext(ctx, "Failed to search screening", "error", err)
+			return err
+		}
+
+		screening := screeningResponse.AdaptScreeningFromSearchResponse(query)
+
+		// No hit, skip the record
+		if screening.Status == models.ScreeningStatusNoHit {
+			continue
+		}
+
+		err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			entityPayload, err := json.Marshal(record.Entity)
+			if err != nil {
+				return err
+			}
+			continuousScreeningWithMatches, err := w.repository.InsertContinuousScreening(
+				ctx,
+				tx,
+				models.CreateContinuousScreening{
+					Screening:                 screening,
+					Config:                    updateJob.Config,
+					OpenSanctionEntityId:      record.Entity.Id,
+					OpenSanctionEntityPayload: entityPayload,
+					TriggerType:               models.ContinuousScreeningTriggerTypeDatasetUpdated,
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			_, err = w.usecase.HandleCaseCreation(
+				ctx,
+				tx,
+				updateJob.Config,
+				record.Entity.Caption, // The case title will be the entity caption
+				continuousScreeningWithMatches,
+			)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
 		}
 	}
 

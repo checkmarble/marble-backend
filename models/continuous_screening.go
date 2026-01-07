@@ -65,6 +65,8 @@ type ContinuousScreening struct {
 	ObjectType                        string
 	ObjectId                          string
 	ObjectInternalId                  uuid.UUID
+	OpenSanctionEntityId              string
+	OpenSanctionEntityPayload         json.RawMessage
 	Status                            ScreeningStatus
 	TriggerType                       ContinuousScreeningTriggerType
 	SearchInput                       json.RawMessage
@@ -82,6 +84,17 @@ type UpdateContinuousScreeningInput struct {
 	CaseId          *uuid.UUID
 }
 
+type CreateContinuousScreening struct {
+	Screening                 ScreeningWithMatches
+	Config                    ContinuousScreeningConfig
+	ObjectType                string
+	ObjectId                  string
+	ObjectInternalId          uuid.UUID
+	OpenSanctionEntityId      string
+	OpenSanctionEntityPayload json.RawMessage
+	TriggerType               ContinuousScreeningTriggerType
+}
+
 type ContinuousScreeningMatch struct {
 	Id                    uuid.UUID
 	ContinuousScreeningId uuid.UUID
@@ -89,6 +102,8 @@ type ContinuousScreeningMatch struct {
 	Status                ScreeningMatchStatus
 	Payload               json.RawMessage
 	ReviewedBy            *uuid.UUID
+	ObjectType            string
+	ObjectId              string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
