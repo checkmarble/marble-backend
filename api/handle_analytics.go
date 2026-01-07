@@ -2,7 +2,6 @@ package api
 
 import (
 	"cmp"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -76,7 +75,6 @@ func handleAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 			results, err = uc.DecisionOutcomePerDay(c.Request.Context(), filters)
 		case "decisions_score_distribution":
 			results, err = uc.DecisionsScoreDistribution(c.Request.Context(), filters)
-			fmt.Println("OK")
 		case "rule_hit_table":
 			results, err = uc.RuleHitTable(c.Request.Context(), filters)
 		case "rule_vs_decision_outcome":
