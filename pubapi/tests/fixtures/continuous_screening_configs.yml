@@ -1,7 +1,7 @@
 # Continuous screening config linked to ACME organization and account table
 - id: 11111111-1111-1111-1111-111111111111
   stable_id: 11111111-1111-1111-1111-111111111111
-  org_id: 00000000-0000-0000-0000-000000000000
+  org_id: 10000000-0000-0000-0000-000000000000
   inbox_id: 11111111-1111-1111-1111-111111111111
   name: Account Screening
   description: Continuous screening configuration for account table

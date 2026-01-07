@@ -1,6 +1,6 @@
 # Data model table for account - used for continuous screening tests
 - id: 11111111-1111-1111-1111-111111111111
-  organization_id: 00000000-0000-0000-0000-000000000000
+  organization_id: 10000000-0000-0000-0000-000000000000
   name: account
   description: client account table
   ftm_entity: Person
