@@ -25,7 +25,7 @@ type IngestionRepository interface {
 type IngestionRepositoryImpl struct{}
 
 // Ingest objects and return:
-//   - List of object_id of inserted objects
+//   - Map of object_id to internal_id for the inserted objects
 //   - Error if any
 func (repo *IngestionRepositoryImpl) IngestObjects(
 	ctx context.Context,

@@ -843,6 +843,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningDoScreeningWorker() *co
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.ClientDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
 		usecases.NewContinuousScreeningUsecase(),
 	)
 }
