@@ -218,7 +218,6 @@ func QueuesFromOrgs(
 	}
 
 	queues = make(map[string]river.QueueConfig, len(orgs))
-	periodics = make([]*river.PeriodicJob, 0, len(orgs)*6) // 6 = maximum number of periodics per org, see: listOrgPeriodics function
 
 	for _, org := range orgs {
 		periodics = append(periodics, listOrgPeriodics(org, offloadingConfig, analyticsConfig)...)

@@ -17,4 +17,5 @@ type TransactionFactory interface {
 type ExecutorFactory interface {
 	NewClientDbExecutor(ctx context.Context, organizationId string) (repositories.Executor, error)
 	NewExecutor() repositories.Executor
+	NewPinnedExecutor(ctx context.Context) (repositories.Executor, func(), error)
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -147,14 +148,51 @@ func (w *CreateFullDatasetWorker) Timeout(job *river.Job[models.ContinuousScreen
 func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	job *river.Job[models.ContinuousScreeningCreateFullDatasetArgs],
 ) error {
-	exec := w.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Creating full dataset", "job", job)
+
+	// TODO: For now the interval is hardcoded to 24 hours, but we should make it configurable per org.
+	// TODO: fetch the interval from the org config
+	if err := scheduled_execution.AddStrideDelay(job, 24*time.Hour); err != nil {
+		return err
+	}
 
 	orgId, err := uuid.Parse(job.Args.OrgId)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse org id")
 	}
+
+	// Use a pinned connection to ensure the advisory lock is tied to this session
+	exec, release, err := w.executorFactory.NewPinnedExecutor(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to get pinned executor")
+	}
+	defer release()
+
+	// Set a timeout for the session in case the worker hangs or is killed
+	// This ensures Postgres will eventually release the lock even if the connection isn't closed properly
+	timeout := w.Timeout(job)
+	_, err = exec.Exec(ctx, fmt.Sprintf("SET idle_session_timeout = '%dms'", timeout.Milliseconds()))
+	if err != nil {
+		return errors.Wrap(err, "failed to set idle_session_timeout")
+	}
+
+	// Acquire an advisory lock to prevent concurrent jobs for the same org
+	lockKey := fmt.Sprintf("create-full-dataset-%s", orgId.String())
+	unlock, acquired, err := repositories.GetTryAdvisoryLock(ctx, exec, lockKey)
+	if err != nil {
+		return errors.Wrap(err, "failed to acquire advisory lock")
+	}
+	if !acquired {
+		logger.DebugContext(ctx, "Another job is already creating full dataset for this org, skipping",
+			"orgId", orgId)
+		return nil
+	}
+	defer func() {
+		if err := unlock(); err != nil {
+			logger.ErrorContext(ctx, "failed to release advisory lock", "error", err)
+		}
+	}()
 
 	// Check if the org has a continuous screening config
 	configs, err := w.repo.GetContinuousScreeningConfigsByOrgId(ctx, exec, orgId.String())
@@ -237,6 +275,8 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 	}
 	defer blobWriter.Close()
 
+	fullDatasetEncoder := json.NewEncoder(blobWriter)
+
 	for !trackBatch.exhausted {
 		for trackBatch.currentIndex < len(trackBatch.tracks) {
 			currentTrack := trackBatch.tracks[trackBatch.currentIndex]
@@ -252,7 +292,7 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 				return errors.Wrap(err, "failed to get dataset entity from track")
 			}
 
-			if err := writeDatasetEntity(blobWriter, entity); err != nil {
+			if err := writeDatasetEntity(fullDatasetEncoder, entity); err != nil {
 				return errors.Wrap(err, "failed to write dataset entity to blob")
 			}
 			trackBatch.currentIndex++
@@ -350,6 +390,8 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 	}
 	defer newBlobWriter.Close()
 
+	fullDatasetEncoder := json.NewEncoder(newBlobWriter)
+
 	// Delta dataset file
 	deltaBlobWriter, err := w.blobRepository.OpenStreamWithOptions(ctx, w.bucketUrl, deltaDatasetFileName,
 		&blob.WriterOptions{
@@ -359,6 +401,8 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 		return errors.Wrap(err, "failed to open stream for delta dataset")
 	}
 	defer deltaBlobWriter.Close()
+
+	deltaDatasetEncoder := json.NewEncoder(deltaBlobWriter)
 
 	// Read and merge old file with tracks using JSON decoder
 	decoder := json.NewDecoder(previousBlob.ReadCloser)
@@ -391,11 +435,11 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 					return errors.Wrap(err, "failed to get dataset entity from track")
 				}
 
-				if err := writeDatasetEntity(newBlobWriter, entity); err != nil {
+				if err := writeDatasetEntity(fullDatasetEncoder, entity); err != nil {
 					return errors.Wrap(err, "failed to write new entity from track")
 				}
 				// Write ADD to delta file
-				if err := writeDeltaEntry(deltaBlobWriter, DeltaOperationAdd, entity); err != nil {
+				if err := writeDeltaEntry(deltaDatasetEncoder, DeltaOperationAdd, entity); err != nil {
 					return errors.Wrap(err, "failed to write ADD delta entry")
 				}
 			}
@@ -418,7 +462,7 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 				case models.DeltaTrackOperationDelete:
 					// Skip writing this entity (delete it)
 					// Write DEL to delta file
-					if err := writeDeltaDelete(deltaBlobWriter, currentTrack.EntityId); err != nil {
+					if err := writeDeltaDelete(deltaDatasetEncoder, currentTrack.EntityId); err != nil {
 						return errors.Wrap(err, "failed to write DEL delta entry")
 					}
 				case models.DeltaTrackOperationUpdate, models.DeltaTrackOperationAdd:
@@ -429,11 +473,11 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 					}
 
 					// Write updated entity from track
-					if err := writeDatasetEntity(newBlobWriter, entity); err != nil {
+					if err := writeDatasetEntity(fullDatasetEncoder, entity); err != nil {
 						return errors.Wrap(err, "failed to write updated entity from track")
 					}
 					// Write MOD to delta file (entity existed in old dataset)
-					if err := writeDeltaEntry(deltaBlobWriter,
+					if err := writeDeltaEntry(deltaDatasetEncoder,
 						DeltaOperationMod, entity); err != nil {
 						return errors.Wrap(err, "failed to write MOD delta entry")
 					}
@@ -452,12 +496,8 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 		}
 
 		// Old entity not affected, re-encode and write
-		entityJson, err := json.Marshal(oldEntity)
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal old entity")
-		}
-		if _, err := newBlobWriter.Write(append(entityJson, '\n')); err != nil {
-			return errors.Wrap(err, "failed to write old entity to new blob")
+		if err := fullDatasetEncoder.Encode(oldEntity); err != nil {
+			return errors.Wrap(err, "failed to encode old entity to new blob")
 		}
 	}
 
@@ -472,11 +512,11 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 					return errors.Wrap(err, "failed to get dataset entity from track")
 				}
 
-				if err := writeDatasetEntity(newBlobWriter, entity); err != nil {
+				if err := writeDatasetEntity(fullDatasetEncoder, entity); err != nil {
 					return errors.Wrap(err, "failed to write remaining entity from track")
 				}
 				// Write ADD to delta file
-				if err := writeDeltaEntry(deltaBlobWriter, DeltaOperationAdd, entity); err != nil {
+				if err := writeDeltaEntry(deltaDatasetEncoder, DeltaOperationAdd, entity); err != nil {
 					return errors.Wrap(err, "failed to write ADD delta entry for remaining track")
 				}
 			}
@@ -662,38 +702,29 @@ func (w *CreateFullDatasetWorker) getDatasetEntityFromTrack(
 }
 
 // writeDatasetEntity writes a datasetEntity to the output blob in NDJSON format
-func writeDatasetEntity(writer io.Writer, entity datasetEntity) error {
-	entityJson, err := json.Marshal(entity)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal entity")
-	}
-
-	if _, err := writer.Write(append(entityJson, '\n')); err != nil {
-		return errors.Wrap(err, "failed to write entity")
+func writeDatasetEntity(encoder *json.Encoder, entity datasetEntity) error {
+	if err := encoder.Encode(entity); err != nil {
+		return errors.Wrap(err, "failed to encode entity")
 	}
 
 	return nil
 }
 
 // writeDeltaEntry writes a delta entry to the delta file
-func writeDeltaEntry(writer io.Writer, op deltaOperation, entity any) error {
+func writeDeltaEntry(encoder *json.Encoder, op deltaOperation, entity any) error {
 	entry := deltaEntry{
 		Op:     op,
 		Entity: entity,
 	}
-	entryJson, err := json.Marshal(entry)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal delta entry")
-	}
-	if _, err := writer.Write(append(entryJson, '\n')); err != nil {
-		return errors.Wrap(err, "failed to write delta entry")
+	if err := encoder.Encode(entry); err != nil {
+		return errors.Wrap(err, "failed to encode delta entry")
 	}
 	return nil
 }
 
 // writeDeltaDelete writes a DEL delta entry with minimal entity (only id)
-func writeDeltaDelete(writer io.Writer, entityId string) error {
-	return writeDeltaEntry(writer, DeltaOperationDel, deltaEntityMinimal{Id: entityId})
+func writeDeltaDelete(encoder *json.Encoder, entityId string) error {
+	return writeDeltaEntry(encoder, DeltaOperationDel, deltaEntityMinimal{Id: entityId})
 }
 
 type datasetEntity struct {
