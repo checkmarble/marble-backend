@@ -216,12 +216,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningConfig(
 func (repo *MarbleDbRepository) InsertContinuousScreening(
 	ctx context.Context,
 	exec Executor,
-	screening models.ScreeningWithMatches,
-	config models.ContinuousScreeningConfig,
-	objectType string,
-	objectId string,
-	objectInternalId uuid.UUID,
-	triggerType models.ContinuousScreeningTriggerType,
+	input models.CreateContinuousScreening,
 ) (models.ContinuousScreeningWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ContinuousScreeningWithMatches{}, err
@@ -240,6 +235,8 @@ func (repo *MarbleDbRepository) InsertContinuousScreening(
 			"object_type",
 			"object_id",
 			"object_internal_id",
+			"opensanction_entity_id",
+			"opensanction_entity_payload",
 			"status",
 			"trigger_type",
 			"search_input",
@@ -248,17 +245,19 @@ func (repo *MarbleDbRepository) InsertContinuousScreening(
 		).
 		Values(
 			id,
-			config.OrgId,
-			config.Id,
-			config.StableId,
-			objectType,
-			objectId,
-			objectInternalId,
-			screening.Status.String(),
-			triggerType.String(),
-			screening.SearchInput,
-			screening.Partial,
-			screening.NumberOfMatches,
+			input.Config.OrgId,
+			input.Config.Id,
+			input.Config.StableId,
+			input.ObjectType,
+			input.ObjectId,
+			input.ObjectInternalId,
+			input.OpenSanctionEntityId,
+			input.OpenSanctionEntityPayload,
+			input.Screening.Status.String(),
+			input.TriggerType.String(),
+			input.Screening.SearchInput,
+			input.Screening.Partial,
+			input.Screening.NumberOfMatches,
 		)
 
 	cs, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreening)
@@ -266,7 +265,7 @@ func (repo *MarbleDbRepository) InsertContinuousScreening(
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
-	if len(screening.Matches) == 0 {
+	if len(input.Screening.Matches) == 0 {
 		return models.ContinuousScreeningWithMatches{ContinuousScreening: cs}, nil
 	}
 
@@ -275,7 +274,7 @@ func (repo *MarbleDbRepository) InsertContinuousScreening(
 		Suffix("RETURNING *").
 		Columns("continuous_screening_id", "opensanction_entity_id", "payload")
 
-	for _, match := range screening.Matches {
+	for _, match := range input.Screening.Matches {
 		matchSql = matchSql.Values(id, match.EntityId, match.Payload)
 	}
 

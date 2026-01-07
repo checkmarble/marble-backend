@@ -197,12 +197,14 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 			continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
 				ctx,
 				tx,
-				screeningWithMatches,
-				config,
-				input.ObjectType,
-				objectId,
-				ingestedObjectInternalId,
-				triggerType,
+				models.CreateContinuousScreening{
+					Screening:        screeningWithMatches,
+					Config:           config,
+					ObjectType:       input.ObjectType,
+					ObjectId:         objectId,
+					ObjectInternalId: ingestedObjectInternalId,
+					TriggerType:      triggerType,
+				},
 			)
 			if err != nil {
 				return models.ContinuousScreeningWithMatches{}, err

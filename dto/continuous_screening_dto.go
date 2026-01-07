@@ -18,6 +18,8 @@ type ContinuousScreeningDto struct {
 	ObjectType                        string                        `json:"object_type"`
 	ObjectId                          string                        `json:"object_id"`
 	ObjectInternalId                  uuid.UUID                     `json:"object_internal_id"`
+	OpenSanctionEntityId              string                        `json:"opensanction_entity_id"`
+	OpenSanctionEntityPayload         json.RawMessage               `json:"opensanction_entity_payload"`
 	Status                            string                        `json:"status"`
 	TriggerType                       string                        `json:"trigger_type"`
 	Request                           ScreeningRequestDto           `json:"request"`
@@ -38,6 +40,8 @@ func AdaptContinuousScreeningDto(m models.ContinuousScreeningWithMatches) Contin
 		ObjectType:                        m.ObjectType,
 		ObjectId:                          m.ObjectId,
 		ObjectInternalId:                  m.ObjectInternalId,
+		OpenSanctionEntityId:              m.OpenSanctionEntityId,
+		OpenSanctionEntityPayload:         m.OpenSanctionEntityPayload,
 		Status:                            m.Status.String(),
 		TriggerType:                       m.TriggerType.String(),
 		Request: ScreeningRequestDto{
@@ -55,6 +59,8 @@ type ContinuousScreeningMatchDto struct {
 	Id                    uuid.UUID       `json:"id"`
 	ContinuousScreeningId uuid.UUID       `json:"continuous_screening_id"`
 	OpenSanctionEntityId  string          `json:"opensanction_entity_id"` //nolint:tagliatelle
+	ObjectType            string          `json:"object_type"`
+	ObjectId              string          `json:"object_id"`
 	Status                string          `json:"status"`
 	Payload               json.RawMessage `json:"payload"`
 	ReviewedBy            *uuid.UUID      `json:"reviewed_by"`
@@ -67,6 +73,8 @@ func AdaptContinuousScreeningMatchDto(m models.ContinuousScreeningMatch) Continu
 		Id:                    m.Id,
 		ContinuousScreeningId: m.ContinuousScreeningId,
 		OpenSanctionEntityId:  m.OpenSanctionEntityId,
+		ObjectType:            m.ObjectType,
+		ObjectId:              m.ObjectId,
 		Status:                m.Status.String(),
 		Payload:               m.Payload,
 		ReviewedBy:            m.ReviewedBy,

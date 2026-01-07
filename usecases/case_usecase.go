@@ -92,6 +92,11 @@ type CaseUseCaseRepository interface {
 	) ([]models.ContinuousScreeningWithMatches, error)
 	ListContinuousScreeningsByIds(ctx context.Context, exec repositories.Executor, ids []uuid.UUID) ([]models.ContinuousScreening, error)
 	UpdateContinuousScreeningsCaseId(ctx context.Context, exec repositories.Executor, ids []uuid.UUID, caseId string) error
+	GetContinuousScreeningConfig(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+	) (models.ContinuousScreeningConfig, error)
 
 	// inboxes
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
@@ -1185,6 +1190,14 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		if err != nil {
 			return models.Case{}, err
 		}
+
+		// In case of continuous screening in DatasetUpdate, we need to parse the entity ID to retrieve the object type and object id
+		for i := range continuousScreeningsWithMatches {
+			err = usecase.parseOpenSanctionEntityIdToMarbleObject(ctx, exec, &continuousScreeningsWithMatches[i])
+			if err != nil {
+				return models.Case{}, err
+			}
+		}
 		c.ContinuousScreenings = continuousScreeningsWithMatches
 
 	default:
@@ -2213,4 +2226,54 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 
 		return nil
 	})
+}
+
+func (usecase *CaseUseCase) parseOpenSanctionEntityIdToMarbleObject(
+	ctx context.Context,
+	exec repositories.Executor,
+	continuousScreeningWithMatches *models.ContinuousScreeningWithMatches,
+) error {
+	config, err := usecase.repository.GetContinuousScreeningConfig(
+		ctx,
+		exec,
+		continuousScreeningWithMatches.ContinuousScreeningConfigId,
+	)
+	if err != nil {
+		return errors.Wrap(err, "could not get continuous screening config")
+	}
+
+	objectTypes := config.ObjectTypes
+	// Have the longest object type first for matching
+	slices.SortFunc(objectTypes, func(a, b string) int {
+		// Sort by length descending, then lexically
+		if len(a) != len(b) {
+			return len(b) - len(a)
+		}
+		if a < b {
+			return -1
+		} else if a > b {
+			return 1
+		}
+		return 0
+	})
+
+	for i := range continuousScreeningWithMatches.Matches {
+		match := &continuousScreeningWithMatches.Matches[i]
+		var found bool
+		for _, objectType := range objectTypes {
+			prefix := "marble_" + objectType + "_"
+			if objectId, foundPrefix := strings.CutPrefix(match.OpenSanctionEntityId, prefix); foundPrefix {
+				// The marble_ + objectType_ prefix matches
+				// Now, set objectType and objectId accordingly
+				match.ObjectType = objectType
+				match.ObjectId = objectId
+				found = true
+				break
+			}
+		}
+		if !found {
+			return errors.Newf("could not parse open sanction entity id to marble object for match %s", match.OpenSanctionEntityId)
+		}
+	}
+	return nil
 }

@@ -22,6 +22,8 @@ type DBContinuousScreening struct {
 	ObjectType                        string          `db:"object_type"`
 	ObjectId                          string          `db:"object_id"`
 	ObjectInternalId                  uuid.UUID       `db:"object_internal_id"`
+	OpenSanctionEntityId              string          `db:"opensanction_entity_id"`
+	OpenSanctionEntityPayload         json.RawMessage `db:"opensanction_entity_payload"`
 	Status                            string          `db:"status"`
 	TriggerType                       string          `db:"trigger_type"`
 	SearchInput                       json.RawMessage `db:"search_input"`
@@ -41,6 +43,8 @@ func AdaptContinuousScreening(db DBContinuousScreening) (models.ContinuousScreen
 		ObjectType:                        db.ObjectType,
 		ObjectId:                          db.ObjectId,
 		ObjectInternalId:                  db.ObjectInternalId,
+		OpenSanctionEntityId:              db.OpenSanctionEntityId,
+		OpenSanctionEntityPayload:         db.OpenSanctionEntityPayload,
 		Status:                            models.ScreeningStatusFrom(db.Status),
 		TriggerType:                       models.ContinuousScreeningTriggerTypeFrom(db.TriggerType),
 		SearchInput:                       db.SearchInput,
