@@ -277,6 +277,7 @@ func (w *ScanDatasetUpdatesWorker) getOutdatedDatasets(
 }
 
 // Helper to get detailed datasets info from catalog
+// Filter out marble datasets
 func getLoadedDataset(ctx context.Context, catalog models.OpenSanctionsRawCatalog) []models.OpenSanctionsRawDataset {
 	logger := utils.LoggerFromContext(ctx)
 	loadedDataset := append(catalog.Current, catalog.Outdated...)
@@ -287,6 +288,11 @@ func getLoadedDataset(ctx context.Context, catalog models.OpenSanctionsRawCatalo
 			logger.WarnContext(ctx, "Loaded dataset is not present in catalog dataset, ignore it", "dataset", dataset)
 			continue
 		}
+		if slices.Contains(d.Tags, MARBLE_CONTINUOUS_SCREENING_TAG) {
+			// Skip marble datasets
+			continue
+		}
+
 		datasetList = append(datasetList, d)
 	}
 

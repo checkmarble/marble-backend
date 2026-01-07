@@ -18,6 +18,7 @@ type OpenSanctionsRawDataset struct {
 	Name     string
 	Version  string
 	Load     bool
+	Tags     []string
 	DeltaUrl *string
 }
 
