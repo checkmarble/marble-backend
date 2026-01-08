@@ -91,4 +91,67 @@ func TestParseOpenSanctionEntityIdToMarbleObject(t *testing.T) {
 		assert.Contains(t, err.Error(), "could not get continuous screening config")
 		repoMock.AssertExpectations(t)
 	})
+
+	t.Run("successfully handles empty matches list", func(t *testing.T) {
+		repoMock.On("GetContinuousScreeningConfig", ctx, exec, configId).Return(models.ContinuousScreeningConfig{
+			Id:          configId,
+			ObjectTypes: []string{"User"},
+		}, nil).Once()
+
+		continuousScreeningWithMatches := &models.ContinuousScreeningWithMatches{
+			ContinuousScreening: models.ContinuousScreening{
+				ContinuousScreeningConfigId: configId,
+			},
+			Matches: []models.ContinuousScreeningMatch{},
+		}
+
+		err := usecase.parseOpenSanctionEntityIdToMarbleObject(ctx, exec, continuousScreeningWithMatches)
+
+		assert.NoError(t, err)
+		repoMock.AssertExpectations(t)
+	})
+
+	t.Run("returns error when OpenSanctionEntityId is empty", func(t *testing.T) {
+		repoMock.On("GetContinuousScreeningConfig", ctx, exec, configId).Return(models.ContinuousScreeningConfig{
+			Id:          configId,
+			ObjectTypes: []string{"User"},
+		}, nil).Once()
+
+		continuousScreeningWithMatches := &models.ContinuousScreeningWithMatches{
+			ContinuousScreening: models.ContinuousScreening{
+				ContinuousScreeningConfigId: configId,
+			},
+			Matches: []models.ContinuousScreeningMatch{
+				{OpenSanctionEntityId: ""},
+			},
+		}
+
+		err := usecase.parseOpenSanctionEntityIdToMarbleObject(ctx, exec, continuousScreeningWithMatches)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "could not parse open sanction entity id to marble object")
+		repoMock.AssertExpectations(t)
+	})
+
+	t.Run("returns error when match does not have marble_ prefix", func(t *testing.T) {
+		repoMock.On("GetContinuousScreeningConfig", ctx, exec, configId).Return(models.ContinuousScreeningConfig{
+			Id:          configId,
+			ObjectTypes: []string{"User"},
+		}, nil).Once()
+
+		continuousScreeningWithMatches := &models.ContinuousScreeningWithMatches{
+			ContinuousScreening: models.ContinuousScreening{
+				ContinuousScreeningConfigId: configId,
+			},
+			Matches: []models.ContinuousScreeningMatch{
+				{OpenSanctionEntityId: "something_else_User_123"},
+			},
+		}
+
+		err := usecase.parseOpenSanctionEntityIdToMarbleObject(ctx, exec, continuousScreeningWithMatches)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "could not parse open sanction entity id to marble object")
+		repoMock.AssertExpectations(t)
+	})
 }

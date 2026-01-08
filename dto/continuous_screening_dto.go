@@ -18,8 +18,8 @@ type ContinuousScreeningDto struct {
 	ObjectType                        string                        `json:"object_type"`
 	ObjectId                          string                        `json:"object_id"`
 	ObjectInternalId                  uuid.UUID                     `json:"object_internal_id"`
-	OpenSanctionEntityId              string                        `json:"opensanction_entity_id"`
-	OpenSanctionEntityPayload         json.RawMessage               `json:"opensanction_entity_payload"`
+	OpenSanctionEntityId              string                        `json:"opensanction_entity_id"`      //nolint:tagliatelle
+	OpenSanctionEntityPayload         json.RawMessage               `json:"opensanction_entity_payload"` //nolint:tagliatelle
 	Status                            string                        `json:"status"`
 	TriggerType                       string                        `json:"trigger_type"`
 	Request                           ScreeningRequestDto           `json:"request"`
