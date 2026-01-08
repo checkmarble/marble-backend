@@ -213,6 +213,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleDownloadScreeningMatchFile(uc))
 	router.PATCH("/screenings/matches/:id", tom, handleUpdateScreeningMatchStatus(uc))
 	router.POST("/screenings/matches/:id/enrich", tom, handleEnrichScreeningMatch(uc))
+	router.POST("/screenings/freeform-search", tom, handleFreeformSearch(uc))
 
 	router.GET("/continuous-screenings/configs", tom, handleListContinuousScreeningConfigs(uc))
 	router.POST("/continuous-screenings/configs", tom,
