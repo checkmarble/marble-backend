@@ -224,7 +224,6 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 
 		record := httpmodels.AdaptOpenSanctionDeltaFileRecordToModel(recordHttp)
 		iteration++
-		logger.DebugContext(ctx, "Entity to process", "entity", record.Entity)
 
 		if !slices.Contains(AllowedRecordOperations, record.Op) {
 			logger.DebugContext(ctx, "Skipping record because op is not allowed", "op", record.Op)
@@ -249,7 +248,6 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		if err != nil {
 			return err
 		}
-		logger.DebugContext(ctx, "Query to search", "query", query)
 		screeningResponse, err := w.screeningProvider.Search(ctx, query)
 		if err != nil {
 			return err

@@ -202,9 +202,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
 			return status != nil && *status == models.ScreeningStatusInReview
 		}), true).Return(&existingContinuousScreening, nil)
-	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
-		screeningWithMatches, config, suite.objectType, suite.objectId, ingestedObjectInternalId,
-		models.ContinuousScreeningTriggerTypeObjectUpdated).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.MatchedBy(func(input models.CreateContinuousScreening) bool {
+		return input.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated
+	})).Return(continuousScreeningWithMatches, nil)
 	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
 			return input.Operation == models.DeltaTrackOperationUpdate
@@ -350,9 +350,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
 			return status != nil && *status == models.ScreeningStatusInReview
 		}), true).Return((*models.ContinuousScreeningWithMatches)(nil), nil)
-	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
-		screeningWithMatches, config, suite.objectType, suite.objectId, ingestedObjectInternalId,
-		models.ContinuousScreeningTriggerTypeObjectUpdated).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.MatchedBy(func(input models.CreateContinuousScreening) bool {
+		return input.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated
+	})).Return(continuousScreeningWithMatches, nil)
 	// Return empty case for simplicity because it is not used for this test
 	suite.usecase.On("HandleCaseCreation", suite.ctx, mock.Anything, config, suite.objectId,
 		continuousScreeningWithMatches).Return(models.Case{}, nil)

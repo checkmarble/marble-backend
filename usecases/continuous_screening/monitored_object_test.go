@@ -164,9 +164,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		config, suite.objectType,
-		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             uuid.New(),
@@ -273,9 +271,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		config, suite.objectType,
-		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             uuid.New(),
@@ -547,14 +543,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, suite.objectId, suite.configStableId).Return(&pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
 	})
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		config, suite.objectType,
-		suite.objectId, mock.Anything, mock.MatchedBy(func(
-			triggerType models.ContinuousScreeningTriggerType,
-		) bool {
-			// Verify that trigger type is ObjectUpdated when there's a unique violation (object being updated)
-			return triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated
-		})).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.MatchedBy(func(input models.CreateContinuousScreening) bool {
+		return input.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated
+	})).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             uuid.New(),
@@ -764,9 +755,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		config, suite.objectType,
-		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                continuousScreeningId,
 			OrgId:                             uuid.New(),
@@ -898,9 +887,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		config, suite.objectType,
-		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             uuid.New(),
@@ -1471,9 +1458,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		config, suite.objectType,
-		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             suite.orgId,
@@ -1686,9 +1671,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{}, {},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything,
-		config, suite.objectType,
-		suite.objectId, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             suite.orgId,
