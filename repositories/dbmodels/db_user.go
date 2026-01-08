@@ -11,7 +11,7 @@ type DBUserResult struct {
 	Id              string             `db:"id"`
 	Email           string             `db:"email"`
 	Role            int                `db:"role"`
-	OrganizationId  *string            `db:"organization_id"`
+	OrganizationId  *uuid.UUID         `db:"organization_id"`
 	PartnerId       *string            `db:"partner_id"`
 	FirstName       pgtype.Text        `db:"first_name"`
 	LastName        pgtype.Text        `db:"last_name"`
@@ -34,11 +34,7 @@ func AdaptUser(db DBUserResult) (models.User, error) {
 		Picture:         db.Picture,
 	}
 	if db.OrganizationId != nil {
-		orgId, err := uuid.Parse(*db.OrganizationId)
-		if err != nil {
-			return models.User{}, err
-		}
-		user.OrganizationId = orgId
+		user.OrganizationId = *db.OrganizationId
 	}
 	if db.FirstName.Valid {
 		user.FirstName = db.FirstName.String

@@ -9,7 +9,7 @@ import (
 )
 
 type DBOrganizationResult struct {
-	Id                      string      `db:"id"`
+	Id                      uuid.UUID   `db:"id"`
 	PublicId                uuid.UUID   `db:"public_id"`
 	DeletedAt               *int        `db:"deleted_at"`
 	Name                    string      `db:"name"`
@@ -27,13 +27,8 @@ const TABLE_ORGANIZATION = "organizations"
 var ColumnsSelectOrganization = utils.ColumnList[DBOrganizationResult]()
 
 func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
-	orgId, err := uuid.Parse(db.Id)
-	if err != nil {
-		return models.Organization{}, err
-	}
-
 	return models.Organization{
-		Id:                      orgId,
+		Id:                      db.Id,
 		PublicId:                db.PublicId,
 		Name:                    db.Name,
 		WhitelistedSubnets:      db.AllowedNetworks,
