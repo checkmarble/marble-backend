@@ -15,7 +15,7 @@ import (
 
 type InboxRepository interface {
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
-	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
+	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID,
 		inboxIds []uuid.UUID, withCaseCount bool) ([]models.Inbox, error)
 	CreateInbox(ctx context.Context, exec repositories.Executor,
 		createInboxAttributes models.CreateInboxInput, newInboxId uuid.UUID) error
@@ -29,7 +29,7 @@ type InboxRepository interface {
 type EnforceSecurityInboxes interface {
 	ReadInbox(i models.Inbox) error
 	ReadInboxMetadata(i models.Inbox) error
-	CreateInbox(organizationId string) error
+	CreateInbox(organizationId uuid.UUID) error
 	UpdateInbox(inbox models.Inbox) error
 }
 
@@ -62,11 +62,11 @@ func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId uuid.UUID
 	return usecase.inboxReader.GetInboxById(ctx, usecase.executorFactory.NewExecutor(), inboxId)
 }
 
-func (usecase *InboxUsecase) ListInboxes(ctx context.Context, organizationId string, withCaseCount bool) ([]models.Inbox, error) {
+func (usecase *InboxUsecase) ListInboxes(ctx context.Context, organizationId uuid.UUID, withCaseCount bool) ([]models.Inbox, error) {
 	return usecase.inboxReader.ListInboxes(ctx, usecase.executorFactory.NewExecutor(), organizationId, withCaseCount)
 }
 
-func (usecase *InboxUsecase) ListInboxesMetadata(ctx context.Context, organizationId string) ([]models.InboxMetadata, error) {
+func (usecase *InboxUsecase) ListInboxesMetadata(ctx context.Context, organizationId uuid.UUID) ([]models.InboxMetadata, error) {
 	inboxes, err := usecase.inboxRepository.ListInboxes(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId, nil, false)
 	if err != nil {

@@ -10,14 +10,15 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type offloadableRepository interface {
-	GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId, outcome string, createdAt time.Time) string
+	GetOffloadedDecisionRuleKey(orgId uuid.UUID, decisionId, ruleId, outcome string, createdAt time.Time) string
 	GetWatermark(
 		ctx context.Context,
 		exec repositories.Executor,
-		orgId *string,
+		orgId *uuid.UUID,
 		watermarkType models.WatermarkType,
 	) (*models.Watermark, error)
 }
@@ -31,7 +32,7 @@ type OffloadedReader struct {
 
 func (uc OffloadedReader) MutateWithOffloadedDecisionRules(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	decision models.DecisionWithRuleExecutions,
 ) error {
 	offloadingWatermark, err := uc.repository.GetWatermark(ctx,

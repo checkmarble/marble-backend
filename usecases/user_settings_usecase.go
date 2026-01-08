@@ -49,7 +49,7 @@ func (uc *UserSettingsUsecase) SetUnavailability(ctx context.Context, until time
 	}
 
 	if current == nil {
-		return uc.repository.InsertUnavailability(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId(), userId, until)
+		return uc.repository.InsertUnavailability(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId().String(), userId, until)
 	}
 
 	return uc.repository.UpdateUnavailability(ctx, uc.executorFactory.NewExecutor(), current.Id, until)

@@ -12,6 +12,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 )
 
@@ -55,13 +56,13 @@ type TransferMapping struct {
 	Id               string
 	ClientTransferId string
 	CreatedAt        time.Time
-	OrganizationId   string
+	OrganizationId   uuid.UUID
 	PartnerId        string
 }
 
 type TransferMappingCreateInput struct {
 	ClientTransferId string
-	OrganizationId   string
+	OrganizationId   uuid.UUID
 	PartnerId        string
 }
 

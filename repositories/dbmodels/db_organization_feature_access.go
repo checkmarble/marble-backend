@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 const TABLE_ORGANIZATION_FEATURE_ACCESS = "organization_feature_access"
@@ -13,7 +14,7 @@ var SelectOrganizationFeatureAccessColumn = utils.ColumnList[DBOrganizationFeatu
 
 type DBOrganizationFeatureAccess struct {
 	Id             string    `db:"id"`
-	OrganizationId string    `db:"org_id"`
+	OrganizationId uuid.UUID `db:"org_id"`
 	TestRun        string    `db:"test_run"`
 	Sanctions      string    `db:"sanctions"`
 	CaseAutoAssign string    `db:"case_auto_assign"`

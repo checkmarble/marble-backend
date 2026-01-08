@@ -17,10 +17,16 @@ func PrometheusMiddleware(c *gin.Context) {
 	orgId, _ := utils.OrganizationIdFromRequest(c.Request)
 
 	utils.MetricRequestCount.
-		With(prometheus.Labels{"org_id": orgId, "method": c.Request.Method, "url": c.FullPath(), "status": fmt.Sprintf("%d", c.Writer.Status())}).
+		With(prometheus.Labels{
+			"org_id": orgId.String(), "method": c.Request.Method,
+			"url": c.FullPath(), "status": fmt.Sprintf("%d", c.Writer.Status()),
+		}).
 		Inc()
 
 	utils.MetricRequestLatency.
-		With(prometheus.Labels{"org_id": orgId, "method": c.Request.Method, "url": c.FullPath(), "status": fmt.Sprintf("%d", c.Writer.Status())}).
+		With(prometheus.Labels{
+			"org_id": orgId.String(), "method": c.Request.Method,
+			"url": c.FullPath(), "status": fmt.Sprintf("%d", c.Writer.Status()),
+		}).
 		Observe(time.Since(start).Seconds())
 }

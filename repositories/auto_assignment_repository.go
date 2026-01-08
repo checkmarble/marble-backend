@@ -17,7 +17,9 @@ import (
 //   - Configured as part of a rotation
 //   - Have less than X active cases assigned to them (through the lateral subquery)
 //   - Are currently available (through the `not exists` subquery)
-func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exec Executor, orgId string, limit int) ([]models.UserWithCaseCount, error) {
+func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exec Executor,
+	orgId uuid.UUID, limit int,
+) ([]models.UserWithCaseCount, error) {
 	sql := `
 		select u.*, count(distinct c.id) as case_count
 		from inbox_users iu
@@ -51,7 +53,6 @@ func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exe
 	`
 
 	rows, err := exec.Query(ctx, sql, orgId, limit)
-
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +72,9 @@ func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exe
 	return users, nil
 }
 
-func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.Context, exec Executor, orgId string, inboxId uuid.UUID, limit int) (*models.User, error) {
+func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.Context,
+	exec Executor, orgId uuid.UUID, inboxId uuid.UUID, limit int,
+) (*models.User, error) {
 	sql := `
 		select u.*, count(distinct c.id) as case_count
 		from inbox_users iu
@@ -128,7 +131,7 @@ func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.C
 	return &user.User, nil
 }
 
-func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exec Executor, orgId string, limit int) ([]models.Case, error) {
+func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exec Executor, orgId uuid.UUID, limit int) ([]models.Case, error) {
 	sql := `
 		with assignable_inboxes as (
 		  select distinct iu.inbox_id
@@ -177,7 +180,6 @@ func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exe
 	`
 
 	rows, err := exec.Query(ctx, sql, orgId, limit)
-
 	if err != nil {
 		return nil, err
 	}

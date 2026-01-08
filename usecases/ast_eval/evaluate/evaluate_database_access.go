@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -13,7 +14,7 @@ import (
 )
 
 type DatabaseAccess struct {
-	OrganizationId             string
+	OrganizationId             uuid.UUID
 	DataModel                  models.DataModel
 	ClientObject               models.ClientObject
 	ExecutorFactory            executor_factory.ExecutorFactory

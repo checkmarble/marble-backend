@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type NoOpBillingUsecase struct{}
@@ -16,6 +17,6 @@ func (u NoOpBillingUsecase) EnqueueBillingEventTask(ctx context.Context, event m
 	return nil
 }
 
-func (u NoOpBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId string, code BillableMetric) (bool, string, error) {
+func (u NoOpBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId uuid.UUID, code BillableMetric) (bool, string, error) {
 	return true, "Fake subscription ID", nil
 }

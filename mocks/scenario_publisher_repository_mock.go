@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -21,7 +22,7 @@ func (s *ScenarioPublisherRepository) UpdateScenarioLiveIterationId(ctx context.
 }
 
 func (s *ScenarioPublisherRepository) ListScenarioIterations(ctx context.Context,
-	exec repositories.Executor, organizationId string, filters models.GetScenarioIterationFilters,
+	exec repositories.Executor, organizationId uuid.UUID, filters models.GetScenarioIterationFilters,
 ) ([]models.ScenarioIteration, error) {
 	args := s.Called(ctx, exec, organizationId, filters)
 	return args.Get(0).([]models.ScenarioIteration), args.Error(1)

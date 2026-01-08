@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -23,7 +24,9 @@ func (m *ScenarioPublisher) PublishOrUnpublishIteration(
 	return args.Get(0).([]models.ScenarioPublication), args.Error(1)
 }
 
-func (m *ScenarioPublisher) SaveScenarioPreparationAction(ctx context.Context, exec repositories.Executor, orgId, scenarioId, iterationId string) error {
+func (m *ScenarioPublisher) SaveScenarioPreparationAction(ctx context.Context,
+	exec repositories.Executor, orgId uuid.UUID, scenarioId, iterationId string,
+) error {
 	args := m.Called(ctx, exec, orgId, scenarioId, iterationId)
 
 	return args.Error(0)

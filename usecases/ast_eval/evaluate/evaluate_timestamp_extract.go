@@ -10,20 +10,21 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type orgReader interface {
-	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
 }
 
 type TimestampExtract struct {
 	executorFactory   executor_factory.ExecutorFactory
 	orgReadRepository orgReader
-	organizationId    string
+	organizationId    uuid.UUID
 }
 
 func NewTimestampExtract(
-	executorFactory executor_factory.ExecutorFactory, orgReadRepository orgReader, organizationId string,
+	executorFactory executor_factory.ExecutorFactory, orgReadRepository orgReader, organizationId uuid.UUID,
 ) TimestampExtract {
 	return TimestampExtract{
 		executorFactory:   executorFactory,

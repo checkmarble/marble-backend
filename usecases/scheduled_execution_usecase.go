@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/google/uuid"
 )
 
 type ScheduledExecutionUsecaseRepository interface {
@@ -50,7 +51,7 @@ func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Cont
 // The optional argument 'scenarioId' can be used to filter the returned list.
 func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	filters models.ListScheduledExecutionsFilters,
 	paging *models.PaginationAndSorting,
 ) (models.PaginatedScheduledExecutions, error) {

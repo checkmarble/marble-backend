@@ -7,6 +7,7 @@ import (
 
 	"github.com/adhocore/gronx"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -14,7 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context, organizationId string, scenarioId string) error {
+func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context, organizationId uuid.UUID, scenarioId string) error {
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	scenario, err := usecase.repository.GetScenarioById(ctx, exec, scenarioId)

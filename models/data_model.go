@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 )
 
 // ///////////////////////////////
@@ -176,7 +177,7 @@ type TableMetadata struct {
 	ID             string
 	Description    string
 	Name           string
-	OrganizationID string
+	OrganizationID uuid.UUID
 	FTMEntity      *FollowTheMoneyEntity
 }
 
@@ -299,7 +300,7 @@ func (enumValues EnumValues) CollectEnumValues(payload ClientObject) {
 // ///////////////////////////////
 type LinkToSingle struct {
 	Id              string
-	OrganizationId  string
+	OrganizationId  uuid.UUID
 	Name            string
 	ParentTableName string
 	ParentTableId   string
@@ -312,7 +313,7 @@ type LinkToSingle struct {
 }
 
 type DataModelLinkCreateInput struct {
-	OrganizationID string
+	OrganizationID uuid.UUID
 	Name           string
 	ParentTableID  string
 	ParentFieldID  string

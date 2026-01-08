@@ -76,7 +76,7 @@ type IngestedDataReadRepository interface {
 		limit int,
 		fieldsToRead ...string,
 	) ([]models.DataModelObject, error)
-	GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table, orgId string) ([]models.FieldStatistics, error)
+	GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table, orgId uuid.UUID) ([]models.FieldStatistics, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -768,7 +768,7 @@ func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 }
 
 func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Context,
-	exec Executor, table models.Table, orgId string,
+	exec Executor, table models.Table, orgId uuid.UUID,
 ) ([]models.FieldStatistics, error) {
 	fieldStatsCacheKey := fmt.Sprintf("%s-%s", orgId, table.Name)
 	if cache, ok := NAVIGATION_FIELD_STATS_CACHE.Get(fieldStatsCacheKey); ok {

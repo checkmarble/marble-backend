@@ -5,11 +5,12 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/google/uuid"
 )
 
 type DbDecisionRule struct {
 	Id             string             `db:"id"`
-	OrganizationId string             `db:"org_id"` //nolint:tagliatelle
+	OrganizationId uuid.UUID          `db:"org_id"` //nolint:tagliatelle
 	DecisionId     string             `db:"decision_id"`
 	Name           string             `db:"-"`
 	Description    string             `db:"-"`

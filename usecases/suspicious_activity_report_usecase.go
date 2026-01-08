@@ -19,7 +19,7 @@ type SuspiciousActivityReportCaseUsecase interface {
 	GetCase(ctx context.Context, id string) (models.Case, error)
 	PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, c models.Case) error
 
-	getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]uuid.UUID, error)
+	getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) ([]uuid.UUID, error)
 }
 
 type SuspiciousActivityReportRepository interface {
@@ -54,7 +54,7 @@ type SuspiciousActivityReportUsecase struct {
 
 func (uc SuspiciousActivityReportUsecase) ListReports(
 	ctx context.Context,
-	orgId, caseId string,
+	orgId uuid.UUID, caseId string,
 ) ([]models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
 
@@ -72,7 +72,7 @@ func (uc SuspiciousActivityReportUsecase) ListReports(
 
 func (uc SuspiciousActivityReportUsecase) CreateReport(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	req models.SuspiciousActivityReportRequest,
 ) (models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
@@ -116,7 +116,7 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 		}
 
 		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-			OrgId:        uuid.MustParse(c.OrganizationId),
+			OrgId:        c.OrganizationId,
 			CaseId:       sar.CaseId,
 			UserId:       userId,
 			EventType:    models.SarCreated,
@@ -128,7 +128,7 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 
 		if req.File != nil {
 			if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-				OrgId:        uuid.MustParse(c.OrganizationId),
+				OrgId:        c.OrganizationId,
 				CaseId:       sar.CaseId,
 				UserId:       userId,
 				EventType:    models.SarFileUploaded,
@@ -146,7 +146,7 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 
 func (uc SuspiciousActivityReportUsecase) UpdateReport(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	req models.SuspiciousActivityReportRequest,
 ) (models.SuspiciousActivityReport, error) {
 	exec := uc.executorFactory.NewExecutor()
@@ -206,7 +206,7 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 		}
 
 		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-			OrgId:         uuid.MustParse(c.OrganizationId),
+			OrgId:         c.OrganizationId,
 			CaseId:        sar.CaseId,
 			UserId:        userId,
 			EventType:     models.SarStatusChanged,
@@ -224,7 +224,7 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 
 func (uc SuspiciousActivityReportUsecase) GenerateReportUrl(
 	ctx context.Context,
-	orgId, caseId, reportId string,
+	orgId uuid.UUID, caseId, reportId string,
 ) (string, error) {
 	exec := uc.executorFactory.NewExecutor()
 
@@ -247,7 +247,7 @@ func (uc SuspiciousActivityReportUsecase) GenerateReportUrl(
 
 func (uc SuspiciousActivityReportUsecase) DeleteReport(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	req models.SuspiciousActivityReportRequest,
 ) error {
 	exec := uc.executorFactory.NewExecutor()
@@ -275,7 +275,7 @@ func (uc SuspiciousActivityReportUsecase) DeleteReport(
 
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-			OrgId:        uuid.MustParse(c.OrganizationId),
+			OrgId:        c.OrganizationId,
 			CaseId:       sar.CaseId,
 			UserId:       userId,
 			EventType:    models.SarDeleted,
@@ -294,7 +294,7 @@ func (uc SuspiciousActivityReportUsecase) DeleteReport(
 }
 
 func (uc SuspiciousActivityReportUsecase) hasCasePermissions(ctx context.Context,
-	exec repositories.Executor, orgId, caseId string,
+	exec repositories.Executor, orgId uuid.UUID, caseId string,
 ) (models.Case, error) {
 	c, err := uc.caseUsecase.GetCase(ctx, caseId)
 	if err != nil {

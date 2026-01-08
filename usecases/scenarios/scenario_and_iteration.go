@@ -5,10 +5,11 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 )
 
 type ScenarioFetcherRepository interface {
-	ListLiveIterationsAndNeighbors(ctx context.Context, exec repositories.Executor, orgId string) ([]models.ScenarioIteration, error)
+	ListLiveIterationsAndNeighbors(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ScenarioIteration, error)
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (
 		models.ScenarioIteration, error,
@@ -46,7 +47,7 @@ func (fetcher ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context,
 }
 
 func (fetcher ScenarioFetcher) ListLiveIterationsAndNeighbors(ctx context.Context,
-	exec repositories.Executor, orgId string,
+	exec repositories.Executor, orgId uuid.UUID,
 ) ([]models.ScenarioIteration, error) {
 	iterations, err := fetcher.Repository.ListLiveIterationsAndNeighbors(ctx, exec, orgId)
 	if err != nil {

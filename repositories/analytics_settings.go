@@ -6,16 +6,16 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 )
 
-func (repo *MarbleDbRepository) GetAnalyticsSettings(ctx context.Context, exec Executor, orgId string) (map[string]analytics.Settings, error) {
+func (repo *MarbleDbRepository) GetAnalyticsSettings(ctx context.Context, exec Executor, orgId uuid.UUID) (map[string]analytics.Settings, error) {
 	query := NewQueryBuilder().
 		Select(dbmodels.AnalyticsSettingsColumns...).
 		From(dbmodels.AnalyticsSettingsTable).
 		Where("org_id = ?", orgId)
 
 	rows, err := SqlToListOfModels(ctx, exec, query, dbmodels.AdaptAnalyticsSettings)
-
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,9 @@ func (repo *MarbleDbRepository) GetAnalyticsSettings(ctx context.Context, exec E
 	return settings, nil
 }
 
-func (repo *MarbleDbRepository) UpdateAnalyticsSettings(ctx context.Context, exec Executor, orgId string, triggerObjectType string, newSettings dto.AnalyticsSettingDto) (analytics.Settings, error) {
+func (repo *MarbleDbRepository) UpdateAnalyticsSettings(ctx context.Context, exec Executor,
+	orgId uuid.UUID, triggerObjectType string, newSettings dto.AnalyticsSettingDto,
+) (analytics.Settings, error) {
 	query := NewQueryBuilder().
 		Insert(dbmodels.AnalyticsSettingsTable).
 		Columns("org_id", "trigger_object_type", "trigger_fields", "db_fields").
@@ -43,7 +45,6 @@ func (repo *MarbleDbRepository) UpdateAnalyticsSettings(ctx context.Context, exe
 		Suffix("returning *")
 
 	settings, err := SqlToModel(ctx, exec, query, dbmodels.AdaptAnalyticsSettings)
-
 	if err != nil {
 		return analytics.Settings{}, err
 	}

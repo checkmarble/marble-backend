@@ -10,7 +10,7 @@ type InboxUser struct {
 	Id             uuid.UUID
 	InboxId        uuid.UUID
 	UserId         uuid.UUID
-	OrganizationId string
+	OrganizationId uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	Role           InboxUserRole

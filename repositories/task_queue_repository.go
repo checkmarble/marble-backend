@@ -24,51 +24,51 @@ type TaskQueueRepository interface {
 	EnqueueDecisionTask(
 		ctx context.Context,
 		tx Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		decision models.DecisionToCreate,
 		scenarioIterationId string,
 	) error
 	EnqueueDecisionTaskMany(
 		ctx context.Context,
 		tx Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		decisions []models.DecisionToCreate,
 		scenarioIterationId string,
 	) error
 	EnqueueScheduledExecStatusTask(
 		ctx context.Context,
 		tx Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		scheduledExecutionId string,
 	) error
 	EnqueueCreateIndexTask(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		indices []models.ConcreteIndex,
 	) error
 	EnqueueMatchEnrichmentTask(
 		ctx context.Context,
 		tx Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		screeningId string,
 	) error
 	EnqueueCaseReviewTask(
 		ctx context.Context,
 		tx Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		caseId uuid.UUID,
 		aiCaseReviewId uuid.UUID,
 	) error
 	EnqueueAutoAssignmentTask(
 		ctx context.Context,
 		tx Transaction,
-		orgId string,
+		orgId uuid.UUID,
 		inboxId uuid.UUID,
 	) error
 	EnqueueDecisionWorkflowTask(
 		ctx context.Context,
 		tx Transaction,
-		orgId string,
+		orgId uuid.UUID,
 		decisionId string,
 	) error
 	EnqueueSendBillingEventTask(
@@ -78,7 +78,7 @@ type TaskQueueRepository interface {
 	EnqueueContinuousScreeningDoScreeningTaskMany(
 		ctx context.Context,
 		tx Transaction,
-		orgId string,
+		orgId uuid.UUID,
 		objectType string,
 		enqueueObjectUpdateTasks []models.ContinuousScreeningEnqueueObjectUpdateTask,
 		triggerType models.ContinuousScreeningTriggerType,
@@ -102,7 +102,7 @@ func NewTaskQueueRepository(client *river.Client[pgx.Tx]) TaskQueueRepository {
 func (r riverRepository) EnqueueDecisionTask(
 	ctx context.Context,
 	tx Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	decision models.DecisionToCreate,
 	scenarioIterationId string,
 ) error {
@@ -114,7 +114,7 @@ func (r riverRepository) EnqueueDecisionTask(
 	}, &river.InsertOpts{
 		MaxAttempts: nbRetriesAsyncDecision,
 		Priority:    priorityAsyncDecision,
-		Queue:       organizationId,
+		Queue:       organizationId.String(),
 		UniqueOpts: river.UniqueOpts{
 			ByArgs: true,
 		},
@@ -130,7 +130,7 @@ func (r riverRepository) EnqueueDecisionTask(
 func (r riverRepository) EnqueueDecisionTaskMany(
 	ctx context.Context,
 	tx Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	decisions []models.DecisionToCreate,
 	scenarioIterationId string,
 ) error {
@@ -149,7 +149,7 @@ func (r riverRepository) EnqueueDecisionTaskMany(
 			InsertOpts: &river.InsertOpts{
 				MaxAttempts: nbRetriesAsyncDecision,
 				Priority:    priorityAsyncDecision,
-				Queue:       organizationId,
+				Queue:       organizationId.String(),
 				UniqueOpts:  river.UniqueOpts{
 					// ByArgs: true,
 				},
@@ -171,7 +171,7 @@ func (r riverRepository) EnqueueDecisionTaskMany(
 func (r riverRepository) EnqueueScheduledExecStatusTask(
 	ctx context.Context,
 	tx Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	scheduledExecutionId string,
 ) error {
 	res, err := r.client.InsertTx(ctx, tx.RawTx(), models.ScheduledExecStatusSyncArgs{
@@ -179,7 +179,7 @@ func (r riverRepository) EnqueueScheduledExecStatusTask(
 	}, &river.InsertOpts{
 		MaxAttempts: nbRetriesScheduledExecStatus,
 		Priority:    priorityScheduledExecStatus,
-		Queue:       organizationId,
+		Queue:       organizationId.String(),
 		UniqueOpts: river.UniqueOpts{
 			ByArgs: true,
 		},
@@ -194,7 +194,7 @@ func (r riverRepository) EnqueueScheduledExecStatusTask(
 
 func (r riverRepository) EnqueueCreateIndexTask(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	indices []models.ConcreteIndex,
 ) error {
 	_, err := r.client.Insert(
@@ -204,7 +204,7 @@ func (r riverRepository) EnqueueCreateIndexTask(
 			Indices: indices,
 		},
 		&river.InsertOpts{
-			Queue: organizationId,
+			Queue: organizationId.String(),
 		})
 	if err != nil {
 		return err
@@ -216,7 +216,7 @@ func (r riverRepository) EnqueueCreateIndexTask(
 func (r riverRepository) EnqueueMatchEnrichmentTask(
 	ctx context.Context,
 	tx Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	screeningId string,
 ) error {
 	res, err := r.client.InsertTx(
@@ -227,7 +227,7 @@ func (r riverRepository) EnqueueMatchEnrichmentTask(
 			ScreeningId: screeningId,
 		},
 		&river.InsertOpts{
-			Queue: organizationId,
+			Queue: organizationId.String(),
 		},
 	)
 	if err != nil {
@@ -243,7 +243,7 @@ func (r riverRepository) EnqueueMatchEnrichmentTask(
 func (r riverRepository) EnqueueCaseReviewTask(
 	ctx context.Context,
 	tx Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	caseId uuid.UUID,
 	aiCaseReviewId uuid.UUID,
 ) error {
@@ -255,7 +255,7 @@ func (r riverRepository) EnqueueCaseReviewTask(
 			AiCaseReviewId: aiCaseReviewId,
 		},
 		&river.InsertOpts{
-			Queue: organizationId,
+			Queue: organizationId.String(),
 		},
 	)
 	if err != nil {
@@ -270,7 +270,7 @@ func (r riverRepository) EnqueueCaseReviewTask(
 func (r riverRepository) EnqueueAutoAssignmentTask(
 	ctx context.Context,
 	tx Transaction,
-	orgId string,
+	orgId uuid.UUID,
 	inboxId uuid.UUID,
 ) error {
 	res, err := r.client.InsertTx(
@@ -281,7 +281,7 @@ func (r riverRepository) EnqueueAutoAssignmentTask(
 			InboxId: inboxId,
 		},
 		&river.InsertOpts{
-			Queue:       orgId,
+			Queue:       orgId.String(),
 			ScheduledAt: time.Now().Add(time.Minute),
 			UniqueOpts: river.UniqueOpts{
 				ByQueue:  true,
@@ -301,7 +301,7 @@ func (r riverRepository) EnqueueAutoAssignmentTask(
 func (r riverRepository) EnqueueDecisionWorkflowTask(
 	ctx context.Context,
 	tx Transaction,
-	orgId string,
+	orgId uuid.UUID,
 	decisionId string,
 ) error {
 	res, err := r.client.InsertTx(
@@ -311,7 +311,7 @@ func (r riverRepository) EnqueueDecisionWorkflowTask(
 			DecisionId: decisionId,
 		},
 		&river.InsertOpts{
-			Queue: orgId,
+			Queue: orgId.String(),
 		},
 	)
 	if err != nil {
@@ -349,7 +349,7 @@ func (r riverRepository) EnqueueSendBillingEventTask(
 func (r riverRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 	ctx context.Context,
 	tx Transaction,
-	orgId string,
+	orgId uuid.UUID,
 	objectType string,
 	enqueueObjectUpdateTasks []models.ContinuousScreeningEnqueueObjectUpdateTask,
 	triggerType models.ContinuousScreeningTriggerType,
@@ -366,7 +366,7 @@ func (r riverRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 				NewInternalId:      enqueueObjectUpdateTask.NewInternalId,
 			},
 			InsertOpts: &river.InsertOpts{
-				Queue:    orgId,
+				Queue:    orgId.String(),
 				Priority: 4, // Low priority to avoid blocking other tasks
 			},
 		}

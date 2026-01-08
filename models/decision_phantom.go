@@ -8,7 +8,7 @@ import (
 )
 
 type CreatePhantomDecisionInput struct {
-	OrganizationId     string
+	OrganizationId     uuid.UUID
 	Scenario           Scenario
 	ClientObject       ClientObject
 	Pivot              *Pivot
@@ -18,7 +18,7 @@ type CreatePhantomDecisionInput struct {
 type PhantomDecision struct {
 	PhantomDecisionId   string
 	CreatedAt           time.Time
-	OrganizationId      string
+	OrganizationId      uuid.UUID
 	Outcome             Outcome
 	ScenarioId          string
 	ScenarioIterationId string
@@ -32,7 +32,7 @@ func AdaptScenarExecToPhantomDecision(scenarioExecution ScenarioExecution) Phant
 	return PhantomDecision{
 		PhantomDecisionId:   decisionId.String(),
 		CreatedAt:           time.Now(),
-		OrganizationId:      scenarioExecution.OrganizationId.String(),
+		OrganizationId:      scenarioExecution.OrganizationId,
 		Outcome:             scenarioExecution.Outcome,
 		ScenarioId:          scenarioExecution.ScenarioId.String(),
 		ScenarioIterationId: scenarioExecution.ScenarioIterationId.String(),

@@ -9,7 +9,7 @@ import (
 )
 
 type DBOrganizationResult struct {
-	Id                      string      `db:"id"`
+	Id                      uuid.UUID   `db:"id"`
 	PublicId                uuid.UUID   `db:"public_id"`
 	DeletedAt               *int        `db:"deleted_at"`
 	Name                    string      `db:"name"`

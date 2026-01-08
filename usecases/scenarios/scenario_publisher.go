@@ -15,7 +15,7 @@ import (
 
 type ScenarioPublisherRepository interface {
 	UpdateScenarioLiveIterationId(ctx context.Context, exec repositories.Executor, scenarioId string, scenarioIterationId *string) error
-	ListScenarioIterations(ctx context.Context, exec repositories.Executor, organizationId string,
+	ListScenarioIterations(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID,
 		filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error)
 	UpdateScenarioIterationVersion(ctx context.Context, exec repositories.Executor,
 		scenarioIterationId string, newVersion int) error
@@ -114,7 +114,7 @@ func (publisher ScenarioPublisher) shutDownTestRunIfNeeded(ctx context.Context, 
 }
 
 func (publisher ScenarioPublisher) unpublishOldIteration(
-	ctx context.Context, tx repositories.Transaction, organizationId, scenarioId string, liveVersionId *string,
+	ctx context.Context, tx repositories.Transaction, organizationId uuid.UUID, scenarioId string, liveVersionId *string,
 ) ([]models.ScenarioPublication, error) {
 	if liveVersionId == nil {
 		return []models.ScenarioPublication{}, nil
@@ -142,7 +142,7 @@ func (publisher ScenarioPublisher) unpublishOldIteration(
 }
 
 func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
-	tx repositories.Transaction, organizationId, scenarioId, scenarioIterationId string,
+	tx repositories.Transaction, organizationId uuid.UUID, scenarioId, scenarioIterationId string,
 ) (models.ScenarioPublication, error) {
 	newScenarioPublicationId := pure_utils.NewPrimaryKey(organizationId)
 	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, tx, models.CreateScenarioPublicationInput{
@@ -169,7 +169,9 @@ func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
 	return scenarioPublication, nil
 }
 
-func (publisher ScenarioPublisher) SaveScenarioPreparationAction(ctx context.Context, exec repositories.Executor, orgId, scenarioId, iterationId string) error {
+func (publisher ScenarioPublisher) SaveScenarioPreparationAction(ctx context.Context,
+	exec repositories.Executor, orgId uuid.UUID, scenarioId, iterationId string,
+) error {
 	return publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, exec, models.CreateScenarioPublicationInput{
 		OrganizationId:      orgId,
 		ScenarioId:          scenarioId,

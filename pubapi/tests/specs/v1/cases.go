@@ -16,7 +16,7 @@ func cases(_ *testing.T, e *httpexpect.Expect) {
 	cases.Length().IsEqual(2)
 
 	cases.Value(0).Object().
-		HasValue("id", "00000000-0000-0000-0000-000000000000").
+		HasValue("id", "10000000-0000-0000-0000-000000000000").
 		HasValue("name", "Case name")
 
 	limitedCases := e.GET("/cases").WithQuery("limit", 1).Expect().
@@ -27,14 +27,14 @@ func cases(_ *testing.T, e *httpexpect.Expect) {
 	limitedCases.Path("$.data").Array().Length().IsEqual(1)
 	limitedCases.Path("$.pagination").Object().
 		HasValue("has_more", true).
-		HasValue("next_page_id", "00000000-0000-0000-0000-000000000000")
+		HasValue("next_page_id", "10000000-0000-0000-0000-000000000000")
 
-	cas := e.GET("/cases/00000000-0000-0000-0000-000000000000").Expect().
+	cas := e.GET("/cases/10000000-0000-0000-0000-000000000000").Expect().
 		Status(http.StatusOK).
 		JSON().
 		Object().Path("$.data").Object()
 
-	cas.HasValue("id", "00000000-0000-0000-0000-000000000000").
+	cas.HasValue("id", "10000000-0000-0000-0000-000000000000").
 		HasValue("name", "Case name").
 		HasValue("status", "closed").
 		HasValue("outcome", "unset").

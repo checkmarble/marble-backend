@@ -6,11 +6,12 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type keyAndOrganizationGetter interface {
 	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
-	GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error)
+	GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error)
 }
 
 type marbleTokenValidator interface {

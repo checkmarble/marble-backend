@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -16,7 +17,7 @@ type ScenarioPublicationRepository struct {
 func (s *ScenarioPublicationRepository) ListScenarioPublicationsOfOrganization(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	filters models.ListScenarioPublicationsFilters,
 ) ([]models.ScenarioPublication, error) {
 	args := s.Called(ctx, exec, organizationId, filters)

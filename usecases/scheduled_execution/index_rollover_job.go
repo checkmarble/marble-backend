@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
 
@@ -22,14 +23,14 @@ const (
 	INDEX_DELETION_DRY_RUN         = true
 )
 
-func NewIndexDeletionPeriodicJob(orgId string) *river.PeriodicJob {
+func NewIndexDeletionPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
 	return river.NewPeriodicJob(
 		river.PeriodicInterval(INDEX_DELETION_WORKER_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.IndexDeletionArgs{
 					OrgId: orgId,
 				}, &river.InsertOpts{
-					Queue: orgId,
+					Queue: orgId.String(),
 					UniqueOpts: river.UniqueOpts{
 						ByQueue:  true,
 						ByPeriod: INDEX_DELETION_WORKER_INTERVAL,
@@ -41,7 +42,7 @@ func NewIndexDeletionPeriodicJob(orgId string) *river.PeriodicJob {
 }
 
 type indexDeletionIndexEditor interface {
-	GetRequiredIndices(ctx context.Context, organizationId string) (
+	GetRequiredIndices(ctx context.Context, organizationId uuid.UUID) (
 		toCreate []models.AggregateQueryFamily, err error)
 }
 

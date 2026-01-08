@@ -5,12 +5,13 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type DBScenarioPublication struct {
 	Id                  string    `db:"id"`
 	Rank                int32     `db:"rank"`
-	OrganizationId      string    `db:"org_id"`
+	OrganizationId      uuid.UUID `db:"org_id"`
 	ScenarioId          string    `db:"scenario_id"`
 	ScenarioIterationId string    `db:"scenario_iteration_id"`
 	PublicationAction   string    `db:"publication_action"`
@@ -36,7 +37,7 @@ func AdaptScenarioPublication(dto DBScenarioPublication) (models.ScenarioPublica
 }
 
 type PublishScenarioIterationInput struct {
-	OrganizationId      string
+	OrganizationId      uuid.UUID
 	ScenarioIterationId string
 	ScenarioId          string
 	PublicationAction   models.PublicationAction

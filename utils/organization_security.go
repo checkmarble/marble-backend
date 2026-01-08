@@ -2,22 +2,23 @@ package utils
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 
 	"github.com/cockroachdb/errors"
 )
 
-func EnforceOrganizationAccess(creds models.Credentials, organizationId string) error {
+func EnforceOrganizationAccess(creds models.Credentials, organizationId uuid.UUID) error {
 	noOrgIdSecurity := creds.Role.HasPermission(models.ANY_ORGANIZATION_ID_IN_CONTEXT)
 	if noOrgIdSecurity {
 		return nil
 	}
 
-	if organizationId == "" {
+	if organizationId == uuid.Nil {
 		return errors.New("Empty organization Id passed to EnforceOrganizationAccess")
 	}
 
-	if creds.OrganizationId == "" {
+	if creds.OrganizationId == uuid.Nil {
 		return errors.Wrap(models.ForbiddenError, "credentials does not grant access to any organization")
 	}
 
@@ -41,7 +42,7 @@ func EnforcePartnerAccess(creds models.Credentials, partnerId string) error {
 	return nil
 }
 
-func EnforceOrganizationAndPartnerAccess(creds models.Credentials, organizationId string, partnerId null.String) error {
+func EnforceOrganizationAndPartnerAccess(creds models.Credentials, organizationId uuid.UUID, partnerId null.String) error {
 	err := EnforceOrganizationAccess(creds, organizationId)
 	if partnerId.Valid {
 		err = errors.Join(err, EnforcePartnerAccess(creds, partnerId.String))

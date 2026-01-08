@@ -4,12 +4,13 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/google/uuid"
 )
 
 type ScenarioPublication struct {
 	Id                  string
 	Rank                int32
-	OrganizationId      string
+	OrganizationId      uuid.UUID
 	ScenarioId          string
 	ScenarioIterationId string
 	PublicationAction   PublicationAction
@@ -102,7 +103,7 @@ type PublishScenarioIterationInput struct {
 }
 
 type CreateScenarioPublicationInput struct {
-	OrganizationId      string
+	OrganizationId      uuid.UUID
 	ScenarioId          string
 	ScenarioIterationId string
 	PublicationAction   PublicationAction

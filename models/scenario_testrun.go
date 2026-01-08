@@ -3,6 +3,8 @@ package models
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type TestrunStatus int
@@ -45,7 +47,7 @@ type ScenarioTestRun struct {
 	ScenarioIterationId     string
 	ScenarioId              string
 	ScenarioLiveIterationId string
-	OrganizationId          string
+	OrganizationId          uuid.UUID
 	CreatedAt               time.Time
 	ExpiresAt               time.Time
 	Status                  TestrunStatus

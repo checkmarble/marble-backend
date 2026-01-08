@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -16,13 +17,15 @@ type OrganizationRepository struct {
 func (m *OrganizationRepository) GetOrganizationById(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 ) (models.Organization, error) {
 	args := m.Called(ctx, exec, organizationId)
 	return args.Get(0).(models.Organization), args.Error(1)
 }
 
-func (m *OrganizationRepository) GetOrganizationAllowedNetworks(ctx context.Context, exec repositories.Executor, orgId string) ([]net.IPNet, error) {
+func (m *OrganizationRepository) GetOrganizationAllowedNetworks(ctx context.Context,
+	exec repositories.Executor, orgId uuid.UUID,
+) ([]net.IPNet, error) {
 	args := m.Called(ctx, exec, orgId)
 
 	if args.Error(1) != nil {

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -24,7 +25,7 @@ type ClientDbIndexEditorTestSuite struct {
 	scenarioFetcher               *mocks.ScenarioFetcher
 	transaction                   *mocks.Executor
 
-	organizationId                string
+	organizationId                uuid.UUID
 	scenarioId                    string
 	iterationId                   string
 	publicationId                 string
@@ -48,7 +49,7 @@ func (suite *ClientDbIndexEditorTestSuite) SetupTest() {
 	suite.scenarioFetcher = new(mocks.ScenarioFetcher)
 	suite.transaction = new(mocks.Executor)
 
-	suite.organizationId = "organizationId"
+	suite.organizationId = uuid.MustParse("12345678-1234-5678-9012-345678901234")
 	suite.scenarioId = "scenarioId"
 	suite.iterationId = "iterationId"
 	suite.publicationId = "publicationId"

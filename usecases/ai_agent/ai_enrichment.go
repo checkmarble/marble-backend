@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -56,7 +57,7 @@ type PivotDataForEnrichment struct {
 	PivotData       map[string]any `json:"pivot_data"`
 }
 
-func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, orgId string, caseId string) ([]models.AiEnrichmentKYC, error) {
+func (uc *AiAgentUsecase) EnrichCasePivotObjects(ctx context.Context, orgId uuid.UUID, caseId string) ([]models.AiEnrichmentKYC, error) {
 	logger := utils.LoggerFromContext(ctx)
 
 	// Get setting
@@ -137,7 +138,8 @@ func (uc *AiAgentUsecase) enrichData(
 	instructionData := map[string]any{
 		"language": language,
 	}
-	if aiSetting.KYCEnrichmentSetting.CustomInstructions != nil && *aiSetting.KYCEnrichmentSetting.CustomInstructions != "" {
+	if aiSetting.KYCEnrichmentSetting.CustomInstructions != nil &&
+		*aiSetting.KYCEnrichmentSetting.CustomInstructions != "" {
 		instructionData["custom_instructions"] = *aiSetting.KYCEnrichmentSetting.CustomInstructions
 	}
 	instruction, err := preparePrompt(INSTRUCTION_PATH, instructionData)

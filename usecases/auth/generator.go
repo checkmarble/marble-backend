@@ -8,11 +8,12 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/clock"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/google/uuid"
 )
 
 type marbleRepository interface {
 	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
-	GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error)
+	GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error)
 	UserByEmail(ctx context.Context, email string) (models.User, error)
 	UpdateUserProfileFromClaims(
 		ctx context.Context,

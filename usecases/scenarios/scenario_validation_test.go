@@ -20,7 +20,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	scenario := models.Scenario{
 		Id:                uuid.New().String(),
-		OrganizationId:    uuid.New().String(),
+		OrganizationId:    uuid.New(),
 		Name:              "scenario_name",
 		Description:       "description",
 		TriggerObjectType: "object_type",
@@ -112,7 +112,7 @@ func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	scenario := models.Scenario{
 		Id:                uuid.New().String(),
-		OrganizationId:    uuid.New().String(),
+		OrganizationId:    uuid.New(),
 		Name:              "scenario_name",
 		Description:       "description",
 		TriggerObjectType: "object_type",
@@ -204,7 +204,7 @@ func TestValidationShouldBypassCircuitBreaking(t *testing.T) {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	scenario := models.Scenario{
 		Id:                uuid.New().String(),
-		OrganizationId:    uuid.New().String(),
+		OrganizationId:    uuid.New(),
 		Name:              "scenario_name",
 		Description:       "description",
 		TriggerObjectType: "object_type",

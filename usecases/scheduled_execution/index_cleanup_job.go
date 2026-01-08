@@ -8,20 +8,21 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-set/v2"
 	"github.com/riverqueue/river"
 )
 
 const INDEX_CLEANUP_WORKER_INTERVAL = time.Hour
 
-func NewIndexCleanupPeriodicJob(orgId string) *river.PeriodicJob {
+func NewIndexCleanupPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
 	return river.NewPeriodicJob(
 		river.PeriodicInterval(INDEX_CLEANUP_WORKER_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.IndexCleanupArgs{
 					OrgId: orgId,
 				}, &river.InsertOpts{
-					Queue: orgId,
+					Queue: orgId.String(),
 					UniqueOpts: river.UniqueOpts{
 						ByQueue:  true,
 						ByPeriod: INDEX_CLEANUP_WORKER_INTERVAL,

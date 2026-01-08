@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -19,7 +20,7 @@ var (
 
 type DBRule struct {
 	Id                   string      `db:"id"`
-	OrganizationId       string      `db:"org_id"`
+	OrganizationId       uuid.UUID   `db:"org_id"`
 	ScenarioIterationId  string      `db:"scenario_iteration_id"`
 	DisplayOrder         int         `db:"display_order"`
 	Name                 string      `db:"name"`
@@ -58,7 +59,7 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 type DBRuleMetadata struct {
 	Id                  string    `db:"id"`
 	ScenarioIterationId string    `db:"scenario_iteration_id"`
-	OrganizationId      string    `db:"org_id"`
+	OrganizationId      uuid.UUID `db:"org_id"`
 	DisplayOrder        int       `db:"display_order"`
 	Name                string    `db:"name"`
 	Description         string    `db:"description"`
@@ -102,17 +103,17 @@ func AdaptRuleExecutionStat(db DbRuleExecution) (models.RuleExecutionStat, error
 }
 
 type DBCreateRuleInput struct {
-	Id                   string  `db:"id"`
-	OrganizationId       string  `db:"org_id"`
-	ScenarioIterationId  string  `db:"scenario_iteration_id"`
-	DisplayOrder         int     `db:"display_order"`
-	Name                 string  `db:"name"`
-	Description          string  `db:"description"`
-	ScoreModifier        int     `db:"score_modifier"`
-	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
-	RuleGroup            string  `db:"rule_group"`
-	SnoozeGroupId        *string `db:"snooze_group_id"`
-	StableRuleId         string  `db:"stable_rule_id"`
+	Id                   string    `db:"id"`
+	OrganizationId       uuid.UUID `db:"org_id"`
+	ScenarioIterationId  string    `db:"scenario_iteration_id"`
+	DisplayOrder         int       `db:"display_order"`
+	Name                 string    `db:"name"`
+	Description          string    `db:"description"`
+	ScoreModifier        int       `db:"score_modifier"`
+	FormulaAstExpression *[]byte   `db:"formula_ast_expression"`
+	RuleGroup            string    `db:"rule_group"`
+	SnoozeGroupId        *string   `db:"snooze_group_id"`
+	StableRuleId         string    `db:"stable_rule_id"`
 }
 
 func AdaptDBCreateRuleInput(rule models.CreateRuleInput) (DBCreateRuleInput, error) {

@@ -60,7 +60,7 @@ func scheduledScenarios(ctx context.Context, usecases usecases.Usecases) error {
 	for _, scenario := range scenarios {
 		logger.DebugContext(ctx, "Scheduled scenario",
 			slog.String("scenario", scenario.Id),
-			slog.String("organization", scenario.OrganizationId),
+			slog.String("organization", scenario.OrganizationId.String()),
 		)
 		err := runScheduledExecution.ScheduleScenarioIfDue(ctx, scenario.OrganizationId, scenario.Id)
 		if err != nil {

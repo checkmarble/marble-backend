@@ -30,7 +30,7 @@ func decisions(t *testing.T, e *httpexpect.Expect) {
 		HasValue("outcome", "block_and_review").
 		HasValue("review_status", "pending")
 
-	d.Path("$.case").Object().HasValue("id", "00000000-0000-0000-0000-000000000000")
+	d.Path("$.case").Object().HasValue("id", "10000000-0000-0000-0000-000000000000")
 	d.Path("$.scenario").Object().HasValue("id", "11111111-1111-1111-1111-111111111111")
 
 	rules := d.Path("$.rules").Array()
@@ -52,7 +52,7 @@ func decisions(t *testing.T, e *httpexpect.Expect) {
 
 func testDecisionFilters(t *testing.T, e *httpexpect.Expect) {
 	ids := []string{
-		"00000000-0000-0000-0000-000000000000",
+		"10000000-0000-0000-0000-000000000000",
 		"11111111-1111-1111-1111-111111111111",
 		"22222222-2222-2222-2222-222222222222",
 	}

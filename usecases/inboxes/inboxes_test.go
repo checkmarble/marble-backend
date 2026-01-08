@@ -26,7 +26,7 @@ type InboxReaderTestSuite struct {
 	credentials        models.Credentials
 	adminCredentials   models.Credentials
 
-	organizationId  string
+	organizationId  uuid.UUID
 	inboxId         uuid.UUID
 	inbox           models.Inbox
 	adminUserId     models.UserId
@@ -47,7 +47,7 @@ func (suite *InboxReaderTestSuite) SetupTest() {
 
 	suite.ctx = context.Background()
 
-	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
+	suite.organizationId = uuid.MustParse("25ab6323-1657-4a52-923a-ef6983fe4532")
 
 	var err error
 	suite.inboxId, err = uuid.Parse("0ae6fda7-f7b3-4218-9fc3-4efa329432a7")

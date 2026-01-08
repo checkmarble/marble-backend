@@ -10,13 +10,16 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type analyticsSettingsRepository interface {
-	GetDataModel(ctx context.Context, exec repositories.Executor, organizationId string, fetchEnumValues bool, useCache bool) (models.DataModel, error)
+	GetDataModel(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID,
+		fetchEnumValues bool, useCache bool) (models.DataModel, error)
 	GetDataModelTable(ctx context.Context, exec repositories.Executor, tableID string) (models.TableMetadata, error)
-	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]analytics.Settings, error)
-	UpdateAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string, triggerObjectType string, settings dto.AnalyticsSettingDto) (analytics.Settings, error)
+	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[string]analytics.Settings, error)
+	UpdateAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID,
+		triggerObjectType string, settings dto.AnalyticsSettingDto) (analytics.Settings, error)
 }
 
 type AnalyticsSettingsUsecase struct {
@@ -51,7 +54,9 @@ func (uc AnalyticsSettingsUsecase) GetAnalyticsSettings(ctx context.Context, tab
 	return analytics.Settings{}, nil
 }
 
-func (uc AnalyticsSettingsUsecase) UpdateAnalyticsSettings(ctx context.Context, tableId string, newSettings dto.AnalyticsSettingDto) (analytics.Settings, error) {
+func (uc AnalyticsSettingsUsecase) UpdateAnalyticsSettings(ctx context.Context, tableId string,
+	newSettings dto.AnalyticsSettingDto,
+) (analytics.Settings, error) {
 	orgId := uc.enforceSecurity.OrgId()
 
 	if err := uc.enforceSecurity.WriteDataModel(orgId); err != nil {
@@ -71,7 +76,6 @@ func (uc AnalyticsSettingsUsecase) UpdateAnalyticsSettings(ctx context.Context, 
 
 	if _, ok := dm.Tables[table.Name]; !ok {
 		return analytics.Settings{}, errors.Wrapf(err, "table %s does not exist", table.Name)
-
 	}
 
 TriggerFieldCheck:
@@ -87,7 +91,8 @@ TriggerFieldCheck:
 
 	for _, f := range newSettings.IngestedDataFields {
 		if _, ok := dm.FindField(dm.Tables[table.Name], f.Path, f.Name); !ok {
-			return analytics.Settings{}, errors.Newf("data model table %s does not link to ingested fields %s", table.Name, f.Ident())
+			return analytics.Settings{}, errors.Newf(
+				"data model table %s does not link to ingested fields %s", table.Name, f.Ident())
 		}
 	}
 

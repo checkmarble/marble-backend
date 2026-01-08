@@ -6,6 +6,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 )
 
 func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, exec Executor, apiKeyId string) (models.ApiKey, error) {
@@ -42,7 +43,7 @@ func (repo *MarbleDbRepository) GetApiKeyByHash(ctx context.Context, exec Execut
 	)
 }
 
-func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, organizationId string) ([]models.ApiKey, error) {
+func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, organizationId uuid.UUID) ([]models.ApiKey, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}

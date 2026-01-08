@@ -8,13 +8,14 @@ import (
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/google/uuid"
 )
 
 type DataAccessor struct {
 	DataModel                  models.DataModel
 	ClientObject               models.ClientObject
 	executorFactory            executor_factory.ExecutorFactory
-	organizationId             string
+	organizationId             uuid.UUID
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 }
 
@@ -36,11 +37,14 @@ func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, 
 }
 
 type analyticsSettingsRepository interface {
-	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]analytics.Settings, error)
+	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[string]analytics.Settings, error)
 }
 
-func (d DataAccessor) GetAnalyticsFields(ctx context.Context, exec repositories.Executor, repository analyticsSettingsRepository, evalParameters ScenarioEvaluationParameters) map[string]any {
-	if settings, err := repository.GetAnalyticsSettings(ctx, exec, evalParameters.Scenario.OrganizationId); err == nil {
+func (d DataAccessor) GetAnalyticsFields(ctx context.Context, exec repositories.Executor,
+	repository analyticsSettingsRepository, evalParameters ScenarioEvaluationParameters,
+) map[string]any {
+	if settings, err := repository.GetAnalyticsSettings(ctx, exec,
+		evalParameters.Scenario.OrganizationId); err == nil {
 		if setting, ok := settings[evalParameters.Scenario.TriggerObjectType]; ok {
 			fields := make(map[string]any, len(setting.DbFields))
 

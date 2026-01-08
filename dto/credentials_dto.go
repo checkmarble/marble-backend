@@ -3,6 +3,7 @@ package dto
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 )
 
 type Identity struct {
@@ -14,11 +15,11 @@ type Identity struct {
 }
 
 type Credentials struct {
-	ActorIdentity  Identity `json:"actor_identity"`
-	OrganizationId string   `json:"organization_id"`
-	PartnerId      *string  `json:"partner_id,omitempty"`
-	Permissions    []string `json:"permissions"`
-	Role           string   `json:"role"`
+	ActorIdentity  Identity  `json:"actor_identity"`
+	OrganizationId uuid.UUID `json:"organization_id"`
+	PartnerId      *string   `json:"partner_id,omitempty"`
+	Permissions    []string  `json:"permissions"`
+	Role           string    `json:"role"`
 }
 
 func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {

@@ -4,6 +4,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type ListBatchExecutionsParams struct {
@@ -12,7 +13,7 @@ type ListBatchExecutionsParams struct {
 	ScenarioId *string `form:"scenario_id" binding:"omitzero,uuid"`
 }
 
-func (p ListBatchExecutionsParams) ToFilters(orgId string) models.ListScheduledExecutionsFilters {
+func (p ListBatchExecutionsParams) ToFilters(orgId uuid.UUID) models.ListScheduledExecutionsFilters {
 	filters := models.ListScheduledExecutionsFilters{
 		OrganizationId: orgId,
 	}

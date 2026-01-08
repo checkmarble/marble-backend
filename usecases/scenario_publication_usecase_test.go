@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -30,7 +31,7 @@ type ScenarioPublicationUsecaseTestSuite struct {
 	featureAccessReader            *mocks.FeatureAccessReader
 	taskQueueRepository            *mocks.TaskQueueRepository
 
-	organizationId                string
+	organizationId                uuid.UUID
 	scenarioId                    string
 	iterationId                   string
 	publicationId                 string
@@ -59,7 +60,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) SetupTest() {
 	suite.featureAccessReader = new(mocks.FeatureAccessReader)
 	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
 
-	suite.organizationId = "organizationId"
+	suite.organizationId = uuid.MustParse("12345678-1234-5678-9012-345678901234")
 	suite.scenarioId = "scenarioId"
 	suite.iterationId = "iterationId"
 	suite.publicationId = "publicationId"
@@ -479,7 +480,8 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
 	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction, suite.iterationId).
 		Return(suite.scenarioAndIteration, nil)
-	suite.scenarioPublisher.On("SaveScenarioPreparationAction", suite.ctx, suite.transaction, suite.organizationId, suite.scenario.Id, suite.iterationId).
+	suite.scenarioPublisher.On("SaveScenarioPreparationAction", suite.ctx, suite.transaction,
+		suite.organizationId, suite.scenario.Id, suite.iterationId).
 		Return(nil)
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId,
 		suite.iterationId).Return([]models.ConcreteIndex{

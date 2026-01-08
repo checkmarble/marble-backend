@@ -5,11 +5,12 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/google/uuid"
 )
 
 type ScheduledExecution struct {
 	Id                         string
-	OrganizationId             string
+	OrganizationId             uuid.UUID
 	ScenarioId                 string
 	ScenarioIterationId        string
 	ScenarioVersion            string
@@ -84,14 +85,14 @@ type UpdateScheduledExecutionInput struct {
 }
 
 type CreateScheduledExecutionInput struct {
-	OrganizationId      string
+	OrganizationId      uuid.UUID
 	ScenarioId          string
 	ScenarioIterationId string
 	Manual              bool
 }
 
 type ListScheduledExecutionsFilters struct {
-	OrganizationId string
+	OrganizationId uuid.UUID
 	ScenarioId     string
 	Status         []ScheduledExecutionStatus
 	ExcludeManual  bool

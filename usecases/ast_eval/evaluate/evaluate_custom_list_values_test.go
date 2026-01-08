@@ -8,15 +8,17 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
+	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/stretchr/testify/assert"
 )
 
 // For Custom List Evaluator
 const (
-	testListId    string = "1"
-	testListOrgId string = "2"
+	testListId string = "1"
 )
+
+var testListOrgId = utils.TextToUUID("test-org")
 
 var testList = models.CustomList{
 	Id:             testListId,

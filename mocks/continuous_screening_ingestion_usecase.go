@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
@@ -15,7 +16,7 @@ type ContinuousScreeningIngestionUsecase struct {
 
 func (m *ContinuousScreeningIngestionUsecase) IngestObject(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	objectType string,
 	objectBody json.RawMessage,
 	parserOpts ...payload_parser.ParserOpt,

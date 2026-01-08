@@ -3,6 +3,8 @@ package models
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type ScreeningStatus int
@@ -96,7 +98,7 @@ func (scs ScreeningMatchStatus) String() string {
 type Screening struct {
 	Id                  string
 	DecisionId          string
-	OrgId               string
+	OrgId               uuid.UUID
 	ScreeningConfigId   string
 	Status              ScreeningStatus
 	Config              ScreeningConfigRef
@@ -125,7 +127,7 @@ type Screening struct {
 type ScreeningBaseInfo struct {
 	Id              string
 	DecisionId      string
-	OrgId           string
+	OrgId           uuid.UUID
 	Status          ScreeningStatus
 	RequestedBy     *string
 	Partial         bool
@@ -252,7 +254,7 @@ type ScreeningFileInput struct {
 
 type ScreeningWhitelist struct {
 	Id             string
-	OrgId          string
+	OrgId          uuid.UUID
 	CounterpartyId string
 	EntityId       string
 	WhitelistedBy  *string

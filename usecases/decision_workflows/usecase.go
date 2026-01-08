@@ -37,7 +37,7 @@ type decisionWorkflowsRepository interface {
 	CountDecisionsByCaseIds(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		caseIds []string,
 	) (map[string]int, error)
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
@@ -64,14 +64,14 @@ type caseReviewTaskEnqueuer interface {
 	EnqueueCaseReviewTask(
 		ctx context.Context,
 		tx repositories.Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		caseId uuid.UUID,
 		aiCaseReviewId uuid.UUID,
 	) error
 }
 
 type aiAgentUsecase interface {
-	HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error)
+	HasAiCaseReviewEnabled(ctx context.Context, orgId uuid.UUID) (bool, error)
 }
 
 type DecisionsWorkflows struct {

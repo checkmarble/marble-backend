@@ -200,7 +200,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			if err := uc.createWhitelist(
 				ctx,
 				tx,
-				continuousScreeningWithMatches.OrgId.String(),
+				continuousScreeningWithMatches.OrgId,
 				typedObjectId(
 					continuousScreeningWithMatches.ObjectType,
 					continuousScreeningWithMatches.ObjectId,
@@ -233,7 +233,7 @@ func (uc *ContinuousScreeningUsecase) checkPermissionOnCaseAndContinuousScreenin
 	inboxes, err := uc.inboxReader.ListInboxes(
 		ctx,
 		exec,
-		continuousScreening.OrgId.String(),
+		continuousScreening.OrgId,
 		false,
 	)
 	if err != nil {
@@ -250,7 +250,8 @@ func (uc *ContinuousScreeningUsecase) checkPermissionOnCaseAndContinuousScreenin
 func (uc *ContinuousScreeningUsecase) createWhitelist(
 	ctx context.Context,
 	exec repositories.Executor,
-	orgId, counterpartyId, entityId string,
+	orgId uuid.UUID,
+	counterpartyId, entityId string,
 	reviewerId *models.UserId,
 ) error {
 	if err := uc.enforceSecurityScreening.WriteWhitelist(ctx); err != nil {
@@ -384,7 +385,7 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			return err
 		}
 
-		clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, continuousScreening.OrgId.String())
+		clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, continuousScreening.OrgId)
 		if err != nil {
 			return err
 		}

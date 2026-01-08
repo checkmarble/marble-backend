@@ -49,10 +49,10 @@ type ScenarioEvaluationParameters struct {
 }
 
 type EvalScreeningUsecase interface {
-	Execute(context.Context, string, models.OpenSanctionsQuery) (models.ScreeningWithMatches, error)
-	FilterOutWhitelistedMatches(context.Context, string, models.ScreeningWithMatches,
-		string) (models.ScreeningWithMatches, error)
-	CountWhitelistsForCounterpartyId(context.Context, string, string) (int, error)
+	Execute(ctx context.Context, orgId uuid.UUID, query models.OpenSanctionsQuery) (models.ScreeningWithMatches, error)
+	FilterOutWhitelistedMatches(ctx context.Context, orgId uuid.UUID, screening models.ScreeningWithMatches,
+		counterpartyId string) (models.ScreeningWithMatches, error)
+	CountWhitelistsForCounterpartyId(ctx context.Context, orgId uuid.UUID, counterpartyId string) (int, error)
 }
 
 type EvalNameRecognitionRepository interface {
@@ -72,7 +72,7 @@ type SnoozesForDecisionReader interface {
 type ScenarioEvaluatorFeatureAccessReader interface {
 	GetOrganizationFeatureAccess(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		userId *models.UserId,
 	) (models.OrganizationFeatureAccess, error)
 }
@@ -82,7 +82,7 @@ type EvaluateAstExpression interface {
 		ctx context.Context,
 		cache *ast_eval.EvaluationCache,
 		ruleAstExpression ast.Node,
-		organizationId string,
+		organizationId uuid.UUID,
 		payload models.ClientObject,
 		dataModel models.DataModel,
 	) (ast.NodeEvaluation, error)
@@ -265,7 +265,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 		if len(inExec) > 0 {
 			utils.MetricScreeningLatency.
-				With(prometheus.Labels{"org_id": params.Scenario.OrganizationId}).
+				With(prometheus.Labels{"org_id": params.Scenario.OrganizationId.String()}).
 				Observe(time.Since(start).Seconds())
 		}
 
@@ -316,11 +316,6 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		return false, models.ScenarioExecution{}, errors.Wrap(err,
 			"error parsing scenario iteration id in EvalScenario")
 	}
-	organizationID, err := uuid.Parse(params.Scenario.OrganizationId)
-	if err != nil {
-		return false, models.ScenarioExecution{}, errors.Wrap(err,
-			"error parsing organization id in EvalScenario")
-	}
 
 	// Build ScenarioExecution as result
 	se := models.ScenarioExecution{
@@ -333,7 +328,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		ScreeningExecutions: screeningExecutions,
 		Score:               score,
 		Outcome:             outcome,
-		OrganizationId:      organizationID,
+		OrganizationId:      params.Scenario.OrganizationId,
 	}
 	if params.Pivot != nil {
 		se.PivotId = &params.Pivot.Id
@@ -394,7 +389,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.EvalTestRunScenario",
 		trace.WithAttributes(
 			attribute.String("scenario_id", params.Scenario.Id),
-			attribute.String("organization_id", params.Scenario.OrganizationId),
+			attribute.String("organization_id", params.Scenario.OrganizationId.String()),
 			attribute.String("object_id", params.ClientObject.Data["object_id"].(string)),
 		),
 	)
@@ -502,7 +497,7 @@ func (e ScenarioEvaluator) EvalScenario(
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.EvalScenario",
 		trace.WithAttributes(
 			attribute.String("scenario_id", params.Scenario.Id),
-			attribute.String("organization_id", params.Scenario.OrganizationId),
+			attribute.String("organization_id", params.Scenario.OrganizationId.String()),
 			attribute.String("scenario_iteration_id", targetVersionId),
 			attribute.String("object_id", params.ClientObject.Data["object_id"].(string)),
 		),
@@ -553,7 +548,7 @@ func (e ScenarioEvaluator) evalScenarioRule(
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioRule",
 		trace.WithAttributes(
-			attribute.String("organization_id", rule.OrganizationId),
+			attribute.String("organization_id", rule.OrganizationId.String()),
 			attribute.String("rule_id", rule.Id),
 			attribute.String("rule_name", rule.Name),
 			attribute.String("scenario_iteration_id", rule.ScenarioIterationId),
@@ -652,7 +647,7 @@ func (e ScenarioEvaluator) evalScenarioTrigger(
 	ctx context.Context,
 	cache *ast_eval.EvaluationCache,
 	triggerAstExpression ast.Node,
-	organizationId string,
+	organizationId uuid.UUID,
 	payload models.ClientObject,
 	dataModel models.DataModel,
 ) (bool, error) {

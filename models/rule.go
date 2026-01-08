@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/google/uuid"
 )
 
 ///////////////////////////////
@@ -13,7 +14,7 @@ import (
 type Rule struct {
 	Id                   string
 	ScenarioIterationId  string
-	OrganizationId       string
+	OrganizationId       uuid.UUID
 	DisplayOrder         int
 	Name                 string
 	Description          string
@@ -43,7 +44,7 @@ func (r Rule) ToMetadata() RuleMetadata {
 type RuleMetadata struct {
 	Id                  string
 	ScenarioIterationId string
-	OrganizationId      string
+	OrganizationId      uuid.UUID
 	DisplayOrder        int
 	Name                string
 	Description         string
@@ -55,7 +56,7 @@ type RuleMetadata struct {
 
 type CreateRuleInput struct {
 	Id                   string
-	OrganizationId       string
+	OrganizationId       uuid.UUID
 	ScenarioIterationId  string
 	DisplayOrder         int
 	Name                 string

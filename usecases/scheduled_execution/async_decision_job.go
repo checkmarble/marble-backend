@@ -67,7 +67,7 @@ type asyncDecisionWorkerRepository interface {
 		updateScheduledEx models.UpdateScheduledExecutionStatusInput,
 	) (executed bool, err error)
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
-	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]analytics.Settings, error)
+	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[string]analytics.Settings, error)
 }
 
 type ScenarioEvaluator interface {
@@ -378,7 +378,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	webhookEventId := uuid.NewString()
 	err = w.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 		Id:             webhookEventId,
-		OrganizationId: decision.OrganizationId.String(),
+		OrganizationId: decision.OrganizationId,
 		EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId.String()),
 	})
 	if err != nil {
@@ -387,7 +387,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 
 	err = w.taskQueueRepository.EnqueueDecisionWorkflowTask(ctx, tx,
-		decision.OrganizationId.String(), decision.DecisionId.String())
+		decision.OrganizationId, decision.DecisionId.String())
 	if err != nil {
 		return false, nil, nil, err
 	}

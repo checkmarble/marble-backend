@@ -16,7 +16,7 @@ import (
 )
 
 type AnalyticsCopyRequest struct {
-	OrgId     string
+	OrgId     uuid.UUID
 	Watermark *models.Watermark
 	Table     string
 
@@ -33,7 +33,8 @@ type AnalyticsCopyRequest struct {
 func AnalyticsGetLatestRow(
 	ctx context.Context,
 	exec AnalyticsExecutor,
-	orgId, triggerObjectType, table string,
+	orgId uuid.UUID,
+	triggerObjectType, table string,
 	alternativeIdField ...string,
 ) (uuid.UUID, time.Time, error) {
 	idField := "id"

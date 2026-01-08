@@ -15,7 +15,7 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 	ctx context.Context,
 	exec Executor,
 	decision models.PhantomDecision,
-	organizationId string,
+	organizationId uuid.UUID,
 	testRunId string,
 	newPhantomDecisionId string,
 	scenarioVersion int,

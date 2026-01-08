@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -27,7 +28,7 @@ func (r *UserRepository) DeleteUser(ctx context.Context, exec repositories.Execu
 	return args.Error(0)
 }
 
-func (r *UserRepository) DeleteUsersOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) error {
+func (r *UserRepository) DeleteUsersOfOrganization(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) error {
 	args := r.Called(ctx, exec, organizationId)
 	return args.Error(0)
 }
@@ -37,8 +38,8 @@ func (r *UserRepository) UserById(ctx context.Context, exec repositories.Executo
 	return args.Get(0).(models.User), args.Error(1)
 }
 
-func (r *UserRepository) ListUsers(ctx context.Context, exec repositories.Executor, filterOrganisationId *string) ([]models.User, error) {
-	args := r.Called(ctx, exec, filterOrganisationId)
+func (r *UserRepository) ListUsers(ctx context.Context, exec repositories.Executor, orgId *uuid.UUID) ([]models.User, error) {
+	args := r.Called(ctx, exec, orgId)
 	return args.Get(0).([]models.User), args.Error(1)
 }
 

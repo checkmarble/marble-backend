@@ -33,10 +33,10 @@ func (m *ScreeningCaseUsecaseMock) PerformCaseActionSideEffects(ctx context.Cont
 type screeningRepositoryMock struct{}
 
 func (screeningRepositoryMock) GetOrganizationById(ctx context.Context,
-	exec repositories.Executor, organizationId string,
+	exec repositories.Executor, organizationId uuid.UUID,
 ) (models.Organization, error) {
 	return models.Organization{
-		Id:   "orgid",
+		Id:   utils.TextToUUID("orgid"),
 		Name: "ACME Inc.",
 		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{
 			MatchThreshold: 42,
@@ -73,7 +73,7 @@ func (screeningRepositoryMock) DecisionsById(ctx context.Context, exec repositor
 func (screeningRepositoryMock) ListInboxes(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	withCaseCount bool,
 ) ([]models.Inbox, error) {
 	parsedInboxId, _ := uuid.Parse("00000000-0000-0000-0000-000000000000") // Placeholder UUID

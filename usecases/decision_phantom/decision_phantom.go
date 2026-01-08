@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -33,7 +34,7 @@ type StoreTestRunRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		decision models.PhantomDecision,
-		organizationId string,
+		organizationId uuid.UUID,
 		testRunId string,
 		newPhantomDecisionId string,
 		scenarioVersion int,

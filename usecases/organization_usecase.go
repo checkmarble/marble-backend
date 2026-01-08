@@ -11,13 +11,14 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
 type OrganizationUsecaseFeatureAccessReader interface {
 	GetOrganizationFeatureAccess(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		user *models.UserId,
 	) (models.OrganizationFeatureAccess, error)
 }
@@ -72,7 +73,7 @@ func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, name
 	return usecase.organizationCreator.CreateOrganization(ctx, name)
 }
 
-func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationId string) (models.Organization, error) {
+func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationId uuid.UUID) (models.Organization, error) {
 	if err := usecase.enforceSecurity.ReadOrganization(organizationId); err != nil {
 		return models.Organization{}, err
 	}
@@ -119,7 +120,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 	})
 }
 
-func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, organizationId string) error {
+func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, organizationId uuid.UUID) error {
 	if err := usecase.enforceSecurity.DeleteOrganization(); err != nil {
 		return err
 	}
@@ -155,7 +156,7 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 
 func (usecase *OrganizationUseCase) GetOrganizationFeatureAccess(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	userId *models.UserId,
 ) (models.OrganizationFeatureAccess, error) {
 	return usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId, userId)

@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
 )
 
-func (db *Database) GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error) {
+func (db *Database) GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error) {
 	query := `
 		SELECT id, name
 		FROM organizations

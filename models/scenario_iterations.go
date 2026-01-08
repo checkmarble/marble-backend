@@ -13,7 +13,7 @@ import (
 
 type ScenarioIteration struct {
 	Id                            string
-	OrganizationId                string
+	OrganizationId                uuid.UUID
 	ScenarioId                    string
 	Version                       *int
 	CreatedAt                     time.Time
@@ -40,7 +40,7 @@ func (si ScenarioIteration) ToMetadata() ScenarioIterationMetadata {
 
 type ScenarioIterationMetadata struct {
 	Id             string
-	OrganizationId string
+	OrganizationId uuid.UUID
 	ScenarioId     string
 	Version        *int
 	CreatedAt      time.Time

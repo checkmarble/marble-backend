@@ -3,16 +3,17 @@ package security
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 
 	"github.com/cockroachdb/errors"
 )
 
 type EnforceSecurity interface {
 	Permission(permission models.Permission) error
-	ReadOrganization(organizationId string) error
+	ReadOrganization(organizationId uuid.UUID) error
 	Permissions(permissions []models.Permission) error
 
-	OrgId() string
+	OrgId() uuid.UUID
 	UserId() *string
 	ApiKeyId() *string
 }
@@ -27,7 +28,7 @@ func NewEnforceSecurity(credentials models.Credentials) *EnforceSecurityImpl {
 	}
 }
 
-func (e *EnforceSecurityImpl) OrgId() string {
+func (e *EnforceSecurityImpl) OrgId() uuid.UUID {
 	return e.Credentials.OrganizationId
 }
 
@@ -47,7 +48,7 @@ func (e *EnforceSecurityImpl) ApiKeyId() *string {
 	return utils.Ptr(e.Credentials.ActorIdentity.ApiKeyId)
 }
 
-func (e *EnforceSecurityImpl) ReadOrganization(organizationId string) error {
+func (e *EnforceSecurityImpl) ReadOrganization(organizationId uuid.UUID) error {
 	return utils.EnforceOrganizationAccess(e.Credentials, organizationId)
 }
 

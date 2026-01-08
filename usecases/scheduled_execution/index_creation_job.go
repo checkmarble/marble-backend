@@ -55,7 +55,7 @@ func (w *IndexCreationWorker) Work(ctx context.Context, job *river.Job[models.In
 		&river.InsertOpts{
 			Priority:    1,
 			ScheduledAt: time.Now(),
-			Queue:       job.Args.OrgId,
+			Queue:       job.Args.OrgId.String(),
 		},
 	)
 
@@ -140,7 +140,7 @@ func (w *IndexCreationStatusWorker) Work(ctx context.Context, job *river.Job[mod
 				Indices: leftIndices,
 			},
 			&river.InsertOpts{
-				Queue:       job.Args.OrgId,
+				Queue:       job.Args.OrgId.String(),
 				ScheduledAt: time.Now().Add(time.Minute),
 			},
 		)

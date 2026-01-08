@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -24,7 +25,7 @@ type DatamodelUsecaseTestSuite struct {
 	transaction                  *mocks.Transaction
 	transactionFactory           *mocks.TransactionFactory
 
-	organizationId      string
+	organizationId      uuid.UUID
 	dataModel           models.DataModel
 	dataModelWithUnique models.DataModel
 	uniqueIndexes       []models.UnicityIndex
@@ -44,7 +45,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 	suite.transaction = new(mocks.Transaction)
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 
-	suite.organizationId = "organizationId"
+	suite.organizationId = uuid.MustParse("12345678-1234-5678-9012-345678901234")
 	suite.dataModel = models.DataModel{
 		Tables: map[string]models.Table{
 			"transactions": {

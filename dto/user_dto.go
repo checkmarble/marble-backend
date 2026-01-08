@@ -4,13 +4,14 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type User struct {
 	UserId         string     `json:"user_id"`
 	Email          string     `json:"email"`
 	Role           string     `json:"role"`
-	OrganizationId string     `json:"organization_id"`
+	OrganizationId uuid.UUID  `json:"organization_id"`
 	PartnerId      *string    `json:"partner_id,omitempty"`
 	FirstName      string     `json:"first_name"`
 	LastName       string     `json:"last_name"`
@@ -33,12 +34,12 @@ func AdaptUserDto(user models.User) User {
 }
 
 type CreateUser struct {
-	Email          string  `json:"email"`
-	Role           string  `json:"role"`
-	OrganizationId string  `json:"organization_id"`
-	PartnerId      *string `json:"partner_id"`
-	FirstName      string  `json:"first_name"`
-	LastName       string  `json:"last_name"`
+	Email          string    `json:"email"`
+	Role           string    `json:"role"`
+	OrganizationId uuid.UUID `json:"organization_id"`
+	PartnerId      *string   `json:"partner_id"`
+	FirstName      string    `json:"first_name"`
+	LastName       string    `json:"last_name"`
 }
 
 type UpdateUser struct {

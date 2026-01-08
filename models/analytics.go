@@ -1,5 +1,7 @@
 package models
 
+import "github.com/google/uuid"
+
 type EmbeddingType int
 
 // Look at GlobalDashboard to fill all places where it is used (no pattern matching enforced by the compilator in Go)
@@ -27,7 +29,7 @@ func (embeddingType EmbeddingType) ResourceType() string {
 }
 
 type Analytics struct {
-	OrganizationId     string
+	OrganizationId     uuid.UUID
 	EmbeddingType      EmbeddingType
 	SignedEmbeddingURL string
 }
@@ -38,7 +40,7 @@ type AnalyticsCustomClaims interface {
 }
 
 type GlobalDashboardAnalytics struct {
-	OrganizationId string
+	OrganizationId uuid.UUID
 }
 
 func (analytics GlobalDashboardAnalytics) GetEmbeddingType() EmbeddingType {
@@ -47,6 +49,6 @@ func (analytics GlobalDashboardAnalytics) GetEmbeddingType() EmbeddingType {
 
 func (analytics GlobalDashboardAnalytics) GetParams() map[string]interface{} {
 	return map[string]interface{}{
-		"organization_id": []string{analytics.OrganizationId},
+		"organization_id": []string{analytics.OrganizationId.String()},
 	}
 }

@@ -18,7 +18,7 @@ type OrganizationCreator struct {
 }
 
 func (creator *OrganizationCreator) CreateOrganization(ctx context.Context, name string) (models.Organization, error) {
-	newOrganizationId := uuid.NewString()
+	newOrganizationId := uuid.New()
 	organization, err := executor_factory.TransactionReturnValue(ctx,
 		creator.TransactionFactory, func(tx repositories.Transaction) (models.Organization, error) {
 			if err := creator.OrganizationRepository.CreateOrganization(ctx, tx, newOrganizationId, name); err != nil {
@@ -37,7 +37,7 @@ func (creator *OrganizationCreator) CreateOrganization(ctx context.Context, name
 	return organization, nil
 }
 
-func (creator *OrganizationCreator) seedDefaultList(ctx context.Context, organizationId string) error {
+func (creator *OrganizationCreator) seedDefaultList(ctx context.Context, organizationId uuid.UUID) error {
 	logger := utils.LoggerFromContext(ctx)
 	exec := creator.ExecutorFactory.NewExecutor()
 	newCustomListId := uuid.NewString()

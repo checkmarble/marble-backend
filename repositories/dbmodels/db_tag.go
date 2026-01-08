@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -12,7 +13,7 @@ type DBTag struct {
 	Id             string           `db:"id"`
 	Name           string           `db:"name"`
 	Color          string           `db:"color"`
-	OrganizationId string           `db:"org_id"`
+	OrganizationId uuid.UUID        `db:"org_id"`
 	Target         string           `db:"target"`
 	CreatedAt      time.Time        `db:"created_at"`
 	UpdatedAt      time.Time        `db:"updated_at"`

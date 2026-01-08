@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type Metabase interface {
@@ -14,7 +15,7 @@ type MarbleAnalyticsRepository struct {
 	metabase Metabase
 }
 
-func (repo *MarbleAnalyticsRepository) ListAnalytics(ctx context.Context, organizationId string) ([]models.Analytics, error) {
+func (repo *MarbleAnalyticsRepository) ListAnalytics(ctx context.Context, organizationId uuid.UUID) ([]models.Analytics, error) {
 	var analytics []models.Analytics
 
 	// Add general dashboard
@@ -29,7 +30,7 @@ func (repo *MarbleAnalyticsRepository) ListAnalytics(ctx context.Context, organi
 	return analytics, nil
 }
 
-func (repo *MarbleAnalyticsRepository) getAnalytics(_ context.Context, organizationId string,
+func (repo *MarbleAnalyticsRepository) getAnalytics(_ context.Context, organizationId uuid.UUID,
 	analyticsCustomClaims models.AnalyticsCustomClaims,
 ) (models.Analytics, error) {
 	generalDashboardUrl, err := repo.metabase.GenerateSignedEmbeddingURL(analyticsCustomClaims)

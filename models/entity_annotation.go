@@ -3,6 +3,8 @@ package models
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type EntityAnnotationType int
@@ -42,7 +44,7 @@ func (t EntityAnnotationType) String() string {
 
 type EntityAnnotation struct {
 	Id             string
-	OrgId          string
+	OrgId          uuid.UUID
 	ObjectType     string
 	ObjectId       string
 	CaseId         *string
@@ -55,27 +57,27 @@ type EntityAnnotation struct {
 }
 
 type EntityAnnotationRequest struct {
-	OrgId          string
+	OrgId          uuid.UUID
 	ObjectType     string
 	ObjectId       string
 	AnnotationType *EntityAnnotationType
 }
 
 type CaseEntityAnnotationRequest struct {
-	OrgId          string
+	OrgId          uuid.UUID
 	CaseId         string
 	AnnotationType *EntityAnnotationType
 }
 
 type EntityAnnotationRequestForObjects struct {
-	OrgId          string
+	OrgId          uuid.UUID
 	ObjectType     string
 	ObjectIds      []string
 	AnnotationType *EntityAnnotationType
 }
 
 type CreateEntityAnnotationRequest struct {
-	OrgId          string
+	OrgId          uuid.UUID
 	ObjectType     string
 	ObjectId       string
 	CaseId         *string
@@ -86,7 +88,7 @@ type CreateEntityAnnotationRequest struct {
 }
 
 type AnnotationByIdRequest struct {
-	OrgId          string
+	OrgId          uuid.UUID
 	AnnotationId   string
 	AnnotationType *EntityAnnotationType
 	IncludeDeleted bool

@@ -147,7 +147,7 @@ func (w AnalyticsMergeWorker) Work(ctx context.Context, job *river.Job[models.An
 func (w AnalyticsMergeWorker) merge(
 	ctx context.Context,
 	job *river.Job[models.AnalyticsMergeArgs],
-	orgId string,
+	orgId uuid.UUID,
 	dbExec repositories.Executor,
 	exec repositories.AnalyticsExecutor,
 	watermarkType models.WatermarkType,
@@ -224,7 +224,7 @@ func (w AnalyticsMergeWorker) merge(
 func (w AnalyticsMergeWorker) findFirstMergeablePartition(
 	ctx context.Context,
 	job *river.Job[models.AnalyticsMergeArgs],
-	orgId string,
+	orgId uuid.UUID,
 	dbExec repositories.Executor,
 	exec repositories.AnalyticsExecutor,
 	watermarkType models.WatermarkType,

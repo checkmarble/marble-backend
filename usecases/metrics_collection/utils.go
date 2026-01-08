@@ -11,8 +11,8 @@ func getOrgIDlistAndPublicIdMap(orgs []models.Organization) ([]string, map[strin
 	orgIds := make([]string, len(orgs))
 	orgMap := make(map[string]uuid.UUID)
 	for i, org := range orgs {
-		orgIds[i] = org.Id
-		orgMap[org.Id] = org.PublicId
+		orgIds[i] = org.Id.String()
+		orgMap[org.Id.String()] = org.PublicId
 	}
 
 	return orgIds, orgMap

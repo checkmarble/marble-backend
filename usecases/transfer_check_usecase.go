@@ -22,7 +22,7 @@ type transferMappingsRepository interface {
 	ListTransferMappings(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		partnerId string,
 		clientTransferId string,
 	) ([]models.TransferMapping, error)
@@ -42,7 +42,7 @@ type transferCheckEnrichmentRepository interface {
 }
 
 type enforceSecurityTransferCheck interface {
-	CreateTransfer(ctx context.Context, organizationId string, partnerId string) error
+	CreateTransfer(ctx context.Context, organizationId uuid.UUID, partnerId string) error
 	ReadTransfer(ctx context.Context, transferMapping models.TransferMapping) error
 	UpdateTransfer(ctx context.Context, transferMapping models.TransferMapping) error
 	ReadTransferData(ctx context.Context, partnerId string) error
@@ -75,7 +75,7 @@ func transfersAreDifferent(t1, t2 map[string]any) bool {
 
 func (usecase *TransferCheckUsecase) CreateTransfer(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	partnerId *string,
 	transfer models.TransferCreateBody,
 ) (models.Transfer, error) {
@@ -257,7 +257,7 @@ func (usecase *TransferCheckUsecase) enrichTransfer(
 
 func (usecase *TransferCheckUsecase) UpdateTransfer(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	id string,
 	transfer models.TransferUpdateBody,
 ) (models.Transfer, error) {
@@ -278,7 +278,8 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 	}
 
 	objectId := models.ObjectIdWithPartnerIdPrefix(transferMapping.PartnerId, transferMapping.ClientTransferId)
-	previousDecisions, err := usecase.decisionRepository.DEPRECATED_DecisionsByObjectId(ctx, exec, organizationId, objectId)
+	previousDecisions, err := usecase.decisionRepository.DEPRECATED_DecisionsByObjectId(ctx,
+		exec, organizationId, objectId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -353,7 +354,7 @@ func validateTranferUpdate(transfer models.TransferUpdateBody) error {
 
 func (usecase *TransferCheckUsecase) QueryTransfers(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	partnerId string,
 	clientTransferId string,
 ) ([]models.Transfer, error) {
@@ -397,7 +398,8 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 	}
 
 	objectId := models.ObjectIdWithPartnerIdPrefix(transferMappings[0].PartnerId, transferMappings[0].ClientTransferId)
-	previousDecisions, err := usecase.decisionRepository.DEPRECATED_DecisionsByObjectId(ctx, exec, organizationId, objectId)
+	previousDecisions, err := usecase.decisionRepository.DEPRECATED_DecisionsByObjectId(ctx,
+		exec, organizationId, objectId)
 	if err != nil {
 		return nil, err
 	}
@@ -411,7 +413,7 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 
 func (usecase *TransferCheckUsecase) GetTransfer(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	id string,
 ) (models.Transfer, error) {
 	exec := usecase.executorFactory.NewExecutor()
@@ -447,7 +449,8 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 	}
 
 	objectId := models.ObjectIdWithPartnerIdPrefix(transferMapping.PartnerId, transferMapping.ClientTransferId)
-	previousDecisions, err := usecase.decisionRepository.DEPRECATED_DecisionsByObjectId(ctx, exec, organizationId, objectId)
+	previousDecisions, err := usecase.decisionRepository.DEPRECATED_DecisionsByObjectId(ctx,
+		exec, organizationId, objectId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -460,7 +463,7 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 
 func (usecase *TransferCheckUsecase) ScoreTransfer(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	id string,
 ) (models.Transfer, error) {
 	exec := usecase.executorFactory.NewExecutor()
@@ -528,7 +531,7 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 }
 
 // helper methods
-func (usecase *TransferCheckUsecase) validateOrgHasTransfercheckEnabled(ctx context.Context, organizationId string) (scenarioId string, err error) {
+func (usecase *TransferCheckUsecase) validateOrgHasTransfercheckEnabled(ctx context.Context, organizationId uuid.UUID) (scenarioId string, err error) {
 	org, err := usecase.organizationRepository.GetOrganizationById(
 		ctx,
 		usecase.executorFactory.NewExecutor(),
@@ -546,7 +549,7 @@ func (usecase *TransferCheckUsecase) validateOrgHasTransfercheckEnabled(ctx cont
 }
 
 func (usecase *TransferCheckUsecase) getTransfercheckTable(ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 ) (models.Table, error) {
 	dataModel, err := usecase.dataModelRepository.GetDataModel(
 		ctx,

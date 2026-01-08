@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type EnforceSecurityApiKeyImpl struct {
@@ -17,7 +18,7 @@ func (e *EnforceSecurityApiKeyImpl) ReadApiKey(apiKey models.ApiKey) error {
 	)
 }
 
-func (e *EnforceSecurityApiKeyImpl) CreateApiKey(organizationId string) error {
+func (e *EnforceSecurityApiKeyImpl) CreateApiKey(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.APIKEY_CREATE), e.ReadOrganization(organizationId),
 	)

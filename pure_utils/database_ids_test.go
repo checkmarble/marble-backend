@@ -4,11 +4,12 @@ import (
 	"log"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewPrimaryKey(t *testing.T) {
-	organizationId := "86d9b92d-e654-4de3-8d3f-81830246c891"
+	organizationId := uuid.MustParse("86d9b92d-e654-4de3-8d3f-81830246c891")
 
 	newId := NewPrimaryKey(organizationId)
 
@@ -16,12 +17,12 @@ func TestNewPrimaryKey(t *testing.T) {
 	log.Println(newId)
 
 	asserts := assert.New(t)
-	asserts.Equal(organizationId[:8], newId[:8])
+	asserts.Equal(organizationId.String()[:8], newId[:8])
 	asserts.NotEqual(organizationId, newId)
 }
 
 func TestNewUUIDStartWithOrgId(t *testing.T) {
-	newId := NewPrimaryKey("12345678-ffff-ffff-ffff-ffffffffffff")
+	newId := NewPrimaryKey(uuid.MustParse("12345678-ffff-ffff-ffff-ffffffffffff"))
 
 	// first 8 characters are the org id
 	assert.Equal(t, newId[:8], "12345678")

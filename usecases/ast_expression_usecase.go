@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/google/uuid"
 )
 
 type AstExpressionUsecaseRepository interface {
@@ -17,7 +18,7 @@ type AstExpressionUsecaseRepository interface {
 	GetDataModel(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationID string,
+		organizationID uuid.UUID,
 		fetchEnumValues bool,
 		useCache bool,
 	) (models.DataModel, error)

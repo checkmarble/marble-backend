@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -24,7 +25,7 @@ func (m mockScreeningExecutor) IsConfigured() bool {
 
 func (m mockScreeningExecutor) Execute(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	query models.OpenSanctionsQuery,
 ) (models.ScreeningWithMatches, error) {
 	// We are not mocking returned data here, only that the function was called
@@ -37,7 +38,7 @@ func (m mockScreeningExecutor) Execute(
 
 func (m mockScreeningExecutor) FilterOutWhitelistedMatches(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	screening models.ScreeningWithMatches,
 	counterpartyId string,
 ) (models.ScreeningWithMatches, error) {
@@ -51,7 +52,7 @@ func (m mockScreeningExecutor) FilterOutWhitelistedMatches(
 
 func (m mockScreeningExecutor) CountWhitelistsForCounterpartyId(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	counterpartyId string,
 ) (int, error) {
 	// We are not mocking returned data here, only that the function was called
@@ -144,6 +145,7 @@ func TestScreeningCalledWhenNameFilterConstant(t *testing.T) {
 	eval, exec := getScreeningEvaluator()
 
 	iteration := models.ScenarioIteration{
+		OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule: &ast.Node{Constant: true},
 			EntityType:  "Thing",
@@ -164,9 +166,12 @@ func TestScreeningCalledWhenNameFilterConstant(t *testing.T) {
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
-		ScenarioEvaluationParameters{}, DataAccessor{})
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+		}}, DataAccessor{})
 
-	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
 
 	assert.NoError(t, err)
 }
@@ -175,6 +180,7 @@ func TestScreeningWithSpecificEntityType(t *testing.T) {
 	eval, exec := getScreeningEvaluator()
 
 	iteration := models.ScenarioIteration{
+		OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule: &ast.Node{Constant: true},
 			EntityType:  "Person",
@@ -199,9 +205,12 @@ func TestScreeningWithSpecificEntityType(t *testing.T) {
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
-		ScenarioEvaluationParameters{}, DataAccessor{})
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+		}}, DataAccessor{})
 
-	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
 
 	assert.NoError(t, err)
 }
@@ -210,6 +219,7 @@ func TestScreeningCalledWhenNameFilterConcat(t *testing.T) {
 	eval, exec := getScreeningEvaluator()
 
 	iteration := models.ScenarioIteration{
+		OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule: &ast.Node{Constant: true},
 			EntityType:  "Thing",
@@ -237,9 +247,12 @@ func TestScreeningCalledWhenNameFilterConcat(t *testing.T) {
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
-		ScenarioEvaluationParameters{}, DataAccessor{})
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+		}}, DataAccessor{})
 
-	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
 
 	assert.NoError(t, err)
 }
@@ -257,6 +270,7 @@ func TestScreeningCalledWithNameRecognizedLabel(t *testing.T) {
 		Return(names, nil)
 
 	iteration := models.ScenarioIteration{
+		OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
 			EntityType:    "Thing",
@@ -288,14 +302,19 @@ func TestScreeningCalledWithNameRecognizedLabel(t *testing.T) {
 			},
 		},
 		InitialQuery: []models.OpenSanctionsCheckQuery{
-			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"dinner with joe finnigan"}}},
+			{Type: "Thing", Filters: models.OpenSanctionsFilter{
+				"name": []string{"dinner with joe finnigan"},
+			}},
 		},
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
-		ScenarioEvaluationParameters{}, DataAccessor{})
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+		}}, DataAccessor{})
 
-	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
 
 	assert.NoError(t, err)
 }
@@ -305,6 +324,7 @@ func TestScreeningCalledWithNameRecognitionDisabled(t *testing.T) {
 	exec.Mock.On("IsConfigured").Return(false)
 
 	iteration := models.ScenarioIteration{
+		OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule: &ast.Node{Constant: true},
 			EntityType:  "Thing",
@@ -325,9 +345,12 @@ func TestScreeningCalledWithNameRecognitionDisabled(t *testing.T) {
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
-		ScenarioEvaluationParameters{}, DataAccessor{})
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+		}}, DataAccessor{})
 
-	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
 
 	assert.NoError(t, err)
 }
@@ -344,6 +367,7 @@ func TestScreeningCalledWithNumbersPreprocessing(t *testing.T) {
 		Return(names, nil)
 
 	iteration := models.ScenarioIteration{
+		OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
 			EntityType:    "Thing",
@@ -369,14 +393,19 @@ func TestScreeningCalledWithNumbersPreprocessing(t *testing.T) {
 			},
 		},
 		InitialQuery: []models.OpenSanctionsCheckQuery{
-			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"din2ner 123 with 4 joe fi4n5n65i8gan"}}},
+			{Type: "Thing", Filters: models.OpenSanctionsFilter{
+				"name": []string{"din2ner 123 with 4 joe fi4n5n65i8gan"},
+			}},
 		},
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
-		ScenarioEvaluationParameters{}, DataAccessor{})
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+		}}, DataAccessor{})
 
-	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
 
 	assert.NoError(t, err)
 }
@@ -390,6 +419,7 @@ func TestScreeningWithLengthPreprocessing(t *testing.T) {
 		Return([]httpmodels.HTTPNameRecognitionMatch{}, nil)
 
 	iteration := models.ScenarioIteration{
+		OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
 			EntityType:    "Thing",
@@ -411,14 +441,18 @@ func TestScreeningWithLengthPreprocessing(t *testing.T) {
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
-		ScenarioEvaluationParameters{}, DataAccessor{})
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+		}}, DataAccessor{})
 
 	exec.Mock.AssertCalled(t, "PerformNameRecognition", mock.Anything, "constant string")
-	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
 
 	assert.NoError(t, err)
 
 	iteration = models.ScenarioIteration{
+		OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
 			EntityType:    "Thing",
@@ -433,9 +467,12 @@ func TestScreeningWithLengthPreprocessing(t *testing.T) {
 	}
 
 	_, err = eval.evaluateScreening(context.TODO(), iteration,
-		ScenarioEvaluationParameters{}, DataAccessor{})
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+		}}, DataAccessor{})
 
-	exec.Mock.AssertNotCalled(t, "Execute", context.TODO(), "", expectedQuery)
+	exec.Mock.AssertNotCalled(t, "Execute", context.TODO(),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
 
 	assert.NoError(t, err)
 }
@@ -446,6 +483,7 @@ func TestScreeningWithPreNerLengthPreprocessing(t *testing.T) {
 	exec.Mock.On("IsConfigured").Return(true)
 
 	iteration := models.ScenarioIteration{
+		OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
 			EntityType:    "Thing",
@@ -467,10 +505,13 @@ func TestScreeningWithPreNerLengthPreprocessing(t *testing.T) {
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
-		ScenarioEvaluationParameters{}, DataAccessor{})
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+		}}, DataAccessor{})
 
 	exec.Mock.AssertNotCalled(t, "PerformNameRecognition", mock.Anything, mock.Anything)
-	exec.Mock.AssertNotCalled(t, "Execute", context.TODO(), "", expectedQuery)
+	exec.Mock.AssertNotCalled(t, "Execute", context.TODO(),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
 
 	assert.NoError(t, err)
 }
@@ -479,6 +520,7 @@ func TestScreeningWithListPreprocessing(t *testing.T) {
 	eval, exec := getScreeningEvaluator()
 
 	iteration := models.ScenarioIteration{
+		OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		ScreeningConfigs: []models.ScreeningConfig{{
 			TriggerRule:   &ast.Node{Constant: true},
 			EntityType:    "Thing",
@@ -498,14 +540,19 @@ func TestScreeningWithListPreprocessing(t *testing.T) {
 			},
 		},
 		InitialQuery: []models.OpenSanctionsCheckQuery{
-			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"This Contains Forbidden Words"}}},
+			{Type: "Thing", Filters: models.OpenSanctionsFilter{
+				"name": []string{"This Contains Forbidden Words"},
+			}},
 		},
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
-		ScenarioEvaluationParameters{}, DataAccessor{})
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+		}}, DataAccessor{})
 
-	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
 
 	assert.NoError(t, err)
 }
@@ -524,6 +571,7 @@ func TestScreeningWithAllPreprocessing(t *testing.T) {
 		Return(names, nil)
 
 	iteration := models.ScenarioIteration{
+		OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		ScreeningConfigs: []models.ScreeningConfig{
 			{
 				TriggerRule: &ast.Node{Constant: true},
@@ -577,9 +625,12 @@ func TestScreeningWithAllPreprocessing(t *testing.T) {
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
-		ScenarioEvaluationParameters{}, DataAccessor{})
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+		}}, DataAccessor{})
 
-	exec.Mock.AssertCalled(t, "Execute", context.TODO(), "", expectedQuery)
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
 
 	assert.NoError(t, err)
 }

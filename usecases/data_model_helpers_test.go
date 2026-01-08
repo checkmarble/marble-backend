@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -172,7 +173,7 @@ func TestFindLinksToField(t *testing.T) {
 }
 
 func TestValidateFieldUpdateRules(t *testing.T) {
-	organizationId := "organizationId"
+	organizationId := uuid.MustParse("12345678-1234-5678-9012-345678901234")
 
 	dataModel, dataModelWithUnique := getTestDataModel()
 	table := models.TableMetadata{

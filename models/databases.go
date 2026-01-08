@@ -1,6 +1,10 @@
 package models
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 type DatabaseSchemaType int
 
@@ -22,7 +26,7 @@ var DATABASE_MARBLE_SCHEMA = DatabaseSchema{
 }
 
 type OrganizationSchema struct {
-	OrganizationId string
+	OrganizationId uuid.UUID
 	DatabaseSchema DatabaseSchema
 }
 

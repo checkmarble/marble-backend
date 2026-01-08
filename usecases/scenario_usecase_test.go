@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -22,7 +23,7 @@ type ScenarioUsecaseTestSuite struct {
 	enforceSecurity    *mocks.EnforceSecurity
 	scenarioRepository *mocks.ScenarioRepository
 
-	organizationId string
+	organizationId uuid.UUID
 	scenarioId     string
 	scenario       models.Scenario
 	securityError  error
@@ -38,7 +39,7 @@ func (suite *ScenarioUsecaseTestSuite) SetupTest() {
 	suite.scenarioRepository = new(mocks.ScenarioRepository)
 
 	suite.securityError = errors.New("some security error")
-	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
+	suite.organizationId = uuid.MustParse("25ab6323-1657-4a52-923a-ef6983fe4532")
 	suite.scenarioId = "c5968ff7-6142-4623-a6b3-1539f345e5fa"
 	suite.scenario = models.Scenario{
 		Id:             suite.scenarioId,

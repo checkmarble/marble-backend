@@ -12,7 +12,7 @@ import (
 type PivotMetadata struct {
 	Id             uuid.UUID
 	CreatedAt      time.Time
-	OrganizationId string
+	OrganizationId uuid.UUID
 
 	BaseTableId string
 	FieldId     *string
@@ -22,7 +22,7 @@ type PivotMetadata struct {
 type Pivot struct {
 	Id             uuid.UUID
 	CreatedAt      time.Time
-	OrganizationId string
+	OrganizationId uuid.UUID
 
 	BaseTable    string
 	BaseTableId  string
@@ -130,7 +130,7 @@ func FindPivot(pivotsMeta []PivotMetadata, table string, dm DataModel) *Pivot {
 
 type CreatePivotInput struct {
 	BaseTableId    string
-	OrganizationId string
+	OrganizationId uuid.UUID
 	FieldId        *string
 	PathLinkIds    []string
 }

@@ -15,7 +15,7 @@ type InboxRepository struct {
 }
 
 func (r *InboxRepository) ListInboxes(ctx context.Context, exec repositories.Executor,
-	organizationId string, inboxIds []uuid.UUID, withCaseCount bool,
+	organizationId uuid.UUID, inboxIds []uuid.UUID, withCaseCount bool,
 ) ([]models.Inbox, error) {
 	args := r.Called(ctx, exec, organizationId, inboxIds, withCaseCount)
 	return args.Get(0).([]models.Inbox), args.Error(1)

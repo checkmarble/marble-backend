@@ -17,7 +17,7 @@ const (
 type Inbox struct {
 	Id                uuid.UUID
 	Name              string
-	OrganizationId    string
+	OrganizationId    uuid.UUID
 	Status            InboxStatus
 	EscalationInboxId *uuid.UUID
 	AutoAssignEnabled bool
@@ -49,7 +49,7 @@ func (i Inbox) GetMetadata() InboxMetadata {
 
 type CreateInboxInput struct {
 	Name              string
-	OrganizationId    string
+	OrganizationId    uuid.UUID
 	EscalationInboxId *uuid.UUID
 }
 

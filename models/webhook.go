@@ -5,6 +5,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 	"github.com/pkg/errors"
 )
@@ -61,14 +62,14 @@ type WebhookEvent struct {
 	UpdatedAt      time.Time
 	RetryCount     int
 	DeliveryStatus WebhookEventDeliveryStatus
-	OrganizationId string
+	OrganizationId uuid.UUID
 	PartnerId      null.String
 	EventContent   WebhookEventContent
 }
 
 type WebhookEventCreate struct {
 	Id             string
-	OrganizationId string
+	OrganizationId uuid.UUID
 	PartnerId      null.String
 	EventContent   WebhookEventContent
 }
@@ -199,7 +200,7 @@ func NewWebhookEventDecisionReviewed(c Case, decisionId string) WebhookEventCont
 
 type Webhook struct {
 	Id                string
-	OrganizationId    string
+	OrganizationId    uuid.UUID
 	PartnerId         null.String
 	EventTypes        []string
 	Secrets           []Secret

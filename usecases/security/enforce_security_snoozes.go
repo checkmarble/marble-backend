@@ -12,14 +12,14 @@ import (
 func (e *EnforceSecurityImpl) ReadSnoozesOfDecision(ctx context.Context, decision models.Decision) error {
 	return errors.Join(
 		e.Permission(models.READ_SNOOZES),
-		utils.EnforceOrganizationAccess(e.Credentials, decision.OrganizationId.String()),
+		utils.EnforceOrganizationAccess(e.Credentials, decision.OrganizationId),
 	)
 }
 
 func (e *EnforceSecurityImpl) CreateSnoozesOnDecision(ctx context.Context, decision models.Decision) error {
 	return errors.Join(
 		e.Permission(models.CREATE_SNOOZE),
-		utils.EnforceOrganizationAccess(e.Credentials, decision.OrganizationId.String()),
+		utils.EnforceOrganizationAccess(e.Credentials, decision.OrganizationId),
 	)
 }
 

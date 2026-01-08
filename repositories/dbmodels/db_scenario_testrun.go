@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type DBScenarioTestRun struct {
@@ -20,8 +21,8 @@ type DBScenarioTestRun struct {
 
 type DBScenarioTestRunWitInfo struct {
 	DBScenarioTestRun
-	OrgId      string `db:"org_id"`
-	ScenarioId string `db:"scenario_id"`
+	OrgId      uuid.UUID `db:"org_id"`
+	ScenarioId string    `db:"scenario_id"`
 }
 
 type DBScenarioTestRunWithSummary struct {

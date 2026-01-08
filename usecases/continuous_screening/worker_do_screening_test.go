@@ -171,7 +171,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
 			ObjectType:         suite.objectType,
-			OrgId:              suite.orgId.String(),
+			OrgId:              suite.orgId,
 			TriggerType:        models.ContinuousScreeningTriggerTypeObjectUpdated,
 			MonitoringId:       suite.monitoringId,
 			NewInternalId:      ingestedObjectInternalId.String(),
@@ -319,7 +319,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
 			ObjectType:         suite.objectType,
-			OrgId:              suite.orgId.String(),
+			OrgId:              suite.orgId,
 			TriggerType:        models.ContinuousScreeningTriggerTypeObjectUpdated,
 			MonitoringId:       suite.monitoringId,
 			NewInternalId:      ingestedObjectInternalId.String(),
@@ -443,7 +443,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
 			ObjectType:         suite.objectType,
-			OrgId:              suite.orgId.String(),
+			OrgId:              suite.orgId,
 			TriggerType:        models.ContinuousScreeningTriggerTypeObjectUpdated,
 			MonitoringId:       suite.monitoringId,
 			NewInternalId:      ingestedObjectInternalId.String(),
@@ -534,7 +534,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_DataUnchanged_Sk
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
 			ObjectType:         suite.objectType,
-			OrgId:              suite.orgId.String(),
+			OrgId:              suite.orgId,
 			TriggerType:        models.ContinuousScreeningTriggerTypeObjectUpdated,
 			MonitoringId:       suite.monitoringId,
 			NewInternalId:      ingestedObjectInternalId.String(),
@@ -572,7 +572,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_UnsupportedTriggerType_SkipScr
 	// Setup
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
-			OrgId:       suite.orgId.String(),
+			OrgId:       suite.orgId,
 			TriggerType: models.ContinuousScreeningTriggerTypeObjectAdded, // Unsupported
 		},
 	}

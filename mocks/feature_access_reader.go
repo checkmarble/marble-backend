@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -13,7 +14,7 @@ type FeatureAccessReader struct {
 
 func (r *FeatureAccessReader) GetOrganizationFeatureAccess(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	userId *models.UserId,
 ) (models.OrganizationFeatureAccess, error) {
 	args := r.Called(ctx, organizationId, userId)

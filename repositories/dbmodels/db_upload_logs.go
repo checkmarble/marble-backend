@@ -5,11 +5,12 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type DBUploadLog struct {
 	Id              string     `db:"id"`
-	OrganizationId  string     `db:"org_id"`
+	OrganizationId  uuid.UUID  `db:"org_id"`
 	UserId          string     `db:"user_id"`
 	FileName        string     `db:"file_name"`
 	TableName       string     `db:"table_name"`

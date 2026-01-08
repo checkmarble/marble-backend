@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -46,7 +47,11 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 		return models.User{}, fmt.Errorf("row.Scan error: %w", err)
 	}
 	if organizationID != nil {
-		user.OrganizationId = *organizationID
+		orgId, err := uuid.Parse(*organizationID)
+		if err != nil {
+			return models.User{}, fmt.Errorf("uuid.Parse error: %w", err)
+		}
+		user.OrganizationId = orgId
 	}
 	return user, nil
 }

@@ -6,13 +6,14 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/Masterminds/squirrel"
 )
 
 type CustomListRepository interface {
-	AllCustomLists(ctx context.Context, exec Executor, organizationId string) ([]models.CustomList, error)
+	AllCustomLists(ctx context.Context, exec Executor, organizationId uuid.UUID) ([]models.CustomList, error)
 	GetCustomListById(ctx context.Context, exec Executor, id string, includeDeleted bool) (models.CustomList, error)
 	GetCustomListValues(
 		ctx context.Context,
@@ -58,7 +59,7 @@ type CustomListRepositoryPostgresql struct{}
 func (repo *CustomListRepositoryPostgresql) AllCustomLists(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 ) ([]models.CustomList, error) {
 	query := `
 			SELECT

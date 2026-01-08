@@ -50,7 +50,7 @@ type ScreeningInboxReader interface {
 	ListInboxes(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		withCaseCount bool,
 	) ([]models.Inbox, error)
 }
@@ -87,15 +87,15 @@ type ScreeningRepository interface {
 	CopyScreeningFiles(ctx context.Context, exec repositories.Executor,
 		screeningId, newScreeningId string) error
 	AddScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
-		orgId, counterpartyId string, entityId string, reviewerId *models.UserId) error
+		orgId uuid.UUID, counterpartyId string, entityId string, reviewerId *models.UserId) error
 	DeleteScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
-		orgId string, counterpartyId *string, entityId string, reviewerId *models.UserId) error
+		orgId uuid.UUID, counterpartyId *string, entityId string, reviewerId *models.UserId) error
 	SearchScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
-		orgId string, counterpartyId, entityId *string) ([]models.ScreeningWhitelist, error)
+		orgId uuid.UUID, counterpartyId, entityId *string) ([]models.ScreeningWhitelist, error)
 	IsScreeningMatchWhitelisted(ctx context.Context, exec repositories.Executor,
-		orgId, counterpartyId string, entityId []string) ([]models.ScreeningWhitelist, error)
+		orgId uuid.UUID, counterpartyId string, entityId []string) ([]models.ScreeningWhitelist, error)
 	CountWhitelistsForCounterpartyId(ctx context.Context, exec repositories.Executor,
-		orgId, counterpartyId string) (int, error)
+		orgId uuid.UUID, counterpartyId string) (int, error)
 	UpdateScreeningMatchPayload(ctx context.Context, exec repositories.Executor,
 		match models.ScreeningMatch, newPayload []byte) (models.ScreeningMatch, error)
 }
@@ -111,7 +111,7 @@ type ScreeningUsecaseExternalRepository interface {
 }
 
 type ScreeningOrganizationRepository interface {
-	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
 }
 
 type ScreeningCaseUsecase interface {
@@ -227,7 +227,8 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 
 	for _, comment := range comments {
 		if _, ok := matchIdToMatch[comment.MatchId]; ok {
-			matchIdToMatch[comment.MatchId].Comments = append(matchIdToMatch[comment.MatchId].Comments, comment)
+			matchIdToMatch[comment.MatchId].Comments =
+				append(matchIdToMatch[comment.MatchId].Comments, comment)
 		}
 	}
 
@@ -236,7 +237,7 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 
 func (uc ScreeningUsecase) Execute(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	query models.OpenSanctionsQuery,
 ) (models.ScreeningWithMatches, error) {
 	org, err := uc.organizationRepository.GetOrganizationById(ctx,
@@ -277,7 +278,7 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 		Queries:      models.AdaptRefineRequestToMatchable(refine),
 	}
 
-	screening, err := uc.Execute(ctx, decision.OrganizationId.String(), query)
+	screening, err := uc.Execute(ctx, decision.OrganizationId, query)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -310,7 +311,7 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 
 		if uc.openSanctionsProvider.IsSelfHosted(ctx) {
 			if err := uc.taskQueueRepository.EnqueueMatchEnrichmentTask(ctx,
-				tx, decision.OrganizationId.String(), screening.Id); err != nil {
+				tx, decision.OrganizationId, screening.Id); err != nil {
 				utils.LogAndReportSentryError(ctx, errors.Wrap(err,
 					"could not enqueue screening for refinement"))
 			}
@@ -349,7 +350,7 @@ func (uc ScreeningUsecase) Search(ctx context.Context, refine models.ScreeningRe
 		Queries:      models.AdaptRefineRequestToMatchable(refine),
 	}
 
-	screening, err := uc.Execute(ctx, decision.OrganizationId.String(), query)
+	screening, err := uc.Execute(ctx, decision.OrganizationId, query)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -358,7 +359,7 @@ func (uc ScreeningUsecase) Search(ctx context.Context, refine models.ScreeningRe
 }
 
 func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	scc models.ScreeningConfig,
 	refine models.ScreeningRefineRequest,
 ) (models.ScreeningWithMatches, error) {
@@ -382,7 +383,7 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 
 func (uc ScreeningUsecase) FilterOutWhitelistedMatches(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	screening models.ScreeningWithMatches,
 	counterpartyId string,
 ) (models.ScreeningWithMatches, error) {
@@ -436,7 +437,7 @@ func (uc ScreeningUsecase) FilterOutWhitelistedMatches(
 	return screening, nil
 }
 
-func (uc ScreeningUsecase) CountWhitelistsForCounterpartyId(ctx context.Context, orgId, counterpartyId string) (int, error) {
+func (uc ScreeningUsecase) CountWhitelistsForCounterpartyId(ctx context.Context, orgId uuid.UUID, counterpartyId string) (int, error) {
 	return uc.repository.CountWhitelistsForCounterpartyId(ctx, uc.executorFactory.NewExecutor(), orgId, counterpartyId)
 }
 
@@ -571,7 +572,7 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 			if update.Status == models.ScreeningMatchStatusNoHit && update.Whitelist &&
 				data.match.UniqueCounterpartyIdentifier != nil {
 				if err := uc.CreateWhitelist(ctx, tx,
-					data.decision.OrganizationId.String(),
+					data.decision.OrganizationId,
 					*data.match.UniqueCounterpartyIdentifier,
 					data.match.EntityId, update.ReviewerId); err != nil {
 					return errors.Wrap(err, "could not whitelist match")
@@ -586,7 +587,7 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 }
 
 func (uc ScreeningUsecase) CreateWhitelist(ctx context.Context, exec repositories.Executor,
-	orgId, counterpartyId, entityId string, reviewerId *models.UserId,
+	orgId uuid.UUID, counterpartyId, entityId string, reviewerId *models.UserId,
 ) error {
 	if err := uc.enforceSecurity.WriteWhitelist(ctx); err != nil {
 		return err
@@ -604,7 +605,7 @@ func (uc ScreeningUsecase) CreateWhitelist(ctx context.Context, exec repositorie
 }
 
 func (uc ScreeningUsecase) DeleteWhitelist(ctx context.Context, exec repositories.Executor,
-	orgId string, counterpartyId *string, entityId string, reviewerId *models.UserId,
+	orgId uuid.UUID, counterpartyId *string, entityId string, reviewerId *models.UserId,
 ) error {
 	if err := uc.enforceSecurity.WriteWhitelist(ctx); err != nil {
 		return err
@@ -622,7 +623,7 @@ func (uc ScreeningUsecase) DeleteWhitelist(ctx context.Context, exec repositorie
 }
 
 func (uc ScreeningUsecase) SearchWhitelist(ctx context.Context, exec repositories.Executor,
-	orgId string, counterpartyId, entityId *string, reviewerId *models.UserId,
+	orgId uuid.UUID, counterpartyId, entityId *string, reviewerId *models.UserId,
 ) ([]models.ScreeningWhitelist, error) {
 	if err := uc.enforceSecurity.ReadWhitelist(ctx); err != nil {
 		return nil, err
@@ -867,7 +868,7 @@ func (uc ScreeningUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decis
 		}
 
 		inboxes, err := uc.inboxReader.ListInboxes(ctx, exec,
-			decision[0].OrganizationId.String(), false)
+			decision[0].OrganizationId, false)
 		if err != nil {
 			return models.Decision{}, errors.Wrap(err,
 				"could not retrieve organization inboxes")

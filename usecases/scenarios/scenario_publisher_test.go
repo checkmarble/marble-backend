@@ -20,7 +20,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 	}
 
 	scenario := models.Scenario{
-		OrganizationId: uuid.New().String(),
+		OrganizationId: uuid.New(),
 		Id:             uuid.New().String(),
 		LiveVersionID:  utils.Ptr(Iteration.Id),
 	}
@@ -40,7 +40,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 	scenarioPublication := models.ScenarioPublication{
 		Id:                  uuid.New().String(),
 		Rank:                0,
-		OrganizationId:      uuid.New().String(),
+		OrganizationId:      uuid.New(),
 		ScenarioId:          uuid.New().String(),
 		ScenarioIterationId: uuid.New().String(),
 		PublicationAction:   0,
@@ -87,7 +87,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_CreateScenarioP
 	}
 
 	scenario := models.Scenario{
-		OrganizationId: uuid.New().String(),
+		OrganizationId: uuid.New(),
 		Id:             uuid.New().String(),
 		LiveVersionID:  utils.Ptr(Iteration.Id),
 	}

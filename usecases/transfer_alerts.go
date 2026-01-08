@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 )
 
@@ -15,7 +16,7 @@ type transferAlertsRepository interface {
 	ListTransferAlerts(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		partnerId string,
 		senderOrBeneficiary string,
 		transferId null.String,
@@ -47,7 +48,7 @@ type enforceSecurityTransferAlerts interface {
 	) error
 	CreateTransferAlert(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		partnerId string,
 	) error
 	UpdateTransferAlert(
@@ -98,7 +99,7 @@ func NewTransferAlertsUsecase(
 	}
 }
 
-func (usecase TransferAlertsUsecase) validateOrgHasTransfercheckEnabled(ctx context.Context, organizationId string) (scenarioId string, err error) {
+func (usecase TransferAlertsUsecase) validateOrgHasTransfercheckEnabled(ctx context.Context, organizationId uuid.UUID) (scenarioId string, err error) {
 	org, err := usecase.organizationRepository.GetOrganizationById(
 		ctx,
 		usecase.executorFactory.NewExecutor(),
@@ -132,7 +133,7 @@ func (usecase TransferAlertsUsecase) GetTransferAlert(ctx context.Context, alert
 
 func (usecase TransferAlertsUsecase) ListTransferAlerts(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	partnerId string,
 	senderOrBeneficiary string,
 	transferId null.String,
@@ -245,7 +246,7 @@ func (usecase TransferAlertsUsecase) UpdateTransferAlertAsSender(
 	ctx context.Context,
 	alertId string,
 	input models.TransferAlertUpdateBodySender,
-	organizationId string,
+	organizationId uuid.UUID,
 ) (models.TransferAlert, error) {
 	_, err := usecase.validateOrgHasTransfercheckEnabled(ctx, organizationId)
 	if err != nil {
@@ -283,7 +284,7 @@ func (usecase TransferAlertsUsecase) UpdateTransferAlertAsBeneficiary(
 	ctx context.Context,
 	alertId string,
 	input models.TransferAlertUpdateBodyBeneficiary,
-	organizationId string,
+	organizationId uuid.UUID,
 ) (models.TransferAlert, error) {
 	_, err := usecase.validateOrgHasTransfercheckEnabled(ctx, organizationId)
 	if err != nil {

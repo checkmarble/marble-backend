@@ -137,7 +137,8 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 
 		cte := repositories.WithCtes("data", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
 			q := b.Select("*").
-				From(uc.analyticsFactory.BuildTarget("rule_hit_outcomes", scenario.OrganizationId, scenario.TriggerObjectType)).
+				From(uc.analyticsFactory.BuildTarget("rule_hit_outcomes",
+					scenario.OrganizationId, scenario.TriggerObjectType)).
 				Suffix("qualify row_number() over (partition by case_id order by created_at desc) = 1")
 
 			q, cteErr = uc.analyticsFactory.ApplyFilters(q, scenario, filters)
@@ -149,7 +150,8 @@ func (uc AnalyticsQueryUsecase) RuleHitTable(ctx context.Context, filters dto.An
 		})
 
 		if cteErr != nil {
-			utils.LoggerFromContext(ctx).WarnContext(ctx, "could not fetch false positive dataz for rule hit table", "error", cteErr.Error())
+			utils.LoggerFromContext(ctx).WarnContext(ctx,
+				"could not fetch false positive dataz for rule hit table", "error", cteErr.Error())
 			return ruleHits, nil
 		}
 
@@ -435,7 +437,9 @@ func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid
 	return scenario, exec, nil
 }
 
-func (uc AnalyticsQueryUsecase) getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]uuid.UUID, error) {
+func (uc AnalyticsQueryUsecase) getAvailableInboxIds(ctx context.Context,
+	exec repositories.Executor, organizationId uuid.UUID,
+) ([]uuid.UUID, error) {
 	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, organizationId, false)
 	if err != nil {
 		return []uuid.UUID{}, errors.Wrap(err, "failed to list available inboxes in usecase")

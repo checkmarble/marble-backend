@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 const TABLE_SNOOZE_GROUPS = "snooze_groups"
@@ -13,7 +14,7 @@ var SelectSnoozeGroupsColumn = utils.ColumnList[DBSnoozeGroup]()
 
 type DBSnoozeGroup struct {
 	Id             string    `db:"id"`
-	OrganizationId string    `db:"org_id"`
+	OrganizationId uuid.UUID `db:"org_id"`
 	CreatedAt      time.Time `db:"created_at"`
 }
 

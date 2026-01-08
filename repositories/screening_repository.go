@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 )
 
 func (*MarbleDbRepository) GetActiveScreeningForDecision(
@@ -409,7 +410,7 @@ func (repo *MarbleDbRepository) CopyScreeningFiles(ctx context.Context, exec Exe
 }
 
 func (repo *MarbleDbRepository) CountWhitelistsForCounterpartyId(ctx context.Context, exec Executor,
-	orgId, counterpartyId string,
+	orgId uuid.UUID, counterpartyId string,
 ) (int, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return 0, err

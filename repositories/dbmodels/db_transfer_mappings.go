@@ -5,13 +5,14 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type DBTransferMapping struct {
 	Id               string    `db:"id"`
 	ClientTransferId string    `db:"client_transfer_id"`
 	CreatedAt        time.Time `db:"created_at"`
-	OrganizationId   string    `db:"organization_id"`
+	OrganizationId   uuid.UUID `db:"organization_id"`
 	PartnerId        string    `db:"partner_id"`
 }
 

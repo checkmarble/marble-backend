@@ -1,5 +1,7 @@
 package models
 
+import "github.com/google/uuid"
+
 type IntoCredentials interface {
 	IntoCredentials() Credentials
 }
@@ -15,7 +17,7 @@ type Identity struct {
 
 type Credentials struct {
 	ActorIdentity  Identity // email or api key, for audit log
-	OrganizationId string
+	OrganizationId uuid.UUID
 	PartnerId      *string
 	Role           Role
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -21,7 +22,7 @@ type ScheduledExecutionsTestSuite struct {
 	transactionFactory *mocks.TransactionFactory
 	repository         *mocks.ScheduledExecutionUsecaseRepository
 
-	organizationId      string
+	organizationId      uuid.UUID
 	scenarioId          string
 	scheduledExecutions []models.ScheduledExecution
 }
@@ -33,7 +34,7 @@ func (suite *ScheduledExecutionsTestSuite) SetupTest() {
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.repository = new(mocks.ScheduledExecutionUsecaseRepository)
 
-	suite.organizationId = "some org id"
+	suite.organizationId = uuid.MustParse("12345678-1234-5678-9012-345678901234")
 	suite.scenarioId = "some scenario id"
 	suite.scheduledExecutions = []models.ScheduledExecution{
 		{
@@ -63,7 +64,7 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_with_Orga
 	ctx := context.Background()
 	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.repository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{
-		OrganizationId: "some org id",
+		OrganizationId: suite.organizationId,
 	}, mock.Anything).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(nil)
 

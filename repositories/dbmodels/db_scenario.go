@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -16,7 +17,7 @@ type DBScenario struct {
 	Description       string      `db:"description"`
 	LiveVersionID     pgtype.Text `db:"live_scenario_iteration_id"`
 	Name              string      `db:"name"`
-	OrganizationId    string      `db:"org_id"`
+	OrganizationId    uuid.UUID   `db:"org_id"`
 	TriggerObjectType string      `db:"trigger_object_type"`
 }
 

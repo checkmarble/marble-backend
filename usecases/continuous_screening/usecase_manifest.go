@@ -23,7 +23,7 @@ type ContinuousScreeningManifestRepository interface {
 		error,
 	)
 
-	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
 	GetContinuousScreeningDatasetFileById(ctx context.Context, exec repositories.Executor,
 		id uuid.UUID) (models.ContinuousScreeningDatasetFile, error)
 	GetContinuousScreeningLatestDatasetFileByOrgId(ctx context.Context, exec repositories.Executor,

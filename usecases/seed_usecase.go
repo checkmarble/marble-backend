@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 
 	"github.com/cockroachdb/errors"
 )
@@ -71,7 +72,7 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 		}
 	}
 
-	if targetOrg.Id == "" {
+	if targetOrg.Id == uuid.Nil {
 		targetOrg, err = usecase.organizationCreator.CreateOrganization(ctx, input.OrgName)
 		if err != nil && !repositories.IsUniqueViolationError(err) {
 			return err

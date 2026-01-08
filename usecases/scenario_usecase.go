@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/tracking"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type ScenarioUsecase struct {
@@ -25,7 +26,7 @@ type ScenarioUsecase struct {
 	workflowRepository  workflowRepository
 }
 
-func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationId string) ([]models.Scenario, error) {
+func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationId uuid.UUID) ([]models.Scenario, error) {
 	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {

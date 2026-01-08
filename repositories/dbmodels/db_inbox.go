@@ -12,7 +12,7 @@ import (
 
 type DBInbox struct {
 	Id                uuid.UUID  `db:"id"`
-	OrganizationId    string     `db:"organization_id"`
+	OrganizationId    uuid.UUID  `db:"organization_id"`
 	CreatedAt         time.Time  `db:"created_at"`
 	UpdatedAt         time.Time  `db:"updated_at"`
 	Name              string     `db:"name"`
@@ -61,7 +61,7 @@ type DBInboxUser struct {
 
 type DBInboxUserWithOrgId struct {
 	DBInboxUser
-	OrganizationId string `db:"organization_id"`
+	OrganizationId uuid.UUID `db:"organization_id"`
 }
 
 const TABLE_INBOX_USERS = "inbox_users"

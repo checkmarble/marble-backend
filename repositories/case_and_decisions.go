@@ -6,6 +6,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -23,7 +24,8 @@ func (repo *MarbleDbRepository) SelectCasesWithPivot(
 	sql := NewQueryBuilder().
 		Select(columnsNames("c", []string{"id", "status", "created_at", "org_id"})...).
 		From(dbmodels.TABLE_CASES+" c").
-		InnerJoin("(select distinct case_id from decisions where org_id = ? and pivot_value = ? and case_id is not null order by case_id) d on c.id = d.case_id", filters.OrganizationId, filters.PivotValue).
+		InnerJoin("(select distinct case_id from decisions where org_id = ? and pivot_value = ? and case_id is not null order by case_id) d on c.id = d.case_id",
+			filters.OrganizationId, filters.PivotValue).
 		Where(squirrel.Eq{
 			"c.org_id": filters.OrganizationId,
 			"c.status": []string{"pending", "investigating"},
@@ -51,7 +53,7 @@ func (repo *MarbleDbRepository) SelectCasesWithPivot(
 func (repo *MarbleDbRepository) CountDecisionsByCaseIds(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	caseIds []string,
 ) (map[string]int, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {

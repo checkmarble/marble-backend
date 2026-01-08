@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type EnforceSecurityOrganization interface {
@@ -13,8 +14,8 @@ type EnforceSecurityOrganization interface {
 	EditOrganization(org models.Organization) error
 	DeleteOrganization() error
 	ReadDataModel() error
-	WriteDataModel(organizationId string) error
-	WriteDataModelIndexes(organizationId string) error
+	WriteDataModel(organizationId uuid.UUID) error
+	WriteDataModelIndexes(organizationId uuid.UUID) error
 }
 
 type EnforceSecurityOrganizationImpl struct {
@@ -53,14 +54,14 @@ func (e *EnforceSecurityOrganizationImpl) ReadDataModel() error {
 	)
 }
 
-func (e *EnforceSecurityOrganizationImpl) WriteDataModel(organizationId string) error {
+func (e *EnforceSecurityOrganizationImpl) WriteDataModel(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.DATA_MODEL_WRITE),
 		e.ReadOrganization(organizationId),
 	)
 }
 
-func (e *EnforceSecurityOrganizationImpl) WriteDataModelIndexes(organizationId string) error {
+func (e *EnforceSecurityOrganizationImpl) WriteDataModelIndexes(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.SCENARIO_CREATE),
 		e.ReadOrganization(organizationId),

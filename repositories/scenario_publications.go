@@ -5,12 +5,13 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 
 	"github.com/Masterminds/squirrel"
 )
 
 type ScenarioPublicationRepository interface {
-	ListScenarioPublicationsOfOrganization(ctx context.Context, exec Executor, organizationId string,
+	ListScenarioPublicationsOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID,
 		filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error)
 	CreateScenarioPublication(ctx context.Context, exec Executor,
 		input models.CreateScenarioPublicationInput, newScenarioPublicationId string) error
@@ -41,7 +42,7 @@ func (repo *ScenarioPublicationRepositoryPostgresql) GetScenarioPublicationById(
 }
 
 func (repo *ScenarioPublicationRepositoryPostgresql) ListScenarioPublicationsOfOrganization(
-	ctx context.Context, exec Executor, organizationId string, filters models.ListScenarioPublicationsFilters,
+	ctx context.Context, exec Executor, organizationId uuid.UUID, filters models.ListScenarioPublicationsFilters,
 ) ([]models.ScenarioPublication, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

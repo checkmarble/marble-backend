@@ -17,14 +17,14 @@ import (
 
 type ApiKeyRepository interface {
 	GetApiKeyById(ctx context.Context, exec repositories.Executor, apiKeyId string) (models.ApiKey, error)
-	ListApiKeys(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.ApiKey, error)
+	ListApiKeys(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) ([]models.ApiKey, error)
 	CreateApiKey(ctx context.Context, exec repositories.Executor, apiKey models.ApiKey) error
 	SoftDeleteApiKey(ctx context.Context, exec repositories.Executor, apiKeyId string) error
 }
 
 type EnforceSecurityApiKey interface {
 	ReadApiKey(apiKey models.ApiKey) error
-	CreateApiKey(organizationId string) error
+	CreateApiKey(organizationId uuid.UUID) error
 	DeleteApiKey(apiKey models.ApiKey) error
 }
 
@@ -34,7 +34,7 @@ type ApiKeyUseCase struct {
 	apiKeyRepository ApiKeyRepository
 }
 
-func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context, organizationId string) ([]models.ApiKey, error) {
+func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context, organizationId uuid.UUID) ([]models.ApiKey, error) {
 	apiKeys, err := usecase.apiKeyRepository.ListApiKeys(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {

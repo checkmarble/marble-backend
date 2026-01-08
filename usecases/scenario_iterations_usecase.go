@@ -29,20 +29,20 @@ type IterationUsecaseRepository interface {
 	ListScenarioIterations(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		filters models.GetScenarioIterationFilters,
 	) ([]models.ScenarioIteration, error)
 	ListScenarioIterationsMetadata(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		filters models.GetScenarioIterationFilters,
 	) ([]models.ScenarioIterationMetadata, error)
 
 	CreateScenarioIterationAndRules(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		scenarioIteration models.CreateScenarioIterationInput,
 	) (models.ScenarioIteration, error)
 	UpdateScenarioIteration(
@@ -81,7 +81,7 @@ type ScenarioIterationUsecase struct {
 
 func (usecase *ScenarioIterationUsecase) ListScenarioIterations(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	filters models.GetScenarioIterationFilters,
 ) ([]models.ScenarioIteration, error) {
 	scenarioIterations, err := usecase.repository.ListScenarioIterations(ctx,
@@ -99,7 +99,7 @@ func (usecase *ScenarioIterationUsecase) ListScenarioIterations(
 
 func (usecase *ScenarioIterationUsecase) ListScenarioIterationsMetadata(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	filters models.GetScenarioIterationFilters,
 ) ([]models.ScenarioIterationMetadata, error) {
 	scenarioIterations, err := usecase.repository.ListScenarioIterationsMetadata(ctx,
@@ -140,7 +140,7 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 
 func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	scenarioIteration models.CreateScenarioIterationInput,
 ) (models.ScenarioIteration, error) {
 	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
@@ -181,7 +181,7 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(
 }
 
 func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context,
-	organizationId string, scenarioIteration models.UpdateScenarioIterationInput,
+	organizationId uuid.UUID, scenarioIteration models.UpdateScenarioIterationInput,
 ) (iteration models.ScenarioIteration, err error) {
 	updatedScenarioIteration, err := executor_factory.TransactionReturnValue(
 		ctx,
@@ -221,7 +221,7 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 
 func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	scenarioIterationId string,
 ) (models.ScenarioIteration, error) {
 	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
@@ -432,7 +432,8 @@ func replaceTriggerOrRule(scenarioAndIteration models.ScenarioAndIteration,
 func (usecase *ScenarioIterationUsecase) getScenarioVersion(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationId, scenarioId string,
+	organizationId uuid.UUID,
+	scenarioId string,
 ) (int, error) {
 	scenarioIdUuid, err := uuid.Parse(scenarioId)
 	if err != nil {

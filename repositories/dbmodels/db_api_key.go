@@ -5,19 +5,20 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type DBApiKey struct {
-	Id             string             `db:"id"`
+	Id             uuid.UUID          `db:"id"`
 	CreatedAt      time.Time          `db:"created_at"`
 	DeletedAt      pgtype.Timestamptz `db:"deleted_at"`
 	Description    string             `db:"description"`
 	Hash           []byte             `db:"key_hash"`
 	Prefix         string             `db:"prefix"`
 	PartnerId      pgtype.Text        `db:"partner_id"`
-	OrganizationId string             `db:"org_id"`
+	OrganizationId uuid.UUID          `db:"org_id"`
 	Role           int                `db:"role"`
 }
 
@@ -27,7 +28,7 @@ var ApiKeyFields = utils.ColumnList[DBApiKey]()
 
 func AdaptApikey(db DBApiKey) (models.ApiKey, error) {
 	out := models.ApiKey{
-		Id:             db.Id,
+		Id:             db.Id.String(),
 		CreatedAt:      db.CreatedAt,
 		Description:    db.Description,
 		Hash:           db.Hash,

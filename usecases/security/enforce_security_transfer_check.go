@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (e *EnforceSecurityImpl) CreateTransfer(ctx context.Context, organizationId string, partnerId string) error {
+func (e *EnforceSecurityImpl) CreateTransfer(ctx context.Context, organizationId uuid.UUID, partnerId string) error {
 	return errors.Join(
 		e.Permission(models.TRANSFER_CREATE),
 		utils.EnforceOrganizationAccess(e.Credentials, organizationId),
@@ -86,7 +87,7 @@ func (e *EnforceSecurityImpl) UpdateTransferAlert(
 	)
 }
 
-func (e *EnforceSecurityImpl) CreateTransferAlert(ctx context.Context, organizationId string, partnerId string) error {
+func (e *EnforceSecurityImpl) CreateTransferAlert(ctx context.Context, organizationId uuid.UUID, partnerId string) error {
 	return errors.Join(
 		e.Permission(models.TRANSFER_ALERT_CREATE),
 		utils.EnforceOrganizationAccess(e.Credentials, organizationId),

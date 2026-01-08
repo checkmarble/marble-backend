@@ -7,13 +7,14 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/google/uuid"
 )
 
 type FeatureAccessReaderRepository interface {
 	GetOrganizationFeatureAccess(
 		ctx context.Context,
 		executor repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 	) (models.DbStoredOrganizationFeatureAccess, error)
 	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
 }
@@ -52,13 +53,9 @@ func NewFeatureAccessReader(
 
 func (f FeatureAccessReader) GetOrganizationFeatureAccess(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	userId *models.UserId,
 ) (models.OrganizationFeatureAccess, error) {
-	if err := f.enforceSecurity.ReadOrganization(organizationId); err != nil {
-		return models.OrganizationFeatureAccess{}, err
-	}
-
 	dbStoredFeatureAccess, err := f.repository.GetOrganizationFeatureAccess(ctx,
 		f.executorFactory.NewExecutor(), organizationId)
 	if err != nil {

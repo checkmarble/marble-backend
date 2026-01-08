@@ -18,25 +18,25 @@ import (
 )
 
 type dataModelUsecaseIndexEditor interface {
-	ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error)
+	ListAllUniqueIndexes(ctx context.Context, organizationId uuid.UUID) ([]models.UnicityIndex, error)
 	ListAllIndexes(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		indexTypes ...models.IndexType,
 	) ([]models.ConcreteIndex, error)
-	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, organizationId string, index models.UnicityIndex) error
-	CreateUniqueIndexAsync(ctx context.Context, organizationId string, index models.UnicityIndex) error
-	DeleteUniqueIndex(ctx context.Context, organizationId string, index models.UnicityIndex) error
+	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID, index models.UnicityIndex) error
+	CreateUniqueIndexAsync(ctx context.Context, organizationId uuid.UUID, index models.UnicityIndex) error
+	DeleteUniqueIndex(ctx context.Context, organizationId uuid.UUID, index models.UnicityIndex) error
 	CreateIndexesAsync(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		indexes []models.ConcreteIndex,
 	) error
 }
 
 type dataModelUsecaseIngestedDataReadRepo interface {
 	GatherFieldStatistics(ctx context.Context, exec repositories.Executor, table models.Table,
-		orgId string) ([]models.FieldStatistics, error)
+		orgId uuid.UUID) ([]models.FieldStatistics, error)
 }
 
 type usecase struct {
@@ -57,7 +57,7 @@ var (
 
 func (usecase usecase) GetDataModel(
 	ctx context.Context,
-	organizationID string,
+	organizationID uuid.UUID,
 	options models.DataModelReadOptions,
 	useCache bool,
 ) (models.DataModel, error) {
@@ -115,7 +115,7 @@ func (usecase usecase) GetDataModel(
 }
 
 func (usecase *usecase) CreateDataModelTable(ctx context.Context,
-	organizationId, name, description string, ftmEntity *models.FollowTheMoneyEntity,
+	organizationId uuid.UUID, name, description string, ftmEntity *models.FollowTheMoneyEntity,
 ) (string, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(organizationId); err != nil {
 		return "", err
@@ -211,7 +211,7 @@ func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.C
 
 	fieldId := uuid.New().String()
 	var tableName string
-	var organizationId string
+	var organizationId uuid.UUID
 	err := usecase.transactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Transaction) error {
@@ -472,7 +472,7 @@ func (usecase *usecase) CreateDataModelLink(ctx context.Context, link models.Dat
 	return linkId, usecase.dataModelRepository.CreateDataModelLink(ctx, exec, linkId, link)
 }
 
-func (usecase *usecase) DeleteDataModel(ctx context.Context, organizationID string) error {
+func (usecase *usecase) DeleteDataModel(ctx context.Context, organizationID uuid.UUID) error {
 	if err := usecase.enforceSecurity.WriteDataModel(organizationID); err != nil {
 		return err
 	}
@@ -589,7 +589,7 @@ func validatePivotCreateInput(input models.CreatePivotInput, dm models.DataModel
 	return nil
 }
 
-func (usecase *usecase) ListPivots(ctx context.Context, organizationId string, tableID *string) ([]models.Pivot, error) {
+func (usecase *usecase) ListPivots(ctx context.Context, organizationId uuid.UUID, tableID *string) ([]models.Pivot, error) {
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return nil, err
 	}
@@ -773,7 +773,7 @@ func (usecase *usecase) CreateNavigationOption(ctx context.Context, input models
 	})
 }
 
-func (usecase usecase) GetDataModelOptions(ctx context.Context, orgId, tableId string) (models.DataModelOptions, error) {
+func (usecase usecase) GetDataModelOptions(ctx context.Context, orgId uuid.UUID, tableId string) (models.DataModelOptions, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
@@ -811,7 +811,7 @@ func (usecase usecase) GetDataModelOptions(ctx context.Context, orgId, tableId s
 }
 
 func (usecase usecase) UpdateDataModelOptions(ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	req models.UpdateDataModelOptionsRequest,
 ) (models.DataModelOptions, error) {
 	exec := usecase.executorFactory.NewExecutor()
