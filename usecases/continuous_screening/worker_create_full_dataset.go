@@ -157,6 +157,11 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 		return err
 	}
 
+	if w.bucketUrl == "" {
+		logger.DebugContext(ctx, "No bucket url provided for storing full dataset, skipping", "job", job)
+		return nil
+	}
+
 	orgId, err := uuid.Parse(job.Args.OrgId)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse org id")

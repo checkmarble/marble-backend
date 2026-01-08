@@ -121,6 +121,7 @@ func (w *ScanDatasetUpdatesWorker) Work(
 
 	if w.bucketUrl == "" {
 		logger.DebugContext(ctx, "No bucket url provided for storing delta files, skip processing")
+		return nil
 	}
 
 	activeConfigs, err := w.repo.ListContinuousScreeningConfigs(ctx, exec)
