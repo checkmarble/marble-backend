@@ -413,8 +413,7 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 			if _, ok := navigationOptions[link.ParentTableName]; !ok {
 				navigationOptions[link.ParentTableName] = []NavigationOption{}
 			}
-			navigationOptions[link.ParentTableName] =
-				append(navigationOptions[link.ParentTableName], navOption)
+			navigationOptions[link.ParentTableName] = append(navigationOptions[link.ParentTableName], navOption)
 		}
 
 		for _, pivot := range pivots {
@@ -442,8 +441,7 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 			if _, ok := navigationOptions[pivot.BaseTable]; !ok {
 				navigationOptions[pivot.BaseTable] = []NavigationOption{}
 			}
-			navigationOptions[pivot.BaseTable] =
-				append(navigationOptions[pivot.BaseTable], navOption)
+			navigationOptions[pivot.BaseTable] = append(navigationOptions[pivot.BaseTable], navOption)
 		}
 	}
 
@@ -498,6 +496,7 @@ type NavigationOption struct {
 }
 
 type CreateNavigationOptionInput struct {
+	Blocking        bool
 	SourceTableId   string
 	SourceFieldId   string
 	TargetTableId   string

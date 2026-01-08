@@ -60,7 +60,7 @@ func (m *IngestedDataIndexesRepository) CreateIndexesAsync(
 	return args.Error(0)
 }
 
-func (m *IngestedDataIndexesRepository) CreateIndexes(
+func (m *IngestedDataIndexesRepository) CreateIndexesBlocking(
 	ctx context.Context,
 	exec repositories.Executor, indexes []models.ConcreteIndex,
 ) error {
