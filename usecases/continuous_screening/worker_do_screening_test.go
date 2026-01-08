@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"github.com/stretchr/testify/mock"
@@ -18,6 +19,7 @@ type DoScreeningWorkerTestSuite struct {
 	suite.Suite
 	repository         *mocks.ContinuousScreeningRepository
 	clientDbRepository *mocks.ContinuousScreeningClientDbRepository
+	ingestedDataReader *mocks.ContinuousScreeningIngestedDataReader
 	usecase            *mocks.ContinuousScreeningUsecase
 	executorFactory    executor_factory.ExecutorFactoryStub
 	transactionFactory executor_factory.TransactionFactoryStub
@@ -34,6 +36,7 @@ type DoScreeningWorkerTestSuite struct {
 func (suite *DoScreeningWorkerTestSuite) SetupTest() {
 	suite.repository = new(mocks.ContinuousScreeningRepository)
 	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
+	suite.ingestedDataReader = new(mocks.ContinuousScreeningIngestedDataReader)
 	suite.usecase = new(mocks.ContinuousScreeningUsecase)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
@@ -54,6 +57,7 @@ func (suite *DoScreeningWorkerTestSuite) makeWorker() *DoScreeningWorker {
 		suite.transactionFactory,
 		suite.repository,
 		suite.clientDbRepository,
+		suite.ingestedDataReader,
 		suite.usecase,
 	)
 }
@@ -62,6 +66,7 @@ func (suite *DoScreeningWorkerTestSuite) AssertExpectations() {
 	t := suite.T()
 	suite.repository.AssertExpectations(t)
 	suite.clientDbRepository.AssertExpectations(t)
+	suite.ingestedDataReader.AssertExpectations(t)
 	suite.usecase.AssertExpectations(t)
 }
 
@@ -88,6 +93,12 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 
 	table := models.Table{
 		Name: suite.objectType,
+		Fields: map[string]models.Field{
+			"status": {
+				Name:        "status",
+				FTMProperty: utils.Ptr(models.FollowTheMoneyProperty("status")),
+			},
+		},
 	}
 
 	mapping := models.ContinuousScreeningDataModelMapping{
@@ -97,14 +108,26 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 
 	ingestedObject := models.DataModelObject{
 		Data: map[string]any{
-			"id": suite.objectId,
+			"id":     suite.objectId,
+			"status": "new",
 		},
 		Metadata: map[string]any{
 			"valid_from": time.Now(),
 		},
 	}
 
+	previousObjectData := models.DataModelObject{
+		Data: map[string]any{
+			"id":     suite.objectId,
+			"status": "old",
+		},
+		Metadata: map[string]any{
+			"valid_from": time.Now().Add(-1 * time.Hour),
+		},
+	}
+
 	ingestedObjectInternalId := uuid.New()
+	previousObjectInternalId := uuid.New()
 
 	// Same matches as existing screening
 	matches := []models.ScreeningMatch{
@@ -147,10 +170,12 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
-			ObjectType:   suite.objectType,
-			OrgId:        suite.orgId.String(),
-			TriggerType:  models.ContinuousScreeningTriggerTypeObjectUpdated,
-			MonitoringId: suite.monitoringId,
+			ObjectType:         suite.objectType,
+			OrgId:              suite.orgId.String(),
+			TriggerType:        models.ContinuousScreeningTriggerTypeObjectUpdated,
+			MonitoringId:       suite.monitoringId,
+			NewInternalId:      ingestedObjectInternalId.String(),
+			PreviousInternalId: previousObjectInternalId.String(),
 		},
 	}
 
@@ -161,8 +186,12 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 		suite.configStableId).Return(config, nil)
 	suite.usecase.On("GetDataModelTableAndMapping", suite.ctx, mock.Anything, config,
 		suite.objectType).Return(table, mapping, nil)
-	suite.usecase.On("GetIngestedObject", suite.ctx, mock.Anything, table, suite.objectId).Return(
-		ingestedObject, ingestedObjectInternalId, nil)
+	suite.ingestedDataReader.On("QueryIngestedObjectByInternalId", suite.ctx, mock.Anything,
+		table, ingestedObjectInternalId, []string{"id", "valid_from"}).Return(
+		ingestedObject, nil)
+	suite.ingestedDataReader.On("QueryIngestedObjectByInternalId", suite.ctx, mock.Anything,
+		table, previousObjectInternalId, ([]string)(nil)).Return(
+		previousObjectData, nil)
 	suite.usecase.On("DoScreening", suite.ctx, mock.Anything, ingestedObject, mapping, config,
 		"transactions", "test-object-id").Return(screeningWithMatches, nil)
 	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
@@ -208,6 +237,12 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 
 	table := models.Table{
 		Name: suite.objectType,
+		Fields: map[string]models.Field{
+			"status": {
+				Name:        "status",
+				FTMProperty: utils.Ptr(models.FollowTheMoneyProperty("status")),
+			},
+		},
 	}
 
 	mapping := models.ContinuousScreeningDataModelMapping{
@@ -217,14 +252,26 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 
 	ingestedObject := models.DataModelObject{
 		Data: map[string]any{
-			"id": suite.objectId,
+			"id":     suite.objectId,
+			"status": "new",
 		},
 		Metadata: map[string]any{
 			"valid_from": time.Now(),
 		},
 	}
 
+	previousObjectData := models.DataModelObject{
+		Data: map[string]any{
+			"id":     suite.objectId,
+			"status": "old",
+		},
+		Metadata: map[string]any{
+			"valid_from": time.Now().Add(-1 * time.Hour),
+		},
+	}
+
 	ingestedObjectInternalId := uuid.New()
+	previousObjectInternalId := uuid.New()
 
 	// Different matches from existing screening
 	newMatches := []models.ScreeningMatch{
@@ -267,10 +314,12 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
-			ObjectType:   suite.objectType,
-			OrgId:        suite.orgId.String(),
-			TriggerType:  models.ContinuousScreeningTriggerTypeObjectUpdated,
-			MonitoringId: suite.monitoringId,
+			ObjectType:         suite.objectType,
+			OrgId:              suite.orgId.String(),
+			TriggerType:        models.ContinuousScreeningTriggerTypeObjectUpdated,
+			MonitoringId:       suite.monitoringId,
+			NewInternalId:      ingestedObjectInternalId.String(),
+			PreviousInternalId: previousObjectInternalId.String(),
 		},
 	}
 
@@ -281,8 +330,12 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 		suite.configStableId).Return(config, nil)
 	suite.usecase.On("GetDataModelTableAndMapping", suite.ctx, mock.Anything, config,
 		suite.objectType).Return(table, mapping, nil)
-	suite.usecase.On("GetIngestedObject", suite.ctx, mock.Anything, table, suite.objectId).Return(
-		ingestedObject, ingestedObjectInternalId, nil)
+	suite.ingestedDataReader.On("QueryIngestedObjectByInternalId", suite.ctx, mock.Anything,
+		table, ingestedObjectInternalId, []string{"id", "valid_from"}).Return(
+		ingestedObject, nil)
+	suite.ingestedDataReader.On("QueryIngestedObjectByInternalId", suite.ctx, mock.Anything,
+		table, previousObjectInternalId, ([]string)(nil)).Return(
+		previousObjectData, nil)
 	suite.usecase.On("DoScreening", suite.ctx, mock.Anything, ingestedObject, mapping, config,
 		"transactions", "test-object-id").Return(screeningWithMatches, nil)
 	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
@@ -328,6 +381,12 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 
 	table := models.Table{
 		Name: suite.objectType,
+		Fields: map[string]models.Field{
+			"status": {
+				Name:        "status",
+				FTMProperty: utils.Ptr(models.FollowTheMoneyProperty("status")),
+			},
+		},
 	}
 
 	mapping := models.ContinuousScreeningDataModelMapping{
@@ -339,14 +398,26 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 	pastTime := time.Now().Add(-2 * time.Hour)
 	ingestedObject := models.DataModelObject{
 		Data: map[string]any{
-			"id": suite.objectId,
+			"id":     suite.objectId,
+			"status": "new",
 		},
 		Metadata: map[string]any{
 			"valid_from": pastTime,
 		},
 	}
 
+	previousObjectData := models.DataModelObject{
+		Data: map[string]any{
+			"id":     suite.objectId,
+			"status": "old",
+		},
+		Metadata: map[string]any{
+			"valid_from": time.Now().Add(-1 * time.Hour),
+		},
+	}
+
 	ingestedObjectInternalId := uuid.New()
+	previousObjectInternalId := uuid.New()
 
 	// Existing screening created more recently than the ingested object
 	existingContinuousScreening := models.ContinuousScreeningWithMatches{
@@ -363,10 +434,12 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
-			ObjectType:   suite.objectType,
-			OrgId:        suite.orgId.String(),
-			TriggerType:  models.ContinuousScreeningTriggerTypeObjectUpdated,
-			MonitoringId: suite.monitoringId,
+			ObjectType:         suite.objectType,
+			OrgId:              suite.orgId.String(),
+			TriggerType:        models.ContinuousScreeningTriggerTypeObjectUpdated,
+			MonitoringId:       suite.monitoringId,
+			NewInternalId:      ingestedObjectInternalId.String(),
+			PreviousInternalId: previousObjectInternalId.String(),
 		},
 	}
 
@@ -377,8 +450,12 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 		suite.configStableId).Return(config, nil)
 	suite.usecase.On("GetDataModelTableAndMapping", suite.ctx, mock.Anything, config,
 		suite.objectType).Return(table, mapping, nil)
-	suite.usecase.On("GetIngestedObject", suite.ctx, mock.Anything, table, suite.objectId).Return(
-		ingestedObject, ingestedObjectInternalId, nil)
+	suite.ingestedDataReader.On("QueryIngestedObjectByInternalId", suite.ctx, mock.Anything,
+		table, ingestedObjectInternalId, []string{"id", "valid_from"}).Return(
+		ingestedObject, nil)
+	suite.ingestedDataReader.On("QueryIngestedObjectByInternalId", suite.ctx, mock.Anything,
+		table, previousObjectInternalId, ([]string)(nil)).Return(
+		previousObjectData, nil)
 	// Existing screening is more recent than ingested object
 	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
 		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
@@ -400,7 +477,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 	suite.AssertExpectations()
 }
 
-func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation() {
+func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_DataUnchanged_SkipScreening() {
 	// Setup
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
@@ -419,6 +496,12 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 
 	table := models.Table{
 		Name: suite.objectType,
+		Fields: map[string]models.Field{
+			"status": {
+				Name:        "status",
+				FTMProperty: utils.Ptr(models.FollowTheMoneyProperty("status")),
+			},
+		},
 	}
 
 	mapping := models.ContinuousScreeningDataModelMapping{
@@ -426,9 +509,11 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 		Properties: map[string]string{},
 	}
 
+	// Same data for both new and previous
 	ingestedObject := models.DataModelObject{
 		Data: map[string]any{
-			"id": suite.objectId,
+			"id":     suite.objectId,
+			"status": "same",
 		},
 		Metadata: map[string]any{
 			"valid_from": time.Now(),
@@ -436,40 +521,16 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 	}
 
 	ingestedObjectInternalId := uuid.New()
-
-	matches := []models.ScreeningMatch{
-		{
-			EntityId: "entity1",
-			Id:       "match1",
-			IsMatch:  true,
-		},
-	}
-
-	screeningWithMatches := models.ScreeningWithMatches{
-		Screening: models.Screening{
-			Status: models.ScreeningStatusInReview,
-		},
-		Matches:            matches,
-		EffectiveThreshold: 80,
-	}
-
-	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
-		ContinuousScreening: models.ContinuousScreening{
-			Id: uuid.New(),
-		},
-		Matches: []models.ContinuousScreeningMatch{
-			{
-				OpenSanctionEntityId: "entity1",
-			},
-		},
-	}
+	previousObjectInternalId := uuid.New()
 
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
-			ObjectType:   suite.objectType,
-			OrgId:        suite.orgId.String(),
-			TriggerType:  models.ContinuousScreeningTriggerTypeObjectAdded,
-			MonitoringId: suite.monitoringId,
+			ObjectType:         suite.objectType,
+			OrgId:              suite.orgId.String(),
+			TriggerType:        models.ContinuousScreeningTriggerTypeObjectUpdated,
+			MonitoringId:       suite.monitoringId,
+			NewInternalId:      ingestedObjectInternalId.String(),
+			PreviousInternalId: previousObjectInternalId.String(),
 		},
 	}
 
@@ -480,22 +541,12 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 		suite.configStableId).Return(config, nil)
 	suite.usecase.On("GetDataModelTableAndMapping", suite.ctx, mock.Anything, config,
 		suite.objectType).Return(table, mapping, nil)
-	suite.usecase.On("GetIngestedObject", suite.ctx, mock.Anything, table, suite.objectId).Return(
-		ingestedObject, ingestedObjectInternalId, nil)
-	// For ObjectAdded trigger, there should be no existing screening
-	suite.repository.On("GetContinuousScreeningByObjectId", suite.ctx, mock.Anything,
-		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
-			return status == nil
-		}), false).Return(
-		(*models.ContinuousScreeningWithMatches)(nil), nil)
-	suite.usecase.On("DoScreening", suite.ctx, mock.Anything, ingestedObject, mapping, config,
-		"transactions", "test-object-id").Return(screeningWithMatches, nil)
-	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything,
-		screeningWithMatches, config, suite.objectType, suite.objectId, ingestedObjectInternalId,
-		models.ContinuousScreeningTriggerTypeObjectAdded).Return(continuousScreeningWithMatches, nil)
-	// Return empty case for simplicity because it is not used for this test
-	suite.usecase.On("HandleCaseCreation", suite.ctx, mock.Anything, config, suite.objectId,
-		continuousScreeningWithMatches).Return(models.Case{}, nil)
+	suite.ingestedDataReader.On("QueryIngestedObjectByInternalId", suite.ctx, mock.Anything,
+		table, ingestedObjectInternalId, []string{"id", "valid_from"}).Return(
+		ingestedObject, nil)
+	suite.ingestedDataReader.On("QueryIngestedObjectByInternalId", suite.ctx, mock.Anything,
+		table, previousObjectInternalId, ([]string)(nil)).Return(
+		ingestedObject, nil)
 
 	// Execute
 	worker := suite.makeWorker()
@@ -503,6 +554,27 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 
 	// Assert
 	suite.NoError(err)
-	// For ObjectAdded trigger, the second GetContinuousScreeningByObjectId call is NOT made
-	suite.usecase.AssertExpectations(suite.T())
+	// Verify that screening is skipped
+	suite.usecase.AssertNotCalled(suite.T(), "DoScreening")
+	suite.repository.AssertNotCalled(suite.T(), "InsertContinuousScreening")
+	suite.AssertExpectations()
+}
+
+func (suite *DoScreeningWorkerTestSuite) TestWork_UnsupportedTriggerType_SkipScreening() {
+	// Setup
+	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
+		Args: models.ContinuousScreeningDoScreeningArgs{
+			OrgId:       suite.orgId.String(),
+			TriggerType: models.ContinuousScreeningTriggerTypeObjectAdded, // Unsupported
+		},
+	}
+
+	// Execute
+	worker := suite.makeWorker()
+	err := worker.Work(suite.ctx, job)
+
+	// Assert
+	suite.NoError(err)
+	// Verify that worker returns early without calling any repository or usecase
+	suite.AssertExpectations()
 }

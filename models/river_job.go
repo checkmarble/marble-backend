@@ -116,20 +116,13 @@ type ContinuousScreeningDoScreeningArgs struct {
 
 	// MonitoringId is the ID from the object type specific monitoring table.
 	MonitoringId uuid.UUID `json:"monitoring_id"`
+
+	PreviousInternalId string `json:"previous_internal_id"`
+	NewInternalId      string `json:"new_internal_id"`
 }
 
 func (ContinuousScreeningDoScreeningArgs) Kind() string {
 	return "continuous_screening_do_screening"
-}
-
-type ContinuousScreeningEvaluateNeedArgs struct {
-	OrgId      string   `json:"org_id"`
-	ObjectType string   `json:"object_type"`
-	ObjectIds  []string `json:"object_ids"`
-}
-
-func (ContinuousScreeningEvaluateNeedArgs) Kind() string {
-	return "continuous_screening_evaluate_need"
 }
 
 type ContinuousScreeningScanDatasetUpdatesArgs struct{}

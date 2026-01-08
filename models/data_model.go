@@ -162,6 +162,16 @@ func (t Table) GetFieldById(fieldId string) (Field, bool) {
 	return Field{}, false
 }
 
+func (t Table) GetFieldsWithFTMProperty() []Field {
+	var fields []Field
+	for _, field := range t.Fields {
+		if field.FTMProperty != nil {
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
 type TableMetadata struct {
 	ID             string
 	Description    string

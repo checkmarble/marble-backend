@@ -105,21 +105,10 @@ func (m *TaskQueueRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 	tx repositories.Transaction,
 	orgId string,
 	objectType string,
-	monitoringIds []uuid.UUID,
+	enqueueObjectUpdateTasks []models.ContinuousScreeningEnqueueObjectUpdateTask,
 	triggerType models.ContinuousScreeningTriggerType,
 ) error {
-	args := m.Called(ctx, tx, orgId, objectType, monitoringIds, triggerType)
-	return args.Error(0)
-}
-
-func (m *TaskQueueRepository) EnqueueContinuousScreeningEvaluateNeedTask(
-	ctx context.Context,
-	tx repositories.Transaction,
-	orgId string,
-	objectType string,
-	objectIds []string,
-) error {
-	args := m.Called(ctx, tx, orgId, objectType, objectIds)
+	args := m.Called(ctx, tx, orgId, objectType, enqueueObjectUpdateTasks, triggerType)
 	return args.Error(0)
 }
 

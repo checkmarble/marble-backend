@@ -227,3 +227,9 @@ type CreateContinuousScreeningJobError struct {
 	UpdateJobId uuid.UUID
 	Details     json.RawMessage
 }
+
+type ContinuousScreeningEnqueueObjectUpdateTask struct {
+	MonitoringId       uuid.UUID
+	PreviousInternalId string
+	NewInternalId      string
+}
