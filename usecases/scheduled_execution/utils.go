@@ -12,6 +12,9 @@ func addStrideDelay[T river.JobArgs](job *river.Job[T], interval time.Duration) 
 	if gjson.GetBytes(job.Metadata, "snoozes").Int() > 0 {
 		return nil
 	}
+	if gjson.GetBytes(job.Metadata, "manual").Bool() {
+		return nil
+	}
 
 	delay := time.Duration(rand.IntN(int((interval / 2).Seconds()))) * time.Second
 
