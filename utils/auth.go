@@ -158,9 +158,9 @@ func ParseAuthorizationTokenHeader(header http.Header) (string, error) {
 		return "", nil
 	}
 
-	if !strings.HasPrefix(authorization, screeningIndexerTokenPrefix) {
+	token, found := strings.CutPrefix(authorization, screeningIndexerTokenPrefix)
+	if !found {
 		return "", fmt.Errorf("malformed token: %w", models.UnAuthorizedError)
 	}
-
-	return strings.TrimPrefix(authorization, screeningIndexerTokenPrefix), nil
+	return token, nil
 }
