@@ -274,3 +274,38 @@ func handleEnrichScreeningMatch(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, dto.AdaptScreeningMatchDto(newMatch))
 	}
 }
+
+func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		var payload dto.ScreeningFreeformDto
+
+		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
+			return
+		}
+
+		req := models.ScreeningRefineRequest{
+			Type:  payload.Query.Type(),
+			Query: dto.AdaptRefineQueryDto(payload.Query),
+		}
+
+		scc := models.ScreeningConfig{
+			Datasets:  payload.Datasets,
+			Threshold: payload.Threshold,
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+
+		matches, err := uc.FreeformSearch(ctx, orgId, scc, req)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(matches.Matches, dto.AdaptScreeningMatchDto))
+	}
+}
