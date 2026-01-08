@@ -294,9 +294,9 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 			models.CreateContinuousScreening{
 				Screening:        screeningWithMatches,
 				Config:           config,
-				ObjectType:       job.Args.ObjectType,
-				ObjectId:         monitoredObject.ObjectId,
-				ObjectInternalId: newObjectInternalId,
+				ObjectType:       &job.Args.ObjectType,
+				ObjectId:         &monitoredObject.ObjectId,
+				ObjectInternalId: &newObjectInternalId,
 				TriggerType:      job.Args.TriggerType,
 			},
 		)

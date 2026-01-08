@@ -200,9 +200,9 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				models.CreateContinuousScreening{
 					Screening:        screeningWithMatches,
 					Config:           config,
-					ObjectType:       input.ObjectType,
-					ObjectId:         objectId,
-					ObjectInternalId: ingestedObjectInternalId,
+					ObjectType:       &input.ObjectType,
+					ObjectId:         &objectId,
+					ObjectInternalId: &ingestedObjectInternalId,
 					TriggerType:      triggerType,
 				},
 			)

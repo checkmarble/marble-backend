@@ -19,10 +19,10 @@ type DBContinuousScreening struct {
 	ContinuousScreeningConfigId       uuid.UUID       `db:"continuous_screening_config_id"`
 	ContinuousScreeningConfigStableId uuid.UUID       `db:"continuous_screening_config_stable_id"`
 	CaseId                            *uuid.UUID      `db:"case_id"`
-	ObjectType                        string          `db:"object_type"`
-	ObjectId                          string          `db:"object_id"`
-	ObjectInternalId                  uuid.UUID       `db:"object_internal_id"`
-	OpenSanctionEntityId              string          `db:"opensanction_entity_id"`
+	ObjectType                        *string         `db:"object_type"`
+	ObjectId                          *string         `db:"object_id"`
+	ObjectInternalId                  *uuid.UUID      `db:"object_internal_id"`
+	OpenSanctionEntityId              *string         `db:"opensanction_entity_id"`
 	OpenSanctionEntityPayload         json.RawMessage `db:"opensanction_entity_payload"`
 	Status                            string          `db:"status"`
 	TriggerType                       string          `db:"trigger_type"`

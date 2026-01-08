@@ -271,7 +271,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 				models.CreateContinuousScreening{
 					Screening:                 screening,
 					Config:                    updateJob.Config,
-					OpenSanctionEntityId:      record.Entity.Id,
+					OpenSanctionEntityId:      &record.Entity.Id,
 					OpenSanctionEntityPayload: entityPayload,
 					TriggerType:               models.ContinuousScreeningTriggerTypeDatasetUpdated,
 				},
