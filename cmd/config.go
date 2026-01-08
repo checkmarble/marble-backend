@@ -23,7 +23,8 @@ type ServerConfig struct {
 	telemetryExporter                string
 	otelSamplingRates                string
 	similarityThreshold              float64
-	enableTracing                    bool
+	enableTracing                           bool
+	continuousScreeningEntitiesBucketUrl    string
 }
 
 func (config ServerConfig) Validate() error {
@@ -50,6 +51,6 @@ type WorkerConfig struct {
 	enableTracing               bool
 	datasetDeltafileBucketUrl   string
 	ScanDatasetUpdatesInterval  time.Duration
-	CreateFullDatasetInterval   time.Duration
-	datasetBucketUrl            string
+	CreateFullDatasetInterval                time.Duration
+	continuousScreeningEntitiesBucketUrl    string
 }

@@ -82,7 +82,7 @@ func InitDependencies(
 	)
 
 	return dependencies{
-		Authentication: utils.NewAuthentication(tokenValidator),
+		Authentication: utils.NewAuthentication(tokenValidator, conf.ScreeningIndexerToken),
 		FirebaseAdmin:  firebaseAdmin,
 		SegmentClient:  segmentClient,
 		TokenHandler:   NewTokenHandler(tokenHandler),

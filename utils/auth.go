@@ -20,7 +20,10 @@ const (
 	FederatedBearerToken AuthType = iota
 	PublicApiKey
 	ApiKeyAsBearerToken
+	ScreeningIndexerToken
 )
+
+const screeningIndexerTokenPrefix = "Token "
 
 func ParseApiKeyHeader(header http.Header) string {
 	return strings.TrimSpace(header.Get("X-API-Key"))
@@ -41,7 +44,8 @@ type tokenAndKeyValidator interface {
 }
 
 type Authentication struct {
-	validator tokenAndKeyValidator
+	validator             tokenAndKeyValidator
+	screeningIndexerToken string
 }
 
 func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
@@ -57,6 +61,19 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 
 		key := ""
 		jwtToken := ""
+
+		if slices.Contains(methods, ScreeningIndexerToken) {
+			token, err := ParseAuthorizationTokenHeader(c.Request.Header)
+			if err != nil {
+				_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+			if token != "" && token == a.screeningIndexerToken {
+				c.Next()
+				return
+			}
+		}
 
 		if slices.Contains(methods, PublicApiKey) {
 			key = ParseApiKeyHeader(c.Request.Header)
@@ -115,9 +132,10 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 	}
 }
 
-func NewAuthentication(validator tokenAndKeyValidator) Authentication {
+func NewAuthentication(validator tokenAndKeyValidator, screeningIndexerToken string) Authentication {
 	return Authentication{
-		validator: validator,
+		validator:             validator,
+		screeningIndexerToken: screeningIndexerToken,
 	}
 }
 
@@ -132,4 +150,17 @@ func ParseAuthorizationBearerHeader(header http.Header) (string, error) {
 		return "", fmt.Errorf("malformed token: %w", models.UnAuthorizedError)
 	}
 	return authHeader[1], nil
+}
+
+func ParseAuthorizationTokenHeader(header http.Header) (string, error) {
+	authorization := header.Get("Authorization")
+	if authorization == "" {
+		return "", nil
+	}
+
+	token, found := strings.CutPrefix(authorization, screeningIndexerTokenPrefix)
+	if !found {
+		return "", fmt.Errorf("malformed token: %w", models.UnAuthorizedError)
+	}
+	return token, nil
 }

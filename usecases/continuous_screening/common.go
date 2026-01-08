@@ -2,6 +2,7 @@ package continuous_screening
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
@@ -58,11 +59,23 @@ func buildDataModelMapping(table models.Table) (models.ContinuousScreeningDataMo
 	}, nil
 }
 
-// TODO: To be defined when creating custom org datasets
 func orgCustomDatasetName(orgId uuid.UUID) string {
-	return fmt.Sprintf("internal-marble-org-%s", orgId.String())
+	return fmt.Sprintf("marble_org_%s",
+		strings.ReplaceAll(orgId.String(), "-", ""))
 }
 
 func deltaTrackEntityIdBuilder(objectType, objectId string) string {
 	return fmt.Sprintf("marble_%s_%s", objectType, objectId)
+}
+
+func datasetFileUrlBuilder(backendUrl string, orgId uuid.UUID) string {
+	return fmt.Sprintf("%s/%s/org/%s/full", backendUrl, models.ScreeningIndexerKey, orgId.String())
+}
+
+func deltaFileUrlBuilder(backendUrl string, orgId uuid.UUID) string {
+	return fmt.Sprintf("%s/%s/org/%s/delta", backendUrl, models.ScreeningIndexerKey, orgId.String())
+}
+
+func deltaFileVersionUrlBuilder(backendUrl string, orgId uuid.UUID, deltaId uuid.UUID) string {
+	return fmt.Sprintf("%s/%s/org/%s/delta/%s", backendUrl, models.ScreeningIndexerKey, orgId.String(), deltaId.String())
 }

@@ -101,6 +101,9 @@ type ContinuousScreeningWithMatches struct {
 
 const ContinuousScreeningSortingCreatedAt SortingField = SortingFieldCreatedAt
 
+// Used as a prefix for the screening indexer endpoints and for the URL building functions
+const ScreeningIndexerKey = "screening-indexer"
+
 type ContinuousScreeningMonitoredObject struct {
 	Id             uuid.UUID
 	ObjectType     string

@@ -102,7 +102,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		datasetDeltafileBucketUrl:   utils.GetEnv("DATASET_DELTAFILE_BUCKET_URL", ""),
 		ScanDatasetUpdatesInterval:  utils.GetEnvDuration("SCAN_DATASET_UPDATES_INTERVAL", 24*time.Hour),
 		CreateFullDatasetInterval:   utils.GetEnvDuration("CREATE_FULL_DATASET_INTERVAL", 24*time.Hour),
-		datasetBucketUrl:            utils.GetEnv("DATASET_BUCKET_URL", ""),
+		continuousScreeningEntitiesBucketUrl: utils.GetEnv(
+			"CONTINUOUS_SCREENING_ENTITIES_BUCKET_URL", ""),
 	}
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
@@ -304,7 +305,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
 		usecases.WithDatasetDeltafileBucketUrl(workerConfig.datasetDeltafileBucketUrl),
-		usecases.WithDatasetBucketUrl(workerConfig.datasetBucketUrl),
+		usecases.WithContinuousScreeningEntitiesBucketUrl(workerConfig.continuousScreeningEntitiesBucketUrl),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 
