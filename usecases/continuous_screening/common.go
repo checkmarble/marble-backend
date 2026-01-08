@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const MARBLE_CONTINUOUS_SCREENING_TAG = "marble_continuous_screening"
+
 func typedObjectId(objectType, objectId string) string {
 	return objectType + "_" + objectId
 }
