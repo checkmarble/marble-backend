@@ -240,7 +240,7 @@ func (br *BoostReason) String() string {
 const CaseDecisionsPerPage = 50
 
 type CaseDecisionsRequest struct {
-	OrgId    string
+	OrgId    uuid.UUID
 	CaseId   string
 	CursorId string
 	Limit    int

@@ -15,7 +15,7 @@ import (
 
 type InboxRepository interface {
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
-	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
+	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID,
 		inboxIds []uuid.UUID, withCaseCount bool) ([]models.Inbox, error)
 	CreateInbox(ctx context.Context, exec repositories.Executor,
 		createInboxAttributes models.CreateInboxInput, newInboxId uuid.UUID) error
@@ -29,7 +29,7 @@ type InboxRepository interface {
 type EnforceSecurityInboxes interface {
 	ReadInbox(i models.Inbox) error
 	ReadInboxMetadata(i models.Inbox) error
-	CreateInbox(organizationId string) error
+	CreateInbox(organizationId uuid.UUID) error
 	UpdateInbox(inbox models.Inbox) error
 }
 
@@ -63,12 +63,12 @@ func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId uuid.UUID
 }
 
 func (usecase *InboxUsecase) ListInboxes(ctx context.Context, organizationId uuid.UUID, withCaseCount bool) ([]models.Inbox, error) {
-	return usecase.inboxReader.ListInboxes(ctx, usecase.executorFactory.NewExecutor(), organizationId.String(), withCaseCount)
+	return usecase.inboxReader.ListInboxes(ctx, usecase.executorFactory.NewExecutor(), organizationId, withCaseCount)
 }
 
 func (usecase *InboxUsecase) ListInboxesMetadata(ctx context.Context, organizationId uuid.UUID) ([]models.InboxMetadata, error) {
 	inboxes, err := usecase.inboxRepository.ListInboxes(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId.String(), nil, false)
+		usecase.executorFactory.NewExecutor(), organizationId, nil, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not list inboxes")
 	}
@@ -178,9 +178,8 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId uuid.UUID)
 				return err
 			}
 
-			orgId, _ := uuid.Parse(inbox.OrganizationId)
 			cases, err := usecase.inboxRepository.ListOrganizationCases(ctx, tx,
-				models.CaseFilters{InboxIds: []uuid.UUID{inboxId}, OrganizationId: orgId},
+				models.CaseFilters{InboxIds: []uuid.UUID{inboxId}, OrganizationId: inbox.OrganizationId},
 				models.PaginationAndSorting{Limit: 1, Order: models.SortingOrderDesc, Sorting: models.CasesSortingCreatedAt},
 			)
 			if err != nil {

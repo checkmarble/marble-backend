@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -61,7 +62,7 @@ func (s *ScenarioTestrunRepository) ListTestRunsByScenarioID(
 }
 
 func (s *ScenarioTestrunRepository) ListRunningTestRun(ctx context.Context,
-	exec repositories.Executor, organizationId string,
+	exec repositories.Executor, organizationId uuid.UUID,
 ) ([]models.ScenarioTestRun, error) {
 	args := s.Called(ctx, exec, organizationId)
 	if args.Get(0) == nil {

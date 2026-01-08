@@ -18,7 +18,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/usecases/security"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 )
@@ -294,10 +293,9 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 	environment := ast_eval.NewAstEvaluationEnvironment()
 
 	// execution of a scenario with a dedicated security context
-	orgId, _ := uuid.Parse(params.OrganizationId)
 	enforceSecurity := &security.EnforceSecurityImpl{
 		Credentials: models.Credentials{
-			OrganizationId: orgId,
+			OrganizationId: params.OrganizationId,
 		},
 	}
 

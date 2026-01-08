@@ -53,12 +53,12 @@ func (e *EnforceSecurity) ReadScheduledExecution(scheduledExecution models.Sched
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) CreateDecision(organizationId string) error {
+func (e *EnforceSecurity) CreateDecision(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) CreateScheduledExecution(organizationId string) error {
+func (e *EnforceSecurity) CreateScheduledExecution(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
@@ -88,22 +88,22 @@ func (e *EnforceSecurity) UpdateScenario(scenario models.Scenario) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) ListScenarios(organizationId string) error {
+func (e *EnforceSecurity) ListScenarios(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) ListTestRuns(organizationId string) error {
+func (e *EnforceSecurity) ListTestRuns(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) ReadTestRun(organizationId string) error {
+func (e *EnforceSecurity) ReadTestRun(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) CreateScenario(organizationId string) error {
+func (e *EnforceSecurity) CreateScenario(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
@@ -123,7 +123,7 @@ func (e *EnforceSecurity) ReadInboxMetadata(i models.Inbox) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) CreateInbox(organizationId string) error {
+func (e *EnforceSecurity) CreateInbox(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
@@ -190,22 +190,22 @@ func (e *EnforceSecurity) ReadDataModel() error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) CreateTestRun(organizationId string) error {
+func (e *EnforceSecurity) CreateTestRun(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) WriteDataModel(organizationId string) error {
+func (e *EnforceSecurity) WriteDataModel(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) WriteDataModelIndexes(organizationId string) error {
+func (e *EnforceSecurity) WriteDataModelIndexes(organizationId uuid.UUID) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) CanIngest(orgId string) error {
+func (e *EnforceSecurity) CanIngest(orgId uuid.UUID) error {
 	args := e.Called(orgId)
 	return args.Error(0)
 }

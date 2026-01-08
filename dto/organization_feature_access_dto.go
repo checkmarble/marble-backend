@@ -3,6 +3,7 @@ package dto
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type APIOrganizationFeatureAccess struct {
@@ -43,7 +44,9 @@ type UpdateOrganizationFeatureAccessBodyDto struct {
 	Sanctions *string `json:"sanctions"`
 }
 
-func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccessBodyDto, orgId string) models.UpdateOrganizationFeatureAccessInput {
+func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccessBodyDto,
+	orgId uuid.UUID,
+) models.UpdateOrganizationFeatureAccessInput {
 	var testRun, sanctions *models.FeatureAccess
 	if f.TestRun != nil {
 		testRun = utils.Ptr(models.FeatureAccessFrom(*f.TestRun))

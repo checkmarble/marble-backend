@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 const VALUES_COUNT_LIMIT = 100 // Maximum count number of values to be returned when showing customs list information
 
@@ -11,7 +15,7 @@ type ValuesInfo struct {
 
 type CustomList struct {
 	Id             string
-	OrganizationId string
+	OrganizationId uuid.UUID
 	Name           string
 	Description    string
 	CreatedAt      time.Time
@@ -31,7 +35,7 @@ type CustomListValue struct {
 type CreateCustomListInput struct {
 	Name           string
 	Description    string
-	OrganizationId string
+	OrganizationId uuid.UUID
 }
 
 type UpdateCustomListInput struct {

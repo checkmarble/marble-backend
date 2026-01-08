@@ -16,7 +16,7 @@ type TaskQueueRepository struct {
 func (m *TaskQueueRepository) EnqueueDecisionTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	decision models.DecisionToCreate,
 	scenarioIterationId string,
 ) error {
@@ -27,7 +27,7 @@ func (m *TaskQueueRepository) EnqueueDecisionTask(
 func (m *TaskQueueRepository) EnqueueDecisionTaskMany(
 	ctx context.Context,
 	tx repositories.Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	decisions []models.DecisionToCreate,
 	scenarioIterationId string,
 ) error {
@@ -38,7 +38,7 @@ func (m *TaskQueueRepository) EnqueueDecisionTaskMany(
 func (m *TaskQueueRepository) EnqueueScheduledExecStatusTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	scheduledExecutionId string,
 ) error {
 	args := m.Called(ctx, tx, organizationId, scheduledExecutionId)
@@ -47,7 +47,7 @@ func (m *TaskQueueRepository) EnqueueScheduledExecStatusTask(
 
 func (m *TaskQueueRepository) EnqueueCreateIndexTask(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	indices []models.ConcreteIndex,
 ) error {
 	args := m.Called(ctx, organizationId, indices)
@@ -57,7 +57,7 @@ func (m *TaskQueueRepository) EnqueueCreateIndexTask(
 func (m *TaskQueueRepository) EnqueueMatchEnrichmentTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	screeningId string,
 ) error {
 	args := m.Called(ctx, tx, organizationId, screeningId)
@@ -67,7 +67,7 @@ func (m *TaskQueueRepository) EnqueueMatchEnrichmentTask(
 func (m *TaskQueueRepository) EnqueueCaseReviewTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	caseId uuid.UUID,
 	aiCaseReviewId uuid.UUID,
 ) error {
@@ -78,7 +78,7 @@ func (m *TaskQueueRepository) EnqueueCaseReviewTask(
 func (m *TaskQueueRepository) EnqueueAutoAssignmentTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	orgId string,
+	orgId uuid.UUID,
 	inboxId uuid.UUID,
 ) error {
 	return m.Called(ctx, tx, orgId, inboxId).Error(0)
@@ -87,7 +87,7 @@ func (m *TaskQueueRepository) EnqueueAutoAssignmentTask(
 func (m *TaskQueueRepository) EnqueueDecisionWorkflowTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	orgId string,
+	orgId uuid.UUID,
 	decisionId string,
 ) error {
 	return m.Called(ctx, tx, orgId, decisionId).Error(0)
@@ -103,7 +103,7 @@ func (m *TaskQueueRepository) EnqueueSendBillingEventTask(
 func (m *TaskQueueRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 	ctx context.Context,
 	tx repositories.Transaction,
-	orgId string,
+	orgId uuid.UUID,
 	objectType string,
 	monitoringIds []uuid.UUID,
 	triggerType models.ContinuousScreeningTriggerType,
@@ -115,7 +115,7 @@ func (m *TaskQueueRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 func (m *TaskQueueRepository) EnqueueContinuousScreeningEvaluateNeedTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	orgId string,
+	orgId uuid.UUID,
 	objectType string,
 	objectIds []string,
 ) error {

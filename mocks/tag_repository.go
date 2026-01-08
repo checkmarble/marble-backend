@@ -3,6 +3,7 @@ package mocks
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -10,7 +11,7 @@ type TagUseCaseRepository struct {
 	mock.Mock
 }
 
-func (_m *TagUseCaseRepository) ListOrganizationTags(exec repositories.Executor, organizationId string) ([]models.Tag, error) {
+func (_m *TagUseCaseRepository) ListOrganizationTags(exec repositories.Executor, organizationId uuid.UUID) ([]models.Tag, error) {
 	args := _m.Called(exec, organizationId)
 	return args.Get(0).([]models.Tag), args.Error(1)
 }

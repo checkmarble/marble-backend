@@ -12,7 +12,7 @@ import (
 )
 
 type autoAssignmentUsecase interface {
-	RunAutoAssigner(ctx context.Context, orgId string, inboxId uuid.UUID) error
+	RunAutoAssigner(ctx context.Context, orgId uuid.UUID, inboxId uuid.UUID) error
 }
 
 type AutoAssignmentWorker struct {

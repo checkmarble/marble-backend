@@ -38,25 +38,25 @@ type DecisionRepository interface {
 	DecisionsByCaseId(
 		ctx context.Context,
 		exec Executor,
-		orgId string,
+		orgId uuid.UUID,
 		caseId string,
 	) ([]models.Decision, error)
 
 	// DEPRECATED: Do not use, see warning comment below next to the implementation
-	DEPRECATED_DecisionsByObjectId(ctx context.Context, exec Executor, organizationId string,
+	DEPRECATED_DecisionsByObjectId(ctx context.Context, exec Executor, organizationId uuid.UUID,
 		objectId string) ([]models.DecisionMetadata, error)
 
 	StoreDecision(
 		ctx context.Context,
 		exec Executor,
 		decision models.DecisionWithRuleExecutions,
-		organizationId string,
+		organizationId uuid.UUID,
 		newDecisionId string,
 		analyticsFields map[string]any) error
 	DecisionsOfOrganization(
 		ctx context.Context,
 		exec Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		paginationAndSorting models.PaginationAndSorting,
 		filters models.DecisionFilters,
 	) ([]models.Decision, error)
@@ -100,7 +100,7 @@ func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Conte
 func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	scenarioId string,
 	scenarioLiveIterationId string,
 	begin, end time.Time,
@@ -316,7 +316,7 @@ func (repo *MarbleDbRepository) DecisionsByCaseIdFromCursor(
 func (repo *MarbleDbRepository) DecisionsByCaseId(
 	ctx context.Context,
 	exec Executor,
-	orgId string,
+	orgId uuid.UUID,
 	caseId string,
 ) ([]models.Decision, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -350,7 +350,7 @@ func (repo *MarbleDbRepository) DecisionsByCaseId(
 func (repo *MarbleDbRepository) DEPRECATED_DecisionsByObjectId(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	objectId string,
 ) ([]models.DecisionMetadata, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -379,7 +379,7 @@ func (repo *MarbleDbRepository) DEPRECATED_DecisionsByObjectId(
 func (repo *MarbleDbRepository) DecisionsOfOrganization(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	pagination models.PaginationAndSorting,
 	filters models.DecisionFilters,
 ) ([]models.Decision, error) {
@@ -502,7 +502,7 @@ func (repo *MarbleDbRepository) StoreDecision(
 	ctx context.Context,
 	exec Executor,
 	decision models.DecisionWithRuleExecutions,
-	organizationId string,
+	organizationId uuid.UUID,
 	newDecisionId string,
 	analyticsFields map[string]any,
 ) error {

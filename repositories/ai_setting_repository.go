@@ -6,9 +6,10 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
-func (repo MarbleDbRepository) GetAiSetting(ctx context.Context, exec Executor, orgId string) (*models.AiSetting, error) {
+func (repo MarbleDbRepository) GetAiSetting(ctx context.Context, exec Executor, orgId uuid.UUID) (*models.AiSetting, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -40,7 +41,7 @@ func (repo MarbleDbRepository) GetAiSetting(ctx context.Context, exec Executor, 
 func (repo MarbleDbRepository) PutAiSetting(
 	ctx context.Context,
 	exec Executor,
-	orgId string,
+	orgId uuid.UUID,
 	setting models.UpsertAiSetting,
 ) (models.AiSetting, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -73,7 +74,7 @@ func (repo MarbleDbRepository) PutAiSetting(
 func (repo MarbleDbRepository) upsertAiSettingType(
 	ctx context.Context,
 	exec Executor,
-	orgId string,
+	orgId uuid.UUID,
 	settingType string,
 	value models.AiSettingEntity,
 ) error {

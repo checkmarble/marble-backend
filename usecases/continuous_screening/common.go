@@ -58,5 +58,5 @@ func buildDataModelMapping(table models.Table) (models.ContinuousScreeningDataMo
 
 // TODO: To be defined when creating custom org datasets
 func orgCustomDatasetName(orgId uuid.UUID) string {
-	return fmt.Sprintf("internal-marble-org-%s", orgId.String())
+	return fmt.Sprintf("internal-marble-org-%s", orgId)
 }

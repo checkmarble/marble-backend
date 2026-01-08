@@ -11,7 +11,7 @@ import (
 
 type InboxRepository interface {
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
-	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
+	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID,
 		inboxIds []uuid.UUID, withCaseCount bool) ([]models.Inbox, error)
 	ListInboxUsers(ctx context.Context, exec repositories.Executor,
 		filters models.InboxUserFilterInput) ([]models.InboxUser, error)
@@ -20,7 +20,7 @@ type InboxRepository interface {
 type EnforceSecurityInboxes interface {
 	ReadInbox(i models.Inbox) error
 	ReadInboxMetadata(inbox models.Inbox) error
-	CreateInbox(organizationId string) error
+	CreateInbox(organizationId uuid.UUID) error
 	ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error
 	CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser,
 		targetInbox models.Inbox, targetUser models.User) error
@@ -72,7 +72,7 @@ func (i *InboxReader) GetEscalationInboxMetadata(ctx context.Context, inboxId uu
 func (i *InboxReader) ListInboxes(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	withCaseCount bool,
 ) ([]models.Inbox, error) {
 	var inboxes []models.Inbox

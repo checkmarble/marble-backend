@@ -25,7 +25,7 @@ func handleListWebhooks(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
-		webhooks, err := usecase.ListWebhooks(ctx, creds.OrganizationId.String(), null.StringFromPtr(creds.PartnerId))
+		webhooks, err := usecase.ListWebhooks(ctx, creds.OrganizationId, null.StringFromPtr(creds.PartnerId))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -54,7 +54,7 @@ func handleRegisterWebhook(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
 		webhook, err := usecase.RegisterWebhook(ctx,
-			creds.OrganizationId.String(),
+			creds.OrganizationId,
 			null.StringFromPtr(creds.PartnerId),
 			models.WebhookRegister{
 				EventTypes:        data.EventTypes,
@@ -85,7 +85,7 @@ func handleGetWebhook(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
 		webhook, err := usecase.GetWebhook(ctx,
-			creds.OrganizationId.String(),
+			creds.OrganizationId,
 			null.StringFromPtr(creds.PartnerId),
 			webhookId)
 		if presentError(ctx, c, err) {
@@ -110,7 +110,7 @@ func handleDeleteWebhook(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
 		err := usecase.DeleteWebhook(ctx,
-			creds.OrganizationId.String(),
+			creds.OrganizationId,
 			null.StringFromPtr(creds.PartnerId),
 			webhookId)
 		if presentError(ctx, c, err) {
@@ -141,7 +141,7 @@ func handleUpdateWebhook(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
 		webhook, err := usecase.UpdateWebhook(ctx,
-			creds.OrganizationId.String(),
+			creds.OrganizationId,
 			null.StringFromPtr(creds.PartnerId),
 			webhookId,
 			models.WebhookUpdate{

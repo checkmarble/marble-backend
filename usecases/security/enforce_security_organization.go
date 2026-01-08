@@ -14,8 +14,8 @@ type EnforceSecurityOrganization interface {
 	EditOrganization(org models.Organization) error
 	DeleteOrganization() error
 	ReadDataModel() error
-	WriteDataModel(organizationId string) error
-	WriteDataModelIndexes(organizationId string) error
+	WriteDataModel(organizationId uuid.UUID) error
+	WriteDataModelIndexes(organizationId uuid.UUID) error
 }
 
 type EnforceSecurityOrganizationImpl struct {
@@ -54,18 +54,16 @@ func (e *EnforceSecurityOrganizationImpl) ReadDataModel() error {
 	)
 }
 
-func (e *EnforceSecurityOrganizationImpl) WriteDataModel(organizationId string) error {
-	orgId, _ := uuid.Parse(organizationId)
+func (e *EnforceSecurityOrganizationImpl) WriteDataModel(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.DATA_MODEL_WRITE),
-		e.ReadOrganization(orgId),
+		e.ReadOrganization(organizationId),
 	)
 }
 
-func (e *EnforceSecurityOrganizationImpl) WriteDataModelIndexes(organizationId string) error {
-	orgId, _ := uuid.Parse(organizationId)
+func (e *EnforceSecurityOrganizationImpl) WriteDataModelIndexes(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.SCENARIO_CREATE),
-		e.ReadOrganization(orgId),
+		e.ReadOrganization(organizationId),
 	)
 }

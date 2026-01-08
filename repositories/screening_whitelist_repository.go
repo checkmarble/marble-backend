@@ -6,10 +6,15 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 )
 
-func (repo *MarbleDbRepository) AddScreeningMatchWhitelist(ctx context.Context, exec Executor,
-	orgId, counterpartyId string, entityId string, reviewerId *models.UserId,
+func (repo *MarbleDbRepository) AddScreeningMatchWhitelist(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	counterpartyId string, entityId string,
+	reviewerId *models.UserId,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -25,7 +30,7 @@ func (repo *MarbleDbRepository) AddScreeningMatchWhitelist(ctx context.Context, 
 }
 
 func (repo *MarbleDbRepository) DeleteScreeningMatchWhitelist(ctx context.Context, exec Executor,
-	orgId string, counterpartyId *string, entityId string, reviewerId *models.UserId,
+	orgId uuid.UUID, counterpartyId *string, entityId string, reviewerId *models.UserId,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -48,7 +53,7 @@ func (repo *MarbleDbRepository) DeleteScreeningMatchWhitelist(ctx context.Contex
 }
 
 func (repo *MarbleDbRepository) SearchScreeningMatchWhitelist(ctx context.Context,
-	exec Executor, orgId string, counterpartyId, entityId *string,
+	exec Executor, orgId uuid.UUID, counterpartyId, entityId *string,
 ) ([]models.ScreeningWhitelist, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -72,7 +77,7 @@ func (repo *MarbleDbRepository) SearchScreeningMatchWhitelist(ctx context.Contex
 }
 
 func (repo *MarbleDbRepository) IsScreeningMatchWhitelisted(ctx context.Context, exec Executor,
-	orgId, counterpartyId string, entityIds []string,
+	orgId uuid.UUID, counterpartyId string, entityIds []string,
 ) ([]models.ScreeningWhitelist, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

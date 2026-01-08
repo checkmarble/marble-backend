@@ -9,17 +9,18 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type OrganizationRepository interface {
 	// organization
 	AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error)
-	GetOrganizationById(ctx context.Context, exec Executor, organizationId string) (models.Organization, error)
-	CreateOrganization(ctx context.Context, exec Executor, newOrganizationId, name string) error
+	GetOrganizationById(ctx context.Context, exec Executor, organizationId uuid.UUID) (models.Organization, error)
+	CreateOrganization(ctx context.Context, exec Executor, newOrganizationId uuid.UUID, name string) error
 	UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error
-	DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error
-	DeleteOrganizationDecisionRulesAsync(ctx context.Context, exec Executor, organizationId string)
-	GetOrganizationFeatureAccess(ctx context.Context, exec Executor, organizationId string) (
+	DeleteOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID) error
+	DeleteOrganizationDecisionRulesAsync(ctx context.Context, exec Executor, organizationId uuid.UUID)
+	GetOrganizationFeatureAccess(ctx context.Context, exec Executor, organizationId uuid.UUID) (
 		models.DbStoredOrganizationFeatureAccess, error,
 	)
 	UpdateOrganizationFeatureAccess(
@@ -28,7 +29,7 @@ type OrganizationRepository interface {
 		updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
 	) error
 	HasOrganizations(ctx context.Context, exec Executor) (bool, error)
-	UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string,
+	UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId uuid.UUID,
 		subnets []net.IPNet) ([]net.IPNet, error)
 }
 
@@ -49,7 +50,7 @@ func (repo *MarbleDbRepository) AllOrganizations(ctx context.Context, exec Execu
 }
 
 func (repo *MarbleDbRepository) GetOrganizationById(ctx context.Context,
-	exec Executor, organizationId string,
+	exec Executor, organizationId uuid.UUID,
 ) (models.Organization, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.Organization{}, err
@@ -69,7 +70,8 @@ func (repo *MarbleDbRepository) GetOrganizationById(ctx context.Context,
 func (repo *MarbleDbRepository) CreateOrganization(
 	ctx context.Context,
 	exec Executor,
-	newOrganizationId, name string,
+	newOrganizationId uuid.UUID,
+	name string,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -139,7 +141,7 @@ func (repo *MarbleDbRepository) UpdateOrganization(ctx context.Context, exec Exe
 	return err
 }
 
-func (repo *MarbleDbRepository) DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error {
+func (repo *MarbleDbRepository) DeleteOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -149,7 +151,7 @@ func (repo *MarbleDbRepository) DeleteOrganization(ctx context.Context, exec Exe
 }
 
 func (repo *MarbleDbRepository) DeleteOrganizationDecisionRulesAsync(
-	ctx context.Context, exec Executor, organizationId string,
+	ctx context.Context, exec Executor, organizationId uuid.UUID,
 ) {
 	// This is used asynchronously after the organization is deleted, because it is not dramatic if it fails
 	go func() {
@@ -167,7 +169,7 @@ func (repo *MarbleDbRepository) DeleteOrganizationDecisionRulesAsync(
 }
 
 func (repo *MarbleDbRepository) GetOrganizationFeatureAccess(ctx context.Context, exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 ) (models.DbStoredOrganizationFeatureAccess, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.DbStoredOrganizationFeatureAccess{}, err
@@ -232,7 +234,7 @@ func (repo *MarbleDbRepository) HasOrganizations(ctx context.Context, exec Execu
 	return exists, nil
 }
 
-func (repo *MarbleDbRepository) GetOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId string) ([]net.IPNet, error) {
+func (repo *MarbleDbRepository) GetOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId uuid.UUID) ([]net.IPNet, error) {
 	sql := NewQueryBuilder().
 		Select("allowed_networks").
 		From(dbmodels.TABLE_ORGANIZATION).
@@ -242,7 +244,7 @@ func (repo *MarbleDbRepository) GetOrganizationAllowedNetworks(ctx context.Conte
 }
 
 func (repo *MarbleDbRepository) UpdateOrganizationAllowedNetworks(ctx context.Context,
-	exec Executor, orgId string, subnets []net.IPNet,
+	exec Executor, orgId uuid.UUID, subnets []net.IPNet,
 ) ([]net.IPNet, error) {
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_ORGANIZATION).

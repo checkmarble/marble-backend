@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 )
 
 // helper with generics in org db schema
 func TransactionReturnValueInOrgSchema[ReturnType any](
 	ctx context.Context,
 	factory TransactionFactory,
-	organizationId string,
+	organizationId uuid.UUID,
 	fn func(tx repositories.Transaction) (ReturnType, error),
 ) (ReturnType, error) {
 	var value ReturnType

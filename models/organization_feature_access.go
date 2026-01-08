@@ -2,11 +2,13 @@ package models
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type OrganizationFeatureAccess struct {
 	Id              string
-	OrganizationId  string
+	OrganizationId  uuid.UUID
 	TestRun         FeatureAccess
 	Workflows       FeatureAccess
 	Webhooks        FeatureAccess
@@ -27,7 +29,7 @@ type OrganizationFeatureAccess struct {
 
 type DbStoredOrganizationFeatureAccess struct {
 	Id             string
-	OrganizationId string
+	OrganizationId uuid.UUID
 	TestRun        FeatureAccess
 	Sanctions      FeatureAccess
 	CaseAutoAssign FeatureAccess
@@ -37,7 +39,7 @@ type DbStoredOrganizationFeatureAccess struct {
 }
 
 type UpdateOrganizationFeatureAccessInput struct {
-	OrganizationId string
+	OrganizationId uuid.UUID
 	TestRun        *FeatureAccess
 	Sanctions      *FeatureAccess
 	CaseAiAssist   *FeatureAccess

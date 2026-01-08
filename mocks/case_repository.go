@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -11,7 +12,7 @@ type CaseRepository struct {
 	mock.Mock
 }
 
-func (r *CaseRepository) ListOrganizationCases(exec repositories.Executor, organizationId string,
+func (r *CaseRepository) ListOrganizationCases(exec repositories.Executor, organizationId uuid.UUID,
 	filters models.CaseFilters, pagination models.PaginationAndSorting,
 ) ([]models.Case, error) {
 	args := r.Called(exec, organizationId)

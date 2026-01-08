@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -11,12 +12,12 @@ type LagoRepository struct {
 	mock.Mock
 }
 
-func (r *LagoRepository) GetWallets(ctx context.Context, orgId string) ([]models.Wallet, error) {
+func (r *LagoRepository) GetWallets(ctx context.Context, orgId uuid.UUID) ([]models.Wallet, error) {
 	args := r.Called(ctx, orgId)
 	return args.Get(0).([]models.Wallet), args.Error(1)
 }
 
-func (r *LagoRepository) GetSubscriptions(ctx context.Context, orgId string) ([]models.Subscription, error) {
+func (r *LagoRepository) GetSubscriptions(ctx context.Context, orgId uuid.UUID) ([]models.Subscription, error) {
 	args := r.Called(ctx, orgId)
 	return args.Get(0).([]models.Subscription), args.Error(1)
 }
@@ -28,7 +29,7 @@ func (r *LagoRepository) GetSubscription(ctx context.Context, subscriptionExtern
 
 func (r *LagoRepository) GetCustomerUsage(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	subscriptionExternalId string,
 ) (models.CustomerUsage, error) {
 	args := r.Called(ctx, orgId, subscriptionExternalId)

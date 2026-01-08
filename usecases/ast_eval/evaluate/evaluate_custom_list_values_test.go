@@ -18,8 +18,7 @@ const (
 	testListId string = "1"
 )
 
-var testListOrgIdUUID = utils.TextToUUID("test-org")
-var testListOrgId = testListOrgIdUUID.String()
+var testListOrgId = utils.TextToUUID("test-org")
 
 var testList = models.CustomList{
 	Id:             testListId,
@@ -54,7 +53,7 @@ func TestCustomListValues(t *testing.T) {
 	clr.On("GetCustomListById", exec, testListId, true).Return(testList, nil)
 	clr.On("GetCustomListValues", exec, models.GetCustomListValuesInput{Id: testListId}).Return(testCustomListValues, nil)
 
-	er.On("ReadOrganization", testListOrgIdUUID).Return(nil)
+	er.On("ReadOrganization", testListOrgId).Return(nil)
 	result, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{
 		NamedArgs: testCustomListNamedArgs,
 	})
@@ -78,7 +77,7 @@ func TestCustomListValuesNoAccess(t *testing.T) {
 
 	execFactory.On("NewExecutor").Return(exec)
 	clr.On("GetCustomListById", exec, testListId, true).Return(testList, nil)
-	er.On("ReadOrganization", testListOrgIdUUID).Return(models.ForbiddenError)
+	er.On("ReadOrganization", testListOrgId).Return(models.ForbiddenError)
 
 	_, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testCustomListNamedArgs})
 	if assert.Len(t, errs, 1) {

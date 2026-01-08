@@ -14,7 +14,7 @@ type DBCase struct {
 	CreatedAt      pgtype.Timestamp `db:"created_at"`
 	InboxId        uuid.UUID        `db:"inbox_id"`
 	Name           pgtype.Text      `db:"name"`
-	OrganizationId pgtype.Text      `db:"org_id"`
+	OrganizationId uuid.UUID        `db:"org_id"`
 	AssignedTo     *string          `db:"assigned_to"`
 	Status         pgtype.Text      `db:"status"`
 	Outcome        pgtype.Text      `db:"outcome"`
@@ -45,17 +45,12 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		boostReason = utils.Ptr(models.BoostReason(*db.Boost))
 	}
 
-	orgId, err := uuid.Parse(db.OrganizationId.String)
-	if err != nil {
-		return models.Case{}, err
-	}
-
 	return models.Case{
 		Id:             db.Id.String,
 		CreatedAt:      db.CreatedAt.Time,
 		InboxId:        db.InboxId,
 		Name:           db.Name.String,
-		OrganizationId: orgId,
+		OrganizationId: db.OrganizationId,
 		AssignedTo:     assigneeId,
 		Status:         models.CaseStatus(db.Status.String),
 		Outcome:        models.CaseOutcome(db.Outcome.String),

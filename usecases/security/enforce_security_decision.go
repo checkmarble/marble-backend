@@ -11,8 +11,8 @@ type EnforceSecurityDecision interface {
 	EnforceSecurity
 	ReadDecision(decision models.Decision) error
 	ReadScheduledExecution(scheduledExecution models.ScheduledExecution) error
-	CreateDecision(organizationId string) error
-	CreateScheduledExecution(organizationId string) error
+	CreateDecision(organizationId uuid.UUID) error
+	CreateScheduledExecution(organizationId uuid.UUID) error
 }
 
 type EnforceSecurityDecisionImpl struct {
@@ -27,26 +27,23 @@ func (e *EnforceSecurityDecisionImpl) ReadDecision(decision models.Decision) err
 	)
 }
 
-func (e *EnforceSecurityDecisionImpl) CreateDecision(organizationId string) error {
-	orgId, _ := uuid.Parse(organizationId)
+func (e *EnforceSecurityDecisionImpl) CreateDecision(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.DECISION_CREATE),
-		e.ReadOrganization(orgId),
+		e.ReadOrganization(organizationId),
 	)
 }
 
 func (e *EnforceSecurityDecisionImpl) ReadScheduledExecution(scheduledExecution models.ScheduledExecution) error {
-	orgId, _ := uuid.Parse(scheduledExecution.OrganizationId)
 	return errors.Join(
 		e.Permission(models.DECISION_READ),
-		e.ReadOrganization(orgId),
+		e.ReadOrganization(scheduledExecution.OrganizationId),
 	)
 }
 
-func (e *EnforceSecurityDecisionImpl) CreateScheduledExecution(organizationId string) error {
-	orgId, _ := uuid.Parse(organizationId)
+func (e *EnforceSecurityDecisionImpl) CreateScheduledExecution(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.DECISION_CREATE),
-		e.ReadOrganization(orgId),
+		e.ReadOrganization(organizationId),
 	)
 }

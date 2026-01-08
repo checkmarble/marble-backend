@@ -20,6 +20,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/duckdb/duckdb-go/v2"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -113,7 +114,7 @@ func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, ali
 	return exportDb, nil
 }
 
-func (f AnalyticsExecutorFactory) BuildTarget(table string, orgId string, triggerObjectType string, aliases ...string) string {
+func (f AnalyticsExecutorFactory) BuildTarget(table string, orgId uuid.UUID, triggerObjectType string, aliases ...string) string {
 	alias := "main"
 	if len(aliases) > 0 {
 		alias = aliases[0]
@@ -130,7 +131,7 @@ func (f AnalyticsExecutorFactory) BuildTablePrefix(table string) string {
 	return fmt.Sprintf(`%s/%s`, f.config.Bucket, table)
 }
 
-func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuilder, orgId string,
+func (f AnalyticsExecutorFactory) BuildPushdownFilter(query squirrel.SelectBuilder, orgId uuid.UUID,
 	start, end time.Time, triggerObjectType string, aliases ...string,
 ) squirrel.SelectBuilder {
 	// Align time range on UTC to select the proper list of partitions

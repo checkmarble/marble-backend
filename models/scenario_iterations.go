@@ -7,12 +7,13 @@ import (
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-set/v2"
 )
 
 type ScenarioIteration struct {
 	Id                            string
-	OrganizationId                string
+	OrganizationId                uuid.UUID
 	ScenarioId                    string
 	Version                       *int
 	CreatedAt                     time.Time

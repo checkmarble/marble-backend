@@ -154,7 +154,7 @@ func MergeScreeningExecWithDefaults(decisionId, orgId uuid.UUID) func(se Screeni
 			se.Id = uuid.Must(uuid.NewV7()).String()
 		}
 		se.DecisionId = decisionId.String()
-		se.OrgId = orgId.String()
+		se.OrgId = orgId
 		se.CreatedAt = time.Now()
 		se.UpdatedAt = time.Now()
 		return se
@@ -162,7 +162,7 @@ func MergeScreeningExecWithDefaults(decisionId, orgId uuid.UUID) func(se Screeni
 }
 
 type OffloadDecisionRuleRequest struct {
-	OrgId           string
+	OrgId           uuid.UUID
 	DeleteBefore    time.Time
 	BatchSize       int
 	Watermark       *Watermark
@@ -183,7 +183,7 @@ type OffloadableDecisionRule struct {
 
 // Decision input models
 type CreateDecisionInput struct {
-	OrganizationId     string
+	OrganizationId     uuid.UUID
 	PayloadRaw         json.RawMessage
 	ClientObject       *ClientObject
 	ScenarioId         string
@@ -198,7 +198,7 @@ type CreateDecisionParams struct {
 }
 
 type CreateAllDecisionsInput struct {
-	OrganizationId     string
+	OrganizationId     uuid.UUID
 	PayloadRaw         json.RawMessage
 	TriggerObjectTable string
 }
@@ -227,6 +227,6 @@ const DecisionSortingCreatedAt SortingField = SortingFieldCreatedAt
 
 type DecisionWorkflowFilters struct {
 	InboxId        *uuid.UUID
-	OrganizationId string
+	OrganizationId uuid.UUID
 	PivotValue     string
 }

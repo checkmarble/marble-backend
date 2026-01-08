@@ -68,7 +68,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigByObjectType(
 func (repo *MarbleDbRepository) GetContinuousScreeningConfigsByOrgId(
 	ctx context.Context,
 	exec Executor,
-	orgId string,
+	orgId uuid.UUID,
 ) ([]models.ContinuousScreeningConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

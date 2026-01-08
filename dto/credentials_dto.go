@@ -15,11 +15,11 @@ type Identity struct {
 }
 
 type Credentials struct {
-	ActorIdentity  Identity `json:"actor_identity"`
-	OrganizationId string   `json:"organization_id"`
-	PartnerId      *string  `json:"partner_id,omitempty"`
-	Permissions    []string `json:"permissions"`
-	Role           string   `json:"role"`
+	ActorIdentity  Identity  `json:"actor_identity"`
+	OrganizationId uuid.UUID `json:"organization_id"`
+	PartnerId      *string   `json:"partner_id,omitempty"`
+	Permissions    []string  `json:"permissions"`
+	Role           string    `json:"role"`
 }
 
 func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
@@ -39,7 +39,7 @@ func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
 			LastName:   creds.ActorIdentity.LastName,
 			ApiKeyName: creds.ActorIdentity.ApiKeyName,
 		},
-		OrganizationId: creds.OrganizationId.String(),
+		OrganizationId: creds.OrganizationId,
 		PartnerId:      creds.PartnerId,
 		Permissions:    permissions,
 		Role:           creds.Role.String(),
@@ -47,7 +47,6 @@ func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
 }
 
 func AdaptCredential(dto Credentials) models.Credentials {
-	orgId, _ := uuid.Parse(dto.OrganizationId) // Ignore error, will be uuid.Nil if invalid
 	return models.Credentials{
 		ActorIdentity: models.Identity{
 			UserId:     models.UserId(dto.ActorIdentity.UserId),
@@ -56,7 +55,7 @@ func AdaptCredential(dto Credentials) models.Credentials {
 			LastName:   dto.ActorIdentity.LastName,
 			ApiKeyName: dto.ActorIdentity.ApiKeyName,
 		},
-		OrganizationId: orgId,
+		OrganizationId: dto.OrganizationId,
 		PartnerId:      dto.PartnerId,
 		Role:           models.RoleFromString(dto.Role),
 	}

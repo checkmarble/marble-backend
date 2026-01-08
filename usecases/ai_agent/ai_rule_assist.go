@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 const (
@@ -21,7 +22,7 @@ type aiRuleDescriptionOutput struct {
 
 func (uc *AiAgentUsecase) AiRuleDescription(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	ruleId string,
 ) (models.AiRuleDescription, error) {
 	// Get the scenario iteration
@@ -49,7 +50,7 @@ func (uc *AiAgentUsecase) AiRuleDescription(
 // Require permission to read scenario (needed for ast validation)
 func (uc *AiAgentUsecase) AiASTDescription(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	scenarioId string,
 	ruleAST *ast.Node,
 ) (models.AiRuleDescription, error) {

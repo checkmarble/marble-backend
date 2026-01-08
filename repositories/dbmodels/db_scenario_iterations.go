@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -15,7 +16,7 @@ const TABLE_SCENARIO_ITERATIONS = "scenario_iterations"
 
 type DBScenarioIteration struct {
 	Id                            string      `db:"id"`
-	OrganizationId                string      `db:"org_id"`
+	OrganizationId                uuid.UUID   `db:"org_id"`
 	ScenarioId                    string      `db:"scenario_id"`
 	Version                       pgtype.Int2 `db:"version"`
 	CreatedAt                     time.Time   `db:"created_at"`

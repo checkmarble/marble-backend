@@ -65,7 +65,7 @@ func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 			Comment:        input.Comment,
 			DecisionId:     decisionId,
 			Duration:       input.Duration,
-			OrganizationId: organizationId.String(),
+			OrganizationId: organizationId,
 			RuleId:         input.RuleId,
 			UserId:         &userId,
 		})

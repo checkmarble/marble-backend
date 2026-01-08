@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -45,7 +46,7 @@ type webhookEventsRepository interface {
 }
 
 type enforceSecurityWebhookEvents interface {
-	SendWebhookEvent(ctx context.Context, organizationId string, partnerId null.String) error
+	SendWebhookEvent(ctx context.Context, organizationId uuid.UUID, partnerId null.String) error
 }
 
 type WebhookEventsUsecase struct {

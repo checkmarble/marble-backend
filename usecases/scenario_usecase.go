@@ -28,7 +28,7 @@ type ScenarioUsecase struct {
 
 func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationId uuid.UUID) ([]models.Scenario, error) {
 	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId.String())
+		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return nil, err
 	}

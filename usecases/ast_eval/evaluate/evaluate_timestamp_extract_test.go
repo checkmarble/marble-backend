@@ -19,10 +19,10 @@ func TestTimestampExtract_Evaluate(t *testing.T) {
 		execFac := &mocks.ExecutorFactory{}
 		transaction := &mocks.Transaction{}
 		orgId := uuid.MustParse("0193721e-88d9-7f67-9221-f7fbeb1a1e9e")
-		te := NewTimestampExtract(execFac, orgRepo, orgId.String())
+		te := NewTimestampExtract(execFac, orgRepo, orgId)
 		execFac.On("NewExecutor").Once().Return(transaction)
 		ctx := context.Background()
-		orgRepo.On("GetOrganizationById", ctx, transaction, orgId.String()).Return(models.Organization{
+		orgRepo.On("GetOrganizationById", ctx, transaction, orgId).Return(models.Organization{
 			Id:                      orgId,
 			Name:                    "Name",
 			DefaultScenarioTimezone: utils.Ptr("UTC"),

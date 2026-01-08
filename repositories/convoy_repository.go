@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 	"golang.org/x/time/rate"
 )
@@ -51,19 +52,16 @@ func NewConvoyRepository(convoyClientProvider ConvoyClientProvider, limit int) C
 	}
 }
 
-func getOwnerId(organizationId string, partnerId null.String) string {
-	if partnerId.Valid {
-		return fmt.Sprintf("org:%s-partner:%s", organizationId, partnerId.String)
-	}
+func getOwnerId(organizationId uuid.UUID) string {
 	return fmt.Sprintf("org:%s", organizationId)
 }
 
-func parseOwnerId(ownerId string) (string, null.String) {
+func parseOwnerId(ownerId string) uuid.UUID {
 	parts := strings.Split(ownerId, "-partner:")
 	if len(parts) == 2 {
-		return parts[0][4:], null.StringFrom(parts[1])
+		return uuid.MustParse(parts[0][4:])
 	}
-	return ownerId[4:], null.String{}
+	return uuid.MustParse(ownerId[4:])
 }
 
 func getName(ownerId string, eventTypes []string) string {
@@ -94,7 +92,7 @@ func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent 
 		return err
 	}
 
-	ownerId := getOwnerId(webhookEvent.OrganizationId, webhookEvent.PartnerId)
+	ownerId := getOwnerId(webhookEvent.OrganizationId)
 	eventType := string(webhookEvent.EventContent.Type)
 
 	fanoutEvent, err := convoyClient.CreateEndpointFanoutEventWithResponse(ctx, projectId, convoy.ModelsFanoutEvent{
@@ -124,7 +122,7 @@ func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent 
 
 func (repo ConvoyRepository) RegisterWebhook(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	partnerId null.String,
 	input models.WebhookRegister,
 ) (models.Webhook, error) {
@@ -134,7 +132,7 @@ func (repo ConvoyRepository) RegisterWebhook(
 		return models.Webhook{}, err
 	}
 
-	ownerId := getOwnerId(organizationId, partnerId)
+	ownerId := getOwnerId(organizationId)
 	name := getName(ownerId, input.EventTypes)
 
 	endpointRes, err := convoyClient.CreateEndpointWithResponse(ctx, projectId, convoy.ModelsCreateEndpoint{
@@ -182,14 +180,14 @@ func checkPerPageLimit(ctx context.Context, count int) {
 	}
 }
 
-func (repo ConvoyRepository) ListWebhooks(ctx context.Context, organizationId string, partnerId null.String) ([]models.Webhook, error) {
+func (repo ConvoyRepository) ListWebhooks(ctx context.Context, organizationId uuid.UUID, partnerId null.String) ([]models.Webhook, error) {
 	projectId := repo.convoyClientProvider.GetProjectID()
 	convoyClient, err := repo.convoyClientProvider.GetClient()
 	if err != nil {
 		return nil, err
 	}
 
-	ownerId := getOwnerId(organizationId, partnerId)
+	ownerId := getOwnerId(organizationId)
 
 	endpointRes, err := convoyClient.GetEndpointsWithResponse(ctx, projectId, &convoy.GetEndpointsParams{
 		OwnerId: &ownerId,
@@ -294,12 +292,11 @@ func adaptWebhook(
 	convoyEndpoint convoy.ModelsEndpointResponse,
 	convoySubscription convoy.ModelsSubscriptionResponse,
 ) models.Webhook {
-	organizationId, partnerId := parseOwnerId(*convoyEndpoint.OwnerId)
+	orgId := parseOwnerId(*convoyEndpoint.OwnerId)
 
 	webhook := models.Webhook{
 		Id:                *convoyEndpoint.Uid,
-		OrganizationId:    organizationId,
-		PartnerId:         partnerId,
+		OrganizationId:    orgId,
 		Url:               *convoyEndpoint.Url,
 		HttpTimeout:       convoyEndpoint.HttpTimeout,
 		RateLimit:         convoyEndpoint.RateLimit,
@@ -427,7 +424,7 @@ func (repo ConvoyRepository) UpdateWebhook(
 		return models.Webhook{}, err
 	}
 
-	ownerId := getOwnerId(input.OrganizationId, input.PartnerId)
+	ownerId := getOwnerId(input.OrganizationId)
 	name := getName(ownerId, input.EventTypes)
 
 	subscription, err := getSubscription(ctx, convoyClient, projectId, input.Id)

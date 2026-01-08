@@ -5,6 +5,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -33,7 +34,7 @@ func (repo *MarbleDbRepository) GetTransferAlert(ctx context.Context, exec Execu
 func (repo *MarbleDbRepository) ListTransferAlerts(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	partnerId string,
 	senderOrBeneficiary string,
 	transferId null.String,

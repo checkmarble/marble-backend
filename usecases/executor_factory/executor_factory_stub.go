@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pashagolub/pgxmock/v4"
@@ -26,7 +27,7 @@ type PgExecutorStub struct {
 	pgxmock.PgxPoolIface
 }
 
-func (stub ExecutorFactoryStub) NewClientDbExecutor(ctx context.Context, organizationId string) (repositories.Executor, error) {
+func (stub ExecutorFactoryStub) NewClientDbExecutor(ctx context.Context, organizationId uuid.UUID) (repositories.Executor, error) {
 	return nil, nil
 }
 
@@ -63,7 +64,7 @@ func (stub TransactionFactoryStub) Transaction(ctx context.Context, fn func(tx r
 
 func (stub TransactionFactoryStub) TransactionInOrgSchema(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	f func(tx repositories.Transaction) error,
 ) error {
 	exec := stub.Mock.withClientSchema()

@@ -188,7 +188,7 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 		return false, err
 	}
 
-	hasAiCaseReviewEnabled, err := uc.HasAiCaseReviewEnabled(ctx, c.OrganizationId.String())
+	hasAiCaseReviewEnabled, err := uc.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking if AI case review is enabled")
 	}
@@ -210,7 +210,7 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 
 	caseReviewId := uuid.Must(uuid.NewV7())
 	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return uc.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, c.OrganizationId.String(), caseIdUuid, caseReviewId)
+		return uc.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, c.OrganizationId, caseIdUuid, caseReviewId)
 	})
 	return true, err
 }
@@ -774,7 +774,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		return caseData{}, casePivotDataByPivot{}, err
 	}
 
-	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, c.OrganizationId.String(), false)
+	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, c.OrganizationId, false)
 	if err != nil {
 		return caseData{}, casePivotDataByPivot{},
 			errors.Wrap(err, "failed to list available inboxes in usecase")
@@ -788,7 +788,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		return caseData{}, casePivotDataByPivot{}, err
 	}
 
-	tags, err := uc.repository.ListOrganizationTags(ctx, exec, c.OrganizationId.String(), models.TagTargetCase, false)
+	tags, err := uc.repository.ListOrganizationTags(ctx, exec, c.OrganizationId, models.TagTargetCase, false)
 	if err != nil {
 		return caseData{}, casePivotDataByPivot{},
 			errors.Wrap(err, "could not retrieve tags for case")
@@ -798,8 +798,8 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		return caseData{}, casePivotDataByPivot{},
 			errors.Wrap(err, "could not retrieve case events")
 	}
-	orgIdStr := c.OrganizationId.String()
-	users, err := uc.repository.ListUsers(ctx, exec, &orgIdStr)
+
+	users, err := uc.repository.ListUsers(ctx, exec, &c.OrganizationId)
 	if err != nil {
 		return caseData{}, casePivotDataByPivot{},
 			errors.Wrap(err, "could not retrieve users for case events")
@@ -810,7 +810,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 	}
 
 	decisions, _, err := uc.repository.DecisionsByCaseIdFromCursor(ctx, exec, models.CaseDecisionsRequest{
-		OrgId:  c.OrganizationId.String(),
+		OrgId:  c.OrganizationId,
 		CaseId: caseId,
 		Limit:  models.CaseDecisionsPerPage,
 	})
@@ -862,7 +862,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		))
 	}
 
-	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, c.OrganizationId.String(), models.DataModelReadOptions{
+	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, c.OrganizationId, models.DataModelReadOptions{
 		IncludeEnums: true, IncludeNavigationOptions: true,
 	}, true)
 	if err != nil {
@@ -874,7 +874,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 	if err != nil {
 		return caseData{}, casePivotDataByPivot{}, err
 	}
-	pivotObjects, err := uc.ingestedDataReader.ReadPivotObjectsFromValues(ctx, c.OrganizationId.String(), pivotValues)
+	pivotObjects, err := uc.ingestedDataReader.ReadPivotObjectsFromValues(ctx, c.OrganizationId, pivotValues)
 	if err != nil {
 		return caseData{}, casePivotDataByPivot{},
 			errors.Wrap(err, "could not read pivot objects from values")
@@ -901,7 +901,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 			make([]agent_dto.CaseWithDecisions, 0, 10)
 
 		previousCases, err := uc.repository.GetCasesWithPivotValue(ctx, exec,
-			c.OrganizationId.String(), pivotObject.PivotValue)
+			c.OrganizationId, pivotObject.PivotValue)
 		if err != nil {
 			return caseData{}, casePivotDataByPivot{}, err
 		}
@@ -919,7 +919,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 
 			// We take only the MAX_DECISIONS_FROM_PREVIOUS_CASES_REVIEW first decisions from each previous case, in order not to overload the context for large cases.
 			decisions, _, err := uc.repository.DecisionsByCaseIdFromCursor(ctx, exec, models.CaseDecisionsRequest{
-				OrgId:  c.OrganizationId.String(),
+				OrgId:  c.OrganizationId,
 				CaseId: previousCase.Id,
 				Limit:  MAX_DECISIONS_FROM_PREVIOUS_CASES_REVIEW,
 			})
@@ -977,7 +977,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 					OrderingFieldName: navOption.OrderingFieldName,
 				}
 				objects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(ctx,
-					c.OrganizationId.String(), navOption.TargetTableName, models.ClientDataListRequestBody{
+					c.OrganizationId, navOption.TargetTableName, models.ClientDataListRequestBody{
 						ExplorationOptions: readOptions,
 						Limit:              1000,
 					})
@@ -1002,7 +1002,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		dataModelDto:     agent_dto.AdaptDataModelDto(dataModel),
 		dataModel:        dataModel,
 		pivotData:        pivotObjectDtos,
-		organizationId:   c.OrganizationId.String(),
+		organizationId:   c.OrganizationId,
 	}, relatedDataPerClient, nil
 }
 
@@ -1014,7 +1014,7 @@ type caseData struct {
 	dataModelDto     agent_dto.DataModel
 	dataModel        models.DataModel
 	pivotData        []agent_dto.PivotObject
-	organizationId   string
+	organizationId   uuid.UUID
 }
 
 func someClientHasManyRowsForTable(relatedDataPerClient agent_dto.CaseIngestedDataByPivot, tableName string) bool {
@@ -1052,7 +1052,7 @@ func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(
 }
 
 func (uc *AiAgentUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId uuid.UUID) (bool, error) {
-	featureAccess, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId.String(), nil)
+	featureAccess, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
 	if err != nil {
 		return false, err
 	}

@@ -59,7 +59,7 @@ func HandleListDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		decisionsUsecase := uc.NewDecisionUsecase()
 
-		decisions, err := decisionsUsecase.ListDecisions(ctx, orgId.String(), paging, filters)
+		decisions, err := decisionsUsecase.ListDecisions(ctx, orgId, paging, filters)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -139,7 +139,7 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 		triggerPassed, decision, err := decisionsUsecase.CreateDecision(
 			ctx,
 			models.CreateDecisionInput{
-				OrganizationId:     orgId.String(),
+				OrganizationId:     orgId,
 				ScenarioId:         payload.ScenarioId,
 				TriggerObjectTable: scenario.TriggerObjectType,
 				PayloadRaw:         payload.TriggerObject,
@@ -216,7 +216,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		decisions, skipped, err := decisionsUsecase.CreateAllDecisions(
 			ctx,
 			models.CreateAllDecisionsInput{
-				OrganizationId:     orgId.String(),
+				OrganizationId:     orgId,
 				TriggerObjectTable: payload.TriggerObjectType,
 				PayloadRaw:         payload.TriggerObject,
 			},

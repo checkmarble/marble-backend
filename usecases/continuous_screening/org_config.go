@@ -42,9 +42,11 @@ func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigByStableId(
 }
 
 // Get only enabled continuous screening configs for an organization
-func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigsByOrgId(ctx context.Context, orgId uuid.UUID) ([]models.ContinuousScreeningConfig, error) {
+func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigsByOrgId(ctx context.Context,
+	orgId uuid.UUID,
+) ([]models.ContinuousScreeningConfig, error) {
 	configs, err := uc.repository.GetContinuousScreeningConfigsByOrgId(ctx,
-		uc.executorFactory.NewExecutor(), orgId.String())
+		uc.executorFactory.NewExecutor(), orgId)
 	if err != nil {
 		return []models.ContinuousScreeningConfig{}, err
 	}
@@ -62,7 +64,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 	ctx context.Context,
 	input models.CreateContinuousScreeningConfig,
 ) (models.ContinuousScreeningConfig, error) {
-	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, input.OrgId.String())
+	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, input.OrgId)
 	if err != nil {
 		return models.ContinuousScreeningConfig{}, err
 	}
@@ -116,7 +118,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 				}
 				return models.ContinuousScreeningConfig{}, err
 			}
-			if inbox.OrganizationId != input.OrgId.String() {
+			if inbox.OrganizationId != input.OrgId {
 				return models.ContinuousScreeningConfig{},
 					errors.Wrap(models.BadParameterError, "inbox not found for the organization")
 			}
@@ -176,7 +178,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 					}
 					return models.ContinuousScreeningConfig{}, err
 				}
-				if inbox.OrganizationId != config.OrgId.String() {
+				if inbox.OrganizationId != config.OrgId {
 					return models.ContinuousScreeningConfig{},
 						errors.Wrap(models.BadParameterError, "inbox not found for the organization")
 				}
@@ -241,7 +243,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 func (uc *ContinuousScreeningUsecase) checkDataModelConfiguration(ctx context.Context,
 	exec repositories.Executor, orgId uuid.UUID, objectTypes []string,
 ) error {
-	dataModel, err := uc.repository.GetDataModel(ctx, exec, orgId.String(), false, false)
+	dataModel, err := uc.repository.GetDataModel(ctx, exec, orgId, false, false)
 	if err != nil {
 		return err
 	}
@@ -322,7 +324,7 @@ func (uc *ContinuousScreeningUsecase) applyMappingConfiguration(
 	orgId uuid.UUID,
 	mappingConfigs []models.ContinuousScreeningMappingConfig,
 ) error {
-	dataModel, err := uc.repository.GetDataModel(ctx, exec, orgId.String(), false, false)
+	dataModel, err := uc.repository.GetDataModel(ctx, exec, orgId, false, false)
 	if err != nil {
 		return err
 	}

@@ -29,7 +29,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		Role:           models.ADMIN,
 		DisplayString:  "Api key abc*** of organization",
 	}
-	orgIdString := apiKey.OrganizationId.String()
+	orgIdString := apiKey.OrganizationId
 
 	organization := models.Organization{
 		Id:   utils.TextToUUID("organization_id"),
@@ -103,7 +103,7 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		Role:           models.ADMIN,
 		OrganizationId: utils.TextToUUID("organization_id"),
 	}
-	userOrgIdString := user.OrganizationId.String()
+	userOrgIdString := user.OrganizationId
 
 	idpTokenVerifier := mocks.NewStaticIdpTokenVerifier(infra.MockFirebaseIssuer, firebaseIdentity)
 

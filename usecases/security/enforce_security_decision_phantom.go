@@ -8,7 +8,7 @@ import (
 
 type EnforceSecurityPhantomDecision interface {
 	EnforceSecurity
-	CreatePhantomDecision(organizationId string) error
+	CreatePhantomDecision(organizationId uuid.UUID) error
 }
 
 type EnforceSecurityPhantomDecisionImpl struct {
@@ -16,10 +16,9 @@ type EnforceSecurityPhantomDecisionImpl struct {
 	Credentials models.Credentials
 }
 
-func (e *EnforceSecurityPhantomDecisionImpl) CreatePhantomDecision(organizationId string) error {
-	orgId, _ := uuid.Parse(organizationId)
+func (e *EnforceSecurityPhantomDecisionImpl) CreatePhantomDecision(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.PHANTOM_DECISION_CREATE),
-		e.ReadOrganization(orgId),
+		e.ReadOrganization(organizationId),
 	)
 }

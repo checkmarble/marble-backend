@@ -15,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
@@ -111,10 +112,14 @@ func (w *TaskQueueWorker) addMissingQueues(ctx context.Context, queues map[strin
 			if err != nil {
 				return err
 			}
+			orgIdUuid, err := uuid.Parse(orgId)
+			if err != nil {
+				return err
+			}
 			logger.InfoContext(ctx, fmt.Sprintf("Added queue for organization %s to task queue worker", orgId))
 
-			w.riverClient.PeriodicJobs().Add(scheduled_execution.NewIndexCleanupPeriodicJob(orgId))
-			w.riverClient.PeriodicJobs().Add(scheduled_execution.NewTestRunSummaryPeriodicJob(orgId))
+			w.riverClient.PeriodicJobs().Add(scheduled_execution.NewIndexCleanupPeriodicJob(orgIdUuid))
+			w.riverClient.PeriodicJobs().Add(scheduled_execution.NewTestRunSummaryPeriodicJob(orgIdUuid))
 		}
 	}
 
@@ -174,25 +179,26 @@ func QueuesFromOrgs(ctx context.Context, appName string,
 	periodics = make([]*river.PeriodicJob, 0, len(orgs)*2)
 
 	for _, org := range orgs {
-		orgIdStr := org.Id.String()
+		orgId := org.Id
 		periodics = append(periodics, []*river.PeriodicJob{
-			scheduled_execution.NewIndexCleanupPeriodicJob(orgIdStr),
-			scheduled_execution.NewIndexDeletionPeriodicJob(orgIdStr),
-			scheduled_execution.NewTestRunSummaryPeriodicJob(orgIdStr),
+			scheduled_execution.NewIndexCleanupPeriodicJob(orgId),
+			scheduled_execution.NewIndexDeletionPeriodicJob(orgId),
+			scheduled_execution.NewTestRunSummaryPeriodicJob(orgId),
 		}...)
 
 		if offloadingConfig.Enabled {
 			// Undocumented debug setting to only enable offloading for a specific organization
-			if onlyOffloadOrg := os.Getenv("OFFLOADING_ONLY_ORG"); onlyOffloadOrg == "" || onlyOffloadOrg == orgIdStr {
-				periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(orgIdStr, offloadingConfig.JobInterval))
+			if onlyOffloadOrg := os.Getenv("OFFLOADING_ONLY_ORG"); onlyOffloadOrg == "" || onlyOffloadOrg == orgId.String() {
+				periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(
+					orgId, offloadingConfig.JobInterval))
 			}
 		}
 
 		if analyticsConfig.Enabled {
-			periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(orgIdStr, analyticsConfig.JobInterval))
+			periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(orgId, analyticsConfig.JobInterval))
 		}
 
-		queues[orgIdStr] = river.QueueConfig{
+		queues[orgId.String()] = river.QueueConfig{
 			MaxWorkers: numberWorkersPerQueue,
 		}
 	}

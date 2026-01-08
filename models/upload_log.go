@@ -1,10 +1,14 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type UploadLog struct {
 	Id             string
-	OrganizationId string
+	OrganizationId uuid.UUID
 	UserId         string
 	FileName       string
 	TableName      string

@@ -23,7 +23,7 @@ type ContinuousScreeningUsecaseRepository interface {
 	GetContinuousScreeningConfigsByOrgId(
 		ctx context.Context,
 		exec repositories.Executor,
-		orgId string,
+		orgId uuid.UUID,
 	) ([]models.ContinuousScreeningConfig, error)
 	GetContinuousScreeningConfigByStableId(
 		ctx context.Context,
@@ -46,7 +46,7 @@ type ContinuousScreeningUsecaseRepository interface {
 	GetDataModel(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationID string,
+		organizationID uuid.UUID,
 		fetchEnumValues bool,
 		useCache bool,
 	) (models.DataModel, error)
@@ -125,13 +125,13 @@ type ContinuousScreeningUsecaseRepository interface {
 	AddScreeningMatchWhitelist(
 		ctx context.Context,
 		exec repositories.Executor,
-		orgId string,
+		orgId uuid.UUID,
 		counterpartyId string,
 		entityId string,
 		reviewerId *models.UserId,
 	) error
 	SearchScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
-		orgId string, counterpartyId, entityId *string,
+		orgId uuid.UUID, counterpartyId, entityId *string,
 	) ([]models.ScreeningWhitelist, error)
 
 	// Data model
@@ -152,7 +152,7 @@ type ContinuousScreeningUsecaseRepository interface {
 
 type inboxReader interface {
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
-	ListInboxes(ctx context.Context, exec repositories.Executor, orgId string, withCaseCount bool) ([]models.Inbox, error)
+	ListInboxes(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, withCaseCount bool) ([]models.Inbox, error)
 }
 
 type inboxEditor interface {
@@ -215,7 +215,7 @@ type ContinuousScreeningIngestedDataReader interface {
 type ContinuousScreeningIngestionUsecase interface {
 	IngestObject(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		objectType string,
 		objectBody json.RawMessage,
 		parserOpts ...payload_parser.ParserOpt,

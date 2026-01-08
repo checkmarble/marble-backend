@@ -27,7 +27,7 @@ func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
 		scenarioIterations, err := usecase.ListScenarioIterations(
 			ctx,
-			organizationId.String(),
+			organizationId,
 			models.GetScenarioIterationFilters{
 				ScenarioId: utils.PtrTo(scenarioId, &utils.PtrToOptions{OmitZero: true}),
 			})
@@ -63,13 +63,13 @@ func handleCreateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		createScenarioIterationInput, err := dto.AdaptCreateScenarioIterationInput(input, organizationId.String())
+		createScenarioIterationInput, err := dto.AdaptCreateScenarioIterationInput(input, organizationId)
 		if presentError(ctx, c, err) {
 			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
-		si, err := usecase.CreateScenarioIteration(ctx, organizationId.String(), createScenarioIterationInput)
+		si, err := usecase.CreateScenarioIteration(ctx, organizationId, createScenarioIterationInput)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -193,7 +193,7 @@ func handleCreateDraftFromIteration(uc usecases.Usecases) func(c *gin.Context) {
 		iterationID := c.Param("iteration_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
-		si, err := usecase.CreateDraftFromScenarioIteration(ctx, organizationId.String(), iterationID)
+		si, err := usecase.CreateDraftFromScenarioIteration(ctx, organizationId, iterationID)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -247,7 +247,7 @@ func handleUpdateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
 		updatedSI, err := usecase.UpdateScenarioIteration(ctx,
-			organizationId.String(), updateScenarioIterationInput)
+			organizationId, updateScenarioIterationInput)
 		if handleExpectedIterationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
@@ -354,7 +354,7 @@ func handleAiDescriptionScenarioIteration(uc usecases.Usecases) func(c *gin.Cont
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		result, err := usecase.AiRuleDescription(ctx, orgId.String(), ruleId)
+		result, err := usecase.AiRuleDescription(ctx, orgId, ruleId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -385,7 +385,7 @@ func handleAiDescriptionAST(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		result, err := usecase.AiASTDescription(ctx, orgId.String(), scenarioId, &astNode)
+		result, err := usecase.AiASTDescription(ctx, orgId, scenarioId, &astNode)
 		if presentError(ctx, c, err) {
 			return
 		}

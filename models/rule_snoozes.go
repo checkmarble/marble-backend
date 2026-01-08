@@ -1,16 +1,20 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type SnoozeGroup struct {
 	Id             string
-	OrganizationId string
+	OrganizationId uuid.UUID
 	CreatedAt      time.Time
 }
 
 type RuleSnooze struct {
 	Id                    string
-	OrganizationId        string
+	OrganizationId        uuid.UUID
 	CreatedByUser         *string
 	CreatedFromDecisionId *string
 	CreatedFromRuleId     string
@@ -93,7 +97,7 @@ type SnoozeDecisionInput struct {
 	Comment        string
 	DecisionId     string
 	Duration       string
-	OrganizationId string
+	OrganizationId uuid.UUID
 	RuleId         string
 	UserId         *UserId
 }

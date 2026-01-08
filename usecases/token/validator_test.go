@@ -45,7 +45,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		mockKeyAndOrganizationGetter := new(mocks.Database)
 		mockKeyAndOrganizationGetter.On("GetApiKeyByHash", ctx, keyHash).
 			Return(apiKey, nil)
-		mockKeyAndOrganizationGetter.On("GetOrganizationByID", ctx, apiKey.OrganizationId.String()).
+		mockKeyAndOrganizationGetter.On("GetOrganizationByID", ctx, apiKey.OrganizationId).
 			Return(organization, nil)
 
 		v := Validator{
@@ -76,7 +76,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		mockKeyAndOrganizationGetter := new(mocks.Database)
 		mockKeyAndOrganizationGetter.On("GetApiKeyByHash", ctx, keyHash).
 			Return(apiKey, nil)
-		mockKeyAndOrganizationGetter.On("GetOrganizationByID", ctx, apiKey.OrganizationId.String()).
+		mockKeyAndOrganizationGetter.On("GetOrganizationByID", ctx, apiKey.OrganizationId).
 			Return(models.Organization{}, assert.AnError)
 
 		v := Validator{

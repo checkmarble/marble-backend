@@ -120,21 +120,21 @@ func (w AnalyticsMergeWorker) Work(ctx context.Context, job *river.Job[models.An
 	}
 
 	for _, org := range orgs {
-		dataModel, err := w.repository.GetDataModel(ctx, dbExec, org.Id.String(), false, false)
+		dataModel, err := w.repository.GetDataModel(ctx, dbExec, org.Id, false, false)
 		if err != nil {
 			return errors.Wrap(err, "could not retrieve data model")
 		}
 
 		for _, table := range dataModel.Tables {
-			if err := w.merge(ctx, job, org.Id.String(), dbExec, exec,
+			if err := w.merge(ctx, job, org.Id, dbExec, exec,
 				models.WatermarkTypeMergedAnalyticsDecisions, "decisions", table.Name); err != nil {
 				return err
 			}
-			if err := w.merge(ctx, job, org.Id.String(), dbExec, exec,
+			if err := w.merge(ctx, job, org.Id, dbExec, exec,
 				models.WatermarkTypeMergedAnalyticsDecisionRules, "decision_rules", table.Name); err != nil {
 				return err
 			}
-			if err := w.merge(ctx, job, org.Id.String(), dbExec, exec,
+			if err := w.merge(ctx, job, org.Id, dbExec, exec,
 				models.WatermarkTypeMergedAnalyticsScreenings, "screenings", table.Name); err != nil {
 				return err
 			}
@@ -147,7 +147,7 @@ func (w AnalyticsMergeWorker) Work(ctx context.Context, job *river.Job[models.An
 func (w AnalyticsMergeWorker) merge(
 	ctx context.Context,
 	job *river.Job[models.AnalyticsMergeArgs],
-	orgId string,
+	orgId uuid.UUID,
 	dbExec repositories.Executor,
 	exec repositories.AnalyticsExecutor,
 	watermarkType models.WatermarkType,
@@ -224,7 +224,7 @@ func (w AnalyticsMergeWorker) merge(
 func (w AnalyticsMergeWorker) findFirstMergeablePartition(
 	ctx context.Context,
 	job *river.Job[models.AnalyticsMergeArgs],
-	orgId string,
+	orgId uuid.UUID,
 	dbExec repositories.Executor,
 	exec repositories.AnalyticsExecutor,
 	watermarkType models.WatermarkType,

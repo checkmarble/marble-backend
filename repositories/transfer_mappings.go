@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -31,7 +32,7 @@ func (repo *MarbleDbRepository) GetTransferMapping(ctx context.Context, exec Exe
 func (repo *MarbleDbRepository) ListTransferMappings(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	partnerId string,
 	transferId string,
 ) ([]models.TransferMapping, error) {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/Masterminds/squirrel"
@@ -15,11 +16,11 @@ import (
 
 type ScenarioUsecaseRepository interface {
 	GetScenarioById(ctx context.Context, exec Executor, scenarioId string) (models.Scenario, error)
-	ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId string) ([]models.Scenario, error)
+	ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID) ([]models.Scenario, error)
 	CreateScenario(
 		ctx context.Context,
 		exec Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		scenario models.CreateScenarioInput,
 		newScenarioId string,
 	) error
@@ -51,7 +52,7 @@ func (repo *MarbleDbRepository) GetScenarioById(ctx context.Context, exec Execut
 	)
 }
 
-func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId string) ([]models.Scenario, error) {
+func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID) ([]models.Scenario, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -130,7 +131,7 @@ func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, exec Execu
 	group by si.id;
 */
 func (repo *MarbleDbRepository) ListLiveIterationsAndNeighbors(ctx context.Context,
-	exec Executor, orgId string,
+	exec Executor, orgId uuid.UUID,
 ) ([]models.ScenarioIteration, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

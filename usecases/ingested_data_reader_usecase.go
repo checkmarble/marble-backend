@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -31,14 +32,14 @@ type ingestedDataReaderClientDbRepository interface {
 		metadataFields ...string,
 	) ([]models.DataModelObject, error)
 	GatherFieldStatistics(ctx context.Context, exec repositories.Executor, table models.Table,
-		orgId string) ([]models.FieldStatistics, error)
+		orgId uuid.UUID) ([]models.FieldStatistics, error)
 }
 
 type ingestedDataReaderRepository interface {
 	ListPivots(
 		ctx context.Context,
 		exec repositories.Executor,
-		organization_id string,
+		organizationId uuid.UUID,
 		tableId *string,
 		useCache bool,
 	) ([]models.PivotMetadata, error)
@@ -50,7 +51,7 @@ type ingestedDataReaderRepository interface {
 }
 
 type ingestedDataReaderDataModelUsecase interface {
-	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions,
+	GetDataModel(ctx context.Context, organizationID uuid.UUID, options models.DataModelReadOptions,
 		useCache bool) (models.DataModel, error)
 }
 
@@ -77,7 +78,7 @@ func NewIngestedDataReaderUsecase(
 
 func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	dataModel *models.DataModel,
 	objectType string,
 	uniqueFieldValue string,
@@ -124,7 +125,7 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 
 func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	values []models.PivotDataWithCount,
 ) ([]models.PivotObject, error) {
 	exec := usecase.executorFactory.NewExecutor()
@@ -235,7 +236,7 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	ctx context.Context,
 	pivotObject models.PivotObject,
-	organizationId string,
+	organizationId uuid.UUID,
 	dataModel models.DataModel,
 ) (models.PivotObject, error) {
 	if pivotObject.PivotType == models.PivotTypeField {
@@ -296,7 +297,7 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 
 func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	objectType string,
 	input models.ClientDataListRequestBody,
 	fieldsToRead ...string,
@@ -473,7 +474,7 @@ func allParentTables(dataModel models.DataModel, tableName string) []string {
 // we may return data on a transaction.beneficiary but don't lose time reading data on transaction.account (which is presumably already in the context)
 func (usecase IngestedDataReaderUsecase) enrichClientDataObjectWithRelatedObjectsData(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	baseObjectTable models.Table,
 	dataModel models.DataModel,
 	baseObject models.ClientObjectDetail,

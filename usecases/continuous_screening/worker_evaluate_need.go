@@ -33,7 +33,7 @@ type evaluateNeedWorkerTaskEnqueuer interface {
 	EnqueueContinuousScreeningDoScreeningTaskMany(
 		ctx context.Context,
 		tx repositories.Transaction,
-		orgId string,
+		orgId uuid.UUID,
 		objectType string,
 		monitoringIds []uuid.UUID,
 		triggerType models.ContinuousScreeningTriggerType,
@@ -86,11 +86,7 @@ func (w *EvaluateNeedTaskWorker) Work(
 		}
 
 		// Check if the object type is configured in the continuous screening config
-		orgId, err := uuid.Parse(job.Args.OrgId)
-		if err != nil {
-			return err
-		}
-		configs, err := w.repo.ListContinuousScreeningConfigByObjectType(ctx, exec, orgId, job.Args.ObjectType)
+		configs, err := w.repo.ListContinuousScreeningConfigByObjectType(ctx, exec, job.Args.OrgId, job.Args.ObjectType)
 		if err != nil {
 			return err
 		}

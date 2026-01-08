@@ -9,7 +9,7 @@ import (
 
 type EnforceSecurityIngestion interface {
 	EnforceSecurity
-	CanIngest(organizationId string) error
+	CanIngest(organizationId uuid.UUID) error
 }
 
 type EnforceSecurityIngestionImpl struct {
@@ -17,10 +17,9 @@ type EnforceSecurityIngestionImpl struct {
 	Credentials models.Credentials
 }
 
-func (e *EnforceSecurityIngestionImpl) CanIngest(organizationId string) error {
-	orgId, _ := uuid.Parse(organizationId)
+func (e *EnforceSecurityIngestionImpl) CanIngest(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.INGESTION),
-		e.ReadOrganization(orgId),
+		e.ReadOrganization(organizationId),
 	)
 }

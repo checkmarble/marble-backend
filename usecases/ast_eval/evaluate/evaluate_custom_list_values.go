@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/errors"
-	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -48,8 +47,7 @@ func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.A
 			err,
 			fmt.Sprintf("Error reading list %s", listId)))
 	}
-	orgId, _ := uuid.Parse(list.OrganizationId)
-	if err := clva.EnforceSecurity.ReadOrganization(orgId); err != nil {
+	if err := clva.EnforceSecurity.ReadOrganization(list.OrganizationId); err != nil {
 		return MakeEvaluateError(errors.Wrap(err,
 			fmt.Sprintf("Organization in credentials is not allowed to read this list %s", list.Id)))
 	}

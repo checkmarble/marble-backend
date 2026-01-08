@@ -14,7 +14,7 @@ type DbPivot struct {
 	BaseTableId    string      `db:"base_table_id"`
 	CreatedAt      time.Time   `db:"created_at"`
 	FieldId        pgtype.Text `db:"field_id"`
-	OrganizationId string      `db:"organization_id"`
+	OrganizationId uuid.UUID   `db:"organization_id"`
 	PathLinkIds    []string    `db:"path_link_ids"`
 }
 

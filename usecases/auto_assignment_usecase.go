@@ -14,17 +14,20 @@ import (
 
 type autoAssignmentCaseRepository interface {
 	AssignCase(ctx context.Context, exec repositories.Executor, id string, userId *models.UserId) error
-	CreateCaseEvent(ctx context.Context, exec repositories.Executor, createCaseEventAttributes models.CreateCaseEventAttributes) error
+	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
+		createCaseEventAttributes models.CreateCaseEventAttributes) error
 }
 
 type autoAssignmentRepository interface {
-	FindAutoAssignableUsers(ctx context.Context, exec repositories.Executor, orgId string, limit int) ([]models.UserWithCaseCount, error)
-	FindNextAutoAssignableUserForInbox(ctx context.Context, exec repositories.Executor, orgId string, inboxId uuid.UUID, limit int) (*models.User, error)
-	FindAutoAssignableCases(ctx context.Context, exec repositories.Executor, orgId string, limit int) ([]models.Case, error)
+	FindAutoAssignableUsers(ctx context.Context, exec repositories.Executor, orgId uuid.UUID,
+		limit int) ([]models.UserWithCaseCount, error)
+	FindNextAutoAssignableUserForInbox(ctx context.Context, exec repositories.Executor, orgId uuid.UUID,
+		inboxId uuid.UUID, limit int) (*models.User, error)
+	FindAutoAssignableCases(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, limit int) ([]models.Case, error)
 }
 
 type autoAssignmentOrgRepository interface {
-	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
 }
 
 type AutoAssignmentUsecase struct {
@@ -38,13 +41,14 @@ type AutoAssignmentUsecase struct {
 func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId uuid.UUID, inboxId uuid.UUID) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	org, err := uc.orgRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId.String())
+	org, err := uc.orgRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId)
 	if err != nil {
 		return errors.Wrap(err, "could not retrieve organization settings")
 	}
 
 	// Find maximum slots across inboxes (to limit how many cases to consider).
-	assignableUsers, err := uc.repository.FindAutoAssignableUsers(ctx, uc.executorFactory.NewExecutor(), orgId.String(), org.AutoAssignQueueLimit)
+	assignableUsers, err := uc.repository.FindAutoAssignableUsers(ctx,
+		uc.executorFactory.NewExecutor(), orgId, org.AutoAssignQueueLimit)
 	if err != nil {
 		return errors.Wrap(err, "could not find assignable users")
 	}
@@ -60,7 +64,7 @@ func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId uuid.
 
 	logger.DebugContext(ctx, fmt.Sprintf("case auto-assignment: found %d empty queue slots", slots))
 
-	cases, err := uc.repository.FindAutoAssignableCases(ctx, uc.executorFactory.NewExecutor(), orgId.String(), slots)
+	cases, err := uc.repository.FindAutoAssignableCases(ctx, uc.executorFactory.NewExecutor(), orgId, slots)
 	if err != nil {
 		return errors.Wrap(err, "could not find assignable cases")
 	}
@@ -69,7 +73,8 @@ func (uc AutoAssignmentUsecase) RunAutoAssigner(ctx context.Context, orgId uuid.
 
 	for _, c := range cases {
 		// Look for the user with the least number of assigned cases, who has access to the case's inbox
-		user, err := uc.repository.FindNextAutoAssignableUserForInbox(ctx, uc.executorFactory.NewExecutor(), c.OrganizationId.String(), c.InboxId, org.AutoAssignQueueLimit)
+		user, err := uc.repository.FindNextAutoAssignableUserForInbox(ctx,
+			uc.executorFactory.NewExecutor(), c.OrganizationId, c.InboxId, org.AutoAssignQueueLimit)
 		if err != nil {
 			return err
 		}

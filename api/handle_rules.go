@@ -48,7 +48,7 @@ func handleCreateRule(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		createInputRule, err := dto.AdaptCreateRuleInput(data, organizationId.String())
+		createInputRule, err := dto.AdaptCreateRuleInput(data, organizationId)
 		if presentError(ctx, c, err) {
 			return
 		}

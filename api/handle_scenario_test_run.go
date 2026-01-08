@@ -25,7 +25,7 @@ func handleCreateScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		orgUsecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		org, err := orgUsecase.GetOrganization(c.Request.Context(), organizationId.String())
+		org, err := orgUsecase.GetOrganization(c.Request.Context(), organizationId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -35,7 +35,7 @@ func handleCreateScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		scenarioTestRun, err := usecase.CreateScenarioTestRun(ctx, organizationId.String(), input)
+		scenarioTestRun, err := usecase.CreateScenarioTestRun(ctx, organizationId, input)
 		if presentError(ctx, c, err) {
 			return
 		}

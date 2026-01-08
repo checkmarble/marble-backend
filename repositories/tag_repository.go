@@ -7,10 +7,11 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 )
 
 func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, exec Executor,
-	organizationId string, target models.TagTarget, withCaseCount bool,
+	organizationId uuid.UUID, target models.TagTarget, withCaseCount bool,
 ) ([]models.Tag, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

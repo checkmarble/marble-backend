@@ -64,7 +64,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			newValue := strings.Join(pure_utils.Map(action.Params.TagsToAdd,
 				func(tagId uuid.UUID) string { return tagId.String() }), ",")
 			err = d.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-				OrgId:         uuid.MustParse(scenario.OrganizationId),
+				OrgId:         scenario.OrganizationId,
 				CaseId:        newCase.Id,
 				EventType:     models.CaseTagsUpdated,
 				PreviousValue: utils.Ptr(""),
@@ -91,7 +91,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			return models.WorkflowExecution{}, errors.Wrap(err, "error parsing case id")
 		}
 
-		hasAiCaseReviewEnabled, err := d.aiAgentUsecase.HasAiCaseReviewEnabled(ctx, newCase.OrganizationId.String())
+		hasAiCaseReviewEnabled, err := d.aiAgentUsecase.HasAiCaseReviewEnabled(ctx, newCase.OrganizationId)
 		if err != nil {
 			return models.WorkflowExecution{}, errors.Wrap(err,
 				"error checking if AI case review is enabled")
@@ -154,7 +154,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
-			OrganizationId: matchedCase.OrganizationId.String(),
+			OrganizationId: matchedCase.OrganizationId,
 			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(matchedCase),
 		})
 		if err != nil {
@@ -178,12 +178,11 @@ func automaticCreateCaseAttributes(
 	name string,
 	caseType models.CaseType,
 ) models.CreateCaseAttributes {
-	orgId, _ := uuid.Parse(scenario.OrganizationId)
 	return models.CreateCaseAttributes{
 		DecisionIds:    []string{decision.DecisionId.String()},
 		InboxId:        action.Params.InboxId,
 		Name:           name,
-		OrganizationId: orgId,
+		OrganizationId: scenario.OrganizationId,
 		Type:           caseType,
 	}
 }
@@ -265,7 +264,7 @@ func (d DecisionsWorkflows) addToOpenCase(
 			previousValue := strings.Join(previousTagIds, ",")
 			newValue := previousValue + "," + strings.Join(newIds, ",")
 			err = d.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-				OrgId:         uuid.MustParse(scenario.OrganizationId),
+				OrgId:         scenario.OrganizationId,
 				CaseId:        bestMatchCase.Id,
 				EventType:     models.CaseTagsUpdated,
 				PreviousValue: &previousValue,

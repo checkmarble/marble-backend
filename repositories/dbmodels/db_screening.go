@@ -68,7 +68,7 @@ func adaptScreeningWithoutConfig(dto DBScreening) (models.Screening, error) {
 	return models.Screening{
 		Id:                  dto.Id,
 		DecisionId:          dto.DecisionId,
-		OrgId:               dto.OrgId.String(),
+		OrgId:               dto.OrgId,
 		ScreeningConfigId:   dto.ScreeningConfigId,
 		Datasets:            dto.SearchDatasets,
 		SearchInput:         dto.SearchInput,
@@ -141,7 +141,7 @@ func AdaptScreeningBaseInfo(dto DBScreeningBaseInfoWithName) (models.ScreeningBa
 	return models.ScreeningBaseInfo{
 		Id:              dto.Id,
 		DecisionId:      dto.DecisionId,
-		OrgId:           dto.OrgId.String(),
+		OrgId:           dto.OrgId,
 		Status:          models.ScreeningStatusFrom(dto.Status),
 		RequestedBy:     dto.RequestedBy,
 		Partial:         dto.IsPartial,

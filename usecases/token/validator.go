@@ -6,11 +6,12 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type keyAndOrganizationGetter interface {
 	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
-	GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error)
+	GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error)
 }
 
 type marbleTokenValidator interface {
@@ -29,7 +30,7 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 		return models.Credentials{}, fmt.Errorf("getter.GetApiKeyByHash error: %w", err)
 	}
 
-	organization, err := v.getter.GetOrganizationByID(ctx, apiKey.OrganizationId.String())
+	organization, err := v.getter.GetOrganizationByID(ctx, apiKey.OrganizationId)
 	if err != nil {
 		return models.Credentials{}, fmt.Errorf("getter.GetOrganizationByID error: %w", err)
 	}

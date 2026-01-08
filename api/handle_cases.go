@@ -554,7 +554,7 @@ func handleGetRelatedCasesByPivotValue(uc usecases.Usecases) func(c *gin.Context
 		pivotValue := c.Param("pivotValue")
 
 		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cases, err := uc.GetRelatedCasesByPivotValue(ctx, creds.OrganizationId.String(), pivotValue)
+		cases, err := uc.GetRelatedCasesByPivotValue(ctx, creds.OrganizationId, pivotValue)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -585,7 +585,7 @@ func handleGetRelatedContinuousScreeningCasesByObjectAttr(uc usecases.Usecases) 
 
 		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		cases, err := uc.GetRelatedContinuousScreeningCasesByObjectAttr(ctx,
-			creds.OrganizationId.String(), objectType, objectId)
+			creds.OrganizationId, objectType, objectId)
 		if presentError(ctx, c, err) {
 			return
 		}

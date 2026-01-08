@@ -21,7 +21,7 @@ func handleListSuspiciousActivityReports(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		sarUsecase := uc.NewSuspiciousActivityReportUsecase()
 
-		sars, err := sarUsecase.ListReports(ctx, creds.OrganizationId.String(), caseId)
+		sars, err := sarUsecase.ListReports(ctx, creds.OrganizationId, caseId)
 		if err != nil {
 			presentError(ctx, c, err)
 			return
@@ -66,7 +66,7 @@ func handleCreateSuspiciousActivityReport(uc usecases.Usecases) gin.HandlerFunc 
 			req.UploadedBy = &creds.ActorIdentity.UserId
 		}
 
-		sar, err := sarUsecase.CreateReport(ctx, creds.OrganizationId.String(), req)
+		sar, err := sarUsecase.CreateReport(ctx, creds.OrganizationId, req)
 		if err != nil {
 			presentError(ctx, c, err)
 			return
@@ -112,7 +112,7 @@ func handleUpdateSuspiciousActivityReport(uc usecases.Usecases) gin.HandlerFunc 
 			req.UploadedBy = &creds.ActorIdentity.UserId
 		}
 
-		sar, err := sarUsecase.UpdateReport(ctx, creds.OrganizationId.String(), req)
+		sar, err := sarUsecase.UpdateReport(ctx, creds.OrganizationId, req)
 		if err != nil {
 			presentError(ctx, c, err)
 			return
@@ -133,7 +133,7 @@ func handleDownloadFileToSuspiciousActivityReport(uc usecases.Usecases) gin.Hand
 		uc := usecasesWithCreds(ctx, uc)
 		sarUsecase := uc.NewSuspiciousActivityReportUsecase()
 
-		reportUrl, err := sarUsecase.GenerateReportUrl(ctx, creds.OrganizationId.String(), caseId, reportId)
+		reportUrl, err := sarUsecase.GenerateReportUrl(ctx, creds.OrganizationId, caseId, reportId)
 		if err != nil {
 			presentError(ctx, c, err)
 			return
@@ -159,7 +159,7 @@ func handleDeleteSuspiciousActivityReport(uc usecases.Usecases) gin.HandlerFunc 
 			ReportId: &reportId,
 		}
 
-		if err := sarUsecase.DeleteReport(ctx, creds.OrganizationId.String(), req); err != nil {
+		if err := sarUsecase.DeleteReport(ctx, creds.OrganizationId, req); err != nil {
 			presentError(ctx, c, err)
 			return
 		}

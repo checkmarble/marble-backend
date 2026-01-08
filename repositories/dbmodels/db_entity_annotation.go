@@ -6,11 +6,12 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type DBEntityAnnotation struct {
 	Id             string          `db:"id"`
-	OrgId          string          `db:"org_id"`
+	OrgId          uuid.UUID       `db:"org_id"`
 	ObjectType     string          `db:"object_type"`
 	ObjectId       string          `db:"object_id"`
 	CaseId         *string         `db:"case_id"`

@@ -49,7 +49,7 @@ type taskEnqueuer interface {
 	EnqueueContinuousScreeningEvaluateNeedTask(
 		ctx context.Context,
 		tx repositories.Transaction,
-		orgId string,
+		orgId uuid.UUID,
 		objectType string,
 		objectIds []string,
 	) error
@@ -71,7 +71,7 @@ type IngestionUseCase struct {
 
 func (usecase *IngestionUseCase) IngestObject(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	objectType string,
 	objectBody json.RawMessage,
 	parserOpts ...payload_parser.ParserOpt,
@@ -82,7 +82,7 @@ func (usecase *IngestionUseCase) IngestObject(
 		ctx,
 		"IngestionUseCase.IngestObject",
 		trace.WithAttributes(attribute.String("object_type", objectType)),
-		trace.WithAttributes(attribute.String("organization_id", organizationId)))
+		trace.WithAttributes(attribute.String("organization_id", organizationId.String())))
 	defer span.End()
 
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
@@ -127,7 +127,8 @@ func (usecase *IngestionUseCase) IngestObject(
 
 	var insertedObjectIds []string
 	err = retryIngestion(ctx, func() error {
-		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, []models.ClientObject{payload}, table)
+		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx,
+			organizationId, []models.ClientObject{payload}, table)
 		return err
 	})
 	if err != nil {
@@ -144,7 +145,7 @@ func (usecase *IngestionUseCase) IngestObject(
 	nbInsertedObjects := len(insertedObjectIds)
 
 	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
-		slog.String("organization_id", organizationId),
+		slog.String("organization_id", organizationId.String()),
 		slog.String("object_type", objectType),
 		slog.Int("nb_objects", nbInsertedObjects),
 	)
@@ -154,7 +155,7 @@ func (usecase *IngestionUseCase) IngestObject(
 
 func (usecase *IngestionUseCase) IngestObjects(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	objectType string,
 	objectBody json.RawMessage,
 	parserOpts ...payload_parser.ParserOpt,
@@ -165,7 +166,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 		ctx,
 		"IngestionUseCase.IngestObjects",
 		trace.WithAttributes(attribute.String("object_type", objectType)),
-		trace.WithAttributes(attribute.String("organization_id", organizationId)))
+		trace.WithAttributes(attribute.String("organization_id", organizationId.String())))
 	defer span.End()
 
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
@@ -242,7 +243,8 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	var insertedObjectIds []string
 	err = retryIngestion(ctx, func() error {
-		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx,
+			organizationId, clientObjects, table)
 		return err
 	})
 	if err != nil {
@@ -251,7 +253,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 	nbInsertedObjects := len(insertedObjectIds)
 
 	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
-		slog.String("organization_id", organizationId),
+		slog.String("organization_id", organizationId.String()),
 		slog.String("object_type", objectType),
 		slog.Int("nb_objects", nbInsertedObjects),
 	)
@@ -260,7 +262,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 }
 
 func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context,
-	organizationId, objectType string,
+	organizationId uuid.UUID, objectType string,
 ) ([]models.UploadLog, error) {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return []models.UploadLog{}, err
@@ -271,7 +273,7 @@ func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context,
 }
 
 func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context,
-	organizationId, userId, objectType string, fileReader *csv.Reader,
+	organizationId uuid.UUID, userId, objectType string, fileReader *csv.Reader,
 ) (models.UploadLog, error) {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return models.UploadLog{}, err
@@ -311,7 +313,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			errors.Wrap(models.BadParameterError, err.Error()))
 	}
 
-	fileName := computeFileName(organizationId, table.Name)
+	fileName := computeFileName(organizationId.String(), table.Name)
 	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.ingestionBucketUrl, fileName, fileName)
 	if err != nil {
 		return models.UploadLog{}, err
@@ -525,8 +527,14 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
 			err: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fileName),
 		}
 	}
-	organizationId := fileNameElements[0]
+	organizationIdStr := fileNameElements[0]
 	tableName := fileNameElements[1]
+	organizationId, err := uuid.Parse(organizationIdStr)
+	if err != nil {
+		return ingestionResult{
+			err: errors.Wrap(err, "error parsing organization id in readFileIngestObjects"),
+		}
+	}
 
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return ingestionResult{
@@ -553,7 +561,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
 
 func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	fileReader io.Reader,
 	table models.Table,
 ) ingestionResult {
@@ -755,7 +763,7 @@ func retryIngestion(ctx context.Context, f func() error) error {
 
 func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	payloads []models.ClientObject,
 	table models.Table,
 ) ([]string, error) {
@@ -772,11 +780,11 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	}
 
 	utils.MetricIngestionCount.
-		With(prometheus.Labels{"org_id": organizationId}).
+		With(prometheus.Labels{"org_id": organizationId.String()}).
 		Add(float64(len(payloads)))
 
 	utils.MetricIngestionLatency.
-		With(prometheus.Labels{"org_id": organizationId}).
+		With(prometheus.Labels{"org_id": organizationId.String()}).
 		Observe(time.Since(start).Seconds() / float64(len(payloads)))
 
 	go func() {

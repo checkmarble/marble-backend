@@ -14,7 +14,7 @@ type FeatureAccessReaderRepository interface {
 	GetOrganizationFeatureAccess(
 		ctx context.Context,
 		executor repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 	) (models.DbStoredOrganizationFeatureAccess, error)
 	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
 }
@@ -53,14 +53,9 @@ func NewFeatureAccessReader(
 
 func (f FeatureAccessReader) GetOrganizationFeatureAccess(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	userId *models.UserId,
 ) (models.OrganizationFeatureAccess, error) {
-	orgId, _ := uuid.Parse(organizationId)
-	if err := f.enforceSecurity.ReadOrganization(orgId); err != nil {
-		return models.OrganizationFeatureAccess{}, err
-	}
-
 	dbStoredFeatureAccess, err := f.repository.GetOrganizationFeatureAccess(ctx,
 		f.executorFactory.NewExecutor(), organizationId)
 	if err != nil {

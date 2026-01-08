@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -14,7 +15,7 @@ import (
 )
 
 type AggregatorEvaluator struct {
-	OrganizationId             string
+	OrganizationId             uuid.UUID
 	DataModel                  models.DataModel
 	ClientObject               models.ClientObject
 	ExecutorFactory            executor_factory.ExecutorFactory
@@ -121,7 +122,8 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	case ast.AGGREGATOR_PERCENTILE:
 		arg, err := AdaptNamedArgument(arguments.NamedArgs, "percentile", promoteArgumentToFloat64)
 		if err != nil {
-			return MakeEvaluateError(errors.Wrap(ast.NewNamedArgumentError("percentile"), "missing or invalid value for percentile"))
+			return MakeEvaluateError(errors.Wrap(ast.NewNamedArgumentError("percentile"),
+				"missing or invalid value for percentile"))
 		}
 
 		options["percentile"] = arg
@@ -166,7 +168,8 @@ func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator
 		return 0.0, nil
 	case ast.AGGREGATOR_COUNT, ast.AGGREGATOR_COUNT_DISTINCT:
 		return 0, nil
-	case ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN, ast.AGGREGATOR_STDDEV, ast.AGGREGATOR_PERCENTILE, ast.AGGREGATOR_MEDIAN:
+	case ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN,
+		ast.AGGREGATOR_STDDEV, ast.AGGREGATOR_PERCENTILE, ast.AGGREGATOR_MEDIAN:
 		return nil, nil
 	default:
 		return MakeEvaluateError(errors.Wrap(ast.ErrRuntimeExpression,

@@ -40,7 +40,7 @@ func HandleSnoozeRule(uc usecases.Usecases) gin.HandlerFunc {
 		ruleSnoozeUsecase := uc.NewRuleSnoozeUsecase()
 
 		snooze := models.SnoozeDecisionInput{
-			OrganizationId: orgId.String(),
+			OrganizationId: orgId,
 			DecisionId:     decisionId.String(),
 			RuleId:         params.RuleId,
 			Duration:       params.Duration,

@@ -43,7 +43,7 @@ func handleListContinuousScreeningConfigs(uc usecases.Usecases) func(c *gin.Cont
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
-		continuousScreeningConfigs, err := uc.GetContinuousScreeningConfigsByOrgId(ctx, organizationId.String())
+		continuousScreeningConfigs, err := uc.GetContinuousScreeningConfigsByOrgId(ctx, organizationId)
 		if presentError(ctx, c, err) {
 			return
 		}

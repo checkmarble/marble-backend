@@ -69,9 +69,9 @@ type CaseUseCaseRepository interface {
 	EscalateCase(ctx context.Context, exec repositories.Executor, id, inboxId string) error
 
 	GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor,
-		orgId, pivotValue string) ([]models.Case, error)
+		orgId uuid.UUID, pivotValue string) ([]models.Case, error)
 	GetContinuousScreeningCasesWithObjectAttr(ctx context.Context, exec repositories.Executor,
-		orgId, objectType, objectId string) ([]models.Case, error)
+		orgId uuid.UUID, objectType, objectId string) ([]models.Case, error)
 
 	GetNextCase(ctx context.Context, exec repositories.Executor, c models.Case) (string, error)
 
@@ -116,13 +116,13 @@ type webhookEventsUsecase interface {
 type caseUsecaseIngestedDataReader interface {
 	ReadPivotObjectsFromValues(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		values []models.PivotDataWithCount,
 	) ([]models.PivotObject, error)
 }
 
 type caseUsecaseAiAgentUsecase interface {
-	HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error)
+	HasAiCaseReviewEnabled(ctx context.Context, orgId uuid.UUID) (bool, error)
 }
 
 type CaseUseCase struct {
@@ -162,7 +162,7 @@ func (usecase *CaseUseCase) ListCases(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.CaseListPage, error) {
-			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, organizationId.String())
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, organizationId)
 			if err != nil {
 				return models.CaseListPage{}, err
 			}
@@ -248,7 +248,7 @@ func (usecase *CaseUseCase) GetCaseComments(ctx context.Context, caseId string,
 			errors.Wrap(err, "could not retrieve requested case")
 	}
 
-	inboxes, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor(), c.OrganizationId.String())
+	inboxes, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor(), c.OrganizationId)
 	if err != nil {
 		return models.Paginated[models.CaseEvent]{},
 			errors.Wrap(err, "could not retrieve available inboxes")
@@ -282,7 +282,7 @@ func (usecase *CaseUseCase) GetCaseFiles(ctx context.Context, caseId string) ([]
 		return nil, errors.Wrap(err, "could not retrieve requested case")
 	}
 
-	inboxes, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor(), c.OrganizationId.String())
+	inboxes, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor(), c.OrganizationId)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve available inboxes")
 	}
@@ -300,7 +300,7 @@ func (usecase *CaseUseCase) GetCaseFiles(ctx context.Context, caseId string) ([]
 	return caseFiles, nil
 }
 
-func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]uuid.UUID, error) {
+func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) ([]uuid.UUID, error) {
 	inboxes, err := usecase.inboxReader.ListInboxes(ctx, exec, organizationId, false)
 	if err != nil {
 		return []uuid.UUID{}, errors.Wrap(err, "failed to list available inboxes in usecase")
@@ -319,7 +319,7 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 		return models.Case{}, err
 	}
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId.String())
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -352,7 +352,7 @@ func (usecase *CaseUseCase) CreateCase(
 	createCaseAttributes models.CreateCaseAttributes,
 	fromEndUser bool,
 ) (models.Case, error) {
-	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.OrganizationId.String(),
+	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.OrganizationId,
 		createCaseAttributes.DecisionIds); err != nil {
 		return models.Case{}, err
 	}
@@ -370,7 +370,7 @@ func (usecase *CaseUseCase) CreateCase(
 		return models.Case{}, err
 	}
 
-	if err := usecase.triggerAutoAssignment(ctx, tx, createCaseAttributes.OrganizationId.String(),
+	if err := usecase.triggerAutoAssignment(ctx, tx, createCaseAttributes.OrganizationId,
 		createCaseAttributes.InboxId); err != nil {
 		return models.Case{}, errors.Wrap(err, "could not trigger auto-assignment")
 	}
@@ -437,7 +437,7 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Case, error) {
 			// permission check on the inbox as end user
-			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, organizationId.String())
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, organizationId)
 			if err != nil {
 				return models.Case{}, err
 			}
@@ -452,7 +452,7 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
-				OrganizationId: newCase.OrganizationId.String(),
+				OrganizationId: newCase.OrganizationId,
 				EventContent:   models.NewWebhookEventCaseCreatedManually(newCase.GetMetadata()),
 			})
 			if err != nil {
@@ -482,7 +482,7 @@ func (usecase *CaseUseCase) CreateCaseAsApiClient(
 	webhookEventId := uuid.NewString()
 	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Case, error) {
-			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, orgId.String())
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, orgId)
 			if err != nil {
 				return models.Case{}, err
 			}
@@ -497,7 +497,7 @@ func (usecase *CaseUseCase) CreateCaseAsApiClient(
 
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
-				OrganizationId: newCase.OrganizationId.String(),
+				OrganizationId: newCase.OrganizationId,
 				EventContent:   models.NewWebhookEventCaseCreatedManually(newCase.GetMetadata()),
 			})
 			if err != nil {
@@ -542,7 +542,7 @@ func (usecase *CaseUseCase) UpdateCase(
 		availableInboxIds, err := usecase.getAvailableInboxIds(
 			ctx,
 			tx,
-			c.OrganizationId.String())
+			c.OrganizationId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -590,7 +590,8 @@ func (usecase *CaseUseCase) UpdateCase(
 			}
 
 			if updateCaseAttributes.Status == models.CaseClosed {
-				if err := usecase.triggerAutoAssignment(ctx, tx, c.OrganizationId.String(), c.InboxId); err != nil {
+				if err := usecase.triggerAutoAssignment(ctx, tx,
+					c.OrganizationId, c.InboxId); err != nil {
 					return models.Case{}, errors.Wrap(err, "could not trigger auto-assignment")
 				}
 			}
@@ -607,7 +608,7 @@ func (usecase *CaseUseCase) UpdateCase(
 
 		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
-			OrganizationId: updatedCase.OrganizationId.String(),
+			OrganizationId: updatedCase.OrganizationId,
 			EventContent:   models.NewWebhookEventCaseUpdated(updatedCase),
 		})
 		if err != nil {
@@ -751,7 +752,7 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 	}
 
 	availableInboxIds, err := usecase.getAvailableInboxIds(ctx,
-		usecase.executorFactory.NewExecutor(), c.OrganizationId.String())
+		usecase.executorFactory.NewExecutor(), c.OrganizationId)
 	if err != nil {
 		return err
 	}
@@ -813,7 +814,7 @@ func (usecase *CaseUseCase) UnassignCase(ctx context.Context, req models.CaseAss
 	}
 
 	availableInboxIds, err := usecase.getAvailableInboxIds(ctx,
-		usecase.executorFactory.NewExecutor(), c.OrganizationId.String())
+		usecase.executorFactory.NewExecutor(), c.OrganizationId)
 	if err != nil {
 		return err
 	}
@@ -928,7 +929,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		if err != nil {
 			return models.Case{}, err
 		}
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, c.OrganizationId.String())
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, c.OrganizationId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -941,7 +942,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 				"can not add decisions to this case type",
 			)
 		}
-		if err := usecase.validateDecisions(ctx, tx, c.OrganizationId.String(), decisionIds); err != nil {
+		if err := usecase.validateDecisions(ctx, tx, c.OrganizationId, decisionIds); err != nil {
 			return models.Case{}, err
 		}
 
@@ -967,7 +968,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 
 		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
-			OrganizationId: updatedCase.OrganizationId.String(),
+			OrganizationId: updatedCase.OrganizationId,
 			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(updatedCase.GetMetadata()),
 		})
 		if err != nil {
@@ -1001,7 +1002,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 			return models.Case{}, err
 		}
 
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, c.OrganizationId.String())
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, c.OrganizationId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -1031,7 +1032,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 
 		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
-			OrganizationId: updatedCase.OrganizationId.String(),
+			OrganizationId: updatedCase.OrganizationId,
 			EventContent:   models.NewWebhookEventCaseCommentCreated(updatedCase),
 		})
 		if err != nil {
@@ -1068,7 +1069,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 		availableInboxIds, err := usecase.getAvailableInboxIds(
 			ctx,
 			usecase.executorFactory.NewExecutor(),
-			c.OrganizationId.String())
+			c.OrganizationId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -1124,7 +1125,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 
 		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
-			OrganizationId: updatedCase.OrganizationId.String(),
+			OrganizationId: updatedCase.OrganizationId,
 			EventContent:   models.NewWebhookEventCaseTagsUpdated(updatedCase),
 		})
 		if err != nil {
@@ -1173,7 +1174,7 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 
 	switch c.Type {
 	case models.CaseTypeDecision:
-		decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, exec, c.OrganizationId.String(), caseId)
+		decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -1206,7 +1207,7 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 	return c, nil
 }
 
-func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec repositories.Executor, orgId string, decisionIds []string) error {
+func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, decisionIds []string) error {
 	if len(decisionIds) == 0 {
 		return nil
 	}
@@ -1216,7 +1217,7 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 	}
 
 	for _, decision := range decisions {
-		if decision.OrganizationId.String() != orgId {
+		if decision.OrganizationId != orgId {
 			return errors.WithDetail(errors.Wrap(models.ForbiddenError,
 				"provided decision does not belong to the organization"),
 				"some of the provided decisions do not exist")
@@ -1383,7 +1384,7 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 	if err != nil {
 		return models.Case{}, nil, err
 	}
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId.String())
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
 		return models.Case{}, nil, err
 	}
@@ -1468,7 +1469,7 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 		// Create a single webhook event for the case
 		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
-			OrganizationId: creds.OrganizationId.String(),
+			OrganizationId: creds.OrganizationId,
 			EventContent:   models.NewWebhookEventCaseFileCreated(input.CaseId),
 		})
 		if err != nil {
@@ -1518,7 +1519,7 @@ func (usecase *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositorie
 	}
 
 	return usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-		OrgId:          uuid.MustParse(annotationReq.OrgId),
+		OrgId:          annotationReq.OrgId,
 		CaseId:         *annotationReq.CaseId,
 		UserId:         (*string)(annotationReq.AnnotatedBy),
 		EventType:      models.CaseEntityAnnotated,
@@ -1564,7 +1565,7 @@ func (usecase *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx reposi
 	}
 
 	return usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-		OrgId:          uuid.MustParse(annotationReq.OrgId),
+		OrgId:          annotationReq.OrgId,
 		CaseId:         *annotationReq.CaseId,
 		UserId:         (*string)(annotationReq.AnnotatedBy),
 		EventType:      models.CaseEntityAnnotated,
@@ -1628,7 +1629,7 @@ func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId strin
 	if err != nil {
 		return "", err
 	}
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId.String())
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
 		return "", err
 	}
@@ -1646,7 +1647,7 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 		return err
 	}
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, c.OrganizationId.String())
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, c.OrganizationId)
 	if err != nil {
 		return err
 	}
@@ -1678,7 +1679,7 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 
 	err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 		Id:             input.WebhookEventId,
-		OrganizationId: updatedCase.OrganizationId.String(),
+		OrganizationId: updatedCase.OrganizationId,
 		EventContent:   models.NewWebhookEventCaseCommentCreated(updatedCase),
 	})
 	if err != nil {
@@ -1720,7 +1721,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 		return models.Case{}, err
 	}
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId.String())
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -1771,7 +1772,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
-				OrganizationId: c.OrganizationId.String(),
+				OrganizationId: c.OrganizationId,
 				EventContent:   models.NewWebhookEventDecisionReviewed(c, decision.DecisionId.String()),
 			})
 			if err != nil {
@@ -1793,12 +1794,12 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 func (usecase *CaseUseCase) GetRelatedCasesByPivotValue(ctx context.Context, orgId uuid.UUID, pivotValue string) ([]models.Case, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId.String())
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
 	if err != nil {
 		return nil, err
 	}
 
-	cases, err := usecase.repository.GetCasesWithPivotValue(ctx, exec, orgId.String(), pivotValue)
+	cases, err := usecase.repository.GetCasesWithPivotValue(ctx, exec, orgId, pivotValue)
 	if err != nil {
 		return nil, err
 	}
@@ -1819,12 +1820,12 @@ func (usecase *CaseUseCase) GetRelatedContinuousScreeningCasesByObjectAttr(
 ) ([]models.Case, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId.String())
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
 	if err != nil {
 		return nil, err
 	}
 
-	cases, err := usecase.repository.GetContinuousScreeningCasesWithObjectAttr(ctx, exec, orgId.String(), objectType, objectId)
+	cases, err := usecase.repository.GetContinuousScreeningCasesWithObjectAttr(ctx, exec, orgId, objectType, objectId)
 	if err != nil {
 		return nil, err
 	}
@@ -1843,7 +1844,7 @@ func (usecase *CaseUseCase) GetRelatedContinuousScreeningCasesByObjectAttr(
 func (usecase *CaseUseCase) GetNextCaseId(ctx context.Context, orgId uuid.UUID, caseId string) (string, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId.String())
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
 	if err != nil {
 		return "", err
 	}
@@ -1885,7 +1886,7 @@ func (usecase *CaseUseCase) ReadCasePivotObjects(ctx context.Context, caseId str
 		return nil, err
 	}
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId.String())
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -1898,7 +1899,7 @@ func (usecase *CaseUseCase) ReadCasePivotObjects(ctx context.Context, caseId str
 		return nil, err
 	}
 
-	return usecase.ingestedDataReader.ReadPivotObjectsFromValues(ctx, c.OrganizationId.String(), pivotValues)
+	return usecase.ingestedDataReader.ReadPivotObjectsFromValues(ctx, c.OrganizationId, pivotValues)
 }
 
 func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) error {
@@ -1913,7 +1914,7 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 			"case is already closed, cannot escalate")
 	}
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId.String())
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
 		return err
 	}
@@ -1968,7 +1969,7 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 			return err
 		}
 
-		hasAiCaseReviewEnabled, err := usecase.aiAgentUsecase.HasAiCaseReviewEnabled(ctx, c.OrganizationId.String())
+		hasAiCaseReviewEnabled, err := usecase.aiAgentUsecase.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
 		if err != nil {
 			return errors.Wrap(err, "error checking if AI case review is enabled")
 		}
@@ -1985,7 +1986,7 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 					return errors.Wrap(err, "could not parse case id")
 				}
 				err = usecase.taskQueueRepository.EnqueueCaseReviewTask(ctx, tx,
-					c.OrganizationId.String(), caseIdUuid, caseReviewId)
+					c.OrganizationId, caseIdUuid, caseReviewId)
 				if err != nil {
 					return errors.Wrap(err, "error enqueuing case review task")
 				}
@@ -2038,7 +2039,7 @@ func (usecase *CaseUseCase) PerformCaseActionSideEffects(ctx context.Context, tx
 	return nil
 }
 
-func (usecase *CaseUseCase) triggerAutoAssignment(ctx context.Context, tx repositories.Transaction, orgId string, inboxId uuid.UUID) error {
+func (usecase *CaseUseCase) triggerAutoAssignment(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, inboxId uuid.UUID) error {
 	features, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not check feature access")
@@ -2083,7 +2084,7 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 		return c.Id, c
 	})
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId.String())
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
 	if err != nil {
 		return errors.Wrap(err, "could not retrieve available inboxes")
 	}

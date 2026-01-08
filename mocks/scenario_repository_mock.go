@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -19,7 +20,7 @@ func (s *ScenarioRepository) GetScenarioById(ctx context.Context, exec repositor
 }
 
 func (s *ScenarioRepository) ListScenariosOfOrganization(ctx context.Context,
-	exec repositories.Executor, organizationId string,
+	exec repositories.Executor, organizationId uuid.UUID,
 ) ([]models.Scenario, error) {
 	args := s.Called(exec, organizationId)
 	return args.Get(0).([]models.Scenario), args.Error(1)
@@ -31,7 +32,7 @@ func (s *ScenarioRepository) ListAllScenarios(ctx context.Context, exec reposito
 }
 
 func (s *ScenarioRepository) CreateScenario(ctx context.Context, exec repositories.Executor,
-	organizationId string, scenario models.CreateScenarioInput, newScenarioId string,
+	organizationId uuid.UUID, scenario models.CreateScenarioInput, newScenarioId string,
 ) error {
 	args := s.Called(exec, organizationId, scenario, newScenarioId)
 	return args.Error(0)
@@ -42,7 +43,9 @@ func (s *ScenarioRepository) UpdateScenario(ctx context.Context, exec repositori
 	return args.Error(0)
 }
 
-func (s *ScenarioRepository) ListScenarioLatestRuleVersions(ctx context.Context, exec repositories.Executor, scenarioId string) ([]models.ScenarioRuleLatestVersion, error) {
+func (s *ScenarioRepository) ListScenarioLatestRuleVersions(ctx context.Context,
+	exec repositories.Executor, scenarioId string,
+) ([]models.ScenarioRuleLatestVersion, error) {
 	args := s.Called(ctx, exec, scenarioId)
 
 	if args.Error(1) != nil {

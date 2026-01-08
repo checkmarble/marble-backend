@@ -11,7 +11,7 @@ type User struct {
 	UserId         string     `json:"user_id"`
 	Email          string     `json:"email"`
 	Role           string     `json:"role"`
-	OrganizationId string     `json:"organization_id"`
+	OrganizationId uuid.UUID  `json:"organization_id"`
 	PartnerId      *string    `json:"partner_id,omitempty"`
 	FirstName      string     `json:"first_name"`
 	LastName       string     `json:"last_name"`
@@ -24,7 +24,7 @@ func AdaptUserDto(user models.User) User {
 		UserId:         string(user.UserId),
 		Email:          user.Email,
 		Role:           user.Role.String(),
-		OrganizationId: user.OrganizationId.String(),
+		OrganizationId: user.OrganizationId,
 		PartnerId:      user.PartnerId,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
@@ -34,12 +34,12 @@ func AdaptUserDto(user models.User) User {
 }
 
 type CreateUser struct {
-	Email          string  `json:"email"`
-	Role           string  `json:"role"`
-	OrganizationId string  `json:"organization_id"`
-	PartnerId      *string `json:"partner_id"`
-	FirstName      string  `json:"first_name"`
-	LastName       string  `json:"last_name"`
+	Email          string    `json:"email"`
+	Role           string    `json:"role"`
+	OrganizationId uuid.UUID `json:"organization_id"`
+	PartnerId      *string   `json:"partner_id"`
+	FirstName      string    `json:"first_name"`
+	LastName       string    `json:"last_name"`
 }
 
 type UpdateUser struct {
@@ -50,11 +50,10 @@ type UpdateUser struct {
 }
 
 func AdaptCreateUser(dto CreateUser) models.CreateUser {
-	orgId, _ := uuid.Parse(dto.OrganizationId) // Ignore error, will be uuid.Nil if invalid
 	return models.CreateUser{
 		Email:          dto.Email,
 		Role:           models.RoleFromString(dto.Role),
-		OrganizationId: orgId,
+		OrganizationId: dto.OrganizationId,
 		PartnerId:      dto.PartnerId,
 		FirstName:      dto.FirstName,
 		LastName:       dto.LastName,

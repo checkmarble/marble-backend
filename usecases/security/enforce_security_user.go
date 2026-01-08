@@ -13,7 +13,7 @@ type EnforceSecurityUser interface {
 	CreateUser(input models.CreateUser) error
 	UpdateUser(targetUser models.User, updateUser models.UpdateUser) error
 	DeleteUser(user models.User) error
-	ListUsers(organizationId *string) error
+	ListUsers(organizationId *uuid.UUID) error
 }
 
 type EnforceSecurityUserImpl struct {
@@ -120,7 +120,7 @@ func (e *EnforceSecurityUserImpl) DeleteUser(user models.User) error {
 	)
 }
 
-func (e *EnforceSecurityUserImpl) ListUsers(organizationId *string) error {
+func (e *EnforceSecurityUserImpl) ListUsers(organizationId *uuid.UUID) error {
 	if e.Credentials.Role == models.MARBLE_ADMIN {
 		return errors.Join(
 			e.Permission(models.MARBLE_USER_LIST),
@@ -131,9 +131,8 @@ func (e *EnforceSecurityUserImpl) ListUsers(organizationId *string) error {
 		return errors.Wrap(models.ForbiddenError, "non-admin cannot list users without organization_id")
 	}
 
-	orgId, _ := uuid.Parse(*organizationId)
 	return errors.Join(
 		e.Permission(models.MARBLE_USER_LIST),
-		e.ReadOrganization(orgId),
+		e.ReadOrganization(*organizationId),
 	)
 }

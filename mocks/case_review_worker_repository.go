@@ -60,7 +60,7 @@ func (r *MockCaseReviewWorkerRepository) GetCaseById(ctx context.Context,
 func (r *MockCaseReviewWorkerRepository) GetOrganizationById(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 ) (models.Organization, error) {
 	args := r.Called(ctx, exec, organizationId)
 	return args.Get(0).(models.Organization), args.Error(1)

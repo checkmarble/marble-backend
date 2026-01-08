@@ -8,7 +8,7 @@ import (
 )
 
 type AnalyticsRepository interface {
-	ListAnalytics(ctx context.Context, organizationId string) ([]models.Analytics, error)
+	ListAnalytics(ctx context.Context, organizationId uuid.UUID) ([]models.Analytics, error)
 }
 
 type EnforceSecurityAnalytics interface {
@@ -21,7 +21,7 @@ type AnalyticsUseCase struct {
 }
 
 func (usecase *AnalyticsUseCase) ListAnalytics(ctx context.Context, organizationId uuid.UUID) ([]models.Analytics, error) {
-	analyticsList, err := usecase.analyticsRepository.ListAnalytics(ctx, organizationId.String())
+	analyticsList, err := usecase.analyticsRepository.ListAnalytics(ctx, organizationId)
 	if err != nil {
 		return []models.Analytics{}, err
 	}

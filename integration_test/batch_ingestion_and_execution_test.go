@@ -47,27 +47,26 @@ func TestBatchIngestionAndExecution(t *testing.T) {
 	// Setup an organization and user credentials
 	userCreds, _, inboxId := setupOrgAndCreds(ctx, t, "test org with batch usage")
 	organizationId := userCreds.OrganizationId
-	organizationIdString := organizationId.String()
 
 	// Now that we have a user and credentials, create a container for usecases with these credentials
 	usecasesWithCreds := generateUsecaseWithCreds(testUsecases, userCreds)
 
 	rules := getRulesForBatchTest()
 	// Scenario setup
-	scenarioId, scenarioIterationId := setupScenarioAndPublish(ctx, t, usecasesWithCreds, organizationIdString, inboxId, rules)
+	scenarioId, scenarioIterationId := setupScenarioAndPublish(ctx, t, usecasesWithCreds, organizationId, inboxId, rules)
 
 	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be declined, one to be approved
-	ingestAccountsBatch(ctx, t, usecasesWithCreds, organizationIdString, string(userCreds.ActorIdentity.UserId))
+	ingestAccountsBatch(ctx, t, usecasesWithCreds, organizationId, string(userCreds.ActorIdentity.UserId))
 
 	// Create a pair of decision and check that the outcome matches the expectation
-	createDecisionsBatch(ctx, t, usecasesWithCreds, organizationIdString, scenarioId, scenarioIterationId)
+	createDecisionsBatch(ctx, t, usecasesWithCreds, organizationId, scenarioId, scenarioIterationId)
 }
 
 func ingestAccountsBatch(
 	ctx context.Context,
 	t *testing.T,
 	usecases usecases.UsecasesWithCreds,
-	organizationId, userId string,
+	organizationId uuid.UUID, userId string,
 ) {
 	ingestionUsecase := usecases.NewIngestionUseCase()
 	fileContent := `object_id,updated_at,account_id,bic_country,country,description,status,title,amount
@@ -99,7 +98,7 @@ func createDecisionsBatch(
 	ctx context.Context,
 	t *testing.T,
 	usecasesWithUserCreds usecases.UsecasesWithCreds,
-	organizationId, scenarioId, scenarioIterationId string,
+	organizationId uuid.UUID, scenarioId, scenarioIterationId string,
 ) {
 	scheduledExecUsecase := usecasesWithUserCreds.NewScheduledExecutionUsecase()
 	ses, err := scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, models.ListScheduledExecutionsFilters{

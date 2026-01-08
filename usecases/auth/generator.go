@@ -8,11 +8,12 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/clock"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/google/uuid"
 )
 
 type marbleRepository interface {
 	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
-	GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error)
+	GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error)
 	UserByEmail(ctx context.Context, email string) (models.User, error)
 	UpdateUserProfileFromClaims(
 		ctx context.Context,
@@ -62,7 +63,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	switch creds.Type {
 	case CredentialsBearer:
 		if credentials.Role != models.MARBLE_ADMIN {
-			organization, err := g.repository.GetOrganizationByID(ctx, credentials.OrganizationId.String())
+			organization, err := g.repository.GetOrganizationByID(ctx, credentials.OrganizationId)
 			if err != nil {
 				return Token{}, fmt.Errorf("GetOrganizationByID error: %w", err)
 			}
@@ -71,7 +72,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 				"email": credentials.ActorIdentity.Email,
 			})
 			tracking.Group(ctx, credentials.ActorIdentity.UserId,
-				credentials.OrganizationId.String(), map[string]any{
+				credentials.OrganizationId, map[string]any{
 					"name": organization.Name,
 				})
 			tracking.TrackEventWithUserId(ctx, models.AnalyticsTokenCreated,

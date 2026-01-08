@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 
@@ -59,7 +60,7 @@ func (repo *MarbleDbRepository) GetSnoozeById(ctx context.Context, exec Executor
 	return s, nil
 }
 
-func (repo *MarbleDbRepository) CreateSnoozeGroup(ctx context.Context, exec Executor, id, organizationId string) error {
+func (repo *MarbleDbRepository) CreateSnoozeGroup(ctx context.Context, exec Executor, id string, organizationId uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

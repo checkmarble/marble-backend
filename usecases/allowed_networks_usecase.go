@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type AllowedNetworksUse int
@@ -20,7 +21,7 @@ const (
 )
 
 type ipWhitelistRepository interface {
-	GetOrganizationAllowedNetworks(ctx context.Context, exec repositories.Executor, orgId string) ([]net.IPNet, error)
+	GetOrganizationAllowedNetworks(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]net.IPNet, error)
 }
 
 type AllowedNetworksUsecase struct {
@@ -81,7 +82,8 @@ func (uc AllowedNetworksUsecase) Guard(use AllowedNetworksUse) gin.HandlerFunc {
 		// let the user configure the feature.
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), utils.ContextKeyClientIp, clientIp))
 
-		subnets, err := uc.repository.GetOrganizationAllowedNetworks(ctx, uc.executorFactory.NewExecutor(), creds.OrganizationId.String())
+		subnets, err := uc.repository.GetOrganizationAllowedNetworks(ctx,
+			uc.executorFactory.NewExecutor(), creds.OrganizationId)
 
 		// TODO: here we might want to separate those two predicates, fail close
 		// on error but open on empty whitelist.
@@ -109,7 +111,8 @@ func (uc AllowedNetworksUsecase) Guard(use AllowedNetworksUse) gin.HandlerFunc {
 			"ip", clientIp,
 			"subnets", subnets)
 
-		c.Header(models.MARBLE_GLOBAL_ERROR_HEADER, models.MARBLE_GLOBAL_ERROR_DISALLOWED_NETWORK)
+		c.Header(models.MARBLE_GLOBAL_ERROR_HEADER,
+			models.MARBLE_GLOBAL_ERROR_DISALLOWED_NETWORK)
 		c.AbortWithStatus(http.StatusForbidden)
 	}
 }

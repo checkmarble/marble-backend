@@ -23,7 +23,7 @@ func handleGetDataModelOptions(uc usecases.Usecases) func(c *gin.Context) {
 		uc := usecasesWithCreds(ctx, uc)
 		dataModelUsecase := uc.NewDataModelUseCase()
 
-		opts, err := dataModelUsecase.GetDataModelOptions(ctx, orgId.String(), tableId)
+		opts, err := dataModelUsecase.GetDataModelOptions(ctx, orgId, tableId)
 
 		if presentError(ctx, c, err) {
 			return
@@ -59,7 +59,7 @@ func handleSetDataModelOptions(uc usecases.Usecases) func(c *gin.Context) {
 		uc := usecasesWithCreds(ctx, uc)
 		dataModelUsecase := uc.NewDataModelUseCase()
 
-		opts, err := dataModelUsecase.UpdateDataModelOptions(ctx, orgId.String(), req)
+		opts, err := dataModelUsecase.UpdateDataModelOptions(ctx, orgId, req)
 
 		if presentError(ctx, c, err) {
 			return

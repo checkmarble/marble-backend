@@ -56,7 +56,7 @@ type CreatePivotInput struct {
 	PathLinkIds []string `json:"path_link_ids"`
 }
 
-func AdaptCreatePivotInput(input CreatePivotInput, organizationId string) models.CreatePivotInput {
+func AdaptCreatePivotInput(input CreatePivotInput, organizationId uuid.UUID) models.CreatePivotInput {
 	out := models.CreatePivotInput{
 		OrganizationId: organizationId,
 		BaseTableId:    input.BaseTableId,

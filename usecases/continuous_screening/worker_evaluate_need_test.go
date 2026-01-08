@@ -24,7 +24,7 @@ type CheckIfObjectsNeedScreeningWorkerTestSuite struct {
 	transactionFactory executor_factory.TransactionFactoryStub
 
 	ctx        context.Context
-	orgId      string
+	orgId      uuid.UUID
 	objectType string
 }
 
@@ -37,7 +37,7 @@ func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) SetupTest() {
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
 
 	suite.ctx = context.Background()
-	suite.orgId = "12345678-1234-1234-1234-123456789012"
+	suite.orgId = uuid.MustParse("12345678-1234-5678-9012-345678901234")
 	suite.objectType = "transactions"
 }
 
@@ -75,9 +75,8 @@ func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) TestWork_NoMonitoredObj
 	}
 
 	// Setup mocks
-	orgId := uuid.MustParse(suite.orgId)
 	suite.repository.On("ListContinuousScreeningConfigByObjectType", suite.ctx, mock.Anything,
-		orgId, suite.objectType).Return([]models.ContinuousScreeningConfig{
+		suite.orgId, suite.objectType).Return([]models.ContinuousScreeningConfig{
 		{
 			Id:          uuid.New(),
 			StableId:    uuid.New(),
@@ -123,9 +122,8 @@ func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) TestWork_WithMonitoredO
 	}
 
 	// Setup mocks
-	orgId := uuid.MustParse(suite.orgId)
 	suite.repository.On("ListContinuousScreeningConfigByObjectType", suite.ctx, mock.Anything,
-		orgId, suite.objectType).Return([]models.ContinuousScreeningConfig{
+		suite.orgId, suite.objectType).Return([]models.ContinuousScreeningConfig{
 		{
 			Id:          uuid.New(),
 			StableId:    uuid.New(),
@@ -162,9 +160,8 @@ func (suite *CheckIfObjectsNeedScreeningWorkerTestSuite) TestWork_NoContinuousSc
 	}
 
 	// Setup mocks - ListContinuousScreeningConfigByObjectType returns empty list
-	orgId := uuid.MustParse(suite.orgId)
 	suite.repository.On("ListContinuousScreeningConfigByObjectType", suite.ctx, mock.Anything,
-		orgId, suite.objectType).Return([]models.ContinuousScreeningConfig{}, nil)
+		suite.orgId, suite.objectType).Return([]models.ContinuousScreeningConfig{}, nil)
 
 	// Execute
 	worker := suite.makeWorker()

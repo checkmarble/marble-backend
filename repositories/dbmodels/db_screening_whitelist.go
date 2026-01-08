@@ -24,7 +24,7 @@ var ScreeningWhitelistColumnList = utils.ColumnList[DBScreeningWhitelists]()
 func AdaptScreeningWhitelist(db DBScreeningWhitelists) (models.ScreeningWhitelist, error) {
 	return models.ScreeningWhitelist{
 		Id:             db.Id,
-		OrgId:          db.OrgId.String(),
+		OrgId:          db.OrgId,
 		CounterpartyId: db.CounterpartyId,
 		EntityId:       db.EntityId,
 		WhitelistedBy:  db.WhitelistedBy,

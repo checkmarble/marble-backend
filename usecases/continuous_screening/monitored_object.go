@@ -78,7 +78,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 			errors.Wrapf(models.BadParameterError, "object type %s is not configured with this config", input.ObjectType)
 	}
 
-	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, config.OrgId.String())
+	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, config.OrgId)
 	if err != nil {
 		return models.ContinuousScreeningWithMatches{}, err
 	}
@@ -122,7 +122,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
-	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId.String(), func(tx repositories.Transaction) error {
+	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId, func(tx repositories.Transaction) error {
 		if err := uc.clientDbRepository.InsertContinuousScreeningObject(
 			ctx,
 			tx,
@@ -235,7 +235,7 @@ func (uc *ContinuousScreeningUsecase) ingestObject(
 	input models.CreateContinuousScreeningObject,
 ) (string, error) {
 	// Ingestion doesn't return the object after operation.
-	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId.String(), input.ObjectType, *input.ObjectPayload)
+	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId, input.ObjectType, *input.ObjectPayload)
 	if err != nil {
 		return "", err
 	}
@@ -352,7 +352,7 @@ func (uc *ContinuousScreeningUsecase) GetDataModelTableAndMapping(ctx context.Co
 	exec repositories.Executor, config models.ContinuousScreeningConfig, objectType string,
 ) (models.Table, models.ContinuousScreeningDataModelMapping, error) {
 	// Get Data Model Table
-	dataModel, err := uc.repository.GetDataModel(ctx, exec, config.OrgId.String(), false, false)
+	dataModel, err := uc.repository.GetDataModel(ctx, exec, config.OrgId, false, false)
 	if err != nil {
 		return models.Table{}, models.ContinuousScreeningDataModelMapping{}, err
 	}
@@ -407,7 +407,7 @@ func (uc *ContinuousScreeningUsecase) DoScreening(
 	whitelists, err := uc.repository.SearchScreeningMatchWhitelist(
 		ctx,
 		exec,
-		config.OrgId.String(),
+		config.OrgId,
 		utils.Ptr(typedObjectId(objectType, objectId)),
 		nil,
 	)
@@ -492,7 +492,7 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 	if err != nil {
 		return err
 	}
-	return uc.transactionFactory.TransactionInOrgSchema(ctx, orgId.String(), func(tx repositories.Transaction) error {
+	return uc.transactionFactory.TransactionInOrgSchema(ctx, orgId, func(tx repositories.Transaction) error {
 		if err := uc.clientDbRepository.DeleteContinuousScreeningObject(ctx, tx, input); err != nil {
 			return err
 		}
@@ -525,7 +525,7 @@ func (uc *ContinuousScreeningUsecase) ListMonitoredObjects(
 		return nil, err
 	}
 
-	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId.String())
+	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
 	if err != nil {
 		return nil, err
 	}

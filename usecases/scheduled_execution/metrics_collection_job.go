@@ -15,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
 
@@ -40,10 +41,11 @@ type MetricsCollectionUsecase interface {
 }
 
 type WatermarkRepository interface {
-	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *string,
+	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *uuid.UUID,
 		watermarkType models.WatermarkType) (*models.Watermark, error)
 	SaveWatermark(ctx context.Context, exec repositories.Executor,
-		orgId *string, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params json.RawMessage) error
+		orgId *uuid.UUID, watermarkType models.WatermarkType, watermarkId *string,
+		watermarkTime time.Time, params json.RawMessage) error
 }
 
 type MetricCollectionWorker struct {

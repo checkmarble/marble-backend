@@ -3,6 +3,7 @@ package models
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +20,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 			name: "All features allowed by license and configuration",
 			dbFeatureAccess: DbStoredOrganizationFeatureAccess{
 				Id:             "1",
-				OrganizationId: "org1",
+				OrganizationId: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 				TestRun:        Allowed,
 				Sanctions:      Allowed,
 				CaseAutoAssign: Allowed,
@@ -43,7 +44,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 			user: User{AiAssistEnabled: true},
 			expected: OrganizationFeatureAccess{
 				Id:              "1",
-				OrganizationId:  "org1",
+				OrganizationId:  uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 				TestRun:         Allowed,
 				Sanctions:       Allowed,
 				NameRecognition: Allowed,
@@ -60,7 +61,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 			name: "Some features restricted by license",
 			dbFeatureAccess: DbStoredOrganizationFeatureAccess{
 				Id:             "2",
-				OrganizationId: "org2",
+				OrganizationId: uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 				TestRun:        Allowed,
 				Sanctions:      Allowed,
 				CaseAutoAssign: Allowed,
@@ -83,7 +84,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 			user: User{AiAssistEnabled: true},
 			expected: OrganizationFeatureAccess{
 				Id:              "2",
-				OrganizationId:  "org2",
+				OrganizationId:  uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 				TestRun:         Restricted,
 				Sanctions:       Restricted,
 				NameRecognition: Restricted,
@@ -100,7 +101,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 			name: "Some features restricted by configuration",
 			dbFeatureAccess: DbStoredOrganizationFeatureAccess{
 				Id:             "3",
-				OrganizationId: "org3",
+				OrganizationId: uuid.MustParse("33333333-3333-3333-3333-333333333333"),
 				TestRun:        Allowed,
 				Sanctions:      Allowed,
 				CaseAutoAssign: Allowed,
@@ -124,7 +125,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 			user: User{AiAssistEnabled: false},
 			expected: OrganizationFeatureAccess{
 				Id:              "3",
-				OrganizationId:  "org3",
+				OrganizationId:  uuid.MustParse("33333333-3333-3333-3333-333333333333"),
 				TestRun:         Allowed,
 				Sanctions:       MissingConfiguration,
 				NameRecognition: MissingConfiguration,

@@ -25,7 +25,7 @@ func ipWhitelistTestHarness(t *testing.T, use AllowedNetworksUse, cidrs []string
 	gin.SetMode(gin.ReleaseMode)
 
 	creds := models.Credentials{OrganizationId: utils.TextToUUID("orgid")}
-	orgIdString := creds.OrganizationId.String()
+	orgIdString := creds.OrganizationId
 
 	subnets := make([]net.IPNet, 0)
 

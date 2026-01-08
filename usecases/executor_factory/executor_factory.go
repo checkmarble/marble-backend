@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 )
 
 // interfaces used by the class
@@ -19,7 +20,7 @@ type executorFactoryRepository interface {
 }
 
 type organizationGetter interface {
-	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
 }
 
 type DbExecutorFactory struct {
@@ -42,7 +43,7 @@ func NewDbExecutorFactory(
 
 func (factory DbExecutorFactory) TransactionInOrgSchema(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	f func(tx repositories.Transaction) error,
 ) error {
 	org, err := factory.orgGetter.GetOrganizationById(ctx, factory.NewExecutor(), organizationId)
@@ -68,7 +69,7 @@ func (factory DbExecutorFactory) Transaction(
 
 func (factory DbExecutorFactory) NewClientDbExecutor(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 ) (repositories.Executor, error) {
 	org, err := factory.orgGetter.GetOrganizationById(ctx, factory.NewExecutor(), organizationId)
 	if err != nil {

@@ -188,7 +188,7 @@ func HandleScreeningFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		screening, err := screeningUsecase.FreeformSearch(c.Request.Context(),
-			orgId.String(), models.ScreeningConfig{}, refineQuery)
+			orgId, models.ScreeningConfig{}, refineQuery)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -246,7 +246,7 @@ func HandleAddWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		screeningUsecase := uc.NewScreeningUsecase()
 
-		if err := screeningUsecase.CreateWhitelist(ctx, nil, orgId.String(),
+		if err := screeningUsecase.CreateWhitelist(ctx, nil, orgId,
 			params.Counterparty, params.EntityId, nil); err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -280,7 +280,7 @@ func HandleDeleteWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		screeningUsecase := uc.NewScreeningUsecase()
 
-		if err := screeningUsecase.DeleteWhitelist(ctx, nil, orgId.String(),
+		if err := screeningUsecase.DeleteWhitelist(ctx, nil, orgId,
 			params.Counterparty, params.EntityId, nil); err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -323,7 +323,7 @@ func HandleSearchWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		screeningUsecase := uc.NewScreeningUsecase()
 
 		whitelists, err := screeningUsecase.SearchWhitelist(ctx, nil,
-			orgId.String(), params.Counterparty, params.EntityId, nil)
+			orgId, params.Counterparty, params.EntityId, nil)
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return

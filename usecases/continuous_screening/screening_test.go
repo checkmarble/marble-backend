@@ -185,7 +185,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 		suite.screeningId).Return(continuousScreeningWithMatches, nil)
 	suite.repository.On("GetCaseById", mock.Anything, mock.Anything, suite.caseId.String()).Return(caseData, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(nil)
-	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId.String(), false).Return([]models.Inbox{}, nil)
+	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId, false).Return([]models.Inbox{}, nil)
 	suite.enforceSecurity.On("ReadOrUpdateCase", mock.Anything, mock.Anything).Return(nil)
 	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
 		suite.matchId, models.ScreeningMatchStatusConfirmedHit, mock.Anything).Return(updatedMatch, nil)
@@ -254,7 +254,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 		suite.screeningId).Return(continuousScreeningWithMatches, nil)
 	suite.repository.On("GetCaseById", mock.Anything, mock.Anything, suite.caseId.String()).Return(caseData, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(nil)
-	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId.String(), false).Return([]models.Inbox{}, nil)
+	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId, false).Return([]models.Inbox{}, nil)
 	suite.enforceSecurity.On("ReadOrUpdateCase", mock.Anything, mock.Anything).Return(nil)
 	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
 		suite.matchId, models.ScreeningMatchStatusConfirmedHit, mock.Anything).Return(updatedMatch, nil)
@@ -332,14 +332,14 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 		suite.screeningId).Return(continuousScreeningWithMatches, nil)
 	suite.repository.On("GetCaseById", mock.Anything, mock.Anything, suite.caseId.String()).Return(caseData, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(nil)
-	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId.String(), false).Return([]models.Inbox{}, nil)
+	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId, false).Return([]models.Inbox{}, nil)
 	suite.enforceSecurity.On("ReadOrUpdateCase", mock.Anything, mock.Anything).Return(nil)
 	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
 		suite.matchId, models.ScreeningMatchStatusNoHit, mock.Anything).Return(updatedMatch, nil)
 	suite.caseEditor.On("PerformCaseActionSideEffects", mock.Anything, mock.Anything, caseData).Return(nil)
 	suite.enforceSecurity.On("WriteWhitelist", mock.Anything).Return(nil)
 	suite.repository.On("AddScreeningMatchWhitelist", mock.Anything, mock.Anything,
-		suite.orgId.String(), "transactions_test-object-id", "test-entity-id-1", &suite.userId).Return(nil)
+		suite.orgId, "transactions_test-object-id", "test-entity-id-1", &suite.userId).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -391,7 +391,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 		suite.screeningId).Return(continuousScreeningWithMatches, nil)
 	suite.repository.On("GetCaseById", mock.Anything, mock.Anything, suite.caseId.String()).Return(caseData, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(nil)
-	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId.String(), false).Return([]models.Inbox{}, nil)
+	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId, false).Return([]models.Inbox{}, nil)
 	suite.enforceSecurity.On("ReadOrUpdateCase", mock.Anything, mock.Anything).Return(nil)
 	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
 		suite.matchId, models.ScreeningMatchStatusNoHit, mock.Anything).Return(updatedMatch, nil)
@@ -458,7 +458,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 		suite.screeningId).Return(continuousScreeningWithMatches, nil)
 	suite.repository.On("GetCaseById", mock.Anything, mock.Anything, suite.caseId.String()).Return(caseData, nil)
 	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(nil)
-	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId.String(), false).Return([]models.Inbox{}, nil)
+	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId, false).Return([]models.Inbox{}, nil)
 	suite.enforceSecurity.On("ReadOrUpdateCase", mock.Anything, mock.Anything).Return(nil)
 	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
 		suite.matchId, models.ScreeningMatchStatusNoHit, mock.Anything).Return(updatedMatch, nil)
@@ -767,11 +767,11 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches() {
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything, stableId).
 		Return(config, nil)
 
-	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId, false, false).
 		Return(dataModel, nil)
 
 	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
-		suite.orgId.String(), mock.Anything, mock.Anything).
+		suite.orgId, mock.Anything, mock.Anything).
 		Return([]models.ScreeningWhitelist{}, nil)
 
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table, "test-object-id", mock.Anything).
@@ -956,11 +956,11 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NoNewMat
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything, stableId).
 		Return(config, nil)
 
-	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId.String(), false, false).
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId, false, false).
 		Return(dataModel, nil)
 
 	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
-		suite.orgId.String(), mock.Anything, mock.Anything).
+		suite.orgId, mock.Anything, mock.Anything).
 		Return([]models.ScreeningWhitelist{}, nil)
 
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table, "test-object-id", mock.Anything).

@@ -17,7 +17,7 @@ import (
 
 type ApiKeyRepository interface {
 	GetApiKeyById(ctx context.Context, exec repositories.Executor, apiKeyId string) (models.ApiKey, error)
-	ListApiKeys(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.ApiKey, error)
+	ListApiKeys(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) ([]models.ApiKey, error)
 	CreateApiKey(ctx context.Context, exec repositories.Executor, apiKey models.ApiKey) error
 	SoftDeleteApiKey(ctx context.Context, exec repositories.Executor, apiKeyId string) error
 }
@@ -36,7 +36,7 @@ type ApiKeyUseCase struct {
 
 func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context, organizationId uuid.UUID) ([]models.ApiKey, error) {
 	apiKeys, err := usecase.apiKeyRepository.ListApiKeys(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId.String())
+		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return []models.ApiKey{}, err
 	}

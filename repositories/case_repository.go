@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -466,7 +467,9 @@ func (repo *MarbleDbRepository) GetCasesFileByCaseId(ctx context.Context, exec E
 	)
 }
 
-func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec Executor, orgId, pivotValue string) ([]models.Case, error) {
+func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec Executor,
+	orgId uuid.UUID, pivotValue string,
+) ([]models.Case, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -486,8 +489,11 @@ func (repo *MarbleDbRepository) GetCasesWithPivotValue(ctx context.Context, exec
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptCase)
 }
 
-func (repo *MarbleDbRepository) GetContinuousScreeningCasesWithObjectAttr(ctx context.Context, exec Executor,
-	orgId, objectType, objectId string,
+func (repo *MarbleDbRepository) GetContinuousScreeningCasesWithObjectAttr(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	objectType, objectId string,
 ) ([]models.Case, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

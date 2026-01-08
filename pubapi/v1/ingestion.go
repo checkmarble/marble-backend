@@ -40,7 +40,7 @@ func HandleIngestObject(uc usecases.Usecases, batch bool) gin.HandlerFunc {
 		}
 
 		partial := c.Request.Method == http.MethodPatch
-		ingestedCount, err := f(ctx, orgId.String(), objectType, object, payload_parser.WithAllowedPatch(partial), payload_parser.DisallowUnknownFields())
+		ingestedCount, err := f(ctx, orgId, objectType, object, payload_parser.WithAllowedPatch(partial), payload_parser.DisallowUnknownFields())
 
 		if err != nil {
 			var validationError models.IngestionValidationErrors

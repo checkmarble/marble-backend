@@ -14,9 +14,9 @@ type UserRepository interface {
 	CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error)
 	UpdateUser(ctx context.Context, exec Executor, updateUser models.UpdateUser) error
 	DeleteUser(ctx context.Context, exec Executor, userID models.UserId) error
-	DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId string) error
+	DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID) error
 	UserById(ctx context.Context, exec Executor, userId string) (models.User, error)
-	ListUsers(ctx context.Context, exec Executor, organizationIDFilter *string) ([]models.User, error)
+	ListUsers(ctx context.Context, exec Executor, organizationId *uuid.UUID) ([]models.User, error)
 	UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error)
 	HasUsers(ctx context.Context, exec Executor) (bool, error)
 }
@@ -26,12 +26,6 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return "", err
-	}
-
-	var organizationId *string
-	if createUser.OrganizationId != uuid.Nil {
-		orgIdStr := createUser.OrganizationId.String()
-		organizationId = &orgIdStr
 	}
 
 	err := ExecBuilder(
@@ -51,7 +45,7 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 				userId,
 				createUser.Email,
 				int(createUser.Role),
-				organizationId,
+				createUser.OrganizationId,
 				createUser.PartnerId,
 				createUser.FirstName,
 				createUser.LastName,
@@ -100,7 +94,7 @@ func (repo *MarbleDbRepository) DeleteUser(ctx context.Context, exec Executor, u
 	return err
 }
 
-func (repo *MarbleDbRepository) DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId string) error {
+func (repo *MarbleDbRepository) DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -131,7 +125,7 @@ func (repo *MarbleDbRepository) UserById(ctx context.Context, exec Executor, use
 	)
 }
 
-func (repo *MarbleDbRepository) ListUsers(ctx context.Context, exec Executor, organizationIDFilter *string) ([]models.User, error) {
+func (repo *MarbleDbRepository) ListUsers(ctx context.Context, exec Executor, orgId *uuid.UUID) ([]models.User, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -142,8 +136,8 @@ func (repo *MarbleDbRepository) ListUsers(ctx context.Context, exec Executor, or
 		Where("deleted_at IS NULL").
 		OrderBy("id")
 
-	if organizationIDFilter != nil {
-		query = query.Where(squirrel.Eq{"organization_id": *organizationIDFilter})
+	if orgId != nil {
+		query = query.Where(squirrel.Eq{"organization_id": *orgId})
 	}
 
 	return SqlToListOfModels(

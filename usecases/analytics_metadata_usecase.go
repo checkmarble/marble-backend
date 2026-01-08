@@ -42,7 +42,7 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context,
 
 	inner := squirrel.Select("*").From(uc.analyticsFactory.BuildTarget("decisions",
 		scenario.OrganizationId, scenario.TriggerObjectType))
-	inner = uc.analyticsFactory.BuildPushdownFilter(inner, uc.enforceSecurity.OrgId().String(),
+	inner = uc.analyticsFactory.BuildPushdownFilter(inner, uc.enforceSecurity.OrgId(),
 		req.Start, req.End, scenario.TriggerObjectType)
 
 	innerSql, innerArgs, _ := inner.ToSql()

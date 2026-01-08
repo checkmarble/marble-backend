@@ -118,7 +118,7 @@ type IngestionUsecaseTestSuite struct {
 	continuousScreeningClientRepository *mocks.ContinuousScreeningClientDbRepository
 	taskQueueRepository                 *mocks.TaskQueueRepository
 
-	organizationId string
+	organizationId uuid.UUID
 	dataModel      models.DataModel
 
 	ctx context.Context
@@ -145,7 +145,7 @@ func (suite *IngestionUsecaseTestSuite) SetupTest() {
 	suite.continuousScreeningClientRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
 
-	suite.organizationId = "org_id"
+	suite.organizationId = uuid.MustParse("12345678-1234-5678-9012-345678901234")
 	suite.dataModel = models.DataModel{
 		Tables: map[string]models.Table{
 			"transactions": {
@@ -595,7 +595,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 
 	// Setup task queue mock to expect the continuous screening task to be enqueued for only the 2 monitored objects
 	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "org_id", "transactions",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions",
 		mock.MatchedBy(func(ids []uuid.UUID) bool {
 			return len(ids) == 2 && ((ids[0] == monitoringId1 && ids[1] == monitoringId3) ||
 				(ids[0] == monitoringId3 && ids[1] == monitoringId1))
@@ -603,7 +603,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		Return(nil)
 
 	suite.taskQueueRepository.On("EnqueueContinuousScreeningEvaluateNeedTask",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), "org_id", "transactions",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, "transactions",
 		[]string{"1", "2", "3", "4", "5"}).
 		Return(nil)
 

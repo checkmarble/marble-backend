@@ -27,7 +27,7 @@ func (m *ContinuousScreeningRepository) GetContinuousScreeningConfig(
 func (m *ContinuousScreeningRepository) GetContinuousScreeningConfigsByOrgId(
 	ctx context.Context,
 	exec repositories.Executor,
-	orgId string,
+	orgId uuid.UUID,
 ) ([]models.ContinuousScreeningConfig, error) {
 	args := m.Called(ctx, exec, orgId)
 	return args.Get(0).([]models.ContinuousScreeningConfig), args.Error(1)
@@ -118,7 +118,7 @@ func (m *ContinuousScreeningRepository) GetDataModelTable(
 func (m *ContinuousScreeningRepository) GetDataModel(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationID string,
+	organizationID uuid.UUID,
 	fetchEnumValues bool,
 	useCache bool,
 ) (models.DataModel, error) {
@@ -221,7 +221,7 @@ func (m *ContinuousScreeningRepository) UpdateContinuousScreeningMatchStatusByBa
 func (m *ContinuousScreeningRepository) SearchScreeningMatchWhitelist(
 	ctx context.Context,
 	exec repositories.Executor,
-	orgId string,
+	orgId uuid.UUID,
 	counterpartyId, entityId *string,
 ) ([]models.ScreeningWhitelist, error) {
 	args := m.Called(ctx, exec, orgId, counterpartyId, entityId)
@@ -240,7 +240,7 @@ func (m *ContinuousScreeningRepository) GetInboxById(
 func (m *ContinuousScreeningRepository) ListInboxes(
 	ctx context.Context,
 	exec repositories.Executor,
-	orgId string,
+	orgId uuid.UUID,
 	withCaseCount bool,
 ) ([]models.Inbox, error) {
 	args := m.Called(ctx, exec, orgId, withCaseCount)
@@ -268,7 +268,7 @@ func (m *ContinuousScreeningRepository) CreateCaseEvent(
 func (m *ContinuousScreeningRepository) AddScreeningMatchWhitelist(
 	ctx context.Context,
 	exec repositories.Executor,
-	orgId string,
+	orgId uuid.UUID,
 	counterpartyId string,
 	entityId string,
 	reviewerId *models.UserId,

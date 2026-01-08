@@ -43,13 +43,13 @@ type DecisionUsecaseRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		decision models.DecisionWithRuleExecutions,
-		organizationId string,
+		organizationId uuid.UUID,
 		newDecisionId string,
 		dbFields map[string]any) error
 	DecisionsOfOrganization(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		paginationAndSorting models.PaginationAndSorting,
 		filters models.DecisionFilters,
 	) ([]models.Decision, error)
@@ -58,10 +58,11 @@ type DecisionUsecaseRepository interface {
 
 	GetSummarizedDecisionStatForTestRun(ctx context.Context, exec repositories.Executor,
 		testRunId string) ([]models.DecisionsByVersionByOutcome, error)
-	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
+	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor,
+		organizationId uuid.UUID) ([]models.Scenario, error)
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
 
-	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]analytics.Settings, error)
+	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[string]analytics.Settings, error)
 }
 
 type ScenarioEvaluator interface {
@@ -109,7 +110,7 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	}
 
 	if err := usecase.offloadedReader.MutateWithOffloadedDecisionRules(ctx,
-		decision.OrganizationId.String(), decision); err != nil {
+		decision.OrganizationId, decision); err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
@@ -150,7 +151,7 @@ func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Contex
 
 func (usecase *DecisionUsecase) ListDecisions(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	paginationAndSorting models.PaginationAndSorting,
 	filters dto.DecisionFilters,
 ) (models.DecisionListPage, error) {
@@ -228,7 +229,7 @@ func (usecase *DecisionUsecase) ListDecisions(
 
 func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenarioIds []string, organizationId uuid.UUID) error {
 	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId.String())
+		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return err
 	}
@@ -240,7 +241,7 @@ func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenari
 	for _, scenarioId := range scenarioIds {
 		if !slices.Contains(organizationScenarioIds, scenarioId) {
 			return fmt.Errorf("scenario id %s not found in organization %s: %w",
-				scenarioId, organizationId.String(), models.BadParameterError)
+				scenarioId, organizationId, models.BadParameterError)
 		}
 	}
 	return nil
@@ -258,7 +259,7 @@ func (usecase *DecisionUsecase) validateOutcomes(filtersOutcomes []string) ([]mo
 }
 
 func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context,
-	filtersTriggerObjects []string, organizationId string,
+	filtersTriggerObjects []string, organizationId uuid.UUID,
 ) ([]string, error) {
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId, true, true)
@@ -325,7 +326,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 		return false, models.DecisionWithRuleExecutions{}, err
 	}
 
-	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, input.OrganizationId, nil, true)
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec,
+		input.OrganizationId, nil, true)
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{}, err
 	}
@@ -401,7 +403,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			webhookEventId := uuid.NewString()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
-				OrganizationId: decision.OrganizationId.String(),
+				OrganizationId: decision.OrganizationId,
 				EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId.String()),
 			})
 			if err != nil {
@@ -413,7 +415,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		err = usecase.taskQueueRepository.EnqueueDecisionWorkflowTask(
 			ctx,
 			tx,
-			decision.OrganizationId.String(),
+			decision.OrganizationId,
 			decision.DecisionId.String(),
 		)
 		if err != nil {
@@ -476,7 +478,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions",
 		trace.WithAttributes(attribute.String("trigger_object_table", input.TriggerObjectTable)),
-		trace.WithAttributes(attribute.String("org_id", input.OrganizationId)),
+		trace.WithAttributes(attribute.String("org_id", input.OrganizationId.String())),
 	)
 	defer span.End()
 
@@ -496,7 +498,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		return nil, 0, err
 	}
 
-	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, input.OrganizationId, nil, true)
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec,
+		input.OrganizationId, nil, true)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -554,7 +557,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				"scenario_id", scenario.Id,
 				"since_start", sinceStart.Milliseconds(),
 			)
-			usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable, evaluationParameters, scenario, nil)
+			usecase.executeTestRun(ctx, input.OrganizationId,
+				input.TriggerObjectTable, evaluationParameters, scenario, nil)
 		default:
 			decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
 			items = append(items, decisionAndScenario{
@@ -621,7 +625,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			webhookEventId := uuid.NewString()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
-				OrganizationId: item.decision.OrganizationId.String(),
+				OrganizationId: item.decision.OrganizationId,
 				EventContent:   models.NewWebhookEventDecisionCreated(item.decision.DecisionId.String()),
 			})
 			if err != nil {
@@ -632,7 +636,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			err = usecase.taskQueueRepository.EnqueueDecisionWorkflowTask(
 				ctx,
 				tx,
-				item.decision.OrganizationId.String(),
+				item.decision.OrganizationId,
 				item.decision.DecisionId.String(),
 			)
 			if err != nil {
@@ -681,7 +685,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 func (usecase *DecisionUsecase) executeTestRun(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	triggerObjectTable string,
 	evaluationParameters evaluate_scenario.ScenarioEvaluationParameters,
 	scenario models.Scenario,
@@ -717,7 +721,7 @@ func (usecase *DecisionUsecase) executeTestRun(
 // used in different contexts, so allow different cases of input: pass client object or raw payload
 func (usecase DecisionUsecase) validatePayload(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	triggerObjectTable string,
 	clientObject *models.ClientObject,
 	rawPayload json.RawMessage,

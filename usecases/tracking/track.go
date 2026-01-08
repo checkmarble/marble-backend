@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 
 	"github.com/segmentio/analytics-go/v3"
 )
@@ -73,7 +74,7 @@ func Identify(ctx context.Context, userId models.UserId, traits map[string]inter
 	}
 }
 
-func Group(ctx context.Context, userId models.UserId, organizationId string, traits map[string]interface{}) {
+func Group(ctx context.Context, userId models.UserId, organizationId uuid.UUID, traits map[string]interface{}) {
 	segmentClient, found := utils.SegmentClientFromContext(ctx)
 	if !found || segmentClient == nil {
 		return
@@ -86,7 +87,7 @@ func Group(ctx context.Context, userId models.UserId, organizationId string, tra
 
 	err := segmentClient.Enqueue(analytics.Group{
 		UserId:  string(userId),
-		GroupId: organizationId,
+		GroupId: organizationId.String(),
 		Traits:  segmentTraits,
 	})
 	if err != nil {

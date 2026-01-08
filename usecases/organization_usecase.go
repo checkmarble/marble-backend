@@ -18,7 +18,7 @@ import (
 type OrganizationUsecaseFeatureAccessReader interface {
 	GetOrganizationFeatureAccess(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		user *models.UserId,
 	) (models.OrganizationFeatureAccess, error)
 }
@@ -78,7 +78,7 @@ func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organiz
 		return models.Organization{}, err
 	}
 	return usecase.organizationRepository.GetOrganizationById(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId.String())
+		usecase.executorFactory.NewExecutor(), organizationId)
 }
 
 func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
@@ -103,7 +103,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.Organization, error) {
-		org, err := usecase.organizationRepository.GetOrganizationById(ctx, tx, organization.Id.String())
+		org, err := usecase.organizationRepository.GetOrganizationById(ctx, tx, organization.Id)
 		if err != nil {
 			return models.Organization{}, err
 		}
@@ -116,7 +116,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 		if err != nil {
 			return models.Organization{}, err
 		}
-		return usecase.organizationRepository.GetOrganizationById(ctx, tx, organization.Id.String())
+		return usecase.organizationRepository.GetOrganizationById(ctx, tx, organization.Id)
 	})
 }
 
@@ -126,12 +126,12 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 	}
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		// delete all users
-		err := usecase.userRepository.DeleteUsersOfOrganization(ctx, tx, organizationId.String())
+		err := usecase.userRepository.DeleteUsersOfOrganization(ctx, tx, organizationId)
 		if err != nil {
 			return err
 		}
 
-		err = usecase.organizationRepository.DeleteOrganization(ctx, tx, organizationId.String())
+		err = usecase.organizationRepository.DeleteOrganization(ctx, tx, organizationId)
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 
 func (usecase *OrganizationUseCase) GetOrganizationFeatureAccess(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	userId *models.UserId,
 ) (models.OrganizationFeatureAccess, error) {
 	return usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId, userId)
@@ -182,7 +182,7 @@ func (usecase OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context
 	orgId := usecase.enforceSecurity.OrgId()
 
 	org, err := usecase.organizationRepository.GetOrganizationById(ctx,
-		usecase.executorFactory.NewExecutor(), orgId.String())
+		usecase.executorFactory.NewExecutor(), orgId)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (usecase OrganizationUseCase) UpdateOrganizationSubnets(ctx context.Context
 	}
 
 	subnets, err = usecase.organizationRepository.UpdateOrganizationAllowedNetworks(ctx,
-		usecase.executorFactory.NewExecutor(), orgId.String(), subnets)
+		usecase.executorFactory.NewExecutor(), orgId, subnets)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not update whitelisted subnets")
 	}

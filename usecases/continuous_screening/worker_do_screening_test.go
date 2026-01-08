@@ -148,7 +148,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
 			ObjectType:   suite.objectType,
-			OrgId:        suite.orgId.String(),
+			OrgId:        suite.orgId,
 			TriggerType:  models.ContinuousScreeningTriggerTypeObjectUpdated,
 			MonitoringId: suite.monitoringId,
 		},
@@ -268,7 +268,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
 			ObjectType:   suite.objectType,
-			OrgId:        suite.orgId.String(),
+			OrgId:        suite.orgId,
 			TriggerType:  models.ContinuousScreeningTriggerTypeObjectUpdated,
 			MonitoringId: suite.monitoringId,
 		},
@@ -364,7 +364,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
 			ObjectType:   suite.objectType,
-			OrgId:        suite.orgId.String(),
+			OrgId:        suite.orgId,
 			TriggerType:  models.ContinuousScreeningTriggerTypeObjectUpdated,
 			MonitoringId: suite.monitoringId,
 		},
@@ -467,7 +467,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectAdded_CallCaseCreation()
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{
 			ObjectType:   suite.objectType,
-			OrgId:        suite.orgId.String(),
+			OrgId:        suite.orgId,
 			TriggerType:  models.ContinuousScreeningTriggerTypeObjectAdded,
 			MonitoringId: suite.monitoringId,
 		},
