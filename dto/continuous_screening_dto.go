@@ -15,11 +15,11 @@ type ContinuousScreeningDto struct {
 	ContinuousScreeningConfigId       uuid.UUID                     `json:"continuous_screening_config_id"`
 	ContinuousScreeningConfigStableId uuid.UUID                     `json:"continuous_screening_config_stable_id"`
 	CaseId                            *uuid.UUID                    `json:"case_id"`
-	ObjectType                        string                        `json:"object_type"`
-	ObjectId                          string                        `json:"object_id"`
-	ObjectInternalId                  uuid.UUID                     `json:"object_internal_id"`
-	OpenSanctionEntityId              string                        `json:"opensanction_entity_id"`      //nolint:tagliatelle
-	OpenSanctionEntityPayload         json.RawMessage               `json:"opensanction_entity_payload"` //nolint:tagliatelle
+	ObjectType                        *string                       `json:"object_type,omitempty"`
+	ObjectId                          *string                       `json:"object_id,omitempty"`
+	ObjectInternalId                  *uuid.UUID                    `json:"object_internal_id,omitempty"`
+	OpenSanctionEntityId              *string                       `json:"opensanction_entity_id,omitempty"`      //nolint:tagliatelle
+	OpenSanctionEntityPayload         json.RawMessage               `json:"opensanction_entity_payload,omitempty"` //nolint:tagliatelle
 	Status                            string                        `json:"status"`
 	TriggerType                       string                        `json:"trigger_type"`
 	Request                           ScreeningRequestDto           `json:"request"`

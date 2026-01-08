@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
@@ -170,8 +171,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			OrgId:                             uuid.New(),
 			ContinuousScreeningConfigId:       suite.configId,
 			ContinuousScreeningConfigStableId: suite.configStableId,
-			ObjectType:                        suite.objectType,
-			ObjectId:                          suite.objectId,
+			ObjectType:                        utils.Ptr(suite.objectType),
+			ObjectId:                          utils.Ptr(suite.objectId),
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)
@@ -277,8 +278,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			OrgId:                             uuid.New(),
 			ContinuousScreeningConfigId:       suite.configId,
 			ContinuousScreeningConfigStableId: suite.configStableId,
-			ObjectType:                        suite.objectType,
-			ObjectId:                          suite.objectId,
+			ObjectType:                        utils.Ptr(suite.objectType),
+			ObjectId:                          utils.Ptr(suite.objectId),
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)
@@ -551,8 +552,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			OrgId:                             uuid.New(),
 			ContinuousScreeningConfigId:       suite.configId,
 			ContinuousScreeningConfigStableId: suite.configStableId,
-			ObjectType:                        suite.objectType,
-			ObjectId:                          suite.objectId,
+			ObjectType:                        utils.Ptr(suite.objectType),
+			ObjectId:                          utils.Ptr(suite.objectId),
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)
@@ -761,8 +762,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			OrgId:                             uuid.New(),
 			ContinuousScreeningConfigId:       suite.configId,
 			ContinuousScreeningConfigStableId: suite.configStableId,
-			ObjectType:                        suite.objectType,
-			ObjectId:                          suite.objectId,
+			ObjectType:                        utils.Ptr(suite.objectType),
+			ObjectId:                          utils.Ptr(suite.objectId),
 			Status:                            models.ScreeningStatusInReview,
 		},
 		Matches: []models.ContinuousScreeningMatch{
@@ -893,8 +894,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			OrgId:                             uuid.New(),
 			ContinuousScreeningConfigId:       suite.configId,
 			ContinuousScreeningConfigStableId: suite.configStableId,
-			ObjectType:                        suite.objectType,
-			ObjectId:                          suite.objectId,
+			ObjectType:                        utils.Ptr(suite.objectType),
+			ObjectId:                          utils.Ptr(suite.objectId),
 			Status:                            models.ScreeningStatusInReview,
 		},
 		Matches: []models.ContinuousScreeningMatch{
@@ -1464,8 +1465,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			OrgId:                             suite.orgId,
 			ContinuousScreeningConfigId:       suite.configId,
 			ContinuousScreeningConfigStableId: suite.configStableId,
-			ObjectType:                        suite.objectType,
-			ObjectId:                          suite.objectId,
+			ObjectType:                        utils.Ptr(suite.objectType),
+			ObjectId:                          utils.Ptr(suite.objectId),
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)
@@ -1677,8 +1678,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			OrgId:                             suite.orgId,
 			ContinuousScreeningConfigId:       suite.configId,
 			ContinuousScreeningConfigStableId: suite.configStableId,
-			ObjectType:                        suite.objectType,
-			ObjectId:                          suite.objectId,
+			ObjectType:                        utils.Ptr(suite.objectType),
+			ObjectId:                          utils.Ptr(suite.objectId),
 		},
 		Matches: []models.ContinuousScreeningMatch{},
 	}, nil)

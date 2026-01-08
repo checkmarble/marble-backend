@@ -197,13 +197,18 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 		}
 
 		if update.Status == models.ScreeningMatchStatusNoHit && update.Whitelist {
+			if continuousScreeningWithMatches.TriggerType ==
+				// TODO: Change the ID in case of indirect screening
+				models.ContinuousScreeningTriggerTypeDatasetUpdated {
+				return nil
+			}
 			if err := uc.createWhitelist(
 				ctx,
 				tx,
 				continuousScreeningWithMatches.OrgId.String(),
 				typedObjectId(
-					continuousScreeningWithMatches.ObjectType,
-					continuousScreeningWithMatches.ObjectId,
+					*continuousScreeningWithMatches.ObjectType,
+					*continuousScreeningWithMatches.ObjectId,
 				),
 				continuousScreeningMatch.OpenSanctionEntityId,
 				reviewerId,
@@ -384,6 +389,14 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			return err
 		}
 
+		// TODO: Deal with indirect screening, ObjectType and ObjectId are nil
+		if continuousScreening.TriggerType == models.ContinuousScreeningTriggerTypeDatasetUpdated {
+			return errors.Wrap(
+				models.UnprocessableEntityError,
+				"continuous screening is a dataset updated screening, loading more results is not supported",
+			)
+		}
+
 		clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, continuousScreening.OrgId.String())
 		if err != nil {
 			return err
@@ -415,13 +428,13 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 		}
 
 		// Have the data model table and mapping
-		table, mapping, err := uc.GetDataModelTableAndMapping(ctx, tx, config, continuousScreening.ObjectType)
+		table, mapping, err := uc.GetDataModelTableAndMapping(ctx, tx, config, *continuousScreening.ObjectType)
 		if err != nil {
 			return err
 		}
 
 		// Fetch the ingested Data
-		ingestedObject, _, err := uc.GetIngestedObject(ctx, clientDbExec, table, continuousScreening.ObjectId)
+		ingestedObject, _, err := uc.GetIngestedObject(ctx, clientDbExec, table, *continuousScreening.ObjectId)
 		if err != nil {
 			return err
 		}
@@ -436,8 +449,8 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			ingestedObject,
 			mapping,
 			config,
-			continuousScreening.ObjectType,
-			continuousScreening.ObjectId,
+			*continuousScreening.ObjectType,
+			*continuousScreening.ObjectId,
 		)
 		if err != nil {
 			return err
