@@ -77,7 +77,7 @@ func handleGetOrganization(uc usecases.Usecases) func(c *gin.Context) {
 func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		organizationID := c.Param("organization_id")
+		organizationIdStr := c.Param("organization_id")
 		var data dto.UpdateOrganizationBodyDto
 		if err := c.ShouldBindJSON(&data); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -85,9 +85,13 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		orgIdUUID, _ := uuid.Parse(organizationID)
+		orgId, err := uuid.Parse(organizationIdStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
-			Id:                      orgIdUUID,
+			Id:                      orgId,
 			DefaultScenarioTimezone: data.DefaultScenarioTimezone,
 			ScreeningConfig: models.OrganizationOpenSanctionsConfigUpdateInput{
 				MatchThreshold: data.SanctionsThreshold,
@@ -108,8 +112,8 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 func handleDeleteOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		organizationID := c.Param("organization_id")
-		orgId, err := uuid.Parse(organizationID)
+		organizationIdStr := c.Param("organization_id")
+		orgId, err := uuid.Parse(organizationIdStr)
 		if err != nil {
 			c.Status(http.StatusBadRequest)
 			return
