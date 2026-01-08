@@ -45,3 +45,27 @@ func GetAdvisoryLock(ctx context.Context, exec Executor, key string) (func() err
 		return err
 	}, nil
 }
+
+// GetTryAdvisoryLock attempts to acquire a session-level advisory lock without blocking.
+// Returns an unlock function, a boolean indicating if the lock was acquired, and an error if any.
+func GetTryAdvisoryLock(ctx context.Context, exec Executor, key string) (func() error, bool, error) {
+	keyInt, err := hashStringToBigInt(key)
+	if err != nil {
+		return nil, false, err
+	}
+
+	var acquired bool
+	err = exec.QueryRow(ctx, "SELECT pg_try_advisory_lock($1)", keyInt).Scan(&acquired)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if !acquired {
+		return nil, false, nil
+	}
+
+	return func() error {
+		_, err := exec.Exec(ctx, "SELECT pg_advisory_unlock($1)", keyInt)
+		return err
+	}, true, nil
+}

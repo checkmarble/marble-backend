@@ -196,6 +196,29 @@ func (g ExecutorGetter) GetExecutor(
 	}, nil
 }
 
+func (g ExecutorGetter) GetPinnedExecutor(
+	ctx context.Context,
+	typ models.DatabaseSchemaType,
+	org *models.Organization,
+) (Executor, func(), error) {
+	pool, databaseSchema, err := g.getPoolAndSchema(ctx, typ, org)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "Error getting pool and schema")
+	}
+
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "Error acquiring connection from pool")
+	}
+
+	return &PgExecutor{
+			databaseSchema: databaseSchema,
+			exec:           conn,
+		}, func() {
+			conn.Release()
+		}, nil
+}
+
 func validateClientDbExecutor(exec databaseSchemaGetter) error {
 	if exec == nil {
 		return errors.New("Cannot use nil executor for client database")

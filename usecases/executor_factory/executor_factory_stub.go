@@ -40,6 +40,12 @@ func (stub ExecutorFactoryStub) NewExecutor() repositories.Executor {
 	}
 }
 
+func (stub ExecutorFactoryStub) NewPinnedExecutor(ctx context.Context) (repositories.Executor, func(), error) {
+	return PgExecutorStub{
+		stub.Mock,
+	}, func() {}, nil
+}
+
 func (stub PgExecutorStub) DatabaseSchema() models.DatabaseSchema {
 	return models.DatabaseSchema{}
 }

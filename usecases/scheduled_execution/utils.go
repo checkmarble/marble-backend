@@ -8,7 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func addStrideDelay[T river.JobArgs](job *river.Job[T], interval time.Duration) error {
+func AddStrideDelay[T river.JobArgs](job *river.Job[T], interval time.Duration) error {
 	if gjson.GetBytes(job.Metadata, "snoozes").Int() > 0 {
 		return nil
 	}
