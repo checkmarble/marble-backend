@@ -555,7 +555,10 @@ func singleJobCreate[A river.JobArgs](ctx context.Context, argsJson string) *riv
 	}
 
 	return &river.Job[A]{
-		JobRow: &rivertype.JobRow{CreatedAt: time.Now()},
-		Args:   args,
+		JobRow: &rivertype.JobRow{
+			CreatedAt: time.Now(),
+			Metadata:  []byte(`{"manual": true}`),
+		},
+		Args: args,
 	}
 }
