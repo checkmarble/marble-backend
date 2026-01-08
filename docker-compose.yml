@@ -49,6 +49,7 @@ services:
       YENTE_INDEX_TYPE: elasticsearch
       YENTE_INDEX_URL: "http://es:9200"
       YENTE_UPDATE_TOKEN: ""
+      MARBLE_SCREENING_INDEXER_TOKEN: "random-token"
   worker-monitor:
     container_name: worker-monitor
     image: ghcr.io/riverqueue/riverui:latest

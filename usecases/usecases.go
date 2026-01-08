@@ -40,8 +40,10 @@ type Usecases struct {
 	metricsCollectionConfig     infra.MetricCollectionConfig
 	firebaseAdmin               idp.Adminer
 	aiAgentConfig               infra.AIAgentConfiguration
-	analyticsConfig             infra.AnalyticsConfig
-	datasetDeltafileBucketUrl   string
+	analyticsConfig                      infra.AnalyticsConfig
+	datasetDeltafileBucketUrl            string
+	continuousScreeningEntitiesBucketUrl string
+	marbleApiUrl                         string
 }
 
 type Option func(*options)
@@ -164,6 +166,18 @@ func WithDatasetDeltafileBucketUrl(bucket string) Option {
 	}
 }
 
+func WithContinuousScreeningEntitiesBucketUrl(bucket string) Option {
+	return func(o *options) {
+		o.continuousScreeningEntitiesBucketUrl = bucket
+	}
+}
+
+func WithMarbleApiUrl(url string) Option {
+	return func(o *options) {
+		o.marbleApiUrl = url
+	}
+}
+
 type options struct {
 	appName                     string
 	apiVersion                  string
@@ -180,9 +194,11 @@ type options struct {
 	hasNameRecognitionSetup     bool
 	metricsCollectionConfig     infra.MetricCollectionConfig
 	firebaseClient              idp.Adminer
-	aiAgentConfig               infra.AIAgentConfiguration
-	analyticsConfig             infra.AnalyticsConfig
-	datasetDeltafileBucketUrl   string
+	aiAgentConfig                        infra.AIAgentConfiguration
+	analyticsConfig                      infra.AnalyticsConfig
+	datasetDeltafileBucketUrl            string
+	continuousScreeningEntitiesBucketUrl string
+	marbleApiUrl                         string
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -207,8 +223,10 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		metricsCollectionConfig:     o.metricsCollectionConfig,
 		firebaseAdmin:               o.firebaseClient,
 		aiAgentConfig:               o.aiAgentConfig,
-		analyticsConfig:             o.analyticsConfig,
-		datasetDeltafileBucketUrl:   o.datasetDeltafileBucketUrl,
+		analyticsConfig:                      o.analyticsConfig,
+		datasetDeltafileBucketUrl:            o.datasetDeltafileBucketUrl,
+		continuousScreeningEntitiesBucketUrl: o.continuousScreeningEntitiesBucketUrl,
+		marbleApiUrl:                         o.marbleApiUrl,
 	}
 }
 
@@ -452,6 +470,16 @@ func (usecases *Usecases) NewSendBillingEventWorker() *billing.SendLagoBillingEv
 	)
 }
 
+func (usecases *Usecases) NewContinuousScreeningManifestUsecase() *continuous_screening.ContinuousScreeningManifestUsecase {
+	return continuous_screening.NewContinuousScreeningManifestUsecase(
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.BlobRepository,
+		usecases.marbleApiUrl,
+		usecases.continuousScreeningEntitiesBucketUrl,
+	)
+}
+
 func (usecases *Usecases) NewContinuousScreeningScanDatasetUpdatesWorker() *continuous_screening.ScanDatasetUpdatesWorker {
 	return continuous_screening.NewScanDatasetUpdatesWorker(
 		usecases.NewExecutorFactory(),
@@ -471,5 +499,16 @@ func (usecases *Usecases) NewContinuousScreeningApplyDeltaFileWorker() *continuo
 		usecases.Repositories.BlobRepository,
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.datasetDeltafileBucketUrl,
+	)
+}
+
+func (usecases *Usecases) NewContinuousScreeningCreateFullDatasetWorker() *continuous_screening.CreateFullDatasetWorker {
+	return continuous_screening.NewCreateFullDatasetWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.Repositories.BlobRepository,
+		usecases.continuousScreeningEntitiesBucketUrl,
 	)
 }

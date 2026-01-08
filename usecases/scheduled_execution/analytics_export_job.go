@@ -92,7 +92,7 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 		return nil
 	}
 
-	if err := addStrideDelay(job, w.config.JobInterval); err != nil {
+	if err := AddStrideDelay(job, w.config.JobInterval); err != nil {
 		return err
 	}
 

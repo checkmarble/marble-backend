@@ -101,6 +101,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		enableTracing:               utils.GetEnv("ENABLE_TRACING", false),
 		datasetDeltafileBucketUrl:   utils.GetEnv("DATASET_DELTAFILE_BUCKET_URL", ""),
 		ScanDatasetUpdatesInterval:  utils.GetEnvDuration("SCAN_DATASET_UPDATES_INTERVAL", 24*time.Hour),
+		CreateFullDatasetInterval:   utils.GetEnvDuration("CREATE_FULL_DATASET_INTERVAL", 24*time.Hour),
+		continuousScreeningEntitiesBucketUrl: utils.GetEnv(
+			"CONTINUOUS_SCREENING_ENTITIES_BUCKET_URL", ""),
 	}
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
@@ -302,6 +305,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
 		usecases.WithDatasetDeltafileBucketUrl(workerConfig.datasetDeltafileBucketUrl),
+		usecases.WithContinuousScreeningEntitiesBucketUrl(workerConfig.continuousScreeningEntitiesBucketUrl),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 
@@ -341,6 +345,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 	river.AddWorker(workers, uc.NewContinuousScreeningScanDatasetUpdatesWorker())
 	river.AddWorker(workers, uc.NewContinuousScreeningApplyDeltaFileWorker())
+	river.AddWorker(workers, uc.NewContinuousScreeningCreateFullDatasetWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -379,7 +384,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	taskQueueWorker := uc.NewTaskQueueWorker(riverClient,
 		slices.Collect(maps.Keys(nonOrgQueues)),
 	)
-	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx)
+	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx, offloadingConfig, analyticsConfig)
 
 	// Start the cron jobs using the old entrypoint.
 	// This will progressively be replaced by the new task queue system.
@@ -535,6 +540,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "continuous_screening_apply_delta_file":
 		return uc.NewContinuousScreeningApplyDeltaFileWorker().Work(ctx,
 			singleJobCreate[models.ContinuousScreeningApplyDeltaFileArgs](ctx, jobArgs))
+	case "continuous_screening_create_full_dataset":
+		return uc.NewContinuousScreeningCreateFullDatasetWorker().Work(ctx,
+			singleJobCreate[models.ContinuousScreeningCreateFullDatasetArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}
@@ -555,7 +563,10 @@ func singleJobCreate[A river.JobArgs](ctx context.Context, argsJson string) *riv
 	}
 
 	return &river.Job[A]{
-		JobRow: &rivertype.JobRow{CreatedAt: time.Now()},
-		Args:   args,
+		JobRow: &rivertype.JobRow{
+			CreatedAt: time.Now(),
+			Metadata:  []byte(`{"manual": true}`),
+		},
+		Args: args,
 	}
 }

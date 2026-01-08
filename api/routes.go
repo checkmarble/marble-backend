@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	pubapiv1 "github.com/checkmarble/marble-backend/pubapi/v1"
 	uauth "github.com/checkmarble/marble-backend/usecases/auth"
@@ -87,6 +88,22 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 			auth.AuthedBy(utils.PublicApiKey, utils.ApiKeyAsBearerToken), uc)
 		pubapiv1.BetaRoutes(cfg, r.Group("/v1beta"),
 			auth.AuthedBy(utils.PublicApiKey, utils.ApiKeyAsBearerToken), uc)
+	}
+
+	// Screening Indexer endpoints
+	{
+		indexerGroup := r.Group("/" + models.ScreeningIndexerKey)
+
+		// Authenticated endpoints for downloading the actual dataset files
+		authedIndexerGroup := indexerGroup.Group("/",
+			auth.AuthedBy(utils.ScreeningIndexerToken))
+		authedIndexerGroup.GET("/catalogs", tom, handleGetContinuousScreeningCatalog(uc))
+		authedIndexerGroup.GET("/org/:org_id/delta", tom,
+			handleGetContinuousScreeningDeltaList(uc))
+		authedIndexerGroup.GET("/org/:org_id/delta/:delta_id",
+			handleGetContinuousScreeningDelta(uc))
+		authedIndexerGroup.GET("/org/:org_id/full", tom,
+			handleGetContinuousScreeningFull(uc))
 	}
 
 	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),

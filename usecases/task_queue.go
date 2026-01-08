@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
@@ -48,7 +49,11 @@ func NewTaskQueueWorker(
 	}
 }
 
-func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(ctx context.Context) {
+func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(
+	ctx context.Context,
+	offloadingConfig infra.OffloadingConfig,
+	analyticsConfig infra.AnalyticsConfig,
+) {
 	logger := utils.LoggerFromContext(ctx)
 	refreshOrgs := func() error {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -64,7 +69,7 @@ func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(ctx context.Context) {
 			}
 		}
 
-		err = w.addMissingQueues(ctx, queues)
+		err = w.addMissingQueues(ctx, queues, offloadingConfig, analyticsConfig)
 		if err != nil {
 			return err
 		}
@@ -91,7 +96,12 @@ func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(ctx context.Context) {
 	}
 }
 
-func (w *TaskQueueWorker) addMissingQueues(ctx context.Context, queues map[string]river.QueueConfig) error {
+func (w *TaskQueueWorker) addMissingQueues(
+	ctx context.Context,
+	queues map[string]river.QueueConfig,
+	offloadingConfig infra.OffloadingConfig,
+	analyticsConfig infra.AnalyticsConfig,
+) error {
 	logger := utils.LoggerFromContext(ctx)
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -108,18 +118,24 @@ func (w *TaskQueueWorker) addMissingQueues(ctx context.Context, queues map[strin
 
 	for orgId, q := range queues {
 		if _, ok := existingQueuesAsMap[orgId]; !ok {
-			err := w.riverClient.Queues().Add(orgId, q)
+			orgIdUuid, err := uuid.Parse(orgId)
 			if err != nil {
 				return err
 			}
-			orgIdUuid, err := uuid.Parse(orgId)
+			org, err := w.orgRepository.GetOrganizationById(ctx,
+				w.executorFactory.NewExecutor(), orgIdUuid)
+			if err != nil {
+				return err
+			}
+			err = w.riverClient.Queues().Add(orgId, q)
 			if err != nil {
 				return err
 			}
 			logger.InfoContext(ctx, fmt.Sprintf("Added queue for organization %s to task queue worker", orgId))
 
-			w.riverClient.PeriodicJobs().Add(scheduled_execution.NewIndexCleanupPeriodicJob(orgIdUuid))
-			w.riverClient.PeriodicJobs().Add(scheduled_execution.NewTestRunSummaryPeriodicJob(orgIdUuid))
+			for _, p := range listOrgPeriodics(org, offloadingConfig, analyticsConfig) {
+				w.riverClient.PeriodicJobs().Add(p)
+			}
 		}
 	}
 
@@ -163,10 +179,42 @@ func (w *TaskQueueWorker) removeQueuesFromMissingOrgs(ctx context.Context,
 	return nil
 }
 
-func QueuesFromOrgs(ctx context.Context, appName string,
+func listOrgPeriodics(
+	org models.Organization,
+	offloadingConfig infra.OffloadingConfig,
+	analyticsConfig infra.AnalyticsConfig,
+) []*river.PeriodicJob {
+	periodics := []*river.PeriodicJob{
+		scheduled_execution.NewIndexCleanupPeriodicJob(org.Id),
+		scheduled_execution.NewIndexDeletionPeriodicJob(org.Id),
+		scheduled_execution.NewTestRunSummaryPeriodicJob(org.Id),
+		continuous_screening.NewContinuousScreeningCreateFullDatasetPeriodicJob(
+			org.Id,
+			// TODO: Configurable per Org
+			24*time.Hour,
+		),
+	}
+	if offloadingConfig.Enabled {
+		// Undocumented debug setting to only enable offloading for a specific organization
+		if onlyOffloadOrg := os.Getenv("OFFLOADING_ONLY_ORG"); onlyOffloadOrg == "" || onlyOffloadOrg == org.Id.String() {
+			periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(org.Id, offloadingConfig.JobInterval))
+		}
+	}
+
+	if analyticsConfig.Enabled {
+		periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(org.Id, analyticsConfig.JobInterval))
+	}
+
+	return periodics
+}
+
+func QueuesFromOrgs(
+	ctx context.Context,
+	appName string,
 	orgsRepo repositories.OrganizationRepository,
 	execGetter repositories.ExecutorGetter,
-	offloadingConfig infra.OffloadingConfig, analyticsConfig infra.AnalyticsConfig,
+	offloadingConfig infra.OffloadingConfig,
+	analyticsConfig infra.AnalyticsConfig,
 ) (queues map[string]river.QueueConfig, periodics []*river.PeriodicJob, err error) {
 	exec_fac := executor_factory.NewDbExecutorFactory(appName, orgsRepo, execGetter)
 	orgs, err := orgsRepo.AllOrganizations(ctx, exec_fac.NewExecutor())
@@ -176,29 +224,11 @@ func QueuesFromOrgs(ctx context.Context, appName string,
 	}
 
 	queues = make(map[string]river.QueueConfig, len(orgs))
-	periodics = make([]*river.PeriodicJob, 0, len(orgs)*2)
 
 	for _, org := range orgs {
-		orgId := org.Id
-		periodics = append(periodics, []*river.PeriodicJob{
-			scheduled_execution.NewIndexCleanupPeriodicJob(orgId),
-			scheduled_execution.NewIndexDeletionPeriodicJob(orgId),
-			scheduled_execution.NewTestRunSummaryPeriodicJob(orgId),
-		}...)
+		periodics = append(periodics, listOrgPeriodics(org, offloadingConfig, analyticsConfig)...)
 
-		if offloadingConfig.Enabled {
-			// Undocumented debug setting to only enable offloading for a specific organization
-			if onlyOffloadOrg := os.Getenv("OFFLOADING_ONLY_ORG"); onlyOffloadOrg == "" || onlyOffloadOrg == orgId.String() {
-				periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(
-					orgId, offloadingConfig.JobInterval))
-			}
-		}
-
-		if analyticsConfig.Enabled {
-			periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(orgId, analyticsConfig.JobInterval))
-		}
-
-		queues[orgId.String()] = river.QueueConfig{
+		queues[org.Id.String()] = river.QueueConfig{
 			MaxWorkers: numberWorkersPerQueue,
 		}
 	}

@@ -327,6 +327,55 @@ func (m *ContinuousScreeningRepository) CreateContinuousScreeningDeltaTrack(
 	return args.Error(0)
 }
 
+func (m *ContinuousScreeningRepository) ListContinuousScreeningLatestFullFiles(
+	ctx context.Context,
+	exec repositories.Executor,
+) ([]models.ContinuousScreeningDatasetFile, error) {
+	args := m.Called(ctx, exec)
+	return args.Get(0).([]models.ContinuousScreeningDatasetFile), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) ListContinuousScreeningLatestDeltaFiles(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	limit uint64,
+) ([]models.ContinuousScreeningDatasetFile, error) {
+	args := m.Called(ctx, exec, orgId, limit)
+	return args.Get(0).([]models.ContinuousScreeningDatasetFile), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) GetOrganizationById(
+	ctx context.Context,
+	exec repositories.Executor,
+	organizationId uuid.UUID,
+) (models.Organization, error) {
+	args := m.Called(ctx, exec, organizationId)
+	return args.Get(0).(models.Organization), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) GetContinuousScreeningDatasetFileById(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+) (models.ContinuousScreeningDatasetFile, error) {
+	args := m.Called(ctx, exec, id)
+	return args.Get(0).(models.ContinuousScreeningDatasetFile), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) GetContinuousScreeningLatestDatasetFileByOrgId(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	fileType models.ContinuousScreeningDatasetFileType,
+) (*models.ContinuousScreeningDatasetFile, error) {
+	args := m.Called(ctx, exec, orgId, fileType)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.ContinuousScreeningDatasetFile), args.Error(1)
+}
+
 type ContinuousScreeningClientDbRepository struct {
 	mock.Mock
 }

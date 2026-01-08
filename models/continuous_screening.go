@@ -101,6 +101,9 @@ type ContinuousScreeningWithMatches struct {
 
 const ContinuousScreeningSortingCreatedAt SortingField = SortingFieldCreatedAt
 
+// Used as a prefix for the screening indexer endpoints and for the URL building functions
+const ScreeningIndexerKey = "screening-indexer"
+
 type ContinuousScreeningMonitoredObject struct {
 	Id             uuid.UUID
 	ObjectType     string
@@ -302,7 +305,7 @@ func (ft ContinuousScreeningDatasetFileType) String() string {
 type ContinuousScreeningDatasetFile struct {
 	Id        uuid.UUID
 	OrgId     uuid.UUID
-	FileType  string
+	FileType  ContinuousScreeningDatasetFileType
 	Version   string
 	FilePath  string
 	CreatedAt time.Time
@@ -329,4 +332,11 @@ type CreateContinuousScreeningDeltaTrack struct {
 	ObjectInternalId *uuid.UUID
 	EntityId         string
 	Operation        DeltaTrackOperation
+}
+
+type CreateContinuousScreeningDatasetFile struct {
+	OrgId    uuid.UUID
+	FileType ContinuousScreeningDatasetFileType
+	Version  string
+	FilePath string
 }

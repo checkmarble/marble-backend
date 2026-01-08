@@ -207,6 +207,12 @@ type ContinuousScreeningClientDbRepository interface {
 		filters models.ListMonitoredObjectsFilters,
 		pagination models.PaginationAndSorting,
 	) ([]models.ContinuousScreeningMonitoredObject, error)
+	ListMonitoredObjectsByObjectIds(
+		ctx context.Context,
+		exec repositories.Executor,
+		objectType string,
+		objectIds []string,
+	) ([]models.ContinuousScreeningMonitoredObject, error)
 }
 
 type ContinuousScreeningIngestedDataReader interface {

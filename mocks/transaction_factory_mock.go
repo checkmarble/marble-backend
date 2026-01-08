@@ -48,3 +48,11 @@ func (e *ExecutorFactory) NewExecutor() repositories.Executor {
 	args := e.Called()
 	return args.Get(0).(repositories.Executor)
 }
+
+func (e *ExecutorFactory) NewPinnedExecutor(ctx context.Context) (repositories.Executor, func(), error) {
+	args := e.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(func()), args.Error(2)
+	}
+	return args.Get(0).(repositories.Executor), args.Get(1).(func()), args.Error(2)
+}

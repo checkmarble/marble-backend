@@ -11,6 +11,7 @@ import (
 // interfaces used by the class
 type executorFactoryRepository interface {
 	GetExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization) (repositories.Executor, error)
+	GetPinnedExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization) (repositories.Executor, func(), error)
 	Transaction(
 		ctx context.Context,
 		typ models.DatabaseSchemaType,
@@ -80,6 +81,16 @@ func (factory DbExecutorFactory) NewClientDbExecutor(
 		ctx,
 		models.DATABASE_SCHEMA_TYPE_CLIENT,
 		&org,
+	)
+}
+
+func (factory DbExecutorFactory) NewPinnedExecutor(
+	ctx context.Context,
+) (repositories.Executor, func(), error) {
+	return factory.transactionFactoryRepository.GetPinnedExecutor(
+		ctx,
+		models.DATABASE_SCHEMA_TYPE_MARBLE,
+		nil,
 	)
 }
 

@@ -324,3 +324,84 @@ func handleLoadMoreContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.
 		c.JSON(http.StatusOK, dto.AdaptContinuousScreeningDto(screening))
 	}
 }
+
+// Manifest and Dataset
+func handleGetContinuousScreeningCatalog(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		usecase := uc.NewContinuousScreeningManifestUsecase()
+		catalog, err := usecase.GetContinuousScreeningCatalog(ctx)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, catalog)
+	}
+}
+
+func handleGetContinuousScreeningDeltaList(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		orgIdStr := c.Param("org_id")
+		orgId, err := uuid.Parse(orgIdStr)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := uc.NewContinuousScreeningManifestUsecase()
+		deltas, err := usecase.GetContinuousScreeningDeltaList(ctx, orgId)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, deltas)
+	}
+}
+
+func handleGetContinuousScreeningDelta(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		orgIdStr := c.Param("org_id")
+		orgId, err := uuid.Parse(orgIdStr)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+		deltaIdStr := c.Param("delta_id")
+		deltaId, err := uuid.Parse(deltaIdStr)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+		usecase := uc.NewContinuousScreeningManifestUsecase()
+		deltaBlob, err := usecase.GetContinuousScreeningDeltaBlob(ctx, orgId, deltaId)
+		if presentError(ctx, c, err) {
+			return
+		}
+		defer deltaBlob.ReadCloser.Close()
+		c.DataFromReader(http.StatusOK, -1, "application/x-ndjson", deltaBlob.ReadCloser, nil)
+	}
+}
+
+func handleGetContinuousScreeningFull(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		orgIdStr := c.Param("org_id")
+		orgId, err := uuid.Parse(orgIdStr)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := uc.NewContinuousScreeningManifestUsecase()
+		fullBlob, err := usecase.GetContinuousScreeningFullBlob(ctx, orgId)
+		if presentError(ctx, c, err) {
+			return
+		}
+		defer fullBlob.ReadCloser.Close()
+		c.DataFromReader(http.StatusOK, -1, "application/x-ndjson", fullBlob.ReadCloser, nil)
+	}
+}
