@@ -62,3 +62,7 @@ func buildDataModelMapping(table models.Table) (models.ContinuousScreeningDataMo
 func orgCustomDatasetName(orgId uuid.UUID) string {
 	return fmt.Sprintf("internal-marble-org-%s", orgId.String())
 }
+
+func deltaTrackEntityIdBuilder(objectType, objectId string) string {
+	return fmt.Sprintf("marble_%s_%s", objectType, objectId)
+}
