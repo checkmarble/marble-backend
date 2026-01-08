@@ -346,6 +346,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		dataModelRepository:                 usecases.Repositories.MarbleDbRepository,
 		uploadLogRepository:                 usecases.Repositories.UploadLogRepository,
 		ingestionBucketUrl:                  usecases.ingestionBucketUrl,
+		continuousScreeningRepository:       usecases.Repositories.MarbleDbRepository,
 		continuousScreeningClientRepository: &usecases.Repositories.ClientDbRepository,
 		batchIngestionMaxSize:               usecases.Usecases.batchIngestionMaxSize,
 		taskEnqueuer:                        usecases.Repositories.TaskQueueRepository,
@@ -842,17 +843,8 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningDoScreeningWorker() *co
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.ClientDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
 		usecases.NewContinuousScreeningUsecase(),
-	)
-}
-
-func (usecases *UsecasesWithCreds) NewContinuousScreeningEvaluateNeedWorker() *continuous_screening.EvaluateNeedTaskWorker {
-	return continuous_screening.NewEvaluateNeedTaskWorker(
-		usecases.NewExecutorFactory(),
-		usecases.NewTransactionFactory(),
-		usecases.Repositories.MarbleDbRepository,
-		&usecases.Repositories.ClientDbRepository,
-		usecases.Repositories.TaskQueueRepository,
 	)
 }
 

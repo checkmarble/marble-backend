@@ -28,6 +28,20 @@ type IngestedDataReadRepository interface {
 		tableName string,
 		filters ...models.Filter,
 	) ([]string, error)
+	QueryIngestedObjectByInternalId(
+		ctx context.Context,
+		exec Executor,
+		table models.Table,
+		internalObjectId uuid.UUID,
+		metadataFields ...string,
+	) (models.DataModelObject, error)
+	QueryIngestedObjectByInternalIds(
+		ctx context.Context,
+		exec Executor,
+		table models.Table,
+		internalObjectIds []uuid.UUID,
+		metadataFields ...string,
+	) ([]models.DataModelObject, error)
 	QueryIngestedObject(
 		ctx context.Context,
 		exec Executor,
@@ -243,6 +257,82 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 	return output, nil
 }
 
+func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByInternalId(
+	ctx context.Context,
+	exec Executor,
+	table models.Table,
+	internalObjectId uuid.UUID,
+	metadataFields ...string,
+) (models.DataModelObject, error) {
+	objects, err := repo.QueryIngestedObjectByInternalIds(
+		ctx,
+		exec,
+		table,
+		[]uuid.UUID{internalObjectId},
+		metadataFields...,
+	)
+	if err != nil {
+		return models.DataModelObject{}, err
+	}
+	if len(objects) == 0 {
+		return models.DataModelObject{}, models.NotFoundError
+	}
+	return objects[0], nil
+}
+
+// Return the ingested object by internal object ids
+// Use metadataFields to specify internal fields to return along with the data (Metadata field) (e.g. valid_from, id)
+func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByInternalIds(
+	ctx context.Context,
+	exec Executor,
+	table models.Table,
+	internalObjectIds []uuid.UUID,
+	metadataFields ...string,
+) ([]models.DataModelObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	columnNames := models.ColumnNames(table)
+
+	// id is mandatory for the query and to identify the object
+	if !slices.Contains(metadataFields, "id") {
+		metadataFields = append(metadataFields, "id")
+	}
+
+	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
+	objectsAsMap, err := queryWithDynamicColumnList(
+		ctx,
+		exec,
+		qualifiedTableName,
+		append(columnNames, metadataFields...),
+		true,
+		[]models.Filter{{
+			LeftSql:    fmt.Sprintf("%s.id", qualifiedTableName),
+			Operator:   ast.FUNC_IS_IN_LIST,
+			RightValue: internalObjectIds,
+		}}...,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	ingestedObjects := make([]models.DataModelObject, len(objectsAsMap))
+	for i, object := range objectsAsMap {
+		ingestedObject := models.DataModelObject{Data: map[string]any{}, Metadata: map[string]any{}}
+		for fieldName, fieldValue := range object {
+			if slices.Contains(columnNames, fieldName) {
+				ingestedObject.Data[fieldName] = fieldValue
+			} else {
+				ingestedObject.Metadata[fieldName] = fieldValue
+			}
+		}
+		ingestedObjects[i] = ingestedObject
+	}
+
+	return ingestedObjects, nil
+}
+
 // Return the ingested object by object id
 // Use metadataFields to specify internal fields to return along with the data (Metadata field) (e.g. valid_from, id)
 func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
@@ -264,6 +354,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 		exec,
 		qualifiedTableName,
 		append(columnNames, metadataFields...),
+		false,
 		[]models.Filter{{
 			LeftSql:    fmt.Sprintf("%s.object_id", qualifiedTableName),
 			Operator:   ast.FUNC_EQUAL,
@@ -310,6 +401,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByUniqueField(
 		exec,
 		qualifiedTableName,
 		append(columnNames, metadataFields...),
+		false,
 		[]models.Filter{{
 			LeftSql:    fmt.Sprintf("%s.%s", qualifiedTableName, uniqueFieldName),
 			Operator:   ast.FUNC_EQUAL,
@@ -341,12 +433,15 @@ func queryWithDynamicColumnList(
 	exec Executor,
 	qualifiedTableName string,
 	columnNames []string,
+	ignoreRowIsValid bool,
 	filters ...models.Filter,
 ) ([]map[string]any, error) {
 	q := NewQueryBuilder().
 		Select(columnNames...).
-		From(qualifiedTableName).
-		Where(rowIsValid(qualifiedTableName))
+		From(qualifiedTableName)
+	if !ignoreRowIsValid {
+		q = q.Where(rowIsValid(qualifiedTableName))
+	}
 	for _, f := range filters {
 		sql, args := f.ToSql()
 		q = q.Where(sql, args...)

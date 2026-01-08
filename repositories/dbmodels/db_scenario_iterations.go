@@ -29,12 +29,24 @@ type DBScenarioIteration struct {
 	Schedule                      string      `db:"schedule"`
 }
 
+type DBScenarioIterationMetadata struct {
+	Id             string    `db:"id"`
+	OrganizationId uuid.UUID `db:"org_id"`
+	ScenarioId     string    `db:"scenario_id"`
+	Version        *int      `db:"version"`
+	CreatedAt      time.Time `db:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at"`
+}
+
 type DBScenarioIterationWithRules struct {
 	DBScenarioIteration
 	Rules []DBRule `db:"rules"`
 }
 
-var SelectScenarioIterationColumn = utils.ColumnList[DBScenarioIteration]()
+var (
+	SelectScenarioIterationColumn         = utils.ColumnList[DBScenarioIteration]()
+	SelectScenarioIterationMetadataColumn = utils.ColumnList[DBScenarioIterationMetadata]()
+)
 
 func AdaptScenarioIteration(dto DBScenarioIteration) (models.ScenarioIteration, error) {
 	scenarioIteration := models.ScenarioIteration{
@@ -85,4 +97,15 @@ func AdaptScenarioIterationWithRules(dto DBScenarioIterationWithRules) (models.S
 	}
 
 	return scenarioIteration, nil
+}
+
+func AdaptScenarioIterationMetadata(dto DBScenarioIterationMetadata) (models.ScenarioIterationMetadata, error) {
+	return models.ScenarioIterationMetadata{
+		Id:             dto.Id,
+		OrganizationId: dto.OrganizationId,
+		ScenarioId:     dto.ScenarioId,
+		Version:        dto.Version,
+		CreatedAt:      dto.CreatedAt,
+		UpdatedAt:      dto.UpdatedAt,
+	}, nil
 }

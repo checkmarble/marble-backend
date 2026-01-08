@@ -10,7 +10,7 @@ import (
 type EnforceSecurityScenario interface {
 	EnforceSecurity
 	ReadScenario(scenario models.Scenario) error
-	ReadScenarioIteration(scenarioIteration models.ScenarioIteration) error
+	ReadScenarioIteration(scenarioIteration models.ScenarioIterationMetadata) error
 	ReadScenarioPublication(scenarioPublication models.ScenarioPublication) error
 	PublishScenario(scenario models.Scenario) error
 	UpdateScenario(scenario models.Scenario) error
@@ -31,7 +31,7 @@ func (e *EnforceSecurityScenarioImpl) ReadScenario(scenario models.Scenario) err
 	)
 }
 
-func (e *EnforceSecurityScenarioImpl) ReadScenarioIteration(scenarioIteration models.ScenarioIteration) error {
+func (e *EnforceSecurityScenarioImpl) ReadScenarioIteration(scenarioIteration models.ScenarioIterationMetadata) error {
 	return errors.Join(
 		e.Permission(models.SCENARIO_READ),
 		e.ReadOrganization(scenarioIteration.OrganizationId),

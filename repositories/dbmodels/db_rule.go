@@ -13,7 +13,10 @@ import (
 
 const TABLE_RULES = "scenario_iteration_rules"
 
-var SelectRulesColumn = utils.ColumnList[DBRule]()
+var (
+	SelectRulesColumn        = utils.ColumnList[DBRule]()
+	SelectRuleMetadataColumn = utils.ColumnList[DBRuleMetadata]()
+)
 
 type DBRule struct {
 	Id                   string      `db:"id"`
@@ -50,6 +53,34 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 		RuleGroup:            db.RuleGroup,
 		SnoozeGroupId:        db.SnoozeGroupId,
 		StableRuleId:         db.StableRuleId,
+	}, nil
+}
+
+type DBRuleMetadata struct {
+	Id                  string    `db:"id"`
+	ScenarioIterationId string    `db:"scenario_iteration_id"`
+	OrganizationId      uuid.UUID `db:"org_id"`
+	DisplayOrder        int       `db:"display_order"`
+	Name                string    `db:"name"`
+	Description         string    `db:"description"`
+	ScoreModifier       int       `db:"score_modifier"`
+	CreatedAt           time.Time `db:"created_at"`
+	RuleGroup           string    `db:"rule_group"`
+	StableRuleId        string    `db:"stable_rule_id"`
+}
+
+func AdaptRuleMetadata(db DBRuleMetadata) (models.RuleMetadata, error) {
+	return models.RuleMetadata{
+		Id:                  db.Id,
+		ScenarioIterationId: db.ScenarioIterationId,
+		OrganizationId:      db.OrganizationId,
+		DisplayOrder:        db.DisplayOrder,
+		Name:                db.Name,
+		Description:         db.Description,
+		ScoreModifier:       db.ScoreModifier,
+		CreatedAt:           db.CreatedAt,
+		RuleGroup:           db.RuleGroup,
+		StableRuleId:        db.StableRuleId,
 	}, nil
 }
 

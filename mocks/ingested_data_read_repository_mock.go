@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -22,4 +23,15 @@ func (m *ContinuousScreeningIngestedDataReader) QueryIngestedObject(
 ) ([]models.DataModelObject, error) {
 	args := m.Called(ctx, exec, table, objectId, metadataFields)
 	return args.Get(0).([]models.DataModelObject), args.Error(1)
+}
+
+func (m *ContinuousScreeningIngestedDataReader) QueryIngestedObjectByInternalId(
+	ctx context.Context,
+	exec repositories.Executor,
+	table models.Table,
+	internalObjectId uuid.UUID,
+	metadataFields ...string,
+) (models.DataModelObject, error) {
+	args := m.Called(ctx, exec, table, internalObjectId, metadataFields)
+	return args.Get(0).(models.DataModelObject), args.Error(1)
 }

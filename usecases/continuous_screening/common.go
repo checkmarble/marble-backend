@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const MARBLE_CONTINUOUS_SCREENING_TAG = "marble_continuous_screening"
+
 func typedObjectId(objectType, objectId string) string {
 	return objectType + "_" + objectId
 }
@@ -59,4 +61,8 @@ func buildDataModelMapping(table models.Table) (models.ContinuousScreeningDataMo
 // TODO: To be defined when creating custom org datasets
 func orgCustomDatasetName(orgId uuid.UUID) string {
 	return fmt.Sprintf("internal-marble-org-%s", orgId)
+}
+
+func deltaTrackEntityIdBuilder(objectType, objectId string) string {
+	return fmt.Sprintf("marble_%s_%s", objectType, objectId)
 }

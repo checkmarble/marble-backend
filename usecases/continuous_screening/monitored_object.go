@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -170,48 +171,66 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
-	continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
+	return executor_factory.TransactionReturnValue(
 		ctx,
-		exec,
-		screeningWithMatches,
-		config,
-		input.ObjectType,
-		objectId,
-		ingestedObjectInternalId,
-		triggerType,
-	)
-	if err != nil {
-		logger.WarnContext(ctx, "Continuous Screening - error inserting continuous screening", "error", err.Error())
-		return models.ContinuousScreeningWithMatches{}, err
-	}
-
-	if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
-		// Create and attach to a case
-		// Update the continuousScreeningWithMatches with the created case ID
-		if err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-			caseCreated, err := uc.HandleCaseCreation(
+		uc.transactionFactory,
+		func(tx repositories.Transaction) (models.ContinuousScreeningWithMatches, error) {
+			continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
 				ctx,
 				tx,
+				screeningWithMatches,
 				config,
+				input.ObjectType,
 				objectId,
-				continuousScreeningWithMatches,
+				ingestedObjectInternalId,
+				triggerType,
 			)
 			if err != nil {
-				logger.WarnContext(ctx, "Continuous Screening - error creating case", "error", err.Error())
-				return err
+				return models.ContinuousScreeningWithMatches{}, err
 			}
-			caseUuid, err := uuid.Parse(caseCreated.Id)
-			if err != nil {
-				return err
-			}
-			continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
-			return nil
-		}); err != nil {
-			return models.ContinuousScreeningWithMatches{}, err
-		}
-	}
 
-	return continuousScreeningWithMatches, nil
+			deltaTrackOperation := models.DeltaTrackOperationAdd
+			if triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated {
+				deltaTrackOperation = models.DeltaTrackOperationUpdate
+			}
+			err = uc.repository.CreateContinuousScreeningDeltaTrack(
+				ctx,
+				tx,
+				models.CreateContinuousScreeningDeltaTrack{
+					OrgId:            config.OrgId,
+					ObjectType:       input.ObjectType,
+					ObjectId:         objectId,
+					ObjectInternalId: &ingestedObjectInternalId,
+					EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, objectId),
+					Operation:        deltaTrackOperation,
+				},
+			)
+			if err != nil {
+				return models.ContinuousScreeningWithMatches{}, err
+			}
+
+			if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
+				// Create and attach to a case
+				// Update the continuousScreeningWithMatches with the created case ID
+				caseCreated, err := uc.HandleCaseCreation(
+					ctx,
+					tx,
+					config,
+					objectId,
+					continuousScreeningWithMatches,
+				)
+				if err != nil {
+					return models.ContinuousScreeningWithMatches{}, err
+				}
+				caseUuid, err := uuid.Parse(caseCreated.Id)
+				if err != nil {
+					return models.ContinuousScreeningWithMatches{}, err
+				}
+				continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
+			}
+
+			return continuousScreeningWithMatches, nil
+		})
 }
 
 type payloadObjectID struct {
@@ -492,7 +511,7 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 	if err != nil {
 		return err
 	}
-	return uc.transactionFactory.TransactionInOrgSchema(ctx, orgId, func(tx repositories.Transaction) error {
+	err = uc.transactionFactory.TransactionInOrgSchema(ctx, orgId, func(tx repositories.Transaction) error {
 		if err := uc.clientDbRepository.DeleteContinuousScreeningObject(ctx, tx, input); err != nil {
 			return err
 		}
@@ -510,6 +529,23 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 			},
 		)
 	})
+	if err != nil {
+		return err
+	}
+
+	err = uc.repository.CreateContinuousScreeningDeltaTrack(ctx, exec, models.CreateContinuousScreeningDeltaTrack{
+		OrgId:            orgId,
+		ObjectType:       input.ObjectType,
+		ObjectId:         input.ObjectId,
+		ObjectInternalId: nil,
+		EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, input.ObjectId),
+		Operation:        models.DeltaTrackOperationDelete,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (uc *ContinuousScreeningUsecase) ListMonitoredObjects(

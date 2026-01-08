@@ -20,7 +20,7 @@ require (
 	github.com/checkmarble/llmberjack v0.0.0-20250918140151-35a7e6d6fe5a
 	github.com/cockroachdb/errors v1.12.0
 	github.com/coreos/go-oidc/v3 v3.17.0
-	github.com/duckdb/duckdb-go/v2 v2.5.3
+	github.com/duckdb/duckdb-go/v2 v2.5.4
 	github.com/exaring/otelpgx v0.9.3
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/getkin/kin-openapi v0.133.0
@@ -69,13 +69,13 @@ require (
 	go.opentelemetry.io/otel/sdk v1.38.0
 	go.opentelemetry.io/otel/trace v1.38.0
 	gocloud.dev v0.43.0
-	golang.org/x/net v0.47.0
+	golang.org/x/net v0.48.0
 	golang.org/x/oauth2 v0.34.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/text v0.32.0
 	golang.org/x/time v0.14.0
-	google.golang.org/api v0.257.0
-	google.golang.org/genai v1.39.0
+	google.golang.org/api v0.258.0
+	google.golang.org/genai v1.40.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
 )
@@ -156,14 +156,14 @@ require (
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
-	github.com/duckdb/duckdb-go-bindings v0.1.23 // indirect
-	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.23 // indirect
-	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.23 // indirect
-	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.23 // indirect
-	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.23 // indirect
-	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.23 // indirect
-	github.com/duckdb/duckdb-go/arrowmapping v0.0.26 // indirect
-	github.com/duckdb/duckdb-go/mapping v0.0.25 // indirect
+	github.com/duckdb/duckdb-go-bindings v0.1.24 // indirect
+	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.24 // indirect
+	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.24 // indirect
+	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.24 // indirect
+	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.24 // indirect
+	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.24 // indirect
+	github.com/duckdb/duckdb-go/arrowmapping v0.0.27 // indirect
+	github.com/duckdb/duckdb-go/mapping v0.0.27 // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.35.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
@@ -186,7 +186,7 @@ require (
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/flatbuffers v25.2.10+incompatible // indirect
+	github.com/google/flatbuffers v25.9.23+incompatible // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/pprof v0.0.0-20250602020802-c6617b811d0e // indirect
@@ -205,7 +205,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -294,19 +294,19 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/arch v0.20.0 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/mod v0.30.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/telemetry v0.0.0-20251111182119-bc8e575c7b54 // indirect
-	golang.org/x/tools v0.39.0 // indirect
+	golang.org/x/crypto v0.46.0 // indirect
+	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9 // indirect
+	golang.org/x/mod v0.31.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/telemetry v0.0.0-20251208220230-2638a1023523 // indirect
+	golang.org/x/tools v0.40.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/appengine/v2 v2.0.6 // indirect
 	google.golang.org/genproto v0.0.0-20250922171735-9219d122eba9 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251022142026-3a174f9686a8 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251124214823-79d6a2a48846 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251213004720-97cd9d5aeac2 // indirect
 	google.golang.org/grpc v1.77.0 // indirect
-	google.golang.org/protobuf v1.36.10 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	moul.io/http2curl/v2 v2.3.0 // indirect
 )

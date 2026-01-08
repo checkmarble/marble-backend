@@ -148,6 +148,13 @@ type ContinuousScreeningUsecaseRepository interface {
 		fieldId string,
 		input models.UpdateFieldInput,
 	) error
+
+	// Dataset files
+	CreateContinuousScreeningDeltaTrack(
+		ctx context.Context,
+		exec repositories.Executor,
+		input models.CreateContinuousScreeningDeltaTrack,
+	) error
 }
 
 type inboxReader interface {

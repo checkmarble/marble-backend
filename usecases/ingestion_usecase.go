@@ -36,7 +36,16 @@ const (
 	CSV_INGESTION_ITERATION_TIMEOUT = 10 * time.Second
 )
 
-type continuousScreeningClientRepository interface {
+type continuousScreeningRepository interface {
+	ListContinuousScreeningConfigByObjectType(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		objectType string,
+	) ([]models.ContinuousScreeningConfig, error)
+}
+
+type continuousScreeningClientDbRepository interface {
 	ListMonitoredObjectsByObjectIds(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -46,12 +55,13 @@ type continuousScreeningClientRepository interface {
 }
 
 type taskEnqueuer interface {
-	EnqueueContinuousScreeningEvaluateNeedTask(
+	EnqueueContinuousScreeningDoScreeningTaskMany(
 		ctx context.Context,
 		tx repositories.Transaction,
 		orgId uuid.UUID,
 		objectType string,
-		objectIds []string,
+		enqueueObjectUpdateTasks []models.ContinuousScreeningEnqueueObjectUpdateTask,
+		triggerType models.ContinuousScreeningTriggerType,
 	) error
 }
 
@@ -63,7 +73,8 @@ type IngestionUseCase struct {
 	blobRepository                      repositories.BlobRepository
 	dataModelRepository                 repositories.DataModelRepository
 	uploadLogRepository                 repositories.UploadLogRepository
-	continuousScreeningClientRepository continuousScreeningClientRepository
+	continuousScreeningRepository       continuousScreeningRepository
+	continuousScreeningClientRepository continuousScreeningClientDbRepository
 	ingestionBucketUrl                  string
 	batchIngestionMaxSize               int
 	taskEnqueuer                        taskEnqueuer
@@ -110,24 +121,14 @@ func (usecase *IngestionUseCase) IngestObject(
 		return 0, errors.WithDetail(err, "error parsing payload in decision usecase validate payload")
 	}
 
-	// `object_id` is a mandatory field, so it should be present in the payload
-	objectId := payload.Data["object_id"].(string)
-	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return usecase.taskEnqueuer.EnqueueContinuousScreeningEvaluateNeedTask(
-			ctx,
-			tx,
-			organizationId,
-			objectType,
-			[]string{objectId},
-		)
-	})
+	configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, organizationId, objectType)
 	if err != nil {
 		return 0, err
 	}
 
-	var insertedObjectIds []string
+	var ingestionResults models.IngestionResults
 	err = retryIngestion(ctx, func() error {
-		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx,
+		ingestionResults, err = usecase.insertEnumValuesAndIngest(ctx,
 			organizationId, []models.ClientObject{payload}, table)
 		return err
 	})
@@ -142,7 +143,12 @@ func (usecase *IngestionUseCase) IngestObject(
 		}
 		return 0, err
 	}
-	nbInsertedObjects := len(insertedObjectIds)
+	nbInsertedObjects := len(ingestionResults)
+	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId,
+		table, ingestionResults)
+	if err != nil {
+		return 0, err
+	}
 
 	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
 		slog.String("organization_id", organizationId.String()),
@@ -196,9 +202,13 @@ func (usecase *IngestionUseCase) IngestObjects(
 		)
 	}
 
+	configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, organizationId, objectType)
+	if err != nil {
+		return 0, err
+	}
+
 	clientObjects := make([]models.ClientObject, 0, len(rawMessages))
 	objectIds := make(map[string]struct{}, len(rawMessages))
-	objectIdsList := make([]string, 0, len(rawMessages))
 	parser := payload_parser.NewParser(parserOpts...)
 	validationErrorsGroup := make(models.IngestionValidationErrors)
 	for _, rawMsg := range rawMessages {
@@ -220,37 +230,27 @@ func (usecase *IngestionUseCase) IngestObjects(
 				"duplicate object_id %s in the batch", objectId)
 		}
 		objectIds[objectId] = struct{}{}
-		objectIdsList = append(objectIdsList, objectId)
 		clientObjects = append(clientObjects, payload)
 	}
 	if len(validationErrorsGroup) > 0 {
 		return 0, validationErrorsGroup
 	}
 
-	// `object_id` is a mandatory field, so it should be present in the payload
-	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return usecase.taskEnqueuer.EnqueueContinuousScreeningEvaluateNeedTask(
-			ctx,
-			tx,
-			organizationId,
-			objectType,
-			objectIdsList,
-		)
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	var insertedObjectIds []string
+	var ingestionResults models.IngestionResults
 	err = retryIngestion(ctx, func() error {
-		insertedObjectIds, err = usecase.insertEnumValuesAndIngest(ctx,
-			organizationId, clientObjects, table)
+		ingestionResults, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
 		return err
 	})
 	if err != nil {
 		return 0, err
 	}
-	nbInsertedObjects := len(insertedObjectIds)
+	nbInsertedObjects := len(ingestionResults)
+
+	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId,
+		table, ingestionResults)
+	if err != nil {
+		return 0, err
+	}
 
 	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
 		slog.String("organization_id", organizationId.String()),
@@ -565,6 +565,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 	fileReader io.Reader,
 	table models.Table,
 ) ingestionResult {
+	exec := usecase.executorFactory.NewExecutor()
+
 	logger := utils.LoggerFromContext(ctx)
 	total := 0
 	start := time.Now()
@@ -599,6 +601,13 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 		}
 	}
 
+	configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, organizationId, table.Name)
+	if err != nil {
+		return ingestionResult{
+			err: err,
+		}
+	}
+
 	keepParsingFile := true
 	objectIdx := 0
 	for keepParsingFile {
@@ -607,7 +616,6 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 
 		windowEnd := objectIdx + csvIngestionBatchSize
 		clientObjects := make([]models.ClientObject, 0, csvIngestionBatchSize)
-		objectIds := make([]string, 0, csvIngestionBatchSize)
 		for ; objectIdx < windowEnd; objectIdx++ {
 			logger.DebugContext(iterationCtx, fmt.Sprintf("Start reading line %v", objectIdx))
 			record, err := r.Read()
@@ -632,28 +640,11 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 
 			clientObject := models.ClientObject{TableName: table.Name, Data: object}
 			clientObjects = append(clientObjects, clientObject)
-			objectIds = append(objectIds, object["object_id"].(string))
 		}
 
-		err = usecase.transactionFactory.Transaction(iterationCtx, func(tx repositories.Transaction) error {
-			return usecase.taskEnqueuer.EnqueueContinuousScreeningEvaluateNeedTask(
-				iterationCtx,
-				tx,
-				organizationId,
-				table.Name,
-				objectIds,
-			)
-		})
-		if err != nil {
-			return ingestionResult{
-				numRowsIngested: total,
-				err:             err,
-			}
-		}
-
-		var insertedObjectIds []string
+		var ingestionResults models.IngestionResults
 		if err := retryIngestion(iterationCtx, func() error {
-			insertedObjectIds, err = usecase.insertEnumValuesAndIngest(iterationCtx, organizationId, clientObjects, table)
+			ingestionResults, err = usecase.insertEnumValuesAndIngest(iterationCtx, organizationId, clientObjects, table)
 			return err
 		}); err != nil {
 			return ingestionResult{
@@ -661,14 +652,85 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 				err:             err,
 			}
 		}
-		nbInsertedObjects := len(insertedObjectIds)
-
+		nbInsertedObjects := len(ingestionResults)
 		total += nbInsertedObjects
+
+		err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(
+			iterationCtx,
+			configs,
+			organizationId,
+			table,
+			ingestionResults,
+		)
+		if err != nil {
+			return ingestionResult{
+				numRowsIngested: total,
+				err:             err,
+			}
+		}
 	}
 
 	return ingestionResult{
 		numRowsIngested: total,
 	}
+}
+
+func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
+	ctx context.Context,
+	configs []models.ContinuousScreeningConfig,
+	organizationId uuid.UUID,
+	table models.Table,
+	ingestionResults models.IngestionResults,
+) error {
+	if len(configs) == 0 {
+		// No continuous screening config found, the feature is not enabled for this organization and object type
+		return nil
+	}
+
+	clientDbExec, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return err
+	}
+
+	objectIds := make([]string, 0, len(ingestionResults))
+	for objectId := range ingestionResults {
+		objectIds = append(objectIds, objectId)
+	}
+
+	monitoredObjects, err := usecase.continuousScreeningClientRepository.ListMonitoredObjectsByObjectIds(
+		ctx,
+		clientDbExec,
+		table.Name,
+		objectIds,
+	)
+	if err != nil {
+		return err
+	}
+
+	if len(monitoredObjects) == 0 {
+		// No monitored objects found, no need to enqueue the task
+		return nil
+	}
+
+	enqueueObjectUpdateTasks := make([]models.ContinuousScreeningEnqueueObjectUpdateTask, len(monitoredObjects))
+	for i, monitoredObject := range monitoredObjects {
+		enqueueObjectUpdateTasks[i] = models.ContinuousScreeningEnqueueObjectUpdateTask{
+			MonitoringId:       monitoredObject.Id,
+			PreviousInternalId: ingestionResults[monitoredObject.ObjectId].PreviousInternalId,
+			NewInternalId:      ingestionResults[monitoredObject.ObjectId].NewInternalId,
+		}
+	}
+
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return usecase.taskEnqueuer.EnqueueContinuousScreeningDoScreeningTaskMany(
+			ctx,
+			tx,
+			organizationId,
+			table.Name,
+			enqueueObjectUpdateTasks,
+			models.ContinuousScreeningTriggerTypeObjectUpdated,
+		)
+	})
 }
 
 func containsString(arr []string, s string) bool {
@@ -766,13 +828,13 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	organizationId uuid.UUID,
 	payloads []models.ClientObject,
 	table models.Table,
-) ([]string, error) {
+) (models.IngestionResults, error) {
 	start := time.Now()
 
-	var insertedObjectIds []string
+	var ingestionResults models.IngestionResults
 	var err error
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
-		insertedObjectIds, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
+		ingestionResults, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
 		return err
 	})
 	if err != nil {
@@ -807,7 +869,7 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 		}
 	}()
 
-	return insertedObjectIds, nil
+	return ingestionResults, nil
 }
 
 func buildEnumValuesContainersFromTable(table models.Table) models.EnumValues {

@@ -57,16 +57,44 @@ func (repo *MarbleDbRepository) ListScenarioIterations(
 		return nil, err
 	}
 
-	sql := selectScenarioIterations().Where(squirrel.Eq{"si.org_id": organizationId})
-	if filters.ScenarioId != nil {
-		sql = sql.Where(squirrel.Eq{"si.scenario_id": *filters.ScenarioId})
-	}
+	sql := selectScenarioIterations().
+		Where(squirrel.Eq{
+			"si.org_id":      organizationId,
+			"si.scenario_id": filters.ScenarioId,
+		})
 
 	return SqlToListOfModels(
 		ctx,
 		exec,
 		sql,
 		dbmodels.AdaptScenarioIterationWithRules,
+	)
+}
+
+func (repo *MarbleDbRepository) ListScenarioIterationsMetadata(
+	ctx context.Context,
+	exec Executor,
+	organizationId uuid.UUID,
+	filters models.GetScenarioIterationFilters,
+) ([]models.ScenarioIterationMetadata, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectScenarioIterationMetadataColumn...).
+		From(dbmodels.TABLE_SCENARIO_ITERATIONS).
+		Where(squirrel.Eq{
+			"org_id":      organizationId,
+			"scenario_id": filters.ScenarioId,
+		}).
+		OrderBy("created_at DESC")
+
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		sql,
+		dbmodels.AdaptScenarioIterationMetadata,
 	)
 }
 

@@ -136,6 +136,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	)
 	router.GET("/scenarios/:scenario_id/rules/latest", tom, listLatestScenarioRules(uc))
 
+	router.GET("/scenario-iterations/metadata", tom, handleListScenarioIterationsMetadata(uc))
 	router.GET("/scenario-iterations", tom, handleListScenarioIterations(uc))
 	router.POST("/scenario-iterations", tom, handleCreateScenarioIteration(uc))
 	router.GET("/scenario-iterations/:iteration_id", tom, handleGetScenarioIteration(uc))
@@ -156,6 +157,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/scenario-iterations/:iteration_id/schedule-execution", tom, handleCreateScheduledExecution(uc))
 	router.GET("/scenario-iterations/:iteration_id/active-snoozes", tom, handleSnoozesOfScenarioIteration(uc))
 
+	router.GET("/scenario-iteration-rules/metadata", tom, handleListRulesMetadata(uc))
 	router.GET("/scenario-iteration-rules", tom, handleListRules(uc))
 	router.POST("/scenario-iteration-rules", tom, handleCreateRule(uc))
 	router.GET("/scenario-iteration-rules/:rule_id", tom, handleGetRule(uc))

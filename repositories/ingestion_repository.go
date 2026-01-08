@@ -19,23 +19,24 @@ type IngestionRepository interface {
 		tx Transaction,
 		payloads []models.ClientObject,
 		table models.Table,
-	) ([]string, error)
+	) (models.IngestionResults, error)
 }
 
 type IngestionRepositoryImpl struct{}
 
 // Ingest objects and return:
-//   - List of object_id of inserted objects
+//   - Map of object_id to internal_id for the inserted objects
 //   - Error if any
 func (repo *IngestionRepositoryImpl) IngestObjects(
 	ctx context.Context,
 	tx Transaction,
 	payloads []models.ClientObject,
 	table models.Table,
-) ([]string, error) {
+) (models.IngestionResults, error) {
 	if err := validateClientDbExecutor(tx); err != nil {
 		return nil, err
 	}
+	var mapObjectIdToNewInternalId map[string]string
 
 	mostRecentObjectIds, mostRecentPayloads := mostRecentPayloadsByObjectId(payloads)
 
@@ -44,6 +45,11 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 		mostRecentObjectIds, table, fieldsToLoad)
 	if err != nil {
 		return nil, err
+	}
+
+	mapObjectIdToPreviousInternalId := make(map[string]string, len(previouslyIngestedObjects))
+	for _, obj := range previouslyIngestedObjects {
+		mapObjectIdToPreviousInternalId[obj.objectId] = obj.id
 	}
 
 	payloadsToInsert, obsoleteIngestedObjectIds, validationErrors := compareAndMergePayloadsWithIngestedObjects(
@@ -67,19 +73,22 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 	}
 
 	if len(payloadsToInsert) > 0 {
-		if err := repo.batchInsertPayloads(ctx, tx, payloadsToInsert, table); err != nil {
+		mapObjectIdToNewInternalId, err = repo.batchInsertPayloads(ctx, tx, payloadsToInsert, table)
+		if err != nil {
 			return nil, err
 		}
 	}
 
-	payloadsInsertedObjectId := make([]string, len(payloadsToInsert))
-	for i, payload := range payloadsToInsert {
+	ingestionResults := make(models.IngestionResults, len(mapObjectIdToNewInternalId))
+	for objectId, newInternalId := range mapObjectIdToNewInternalId {
 		// Assumes that the object_id is always present as it is a mandatory field
-		objectId := payload.Data["object_id"].(string)
-		payloadsInsertedObjectId[i] = objectId
+		ingestionResults[objectId] = models.IngestionResult{
+			PreviousInternalId: mapObjectIdToPreviousInternalId[objectId],
+			NewInternalId:      newInternalId,
+		}
 	}
 
-	return payloadsInsertedObjectId, nil
+	return ingestionResults, nil
 }
 
 // Try to only load the fields that are actually missing from the payloads (in the case of a partial update).
@@ -275,16 +284,22 @@ func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx 
 	return err
 }
 
+// Returns a map of object_id to internal_id for the inserted objects.
 func (repo *IngestionRepositoryImpl) batchInsertPayloads(ctx context.Context, exec Executor, payloads []models.ClientObject, table models.Table,
-) error {
+) (map[string]string, error) {
 	columnNames := models.ColumnNames(table)
 	query := NewQueryBuilder().Insert(pgIdentifierWithSchema(exec, table.Name))
 
+	mapObjectIdToInternalId := make(map[string]string, len(payloads))
+
 	for _, payload := range payloads {
+		objectId := payload.Data["object_id"].(string)
+		internalId := uuid.Must(uuid.NewV7()).String()
+		mapObjectIdToInternalId[objectId] = internalId
 
 		insertValues := generateInsertValues(payload, columnNames)
 		// Add UUID to the insert values for the "id" field
-		insertValues = append(insertValues, uuid.Must(uuid.NewV7()).String())
+		insertValues = append(insertValues, internalId)
 		query = query.Values(insertValues...)
 	}
 
@@ -293,10 +308,11 @@ func (repo *IngestionRepositoryImpl) batchInsertPayloads(ctx context.Context, ex
 
 	err := ExecBuilder(ctx, exec, query)
 	if IsUniqueViolationError(err) {
-		return errors.Wrap(models.ConflictError, "unique constraint violation during ingestion")
+		return nil, errors.Wrap(models.ConflictError,
+			"unique constraint violation during ingestion")
 	}
 
-	return err
+	return mapObjectIdToInternalId, err
 }
 
 func generateInsertValues(payload models.ClientObject, columnNames []string) []any {

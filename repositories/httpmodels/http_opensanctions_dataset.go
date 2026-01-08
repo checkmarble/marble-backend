@@ -57,6 +57,7 @@ func AdaptOpenSanctionCatalogResponse(datasets HTTPOpenSanctionCatalogResponse) 
 			Name:     dataset.Name,
 			Version:  dataset.Version,
 			Load:     dataset.Load,
+			Tags:     dataset.Tags,
 			DeltaUrl: dataset.DeltaUrl,
 		}
 	}

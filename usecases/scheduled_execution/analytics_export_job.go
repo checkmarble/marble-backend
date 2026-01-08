@@ -92,6 +92,10 @@ func (w AnalyticsExportWorker) Work(ctx context.Context, job *river.Job[models.A
 		return nil
 	}
 
+	if err := addStrideDelay(job, w.config.JobInterval); err != nil {
+		return err
+	}
+
 	grace := time.Duration(w.config.JobInterval.Seconds()*0.75) * time.Second
 	if grace.Minutes() > 3 {
 		grace = 3 * time.Minute

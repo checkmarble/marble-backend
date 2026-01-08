@@ -98,6 +98,10 @@ func (w OffloadingWorker) Work(ctx context.Context, job *river.Job[models.Offloa
 		return nil
 	}
 
+	if err := addStrideDelay(job, w.config.JobInterval); err != nil {
+		return err
+	}
+
 	if w.config.BatchSize < 500 {
 		logger.WarnContext(ctx, fmt.Sprintf("OFFLOADING_BATCH_SIZE should be greater than 500, but is %d, using 500 instead", w.config.BatchSize))
 		w.config.BatchSize = 500

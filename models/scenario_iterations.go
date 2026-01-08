@@ -27,8 +27,28 @@ type ScenarioIteration struct {
 	Schedule                      string
 }
 
+func (si ScenarioIteration) ToMetadata() ScenarioIterationMetadata {
+	return ScenarioIterationMetadata{
+		Id:             si.Id,
+		OrganizationId: si.OrganizationId,
+		ScenarioId:     si.ScenarioId,
+		Version:        si.Version,
+		CreatedAt:      si.CreatedAt,
+		UpdatedAt:      si.UpdatedAt,
+	}
+}
+
+type ScenarioIterationMetadata struct {
+	Id             string
+	OrganizationId uuid.UUID
+	ScenarioId     string
+	Version        *int
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
 type GetScenarioIterationFilters struct {
-	ScenarioId *string
+	ScenarioId uuid.UUID
 }
 
 type CreateScenarioIterationInput struct {

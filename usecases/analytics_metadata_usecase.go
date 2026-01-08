@@ -76,6 +76,9 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context,
 		innerSql,
 	), innerArgs...)
 	if err != nil {
+		if repositories.IsDuckDBNoFilesError(err) {
+			return []models.AnalyticsFilter{}, nil
+		}
 		return nil, err
 	}
 
