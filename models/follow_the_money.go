@@ -56,6 +56,7 @@ const (
 	FollowTheMoneyPropertyIsinCode             FollowTheMoneyProperty = "isinCode"
 	FollowTheMoneyPropertyWebsite              FollowTheMoneyProperty = "website"
 	FollowTheMoneyPropertyCountry              FollowTheMoneyProperty = "country"
+	FollowTheMoneyPropertyNotes                FollowTheMoneyProperty = "notes"
 )
 
 func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
@@ -94,6 +95,8 @@ func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
 		return FollowTheMoneyPropertyWebsite
 	case "country":
 		return FollowTheMoneyPropertyCountry
+	case "notes":
+		return FollowTheMoneyPropertyNotes
 	default:
 		return FollowTheMoneyPropertyUnknown
 	}

@@ -43,9 +43,9 @@ type ContinuousScreening struct {
 	ContinuousScreeningConfigId       uuid.UUID                  `json:"continuous_screening_config_id"`
 	ContinuousScreeningConfigStableId uuid.UUID                  `json:"continuous_screening_config_stable_id"`
 	CaseId                            *uuid.UUID                 `json:"case_id"`
-	ObjectType                        string                     `json:"object_type"`
-	ObjectId                          string                     `json:"object_id"`
-	ObjectInternalId                  uuid.UUID                  `json:"object_internal_id"`
+	ObjectType                        *string                    `json:"object_type"`
+	ObjectId                          *string                    `json:"object_id"`
+	ObjectInternalId                  *uuid.UUID                 `json:"object_internal_id"`
 	Status                            string                     `json:"status"`
 	TriggerType                       string                     `json:"trigger_type"`
 	Request                           ContinuousScreeningRequest `json:"request"`

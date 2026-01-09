@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -311,8 +312,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			OrgId:      suite.orgId,
 			Status:     models.ScreeningStatusInReview,
 			CaseId:     &suite.caseId,
-			ObjectType: "transactions",
-			ObjectId:   "test-object-id",
+			ObjectType: utils.Ptr("transactions"),
+			ObjectId:   utils.Ptr("test-object-id"),
 			IsPartial:  false,
 		},
 		Matches: []models.ContinuousScreeningMatch{continuousScreeningMatch1, continuousScreeningMatch2},
@@ -721,8 +722,8 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches() {
 			IsPartial:                         true,
 			NumberOfMatches:                   3,
 			SearchInput:                       []byte(`{"name": ["test"]}`),
-			ObjectType:                        "person",
-			ObjectId:                          "test-object-id",
+			ObjectType:                        utils.Ptr("person"),
+			ObjectId:                          utils.Ptr("test-object-id"),
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{OpenSanctionEntityId: "existing_1"},
@@ -913,8 +914,8 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NoNewMat
 			IsPartial:                         true,
 			NumberOfMatches:                   3,
 			SearchInput:                       []byte(`{"name": ["test"]}`),
-			ObjectType:                        "person",
-			ObjectId:                          "test-object-id",
+			ObjectType:                        utils.Ptr("person"),
+			ObjectId:                          utils.Ptr("test-object-id"),
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{OpenSanctionEntityId: "existing_1"},

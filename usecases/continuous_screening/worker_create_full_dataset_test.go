@@ -1,6 +1,7 @@
 package continuous_screening
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -231,8 +232,63 @@ func TestBuildDatasetEntity_CountryNormalization(t *testing.T) {
 			countryVal, ok := result.Properties["country"]
 			assert.True(t, ok, "country property should exist")
 			assert.Equal(t, tt.expectedCountry, countryVal)
+
+			// Check metadata in notes
+			notesVal, ok := result.Properties["notes"]
+			assert.True(t, ok, "notes property should exist")
+			notesList, ok := notesVal.([]string)
+			assert.True(t, ok, "notes should be a list of strings")
+			assert.Len(t, notesList, 1)
+
+			var metadata models.EntityNoteMetadata
+			err := json.Unmarshal([]byte(notesList[0]), &metadata)
+			assert.NoError(t, err)
+			assert.Equal(t, track.ObjectId, metadata.ObjectId)
+			assert.Equal(t, track.ObjectType, metadata.ObjectType)
 		})
 	}
+}
+
+func TestBuildDatasetEntity_Metadata(t *testing.T) {
+	ftmEntity := models.FollowTheMoneyEntityPerson
+	ftmPropertyName := models.FollowTheMoneyPropertyName
+
+	table := models.Table{
+		Name:      "customers",
+		FTMEntity: &ftmEntity,
+		Fields: map[string]models.Field{
+			"name": {
+				Name:        "name",
+				FTMProperty: &ftmPropertyName,
+			},
+		},
+	}
+
+	track := models.ContinuousScreeningDeltaTrack{
+		EntityId:   "test-entity-id",
+		ObjectId:   "obj-123",
+		ObjectType: "customer",
+	}
+
+	ingestedObject := models.DataModelObject{
+		Data: map[string]any{
+			"name": "John Doe",
+		},
+	}
+
+	result := buildDatasetEntity(table, track, ingestedObject)
+
+	notesVal, ok := result.Properties["notes"]
+	assert.True(t, ok, "notes property should exist")
+	notesList, ok := notesVal.([]string)
+	assert.True(t, ok, "notes should be a list of strings")
+	assert.Len(t, notesList, 1)
+
+	var metadata models.EntityNoteMetadata
+	err := json.Unmarshal([]byte(notesList[0]), &metadata)
+	assert.NoError(t, err)
+	assert.Equal(t, "obj-123", metadata.ObjectId)
+	assert.Equal(t, "customer", metadata.ObjectType)
 }
 
 func TestGenerateNextVersion(t *testing.T) {

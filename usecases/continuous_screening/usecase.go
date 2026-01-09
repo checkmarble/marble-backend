@@ -55,12 +55,7 @@ type ContinuousScreeningUsecaseRepository interface {
 	InsertContinuousScreening(
 		ctx context.Context,
 		exec repositories.Executor,
-		screening models.ScreeningWithMatches,
-		config models.ContinuousScreeningConfig,
-		objectType string,
-		objectId string,
-		objectInternalId uuid.UUID,
-		triggerType models.ContinuousScreeningTriggerType,
+		input models.CreateContinuousScreening,
 	) (models.ContinuousScreeningWithMatches, error)
 	ListContinuousScreeningsForOrg(
 		ctx context.Context,

@@ -129,15 +129,9 @@ func (m *ContinuousScreeningRepository) GetDataModel(
 func (m *ContinuousScreeningRepository) InsertContinuousScreening(
 	ctx context.Context,
 	exec repositories.Executor,
-	screening models.ScreeningWithMatches,
-	config models.ContinuousScreeningConfig,
-	objectType string,
-	objectId string,
-	objectInternalId uuid.UUID,
-	triggerType models.ContinuousScreeningTriggerType,
+	input models.CreateContinuousScreening,
 ) (models.ContinuousScreeningWithMatches, error) {
-	args := m.Called(ctx, exec, screening, config, objectType,
-		objectId, objectInternalId, triggerType)
+	args := m.Called(ctx, exec, input)
 	return args.Get(0).(models.ContinuousScreeningWithMatches), args.Error(1)
 }
 

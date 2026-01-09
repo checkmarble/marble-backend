@@ -247,16 +247,12 @@ func OpenSanctionsDeltaFileRecordOpFromString(s string) OpenSanctionsDeltaFileRe
 }
 
 type OpenSanctionsDeltaFileEntity struct {
-	Id         string
-	Caption    string
-	Schema     string
-	Referents  []string
-	Datasets   []string
-	FirstSeen  string
-	LastSeen   string
-	LastChange string
-	Properties map[string][]string
-	Target     bool
+	Id         string              `json:"id"`
+	Caption    string              `json:"caption"`
+	Schema     string              `json:"schema"`
+	Referents  []string            `json:"referents"`
+	Datasets   []string            `json:"datasets"`
+	Properties map[string][]string `json:"properties"`
 }
 
 type OpenSanctionsDeltaFileRecord struct {
