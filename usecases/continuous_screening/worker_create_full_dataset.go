@@ -816,6 +816,22 @@ func buildDatasetEntity(
 		}
 	}
 
+	// Add metadata in `notes` property
+	metadata := models.EntityNoteMetadata{
+		ObjectId:   track.ObjectId,
+		ObjectType: track.ObjectType,
+	}
+	metadataJSON, _ := json.Marshal(metadata)
+
+	notesKey := models.FollowTheMoneyPropertyNotes.String()
+	if existing, ok := properties[notesKey]; ok {
+		if list, ok := existing.([]string); ok {
+			properties[notesKey] = append(list, string(metadataJSON))
+		}
+	} else {
+		properties[notesKey] = []string{string(metadataJSON)}
+	}
+
 	return datasetEntity{
 		Id:         track.EntityId,
 		Schema:     table.FTMEntity.String(),

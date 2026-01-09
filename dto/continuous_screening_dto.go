@@ -69,12 +69,19 @@ type ContinuousScreeningMatchDto struct {
 }
 
 func AdaptContinuousScreeningMatchDto(m models.ContinuousScreeningMatch) ContinuousScreeningMatchDto {
+	var objectType string
+	var objectId string
+	if m.Metadata != nil {
+		objectType = m.Metadata.ObjectType
+		objectId = m.Metadata.ObjectId
+	}
+
 	return ContinuousScreeningMatchDto{
 		Id:                    m.Id,
 		ContinuousScreeningId: m.ContinuousScreeningId,
 		OpenSanctionEntityId:  m.OpenSanctionEntityId,
-		ObjectType:            m.ObjectType,
-		ObjectId:              m.ObjectId,
+		ObjectType:            objectType,
+		ObjectId:              objectId,
 		Status:                m.Status.String(),
 		Payload:               m.Payload,
 		ReviewedBy:            m.ReviewedBy,

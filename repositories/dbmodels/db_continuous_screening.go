@@ -71,6 +71,24 @@ type DBContinuousScreeningMatches struct {
 }
 
 func AdaptContinuousScreeningMatch(dto DBContinuousScreeningMatches) (models.ContinuousScreeningMatch, error) {
+	var metadata *models.EntityNoteMetadata
+	// Optimization: Use a specific struct to ignore all other properties and avoid map allocations
+	var payload struct {
+		Properties struct {
+			Notes []string `json:"notes"`
+		} `json:"properties"`
+	}
+
+	if err := json.Unmarshal(dto.Payload, &payload); err == nil {
+		for _, note := range payload.Properties.Notes {
+			var meta models.EntityNoteMetadata
+			if err := json.Unmarshal([]byte(note), &meta); err == nil {
+				metadata = &meta
+				break
+			}
+		}
+	}
+
 	return models.ContinuousScreeningMatch{
 		Id:                    dto.Id,
 		ContinuousScreeningId: dto.ContinuousScreeningId,
@@ -78,6 +96,7 @@ func AdaptContinuousScreeningMatch(dto DBContinuousScreeningMatches) (models.Con
 		Status:                models.ScreeningMatchStatusFrom(dto.Status),
 		Payload:               dto.Payload,
 		ReviewedBy:            dto.ReviewedBy,
+		Metadata:              metadata,
 		CreatedAt:             dto.CreatedAt,
 		UpdatedAt:             dto.UpdatedAt,
 	}, nil
