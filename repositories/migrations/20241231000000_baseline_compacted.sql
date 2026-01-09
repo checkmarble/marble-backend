@@ -1537,6 +1537,7 @@ ADD CONSTRAINT upload_logs_org_id_fkey FOREIGN KEY (org_id) REFERENCES marble.or
 ALTER TABLE ONLY marble.users
 ADD CONSTRAINT users_partner_id_fkey FOREIGN KEY (partner_id) REFERENCES marble.partners (id) ON DELETE CASCADE;
 
+-- audit schema
 CREATE SCHEMA audit;
 
 --
@@ -1552,10 +1553,7 @@ CREATE TABLE
         data jsonb DEFAULT '{}'::jsonb NOT NULL,
         created_at timestamp(6)
         with
-            time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            org_id uuid,
-            api_key_id uuid,
-            previous_data jsonb
+            time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
     );
 
 --
@@ -1563,30 +1561,6 @@ CREATE TABLE
 --
 ALTER TABLE ONLY audit.audit_events
 ADD CONSTRAINT audit_pkey PRIMARY KEY (id);
-
---
--- Name: idx_audit_api_key_id; Type: INDEX; Schema: audit; Owner: -
---
-CREATE INDEX idx_audit_api_key_id ON audit.audit_events USING btree (org_id, api_key_id, created_at, id)
-WHERE
-    (api_key_id IS NOT NULL);
-
---
--- Name: idx_audit_created_at; Type: INDEX; Schema: audit; Owner: -
---
-CREATE INDEX idx_audit_created_at ON audit.audit_events USING btree (org_id, created_at, id);
-
---
--- Name: idx_audit_entity_id; Type: INDEX; Schema: audit; Owner: -
---
-CREATE INDEX idx_audit_entity_id ON audit.audit_events USING btree (org_id, entity_id, created_at, id);
-
---
--- Name: idx_audit_user_id; Type: INDEX; Schema: audit; Owner: -
---
-CREATE INDEX idx_audit_user_id ON audit.audit_events USING btree (org_id, user_id, created_at, id)
-WHERE
-    (user_id IS NOT NULL);
 
 -- +goose StatementEnd
 -- +goose Down
