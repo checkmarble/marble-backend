@@ -3,6 +3,7 @@ package continuous_screening
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/mocks"
@@ -409,7 +410,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 	expectedUpdateJobs := make([]models.ContinuousScreeningUpdateJob, len(versionsToProcess)*len(configs))
 
 	for i, version := range versionsToProcess {
-		blobKey := datasetName + "/" + version + ".ndjson"
+		blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, version)
 		expectedDatasetUpdates[i] = models.ContinuousScreeningDatasetUpdate{
 			Id:            uuid.New(),
 			DatasetName:   datasetName,
@@ -461,7 +462,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 
 	// Mock blob storage for all versions
 	for _, version := range versionsToProcess {
-		blobKey := datasetName + "/" + version + ".ndjson"
+		blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, version)
 		suite.blobRepo.On("OpenStream", mock.Anything, "test-bucket", blobKey, blobKey).Return(&mockBlobWriter{}, nil)
 	}
 
@@ -470,7 +471,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 
 	// Mock dataset update creation for each version
 	for i, version := range versionsToProcess {
-		blobKey := datasetName + "/" + version + ".ndjson"
+		blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, version)
 		suite.repository.On("CreateContinuousScreeningDatasetUpdate", mock.Anything, mock.Anything,
 			models.CreateContinuousScreeningDatasetUpdate{
 				DatasetName:   datasetName,
@@ -512,7 +513,8 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NoActiveConfigs_Returns
 	job := &river.Job[models.ContinuousScreeningScanDatasetUpdatesArgs]{}
 
 	// Setup mocks - only ListContinuousScreeningConfigs should be called
-	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return([]models.ContinuousScreeningConfig{}, nil)
+	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return(
+		[]models.ContinuousScreeningConfig{}, nil)
 
 	// Execute
 	worker := suite.makeWorker()
