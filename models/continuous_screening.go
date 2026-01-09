@@ -47,6 +47,7 @@ type CreateContinuousScreeningObject struct {
 	ConfigStableId uuid.UUID
 	ObjectId       *string
 	ObjectPayload  *json.RawMessage
+	ShouldScreen   bool
 }
 
 type DeleteContinuousScreeningObject struct {

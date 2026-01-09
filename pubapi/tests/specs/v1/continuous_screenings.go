@@ -21,6 +21,9 @@ func continuousScreenings(t *testing.T, e *httpexpect.Expect) {
 
 	// Test happy path: add and delete object from monitoring
 	testContinuousScreeningAddAndDelete(t, e)
+
+	// Test should_screen=false on existing object
+	testContinuousScreeningShouldScreenFalse(t, e)
 }
 
 func testContinuousScreeningValidation(t *testing.T, e *httpexpect.Expect) {
@@ -31,6 +34,7 @@ func testContinuousScreeningValidation(t *testing.T, e *httpexpect.Expect) {
 		WithJSON(params.CreateContinuousScreeningObjectParams{
 			ObjectType:     "account",
 			ConfigStableId: configStableId,
+			ShouldScreen:   true,
 		}).
 		Expect().
 		Status(http.StatusBadRequest).
@@ -63,6 +67,7 @@ func testContinuousScreeningNotFound(t *testing.T, e *httpexpect.Expect) {
 			ObjectType:     "account",
 			ConfigStableId: nonExistentConfigId,
 			ObjectId:       utils.Ptr("account-001"),
+			ShouldScreen:   true,
 		}).
 		Expect().
 		Status(http.StatusNotFound).
@@ -90,6 +95,7 @@ func testContinuousScreeningNotFound(t *testing.T, e *httpexpect.Expect) {
 			ObjectType:     "invalid_object_type",
 			ConfigStableId: configStableId,
 			ObjectId:       utils.Ptr("account-001"),
+			ShouldScreen:   true,
 		}).
 		Expect().
 		Status(http.StatusBadRequest).
@@ -102,6 +108,7 @@ func testContinuousScreeningNotFound(t *testing.T, e *httpexpect.Expect) {
 			ObjectType:     "account",
 			ConfigStableId: configStableId,
 			ObjectId:       utils.Ptr("non-existent-object"),
+			ShouldScreen:   true,
 		}).
 		Expect().
 		Status(http.StatusNotFound).
@@ -144,6 +151,7 @@ func testContinuousScreeningAddAndDelete(t *testing.T, e *httpexpect.Expect) {
 			ObjectType:     "account",
 			ConfigStableId: configStableId,
 			ObjectId:       &objectId,
+			ShouldScreen:   true,
 		}).
 		Expect().
 		Status(http.StatusCreated).
@@ -193,6 +201,7 @@ func testContinuousScreeningAddAndDelete(t *testing.T, e *httpexpect.Expect) {
 			"object_type":      "account",
 			"config_stable_id": configStableId.String(),
 			"object_payload":   objectPayload,
+			"should_screen":    true,
 		}).
 		Expect().
 		Status(http.StatusCreated).
@@ -204,4 +213,40 @@ func testContinuousScreeningAddAndDelete(t *testing.T, e *httpexpect.Expect) {
 	matchesPayload := respPayload.Value("matches").Array()
 	matchesPayload.Length().IsEqual(1)
 	matchesPayload.Value(0).Object().Value("opensanction_entity_id").IsEqual("sanctioned-entity-001")
+
+	// Cleanup
+	e.DELETE("/continuous-screenings/objects").
+		WithJSON(params.DeleteContinuousScreeningObjectParams{
+			ObjectType:     "account",
+			ObjectId:       objectId,
+			ConfigStableId: configStableId,
+		}).
+		Expect().
+		Status(http.StatusNoContent)
+}
+
+func testContinuousScreeningShouldScreenFalse(t *testing.T, e *httpexpect.Expect) {
+	configStableId := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	objectId := "account-001"
+
+	e.POST("/continuous-screenings/objects").
+		WithJSON(params.CreateContinuousScreeningObjectParams{
+			ObjectType:     "account",
+			ConfigStableId: configStableId,
+			ObjectId:       &objectId,
+			ShouldScreen:   false,
+		}).
+		Expect().
+		Status(http.StatusNoContent).
+		NoContent()
+
+	// Cleanup
+	e.DELETE("/continuous-screenings/objects").
+		WithJSON(params.DeleteContinuousScreeningObjectParams{
+			ObjectType:     "account",
+			ObjectId:       objectId,
+			ConfigStableId: configStableId,
+		}).
+		Expect().
+		Status(http.StatusNoContent)
 }

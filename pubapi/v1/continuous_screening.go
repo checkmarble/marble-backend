@@ -30,6 +30,11 @@ func HandleCreateContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 			return
 		}
 
+		if !param.ShouldScreen {
+			c.Status(http.StatusNoContent)
+			return
+		}
+
 		pubapi.NewResponse(dto.AdaptContinuousScreening(continuousScreening)).Serve(c, http.StatusCreated)
 	}
 }
