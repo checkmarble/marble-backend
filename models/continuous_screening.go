@@ -101,8 +101,7 @@ type ContinuousScreeningMatch struct {
 	Status                ScreeningMatchStatus
 	Payload               json.RawMessage
 	ReviewedBy            *uuid.UUID
-	ObjectType            string
-	ObjectId              string
+	Metadata              *EntityNoteMetadata
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -338,6 +337,11 @@ type ContinuousScreeningDeltaTrack struct {
 	DatasetFileId    *uuid.UUID
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+}
+
+type EntityNoteMetadata struct {
+	ObjectId   string `json:"object_id"`
+	ObjectType string `json:"object_type"`
 }
 
 type CreateContinuousScreeningDeltaTrack struct {

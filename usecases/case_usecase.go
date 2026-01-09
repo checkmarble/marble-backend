@@ -1191,16 +1191,6 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 			return models.Case{}, err
 		}
 
-		// In case of continuous screening in DatasetUpdate trigger type, we need to parse the entity ID to retrieve the object type and object id
-		for i := range continuousScreeningsWithMatches {
-			if continuousScreeningsWithMatches[i].TriggerType ==
-				models.ContinuousScreeningTriggerTypeDatasetUpdated {
-				err = usecase.parseOpenSanctionEntityIdToMarbleObject(ctx, exec, &continuousScreeningsWithMatches[i])
-				if err != nil {
-					return models.Case{}, err
-				}
-			}
-		}
 		c.ContinuousScreenings = continuousScreeningsWithMatches
 
 	default:
@@ -2229,63 +2219,4 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 
 		return nil
 	})
-}
-
-// parseOpenSanctionEntityIdToMarbleObject exists to reliably extract the Marble object type and ID from OpenSanctionEntityId strings like "marble_UserProfile_abc".
-// We must do this so our system knows which object from org data model each screening match refers to.
-//
-// The entity ID is a string that is formed using a convention: "marble_<ObjectType>_<ObjectId>".
-//
-// The sort by descending object type length is required:
-// If we have types "User" and "UserProfile", "marble_UserProfile_abc" must match "UserProfile", not "User",
-// otherwise we'd incorrectly parse type "User" and id "Profile_abc".
-func (usecase *CaseUseCase) parseOpenSanctionEntityIdToMarbleObject(
-	ctx context.Context,
-	exec repositories.Executor,
-	continuousScreeningWithMatches *models.ContinuousScreeningWithMatches,
-) error {
-	config, err := usecase.repository.GetContinuousScreeningConfig(
-		ctx,
-		exec,
-		continuousScreeningWithMatches.ContinuousScreeningConfigId,
-	)
-	if err != nil {
-		return errors.Wrap(err, "could not get continuous screening config")
-	}
-
-	objectTypes := config.ObjectTypes
-	// Sort by length descending, so longer type names ("UserProfile") come before their substrings ("User").
-	// Example:
-	//   objectTypes = ["User", "UserProfile"]
-	//   sorted     = ["UserProfile", "User"]
-	// So "marble_UserProfile_abc123" parses correctly as type "UserProfile", id "abc123".
-	slices.SortFunc(objectTypes, func(a, b string) int {
-		if len(a) != len(b) {
-			return len(b) - len(a)
-		}
-		if a < b {
-			return -1
-		} else if a > b {
-			return 1
-		}
-		return 0
-	})
-
-	for i := range continuousScreeningWithMatches.Matches {
-		match := &continuousScreeningWithMatches.Matches[i]
-		var found bool
-		for _, objectType := range objectTypes {
-			prefix := "marble_" + objectType + "_"
-			if objectId, foundPrefix := strings.CutPrefix(match.OpenSanctionEntityId, prefix); foundPrefix {
-				match.ObjectType = objectType
-				match.ObjectId = objectId
-				found = true
-				break
-			}
-		}
-		if !found {
-			return errors.Newf("could not parse open sanction entity id to marble object for match %s", match.OpenSanctionEntityId)
-		}
-	}
-	return nil
 }
