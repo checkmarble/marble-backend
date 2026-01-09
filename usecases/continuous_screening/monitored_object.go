@@ -184,30 +184,19 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		}
 	}
 
-	screeningWithMatches, err := uc.DoScreening(ctx, exec, ingestedObject, mapping, config, input.ObjectType, objectId)
-	if err != nil {
-		logger.WarnContext(ctx, "Continuous Screening - error searching on open sanctions", "error", err.Error())
-		return models.ContinuousScreeningWithMatches{}, err
+	var screeningWithMatches models.ScreeningWithMatches
+	if input.ShouldScreen {
+		screeningWithMatches, err = uc.DoScreening(ctx, exec, ingestedObject, mapping, config, input.ObjectType, objectId)
+		if err != nil {
+			logger.WarnContext(ctx, "Continuous Screening - error searching on open sanctions", "error", err.Error())
+			return models.ContinuousScreeningWithMatches{}, err
+		}
 	}
 
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		uc.transactionFactory,
 		func(tx repositories.Transaction) (models.ContinuousScreeningWithMatches, error) {
-			continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
-				ctx,
-				tx,
-				screeningWithMatches,
-				config,
-				input.ObjectType,
-				objectId,
-				ingestedObjectInternalId,
-				triggerType,
-			)
-			if err != nil {
-				return models.ContinuousScreeningWithMatches{}, err
-			}
-
 			deltaTrackOperation := models.DeltaTrackOperationAdd
 			if triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated {
 				deltaTrackOperation = models.DeltaTrackOperationUpdate
@@ -234,27 +223,43 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				}
 			}
 
-			if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
-				// Create and attach to a case
-				// Update the continuousScreeningWithMatches with the created case ID
-				caseCreated, err := uc.HandleCaseCreation(
+			if input.ShouldScreen {
+				continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
 					ctx,
 					tx,
+					screeningWithMatches,
 					config,
+					input.ObjectType,
 					objectId,
-					continuousScreeningWithMatches,
+					ingestedObjectInternalId,
+					triggerType,
 				)
 				if err != nil {
 					return models.ContinuousScreeningWithMatches{}, err
 				}
-				caseUuid, err := uuid.Parse(caseCreated.Id)
-				if err != nil {
-					return models.ContinuousScreeningWithMatches{}, err
+				if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
+					// Create and attach to a case
+					// Update the continuousScreeningWithMatches with the created case ID
+					caseCreated, err := uc.HandleCaseCreation(
+						ctx,
+						tx,
+						config,
+						objectId,
+						continuousScreeningWithMatches,
+					)
+					if err != nil {
+						return models.ContinuousScreeningWithMatches{}, err
+					}
+					caseUuid, err := uuid.Parse(caseCreated.Id)
+					if err != nil {
+						return models.ContinuousScreeningWithMatches{}, err
+					}
+					continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
 				}
-				continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
-			}
 
-			return continuousScreeningWithMatches, nil
+				return continuousScreeningWithMatches, nil
+			}
+			return models.ContinuousScreeningWithMatches{}, nil
 		})
 }
 
@@ -279,7 +284,7 @@ func (uc *ContinuousScreeningUsecase) ingestObject(
 	input models.CreateContinuousScreeningObject,
 ) (string, error) {
 	// Ingestion doesn't return the object after operation.
-	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId.String(), input.ObjectType, *input.ObjectPayload)
+	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId.String(), input.ObjectType, *input.ObjectPayload, false)
 	if err != nil {
 		return "", err
 	}
