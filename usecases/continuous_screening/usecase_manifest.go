@@ -32,11 +32,11 @@ type ContinuousScreeningManifestRepository interface {
 }
 
 type ContinuousScreeningManifestUsecase struct {
-	executorFactory                      executor_factory.ExecutorFactory
-	repository                           ContinuousScreeningManifestRepository
-	blobRepository                       repositories.BlobRepository
-	marbleBackendUrl                     string
-	continuousScreeningEntitiesBucketUrl string
+	executorFactory              executor_factory.ExecutorFactory
+	repository                   ContinuousScreeningManifestRepository
+	blobRepository               repositories.BlobRepository
+	marbleBackendUrl             string
+	continuousScreeningBucketUrl string
 }
 
 func NewContinuousScreeningManifestUsecase(
@@ -44,14 +44,14 @@ func NewContinuousScreeningManifestUsecase(
 	repository ContinuousScreeningManifestRepository,
 	blobRepository repositories.BlobRepository,
 	marbleBackendUrl string,
-	continuousScreeningEntitiesBucketUrl string,
+	continuousScreeningBucketUrl string,
 ) *ContinuousScreeningManifestUsecase {
 	return &ContinuousScreeningManifestUsecase{
-		executorFactory:                      executorFactory,
-		repository:                           repository,
-		blobRepository:                       blobRepository,
-		marbleBackendUrl:                     marbleBackendUrl,
-		continuousScreeningEntitiesBucketUrl: continuousScreeningEntitiesBucketUrl,
+		executorFactory:              executorFactory,
+		repository:                   repository,
+		blobRepository:               blobRepository,
+		marbleBackendUrl:             marbleBackendUrl,
+		continuousScreeningBucketUrl: continuousScreeningBucketUrl,
 	}
 }
 
@@ -119,7 +119,7 @@ func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningDeltaBlob(
 			errors.New("delta does not belong to the organization")
 	}
 
-	blob, err := u.blobRepository.GetBlob(ctx, u.continuousScreeningEntitiesBucketUrl, delta.FilePath)
+	blob, err := u.blobRepository.GetBlob(ctx, u.continuousScreeningBucketUrl, delta.FilePath)
 	if err != nil {
 		return models.Blob{},
 			errors.Wrap(err, "failed to get delta file blob")
@@ -146,7 +146,7 @@ func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningFullBlob(
 			errors.Wrap(models.NotFoundError, "no full dataset file found for organization")
 	}
 
-	blob, err := u.blobRepository.GetBlob(ctx, u.continuousScreeningEntitiesBucketUrl, fullFile.FilePath)
+	blob, err := u.blobRepository.GetBlob(ctx, u.continuousScreeningBucketUrl, fullFile.FilePath)
 	if err != nil {
 		return models.Blob{},
 			errors.Wrap(err, "failed to get full dataset file blob")
