@@ -65,15 +65,17 @@ func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningCatalog(ctx c
 	}
 
 	var catalog models.CatalogResponse
+	catalog.Datasets = make([]models.CatalogDataset, len(datasetFiles))
 
-	for _, datasetFile := range datasetFiles {
-		catalog.UpsertDataset(
-			orgCustomDatasetName(datasetFile.OrgId),
-			datasetFile.Version,
-			datasetFileUrlBuilder(u.marbleBackendUrl, datasetFile.OrgId),
-			deltaFileUrlBuilder(u.marbleBackendUrl, datasetFile.OrgId),
-			[]string{"marble_continuous_screening"},
-		)
+	for i, datasetFile := range datasetFiles {
+		catalog.Datasets[i] = models.CatalogDataset{
+			Name:        orgCustomDatasetName(datasetFile.OrgId),
+			Title:       orgCustomDatasetName(datasetFile.OrgId),
+			EntitiesUrl: datasetFileUrlBuilder(u.marbleBackendUrl, datasetFile.OrgId),
+			Version:     datasetFile.Version,
+			DeltaUrl:    deltaFileUrlBuilder(u.marbleBackendUrl, datasetFile.OrgId),
+			Tags:        []string{MARBLE_CONTINUOUS_SCREENING_TAG},
+		}
 	}
 
 	return catalog, nil
