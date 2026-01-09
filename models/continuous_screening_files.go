@@ -16,24 +16,3 @@ type CatalogDataset struct {
 type CatalogResponse struct {
 	Datasets []CatalogDataset `json:"datasets"`
 }
-
-func (c *CatalogResponse) UpsertDataset(name string, version string, entitiesUrl string, deltaUrl string, tags []string) {
-	for i, ds := range c.Datasets {
-		if ds.Name == name {
-			c.Datasets[i].Title = name
-			c.Datasets[i].Version = version
-			c.Datasets[i].EntitiesUrl = entitiesUrl
-			c.Datasets[i].DeltaUrl = deltaUrl
-			c.Datasets[i].Tags = tags
-			return
-		}
-	}
-	c.Datasets = append(c.Datasets, CatalogDataset{
-		Name:        name,
-		Title:       name,
-		EntitiesUrl: entitiesUrl,
-		Version:     version,
-		DeltaUrl:    deltaUrl,
-		Tags:        tags,
-	})
-}
