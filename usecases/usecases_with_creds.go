@@ -855,7 +855,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker() 
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.BlobRepository,
 		usecases.Repositories.OpenSanctionsRepository,
-		usecases.datasetDeltafileBucketUrl,
+		usecases.continuousScreeningBucketUrl,
 		usecases.NewContinuousScreeningUsecase(),
 	)
 }

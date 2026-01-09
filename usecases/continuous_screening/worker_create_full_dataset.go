@@ -255,7 +255,7 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 	version := generateNextVersion("", now)
 
 	fileName := fmt.Sprintf("%s-entities.ftm.json", version)
-	fullDatasetFileName := fmt.Sprintf("%s/%s/%s", orgId.String(), FullDatasetFolderName, fileName)
+	fullDatasetFileName := fmt.Sprintf("%s/%s/%s/%s", OrgDatasetsFolderName, orgId.String(), FullDatasetFolderName, fileName)
 
 	trackBatch := &trackBatchState{}
 
@@ -360,10 +360,10 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 	version := generateNextVersion(previousDatasetFile.Version, now)
 
 	fileName := fmt.Sprintf("%s-entities.ftm.json", version)
-	fullDatasetFileName := fmt.Sprintf("%s/%s/%s", orgId.String(), FullDatasetFolderName, fileName)
+	fullDatasetFileName := fmt.Sprintf("%s/%s/%s/%s", OrgDatasetsFolderName, orgId.String(), FullDatasetFolderName, fileName)
 
 	deltaFileName := fmt.Sprintf("%s-delta.ftm.json", version)
-	deltaDatasetFileName := fmt.Sprintf("%s/%s/%s", orgId.String(), DeltaDatasetFolderName, deltaFileName)
+	deltaDatasetFileName := fmt.Sprintf("%s/%s/%s/%s", OrgDatasetsFolderName, orgId.String(), DeltaDatasetFolderName, deltaFileName)
 
 	previousBlob, err := w.blobRepository.GetBlob(ctx, w.bucketUrl, previousDatasetFile.FilePath)
 	if err != nil {

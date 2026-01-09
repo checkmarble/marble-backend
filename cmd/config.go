@@ -23,8 +23,8 @@ type ServerConfig struct {
 	telemetryExporter                string
 	otelSamplingRates                string
 	similarityThreshold              float64
-	enableTracing                           bool
-	continuousScreeningEntitiesBucketUrl    string
+	enableTracing                    bool
+	continuousScreeningBucketUrl     string
 }
 
 func (config ServerConfig) Validate() error {
@@ -35,22 +35,21 @@ func (config ServerConfig) Validate() error {
 }
 
 type WorkerConfig struct {
-	appName                     string
-	env                         string
-	failedWebhooksRetryPageSize int
-	ingestionBucketUrl          string
-	analyticsBucket             string
-	loggingFormat               string
-	sentryDsn                   string
-	cloudRunProbePort           string
-	caseReviewTimeout           time.Duration
-	caseManagerBucket           string
-	telemetryExporter           string
-	otelSamplingRates           string
-	enablePrometheus            bool
-	enableTracing               bool
-	datasetDeltafileBucketUrl   string
-	ScanDatasetUpdatesInterval  time.Duration
-	CreateFullDatasetInterval                time.Duration
-	continuousScreeningEntitiesBucketUrl    string
+	appName                      string
+	env                          string
+	failedWebhooksRetryPageSize  int
+	ingestionBucketUrl           string
+	analyticsBucket              string
+	loggingFormat                string
+	sentryDsn                    string
+	cloudRunProbePort            string
+	caseReviewTimeout            time.Duration
+	caseManagerBucket            string
+	telemetryExporter            string
+	otelSamplingRates            string
+	enablePrometheus             bool
+	enableTracing                bool
+	ScanDatasetUpdatesInterval   time.Duration
+	CreateFullDatasetInterval    time.Duration
+	continuousScreeningBucketUrl string
 }

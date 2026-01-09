@@ -23,27 +23,26 @@ import (
 )
 
 type Usecases struct {
-	Repositories                         repositories.Repositories
-	appName                              string
-	apiVersion                           string
-	batchIngestionMaxSize                int
-	ingestionBucketUrl                   string
-	caseManagerBucketUrl                 string
-	offloadingBucketUrl                  string
-	offloadingConfig                     infra.OffloadingConfig
-	failedWebhooksRetryPageSize          int
-	hasConvoyServerSetup                 bool
-	hasMetabaseSetup                     bool
-	hasOpensanctionsSetup                bool
-	hasNameRecognizerSetup               bool
-	license                              models.LicenseValidation
-	metricsCollectionConfig              infra.MetricCollectionConfig
-	firebaseAdmin                        idp.Adminer
-	aiAgentConfig                        infra.AIAgentConfiguration
-	analyticsConfig                      infra.AnalyticsConfig
-	datasetDeltafileBucketUrl            string
-	continuousScreeningEntitiesBucketUrl string
-	marbleApiUrl                         string
+	Repositories                 repositories.Repositories
+	appName                      string
+	apiVersion                   string
+	batchIngestionMaxSize        int
+	ingestionBucketUrl           string
+	caseManagerBucketUrl         string
+	offloadingBucketUrl          string
+	offloadingConfig             infra.OffloadingConfig
+	failedWebhooksRetryPageSize  int
+	hasConvoyServerSetup         bool
+	hasMetabaseSetup             bool
+	hasOpensanctionsSetup        bool
+	hasNameRecognizerSetup       bool
+	license                      models.LicenseValidation
+	metricsCollectionConfig      infra.MetricCollectionConfig
+	firebaseAdmin                idp.Adminer
+	aiAgentConfig                infra.AIAgentConfiguration
+	analyticsConfig              infra.AnalyticsConfig
+	continuousScreeningBucketUrl string
+	marbleApiUrl                 string
 }
 
 type Option func(*options)
@@ -160,15 +159,9 @@ func WithAIAgentConfig(config infra.AIAgentConfiguration) Option {
 	}
 }
 
-func WithDatasetDeltafileBucketUrl(bucket string) Option {
+func WithContinuousScreeningBucketUrl(bucket string) Option {
 	return func(o *options) {
-		o.datasetDeltafileBucketUrl = bucket
-	}
-}
-
-func WithContinuousScreeningEntitiesBucketUrl(bucket string) Option {
-	return func(o *options) {
-		o.continuousScreeningEntitiesBucketUrl = bucket
+		o.continuousScreeningBucketUrl = bucket
 	}
 }
 
@@ -179,26 +172,25 @@ func WithMarbleApiUrl(url string) Option {
 }
 
 type options struct {
-	appName                              string
-	apiVersion                           string
-	batchIngestionMaxSize                int
-	ingestionBucketUrl                   string
-	caseManagerBucketUrl                 string
-	offloadingBucketUrl                  string
-	offloadingConfig                     infra.OffloadingConfig
-	failedWebhooksRetryPageSize          int
-	license                              models.LicenseValidation
-	hasConvoyServerSetup                 bool
-	hasMetabaseSetup                     bool
-	hasOpensanctionsSetup                bool
-	hasNameRecognitionSetup              bool
-	metricsCollectionConfig              infra.MetricCollectionConfig
-	firebaseClient                       idp.Adminer
-	aiAgentConfig                        infra.AIAgentConfiguration
-	analyticsConfig                      infra.AnalyticsConfig
-	datasetDeltafileBucketUrl            string
-	continuousScreeningEntitiesBucketUrl string
-	marbleApiUrl                         string
+	appName                      string
+	apiVersion                   string
+	batchIngestionMaxSize        int
+	ingestionBucketUrl           string
+	caseManagerBucketUrl         string
+	offloadingBucketUrl          string
+	offloadingConfig             infra.OffloadingConfig
+	failedWebhooksRetryPageSize  int
+	license                      models.LicenseValidation
+	hasConvoyServerSetup         bool
+	hasMetabaseSetup             bool
+	hasOpensanctionsSetup        bool
+	hasNameRecognitionSetup      bool
+	metricsCollectionConfig      infra.MetricCollectionConfig
+	firebaseClient               idp.Adminer
+	aiAgentConfig                infra.AIAgentConfiguration
+	analyticsConfig              infra.AnalyticsConfig
+	continuousScreeningBucketUrl string
+	marbleApiUrl                 string
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -206,27 +198,26 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		o.batchIngestionMaxSize = DefaultApiBatchIngestionSize
 	}
 	return Usecases{
-		Repositories:                         repositories,
-		appName:                              o.appName,
-		apiVersion:                           o.apiVersion,
-		batchIngestionMaxSize:                o.batchIngestionMaxSize,
-		ingestionBucketUrl:                   o.ingestionBucketUrl,
-		caseManagerBucketUrl:                 o.caseManagerBucketUrl,
-		offloadingBucketUrl:                  o.offloadingBucketUrl,
-		offloadingConfig:                     o.offloadingConfig,
-		failedWebhooksRetryPageSize:          o.failedWebhooksRetryPageSize,
-		license:                              o.license,
-		hasConvoyServerSetup:                 o.hasConvoyServerSetup,
-		hasMetabaseSetup:                     o.hasMetabaseSetup,
-		hasOpensanctionsSetup:                o.hasOpensanctionsSetup,
-		hasNameRecognizerSetup:               o.hasNameRecognitionSetup,
-		metricsCollectionConfig:              o.metricsCollectionConfig,
-		firebaseAdmin:                        o.firebaseClient,
-		aiAgentConfig:                        o.aiAgentConfig,
-		analyticsConfig:                      o.analyticsConfig,
-		datasetDeltafileBucketUrl:            o.datasetDeltafileBucketUrl,
-		continuousScreeningEntitiesBucketUrl: o.continuousScreeningEntitiesBucketUrl,
-		marbleApiUrl:                         o.marbleApiUrl,
+		Repositories:                 repositories,
+		appName:                      o.appName,
+		apiVersion:                   o.apiVersion,
+		batchIngestionMaxSize:        o.batchIngestionMaxSize,
+		ingestionBucketUrl:           o.ingestionBucketUrl,
+		caseManagerBucketUrl:         o.caseManagerBucketUrl,
+		offloadingBucketUrl:          o.offloadingBucketUrl,
+		offloadingConfig:             o.offloadingConfig,
+		failedWebhooksRetryPageSize:  o.failedWebhooksRetryPageSize,
+		license:                      o.license,
+		hasConvoyServerSetup:         o.hasConvoyServerSetup,
+		hasMetabaseSetup:             o.hasMetabaseSetup,
+		hasOpensanctionsSetup:        o.hasOpensanctionsSetup,
+		hasNameRecognizerSetup:       o.hasNameRecognitionSetup,
+		metricsCollectionConfig:      o.metricsCollectionConfig,
+		firebaseAdmin:                o.firebaseClient,
+		aiAgentConfig:                o.aiAgentConfig,
+		analyticsConfig:              o.analyticsConfig,
+		continuousScreeningBucketUrl: o.continuousScreeningBucketUrl,
+		marbleApiUrl:                 o.marbleApiUrl,
 	}
 }
 
@@ -476,7 +467,7 @@ func (usecases *Usecases) NewContinuousScreeningManifestUsecase() *continuous_sc
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.BlobRepository,
 		usecases.marbleApiUrl,
-		usecases.continuousScreeningEntitiesBucketUrl,
+		usecases.continuousScreeningBucketUrl,
 	)
 }
 
@@ -488,7 +479,7 @@ func (usecases *Usecases) NewContinuousScreeningScanDatasetUpdatesWorker() *cont
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.Repositories.BlobRepository,
 		usecases.Repositories.TaskQueueRepository,
-		usecases.datasetDeltafileBucketUrl,
+		usecases.continuousScreeningBucketUrl,
 	)
 }
 
@@ -499,6 +490,6 @@ func (usecases *Usecases) NewContinuousScreeningCreateFullDatasetWorker() *conti
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.BlobRepository,
-		usecases.continuousScreeningEntitiesBucketUrl,
+		usecases.continuousScreeningBucketUrl,
 	)
 }
