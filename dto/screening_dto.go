@@ -69,6 +69,13 @@ func AdaptScreeningDto(m models.ScreeningWithMatches) ScreeningDto {
 	return screening
 }
 
+type ScreeningFreeformDto struct {
+	ScreeningRefineDto
+
+	Datasets  []string `json:"datasets"`
+	Threshold *int     `json:"threshold"`
+}
+
 type ScreeningRefineDto struct {
 	// Deprecated, to remove after the frontend starts consuming the new field
 	SanctionCheckId string         `json:"sanction_check_id"`
