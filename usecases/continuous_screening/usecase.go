@@ -231,6 +231,7 @@ type ContinuousScreeningIngestionUsecase interface {
 		organizationId string,
 		objectType string,
 		objectBody json.RawMessage,
+		shouldScreen bool,
 		parserOpts ...payload_parser.ParserOpt,
 	) (int, error)
 }

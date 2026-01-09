@@ -581,6 +581,10 @@ paths:
                   type: string
                 object_payload:
                   type: object
+                should_screen:
+                  type: boolean
+                  default: false
+                  description: Whether the object should be screened immediately. If false, the API returns 204 No Content.
               oneOf:
                 - required:
                     - object_id
@@ -588,11 +592,13 @@ paths:
                     - object_payload
       responses:
         '201':
-          description: Created monitored object
+          description: Monitored object created or updated, and screening result returned
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContinuousScreening'
+        '204':
+          description: Monitored object added or already exists, and no screening was requested
         '400':
           $ref: '#/components/responses/400'
         '403':
