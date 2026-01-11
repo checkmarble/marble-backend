@@ -74,6 +74,9 @@ jobs:
           GOOSE_DBSTRING: host=localhost port=5432 user=postgres password=postgres dbname=marble_test sslmode=disable
         run: |
           echo "Running migrations on PR branch..."
+          # Remove the compacted baseline migration - it's only for fresh installs,
+          # not for testing migration ordering against main branch
+          rm -f repositories/migrations/20241231000000_baseline_compacted.sql
           goose -dir repositories/migrations up || {
             echo "❌ Migration failed! This indicates migration ordering issues."
             echo "Check if your new migrations can run after main branch migrations."
