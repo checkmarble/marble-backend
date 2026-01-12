@@ -701,7 +701,7 @@ func (w *CreateFullDatasetWorker) getDatasetEntityFromTrack(
 			track.ObjectType, track.ObjectInternalId)
 	}
 
-	return buildDatasetEntity(dataModel.Tables[track.ObjectType], track, ingestedObjectData), nil
+	return buildDatasetEntity(dataModel.Tables[track.ObjectType], track, ingestedObjectData)
 }
 
 // writeDatasetEntity writes a datasetEntity to the output blob in NDJSON format
@@ -731,9 +731,9 @@ func writeDeltaDelete(encoder *json.Encoder, entityId string) error {
 }
 
 type datasetEntity struct {
-	Id         string         `json:"id"`
-	Schema     string         `json:"schema"`
-	Properties map[string]any `json:"properties"`
+	Id         string              `json:"id"`
+	Schema     string              `json:"schema"`
+	Properties map[string][]string `json:"properties"`
 }
 
 // Delta file structures for OpenSanctions/Yente format
@@ -761,8 +761,8 @@ func buildDatasetEntity(
 	table models.Table,
 	track models.ContinuousScreeningDeltaTrack,
 	ingestedObjectData models.DataModelObject,
-) datasetEntity {
-	properties := make(map[string]any)
+) (datasetEntity, error) {
+	properties := make(map[string][]string)
 
 	// Sort field names for deterministic output
 	fieldNames := make([]string, 0, len(table.Fields))
@@ -794,7 +794,7 @@ func buildDatasetEntity(
 			case uint, uint8, uint16, uint32, uint64:
 				strVal = fmt.Sprintf("%d", v)
 			case float32, float64:
-				strVal = fmt.Sprintf("%g", v)
+				strVal = fmt.Sprintf("%f", v)
 			case bool:
 				strVal = fmt.Sprintf("%t", v)
 			default:
@@ -805,13 +805,7 @@ func buildDatasetEntity(
 				strVal = normalizeFTMPropertyValue(*field.FTMProperty, strVal)
 
 				propertyKey := field.FTMProperty.String()
-				if existing, ok := properties[propertyKey]; ok {
-					if list, ok := existing.([]string); ok {
-						properties[propertyKey] = append(list, strVal)
-					}
-				} else {
-					properties[propertyKey] = []string{strVal}
-				}
+				properties[propertyKey] = append(properties[propertyKey], strVal)
 			}
 		}
 	}
@@ -821,22 +815,19 @@ func buildDatasetEntity(
 		ObjectId:   track.ObjectId,
 		ObjectType: track.ObjectType,
 	}
-	metadataJSON, _ := json.Marshal(metadata)
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		return datasetEntity{}, errors.Wrap(err, "failed to marshal entity metadata")
+	}
 
 	notesKey := models.FollowTheMoneyPropertyNotes.String()
-	if existing, ok := properties[notesKey]; ok {
-		if list, ok := existing.([]string); ok {
-			properties[notesKey] = append(list, string(metadataJSON))
-		}
-	} else {
-		properties[notesKey] = []string{string(metadataJSON)}
-	}
+	properties[notesKey] = append(properties[notesKey], string(metadataJSON))
 
 	return datasetEntity{
 		Id:         track.EntityId,
 		Schema:     table.FTMEntity.String(),
 		Properties: properties,
-	}
+	}, nil
 }
 
 // generateNextVersion generates the next version string based on the previous version and current date.

@@ -227,7 +227,8 @@ func TestBuildDatasetEntity_CountryNormalization(t *testing.T) {
 				Data: tt.ingestedData,
 			}
 
-			result := buildDatasetEntity(table, track, ingestedObject)
+			result, err := buildDatasetEntity(table, track, ingestedObject)
+			assert.NoError(t, err)
 
 			countryVal, ok := result.Properties["country"]
 			assert.True(t, ok, "country property should exist")
@@ -236,12 +237,10 @@ func TestBuildDatasetEntity_CountryNormalization(t *testing.T) {
 			// Check metadata in notes
 			notesVal, ok := result.Properties["notes"]
 			assert.True(t, ok, "notes property should exist")
-			notesList, ok := notesVal.([]string)
-			assert.True(t, ok, "notes should be a list of strings")
-			assert.Len(t, notesList, 1)
+			assert.Len(t, notesVal, 1)
 
 			var metadata models.EntityNoteMetadata
-			err := json.Unmarshal([]byte(notesList[0]), &metadata)
+			err = json.Unmarshal([]byte(notesVal[0]), &metadata)
 			assert.NoError(t, err)
 			assert.Equal(t, track.ObjectId, metadata.ObjectId)
 			assert.Equal(t, track.ObjectType, metadata.ObjectType)
@@ -276,16 +275,15 @@ func TestBuildDatasetEntity_Metadata(t *testing.T) {
 		},
 	}
 
-	result := buildDatasetEntity(table, track, ingestedObject)
+	result, err := buildDatasetEntity(table, track, ingestedObject)
+	assert.NoError(t, err)
 
 	notesVal, ok := result.Properties["notes"]
 	assert.True(t, ok, "notes property should exist")
-	notesList, ok := notesVal.([]string)
-	assert.True(t, ok, "notes should be a list of strings")
-	assert.Len(t, notesList, 1)
+	assert.Len(t, notesVal, 1)
 
 	var metadata models.EntityNoteMetadata
-	err := json.Unmarshal([]byte(notesList[0]), &metadata)
+	err = json.Unmarshal([]byte(notesVal[0]), &metadata)
 	assert.NoError(t, err)
 	assert.Equal(t, "obj-123", metadata.ObjectId)
 	assert.Equal(t, "customer", metadata.ObjectType)
@@ -460,7 +458,8 @@ func TestBuildDatasetEntity_DateNormalization(t *testing.T) {
 				Data: tt.ingestedData,
 			}
 
-			result := buildDatasetEntity(table, track, ingestedObject)
+			result, err := buildDatasetEntity(table, track, ingestedObject)
+			assert.NoError(t, err)
 
 			birthDateVal, ok := result.Properties["birthDate"]
 			assert.True(t, ok, "birthDate property should exist")

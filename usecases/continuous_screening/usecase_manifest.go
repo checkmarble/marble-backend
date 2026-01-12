@@ -74,7 +74,7 @@ func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningCatalog(ctx c
 			EntitiesUrl: datasetFileUrlBuilder(u.marbleBackendUrl, datasetFile.OrgId),
 			Version:     datasetFile.Version,
 			DeltaUrl:    deltaFileUrlBuilder(u.marbleBackendUrl, datasetFile.OrgId),
-			Tags:        []string{MARBLE_CONTINUOUS_SCREENING_TAG},
+			Tags:        []string{MarbleContinuousScreeningTag},
 		}
 	}
 
