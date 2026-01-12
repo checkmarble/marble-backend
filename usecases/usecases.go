@@ -1,6 +1,8 @@
 package usecases
 
 import (
+	"time"
+
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -43,6 +45,7 @@ type Usecases struct {
 	analyticsConfig              infra.AnalyticsConfig
 	continuousScreeningBucketUrl string
 	marbleApiUrl                 string
+	csCreateFullDatasetInterval  time.Duration
 }
 
 type Option func(*options)
@@ -171,6 +174,12 @@ func WithMarbleApiUrl(url string) Option {
 	}
 }
 
+func WithCsCreateFullDatasetInterval(interval time.Duration) Option {
+	return func(o *options) {
+		o.csCreateFullDatasetInterval = interval
+	}
+}
+
 type options struct {
 	appName                      string
 	apiVersion                   string
@@ -191,6 +200,7 @@ type options struct {
 	analyticsConfig              infra.AnalyticsConfig
 	continuousScreeningBucketUrl string
 	marbleApiUrl                 string
+	csCreateFullDatasetInterval  time.Duration
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -491,5 +501,6 @@ func (usecases *Usecases) NewContinuousScreeningCreateFullDatasetWorker() *conti
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.BlobRepository,
 		usecases.continuousScreeningBucketUrl,
+		usecases.csCreateFullDatasetInterval,
 	)
 }

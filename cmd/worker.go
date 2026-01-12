@@ -303,6 +303,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
 		usecases.WithContinuousScreeningBucketUrl(workerConfig.continuousScreeningBucketUrl),
+		usecases.WithCsCreateFullDatasetInterval(workerConfig.CreateFullDatasetInterval),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 

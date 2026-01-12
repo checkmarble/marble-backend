@@ -114,6 +114,8 @@ type CreateFullDatasetWorker struct {
 	ingestedDataReader createFullDatasetWorkerIngestedDataReader
 	blobRepository     repositories.BlobRepository
 	bucketUrl          string
+
+	jobInterval time.Duration
 }
 
 func NewCreateFullDatasetWorker(
@@ -123,6 +125,7 @@ func NewCreateFullDatasetWorker(
 	ingestedDataReader createFullDatasetWorkerIngestedDataReader,
 	blobRepository repositories.BlobRepository,
 	bucketUrl string,
+	jobInterval time.Duration,
 ) *CreateFullDatasetWorker {
 	return &CreateFullDatasetWorker{
 		executorFactory:    executorFactory,
@@ -131,6 +134,7 @@ func NewCreateFullDatasetWorker(
 		ingestedDataReader: ingestedDataReader,
 		blobRepository:     blobRepository,
 		bucketUrl:          bucketUrl,
+		jobInterval:        jobInterval,
 	}
 }
 
@@ -149,9 +153,8 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Creating full dataset", "job", job)
 
-	// TODO: For now the interval is hardcoded to 24 hours, but we should make it configurable per org.
 	// TODO: fetch the interval from the org config
-	if err := scheduled_execution.AddStrideDelay(job, 24*time.Hour); err != nil {
+	if err := scheduled_execution.AddStrideDelay(job, w.jobInterval); err != nil {
 		return err
 	}
 
