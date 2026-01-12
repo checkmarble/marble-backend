@@ -220,7 +220,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		Return(nil)
 
 	nb, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
-		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}`))
+		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}`), true)
 	asserts := assert.New(t)
 	asserts.NoError(err, "Error ingesting object")
 	asserts.Equal(1, nb, "Number of rows affected")
@@ -254,7 +254,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		Return(nil)
 
 	nb, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
-		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}`))
+		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}`), true)
 	asserts := assert.New(t)
 	asserts.NoError(err, "Error ingesting object")
 	asserts.Equal(1, nb, "Number of rows affected")
@@ -297,7 +297,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		Return(nil)
 
 	nb, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
-		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}`))
+		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}`), true)
 
 	asserts := assert.New(t)
 	asserts.NoError(err, "Error ingesting object")
@@ -331,7 +331,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		Return(nil)
 
 	nb, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
-		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}`))
+		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}`), true)
 	asserts := assert.New(t)
 	asserts.NoError(err, "Error ingesting object")
 	asserts.Equal(0, nb, "Number of rows affected")
@@ -373,7 +373,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		Return(nil)
 
 	nb, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
-		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z"}`), payload_parser.WithAllowPatch())
+		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z"}`), true, payload_parser.WithAllowPatch())
 	asserts := assert.New(t)
 	asserts.NoError(err, "Error ingesting object")
 	asserts.Equal(1, nb, "Number of rows affected")
@@ -399,7 +399,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_withou
 		WillReturnRows(pgxmock.NewRows([]string{"object_id", "status", "updated_at", "value", "id"}))
 
 	_, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
-		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z"}`), payload_parser.WithAllowPatch())
+		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z"}`), true, payload_parser.WithAllowPatch())
 	asserts := assert.New(t)
 	asserts.ErrorAs(err, &models.IngestionValidationErrors{}, "Error ingesting object")
 }
@@ -434,7 +434,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_nomin
 		Return(nil)
 
 	nb, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",
-		json.RawMessage(`[{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}]`))
+		json.RawMessage(`[{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}]`), true)
 	asserts := assert.New(t)
 	asserts.NoError(err, "Error ingesting objects")
 	asserts.Equal(2, nb, "Number of rows affected")
@@ -481,7 +481,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		Return(nil)
 
 	nb, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",
-		json.RawMessage(`[{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}]`))
+		json.RawMessage(`[{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}]`), true)
 	asserts := assert.New(t)
 	asserts.NoError(err, "Error ingesting objects")
 	asserts.Equal(2, nb, "Number of rows affected")
@@ -522,7 +522,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		Return(nil)
 
 	nb, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",
-		json.RawMessage(`[{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}]`), payload_parser.WithAllowPatch())
+		json.RawMessage(`[{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}]`), true, payload_parser.WithAllowPatch())
 	asserts := assert.New(t)
 	asserts.NoError(err, "Error ingesting objects")
 	asserts.Equal(2, nb, "Number of rows affected")
@@ -657,7 +657,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		Return(nil)
 
 	nb, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",
-		json.RawMessage(`[{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}, {"object_id": "3", "updated_at": "2020-01-01T00:00:00Z", "value": 3.0, "status": "OK"}, {"object_id": "4", "updated_at": "2020-01-01T00:00:00Z", "value": 4.0, "status": "OK"}, {"object_id": "5", "updated_at": "2020-01-01T00:00:00Z", "value": 5.0, "status": "OK"}]`))
+		json.RawMessage(`[{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}, {"object_id": "3", "updated_at": "2020-01-01T00:00:00Z", "value": 3.0, "status": "OK"}, {"object_id": "4", "updated_at": "2020-01-01T00:00:00Z", "value": 4.0, "status": "OK"}, {"object_id": "5", "updated_at": "2020-01-01T00:00:00Z", "value": 5.0, "status": "OK"}]`), true)
 	asserts := assert.New(t)
 	asserts.NoError(err, "Error ingesting objects")
 	asserts.Equal(5, nb, "Number of rows affected")
@@ -677,7 +677,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		Return([]models.ContinuousScreeningConfig{}, nil)
 
 	_, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",
-		json.RawMessage(`[{"object_id": "", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}]`))
+		json.RawMessage(`[{"object_id": "", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}]`), true)
 	asserts := assert.New(t)
 	asserts.ErrorAs(err, &models.IngestionValidationErrors{}, "Error ingesting objects")
 }
