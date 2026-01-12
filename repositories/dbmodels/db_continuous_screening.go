@@ -19,9 +19,11 @@ type DBContinuousScreening struct {
 	ContinuousScreeningConfigId       uuid.UUID       `db:"continuous_screening_config_id"`
 	ContinuousScreeningConfigStableId uuid.UUID       `db:"continuous_screening_config_stable_id"`
 	CaseId                            *uuid.UUID      `db:"case_id"`
-	ObjectType                        string          `db:"object_type"`
-	ObjectId                          string          `db:"object_id"`
-	ObjectInternalId                  uuid.UUID       `db:"object_internal_id"`
+	ObjectType                        *string         `db:"object_type"`
+	ObjectId                          *string         `db:"object_id"`
+	ObjectInternalId                  *uuid.UUID      `db:"object_internal_id"`
+	OpenSanctionEntityId              *string         `db:"opensanction_entity_id"`
+	OpenSanctionEntityPayload         json.RawMessage `db:"opensanction_entity_payload"`
 	Status                            string          `db:"status"`
 	TriggerType                       string          `db:"trigger_type"`
 	SearchInput                       json.RawMessage `db:"search_input"`
@@ -41,6 +43,8 @@ func AdaptContinuousScreening(db DBContinuousScreening) (models.ContinuousScreen
 		ObjectType:                        db.ObjectType,
 		ObjectId:                          db.ObjectId,
 		ObjectInternalId:                  db.ObjectInternalId,
+		OpenSanctionEntityId:              db.OpenSanctionEntityId,
+		OpenSanctionEntityPayload:         db.OpenSanctionEntityPayload,
 		Status:                            models.ScreeningStatusFrom(db.Status),
 		TriggerType:                       models.ContinuousScreeningTriggerTypeFrom(db.TriggerType),
 		SearchInput:                       db.SearchInput,
@@ -67,6 +71,24 @@ type DBContinuousScreeningMatches struct {
 }
 
 func AdaptContinuousScreeningMatch(dto DBContinuousScreeningMatches) (models.ContinuousScreeningMatch, error) {
+	var metadata *models.EntityNoteMetadata
+	// Optimization: Use a specific struct to ignore all other properties and avoid map allocations
+	var payload struct {
+		Properties struct {
+			Notes []string `json:"notes"`
+		} `json:"properties"`
+	}
+
+	if err := json.Unmarshal(dto.Payload, &payload); err == nil {
+		for _, note := range payload.Properties.Notes {
+			var meta models.EntityNoteMetadata
+			if err := json.Unmarshal([]byte(note), &meta); err == nil {
+				metadata = &meta
+				break
+			}
+		}
+	}
+
 	return models.ContinuousScreeningMatch{
 		Id:                    dto.Id,
 		ContinuousScreeningId: dto.ContinuousScreeningId,
@@ -74,6 +96,7 @@ func AdaptContinuousScreeningMatch(dto DBContinuousScreeningMatches) (models.Con
 		Status:                models.ScreeningMatchStatusFrom(dto.Status),
 		Payload:               dto.Payload,
 		ReviewedBy:            dto.ReviewedBy,
+		Metadata:              metadata,
 		CreatedAt:             dto.CreatedAt,
 		UpdatedAt:             dto.UpdatedAt,
 	}, nil

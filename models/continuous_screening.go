@@ -62,9 +62,11 @@ type ContinuousScreening struct {
 	ContinuousScreeningConfigId       uuid.UUID
 	ContinuousScreeningConfigStableId uuid.UUID
 	CaseId                            *uuid.UUID
-	ObjectType                        string
-	ObjectId                          string
-	ObjectInternalId                  uuid.UUID
+	ObjectType                        *string
+	ObjectId                          *string
+	ObjectInternalId                  *uuid.UUID
+	OpenSanctionEntityId              *string
+	OpenSanctionEntityPayload         json.RawMessage
 	Status                            ScreeningStatus
 	TriggerType                       ContinuousScreeningTriggerType
 	SearchInput                       json.RawMessage
@@ -82,6 +84,17 @@ type UpdateContinuousScreeningInput struct {
 	CaseId          *uuid.UUID
 }
 
+type CreateContinuousScreening struct {
+	Screening                 ScreeningWithMatches
+	Config                    ContinuousScreeningConfig
+	ObjectType                *string
+	ObjectId                  *string
+	ObjectInternalId          *uuid.UUID
+	OpenSanctionEntityId      *string
+	OpenSanctionEntityPayload json.RawMessage
+	TriggerType               ContinuousScreeningTriggerType
+}
+
 type ContinuousScreeningMatch struct {
 	Id                    uuid.UUID
 	ContinuousScreeningId uuid.UUID
@@ -89,6 +102,7 @@ type ContinuousScreeningMatch struct {
 	Status                ScreeningMatchStatus
 	Payload               json.RawMessage
 	ReviewedBy            *uuid.UUID
+	Metadata              *EntityNoteMetadata
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -324,6 +338,11 @@ type ContinuousScreeningDeltaTrack struct {
 	DatasetFileId    *uuid.UUID
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+}
+
+type EntityNoteMetadata struct {
+	ObjectId   string `json:"object_id"`
+	ObjectType string `json:"object_type"`
 }
 
 type CreateContinuousScreeningDeltaTrack struct {

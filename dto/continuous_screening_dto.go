@@ -15,9 +15,11 @@ type ContinuousScreeningDto struct {
 	ContinuousScreeningConfigId       uuid.UUID                     `json:"continuous_screening_config_id"`
 	ContinuousScreeningConfigStableId uuid.UUID                     `json:"continuous_screening_config_stable_id"`
 	CaseId                            *uuid.UUID                    `json:"case_id"`
-	ObjectType                        string                        `json:"object_type"`
-	ObjectId                          string                        `json:"object_id"`
-	ObjectInternalId                  uuid.UUID                     `json:"object_internal_id"`
+	ObjectType                        *string                       `json:"object_type,omitempty"`
+	ObjectId                          *string                       `json:"object_id,omitempty"`
+	ObjectInternalId                  *uuid.UUID                    `json:"object_internal_id,omitempty"`
+	OpenSanctionEntityId              *string                       `json:"opensanction_entity_id,omitempty"`      //nolint:tagliatelle
+	OpenSanctionEntityPayload         json.RawMessage               `json:"opensanction_entity_payload,omitempty"` //nolint:tagliatelle
 	Status                            string                        `json:"status"`
 	TriggerType                       string                        `json:"trigger_type"`
 	Request                           ScreeningRequestDto           `json:"request"`
@@ -38,6 +40,8 @@ func AdaptContinuousScreeningDto(m models.ContinuousScreeningWithMatches) Contin
 		ObjectType:                        m.ObjectType,
 		ObjectId:                          m.ObjectId,
 		ObjectInternalId:                  m.ObjectInternalId,
+		OpenSanctionEntityId:              m.OpenSanctionEntityId,
+		OpenSanctionEntityPayload:         m.OpenSanctionEntityPayload,
 		Status:                            m.Status.String(),
 		TriggerType:                       m.TriggerType.String(),
 		Request: ScreeningRequestDto{
@@ -55,6 +59,8 @@ type ContinuousScreeningMatchDto struct {
 	Id                    uuid.UUID       `json:"id"`
 	ContinuousScreeningId uuid.UUID       `json:"continuous_screening_id"`
 	OpenSanctionEntityId  string          `json:"opensanction_entity_id"` //nolint:tagliatelle
+	ObjectType            string          `json:"object_type"`
+	ObjectId              string          `json:"object_id"`
 	Status                string          `json:"status"`
 	Payload               json.RawMessage `json:"payload"`
 	ReviewedBy            *uuid.UUID      `json:"reviewed_by"`
@@ -63,10 +69,19 @@ type ContinuousScreeningMatchDto struct {
 }
 
 func AdaptContinuousScreeningMatchDto(m models.ContinuousScreeningMatch) ContinuousScreeningMatchDto {
+	var objectType string
+	var objectId string
+	if m.Metadata != nil {
+		objectType = m.Metadata.ObjectType
+		objectId = m.Metadata.ObjectId
+	}
+
 	return ContinuousScreeningMatchDto{
 		Id:                    m.Id,
 		ContinuousScreeningId: m.ContinuousScreeningId,
 		OpenSanctionEntityId:  m.OpenSanctionEntityId,
+		ObjectType:            objectType,
+		ObjectId:              objectId,
 		Status:                m.Status.String(),
 		Payload:               m.Payload,
 		ReviewedBy:            m.ReviewedBy,

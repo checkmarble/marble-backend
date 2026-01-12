@@ -23,12 +23,7 @@ type doScreeningWorkerRepository interface {
 	InsertContinuousScreening(
 		ctx context.Context,
 		exec repositories.Executor,
-		screening models.ScreeningWithMatches,
-		config models.ContinuousScreeningConfig,
-		objectType string,
-		objectId string,
-		objectInternalId uuid.UUID,
-		triggerType models.ContinuousScreeningTriggerType,
+		input models.CreateContinuousScreening,
 	) (models.ContinuousScreeningWithMatches, error)
 	GetContinuousScreeningByObjectId(
 		ctx context.Context,
@@ -296,12 +291,14 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 		continuousScreeningWithMatches, err := w.repo.InsertContinuousScreening(
 			ctx,
 			tx,
-			screeningWithMatches,
-			config,
-			job.Args.ObjectType,
-			monitoredObject.ObjectId,
-			newObjectInternalId,
-			job.Args.TriggerType,
+			models.CreateContinuousScreening{
+				Screening:        screeningWithMatches,
+				Config:           config,
+				ObjectType:       &job.Args.ObjectType,
+				ObjectId:         &monitoredObject.ObjectId,
+				ObjectInternalId: &newObjectInternalId,
+				TriggerType:      job.Args.TriggerType,
+			},
 		)
 		if err != nil {
 			return err
