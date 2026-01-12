@@ -222,7 +222,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	// Start the task queue workers
 	workers := river.NewWorkers()
 	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx, appName, repositories.MarbleDbRepository,
-		repositories.ExecutorGetter, offloadingConfig, analyticsConfig)
+		repositories.ExecutorGetter, offloadingConfig, analyticsConfig, workerConfig.CreateFullDatasetInterval)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -381,7 +381,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	taskQueueWorker := uc.NewTaskQueueWorker(riverClient,
 		slices.Collect(maps.Keys(nonOrgQueues)),
 	)
-	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx, offloadingConfig, analyticsConfig)
+	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx, offloadingConfig, analyticsConfig, workerConfig.CreateFullDatasetInterval)
 
 	// Start the cron jobs using the old entrypoint.
 	// This will progressively be replaced by the new task queue system.
