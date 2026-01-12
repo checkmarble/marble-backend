@@ -90,6 +90,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		AppName:              "marble-backend",
 		AppVersion:           config.Version,
 		MarbleApiUrl:         utils.GetEnv("MARBLE_API_URL", ""),
+		MarbleApiInternalUrl: utils.GetEnv("MARBLE_API_INTERNAL_URL", ""),
 		MarbleAppUrl:         marbleAppUrl,
 		MarbleBackofficeUrl:  utils.GetEnv("MARBLE_BACKOFFICE_URL", ""),
 		Port:                 utils.GetRequiredEnv[string]("PORT"),
@@ -124,6 +125,11 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 	if apiConfig.DisableSegment {
 		apiConfig.SegmentWriteKey = ""
+	}
+	if apiConfig.MarbleApiInternalUrl == "" {
+		// Fallback on the regular API URL if the internal one is not set
+		// Don't fail if the config is missing as some environment use the same URL
+		apiConfig.MarbleApiInternalUrl = apiConfig.MarbleApiUrl
 	}
 
 	pgConfig := infra.PgConfig{
@@ -364,7 +370,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
 		usecases.WithContinuousScreeningBucketUrl(serverConfig.continuousScreeningBucketUrl),
-		usecases.WithMarbleApiUrl(apiConfig.MarbleApiUrl),
+		usecases.WithMarbleApiInternalUrl(apiConfig.MarbleApiInternalUrl),
 	)
 
 	////////////////////////////////////////////////////////////
