@@ -44,7 +44,7 @@ type Usecases struct {
 	aiAgentConfig                infra.AIAgentConfiguration
 	analyticsConfig              infra.AnalyticsConfig
 	continuousScreeningBucketUrl string
-	marbleApiUrl                 string
+	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
 }
 
@@ -168,9 +168,9 @@ func WithContinuousScreeningBucketUrl(bucket string) Option {
 	}
 }
 
-func WithMarbleApiUrl(url string) Option {
+func WithMarbleApiInternalUrl(url string) Option {
 	return func(o *options) {
-		o.marbleApiUrl = url
+		o.marbleApiInternalUrl = url
 	}
 }
 
@@ -199,7 +199,7 @@ type options struct {
 	aiAgentConfig                infra.AIAgentConfiguration
 	analyticsConfig              infra.AnalyticsConfig
 	continuousScreeningBucketUrl string
-	marbleApiUrl                 string
+	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
 }
 
@@ -227,7 +227,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		aiAgentConfig:                o.aiAgentConfig,
 		analyticsConfig:              o.analyticsConfig,
 		continuousScreeningBucketUrl: o.continuousScreeningBucketUrl,
-		marbleApiUrl:                 o.marbleApiUrl,
+		marbleApiInternalUrl:         o.marbleApiInternalUrl,
 		csCreateFullDatasetInterval:  o.csCreateFullDatasetInterval,
 	}
 }
@@ -477,7 +477,7 @@ func (usecases *Usecases) NewContinuousScreeningManifestUsecase() *continuous_sc
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.BlobRepository,
-		usecases.marbleApiUrl,
+		usecases.marbleApiInternalUrl,
 		usecases.continuousScreeningBucketUrl,
 	)
 }

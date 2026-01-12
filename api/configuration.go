@@ -15,21 +15,22 @@ const (
 )
 
 type Configuration struct {
-	Env                 string
-	AppName             string
-	AppVersion          string
-	ServerMode          ServerMode
-	Port                string
-	MarbleApiUrl        string
-	MarbleAppUrl        string
-	MarbleBackofficeUrl string
-	RequestLoggingLevel string
-	TokenLifetimeMinute int
-	SegmentWriteKey     string
-	DisableSegment      bool
-	BatchTimeout        time.Duration
-	DecisionTimeout     time.Duration
-	DefaultTimeout      time.Duration
+	Env                  string
+	AppName              string
+	AppVersion           string
+	ServerMode           ServerMode
+	Port                 string
+	MarbleApiUrl         string
+	MarbleApiInternalUrl string
+	MarbleAppUrl         string
+	MarbleBackofficeUrl  string
+	RequestLoggingLevel  string
+	TokenLifetimeMinute  int
+	SegmentWriteKey      string
+	DisableSegment       bool
+	BatchTimeout         time.Duration
+	DecisionTimeout      time.Duration
+	DefaultTimeout       time.Duration
 
 	AnalyticsEnabled     bool
 	AnalyticsTimeout     time.Duration
