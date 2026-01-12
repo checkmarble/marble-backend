@@ -340,8 +340,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 	suite.caseEditor.On("PerformCaseActionSideEffects", mock.Anything, mock.Anything, caseData).Return(nil)
 	suite.enforceSecurity.On("WriteWhitelist", mock.Anything).Return(nil)
 	suite.repository.On("AddScreeningMatchWhitelist", mock.Anything, mock.Anything,
-		suite.orgId.String(), "transactions_test-object-id", "test-entity-id-1", &suite.userId).Return(nil)
-
+		suite.orgId.String(), "marble_transactions_test-object-id", "test-entity-id-1", &suite.userId).Return(nil)
 	// Execute
 	uc := suite.makeUsecase()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
@@ -370,13 +369,21 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id:     suite.screeningId,
-			OrgId:  suite.orgId,
-			Status: models.ScreeningStatusInReview,
-			CaseId: &suite.caseId,
+			Id:          suite.screeningId,
+			OrgId:       suite.orgId,
+			Status:      models.ScreeningStatusInReview,
+			CaseId:      &suite.caseId,
+			ObjectType:  utils.Ptr("transactions"),
+			ObjectId:    utils.Ptr("test-object-id"),
+			TriggerType: models.ContinuousScreeningTriggerTypeObjectAdded,
 		},
 		Matches: []models.ContinuousScreeningMatch{continuousScreeningMatch},
 	}
+
+	// Expect whitelist creation on NoHit
+	suite.enforceSecurity.On("WriteWhitelist", mock.Anything).Return(nil)
+	suite.repository.On("AddScreeningMatchWhitelist", mock.Anything, mock.Anything,
+		suite.orgId.String(), "marble_transactions_test-object-id", "test-entity-id", &suite.userId).Return(nil)
 
 	caseData := models.Case{
 		Id: suite.caseId.String(),
@@ -418,6 +425,77 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 	suite.AssertExpectations()
 }
 
+func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_DatasetUpdated_WhitelistsEntity() {
+	// Setup
+	input := models.ScreeningMatchUpdate{
+		MatchId:    suite.matchId.String(),
+		Status:     models.ScreeningMatchStatusNoHit,
+		ReviewerId: &suite.userId,
+	}
+
+	continuousScreeningMatch := models.ContinuousScreeningMatch{
+		Id:                    suite.matchId,
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusPending,
+		OpenSanctionEntityId:  "marble-entity-123",
+	}
+
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:                   suite.screeningId,
+			OrgId:                suite.orgId,
+			Status:               models.ScreeningStatusInReview,
+			CaseId:               &suite.caseId,
+			TriggerType:          models.ContinuousScreeningTriggerTypeDatasetUpdated,
+			OpenSanctionEntityId: utils.Ptr("open-sanction-entity-abc"),
+		},
+		Matches: []models.ContinuousScreeningMatch{continuousScreeningMatch},
+	}
+
+	caseData := models.Case{
+		Id: suite.caseId.String(),
+	}
+
+	updatedMatch := continuousScreeningMatch
+	updatedMatch.Status = models.ScreeningMatchStatusNoHit
+
+	// Mock expectations
+	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
+		suite.matchId).Return(continuousScreeningMatch, nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("GetCaseById", mock.Anything, mock.Anything, suite.caseId.String()).Return(caseData, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(nil)
+	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId.String(), false).Return([]models.Inbox{}, nil)
+	suite.enforceSecurity.On("ReadOrUpdateCase", mock.Anything, mock.Anything).Return(nil)
+	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
+		suite.matchId, models.ScreeningMatchStatusNoHit, mock.Anything).Return(updatedMatch, nil)
+	suite.caseEditor.On("PerformCaseActionSideEffects", mock.Anything, mock.Anything, caseData).Return(nil)
+	// Whitelist expectations: despite Whitelist=false, we still whitelist
+	suite.enforceSecurity.On("WriteWhitelist", mock.Anything).Return(nil)
+	suite.repository.On("AddScreeningMatchWhitelist", mock.Anything, mock.Anything,
+		suite.orgId.String(), "marble-entity-123", "open-sanction-entity-abc", &suite.userId).Return(nil)
+	suite.repository.On("UpdateContinuousScreeningStatus", mock.Anything, mock.Anything,
+		suite.screeningId, models.ScreeningStatusNoHit).Return(models.ContinuousScreening{}, nil)
+	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
+		attrs models.CreateCaseEventAttributes,
+	) bool {
+		return attrs.CaseId == suite.caseId.String() &&
+			attrs.EventType == models.ScreeningReviewed &&
+			attrs.NewValue != nil && *attrs.NewValue ==
+			models.ScreeningMatchStatusNoHit.String()
+	})).Return(nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
+
+	// Assert
+	suite.NoError(err)
+	suite.Equal(updatedMatch, result)
+	suite.AssertExpectations()
+}
+
 func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_IsPartial_NoStatusChange() {
 	// Setup
 	input := models.ScreeningMatchUpdate{
@@ -436,14 +514,22 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id:        suite.screeningId,
-			OrgId:     suite.orgId,
-			Status:    models.ScreeningStatusInReview,
-			CaseId:    &suite.caseId,
-			IsPartial: true, // This should prevent status change
+			Id:          suite.screeningId,
+			OrgId:       suite.orgId,
+			Status:      models.ScreeningStatusInReview,
+			CaseId:      &suite.caseId,
+			IsPartial:   true, // This should prevent status change
+			ObjectType:  utils.Ptr("transactions"),
+			ObjectId:    utils.Ptr("test-object-id"),
+			TriggerType: models.ContinuousScreeningTriggerTypeObjectAdded,
 		},
 		Matches: []models.ContinuousScreeningMatch{continuousScreeningMatch},
 	}
+
+	// Expect whitelist creation on NoHit even if IsPartial
+	suite.enforceSecurity.On("WriteWhitelist", mock.Anything).Return(nil)
+	suite.repository.On("AddScreeningMatchWhitelist", mock.Anything, mock.Anything,
+		suite.orgId.String(), "marble_transactions_test-object-id", "test-entity-id", &suite.userId).Return(nil)
 
 	caseData := models.Case{
 		Id: suite.caseId.String(),

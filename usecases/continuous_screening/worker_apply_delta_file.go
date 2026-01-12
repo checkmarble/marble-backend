@@ -70,11 +70,11 @@ type applyDeltaFileWorkerRepository interface {
 		input models.CreateContinuousScreeningJobError,
 	) error
 
-	SearchScreeningMatchWhitelist(
+	SearchScreeningMatchWhitelistByIds(
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId string,
-		counterpartyId, entityId *string,
+		counterpartyIds, entityIds []string,
 	) ([]models.ScreeningWhitelist, error)
 
 	InsertContinuousScreening(
@@ -361,12 +361,15 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 	updateJob models.EnrichedContinuousScreeningUpdateJob,
 	record models.OpenSanctionsDeltaFileRecord,
 ) (query models.OpenSanctionsQuery, err error) {
-	whitelists, err := w.repository.SearchScreeningMatchWhitelist(
+	// Fetch whitelist entries for the entity and all its referent (previous) IDs.
+	// We then collect their CounterpartyId values and pass them as WhitelistedEntityIds
+	// to exclude those counterparties from screening.
+	whitelists, err := w.repository.SearchScreeningMatchWhitelistByIds(
 		ctx,
 		exec,
 		updateJob.OrgId.String(),
 		nil,
-		&record.Entity.Id,
+		append(record.Entity.Referents, record.Entity.Id),
 	)
 	if err != nil {
 		return models.OpenSanctionsQuery{}, err

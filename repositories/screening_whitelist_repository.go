@@ -71,6 +71,33 @@ func (repo *MarbleDbRepository) SearchScreeningMatchWhitelist(ctx context.Contex
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreeningWhitelist)
 }
 
+func (repo *MarbleDbRepository) SearchScreeningMatchWhitelistByIds(
+	ctx context.Context,
+	exec Executor,
+	orgId string,
+	counterpartyIds, entityIds []string,
+) ([]models.ScreeningWhitelist, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	filters := squirrel.Eq{"org_id": orgId}
+
+	if len(entityIds) > 0 {
+		filters["entity_id"] = entityIds
+	}
+	if len(counterpartyIds) > 0 {
+		filters["counterparty_id"] = counterpartyIds
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.ScreeningWhitelistColumnList...).
+		From(dbmodels.TABLE_SCREENING_WHITELISTS).
+		Where(filters)
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreeningWhitelist)
+}
+
 func (repo *MarbleDbRepository) IsScreeningMatchWhitelisted(ctx context.Context, exec Executor,
 	orgId, counterpartyId string, entityIds []string,
 ) ([]models.ScreeningWhitelist, error) {

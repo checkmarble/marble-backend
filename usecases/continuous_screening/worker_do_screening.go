@@ -309,7 +309,7 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 			ObjectType:       job.Args.ObjectType,
 			ObjectId:         monitoredObject.ObjectId,
 			ObjectInternalId: &newObjectInternalId,
-			EntityId:         deltaTrackEntityIdBuilder(job.Args.ObjectType, monitoredObject.ObjectId),
+			EntityId:         marbleEntityIdBuilder(job.Args.ObjectType, monitoredObject.ObjectId),
 			Operation:        models.DeltaTrackOperationUpdate,
 		})
 		if err != nil {

@@ -16,10 +16,6 @@ const (
 	MarbleContinuousScreeningTag = "marble_continuous_screening"
 )
 
-func typedObjectId(objectType, objectId string) string {
-	return objectType + "_" + objectId
-}
-
 func checkDataModelTableAndFieldsConfiguration(table models.Table) error {
 	// Check if the table has a FTM entity
 	if table.FTMEntity == nil {
@@ -69,7 +65,9 @@ func orgCustomDatasetName(orgId uuid.UUID) string {
 		strings.ReplaceAll(orgId.String(), "-", ""))
 }
 
-func deltaTrackEntityIdBuilder(objectType, objectId string) string {
+// marbleEntityIdBuilder builds an entity ID in the Marble/OpenSanctions format:
+// `marble_<object_type>_<object_id>`.
+func marbleEntityIdBuilder(objectType, objectId string) string {
 	return fmt.Sprintf("marble_%s_%s", objectType, objectId)
 }
 

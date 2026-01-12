@@ -214,7 +214,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 						ObjectType:       input.ObjectType,
 						ObjectId:         objectId,
 						ObjectInternalId: &ingestedObjectInternalId,
-						EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, objectId),
+						EntityId:         marbleEntityIdBuilder(input.ObjectType, objectId),
 						Operation:        deltaTrackOperation,
 					},
 				)
@@ -459,7 +459,7 @@ func (uc *ContinuousScreeningUsecase) DoScreening(
 		ctx,
 		exec,
 		config.OrgId.String(),
-		utils.Ptr(typedObjectId(objectType, objectId)),
+		utils.Ptr(marbleEntityIdBuilder(objectType, objectId)),
 		nil,
 	)
 	if err != nil {
@@ -593,7 +593,7 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 			ObjectType:       input.ObjectType,
 			ObjectId:         input.ObjectId,
 			ObjectInternalId: nil,
-			EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, input.ObjectId),
+			EntityId:         marbleEntityIdBuilder(input.ObjectType, input.ObjectId),
 			Operation:        models.DeltaTrackOperationDelete,
 		})
 		if err != nil {
