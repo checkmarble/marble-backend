@@ -228,6 +228,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		analyticsConfig:              o.analyticsConfig,
 		continuousScreeningBucketUrl: o.continuousScreeningBucketUrl,
 		marbleApiUrl:                 o.marbleApiUrl,
+		csCreateFullDatasetInterval:  o.csCreateFullDatasetInterval,
 	}
 }
 
