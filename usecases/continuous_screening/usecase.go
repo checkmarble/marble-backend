@@ -170,6 +170,10 @@ type inboxEditor interface {
 	) (models.Inbox, error)
 }
 
+type featureAccessReader interface {
+	GetOrganizationFeatureAccess(ctx context.Context, organizationId string, userId *models.UserId) (models.OrganizationFeatureAccess, error)
+}
+
 type caseEditor interface {
 	CreateCase(
 		ctx context.Context,
@@ -260,6 +264,7 @@ type ContinuousScreeningUsecase struct {
 	caseEditor                   caseEditor
 	inboxReader                  inboxReader
 	inboxEditor                  inboxEditor
+	featureAccessReader          featureAccessReader
 }
 
 func NewContinuousScreeningUsecase(
@@ -277,6 +282,7 @@ func NewContinuousScreeningUsecase(
 	caseEditor caseEditor,
 	inboxReader inboxReader,
 	inboxEditor inboxEditor,
+	featureAccessReader featureAccessReader,
 ) *ContinuousScreeningUsecase {
 	return &ContinuousScreeningUsecase{
 		executorFactory:              executorFactory,
@@ -293,5 +299,6 @@ func NewContinuousScreeningUsecase(
 		caseEditor:                   caseEditor,
 		inboxReader:                  inboxReader,
 		inboxEditor:                  inboxEditor,
+		featureAccessReader:          featureAccessReader,
 	}
 }
