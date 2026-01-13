@@ -52,9 +52,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/riverqueue/river v0.28.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.28.0
-	github.com/riverqueue/river/rivertype v0.28.0
+	github.com/riverqueue/river v0.29.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.29.0
+	github.com/riverqueue/river/rivertype v0.29.0
 	github.com/segmentio/analytics-go/v3 v3.3.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.40.0
@@ -250,8 +250,8 @@ require (
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.57.0 // indirect
-	github.com/riverqueue/river/riverdriver v0.28.0 // indirect
-	github.com/riverqueue/river/rivershared v0.28.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.29.0 // indirect
+	github.com/riverqueue/river/rivershared v0.29.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/samber/lo v1.51.0 // indirect
 	github.com/sanity-io/litter v1.5.5 // indirect
