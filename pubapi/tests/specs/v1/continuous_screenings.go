@@ -22,8 +22,8 @@ func continuousScreenings(t *testing.T, e *httpexpect.Expect) {
 	// Test happy path: add and delete object from monitoring
 	testContinuousScreeningAddAndDelete(t, e)
 
-	// Test should_screen=false on existing object
-	testContinuousScreeningShouldScreenFalse(t, e)
+	// Test skip_screen=true on existing object
+	testContinuousScreeningSkipScreenTrue(t, e)
 }
 
 func testContinuousScreeningValidation(t *testing.T, e *httpexpect.Expect) {
@@ -34,7 +34,7 @@ func testContinuousScreeningValidation(t *testing.T, e *httpexpect.Expect) {
 		WithJSON(params.CreateContinuousScreeningObjectParams{
 			ObjectType:     "account",
 			ConfigStableId: configStableId,
-			ShouldScreen:   true,
+			SkipScreen:     false,
 		}).
 		Expect().
 		Status(http.StatusBadRequest).
@@ -67,7 +67,7 @@ func testContinuousScreeningNotFound(t *testing.T, e *httpexpect.Expect) {
 			ObjectType:     "account",
 			ConfigStableId: nonExistentConfigId,
 			ObjectId:       utils.Ptr("account-001"),
-			ShouldScreen:   true,
+			SkipScreen:     false,
 		}).
 		Expect().
 		Status(http.StatusNotFound).
@@ -95,7 +95,7 @@ func testContinuousScreeningNotFound(t *testing.T, e *httpexpect.Expect) {
 			ObjectType:     "invalid_object_type",
 			ConfigStableId: configStableId,
 			ObjectId:       utils.Ptr("account-001"),
-			ShouldScreen:   true,
+			SkipScreen:     false,
 		}).
 		Expect().
 		Status(http.StatusBadRequest).
@@ -108,7 +108,7 @@ func testContinuousScreeningNotFound(t *testing.T, e *httpexpect.Expect) {
 			ObjectType:     "account",
 			ConfigStableId: configStableId,
 			ObjectId:       utils.Ptr("non-existent-object"),
-			ShouldScreen:   true,
+			SkipScreen:     false,
 		}).
 		Expect().
 		Status(http.StatusNotFound).
@@ -151,7 +151,7 @@ func testContinuousScreeningAddAndDelete(t *testing.T, e *httpexpect.Expect) {
 			ObjectType:     "account",
 			ConfigStableId: configStableId,
 			ObjectId:       &objectId,
-			ShouldScreen:   true,
+			SkipScreen:     false,
 		}).
 		Expect().
 		Status(http.StatusCreated).
@@ -225,7 +225,7 @@ func testContinuousScreeningAddAndDelete(t *testing.T, e *httpexpect.Expect) {
 		Status(http.StatusNoContent)
 }
 
-func testContinuousScreeningShouldScreenFalse(t *testing.T, e *httpexpect.Expect) {
+func testContinuousScreeningSkipScreenTrue(t *testing.T, e *httpexpect.Expect) {
 	configStableId := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	objectId := "account-001"
 
@@ -234,7 +234,7 @@ func testContinuousScreeningShouldScreenFalse(t *testing.T, e *httpexpect.Expect
 			ObjectType:     "account",
 			ConfigStableId: configStableId,
 			ObjectId:       &objectId,
-			ShouldScreen:   false,
+			SkipScreen:     true,
 		}).
 		Expect().
 		Status(http.StatusNoContent).

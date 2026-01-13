@@ -185,7 +185,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 	}
 
 	var screeningWithMatches models.ScreeningWithMatches
-	if input.ShouldScreen {
+	if !input.SkipScreen {
 		screeningWithMatches, err = uc.DoScreening(ctx, exec, ingestedObject, mapping, config, input.ObjectType, objectId)
 		if err != nil {
 			logger.WarnContext(ctx, "Continuous Screening - error searching on open sanctions", "error", err.Error())
@@ -223,7 +223,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				}
 			}
 
-			if input.ShouldScreen {
+			if !input.SkipScreen {
 				continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
 					ctx,
 					tx,

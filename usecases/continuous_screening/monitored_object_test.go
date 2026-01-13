@@ -165,7 +165,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
+		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             uuid.New(),
@@ -187,7 +188,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
-		ShouldScreen:   true,
+		SkipScreen:     false,
 	}
 
 	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -272,7 +273,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
+		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             uuid.New(),
@@ -294,7 +296,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectPayload:  &payload,
-		ShouldScreen:   true,
+		SkipScreen:     false,
 	}
 
 	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -344,7 +346,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
-		ShouldScreen:   true,
+		SkipScreen:     false,
 	}
 
 	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -399,7 +401,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
-		ShouldScreen:   true,
+		SkipScreen:     false,
 	}
 
 	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -460,7 +462,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectPayload:  &payload,
-		ShouldScreen:   true,
+		SkipScreen:     false,
 	}
 
 	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -544,7 +546,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, suite.objectId, suite.configStableId).Return(&pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
 	})
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.MatchedBy(func(input models.CreateContinuousScreening) bool {
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.MatchedBy(func(
+		input models.CreateContinuousScreening,
+	) bool {
 		return input.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated
 	})).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -568,7 +572,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectPayload:  &payload,
-		ShouldScreen:   true,
+		SkipScreen:     false,
 	}
 
 	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -639,7 +643,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
-		ShouldScreen:   true,
+		SkipScreen:     false,
 	}
 
 	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -756,7 +760,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
+		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                continuousScreeningId,
 			OrgId:                             uuid.New(),
@@ -803,7 +808,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
-		ShouldScreen:   true,
+		SkipScreen:     false,
 	}
 
 	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -888,7 +893,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
+		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             uuid.New(),
@@ -928,7 +934,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
-		ShouldScreen:   true,
+		SkipScreen:     false,
 	}
 
 	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -1459,7 +1465,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
+		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             suite.orgId,
@@ -1481,7 +1488,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
-		ShouldScreen:   true,
+		SkipScreen:     false,
 	}
 
 	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -1672,7 +1679,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{}, {},
 	}, nil)
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.Anything).Return(models.ContinuousScreeningWithMatches{
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
+		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:                                uuid.New(),
 			OrgId:                             suite.orgId,
@@ -1691,7 +1699,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
-		ShouldScreen:   true,
+		SkipScreen:     false,
 	}
 
 	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -1702,7 +1710,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.AssertExpectations()
 }
 
-func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_ShouldScreenFalse() {
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_SkipScreenTrue() {
 	// Setup test data
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
@@ -1752,7 +1760,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 
-	// Note: screeningProvider.Search and repository.InsertContinuousScreening should NOT be called
+	// Note: screeningProvider.Search and repository.InsertContinuousScreening should NOT be called since SkipScreen is true
 
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
@@ -1774,7 +1782,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
 		ObjectId:       &suite.objectId,
-		ShouldScreen:   false,
+		SkipScreen:     true,
 	}
 
 	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
