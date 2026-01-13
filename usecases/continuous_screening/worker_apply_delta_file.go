@@ -100,6 +100,7 @@ type applyDeltaFileWorkerUsecase interface {
 		objectId string,
 		continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
 	) (models.Case, error)
+	CheckFeatureAccess(ctx context.Context, orgId uuid.UUID) error
 }
 
 type ApplyDeltaFileWorker struct {
@@ -150,6 +151,11 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		"update_id", job.Args.UpdateId,
 		"org_id", job.Args.OrgId,
 	)
+
+	if err := w.usecase.CheckFeatureAccess(ctx, job.Args.OrgId); err != nil {
+		logger.WarnContext(ctx, "Continuous Screening - feature access not allowed, skipping apply delta file update", "error", err)
+		return nil
+	}
 
 	updateJob, err := w.repository.GetEnrichedContinuousScreeningUpdateJob(ctx,
 		exec, job.Args.UpdateId)

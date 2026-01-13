@@ -13,6 +13,10 @@ import (
 )
 
 func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfig(ctx context.Context, id uuid.UUID) (models.ContinuousScreeningConfig, error) {
+	if err := uc.CheckFeatureAccess(ctx, uc.enforceSecurity.OrgId()); err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
+
 	config, err := uc.repository.GetContinuousScreeningConfig(ctx, uc.executorFactory.NewExecutor(), id)
 	if err != nil {
 		return models.ContinuousScreeningConfig{}, err
@@ -29,6 +33,10 @@ func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigByStableId(
 	ctx context.Context,
 	stableId uuid.UUID,
 ) (models.ContinuousScreeningConfig, error) {
+	if err := uc.CheckFeatureAccess(ctx, uc.enforceSecurity.OrgId()); err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
+
 	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx,
 		uc.executorFactory.NewExecutor(), stableId)
 	if err != nil {
@@ -42,9 +50,14 @@ func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigByStableId(
 }
 
 // Get only enabled continuous screening configs for an organization
-func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigsByOrgId(ctx context.Context,
+func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigsByOrgId(
+	ctx context.Context,
 	orgId uuid.UUID,
 ) ([]models.ContinuousScreeningConfig, error) {
+	if err := uc.CheckFeatureAccess(ctx, uc.enforceSecurity.OrgId()); err != nil {
+		return []models.ContinuousScreeningConfig{}, err
+	}
+
 	configs, err := uc.repository.GetContinuousScreeningConfigsByOrgId(ctx,
 		uc.executorFactory.NewExecutor(), orgId)
 	if err != nil {
@@ -64,6 +77,10 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 	ctx context.Context,
 	input models.CreateContinuousScreeningConfig,
 ) (models.ContinuousScreeningConfig, error) {
+	if err := uc.CheckFeatureAccess(ctx, uc.enforceSecurity.OrgId()); err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
+
 	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, input.OrgId)
 	if err != nil {
 		return models.ContinuousScreeningConfig{}, err
@@ -151,6 +168,9 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 	stableId uuid.UUID,
 	input models.UpdateContinuousScreeningConfig,
 ) (models.ContinuousScreeningConfig, error) {
+	if err := uc.CheckFeatureAccess(ctx, uc.enforceSecurity.OrgId()); err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		uc.transactionFactory,

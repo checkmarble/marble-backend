@@ -81,6 +81,7 @@ type doScreeningWorkerCSUsecase interface {
 		objectId string,
 		continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
 	) (models.Case, error)
+	CheckFeatureAccess(ctx context.Context, orgId uuid.UUID) error
 }
 
 // Worker to do the screening for a specific monitored object
@@ -135,6 +136,11 @@ func (w *DoScreeningWorker) Timeout(job *river.Job[models.ContinuousScreeningDoS
 func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.ContinuousScreeningDoScreeningArgs]) error {
 	exec := w.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
+
+	if err := w.usecase.CheckFeatureAccess(ctx, uuid.MustParse(job.Args.OrgId)); err != nil {
+		logger.WarnContext(ctx, "Continuous Screening - feature access not allowed, skipping screening", "error", err)
+		return nil
+	}
 
 	if job.Args.TriggerType != models.ContinuousScreeningTriggerTypeObjectUpdated {
 		logger.WarnContext(ctx, "Continuous Screening - only trigger type ObjectUpdated is supported for now, skipping screening", "trigger_type", job.Args.TriggerType)

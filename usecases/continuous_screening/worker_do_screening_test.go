@@ -180,6 +180,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 	}
 
 	// Setup mocks
+	suite.usecase.On("CheckFeatureAccess", suite.ctx, suite.orgId).Return(nil)
 	suite.clientDbRepository.On("GetMonitoredObject", suite.ctx, mock.Anything,
 		suite.monitoringId).Return(monitoredObject, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
@@ -202,7 +203,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
 			return status != nil && *status == models.ScreeningStatusInReview
 		}), true).Return(&existingContinuousScreening, nil)
-	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.MatchedBy(func(input models.CreateContinuousScreening) bool {
+	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.MatchedBy(func(
+		input models.CreateContinuousScreening,
+	) bool {
 		return input.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated
 	})).Return(continuousScreeningWithMatches, nil)
 	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
@@ -328,6 +331,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 	}
 
 	// Setup mocks
+	suite.usecase.On("CheckFeatureAccess", suite.ctx, suite.orgId).Return(nil)
 	suite.clientDbRepository.On("GetMonitoredObject", suite.ctx, mock.Anything,
 		suite.monitoringId).Return(monitoredObject, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
@@ -350,7 +354,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 		suite.objectId, suite.objectType, suite.orgId, mock.MatchedBy(func(status *models.ScreeningStatus) bool {
 			return status != nil && *status == models.ScreeningStatusInReview
 		}), true).Return((*models.ContinuousScreeningWithMatches)(nil), nil)
-	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.MatchedBy(func(input models.CreateContinuousScreening) bool {
+	suite.repository.On("InsertContinuousScreening", suite.ctx, mock.Anything, mock.MatchedBy(func(
+		input models.CreateContinuousScreening,
+	) bool {
 		return input.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated
 	})).Return(continuousScreeningWithMatches, nil)
 	// Return empty case for simplicity because it is not used for this test
@@ -452,6 +458,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 	}
 
 	// Setup mocks
+	suite.usecase.On("CheckFeatureAccess", suite.ctx, suite.orgId).Return(nil)
 	suite.clientDbRepository.On("GetMonitoredObject", suite.ctx, mock.Anything,
 		suite.monitoringId).Return(monitoredObject, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
@@ -543,6 +550,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_DataUnchanged_Sk
 	}
 
 	// Setup mocks
+	suite.usecase.On("CheckFeatureAccess", suite.ctx, suite.orgId).Return(nil)
 	suite.clientDbRepository.On("GetMonitoredObject", suite.ctx, mock.Anything,
 		suite.monitoringId).Return(monitoredObject, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", suite.ctx, mock.Anything,
@@ -576,6 +584,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_UnsupportedTriggerType_SkipScr
 			TriggerType: models.ContinuousScreeningTriggerTypeObjectAdded, // Unsupported
 		},
 	}
+
+	// Setup mocks
+	suite.usecase.On("CheckFeatureAccess", suite.ctx, suite.orgId).Return(nil)
 
 	// Execute
 	worker := suite.makeWorker()
