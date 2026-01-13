@@ -62,6 +62,7 @@ type LicenseEntitlements struct {
 	Sanctions      bool
 	CaseAutoAssign bool
 	CaseAiAssist   bool
+	ContinuousScreening bool
 }
 
 type LicenseValidation struct {
@@ -85,6 +86,7 @@ func NewFullLicense() LicenseValidation {
 			Sanctions:      true,
 			CaseAutoAssign: true,
 			CaseAiAssist:   true,
+			ContinuousScreening: true,
 		},
 	}
 }
