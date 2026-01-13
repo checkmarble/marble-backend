@@ -6,6 +6,8 @@ type DataModelDeleteFieldReport struct {
 	Performed          bool
 	Conflicts          DataModelDeleteFieldConflicts
 	ArchivedIterations *set.Set[string]
+
+	References map[string]string
 }
 
 func NewDataModelDeleteFieldReport() DataModelDeleteFieldReport {
@@ -19,6 +21,7 @@ func NewDataModelDeleteFieldReport() DataModelDeleteFieldReport {
 			ScenarioIterations: make(map[string]*DataModelDeleteFieldConflictIteration),
 		},
 		ArchivedIterations: set.New[string](0),
+		References:         make(map[string]string),
 	}
 }
 
@@ -35,6 +38,9 @@ type DataModelDeleteFieldConflicts struct {
 }
 
 type DataModelDeleteFieldConflictIteration struct {
+	Name             string
+	ScenarioId       string
+	Draft            bool
 	TriggerCondition bool
 	Rules            *set.Set[string]
 	Screening        *set.Set[string]

@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -396,6 +397,7 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 		if field == nil && s.TriggerObjectType == table.Name {
 			canDelete = false
 			report.Conflicts.Scenario.Insert(s.Id)
+			report.References[s.Id] = s.Name
 		}
 
 		scenarioMap[s.Id] = s
@@ -418,6 +420,10 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 		found := false
 		scenario := scenarioMap[it.ScenarioId.String()]
 
+		report.References[scenario.Id] = scenario.Name
+		report.References[it.ScenarioIterationId.String()] = fmt.Sprintf("%s (%d)", scenario.Name, utils.Or(it.Version, 0))
+		report.References[it.RuleId.String()] = it.Name
+
 		if _, ok := scenarioConflicts[scenario.Id]; !ok {
 			scenarioConflicts[scenario.Id] = &scenarioConflict{}
 		}
@@ -426,9 +432,17 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 			scenarioConflicts[scenario.Id].hasDraftOrLive = true
 		}
 
+		name := scenario.Name
+		if it.Version != nil {
+			name = fmt.Sprintf("%s (v%d)", scenario.Name, utils.Or(it.Version, 0))
+		}
+
 		iterationReport := models.DataModelDeleteFieldConflictIteration{
-			Rules:     set.New[string](0),
-			Screening: set.New[string](0),
+			Name:       name,
+			ScenarioId: scenario.Id,
+			Draft:      it.Version == nil,
+			Rules:      set.New[string](0),
+			Screening:  set.New[string](0),
 		}
 
 		if previousReport, ok := report.Conflicts.ScenarioIterations[it.ScenarioIterationId.String()]; ok {
@@ -640,6 +654,10 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 		found := false
 		scenario := scenarioMap[it.ScenarioId.String()]
 
+		report.References[scenario.Id] = scenario.Name
+		report.References[it.ScenarioIterationId.String()] = fmt.Sprintf("%s (%d)", scenario.Name, utils.Or(it.Version, 0))
+		report.References[it.RuleId.String()] = it.Name
+
 		if _, ok := scenarioConflicts[scenario.Id]; !ok {
 			scenarioConflicts[scenario.Id] = &scenarioConflict{}
 		}
@@ -648,9 +666,17 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 			scenarioConflicts[scenario.Id].hasDraftOrLive = true
 		}
 
+		name := scenario.Name
+		if it.Version != nil {
+			name = fmt.Sprintf("%s (v%d)", scenario.Name, utils.Or(it.Version, 0))
+		}
+
 		iterationReport := models.DataModelDeleteFieldConflictIteration{
-			Rules:     set.New[string](0),
-			Screening: set.New[string](0),
+			Name:       name,
+			ScenarioId: scenario.Id,
+			Draft:      it.Version == nil,
+			Rules:      set.New[string](0),
+			Screening:  set.New[string](0),
 		}
 
 		if previousReport, ok := report.Conflicts.ScenarioIterations[it.ScenarioIterationId.String()]; ok {
