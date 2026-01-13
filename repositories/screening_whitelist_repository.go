@@ -81,6 +81,10 @@ func (repo *MarbleDbRepository) SearchScreeningMatchWhitelistByIds(
 		return nil, err
 	}
 
+	if len(counterpartyIds) == 0 && len(entityIds) == 0 {
+		return []models.ScreeningWhitelist{}, nil
+	}
+
 	filters := squirrel.Eq{"org_id": orgId}
 
 	if len(entityIds) > 0 {
