@@ -196,21 +196,42 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			}
 		}
 
-		if update.Status == models.ScreeningMatchStatusNoHit && update.Whitelist {
+		if update.Status == models.ScreeningMatchStatusNoHit {
+			var counterpartyId string
+			var openSanctionEntityId string
 			if continuousScreeningWithMatches.TriggerType ==
-				// TODO: Change the ID in case of indirect screening
 				models.ContinuousScreeningTriggerTypeDatasetUpdated {
-				return nil
+				// Match from OpenSanctions entity to Marble
+				if continuousScreeningWithMatches.OpenSanctionEntityId == nil {
+					// Should not happen because the OpenSanctionEntityId in continuous screening should be set in DatasetUpdated screening type
+					return errors.New("OpenSanctionEntityId is missing for DatasetUpdated screening type")
+				}
+
+				// The counterparty (Marble entity) is the one being screened and saved in the match as OpenSanctionEntityId
+				counterpartyId = continuousScreeningMatch.OpenSanctionEntityId
+				openSanctionEntityId = *continuousScreeningWithMatches.OpenSanctionEntityId
+			} else {
+				// Screening from Marble to OpenSanctions entity
+				if continuousScreeningWithMatches.ObjectType == nil ||
+					continuousScreeningWithMatches.ObjectId == nil {
+					// should not happen because ObjectType and ObjectId should be set in Marble initiated screening
+					return errors.New("object type or object id is missing for Marble initiated screening")
+				}
+
+				counterpartyId = marbleEntityIdBuilder(
+					*continuousScreeningWithMatches.ObjectType,
+					*continuousScreeningWithMatches.ObjectId,
+				)
+				openSanctionEntityId = continuousScreeningMatch.OpenSanctionEntityId
 			}
+
+			// Match from Marble to OpenSanctions entity
 			if err := uc.createWhitelist(
 				ctx,
 				tx,
 				continuousScreeningWithMatches.OrgId.String(),
-				typedObjectId(
-					*continuousScreeningWithMatches.ObjectType,
-					*continuousScreeningWithMatches.ObjectId,
-				),
-				continuousScreeningMatch.OpenSanctionEntityId,
+				counterpartyId,
+				openSanctionEntityId,
 				reviewerId,
 			); err != nil {
 				return errors.Wrap(err, "could not whitelist match")
