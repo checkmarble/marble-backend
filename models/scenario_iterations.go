@@ -213,6 +213,7 @@ type RulesAndScreenings struct {
 	ScenarioIterationId      uuid.UUID
 	ScenarioId               uuid.UUID
 	RuleId                   uuid.UUID
+	Name                     string
 	Version                  *int
 	TriggerAst               *ast.Node
 	RuleAst                  *ast.Node

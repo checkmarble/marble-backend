@@ -117,6 +117,7 @@ func AdaptScenarioIterationMetadata(dto DBScenarioIterationMetadata) (models.Sce
 type DBRulesAndScreenings struct {
 	ScenarioIterationId      uuid.UUID       `db:"id"`
 	ScenarioId               uuid.UUID       `db:"scenario_id"`
+	Name                     string          `db:"name"`
 	RuleId                   uuid.UUID       `db:"rule_id"`
 	Version                  *int            `db:"version"`
 	TriggerAst               json.RawMessage `db:"trigger_ast"`
@@ -131,6 +132,7 @@ func AdaptRulesAndScreenings(db DBRulesAndScreenings) (models.RulesAndScreenings
 		ScenarioIterationId: db.ScenarioIterationId,
 		ScenarioId:          db.ScenarioId,
 		RuleId:              db.RuleId,
+		Name:                db.Name,
 		Version:             db.Version,
 	}
 
