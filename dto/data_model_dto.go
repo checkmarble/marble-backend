@@ -199,7 +199,7 @@ func AdaptDataModelOptions(m models.DataModelOptions) DataModelOptions {
 type DataModelDeleteFieldReport struct {
 	Performed          bool                          `json:"performed"`
 	Conflicts          DataModelDeleteFieldConflicts `json:"conflicts"`
-	ArchivedIterations []string                      `json:"archived_iterations"`
+	ArchivedIterations []DataModelDeleteFieldRef     `json:"archived_iterations"`
 }
 
 type DataModelDeleteFieldConflicts struct {
@@ -207,17 +207,25 @@ type DataModelDeleteFieldConflicts struct {
 	Links               []string                                          `json:"links"`
 	Pivots              []string                                          `json:"pivots"`
 	AnalyticsSettings   int                                               `json:"analytics_settings"`
-	Scenarios           []string                                          `json:"scenarios"`
-	EmptyScenarios      []string                                          `json:"empty_scenarios"`
+	Scenarios           []DataModelDeleteFieldRef                         `json:"scenarios"`
+	EmptyScenarios      []DataModelDeleteFieldRef                         `json:"empty_scenarios"`
 	ScenarioIterations  map[string]*DataModelDeleteFieldConflictIteration `json:"scenario_iterations"`
-	Workflows           []string                                          `json:"workflows"`
+	Workflows           []DataModelDeleteFieldRef                         `json:"workflows"`
 	TestRuns            bool                                              `json:"test_runs"`
 }
 
+type DataModelDeleteFieldRef struct {
+	Id    string `json:"id"`
+	Label string `json:"label"`
+}
+
 type DataModelDeleteFieldConflictIteration struct {
-	TriggerCondition bool     `json:"trigger_condition"`
-	Rules            []string `json:"rules"`
-	Screenings       []string `json:"screenings"`
+	Name             string                    `json:"name"`
+	ScenarioId       string                    `json:"scenario_id"`
+	Draft            bool                      `json:"draft"`
+	TriggerCondition bool                      `json:"trigger_condition"`
+	Rules            []DataModelDeleteFieldRef `json:"rules"`
+	Screenings       []DataModelDeleteFieldRef `json:"screenings"`
 }
 
 func AdaptDataModelDeleteFieldReport(m models.DataModelDeleteFieldReport) DataModelDeleteFieldReport {
@@ -228,22 +236,50 @@ func AdaptDataModelDeleteFieldReport(m models.DataModelDeleteFieldReport) DataMo
 			Links:               m.Conflicts.Links.Slice(),
 			Pivots:              m.Conflicts.Pivots.Slice(),
 			AnalyticsSettings:   m.Conflicts.AnalyticsSettings,
-			Workflows:           m.Conflicts.Workflows.Slice(),
-			Scenarios:           m.Conflicts.Scenario.Slice(),
-			EmptyScenarios:      m.Conflicts.EmptyScenarios.Slice(),
-			ScenarioIterations:  map[string]*DataModelDeleteFieldConflictIteration{},
-			TestRuns:            m.Conflicts.TestRuns,
+			Workflows: pure_utils.Map(m.Conflicts.Workflows.Slice(), func(id string) DataModelDeleteFieldRef {
+				return AdaptDataModelDeleteFieldReportRef(m, id)
+			}),
+			Scenarios: pure_utils.Map(m.Conflicts.Scenario.Slice(), func(id string) DataModelDeleteFieldRef {
+				return AdaptDataModelDeleteFieldReportRef(m, id)
+			}),
+			EmptyScenarios: pure_utils.Map(m.Conflicts.EmptyScenarios.Slice(), func(id string) DataModelDeleteFieldRef {
+				return AdaptDataModelDeleteFieldReportRef(m, id)
+			}),
+			ScenarioIterations: map[string]*DataModelDeleteFieldConflictIteration{},
+			TestRuns:           m.Conflicts.TestRuns,
 		},
-		ArchivedIterations: m.ArchivedIterations.Slice(),
+		ArchivedIterations: pure_utils.Map(m.ArchivedIterations.Slice(), func(id string) DataModelDeleteFieldRef {
+			return AdaptDataModelDeleteFieldReportRef(m, id)
+		}),
 	}
 
 	for iterationId, conflicts := range m.Conflicts.ScenarioIterations {
 		r.Conflicts.ScenarioIterations[iterationId] = &DataModelDeleteFieldConflictIteration{
+			Name:             conflicts.Name,
+			ScenarioId:       conflicts.ScenarioId,
+			Draft:            conflicts.Draft,
 			TriggerCondition: conflicts.TriggerCondition,
-			Rules:            conflicts.Rules.Slice(),
-			Screenings:       conflicts.Screening.Slice(),
+			Rules: pure_utils.Map(conflicts.Rules.Slice(), func(id string) DataModelDeleteFieldRef {
+				return AdaptDataModelDeleteFieldReportRef(m, id)
+			}),
+			Screenings: pure_utils.Map(conflicts.Screening.Slice(), func(id string) DataModelDeleteFieldRef {
+				return AdaptDataModelDeleteFieldReportRef(m, id)
+			}),
 		}
 	}
 
 	return r
+}
+
+func AdaptDataModelDeleteFieldReportRef(m models.DataModelDeleteFieldReport, id string) DataModelDeleteFieldRef {
+	label := id
+
+	if l, ok := m.References[id]; ok {
+		label = l
+	}
+
+	return DataModelDeleteFieldRef{
+		Id:    id,
+		Label: label,
+	}
 }

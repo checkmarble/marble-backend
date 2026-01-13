@@ -129,7 +129,7 @@ func (repo *MarbleDbRepository) ListAllRulesAndScreenings(
 			"si.id", "si.scenario_id", "si.version", "si.trigger_condition_ast_expression as trigger_ast",
 			"sir.id as rule_id",
 			"sir.formula_ast_expression as rule_ast",
-			"null as screening_trigger_ast", "null as screening_counterparty_ast", "null as screening_ast",
+			"coalesce(sir.name, '') as name", "null as screening_trigger_ast", "null as screening_counterparty_ast", "null as screening_ast",
 		).
 		From(dbmodels.TABLE_SCENARIO_ITERATIONS+" si").
 		LeftJoin(dbmodels.TABLE_RULES+" sir on si.id = sir.scenario_iteration_id").
@@ -140,7 +140,7 @@ func (repo *MarbleDbRepository) ListAllRulesAndScreenings(
 			"si.id", "si.scenario_id", "si.version", "si.trigger_condition_ast_expression as trigger_ast",
 			"sc.id as rule_id",
 			"null as rule_ast",
-			"sc.trigger_rule as screening_trigger_ast", "sc.counterparty_id_expression as screening_counterparty_ast", "sc.query as screening_ast",
+			"coalesce(sc.name, '')", "sc.trigger_rule as screening_trigger_ast", "sc.counterparty_id_expression as screening_counterparty_ast", "sc.query as screening_ast",
 		).
 		From(dbmodels.TABLE_SCENARIO_ITERATIONS+" si").
 		LeftJoin(dbmodels.TABLE_SCREENING_CONFIGS+" sc on si.id = sc.scenario_iteration_id").
