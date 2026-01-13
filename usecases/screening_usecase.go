@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/utils"
@@ -146,7 +147,25 @@ func (uc ScreeningUsecase) CheckDatasetFreshness(ctx context.Context) (models.Op
 }
 
 func (uc ScreeningUsecase) GetDatasetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
-	return uc.openSanctionsProvider.GetCatalog(ctx)
+	catalog, err := uc.openSanctionsProvider.GetCatalog(ctx)
+	if err != nil {
+		return models.OpenSanctionsCatalog{}, err
+	}
+
+	// Filter out datasets with the MarbleContinuousScreeningTag
+	// Don't want to expose these datasets to the client, they are only used for continuous screening
+	for i := range catalog.Sections {
+		section := &catalog.Sections[i]
+		filteredDatasets := make([]models.OpenSanctionsCatalogDataset, 0, len(section.Datasets))
+		for _, dataset := range section.Datasets {
+			if !slices.Contains(dataset.Tags, continuous_screening.MarbleContinuousScreeningTag) {
+				filteredDatasets = append(filteredDatasets, dataset)
+			}
+		}
+		section.Datasets = filteredDatasets
+	}
+
+	return catalog, nil
 }
 
 func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.ScreeningWithMatches, error) {
@@ -227,7 +246,8 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 
 	for _, comment := range comments {
 		if _, ok := matchIdToMatch[comment.MatchId]; ok {
-			matchIdToMatch[comment.MatchId].Comments = append(matchIdToMatch[comment.MatchId].Comments, comment)
+			matchIdToMatch[comment.MatchId].Comments =
+				append(matchIdToMatch[comment.MatchId].Comments, comment)
 		}
 	}
 

@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	ops "github.com/go-faker/faker/v4/pkg/options"
@@ -35,6 +37,7 @@ func buildScreeningUsecaseMock() (ScreeningUsecase, executor_factory.ExecutorFac
 		inboxReader:               repoMock,
 		repository:                repositories.NewMarbleDbRepository(false, 0.3),
 		screeningConfigRepository: repositories.NewMarbleDbRepository(false, 0.3),
+		openSanctionsProvider:     nil, // Will be overridden in tests
 		executorFactory:           exec,
 		transactionFactory:        txFac,
 	}
@@ -186,4 +189,72 @@ func TestUpdateMatchStatus(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NoError(t, exec.Mock.ExpectationsWereMet())
+}
+
+func TestGetDatasetCatalog(t *testing.T) {
+	// Create mock ScreeningProvider
+	providerMock := &mocks.OpenSanctionsRepository{}
+
+	// Create test catalog with mixed datasets
+	testCatalog := models.OpenSanctionsCatalog{
+		Sections: []models.OpenSanctionsCatalogSection{
+			{
+				Name:  "test-section",
+				Title: "Test Section",
+				Datasets: []models.OpenSanctionsCatalogDataset{
+					{
+						Name:  "regular-dataset-1",
+						Title: "Regular Dataset 1",
+						Tags:  []string{"public"},
+					},
+					{
+						Name:  "marble-dataset",
+						Title: "Marble Dataset",
+						Tags:  []string{continuous_screening.MarbleContinuousScreeningTag},
+					},
+					{
+						Name:  "regular-dataset-2",
+						Title: "Regular Dataset 2",
+						Tags:  []string{"public", "another-tag"},
+					},
+					{
+						Name:  "another-marble-dataset",
+						Title: "Another Marble Dataset",
+						Tags:  []string{continuous_screening.MarbleContinuousScreeningTag, "extra-tag"},
+					},
+				},
+			},
+		},
+	}
+
+	// Setup mock expectations
+	providerMock.On("GetCatalog", mock.Anything).Return(testCatalog, nil)
+
+	// Create usecase with mock provider
+	uc, _ := buildScreeningUsecaseMock()
+	uc.openSanctionsProvider = providerMock
+
+	// Call the method under test
+	result, err := uc.GetDatasetCatalog(context.TODO())
+
+	// Assert no error
+	assert.NoError(t, err)
+
+	// Assert that only one section exists
+	assert.Len(t, result.Sections, 1)
+
+	// Assert that only regular datasets remain (2 out of 4)
+	assert.Len(t, result.Sections[0].Datasets, 2)
+
+	// Assert that the remaining datasets are the regular ones
+	expectedNames := []string{"regular-dataset-1", "regular-dataset-2"}
+	actualNames := make([]string, len(result.Sections[0].Datasets))
+	for i, dataset := range result.Sections[0].Datasets {
+		actualNames[i] = dataset.Name
+	}
+
+	assert.ElementsMatch(t, expectedNames, actualNames)
+
+	// Verify mock expectations
+	providerMock.AssertExpectations(t)
 }
