@@ -143,11 +143,11 @@ func handleCreateContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 		if presentError(ctx, c, err) {
 			return
 		}
-		if input.ShouldScreen {
-			c.JSON(http.StatusCreated, dto.AdaptContinuousScreeningDto(continuousScreening))
+		if input.SkipScreen {
+			c.Status(http.StatusCreated)
 			return
 		}
-		c.Status(http.StatusNoContent)
+		c.JSON(http.StatusCreated, dto.AdaptContinuousScreeningDto(continuousScreening))
 	}
 }
 

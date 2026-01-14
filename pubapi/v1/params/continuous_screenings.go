@@ -12,7 +12,7 @@ type CreateContinuousScreeningObjectParams struct {
 	ConfigStableId uuid.UUID        `json:"config_stable_id" binding:"required"`
 	ObjectId       *string          `json:"object_id" binding:"required_without_all=ObjectPayload,excluded_with=ObjectPayload"`
 	ObjectPayload  *json.RawMessage `json:"object_payload" binding:"required_without_all=ObjectId,excluded_with=ObjectId"`
-	ShouldScreen   bool             `json:"should_screen"`
+	SkipScreen     bool             `json:"skip_screen"`
 }
 
 func (dto CreateContinuousScreeningObjectParams) ToModel() models.CreateContinuousScreeningObject {
@@ -21,7 +21,7 @@ func (dto CreateContinuousScreeningObjectParams) ToModel() models.CreateContinuo
 		ConfigStableId: dto.ConfigStableId,
 		ObjectId:       dto.ObjectId,
 		ObjectPayload:  dto.ObjectPayload,
-		ShouldScreen:   dto.ShouldScreen,
+		SkipScreen:     dto.SkipScreen,
 	}
 }
 
