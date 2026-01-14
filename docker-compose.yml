@@ -36,20 +36,28 @@ services:
         hard: -1
     volumes:
       - es:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
   yente:
     container_name: yente
     image: ghcr.io/opensanctions/yente:4.5.1
     depends_on:
-      - elasticsearch
-    ports:
-      - "8000:8000"
+      elasticsearch:
+        condition: service_healthy
     volumes:
-      - ./contrib/yente-datasets.yml:/app/manifests/default.yml
+      - ./contrib/screening-manifest.json:/app/manifests/manifest.json
     environment:
       YENTE_INDEX_TYPE: elasticsearch
       YENTE_INDEX_URL: "http://es:9200"
       YENTE_UPDATE_TOKEN: ""
       MARBLE_SCREENING_INDEXER_TOKEN: "random-token"
+      YENTE_MANIFEST: "/app/manifests/manifest.json"
+    extra_hosts:
+      - "marble-backend:host-gateway"
   worker-monitor:
     container_name: worker-monitor
     image: ghcr.io/riverqueue/riverui:latest
@@ -61,6 +69,24 @@ services:
       RIVER_BASIC_AUTH_PASS: ${RIVER_BASIC_AUTH_PASS:-}
     depends_on:
       - db
+  motiva:
+    container_name: motiva
+    image: ghcr.io/apognu/motiva:v0.4.2
+    platform: linux/x86_64
+    ports:
+      - "8000:8000"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      MANIFEST_URL: "/tmp/manifest.json"
+      INDEX_URL: "http://es:9200"
+      MARBLE_SCREENING_INDEXER_TOKEN: "random-token"
+    volumes:
+      - ./contrib/screening-manifest.json:/tmp/manifest.json
+    extra_hosts:
+      - "marble-backend:host-gateway"
+
 
 volumes:
   postgres-db:
