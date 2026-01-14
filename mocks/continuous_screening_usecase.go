@@ -57,3 +57,8 @@ func (m *ContinuousScreeningUsecase) HandleCaseCreation(
 	args := m.Called(ctx, tx, config, objectId, continuousScreeningWithMatches)
 	return args.Get(0).(models.Case), args.Error(1)
 }
+
+func (m *ContinuousScreeningUsecase) CheckFeatureAccess(ctx context.Context, orgId uuid.UUID) error {
+	args := m.Called(ctx, orgId)
+	return args.Error(0)
+}

@@ -28,6 +28,7 @@ type DBLicense struct {
 	Sanctions            bool               `db:"sanctions"`
 	AutoAssignment       bool               `db:"auto_assignment"`
 	CaseAiAssist         bool               `db:"case_ai_assist"`
+	ContinuousScreening  bool               `db:"continuous_screening"`
 }
 
 const TABLE_LICENSES = "licenses"
@@ -44,17 +45,18 @@ func AdaptLicense(db DBLicense) (models.License, error) {
 		OrganizationName: db.OrganizationName,
 		Description:      db.Description,
 		LicenseEntitlements: models.LicenseEntitlements{
-			Sso:            db.SsoEntitlement,
-			Workflows:      db.WorkflowsEntitlement,
-			Analytics:      db.AnalyticsEntitlement,
-			DataEnrichment: db.DataEnrichment,
-			UserRoles:      db.UserRoles,
-			Webhooks:       db.Webhooks,
-			RuleSnoozes:    db.RuleSnoozes,
-			TestRun:        db.TestRun,
-			Sanctions:      db.Sanctions,
-			CaseAutoAssign: db.AutoAssignment,
-			CaseAiAssist:   db.CaseAiAssist,
+			Sso:                 db.SsoEntitlement,
+			Workflows:           db.WorkflowsEntitlement,
+			Analytics:           db.AnalyticsEntitlement,
+			DataEnrichment:      db.DataEnrichment,
+			UserRoles:           db.UserRoles,
+			Webhooks:            db.Webhooks,
+			RuleSnoozes:         db.RuleSnoozes,
+			TestRun:             db.TestRun,
+			Sanctions:           db.Sanctions,
+			CaseAutoAssign:      db.AutoAssignment,
+			CaseAiAssist:        db.CaseAiAssist,
+			ContinuousScreening: db.ContinuousScreening,
 		},
 	}, nil
 }
