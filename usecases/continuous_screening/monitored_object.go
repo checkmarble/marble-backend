@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -242,11 +241,15 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
 					// Create and attach to a case
 					// Update the continuousScreeningWithMatches with the created case ID
+					caseName, err := caseNameBuilderFromIngestedObject(ingestedObject, mapping)
+					if err != nil {
+						return models.ContinuousScreeningWithMatches{}, err
+					}
 					caseCreated, err := uc.HandleCaseCreation(
 						ctx,
 						tx,
 						config,
-						objectId,
+						caseName,
 						continuousScreeningWithMatches,
 					)
 					if err != nil {
@@ -295,17 +298,6 @@ func (uc *ContinuousScreeningUsecase) ingestObject(
 		return "", errors.Wrap(models.ConflictError, "no object ingested")
 	}
 	return extractObjectIDFromPayload(*input.ObjectPayload)
-}
-
-func stringRepresentation(value any) string {
-	timestampVal, ok := value.(time.Time)
-	if ok {
-		return timestampVal.Format(time.RFC3339)
-	}
-	if value == nil {
-		return ""
-	}
-	return fmt.Sprintf("%v", value)
 }
 
 // Based on data model field mapping, prepare the OpenSanctions Filters
@@ -485,11 +477,9 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 	ctx context.Context,
 	tx repositories.Transaction,
 	config models.ContinuousScreeningConfig,
-	objectId string,
+	caseName string,
 	continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
 ) (models.Case, error) {
-	// TODO: TBD
-	caseName := "Continuous Screening - " + objectId
 	return uc.caseEditor.CreateCase(
 		ctx,
 		tx,

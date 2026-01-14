@@ -788,7 +788,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	caseId := uuid.New()
 	expectedCase := models.Case{
 		Id:             caseId.String(), // Case ID is a string
-		Name:           "Continuous Screening - " + suite.objectId,
+		Name:           suite.objectId,  // Case name is extracted from FTM properties
 		InboxId:        inboxId,
 		OrganizationId: suite.orgId.String(),
 	}
@@ -797,7 +797,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	) bool {
 		return attrs.OrganizationId == suite.orgId.String() &&
 			attrs.InboxId == inboxId &&
-			attrs.Name == "Continuous Screening - "+suite.objectId &&
+			attrs.Name == suite.objectId && // Case name is extracted from FTM properties
 			len(attrs.ContinuousScreeningIds) == 1 &&
 			attrs.Type == models.CaseTypeContinuousScreening
 	}), false).Return(expectedCase, nil)
@@ -923,7 +923,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	) bool {
 		return attrs.OrganizationId == suite.orgId.String() &&
 			attrs.InboxId == inboxId &&
-			attrs.Name == "Continuous Screening - "+suite.objectId &&
+			attrs.Name == suite.objectId && // Case name is extracted from FTM properties
 			len(attrs.ContinuousScreeningIds) == 1 &&
 			attrs.Type == models.CaseTypeContinuousScreening
 	}), false).Return(models.Case{}, errors.New("case creation failed"))
