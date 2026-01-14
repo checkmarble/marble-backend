@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
@@ -248,7 +249,18 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		if err != nil {
 			return err
 		}
-		screeningResponse, err := w.screeningProvider.Search(ctx, query)
+		var screeningResponse models.ScreeningRawSearchResponseWithMatches
+		err = retry.Do(
+			func() error {
+				screeningResponse, err = w.screeningProvider.Search(ctx, query)
+				return err
+			},
+			retry.Attempts(3),
+			retry.LastErrorOnly(true),
+			retry.Delay(100*time.Millisecond),
+			retry.DelayType(retry.BackOffDelay),
+			retry.Context(ctx),
+		)
 		if err != nil {
 			return err
 		}

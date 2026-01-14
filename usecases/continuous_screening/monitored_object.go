@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -465,7 +467,18 @@ func (uc *ContinuousScreeningUsecase) DoScreening(
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
-	screeningResponse, err := uc.screeningProvider.Search(ctx, query)
+	var screeningResponse models.ScreeningRawSearchResponseWithMatches
+	err = retry.Do(
+		func() error {
+			screeningResponse, err = uc.screeningProvider.Search(ctx, query)
+			return err
+		},
+		retry.Attempts(3),
+		retry.LastErrorOnly(true),
+		retry.Delay(100*time.Millisecond),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(ctx),
+	)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
