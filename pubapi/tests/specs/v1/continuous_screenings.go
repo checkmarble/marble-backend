@@ -237,8 +237,7 @@ func testContinuousScreeningSkipScreenTrue(t *testing.T, e *httpexpect.Expect) {
 			SkipScreen:     true,
 		}).
 		Expect().
-		Status(http.StatusNoContent).
-		NoContent()
+		Status(http.StatusCreated)
 
 	// Cleanup
 	e.DELETE("/continuous-screenings/objects").

@@ -31,7 +31,7 @@ func HandleCreateContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 		}
 
 		if param.SkipScreen {
-			c.Status(http.StatusNoContent)
+			c.Status(http.StatusCreated)
 			return
 		}
 
