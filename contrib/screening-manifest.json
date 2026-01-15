@@ -1,0 +1,13 @@
+{
+    "catalogs": [
+        {
+            "url": "https://data.opensanctions.org/datasets/latest/index.json",
+            "scope": "us_sanctions",
+            "resource_name": "entities.ftm.json"
+        },
+        {
+            "url": "http://marble-backend:8080/screening-indexer/catalogs",
+            "auth_token": "$MARBLE_SCREENING_INDEXER_TOKEN"
+        }
+    ]
+}
