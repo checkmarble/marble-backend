@@ -328,6 +328,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningApplyDeltaFileWorker())
+	river.AddWorker(workers, adminUc.NewContinuousScreeningScanDatasetUpdatesWorker())
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
@@ -342,7 +343,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if isMarbleSaasProject && lagoConfig.IsConfigured() {
 		river.AddWorker(workers, uc.NewSendBillingEventWorker())
 	}
-	river.AddWorker(workers, uc.NewContinuousScreeningScanDatasetUpdatesWorker())
 	river.AddWorker(workers, uc.NewContinuousScreeningCreateFullDatasetWorker())
 
 	if err := riverClient.Start(ctx); err != nil {

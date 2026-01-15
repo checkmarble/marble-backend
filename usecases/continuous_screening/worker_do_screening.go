@@ -137,7 +137,7 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 	exec := w.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 
-	if err := w.usecase.CheckFeatureAccess(ctx, uuid.MustParse(job.Args.OrgId)); err != nil {
+	if err := w.usecase.CheckFeatureAccess(ctx, job.Args.OrgId); err != nil {
 		logger.WarnContext(ctx, "Continuous Screening - feature access not allowed, skipping screening", "error", err)
 		return nil
 	}
