@@ -38,7 +38,6 @@ func AdaptScenarioIterationMetadataDto(si models.ScenarioIterationMetadata) Scen
 type ScenarioIterationBodyDto struct {
 	TriggerConditionAstExpression *NodeDto          `json:"trigger_condition_ast_expression"`
 	Rules                         []RuleDto         `json:"rules"`
-	SanctionCheckConfigs_deprec   []ScreeningConfig `json:"sanction_check_configs,omitempty"` //nolint:tagliatelle
 	ScreeningConfigs              []ScreeningConfig `json:"screening_configs,omitempty"`
 	ScoreReviewThreshold          *int              `json:"score_review_threshold"`
 	ScoreBlockAndReviewThreshold  *int              `json:"score_block_and_review_threshold"`
@@ -71,7 +70,6 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		}
 
 		body.ScreeningConfigs = sccs
-		body.SanctionCheckConfigs_deprec = sccs
 	}
 
 	if si.TriggerConditionAstExpression != nil {

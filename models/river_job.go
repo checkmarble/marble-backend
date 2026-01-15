@@ -54,9 +54,8 @@ type TestRunSummaryArgs struct {
 func (TestRunSummaryArgs) Kind() string { return "test_run_summary" }
 
 type MatchEnrichmentArgs struct {
-	OrgId                  uuid.UUID `json:"org_id"`
-	SanctionCheckId_deprec string    `json:"sanction_check_id"` //nolint:tagliatelle
-	ScreeningId            string    `json:"screening_id"`
+	OrgId       uuid.UUID `json:"org_id"`
+	ScreeningId string    `json:"screening_id"`
 }
 
 func (MatchEnrichmentArgs) Kind() string { return "match_enrichment" }

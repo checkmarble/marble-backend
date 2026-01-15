@@ -159,11 +159,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/scenario-iterations/:iteration_id", tom, handleGetScenarioIteration(uc))
 	router.POST("/scenario-iterations/:iteration_id", tom, handleCreateDraftFromIteration(uc))
 	router.PATCH("/scenario-iterations/:iteration_id", tom, handleUpdateScenarioIteration(uc))
-	// Deprecated
-	router.POST("/scenario-iterations/:iteration_id/sanction-check", tom, handleCreateScreeningConfig(uc))
-	router.PATCH("/scenario-iterations/:iteration_id/sanction-check/:config_id", tom, handleUpdateScreeningCheckConfig(uc))
-	router.DELETE("/scenario-iterations/:iteration_id/sanction-check/:config_id", tom, handleDeleteScreeningConfig(uc))
-	// New endpoints
+
 	router.POST("/scenario-iterations/:iteration_id/screening", tom, handleCreateScreeningConfig(uc))
 	router.PATCH("/scenario-iterations/:iteration_id/screening/:config_id", tom, handleUpdateScreeningCheckConfig(uc))
 	router.DELETE("/scenario-iterations/:iteration_id/screening/:config_id", tom, handleDeleteScreeningConfig(uc))
@@ -184,22 +180,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleAiDescriptionScenarioIteration(uc),
 	)
 
-	// Deprecated
-	router.GET("/sanction-checks/freshness", tom, handleScreeningDatasetFreshness(uc))
-	router.GET("/sanction-checks/datasets", tom, handleScreeningDatasetCatalog(uc))
-	router.GET("/sanction-checks", tom, handleListScreenings(uc))
-	router.POST("/sanction-checks/refine", tom, handleRefineScreening(uc))
-	router.POST("/sanction-checks/search", tom, handleSearchScreening(uc))
-	router.POST("/sanction-checks/:screeningId/files", tom,
-		handleUploadScreeningMatchFile(uc))
-	router.GET("/sanction-checks/:screeningId/files", tom,
-		handleListScreeningMatchFiles(uc))
-	router.GET("/sanction-checks/:screeningId/files/:fileId", tom,
-		handleDownloadScreeningMatchFile(uc))
-	router.PATCH("/sanction-checks/matches/:id", tom, handleUpdateScreeningMatchStatus(uc))
-	router.POST("/sanction-checks/matches/:id/enrich", tom, handleEnrichScreeningMatch(uc))
-
-	// New endpoints
 	router.GET("/screenings/freshness", tom, handleScreeningDatasetFreshness(uc))
 	router.GET("/screenings/datasets", tom, handleScreeningDatasetCatalog(uc))
 	router.GET("/screenings", tom, handleListScreenings(uc))
