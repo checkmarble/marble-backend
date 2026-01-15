@@ -39,7 +39,6 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 
 	scenarioPublication := models.ScenarioPublication{
 		Id:                  uuid.New().String(),
-		Rank:                0,
 		OrganizationId:      uuid.New(),
 		ScenarioId:          uuid.New().String(),
 		ScenarioIterationId: uuid.New().String(),
