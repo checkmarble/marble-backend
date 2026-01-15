@@ -53,6 +53,7 @@ func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(
 	ctx context.Context,
 	offloadingConfig infra.OffloadingConfig,
 	analyticsConfig infra.AnalyticsConfig,
+	csCreateFullDatasetInterval time.Duration,
 ) {
 	logger := utils.LoggerFromContext(ctx)
 	refreshOrgs := func() error {
@@ -69,7 +70,7 @@ func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(
 			}
 		}
 
-		err = w.addMissingQueues(ctx, queues, offloadingConfig, analyticsConfig)
+		err = w.addMissingQueues(ctx, queues, offloadingConfig, analyticsConfig, csCreateFullDatasetInterval)
 		if err != nil {
 			return err
 		}
@@ -101,6 +102,7 @@ func (w *TaskQueueWorker) addMissingQueues(
 	queues map[string]river.QueueConfig,
 	offloadingConfig infra.OffloadingConfig,
 	analyticsConfig infra.AnalyticsConfig,
+	csCreateFullDatasetInterval time.Duration,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 	w.mu.Lock()
@@ -133,7 +135,7 @@ func (w *TaskQueueWorker) addMissingQueues(
 			}
 			logger.InfoContext(ctx, fmt.Sprintf("Added queue for organization %s to task queue worker", orgId))
 
-			for _, p := range listOrgPeriodics(org, offloadingConfig, analyticsConfig) {
+			for _, p := range listOrgPeriodics(org, offloadingConfig, analyticsConfig, csCreateFullDatasetInterval) {
 				w.riverClient.PeriodicJobs().Add(p)
 			}
 		}
@@ -183,6 +185,7 @@ func listOrgPeriodics(
 	org models.Organization,
 	offloadingConfig infra.OffloadingConfig,
 	analyticsConfig infra.AnalyticsConfig,
+	csCreateFullDatasetInterval time.Duration,
 ) []*river.PeriodicJob {
 	periodics := []*river.PeriodicJob{
 		scheduled_execution.NewIndexCleanupPeriodicJob(org.Id),
@@ -191,7 +194,7 @@ func listOrgPeriodics(
 		continuous_screening.NewContinuousScreeningCreateFullDatasetPeriodicJob(
 			org.Id,
 			// TODO: Configurable per Org
-			24*time.Hour,
+			csCreateFullDatasetInterval,
 		),
 	}
 	if offloadingConfig.Enabled {
@@ -215,6 +218,7 @@ func QueuesFromOrgs(
 	execGetter repositories.ExecutorGetter,
 	offloadingConfig infra.OffloadingConfig,
 	analyticsConfig infra.AnalyticsConfig,
+	csCreateFullDatasetInterval time.Duration,
 ) (queues map[string]river.QueueConfig, periodics []*river.PeriodicJob, err error) {
 	exec_fac := executor_factory.NewDbExecutorFactory(appName, orgsRepo, execGetter)
 	orgs, err := orgsRepo.AllOrganizations(ctx, exec_fac.NewExecutor())
@@ -226,7 +230,8 @@ func QueuesFromOrgs(
 	queues = make(map[string]river.QueueConfig, len(orgs))
 
 	for _, org := range orgs {
-		periodics = append(periodics, listOrgPeriodics(org, offloadingConfig, analyticsConfig)...)
+		periodics = append(periodics, listOrgPeriodics(org, offloadingConfig,
+			analyticsConfig, csCreateFullDatasetInterval)...)
 
 		queues[org.Id.String()] = river.QueueConfig{
 			MaxWorkers: numberWorkersPerQueue,

@@ -7,20 +7,21 @@ import (
 )
 
 type OrganizationFeatureAccess struct {
-	Id              string
-	OrganizationId  uuid.UUID
-	TestRun         FeatureAccess
-	Workflows       FeatureAccess
-	Webhooks        FeatureAccess
-	RuleSnoozes     FeatureAccess
-	Roles           FeatureAccess
-	Analytics       FeatureAccess
-	Sanctions       FeatureAccess
-	NameRecognition FeatureAccess
-	CaseAutoAssign  FeatureAccess
-	CaseAiAssist    FeatureAccess
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	Id                  string
+	OrganizationId      uuid.UUID
+	TestRun             FeatureAccess
+	Workflows           FeatureAccess
+	Webhooks            FeatureAccess
+	RuleSnoozes         FeatureAccess
+	Roles               FeatureAccess
+	Analytics           FeatureAccess
+	Sanctions           FeatureAccess
+	NameRecognition     FeatureAccess
+	CaseAutoAssign      FeatureAccess
+	CaseAiAssist        FeatureAccess
+	ContinuousScreening FeatureAccess
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 
 	// user-scoped
 	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
@@ -28,22 +29,24 @@ type OrganizationFeatureAccess struct {
 }
 
 type DbStoredOrganizationFeatureAccess struct {
-	Id             string
-	OrganizationId uuid.UUID
-	TestRun        FeatureAccess
-	Sanctions      FeatureAccess
-	CaseAutoAssign FeatureAccess
-	CaseAiAssist   FeatureAccess
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	Id                  string
+	OrganizationId      uuid.UUID
+	TestRun             FeatureAccess
+	Sanctions           FeatureAccess
+	CaseAutoAssign      FeatureAccess
+	CaseAiAssist        FeatureAccess
+	ContinuousScreening FeatureAccess
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 type UpdateOrganizationFeatureAccessInput struct {
-	OrganizationId uuid.UUID
-	TestRun        *FeatureAccess
-	Sanctions      *FeatureAccess
-	CaseAiAssist   *FeatureAccess
-	CaseAutoAssign *FeatureAccess
+	OrganizationId      uuid.UUID
+	TestRun             *FeatureAccess
+	Sanctions           *FeatureAccess
+	CaseAiAssist        *FeatureAccess
+	CaseAutoAssign      *FeatureAccess
+	ContinuousScreening *FeatureAccess
 }
 
 type FeaturesConfiguration struct {
@@ -59,15 +62,16 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	user *User,
 ) OrganizationFeatureAccess {
 	o := OrganizationFeatureAccess{
-		Id:              f.Id,
-		OrganizationId:  f.OrganizationId,
-		TestRun:         f.TestRun,
-		Sanctions:       f.Sanctions,
-		NameRecognition: f.Sanctions,
-		CaseAutoAssign:  f.CaseAutoAssign,
-		CaseAiAssist:    f.CaseAiAssist,
-		CreatedAt:       f.CreatedAt,
-		UpdatedAt:       f.UpdatedAt,
+		Id:                  f.Id,
+		OrganizationId:      f.OrganizationId,
+		TestRun:             f.TestRun,
+		Sanctions:           f.Sanctions,
+		NameRecognition:     f.Sanctions,
+		CaseAutoAssign:      f.CaseAutoAssign,
+		CaseAiAssist:        f.CaseAiAssist,
+		ContinuousScreening: f.ContinuousScreening,
+		CreatedAt:           f.CreatedAt,
+		UpdatedAt:           f.UpdatedAt,
 	}
 
 	// First, set the feature accesses to "allowed" if the license allows it
@@ -88,6 +92,9 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	}
 
 	// remove the feature accesses that are not allowed by the license
+	if !l.ContinuousScreening {
+		o.ContinuousScreening = Restricted
+	}
 	if !l.TestRun {
 		o.TestRun = Restricted
 	}
@@ -114,6 +121,9 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	}
 	if o.NameRecognition.IsAllowed() && !c.NameRecognition {
 		o.NameRecognition = MissingConfiguration
+	}
+	if o.ContinuousScreening.IsAllowed() && !c.Sanctions {
+		o.ContinuousScreening = MissingConfiguration
 	}
 
 	if user != nil && user.AiAssistEnabled {

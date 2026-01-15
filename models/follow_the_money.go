@@ -40,6 +40,8 @@ type FollowTheMoneyProperty string
 const (
 	FollowTheMoneyPropertyUnknown              FollowTheMoneyProperty = "Unknown"
 	FollowTheMoneyPropertyName                 FollowTheMoneyProperty = "name"
+	FollowTheMoneyPropertyFirstName            FollowTheMoneyProperty = "firstName"
+	FollowTheMoneyPropertyLastName             FollowTheMoneyProperty = "lastName"
 	FollowTheMoneyPropertyEmail                FollowTheMoneyProperty = "email"
 	FollowTheMoneyPropertyPhone                FollowTheMoneyProperty = "phone"
 	FollowTheMoneyPropertyNationality          FollowTheMoneyProperty = "nationality"
@@ -56,12 +58,17 @@ const (
 	FollowTheMoneyPropertyIsinCode             FollowTheMoneyProperty = "isinCode"
 	FollowTheMoneyPropertyWebsite              FollowTheMoneyProperty = "website"
 	FollowTheMoneyPropertyCountry              FollowTheMoneyProperty = "country"
+	FollowTheMoneyPropertyNotes                FollowTheMoneyProperty = "notes"
 )
 
 func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
 	switch s {
 	case "name":
 		return FollowTheMoneyPropertyName
+	case "firstName":
+		return FollowTheMoneyPropertyFirstName
+	case "lastName":
+		return FollowTheMoneyPropertyLastName
 	case "email":
 		return FollowTheMoneyPropertyEmail
 	case "phone":
@@ -94,6 +101,8 @@ func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
 		return FollowTheMoneyPropertyWebsite
 	case "country":
 		return FollowTheMoneyPropertyCountry
+	case "notes":
+		return FollowTheMoneyPropertyNotes
 	default:
 		return FollowTheMoneyPropertyUnknown
 	}
@@ -106,6 +115,8 @@ func (p FollowTheMoneyProperty) String() string {
 var FollowTheMoneyEntityProperties = map[FollowTheMoneyEntity][]FollowTheMoneyProperty{
 	FollowTheMoneyEntityPerson: {
 		FollowTheMoneyPropertyName,
+		FollowTheMoneyPropertyFirstName,
+		FollowTheMoneyPropertyLastName,
 		FollowTheMoneyPropertyEmail,
 		FollowTheMoneyPropertyPhone,
 		FollowTheMoneyPropertyNationality,

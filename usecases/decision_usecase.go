@@ -9,6 +9,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -42,6 +43,7 @@ type DecisionUsecaseRepository interface {
 	StoreDecision(
 		ctx context.Context,
 		exec repositories.Executor,
+		offloaderWriter repositories.OffloadedReadWriter,
 		decision models.DecisionWithRuleExecutions,
 		organizationId uuid.UUID,
 		newDecisionId string,
@@ -90,7 +92,7 @@ type DecisionUsecase struct {
 	repository                DecisionUsecaseRepository
 	screeningRepository       decisionUsecaseScreeningWriter
 	scenarioTestRunRepository repositories.ScenarioTestRunRepository
-	offloadedReader           OffloadedReader
+	offloadedReader           repositories.OffloadedReadWriter
 	webhookEventsSender       webhookEventsUsecase
 	phantomUseCase            decision_phantom.PhantomDecisionUsecase
 	scenarioEvaluator         ScenarioEvaluator
@@ -98,9 +100,14 @@ type DecisionUsecase struct {
 	taskQueueRepository       repositories.TaskQueueRepository
 }
 
+var (
+	singleScenarioCache = expirable.NewLRU[string, models.Scenario](500, nil, time.Minute)
+	orgScenariosCache   = expirable.NewLRU[string, []models.Scenario](100, nil, time.Minute)
+)
+
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
-	decision, err := usecase.repository.DecisionWithRuleExecutionsById(ctx,
-		usecase.executorFactory.NewExecutor(), decisionId)
+	exec := usecase.executorFactory.NewExecutor()
+	decision, err := usecase.repository.DecisionWithRuleExecutionsById(ctx, exec, decisionId)
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
@@ -109,7 +116,7 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
-	if err := usecase.offloadedReader.MutateWithOffloadedDecisionRules(ctx,
+	if err := usecase.offloadedReader.MutateWithOffloadedDecisionRules(ctx, exec,
 		decision.OrganizationId, decision); err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
@@ -300,14 +307,21 @@ func (usecase *DecisionUsecase) CreateDecision(
 	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
 		return false, models.DecisionWithRuleExecutions{}, err
 	}
-	scenario, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
-	if errors.Is(err, models.NotFoundError) {
-		return false, models.DecisionWithRuleExecutions{},
-			errors.WithDetail(err, "scenario not found")
-	} else if err != nil {
-		return false, models.DecisionWithRuleExecutions{},
-			errors.Wrap(err, "error getting scenario")
+
+	scenario, ok := singleScenarioCache.Get(input.ScenarioId)
+	if !ok {
+		s, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
+		if errors.Is(err, models.NotFoundError) {
+			return false, models.DecisionWithRuleExecutions{},
+				errors.WithDetail(err, "scenario not found")
+		} else if err != nil {
+			return false, models.DecisionWithRuleExecutions{},
+				errors.Wrap(err, "error getting scenario")
+		}
+		singleScenarioCache.Add(input.ScenarioId, s)
+		scenario = s
 	}
+
 	if params.WithScenarioPermissionCheck {
 		if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
 			return false, models.DecisionWithRuleExecutions{}, err
@@ -373,6 +387,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		if err = usecase.repository.StoreDecision(
 			ctx,
 			tx,
+			usecase.offloadedReader,
 			decision,
 			input.OrganizationId,
 			decision.DecisionId.String(),
@@ -505,10 +520,16 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	}
 	pivot := models.FindPivot(pivotsMeta, input.TriggerObjectTable, dataModel)
 
-	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, input.OrganizationId)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "error getting scenarios in CreateAllDecisions")
+	scenarios, ok := orgScenariosCache.Get(input.OrganizationId.String())
+	if !ok {
+		s, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, input.OrganizationId)
+		if err != nil {
+			return nil, 0, errors.Wrap(err, "error getting scenarios in CreateAllDecisions")
+		}
+		orgScenariosCache.Add(input.OrganizationId.String(), s)
+		scenarios = s
 	}
+
 	var filteredScenarios []models.Scenario
 	for _, scenario := range scenarios {
 		if scenario.TriggerObjectType == input.TriggerObjectTable && scenario.LiveVersionID != nil {
@@ -586,6 +607,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			if err = usecase.repository.StoreDecision(
 				ctx,
 				tx,
+				usecase.offloadedReader,
 				item.decision,
 				input.OrganizationId,
 				item.decision.DecisionId.String(),

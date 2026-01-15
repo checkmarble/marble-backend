@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -184,30 +185,19 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		}
 	}
 
-	screeningWithMatches, err := uc.DoScreening(ctx, exec, ingestedObject, mapping, config, input.ObjectType, objectId)
-	if err != nil {
-		logger.WarnContext(ctx, "Continuous Screening - error searching on open sanctions", "error", err.Error())
-		return models.ContinuousScreeningWithMatches{}, err
+	var screeningWithMatches models.ScreeningWithMatches
+	if !input.SkipScreen {
+		screeningWithMatches, err = uc.DoScreening(ctx, exec, ingestedObject, mapping, config, input.ObjectType, objectId)
+		if err != nil {
+			logger.WarnContext(ctx, "Continuous Screening - error searching on open sanctions", "error", err.Error())
+			return models.ContinuousScreeningWithMatches{}, err
+		}
 	}
 
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		uc.transactionFactory,
 		func(tx repositories.Transaction) (models.ContinuousScreeningWithMatches, error) {
-			continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
-				ctx,
-				tx,
-				screeningWithMatches,
-				config,
-				input.ObjectType,
-				objectId,
-				ingestedObjectInternalId,
-				triggerType,
-			)
-			if err != nil {
-				return models.ContinuousScreeningWithMatches{}, err
-			}
-
 			deltaTrackOperation := models.DeltaTrackOperationAdd
 			if triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated {
 				deltaTrackOperation = models.DeltaTrackOperationUpdate
@@ -225,7 +215,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 						ObjectType:       input.ObjectType,
 						ObjectId:         objectId,
 						ObjectInternalId: &ingestedObjectInternalId,
-						EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, objectId),
+						EntityId:         marbleEntityIdBuilder(input.ObjectType, objectId),
 						Operation:        deltaTrackOperation,
 					},
 				)
@@ -234,27 +224,49 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				}
 			}
 
-			if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
-				// Create and attach to a case
-				// Update the continuousScreeningWithMatches with the created case ID
-				caseCreated, err := uc.HandleCaseCreation(
+			if !input.SkipScreen {
+				continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
 					ctx,
 					tx,
-					config,
-					objectId,
-					continuousScreeningWithMatches,
+					models.CreateContinuousScreening{
+						Screening:        screeningWithMatches,
+						Config:           config,
+						ObjectType:       &input.ObjectType,
+						ObjectId:         &objectId,
+						ObjectInternalId: &ingestedObjectInternalId,
+						TriggerType:      triggerType,
+					},
 				)
 				if err != nil {
 					return models.ContinuousScreeningWithMatches{}, err
 				}
-				caseUuid, err := uuid.Parse(caseCreated.Id)
-				if err != nil {
-					return models.ContinuousScreeningWithMatches{}, err
+				if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
+					// Create and attach to a case
+					// Update the continuousScreeningWithMatches with the created case ID
+					caseName, err := caseNameBuilderFromIngestedObject(ingestedObject, mapping)
+					if err != nil {
+						return models.ContinuousScreeningWithMatches{}, err
+					}
+					caseCreated, err := uc.HandleCaseCreation(
+						ctx,
+						tx,
+						config,
+						caseName,
+						continuousScreeningWithMatches,
+					)
+					if err != nil {
+						return models.ContinuousScreeningWithMatches{}, err
+					}
+					caseUuid, err := uuid.Parse(caseCreated.Id)
+					if err != nil {
+						return models.ContinuousScreeningWithMatches{}, err
+					}
+					continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
 				}
-				continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
-			}
 
-			return continuousScreeningWithMatches, nil
+				return continuousScreeningWithMatches, nil
+			}
+			return models.ContinuousScreeningWithMatches{}, nil
 		})
 }
 
@@ -279,7 +291,7 @@ func (uc *ContinuousScreeningUsecase) ingestObject(
 	input models.CreateContinuousScreeningObject,
 ) (string, error) {
 	// Ingestion doesn't return the object after operation.
-	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId, input.ObjectType, *input.ObjectPayload)
+	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId, input.ObjectType, *input.ObjectPayload, false)
 	if err != nil {
 		return "", err
 	}
@@ -288,17 +300,6 @@ func (uc *ContinuousScreeningUsecase) ingestObject(
 		return "", errors.Wrap(models.ConflictError, "no object ingested")
 	}
 	return extractObjectIDFromPayload(*input.ObjectPayload)
-}
-
-func stringRepresentation(value any) string {
-	timestampVal, ok := value.(time.Time)
-	if ok {
-		return timestampVal.Format(time.RFC3339)
-	}
-	if value == nil {
-		return ""
-	}
-	return fmt.Sprintf("%v", value)
 }
 
 // Based on data model field mapping, prepare the OpenSanctions Filters
@@ -452,7 +453,7 @@ func (uc *ContinuousScreeningUsecase) DoScreening(
 		ctx,
 		exec,
 		config.OrgId,
-		utils.Ptr(typedObjectId(objectType, objectId)),
+		utils.Ptr(marbleEntityIdBuilder(objectType, objectId)),
 		nil,
 	)
 	if err != nil {
@@ -466,7 +467,18 @@ func (uc *ContinuousScreeningUsecase) DoScreening(
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
-	screeningResponse, err := uc.screeningProvider.Search(ctx, query)
+	var screeningResponse models.ScreeningRawSearchResponseWithMatches
+	err = retry.Do(
+		func() error {
+			screeningResponse, err = uc.screeningProvider.Search(ctx, query)
+			return err
+		},
+		retry.Attempts(3),
+		retry.LastErrorOnly(true),
+		retry.Delay(100*time.Millisecond),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(ctx),
+	)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -478,11 +490,9 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 	ctx context.Context,
 	tx repositories.Transaction,
 	config models.ContinuousScreeningConfig,
-	objectId string,
+	caseName string,
 	continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
 ) (models.Case, error) {
-	// TODO: TBD
-	caseName := "Continuous Screening - " + objectId
 	return uc.caseEditor.CreateCase(
 		ctx,
 		tx,
@@ -582,7 +592,7 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 			ObjectType:       input.ObjectType,
 			ObjectId:         input.ObjectId,
 			ObjectInternalId: nil,
-			EntityId:         deltaTrackEntityIdBuilder(input.ObjectType, input.ObjectId),
+			EntityId:         marbleEntityIdBuilder(input.ObjectType, input.ObjectId),
 			Operation:        models.DeltaTrackOperationDelete,
 		})
 		if err != nil {

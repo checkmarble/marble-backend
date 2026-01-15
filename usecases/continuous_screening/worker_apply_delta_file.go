@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
@@ -70,12 +71,18 @@ type applyDeltaFileWorkerRepository interface {
 		input models.CreateContinuousScreeningJobError,
 	) error
 
-	SearchScreeningMatchWhitelist(
+	SearchScreeningMatchWhitelistByIds(
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId uuid.UUID,
-		counterpartyId, entityId *string,
+		counterpartyIds, entityIds []string,
 	) ([]models.ScreeningWhitelist, error)
+
+	InsertContinuousScreening(
+		ctx context.Context,
+		exec repositories.Executor,
+		input models.CreateContinuousScreening,
+	) (models.ContinuousScreeningWithMatches, error)
 }
 
 type applyDeltaFileWorkerScreeningProvider interface {
@@ -85,30 +92,45 @@ type applyDeltaFileWorkerScreeningProvider interface {
 	) (models.ScreeningRawSearchResponseWithMatches, error)
 }
 
+type applyDeltaFileWorkerUsecase interface {
+	HandleCaseCreation(
+		ctx context.Context,
+		tx repositories.Transaction,
+		config models.ContinuousScreeningConfig,
+		objectId string,
+		continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
+	) (models.Case, error)
+}
+
 type ApplyDeltaFileWorker struct {
 	river.WorkerDefaults[models.ContinuousScreeningApplyDeltaFileArgs]
 
-	executorFactory   executor_factory.ExecutorFactory
-	repository        applyDeltaFileWorkerRepository
-	blobRepository    repositories.BlobRepository
-	screeningProvider applyDeltaFileWorkerScreeningProvider
-
-	bucketUrl string
+	executorFactory    executor_factory.ExecutorFactory
+	transactionFactory executor_factory.TransactionFactory
+	repository         applyDeltaFileWorkerRepository
+	blobRepository     repositories.BlobRepository
+	screeningProvider  applyDeltaFileWorkerScreeningProvider
+	usecase            applyDeltaFileWorkerUsecase
+	bucketUrl          string
 }
 
 func NewApplyDeltaFileWorker(
 	executorFactory executor_factory.ExecutorFactory,
+	transactionFactory executor_factory.TransactionFactory,
 	repository applyDeltaFileWorkerRepository,
 	blobRepository repositories.BlobRepository,
 	screeningProvider applyDeltaFileWorkerScreeningProvider,
 	bucketUrl string,
+	usecase applyDeltaFileWorkerUsecase,
 ) *ApplyDeltaFileWorker {
 	return &ApplyDeltaFileWorker{
-		executorFactory:   executorFactory,
-		repository:        repository,
-		blobRepository:    blobRepository,
-		screeningProvider: screeningProvider,
-		bucketUrl:         bucketUrl,
+		executorFactory:    executorFactory,
+		transactionFactory: transactionFactory,
+		repository:         repository,
+		blobRepository:     blobRepository,
+		screeningProvider:  screeningProvider,
+		bucketUrl:          bucketUrl,
+		usecase:            usecase,
 	}
 }
 
@@ -227,11 +249,63 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		if err != nil {
 			return err
 		}
-		_, err = w.screeningProvider.Search(ctx, query)
+		var screeningResponse models.ScreeningRawSearchResponseWithMatches
+		err = retry.Do(
+			func() error {
+				screeningResponse, err = w.screeningProvider.Search(ctx, query)
+				return err
+			},
+			retry.Attempts(3),
+			retry.LastErrorOnly(true),
+			retry.Delay(100*time.Millisecond),
+			retry.DelayType(retry.BackOffDelay),
+			retry.Context(ctx),
+		)
 		if err != nil {
-			// NOTE: The search will always return an error because org dataset is not created
-			// Remove this logic and handle the error
-			logger.DebugContext(ctx, "Failed to search screening", "error", err)
+			return err
+		}
+
+		screening := screeningResponse.AdaptScreeningFromSearchResponse(query)
+
+		// No hit, skip the record
+		if screening.Status == models.ScreeningStatusNoHit {
+			continue
+		}
+
+		err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			entityPayload, err := json.Marshal(record.Entity)
+			if err != nil {
+				return err
+			}
+			continuousScreeningWithMatches, err := w.repository.InsertContinuousScreening(
+				ctx,
+				tx,
+				models.CreateContinuousScreening{
+					Screening:                 screening,
+					Config:                    updateJob.Config,
+					OpenSanctionEntityId:      &record.Entity.Id,
+					OpenSanctionEntityPayload: entityPayload,
+					TriggerType:               models.ContinuousScreeningTriggerTypeDatasetUpdated,
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			_, err = w.usecase.HandleCaseCreation(
+				ctx,
+				tx,
+				updateJob.Config,
+				record.Entity.Caption, // The case title will be the entity caption
+				continuousScreeningWithMatches,
+			)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
 		}
 	}
 
@@ -299,12 +373,15 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 	updateJob models.EnrichedContinuousScreeningUpdateJob,
 	record models.OpenSanctionsDeltaFileRecord,
 ) (query models.OpenSanctionsQuery, err error) {
-	whitelists, err := w.repository.SearchScreeningMatchWhitelist(
+	// Fetch whitelist entries for the entity and all its referent (previous) IDs.
+	// We then collect their CounterpartyId values and pass them as WhitelistedEntityIds
+	// to exclude those counterparties from screening.
+	whitelists, err := w.repository.SearchScreeningMatchWhitelistByIds(
 		ctx,
 		exec,
 		updateJob.OrgId,
 		nil,
-		&record.Entity.Id,
+		append(record.Entity.Referents, record.Entity.Id),
 	)
 	if err != nil {
 		return models.OpenSanctionsQuery{}, err

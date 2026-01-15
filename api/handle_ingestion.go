@@ -33,7 +33,7 @@ func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody)
+		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody, true)
 		var validationError models.IngestionValidationErrors
 		if errors.As(err, &validationError) {
 			_, objectErr := validationError.GetSomeItem()
@@ -84,7 +84,7 @@ func handleIngestionPartialUpsert(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody, payload_parser.WithAllowPatch())
+		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody, true, payload_parser.WithAllowPatch())
 		if presentIngestionValidationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
@@ -125,7 +125,7 @@ func handleIngestionMultiple(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody)
+		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody, true)
 		if presentIngestionValidationErrorMultiple(c, err) || presentError(ctx, c, err) {
 			return
 		}
@@ -153,7 +153,7 @@ func handleIngestionMultiplePartialUpsert(uc usecases.Usecases) func(c *gin.Cont
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody, payload_parser.WithAllowPatch())
+		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody, true, payload_parser.WithAllowPatch())
 		if presentIngestionValidationErrorMultiple(c, err) || presentError(ctx, c, err) {
 			return
 		}

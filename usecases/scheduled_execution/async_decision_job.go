@@ -93,6 +93,7 @@ type AsyncDecisionWorker struct {
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	decisionRepository         repositories.DecisionRepository
 	transactionFactory         executor_factory.TransactionFactory
+	offloadedReader            repositories.OffloadedReadWriter
 	webhookEventsSender        webhookEventsUsecase
 	scenarioFetcher            scenarios.ScenarioFetcher
 	phantomDecision            decision_phantom.PhantomDecisionUsecase
@@ -108,6 +109,7 @@ func NewAsyncDecisionWorker(
 	ingestedDataReadRepository repositories.IngestedDataReadRepository,
 	decisionRepository repositories.DecisionRepository,
 	transactionFactory executor_factory.TransactionFactory,
+	offloadedReader repositories.OffloadedReadWriter,
 	webhookEventsSender webhookEventsUsecase,
 	scenarioFetcher scenarios.ScenarioFetcher,
 	phantom decision_phantom.PhantomDecisionUsecase,
@@ -179,8 +181,7 @@ func (w *AsyncDecisionWorker) handleDecision(
 		return nil, nil, nil
 	}
 
-	decisionCreated, webhookEventIds, testRunCallback, err :=
-		w.createSingleDecisionForObjectId(ctx, args, tx)
+	decisionCreated, webhookEventIds, testRunCallback, err := w.createSingleDecisionForObjectId(ctx, args, tx)
 	if err != nil {
 		statusErr := w.repository.UpdateDecisionToCreateStatus(
 			ctx,
@@ -315,8 +316,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		}
 	}
 
-	triggerPassed, scenarioExecution, err :=
-		w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+	triggerPassed, scenarioExecution, err := w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, nil, nil, errors.Wrapf(err, "error evaluating scenario in AsyncDecisionWorker %s", scenario.Id)
 	}
@@ -340,6 +340,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	err = w.decisionRepository.StoreDecision(
 		ctx,
 		tx,
+		w.offloadedReader,
 		decision,
 		scenario.OrganizationId,
 		decision.DecisionId.String(),

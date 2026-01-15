@@ -19,8 +19,9 @@ func (m *ContinuousScreeningIngestionUsecase) IngestObject(
 	organizationId uuid.UUID,
 	objectType string,
 	objectBody json.RawMessage,
+	shouldScreen bool,
 	parserOpts ...payload_parser.ParserOpt,
 ) (int, error) {
-	args := m.Called(ctx, organizationId, objectType, objectBody)
+	args := m.Called(ctx, organizationId, objectType, objectBody, shouldScreen)
 	return args.Int(0), args.Error(1)
 }

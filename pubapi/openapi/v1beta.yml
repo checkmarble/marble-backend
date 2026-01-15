@@ -581,6 +581,10 @@ paths:
                   type: string
                 object_payload:
                   type: object
+                skip_screen:
+                  type: boolean
+                  default: false
+                  description: Whether to skip screening the object immediately. If true, the API returns 201 Created without data.
               oneOf:
                 - required:
                     - object_id
@@ -588,11 +592,7 @@ paths:
                     - object_payload
       responses:
         '201':
-          description: Created monitored object
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ContinuousScreening'
+          description: Monitored object created or updated. Returns screening result if screening was performed, or empty response if screening was skipped.
         '400':
           $ref: '#/components/responses/400'
         '403':

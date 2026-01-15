@@ -196,16 +196,42 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			}
 		}
 
-		if update.Status == models.ScreeningMatchStatusNoHit && update.Whitelist {
+		if update.Status == models.ScreeningMatchStatusNoHit {
+			var counterpartyId string
+			var openSanctionEntityId string
+			if continuousScreeningWithMatches.TriggerType ==
+				models.ContinuousScreeningTriggerTypeDatasetUpdated {
+				// Match from OpenSanctions entity to Marble
+				if continuousScreeningWithMatches.OpenSanctionEntityId == nil {
+					// Should not happen because the OpenSanctionEntityId in continuous screening should be set in DatasetUpdated screening type
+					return errors.New("OpenSanctionEntityId is missing for DatasetUpdated screening type")
+				}
+
+				// The counterparty (Marble entity) is the one being screened and saved in the match as OpenSanctionEntityId
+				counterpartyId = continuousScreeningMatch.OpenSanctionEntityId
+				openSanctionEntityId = *continuousScreeningWithMatches.OpenSanctionEntityId
+			} else {
+				// Screening from Marble to OpenSanctions entity
+				if continuousScreeningWithMatches.ObjectType == nil ||
+					continuousScreeningWithMatches.ObjectId == nil {
+					// should not happen because ObjectType and ObjectId should be set in Marble initiated screening
+					return errors.New("object type or object id is missing for Marble initiated screening")
+				}
+
+				counterpartyId = marbleEntityIdBuilder(
+					*continuousScreeningWithMatches.ObjectType,
+					*continuousScreeningWithMatches.ObjectId,
+				)
+				openSanctionEntityId = continuousScreeningMatch.OpenSanctionEntityId
+			}
+
+			// Match from Marble to OpenSanctions entity
 			if err := uc.createWhitelist(
 				ctx,
 				tx,
 				continuousScreeningWithMatches.OrgId,
-				typedObjectId(
-					continuousScreeningWithMatches.ObjectType,
-					continuousScreeningWithMatches.ObjectId,
-				),
-				continuousScreeningMatch.OpenSanctionEntityId,
+				counterpartyId,
+				openSanctionEntityId,
 				reviewerId,
 			); err != nil {
 				return errors.Wrap(err, "could not whitelist match")
@@ -385,6 +411,14 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			return err
 		}
 
+		// TODO: Deal with indirect screening, ObjectType and ObjectId are nil
+		if continuousScreening.TriggerType == models.ContinuousScreeningTriggerTypeDatasetUpdated {
+			return errors.Wrap(
+				models.UnprocessableEntityError,
+				"continuous screening is a dataset updated screening, loading more results is not supported",
+			)
+		}
+
 		clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, continuousScreening.OrgId)
 		if err != nil {
 			return err
@@ -416,13 +450,13 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 		}
 
 		// Have the data model table and mapping
-		table, mapping, err := uc.GetDataModelTableAndMapping(ctx, tx, config, continuousScreening.ObjectType)
+		table, mapping, err := uc.GetDataModelTableAndMapping(ctx, tx, config, *continuousScreening.ObjectType)
 		if err != nil {
 			return err
 		}
 
 		// Fetch the ingested Data
-		ingestedObject, _, err := uc.GetIngestedObject(ctx, clientDbExec, table, continuousScreening.ObjectId)
+		ingestedObject, _, err := uc.GetIngestedObject(ctx, clientDbExec, table, *continuousScreening.ObjectId)
 		if err != nil {
 			return err
 		}
@@ -437,8 +471,8 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			ingestedObject,
 			mapping,
 			config,
-			continuousScreening.ObjectType,
-			continuousScreening.ObjectId,
+			*continuousScreening.ObjectType,
+			*continuousScreening.ObjectId,
 		)
 		if err != nil {
 			return err

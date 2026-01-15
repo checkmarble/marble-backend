@@ -85,25 +85,23 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 
 	workerConfig := WorkerConfig{
-		appName:                     "marble-backend-worker",
-		env:                         utils.GetEnv("ENV", "production"),
-		failedWebhooksRetryPageSize: utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
-		ingestionBucketUrl:          utils.GetRequiredEnv[string]("INGESTION_BUCKET_URL"),
-		loggingFormat:               utils.GetEnv("LOGGING_FORMAT", "text"),
-		sentryDsn:                   utils.GetEnv("SENTRY_DSN", ""),
-		cloudRunProbePort:           utils.GetEnv("CLOUD_RUN_PROBE_PORT", ""),
-		caseReviewTimeout:           utils.GetEnvDuration("AI_CASE_REVIEW_TIMEOUT", 5*time.Minute),
-		caseManagerBucket:           utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
-		analyticsBucket:             utils.GetEnv("ANALYTICS_BUCKET_URL", ""),
-		telemetryExporter:           utils.GetEnv("TRACING_EXPORTER", "otlp"),
-		otelSamplingRates:           utils.GetEnv("TRACING_SAMPLING_RATES", ""),
-		enablePrometheus:            utils.GetEnv("ENABLE_PROMETHEUS", false),
-		enableTracing:               utils.GetEnv("ENABLE_TRACING", false),
-		datasetDeltafileBucketUrl:   utils.GetEnv("DATASET_DELTAFILE_BUCKET_URL", ""),
-		ScanDatasetUpdatesInterval:  utils.GetEnvDuration("SCAN_DATASET_UPDATES_INTERVAL", 24*time.Hour),
-		CreateFullDatasetInterval:   utils.GetEnvDuration("CREATE_FULL_DATASET_INTERVAL", 24*time.Hour),
-		continuousScreeningEntitiesBucketUrl: utils.GetEnv(
-			"CONTINUOUS_SCREENING_ENTITIES_BUCKET_URL", ""),
+		appName:                      "marble-backend-worker",
+		env:                          utils.GetEnv("ENV", "production"),
+		failedWebhooksRetryPageSize:  utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
+		ingestionBucketUrl:           utils.GetRequiredEnv[string]("INGESTION_BUCKET_URL"),
+		loggingFormat:                utils.GetEnv("LOGGING_FORMAT", "text"),
+		sentryDsn:                    utils.GetEnv("SENTRY_DSN", ""),
+		cloudRunProbePort:            utils.GetEnv("CLOUD_RUN_PROBE_PORT", ""),
+		caseReviewTimeout:            utils.GetEnvDuration("AI_CASE_REVIEW_TIMEOUT", 5*time.Minute),
+		caseManagerBucket:            utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
+		analyticsBucket:              utils.GetEnv("ANALYTICS_BUCKET_URL", ""),
+		telemetryExporter:            utils.GetEnv("TRACING_EXPORTER", "otlp"),
+		otelSamplingRates:            utils.GetEnv("TRACING_SAMPLING_RATES", ""),
+		enablePrometheus:             utils.GetEnv("ENABLE_PROMETHEUS", false),
+		enableTracing:                utils.GetEnv("ENABLE_TRACING", false),
+		ScanDatasetUpdatesInterval:   utils.GetEnvDuration("SCAN_DATASET_UPDATES_INTERVAL", 24*time.Hour),
+		CreateFullDatasetInterval:    utils.GetEnvDuration("CREATE_FULL_DATASET_INTERVAL", 24*time.Hour),
+		continuousScreeningBucketUrl: utils.GetEnv("CONTINUOUS_SCREENING_BUCKET_URL", ""),
 	}
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
@@ -224,7 +222,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	// Start the task queue workers
 	workers := river.NewWorkers()
 	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx, appName, repositories.MarbleDbRepository,
-		repositories.ExecutorGetter, offloadingConfig, analyticsConfig)
+		repositories.ExecutorGetter, offloadingConfig, analyticsConfig, workerConfig.CreateFullDatasetInterval)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -304,8 +302,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithCaseManagerBucketUrl(workerConfig.caseManagerBucket),
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
-		usecases.WithDatasetDeltafileBucketUrl(workerConfig.datasetDeltafileBucketUrl),
-		usecases.WithContinuousScreeningEntitiesBucketUrl(workerConfig.continuousScreeningEntitiesBucketUrl),
+		usecases.WithContinuousScreeningBucketUrl(workerConfig.continuousScreeningBucketUrl),
+		usecases.WithCsCreateFullDatasetInterval(workerConfig.CreateFullDatasetInterval),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 
@@ -329,6 +327,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
+	river.AddWorker(workers, adminUc.NewContinuousScreeningApplyDeltaFileWorker())
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
@@ -344,7 +343,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		river.AddWorker(workers, uc.NewSendBillingEventWorker())
 	}
 	river.AddWorker(workers, uc.NewContinuousScreeningScanDatasetUpdatesWorker())
-	river.AddWorker(workers, uc.NewContinuousScreeningApplyDeltaFileWorker())
 	river.AddWorker(workers, uc.NewContinuousScreeningCreateFullDatasetWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
@@ -384,7 +382,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	taskQueueWorker := uc.NewTaskQueueWorker(riverClient,
 		slices.Collect(maps.Keys(nonOrgQueues)),
 	)
-	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx, offloadingConfig, analyticsConfig)
+	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx, offloadingConfig, analyticsConfig, workerConfig.CreateFullDatasetInterval)
 
 	// Start the cron jobs using the old entrypoint.
 	// This will progressively be replaced by the new task queue system.

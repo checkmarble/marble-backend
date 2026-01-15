@@ -80,6 +80,7 @@ func (repo *MarbleDbRepository) CreateLicense(ctx context.Context, exec Executor
 				"sanctions",
 				"auto_assignment",
 				"case_ai_assist",
+				"continuous_screening",
 			).
 			Values(
 				license.Id,
@@ -98,6 +99,7 @@ func (repo *MarbleDbRepository) CreateLicense(ctx context.Context, exec Executor
 				license.LicenseEntitlements.Sanctions,
 				license.LicenseEntitlements.CaseAutoAssign,
 				license.LicenseEntitlements.CaseAiAssist,
+				license.LicenseEntitlements.ContinuousScreening,
 			),
 	)
 	return err
@@ -139,6 +141,7 @@ func (repo *MarbleDbRepository) UpdateLicense(ctx context.Context, exec Executor
 		query = query.Set("sanctions", licenseEntitlements.Sanctions)
 		query = query.Set("auto_assignment", licenseEntitlements.CaseAutoAssign)
 		query = query.Set("case_ai_assist", licenseEntitlements.CaseAiAssist)
+		query = query.Set("continuous_screening", licenseEntitlements.ContinuousScreening)
 	}
 
 	err := ExecBuilder(

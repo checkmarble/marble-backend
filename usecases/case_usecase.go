@@ -92,6 +92,11 @@ type CaseUseCaseRepository interface {
 	) ([]models.ContinuousScreeningWithMatches, error)
 	ListContinuousScreeningsByIds(ctx context.Context, exec repositories.Executor, ids []uuid.UUID) ([]models.ContinuousScreening, error)
 	UpdateContinuousScreeningsCaseId(ctx context.Context, exec repositories.Executor, ids []uuid.UUID, caseId string) error
+	GetContinuousScreeningConfig(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+	) (models.ContinuousScreeningConfig, error)
 
 	// inboxes
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
@@ -1186,6 +1191,7 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		if err != nil {
 			return models.Case{}, err
 		}
+
 		c.ContinuousScreenings = continuousScreeningsWithMatches
 
 	default:

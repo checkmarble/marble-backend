@@ -7,16 +7,17 @@ import (
 )
 
 type APIOrganizationFeatureAccess struct {
-	TestRun         string `json:"test_run"`
-	Workflows       string `json:"workflows"`
-	Webhooks        string `json:"webhooks"`
-	RuleSnoozes     string `json:"rule_snoozes"`
-	Roles           string `json:"roles"`
-	Analytics       string `json:"analytics"`
-	Sanctions       string `json:"sanctions"`
-	NameRecognition string `json:"name_recognition"`
-	CaseAutoAssign  string `json:"case_auto_assign"`
-	CaseAiAssist    string `json:"case_ai_assist"`
+	TestRun             string `json:"test_run"`
+	Workflows           string `json:"workflows"`
+	Webhooks            string `json:"webhooks"`
+	RuleSnoozes         string `json:"rule_snoozes"`
+	Roles               string `json:"roles"`
+	Analytics           string `json:"analytics"`
+	Sanctions           string `json:"sanctions"`
+	NameRecognition     string `json:"name_recognition"`
+	CaseAutoAssign      string `json:"case_auto_assign"`
+	CaseAiAssist        string `json:"case_ai_assist"`
+	ContinuousScreening string `json:"continuous_screening"`
 
 	// user-scoped
 	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
@@ -25,17 +26,18 @@ type APIOrganizationFeatureAccess struct {
 
 func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOrganizationFeatureAccess {
 	return APIOrganizationFeatureAccess{
-		TestRun:         f.TestRun.String(),
-		Workflows:       f.Workflows.String(),
-		Webhooks:        f.Webhooks.String(),
-		RuleSnoozes:     f.RuleSnoozes.String(),
-		Roles:           f.Roles.String(),
-		Analytics:       f.Analytics.String(),
-		Sanctions:       f.Sanctions.String(),
-		NameRecognition: f.NameRecognition.String(),
-		CaseAutoAssign:  f.CaseAutoAssign.String(),
-		CaseAiAssist:    f.CaseAiAssist.String(),
-		AiAssist:        f.AiAssist.String(),
+		TestRun:             f.TestRun.String(),
+		Workflows:           f.Workflows.String(),
+		Webhooks:            f.Webhooks.String(),
+		RuleSnoozes:         f.RuleSnoozes.String(),
+		Roles:               f.Roles.String(),
+		Analytics:           f.Analytics.String(),
+		Sanctions:           f.Sanctions.String(),
+		NameRecognition:     f.NameRecognition.String(),
+		CaseAutoAssign:      f.CaseAutoAssign.String(),
+		CaseAiAssist:        f.CaseAiAssist.String(),
+		ContinuousScreening: f.ContinuousScreening.String(),
+		AiAssist:            f.AiAssist.String(),
 	}
 }
 

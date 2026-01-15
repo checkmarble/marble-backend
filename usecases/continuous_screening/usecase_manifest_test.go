@@ -18,9 +18,9 @@ type ContinuousScreeningManifestTestSuite struct {
 	blobRepository  *mocks.MockBlobRepository
 	executorFactory executor_factory.ExecutorFactoryStub
 
-	ctx                                  context.Context
-	marbleBackendUrl                     string
-	continuousScreeningEntitiesBucketUrl string
+	ctx                          context.Context
+	marbleBackendUrl             string
+	continuousScreeningBucketUrl string
 }
 
 func (suite *ContinuousScreeningManifestTestSuite) SetupTest() {
@@ -30,7 +30,7 @@ func (suite *ContinuousScreeningManifestTestSuite) SetupTest() {
 
 	suite.ctx = context.Background()
 	suite.marbleBackendUrl = "https://api.marble.test"
-	suite.continuousScreeningEntitiesBucketUrl = "gs://marble-continuous-screening-entities"
+	suite.continuousScreeningBucketUrl = "gs://marble-continuous-screening-entities"
 }
 
 func (suite *ContinuousScreeningManifestTestSuite) makeUsecase() *ContinuousScreeningManifestUsecase {
@@ -39,7 +39,7 @@ func (suite *ContinuousScreeningManifestTestSuite) makeUsecase() *ContinuousScre
 		suite.repository,
 		suite.blobRepository,
 		suite.marbleBackendUrl,
-		suite.continuousScreeningEntitiesBucketUrl,
+		suite.continuousScreeningBucketUrl,
 	)
 }
 

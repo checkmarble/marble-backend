@@ -85,6 +85,7 @@ func (usecase *IngestionUseCase) IngestObject(
 	organizationId uuid.UUID,
 	objectType string,
 	objectBody json.RawMessage,
+	shouldScreen bool,
 	parserOpts ...payload_parser.ParserOpt,
 ) (int, error) {
 	logger := utils.LoggerFromContext(ctx)
@@ -121,11 +122,6 @@ func (usecase *IngestionUseCase) IngestObject(
 		return 0, errors.WithDetail(err, "error parsing payload in decision usecase validate payload")
 	}
 
-	configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, organizationId, objectType)
-	if err != nil {
-		return 0, err
-	}
-
 	var ingestionResults models.IngestionResults
 	err = retryIngestion(ctx, func() error {
 		ingestionResults, err = usecase.insertEnumValuesAndIngest(ctx,
@@ -144,10 +140,16 @@ func (usecase *IngestionUseCase) IngestObject(
 		return 0, err
 	}
 	nbInsertedObjects := len(ingestionResults)
-	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId,
-		table, ingestionResults)
-	if err != nil {
-		return 0, err
+	if shouldScreen {
+		configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, organizationId, objectType)
+		if err != nil {
+			return 0, err
+		}
+		err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId,
+			table, ingestionResults)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
@@ -164,6 +166,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 	organizationId uuid.UUID,
 	objectType string,
 	objectBody json.RawMessage,
+	shouldScreen bool,
 	parserOpts ...payload_parser.ParserOpt,
 ) (int, error) {
 	logger := utils.LoggerFromContext(ctx)
@@ -200,11 +203,6 @@ func (usecase *IngestionUseCase) IngestObjects(
 			models.NotFoundError,
 			"table %s not found in data model in IngestObjects", objectType,
 		)
-	}
-
-	configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, organizationId, objectType)
-	if err != nil {
-		return 0, err
 	}
 
 	clientObjects := make([]models.ClientObject, 0, len(rawMessages))
@@ -246,10 +244,16 @@ func (usecase *IngestionUseCase) IngestObjects(
 	}
 	nbInsertedObjects := len(ingestionResults)
 
-	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId,
-		table, ingestionResults)
-	if err != nil {
-		return 0, err
+	if shouldScreen {
+		configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, organizationId, objectType)
+		if err != nil {
+			return 0, err
+		}
+		err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, configs, organizationId,
+			table, ingestionResults)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"slices"
@@ -293,7 +294,7 @@ func getLoadedDataset(ctx context.Context, catalog models.OpenSanctionsRawCatalo
 			logger.WarnContext(ctx, "Loaded dataset is not present in catalog dataset, ignore it", "dataset", dataset)
 			continue
 		}
-		if slices.Contains(d.Tags, MARBLE_CONTINUOUS_SCREENING_TAG) {
+		if slices.Contains(d.Tags, MarbleContinuousScreeningTag) {
 			// Skip marble datasets
 			continue
 		}
@@ -411,7 +412,7 @@ func (w *ScanDatasetUpdatesWorker) downloadDeltaFileAndSaveInBlob(ctx context.Co
 		return deltaBlobInfo{}, errors.Newf("failed to download delta file, status code: %d", resp.StatusCode)
 	}
 
-	key := version.datasetName + "/" + version.version + ".ndjson"
+	key := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, version.datasetName, version.version)
 	writer, err := w.blobRepo.OpenStream(
 		ctx,
 		w.bucketUrl,

@@ -114,6 +114,8 @@ type CreateFullDatasetWorker struct {
 	ingestedDataReader createFullDatasetWorkerIngestedDataReader
 	blobRepository     repositories.BlobRepository
 	bucketUrl          string
+
+	jobInterval time.Duration
 }
 
 func NewCreateFullDatasetWorker(
@@ -123,6 +125,7 @@ func NewCreateFullDatasetWorker(
 	ingestedDataReader createFullDatasetWorkerIngestedDataReader,
 	blobRepository repositories.BlobRepository,
 	bucketUrl string,
+	jobInterval time.Duration,
 ) *CreateFullDatasetWorker {
 	return &CreateFullDatasetWorker{
 		executorFactory:    executorFactory,
@@ -131,6 +134,7 @@ func NewCreateFullDatasetWorker(
 		ingestedDataReader: ingestedDataReader,
 		blobRepository:     blobRepository,
 		bucketUrl:          bucketUrl,
+		jobInterval:        jobInterval,
 	}
 }
 
@@ -149,9 +153,8 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Creating full dataset", "job", job)
 
-	// TODO: For now the interval is hardcoded to 24 hours, but we should make it configurable per org.
 	// TODO: fetch the interval from the org config
-	if err := scheduled_execution.AddStrideDelay(job, 24*time.Hour); err != nil {
+	if err := scheduled_execution.AddStrideDelay(job, w.jobInterval); err != nil {
 		return err
 	}
 
@@ -255,7 +258,7 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 	version := generateNextVersion("", now)
 
 	fileName := fmt.Sprintf("%s-entities.ftm.json", version)
-	fullDatasetFileName := fmt.Sprintf("%s/%s/%s", orgId.String(), FullDatasetFolderName, fileName)
+	fullDatasetFileName := fmt.Sprintf("%s/%s/%s/%s", OrgDatasetsFolderName, orgId.String(), FullDatasetFolderName, fileName)
 
 	trackBatch := &trackBatchState{}
 
@@ -360,10 +363,10 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 	version := generateNextVersion(previousDatasetFile.Version, now)
 
 	fileName := fmt.Sprintf("%s-entities.ftm.json", version)
-	fullDatasetFileName := fmt.Sprintf("%s/%s/%s", orgId.String(), FullDatasetFolderName, fileName)
+	fullDatasetFileName := fmt.Sprintf("%s/%s/%s/%s", OrgDatasetsFolderName, orgId.String(), FullDatasetFolderName, fileName)
 
 	deltaFileName := fmt.Sprintf("%s-delta.ftm.json", version)
-	deltaDatasetFileName := fmt.Sprintf("%s/%s/%s", orgId.String(), DeltaDatasetFolderName, deltaFileName)
+	deltaDatasetFileName := fmt.Sprintf("%s/%s/%s/%s", OrgDatasetsFolderName, orgId.String(), DeltaDatasetFolderName, deltaFileName)
 
 	previousBlob, err := w.blobRepository.GetBlob(ctx, w.bucketUrl, previousDatasetFile.FilePath)
 	if err != nil {
@@ -701,7 +704,7 @@ func (w *CreateFullDatasetWorker) getDatasetEntityFromTrack(
 			track.ObjectType, track.ObjectInternalId)
 	}
 
-	return buildDatasetEntity(dataModel.Tables[track.ObjectType], track, ingestedObjectData), nil
+	return buildDatasetEntity(dataModel.Tables[track.ObjectType], track, ingestedObjectData)
 }
 
 // writeDatasetEntity writes a datasetEntity to the output blob in NDJSON format
@@ -731,9 +734,9 @@ func writeDeltaDelete(encoder *json.Encoder, entityId string) error {
 }
 
 type datasetEntity struct {
-	Id         string         `json:"id"`
-	Schema     string         `json:"schema"`
-	Properties map[string]any `json:"properties"`
+	Id         string              `json:"id"`
+	Schema     string              `json:"schema"`
+	Properties map[string][]string `json:"properties"`
 }
 
 // Delta file structures for OpenSanctions/Yente format
@@ -761,8 +764,8 @@ func buildDatasetEntity(
 	table models.Table,
 	track models.ContinuousScreeningDeltaTrack,
 	ingestedObjectData models.DataModelObject,
-) datasetEntity {
-	properties := make(map[string]any)
+) (datasetEntity, error) {
+	properties := make(map[string][]string)
 
 	// Sort field names for deterministic output
 	fieldNames := make([]string, 0, len(table.Fields))
@@ -794,7 +797,7 @@ func buildDatasetEntity(
 			case uint, uint8, uint16, uint32, uint64:
 				strVal = fmt.Sprintf("%d", v)
 			case float32, float64:
-				strVal = fmt.Sprintf("%g", v)
+				strVal = fmt.Sprintf("%f", v)
 			case bool:
 				strVal = fmt.Sprintf("%t", v)
 			default:
@@ -805,22 +808,29 @@ func buildDatasetEntity(
 				strVal = normalizeFTMPropertyValue(*field.FTMProperty, strVal)
 
 				propertyKey := field.FTMProperty.String()
-				if existing, ok := properties[propertyKey]; ok {
-					if list, ok := existing.([]string); ok {
-						properties[propertyKey] = append(list, strVal)
-					}
-				} else {
-					properties[propertyKey] = []string{strVal}
-				}
+				properties[propertyKey] = append(properties[propertyKey], strVal)
 			}
 		}
 	}
+
+	// Add metadata in `notes` property
+	metadata := models.EntityNoteMetadata{
+		ObjectId:   track.ObjectId,
+		ObjectType: track.ObjectType,
+	}
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		return datasetEntity{}, errors.Wrap(err, "failed to marshal entity metadata")
+	}
+
+	notesKey := models.FollowTheMoneyPropertyNotes.String()
+	properties[notesKey] = append(properties[notesKey], string(metadataJSON))
 
 	return datasetEntity{
 		Id:         track.EntityId,
 		Schema:     table.FTMEntity.String(),
 		Properties: properties,
-	}
+	}, nil
 }
 
 // generateNextVersion generates the next version string based on the previous version and current date.

@@ -90,6 +90,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		AppName:              "marble-backend",
 		AppVersion:           config.Version,
 		MarbleApiUrl:         utils.GetEnv("MARBLE_API_URL", ""),
+		MarbleApiInternalUrl: utils.GetEnv("MARBLE_API_INTERNAL_URL", ""),
 		MarbleAppUrl:         marbleAppUrl,
 		MarbleBackofficeUrl:  utils.GetEnv("MARBLE_BACKOFFICE_URL", ""),
 		Port:                 utils.GetRequiredEnv[string]("PORT"),
@@ -124,6 +125,11 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 	if apiConfig.DisableSegment {
 		apiConfig.SegmentWriteKey = ""
+	}
+	if apiConfig.MarbleApiInternalUrl == "" {
+		// Fallback on the regular API URL if the internal one is not set
+		// Don't fail if the config is missing as some environment use the same URL
+		apiConfig.MarbleApiInternalUrl = apiConfig.MarbleApiUrl
 	}
 
 	pgConfig := infra.PgConfig{
@@ -217,8 +223,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		telemetryExporter:                utils.GetEnv("TRACING_EXPORTER", "otlp"),
 		otelSamplingRates:                utils.GetEnv("TRACING_SAMPLING_RATES", ""),
 		similarityThreshold:              utils.GetEnv("SIMILARITY_THRESHOLD", models.DEFAULT_SIMILARITY_THRESHOLD),
-		enableTracing:                           utils.GetEnv("ENABLE_TRACING", false),
-		continuousScreeningEntitiesBucketUrl:    utils.GetEnv("CONTINUOUS_SCREENING_ENTITIES_BUCKET_URL", ""),
+		enableTracing:                    utils.GetEnv("ENABLE_TRACING", false),
+		continuousScreeningBucketUrl:     utils.GetEnv("CONTINUOUS_SCREENING_BUCKET_URL", ""),
 	}
 	if err := serverConfig.Validate(); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -363,8 +369,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithFirebaseAdmin(apiConfig.TokenProvider, deps.FirebaseAdmin),
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
-		usecases.WithContinuousScreeningEntitiesBucketUrl(serverConfig.continuousScreeningEntitiesBucketUrl),
-		usecases.WithMarbleApiUrl(apiConfig.MarbleApiUrl),
+		usecases.WithContinuousScreeningBucketUrl(serverConfig.continuousScreeningBucketUrl),
+		usecases.WithMarbleApiInternalUrl(apiConfig.MarbleApiInternalUrl),
 	)
 
 	////////////////////////////////////////////////////////////

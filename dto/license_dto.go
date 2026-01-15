@@ -11,32 +11,34 @@ import (
 // the license validation response from the license server (at server startup outside the SaaS offering)
 // This means we should be careful of not making breaking changes to it such as removing fields.
 type LicenseEntitlements struct {
-	Sso            bool `json:"sso"`
-	Workflows      bool `json:"workflows"`
-	Analytics      bool `json:"analytics"`
-	DataEnrichment bool `json:"data_enrichment"`
-	UserRoles      bool `json:"user_roles"`
-	Webhooks       bool `json:"webhooks"`
-	RuleSnoozes    bool `json:"rule_snoozes"`
-	TestRun        bool `json:"test_run"`
-	Sanctions      bool `json:"sanctions"`
-	CaseAutoAssign bool `json:"auto_assignment"` //nolint:tagliatelle
-	CaseAiAssist   bool `json:"case_ai_assist"`
+	Sso                 bool `json:"sso"`
+	Workflows           bool `json:"workflows"`
+	Analytics           bool `json:"analytics"`
+	DataEnrichment      bool `json:"data_enrichment"`
+	UserRoles           bool `json:"user_roles"`
+	Webhooks            bool `json:"webhooks"`
+	RuleSnoozes         bool `json:"rule_snoozes"`
+	TestRun             bool `json:"test_run"`
+	Sanctions           bool `json:"sanctions"`
+	CaseAutoAssign      bool `json:"auto_assignment"` //nolint:tagliatelle
+	CaseAiAssist        bool `json:"case_ai_assist"`
+	ContinuousScreening bool `json:"continuous_screening"`
 }
 
 func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) LicenseEntitlements {
 	return LicenseEntitlements{
-		Sso:            licenseEntitlements.Sso,
-		Workflows:      licenseEntitlements.Workflows,
-		Analytics:      licenseEntitlements.Analytics,
-		DataEnrichment: licenseEntitlements.DataEnrichment,
-		UserRoles:      licenseEntitlements.UserRoles,
-		Webhooks:       licenseEntitlements.Webhooks,
-		RuleSnoozes:    licenseEntitlements.RuleSnoozes,
-		TestRun:        licenseEntitlements.TestRun,
-		Sanctions:      licenseEntitlements.Sanctions,
-		CaseAutoAssign: licenseEntitlements.CaseAutoAssign,
-		CaseAiAssist:   licenseEntitlements.CaseAiAssist,
+		Sso:                 licenseEntitlements.Sso,
+		Workflows:           licenseEntitlements.Workflows,
+		Analytics:           licenseEntitlements.Analytics,
+		DataEnrichment:      licenseEntitlements.DataEnrichment,
+		UserRoles:           licenseEntitlements.UserRoles,
+		Webhooks:            licenseEntitlements.Webhooks,
+		RuleSnoozes:         licenseEntitlements.RuleSnoozes,
+		TestRun:             licenseEntitlements.TestRun,
+		Sanctions:           licenseEntitlements.Sanctions,
+		CaseAutoAssign:      licenseEntitlements.CaseAutoAssign,
+		CaseAiAssist:        licenseEntitlements.CaseAiAssist,
+		ContinuousScreening: licenseEntitlements.ContinuousScreening,
 	}
 }
 

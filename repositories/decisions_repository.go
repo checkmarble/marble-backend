@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/avast/retry-go/v4"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -13,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
@@ -49,6 +51,7 @@ type DecisionRepository interface {
 	StoreDecision(
 		ctx context.Context,
 		exec Executor,
+		offloadedWriter OffloadedReadWriter,
 		decision models.DecisionWithRuleExecutions,
 		organizationId uuid.UUID,
 		newDecisionId string,
@@ -501,6 +504,7 @@ func applyDecisionPaginationFilters(query squirrel.SelectBuilder, p models.Pagin
 func (repo *MarbleDbRepository) StoreDecision(
 	ctx context.Context,
 	exec Executor,
+	offloadedWriter OffloadedReadWriter,
 	decision models.DecisionWithRuleExecutions,
 	organizationId uuid.UUID,
 	newDecisionId string,
@@ -582,10 +586,18 @@ func (repo *MarbleDbRepository) StoreDecision(
 			"outcome",
 		)
 
+	// If we have a bucket for offloading decision, directly offload them here
+	offloadRuleEvaluation := offloadedWriter.OffloadingBucketUrl != ""
+
 	for _, ruleExecution := range decision.RuleExecutions {
-		serializedRuleEvaluation, err := dbmodels.SerializeNodeEvaluationDto(ruleExecution.Evaluation)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("rule(%s):", ruleExecution.Rule.Id))
+		var serializedRuleEvaluation []byte
+
+		// Only serialize the rule evaluation to the database if we do not offload them
+		if !offloadRuleEvaluation {
+			serializedRuleEvaluation, err = dbmodels.SerializeNodeEvaluationDto(ruleExecution.Evaluation)
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("rule(%s):", ruleExecution.Rule.Id))
+			}
 		}
 
 		builderForRules = builderForRules.
@@ -601,8 +613,41 @@ func (repo *MarbleDbRepository) StoreDecision(
 				ruleExecution.Outcome,
 			)
 	}
-	err = ExecBuilder(ctx, exec, builderForRules)
-	return err
+	if err := ExecBuilder(ctx, exec, builderForRules); err != nil {
+		return err
+	}
+
+	// If we immediately offload rule evaluation, spawn the write into a goroutine and try a few times
+	if offloadRuleEvaluation {
+		go func() {
+			ctx := context.Background()
+
+			err := retry.Do(
+				func() error {
+					serializedRuleEvaluation, err := dbmodels.SerializeDecisionEvaluationDto(pure_utils.Map(decision.RuleExecutions, func(e models.RuleExecution) *ast.NodeEvaluationDto { return e.Evaluation }))
+					if err != nil {
+						return err
+					}
+
+					if err := offloadedWriter.OffloadRuleExecutions(ctx, organizationId, decision.Decision, serializedRuleEvaluation); err != nil {
+						return err
+					}
+
+					return nil
+				},
+				retry.Attempts(5),
+				retry.LastErrorOnly(true),
+				retry.Delay(time.Second),
+			)
+			if err != nil {
+				utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not offload rule execution",
+					"error", err.Error(),
+					"decision", decision.DecisionId.String())
+			}
+		}()
+	}
+
+	return nil
 }
 
 func (repo *MarbleDbRepository) UpdateDecisionCaseId(ctx context.Context, exec Executor, decisionIds []string, caseId string) error {
