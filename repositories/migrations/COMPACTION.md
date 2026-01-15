@@ -217,6 +217,10 @@ const (
 
 Uncomment the River migration block in `repositories/migrations.go`.
 
+### 13. Update CI job
+
+Update the CI job that verifies no misordered migrations, by removing the baseline migration (the version must be kept up to date) in the local copy of the repository before running the migrations.
+
 ## Cleanup
 
 ```bash
