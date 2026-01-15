@@ -119,31 +119,25 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			return err
 		}
 
+		err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			CaseId:        continuousScreeningWithMatches.CaseId.String(),
+			UserId:        (*string)(reviewerId),
+			EventType:     models.ScreeningMatchReviewed,
+			ResourceId:    utils.Ptr(continuousScreeningMatch.Id.String()),
+			ResourceType:  utils.Ptr(models.ContinuousScreeningMatchResourceType),
+			NewValue:      utils.Ptr(update.Status.String()),
+			PreviousValue: utils.Ptr(continuousScreeningMatch.Status.String()),
+		})
+		if err != nil {
+			return err
+		}
+
 		if err := uc.caseEditor.PerformCaseActionSideEffects(ctx, tx, caseData); err != nil {
 			return err
 		}
 
-		// If the match is confirmed, all other pending matches should be set to "skipped" and the screening to "confirmed_hit"
+		// If the match is confirmed, the screening should be set to "confirmed_hit"
 		if update.Status == models.ScreeningMatchStatusConfirmedHit {
-			pendingMatchesIds := pure_utils.Map(pendingMatchesExcludingThis, func(
-				m models.ContinuousScreeningMatch,
-			) uuid.UUID {
-				return m.Id
-			})
-			_, err = uc.repository.UpdateContinuousScreeningMatchStatusByBatch(
-				ctx,
-				tx,
-				pendingMatchesIds,
-				models.ScreeningMatchStatusSkipped,
-				reviewerUuid,
-			)
-			if err != nil {
-				return err
-			}
-
-			// No huge fan of doing like this because we don't update the continuousScreeningWithMatches object
-			// But fine because we don't use it afterwards
-			// We should use the result to update the object
 			_, err = uc.repository.UpdateContinuousScreeningStatus(
 				ctx,
 				tx,
@@ -153,14 +147,14 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			if err != nil {
 				return err
 			}
-
 			err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-				CaseId:       continuousScreeningWithMatches.CaseId.String(),
-				UserId:       (*string)(reviewerId),
-				EventType:    models.ScreeningReviewed,
-				ResourceId:   utils.Ptr(continuousScreeningWithMatches.Id.String()),
-				ResourceType: utils.Ptr(models.ContinuousScreeningResourceType),
-				NewValue:     utils.Ptr(models.ScreeningMatchStatusConfirmedHit.String()),
+				CaseId:        continuousScreeningWithMatches.CaseId.String(),
+				UserId:        (*string)(reviewerId),
+				EventType:     models.ScreeningReviewed,
+				ResourceId:    utils.Ptr(continuousScreeningMatch.Id.String()),
+				ResourceType:  utils.Ptr(models.ContinuousScreeningResourceType),
+				NewValue:      utils.Ptr(models.ScreeningMatchStatusConfirmedHit.String()),
+				PreviousValue: utils.Ptr(continuousScreeningMatch.Status.String()),
 			})
 			if err != nil {
 				return err
@@ -184,12 +178,13 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			}
 
 			err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-				CaseId:       continuousScreeningWithMatches.CaseId.String(),
-				UserId:       (*string)(reviewerId),
-				EventType:    models.ScreeningReviewed,
-				ResourceId:   utils.Ptr(continuousScreeningWithMatches.Id.String()),
-				ResourceType: utils.Ptr(models.ContinuousScreeningResourceType),
-				NewValue:     utils.Ptr(models.ScreeningMatchStatusNoHit.String()),
+				CaseId:        continuousScreeningWithMatches.CaseId.String(),
+				UserId:        (*string)(reviewerId),
+				EventType:     models.ScreeningReviewed,
+				ResourceId:    utils.Ptr(continuousScreeningWithMatches.Id.String()),
+				ResourceType:  utils.Ptr(models.ContinuousScreeningResourceType),
+				NewValue:      utils.Ptr(models.ScreeningMatchStatusNoHit.String()),
+				PreviousValue: utils.Ptr(continuousScreeningWithMatches.Status.String()),
 			})
 			if err != nil {
 				return err
@@ -335,22 +330,41 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 		) bool {
 			return m.Status == models.ScreeningMatchStatusPending
 		})
-		matchIdsToUpdate := pure_utils.Map(matchesToUpdate, func(
-			m models.ContinuousScreeningMatch,
-		) uuid.UUID {
-			return m.Id
-		})
 
-		// Update the match statuses
-		_, err = uc.repository.UpdateContinuousScreeningMatchStatusByBatch(
-			ctx,
-			tx,
-			matchIdsToUpdate,
-			models.ScreeningMatchStatusSkipped,
-			reviewerUuid,
-		)
-		if err != nil {
-			return err
+		if len(matchesToUpdate) != 0 {
+			// Update the match statuses
+			_, err = uc.repository.UpdateContinuousScreeningMatchStatusByBatch(
+				ctx,
+				tx,
+				pure_utils.Map(
+					matchesToUpdate,
+					func(m models.ContinuousScreeningMatch) uuid.UUID {
+						return m.Id
+					}),
+				models.ScreeningMatchStatusSkipped,
+				reviewerUuid,
+			)
+			if err != nil {
+				return err
+			}
+			err = uc.repository.BatchCreateCaseEvents(
+				ctx,
+				tx,
+				pure_utils.Map(matchesToUpdate, func(match models.ContinuousScreeningMatch) models.CreateCaseEventAttributes {
+					return models.CreateCaseEventAttributes{
+						CaseId:        continuousScreening.CaseId.String(),
+						UserId:        (*string)(reviewerId),
+						EventType:     models.ScreeningMatchReviewed,
+						ResourceId:    utils.Ptr(match.Id.String()),
+						ResourceType:  utils.Ptr(models.ContinuousScreeningMatchResourceType),
+						NewValue:      utils.Ptr(models.ScreeningMatchStatusSkipped.String()),
+						PreviousValue: utils.Ptr(match.Status.String()),
+					}
+				}),
+			)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Update the continuous screening status
@@ -360,6 +374,18 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 			continuousScreeningId,
 			models.ScreeningStatusNoHit,
 		)
+		if err != nil {
+			return err
+		}
+		err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			CaseId:        continuousScreening.CaseId.String(),
+			UserId:        (*string)(reviewerId),
+			EventType:     models.ScreeningReviewed,
+			ResourceId:    utils.Ptr(continuousScreening.Id.String()),
+			ResourceType:  utils.Ptr(models.ContinuousScreeningResourceType),
+			NewValue:      utils.Ptr(models.ScreeningStatusNoHit.String()),
+			PreviousValue: utils.Ptr(continuousScreening.Status.String()),
+		})
 		if err != nil {
 			return err
 		}
