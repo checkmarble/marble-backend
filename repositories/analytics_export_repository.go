@@ -542,6 +542,8 @@ func unsafeBuildSqlQuery(sql string, args []any) (string, error) {
 			val = "'" + v.Format(time.RFC3339Nano) + "'"
 		case nil:
 			val = "NULL"
+		case uuid.UUID:
+			val = "'" + v.String() + "'"
 		default:
 			return "", fmt.Errorf("unsupported argument type: %T", v)
 		}
