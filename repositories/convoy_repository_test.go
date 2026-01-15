@@ -7,14 +7,12 @@ import (
 	"github.com/checkmarble/marble-backend/api-clients/convoy"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
-	"github.com/guregu/null/v5"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetOwnerId(t *testing.T) {
 	type args struct {
 		organizationId uuid.UUID
-		partnerId      null.String
 	}
 	tests := []struct {
 		name string
@@ -32,9 +30,6 @@ func TestGetOwnerId(t *testing.T) {
 			got := getOwnerId(tt.args.organizationId)
 			if !reflect.DeepEqual(got, tt.want) {
 				partnerId := "nil"
-				if tt.args.partnerId.Valid {
-					partnerId = tt.args.partnerId.String
-				}
 
 				t.Errorf("getOwnerId(%s, %s) got = %v, want %v",
 					tt.args.organizationId, partnerId, got, tt.want)
@@ -46,7 +41,6 @@ func TestGetOwnerId(t *testing.T) {
 func TestParseOwnerId(t *testing.T) {
 	type want struct {
 		organizationId uuid.UUID
-		partnerId      null.String
 	}
 	tests := []struct {
 		name string
