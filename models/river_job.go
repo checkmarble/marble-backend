@@ -22,47 +22,47 @@ type ScheduledExecStatusSyncArgs struct {
 func (ScheduledExecStatusSyncArgs) Kind() string { return "scheduled_execution_status_sync" }
 
 type IndexCreationArgs struct {
-	OrgId   string          `json:"org_id"`
+	OrgId   uuid.UUID       `json:"org_id"`
 	Indices []ConcreteIndex `json:"indices"`
 }
 
 func (IndexCreationArgs) Kind() string { return "index_creation" }
 
 type IndexCreationStatusArgs struct {
-	OrgId   string          `json:"org_id"`
+	OrgId   uuid.UUID       `json:"org_id"`
 	Indices []ConcreteIndex `json:"indices"`
 }
 
 func (IndexCreationStatusArgs) Kind() string { return "index_creation_status" }
 
 type IndexCleanupArgs struct {
-	OrgId string `json:"org_id"`
+	OrgId uuid.UUID `json:"org_id"`
 }
 
 func (IndexCleanupArgs) Kind() string { return "index_cleanup" }
 
 type IndexDeletionArgs struct {
-	OrgId string `json:"org_id"`
+	OrgId uuid.UUID `json:"org_id"`
 }
 
 func (IndexDeletionArgs) Kind() string { return "index_deletion" }
 
 type TestRunSummaryArgs struct {
-	OrgId string `json:"org_id"`
+	OrgId uuid.UUID `json:"org_id"`
 }
 
 func (TestRunSummaryArgs) Kind() string { return "test_run_summary" }
 
 type MatchEnrichmentArgs struct {
-	OrgId                  string `json:"org_id"`
-	SanctionCheckId_deprec string `json:"sanction_check_id"` //nolint:tagliatelle
-	ScreeningId            string `json:"screening_id"`
+	OrgId                  uuid.UUID `json:"org_id"`
+	SanctionCheckId_deprec string    `json:"sanction_check_id"` //nolint:tagliatelle
+	ScreeningId            string    `json:"screening_id"`
 }
 
 func (MatchEnrichmentArgs) Kind() string { return "match_enrichment" }
 
 type OffloadingArgs struct {
-	OrgId string `json:"org_id"`
+	OrgId uuid.UUID `json:"org_id"`
 }
 
 func (OffloadingArgs) Kind() string { return "offloading" }
@@ -79,7 +79,7 @@ type CaseReviewArgs struct {
 func (CaseReviewArgs) Kind() string { return "case_review" }
 
 type AutoAssignmentArgs struct {
-	OrgId   string    `json:"org_id"`
+	OrgId   uuid.UUID `json:"org_id"`
 	InboxId uuid.UUID `json:"inbox_id"`
 }
 
@@ -92,7 +92,7 @@ type DecisionWorkflowArgs struct {
 func (DecisionWorkflowArgs) Kind() string { return "decision_workflow" }
 
 type AnalyticsExportArgs struct {
-	OrgId string `json:"org_id"`
+	OrgId uuid.UUID `json:"org_id"`
 }
 
 func (AnalyticsExportArgs) Kind() string { return "analytics_export" }
@@ -108,8 +108,8 @@ type SendBillingEventArgs struct {
 func (SendBillingEventArgs) Kind() string { return "send_billing_event" }
 
 type ContinuousScreeningDoScreeningArgs struct {
-	ObjectType string `json:"object_type"`
-	OrgId      string `json:"org_id"`
+	ObjectType string    `json:"object_type"`
+	OrgId      uuid.UUID `json:"org_id"`
 
 	// Tell which action triggered the screening
 	TriggerType ContinuousScreeningTriggerType `json:"trigger_type"`
@@ -123,6 +123,16 @@ type ContinuousScreeningDoScreeningArgs struct {
 
 func (ContinuousScreeningDoScreeningArgs) Kind() string {
 	return "continuous_screening_do_screening"
+}
+
+type ContinuousScreeningEvaluateNeedArgs struct {
+	OrgId      uuid.UUID `json:"org_id"`
+	ObjectType string    `json:"object_type"`
+	ObjectIds  []string  `json:"object_ids"`
+}
+
+func (ContinuousScreeningEvaluateNeedArgs) Kind() string {
+	return "continuous_screening_evaluate_need"
 }
 
 type ContinuousScreeningScanDatasetUpdatesArgs struct{}

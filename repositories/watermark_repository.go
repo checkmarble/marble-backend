@@ -8,9 +8,13 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 )
 
-func (repo *MarbleDbRepository) GetWatermark(ctx context.Context, exec Executor, orgId *string,
+func (repo *MarbleDbRepository) GetWatermark(
+	ctx context.Context,
+	exec Executor,
+	orgId *uuid.UUID,
 	watermarkType models.WatermarkType,
 ) (*models.Watermark, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -33,7 +37,7 @@ func (repo *MarbleDbRepository) GetWatermark(ctx context.Context, exec Executor,
 }
 
 func (repo *MarbleDbRepository) SaveWatermark(ctx context.Context, exec Executor,
-	orgId *string, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params json.RawMessage,
+	orgId *uuid.UUID, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params json.RawMessage,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err

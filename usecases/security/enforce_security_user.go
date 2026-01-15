@@ -2,6 +2,7 @@ package security
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 
 	"github.com/cockroachdb/errors"
 )
@@ -12,7 +13,7 @@ type EnforceSecurityUser interface {
 	CreateUser(input models.CreateUser) error
 	UpdateUser(targetUser models.User, updateUser models.UpdateUser) error
 	DeleteUser(user models.User) error
-	ListUsers(organizationId *string) error
+	ListUsers(organizationId *uuid.UUID) error
 }
 
 type EnforceSecurityUserImpl struct {
@@ -119,7 +120,7 @@ func (e *EnforceSecurityUserImpl) DeleteUser(user models.User) error {
 	)
 }
 
-func (e *EnforceSecurityUserImpl) ListUsers(organizationId *string) error {
+func (e *EnforceSecurityUserImpl) ListUsers(organizationId *uuid.UUID) error {
 	if e.Credentials.Role == models.MARBLE_ADMIN {
 		return errors.Join(
 			e.Permission(models.MARBLE_USER_LIST),

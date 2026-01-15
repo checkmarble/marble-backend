@@ -72,7 +72,7 @@ func (repo *MarbleDbRepository) ListRulesMetadataByIterationId(ctx context.Conte
 func (repo *MarbleDbRepository) RulesExecutionStats(
 	ctx context.Context,
 	exec Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	iterationId string,
 	begin, end time.Time,
 ) ([]models.RuleExecutionStat, error) {
@@ -117,7 +117,7 @@ func (repo *MarbleDbRepository) RulesExecutionStats(
 func (repo *MarbleDbRepository) PhanomRulesExecutionStats(
 	ctx context.Context,
 	exec Transaction,
-	organizationId string,
+	organizationId uuid.UUID,
 	iterationId string,
 	begin, end time.Time,
 ) ([]models.RuleExecutionStat, error) {
@@ -160,7 +160,7 @@ func (repo *MarbleDbRepository) PhanomRulesExecutionStats(
 func (repo *MarbleDbRepository) ScreeningExecutionStats(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	iterationId string,
 	begin, end time.Time,
 	base string, // "decisions" or "phantom_decisions"

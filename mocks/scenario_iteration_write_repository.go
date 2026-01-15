@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -12,7 +13,7 @@ type ScenarioIterationWriteRepository struct {
 }
 
 func (s *ScenarioIterationWriteRepository) CreateScenarioIterationAndRules(
-	exec repositories.Executor, organizationId string, scenarioIteration models.CreateScenarioIterationInput,
+	exec repositories.Executor, organizationId uuid.UUID, scenarioIteration models.CreateScenarioIterationInput,
 ) (models.ScenarioIteration, error) {
 	args := s.Called(exec, organizationId, scenarioIteration)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)

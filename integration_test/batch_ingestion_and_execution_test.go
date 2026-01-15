@@ -66,7 +66,7 @@ func ingestAccountsBatch(
 	ctx context.Context,
 	t *testing.T,
 	usecases usecases.UsecasesWithCreds,
-	organizationId, userId string,
+	organizationId uuid.UUID, userId string,
 ) {
 	ingestionUsecase := usecases.NewIngestionUseCase()
 	fileContent := `object_id,updated_at,account_id,bic_country,country,description,status,title,amount
@@ -98,7 +98,7 @@ func createDecisionsBatch(
 	ctx context.Context,
 	t *testing.T,
 	usecasesWithUserCreds usecases.UsecasesWithCreds,
-	organizationId, scenarioId, scenarioIterationId string,
+	organizationId uuid.UUID, scenarioId, scenarioIterationId string,
 ) {
 	scheduledExecUsecase := usecasesWithUserCreds.NewScheduledExecutionUsecase()
 	ses, err := scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, models.ListScheduledExecutionsFilters{

@@ -60,8 +60,8 @@ func TestScenarioEndToEnd(t *testing.T) {
 	scenarioId, _ := setupScenarioAndPublish(ctx, t, usecasesWithCreds, organizationId, inboxId, rules)
 
 	rivertest.RequireManyInserted(ctx, t, riverClient.Driver(), []rivertest.ExpectedJob{
-		{Args: &models.IndexCreationArgs{}, Opts: &rivertest.RequireInsertedOpts{Queue: organizationId}},
-		{Args: &models.IndexCreationStatusArgs{}, Opts: &rivertest.RequireInsertedOpts{Queue: organizationId}},
+		{Args: &models.IndexCreationArgs{}, Opts: &rivertest.RequireInsertedOpts{Queue: organizationId.String()}},
+		{Args: &models.IndexCreationStatusArgs{}, Opts: &rivertest.RequireInsertedOpts{Queue: organizationId.String()}},
 	})
 
 	apiCreds := setupApiCreds(ctx, t, usecasesWithCreds, organizationId)
@@ -75,7 +75,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 		dataModel.Tables["transactions"], organizationId, scenarioId)
 }
 
-func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) models.Credentials {
+func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases.UsecasesWithCreds, organizationId uuid.UUID) models.Credentials {
 	// Create an API Key for this org
 	apiKeyUsecase := usecasesWithCreds.NewApiKeyUseCase()
 	apiKey, err := apiKeyUsecase.CreateApiKey(ctx, models.CreateApiKeyInput{
@@ -115,7 +115,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 	testAdminUsecase = generateUsecaseWithCredForMarbleAdmin(testUsecases)
 
 	// add the river worker queue for this organization. It's used to run the asynchronous decisions for batch mode.
-	err = riverClient.Queues().Add(organizationId, river.QueueConfig{MaxWorkers: 3})
+	err = riverClient.Queues().Add(organizationId.String(), river.QueueConfig{MaxWorkers: 3})
 	assert.NoError(t, err)
 
 	// Check that there are no users on the organization yet
@@ -158,7 +158,7 @@ func createDataModelAndSetupCaseManager(
 	ctx context.Context,
 	t *testing.T,
 	usecases usecases.UsecasesWithCreds,
-	organizationId string,
+	organizationId uuid.UUID,
 ) (dm models.DataModel, inboxId uuid.UUID) {
 	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases)
 
@@ -285,7 +285,7 @@ func setupScenarioAndPublish(
 	ctx context.Context,
 	t *testing.T,
 	usecasesWithCreds usecases.UsecasesWithCreds,
-	organizationId string,
+	organizationId uuid.UUID,
 	inboxId uuid.UUID,
 	rules []models.CreateRuleInput,
 ) (scenarioId, scenarioIterationId string) {
@@ -450,7 +450,7 @@ func ingestAccounts(
 	ctx context.Context,
 	t *testing.T,
 	usecases usecases.UsecasesWithCreds,
-	tableName, organizationId string,
+	tableName string, organizationId uuid.UUID,
 ) {
 	ingestionUsecase := usecases.NewIngestionUseCase()
 	accountPayloadJson1 := []byte(`{
@@ -488,7 +488,8 @@ func createDecisions(
 	usecasesWithApiCreds usecases.UsecasesWithCreds,
 	usecasesWithUserCreds usecases.UsecasesWithCreds,
 	table models.Table,
-	organizationId, scenarioId string,
+	organizationId uuid.UUID,
+	scenarioId string,
 ) {
 	decisionUsecase := usecasesWithApiCreds.NewDecisionUsecase()
 
@@ -646,7 +647,7 @@ func createAndTestDecision(
 	transactionPayloadJson []byte,
 	table models.Table,
 	decisionUsecase usecases.DecisionUsecase,
-	organizationId string,
+	organizationId uuid.UUID,
 	scenarioId string,
 	expectedScore int,
 ) models.DecisionWithRuleExecutions {

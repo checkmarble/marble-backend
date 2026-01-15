@@ -51,7 +51,7 @@ type applyDeltaFileWorkerRepository interface {
 	GetDataModel(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationID string,
+		organizationID uuid.UUID,
 		fetchEnumValues bool,
 		useCache bool,
 	) (models.DataModel, error)
@@ -74,7 +74,7 @@ type applyDeltaFileWorkerRepository interface {
 	SearchScreeningMatchWhitelistByIds(
 		ctx context.Context,
 		exec repositories.Executor,
-		orgId string,
+		orgId uuid.UUID,
 		counterpartyIds, entityIds []string,
 	) ([]models.ScreeningWhitelist, error)
 
@@ -379,7 +379,7 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 	whitelists, err := w.repository.SearchScreeningMatchWhitelistByIds(
 		ctx,
 		exec,
-		updateJob.OrgId.String(),
+		updateJob.OrgId,
 		nil,
 		append(record.Entity.Referents, record.Entity.Id),
 	)

@@ -64,7 +64,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			newValue := strings.Join(pure_utils.Map(action.Params.TagsToAdd,
 				func(tagId uuid.UUID) string { return tagId.String() }), ",")
 			err = d.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-				OrgId:         uuid.MustParse(scenario.OrganizationId),
+				OrgId:         scenario.OrganizationId,
 				CaseId:        newCase.Id,
 				EventType:     models.CaseTagsUpdated,
 				PreviousValue: utils.Ptr(""),
@@ -264,7 +264,7 @@ func (d DecisionsWorkflows) addToOpenCase(
 			previousValue := strings.Join(previousTagIds, ",")
 			newValue := previousValue + "," + strings.Join(newIds, ",")
 			err = d.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-				OrgId:         uuid.MustParse(scenario.OrganizationId),
+				OrgId:         scenario.OrganizationId,
 				CaseId:        bestMatchCase.Id,
 				EventType:     models.CaseTagsUpdated,
 				PreviousValue: &previousValue,

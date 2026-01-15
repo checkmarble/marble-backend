@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type WorkflowType string
@@ -35,7 +37,7 @@ type Scenario struct {
 	Description       string
 	LiveVersionID     *string
 	Name              string
-	OrganizationId    string
+	OrganizationId    uuid.UUID
 	TriggerObjectType string
 }
 
@@ -43,7 +45,7 @@ type CreateScenarioInput struct {
 	Description       string
 	Name              string
 	TriggerObjectType string
-	OrganizationId    string
+	OrganizationId    uuid.UUID
 }
 
 type UpdateScenarioInput struct {

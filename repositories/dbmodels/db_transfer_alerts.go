@@ -5,12 +5,13 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type DBTransferAlert struct {
 	Id                   string    `db:"id"`
 	TransferId           string    `db:"transfer_id"`
-	OrganizationId       string    `db:"organization_id"`
+	OrganizationId       uuid.UUID `db:"organization_id"`
 	SenderPartnerId      string    `db:"sender_partner_id"`
 	BeneficiaryPartnerId string    `db:"beneficiary_partner_id"`
 	CreatedAt            time.Time `db:"created_at"`

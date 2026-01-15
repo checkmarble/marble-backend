@@ -14,7 +14,7 @@ import (
 // Value of each usecase setting is stored in the Value field as a JSONB column, need to parse it to the correct type
 type DBAiSetting struct {
 	Id        uuid.UUID      `db:"id"`
-	OrgId     string         `db:"org_id"`
+	OrgId     uuid.UUID      `db:"org_id"`
 	CreatedAt time.Time      `db:"created_at"`
 	UpdatedAt time.Time      `db:"updated_at"`
 	Type      string         `db:"type"`

@@ -31,14 +31,14 @@ const (
 )
 
 // Periodic job
-func NewContinuousScreeningCreateFullDatasetPeriodicJob(orgId string, interval time.Duration) *river.PeriodicJob {
+func NewContinuousScreeningCreateFullDatasetPeriodicJob(orgId uuid.UUID, interval time.Duration) *river.PeriodicJob {
 	return river.NewPeriodicJob(
 		river.PeriodicInterval(interval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.ContinuousScreeningCreateFullDatasetArgs{
-					OrgId: orgId,
+					OrgId: orgId.String(),
 				}, &river.InsertOpts{
-					Queue: orgId,
+					Queue: orgId.String(),
 					UniqueOpts: river.UniqueOpts{
 						ByQueue:  true,
 						ByPeriod: interval,
@@ -62,7 +62,7 @@ type createFullDatasetWorkerRepository interface {
 	GetContinuousScreeningConfigsByOrgId(
 		ctx context.Context,
 		exec repositories.Executor,
-		orgId string,
+		orgId uuid.UUID,
 	) ([]models.ContinuousScreeningConfig, error)
 
 	GetContinuousScreeningLatestDatasetFileByOrgId(
@@ -75,7 +75,7 @@ type createFullDatasetWorkerRepository interface {
 	GetDataModel(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationID string,
+		organizationID uuid.UUID,
 		fetchEnumValues bool,
 		useCache bool,
 	) (models.DataModel, error)
@@ -201,7 +201,7 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	}()
 
 	// Check if the org has a continuous screening config
-	configs, err := w.repo.GetContinuousScreeningConfigsByOrgId(ctx, exec, orgId.String())
+	configs, err := w.repo.GetContinuousScreeningConfigsByOrgId(ctx, exec, orgId)
 	if err != nil {
 		return errors.Wrap(err, "failed to get continuous screening configs by org id")
 	}
@@ -244,12 +244,12 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Creating first full dataset", "orgId", orgId)
 
-	clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, orgId.String())
+	clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, orgId)
 	if err != nil {
 		return errors.Wrap(err, "failed to get client db executor")
 	}
 
-	dataModel, err := w.repo.GetDataModel(ctx, exec, orgId.String(), false, false)
+	dataModel, err := w.repo.GetDataModel(ctx, exec, orgId, false, false)
 	if err != nil {
 		return errors.Wrap(err, "failed to get data model")
 	}
@@ -349,12 +349,12 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Patching dataset", "orgId", orgId, "previousVersion", previousDatasetFile.Version)
 
-	clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, orgId.String())
+	clientDbExec, err := w.executorFactory.NewClientDbExecutor(ctx, orgId)
 	if err != nil {
 		return errors.Wrap(err, "failed to get client db executor")
 	}
 
-	dataModel, err := w.repo.GetDataModel(ctx, exec, orgId.String(), false, false)
+	dataModel, err := w.repo.GetDataModel(ctx, exec, orgId, false, false)
 	if err != nil {
 		return errors.Wrap(err, "failed to get data model")
 	}

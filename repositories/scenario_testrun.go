@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 )
 
 type ScenarioTestRunRepository interface {
@@ -18,7 +19,7 @@ type ScenarioTestRunRepository interface {
 		testrunId string,
 		input models.ScenarioTestRunCreateDbInput,
 	) error
-	ListRunningTestRun(ctx context.Context, exec Executor, organizationId string) ([]models.ScenarioTestRun, error)
+	ListRunningTestRun(ctx context.Context, exec Executor, organizationId uuid.UUID) ([]models.ScenarioTestRun, error)
 	ListTestRunsByScenarioID(
 		ctx context.Context,
 		exec Executor,
@@ -116,7 +117,7 @@ func (repo *MarbleDbRepository) GetTestRunByLiveVersionID(
 }
 
 func (repo *MarbleDbRepository) ListRunningTestRun(
-	ctx context.Context, exec Executor, organizationId string,
+	ctx context.Context, exec Executor, organizationId uuid.UUID,
 ) ([]models.ScenarioTestRun, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -203,7 +204,7 @@ func (repo *MarbleDbRepository) GetTestRunByID(ctx context.Context, exec Executo
 }
 
 func (repo *MarbleDbRepository) GetRecentTestRunForOrg(ctx context.Context, exec Executor,
-	orgId string,
+	orgId uuid.UUID,
 ) ([]models.ScenarioTestRunWithSummary, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

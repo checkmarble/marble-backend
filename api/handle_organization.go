@@ -7,6 +7,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -55,9 +56,14 @@ func handleGetOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationID := c.Param("organization_id")
+		orgId, err := uuid.Parse(organizationID)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		organization, err := usecase.GetOrganization(ctx, organizationID)
+		organization, err := usecase.GetOrganization(ctx, orgId)
 
 		if presentError(ctx, c, err) {
 			return
@@ -71,7 +77,7 @@ func handleGetOrganization(uc usecases.Usecases) func(c *gin.Context) {
 func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		organizationID := c.Param("organization_id")
+		organizationIdStr := c.Param("organization_id")
 		var data dto.UpdateOrganizationBodyDto
 		if err := c.ShouldBindJSON(&data); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -79,8 +85,13 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
+		orgId, err := uuid.Parse(organizationIdStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
-			Id:                      organizationID,
+			Id:                      orgId,
 			DefaultScenarioTimezone: data.DefaultScenarioTimezone,
 			ScreeningConfig: models.OrganizationOpenSanctionsConfigUpdateInput{
 				MatchThreshold: data.SanctionsThreshold,
@@ -101,10 +112,14 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 func handleDeleteOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		organizationID := c.Param("organization_id")
-
+		organizationIdStr := c.Param("organization_id")
+		orgId, err := uuid.Parse(organizationIdStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		err := usecase.DeleteOrganization(ctx, organizationID)
+		err = usecase.DeleteOrganization(ctx, orgId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -122,13 +137,35 @@ func handleGetOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Contex
 			return
 		}
 
-		organizationIdFromPath := c.Param("organization_id")
-		organizationIdFromQuery := c.Query("organization_id")
+		organizationIdFromPathStr := c.Param("organization_id")
+		organizationIdFromQueryStr := c.Query("organization_id")
+		var organizationIdFromPath uuid.UUID
+		var organizationIdFromQuery uuid.UUID
+		var err error
+		if organizationIdFromPathStr != "" {
+			organizationIdFromPath, err = uuid.Parse(organizationIdFromPathStr)
+			if err != nil {
+				c.Status(http.StatusBadRequest)
+				return
+			}
+		}
+		if organizationIdFromQueryStr != "" {
+			organizationIdFromQuery, err = uuid.Parse(organizationIdFromQueryStr)
+			if err != nil {
+				c.Status(http.StatusBadRequest)
+				return
+			}
+		}
+
 		orgId := creds.OrganizationId
-		if orgId == "" && organizationIdFromQuery != "" {
+		if orgId == uuid.Nil && organizationIdFromQuery != uuid.Nil {
 			orgId = organizationIdFromQuery
-		} else if orgId == "" && organizationIdFromPath != "" {
+		} else if orgId == uuid.Nil && organizationIdFromPath != uuid.Nil {
 			orgId = organizationIdFromPath
+		}
+		if orgId == uuid.Nil {
+			c.Status(http.StatusBadRequest)
+			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
@@ -145,7 +182,16 @@ func handleGetOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Contex
 func handlePatchOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		organizationID := c.Param("organization_id")
+		organizationIdStr := c.Param("organization_id")
+		var organizationId uuid.UUID
+		if organizationIdStr != "" {
+			var err error
+			organizationId, err = uuid.Parse(organizationIdStr)
+			if err != nil {
+				c.Status(http.StatusBadRequest)
+				return
+			}
+		}
 		var data dto.UpdateOrganizationFeatureAccessBodyDto
 		if err := c.ShouldBindJSON(&data); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -154,7 +200,7 @@ func handlePatchOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Cont
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
 		err := usecase.UpdateOrganizationFeatureAccess(ctx,
-			dto.AdaptUpdateOrganizationFeatureAccessInput(data, organizationID))
+			dto.AdaptUpdateOrganizationFeatureAccessInput(data, organizationId))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -175,9 +221,11 @@ func handleUpdateOrganizationSubnets(uc usecases.Usecases) func(c *gin.Context) 
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		subnets, err := uc.UpdateOrganizationSubnets(ctx, pure_utils.Map(subnetUpdate.Subnets, func(s dto.SubnetDto) net.IPNet { return s.IPNet }))
+		subnets, err := uc.UpdateOrganizationSubnets(ctx,
+			pure_utils.Map(subnetUpdate.Subnets, func(s dto.SubnetDto) net.IPNet { return s.IPNet }))
 
-		if err != nil && (errors.Is(err, usecases.ErrClientOutsideOfAllowedNetworks) || errors.Is(err, usecases.ErrRealClientIpNotPresent)) {
+		if err != nil && (errors.Is(err, usecases.ErrClientOutsideOfAllowedNetworks) ||
+			errors.Is(err, usecases.ErrRealClientIpNotPresent)) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{
 				"error": err.Error(),
 			})

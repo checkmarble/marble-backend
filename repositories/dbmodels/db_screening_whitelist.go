@@ -5,13 +5,14 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 const TABLE_SCREENING_WHITELISTS = "screening_whitelists"
 
 type DBScreeningWhitelists struct {
 	Id             string    `db:"id"`
-	OrgId          string    `db:"org_id"`
+	OrgId          uuid.UUID `db:"org_id"`
 	CounterpartyId string    `db:"counterparty_id"`
 	EntityId       string    `db:"entity_id"`
 	WhitelistedBy  *string   `db:"whitelisted_by"`

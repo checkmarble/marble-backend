@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -17,7 +18,7 @@ func (evaluator EvaluateAstExpression) EvaluateAstExpression(
 	ctx context.Context,
 	cache *EvaluationCache,
 	ruleAstExpression ast.Node,
-	organizationId string,
+	organizationId uuid.UUID,
 	payload models.ClientObject,
 	dataModel models.DataModel,
 ) (ast.NodeEvaluation, error) {

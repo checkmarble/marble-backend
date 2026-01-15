@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 
 	"github.com/Masterminds/squirrel"
@@ -49,7 +50,7 @@ func (repo *MarbleDbRepository) GetScenarioIteration(
 func (repo *MarbleDbRepository) ListScenarioIterations(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	filters models.GetScenarioIterationFilters,
 ) ([]models.ScenarioIteration, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -73,7 +74,7 @@ func (repo *MarbleDbRepository) ListScenarioIterations(
 func (repo *MarbleDbRepository) ListScenarioIterationsMetadata(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	filters models.GetScenarioIterationFilters,
 ) ([]models.ScenarioIterationMetadata, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {

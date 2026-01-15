@@ -35,7 +35,7 @@ type AiAgentUsecaseRepository interface {
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
-	ListUsers(ctx context.Context, exec repositories.Executor, organizationIDFilter *string) ([]models.User, error)
+	ListUsers(ctx context.Context, exec repositories.Executor, organizationIDFilter *uuid.UUID) ([]models.User, error)
 	DecisionsByCaseIdFromCursor(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -48,8 +48,8 @@ type AiAgentUsecaseRepository interface {
 	) ([]models.DecisionWithRuleExecutions, error)
 	DecisionPivotValuesByCase(ctx context.Context, exec repositories.Executor, caseId string) ([]models.PivotDataWithCount, error)
 	GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor,
-		orgId, pivotValue string) ([]models.Case, error)
-	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId string,
+		orgId uuid.UUID, pivotValue string) ([]models.Case, error)
+	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID,
 		target models.TagTarget, withCaseCount bool) ([]models.Tag, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string,
 		useCache bool) (models.ScenarioIteration, error)
@@ -62,27 +62,27 @@ type AiAgentUsecaseRepository interface {
 		feedback models.AiCaseReviewFeedback,
 	) error
 	GetCaseReviewById(ctx context.Context, exec repositories.Executor, reviewId uuid.UUID) (models.AiCaseReview, error)
-	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId string) (models.Organization, error)
-	GetAiSetting(ctx context.Context, exec repositories.Executor, organizationId string) (*models.AiSetting, error)
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
+	GetAiSetting(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (*models.AiSetting, error)
 	PutAiSetting(
 		ctx context.Context,
 		exec repositories.Executor,
-		orgId string,
+		orgId uuid.UUID,
 		setting models.UpsertAiSetting,
 	) (models.AiSetting, error)
 }
 
 type AiAgentUsecaseCustomListRepository interface {
-	AllCustomLists(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.CustomList, error)
+	AllCustomLists(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) ([]models.CustomList, error)
 }
 
 type AiAgentUsecaseCustomListUsecase interface {
-	GetCustomLists(ctx context.Context, organizationId string) ([]models.CustomList, error)
+	GetCustomLists(ctx context.Context, organizationId uuid.UUID) ([]models.CustomList, error)
 }
 
 type AiAgentUsecaseBillingUsecase interface {
 	EnqueueBillingEventTask(ctx context.Context, event models.BillingEvent) error
-	CheckIfEnoughFundsInWallet(ctx context.Context, orgId string, code billing.BillableMetric) (bool, string, error)
+	CheckIfEnoughFundsInWallet(ctx context.Context, orgId uuid.UUID, code billing.BillableMetric) (bool, string, error)
 }
 
 type AiAgentUsecaseScenarioUsecase interface {
@@ -97,7 +97,7 @@ type AiAgentUsecaseScenarioUsecase interface {
 type AiAgentUsecaseIngestedDataReader interface {
 	GetIngestedObject(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		dataModel *models.DataModel,
 		objectType string,
 		uniqueFieldValue string,
@@ -105,12 +105,12 @@ type AiAgentUsecaseIngestedDataReader interface {
 	) ([]models.ClientObjectDetail, error)
 	ReadPivotObjectsFromValues(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		values []models.PivotDataWithCount,
 	) ([]models.PivotObject, error)
 	ReadIngestedClientObjects(
 		ctx context.Context,
-		orgId string,
+		orgId uuid.UUID,
 		objectType string,
 		input models.ClientDataListRequestBody,
 		fieldsToRead ...string,
@@ -119,7 +119,7 @@ type AiAgentUsecaseIngestedDataReader interface {
 }
 
 type AiAgentUsecaseDataModelUsecase interface {
-	GetDataModel(ctx context.Context, organizationID string, options models.DataModelReadOptions,
+	GetDataModel(ctx context.Context, organizationID uuid.UUID, options models.DataModelReadOptions,
 		useCache bool) (models.DataModel, error)
 }
 
@@ -131,14 +131,14 @@ type caseReviewTaskEnqueuer interface {
 	EnqueueCaseReviewTask(
 		ctx context.Context,
 		tx repositories.Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		caseId uuid.UUID,
 		aiCaseReviewId uuid.UUID,
 	) error
 }
 
 type featureAccessReader interface {
-	GetOrganizationFeatureAccess(ctx context.Context, organizationId string, userId *models.UserId) (
+	GetOrganizationFeatureAccess(ctx context.Context, organizationId uuid.UUID, userId *models.UserId) (
 		models.OrganizationFeatureAccess, error)
 }
 
@@ -474,7 +474,7 @@ func (uc *AiAgentUsecase) getCaseWithPermissions(ctx context.Context, caseId str
 }
 
 // Get AI setting, merge default settings with repository settings if exists
-func (uc *AiAgentUsecase) getAiSetting(ctx context.Context, organizationId string) (models.AiSetting, error) {
+func (uc *AiAgentUsecase) getAiSetting(ctx context.Context, organizationId uuid.UUID) (models.AiSetting, error) {
 	aiSetting := models.DefaultAiSetting()
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Getting AI setting for organization", "organizationId", organizationId)

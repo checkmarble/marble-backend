@@ -1,13 +1,17 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Tag struct {
 	Id             string
 	Target         TagTarget
 	Name           string
 	Color          string
-	OrganizationId string
+	OrganizationId uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time
@@ -16,7 +20,7 @@ type Tag struct {
 
 type CreateTagAttributes struct {
 	Color          string
-	OrganizationId string
+	OrganizationId uuid.UUID
 	Target         TagTarget
 	Name           string
 }

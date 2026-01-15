@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/repositories"
@@ -22,7 +23,7 @@ func (t *TransactionFactory) Transaction(ctx context.Context, fn func(exec repos
 	return args.Error(0)
 }
 
-func (t *TransactionFactory) TransactionInOrgSchema(ctx context.Context, organizationId string, f func(tx repositories.Transaction) error) error {
+func (t *TransactionFactory) TransactionInOrgSchema(ctx context.Context, organizationId uuid.UUID, f func(tx repositories.Transaction) error) error {
 	args := t.Called(ctx, organizationId, f)
 	err := f(t.TxMock)
 	if err != nil {
@@ -35,7 +36,7 @@ type ExecutorFactory struct {
 	mock.Mock
 }
 
-func (e *ExecutorFactory) NewClientDbExecutor(ctx context.Context, organizationId string) (repositories.Executor, error) {
+func (e *ExecutorFactory) NewClientDbExecutor(ctx context.Context, organizationId uuid.UUID) (repositories.Executor, error) {
 	args := e.Called(ctx, organizationId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

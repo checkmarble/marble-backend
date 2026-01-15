@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/google/uuid"
 
 	"github.com/cockroachdb/errors"
 )
@@ -50,7 +51,8 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 			}
 
 			if usecase.firebaseAdmin != nil {
-				if err := usecase.firebaseAdmin.CreateUser(ctx, createUser.Email, fmt.Sprintf("%s %s", createUser.FirstName, createUser.LastName)); err != nil {
+				if err := usecase.firebaseAdmin.CreateUser(ctx, createUser.Email,
+					fmt.Sprintf("%s %s", createUser.FirstName, createUser.LastName)); err != nil {
 					return models.User{}, errors.Wrap(err, "could not create Firebase user")
 				}
 			}
@@ -144,13 +146,13 @@ func (usecase *UserUseCase) DeleteUser(ctx context.Context, userId, currentUserI
 	return nil
 }
 
-func (usecase *UserUseCase) ListUsers(ctx context.Context, organisationIdFilter *string) ([]models.User, error) {
-	if err := usecase.enforceUserSecurity.ListUsers(organisationIdFilter); err != nil {
+func (usecase *UserUseCase) ListUsers(ctx context.Context, organisationId *uuid.UUID) ([]models.User, error) {
+	if err := usecase.enforceUserSecurity.ListUsers(organisationId); err != nil {
 		return nil, err
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
-	users, err := usecase.userRepository.ListUsers(ctx, exec, organisationIdFilter)
+	users, err := usecase.userRepository.ListUsers(ctx, exec, organisationId)
 	if err != nil {
 		return nil, err
 	}

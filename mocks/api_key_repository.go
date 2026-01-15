@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -18,7 +19,7 @@ func (r *ApiKeyRepository) GetApiKeyById(ctx context.Context, exec repositories.
 	return args.Get(0).(models.ApiKey), args.Error(1)
 }
 
-func (r *ApiKeyRepository) ListApiKeys(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.ApiKey, error) {
+func (r *ApiKeyRepository) ListApiKeys(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) ([]models.ApiKey, error) {
 	args := r.Called(exec, organizationId)
 	return args.Get(0).([]models.ApiKey), args.Error(1)
 }

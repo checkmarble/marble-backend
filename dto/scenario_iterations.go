@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -143,7 +144,7 @@ type CreateScenarioIterationBody struct {
 	} `json:"body"`
 }
 
-func AdaptCreateScenarioIterationInput(input CreateScenarioIterationBody, organizationId string) (models.CreateScenarioIterationInput, error) {
+func AdaptCreateScenarioIterationInput(input CreateScenarioIterationBody, organizationId uuid.UUID) (models.CreateScenarioIterationInput, error) {
 	createScenarioIterationInput := models.CreateScenarioIterationInput{
 		ScenarioId: input.ScenarioId,
 	}

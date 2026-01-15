@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 
 	"github.com/Masterminds/squirrel"
 )
@@ -25,7 +26,7 @@ func (repo *MarbleDbRepository) DeleteScenarioIteration(ctx context.Context, exe
 func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	scenarioIteration models.CreateScenarioIterationInput,
 ) (models.ScenarioIteration, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -14,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -24,21 +23,21 @@ type RuleUsecaseRepository interface {
 	RulesExecutionStats(
 		ctx context.Context,
 		exec repositories.Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		iterationId string,
 		begin, end time.Time,
 	) ([]models.RuleExecutionStat, error)
 	PhanomRulesExecutionStats(
 		ctx context.Context,
 		exec repositories.Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		iterationId string,
 		begin, end time.Time,
 	) ([]models.RuleExecutionStat, error)
 	ScreeningExecutionStats(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		iterationId string,
 		begin, end time.Time,
 		base string, // "decisions" or "phantom_decisions"

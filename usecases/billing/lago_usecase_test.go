@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/checkmarble/marble-backend/mocks"
@@ -16,7 +17,7 @@ type LagoBillingUsecaseTestSuite struct {
 	billingEventTaskEnqueuer *mocks.TaskQueueRepository
 
 	ctx   context.Context
-	orgId string
+	orgId uuid.UUID
 }
 
 func (suite *LagoBillingUsecaseTestSuite) SetupTest() {
@@ -24,7 +25,7 @@ func (suite *LagoBillingUsecaseTestSuite) SetupTest() {
 	suite.billingEventTaskEnqueuer = new(mocks.TaskQueueRepository)
 
 	suite.ctx = context.Background()
-	suite.orgId = "org-123"
+	suite.orgId = uuid.MustParse("12345678-1234-5678-9012-345678901234")
 }
 
 func (suite *LagoBillingUsecaseTestSuite) makeUsecase() LagoBillingUsecase {

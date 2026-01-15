@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 // Read DTO
@@ -13,7 +14,7 @@ type ScenarioDto struct {
 	Description       string    `json:"description"`
 	LiveVersionID     *string   `json:"live_version_id,omitempty"`
 	Name              string    `json:"name"`
-	OrganizationId    string    `json:"organization_id"`
+	OrganizationId    uuid.UUID `json:"organization_id"`
 	TriggerObjectType string    `json:"trigger_object_type"`
 }
 
@@ -38,7 +39,7 @@ type CreateScenarioBody struct {
 	TriggerObjectType string `json:"trigger_object_type"`
 }
 
-func AdaptCreateScenarioInput(input CreateScenarioBody, organizationId string) models.CreateScenarioInput {
+func AdaptCreateScenarioInput(input CreateScenarioBody, organizationId uuid.UUID) models.CreateScenarioInput {
 	out := models.CreateScenarioInput{
 		Name:              input.Name,
 		Description:       input.Description,

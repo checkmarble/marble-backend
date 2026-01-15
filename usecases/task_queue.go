@@ -16,6 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
@@ -64,7 +65,7 @@ func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(
 		}
 		queues := make(map[string]river.QueueConfig, len(orgs))
 		for _, org := range orgs {
-			queues[org.Id] = river.QueueConfig{
+			queues[org.Id.String()] = river.QueueConfig{
 				MaxWorkers: numberWorkersPerQueue,
 			}
 		}
@@ -119,7 +120,12 @@ func (w *TaskQueueWorker) addMissingQueues(
 
 	for orgId, q := range queues {
 		if _, ok := existingQueuesAsMap[orgId]; !ok {
-			org, err := w.orgRepository.GetOrganizationById(ctx, w.executorFactory.NewExecutor(), orgId)
+			orgIdUuid, err := uuid.Parse(orgId)
+			if err != nil {
+				return err
+			}
+			org, err := w.orgRepository.GetOrganizationById(ctx,
+				w.executorFactory.NewExecutor(), orgIdUuid)
 			if err != nil {
 				return err
 			}
@@ -145,7 +151,7 @@ func (w *TaskQueueWorker) removeQueuesFromMissingOrgs(ctx context.Context,
 
 	orgMap := make(map[string]struct{})
 	for _, org := range orgs {
-		orgMap[org.Id] = struct{}{}
+		orgMap[org.Id.String()] = struct{}{}
 	}
 
 	runningQueues, err := w.riverClient.QueueList(ctx, river.NewQueueListParams().First(10000))
@@ -193,7 +199,7 @@ func listOrgPeriodics(
 	}
 	if offloadingConfig.Enabled {
 		// Undocumented debug setting to only enable offloading for a specific organization
-		if onlyOffloadOrg := os.Getenv("OFFLOADING_ONLY_ORG"); onlyOffloadOrg == "" || onlyOffloadOrg == org.Id {
+		if onlyOffloadOrg := os.Getenv("OFFLOADING_ONLY_ORG"); onlyOffloadOrg == "" || onlyOffloadOrg == org.Id.String() {
 			periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(org.Id, offloadingConfig.JobInterval))
 		}
 	}
@@ -227,7 +233,7 @@ func QueuesFromOrgs(
 		periodics = append(periodics, listOrgPeriodics(org, offloadingConfig,
 			analyticsConfig, csCreateFullDatasetInterval)...)
 
-		queues[org.Id] = river.QueueConfig{
+		queues[org.Id.String()] = river.QueueConfig{
 			MaxWorkers: numberWorkersPerQueue,
 		}
 	}

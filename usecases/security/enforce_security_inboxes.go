@@ -3,6 +3,7 @@ package security
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type EnforceSecurityInboxes struct {
@@ -31,7 +32,7 @@ func (e EnforceSecurityInboxes) ReadInboxMetadata(inbox models.Inbox) error {
 	return e.ReadOrganization(inbox.OrganizationId)
 }
 
-func (e EnforceSecurityInboxes) CreateInbox(organizationId string) error {
+func (e EnforceSecurityInboxes) CreateInbox(organizationId uuid.UUID) error {
 	// Only org admins can create inboxes
 	return errors.Join(e.Permission(models.INBOX_EDITOR), e.ReadOrganization(organizationId))
 }

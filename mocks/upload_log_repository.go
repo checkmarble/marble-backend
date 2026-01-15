@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -36,7 +37,8 @@ func (r *UploadLogRepository) AllUploadLogsByStatus(ctx context.Context, exec re
 func (r *UploadLogRepository) AllUploadLogsByTable(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationId, tableName string,
+	organizationId uuid.UUID,
+	tableName string,
 ) ([]models.UploadLog, error) {
 	args := r.Called(ctx, exec, organizationId, tableName)
 	return args.Get(0).([]models.UploadLog), args.Error(1)

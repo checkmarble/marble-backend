@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 const TABLE_SCREENINGS = "screenings"
@@ -20,7 +21,7 @@ var (
 type DBScreening struct {
 	Id                  string                           `db:"id"`
 	DecisionId          string                           `db:"decision_id"`
-	OrgId               string                           `db:"org_id"`
+	OrgId               uuid.UUID                        `db:"org_id"`
 	ScreeningConfigId   string                           `db:"screening_config_id"`
 	Status              string                           `db:"status"`
 	SearchInput         json.RawMessage                  `db:"search_input"`
@@ -119,7 +120,7 @@ func AdaptScreeningWithMatches(dto DBScreeningWithMatches) (models.ScreeningWith
 type DBScreeningBaseInfo struct {
 	Id              string    `db:"id"`
 	DecisionId      string    `db:"decision_id"`
-	OrgId           string    `db:"org_id"`
+	OrgId           uuid.UUID `db:"org_id"`
 	Status          string    `db:"status"`
 	RequestedBy     *string   `db:"requested_by"`
 	IsPartial       bool      `db:"is_partial"`

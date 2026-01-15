@@ -128,7 +128,7 @@ func (g ExecutorGetter) getPoolAndSchema(
 	}
 
 	// For a client connection pool, create a new pool if it doesn't exist. Several customers can share the same pool, depending on the config.
-	config, ok := g.clientDbConfigs[org.Id]
+	config, ok := g.clientDbConfigs[org.Id.String()]
 	// if no specific DB is configured for the client, put the data in a dedicated schema in the main marble DB
 	if !ok {
 		// If no specific DB is configured for the client, check if there is a default config to use instead for all orgs

@@ -3,19 +3,19 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/google/uuid"
 )
 
 type CaseRepository struct {
 	mock.Mock
 }
 
-func (r *CaseRepository) ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters,
-	pagination models.PaginationAndSorting,
+func (r *CaseRepository) ListOrganizationCases(ctx context.Context, exec repositories.Executor,
+	filters models.CaseFilters, pagination models.PaginationAndSorting,
 ) ([]models.Case, error) {
 	args := r.Called(ctx, exec, filters, pagination)
 	return args.Get(0).([]models.Case), args.Error(1)

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -14,7 +15,8 @@ type UploadLogRepository interface {
 	UpdateUploadLogStatus(ctx context.Context, exec Executor, input models.UpdateUploadLogStatusInput) (executed bool, err error)
 	UploadLogById(ctx context.Context, exec Executor, id string) (models.UploadLog, error)
 	AllUploadLogsByStatus(ctx context.Context, exec Executor, status models.UploadStatus) ([]models.UploadLog, error)
-	AllUploadLogsByTable(ctx context.Context, exec Executor, organizationId, tableName string) ([]models.UploadLog, error)
+	AllUploadLogsByTable(ctx context.Context, exec Executor, organizationId uuid.UUID,
+		tableName string) ([]models.UploadLog, error)
 }
 
 type UploadLogRepositoryImpl struct{}
@@ -134,8 +136,11 @@ func (repo *UploadLogRepositoryImpl) AllUploadLogsByStatus(ctx context.Context, 
 	)
 }
 
-func (repo *UploadLogRepositoryImpl) AllUploadLogsByTable(ctx context.Context, exec Executor,
-	organizationId, tableName string,
+func (repo *UploadLogRepositoryImpl) AllUploadLogsByTable(
+	ctx context.Context,
+	exec Executor,
+	organizationId uuid.UUID,
+	tableName string,
 ) ([]models.UploadLog, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

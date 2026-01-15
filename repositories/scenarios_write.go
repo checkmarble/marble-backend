@@ -5,10 +5,11 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 )
 
 func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, exec Executor,
-	organizationId string, scenario models.CreateScenarioInput, newScenarioId string,
+	organizationId uuid.UUID, scenario models.CreateScenarioInput, newScenarioId string,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err

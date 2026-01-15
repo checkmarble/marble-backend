@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -21,12 +22,13 @@ import (
 )
 
 type offloadingRepository interface {
-	GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId, outcome string, createdAt time.Time) string
+	GetOffloadedDecisionRuleKey(orgId uuid.UUID, decisionId, ruleId, outcome string, createdAt time.Time) string
 
-	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *string,
+	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *uuid.UUID,
 		watermarkType models.WatermarkType) (*models.Watermark, error)
 	SaveWatermark(ctx context.Context, exec repositories.Executor,
-		orgId *string, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params json.RawMessage) error
+		orgId *uuid.UUID, watermarkType models.WatermarkType, watermarkId *string,
+		watermarkTime time.Time, params json.RawMessage) error
 
 	GetOffloadableDecisionRules(
 		ctx context.Context,
@@ -36,14 +38,14 @@ type offloadingRepository interface {
 	RemoveDecisionRulePayload(ctx context.Context, tx repositories.Transaction, ids []*string) error
 }
 
-func NewOffloadingPeriodicJob(orgId string, interval time.Duration) *river.PeriodicJob {
+func NewOffloadingPeriodicJob(orgId uuid.UUID, interval time.Duration) *river.PeriodicJob {
 	return river.NewPeriodicJob(
 		river.PeriodicInterval(interval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.OffloadingArgs{
 					OrgId: orgId,
 				}, &river.InsertOpts{
-					Queue: orgId,
+					Queue: orgId.String(),
 					UniqueOpts: river.UniqueOpts{
 						ByQueue:  true,
 						ByPeriod: interval,

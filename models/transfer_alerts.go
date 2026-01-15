@@ -24,7 +24,7 @@ var TransferAlertStatuses = []string{
 type TransferAlert struct {
 	Id                   string
 	TransferId           string
-	OrganizationId       string
+	OrganizationId       uuid.UUID
 	SenderPartnerId      string
 	BeneficiaryPartnerId string
 	CreatedAt            time.Time
@@ -39,7 +39,7 @@ type TransferAlert struct {
 
 type TransferAlertCreateBody struct {
 	TransferId      string
-	OrganizationId  string
+	OrganizationId  uuid.UUID
 	SenderPartnerId string
 
 	// optional
@@ -75,7 +75,7 @@ func (b TransferAlertCreateBody) Validate() error {
 	if b.TransferId == "" {
 		return errors.Wrapf(BadParameterError, "transfer_id is required")
 	}
-	if b.OrganizationId == "" {
+	if b.OrganizationId == uuid.Nil {
 		return errors.Wrapf(BadParameterError, "organization_id is required")
 	}
 	if b.SenderPartnerId == "" {

@@ -3,6 +3,7 @@ package dbmodels
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -10,7 +11,7 @@ type DBUserResult struct {
 	Id              string             `db:"id"`
 	Email           string             `db:"email"`
 	Role            int                `db:"role"`
-	OrganizationId  *string            `db:"organization_id"`
+	OrganizationId  *uuid.UUID         `db:"organization_id"`
 	PartnerId       *string            `db:"partner_id"`
 	FirstName       pgtype.Text        `db:"first_name"`
 	LastName        pgtype.Text        `db:"last_name"`

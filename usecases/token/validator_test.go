@@ -9,6 +9,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func TestValidator_Validate_APIKey(t *testing.T) {
@@ -19,18 +20,18 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 
 	apiKey := models.ApiKey{
 		Id:             "api_key_id",
-		OrganizationId: "organization_id",
+		OrganizationId: utils.TextToUUID("organization_id"),
 		Prefix:         "abc",
 		Role:           models.ADMIN,
 	}
 
 	organization := models.Organization{
-		Id:   "organization_id",
+		Id:   utils.TextToUUID("organization_id"),
 		Name: "organization",
 	}
 
 	creds := models.Credentials{
-		OrganizationId: "organization_id",
+		OrganizationId: utils.TextToUUID("organization_id"),
 		Role:           models.ADMIN,
 		ActorIdentity: models.Identity{
 			ApiKeyId:   "api_key_id",
@@ -93,7 +94,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 
 	t.Run("nominal", func(t *testing.T) {
 		creds := models.Credentials{
-			OrganizationId: "organization_id",
+			OrganizationId: utils.TextToUUID("organization_id"),
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
 				UserId: "user_id",

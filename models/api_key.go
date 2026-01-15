@@ -1,13 +1,17 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type ApiKey struct {
 	Id             string
 	CreatedAt      time.Time
 	Description    string
 	Hash           []byte
-	OrganizationId string
+	OrganizationId uuid.UUID
 	PartnerId      *string
 	Prefix         string
 	Role           Role
@@ -17,7 +21,7 @@ type ApiKey struct {
 
 type CreateApiKeyInput struct {
 	Description    string
-	OrganizationId string
+	OrganizationId uuid.UUID
 	Role           Role
 }
 

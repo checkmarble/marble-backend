@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -24,7 +25,7 @@ type ScenarioTestrunTestSuite struct {
 	clientDbIndexEditor   *mocks.ClientDbIndexEditor
 	featureAccessReader   *mocks.FeatureAccessReader
 	screeningConfig       *mocks.ScreeningConfigRepository
-	organizationId        string
+	organizationId        uuid.UUID
 	scenarioId            string
 	scenarioPublicationId string
 	ctx                   context.Context
@@ -39,7 +40,7 @@ func (suite *ScenarioTestrunTestSuite) SetupTest() {
 	suite.repository = new(mocks.ScenarioTestrunRepository)
 	suite.featureAccessReader = new(mocks.FeatureAccessReader)
 	suite.screeningConfig = new(mocks.ScreeningConfigRepository)
-	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
+	suite.organizationId = uuid.MustParse("25ab6323-1657-4a52-923a-ef6983fe4532")
 	suite.scenarioId = "c5968ff7-6142-4623-a6b3-1539f345e5fa"
 	suite.scenarioPublicationId = "c1c005f5-a920-4f92-aee1-f5007f2ad8c1"
 	suite.clientDbIndexEditor = new(mocks.ClientDbIndexEditor)

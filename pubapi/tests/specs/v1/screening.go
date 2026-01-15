@@ -20,7 +20,7 @@ func screenings(t *testing.T, e *httpexpect.Expect) {
 			return strings.Contains(value.String().Raw(), "UUID")
 		})
 
-	e.GET("/decisions/00000000-0000-0000-0000-000000000000/screenings").Expect().
+	e.GET("/decisions/10000000-0000-0000-0000-000000000000/screenings").Expect().
 		Status(http.StatusNotFound).
 		JSON().
 		Object().Value("error").Object().Value("messages").Array().

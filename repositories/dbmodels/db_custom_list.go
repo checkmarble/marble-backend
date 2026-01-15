@@ -6,11 +6,12 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type DBCustomListResult struct {
 	Id          string     `db:"id"`
-	OrgId       string     `db:"organization_id"`
+	OrgId       uuid.UUID  `db:"organization_id"`
 	Name        string     `db:"name"`
 	Description string     `db:"description"`
 	CreatedAt   time.Time  `db:"created_at"`

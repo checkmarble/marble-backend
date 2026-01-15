@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 // postgres will only accept 65535 parameters in a query, so we need to batch the decisions_to_create creation
@@ -18,7 +19,8 @@ const batchSize = 5000
 
 type RunScheduledExecutionRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string,
+		useCache bool) (models.ScenarioIteration, error)
 	StoreDecisionsToCreate(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -46,14 +48,14 @@ type taskQueueRepository interface {
 	EnqueueDecisionTaskMany(
 		ctx context.Context,
 		tx repositories.Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		decision []models.DecisionToCreate,
 		scenarioIterationId string,
 	) error
 	EnqueueScheduledExecStatusTask(
 		ctx context.Context,
 		tx repositories.Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		scheduledExecutionId string,
 	) error
 }
@@ -177,7 +179,8 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 		return err
 	}
 
-	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec, scheduledExecution.ScenarioIterationId, true)
+	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec,
+		scheduledExecution.ScenarioIterationId, true)
 	if err != nil {
 		return err
 	}
@@ -250,7 +253,7 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 
 	logger.InfoContext(ctx, fmt.Sprintf("Inserted %d decisions to be executed", nbPlannedDecisions),
 		slog.String("scheduled_execution_id", scheduledExecution.Id),
-		slog.String("organization_id", scheduledExecution.OrganizationId),
+		slog.String("organization_id", scheduledExecution.OrganizationId.String()),
 	)
 
 	return nil

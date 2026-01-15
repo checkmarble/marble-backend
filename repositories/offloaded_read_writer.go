@@ -9,16 +9,17 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"gocloud.dev/blob"
 )
 
 type offloadableRepository interface {
-	GetOffloadedDecisionRuleKey(orgId, decisionId, ruleId, outcome string, createdAt time.Time) string
-	GetOffloadedDecisionEvaluationKey(orgId string, decision models.Decision) string
+	GetOffloadedDecisionRuleKey(orgId uuid.UUID, decisionId, ruleId, outcome string, createdAt time.Time) string
+	GetOffloadedDecisionEvaluationKey(orgId uuid.UUID, decision models.Decision) string
 	GetWatermark(
 		ctx context.Context,
 		exec Executor,
-		orgId *string,
+		orgId *uuid.UUID,
 		watermarkType models.WatermarkType,
 	) (*models.Watermark, error)
 }
@@ -31,7 +32,7 @@ type OffloadedReadWriter struct {
 
 func (uc OffloadedReadWriter) OffloadRuleExecutions(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	decision models.Decision,
 	evaluation []byte,
 ) error {
@@ -70,7 +71,7 @@ func (uc OffloadedReadWriter) OffloadRuleExecutions(
 func (uc OffloadedReadWriter) MutateWithOffloadedDecisionRules(
 	ctx context.Context,
 	exec Executor,
-	orgId string,
+	orgId uuid.UUID,
 	decision models.DecisionWithRuleExecutions,
 ) error {
 	if uc.OffloadingBucketUrl == "" {

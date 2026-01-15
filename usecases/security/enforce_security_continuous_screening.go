@@ -25,48 +25,48 @@ type EnforceSecurityContinuousScreeningImpl struct {
 func (e *EnforceSecurityContinuousScreeningImpl) ReadContinuousScreeningConfig(config models.ContinuousScreeningConfig) error {
 	return errors.Join(
 		e.Permission(models.CONTINUOUS_SCREENING_CONFIG_READ),
-		e.ReadOrganization(config.OrgId.String()),
+		e.ReadOrganization(config.OrgId),
 	)
 }
 
 func (e *EnforceSecurityContinuousScreeningImpl) WriteContinuousScreeningConfig(orgId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.CONTINUOUS_SCREENING_CONFIG_WRITE),
-		e.ReadOrganization(orgId.String()),
+		e.ReadOrganization(orgId),
 	)
 }
 
 func (e *EnforceSecurityContinuousScreeningImpl) ReadContinuousScreeningObject(orgId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.CONTINUOUS_SCREENING_OBJECT_READ),
-		e.ReadOrganization(orgId.String()),
+		e.ReadOrganization(orgId),
 	)
 }
 
 func (e *EnforceSecurityContinuousScreeningImpl) WriteContinuousScreeningObject(orgId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.CONTINUOUS_SCREENING_OBJECT_WRITE),
-		e.ReadOrganization(orgId.String()),
+		e.ReadOrganization(orgId),
 	)
 }
 
 func (e *EnforceSecurityContinuousScreeningImpl) ReadContinuousScreeningHit(hit models.ContinuousScreeningWithMatches) error {
 	return errors.Join(
 		e.Permission(models.CONTINUOUS_SCREENING_HIT_READ),
-		e.ReadOrganization(hit.OrgId.String()),
+		e.ReadOrganization(hit.OrgId),
 	)
 }
 
 func (e *EnforceSecurityContinuousScreeningImpl) WriteContinuousScreeningHit(orgId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.CONTINUOUS_SCREENING_HIT_WRITE),
-		e.ReadOrganization(orgId.String()),
+		e.ReadOrganization(orgId),
 	)
 }
 
 func (e *EnforceSecurityContinuousScreeningImpl) DismissContinuousScreeningHits(orgId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.CONTINUOUS_SCREENING_HIT_DISMISS),
-		e.ReadOrganization(orgId.String()),
+		e.ReadOrganization(orgId),
 	)
 }

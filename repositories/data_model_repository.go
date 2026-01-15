@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jackc/pgx/v5"
 
@@ -17,12 +18,13 @@ import (
 )
 
 type DataModelRepository interface {
-	GetDataModel(ctx context.Context, exec Executor, organizationID string, fetchEnumValues bool,
+	GetDataModel(ctx context.Context, exec Executor, organizationID uuid.UUID, fetchEnumValues bool,
 		useCache bool) (models.DataModel, error)
 	CreateDataModelTable(
 		ctx context.Context,
 		exec Executor,
-		organizationID, tableID, name, description string,
+		organizationID uuid.UUID,
+		tableID, name, description string,
 		ftmEntity *models.FollowTheMoneyEntity,
 	) error
 	UpdateDataModelTable(
@@ -33,7 +35,7 @@ type DataModelRepository interface {
 		ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
 	) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
-	CreateDataModelField(ctx context.Context, exec Executor, organizationId string, fieldId string, field models.CreateFieldInput) error
+	CreateDataModelField(ctx context.Context, exec Executor, organizationId uuid.UUID, fieldId string, field models.CreateFieldInput) error
 	UpdateDataModelField(
 		ctx context.Context,
 		exec Executor,
@@ -46,13 +48,13 @@ type DataModelRepository interface {
 		id string,
 		link models.DataModelLinkCreateInput,
 	) error
-	GetLinks(ctx context.Context, exec Executor, organizationId string) ([]models.LinkToSingle, error)
-	DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error
+	GetLinks(ctx context.Context, exec Executor, organizationId uuid.UUID) ([]models.LinkToSingle, error)
+	DeleteDataModel(ctx context.Context, exec Executor, organizationID uuid.UUID) error
 	GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.FieldMetadata, error)
 	BatchInsertEnumValues(ctx context.Context, exec Executor, enumValues models.EnumValues, table models.Table) error
 
 	CreatePivot(ctx context.Context, exec Executor, id string, pivot models.CreatePivotInput) error
-	ListPivots(ctx context.Context, exec Executor, organization_id string, tableId *string,
+	ListPivots(ctx context.Context, exec Executor, organizationId uuid.UUID, tableId *string,
 		useCache bool) ([]models.PivotMetadata, error)
 	GetPivot(ctx context.Context, exec Executor, pivotId string) (models.PivotMetadata, error)
 
@@ -70,7 +72,7 @@ var (
 func (repo MarbleDbRepository) GetDataModel(
 	ctx context.Context,
 	exec Executor,
-	organizationID string,
+	organizationID uuid.UUID,
 	fetchEnumValues bool,
 	useCache bool,
 ) (models.DataModel, error) {
@@ -81,7 +83,7 @@ func (repo MarbleDbRepository) GetDataModel(
 		cache = dataModelCacheNoEnum
 	}
 	if useCache && repo.withCache {
-		if dm, ok := cache.Get(organizationID); ok {
+		if dm, ok := cache.Get(organizationID.String()); ok {
 			return dm, nil
 		}
 	}
@@ -153,7 +155,7 @@ func (repo MarbleDbRepository) GetDataModel(
 	}
 
 	if useCache && repo.withCache {
-		cache.Add(organizationID, dataModel)
+		cache.Add(organizationID.String(), dataModel)
 	}
 
 	return dataModel, nil
@@ -162,7 +164,8 @@ func (repo MarbleDbRepository) GetDataModel(
 func (repo MarbleDbRepository) CreateDataModelTable(
 	ctx context.Context,
 	exec Executor,
-	organizationID, tableID, name, description string,
+	organizationId uuid.UUID,
+	tableID, name, description string,
 	ftmEntity *models.FollowTheMoneyEntity,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -173,7 +176,7 @@ func (repo MarbleDbRepository) CreateDataModelTable(
 		INSERT INTO data_model_tables (id, organization_id, name, description, ftm_entity)
 		VALUES ($1, $2, $3, $4, $5)`
 
-	_, err := exec.Exec(ctx, query, tableID, organizationID, name, description, ftmEntity)
+	_, err := exec.Exec(ctx, query, tableID, organizationId, name, description, ftmEntity)
 	if IsUniqueViolationError(err) {
 		return models.ConflictError
 	}
@@ -237,7 +240,7 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 func (repo MarbleDbRepository) CreateDataModelField(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	fieldId string,
 	field models.CreateFieldInput,
 ) error {
@@ -270,8 +273,8 @@ func (repo MarbleDbRepository) CreateDataModelField(
 
 	// Minimalist attempt at cache invalidation. Because there may be several instances of Marble running at the same time, requests
 	// may still get a stale cached response.
-	dataModelCacheEnum.Remove(organizationId)
-	dataModelCacheNoEnum.Remove(organizationId)
+	dataModelCacheEnum.Remove(organizationId.String())
+	dataModelCacheNoEnum.Remove(organizationId.String())
 
 	return nil
 }
@@ -353,7 +356,7 @@ func (repo MarbleDbRepository) CreateDataModelLink(ctx context.Context, exec Exe
 }
 
 func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Executor,
-	organizationID string,
+	organizationID uuid.UUID,
 ) ([]dbmodels.DbDataModelTableJoinField, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -398,7 +401,7 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 	return fields, err
 }
 
-func (repo MarbleDbRepository) GetLinks(ctx context.Context, exec Executor, organizationID string) ([]models.LinkToSingle, error) {
+func (repo MarbleDbRepository) GetLinks(ctx context.Context, exec Executor, organizationID uuid.UUID) ([]models.LinkToSingle, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -450,7 +453,7 @@ func (repo MarbleDbRepository) GetLinks(ctx context.Context, exec Executor, orga
 	return links, nil
 }
 
-func (repo MarbleDbRepository) DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error {
+func (repo MarbleDbRepository) DeleteDataModel(ctx context.Context, exec Executor, organizationID uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -580,17 +583,17 @@ func (repo MarbleDbRepository) CreatePivot(
 func (repo MarbleDbRepository) ListPivots(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	tableId *string,
 	useCache bool,
 ) ([]models.PivotMetadata, error) {
-	cacheKey := organizationId
+	cacheKey := organizationId.String()
 	if tableId != nil {
-		cacheKey = organizationId + *tableId
+		cacheKey = organizationId.String() + *tableId
 	}
 
 	if useCache && repo.withCache {
-		if pivots, ok := dataModelPivotsCache.Get(cacheKey); ok {
+		if pivots, ok := dataModelPivotsCache.Get(organizationId.String() + *tableId); ok {
 			return pivots, nil
 		}
 	}

@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,7 +15,7 @@ func (mockUserEnforceSecurity) Permission(permission models.Permission) error {
 	return nil
 }
 
-func (mockUserEnforceSecurity) ReadOrganization(organizationId string) error {
+func (mockUserEnforceSecurity) ReadOrganization(organizationId uuid.UUID) error {
 	return nil
 }
 
@@ -29,8 +31,8 @@ func (mockUserEnforceSecurity) ApiKeyId() *string {
 	return nil
 }
 
-func (mockUserEnforceSecurity) OrgId() string {
-	return ""
+func (mockUserEnforceSecurity) OrgId() uuid.UUID {
+	return uuid.Nil
 }
 
 func TestUpdateUserRole(t *testing.T) {
@@ -57,13 +59,13 @@ func TestUpdateUserRole(t *testing.T) {
 			e := EnforceSecurityUserImpl{
 				EnforceSecurity: mockUserEnforceSecurity{},
 				Credentials: models.Credentials{
-					OrganizationId: "org",
+					OrganizationId: utils.TextToUUID("org"),
 					ActorIdentity:  models.Identity{UserId: "principal"},
 					Role:           tt.principal,
 				},
 			}
 
-			target := models.User{OrganizationId: "org", UserId: "target", Role: tt.from}
+			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", Role: tt.from}
 			if tt.sameUser {
 				target.UserId = "principal"
 				target.Role = tt.principal

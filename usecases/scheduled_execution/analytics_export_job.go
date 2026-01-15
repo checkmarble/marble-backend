@@ -21,24 +21,25 @@ import (
 
 type analyticsExportRepository interface {
 	AllOrganizations(ctx context.Context, exec repositories.Executor) ([]models.Organization, error)
-	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *string,
+	GetWatermark(ctx context.Context, exec repositories.Executor, orgId *uuid.UUID,
 		watermarkType models.WatermarkType) (*models.Watermark, error)
 	SaveWatermark(ctx context.Context, exec repositories.Executor,
-		orgId *string, watermarkType models.WatermarkType, watermarkId *string, watermarkTime time.Time, params json.RawMessage) error
+		orgId *uuid.UUID, watermarkType models.WatermarkType, watermarkId *string,
+		watermarkTime time.Time, params json.RawMessage) error
 
-	GetDataModel(ctx context.Context, exec repositories.Executor, organizationID string, fetchEnumValues bool,
+	GetDataModel(ctx context.Context, exec repositories.Executor, organizationID uuid.UUID, fetchEnumValues bool,
 		useCache bool) (models.DataModel, error)
-	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId string) (map[string]analytics.Settings, error)
+	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[string]analytics.Settings, error)
 }
 
-func NewAnalyticsExportJob(orgId string, interval time.Duration) *river.PeriodicJob {
+func NewAnalyticsExportJob(orgId uuid.UUID, interval time.Duration) *river.PeriodicJob {
 	return river.NewPeriodicJob(
 		river.PeriodicInterval(interval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.AnalyticsExportArgs{
 					OrgId: orgId,
 				}, &river.InsertOpts{
-					Queue: orgId,
+					Queue: orgId.String(),
 					UniqueOpts: river.UniqueOpts{
 						ByQueue:  true,
 						ByPeriod: interval,

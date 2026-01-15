@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
 
@@ -21,26 +22,26 @@ const (
 )
 
 type RulesRepository interface {
-	GetRecentTestRunForOrg(ctx context.Context, exec repositories.Executor, orgId string) (
+	GetRecentTestRunForOrg(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (
 		[]models.ScenarioTestRunWithSummary, error)
 	RulesExecutionStats(
 		ctx context.Context,
 		exec repositories.Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		iterationId string,
 		begin, end time.Time,
 	) ([]models.RuleExecutionStat, error)
 	PhanomRulesExecutionStats(
 		ctx context.Context,
 		exec repositories.Transaction,
-		organizationId string,
+		organizationId uuid.UUID,
 		testRunId string,
 		begin, end time.Time,
 	) ([]models.RuleExecutionStat, error)
 	ScreeningExecutionStats(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		iterationId string,
 		begin, end time.Time,
 		base string, // "decisions" or "phantom_decisions"
@@ -48,7 +49,7 @@ type RulesRepository interface {
 	DecisionsByOutcomeAndScore(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 		scenarioId string,
 		scenarioLiveIterationId string,
 		begin, end time.Time,
@@ -66,14 +67,14 @@ type RulesRepository interface {
 	TouchLatestUpdatedAt(ctx context.Context, exec repositories.Executor, testRunId string) error
 }
 
-func NewTestRunSummaryPeriodicJob(orgId string) *river.PeriodicJob {
+func NewTestRunSummaryPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
 	return river.NewPeriodicJob(
 		river.PeriodicInterval(TEST_RUN_SUMMARY_WORKER_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.TestRunSummaryArgs{
 					OrgId: orgId,
 				}, &river.InsertOpts{
-					Queue: orgId,
+					Queue: orgId.String(),
 					UniqueOpts: river.UniqueOpts{
 						ByQueue:  true,
 						ByPeriod: TEST_RUN_SUMMARY_WORKER_INTERVAL,

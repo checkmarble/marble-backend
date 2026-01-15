@@ -9,24 +9,29 @@ import (
 )
 
 func TestEnforceOrganizationAccess(t *testing.T) {
+	orgId := TextToUUID("1234")
 	err := EnforceOrganizationAccess(models.Credentials{
-		OrganizationId: "1234",
+		OrganizationId: orgId,
 		Role:           models.NO_ROLE,
-	}, "1234")
+	}, orgId)
 	assert.NoError(t, err)
 }
 
 func TestEnforceOrganizationAccess_EmptyCredential(t *testing.T) {
-	err := EnforceOrganizationAccess(models.Credentials{}, "1234")
+	orgId := TextToUUID("1234")
+	err := EnforceOrganizationAccess(models.Credentials{}, orgId)
 	assert.ErrorIs(t, err, models.ForbiddenError)
 }
 
 func TestEnforceOrganizationAccess_Fail(t *testing.T) {
-	err := EnforceOrganizationAccess(models.Credentials{OrganizationId: "not 1234"}, "1234")
+	orgId1 := TextToUUID("not 1234")
+	orgId2 := TextToUUID("1234")
+	err := EnforceOrganizationAccess(models.Credentials{OrganizationId: orgId1}, orgId2)
 	assert.ErrorIs(t, err, models.ForbiddenError)
 }
 
 func TestEnforceOrganizationAccess_marble_admin_override(t *testing.T) {
-	err := EnforceOrganizationAccess(models.Credentials{Role: models.MARBLE_ADMIN}, "1234")
+	orgId := TextToUUID("1234")
+	err := EnforceOrganizationAccess(models.Credentials{Role: models.MARBLE_ADMIN}, orgId)
 	assert.NoError(t, err)
 }

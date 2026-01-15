@@ -6,11 +6,12 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type DBScheduledExecution struct {
 	Id                         string     `db:"id"`
-	OrganizationId             string     `db:"organization_id"`
+	OrganizationId             uuid.UUID  `db:"organization_id"`
 	ScenarioId                 string     `db:"scenario_id"`
 	ScenarioIterationId        string     `db:"scenario_iteration_id"`
 	Status                     string     `db:"status"`

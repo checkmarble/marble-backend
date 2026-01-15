@@ -119,7 +119,7 @@ type IngestionUsecaseTestSuite struct {
 	continuousScreeningClientRepository *mocks.ContinuousScreeningClientDbRepository
 	taskQueueRepository                 *mocks.TaskQueueRepository
 
-	organizationId string
+	organizationId uuid.UUID
 	dataModel      models.DataModel
 
 	ctx context.Context
@@ -148,7 +148,7 @@ func (suite *IngestionUsecaseTestSuite) SetupTest() {
 	suite.continuousScreeningClientRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
 
-	suite.organizationId = uuid.NewString()
+	suite.organizationId = uuid.MustParse("12345678-1234-5678-9012-345678901234")
 	suite.dataModel = models.DataModel{
 		Tables: map[string]models.Table{
 			"transactions": {

@@ -39,7 +39,7 @@ type decisionWorkflowsWorkerRepository interface {
 }
 
 type dataModelRepository interface {
-	GetDataModel(ctx context.Context, exec repositories.Executor, organizationID string,
+	GetDataModel(ctx context.Context, exec repositories.Executor, organizationID uuid.UUID,
 		fetchEnumValues bool, useCache bool) (models.DataModel, error)
 }
 
@@ -106,7 +106,7 @@ func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[model
 	dataModel, err := w.dataModelRepository.GetDataModel(
 		ctx,
 		exec,
-		decision.OrganizationId.String(),
+		decision.OrganizationId,
 		false,
 		true,
 	)

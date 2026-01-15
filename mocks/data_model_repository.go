@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -17,7 +18,7 @@ type DataModelRepository struct {
 func (d *DataModelRepository) GetDataModel(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	fetchEnumValues bool,
 	useCache bool,
 ) (models.DataModel, error) {
@@ -25,7 +26,7 @@ func (d *DataModelRepository) GetDataModel(
 	return args.Get(0).(models.DataModel), args.Error(1)
 }
 
-func (d *DataModelRepository) DeleteDataModel(ctx context.Context, exec repositories.Executor, organizationId string) error {
+func (d *DataModelRepository) DeleteDataModel(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) error {
 	args := d.Called(ctx, exec, organizationId)
 	return args.Error(0)
 }
@@ -33,10 +34,11 @@ func (d *DataModelRepository) DeleteDataModel(ctx context.Context, exec reposito
 func (d *DataModelRepository) CreateDataModelTable(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationID, tableID, name, description string,
+	organizationId uuid.UUID,
+	tableID, name, description string,
 	ftmEntity *models.FollowTheMoneyEntity,
 ) error {
-	args := d.Called(ctx, exec, organizationID, tableID, name, description, ftmEntity)
+	args := d.Called(ctx, exec, organizationId, tableID, name, description, ftmEntity)
 	return args.Error(0)
 }
 
@@ -54,7 +56,7 @@ func (d *DataModelRepository) UpdateDataModelTable(
 func (d *DataModelRepository) CreateDataModelField(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	tableID string,
 	field models.CreateFieldInput,
 ) error {
@@ -62,7 +64,7 @@ func (d *DataModelRepository) CreateDataModelField(
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) GetLinks(ctx context.Context, exec repositories.Executor, organizationID string) ([]models.LinkToSingle, error) {
+func (d *DataModelRepository) GetLinks(ctx context.Context, exec repositories.Executor, organizationID uuid.UUID) ([]models.LinkToSingle, error) {
 	args := d.Called(ctx, exec, organizationID)
 	return args.Get(0).([]models.LinkToSingle), args.Error(1)
 }
@@ -97,11 +99,11 @@ func (d *DataModelRepository) CreatePivot(ctx context.Context, exec repositories
 func (d *DataModelRepository) ListPivots(
 	ctx context.Context,
 	exec repositories.Executor,
-	organization_id string,
+	organizationId uuid.UUID,
 	tableId *string,
 	useCache bool,
 ) ([]models.PivotMetadata, error) {
-	args := d.Called(ctx, exec, organization_id, tableId, useCache)
+	args := d.Called(ctx, exec, organizationId, tableId, useCache)
 	if args.Error(1) != nil {
 		return nil, args.Error(1)
 	}

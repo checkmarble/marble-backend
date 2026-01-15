@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -17,7 +18,7 @@ func (m *Database) UserByEmail(ctx context.Context, email string) (models.User, 
 	return args.Get(0).(models.User), args.Error(1)
 }
 
-func (m *Database) GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error) {
+func (m *Database) GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error) {
 	args := m.Called(ctx, organizationID)
 	return args.Get(0).(models.Organization), args.Error(1)
 }

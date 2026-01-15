@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -86,7 +87,7 @@ func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exe
 		}
 	}
 
-	if filters.OrganizationId != "" {
+	if filters.OrganizationId != uuid.Nil {
 		query = query.Where(squirrel.Eq{"se.organization_id": filters.OrganizationId})
 	}
 	if filters.ScenarioId != "" {

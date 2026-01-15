@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/clock"
 	"github.com/checkmarble/marble-backend/usecases/auth"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -23,14 +24,15 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 
 	apiKey := models.ApiKey{
 		Id:             "api_key_id",
-		OrganizationId: "organization_id",
+		OrganizationId: utils.TextToUUID("organization_id"),
 		Prefix:         "abc",
 		Role:           models.ADMIN,
 		DisplayString:  "Api key abc*** of organization",
 	}
+	orgIdString := apiKey.OrganizationId
 
 	organization := models.Organization{
-		Id:   "organization_id",
+		Id:   utils.TextToUUID("organization_id"),
 		Name: "organization",
 	}
 
@@ -44,7 +46,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
 			Return(apiKey, nil)
-		mockRepository.On("GetOrganizationByID", ctx, "organization_id").
+		mockRepository.On("GetOrganizationByID", ctx, orgIdString).
 			Return(organization, nil)
 
 		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
@@ -74,7 +76,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
 			Return(apiKey, nil)
-		mockRepository.On("GetOrganizationByID", ctx, "organization_id").
+		mockRepository.On("GetOrganizationByID", ctx, orgIdString).
 			Return(models.Organization{}, assert.AnError)
 
 		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
@@ -99,14 +101,15 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		UserId:         "user_id",
 		Email:          "user@email.com",
 		Role:           models.ADMIN,
-		OrganizationId: "organization_id",
+		OrganizationId: utils.TextToUUID("organization_id"),
 	}
+	userOrgIdString := user.OrganizationId
 
 	idpTokenVerifier := mocks.NewStaticIdpTokenVerifier(infra.MockFirebaseIssuer, firebaseIdentity)
 
 	t.Run("nominal", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
-		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
+		mockRepository.On("GetOrganizationByID", mock.Anything, userOrgIdString).
 			Return(models.Organization{}, nil)
 		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
 			Return(user, nil)
@@ -115,7 +118,7 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
-			OrganizationId: "organization_id",
+			OrganizationId: utils.TextToUUID("organization_id"),
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,

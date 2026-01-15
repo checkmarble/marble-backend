@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -17,7 +18,7 @@ type DBWebhookEvent struct {
 	UpdatedAt      time.Time   `db:"updated_at"`
 	RetryCount     int         `db:"retry_count"`
 	DeliveryStatus string      `db:"delivery_status"`
-	OrganizationId string      `db:"organization_id"`
+	OrganizationId uuid.UUID   `db:"organization_id"`
 	PartnerId      pgtype.Text `db:"partner_id"`
 	EventType      string      `db:"event_type"`
 	EventData      []byte      `db:"event_data"`

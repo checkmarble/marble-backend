@@ -4,12 +4,13 @@ import (
 	"errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type EnforceSecurityTags interface {
 	EnforceSecurity
 	ReadTag(tag models.Tag) error
-	CreateTag(organizationId string) error
+	CreateTag(organizationId uuid.UUID) error
 	UpdateTag(tag models.Tag) error
 	DeleteTag(tag models.Tag) error
 }
@@ -21,7 +22,7 @@ func (e *EnforceSecurityImpl) ReadTag(tag models.Tag) error {
 	)
 }
 
-func (e *EnforceSecurityImpl) CreateTag(organizationId string) error {
+func (e *EnforceSecurityImpl) CreateTag(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.TAG_CREATE),
 		e.ReadOrganization(organizationId),

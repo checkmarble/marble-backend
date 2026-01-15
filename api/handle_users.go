@@ -18,23 +18,26 @@ func handleListUsers(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		organizationId := c.Query("organization_id")
+		organizationIdStr := c.Query("organization_id")
 		// TODO: remove this once the endpoint has been migrated on the frontend
 		// deprecation migration
-		if organizationId == "" {
-			organizationId = c.Param("organization_id")
+		if organizationIdStr == "" {
+			organizationIdStr = c.Param("organization_id")
 		}
-		if organizationId != "" {
-			if _, err := uuid.Parse(organizationId); err != nil {
+		var organizationId *uuid.UUID
+		if organizationIdStr != "" {
+			orgId, err := uuid.Parse(organizationIdStr)
+			if err != nil {
 				c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
 					Message: "invalid organisation_id format",
 				})
 				return
 			}
+			organizationId = &orgId
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		users, err := usecase.ListUsers(ctx, utils.PtrTo(organizationId, &utils.PtrToOptions{OmitZero: true}))
+		users, err := usecase.ListUsers(ctx, organizationId)
 		if presentError(ctx, c, err) {
 			return
 		}

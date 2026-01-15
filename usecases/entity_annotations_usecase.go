@@ -72,7 +72,7 @@ func (uc EntityAnnotationUsecase) List(ctx context.Context, req models.EntityAnn
 	return uc.repository.GetEntityAnnotations(ctx, uc.executorFactory.NewExecutor(), req)
 }
 
-func (uc EntityAnnotationUsecase) Get(ctx context.Context, orgId, id string) (models.EntityAnnotation, error) {
+func (uc EntityAnnotationUsecase) Get(ctx context.Context, orgId uuid.UUID, id string) (models.EntityAnnotation, error) {
 	annotations, err := uc.repository.GetEntityAnnotationById(ctx,
 		uc.executorFactory.NewExecutor(), models.AnnotationByIdRequest{
 			OrgId:          orgId,
@@ -234,7 +234,7 @@ func (uc EntityAnnotationUsecase) DeleteAnnotation(ctx context.Context,
 
 // checkObject validates that the given object type exists in the organization's data model.
 // Returns an error if the object type is not found.
-func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId, objectType string) error {
+func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId uuid.UUID, objectType string) error {
 	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, uc.executorFactory.NewExecutor(), orgId, false, false)
 	if err != nil {
 		return err

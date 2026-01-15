@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type RuleDto struct {
@@ -87,7 +88,7 @@ func AdaptRuleMetadataDto(rule models.RuleMetadata) RuleMetadataDto {
 	}
 }
 
-func AdaptCreateRuleInput(body CreateRuleInputBody, organizationId string) (models.CreateRuleInput, error) {
+func AdaptCreateRuleInput(body CreateRuleInputBody, organizationId uuid.UUID) (models.CreateRuleInput, error) {
 	createRuleInput := models.CreateRuleInput{
 		OrganizationId:       organizationId,
 		ScenarioIterationId:  body.ScenarioIterationId,

@@ -798,6 +798,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		return caseData{}, casePivotDataByPivot{},
 			errors.Wrap(err, "could not retrieve case events")
 	}
+
 	users, err := uc.repository.ListUsers(ctx, exec, &c.OrganizationId)
 	if err != nil {
 		return caseData{}, casePivotDataByPivot{},
@@ -1013,7 +1014,7 @@ type caseData struct {
 	dataModelDto     agent_dto.DataModel
 	dataModel        models.DataModel
 	pivotData        []agent_dto.PivotObject
-	organizationId   string
+	organizationId   uuid.UUID
 }
 
 func someClientHasManyRowsForTable(relatedDataPerClient agent_dto.CaseIngestedDataByPivot, tableName string) bool {
@@ -1050,7 +1051,7 @@ func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(
 	return caseReview, nil
 }
 
-func (uc *AiAgentUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error) {
+func (uc *AiAgentUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId uuid.UUID) (bool, error) {
 	featureAccess, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
 	if err != nil {
 		return false, err

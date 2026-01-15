@@ -28,7 +28,7 @@ func (repo *MarbleDbRepository) GetInboxById(ctx context.Context, exec Executor,
 }
 
 func (repo *MarbleDbRepository) ListInboxes(ctx context.Context, exec Executor,
-	organizationId string, inboxIds []uuid.UUID, withCaseCount bool,
+	organizationId uuid.UUID, inboxIds []uuid.UUID, withCaseCount bool,
 ) ([]models.Inbox, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

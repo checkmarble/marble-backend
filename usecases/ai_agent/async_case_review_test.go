@@ -76,7 +76,7 @@ func (r *mockCaseReviewUsecase) CreateCaseReviewSync(ctx context.Context, caseId
 	return args.Get(0).(agent_dto.AiCaseReviewDto), args.Error(1)
 }
 
-func (r *mockCaseReviewUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error) {
+func (r *mockCaseReviewUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId uuid.UUID) (bool, error) {
 	args := r.Called(ctx, orgId)
 	return args.Bool(0), args.Error(1)
 }
@@ -136,12 +136,12 @@ func createTestCaseReviewData() (models.CaseReviewArgs, models.Case, models.Orga
 
 	testCase := models.Case{
 		Id:             caseId.String(),
-		OrganizationId: "test-org-id",
+		OrganizationId: utils.TextToUUID("test-org-id"),
 		Type:           models.CaseTypeDecision,
 	}
 
 	org := models.Organization{
-		Id:                  "test-org-id",
+		Id:                  utils.TextToUUID("test-org-id"),
 		AiCaseReviewEnabled: true,
 	}
 

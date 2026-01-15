@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 // Max event per batch for event ingestion
@@ -90,7 +91,7 @@ func (repo LagoRepository) doRequestWithRetry(ctx context.Context, method string
 }
 
 // Get Wallet for an organization
-func (repo LagoRepository) GetWallets(ctx context.Context, orgId string) ([]models.Wallet, error) {
+func (repo LagoRepository) GetWallets(ctx context.Context, orgId uuid.UUID) ([]models.Wallet, error) {
 	if !repo.IsConfigured() {
 		return nil, errors.New("lago repository is not configured")
 	}
@@ -98,7 +99,7 @@ func (repo LagoRepository) GetWallets(ctx context.Context, orgId string) ([]mode
 	baseUrl := *repo.lagoConfig.ParsedUrl
 	baseUrl.Path = "/api/v1/wallets"
 	query := baseUrl.Query()
-	query.Add("external_customer_id", orgId)
+	query.Add("external_customer_id", orgId.String())
 	baseUrl.RawQuery = query.Encode()
 
 	resp, err := repo.doRequestWithRetry(ctx, http.MethodGet, baseUrl.String(), nil)
@@ -121,7 +122,7 @@ func (repo LagoRepository) GetWallets(ctx context.Context, orgId string) ([]mode
 }
 
 // Get Active Subscriptions (not detailed) for an organization
-func (repo LagoRepository) GetSubscriptions(ctx context.Context, orgId string) ([]models.Subscription, error) {
+func (repo LagoRepository) GetSubscriptions(ctx context.Context, orgId uuid.UUID) ([]models.Subscription, error) {
 	if !repo.IsConfigured() {
 		return nil, errors.New("lago repository is not configured")
 	}
@@ -129,7 +130,7 @@ func (repo LagoRepository) GetSubscriptions(ctx context.Context, orgId string) (
 	baseUrl := *repo.lagoConfig.ParsedUrl
 	baseUrl.Path = "/api/v1/subscriptions"
 	query := baseUrl.Query()
-	query.Add("external_customer_id", orgId)
+	query.Add("external_customer_id", orgId.String())
 	query.Add("status[]", "active")
 	baseUrl.RawQuery = query.Encode()
 
@@ -183,7 +184,7 @@ func (repo LagoRepository) GetSubscription(ctx context.Context, subscriptionExte
 // Use subscription external ID (cf: https://getlago.com/docs/api-reference/customer-usage/get-current)
 func (repo LagoRepository) GetCustomerUsage(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	subscriptionExternalId string,
 ) (models.CustomerUsage, error) {
 	if !repo.IsConfigured() {

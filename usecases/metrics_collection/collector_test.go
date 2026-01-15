@@ -112,8 +112,8 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 
 	// Test organizations
 	orgs := []models.Organization{
-		{Id: "org1", Name: "Organization 1", PublicId: utils.TextToUUID("org1")},
-		{Id: "org2", Name: "Organization 2", PublicId: utils.TextToUUID("org2")},
+		{Id: utils.TextToUUID("org1"), Name: "Organization 1", PublicId: utils.TextToUUID("org1")},
+		{Id: utils.TextToUUID("org2"), Name: "Organization 2", PublicId: utils.TextToUUID("org2")},
 	}
 
 	// Expected metrics
@@ -184,7 +184,7 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
 	orgs := []models.Organization{
-		{Id: "org1", Name: "Organization 1", PublicId: utils.TextToUUID("org1")},
+		{Id: utils.TextToUUID("org1"), Name: "Organization 1", PublicId: utils.TextToUUID("org1")},
 	}
 
 	org1Metrics := []models.MetricData{
@@ -327,7 +327,7 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 	mockGlobalCollector := new(MockGlobalCollector)
 	mockOrgCollector := new(MockCollector)
 	orgs := []models.Organization{
-		{Id: "org1", Name: "Organization 1", PublicId: utils.TextToUUID("org1")},
+		{Id: utils.TextToUUID("org1"), Name: "Organization 1", PublicId: utils.TextToUUID("org1")},
 	}
 
 	// Setup expectations - collectors return empty results

@@ -1,12 +1,16 @@
 package dbmodels
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 const TABLE_PHANTOM_DECISIONS = "phantom_decisions"
 
 type DbPhantomDecision struct {
 	Id                  string    `db:"id"`
-	OrganizationId      string    `db:"org_id"`
+	OrganizationId      uuid.UUID `db:"org_id"`
 	CreatedAt           time.Time `db:"created_at"`
 	Outcome             string    `db:"outcome"`
 	ScenarioId          string    `db:"scenario_id"`

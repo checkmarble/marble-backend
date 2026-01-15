@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -42,7 +43,7 @@ type IngestedDataIndexesRepository interface {
 
 type ScenarioFetcher interface {
 	FetchScenarioAndIteration(ctx context.Context, exec repositories.Executor, iterationId string) (models.ScenarioAndIteration, error)
-	ListLiveIterationsAndNeighbors(ctx context.Context, exec repositories.Executor, orgId string) ([]models.ScenarioIteration, error)
+	ListLiveIterationsAndNeighbors(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ScenarioIteration, error)
 }
 
 type ClientDbIndexEditor struct {
@@ -71,7 +72,7 @@ func NewClientDbIndexEditor(
 
 func (editor ClientDbIndexEditor) GetIndexesToCreate(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	scenarioIterationId string,
 ) (toCreate []models.ConcreteIndex, numPending int, err error) {
 	exec := editor.executorFactory.NewExecutor()
@@ -116,7 +117,7 @@ func (editor ClientDbIndexEditor) GetIndexesToCreate(
 
 func (editor ClientDbIndexEditor) GetRequiredIndices(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 ) (requiredIndices []models.AggregateQueryFamily, err error) {
 	exec := editor.executorFactory.NewExecutor()
 	iterations, err := editor.scenarioFetcher.ListLiveIterationsAndNeighbors(ctx, exec, organizationId)
@@ -139,7 +140,7 @@ func (editor ClientDbIndexEditor) GetRequiredIndices(
 
 func (editor ClientDbIndexEditor) CreateIndexesAsync(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	indexes []models.ConcreteIndex,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
@@ -167,7 +168,7 @@ func (editor ClientDbIndexEditor) CreateIndexesAsync(
 
 func (editor ClientDbIndexEditor) CreateIndexesAsyncForScenarioWithCallback(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	indexes []models.ConcreteIndex,
 	onSuccess models.OnCreateIndexesSuccess,
 ) error {
@@ -194,7 +195,7 @@ func (editor ClientDbIndexEditor) CreateIndexesAsyncForScenarioWithCallback(
 	return nil
 }
 
-func (editor ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error) {
+func (editor ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context, organizationId uuid.UUID) ([]models.UnicityIndex, error) {
 	if err := editor.enforceSecurityDataModel.ReadDataModel(); err != nil {
 		return nil, err
 	}
@@ -210,7 +211,7 @@ func (editor ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context, orga
 
 func (editor ClientDbIndexEditor) ListAllIndexes(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	indexTypes ...models.IndexType,
 ) ([]models.ConcreteIndex, error) {
 	if err := editor.enforceSecurityDataModel.ReadDataModel(); err != nil {
@@ -228,7 +229,7 @@ func (editor ClientDbIndexEditor) ListAllIndexes(
 
 func (editor ClientDbIndexEditor) CreateUniqueIndexAsync(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	index models.UnicityIndex,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
@@ -258,7 +259,7 @@ func (editor ClientDbIndexEditor) CreateUniqueIndexAsync(
 func (editor ClientDbIndexEditor) CreateUniqueIndex(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 	index models.UnicityIndex,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
@@ -287,7 +288,7 @@ func (editor ClientDbIndexEditor) CreateUniqueIndex(
 
 func (editor ClientDbIndexEditor) DeleteUniqueIndex(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	index models.UnicityIndex,
 ) error {
 	logger := utils.LoggerFromContext(ctx)

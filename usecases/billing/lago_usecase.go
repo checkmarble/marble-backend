@@ -6,13 +6,14 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type lagoRepository interface {
-	GetWallets(ctx context.Context, orgId string) ([]models.Wallet, error)
-	GetSubscriptions(ctx context.Context, orgId string) ([]models.Subscription, error)
+	GetWallets(ctx context.Context, orgId uuid.UUID) ([]models.Wallet, error)
+	GetSubscriptions(ctx context.Context, orgId uuid.UUID) ([]models.Subscription, error)
 	GetSubscription(ctx context.Context, subscriptionExternalId string) (models.Subscription, error)
-	GetCustomerUsage(ctx context.Context, orgId string, subscriptionExternalId string) (models.CustomerUsage, error)
+	GetCustomerUsage(ctx context.Context, orgId uuid.UUID, subscriptionExternalId string) (models.CustomerUsage, error)
 }
 
 type billingEventTaskEnqueuer interface {
@@ -43,7 +44,7 @@ func (u LagoBillingUsecase) EnqueueBillingEventTask(ctx context.Context, event m
 // Check if there are enough funds in the wallet to cover the cost of the event
 // Check if the wallet exists and if the balance is enough
 // Suppose there is only one subscription for the event
-func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId string, code BillableMetric) (bool, string, error) {
+func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId uuid.UUID, code BillableMetric) (bool, string, error) {
 	logger := utils.LoggerFromContext(ctx)
 
 	wallets, err := u.lagoRepository.GetWallets(ctx, orgId)
@@ -94,7 +95,7 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 
 // Get all subscriptions of an organization that have a charge for the given billable metric
 // Need to get first the list of subscriptions, then get the detailed subscription to get the charges
-func (u LagoBillingUsecase) getSubscriptionsForEvent(ctx context.Context, orgId string, code BillableMetric) ([]models.Subscription, error) {
+func (u LagoBillingUsecase) getSubscriptionsForEvent(ctx context.Context, orgId uuid.UUID, code BillableMetric) ([]models.Subscription, error) {
 	subscriptionsForEvent := make([]models.Subscription, 0)
 	subscriptions, err := u.lagoRepository.GetSubscriptions(ctx, orgId)
 	if err != nil {

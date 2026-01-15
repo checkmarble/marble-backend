@@ -18,7 +18,7 @@ import (
 
 type CaseReviewUsecase interface {
 	CreateCaseReviewSync(ctx context.Context, caseId string, caseReviewContext *CaseReviewContext) (agent_dto.AiCaseReviewDto, error)
-	HasAiCaseReviewEnabled(ctx context.Context, orgId string) (bool, error)
+	HasAiCaseReviewEnabled(ctx context.Context, orgId uuid.UUID) (bool, error)
 }
 
 type caseReviewWorkerRepository interface {
@@ -47,7 +47,7 @@ type caseReviewWorkerRepository interface {
 	GetOrganizationById(
 		ctx context.Context,
 		exec repositories.Executor,
-		organizationId string,
+		organizationId uuid.UUID,
 	) (models.Organization, error)
 }
 

@@ -127,7 +127,7 @@ func HandleGetCase(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		users, err := userUsecase.ListUsers(ctx, &orgId)
+		users, err := userUsecase.ListUsers(ctx, utils.Ptr(orgId))
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -395,7 +395,7 @@ func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
 		caseUsecase := uc.NewCaseUseCase()
 		userUsecase := uc.NewUserUseCase()
 
-		users, err := userUsecase.ListUsers(ctx, &orgId)
+		users, err := userUsecase.ListUsers(ctx, utils.Ptr(orgId))
 		if err != nil {
 			pubapi.NewErrorResponse().WithError(err).Serve(c)
 			return

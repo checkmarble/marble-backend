@@ -27,7 +27,7 @@ type InboxUsecaseTestSuite struct {
 	credentials        models.Credentials
 	adminCredentials   models.Credentials
 
-	organizationId       string
+	organizationId       uuid.UUID
 	inboxId              string
 	parsedInboxId        uuid.UUID
 	inbox                models.Inbox
@@ -49,7 +49,7 @@ func (suite *InboxUsecaseTestSuite) SetupTest() {
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.executorFactory = new(mocks.ExecutorFactory)
 
-	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
+	suite.organizationId = uuid.MustParse("25ab6323-1657-4a52-923a-ef6983fe4532")
 	suite.inboxId = "0ae6fda7-f7b3-4218-9fc3-4efa329432a7"
 	var err error
 	suite.parsedInboxId, err = uuid.Parse(suite.inboxId)

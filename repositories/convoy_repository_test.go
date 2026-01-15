@@ -6,14 +6,13 @@ import (
 
 	"github.com/checkmarble/marble-backend/api-clients/convoy"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/guregu/null/v5"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetOwnerId(t *testing.T) {
 	type args struct {
-		organizationId string
-		partnerId      null.String
+		organizationId uuid.UUID
 	}
 	tests := []struct {
 		name string
@@ -22,28 +21,15 @@ func TestGetOwnerId(t *testing.T) {
 	}{
 		{
 			name: "organization only",
-			args: args{organizationId: "12456"},
-			want: "org:12456",
-		},
-		{
-			name: "with partner",
-			args: args{organizationId: "12456", partnerId: null.StringFrom("789")},
-			want: "org:12456-partner:789",
-		},
-		{
-			name: "with invalid partner",
-			args: args{organizationId: "12456", partnerId: null.NewString("789", false)},
-			want: "org:12456",
+			args: args{organizationId: uuid.MustParse("12456789-1234-5678-9012-345678901234")},
+			want: "org:12456789-1234-5678-9012-345678901234",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := getOwnerId(tt.args.organizationId, tt.args.partnerId)
+			got := getOwnerId(tt.args.organizationId)
 			if !reflect.DeepEqual(got, tt.want) {
 				partnerId := "nil"
-				if tt.args.partnerId.Valid {
-					partnerId = tt.args.partnerId.String
-				}
 
 				t.Errorf("getOwnerId(%s, %s) got = %v, want %v",
 					tt.args.organizationId, partnerId, got, tt.want)
@@ -54,8 +40,7 @@ func TestGetOwnerId(t *testing.T) {
 
 func TestParseOwnerId(t *testing.T) {
 	type want struct {
-		organizationId string
-		partnerId      null.String
+		organizationId uuid.UUID
 	}
 	tests := []struct {
 		name string
@@ -64,25 +49,14 @@ func TestParseOwnerId(t *testing.T) {
 	}{
 		{
 			name: "organization only",
-			args: "org:12456",
-			want: want{organizationId: "12456"},
-		},
-		{
-			name: "with partner",
-			args: "org:12456-partner:789",
-			want: want{organizationId: "12456", partnerId: null.StringFrom("789")},
-		},
-		{
-			name: "with invalid partner",
-			args: "org:12456",
-			want: want{organizationId: "12456", partnerId: null.NewString("", false)},
+			args: "org:12456789-1234-5678-9012-345678901234",
+			want: want{organizationId: uuid.MustParse("12456789-1234-5678-9012-345678901234")},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			organizationId, partnerId := parseOwnerId(tt.args)
+			organizationId := parseOwnerId(tt.args)
 			assert.Equal(t, tt.want.organizationId, organizationId)
-			assert.Equal(t, tt.want.partnerId, partnerId)
 		})
 	}
 }

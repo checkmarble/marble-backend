@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -23,7 +24,7 @@ func (m *ScenarioFetcher) FetchScenarioAndIteration(
 }
 
 func (m *ScenarioFetcher) ListLiveIterationsAndNeighbors(ctx context.Context,
-	exec repositories.Executor, orgId string,
+	exec repositories.Executor, orgId uuid.UUID,
 ) ([]models.ScenarioIteration, error) {
 	args := m.Called(ctx, exec, orgId)
 	return []models.ScenarioIteration{}, args.Error(1)

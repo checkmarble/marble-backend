@@ -9,13 +9,14 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
 type TestRunUsecaseFeatureAccessReader interface {
 	GetOrganizationFeatureAccess(
 		ctx context.Context,
-		organizationId string,
+		organizationId uuid.UUID,
 		userId *models.UserId,
 	) (models.OrganizationFeatureAccess, error)
 }
@@ -33,7 +34,7 @@ type ScenarioTestRunUsecase struct {
 
 func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 	ctx context.Context,
-	organizationId string,
+	organizationId uuid.UUID,
 	input models.ScenarioTestRunInput,
 ) (models.ScenarioTestRun, error) {
 	if err := usecase.enforceSecurity.CreateTestRun(organizationId); err != nil {

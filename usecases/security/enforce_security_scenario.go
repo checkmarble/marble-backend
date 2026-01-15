@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type EnforceSecurityScenario interface {
@@ -13,8 +14,8 @@ type EnforceSecurityScenario interface {
 	ReadScenarioPublication(scenarioPublication models.ScenarioPublication) error
 	PublishScenario(scenario models.Scenario) error
 	UpdateScenario(scenario models.Scenario) error
-	ListScenarios(organizationId string) error
-	CreateScenario(organizationId string) error
+	ListScenarios(organizationId uuid.UUID) error
+	CreateScenario(organizationId uuid.UUID) error
 	CreateRule(scenarioIteration models.ScenarioIteration) error
 }
 
@@ -58,7 +59,7 @@ func (e *EnforceSecurityScenarioImpl) PublishScenario(scenario models.Scenario) 
 	)
 }
 
-func (e *EnforceSecurityScenarioImpl) ListScenarios(organizationId string) error {
+func (e *EnforceSecurityScenarioImpl) ListScenarios(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.SCENARIO_READ),
 		e.ReadOrganization(organizationId),
@@ -72,7 +73,7 @@ func (e *EnforceSecurityScenarioImpl) UpdateScenario(scenario models.Scenario) e
 	)
 }
 
-func (e *EnforceSecurityScenarioImpl) CreateScenario(organizationId string) error {
+func (e *EnforceSecurityScenarioImpl) CreateScenario(organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.SCENARIO_CREATE),
 		e.ReadOrganization(organizationId),

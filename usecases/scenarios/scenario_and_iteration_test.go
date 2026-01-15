@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -51,7 +52,7 @@ func (s *ScenarioFetcherRepositoryMock) GetScreeningConfig(ctx context.Context,
 }
 
 func (s *ScenarioFetcherRepositoryMock) ListLiveIterationsAndNeighbors(ctx context.Context,
-	exec repositories.Executor, orgId string,
+	exec repositories.Executor, orgId uuid.UUID,
 ) ([]models.ScenarioIteration, error) {
 	args := s.Called(ctx, exec, orgId)
 
