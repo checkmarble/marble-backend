@@ -10,7 +10,6 @@ import (
 
 type DBScenarioPublication struct {
 	Id                  string    `db:"id"`
-	Rank                int32     `db:"rank"`
 	OrganizationId      uuid.UUID `db:"org_id"`
 	ScenarioId          string    `db:"scenario_id"`
 	ScenarioIterationId string    `db:"scenario_iteration_id"`
@@ -28,7 +27,6 @@ func AdaptScenarioPublication(dto DBScenarioPublication) (models.ScenarioPublica
 		OrganizationId:      dto.OrganizationId,
 		ScenarioId:          dto.ScenarioId,
 		ScenarioIterationId: dto.ScenarioIterationId,
-		Rank:                dto.Rank,
 		CreatedAt:           dto.CreatedAt,
 		PublicationAction:   models.PublicationActionFrom(dto.PublicationAction),
 	}

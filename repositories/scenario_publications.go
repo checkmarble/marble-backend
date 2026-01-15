@@ -50,7 +50,7 @@ func (repo *ScenarioPublicationRepositoryPostgresql) ListScenarioPublicationsOfO
 
 	query := selectScenarioPublications().
 		Where(squirrel.Eq{"org_id": organizationId}).
-		OrderBy("rank ASC")
+		OrderBy("created_at ASC")
 
 	if filters.ScenarioId != nil {
 		query = query.Where(squirrel.Eq{"scenario_id": *filters.ScenarioId})

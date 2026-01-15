@@ -9,7 +9,6 @@ import (
 
 type ScenarioPublication struct {
 	Id                  string
-	Rank                int32
 	OrganizationId      uuid.UUID
 	ScenarioId          string
 	ScenarioIterationId string

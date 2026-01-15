@@ -8,7 +8,6 @@ import (
 
 type ScenarioPublication struct {
 	Id                  string    `json:"id"`
-	Rank                int32     `json:"rank"`
 	ScenarioId          string    `json:"scenario_id"`
 	ScenarioIterationId string    `json:"scenario_iteration_id"`
 	PublicationAction   string    `json:"publication_action"`
@@ -18,7 +17,6 @@ type ScenarioPublication struct {
 func AdaptScenarioPublicationDto(sp models.ScenarioPublication) ScenarioPublication {
 	return ScenarioPublication{
 		Id:                  sp.Id,
-		Rank:                sp.Rank,
 		ScenarioId:          sp.ScenarioId,
 		ScenarioIterationId: sp.ScenarioIterationId,
 		PublicationAction:   sp.PublicationAction.String(),
