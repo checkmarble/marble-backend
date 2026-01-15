@@ -120,6 +120,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 		}
 
 		err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			OrgId:         continuousScreeningWithMatches.OrgId,
 			CaseId:        continuousScreeningWithMatches.CaseId.String(),
 			UserId:        (*string)(reviewerId),
 			EventType:     models.ScreeningMatchReviewed,
@@ -136,100 +137,42 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			return err
 		}
 
-		// If the match is confirmed, the screening should be set to "confirmed_hit"
 		if update.Status == models.ScreeningMatchStatusConfirmedHit {
-			_, err = uc.repository.UpdateContinuousScreeningStatus(
+			if err := uc.handleConfirmedHit(
 				ctx,
 				tx,
-				continuousScreeningWithMatches.Id,
-				models.ScreeningStatusConfirmedHit,
-			)
-			if err != nil {
-				return err
-			}
-			err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-				CaseId:        continuousScreeningWithMatches.CaseId.String(),
-				UserId:        (*string)(reviewerId),
-				EventType:     models.ScreeningReviewed,
-				ResourceId:    utils.Ptr(continuousScreeningMatch.Id.String()),
-				ResourceType:  utils.Ptr(models.ContinuousScreeningResourceType),
-				NewValue:      utils.Ptr(models.ScreeningMatchStatusConfirmedHit.String()),
-				PreviousValue: utils.Ptr(continuousScreeningMatch.Status.String()),
-			})
-			if err != nil {
+				continuousScreeningWithMatches,
+				pendingMatchesExcludingThis,
+				reviewerId,
+				reviewerUuid,
+			); err != nil {
 				return err
 			}
 		}
 
-		// else, if it is the last match pending and it is not a hit, the screening should be set to "no_hit"
-		if !continuousScreeningWithMatches.IsPartial && update.Status ==
-			models.ScreeningMatchStatusNoHit && len(pendingMatchesExcludingThis) == 0 {
-			// No huge fan of doing like this because we don't update the continuousScreeningWithMatches object
-			// Bug fine because we don't use it afterwards
-			// We should use the result to update the object
-			_, err = uc.repository.UpdateContinuousScreeningStatus(
+		// Handle no_hit: update screening status when all matches are reviewed
+		isLastPendingMatch := !continuousScreeningWithMatches.IsPartial && len(pendingMatchesExcludingThis) == 0
+		if update.Status == models.ScreeningMatchStatusNoHit && isLastPendingMatch {
+			if err := uc.handleNoHitLastMatch(
 				ctx,
 				tx,
-				continuousScreeningWithMatches.Id,
-				models.ScreeningStatusNoHit,
-			)
-			if err != nil {
-				return err
-			}
-
-			err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-				CaseId:        continuousScreeningWithMatches.CaseId.String(),
-				UserId:        (*string)(reviewerId),
-				EventType:     models.ScreeningReviewed,
-				ResourceId:    utils.Ptr(continuousScreeningWithMatches.Id.String()),
-				ResourceType:  utils.Ptr(models.ContinuousScreeningResourceType),
-				NewValue:      utils.Ptr(models.ScreeningMatchStatusNoHit.String()),
-				PreviousValue: utils.Ptr(continuousScreeningWithMatches.Status.String()),
-			})
-			if err != nil {
-				return err
-			}
-		}
-
-		if update.Status == models.ScreeningMatchStatusNoHit {
-			var counterpartyId string
-			var openSanctionEntityId string
-			if continuousScreeningWithMatches.TriggerType ==
-				models.ContinuousScreeningTriggerTypeDatasetUpdated {
-				// Match from OpenSanctions entity to Marble
-				if continuousScreeningWithMatches.OpenSanctionEntityId == nil {
-					// Should not happen because the OpenSanctionEntityId in continuous screening should be set in DatasetUpdated screening type
-					return errors.New("OpenSanctionEntityId is missing for DatasetUpdated screening type")
-				}
-
-				// The counterparty (Marble entity) is the one being screened and saved in the match as OpenSanctionEntityId
-				counterpartyId = continuousScreeningMatch.OpenSanctionEntityId
-				openSanctionEntityId = *continuousScreeningWithMatches.OpenSanctionEntityId
-			} else {
-				// Screening from Marble to OpenSanctions entity
-				if continuousScreeningWithMatches.ObjectType == nil ||
-					continuousScreeningWithMatches.ObjectId == nil {
-					// should not happen because ObjectType and ObjectId should be set in Marble initiated screening
-					return errors.New("object type or object id is missing for Marble initiated screening")
-				}
-
-				counterpartyId = marbleEntityIdBuilder(
-					*continuousScreeningWithMatches.ObjectType,
-					*continuousScreeningWithMatches.ObjectId,
-				)
-				openSanctionEntityId = continuousScreeningMatch.OpenSanctionEntityId
-			}
-
-			// Match from Marble to OpenSanctions entity
-			if err := uc.createWhitelist(
-				ctx,
-				tx,
-				continuousScreeningWithMatches.OrgId,
-				counterpartyId,
-				openSanctionEntityId,
+				continuousScreeningWithMatches,
 				reviewerId,
 			); err != nil {
-				return errors.Wrap(err, "could not whitelist match")
+				return err
+			}
+		}
+
+		// Handle whitelist creation for no_hit matches
+		if update.Status == models.ScreeningMatchStatusNoHit {
+			if err := uc.handleWhitelistCreation(
+				ctx,
+				tx,
+				continuousScreeningWithMatches,
+				continuousScreeningMatch,
+				reviewerId,
+			); err != nil {
+				return err
 			}
 		}
 
@@ -352,6 +295,7 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 				tx,
 				pure_utils.Map(matchesToUpdate, func(match models.ContinuousScreeningMatch) models.CreateCaseEventAttributes {
 					return models.CreateCaseEventAttributes{
+						OrgId:         continuousScreening.OrgId,
 						CaseId:        continuousScreening.CaseId.String(),
 						UserId:        (*string)(reviewerId),
 						EventType:     models.ScreeningMatchReviewed,
@@ -378,6 +322,7 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 			return err
 		}
 		err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			OrgId:         continuousScreening.OrgId,
 			CaseId:        continuousScreening.CaseId.String(),
 			UserId:        (*string)(reviewerId),
 			EventType:     models.ScreeningReviewed,
@@ -437,11 +382,11 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			return err
 		}
 
-		// TODO: Deal with indirect screening, ObjectType and ObjectId are nil
-		if continuousScreening.TriggerType == models.ContinuousScreeningTriggerTypeDatasetUpdated {
+		// TODO: Deal with dataset triggered screening, ObjectType and ObjectId are nil
+		if continuousScreening.IsDatasetTriggered() {
 			return errors.Wrap(
 				models.UnprocessableEntityError,
-				"continuous screening is a dataset updated screening, loading more results is not supported",
+				"continuous screening is a dataset triggered screening, loading more results is not supported",
 			)
 		}
 
@@ -563,4 +508,208 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 	}
 
 	return continuousScreening, nil
+}
+
+// handleConfirmedHit processes a confirmed hit match by updating screening status
+// and skipping all other pending matches
+func (uc *ContinuousScreeningUsecase) handleConfirmedHit(
+	ctx context.Context,
+	tx repositories.Transaction,
+	screening models.ContinuousScreeningWithMatches,
+	pendingMatches []models.ContinuousScreeningMatch,
+	reviewerId *models.UserId,
+	reviewerUuid *uuid.UUID,
+) error {
+	if screening.IsObjectTriggered() {
+		// Object-triggered: immediately mark screening as confirmed_hit
+		if err := uc.updateScreeningStatusWithEvent(
+			ctx,
+			tx,
+			screening,
+			models.ScreeningStatusConfirmedHit,
+			reviewerId,
+		); err != nil {
+			return err
+		}
+
+		// Skip all other pending matches
+		return uc.skipPendingMatches(ctx, tx, screening, pendingMatches, reviewerId, reviewerUuid)
+	}
+
+	// Dataset-triggered: only update screening when it's the last pending match
+	isLastPendingMatch := !screening.IsPartial && len(pendingMatches) == 0
+	if isLastPendingMatch {
+		return uc.updateScreeningStatusWithEvent(
+			ctx,
+			tx,
+			screening,
+			models.ScreeningStatusConfirmedHit,
+			reviewerId,
+		)
+	}
+
+	return nil
+}
+
+// handleNoHitLastMatch processes the last no_hit match by determining final screening status
+func (uc *ContinuousScreeningUsecase) handleNoHitLastMatch(
+	ctx context.Context,
+	tx repositories.Transaction,
+	screening models.ContinuousScreeningWithMatches,
+	reviewerId *models.UserId,
+) error {
+	if screening.IsObjectTriggered() {
+		// Object-triggered: mark as no_hit since all matches were reviewed with no confirmed hits
+		return uc.updateScreeningStatusWithEvent(
+			ctx,
+			tx,
+			screening,
+			models.ScreeningStatusNoHit,
+			reviewerId,
+		)
+	}
+
+	// Dataset-triggered: check if any match was confirmed as a hit
+	hasConfirmedHit := slices.ContainsFunc(
+		screening.Matches,
+		func(m models.ContinuousScreeningMatch) bool {
+			return m.Status == models.ScreeningMatchStatusConfirmedHit
+		},
+	)
+
+	finalStatus := models.ScreeningStatusNoHit
+	if hasConfirmedHit {
+		finalStatus = models.ScreeningStatusConfirmedHit
+	}
+
+	return uc.updateScreeningStatusWithEvent(
+		ctx,
+		tx,
+		screening,
+		finalStatus,
+		reviewerId,
+	)
+}
+
+// updateScreeningStatusWithEvent updates screening status and creates a case event
+func (uc *ContinuousScreeningUsecase) updateScreeningStatusWithEvent(
+	ctx context.Context,
+	tx repositories.Transaction,
+	screening models.ContinuousScreeningWithMatches,
+	newStatus models.ScreeningStatus,
+	reviewerId *models.UserId,
+) error {
+	_, err := uc.repository.UpdateContinuousScreeningStatus(
+		ctx,
+		tx,
+		screening.Id,
+		newStatus,
+	)
+	if err != nil {
+		return err
+	}
+
+	return uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		OrgId:         screening.OrgId,
+		CaseId:        screening.CaseId.String(),
+		UserId:        (*string)(reviewerId),
+		EventType:     models.ScreeningReviewed,
+		ResourceId:    utils.Ptr(screening.Id.String()),
+		ResourceType:  utils.Ptr(models.ContinuousScreeningResourceType),
+		NewValue:      utils.Ptr(newStatus.String()),
+		PreviousValue: utils.Ptr(screening.Status.String()),
+	})
+}
+
+// skipPendingMatches marks all pending matches as skipped and creates case events
+func (uc *ContinuousScreeningUsecase) skipPendingMatches(
+	ctx context.Context,
+	tx repositories.Transaction,
+	screening models.ContinuousScreeningWithMatches,
+	pendingMatches []models.ContinuousScreeningMatch,
+	reviewerId *models.UserId,
+	reviewerUuid *uuid.UUID,
+) error {
+	if len(pendingMatches) == 0 {
+		return nil
+	}
+
+	matchIds := pure_utils.Map(pendingMatches, func(m models.ContinuousScreeningMatch) uuid.UUID {
+		return m.Id
+	})
+
+	_, err := uc.repository.UpdateContinuousScreeningMatchStatusByBatch(
+		ctx,
+		tx,
+		matchIds,
+		models.ScreeningMatchStatusSkipped,
+		reviewerUuid,
+	)
+	if err != nil {
+		return err
+	}
+
+	return uc.repository.BatchCreateCaseEvents(
+		ctx,
+		tx,
+		pure_utils.Map(pendingMatches, func(match models.ContinuousScreeningMatch) models.CreateCaseEventAttributes {
+			return models.CreateCaseEventAttributes{
+				OrgId:         screening.OrgId,
+				CaseId:        screening.CaseId.String(),
+				UserId:        (*string)(reviewerId),
+				EventType:     models.ScreeningMatchReviewed,
+				ResourceId:    utils.Ptr(match.Id.String()),
+				ResourceType:  utils.Ptr(models.ContinuousScreeningMatchResourceType),
+				NewValue:      utils.Ptr(models.ScreeningMatchStatusSkipped.String()),
+				PreviousValue: utils.Ptr(match.Status.String()),
+			}
+		}),
+	)
+}
+
+// handleWhitelistCreation adds a match to the whitelist when marked as no_hit
+func (uc *ContinuousScreeningUsecase) handleWhitelistCreation(
+	ctx context.Context,
+	tx repositories.Transaction,
+	screening models.ContinuousScreeningWithMatches,
+	match models.ContinuousScreeningMatch,
+	reviewerId *models.UserId,
+) error {
+	var counterpartyId string
+	var openSanctionEntityId string
+
+	if screening.TriggerType == models.ContinuousScreeningTriggerTypeDatasetUpdated {
+		// Dataset-triggered: match from OpenSanctions entity to Marble
+		if screening.OpenSanctionEntityId == nil {
+			return errors.New("OpenSanctionEntityId is missing for DatasetUpdated screening type")
+		}
+
+		// The counterparty (Marble entity) is the one being screened and saved in the match as OpenSanctionEntityId
+		counterpartyId = match.OpenSanctionEntityId
+		openSanctionEntityId = *screening.OpenSanctionEntityId
+	} else {
+		// Object-triggered: screening from Marble to OpenSanctions entity
+		if screening.ObjectType == nil || screening.ObjectId == nil {
+			return errors.New("object type or object id is missing for Marble initiated screening")
+		}
+
+		counterpartyId = marbleEntityIdBuilder(
+			*screening.ObjectType,
+			*screening.ObjectId,
+		)
+		openSanctionEntityId = match.OpenSanctionEntityId
+	}
+
+	if err := uc.createWhitelist(
+		ctx,
+		tx,
+		screening.OrgId,
+		counterpartyId,
+		openSanctionEntityId,
+		reviewerId,
+	); err != nil {
+		return errors.Wrap(err, "could not whitelist match")
+	}
+
+	return nil
 }
