@@ -77,19 +77,13 @@ type ScreeningFreeformDto struct {
 }
 
 type ScreeningRefineDto struct {
-	// Deprecated, to remove after the frontend starts consuming the new field
-	SanctionCheckId string         `json:"sanction_check_id"`
-	ScreeningId     string         `json:"screening_id"`
-	Query           RefineQueryDto `json:"query"`
+	ScreeningId string         `json:"screening_id"`
+	Query       RefineQueryDto `json:"query"`
 }
 
 func AdaptScreeningRefineDto(dto ScreeningRefineDto) models.ScreeningRefineRequest {
-	screeningId := dto.ScreeningId
-	if dto.SanctionCheckId != "" {
-		screeningId = dto.SanctionCheckId
-	}
 	return models.ScreeningRefineRequest{
-		ScreeningId: screeningId,
+		ScreeningId: dto.ScreeningId,
 		Type:        dto.Query.Type(),
 		Query:       AdaptRefineQueryDto(dto.Query),
 	}

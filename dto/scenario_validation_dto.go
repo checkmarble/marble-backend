@@ -48,10 +48,8 @@ type ScenarioValidationDto struct {
 	Trigger triggerValidationDto `json:"trigger"`
 	Rules   rulesValidationDto   `json:"rules"`
 
-	// Deprecated, to remove after the frontend starts consuming the new field
-	ScreeningConfigs_deprec []screeningConfigValidationDto `json:"sanction_check_config"` //nolint:tagliatelle
-	ScreeningConfigs        []screeningConfigValidationDto `json:"screening_configs"`
-	Decision                decisionValidationDto          `json:"decision"`
+	ScreeningConfigs []screeningConfigValidationDto `json:"screening_configs"`
+	Decision         decisionValidationDto          `json:"decision"`
 }
 
 func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationDto {
@@ -94,8 +92,7 @@ func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationD
 				}
 			}),
 		},
-		ScreeningConfigs_deprec: screeningConfigs,
-		ScreeningConfigs:        screeningConfigs,
+		ScreeningConfigs: screeningConfigs,
 		Decision: decisionValidationDto{
 			Errors: pure_utils.Map(s.Decision.Errors, AdaptScenarioValidationErrorDto),
 		},
