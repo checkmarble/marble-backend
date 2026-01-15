@@ -21,7 +21,7 @@ require (
 	github.com/cockroachdb/errors v1.12.0
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/duckdb/duckdb-go/v2 v2.5.4
-	github.com/exaring/otelpgx v0.9.3
+	github.com/exaring/otelpgx v0.9.4
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/getsentry/sentry-go v0.40.0
