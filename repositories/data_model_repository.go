@@ -593,7 +593,7 @@ func (repo MarbleDbRepository) ListPivots(
 	}
 
 	if useCache && repo.withCache {
-		if pivots, ok := dataModelPivotsCache.Get(organizationId.String() + *tableId); ok {
+		if pivots, ok := dataModelPivotsCache.Get(cacheKey); ok {
 			return pivots, nil
 		}
 	}
