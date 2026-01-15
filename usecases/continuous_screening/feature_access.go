@@ -9,7 +9,7 @@ import (
 )
 
 func (uc *ContinuousScreeningUsecase) CheckFeatureAccess(ctx context.Context, orgId uuid.UUID) error {
-	features, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId.String(), nil)
+	features, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not check feature access")
 	}

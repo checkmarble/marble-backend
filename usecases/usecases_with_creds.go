@@ -862,6 +862,19 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker() 
 	)
 }
 
+func (usecases *UsecasesWithCreds) NewContinuousScreeningScanDatasetUpdatesWorker() *continuous_screening.ScanDatasetUpdatesWorker {
+	return continuous_screening.NewScanDatasetUpdatesWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.OpenSanctionsRepository,
+		usecases.Repositories.BlobRepository,
+		usecases.Repositories.TaskQueueRepository,
+		usecases.NewFeatureAccessReader(),
+		usecases.continuousScreeningBucketUrl,
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewAuditUsecase() AuditUsecase {
 	return NewAuditUsecase(
 		usecases.NewEnforceSecurityAudit(),

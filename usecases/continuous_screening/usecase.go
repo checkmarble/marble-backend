@@ -171,7 +171,11 @@ type inboxEditor interface {
 }
 
 type featureAccessReader interface {
-	GetOrganizationFeatureAccess(ctx context.Context, organizationId string, userId *models.UserId) (models.OrganizationFeatureAccess, error)
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		userId *models.UserId,
+	) (models.OrganizationFeatureAccess, error)
 }
 
 type caseEditor interface {

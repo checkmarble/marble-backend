@@ -145,12 +145,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -256,12 +256,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -348,12 +348,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -406,12 +406,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup expectations - QueryIngestedObject returns empty list
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -472,12 +472,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup expectations - IngestObject returns 0 (no objects ingested)
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -552,12 +552,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -659,12 +659,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -704,12 +704,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -775,12 +775,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Mock screening provider to return matches (which should result in "in review" status)
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -913,12 +913,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Mock screening provider to return matches
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -1490,12 +1490,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -1569,7 +1569,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningO
 
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
@@ -1634,7 +1634,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningO
 
 	// Execute
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil).Maybe()
 	uc := suite.makeUsecase()
@@ -1656,7 +1656,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningO
 
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
@@ -1728,12 +1728,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -1828,12 +1828,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId.String())
+	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
 	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
 	suite.enforceSecurity.On("UserId").Return((*string)(nil))
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
@@ -1877,7 +1877,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningObject_WithOtherConfigs_ShouldSkipDeleteTrack() {
 	// Setup expectations
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId.String(), (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
