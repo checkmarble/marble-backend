@@ -18,6 +18,7 @@ import (
 type DoScreeningWorkerTestSuite struct {
 	suite.Suite
 	repository         *mocks.ContinuousScreeningRepository
+	taskQueueRepo      *mocks.TaskQueueRepository
 	clientDbRepository *mocks.ContinuousScreeningClientDbRepository
 	ingestedDataReader *mocks.ContinuousScreeningIngestedDataReader
 	usecase            *mocks.ContinuousScreeningUsecase
@@ -35,6 +36,7 @@ type DoScreeningWorkerTestSuite struct {
 
 func (suite *DoScreeningWorkerTestSuite) SetupTest() {
 	suite.repository = new(mocks.ContinuousScreeningRepository)
+	suite.taskQueueRepo = new(mocks.TaskQueueRepository)
 	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.ingestedDataReader = new(mocks.ContinuousScreeningIngestedDataReader)
 	suite.usecase = new(mocks.ContinuousScreeningUsecase)
@@ -56,6 +58,7 @@ func (suite *DoScreeningWorkerTestSuite) makeWorker() *DoScreeningWorker {
 		suite.executorFactory,
 		suite.transactionFactory,
 		suite.repository,
+		suite.taskQueueRepo,
 		suite.clientDbRepository,
 		suite.ingestedDataReader,
 		suite.usecase,
@@ -65,6 +68,7 @@ func (suite *DoScreeningWorkerTestSuite) makeWorker() *DoScreeningWorker {
 func (suite *DoScreeningWorkerTestSuite) AssertExpectations() {
 	t := suite.T()
 	suite.repository.AssertExpectations(t)
+	suite.taskQueueRepo.AssertExpectations(t)
 	suite.clientDbRepository.AssertExpectations(t)
 	suite.ingestedDataReader.AssertExpectations(t)
 	suite.usecase.AssertExpectations(t)
@@ -212,6 +216,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
 			return input.Operation == models.DeltaTrackOperationUpdate
 		})).Return(nil)
+	suite.taskQueueRepo.On("EnqueueContinuousScreeningMatchEnrichmentTask",
+		mock.Anything, mock.Anything, suite.orgId, mock.Anything).Return(nil)
 
 	// Execute
 	worker := suite.makeWorker()
@@ -366,6 +372,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
 			return input.Operation == models.DeltaTrackOperationUpdate
 		})).Return(nil)
+	suite.taskQueueRepo.On("EnqueueContinuousScreeningMatchEnrichmentTask",
+		mock.Anything, mock.Anything, suite.orgId, mock.Anything).Return(nil)
 
 	// Execute
 	worker := suite.makeWorker()

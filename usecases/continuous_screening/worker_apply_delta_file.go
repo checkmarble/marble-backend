@@ -85,6 +85,15 @@ type applyDeltaFileWorkerRepository interface {
 	) (models.ContinuousScreeningWithMatches, error)
 }
 
+type applyDeltaFileWorkerTaskQueueRepository interface {
+	EnqueueContinuousScreeningMatchEnrichmentTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId uuid.UUID,
+		continuousScreeningId uuid.UUID,
+	) error
+}
+
 type applyDeltaFileWorkerScreeningProvider interface {
 	Search(
 		ctx context.Context,
@@ -109,6 +118,7 @@ type ApplyDeltaFileWorker struct {
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 	repository         applyDeltaFileWorkerRepository
+	taskQueueRepo      applyDeltaFileWorkerTaskQueueRepository
 	blobRepository     repositories.BlobRepository
 	screeningProvider  applyDeltaFileWorkerScreeningProvider
 	usecase            applyDeltaFileWorkerUsecase
@@ -119,6 +129,7 @@ func NewApplyDeltaFileWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
 	repository applyDeltaFileWorkerRepository,
+	taskQueueRepo applyDeltaFileWorkerTaskQueueRepository,
 	blobRepository repositories.BlobRepository,
 	screeningProvider applyDeltaFileWorkerScreeningProvider,
 	bucketUrl string,
@@ -128,6 +139,7 @@ func NewApplyDeltaFileWorker(
 		executorFactory:    executorFactory,
 		transactionFactory: transactionFactory,
 		repository:         repository,
+		taskQueueRepo:      taskQueueRepo,
 		blobRepository:     blobRepository,
 		screeningProvider:  screeningProvider,
 		bucketUrl:          bucketUrl,
@@ -308,6 +320,17 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			if err != nil {
 				return err
 			}
+
+			// Enqueue enrichment task for entity payload and matches
+			if err := w.taskQueueRepo.EnqueueContinuousScreeningMatchEnrichmentTask(
+				ctx,
+				tx,
+				updateJob.Config.OrgId,
+				continuousScreeningWithMatches.Id,
+			); err != nil {
+				return err
+			}
+
 			return nil
 		})
 		if err != nil {

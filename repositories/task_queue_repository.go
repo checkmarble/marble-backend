@@ -101,6 +101,12 @@ type TaskQueueRepository interface {
 		organizationId uuid.UUID,
 		scheduledExecutionId string,
 	) error
+	EnqueueContinuousScreeningMatchEnrichmentTask(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		continuousScreeningId uuid.UUID,
+	) error
 }
 
 type riverRepository struct {
@@ -454,5 +460,32 @@ func (r riverRepository) EnqueueScheduledExecutionTask(
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued scheduled execution task",
 		"scheduled_execution_id", scheduledExecutionId, "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueContinuousScreeningMatchEnrichmentTask(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	continuousScreeningId uuid.UUID,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.ContinuousScreeningMatchEnrichmentArgs{
+			OrgId:                 organizationId,
+			ContinuousScreeningId: continuousScreeningId,
+		},
+		&river.InsertOpts{
+			Queue: organizationId.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued continuous screening match enrichment task", "job_id", res.Job.ID)
+
 	return nil
 }

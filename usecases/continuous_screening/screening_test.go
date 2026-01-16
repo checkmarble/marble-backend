@@ -17,6 +17,7 @@ type ScreeningTestSuite struct {
 	suite.Suite
 	enforceSecurity              *mocks.EnforceSecurity
 	repository                   *mocks.ContinuousScreeningRepository
+	taskQueueRepository          *mocks.TaskQueueRepository
 	clientDbRepository           *mocks.ContinuousScreeningClientDbRepository
 	organizationSchemaRepository *mocks.OrganizationSchemaRepository
 	ingestedDataReader           *mocks.ContinuousScreeningIngestedDataReader
@@ -37,6 +38,7 @@ type ScreeningTestSuite struct {
 func (suite *ScreeningTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.repository = new(mocks.ContinuousScreeningRepository)
+	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
 	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.organizationSchemaRepository = new(mocks.OrganizationSchemaRepository)
 	suite.ingestedDataReader = new(mocks.ContinuousScreeningIngestedDataReader)
@@ -63,6 +65,7 @@ func (suite *ScreeningTestSuite) makeUsecase() *ContinuousScreeningUsecase {
 		enforceSecurityCase:          suite.enforceSecurity,
 		enforceSecurityScreening:     suite.enforceSecurity,
 		repository:                   suite.repository,
+		taskQueueRepository:          suite.taskQueueRepository,
 		clientDbRepository:           suite.clientDbRepository,
 		organizationSchemaRepository: suite.organizationSchemaRepository,
 		ingestedDataReader:           suite.ingestedDataReader,
@@ -1091,6 +1094,10 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches() {
 				input.NumberOfMatches != nil && *input.NumberOfMatches == 7
 		})).Return(models.ContinuousScreening{}, nil)
 
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningMatchEnrichmentTask",
+		mock.Anything, mock.Anything, suite.orgId, suite.screeningId).
+		Return(nil)
+
 	// Execute
 	uc := suite.makeUsecase()
 	result, err := uc.LoadMoreContinuousScreeningMatches(suite.ctx, suite.screeningId)
@@ -1269,6 +1276,10 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NoNewMat
 			return input.IsPartial != nil && *input.IsPartial == false &&
 				input.NumberOfMatches != nil && *input.NumberOfMatches == 3 // No change in count
 		})).Return(models.ContinuousScreening{}, nil)
+
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningMatchEnrichmentTask",
+		mock.Anything, mock.Anything, suite.orgId, suite.screeningId).
+		Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
