@@ -166,12 +166,13 @@ func TestNewlineCountingWriter_MultipleWrites(t *testing.T) {
 
 type ScanDatasetUpdatesWorkerTestSuite struct {
 	suite.Suite
-	repository         *mocks.ContinuousScreeningRepository
-	screeningProvider  *mocks.OpenSanctionsRepository
-	blobRepo           *mocks.MockBlobRepository
-	taskEnqueuer       *mocks.TaskQueueRepository
-	executorFactory    executor_factory.ExecutorFactoryStub
-	transactionFactory executor_factory.TransactionFactoryStub
+	repository          *mocks.ContinuousScreeningRepository
+	screeningProvider   *mocks.OpenSanctionsRepository
+	blobRepo            *mocks.MockBlobRepository
+	taskEnqueuer        *mocks.TaskQueueRepository
+	featureAccessReader *mocks.FeatureAccessReader
+	executorFactory     executor_factory.ExecutorFactoryStub
+	transactionFactory  executor_factory.TransactionFactoryStub
 
 	ctx context.Context
 }
@@ -181,6 +182,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) SetupTest() {
 	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.blobRepo = new(mocks.MockBlobRepository)
 	suite.taskEnqueuer = new(mocks.TaskQueueRepository)
+	suite.featureAccessReader = new(mocks.FeatureAccessReader)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
@@ -196,6 +198,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) makeWorker() *ScanDatasetUpdates
 		suite.screeningProvider,
 		suite.blobRepo,
 		suite.taskEnqueuer,
+		suite.featureAccessReader,
 		"test-bucket",
 	)
 }
@@ -206,6 +209,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) AssertExpectations() {
 	suite.screeningProvider.AssertExpectations(t)
 	suite.blobRepo.AssertExpectations(t)
 	suite.taskEnqueuer.AssertExpectations(t)
+	suite.featureAccessReader.AssertExpectations(t)
 }
 
 func TestScanDatasetUpdatesWorker(t *testing.T) {
@@ -438,6 +442,11 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 	job := &river.Job[models.ContinuousScreeningScanDatasetUpdatesArgs]{}
 
 	// Setup mocks
+	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, mock.Anything, mock.Anything).Return(
+		models.OrganizationFeatureAccess{
+			ContinuousScreening: models.Allowed,
+		}, nil,
+	)
 	suite.screeningProvider.On("GetRawCatalog", suite.ctx).Return(catalog, nil)
 
 	// Dataset has older version in DB
@@ -515,6 +524,131 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NoActiveConfigs_Returns
 	// Setup mocks - only ListContinuousScreeningConfigs should be called
 	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return(
 		[]models.ContinuousScreeningConfig{}, nil)
+
+	// Execute
+	worker := suite.makeWorker()
+	err := worker.Work(suite.ctx, job)
+
+	// Assert
+	suite.NoError(err)
+	suite.AssertExpectations()
+}
+
+func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_SkipsEnqueueing() {
+	datasetName := "test-dataset"
+	oldVersion := "2024-01-01"
+	newVersion := "2024-01-02"
+	deltaUrl := "https://example.com/delta"
+
+	catalog := models.OpenSanctionsRawCatalog{
+		Current:  []string{datasetName},
+		Outdated: []string{},
+		Datasets: map[string]models.OpenSanctionsRawDataset{
+			datasetName: {
+				Name:     datasetName,
+				Version:  newVersion,
+				DeltaUrl: &deltaUrl,
+			},
+		},
+	}
+
+	deltaList := `{
+		"versions": {
+			"2024-01-02": "https://example.com/delta/2024-01-02.ndjson"
+		}
+	}`
+
+	config1Id := uuid.New()
+	config2Id := uuid.New()
+	org1Id := uuid.New()
+	org2Id := uuid.New() // This org does NOT have the feature
+	configs := []models.ContinuousScreeningConfig{
+		{Id: config1Id, OrgId: org1Id, Enabled: true},
+		{Id: config2Id, OrgId: org2Id, Enabled: true},
+	}
+
+	// Expected dataset update
+	blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, newVersion)
+	expectedDatasetUpdate := models.ContinuousScreeningDatasetUpdate{
+		Id:            uuid.New(),
+		DatasetName:   datasetName,
+		Version:       newVersion,
+		DeltaFilePath: blobKey,
+		TotalItems:    1,
+	}
+
+	// Expected update job - only for org1 (org2 is skipped due to missing feature)
+	expectedUpdateJob := models.ContinuousScreeningUpdateJob{
+		Id:              uuid.New(),
+		DatasetUpdateId: expectedDatasetUpdate.Id,
+		ConfigId:        config1Id,
+		OrgId:           org1Id,
+	}
+
+	// Job args
+	job := &river.Job[models.ContinuousScreeningScanDatasetUpdatesArgs]{}
+
+	// Setup mocks
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx).Return(catalog, nil)
+
+	// Dataset has older version in DB
+	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, datasetName).Return(
+		models.ContinuousScreeningDatasetUpdate{Version: oldVersion}, nil)
+
+	// Mock HTTP client for delta list and delta files
+	defer gock.Off()
+	gock.New("https://example.com").
+		Get("/delta").
+		Reply(200).
+		BodyString(deltaList)
+
+	// Mock delta file downloads
+	deltaFileContent := "line1\n"
+	gock.New("https://example.com").
+		Get("/delta/" + newVersion + ".ndjson").
+		Reply(200).
+		BodyString(deltaFileContent)
+
+	// Mock blob storage
+	suite.blobRepo.On("OpenStream", mock.Anything, "test-bucket", blobKey, blobKey).Return(&mockBlobWriter{}, nil)
+
+	// Mock database operations in transaction
+	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return(configs, nil)
+
+	// Mock dataset update creation
+	suite.repository.On("CreateContinuousScreeningDatasetUpdate", mock.Anything, mock.Anything,
+		models.CreateContinuousScreeningDatasetUpdate{
+			DatasetName:   datasetName,
+			Version:       newVersion,
+			DeltaFilePath: blobKey,
+			TotalItems:    1,
+		}).Return(expectedDatasetUpdate, nil)
+
+	// Mock feature access check: org1 has feature, org2 doesn't
+	// org1 - feature allowed
+	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, org1Id, mock.Anything).Return(
+		models.OrganizationFeatureAccess{
+			ContinuousScreening: models.Allowed,
+		}, nil,
+	)
+	// org2 - feature not allowed (restricted)
+	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, org2Id, mock.Anything).Return(
+		models.OrganizationFeatureAccess{
+			ContinuousScreening: models.Restricted,
+		}, nil,
+	)
+
+	// Mock update job creation - only for org1 (org2 is skipped)
+	suite.repository.On("CreateContinuousScreeningUpdateJob", mock.Anything, mock.Anything,
+		models.CreateContinuousScreeningUpdateJob{
+			DatasetUpdateId: expectedDatasetUpdate.Id,
+			ConfigId:        config1Id,
+			OrgId:           org1Id,
+		}).Return(expectedUpdateJob, nil)
+
+	// Mock task enqueuing - only for org1 (org2 is skipped)
+	suite.taskEnqueuer.On("EnqueueContinuousScreeningApplyDeltaFileTask",
+		mock.Anything, mock.Anything, org1Id, expectedUpdateJob.Id).Return(nil)
 
 	// Execute
 	worker := suite.makeWorker()

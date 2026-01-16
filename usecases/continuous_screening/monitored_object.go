@@ -32,6 +32,10 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 ) (models.ContinuousScreeningWithMatches, error) {
 	exec := uc.executorFactory.NewExecutor()
 
+	if err := uc.CheckFeatureAccess(ctx, uc.enforceSecurity.OrgId()); err != nil {
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
 	var userId *uuid.UUID
 	if uc.enforceSecurity.UserId() != nil {
 		parsed, err := uuid.Parse(*uc.enforceSecurity.UserId())
@@ -380,6 +384,10 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningsForOrg(
 	orgId uuid.UUID,
 	paginationAndSorting models.PaginationAndSorting,
 ) ([]models.ContinuousScreeningWithMatches, error) {
+	if err := uc.CheckFeatureAccess(ctx, orgId); err != nil {
+		return nil, err
+	}
+
 	exec := uc.executorFactory.NewExecutor()
 	monitorings, err := uc.repository.ListContinuousScreeningsForOrg(ctx, exec, orgId, paginationAndSorting)
 	if err != nil {
@@ -512,6 +520,10 @@ func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
 	ctx context.Context,
 	input models.DeleteContinuousScreeningObject,
 ) error {
+	if err := uc.CheckFeatureAccess(ctx, uc.enforceSecurity.OrgId()); err != nil {
+		return err
+	}
+
 	exec := uc.executorFactory.NewExecutor()
 
 	var userId *uuid.UUID
@@ -609,6 +621,9 @@ func (uc *ContinuousScreeningUsecase) ListMonitoredObjects(
 	pagination models.PaginationAndSorting,
 ) ([]models.ContinuousScreeningMonitoredObject, error) {
 	orgId := uc.enforceSecurity.OrgId()
+	if err := uc.CheckFeatureAccess(ctx, orgId); err != nil {
+		return nil, err
+	}
 
 	// Since we fetch data from the client DB, we don't need to test the permission on
 	// all objects fetched from the client DB.

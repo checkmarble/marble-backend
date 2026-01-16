@@ -835,6 +835,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		usecases.NewCaseUseCase(),
 		utils.Ptr(usecases.NewInboxReader()),
 		utils.Ptr(usecases.NewInboxUsecase()),
+		usecases.NewFeatureAccessReader(),
 	)
 }
 
@@ -858,6 +859,19 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker() 
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.continuousScreeningBucketUrl,
 		usecases.NewContinuousScreeningUsecase(),
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewContinuousScreeningScanDatasetUpdatesWorker() *continuous_screening.ScanDatasetUpdatesWorker {
+	return continuous_screening.NewScanDatasetUpdatesWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.OpenSanctionsRepository,
+		usecases.Repositories.BlobRepository,
+		usecases.Repositories.TaskQueueRepository,
+		usecases.NewFeatureAccessReader(),
+		usecases.continuousScreeningBucketUrl,
 	)
 }
 
