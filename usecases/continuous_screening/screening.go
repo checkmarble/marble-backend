@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"slices"
-	"time"
 
-	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -771,54 +769,6 @@ func (uc *ContinuousScreeningUsecase) loadMoreDatasetUpdate(
 			"failed to unmarshal OpenSanction entity payload")
 	}
 
-	// Fetch whitelist entries for the entity and all its referent (previous) IDs
-	whitelists, err := uc.repository.SearchScreeningMatchWhitelistByIds(
-		ctx,
-		exec,
-		continuousScreening.OrgId,
-		nil,
-		append(entity.Referents, entity.Id),
-	)
-	if err != nil {
-		return models.ScreeningWithMatches{}, err
-	}
-	whitelistedEntityIds := make([]string, len(whitelists))
-	for i, whitelist := range whitelists {
-		whitelistedEntityIds[i] = whitelist.CounterpartyId
-	}
-
-	// Create the OpenSanction query with max candidates
-	query := models.OpenSanctionsQuery{
-		OrgConfig: models.OrganizationOpenSanctionsConfig{
-			MatchThreshold: config.MatchThreshold,
-			MatchLimit:     config.MatchLimit,
-		},
-		Queries: []models.OpenSanctionsCheckQuery{
-			{
-				Type:    entity.Schema,
-				Filters: entity.Properties,
-			},
-		},
-		WhitelistedEntityIds: whitelistedEntityIds,
-		Scope:                orgCustomDatasetName(continuousScreening.OrgId),
-	}
-
-	// Perform the screening
-	var screeningResponse models.ScreeningRawSearchResponseWithMatches
-	err = retry.Do(
-		func() error {
-			screeningResponse, err = uc.screeningProvider.Search(ctx, query)
-			return err
-		},
-		retry.Attempts(3),
-		retry.LastErrorOnly(true),
-		retry.Delay(100*time.Millisecond),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(ctx),
-	)
-	if err != nil {
-		return models.ScreeningWithMatches{}, err
-	}
-
-	return screeningResponse.AdaptScreeningFromSearchResponse(query), nil
+	// Perform the screening using the dedicated method for entity screening
+	return uc.DoScreeningForEntity(ctx, exec, entity, config, continuousScreening.OrgId)
 }

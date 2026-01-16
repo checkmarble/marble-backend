@@ -447,6 +447,33 @@ func (uc *ContinuousScreeningUsecase) GetIngestedObject(ctx context.Context,
 	return ingestedObject, ingestedObjectInternalId, nil
 }
 
+// executeScreeningWithRetry performs the screening query with retry logic
+func (uc *ContinuousScreeningUsecase) executeScreeningWithRetry(
+	ctx context.Context,
+	query models.OpenSanctionsQuery,
+) (models.ScreeningWithMatches, error) {
+	var screeningResponse models.ScreeningRawSearchResponseWithMatches
+	var err error
+	err = retry.Do(
+		func() error {
+			screeningResponse, err = uc.screeningProvider.Search(ctx, query)
+			return err
+		},
+		retry.Attempts(3),
+		retry.LastErrorOnly(true),
+		retry.Delay(100*time.Millisecond),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(ctx),
+	)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	return screeningResponse.AdaptScreeningFromSearchResponse(query), nil
+}
+
+// DoScreening performs screening for Marble objects against OpenSanction entities (Marble → OpenSanction direction)
+// Used for object-triggered screenings (object added/updated)
 func (uc *ContinuousScreeningUsecase) DoScreening(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -475,23 +502,52 @@ func (uc *ContinuousScreeningUsecase) DoScreening(
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
-	var screeningResponse models.ScreeningRawSearchResponseWithMatches
-	err = retry.Do(
-		func() error {
-			screeningResponse, err = uc.screeningProvider.Search(ctx, query)
-			return err
-		},
-		retry.Attempts(3),
-		retry.LastErrorOnly(true),
-		retry.Delay(100*time.Millisecond),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(ctx),
+
+	return uc.executeScreeningWithRetry(ctx, query)
+}
+
+// DoScreeningForEntity performs screening for OpenSanction entities against Marble data (OpenSanction → Marble direction)
+// Used for dataset-triggered screenings (OpenSanction entity added/modified)
+func (uc *ContinuousScreeningUsecase) DoScreeningForEntity(
+	ctx context.Context,
+	exec repositories.Executor,
+	entity models.OpenSanctionsDeltaFileEntity,
+	config models.ContinuousScreeningConfig,
+	orgId uuid.UUID,
+) (models.ScreeningWithMatches, error) {
+	// Fetch whitelist entries for the entity and all its referent (previous) IDs
+	whitelists, err := uc.repository.SearchScreeningMatchWhitelistByIds(
+		ctx,
+		exec,
+		orgId,
+		nil,
+		append(entity.Referents, entity.Id),
 	)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
+	whitelistedEntityIds := make([]string, len(whitelists))
+	for i, whitelist := range whitelists {
+		whitelistedEntityIds[i] = whitelist.CounterpartyId
+	}
 
-	return screeningResponse.AdaptScreeningFromSearchResponse(query), nil
+	// Create the OpenSanction query to search Marble's custom dataset
+	query := models.OpenSanctionsQuery{
+		OrgConfig: models.OrganizationOpenSanctionsConfig{
+			MatchThreshold: config.MatchThreshold,
+			MatchLimit:     config.MatchLimit,
+		},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type:    entity.Schema,
+				Filters: entity.Properties,
+			},
+		},
+		WhitelistedEntityIds: whitelistedEntityIds,
+		Scope:                orgCustomDatasetName(orgId),
+	}
+
+	return uc.executeScreeningWithRetry(ctx, query)
 }
 
 func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
