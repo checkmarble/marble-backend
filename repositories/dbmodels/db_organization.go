@@ -20,6 +20,7 @@ type DBOrganizationResult struct {
 	ScreeningThreshold      int         `db:"sanctions_threshold"`
 	ScreeningLimit          int         `db:"sanctions_limit"`
 	AutoAssignQueueLimit    int         `db:"auto_assign_queue_limit"`
+	SentryReplayEnabled     bool        `db:"sentry_replay_enabled"`
 }
 
 const TABLE_ORGANIZATION = "organizations"
@@ -39,7 +40,8 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 			MatchThreshold: db.ScreeningThreshold,
 			MatchLimit:     db.ScreeningLimit,
 		},
-		AutoAssignQueueLimit: db.AutoAssignQueueLimit,
+		AutoAssignQueueLimit:    db.AutoAssignQueueLimit,
+		SentryReplayEnabled:     db.SentryReplayEnabled,
 	}, nil
 }
 
