@@ -80,6 +80,18 @@ type ContinuousScreeningUsecaseRepository interface {
 		id uuid.UUID,
 		input models.UpdateContinuousScreeningInput,
 	) (models.ContinuousScreening, error)
+	UpdateContinuousScreeningEntityEnrichedPayload(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+		enrichedPayload []byte,
+	) error
+	UpdateContinuousScreeningMatchEnrichedPayload(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+		enrichedPayload []byte,
+	) error
 
 	// Continuous screening matches
 	GetContinuousScreeningMatch(
@@ -154,6 +166,15 @@ type ContinuousScreeningUsecaseRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		input models.CreateContinuousScreeningDeltaTrack,
+	) error
+}
+
+type continuousScreeningTaskQueueRepository interface {
+	EnqueueContinuousScreeningMatchEnrichmentTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId uuid.UUID,
+		continuousScreeningId uuid.UUID,
 	) error
 }
 
@@ -242,6 +263,7 @@ type ContinuousScreeningScreeningProvider interface {
 		query models.OpenSanctionsQuery,
 	) (models.ScreeningRawSearchResponseWithMatches, error)
 	GetAlgorithms(ctx context.Context) (models.OpenSanctionAlgorithms, error)
+	EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error)
 }
 
 type ContinuousScreeningUsecase struct {
@@ -252,6 +274,7 @@ type ContinuousScreeningUsecase struct {
 	enforceSecurityCase          security.EnforceSecurityCase
 	enforceSecurityScreening     security.EnforceSecurityScreening
 	repository                   ContinuousScreeningUsecaseRepository
+	taskQueueRepository          continuousScreeningTaskQueueRepository
 	clientDbRepository           ContinuousScreeningClientDbRepository
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
 	ingestedDataReader           ContinuousScreeningIngestedDataReader
@@ -269,6 +292,7 @@ func NewContinuousScreeningUsecase(
 	enforceSecurityCase security.EnforceSecurityCase,
 	enforceSecurityScreening security.EnforceSecurityScreening,
 	repository ContinuousScreeningUsecaseRepository,
+	taskQueueRepository continuousScreeningTaskQueueRepository,
 	clientDbRepository ContinuousScreeningClientDbRepository,
 	organizationSchemaRepository repositories.OrganizationSchemaRepository,
 	ingestedDataReader ContinuousScreeningIngestedDataReader,
@@ -285,6 +309,7 @@ func NewContinuousScreeningUsecase(
 		enforceSecurityCase:          enforceSecurityCase,
 		enforceSecurityScreening:     enforceSecurityScreening,
 		repository:                   repository,
+		taskQueueRepository:          taskQueueRepository,
 		clientDbRepository:           clientDbRepository,
 		organizationSchemaRepository: organizationSchemaRepository,
 		ingestedDataReader:           ingestedDataReader,

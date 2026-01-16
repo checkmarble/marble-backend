@@ -67,6 +67,7 @@ type ContinuousScreening struct {
 	ObjectInternalId                  *uuid.UUID
 	OpenSanctionEntityId              *string
 	OpenSanctionEntityPayload         json.RawMessage
+	OpenSanctionEntityEnriched        bool
 	Status                            ScreeningStatus
 	TriggerType                       ContinuousScreeningTriggerType
 	SearchInput                       json.RawMessage
@@ -110,6 +111,7 @@ type ContinuousScreeningMatch struct {
 	OpenSanctionEntityId  string
 	Status                ScreeningMatchStatus
 	Payload               json.RawMessage
+	Enriched              bool
 	ReviewedBy            *uuid.UUID
 	Metadata              *EntityNoteMetadata
 
