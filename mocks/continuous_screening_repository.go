@@ -259,6 +259,15 @@ func (m *ContinuousScreeningRepository) CreateCaseEvent(
 	return args.Error(0)
 }
 
+func (m *ContinuousScreeningRepository) BatchCreateCaseEvents(
+	ctx context.Context,
+	exec repositories.Executor,
+	createCaseEventAttributes []models.CreateCaseEventAttributes,
+) error {
+	args := m.Called(ctx, exec, createCaseEventAttributes)
+	return args.Error(0)
+}
+
 func (m *ContinuousScreeningRepository) AddScreeningMatchWhitelist(
 	ctx context.Context,
 	exec repositories.Executor,

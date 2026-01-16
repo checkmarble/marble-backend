@@ -77,6 +77,15 @@ type ContinuousScreening struct {
 	UpdatedAt time.Time
 }
 
+func (cs *ContinuousScreening) IsObjectTriggered() bool {
+	return cs.TriggerType == ContinuousScreeningTriggerTypeObjectAdded ||
+		cs.TriggerType == ContinuousScreeningTriggerTypeObjectUpdated
+}
+
+func (cs *ContinuousScreening) IsDatasetTriggered() bool {
+	return cs.TriggerType == ContinuousScreeningTriggerTypeDatasetUpdated
+}
+
 type UpdateContinuousScreeningInput struct {
 	Status          *ScreeningStatus
 	IsPartial       *bool

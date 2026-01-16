@@ -420,6 +420,7 @@ func (usecase *CaseUseCase) CreateCase(
 	err = usecase.updateContinuousScreeningsWithEvents(
 		ctx,
 		tx,
+		createCaseAttributes.OrganizationId,
 		newCaseId,
 		userId,
 		createCaseAttributes.ContinuousScreeningIds,
@@ -1308,6 +1309,7 @@ func (usecase *CaseUseCase) UpdateDecisionsWithEvents(
 func (usecase *CaseUseCase) updateContinuousScreeningsWithEvents(
 	ctx context.Context,
 	exec repositories.Executor,
+	orgId uuid.UUID,
 	caseId string,
 	userId string,
 	continuousScreeningIdsToAdd []uuid.UUID,
@@ -1331,6 +1333,7 @@ func (usecase *CaseUseCase) updateContinuousScreeningsWithEvents(
 		resourceType := models.ContinuousScreeningResourceType
 		for i, continuousScreeningId := range continuousScreeningIdsToAdd {
 			createCaseEventAttributes[i] = models.CreateCaseEventAttributes{
+				OrgId:        orgId,
 				CaseId:       caseId,
 				UserId:       &userId,
 				EventType:    models.ContinuousScreeningAdded,

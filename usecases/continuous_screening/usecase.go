@@ -115,6 +115,11 @@ type ContinuousScreeningUsecaseRepository interface {
 		exec repositories.Executor,
 		createCaseEventAttributes models.CreateCaseEventAttributes,
 	) error
+	BatchCreateCaseEvents(
+		ctx context.Context,
+		exec repositories.Executor,
+		createCaseEventAttributes []models.CreateCaseEventAttributes,
+	) error
 
 	// Whitelist:
 	AddScreeningMatchWhitelist(

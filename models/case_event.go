@@ -39,6 +39,7 @@ const (
 	SarStatusChanged         CaseEventType = "sar_status_changed"
 	SarFileUploaded          CaseEventType = "sar_file_uploaded"
 	ScreeningReviewed        CaseEventType = "sanction_check_reviewed"
+	ScreeningMatchReviewed   CaseEventType = "screening_match_reviewed"
 	DecisionAdded            CaseEventType = "decision_added"
 	DecisionReviewed         CaseEventType = "decision_reviewed"
 	CaseSnoozed              CaseEventType = "case_snoozed"
@@ -51,13 +52,14 @@ const (
 type CaseEventResourceType string
 
 const (
-	DecisionResourceType            CaseEventResourceType = "decision"
-	ContinuousScreeningResourceType CaseEventResourceType = "continuous_screening"
-	CaseTagResourceType             CaseEventResourceType = "case_tag"
-	CaseFileResourceType            CaseEventResourceType = "case_file"
-	RuleSnoozeResourceType          CaseEventResourceType = "rule_snooze"
-	SarResourceType                 CaseEventResourceType = "sar"
-	AnnotationResourceType          CaseEventResourceType = "annotation"
+	DecisionResourceType                 CaseEventResourceType = "decision"
+	ContinuousScreeningResourceType      CaseEventResourceType = "continuous_screening"
+	ContinuousScreeningMatchResourceType CaseEventResourceType = "continuous_screening_match"
+	CaseTagResourceType                  CaseEventResourceType = "case_tag"
+	CaseFileResourceType                 CaseEventResourceType = "case_file"
+	RuleSnoozeResourceType               CaseEventResourceType = "rule_snooze"
+	SarResourceType                      CaseEventResourceType = "sar"
+	AnnotationResourceType               CaseEventResourceType = "annotation"
 )
 
 type CreateCaseEventAttributes struct {
