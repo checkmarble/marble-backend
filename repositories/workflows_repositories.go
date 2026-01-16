@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (repo *MarbleDbRepository) ListAllOrgWorkflows(ctx context.Context, exec Executor, orgId string) ([]models.Workflow, error) {
+func (repo *MarbleDbRepository) ListAllOrgWorkflows(ctx context.Context, exec Executor, orgId uuid.UUID) ([]models.Workflow, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
