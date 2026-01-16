@@ -133,6 +133,12 @@ type ContinuousScreeningUsecaseRepository interface {
 	SearchScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
 		orgId uuid.UUID, counterpartyId, entityId *string,
 	) ([]models.ScreeningWhitelist, error)
+	SearchScreeningMatchWhitelistByIds(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		counterpartyIds, entityIds []string,
+	) ([]models.ScreeningWhitelist, error)
 
 	// Data model
 	UpdateDataModelTable(
