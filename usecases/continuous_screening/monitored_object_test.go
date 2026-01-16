@@ -1842,7 +1842,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 	ftmEntityCompany := models.FollowTheMoneyEntityCompany
 	ftmPropertyName := models.FollowTheMoneyPropertyName
 	ftmPropertyCountry := models.FollowTheMoneyPropertyCountry
-	ftmPropertyAddress := models.FollowTheMoneyPropertyAddress
+	ftmPropertyWebsite := models.FollowTheMoneyPropertyWebsite
 
 	tests := []struct {
 		name            string
@@ -1897,7 +1897,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "Company entity with address property",
+			name: "Company entity with website property",
 			table: models.Table{
 				Name:      "companies",
 				FTMEntity: &ftmEntityCompany,
@@ -1906,9 +1906,9 @@ func TestBuildDataModelMapping(t *testing.T) {
 						Name:        "company_name",
 						FTMProperty: &ftmPropertyName,
 					},
-					"company_address": {
-						Name:        "company_address",
-						FTMProperty: &ftmPropertyAddress,
+					"company_website": {
+						Name:        "company_website",
+						FTMProperty: &ftmPropertyWebsite,
 					},
 				},
 			},
@@ -1916,7 +1916,7 @@ func TestBuildDataModelMapping(t *testing.T) {
 				Entity: "Company",
 				Properties: map[string]string{
 					"company_name":    "name",
-					"company_address": "address",
+					"company_website": "website",
 				},
 			},
 			wantError: false,

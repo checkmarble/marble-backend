@@ -143,10 +143,10 @@ func TestNormalizeCountryFTMPropertyValue(t *testing.T) {
 			expected: "test@example.com",
 		},
 		{
-			name:     "Address property - unchanged",
-			property: models.FollowTheMoneyPropertyAddress,
-			value:    "123 Main St",
-			expected: "123 Main St",
+			name:     "Website property - unchanged",
+			property: models.FollowTheMoneyPropertyWebsite,
+			value:    "https://example.com",
+			expected: "https://example.com",
 		},
 	}
 
@@ -380,14 +380,6 @@ func TestNormalizeDateFTMPropertyValue(t *testing.T) {
 			property: models.FollowTheMoneyPropertyBirthDate,
 			value:    "not-a-date",
 			expected: "not-a-date",
-		},
-
-		// DeathDate property tests
-		{
-			name:     "DeathDate - ISO 8601 format",
-			property: models.FollowTheMoneyPropertyDeathDate,
-			value:    "2020-12-31",
-			expected: "2020-12-31",
 		},
 
 		// Non-date properties should pass through unchanged
