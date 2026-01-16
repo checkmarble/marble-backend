@@ -23,6 +23,7 @@ type ScenarioIterationDto struct {
 	Version    *int      `json:"version"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
+	Archived   bool      `json:"archived"`
 }
 
 func AdaptScenarioIterationMetadataDto(si models.ScenarioIterationMetadata) ScenarioIterationDto {
@@ -88,6 +89,7 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 			Version:    si.Version,
 			CreatedAt:  si.CreatedAt,
 			UpdatedAt:  si.UpdatedAt,
+			Archived:   si.Archived,
 		},
 		Body: body,
 	}, nil
@@ -157,8 +159,7 @@ func AdaptCreateScenarioIterationInput(input CreateScenarioIterationBody, organi
 
 	for i, rule := range input.Body.Rules {
 		var err error
-		createScenarioIterationInput.Body.Rules[i], err =
-			AdaptCreateRuleInput(rule, organizationId)
+		createScenarioIterationInput.Body.Rules[i], err = AdaptCreateRuleInput(rule, organizationId)
 		if err != nil {
 			return models.CreateScenarioIterationInput{}, err
 		}

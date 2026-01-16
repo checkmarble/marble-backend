@@ -1,0 +1,45 @@
+package models
+
+import "github.com/hashicorp/go-set/v2"
+
+type DataModelDeleteFieldReport struct {
+	Performed          bool
+	Conflicts          DataModelDeleteFieldConflicts
+	ArchivedIterations *set.Set[string]
+
+	References map[string]string
+}
+
+func NewDataModelDeleteFieldReport() DataModelDeleteFieldReport {
+	return DataModelDeleteFieldReport{
+		Conflicts: DataModelDeleteFieldConflicts{
+			EmptyScenarios:     set.New[string](0),
+			Links:              set.New[string](0),
+			Pivots:             set.New[string](0),
+			Workflows:          set.New[string](0),
+			Scenario:           set.New[string](0),
+			ScenarioIterations: make(map[string]*DataModelDeleteFieldConflictIteration),
+		},
+		ArchivedIterations: set.New[string](0),
+		References:         make(map[string]string),
+	}
+}
+
+type DataModelDeleteFieldConflicts struct {
+	EmptyScenarios      *set.Set[string]
+	ContinuousScreening bool
+	Links               *set.Set[string]
+	Pivots              *set.Set[string]
+	AnalyticsSettings   int
+	Scenario            *set.Set[string]
+	ScenarioIterations  map[string]*DataModelDeleteFieldConflictIteration
+	Workflows           *set.Set[string]
+	TestRuns            bool
+}
+
+type DataModelDeleteFieldConflictIteration struct {
+	Name             string
+	TriggerCondition bool
+	Rules            *set.Set[string]
+	Screening        *set.Set[string]
+}
