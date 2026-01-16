@@ -11,6 +11,7 @@ const (
 	FollowTheMoneyEntityCompany      FollowTheMoneyEntity = "Company"
 	FollowTheMoneyEntityOrganization FollowTheMoneyEntity = "Organization"
 	FollowTheMoneyEntityVessel       FollowTheMoneyEntity = "Vessel"
+	FollowTheMoneyEntityAirplane     FollowTheMoneyEntity = "Airplane"
 )
 
 func FollowTheMoneyEntityFrom(s string) FollowTheMoneyEntity {
@@ -23,6 +24,8 @@ func FollowTheMoneyEntityFrom(s string) FollowTheMoneyEntity {
 		return FollowTheMoneyEntityOrganization
 	case "Vessel":
 		return FollowTheMoneyEntityVessel
+	case "Airplane":
+		return FollowTheMoneyEntityAirplane
 	default:
 		return FollowTheMoneyEntityUnknown
 	}
@@ -47,17 +50,18 @@ const (
 	FollowTheMoneyPropertyNationality          FollowTheMoneyProperty = "nationality"
 	FollowTheMoneyPropertyBirthDate            FollowTheMoneyProperty = "birthDate"
 	FollowTheMoneyPropertyBirthCountry         FollowTheMoneyProperty = "birthCountry"
-	FollowTheMoneyPropertyDeathDate            FollowTheMoneyProperty = "deathDate"
 	FollowTheMoneyPropertyCitizenship          FollowTheMoneyProperty = "citizenship"
 	FollowTheMoneyPropertyPassportNumber       FollowTheMoneyProperty = "passportNumber"
 	FollowTheMoneyPropertySocialSecurityNumber FollowTheMoneyProperty = "socialSecurityNumber"
-	FollowTheMoneyPropertyAddress              FollowTheMoneyProperty = "address"
+	FollowTheMoneyPropertyIdNumber             FollowTheMoneyProperty = "idNumber"
 	FollowTheMoneyPropertyImoNumber            FollowTheMoneyProperty = "imoNumber"
 	FollowTheMoneyPropertyRegistrationNumber   FollowTheMoneyProperty = "registrationNumber"
 	FollowTheMoneyPropertyJurisdiction         FollowTheMoneyProperty = "jurisdiction"
 	FollowTheMoneyPropertyIsinCode             FollowTheMoneyProperty = "isinCode"
 	FollowTheMoneyPropertyWebsite              FollowTheMoneyProperty = "website"
 	FollowTheMoneyPropertyCountry              FollowTheMoneyProperty = "country"
+	FollowTheMoneyPropertyMainCountry          FollowTheMoneyProperty = "mainCountry"
+	FollowTheMoneyPropertyFlag                 FollowTheMoneyProperty = "flag"
 	FollowTheMoneyPropertyNotes                FollowTheMoneyProperty = "notes"
 )
 
@@ -79,16 +83,12 @@ func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
 		return FollowTheMoneyPropertyBirthDate
 	case "birthCountry":
 		return FollowTheMoneyPropertyBirthCountry
-	case "deathDate":
-		return FollowTheMoneyPropertyDeathDate
 	case "citizenship":
 		return FollowTheMoneyPropertyCitizenship
 	case "passportNumber":
 		return FollowTheMoneyPropertyPassportNumber
 	case "socialSecurityNumber":
 		return FollowTheMoneyPropertySocialSecurityNumber
-	case "address":
-		return FollowTheMoneyPropertyAddress
 	case "imoNumber":
 		return FollowTheMoneyPropertyImoNumber
 	case "registrationNumber":
@@ -101,8 +101,14 @@ func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
 		return FollowTheMoneyPropertyWebsite
 	case "country":
 		return FollowTheMoneyPropertyCountry
+	case "mainCountry":
+		return FollowTheMoneyPropertyMainCountry
+	case "idNumber":
+		return FollowTheMoneyPropertyIdNumber
 	case "notes":
 		return FollowTheMoneyPropertyNotes
+	case "flag":
+		return FollowTheMoneyPropertyFlag
 	default:
 		return FollowTheMoneyPropertyUnknown
 	}
@@ -122,28 +128,43 @@ var FollowTheMoneyEntityProperties = map[FollowTheMoneyEntity][]FollowTheMoneyPr
 		FollowTheMoneyPropertyNationality,
 		FollowTheMoneyPropertyBirthDate,
 		FollowTheMoneyPropertyBirthCountry,
-		FollowTheMoneyPropertyDeathDate,
 		FollowTheMoneyPropertyCitizenship,
 		FollowTheMoneyPropertyPassportNumber,
 		FollowTheMoneyPropertySocialSecurityNumber,
-		FollowTheMoneyPropertyAddress,
+		FollowTheMoneyPropertyIdNumber,
 		FollowTheMoneyPropertyCountry,
 	},
 	FollowTheMoneyEntityCompany: {
 		FollowTheMoneyPropertyName,
-		FollowTheMoneyPropertyJurisdiction,
 		FollowTheMoneyPropertyRegistrationNumber,
+		FollowTheMoneyPropertyJurisdiction,
+		FollowTheMoneyPropertyCountry,
 		FollowTheMoneyPropertyIsinCode,
 		FollowTheMoneyPropertyEmail,
 		FollowTheMoneyPropertyPhone,
 		FollowTheMoneyPropertyWebsite,
-		FollowTheMoneyPropertyAddress,
+		FollowTheMoneyPropertyMainCountry,
+	},
+	FollowTheMoneyEntityOrganization: {
+		FollowTheMoneyPropertyName,
+		FollowTheMoneyPropertyRegistrationNumber,
+		FollowTheMoneyPropertyJurisdiction,
+		FollowTheMoneyPropertyCountry,
+		FollowTheMoneyPropertyEmail,
+		FollowTheMoneyPropertyPhone,
+		FollowTheMoneyPropertyWebsite,
+		FollowTheMoneyPropertyMainCountry,
 	},
 	FollowTheMoneyEntityVessel: {
 		FollowTheMoneyPropertyName,
 		FollowTheMoneyPropertyImoNumber,
 		FollowTheMoneyPropertyRegistrationNumber,
-		FollowTheMoneyPropertyAddress,
-		FollowTheMoneyPropertyBirthCountry,
+		FollowTheMoneyPropertyCountry,
+		FollowTheMoneyPropertyFlag,
+	},
+	FollowTheMoneyEntityAirplane: {
+		FollowTheMoneyPropertyName,
+		FollowTheMoneyPropertyRegistrationNumber,
+		FollowTheMoneyPropertyCountry,
 	},
 }
