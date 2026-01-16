@@ -316,8 +316,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		lagoConfig = infra.InitializeLago()
 		if err := lagoConfig.Validate(); err != nil {
 			// Only report Lago configuration errors for production, not staging (tokyo)
-			projectId, _ := infra.GetProjectId()
-			if projectId != "tokyo-country-381508" {
+			projectId, getErr := infra.GetProjectId()
+			if getErr != nil || projectId != "tokyo-country-381508" {
 				utils.LogAndReportSentryError(ctx, err)
 			}
 		}
