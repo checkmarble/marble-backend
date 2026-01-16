@@ -2,8 +2,11 @@ package continuous_screening
 
 import (
 	"context"
+	"encoding/json"
 	"slices"
+	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -351,6 +354,110 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 	return continuousScreening, nil
 }
 
+// performObjectTriggeredScreening executes screening for object-triggered continuous screening
+func (uc *ContinuousScreeningUsecase) performObjectTriggeredScreening(
+	ctx context.Context,
+	tx repositories.Executor,
+	continuousScreening models.ContinuousScreeningWithMatches,
+	config models.ContinuousScreeningConfig,
+) (models.ScreeningWithMatches, error) {
+	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, continuousScreening.OrgId)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	// Have the data model table and mapping
+	table, mapping, err := uc.GetDataModelTableAndMapping(ctx, tx, config, *continuousScreening.ObjectType)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	// Fetch the ingested Data
+	ingestedObject, _, err := uc.GetIngestedObject(ctx, clientDbExec, table, *continuousScreening.ObjectId)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	// Do the screening
+	return uc.DoScreening(
+		ctx,
+		tx,
+		ingestedObject,
+		mapping,
+		config,
+		*continuousScreening.ObjectType,
+		*continuousScreening.ObjectId,
+	)
+}
+
+// performDatasetTriggeredScreening executes screening for dataset-triggered continuous screening
+func (uc *ContinuousScreeningUsecase) performDatasetTriggeredScreening(
+	ctx context.Context,
+	tx repositories.Executor,
+	continuousScreening models.ContinuousScreeningWithMatches,
+	config models.ContinuousScreeningConfig,
+) (models.ScreeningWithMatches, error) {
+	if continuousScreening.OpenSanctionEntityId == nil {
+		return models.ScreeningWithMatches{}, errors.New(
+			"OpenSanctionEntityId is missing for DatasetUpdated screening")
+	}
+
+	var openSanctionEntity models.OpenSanctionsDeltaFileEntity
+	if err := json.Unmarshal(continuousScreening.OpenSanctionEntityPayload, &openSanctionEntity); err != nil {
+		return models.ScreeningWithMatches{}, errors.Wrap(err,
+			"failed to unmarshal OpenSanctionEntityPayload")
+	}
+
+	// Fetch whitelist entries for the entity and all its referents
+	whitelists, err := uc.repository.SearchScreeningMatchWhitelistByIds(
+		ctx,
+		tx,
+		continuousScreening.OrgId,
+		nil,
+		append(openSanctionEntity.Referents, openSanctionEntity.Id),
+	)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+	whitelistedEntityIds := pure_utils.Map(whitelists, func(whitelist models.ScreeningWhitelist) string {
+		return whitelist.CounterpartyId
+	})
+
+	// Create the OpenSanctions query
+	query := models.OpenSanctionsQuery{
+		OrgConfig: models.OrganizationOpenSanctionsConfig{
+			MatchThreshold: config.MatchThreshold,
+			MatchLimit:     config.MatchLimit,
+		},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type:    openSanctionEntity.Schema,
+				Filters: openSanctionEntity.Properties,
+			},
+		},
+		WhitelistedEntityIds: whitelistedEntityIds,
+		Scope:                orgCustomDatasetName(continuousScreening.OrgId),
+	}
+
+	var screeningResponse models.ScreeningRawSearchResponseWithMatches
+	err = retry.Do(
+		func() error {
+			screeningResponse, err = uc.screeningProvider.Search(ctx, query)
+			return err
+		},
+		retry.Attempts(3),
+		retry.LastErrorOnly(true),
+		retry.Delay(100*time.Millisecond),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(ctx),
+	)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	return screeningResponse.AdaptScreeningFromSearchResponse(query), nil
+}
+
 // LoadMoreContinuousScreeningMatches fetches additional screening matches for a continuous screening that has partial results.
 //
 // 1. Validates that the continuous screening exists, is in "in_review" status and has partial results
@@ -384,19 +491,6 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			return err
 		}
 
-		// TODO: Deal with dataset triggered screening, ObjectType and ObjectId are nil
-		if continuousScreening.IsDatasetTriggered() {
-			return errors.Wrap(
-				models.UnprocessableEntityError,
-				"continuous screening is a dataset triggered screening, loading more results is not supported",
-			)
-		}
-
-		clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, continuousScreening.OrgId)
-		if err != nil {
-			return err
-		}
-
 		if err := uc.enforceSecurity.WriteContinuousScreeningHit(continuousScreening.OrgId); err != nil {
 			return err
 		}
@@ -422,33 +516,23 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			return err
 		}
 
-		// Have the data model table and mapping
-		table, mapping, err := uc.GetDataModelTableAndMapping(ctx, tx, config, *continuousScreening.ObjectType)
-		if err != nil {
-			return err
-		}
-
-		// Fetch the ingested Data
-		ingestedObject, _, err := uc.GetIngestedObject(ctx, clientDbExec, table, *continuousScreening.ObjectId)
-		if err != nil {
-			return err
-		}
-
 		// Override configuration max candidates to MAX_SCREENING_CANDIDATES
 		config.MatchLimit = MaxScreeningCandidates
 
-		// Do the screening
-		screeningWithMatches, err := uc.DoScreening(
-			ctx,
-			tx,
-			ingestedObject,
-			mapping,
-			config,
-			*continuousScreening.ObjectType,
-			*continuousScreening.ObjectId,
-		)
-		if err != nil {
-			return err
+		// Perform screening based on trigger type
+		var screeningWithMatches models.ScreeningWithMatches
+		if continuousScreening.IsObjectTriggered() {
+			screeningWithMatches, err = uc.performObjectTriggeredScreening(ctx, tx, continuousScreening, config)
+			if err != nil {
+				return err
+			}
+		} else if continuousScreening.IsDatasetTriggered() {
+			screeningWithMatches, err = uc.performDatasetTriggeredScreening(ctx, tx, continuousScreening, config)
+			if err != nil {
+				return err
+			}
+		} else {
+			return errors.New("unable to determine screening type for load more")
 		}
 
 		// Filter matches to keep only new matches compared to the existing ones

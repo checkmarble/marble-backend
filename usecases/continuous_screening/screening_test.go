@@ -1280,6 +1280,125 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NoNewMat
 	suite.AssertExpectations()
 }
 
+func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_DatasetTriggered() {
+	// Setup
+	configId := uuid.New()
+	stableId := uuid.New()
+	openSanctionEntityId := "opensanctions-entity-123"
+
+	openSanctionEntityPayload := []byte(`{
+		"id": "opensanctions-entity-123",
+		"schema": "Person",
+		"properties": {
+			"name": ["John Doe"],
+			"birthDate": ["1980-01-01"]
+		},
+		"referents": ["old-entity-id-1", "old-entity-id-2"],
+		"datasets": ["dataset1"]
+	}`)
+
+	screening := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:                                suite.screeningId,
+			OrgId:                             suite.orgId,
+			ContinuousScreeningConfigId:       configId,
+			ContinuousScreeningConfigStableId: stableId,
+			Status:                            models.ScreeningStatusInReview,
+			IsPartial:                         true,
+			NumberOfMatches:                   3,
+			TriggerType:                       models.ContinuousScreeningTriggerTypeDatasetUpdated,
+			OpenSanctionEntityId:              &openSanctionEntityId,
+			OpenSanctionEntityPayload:         openSanctionEntityPayload,
+		},
+		Matches: []models.ContinuousScreeningMatch{
+			{OpenSanctionEntityId: "existing_1"},
+			{OpenSanctionEntityId: "existing_2"},
+			{OpenSanctionEntityId: "existing_3"},
+		},
+	}
+
+	config := models.ContinuousScreeningConfig{
+		Id:             configId,
+		StableId:       stableId,
+		OrgId:          suite.orgId,
+		Name:           "Test Config",
+		Datasets:       []string{"dataset1"},
+		MatchThreshold: 80,
+		MatchLimit:     10,
+	}
+
+	newMatches := []models.ScreeningMatch{
+		{EntityId: "existing_1"}, // Should be deduplicated
+		{EntityId: "existing_2"}, // Should be deduplicated
+		{EntityId: "existing_3"}, // Should be deduplicated
+		{EntityId: "new_1"},
+		{EntityId: "new_2"},
+		{EntityId: "new_3"},
+		{EntityId: "new_4"},
+	}
+
+	searchResponse := models.ScreeningRawSearchResponseWithMatches{
+		Matches: newMatches,
+		Count:   7,
+		Partial: false,
+	}
+
+	// Mock expectations
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything, suite.screeningId).
+		Return(screening, nil)
+
+	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).
+		Return(nil)
+
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything, stableId).
+		Return(config, nil)
+
+	suite.repository.On("SearchScreeningMatchWhitelistByIds", mock.Anything, mock.Anything,
+		suite.orgId, nil, []string{"old-entity-id-1", "old-entity-id-2", "opensanctions-entity-123"}).
+		Return([]models.ScreeningWhitelist{}, nil)
+
+	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(q models.OpenSanctionsQuery) bool {
+		return q.OrgConfig.MatchLimit == 500 &&
+			len(q.Queries) == 1 &&
+			q.Queries[0].Type == "Person" &&
+			len(q.Queries[0].Filters["name"]) == 1 &&
+			q.Queries[0].Filters["name"][0] == "John Doe"
+	})).Return(searchResponse, nil)
+
+	insertedMatches := []models.ContinuousScreeningMatch{
+		{OpenSanctionEntityId: "new_1"},
+		{OpenSanctionEntityId: "new_2"},
+		{OpenSanctionEntityId: "new_3"},
+		{OpenSanctionEntityId: "new_4"},
+	}
+
+	suite.repository.On("InsertContinuousScreeningMatches", mock.Anything, mock.Anything,
+		suite.screeningId, mock.MatchedBy(func(matches []models.ContinuousScreeningMatch) bool {
+			return len(matches) == 4 &&
+				matches[0].OpenSanctionEntityId == "new_1" &&
+				matches[1].OpenSanctionEntityId == "new_2" &&
+				matches[2].OpenSanctionEntityId == "new_3" &&
+				matches[3].OpenSanctionEntityId == "new_4"
+		})).Return(insertedMatches, nil)
+
+	suite.repository.On("UpdateContinuousScreening", mock.Anything, mock.Anything,
+		suite.screeningId, mock.MatchedBy(func(input models.UpdateContinuousScreeningInput) bool {
+			return input.IsPartial != nil && *input.IsPartial == false &&
+				input.NumberOfMatches != nil && *input.NumberOfMatches == 7
+		})).Return(models.ContinuousScreening{}, nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	result, err := uc.LoadMoreContinuousScreeningMatches(suite.ctx, suite.screeningId)
+
+	// Assert
+	suite.NoError(err)
+	suite.Equal(7, result.NumberOfMatches)
+	suite.False(result.IsPartial)
+	suite.Len(result.Matches, 7) // 3 existing + 4 new
+	suite.AssertExpectations()
+}
+
 func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_DatasetUpdated_ConfirmedHit_NotLastMatch() {
 	// Setup
 	input := models.ScreeningMatchUpdate{
