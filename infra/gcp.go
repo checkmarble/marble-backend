@@ -20,7 +20,9 @@ const (
 // Store the project id which should not change during the lifetime of the application
 var projectIdCache = expirable.NewLRU[string, string](1, nil, 0)
 
-var MarbleSaasProjectIds = []string{"marble-prod-1", "tokyo-country-381508"}
+var MarbleProductionProjectIds = []string{"marble-prod-1"}
+var MarbleStagingProjectIds = []string{"tokyo-country-381508"}
+var MarbleSaasProjectIds = slices.Concat(MarbleProductionProjectIds, MarbleStagingProjectIds)
 
 func GetProjectId() (string, error) {
 	if projectId, exists := projectIdCache.Get(PROJECT_ID_KEY); exists {
@@ -53,6 +55,22 @@ func IsMarbleSaasProject() bool {
 		return false
 	}
 	return slices.Contains(MarbleSaasProjectIds, projectId)
+}
+
+func IsMarbleProductionProject() bool {
+	projectId, err := GetProjectId()
+	if err != nil {
+		return false
+	}
+	return slices.Contains(MarbleProductionProjectIds, projectId)
+}
+
+func IsMarbleStagingProject() bool {
+	projectId, err := GetProjectId()
+	if err != nil {
+		return false
+	}
+	return slices.Contains(MarbleStagingProjectIds, projectId)
 }
 
 func getProjectIdFromMetadataServer() (string, error) {
