@@ -49,6 +49,7 @@ type caseReviewWorkerRepository interface {
 		exec repositories.Executor,
 		organizationId uuid.UUID,
 	) (models.Organization, error)
+	UpdateCaseReviewLevel(ctx context.Context, exec repositories.Executor, caseId string, reviewLevel *string) error
 }
 
 type CaseReviewWorker struct {
@@ -190,6 +191,16 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		)
 	}
 	logger.DebugContext(ctx, "Finished creating case review file", "review_id", aiCaseReview.Id)
+
+	// Update case review level if available
+	if reviewV1, ok := cr.(agent_dto.CaseReviewV1); ok && reviewV1.ReviewLevel != nil {
+		err = w.repository.UpdateCaseReviewLevel(ctx, exec, job.Args.CaseId.String(), reviewV1.ReviewLevel)
+		if err != nil {
+			logger.WarnContext(ctx, "Failed to update case review level",
+				"error", err,
+				"review_level", *reviewV1.ReviewLevel)
+		}
+	}
 
 	return nil
 }
