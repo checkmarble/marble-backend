@@ -827,6 +827,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		usecases.NewEnforceCaseSecurity(),
 		usecases.NewEnforceScreeningSecurity(),
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
 		&usecases.Repositories.ClientDbRepository,
 		usecases.Repositories.OrganizationSchemaRepository,
 		usecases.Repositories.IngestedDataReadRepository,
@@ -843,6 +844,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningDoScreeningWorker() *co
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
 		&usecases.Repositories.ClientDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.NewContinuousScreeningUsecase(),
@@ -854,10 +856,20 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker() 
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
 		usecases.Repositories.BlobRepository,
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.continuousScreeningBucketUrl,
 		usecases.NewContinuousScreeningUsecase(),
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewContinuousScreeningMatchEnrichmentWorker() *continuous_screening.ContinuousScreeningMatchEnrichmentWorker {
+	return continuous_screening.NewContinuousScreeningMatchEnrichmentWorker(
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.OpenSanctionsRepository,
+		usecases.NewContinuousScreeningUsecase(),
+		usecases.Repositories.MarbleDbRepository,
 	)
 }
 

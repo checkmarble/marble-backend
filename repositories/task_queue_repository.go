@@ -89,6 +89,12 @@ type TaskQueueRepository interface {
 		orgId uuid.UUID,
 		updateId uuid.UUID,
 	) error
+	EnqueueContinuousScreeningMatchEnrichmentTask(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		continuousScreeningId uuid.UUID,
+	) error
 }
 
 type riverRepository struct {
@@ -401,5 +407,32 @@ func (r riverRepository) EnqueueContinuousScreeningApplyDeltaFileTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued continuous screening process delta file task", "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueContinuousScreeningMatchEnrichmentTask(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	continuousScreeningId uuid.UUID,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.ContinuousScreeningMatchEnrichmentArgs{
+			OrgId:                 organizationId,
+			ContinuousScreeningId: continuousScreeningId,
+		},
+		&river.InsertOpts{
+			Queue: organizationId.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued continuous screening match enrichment task", "job_id", res.Job.ID)
+
 	return nil
 }
