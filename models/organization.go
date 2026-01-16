@@ -29,6 +29,9 @@ type Organization struct {
 
 	OpenSanctionsConfig  OrganizationOpenSanctionsConfig
 	AutoAssignQueueLimit int
+
+	// Flag to enable Sentry session replay capture for this organization (used for test orgs).
+	SentryReplayEnabled bool
 }
 
 // TODO: Add other organization-level configuration options
@@ -51,6 +54,7 @@ type UpdateOrganizationInput struct {
 	DefaultScenarioTimezone *string
 	ScreeningConfig         OrganizationOpenSanctionsConfigUpdateInput
 	AutoAssignQueueLimit    *int
+	SentryReplayEnabled     bool
 }
 
 type SeedOrgConfiguration struct {

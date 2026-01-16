@@ -97,7 +97,8 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 				MatchThreshold: data.SanctionsThreshold,
 				MatchLimit:     data.SanctionsLimit,
 			},
-			AutoAssignQueueLimit: data.AutoAssignQueueLimit,
+			AutoAssignQueueLimit:    data.AutoAssignQueueLimit,
+			SentryReplayEnabled:     data.SentryReplayEnabled,
 		})
 
 		if presentError(ctx, c, err) {
