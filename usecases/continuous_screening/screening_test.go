@@ -1010,6 +1010,7 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches() {
 			SearchInput:                       []byte(`{"name": ["test"]}`),
 			ObjectType:                        utils.Ptr("person"),
 			ObjectId:                          utils.Ptr("test-object-id"),
+			TriggerType:                       models.ContinuousScreeningTriggerTypeObjectAdded,
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{OpenSanctionEntityId: "existing_1"},
@@ -1202,6 +1203,7 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NoNewMat
 			SearchInput:                       []byte(`{"name": ["test"]}`),
 			ObjectType:                        utils.Ptr("person"),
 			ObjectId:                          utils.Ptr("test-object-id"),
+			TriggerType:                       models.ContinuousScreeningTriggerTypeObjectAdded,
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{OpenSanctionEntityId: "existing_1"},

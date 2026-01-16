@@ -2,8 +2,11 @@ package continuous_screening
 
 import (
 	"context"
+	"encoding/json"
 	"slices"
+	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -384,19 +387,6 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			return err
 		}
 
-		// TODO: Deal with dataset triggered screening, ObjectType and ObjectId are nil
-		if continuousScreening.IsDatasetTriggered() {
-			return errors.Wrap(
-				models.UnprocessableEntityError,
-				"continuous screening is a dataset triggered screening, loading more results is not supported",
-			)
-		}
-
-		clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, continuousScreening.OrgId)
-		if err != nil {
-			return err
-		}
-
 		if err := uc.enforceSecurity.WriteContinuousScreeningHit(continuousScreening.OrgId); err != nil {
 			return err
 		}
@@ -422,33 +412,32 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			return err
 		}
 
-		// Have the data model table and mapping
-		table, mapping, err := uc.GetDataModelTableAndMapping(ctx, tx, config, *continuousScreening.ObjectType)
-		if err != nil {
-			return err
-		}
-
-		// Fetch the ingested Data
-		ingestedObject, _, err := uc.GetIngestedObject(ctx, clientDbExec, table, *continuousScreening.ObjectId)
-		if err != nil {
-			return err
-		}
-
 		// Override configuration max candidates to MAX_SCREENING_CANDIDATES
 		config.MatchLimit = MaxScreeningCandidates
 
-		// Do the screening
-		screeningWithMatches, err := uc.DoScreening(
-			ctx,
-			tx,
-			ingestedObject,
-			mapping,
-			config,
-			*continuousScreening.ObjectType,
-			*continuousScreening.ObjectId,
-		)
-		if err != nil {
-			return err
+		var screeningWithMatches models.ScreeningWithMatches
+
+		// Handle different trigger types
+		switch {
+		case continuousScreening.IsDatasetTriggered():
+			// Dataset update trigger: OpenSanction entity to Marble data
+			screeningWithMatches, err = uc.loadMoreDatasetUpdate(ctx, tx, continuousScreening, config)
+			if err != nil {
+				return err
+			}
+		case continuousScreening.IsObjectTriggered():
+			// Object trigger: Marble data to OpenSanction entities
+			screeningWithMatches, err = uc.loadMoreObjectTrigger(ctx, tx, continuousScreening, config)
+			if err != nil {
+				return err
+			}
+		default:
+			// Should not happen
+			return errors.Wrapf(
+				models.UnprocessableEntityError,
+				"unsupported trigger type: %s",
+				continuousScreening.TriggerType.String(),
+			)
 		}
 
 		// Filter matches to keep only new matches compared to the existing ones
@@ -716,4 +705,120 @@ func (uc *ContinuousScreeningUsecase) handleWhitelistCreation(
 	}
 
 	return nil
+}
+
+// loadMoreObjectTrigger handles load more for object trigger screenings (Marble to OpenSanction direction)
+func (uc *ContinuousScreeningUsecase) loadMoreObjectTrigger(
+	ctx context.Context,
+	exec repositories.Executor,
+	continuousScreening models.ContinuousScreeningWithMatches,
+	config models.ContinuousScreeningConfig,
+) (models.ScreeningWithMatches, error) {
+	if continuousScreening.ObjectType == nil || continuousScreening.ObjectId == nil {
+		return models.ScreeningWithMatches{}, errors.Wrap(
+			models.UnprocessableEntityError,
+			"object type or object id is missing for Marble initiated screening",
+		)
+	}
+
+	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, continuousScreening.OrgId)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	// Have the data model table and mapping
+	table, mapping, err := uc.GetDataModelTableAndMapping(ctx, exec, config, *continuousScreening.ObjectType)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	// Fetch the ingested Data
+	ingestedObject, _, err := uc.GetIngestedObject(ctx, clientDbExec, table, *continuousScreening.ObjectId)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	// Do the screening
+	return uc.DoScreening(
+		ctx,
+		exec,
+		ingestedObject,
+		mapping,
+		config,
+		*continuousScreening.ObjectType,
+		*continuousScreening.ObjectId,
+	)
+}
+
+// loadMoreDatasetUpdate handles load more for dataset update trigger screenings (OpenSanction to Marble direction)
+func (uc *ContinuousScreeningUsecase) loadMoreDatasetUpdate(
+	ctx context.Context,
+	exec repositories.Executor,
+	continuousScreening models.ContinuousScreeningWithMatches,
+	config models.ContinuousScreeningConfig,
+) (models.ScreeningWithMatches, error) {
+	if continuousScreening.OpenSanctionEntityId == nil {
+		return models.ScreeningWithMatches{}, errors.Wrap(
+			models.UnprocessableEntityError,
+			"OpenSanctionEntityId is missing for DatasetUpdated screening type",
+		)
+	}
+
+	// Parse the OpenSanction entity payload to extract the entity data
+	var entity models.OpenSanctionsDeltaFileEntity
+	if err := json.Unmarshal(continuousScreening.OpenSanctionEntityPayload, &entity); err != nil {
+		return models.ScreeningWithMatches{}, errors.Wrap(err,
+			"failed to unmarshal OpenSanction entity payload")
+	}
+
+	// Fetch whitelist entries for the entity and all its referent (previous) IDs
+	whitelists, err := uc.repository.SearchScreeningMatchWhitelistByIds(
+		ctx,
+		exec,
+		continuousScreening.OrgId,
+		nil,
+		append(entity.Referents, entity.Id),
+	)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+	whitelistedEntityIds := make([]string, len(whitelists))
+	for i, whitelist := range whitelists {
+		whitelistedEntityIds[i] = whitelist.CounterpartyId
+	}
+
+	// Create the OpenSanction query with max candidates
+	query := models.OpenSanctionsQuery{
+		OrgConfig: models.OrganizationOpenSanctionsConfig{
+			MatchThreshold: config.MatchThreshold,
+			MatchLimit:     config.MatchLimit,
+		},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type:    entity.Schema,
+				Filters: entity.Properties,
+			},
+		},
+		WhitelistedEntityIds: whitelistedEntityIds,
+		Scope:                orgCustomDatasetName(continuousScreening.OrgId),
+	}
+
+	// Perform the screening
+	var screeningResponse models.ScreeningRawSearchResponseWithMatches
+	err = retry.Do(
+		func() error {
+			screeningResponse, err = uc.screeningProvider.Search(ctx, query)
+			return err
+		},
+		retry.Attempts(3),
+		retry.LastErrorOnly(true),
+		retry.Delay(100*time.Millisecond),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(ctx),
+	)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	return screeningResponse.AdaptScreeningFromSearchResponse(query), nil
 }
