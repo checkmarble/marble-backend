@@ -23,10 +23,12 @@ const MaxScreeningCandidates = 500
 // 2. Checks permissions: requires WriteContinuousScreeningHit permission and access to the associated case
 // 3. Updates the match status in a transaction
 // 4. Performs case action side effects (e.g., updating case status)
-// 5. Based on the decision:
-//   - If confirmed_hit: marks all other pending matches as "skipped" and the screening as "confirmed_hit"
-//   - If no_hit and it's the last pending match: marks the screening as "no_hit"
-//   - If no_hit and whitelist flag is set: adds the match to the whitelist
+// 5. Based on the decision and screening type:
+//   - If confirmed_hit on object-triggered screening: immediately marks screening as "confirmed_hit" and skips all other pending matches
+//   - If confirmed_hit on dataset-triggered screening: only updates screening status when it's the last pending match
+//   - If no_hit and it's the last pending match on object-triggered screening: marks the screening as "no_hit"
+//   - If no_hit and it's the last pending match on dataset-triggered screening: marks screening as "confirmed_hit" if any match was confirmed, otherwise "no_hit"
+//   - If no_hit (always): adds the match to the whitelist
 //
 // 6. Creates case events to record the screening review action
 func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
@@ -678,8 +680,8 @@ func (uc *ContinuousScreeningUsecase) handleWhitelistCreation(
 	var counterpartyId string
 	var openSanctionEntityId string
 
-	if screening.TriggerType == models.ContinuousScreeningTriggerTypeDatasetUpdated {
-		// Dataset-triggered: match from OpenSanctions entity to Marble
+	switch {
+	case screening.IsDatasetTriggered():
 		if screening.OpenSanctionEntityId == nil {
 			return errors.New("OpenSanctionEntityId is missing for DatasetUpdated screening type")
 		}
@@ -687,8 +689,7 @@ func (uc *ContinuousScreeningUsecase) handleWhitelistCreation(
 		// The counterparty (Marble entity) is the one being screened and saved in the match as OpenSanctionEntityId
 		counterpartyId = match.OpenSanctionEntityId
 		openSanctionEntityId = *screening.OpenSanctionEntityId
-	} else {
-		// Object-triggered: screening from Marble to OpenSanctions entity
+	case screening.IsObjectTriggered():
 		if screening.ObjectType == nil || screening.ObjectId == nil {
 			return errors.New("object type or object id is missing for Marble initiated screening")
 		}
@@ -698,6 +699,9 @@ func (uc *ContinuousScreeningUsecase) handleWhitelistCreation(
 			*screening.ObjectId,
 		)
 		openSanctionEntityId = match.OpenSanctionEntityId
+	default:
+		// Should not happen
+		return errors.New("unable to determine screening type for whitelist creation")
 	}
 
 	if err := uc.createWhitelist(

@@ -379,13 +379,14 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id:         suite.screeningId,
-			OrgId:      suite.orgId,
-			Status:     models.ScreeningStatusInReview,
-			CaseId:     &suite.caseId,
-			ObjectType: utils.Ptr("transactions"),
-			ObjectId:   utils.Ptr("test-object-id"),
-			IsPartial:  false,
+			Id:          suite.screeningId,
+			OrgId:       suite.orgId,
+			Status:      models.ScreeningStatusInReview,
+			CaseId:      &suite.caseId,
+			ObjectType:  utils.Ptr("transactions"),
+			ObjectId:    utils.Ptr("test-object-id"),
+			TriggerType: models.ContinuousScreeningTriggerTypeObjectAdded,
+			IsPartial:   false,
 		},
 		Matches: []models.ContinuousScreeningMatch{continuousScreeningMatch1, continuousScreeningMatch2},
 	}
