@@ -315,9 +315,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	if isMarbleSaasProject {
 		lagoConfig = infra.InitializeLago()
 		if err := lagoConfig.Validate(); err != nil {
-			// Only report Lago configuration errors for production, not staging (tokyo)
-			projectId, getErr := infra.GetProjectId()
-			if getErr != nil || projectId != "tokyo-country-381508" {
+			// Only report Lago configuration errors for production, not staging
+			if !infra.IsMarbleStagingProject() {
 				utils.LogAndReportSentryError(ctx, err)
 			}
 		}
