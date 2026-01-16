@@ -118,7 +118,7 @@ func selectScenarioIterations() squirrel.SelectBuilder {
 func (repo *MarbleDbRepository) ListAllRulesAndScreenings(
 	ctx context.Context,
 	exec Executor,
-	organizationId string,
+	organizationId uuid.UUID,
 ) ([]models.RulesAndScreenings, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func (repo *MarbleDbRepository) ListAllRulesAndScreenings(
 		).
 		From(dbmodels.TABLE_SCENARIO_ITERATIONS+" si").
 		LeftJoin(dbmodels.TABLE_RULES+" sir on si.id = sir.scenario_iteration_id").
-		Where("si.org_id = ? and not si.archived", organizationId)
+		Where("si.org_id = ? and not si.archived", organizationId.String())
 
 	screenings := NewQueryBuilder().
 		Select(

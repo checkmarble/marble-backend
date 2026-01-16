@@ -28,7 +28,7 @@ type WorkflowUsecase struct {
 }
 
 type workflowRepository interface {
-	ListAllOrgWorkflows(ctx context.Context, exec repositories.Executor, orgId string) ([]models.Workflow, error)
+	ListAllOrgWorkflows(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.Workflow, error)
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
 	GetWorkflowRule(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WorkflowRule, error)
 	GetWorkflowRuleDetails(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.Workflow, error)

@@ -38,6 +38,7 @@ func AdaptTableMetadata(dbDataModelTable DbDataModelTable) (models.TableMetadata
 }
 
 type DbDataModelTableJoinField struct {
+	TableID          string    `db:"data_model_tables.id"`
 	OrganizationID   uuid.UUID `db:"data_model_tables.organization_id"`
 	TableName        string    `db:"data_model_tables.name"`
 	TableDescription string    `db:"data_model_tables.description"`

@@ -1,6 +1,8 @@
 package mocks
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
@@ -13,27 +15,28 @@ type ScenarioIterationWriteRepository struct {
 }
 
 func (s *ScenarioIterationWriteRepository) CreateScenarioIterationAndRules(
+	ctx context.Context,
 	exec repositories.Executor, organizationId uuid.UUID, scenarioIteration models.CreateScenarioIterationInput,
 ) (models.ScenarioIteration, error) {
-	args := s.Called(exec, organizationId, scenarioIteration)
+	args := s.Called(ctx, exec, organizationId, scenarioIteration)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }
 
-func (s *ScenarioIterationWriteRepository) UpdateScenarioIteration(exec repositories.Executor,
+func (s *ScenarioIterationWriteRepository) UpdateScenarioIteration(ctx context.Context, exec repositories.Executor,
 	scenarioIteration models.UpdateScenarioIterationInput,
 ) (models.ScenarioIteration, error) {
-	args := s.Called(exec, scenarioIteration)
+	args := s.Called(ctx, exec, scenarioIteration)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }
 
-func (s *ScenarioIterationWriteRepository) UpdateScenarioIterationVersion(
+func (s *ScenarioIterationWriteRepository) UpdateScenarioIterationVersion(ctx context.Context,
 	exec repositories.Executor, scenarioIterationId string, newVersion int,
 ) error {
-	args := s.Called(exec, scenarioIterationId, newVersion)
+	args := s.Called(ctx, exec, scenarioIterationId, newVersion)
 	return args.Error(0)
 }
 
-func (s *ScenarioIterationWriteRepository) DeleteScenarioIteration(exec repositories.Executor, scenarioIterationId string) error {
-	args := s.Called(exec, scenarioIterationId)
+func (s *ScenarioIterationWriteRepository) DeleteScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) error {
+	args := s.Called(ctx, exec, scenarioIterationId)
 	return args.Error(0)
 }

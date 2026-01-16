@@ -15,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-set/v2"
 )
 
@@ -255,7 +256,7 @@ func (uc DataModelDestroyUsecase) DeletePivot(ctx context.Context, dryRun bool, 
 
 func (uc DataModelDestroyUsecase) canDeleteRef(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	exec repositories.Executor,
 	table models.TableMetadata,
 	field *models.FieldMetadata,
@@ -568,7 +569,7 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 
 func (uc DataModelDestroyUsecase) canDeleteLink(
 	ctx context.Context,
-	orgId string,
+	orgId uuid.UUID,
 	exec repositories.Executor,
 	linkId string,
 ) (bool, models.DataModelDeleteFieldReport, error) {

@@ -18,17 +18,18 @@ type ScenarioTestrunTestSuite struct {
 	transactionFactory *mocks.TransactionFactory
 	transaction        *mocks.Transaction
 
-	executorFactory       *mocks.ExecutorFactory
-	scenarioRepository    *mocks.ScenarioRepository
-	enforceSecurity       *mocks.EnforceSecurity
-	repository            *mocks.ScenarioTestrunRepository
-	clientDbIndexEditor   *mocks.ClientDbIndexEditor
-	featureAccessReader   *mocks.FeatureAccessReader
-	screeningConfig       *mocks.ScreeningConfigRepository
-	organizationId        uuid.UUID
-	scenarioId            string
-	scenarioPublicationId string
-	ctx                   context.Context
+	executorFactory            *mocks.ExecutorFactory
+	scenarioRepository         *mocks.ScenarioRepository
+	enforceSecurity            *mocks.EnforceSecurity
+	repository                 *mocks.ScenarioTestrunRepository
+	clientDbIndexEditor        *mocks.ClientDbIndexEditor
+	featureAccessReader        *mocks.FeatureAccessReader
+	screeningConfig            *mocks.ScreeningConfigRepository
+	scenarioIteratorRepository *mocks.ScenarioIterationReadWriterRepository
+	organizationId             uuid.UUID
+	scenarioId                 string
+	scenarioPublicationId      string
+	ctx                        context.Context
 }
 
 func (suite *ScenarioTestrunTestSuite) SetupTest() {
@@ -39,6 +40,7 @@ func (suite *ScenarioTestrunTestSuite) SetupTest() {
 	suite.scenarioRepository = new(mocks.ScenarioRepository)
 	suite.repository = new(mocks.ScenarioTestrunRepository)
 	suite.featureAccessReader = new(mocks.FeatureAccessReader)
+	suite.scenarioIteratorRepository = new(mocks.ScenarioIterationReadWriterRepository)
 	suite.screeningConfig = new(mocks.ScreeningConfigRepository)
 	suite.organizationId = uuid.MustParse("25ab6323-1657-4a52-923a-ef6983fe4532")
 	suite.scenarioId = "c5968ff7-6142-4623-a6b3-1539f345e5fa"
@@ -49,14 +51,15 @@ func (suite *ScenarioTestrunTestSuite) SetupTest() {
 
 func (suite *ScenarioTestrunTestSuite) makeUsecase() *ScenarioTestRunUsecase {
 	return &ScenarioTestRunUsecase{
-		transactionFactory:        suite.transactionFactory,
-		executorFactory:           suite.executorFactory,
-		enforceSecurity:           suite.enforceSecurity,
-		repository:                suite.repository,
-		scenarioRepository:        suite.scenarioRepository,
-		clientDbIndexEditor:       suite.clientDbIndexEditor,
-		featureAccessReader:       suite.featureAccessReader,
-		screeningConfigRepository: suite.screeningConfig,
+		transactionFactory:         suite.transactionFactory,
+		executorFactory:            suite.executorFactory,
+		enforceSecurity:            suite.enforceSecurity,
+		repository:                 suite.repository,
+		scenarioRepository:         suite.scenarioRepository,
+		clientDbIndexEditor:        suite.clientDbIndexEditor,
+		featureAccessReader:        suite.featureAccessReader,
+		screeningConfigRepository:  suite.screeningConfig,
+		scenarioIteratorRepository: suite.scenarioIteratorRepository,
 	}
 }
 
@@ -96,6 +99,8 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		suite.organizationId).Return(nil, nil)
 	suite.screeningConfig.On("ListScreeningConfigs", suite.ctx, suite.transaction,
 		input.PhantomIterationId, mock.Anything).Return(nil, nil)
+	suite.scenarioIteratorRepository.ScenarioIterationReadRepository.On("GetScenarioIteration", suite.ctx, suite.transaction,
+		input.PhantomIterationId, false).Return(models.ScenarioIteration{}, nil)
 
 	suite.clientDbIndexEditor.On("CreateIndexesAsyncForScenarioWithCallback", suite.ctx,
 		suite.organizationId, []models.ConcreteIndex{

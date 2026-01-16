@@ -19,7 +19,7 @@ type ScenarioPublisherRepository interface {
 		filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error)
 	UpdateScenarioIterationVersion(ctx context.Context, exec repositories.Executor,
 		scenarioIterationId string, newVersion int) error
-	ListAllRulesAndScreenings(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.RulesAndScreenings, error)
+	ListAllRulesAndScreenings(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) ([]models.RulesAndScreenings, error)
 	ArchiveScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) error
 }
 
