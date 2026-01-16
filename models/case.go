@@ -57,6 +57,7 @@ type Case struct {
 	SnoozedUntil         *time.Time
 	Boost                *BoostReason
 	Type                 CaseType
+	ReviewLevel          *string
 }
 
 type CaseReferents struct {
@@ -151,12 +152,13 @@ type CreateCaseAttributes struct {
 }
 
 type UpdateCaseAttributes struct {
-	Id      string
-	InboxId *uuid.UUID
-	Name    string
-	Status  CaseStatus
-	Outcome CaseOutcome
-	Boost   BoostReason
+	Id          string
+	InboxId     *uuid.UUID
+	Name        string
+	Status      CaseStatus
+	Outcome     CaseOutcome
+	Boost       BoostReason
+	ReviewLevel *string
 }
 
 type CreateCaseCommentAttributes struct {
@@ -175,6 +177,7 @@ type CaseFilters struct {
 	ExcludeAssigned bool
 	AssigneeId      UserId
 	TagId           *uuid.UUID
+	ReviewLevels    []string
 
 	UseLinearOrdering bool
 }
@@ -199,6 +202,17 @@ func ValidateCaseStatuses(statuses []string) ([]CaseStatus, error) {
 		}
 	}
 	return sanitizedStatuses, nil
+}
+
+var ValidCaseReviewLevels = []string{"probable_false_positive", "investigate", "escalate"}
+
+func ValidateCaseReviewLevels(reviewLevels []string) error {
+	for _, level := range reviewLevels {
+		if !slices.Contains(ValidCaseReviewLevels, level) {
+			return fmt.Errorf("invalid review level: %s %w", level, BadParameterError)
+		}
+	}
+	return nil
 }
 
 type ReviewCaseDecisionsBody struct {

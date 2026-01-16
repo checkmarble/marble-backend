@@ -26,6 +26,7 @@ type APICase struct {
 	AssignedTo     *string              `json:"assigned_to,omitempty"`
 	Boost          string               `json:"boost,omitempty"`
 	Type           string               `json:"type"`
+	ReviewLevel    *string              `json:"review_level"`
 }
 
 type APICaseWithDetails struct {
@@ -49,6 +50,7 @@ func AdaptCaseDto(c models.Case) APICase {
 		Files:          pure_utils.Map(c.Files, NewAPICaseFile),
 		Boost:          c.Boost.String(),
 		Type:           c.Type.String(),
+		ReviewLevel:    c.ReviewLevel,
 	}
 
 	if c.SnoozedUntil != nil && c.SnoozedUntil.After(time.Now()) {
@@ -114,6 +116,7 @@ type CaseFilters struct {
 	ExcludeAssigned bool          `form:"exclude_assigned"`
 	AssigneeId      models.UserId `form:"assignee_id"`
 	TagId           []string      `form:"tag_id,lte=1,dive,uuid"`
+	ReviewLevels    []string      `form:"review_level[]"`
 }
 
 func (f CaseFilters) Parse() (models.CaseFilters, error) {
@@ -149,6 +152,13 @@ func (f CaseFilters) Parse() (models.CaseFilters, error) {
 		return out, err
 	}
 	out.Statuses = statuses
+
+	if len(f.ReviewLevels) > 0 {
+		if err := models.ValidateCaseReviewLevels(f.ReviewLevels); err != nil {
+			return out, err
+		}
+		out.ReviewLevels = f.ReviewLevels
+	}
 
 	return out, nil
 }
