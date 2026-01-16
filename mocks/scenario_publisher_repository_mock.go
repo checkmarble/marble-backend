@@ -14,7 +14,7 @@ type ScenarioPublisherRepository struct {
 	mock.Mock
 }
 
-func (s *ScenarioPublisherRepository) ListAllRulesAndScreenings(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.RulesAndScreenings, error) {
+func (s *ScenarioPublisherRepository) ListAllRulesAndScreenings(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) ([]models.RulesAndScreenings, error) {
 	args := s.Called(ctx, exec, organizationId)
 	return args.Get(0).([]models.RulesAndScreenings), args.Error(1)
 }
