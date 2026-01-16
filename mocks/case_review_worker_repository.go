@@ -65,3 +65,13 @@ func (r *MockCaseReviewWorkerRepository) GetOrganizationById(
 	args := r.Called(ctx, exec, organizationId)
 	return args.Get(0).(models.Organization), args.Error(1)
 }
+
+func (r *MockCaseReviewWorkerRepository) UpdateCaseReviewLevel(
+	ctx context.Context,
+	exec repositories.Executor,
+	caseId string,
+	reviewLevel *string,
+) error {
+	args := r.Called(ctx, exec, caseId, reviewLevel)
+	return args.Error(0)
+}
