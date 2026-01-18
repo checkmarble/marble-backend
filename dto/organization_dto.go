@@ -46,7 +46,7 @@ type UpdateOrganizationBodyDto struct {
 	SanctionsThreshold      *int    `json:"sanctions_threshold,omitempty"`
 	SanctionsLimit          *int    `json:"sanctions_limit,omitempty"`
 	AutoAssignQueueLimit    *int    `json:"auto_assign_queue_limit,omitempty"`
-	SentryReplayEnabled     bool    `json:"sentry_replay_enabled"`
+	SentryReplayEnabled     *bool   `json:"sentry_replay_enabled"`
 }
 
 type OrganizationSubnetsDto struct {
@@ -87,7 +87,6 @@ func (s *SubnetDto) UnmarshalJSON(b []byte) error {
 	}
 
 	_, subnet, err := net.ParseCIDR(cidr)
-
 	if err != nil {
 		return err
 	}

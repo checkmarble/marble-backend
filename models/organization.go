@@ -54,7 +54,7 @@ type UpdateOrganizationInput struct {
 	DefaultScenarioTimezone *string
 	ScreeningConfig         OrganizationOpenSanctionsConfigUpdateInput
 	AutoAssignQueueLimit    *int
-	SentryReplayEnabled     bool
+	SentryReplayEnabled     *bool
 }
 
 type SeedOrgConfiguration struct {

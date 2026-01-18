@@ -131,9 +131,11 @@ func (repo *MarbleDbRepository) UpdateOrganization(ctx context.Context, exec Exe
 			updateOrganization.AutoAssignQueueLimit)
 		hasUpdates = true
 	}
-	updateRequest = updateRequest.Set("sentry_replay_enabled",
-		updateOrganization.SentryReplayEnabled)
-	hasUpdates = true
+	if updateOrganization.SentryReplayEnabled != nil {
+		updateRequest = updateRequest.Set("sentry_replay_enabled",
+			*updateOrganization.SentryReplayEnabled)
+		hasUpdates = true
+	}
 
 	if !hasUpdates {
 		return nil
