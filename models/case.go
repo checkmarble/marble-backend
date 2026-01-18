@@ -178,7 +178,7 @@ type CaseFilters struct {
 	AssigneeId      UserId
 	TagId           *uuid.UUID
 	ReviewLevels    []string
-	Qualifications  []CaseQualification
+	Qualification   []CaseQualification
 
 	UseLinearOrdering bool
 }

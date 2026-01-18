@@ -107,17 +107,17 @@ type CreateCaseCommentBody struct {
 }
 
 type CaseFilters struct {
-	EndDate        time.Time     `form:"end_date"`
-	InboxIds       []string      `form:"inbox_id[]"`
-	StartDate      time.Time     `form:"start_date"`
-	Statuses       []string      `form:"status[]"`
-	Name           string        `form:"name"`
-	IncludeSnoozed bool          `form:"include_snoozed"`
-	ExcludeAssigned bool         `form:"exclude_assigned"`
-	AssigneeId     models.UserId `form:"assignee_id"`
-	TagId          []string      `form:"tag_id,lte=1,dive,uuid"`
-	ReviewLevels   []string      `form:"review_level[]"`
-	Qualifications []string      `form:"qualification[]"`
+	EndDate         time.Time     `form:"end_date"`
+	InboxIds        []string      `form:"inbox_id[]"`
+	StartDate       time.Time     `form:"start_date"`
+	Statuses        []string      `form:"status[]"`
+	Name            string        `form:"name"`
+	IncludeSnoozed  bool          `form:"include_snoozed"`
+	ExcludeAssigned bool          `form:"exclude_assigned"`
+	AssigneeId      models.UserId `form:"assignee_id"`
+	TagId           []string      `form:"tag_id,lte=1,dive,uuid"`
+	ReviewLevels    []string      `form:"review_level[]"`
+	Qualification   []string      `form:"qualification"`
 }
 
 func (f CaseFilters) Parse() (models.CaseFilters, error) {
@@ -161,12 +161,12 @@ func (f CaseFilters) Parse() (models.CaseFilters, error) {
 		out.ReviewLevels = f.ReviewLevels
 	}
 
-	if len(f.Qualifications) > 0 {
-		qualifications, err := models.ValidateCaseQualifications(f.Qualifications)
+	if len(f.Qualification) > 0 {
+		qualification, err := models.ValidateCaseQualifications(f.Qualification)
 		if err != nil {
 			return out, err
 		}
-		out.Qualifications = qualifications
+		out.Qualification = qualification
 	}
 
 	return out, nil

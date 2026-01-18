@@ -191,6 +191,7 @@ func (usecase *CaseUseCase) ListCases(
 				AssigneeId:        filters.AssigneeId,
 				UseLinearOrdering: filters.UseLinearOrdering,
 				TagId:             filters.TagId,
+				Qualification:     filters.Qualification,
 			}
 			if len(filters.InboxIds) > 0 {
 				repoFilters.InboxIds = filters.InboxIds
