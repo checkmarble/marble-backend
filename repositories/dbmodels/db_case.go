@@ -21,6 +21,7 @@ type DBCase struct {
 	SnoozedUntil   *time.Time       `db:"snoozed_until"`
 	Boost          *string          `db:"boost"`
 	Type           pgtype.Text      `db:"type"`
+	ReviewLevel    *string          `db:"review_level"`
 }
 
 type DBCaseWithContributorsAndTags struct {
@@ -57,6 +58,7 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		SnoozedUntil:   db.SnoozedUntil,
 		Boost:          boostReason,
 		Type:           models.CaseTypeFromString(db.Type.String),
+		ReviewLevel:    db.ReviewLevel,
 	}, nil
 }
 

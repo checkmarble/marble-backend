@@ -26,6 +26,7 @@ type APICase struct {
 	AssignedTo     *string              `json:"assigned_to,omitempty"`
 	Boost          string               `json:"boost,omitempty"`
 	Type           string               `json:"type"`
+	ReviewLevel    *string              `json:"review_level"`
 }
 
 type APICaseWithDetails struct {
@@ -49,6 +50,7 @@ func AdaptCaseDto(c models.Case) APICase {
 		Files:          pure_utils.Map(c.Files, NewAPICaseFile),
 		Boost:          c.Boost.String(),
 		Type:           c.Type.String(),
+		ReviewLevel:    c.ReviewLevel,
 	}
 
 	if c.SnoozedUntil != nil && c.SnoozedUntil.After(time.Now()) {
@@ -105,15 +107,17 @@ type CreateCaseCommentBody struct {
 }
 
 type CaseFilters struct {
-	EndDate         time.Time     `form:"end_date"`
-	InboxIds        []string      `form:"inbox_id[]"`
-	StartDate       time.Time     `form:"start_date"`
-	Statuses        []string      `form:"status[]"`
-	Name            string        `form:"name"`
-	IncludeSnoozed  bool          `form:"include_snoozed"`
-	ExcludeAssigned bool          `form:"exclude_assigned"`
-	AssigneeId      models.UserId `form:"assignee_id"`
-	TagId           []string      `form:"tag_id,lte=1,dive,uuid"`
+	EndDate        time.Time     `form:"end_date"`
+	InboxIds       []string      `form:"inbox_id[]"`
+	StartDate      time.Time     `form:"start_date"`
+	Statuses       []string      `form:"status[]"`
+	Name           string        `form:"name"`
+	IncludeSnoozed bool          `form:"include_snoozed"`
+	ExcludeAssigned bool         `form:"exclude_assigned"`
+	AssigneeId     models.UserId `form:"assignee_id"`
+	TagId          []string      `form:"tag_id,lte=1,dive,uuid"`
+	ReviewLevels   []string      `form:"review_level[]"`
+	Qualifications []string      `form:"qualification[]"`
 }
 
 func (f CaseFilters) Parse() (models.CaseFilters, error) {
@@ -149,6 +153,21 @@ func (f CaseFilters) Parse() (models.CaseFilters, error) {
 		return out, err
 	}
 	out.Statuses = statuses
+
+	if len(f.ReviewLevels) > 0 {
+		if err := models.ValidateCaseReviewLevels(f.ReviewLevels); err != nil {
+			return out, err
+		}
+		out.ReviewLevels = f.ReviewLevels
+	}
+
+	if len(f.Qualifications) > 0 {
+		qualifications, err := models.ValidateCaseQualifications(f.Qualifications)
+		if err != nil {
+			return out, err
+		}
+		out.Qualifications = qualifications
+	}
 
 	return out, nil
 }

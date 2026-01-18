@@ -92,6 +92,12 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 			InnerJoin(dbmodels.TABLE_CASE_TAGS + " ct on ct.case_id = c.id AND ct.deleted_at IS NULL").
 			Where(squirrel.Eq{"ct.tag_id": filters.TagId})
 	}
+	if len(filters.ReviewLevels) > 0 {
+		query = query.Where(squirrel.Eq{"c.review_level": filters.ReviewLevels})
+	}
+	if len(filters.Qualifications) > 0 {
+		query = query.Where(buildQualificationFilter(filters.Qualifications))
+	}
 
 	// Apply pagination, by fetching the offset case (error if not found)
 	var offsetCase models.Case
@@ -154,6 +160,35 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 	}
 
 	return query, nil
+}
+
+// buildQualificationFilter builds a SQL filter for case qualifications.
+// Qualification mapping:
+//   - red:    outcome = 'confirmed_risk' OR review_level = 'escalate'
+//   - yellow: outcome = 'valuable_alert' OR review_level = 'investigate'
+//   - green:  outcome = 'false_positive' OR review_level = 'probable_false_positive'
+func buildQualificationFilter(qualifications []models.CaseQualification) squirrel.Or {
+	var conditions squirrel.Or
+	for _, q := range qualifications {
+		switch q {
+		case models.CaseQualificationRed:
+			conditions = append(conditions, squirrel.Or{
+				squirrel.Eq{"c.outcome": models.CaseConfirmedRisk},
+				squirrel.Eq{"c.review_level": "escalate"},
+			})
+		case models.CaseQualificationYellow:
+			conditions = append(conditions, squirrel.Or{
+				squirrel.Eq{"c.outcome": models.CaseValuableAlert},
+				squirrel.Eq{"c.review_level": "investigate"},
+			})
+		case models.CaseQualificationGreen:
+			conditions = append(conditions, squirrel.Or{
+				squirrel.Eq{"c.outcome": models.CaseFalsePositive},
+				squirrel.Eq{"c.review_level": "probable_false_positive"},
+			})
+		}
+	}
+	return conditions
 }
 
 func (repo *MarbleDbRepository) GetCaseById(ctx context.Context, exec Executor, caseId string) (models.Case, error) {
@@ -285,9 +320,25 @@ func (repo *MarbleDbRepository) UpdateCase(ctx context.Context, exec Executor, u
 	if updateCaseAttributes.Boost == models.BoostUnboost {
 		query = query.Set("boost", nil)
 	}
+	if updateCaseAttributes.ReviewLevel != nil {
+		query = query.Set("review_level", *updateCaseAttributes.ReviewLevel)
+	}
 
 	err := ExecBuilder(ctx, exec, query)
 	return err
+}
+
+func (repo *MarbleDbRepository) UpdateCaseReviewLevel(ctx context.Context, exec Executor, caseId string, reviewLevel *string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_CASES).
+		Set("review_level", reviewLevel).
+		Where(squirrel.Eq{"id": caseId})
+
+	return ExecBuilder(ctx, exec, query)
 }
 
 func (repo *MarbleDbRepository) BoostCase(ctx context.Context, exec Executor, id string, reason models.BoostReason) error {
