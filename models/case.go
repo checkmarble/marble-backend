@@ -178,6 +178,7 @@ type CaseFilters struct {
 	AssigneeId      UserId
 	TagId           *uuid.UUID
 	ReviewLevels    []string
+	Qualifications  []CaseQualification
 
 	UseLinearOrdering bool
 }
@@ -213,6 +214,27 @@ func ValidateCaseReviewLevels(reviewLevels []string) error {
 		}
 	}
 	return nil
+}
+
+type CaseQualification string
+
+const (
+	CaseQualificationRed    CaseQualification = "red"
+	CaseQualificationYellow CaseQualification = "yellow"
+	CaseQualificationGreen  CaseQualification = "green"
+)
+
+var ValidCaseQualifications = []CaseQualification{CaseQualificationRed, CaseQualificationYellow, CaseQualificationGreen}
+
+func ValidateCaseQualifications(qualifications []string) ([]CaseQualification, error) {
+	result := make([]CaseQualification, len(qualifications))
+	for i, q := range qualifications {
+		result[i] = CaseQualification(q)
+		if !slices.Contains(ValidCaseQualifications, result[i]) {
+			return nil, fmt.Errorf("invalid qualification: %s %w", q, BadParameterError)
+		}
+	}
+	return result, nil
 }
 
 type ReviewCaseDecisionsBody struct {

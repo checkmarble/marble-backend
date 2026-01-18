@@ -95,6 +95,9 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	if len(filters.ReviewLevels) > 0 {
 		query = query.Where(squirrel.Eq{"c.review_level": filters.ReviewLevels})
 	}
+	if len(filters.Qualifications) > 0 {
+		query = query.Where(buildQualificationFilter(filters.Qualifications))
+	}
 
 	// Apply pagination, by fetching the offset case (error if not found)
 	var offsetCase models.Case
@@ -157,6 +160,35 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 	}
 
 	return query, nil
+}
+
+// buildQualificationFilter builds a SQL filter for case qualifications.
+// Qualification mapping:
+//   - red:    outcome = 'confirmed_risk' OR review_level = 'escalate'
+//   - yellow: outcome = 'valuable_alert' OR review_level = 'investigate'
+//   - green:  outcome = 'false_positive' OR review_level = 'probable_false_positive'
+func buildQualificationFilter(qualifications []models.CaseQualification) squirrel.Or {
+	var conditions squirrel.Or
+	for _, q := range qualifications {
+		switch q {
+		case models.CaseQualificationRed:
+			conditions = append(conditions, squirrel.Or{
+				squirrel.Eq{"c.outcome": models.CaseConfirmedRisk},
+				squirrel.Eq{"c.review_level": "escalate"},
+			})
+		case models.CaseQualificationYellow:
+			conditions = append(conditions, squirrel.Or{
+				squirrel.Eq{"c.outcome": models.CaseValuableAlert},
+				squirrel.Eq{"c.review_level": "investigate"},
+			})
+		case models.CaseQualificationGreen:
+			conditions = append(conditions, squirrel.Or{
+				squirrel.Eq{"c.outcome": models.CaseFalsePositive},
+				squirrel.Eq{"c.review_level": "probable_false_positive"},
+			})
+		}
+	}
+	return conditions
 }
 
 func (repo *MarbleDbRepository) GetCaseById(ctx context.Context, exec Executor, caseId string) (models.Case, error) {
