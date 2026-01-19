@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/bigquery v1.72.0
 	cloud.google.com/go/iam v1.5.3
 	cloud.google.com/go/profiler v0.4.3
-	cloud.google.com/go/storage v1.57.2
+	cloud.google.com/go/storage v1.58.0
 	firebase.google.com/go/v4 v4.18.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.54.0
@@ -82,7 +82,7 @@ require (
 
 require (
 	cel.dev/expr v0.24.0 // indirect
-	cloud.google.com/go v0.121.6 // indirect
+	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.17.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
