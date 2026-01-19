@@ -263,6 +263,17 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		globalPeriodics...,
 	)
 
+	// Sentry Cron monitors for periodic jobs (global, not per-org)
+	// Configure these monitor slugs in Sentry with appropriate schedules:
+	// - scheduled_scenario: schedule every 2 min, grace period 5 min
+	// - csv_ingestion: schedule every 2 min, grace period 5 min
+	// - webhook_retry: schedule every 15 min, grace period 10 min
+	cronMonitorSlugs := map[string]string{
+		"scheduled_scenario": "scheduled-scenario",
+		"csv_ingestion":      "csv-ingestion",
+		"webhook_retry":      "webhook-retry",
+	}
+
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
 		FetchPollInterval: 100 * time.Millisecond,
 		Queues:            queues,
@@ -274,6 +285,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		WorkerMiddleware: []rivertype.WorkerMiddleware{
 			jobs.NewRecoveredMiddleware(),
 			jobs.NewSentryMiddleware(),
+			jobs.NewCronMonitorMiddleware(cronMonitorSlugs),
 			jobs.NewTracingMiddleware(telemetryRessources.Tracer),
 			jobs.NewLoggerMiddleware(logger),
 		},
