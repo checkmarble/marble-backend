@@ -264,14 +264,11 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	)
 
 	// Sentry Cron monitors for periodic jobs (global, not per-org)
-	// Configure these monitor slugs in Sentry with appropriate schedules:
-	// - scheduled_scenario: schedule every 2 min, grace period 5 min
-	// - csv_ingestion: schedule every 2 min, grace period 5 min
-	// - webhook_retry: schedule every 15 min, grace period 10 min
+	// These slugs must match the existing monitors in Sentry
 	cronMonitorSlugs := map[string]string{
-		"scheduled_scenario": "scheduled-scenario",
-		"csv_ingestion":      "csv-ingestion",
-		"webhook_retry":      "webhook-retry",
+		"scheduled_scenario": "scheduled-execution",
+		"csv_ingestion":      "batch-ingestion",
+		"webhook_retry":      "send-webhook-events",
 	}
 
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
