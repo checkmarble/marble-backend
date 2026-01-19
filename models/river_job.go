@@ -164,9 +164,9 @@ type ScheduledScenarioArgs struct {
 
 func (ScheduledScenarioArgs) Kind() string { return "scheduled_scenario" }
 
-// CSV ingestion job
+// CSV ingestion job - processes a single upload log
 type CsvIngestionArgs struct {
-	OrgId uuid.UUID `json:"org_id"`
+	UploadLogId string `json:"upload_log_id"`
 }
 
 func (CsvIngestionArgs) Kind() string { return "csv_ingestion" }

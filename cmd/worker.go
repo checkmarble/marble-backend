@@ -267,7 +267,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	// These slugs must match the existing monitors in Sentry
 	cronMonitorSlugs := map[string]string{
 		"scheduled_scenario": "scheduled-execution",
-		"csv_ingestion":      "batch-ingestion",
 		"webhook_retry":      "send-webhook-events",
 	}
 
