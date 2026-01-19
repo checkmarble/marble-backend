@@ -53,7 +53,22 @@ var validWebhookEventTypes = []WebhookEventType{
 
 type WebhookEventContent struct {
 	Type WebhookEventType
-	Data map[string]any
+	Data WebhookEventPayload
+}
+
+type WebhookEventPayload struct {
+	Type      WebhookEventType
+	Content   WebhookEventData
+	Timestamp time.Time
+}
+
+type WebhookEventData struct {
+	Decision WebhookPayloadId `json:"decision,omitzero"`
+	Case     WebhookPayloadId `json:"case,omitzero"`
+}
+
+type WebhookPayloadId struct {
+	Id string
 }
 
 type WebhookEvent struct {
@@ -131,25 +146,21 @@ func (input WebhookRegister) Validate() error {
 func NewWebhookEventDecisionCreated(id string) WebhookEventContent {
 	return WebhookEventContent{
 		Type: WebhookEventType_DecisionCreated,
-		Data: map[string]any{
-			"type":      WebhookEventType_DecisionCreated,
-			"content":   map[string]any{"decision": map[string]any{"id": id}},
-			"timestamp": time.Now(),
+		Data: WebhookEventPayload{
+			Type:      WebhookEventType_DecisionCreated,
+			Content:   WebhookEventData{Decision: WebhookPayloadId{id}},
+			Timestamp: time.Now(),
 		},
 	}
-}
-
-func mapOfCaseWithId(id string) map[string]any {
-	return map[string]any{"case": map[string]any{"id": id}}
 }
 
 func newWebhookContentCase(eventType WebhookEventType, id string) WebhookEventContent {
 	return WebhookEventContent{
 		Type: eventType,
-		Data: map[string]any{
-			"type":      eventType,
-			"content":   mapOfCaseWithId(id),
-			"timestamp": time.Now(),
+		Data: WebhookEventPayload{
+			Type:      eventType,
+			Content:   WebhookEventData{Case: WebhookPayloadId{id}},
+			Timestamp: time.Now(),
 		},
 	}
 }
@@ -186,16 +197,21 @@ func NewWebhookEventRuleSnoozeCreated(c Case) WebhookEventContent {
 	return newWebhookContentCase(WebhookEventType_CaseRuleSnoozeCreated, c.Id)
 }
 
+type WebhookPayloadDecision struct {
+	Case     WebhookPayloadId
+	Decision WebhookPayloadId
+}
+
 func NewWebhookEventDecisionReviewed(c Case, decisionId string) WebhookEventContent {
 	return WebhookEventContent{
 		Type: WebhookEventType_CaseDecisionReviewed,
-		Data: map[string]any{
-			"type": WebhookEventType_CaseDecisionReviewed,
-			"content": map[string]any{
-				"case":     map[string]any{"id": c.Id},
-				"decision": map[string]any{"id": decisionId},
+		Data: WebhookEventPayload{
+			Type: WebhookEventType_CaseDecisionReviewed,
+			Content: WebhookEventData{
+				Case:     WebhookPayloadId{c.Id},
+				Decision: WebhookPayloadId{decisionId},
 			},
-			"timestamp": time.Now(),
+			Timestamp: time.Now(),
 		},
 	}
 }

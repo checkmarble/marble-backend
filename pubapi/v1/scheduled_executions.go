@@ -3,6 +3,7 @@ package v1
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/pubapi/v1/params"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -23,14 +24,14 @@ func HandleListBatchExecutions(uc usecases.Usecases) gin.HandlerFunc {
 
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var params params.ListBatchExecutionsParams
 
 		if err := c.ShouldBindQuery(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -42,7 +43,7 @@ func HandleListBatchExecutions(uc usecases.Usecases) gin.HandlerFunc {
 
 		scheduledExecutions, err := scheduledExecutionsUsecase.ListScheduledExecutions(ctx, orgId, filters, &paging)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -52,7 +53,7 @@ func HandleListBatchExecutions(uc usecases.Usecases) gin.HandlerFunc {
 			nextPageId = scheduledExecutions.Executions[len(scheduledExecutions.Executions)-1].Id
 		}
 
-		pubapi.
+		types.
 			NewResponse(pure_utils.Map(scheduledExecutions.Executions, dto.AdaptScheduledExecution)).
 			WithPagination(scheduledExecutions.HasMore, nextPageId).
 			Serve(c)

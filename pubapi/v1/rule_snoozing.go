@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
@@ -19,20 +20,20 @@ func HandleSnoozeRule(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		decisionId, err := pubapi.UuidParam(c, "decisionId")
+		decisionId, err := types.UuidParam(c, "decisionId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var params SnoozeRuleParams
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -47,7 +48,7 @@ func HandleSnoozeRule(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		if _, err = ruleSnoozeUsecase.SnoozeDecisionWithoutCase(c.Request.Context(), snooze); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 

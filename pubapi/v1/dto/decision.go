@@ -5,7 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -15,7 +15,7 @@ type Decision struct {
 	Id               uuid.UUID        `json:"id"`
 	BatchExecutionId *string          `json:"batch_execution_id,omitempty"`
 	Case             *Ref             `json:"case,omitempty"`
-	CreatedAt        pubapi.DateTime  `json:"created_at"`
+	CreatedAt        types.DateTime   `json:"created_at"`
 	TriggerObject    map[string]any   `json:"trigger_object"`
 	Outcome          string           `json:"outcome"`
 	ReviewStatus     *string          `json:"review_status"`
@@ -50,7 +50,7 @@ func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution,
 	return func(model models.Decision) Decision {
 		d := Decision{
 			Id:               model.DecisionId,
-			CreatedAt:        pubapi.DateTime(model.CreatedAt),
+			CreatedAt:        types.DateTime(model.CreatedAt),
 			TriggerObject:    model.ClientObject.Data,
 			Outcome:          model.Outcome.String(),
 			ReviewStatus:     model.ReviewStatus,

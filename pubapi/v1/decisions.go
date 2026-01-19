@@ -6,6 +6,7 @@ import (
 	gdto "github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/pubapi/v1/params"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -28,26 +29,26 @@ func HandleListDecisions(uc usecases.Usecases) gin.HandlerFunc {
 
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var p params.ListDecisionsParams
 
 		if err := c.ShouldBindQuery(&p); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		if !p.StartDate.IsZero() && !p.EndDate.IsZero() {
 			if time.Time(p.StartDate).After(time.Time(p.EndDate)) {
-				pubapi.NewErrorResponse().WithError(errors.WithDetail(
-					pubapi.ErrInvalidPayload, "end date should be after start date")).Serve(c)
+				types.NewErrorResponse().WithError(errors.WithDetail(
+					types.ErrInvalidPayload, "end date should be after start date")).Serve(c)
 				return
 			}
 			if time.Time(p.StartDate).Before(time.Time(p.EndDate).Add(-params.MAX_DECISIONS_DATE_RANGE)) {
-				pubapi.NewErrorResponse().WithError(errors.WithDetailf(
-					pubapi.ErrInvalidPayload, "start and end date must be at most %.0f days apart",
+				types.NewErrorResponse().WithError(errors.WithDetailf(
+					types.ErrInvalidPayload, "start and end date must be at most %.0f days apart",
 					params.MAX_DECISIONS_DATE_RANGE.Hours()/24)).Serve(c)
 				return
 			}
@@ -61,7 +62,7 @@ func HandleListDecisions(uc usecases.Usecases) gin.HandlerFunc {
 
 		decisions, err := decisionsUsecase.ListDecisions(ctx, orgId, paging, filters)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -71,7 +72,7 @@ func HandleListDecisions(uc usecases.Usecases) gin.HandlerFunc {
 			nextPageId = decisions.Decisions[len(decisions.Decisions)-1].DecisionId.String()
 		}
 
-		pubapi.
+		types.
 			NewResponse(pure_utils.Map(decisions.Decisions, dto.AdaptDecision(false, nil, nil))).
 			WithPagination(decisions.HasNextPage, nextPageId).
 			Serve(c)
@@ -82,9 +83,9 @@ func HandleGetDecision(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		decisionId, err := pubapi.UuidParam(c, "decisionId")
+		decisionId, err := types.UuidParam(c, "decisionId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -93,11 +94,11 @@ func HandleGetDecision(uc usecases.Usecases) gin.HandlerFunc {
 
 		decision, err := decisionsUsecase.GetDecision(ctx, decisionId.String())
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.
+		types.
 			NewResponse(dto.AdaptDecision(true, decision.RuleExecutions,
 				decision.ScreeningExecutions)(decision.Decision)).
 			Serve(c)
@@ -110,14 +111,14 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var payload params.CreateDecisionParams
 
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -128,11 +129,11 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 		scenario, err := scenariosUsecase.GetScenario(ctx, payload.ScenarioId)
 		if err != nil {
 			if errors.Is(err, models.NotFoundError) {
-				pubapi.NewErrorResponse().WithError(err).WithErrorMessage("scenario was not found").Serve(c)
+				types.NewErrorResponse().WithError(err).WithErrorMessage("scenario was not found").Serve(c)
 				return
 			}
 
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -156,7 +157,7 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 				return
 			}
 
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -165,7 +166,7 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 		if !triggerPassed {
 			stats.Count.Skipped = 1
 
-			pubapi.
+			types.
 				NewResponse([]struct{}{}).
 				WithMetadata(dto.AdaptDecisionsMetadata(stats)).
 				Serve(c)
@@ -185,7 +186,7 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 			stats.Count.Decline = 1
 		}
 
-		pubapi.
+		types.
 			NewResponse([]dto.Decision{dto.AdaptDecision(true, decision.RuleExecutions,
 				decision.ScreeningExecutions)(decision.Decision)}).
 			WithMetadata(dto.AdaptDecisionsMetadata(stats)).
@@ -199,14 +200,14 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var payload params.CreateAllDecisionsParams
 
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -232,7 +233,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 				return
 			}
 
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -242,7 +243,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 
 		stats := gdto.AdaptDecisionsMetadata(decisions, skipped)
 
-		pubapi.NewResponse(dtos).WithMetadata(dto.AdaptDecisionsMetadata(stats)).Serve(c)
+		types.NewResponse(dtos).WithMetadata(dto.AdaptDecisionsMetadata(stats)).Serve(c)
 	}
 }
 
@@ -254,16 +255,16 @@ func HandleAddDecisionToCase(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		decisionId, err := pubapi.UuidParam(c, "decisionId")
+		decisionId, err := types.UuidParam(c, "decisionId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var params AddDecisionToCaseParams
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -273,17 +274,17 @@ func HandleAddDecisionToCase(uc usecases.Usecases) gin.HandlerFunc {
 
 		_, err = caseUsecase.AddDecisionsToCase(ctx, "", params.CaseId.String(), []string{decisionId.String()})
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		decision, err := decisionUsecase.GetDecision(ctx, decisionId.String())
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.NewResponse(dto.AdaptDecision(false, nil, nil)(decision.Decision)).Serve(c)
+		types.NewResponse(dto.AdaptDecision(false, nil, nil)(decision.Decision)).Serve(c)
 	}
 }
 
@@ -293,7 +294,7 @@ func presentDecisionCreationError(c *gin.Context, err error) bool {
 	if errors.As(err, &validationError) {
 		_, errs := validationError.GetSomeItem()
 
-		pubapi.NewErrorResponse().
+		types.NewErrorResponse().
 			WithError(errs).
 			WithErrorCode(string(gdto.SchemaMismatchError)).
 			WithErrorMessage("the provided trigger object is invalid").

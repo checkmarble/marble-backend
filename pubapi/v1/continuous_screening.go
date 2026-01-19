@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/pubapi/v1/params"
 	"github.com/checkmarble/marble-backend/usecases"
@@ -16,7 +17,7 @@ func HandleCreateContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 
 		var param params.CreateContinuousScreeningObjectParams
 		if err := c.ShouldBindJSON(&param); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -26,7 +27,7 @@ func HandleCreateContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 			param.ToModel(),
 		)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -35,7 +36,7 @@ func HandleCreateContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 			return
 		}
 
-		pubapi.NewResponse(dto.AdaptContinuousScreening(continuousScreening)).Serve(c, http.StatusCreated)
+		types.NewResponse(dto.AdaptContinuousScreening(continuousScreening)).Serve(c, http.StatusCreated)
 	}
 }
 
@@ -45,7 +46,7 @@ func HandleDeleteContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 
 		var param params.DeleteContinuousScreeningObjectParams
 		if err := c.ShouldBindJSON(&param); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -55,7 +56,7 @@ func HandleDeleteContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Con
 			param.ToModel(),
 		)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 

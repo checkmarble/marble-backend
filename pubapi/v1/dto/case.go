@@ -4,36 +4,36 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
 
 type Case struct {
-	Id           string           `json:"id"`
-	Inbox        Ref              `json:"inbox"`
-	Name         string           `json:"name"`
-	Assignee     *Ref             `json:"assignee"`
-	Status       string           `json:"status"`
-	Outcome      string           `json:"outcome"`
-	Contributors []Ref            `json:"contributors"`
-	Tags         []Ref            `json:"tags"`
-	SnoozedUntil *pubapi.DateTime `json:"snoozed_until,omitempty"`
-	CreatedAt    pubapi.DateTime  `json:"created_at"`
+	Id           string          `json:"id"`
+	Inbox        Ref             `json:"inbox"`
+	Name         string          `json:"name"`
+	Assignee     *Ref            `json:"assignee"`
+	Status       string          `json:"status"`
+	Outcome      string          `json:"outcome"`
+	Contributors []Ref           `json:"contributors"`
+	Tags         []Ref           `json:"tags"`
+	SnoozedUntil *types.DateTime `json:"snoozed_until,omitempty"`
+	CreatedAt    types.DateTime  `json:"created_at"`
 }
 
 type CaseComment struct {
-	Id        string          `json:"id"`
-	User      Ref             `json:"user"`
-	Comment   string          `json:"comment"`
-	CreatedAt pubapi.DateTime `json:"created_at"`
+	Id        string         `json:"id"`
+	User      Ref            `json:"user"`
+	Comment   string         `json:"comment"`
+	CreatedAt types.DateTime `json:"created_at"`
 }
 
 type CaseFile struct {
-	Id        string          `json:"id"`
-	Filename  string          `json:"file_name"` //nolint:tagliatelle
-	CreatedAt pubapi.DateTime `json:"created_at"`
+	Id        string         `json:"id"`
+	Filename  string         `json:"file_name"` //nolint:tagliatelle
+	CreatedAt types.DateTime `json:"created_at"`
 }
 
 func AdaptCase(users []models.User, tags []models.Tag, referents map[string]models.CaseReferents) func(c models.Case) Case {
@@ -46,8 +46,8 @@ func AdaptCase(users []models.User, tags []models.Tag, referents map[string]mode
 			Name:         c.Name,
 			Status:       string(c.Status),
 			Outcome:      string(c.Outcome),
-			SnoozedUntil: pubapi.ThenDateTime(c.SnoozedUntil),
-			CreatedAt:    pubapi.DateTime(c.CreatedAt),
+			SnoozedUntil: types.ThenDateTime(c.SnoozedUntil),
+			CreatedAt:    types.DateTime(c.CreatedAt),
 			Contributors: make([]Ref, 0),
 			Tags:         make([]Ref, 0),
 		}
@@ -82,7 +82,7 @@ func AdaptCaseComment(users []models.User) func(models.CaseEvent) CaseComment {
 		comment := CaseComment{
 			Id:        c.Id,
 			Comment:   c.AdditionalNote,
-			CreatedAt: pubapi.DateTime(c.CreatedAt),
+			CreatedAt: types.DateTime(c.CreatedAt),
 			User: Ref{
 				Id:   uuid.Nil.String(),
 				Name: "unknown user",
@@ -108,7 +108,7 @@ func AdaptCaseFile(f models.CaseFile) CaseFile {
 	file := CaseFile{
 		Id:        f.Id,
 		Filename:  f.FileName,
-		CreatedAt: pubapi.DateTime(f.CreatedAt),
+		CreatedAt: types.DateTime(f.CreatedAt),
 	}
 
 	return file

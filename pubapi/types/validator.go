@@ -1,4 +1,4 @@
-package pubapi
+package types
 
 // Authored by Antoine Popineau
 // MIT license
@@ -81,4 +81,21 @@ func AdaptFieldValidationError(fe validator.FieldError) string {
 	}
 
 	return fmt.Sprintf("field `%s` %s", fe.Field(), inner(fe))
+}
+
+func FieldNameFromTag(fld reflect.StructField) string {
+	name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+	if len(name) > 0 {
+		if name == "-" {
+			return ""
+		}
+		return name
+	}
+
+	name = strings.SplitN(fld.Tag.Get("form"), ",", 2)[0]
+	if len(name) > 0 {
+		return name
+	}
+
+	return ""
 }

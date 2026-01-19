@@ -5,7 +5,7 @@ import (
 	"time"
 
 	gdto "github.com/checkmarble/marble-backend/dto"
-	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -16,7 +16,7 @@ const (
 )
 
 type ListDecisionsParams struct {
-	pubapi.PaginationParams
+	types.PaginationParams
 
 	ScenarioId       *string `form:"scenario_id" binding:"omitzero,uuid"`
 	BatchExecutionId *string `form:"batch_execution_id" binding:"omitzero,uuid"`
@@ -27,8 +27,8 @@ type ListDecisionsParams struct {
 	PivotValue       *string `form:"pivot_value" binding:"omitzero,lte=256"`
 
 	// Both date filters are inclusive
-	StartDate pubapi.DateTime `form:"start" binding:"required_with=EndDate"`
-	EndDate   pubapi.DateTime `form:"end" binding:"required_with=StartDate"`
+	StartDate types.DateTime `form:"start" binding:"required_with=EndDate"`
+	EndDate   types.DateTime `form:"end" binding:"required_with=StartDate"`
 }
 
 func (p ListDecisionsParams) ToFilters() gdto.DecisionFilters {

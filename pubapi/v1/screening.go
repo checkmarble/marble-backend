@@ -7,6 +7,7 @@ import (
 	gdto "github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
@@ -17,9 +18,9 @@ import (
 
 func HandleListScreenings(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		decisionId, err := pubapi.UuidParam(c, "decisionId")
+		decisionId, err := types.UuidParam(c, "decisionId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -32,18 +33,18 @@ func HandleListScreenings(uc usecases.Usecases) gin.HandlerFunc {
 
 		sc, err := screeningUsecase.ListScreenings(c.Request.Context(), decisionId.String(), false)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 		if len(sc) == 0 {
-			pubapi.NewErrorResponse().WithError(errors.WithDetail(models.NotFoundError,
+			types.NewErrorResponse().WithError(errors.WithDetail(models.NotFoundError,
 				"this decision does not have a screening")).Serve(c)
 			return
 		}
 
-		pubapi.
+		types.
 			NewResponse(pure_utils.Map(sc, dto.AdaptScreening(true))).
-			WithLink(pubapi.LinkDecisions, gin.H{"id": decisionId.String()}).
+			WithLink(types.LinkDecisions, gin.H{"id": decisionId.String()}).
 			Serve(c)
 	}
 }
@@ -55,16 +56,16 @@ type UpdateScreeningMatchStatusParams struct {
 
 func HandleUpdateScreeningMatchStatus(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		matchId, err := pubapi.UuidParam(c, "matchId")
+		matchId, err := types.UuidParam(c, "matchId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var params UpdateScreeningMatchStatusParams
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -77,33 +78,33 @@ func HandleUpdateScreeningMatchStatus(uc usecases.Usecases) gin.HandlerFunc {
 			Whitelist: params.Whitelist,
 		})
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.
+		types.
 			NewResponse(dto.AdaptScreeningMatch(match)).
-			WithLink(pubapi.LinkScreenings, gin.H{"id": match.ScreeningId}).
+			WithLink(types.LinkScreenings, gin.H{"id": match.ScreeningId}).
 			Serve(c)
 	}
 }
 
 func HandleRefineScreening(uc usecases.Usecases, write bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		screeningId, err := pubapi.UuidParam(c, "screeningId")
+		screeningId, err := types.UuidParam(c, "screeningId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var params gdto.RefineQueryDto
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 		if !params.Validate() {
-			pubapi.
+			types.
 				NewErrorResponse().
 				WithErrorMessage("refine query is missing some required fields").
 				Serve(c, http.StatusBadRequest)
@@ -115,7 +116,7 @@ func HandleRefineScreening(uc usecases.Usecases, write bool) gin.HandlerFunc {
 
 		screening, err := screeningUsecase.GetScreening(c.Request.Context(), screeningId.String())
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -129,19 +130,19 @@ func HandleRefineScreening(uc usecases.Usecases, write bool) gin.HandlerFunc {
 		case true:
 			screening, err := screeningUsecase.Refine(c.Request.Context(), refineQuery, nil)
 			if err != nil {
-				pubapi.NewErrorResponse().WithError(err).Serve(c)
+				types.NewErrorResponse().WithError(err).Serve(c)
 				return
 			}
 
-			pubapi.
+			types.
 				NewResponse(dto.AdaptScreening(true)(screening)).
-				WithLink(pubapi.LinkDecisions, gin.H{pubapi.LinkDecisions: screening.DecisionId}).
+				WithLink(types.LinkDecisions, gin.H{types.LinkDecisions: screening.DecisionId}).
 				Serve(c)
 
 		case false:
 			screening, err := screeningUsecase.Search(c.Request.Context(), refineQuery)
 			if err != nil {
-				pubapi.NewErrorResponse().WithError(err).Serve(c)
+				types.NewErrorResponse().WithError(err).Serve(c)
 				return
 			}
 
@@ -149,9 +150,9 @@ func HandleRefineScreening(uc usecases.Usecases, write bool) gin.HandlerFunc {
 				return m.Payload
 			}
 
-			pubapi.
+			types.
 				NewResponse(pure_utils.Map(screening.Matches, matchPayload)).
-				WithLink(pubapi.LinkDecisions, gin.H{pubapi.LinkDecisions: screening.DecisionId}).
+				WithLink(types.LinkDecisions, gin.H{types.LinkDecisions: screening.DecisionId}).
 				Serve(c)
 		}
 	}
@@ -161,18 +162,18 @@ func HandleScreeningFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var params gdto.RefineQueryDto
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 		if !params.Validate() {
-			pubapi.
+			types.
 				NewErrorResponse().
 				WithErrorMessage("refine query is missing some required fields").
 				Serve(c, http.StatusBadRequest)
@@ -190,7 +191,7 @@ func HandleScreeningFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 		screening, err := screeningUsecase.FreeformSearch(c.Request.Context(),
 			orgId, models.ScreeningConfig{}, refineQuery)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -198,7 +199,7 @@ func HandleScreeningFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 			return m.Payload
 		}
 
-		pubapi.
+		types.
 			NewResponse(pure_utils.Map(screening.Matches, matchPayload)).
 			Serve(c)
 	}
@@ -214,11 +215,11 @@ func HandleGetScreeningEntity(uc usecases.Usecases) gin.HandlerFunc {
 
 		entity, err := screeningUsecase.GetEntity(ctx, entityId)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.NewResponse(json.RawMessage(entity)).Serve(c)
+		types.NewResponse(json.RawMessage(entity)).Serve(c)
 	}
 }
 
@@ -232,14 +233,14 @@ func HandleAddWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		ctx := c.Request.Context()
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var params AddWhitelistParams
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -248,7 +249,7 @@ func HandleAddWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 
 		if err := screeningUsecase.CreateWhitelist(ctx, nil, orgId,
 			params.Counterparty, params.EntityId, nil); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -266,14 +267,14 @@ func HandleDeleteWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		ctx := c.Request.Context()
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var params DeleteWhitelistParams
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -282,7 +283,7 @@ func HandleDeleteWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 
 		if err := screeningUsecase.DeleteWhitelist(ctx, nil, orgId,
 			params.Counterparty, params.EntityId, nil); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -300,18 +301,18 @@ func HandleSearchWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		ctx := c.Request.Context()
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var params SearchWhitelistParams
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 		if params.Counterparty == nil && params.EntityId == nil {
-			pubapi.
+			types.
 				NewErrorResponse().
 				WithError(errors.WithDetail(models.BadParameterError,
 					"at least one of `counterparty` or `entity_id` must be provided")).
@@ -325,11 +326,11 @@ func HandleSearchWhitelist(uc usecases.Usecases) gin.HandlerFunc {
 		whitelists, err := screeningUsecase.SearchWhitelist(ctx, nil,
 			orgId, params.Counterparty, params.EntityId, nil)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.
+		types.
 			NewResponse(pure_utils.Map(whitelists, dto.AdaptScreeningWhitelist)).
 			Serve(c)
 	}

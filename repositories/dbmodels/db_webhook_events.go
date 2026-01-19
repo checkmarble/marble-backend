@@ -29,7 +29,7 @@ const TABLE_WEBHOOK_EVENTS = "webhook_events"
 var WebhookEventFields = utils.ColumnList[DBWebhookEvent]()
 
 func AdaptWebhookEvent(db DBWebhookEvent) (models.WebhookEvent, error) {
-	eventData := make(map[string]any)
+	var eventData models.WebhookEventPayload
 	err := json.Unmarshal(db.EventData, &eventData)
 	if err != nil {
 		return models.WebhookEvent{}, fmt.Errorf("can't decode %s webhook's event data: %w", db.Id, err)

@@ -1076,6 +1076,7 @@ components:
             Data is an arbitrary JSON value that gets sent as the body of the
             webhook to the endpoints
           type: object
+          x-go-type: json.RawMessage
         event_type:
           description: Event Type is used for filtering and debugging e.g invoice.paid
           type: string
