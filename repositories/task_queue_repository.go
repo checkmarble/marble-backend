@@ -89,6 +89,12 @@ type TaskQueueRepository interface {
 		orgId uuid.UUID,
 		updateId uuid.UUID,
 	) error
+	EnqueueCsvIngestionTask(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		uploadLogId string,
+	) error
 }
 
 type riverRepository struct {
@@ -401,5 +407,25 @@ func (r riverRepository) EnqueueContinuousScreeningApplyDeltaFileTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued continuous screening process delta file task", "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueCsvIngestionTask(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	uploadLogId string,
+) error {
+	res, err := r.client.InsertTx(ctx, tx.RawTx(), models.CsvIngestionArgs{
+		UploadLogId: uploadLogId,
+	}, &river.InsertOpts{
+		Queue: organizationId.String(),
+	})
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued CSV ingestion task", "upload_log_id", uploadLogId, "job_id", res.Job.ID)
 	return nil
 }

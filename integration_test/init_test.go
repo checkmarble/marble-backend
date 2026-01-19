@@ -24,6 +24,7 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/repositories/clock"
 	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/repositories/postgres"
@@ -128,6 +129,8 @@ func TestMain(m *testing.M) {
 
 	workers := river.NewWorkers()
 	// AddWorker panics if the worker is already registered or invalid
+	// Register the CsvIngestionWorker so that job enqueueing doesn't fail validation
+	river.AddWorker(workers, scheduled_execution.NewCsvIngestionWorker(nil))
 
 	riverClient, err = river.NewClient(riverpgxv5.New(dbPool), &river.Config{
 		Workers: workers,

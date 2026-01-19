@@ -29,11 +29,6 @@ func (r *UploadLogRepository) UploadLogById(ctx context.Context, exec repositori
 	return args.Get(0).(models.UploadLog), args.Error(1)
 }
 
-func (r *UploadLogRepository) AllUploadLogsByStatus(ctx context.Context, exec repositories.Executor, status models.UploadStatus) ([]models.UploadLog, error) {
-	args := r.Called(ctx, exec, status)
-	return args.Get(0).([]models.UploadLog), args.Error(1)
-}
-
 func (r *UploadLogRepository) AllUploadLogsByTable(
 	ctx context.Context,
 	exec repositories.Executor,

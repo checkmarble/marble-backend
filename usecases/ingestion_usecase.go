@@ -10,7 +10,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -62,6 +61,12 @@ type taskEnqueuer interface {
 		objectType string,
 		enqueueObjectUpdateTasks []models.ContinuousScreeningEnqueueObjectUpdateTask,
 		triggerType models.ContinuousScreeningTriggerType,
+	) error
+	EnqueueCsvIngestionTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId uuid.UUID,
+		uploadLogId string,
 	) error
 }
 
@@ -396,72 +401,26 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			if err := usecase.uploadLogRepository.CreateUploadLog(ctx, tx, newUploadLoad); err != nil {
 				return models.UploadLog{}, err
 			}
+			if err := usecase.taskEnqueuer.EnqueueCsvIngestionTask(ctx, tx, organizationId, newUploadListId); err != nil {
+				return models.UploadLog{}, err
+			}
 			return usecase.uploadLogRepository.UploadLogById(ctx, tx, newUploadListId)
 		})
 }
 
-func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context) error {
+// IngestDataFromCsvByUploadLogId processes a single upload log by its ID.
+// This is the main entry point for the CSV ingestion worker.
+func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(ctx context.Context, uploadLogId string) error {
 	logger := utils.LoggerFromContext(ctx)
-	logger.InfoContext(ctx, "Start ingesting data from upload logs")
-	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatus(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		models.UploadPending)
+	logger.InfoContext(ctx, fmt.Sprintf("Start ingesting data from upload log %s", uploadLogId))
+
+	exec := usecase.executorFactory.NewExecutor()
+	uploadLog, err := usecase.uploadLogRepository.UploadLogById(ctx, exec, uploadLogId)
 	if err != nil {
 		return err
 	}
-	logger.InfoContext(ctx, fmt.Sprintf("Found %d upload logs of data to ingest", len(pendingUploadLogs)))
 
-	return usecase.processUploadLogs(ctx, pendingUploadLogs)
-}
-
-// IngestDataFromCsvForOrg ingests data from CSV files for a specific organization.
-func (usecase *IngestionUseCase) IngestDataFromCsvForOrg(ctx context.Context, orgId uuid.UUID) error {
-	logger := utils.LoggerFromContext(ctx)
-	logger.InfoContext(ctx, fmt.Sprintf("Start ingesting data from upload logs for org %s", orgId))
-	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatusAndOrg(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		models.UploadPending,
-		orgId)
-	if err != nil {
-		return err
-	}
-	logger.InfoContext(ctx, fmt.Sprintf("Found %d upload logs of data to ingest for org %s", len(pendingUploadLogs), orgId))
-
-	return usecase.processUploadLogs(ctx, pendingUploadLogs)
-}
-
-func (usecase *IngestionUseCase) processUploadLogs(ctx context.Context, pendingUploadLogs []models.UploadLog) error {
-	logger := utils.LoggerFromContext(ctx)
-
-	var waitGroup sync.WaitGroup
-	// The channel needs to be big enough to store any possible errors to avoid deadlock due to the presence of a waitGroup
-	uploadErrorChan := make(chan error, len(pendingUploadLogs))
-
-	startProcessUploadLog := func(uploadLog models.UploadLog) {
-		defer waitGroup.Done()
-		ctx = utils.StoreLoggerInContext(
-			ctx,
-			logger.
-				With("uploadLogId", uploadLog.Id).
-				With("organizationId", uploadLog.OrganizationId),
-		)
-		if err := usecase.processUploadLog(ctx, uploadLog); err != nil {
-			uploadErrorChan <- err
-		}
-	}
-
-	for _, uploadLog := range pendingUploadLogs {
-		waitGroup.Add(1)
-		go startProcessUploadLog(uploadLog)
-	}
-
-	waitGroup.Wait()
-	close(uploadErrorChan)
-
-	uploadErr := <-uploadErrorChan
-	return uploadErr
+	return usecase.processUploadLog(ctx, uploadLog)
 }
 
 func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog) error {
