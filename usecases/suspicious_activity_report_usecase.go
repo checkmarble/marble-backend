@@ -37,7 +37,7 @@ type SuspiciousActivityReportRepository interface {
 		req models.SuspiciousActivityReportRequest) error
 
 	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
-		createCaseEventAttributes models.CreateCaseEventAttributes) error
+		createCaseEventAttributes models.CreateCaseEventAttributes) (models.CaseEvent, error)
 }
 
 type SuspiciousActivityReportUsecase struct {
@@ -115,7 +115,7 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 			return models.SuspiciousActivityReport{}, err
 		}
 
-		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		if _, err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:        c.OrganizationId,
 			CaseId:       sar.CaseId,
 			UserId:       userId,
@@ -127,7 +127,7 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 		}
 
 		if req.File != nil {
-			if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			if _, err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 				OrgId:        c.OrganizationId,
 				CaseId:       sar.CaseId,
 				UserId:       userId,
@@ -205,7 +205,7 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 			return models.SuspiciousActivityReport{}, err
 		}
 
-		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		if _, err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:         c.OrganizationId,
 			CaseId:        sar.CaseId,
 			UserId:        userId,
@@ -274,7 +274,7 @@ func (uc SuspiciousActivityReportUsecase) DeleteReport(
 	}
 
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		if err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		if _, err := uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:        c.OrganizationId,
 			CaseId:       sar.CaseId,
 			UserId:       userId,

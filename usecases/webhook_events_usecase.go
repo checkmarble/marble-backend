@@ -2,10 +2,13 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pubapi/types"
+	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -23,7 +26,7 @@ const (
 )
 
 type convoyWebhookEventRepository interface {
-	SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent) error
+	SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent, payload json.RawMessage) error
 }
 
 type webhookEventsRepository interface {
@@ -57,6 +60,7 @@ type WebhookEventsUsecase struct {
 	failedWebhooksRetryPageSize int
 	hasLicense                  bool
 	hasConvoyServerSetup        bool
+	publicApiAdaptor            types.PublicApiDataAdapter
 }
 
 func NewWebhookEventsUsecase(
@@ -67,6 +71,7 @@ func NewWebhookEventsUsecase(
 	failedWebhooksRetryPageSize int,
 	hasLicense bool,
 	hasConvoyServerSetup bool,
+	publicApiAdaptor types.PublicApiDataAdapter,
 ) WebhookEventsUsecase {
 	if failedWebhooksRetryPageSize == 0 {
 		failedWebhooksRetryPageSize = DEFAULT_FAILED_WEBHOOKS_PAGE_SIZE
@@ -80,6 +85,7 @@ func NewWebhookEventsUsecase(
 		failedWebhooksRetryPageSize: failedWebhooksRetryPageSize,
 		hasLicense:                  hasLicense,
 		hasConvoyServerSetup:        hasConvoyServerSetup,
+		publicApiAdaptor:            publicApiAdaptor,
 	}
 }
 
@@ -245,7 +251,12 @@ func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webho
 
 	webhookEventUpdate := models.WebhookEventUpdate{Id: webhookEvent.Id}
 
-	err = usecase.convoyRepository.SendWebhookEvent(ctx, webhookEvent)
+	data, err := dto.AdaptWebhookEventData(ctx, exec, usecase.publicApiAdaptor, webhookEvent.EventContent.Data)
+	if err != nil {
+		return models.Scheduled, err
+	}
+
+	err = usecase.convoyRepository.SendWebhookEvent(ctx, webhookEvent, data)
 	if err == nil {
 		webhookEventUpdate.DeliveryStatus = models.Success
 	} else {

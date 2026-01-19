@@ -25,7 +25,7 @@ func (r *CaseEventRepository) CreateCaseEvent(exec repositories.Executor,
 
 func (r *CaseEventRepository) BatchCreateCaseEvents(exec repositories.Executor,
 	createCaseEventAttributes []models.CreateCaseEventAttributes,
-) error {
+) ([]models.CaseEvent, error) {
 	args := r.Called(exec, createCaseEventAttributes)
-	return args.Error(0)
+	return args.Get(0).([]models.CaseEvent), args.Error(1)
 }

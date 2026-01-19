@@ -15,7 +15,7 @@ import (
 type autoAssignmentCaseRepository interface {
 	AssignCase(ctx context.Context, exec repositories.Executor, id string, userId *models.UserId) error
 	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
-		createCaseEventAttributes models.CreateCaseEventAttributes) error
+		createCaseEventAttributes models.CreateCaseEventAttributes) (models.CaseEvent, error)
 }
 
 type autoAssignmentRepository interface {
@@ -102,7 +102,7 @@ func (uc AutoAssignmentUsecase) assignCase(ctx context.Context, c models.Case, u
 			return err
 		}
 
-		if err := uc.caseRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		if _, err := uc.caseRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:     c.OrganizationId,
 			CaseId:    c.Id,
 			UserId:    nil,

@@ -29,6 +29,7 @@ type caseEditor interface {
 }
 
 type decisionWorkflowsRepository interface {
+	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 	SelectCasesWithPivot(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -43,7 +44,7 @@ type decisionWorkflowsRepository interface {
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
 	CreateCaseTag(ctx context.Context, exec repositories.Executor, caseId, tagId string) error
 	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
-		createCaseEventAttributes models.CreateCaseEventAttributes) error
+		createCaseEventAttributes models.CreateCaseEventAttributes) (models.CaseEvent, error)
 	ListCaseTagsByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseTag, error)
 }
 

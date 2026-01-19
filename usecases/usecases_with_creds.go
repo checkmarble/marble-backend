@@ -414,6 +414,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		taskQueueRepository:     usecases.Repositories.TaskQueueRepository,
 		featureAccessReader:     usecases.NewFeatureAccessReader(),
 		aiAgentUsecase:          utils.Ptr(usecases.NewAiAgentUsecase()),
+		publicApiAdapterUsecase: usecases.NewPublicApiAdapterUsecase(),
 	}
 }
 
@@ -550,6 +551,7 @@ func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecas
 		usecases.Usecases.failedWebhooksRetryPageSize,
 		usecases.Usecases.license.Webhooks,
 		usecases.Usecases.hasConvoyServerSetup,
+		usecases.NewPublicApiAdapterUsecase(),
 	)
 }
 
@@ -930,4 +932,11 @@ func (usecases *UsecasesWithCreds) NewDataModelDestroyUsecase() DataModelDestroy
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.OrganizationSchemaRepository,
 	)
+}
+
+func (usecases *UsecasesWithCreds) NewPublicApiAdapterUsecase() PublicApiAdapterUsecase {
+	return PublicApiAdapterUsecase{
+		enforceSecurity: usecases.NewEnforceOrganizationSecurity(),
+		repository:      usecases.Repositories.MarbleDbRepository,
+	}
 }

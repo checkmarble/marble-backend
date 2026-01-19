@@ -8,7 +8,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/api-clients/convoy"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -73,7 +72,7 @@ func getName(ownerId string, eventTypes []string) string {
 	return fmt.Sprintf("%s|%s", ownerId, eventLabel)
 }
 
-func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent) error {
+func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent, payload json.RawMessage) error {
 	err := repo.limiter.Wait(ctx)
 	if err != nil {
 		// Happens if the context is canceled or the wait time is expected to be larger than the context deadline.
@@ -96,16 +95,11 @@ func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent 
 	ownerId := getOwnerId(webhookEvent.OrganizationId)
 	eventType := string(webhookEvent.EventContent.Type)
 
-	data, err := dto.AdaptWebhookEventData(webhookEvent.EventContent.Data)
-	if err != nil {
-		return err
-	}
-
 	fanoutEvent, err := convoyClient.CreateEndpointFanoutEventWithResponse(ctx, projectId, convoy.ModelsFanoutEvent{
 		OwnerId:        &ownerId,
 		EventType:      &eventType,
 		IdempotencyKey: &webhookEvent.Id,
-		Data:           data,
+		Data:           &payload,
 	})
 	if err != nil {
 		return errors.Wrap(err, "can't create convoy event: request error")

@@ -210,7 +210,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 			models.ScreeningMatchStatusConfirmedHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
 		attrs models.CreateCaseEventAttributes,
 	) bool {
@@ -225,7 +225,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 			models.ScreeningMatchStatusConfirmedHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	suite.repository.On("UpdateContinuousScreeningMatchStatusByBatch", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(ids []uuid.UUID) bool {
 			return len(ids) == 2
@@ -258,7 +258,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 				models.ScreeningMatchStatusSkipped.String() &&
 				events[1].PreviousValue != nil && *events[1].PreviousValue ==
 				continuousScreeningMatch3.Status.String()
-		})).Return(nil)
+		})).Return([]models.CaseEvent{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -331,7 +331,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 			models.ScreeningMatchStatusConfirmedHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
 		attrs models.CreateCaseEventAttributes,
 	) bool {
@@ -346,7 +346,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 			models.ScreeningStatusConfirmedHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -430,7 +430,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			models.ScreeningMatchStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -510,7 +510,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			models.ScreeningMatchStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
 		attrs models.CreateCaseEventAttributes,
 	) bool {
@@ -524,7 +524,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			attrs.NewValue != nil && *attrs.NewValue == models.ScreeningStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	uc := suite.makeUsecase()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
@@ -600,7 +600,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			models.ScreeningMatchStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
 		attrs models.CreateCaseEventAttributes,
 	) bool {
@@ -614,7 +614,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			attrs.NewValue != nil && *attrs.NewValue == models.ScreeningStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -694,7 +694,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			models.ScreeningMatchStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	// Note: No UpdateContinuousScreeningStatus call expected because IsPartial is true
 	// Note: No ScreeningReviewed event expected because IsPartial prevents status change
 
@@ -826,7 +826,7 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NoHitChangesOthe
 			return false
 		}
 		return true
-	})).Return(nil)
+	})).Return([]models.CaseEvent{}, nil)
 	suite.repository.On("UpdateContinuousScreeningStatus", mock.Anything, mock.Anything,
 		suite.screeningId, models.ScreeningStatusNoHit).Return(models.ContinuousScreening{}, nil)
 	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
@@ -841,7 +841,7 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NoHitChangesOthe
 			attrs.NewValue != nil && *attrs.NewValue == models.ScreeningStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
 		suite.screeningId).Return(expectedResult, nil).Once()
 
@@ -903,7 +903,7 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_ConfirmedHit_NoU
 			attrs.NewValue != nil && *attrs.NewValue == models.ScreeningStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
 		suite.screeningId).Return(continuousScreeningWithMatches, nil).Once()
 
@@ -1361,7 +1361,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			models.ScreeningMatchStatusConfirmedHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -1438,7 +1438,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			models.ScreeningMatchStatusConfirmedHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
 		attrs models.CreateCaseEventAttributes,
 	) bool {
@@ -1453,7 +1453,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			models.ScreeningStatusConfirmedHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -1536,7 +1536,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			models.ScreeningMatchStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -1617,7 +1617,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			models.ScreeningMatchStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
 		attrs models.CreateCaseEventAttributes,
 	) bool {
@@ -1631,7 +1631,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			attrs.NewValue != nil && *attrs.NewValue == models.ScreeningStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -1714,7 +1714,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			attrs.ResourceId != nil && *attrs.ResourceId == suite.matchId.String() &&
 			attrs.NewValue != nil && *attrs.NewValue ==
 			models.ScreeningMatchStatusNoHit.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
 		attrs models.CreateCaseEventAttributes,
 	) bool {
@@ -1724,7 +1724,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			attrs.ResourceId != nil && *attrs.ResourceId == suite.screeningId.String() &&
 			attrs.NewValue != nil && *attrs.NewValue ==
 			models.ScreeningStatusConfirmedHit.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -1798,7 +1798,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			models.ScreeningMatchStatusConfirmedHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -1876,7 +1876,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			models.ScreeningMatchStatusNoHit.String() &&
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
-	})).Return(nil)
+	})).Return(models.CaseEvent{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
