@@ -183,3 +183,49 @@ func (m SentryMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInn
 func NewSentryMiddleware() SentryMiddleware {
 	return SentryMiddleware{}
 }
+
+// Sentry Cron monitoring middleware
+// This middleware reports job executions to Sentry Crons for monitoring scheduled tasks.
+// It creates a single check-in per job type (not per org) to avoid monitor sprawl.
+
+type CronMonitorMiddleware struct {
+	monitorSlugs map[string]string // job kind -> sentry monitor slug
+}
+
+func (m CronMonitorMiddleware) IsMiddleware() bool { return true }
+
+func (m CronMonitorMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
+	slug, ok := m.monitorSlugs[job.Kind]
+	if !ok {
+		// No monitor configured for this job type
+		return doInner(ctx)
+	}
+
+	// Check-in as "in progress"
+	checkinId := sentry.CaptureCheckIn(&sentry.CheckIn{
+		MonitorSlug: slug,
+		Status:      sentry.CheckInStatusInProgress,
+	}, nil)
+
+	err := doInner(ctx)
+
+	// Check-in as "ok" or "error"
+	status := sentry.CheckInStatusOK
+	if err != nil {
+		status = sentry.CheckInStatusError
+	}
+
+	if checkinId != nil {
+		sentry.CaptureCheckIn(&sentry.CheckIn{
+			ID:          *checkinId,
+			MonitorSlug: slug,
+			Status:      status,
+		}, nil)
+	}
+
+	return err
+}
+
+func NewCronMonitorMiddleware(monitorSlugs map[string]string) CronMonitorMiddleware {
+	return CronMonitorMiddleware{monitorSlugs: monitorSlugs}
+}
