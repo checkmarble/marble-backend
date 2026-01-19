@@ -15,6 +15,7 @@ type UploadLogRepository interface {
 	UpdateUploadLogStatus(ctx context.Context, exec Executor, input models.UpdateUploadLogStatusInput) (executed bool, err error)
 	UploadLogById(ctx context.Context, exec Executor, id string) (models.UploadLog, error)
 	AllUploadLogsByStatus(ctx context.Context, exec Executor, status models.UploadStatus) ([]models.UploadLog, error)
+	AllUploadLogsByStatusAndOrg(ctx context.Context, exec Executor, status models.UploadStatus, orgId uuid.UUID) ([]models.UploadLog, error)
 	AllUploadLogsByTable(ctx context.Context, exec Executor, organizationId uuid.UUID,
 		tableName string) ([]models.UploadLog, error)
 }
@@ -131,6 +132,24 @@ func (repo *UploadLogRepositoryImpl) AllUploadLogsByStatus(ctx context.Context, 
 			Select(dbmodels.SelectUploadLogColumn...).
 			From(dbmodels.TABLE_UPLOAD_LOGS).
 			Where(squirrel.Eq{"status": status}).
+			OrderBy("started_at"),
+		dbmodels.AdaptUploadLog,
+	)
+}
+
+func (repo *UploadLogRepositoryImpl) AllUploadLogsByStatusAndOrg(ctx context.Context, exec Executor, status models.UploadStatus, orgId uuid.UUID) ([]models.UploadLog, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.SelectUploadLogColumn...).
+			From(dbmodels.TABLE_UPLOAD_LOGS).
+			Where(squirrel.Eq{"status": status}).
+			Where(squirrel.Eq{"org_id": orgId}).
 			OrderBy("started_at"),
 		dbmodels.AdaptUploadLog,
 	)

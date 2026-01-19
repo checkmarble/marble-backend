@@ -348,6 +348,11 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 	river.AddWorker(workers, uc.NewContinuousScreeningCreateFullDatasetWorker())
 
+	// Migrated from cron jobs
+	river.AddWorker(workers, adminUc.NewScheduledScenarioWorker())
+	river.AddWorker(workers, adminUc.NewCsvIngestionWorker())
+	river.AddWorker(workers, adminUc.NewWebhookRetryWorker())
+
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -386,11 +391,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		slices.Collect(maps.Keys(nonOrgQueues)),
 	)
 	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx, offloadingConfig, analyticsConfig, workerConfig.CreateFullDatasetInterval)
-
-	// Start the cron jobs using the old entrypoint.
-	// This will progressively be replaced by the new task queue system.
-	// We do not wait for it, the state of the job is handled by the task queue workers.
-	go jobs.RunScheduler(ctx, uc)
 
 	// Teardown sequence
 	sigintOrTerm := make(chan os.Signal, 1)
@@ -544,6 +544,15 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "continuous_screening_create_full_dataset":
 		return uc.NewContinuousScreeningCreateFullDatasetWorker().Work(ctx,
 			singleJobCreate[models.ContinuousScreeningCreateFullDatasetArgs](ctx, jobArgs))
+	case "scheduled_scenario":
+		return uc.NewScheduledScenarioWorker().Work(ctx,
+			singleJobCreate[models.ScheduledScenarioArgs](ctx, jobArgs))
+	case "csv_ingestion":
+		return uc.NewCsvIngestionWorker().Work(ctx,
+			singleJobCreate[models.CsvIngestionArgs](ctx, jobArgs))
+	case "webhook_retry":
+		return uc.NewWebhookRetryWorker().Work(ctx,
+			singleJobCreate[models.WebhookRetryArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

@@ -78,6 +78,10 @@ func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, exec Execu
 		query = query.Where(squirrel.NotEq{"live_scenario_iteration_id": nil})
 	}
 
+	if filters.OrganizationId != nil {
+		query = query.Where(squirrel.Eq{"org_id": *filters.OrganizationId})
+	}
+
 	return SqlToListOfModels(
 		ctx,
 		exec,

@@ -156,3 +156,24 @@ type ContinuousScreeningCreateFullDatasetArgs struct {
 func (ContinuousScreeningCreateFullDatasetArgs) Kind() string {
 	return "continuous_screening_create_full_dataset"
 }
+
+// Scheduled scenario execution job
+type ScheduledScenarioArgs struct {
+	OrgId uuid.UUID `json:"org_id"`
+}
+
+func (ScheduledScenarioArgs) Kind() string { return "scheduled_scenario" }
+
+// CSV ingestion job
+type CsvIngestionArgs struct {
+	OrgId uuid.UUID `json:"org_id"`
+}
+
+func (CsvIngestionArgs) Kind() string { return "csv_ingestion" }
+
+// Webhook retry job
+type WebhookRetryArgs struct {
+	OrgId uuid.UUID `json:"org_id"`
+}
+
+func (WebhookRetryArgs) Kind() string { return "webhook_retry" }
