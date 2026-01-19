@@ -4,6 +4,7 @@ import (
 	"github.com/checkmarble/marble-backend/api/middleware"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/gin-gonic/gin"
 )
@@ -75,6 +76,6 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 
 func handleVersion(version string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		pubapi.NewResponse(gin.H{"version": version}).Serve(c)
+		types.NewResponse(gin.H{"version": version}).Serve(c)
 	}
 }

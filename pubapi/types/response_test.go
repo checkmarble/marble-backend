@@ -1,4 +1,4 @@
-package pubapi
+package types
 
 import (
 	"encoding/json"

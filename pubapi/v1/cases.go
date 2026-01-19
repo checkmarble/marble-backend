@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/pubapi/v1/params"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -30,28 +31,28 @@ func HandleListCases(uc usecases.Usecases) gin.HandlerFunc {
 
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var p params.ListCasesParams
 
 		if err := c.ShouldBindQuery(&p); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		if !p.StartDate.IsZero() && !p.EndDate.IsZero() {
 			if time.Time(p.StartDate).After(time.Time(p.EndDate)) {
-				pubapi.NewErrorResponse().WithError(errors.WithDetail(
-					pubapi.ErrInvalidPayload, "end date should be after start date")).Serve(c)
+				types.NewErrorResponse().WithError(errors.WithDetail(
+					types.ErrInvalidPayload, "end date should be after start date")).Serve(c)
 				return
 			}
 		}
 
 		filters, err := p.ToFilters().Parse()
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 		filters.UseLinearOrdering = true
@@ -65,7 +66,7 @@ func HandleListCases(uc usecases.Usecases) gin.HandlerFunc {
 
 		cases, err := caseUsecase.ListCases(ctx, orgId, paging, filters)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -73,17 +74,17 @@ func HandleListCases(uc usecases.Usecases) gin.HandlerFunc {
 
 		users, err := userUsecase.ListUsers(ctx, &orgId)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 		referents, err := caseUsecase.GetCasesReferents(ctx, caseIds)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 		tags, err := tagUsecase.ListAllTags(ctx, orgId, models.TagTargetCase, false)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -93,7 +94,7 @@ func HandleListCases(uc usecases.Usecases) gin.HandlerFunc {
 			nextPageId = cases.Cases[len(cases.Cases)-1].Id
 		}
 
-		pubapi.
+		types.
 			NewResponse(pure_utils.Map(cases.Cases, dto.AdaptCase(users, tags, referents))).
 			WithPagination(cases.HasNextPage, nextPageId).
 			Serve(c)
@@ -104,15 +105,15 @@ func HandleGetCase(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		caseId, err := pubapi.UuidParam(c, "caseId")
+		caseId, err := types.UuidParam(c, "caseId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -123,27 +124,27 @@ func HandleGetCase(uc usecases.Usecases) gin.HandlerFunc {
 
 		cas, err := caseUsecase.GetCase(ctx, caseId.String())
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		users, err := userUsecase.ListUsers(ctx, utils.Ptr(orgId))
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 		tags, err := tagUsecase.ListAllTags(ctx, orgId, models.TagTargetCase, false)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.
+		types.
 			NewResponse(dto.AdaptCase(users, tags, referents)(cas)).
 			Serve(c)
 	}
@@ -163,13 +164,13 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 		var params CreateCaseParams
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -179,7 +180,7 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 
 		inboxId, err := uuid.Parse(params.InboxId)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -195,7 +196,7 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 		if params.AssigneeEmail != "" {
 			user, err := userUsecase.GetUserByEmail(ctx, params.AssigneeEmail)
 			if err != nil {
-				pubapi.NewErrorResponse().WithError(err).Serve(c)
+				types.NewErrorResponse().WithError(err).Serve(c)
 				return
 			}
 
@@ -204,17 +205,17 @@ func HandleCreateCase(uc usecases.Usecases) gin.HandlerFunc {
 
 		cas, err := caseUsecase.CreateCaseAsApiClient(ctx, orgId, req)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
+		types.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
 	}
 }
 
@@ -228,16 +229,16 @@ func HandleUpdateCase(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		caseId, err := pubapi.UuidParam(c, "caseId")
+		caseId, err := types.UuidParam(c, "caseId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var params UpdateCaseParams
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -251,7 +252,7 @@ func HandleUpdateCase(uc usecases.Usecases) gin.HandlerFunc {
 		if params.InboxId != "" {
 			inboxId, err := uuid.Parse(params.InboxId)
 			if err != nil {
-				pubapi.NewErrorResponse().WithError(err).Serve(c)
+				types.NewErrorResponse().WithError(err).Serve(c)
 				return
 			}
 			req.InboxId = &inboxId
@@ -265,17 +266,17 @@ func HandleUpdateCase(uc usecases.Usecases) gin.HandlerFunc {
 
 		cas, err := caseUsecase.UpdateCase(ctx, "", req)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
+		types.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
 	}
 }
 
@@ -287,9 +288,9 @@ func HandleSetCaseStatus(uc usecases.Usecases, status models.CaseStatus) gin.Han
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		caseId, err := pubapi.UuidParam(c, "caseId")
+		caseId, err := types.UuidParam(c, "caseId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -306,7 +307,7 @@ func HandleSetCaseStatus(uc usecases.Usecases, status models.CaseStatus) gin.Han
 
 			if err := c.ShouldBindBodyWithJSON(&params); err != nil {
 				if !errors.Is(err, io.EOF) {
-					pubapi.NewErrorResponse().WithError(err).Serve(c)
+					types.NewErrorResponse().WithError(err).Serve(c)
 					return
 				}
 			}
@@ -318,17 +319,17 @@ func HandleSetCaseStatus(uc usecases.Usecases, status models.CaseStatus) gin.Han
 
 		cas, err := caseUsecase.UpdateCase(ctx, "", req)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
+		types.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
 	}
 }
 
@@ -336,9 +337,9 @@ func HandleEscalateCase(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		caseId, err := pubapi.UuidParam(c, "caseId")
+		caseId, err := types.UuidParam(c, "caseId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -347,23 +348,23 @@ func HandleEscalateCase(uc usecases.Usecases) gin.HandlerFunc {
 
 		err = caseUsecase.EscalateCase(ctx, caseId.String())
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		cas, err := caseUsecase.GetCase(ctx, caseId.String())
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		referents, err := caseUsecase.GetCasesReferents(ctx, []string{cas.Id})
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
+		types.NewResponse(dto.AdaptCase(nil, nil, referents)(cas)).Serve(c)
 	}
 }
 
@@ -373,20 +374,20 @@ func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
 
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		caseId, err := pubapi.UuidParam(c, "caseId")
+		caseId, err := types.UuidParam(c, "caseId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		var p pubapi.PaginationParams
+		var p types.PaginationParams
 
 		if err := c.ShouldBindQuery(&p); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -397,13 +398,13 @@ func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
 
 		users, err := userUsecase.ListUsers(ctx, utils.Ptr(orgId))
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		comments, err := caseUsecase.GetCaseComments(ctx, caseId.String(), paging)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -413,7 +414,7 @@ func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
 			nextPageId = comments.Items[len(comments.Items)-1].Id
 		}
 
-		pubapi.
+		types.
 			NewResponse(pure_utils.Map(comments.Items, dto.AdaptCaseComment(users))).
 			WithPagination(comments.HasNextPage, nextPageId).
 			Serve(c)
@@ -428,16 +429,16 @@ func HandleCreateComment(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		caseId, err := pubapi.UuidParam(c, "caseId")
+		caseId, err := types.UuidParam(c, "caseId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		var params CreateCommentParams
 
 		if err := c.ShouldBindBodyWithJSON(&params); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -450,7 +451,7 @@ func HandleCreateComment(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		if _, err := caseUsecase.CreateCaseComment(ctx, "", req); err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -462,9 +463,9 @@ func HandleListCaseFiles(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		caseId, err := pubapi.UuidParam(c, "caseId")
+		caseId, err := types.UuidParam(c, "caseId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -473,11 +474,11 @@ func HandleListCaseFiles(uc usecases.Usecases) gin.HandlerFunc {
 
 		files, err := caseUsecase.GetCaseFiles(ctx, caseId.String())
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.
+		types.
 			NewResponse(pure_utils.Map(files, dto.AdaptCaseFile)).
 			Serve(c)
 	}
@@ -487,9 +488,9 @@ func HandleDownloadCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		fileId, err := pubapi.UuidParam(c, "fileId")
+		fileId, err := types.UuidParam(c, "fileId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -498,11 +499,11 @@ func HandleDownloadCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 
 		url, err := caseUsecase.GetCaseFileUrl(ctx, fileId.String())
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.Redirect(c, url)
+		types.Redirect(c, url)
 	}
 }
 
@@ -512,9 +513,9 @@ func HandleCreateCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		caseId, err := pubapi.UuidParam(c, "caseId")
+		caseId, err := types.UuidParam(c, "caseId")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -522,19 +523,19 @@ func HandleCreateCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 
 		if err := c.Request.ParseMultipartForm(CaseFileUploadMaxSize); err != nil {
 			if errors.Is(err, &http.MaxBytesError{}) {
-				pubapi.NewErrorResponse().
+				types.NewErrorResponse().
 					WithError(errors.WithDetail(err, "uploaded file too large")).
 					Serve(c)
 				return
 			}
 
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		_, file, err := c.Request.FormFile("file")
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -548,11 +549,11 @@ func HandleCreateCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 
 		_, files, err := caseUsecase.CreateCaseFiles(ctx, req)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		pubapi.
+		types.
 			NewResponse(pure_utils.Map(files, dto.AdaptCaseFile)).
 			Serve(c)
 	}

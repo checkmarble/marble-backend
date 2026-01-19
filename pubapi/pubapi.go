@@ -3,11 +3,10 @@ package pubapi
 import (
 	"embed"
 	"encoding/json"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
@@ -29,7 +28,7 @@ type Config struct {
 
 func InitPublicApi() {
 	if validator, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		validator.RegisterTagNameFunc(fieldNameFromTag)
+		validator.RegisterTagNameFunc(types.FieldNameFromTag)
 	}
 }
 
@@ -63,21 +62,4 @@ func GetOpenApiForVersion(version string) (*openapi3.T, error) {
 	OPENAPI_SPECS.Add(version, spec)
 
 	return spec, nil
-}
-
-func fieldNameFromTag(fld reflect.StructField) string {
-	name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
-	if len(name) > 0 {
-		if name == "-" {
-			return ""
-		}
-		return name
-	}
-
-	name = strings.SplitN(fld.Tag.Get("form"), ",", 2)[0]
-	if len(name) > 0 {
-		return name
-	}
-
-	return ""
 }

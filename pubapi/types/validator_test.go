@@ -1,4 +1,4 @@
-package pubapi
+package types
 
 import (
 	"testing"
@@ -27,7 +27,7 @@ type validatee struct {
 
 func testValidator() *validator.Validate {
 	v := validator.New()
-	v.RegisterTagNameFunc(fieldNameFromTag)
+	v.RegisterTagNameFunc(FieldNameFromTag)
 
 	return v
 }

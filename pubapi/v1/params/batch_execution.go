@@ -2,13 +2,13 @@ package params
 
 import (
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
 
 type ListBatchExecutionsParams struct {
-	pubapi.PaginationParams
+	types.PaginationParams
 
 	ScenarioId *string `form:"scenario_id" binding:"omitzero,uuid"`
 }

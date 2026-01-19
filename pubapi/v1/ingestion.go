@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/utils"
@@ -20,7 +21,7 @@ func HandleIngestObject(uc usecases.Usecases, batch bool) gin.HandlerFunc {
 
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -28,7 +29,7 @@ func HandleIngestObject(uc usecases.Usecases, batch bool) gin.HandlerFunc {
 
 		object, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
@@ -46,7 +47,7 @@ func HandleIngestObject(uc usecases.Usecases, batch bool) gin.HandlerFunc {
 			var validationError models.IngestionValidationErrors
 
 			if errors.As(err, &validationError) {
-				pubapi.
+				types.
 					NewErrorResponse().
 					WithError(err).
 					WithErrorCode(string(dto.SchemaMismatchError)).
@@ -56,7 +57,7 @@ func HandleIngestObject(uc usecases.Usecases, batch bool) gin.HandlerFunc {
 				return
 			}
 
-			pubapi.NewErrorResponse().WithError(err).Serve(c)
+			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
