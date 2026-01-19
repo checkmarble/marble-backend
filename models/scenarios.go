@@ -55,7 +55,8 @@ type UpdateScenarioInput struct {
 }
 
 type ListAllScenariosFilters struct {
-	Live bool
+	Live           bool
+	OrganizationId *uuid.UUID
 }
 
 type ScenarioAndIteration struct {

@@ -412,6 +412,29 @@ func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context) error {
 	}
 	logger.InfoContext(ctx, fmt.Sprintf("Found %d upload logs of data to ingest", len(pendingUploadLogs)))
 
+	return usecase.processUploadLogs(ctx, pendingUploadLogs)
+}
+
+// IngestDataFromCsvForOrg ingests data from CSV files for a specific organization.
+func (usecase *IngestionUseCase) IngestDataFromCsvForOrg(ctx context.Context, orgId uuid.UUID) error {
+	logger := utils.LoggerFromContext(ctx)
+	logger.InfoContext(ctx, fmt.Sprintf("Start ingesting data from upload logs for org %s", orgId))
+	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatusAndOrg(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		models.UploadPending,
+		orgId)
+	if err != nil {
+		return err
+	}
+	logger.InfoContext(ctx, fmt.Sprintf("Found %d upload logs of data to ingest for org %s", len(pendingUploadLogs), orgId))
+
+	return usecase.processUploadLogs(ctx, pendingUploadLogs)
+}
+
+func (usecase *IngestionUseCase) processUploadLogs(ctx context.Context, pendingUploadLogs []models.UploadLog) error {
+	logger := utils.LoggerFromContext(ctx)
+
 	var waitGroup sync.WaitGroup
 	// The channel needs to be big enough to store any possible errors to avoid deadlock due to the presence of a waitGroup
 	uploadErrorChan := make(chan error, len(pendingUploadLogs))

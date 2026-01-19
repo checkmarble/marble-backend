@@ -26,6 +26,8 @@ type RunScheduledExecutionRepository interface {
 		exec repositories.Executor,
 		decisionsToCreate models.DecisionToCreateBatchCreateInput,
 	) ([]models.DecisionToCreate, error)
+	ListAllScenarios(ctx context.Context, exec repositories.Executor,
+		filters models.ListAllScenariosFilters) ([]models.Scenario, error)
 
 	ListScheduledExecutions(ctx context.Context, exec repositories.Executor,
 		filters models.ListScheduledExecutionsFilters, paging *models.PaginationAndSorting) ([]models.ScheduledExecution, error)
@@ -257,4 +259,74 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 	)
 
 	return nil
+}
+
+// ExecuteScheduledScenariosForOrg runs the scheduled scenario execution for a single organization.
+// It first schedules any due scenarios, then executes all pending scheduled executions for that org.
+func (usecase *RunScheduledExecution) ExecuteScheduledScenariosForOrg(ctx context.Context, orgId uuid.UUID) error {
+	logger := utils.LoggerFromContext(ctx)
+	exec := usecase.executorFactory.NewExecutor()
+
+	// First, schedule all due scenarios for this organization
+	scenarios, err := usecase.repository.ListAllScenarios(ctx, exec,
+		models.ListAllScenariosFilters{Live: true, OrganizationId: &orgId})
+	if err != nil {
+		return fmt.Errorf("error listing live scenarios for org %s: %w", orgId, err)
+	}
+
+	for _, scenario := range scenarios {
+		logger.DebugContext(ctx, "Checking scheduled scenario",
+			slog.String("scenario_id", scenario.Id),
+			slog.String("organization_id", scenario.OrganizationId.String()),
+		)
+		if err := usecase.ScheduleScenarioIfDue(ctx, scenario.OrganizationId, scenario.Id); err != nil {
+			return err
+		}
+	}
+	logger.InfoContext(ctx, fmt.Sprintf("Done scheduling %d scenarios for org %s", len(scenarios), orgId))
+
+	// Then, execute all pending scheduled executions for this organization
+	pendingScheduledExecutions, err := usecase.repository.ListScheduledExecutions(
+		ctx,
+		exec,
+		models.ListScheduledExecutionsFilters{
+			Status:         []models.ScheduledExecutionStatus{models.ScheduledExecutionPending},
+			OrganizationId: orgId,
+		},
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("error while listing pending ScheduledExecutions for org %s: %w", orgId, err)
+	}
+
+	logger.InfoContext(ctx, fmt.Sprintf("Found %d pending scheduled executions for org %s", len(pendingScheduledExecutions), orgId))
+
+	var waitGroup sync.WaitGroup
+	executionErrorChan := make(chan error, len(pendingScheduledExecutions))
+
+	startScheduledExecution := func(scheduledExecution models.ScheduledExecution) {
+		defer utils.RecoverAndReportSentryError(ctx, "ExecuteScheduledScenariosForOrg")
+
+		defer waitGroup.Done()
+		ctx = utils.StoreLoggerInContext(
+			ctx,
+			logger.
+				With("scheduled_execution_id", scheduledExecution.Id).
+				With("organization_id", scheduledExecution.OrganizationId),
+		)
+		if err := usecase.executeScheduledScenario(ctx, scheduledExecution); err != nil {
+			executionErrorChan <- err
+		}
+	}
+
+	for _, pendingExecution := range pendingScheduledExecutions {
+		waitGroup.Add(1)
+		go startScheduledExecution(pendingExecution)
+	}
+
+	waitGroup.Wait()
+	close(executionErrorChan)
+
+	executionErr := <-executionErrorChan
+	return executionErr
 }

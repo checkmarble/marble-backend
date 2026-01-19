@@ -44,6 +44,10 @@ func (repo MarbleDbRepository) ListWebhookEvents(ctx context.Context, exec Execu
 		query = query.Where(squirrel.Eq{"delivery_status": mergedFilters.DeliveryStatus})
 	}
 
+	if mergedFilters.OrganizationId != nil {
+		query = query.Where(squirrel.Eq{"organization_id": *mergedFilters.OrganizationId})
+	}
+
 	return SqlToListOfRow(
 		ctx,
 		exec,

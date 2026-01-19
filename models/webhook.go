@@ -82,6 +82,7 @@ type WebhookEventUpdate struct {
 type WebhookEventFilters struct {
 	DeliveryStatus []WebhookEventDeliveryStatus
 	Limit          uint64
+	OrganizationId *uuid.UUID
 }
 
 func (f WebhookEventFilters) MergeWithDefaults() WebhookEventFilters {
@@ -89,6 +90,7 @@ func (f WebhookEventFilters) MergeWithDefaults() WebhookEventFilters {
 		Limit: 100,
 	}
 	defaultFilters.DeliveryStatus = f.DeliveryStatus
+	defaultFilters.OrganizationId = f.OrganizationId
 	if f.Limit > 0 {
 		defaultFilters.Limit = f.Limit
 	}

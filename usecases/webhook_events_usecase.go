@@ -129,7 +129,6 @@ func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, w
 func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 	ctx context.Context,
 ) error {
-	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
 
 	pendingWebhookEvents, err := usecase.webhookEventsRepository.ListWebhookEvents(ctx, exec, models.WebhookEventFilters{
@@ -139,6 +138,34 @@ func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 	if err != nil {
 		return errors.Wrap(err, "error while listing pending webhook events")
 	}
+
+	return usecase.sendPendingWebhookEvents(ctx, pendingWebhookEvents)
+}
+
+// RetrySendWebhookEventsForOrg retries sending webhook events for a specific organization.
+func (usecase WebhookEventsUsecase) RetrySendWebhookEventsForOrg(
+	ctx context.Context,
+	orgId uuid.UUID,
+) error {
+	exec := usecase.executorFactory.NewExecutor()
+
+	pendingWebhookEvents, err := usecase.webhookEventsRepository.ListWebhookEvents(ctx, exec, models.WebhookEventFilters{
+		DeliveryStatus: []models.WebhookEventDeliveryStatus{models.Scheduled, models.Retry},
+		Limit:          uint64(usecase.failedWebhooksRetryPageSize),
+		OrganizationId: &orgId,
+	})
+	if err != nil {
+		return errors.Wrap(err, "error while listing pending webhook events for org")
+	}
+
+	return usecase.sendPendingWebhookEvents(ctx, pendingWebhookEvents)
+}
+
+func (usecase WebhookEventsUsecase) sendPendingWebhookEvents(
+	ctx context.Context,
+	pendingWebhookEvents []models.WebhookEvent,
+) error {
+	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Found %d webhook events to retry", len(pendingWebhookEvents)))
 	if len(pendingWebhookEvents) == 0 {
 		return nil
@@ -167,7 +194,7 @@ func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 		})
 	}
 
-	err = group.Wait()
+	err := group.Wait()
 	if err != nil {
 		return errors.Wrap(err, "error while sending webhook events")
 	}
