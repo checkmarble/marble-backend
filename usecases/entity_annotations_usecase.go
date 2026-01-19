@@ -17,7 +17,7 @@ import (
 
 type EntityAnnotationRepository interface {
 	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
-		createCaseEventAttributes models.CreateCaseEventAttributes) error
+		createCaseEventAttributes models.CreateCaseEventAttributes) (models.CaseEvent, error)
 	GetEntityAnnotationById(
 		ctx context.Context,
 		exec repositories.Executor,

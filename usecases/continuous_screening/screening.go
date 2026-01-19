@@ -122,7 +122,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			return err
 		}
 
-		err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		_, err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:         continuousScreeningWithMatches.OrgId,
 			CaseId:        continuousScreeningWithMatches.CaseId.String(),
 			UserId:        (*string)(reviewerId),
@@ -293,7 +293,7 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 			if err != nil {
 				return err
 			}
-			err = uc.repository.BatchCreateCaseEvents(
+			_, err = uc.repository.BatchCreateCaseEvents(
 				ctx,
 				tx,
 				pure_utils.Map(matchesToUpdate, func(match models.ContinuousScreeningMatch) models.CreateCaseEventAttributes {
@@ -324,7 +324,7 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 		if err != nil {
 			return err
 		}
-		err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		_, err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:         continuousScreening.OrgId,
 			CaseId:        continuousScreening.CaseId.String(),
 			UserId:        (*string)(reviewerId),
@@ -608,7 +608,7 @@ func (uc *ContinuousScreeningUsecase) updateScreeningStatusWithEvent(
 		return err
 	}
 
-	return uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+	_, err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		OrgId:         screening.OrgId,
 		CaseId:        screening.CaseId.String(),
 		UserId:        (*string)(reviewerId),
@@ -618,6 +618,8 @@ func (uc *ContinuousScreeningUsecase) updateScreeningStatusWithEvent(
 		NewValue:      utils.Ptr(newStatus.String()),
 		PreviousValue: utils.Ptr(screening.Status.String()),
 	})
+
+	return err
 }
 
 // skipPendingMatches marks all pending matches as skipped and creates case events
@@ -648,7 +650,7 @@ func (uc *ContinuousScreeningUsecase) skipPendingMatches(
 		return err
 	}
 
-	return uc.repository.BatchCreateCaseEvents(
+	_, err = uc.repository.BatchCreateCaseEvents(
 		ctx,
 		tx,
 		pure_utils.Map(pendingMatches, func(match models.ContinuousScreeningMatch) models.CreateCaseEventAttributes {
@@ -664,6 +666,8 @@ func (uc *ContinuousScreeningUsecase) skipPendingMatches(
 			}
 		}),
 	)
+
+	return err
 }
 
 // handleWhitelistCreation adds a match to the whitelist when marked as no_hit

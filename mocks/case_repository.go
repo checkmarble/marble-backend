@@ -72,9 +72,9 @@ func (r *CaseRepository) CreateCaseEvent(ctx context.Context, exec repositories.
 
 func (r *CaseRepository) BatchCreateCaseEvents(ctx context.Context, exec repositories.Executor,
 	createCaseEventAttributes []models.CreateCaseEventAttributes,
-) error {
+) ([]models.CaseEvent, error) {
 	args := r.Called(ctx, exec, createCaseEventAttributes)
-	return args.Error(0)
+	return args.Get(0).([]models.CaseEvent), args.Error(1)
 }
 
 func (r *CaseRepository) ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error) {

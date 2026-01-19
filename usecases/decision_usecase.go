@@ -354,8 +354,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		Pivot:        pivot,
 	}
 
-	triggerPassed, scenarioExecution, err :=
-		usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+	triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{},
 			fmt.Errorf("error evaluating scenario: %w", err)
@@ -419,7 +418,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: decision.OrganizationId,
-				EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId.String()),
+				EventContent:   models.NewWebhookEventDecisionCreated(decision),
 			})
 			if err != nil {
 				return models.DecisionWithRuleExecutions{}, err
@@ -564,8 +563,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		)
 		defer span.End()
 
-		triggerPassed, scenarioExecution, err :=
-			usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+		triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 		switch {
 		case err != nil:
 			return nil, 0, errors.Wrapf(err, `error evaluating scenario "%s" in CreateAllDecisions`, scenario.Name)
@@ -648,7 +646,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: item.decision.OrganizationId,
-				EventContent:   models.NewWebhookEventDecisionCreated(item.decision.DecisionId.String()),
+				EventContent:   models.NewWebhookEventDecisionCreated(item.decision),
 			})
 			if err != nil {
 				return err

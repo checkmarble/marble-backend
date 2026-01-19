@@ -264,18 +264,18 @@ func (m *ContinuousScreeningRepository) CreateCaseEvent(
 	ctx context.Context,
 	exec repositories.Executor,
 	createCaseEventAttributes models.CreateCaseEventAttributes,
-) error {
+) (models.CaseEvent, error) {
 	args := m.Called(ctx, exec, createCaseEventAttributes)
-	return args.Error(0)
+	return args.Get(0).(models.CaseEvent), args.Error(1)
 }
 
 func (m *ContinuousScreeningRepository) BatchCreateCaseEvents(
 	ctx context.Context,
 	exec repositories.Executor,
 	createCaseEventAttributes []models.CreateCaseEventAttributes,
-) error {
+) ([]models.CaseEvent, error) {
 	args := m.Called(ctx, exec, createCaseEventAttributes)
-	return args.Error(0)
+	return args.Get(0).([]models.CaseEvent), args.Error(1)
 }
 
 func (m *ContinuousScreeningRepository) AddScreeningMatchWhitelist(

@@ -63,12 +63,10 @@ type WebhookEventPayload struct {
 }
 
 type WebhookEventData struct {
-	Decision WebhookPayloadId `json:"decision,omitzero"`
-	Case     WebhookPayloadId `json:"case,omitzero"`
-}
-
-type WebhookPayloadId struct {
-	Id string
+	Decision *DecisionWithRuleExecutions
+	Case     *Case
+	Files    *[]CaseFile
+	Comments *CaseEvent
 }
 
 type WebhookEvent struct {
@@ -143,77 +141,62 @@ func (input WebhookRegister) Validate() error {
 	return nil
 }
 
-func NewWebhookEventDecisionCreated(id string) WebhookEventContent {
+func NewWebhookEventDecisionCreated(decision DecisionWithRuleExecutions) WebhookEventContent {
 	return WebhookEventContent{
 		Type: WebhookEventType_DecisionCreated,
 		Data: WebhookEventPayload{
 			Type:      WebhookEventType_DecisionCreated,
-			Content:   WebhookEventData{Decision: WebhookPayloadId{id}},
+			Content:   WebhookEventData{Decision: &decision},
 			Timestamp: time.Now(),
 		},
 	}
 }
 
-func newWebhookContentCase(eventType WebhookEventType, id string) WebhookEventContent {
+func newWebhookContent(eventType WebhookEventType, p WebhookEventData) WebhookEventContent {
 	return WebhookEventContent{
 		Type: eventType,
 		Data: WebhookEventPayload{
 			Type:      eventType,
-			Content:   WebhookEventData{Case: WebhookPayloadId{id}},
+			Content:   p,
 			Timestamp: time.Now(),
 		},
 	}
 }
 
 func NewWebhookEventCaseUpdated(c Case) WebhookEventContent {
-	return newWebhookContentCase(WebhookEventType_CaseUpdated, c.Id)
+	return newWebhookContent(WebhookEventType_CaseUpdated, WebhookEventData{Case: &c})
 }
 
-func NewWebhookEventCaseCreatedManually(c CaseMetadata) WebhookEventContent {
-	return newWebhookContentCase(WebhookEventType_CaseCreatedManually, c.Id)
+func NewWebhookEventCaseCreatedManually(c Case) WebhookEventContent {
+	return newWebhookContent(WebhookEventType_CaseCreatedManually, WebhookEventData{Case: &c})
 }
 
-func NewWebhookEventCaseCreatedWorkflow(c CaseMetadata) WebhookEventContent {
-	return newWebhookContentCase(WebhookEventType_CaseCreatedWorkflow, c.Id)
+func NewWebhookEventCaseCreatedWorkflow(c Case) WebhookEventContent {
+	return newWebhookContent(WebhookEventType_CaseCreatedWorkflow, WebhookEventData{Case: &c})
 }
 
-func NewWebhookEventCaseDecisionsUpdated(c CaseMetadata) WebhookEventContent {
-	return newWebhookContentCase(WebhookEventType_CaseDecisionsUpdated, c.Id)
+func NewWebhookEventCaseDecisionsUpdated(c Case) WebhookEventContent {
+	return newWebhookContent(WebhookEventType_CaseDecisionsUpdated, WebhookEventData{Case: &c})
 }
 
 func NewWebhookEventCaseTagsUpdated(c Case) WebhookEventContent {
-	return newWebhookContentCase(WebhookEventType_CaseTagsUpdated, c.Id)
+	return newWebhookContent(WebhookEventType_CaseTagsUpdated, WebhookEventData{Case: &c})
 }
 
-func NewWebhookEventCaseCommentCreated(c Case) WebhookEventContent {
-	return newWebhookContentCase(WebhookEventType_CaseCommentCreated, c.Id)
+func NewWebhookEventCaseCommentCreated(c Case, comments CaseEvent) WebhookEventContent {
+	return newWebhookContent(WebhookEventType_CaseCommentCreated, WebhookEventData{Case: &c, Comments: &comments})
 }
 
-func NewWebhookEventCaseFileCreated(caseId string) WebhookEventContent {
-	return newWebhookContentCase(WebhookEventType_CaseFileCreated, caseId)
+func NewWebhookEventCaseFileCreated(c Case, files []CaseFile) WebhookEventContent {
+	return newWebhookContent(WebhookEventType_CaseFileCreated, WebhookEventData{Case: &c, Files: &files})
 }
 
-func NewWebhookEventRuleSnoozeCreated(c Case) WebhookEventContent {
-	return newWebhookContentCase(WebhookEventType_CaseRuleSnoozeCreated, c.Id)
+func NewWebhookEventRuleSnoozeCreated(c Case, ruleSnooze RuleSnooze) WebhookEventContent {
+	return newWebhookContent(WebhookEventType_CaseRuleSnoozeCreated, WebhookEventData{Case: &c})
 }
 
-type WebhookPayloadDecision struct {
-	Case     WebhookPayloadId
-	Decision WebhookPayloadId
-}
-
-func NewWebhookEventDecisionReviewed(c Case, decisionId string) WebhookEventContent {
-	return WebhookEventContent{
-		Type: WebhookEventType_CaseDecisionReviewed,
-		Data: WebhookEventPayload{
-			Type: WebhookEventType_CaseDecisionReviewed,
-			Content: WebhookEventData{
-				Case:     WebhookPayloadId{c.Id},
-				Decision: WebhookPayloadId{decisionId},
-			},
-			Timestamp: time.Now(),
-		},
-	}
+func NewWebhookEventDecisionReviewed(c Case, decision Decision) WebhookEventContent {
+	return newWebhookContent(WebhookEventType_CaseDecisionReviewed, WebhookEventData{Case: &c, Decision: &DecisionWithRuleExecutions{Decision: decision}})
 }
 
 type Webhook struct {

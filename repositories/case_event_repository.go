@@ -73,15 +73,19 @@ func (repo *MarbleDbRepository) ListCaseEventsOfTypes(ctx context.Context, exec 
 
 func (repo *MarbleDbRepository) CreateCaseEvent(ctx context.Context, exec Executor,
 	createCaseEventAttributes models.CreateCaseEventAttributes,
-) error {
-	return repo.BatchCreateCaseEvents(ctx, exec, []models.CreateCaseEventAttributes{createCaseEventAttributes})
+) (models.CaseEvent, error) {
+	events, err := repo.BatchCreateCaseEvents(ctx, exec, []models.CreateCaseEventAttributes{createCaseEventAttributes})
+	if err != nil {
+		return models.CaseEvent{}, err
+	}
+	return events[0], nil
 }
 
 func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec Executor,
 	createCaseEventAttributes []models.CreateCaseEventAttributes,
-) error {
+) ([]models.CaseEvent, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
+		return nil, err
 	}
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_EVENTS).
@@ -95,7 +99,8 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec 
 			"resource_type",
 			"new_value",
 			"previous_value",
-		)
+		).
+		Suffix("returning *")
 
 	for _, createCaseEventAttribute := range createCaseEventAttributes {
 		var userId pgtype.Text
@@ -118,7 +123,5 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec 
 		)
 	}
 
-	err := ExecBuilder(ctx, exec, query)
-
-	return err
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptCaseEvent)
 }

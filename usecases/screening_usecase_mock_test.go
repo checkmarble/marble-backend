@@ -49,8 +49,8 @@ func (screeningRepositoryMock) CreateCaseEvent(
 	ctx context.Context,
 	exec repositories.Executor,
 	createCaseEventAttributes models.CreateCaseEventAttributes,
-) error {
-	return nil
+) (models.CaseEvent, error) {
+	return models.CaseEvent{}, nil
 }
 
 func (screeningRepositoryMock) CreateCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) error {

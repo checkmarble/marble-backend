@@ -63,7 +63,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 
 			newValue := strings.Join(pure_utils.Map(action.Params.TagsToAdd,
 				func(tagId uuid.UUID) string { return tagId.String() }), ",")
-			err = d.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			_, err = d.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 				OrgId:         scenario.OrganizationId,
 				CaseId:        newCase.Id,
 				EventType:     models.CaseTagsUpdated,
@@ -80,7 +80,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: orgId,
-			EventContent:   models.NewWebhookEventCaseCreatedWorkflow(newCase.GetMetadata()),
+			EventContent:   models.NewWebhookEventCaseCreatedWorkflow(newCase),
 		})
 		if err != nil {
 			return models.WorkflowExecution{}, errors.Wrap(err, "error creating webhook event")
@@ -152,10 +152,15 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			return createNewCaseForDecision(ctx)
 		}
 
+		c, err := d.repository.GetCaseById(ctx, tx, matchedCase.Id)
+		if err != nil {
+			return models.WorkflowExecution{}, errors.Wrap(err, "error retrieving case")
+		}
+
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: matchedCase.OrganizationId,
-			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(matchedCase),
+			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(c),
 		})
 		if err != nil {
 			return models.WorkflowExecution{}, err
@@ -263,7 +268,7 @@ func (d DecisionsWorkflows) addToOpenCase(
 		if len(newIds) > 0 {
 			previousValue := strings.Join(previousTagIds, ",")
 			newValue := previousValue + "," + strings.Join(newIds, ",")
-			err = d.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			_, err = d.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 				OrgId:         scenario.OrganizationId,
 				CaseId:        bestMatchCase.Id,
 				EventType:     models.CaseTagsUpdated,

@@ -105,7 +105,7 @@ type ScreeningUsecaseExternalRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		createCaseEventAttributes models.CreateCaseEventAttributes,
-	) error
+	) (models.CaseEvent, error)
 	CreateCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) error
 	DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error)
 }
@@ -227,8 +227,7 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 
 	for _, comment := range comments {
 		if _, ok := matchIdToMatch[comment.MatchId]; ok {
-			matchIdToMatch[comment.MatchId].Comments =
-				append(matchIdToMatch[comment.MatchId].Comments, comment)
+			matchIdToMatch[comment.MatchId].Comments = append(matchIdToMatch[comment.MatchId].Comments, comment)
 		}
 	}
 
@@ -524,7 +523,7 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 						reviewerId = utils.Ptr(string(*update.ReviewerId))
 					}
 
-					err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+					_, err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 						OrgId:        data.decision.OrganizationId,
 						CaseId:       data.decision.Case.Id,
 						UserId:       reviewerId,
@@ -554,7 +553,7 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 						reviewerId = utils.Ptr(string(*update.ReviewerId))
 					}
 
-					err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+					_, err = uc.externalRepository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 						OrgId:        data.decision.OrganizationId,
 						CaseId:       data.decision.Case.Id,
 						UserId:       reviewerId,

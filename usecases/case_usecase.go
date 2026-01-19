@@ -22,6 +22,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/guregu/null/v5"
 )
 
 type CaseUseCaseRepository interface {
@@ -41,9 +42,9 @@ type CaseUseCaseRepository interface {
 	DecisionPivotValuesByCase(ctx context.Context, exec repositories.Executor, caseId string) ([]models.PivotDataWithCount, error)
 
 	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
-		createCaseEventAttributes models.CreateCaseEventAttributes) error
+		createCaseEventAttributes models.CreateCaseEventAttributes) (models.CaseEvent, error)
 	BatchCreateCaseEvents(ctx context.Context, exec repositories.Executor,
-		createCaseEventAttributes []models.CreateCaseEventAttributes) error
+		createCaseEventAttributes []models.CreateCaseEventAttributes) ([]models.CaseEvent, error)
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
 	ListCaseEventsOfTypes(ctx context.Context, exec repositories.Executor, caseId string,
 		types []models.CaseEventType, paging models.PaginationAndSorting) ([]models.CaseEvent, error)
@@ -146,6 +147,7 @@ type CaseUseCase struct {
 	taskQueueRepository     repositories.TaskQueueRepository
 	featureAccessReader     feature_access.FeatureAccessReader
 	aiAgentUsecase          caseUsecaseAiAgentUsecase
+	publicApiAdapterUsecase PublicApiAdapterUsecase
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -382,7 +384,7 @@ func (usecase *CaseUseCase) CreateCase(
 	}
 
 	if fromEndUser {
-		if err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		if _, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:     createCaseAttributes.OrganizationId,
 			CaseId:    newCaseId,
 			UserId:    &userId,
@@ -390,7 +392,7 @@ func (usecase *CaseUseCase) CreateCase(
 		}); err != nil {
 			return models.Case{}, err
 		}
-		if err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		if _, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:     createCaseAttributes.OrganizationId,
 			CaseId:    newCaseId,
 			UserId:    &userId,
@@ -404,7 +406,7 @@ func (usecase *CaseUseCase) CreateCase(
 		}
 
 	} else {
-		if err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		if _, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:     createCaseAttributes.OrganizationId,
 			CaseId:    newCaseId,
 			EventType: models.CaseCreated,
@@ -460,7 +462,7 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: newCase.OrganizationId,
-				EventContent:   models.NewWebhookEventCaseCreatedManually(newCase.GetMetadata()),
+				EventContent:   models.NewWebhookEventCaseCreatedManually(newCase),
 			})
 			if err != nil {
 				return models.Case{}, err
@@ -505,7 +507,7 @@ func (usecase *CaseUseCase) CreateCaseAsApiClient(
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: newCase.OrganizationId,
-				EventContent:   models.NewWebhookEventCaseCreatedManually(newCase.GetMetadata()),
+				EventContent:   models.NewWebhookEventCaseCreatedManually(newCase),
 			})
 			if err != nil {
 				return models.Case{}, err
@@ -675,7 +677,7 @@ func (usecase *CaseUseCase) Snooze(ctx context.Context, req models.CaseSnoozeReq
 			PreviousValue: previousSnooze,
 		}
 
-		if err = usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
+		if _, err = usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
 			return err
 		}
 
@@ -714,7 +716,7 @@ func (usecase *CaseUseCase) Unsnooze(ctx context.Context, req models.CaseSnoozeR
 			PreviousValue: utils.Ptr(c.SnoozedUntil.Format(time.RFC3339)),
 		}
 
-		if err = usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
+		if _, err = usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
 			return err
 		}
 
@@ -727,7 +729,7 @@ func (usecase *CaseUseCase) SelfAssignOnAction(ctx context.Context, tx repositor
 		return err
 	}
 
-	if err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+	if _, err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		OrgId:     orgId,
 		CaseId:    caseId,
 		UserId:    &userId,
@@ -791,7 +793,7 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 			userId = utils.Ptr(string(req.UserId))
 		}
 
-		if err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		if _, err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:         c.OrganizationId,
 			CaseId:        c.Id,
 			UserId:        userId,
@@ -840,7 +842,7 @@ func (usecase *CaseUseCase) UnassignCase(ctx context.Context, req models.CaseAss
 			userId = utils.Ptr(string(req.UserId))
 		}
 
-		if err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		if _, err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:         c.OrganizationId,
 			CaseId:        c.Id,
 			UserId:        userId,
@@ -867,7 +869,7 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 ) error {
 	var err error
 	if updateCaseAttributes.Name != "" && updateCaseAttributes.Name != oldCase.Name {
-		err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
+		_, err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
 			OrgId:         oldCase.OrganizationId,
 			CaseId:        updateCaseAttributes.Id,
 			UserId:        &userId,
@@ -882,7 +884,7 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 
 	if updateCaseAttributes.Status != "" && updateCaseAttributes.Status != oldCase.Status {
 		newStatus := string(updateCaseAttributes.Status)
-		err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
+		_, err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
 			OrgId:         oldCase.OrganizationId,
 			CaseId:        updateCaseAttributes.Id,
 			UserId:        &userId,
@@ -897,7 +899,7 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 
 	if updateCaseAttributes.Outcome != "" && updateCaseAttributes.Outcome != oldCase.Outcome {
 		newOutcome := string(updateCaseAttributes.Outcome)
-		err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
+		_, err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
 			OrgId:         oldCase.OrganizationId,
 			CaseId:        updateCaseAttributes.Id,
 			UserId:        &userId,
@@ -911,7 +913,7 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 	}
 
 	if updateCaseAttributes.InboxId != nil && *updateCaseAttributes.InboxId != oldCase.InboxId {
-		err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
+		_, err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
 			OrgId:         oldCase.OrganizationId,
 			CaseId:        updateCaseAttributes.Id,
 			UserId:        &userId,
@@ -976,7 +978,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: updatedCase.OrganizationId,
-			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(updatedCase.GetMetadata()),
+			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(updatedCase),
 		})
 		if err != nil {
 			return models.Case{}, err
@@ -1017,7 +1019,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 			return models.Case{}, err
 		}
 
-		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		caseEvent, err := usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:          c.OrganizationId,
 			CaseId:         caseCommentAttributes.Id,
 			UserId:         &userId,
@@ -1040,7 +1042,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: updatedCase.OrganizationId,
-			EventContent:   models.NewWebhookEventCaseCommentCreated(updatedCase),
+			EventContent:   models.NewWebhookEventCaseCommentCreated(updatedCase, caseEvent),
 		})
 		if err != nil {
 			return models.Case{}, err
@@ -1109,7 +1111,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 
 		previousValue := strings.Join(previousTagIds, ",")
 		newValue := strings.Join(caseTagAttributes.TagIds, ",")
-		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		_, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:         c.OrganizationId,
 			CaseId:        caseTagAttributes.CaseId,
 			UserId:        &userId,
@@ -1188,8 +1190,7 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		c.Decisions = decisions
 
 	case models.CaseTypeContinuousScreening:
-		continuousScreeningsWithMatches, err :=
-			usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
+		continuousScreeningsWithMatches, err := usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -1299,7 +1300,7 @@ func (usecase *CaseUseCase) UpdateDecisionsWithEvents(
 				ResourceType: &resourceType,
 			}
 		}
-		if err := usecase.repository.BatchCreateCaseEvents(ctx, exec,
+		if _, err := usecase.repository.BatchCreateCaseEvents(ctx, exec,
 			createCaseEventAttributes); err != nil {
 			return err
 		}
@@ -1342,7 +1343,7 @@ func (usecase *CaseUseCase) updateContinuousScreeningsWithEvents(
 				ResourceType: &resourceType,
 			}
 		}
-		if err := usecase.repository.BatchCreateCaseEvents(ctx, exec,
+		if _, err := usecase.repository.BatchCreateCaseEvents(ctx, exec,
 			createCaseEventAttributes); err != nil {
 			return err
 		}
@@ -1458,7 +1459,7 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 			caseFiles[idx] = caseFile
 
 			resourceType := models.CaseFileResourceType
-			err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			_, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 				OrgId:          creds.OrganizationId,
 				CaseId:         input.CaseId,
 				UserId:         &userId,
@@ -1480,7 +1481,7 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: creds.OrganizationId,
-			EventContent:   models.NewWebhookEventCaseFileCreated(input.CaseId),
+			EventContent:   models.NewWebhookEventCaseFileCreated(c, caseFiles),
 		})
 		if err != nil {
 			return err
@@ -1528,7 +1529,7 @@ func (usecase *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositorie
 		return errors.Wrap(models.ForbiddenError, err.Error())
 	}
 
-	return usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+	_, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		OrgId:          annotationReq.OrgId,
 		CaseId:         *annotationReq.CaseId,
 		UserId:         (*string)(annotationReq.AnnotatedBy),
@@ -1537,6 +1538,8 @@ func (usecase *CaseUseCase) AttachAnnotation(ctx context.Context, tx repositorie
 		ResourceId:     &annotationId,
 		AdditionalNote: utils.Ptr(annotationReq.AnnotationType.String()),
 	})
+
+	return err
 }
 
 func (usecase *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx repositories.Transaction,
@@ -1574,7 +1577,7 @@ func (usecase *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx reposi
 		}
 	}
 
-	return usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+	_, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		OrgId:          annotationReq.OrgId,
 		CaseId:         *annotationReq.CaseId,
 		UserId:         (*string)(annotationReq.AnnotatedBy),
@@ -1583,6 +1586,8 @@ func (usecase *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx reposi
 		ResourceId:     &annotationId,
 		AdditionalNote: utils.Ptr(annotationReq.AnnotationType.String()),
 	})
+
+	return err
 }
 
 func validateFileType(file multipart.FileHeader) error {
@@ -1670,7 +1675,7 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 	}
 
 	resourceType := models.RuleSnoozeResourceType
-	err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+	_, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 		OrgId:          c.OrganizationId,
 		AdditionalNote: &input.Comment,
 		CaseId:         input.CaseId,
@@ -1690,7 +1695,10 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 	err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 		Id:             input.WebhookEventId,
 		OrganizationId: updatedCase.OrganizationId,
-		EventContent:   models.NewWebhookEventCaseCommentCreated(updatedCase),
+		EventContent: models.NewWebhookEventCaseCommentCreated(updatedCase, models.CaseEvent{
+			UserId:         null.NewString(*input.UserId, true),
+			AdditionalNote: input.Comment,
+		}),
 	})
 	if err != nil {
 		return err
@@ -1756,7 +1764,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 			}
 
 			resourceType := models.DecisionResourceType
-			err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			_, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 				OrgId:          c.OrganizationId,
 				CaseId:         caseId,
 				UserId:         &input.UserId,
@@ -1783,7 +1791,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: c.OrganizationId,
-				EventContent:   models.NewWebhookEventDecisionReviewed(c, decision.DecisionId.String()),
+				EventContent:   models.NewWebhookEventDecisionReviewed(c, decision),
 			})
 			if err != nil {
 				return models.Case{}, err
@@ -1975,7 +1983,7 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 			PreviousValue: &sourceInboxIdStr,
 		}
 
-		if err := usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
+		if _, err := usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
 			return err
 		}
 
@@ -2217,7 +2225,7 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 
 		// TODO: perform relevant side effects
 
-		if err := usecase.repository.BatchCreateCaseEvents(ctx, tx,
+		if _, err := usecase.repository.BatchCreateCaseEvents(ctx, tx,
 			slices.Collect(maps.Values(events))); err != nil {
 			return errors.Wrap(err, "could not create case events in mass update")
 		}
