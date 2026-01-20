@@ -14,7 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
+	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 
@@ -188,27 +188,27 @@ func listOrgPeriodics(
 	csCreateFullDatasetInterval time.Duration,
 ) []*river.PeriodicJob {
 	periodics := []*river.PeriodicJob{
-		scheduled_execution.NewIndexCleanupPeriodicJob(org.Id),
-		scheduled_execution.NewIndexDeletionPeriodicJob(org.Id),
-		scheduled_execution.NewTestRunSummaryPeriodicJob(org.Id),
+		worker_jobs.NewIndexCleanupPeriodicJob(org.Id),
+		worker_jobs.NewIndexDeletionPeriodicJob(org.Id),
+		worker_jobs.NewTestRunSummaryPeriodicJob(org.Id),
 		continuous_screening.NewContinuousScreeningCreateFullDatasetPeriodicJob(
 			org.Id,
 			// TODO: Configurable per Org
 			csCreateFullDatasetInterval,
 		),
 		// Migrated from cron jobs
-		scheduled_execution.NewScheduledScenarioPeriodicJob(org.Id),
-		scheduled_execution.NewWebhookRetryPeriodicJob(org.Id),
+		worker_jobs.NewScheduledScenarioPeriodicJob(org.Id),
+		worker_jobs.NewWebhookRetryPeriodicJob(org.Id),
 	}
 	if offloadingConfig.Enabled {
 		// Undocumented debug setting to only enable offloading for a specific organization
 		if onlyOffloadOrg := os.Getenv("OFFLOADING_ONLY_ORG"); onlyOffloadOrg == "" || onlyOffloadOrg == org.Id.String() {
-			periodics = append(periodics, scheduled_execution.NewOffloadingPeriodicJob(org.Id, offloadingConfig.JobInterval))
+			periodics = append(periodics, worker_jobs.NewOffloadingPeriodicJob(org.Id, offloadingConfig.JobInterval))
 		}
 	}
 
 	if analyticsConfig.Enabled {
-		periodics = append(periodics, scheduled_execution.NewAnalyticsExportJob(org.Id, analyticsConfig.JobInterval))
+		periodics = append(periodics, worker_jobs.NewAnalyticsExportJob(org.Id, analyticsConfig.JobInterval))
 	}
 
 	return periodics

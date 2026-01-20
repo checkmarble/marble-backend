@@ -14,7 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
+	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -154,7 +154,7 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	logger.DebugContext(ctx, "Creating full dataset", "job", job)
 
 	// TODO: fetch the interval from the org config
-	if err := scheduled_execution.AddStrideDelay(job, w.jobInterval); err != nil {
+	if err := worker_jobs.AddStrideDelay(job, w.jobInterval); err != nil {
 		return err
 	}
 

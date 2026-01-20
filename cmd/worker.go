@@ -22,7 +22,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
-	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
+	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -243,13 +243,13 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if !metricCollectionConfig.Disabled {
 		maps.Copy(nonOrgQueues, usecases.QueueMetrics())
 		globalPeriodics = append(globalPeriodics,
-			scheduled_execution.NewMetricsCollectionPeriodicJob(metricCollectionConfig))
+			worker_jobs.NewMetricsCollectionPeriodicJob(metricCollectionConfig))
 	}
 	if analyticsConfig.Enabled {
 		analyticsQueue := usecases.QueueAnalyticsMerge()
 		maps.Copy(nonOrgQueues, analyticsQueue)
 		globalPeriodics = append(globalPeriodics,
-			scheduled_execution.NewAnalyticsMergeJob())
+			worker_jobs.NewAnalyticsMergeJob())
 	}
 	if isMarbleSaasProject && lagoConfig.IsConfigured() {
 		maps.Copy(nonOrgQueues, usecases.QueueBilling())

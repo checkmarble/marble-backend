@@ -13,9 +13,9 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
-	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transfers_data_read"
+	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -353,8 +353,8 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduled_execution.RunScheduledExecution {
-	return *scheduled_execution.NewRunScheduledExecution(
+func (usecases *UsecasesWithCreds) NewRunScheduledExecution() worker_jobs.RunScheduledExecution {
+	return *worker_jobs.NewRunScheduledExecution(
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.IngestedDataReadRepository,
@@ -576,8 +576,8 @@ func (usecases *UsecasesWithCreds) NewRuleSnoozeUsecase() RuleSnoozeUsecase {
 	)
 }
 
-func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *scheduled_execution.AsyncDecisionWorker {
-	w := scheduled_execution.NewAsyncDecisionWorker(
+func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *worker_jobs.AsyncDecisionWorker {
+	w := worker_jobs.NewAsyncDecisionWorker(
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.MarbleDbRepository,
@@ -595,40 +595,40 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *scheduled_execution.
 	return &w
 }
 
-func (usecases UsecasesWithCreds) NewNewAsyncScheduledExecWorker() *scheduled_execution.AsyncScheduledExecWorker {
-	w := scheduled_execution.NewAsyncScheduledExecWorker(
+func (usecases UsecasesWithCreds) NewNewAsyncScheduledExecWorker() *worker_jobs.AsyncScheduledExecWorker {
+	w := worker_jobs.NewAsyncScheduledExecWorker(
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 	)
 	return &w
 }
 
-func (usecases UsecasesWithCreds) NewIndexCreationWorker() *scheduled_execution.IndexCreationWorker {
-	w := scheduled_execution.NewIndexCreationWorker(
+func (usecases UsecasesWithCreds) NewIndexCreationWorker() *worker_jobs.IndexCreationWorker {
+	w := worker_jobs.NewIndexCreationWorker(
 		usecases.NewExecutorFactory(),
 		&usecases.Repositories.ClientDbRepository,
 	)
 	return &w
 }
 
-func (usecases UsecasesWithCreds) NewIndexCreationStatusWorker() *scheduled_execution.IndexCreationStatusWorker {
-	w := scheduled_execution.NewIndexCreationStatusWorker(
+func (usecases UsecasesWithCreds) NewIndexCreationStatusWorker() *worker_jobs.IndexCreationStatusWorker {
+	w := worker_jobs.NewIndexCreationStatusWorker(
 		usecases.NewExecutorFactory(),
 		&usecases.Repositories.ClientDbRepository,
 	)
 	return &w
 }
 
-func (usecases UsecasesWithCreds) NewIndexCleanupWorker() *scheduled_execution.IndexCleanupWorker {
-	w := scheduled_execution.NewIndexCleanupWorker(
+func (usecases UsecasesWithCreds) NewIndexCleanupWorker() *worker_jobs.IndexCleanupWorker {
+	w := worker_jobs.NewIndexCleanupWorker(
 		usecases.NewExecutorFactory(),
 		&usecases.Repositories.ClientDbRepository,
 	)
 	return &w
 }
 
-func (usecases UsecasesWithCreds) NewIndexDeletionWorker() *scheduled_execution.IndexDeletionWorker {
-	w := scheduled_execution.NewIndexDeletionWorker(
+func (usecases UsecasesWithCreds) NewIndexDeletionWorker() *worker_jobs.IndexDeletionWorker {
+	w := worker_jobs.NewIndexDeletionWorker(
 		usecases.NewExecutorFactory(),
 		&usecases.Repositories.ClientDbRepository,
 		usecases.NewClientDbIndexEditor(),
@@ -636,8 +636,8 @@ func (usecases UsecasesWithCreds) NewIndexDeletionWorker() *scheduled_execution.
 	return &w
 }
 
-func (usecases UsecasesWithCreds) NewTestRunSummaryWorker() *scheduled_execution.TestRunSummaryWorker {
-	w := scheduled_execution.NewTestRunSummaryWorker(
+func (usecases UsecasesWithCreds) NewTestRunSummaryWorker() *worker_jobs.TestRunSummaryWorker {
+	w := worker_jobs.NewTestRunSummaryWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
@@ -645,8 +645,8 @@ func (usecases UsecasesWithCreds) NewTestRunSummaryWorker() *scheduled_execution
 	return &w
 }
 
-func (usecases UsecasesWithCreds) NewMatchEnrichmentWorker() *scheduled_execution.MatchEnrichmentWorker {
-	w := scheduled_execution.NewMatchEnrichmentWorker(
+func (usecases UsecasesWithCreds) NewMatchEnrichmentWorker() *worker_jobs.MatchEnrichmentWorker {
+	w := worker_jobs.NewMatchEnrichmentWorker(
 		usecases.NewExecutorFactory(),
 		usecases.Usecases.Repositories.OpenSanctionsRepository,
 		usecases.NewScreeningUsecase(),
@@ -655,8 +655,8 @@ func (usecases UsecasesWithCreds) NewMatchEnrichmentWorker() *scheduled_executio
 	return &w
 }
 
-func (usecases UsecasesWithCreds) NewOffloadingWorker() *scheduled_execution.OffloadingWorker {
-	return scheduled_execution.NewOffloadingWorker(
+func (usecases UsecasesWithCreds) NewOffloadingWorker() *worker_jobs.OffloadingWorker {
+	return worker_jobs.NewOffloadingWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
@@ -666,15 +666,15 @@ func (usecases UsecasesWithCreds) NewOffloadingWorker() *scheduled_execution.Off
 	)
 }
 
-func (usecases UsecasesWithCreds) NewAutoAssignmentWorker() *scheduled_execution.AutoAssignmentWorker {
-	return scheduled_execution.NewAutoAssignmentWorker(
+func (usecases UsecasesWithCreds) NewAutoAssignmentWorker() *worker_jobs.AutoAssignmentWorker {
+	return worker_jobs.NewAutoAssignmentWorker(
 		usecases.NewFeatureAccessReader(),
 		usecases.Usecases.NewAutoAssignmentUsecase(),
 	)
 }
 
-func (usecases UsecasesWithCreds) NewAnalyticsExportWorker() *scheduled_execution.AnalyticsExportWorker {
-	return scheduled_execution.NewAnalyticsExportWorker(
+func (usecases UsecasesWithCreds) NewAnalyticsExportWorker() *worker_jobs.AnalyticsExportWorker {
+	return worker_jobs.NewAnalyticsExportWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.NewAnalyticsExecutorFactory(),
@@ -684,8 +684,8 @@ func (usecases UsecasesWithCreds) NewAnalyticsExportWorker() *scheduled_executio
 	)
 }
 
-func (usecases UsecasesWithCreds) NewAnalyticsMergeWorker() *scheduled_execution.AnalyticsMergeWorker {
-	return scheduled_execution.NewAnalyticsMergeWorker(
+func (usecases UsecasesWithCreds) NewAnalyticsMergeWorker() *worker_jobs.AnalyticsMergeWorker {
+	return worker_jobs.NewAnalyticsMergeWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewAnalyticsExecutorFactory(),
 		usecases.license,
@@ -885,14 +885,14 @@ func (usecases *UsecasesWithCreds) NewAuditUsecase() AuditUsecase {
 	)
 }
 
-func (usecases UsecasesWithCreds) NewScheduledScenarioWorker() *scheduled_execution.ScheduledScenarioWorker {
+func (usecases UsecasesWithCreds) NewScheduledScenarioWorker() *worker_jobs.ScheduledScenarioWorker {
 	runScheduledExecution := usecases.NewRunScheduledExecution()
-	return scheduled_execution.NewScheduledScenarioWorker(&runScheduledExecution)
+	return worker_jobs.NewScheduledScenarioWorker(&runScheduledExecution)
 }
 
-func (usecases UsecasesWithCreds) NewScheduledExecutionWorker() *scheduled_execution.ScheduledExecutionWorker {
+func (usecases UsecasesWithCreds) NewScheduledExecutionWorker() *worker_jobs.ScheduledExecutionWorker {
 	runScheduledExecution := usecases.NewRunScheduledExecution()
-	return scheduled_execution.NewScheduledExecutionWorker(&runScheduledExecution)
+	return worker_jobs.NewScheduledExecutionWorker(&runScheduledExecution)
 }
 
 func (usecases UsecasesWithCreds) NewCsvIngestionWorker() *CsvIngestionWorker {
@@ -900,7 +900,7 @@ func (usecases UsecasesWithCreds) NewCsvIngestionWorker() *CsvIngestionWorker {
 	return NewCsvIngestionWorker(&ingestionUsecase)
 }
 
-func (usecases UsecasesWithCreds) NewWebhookRetryWorker() *scheduled_execution.WebhookRetryWorker {
+func (usecases UsecasesWithCreds) NewWebhookRetryWorker() *worker_jobs.WebhookRetryWorker {
 	webhookEventsUsecase := usecases.NewWebhookEventsUsecase()
-	return scheduled_execution.NewWebhookRetryWorker(&webhookEventsUsecase)
+	return worker_jobs.NewWebhookRetryWorker(&webhookEventsUsecase)
 }

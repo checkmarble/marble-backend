@@ -17,8 +17,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
-	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
@@ -422,8 +422,8 @@ func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx], 
 	)
 }
 
-func (usecases *Usecases) NewMetricsCollectionWorker(licenseConfiguration models.LicenseConfiguration) scheduled_execution.MetricCollectionWorker {
-	return scheduled_execution.NewMetricCollectionWorker(
+func (usecases *Usecases) NewMetricsCollectionWorker(licenseConfiguration models.LicenseConfiguration) worker_jobs.MetricCollectionWorker {
+	return worker_jobs.NewMetricCollectionWorker(
 		metrics_collection.NewCollectorsV1(
 			usecases.NewExecutorFactory(),
 			usecases.Repositories.MarbleDbRepository,
