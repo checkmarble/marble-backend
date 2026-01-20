@@ -482,18 +482,6 @@ func (usecases *Usecases) NewContinuousScreeningManifestUsecase() *continuous_sc
 	)
 }
 
-func (usecases *Usecases) NewContinuousScreeningScanDatasetUpdatesWorker() *continuous_screening.ScanDatasetUpdatesWorker {
-	return continuous_screening.NewScanDatasetUpdatesWorker(
-		usecases.NewExecutorFactory(),
-		usecases.NewTransactionFactory(),
-		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.OpenSanctionsRepository,
-		usecases.Repositories.BlobRepository,
-		usecases.Repositories.TaskQueueRepository,
-		usecases.continuousScreeningBucketUrl,
-	)
-}
-
 func (usecases *Usecases) NewContinuousScreeningCreateFullDatasetWorker() *continuous_screening.CreateFullDatasetWorker {
 	return continuous_screening.NewCreateFullDatasetWorker(
 		usecases.NewExecutorFactory(),

@@ -57,6 +57,13 @@ type scanDatasetUpdatesWorkerTaskEnqueuer interface {
 		updateId uuid.UUID,
 	) error
 }
+type ScanDatasetUpdatesWorkerFeatureAccessReader interface {
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		userId *models.UserId,
+	) (models.OrganizationFeatureAccess, error)
+}
 
 // Periodic job
 func NewContinuousScreeningUpdateDatasetJob(interval time.Duration) *river.PeriodicJob {
@@ -80,10 +87,11 @@ type ScanDatasetUpdatesWorker struct {
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 
-	repo              scanDatasetUpdatesWorkerRepository
-	screeningProvider scanDatasetUpdatesWorkerScreeningProvider
-	blobRepo          repositories.BlobRepository
-	taskEnqueuer      scanDatasetUpdatesWorkerTaskEnqueuer
+	repo                scanDatasetUpdatesWorkerRepository
+	screeningProvider   scanDatasetUpdatesWorkerScreeningProvider
+	blobRepo            repositories.BlobRepository
+	taskEnqueuer        scanDatasetUpdatesWorkerTaskEnqueuer
+	featureAccessReader ScanDatasetUpdatesWorkerFeatureAccessReader
 
 	bucketUrl string
 }
@@ -95,16 +103,18 @@ func NewScanDatasetUpdatesWorker(
 	screeningProvider scanDatasetUpdatesWorkerScreeningProvider,
 	blobRepo repositories.BlobRepository,
 	taskEnqueuer scanDatasetUpdatesWorkerTaskEnqueuer,
+	featureAccessReader ScanDatasetUpdatesWorkerFeatureAccessReader,
 	bucketUrl string,
 ) *ScanDatasetUpdatesWorker {
 	return &ScanDatasetUpdatesWorker{
-		executorFactory:    executorFactory,
-		transactionFactory: transactionFactory,
-		repo:               repo,
-		screeningProvider:  screeningProvider,
-		blobRepo:           blobRepo,
-		taskEnqueuer:       taskEnqueuer,
-		bucketUrl:          bucketUrl,
+		executorFactory:     executorFactory,
+		transactionFactory:  transactionFactory,
+		repo:                repo,
+		screeningProvider:   screeningProvider,
+		blobRepo:            blobRepo,
+		taskEnqueuer:        taskEnqueuer,
+		featureAccessReader: featureAccessReader,
+		bucketUrl:           bucketUrl,
 	}
 }
 
@@ -178,6 +188,11 @@ func (w *ScanDatasetUpdatesWorker) Work(
 				return err
 			}
 			for _, config := range activeConfigs {
+				if err := w.checkFeatureAccess(ctx, config.OrgId); err != nil {
+					logger.DebugContext(ctx, "Could not process delta files due to feature access check", "org_id", config.OrgId, "error", err)
+					continue
+				}
+
 				update, err := w.repo.CreateContinuousScreeningUpdateJob(ctx, tx, models.CreateContinuousScreeningUpdateJob{
 					DatasetUpdateId: datasetUpdate.Id,
 					ConfigId:        config.Id,
@@ -374,6 +389,19 @@ func (w *ScanDatasetUpdatesWorker) processDatasetVersion(
 	}
 
 	return blobInfos, nil
+}
+
+func (w *ScanDatasetUpdatesWorker) checkFeatureAccess(ctx context.Context, orgId uuid.UUID) error {
+	features, err := w.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+	if err != nil {
+		return errors.Wrap(err, "could not check feature access")
+	}
+
+	if !features.ContinuousScreening.IsAllowed() {
+		return errors.Wrap(models.ForbiddenError, "continuous screening feature is not allowed")
+	}
+
+	return nil
 }
 
 type newlineCountingWriter struct {
