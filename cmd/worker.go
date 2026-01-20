@@ -340,6 +340,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningApplyDeltaFileWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningScanDatasetUpdatesWorker())
+	river.AddWorker(workers, adminUc.NewCsvIngestionWorker())
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
@@ -358,7 +359,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	// Migrated from cron jobs
 	river.AddWorker(workers, adminUc.NewScheduledScenarioWorker())
-	river.AddWorker(workers, adminUc.NewCsvIngestionWorker())
 	river.AddWorker(workers, adminUc.NewWebhookRetryWorker())
 
 	if err := riverClient.Start(ctx); err != nil {

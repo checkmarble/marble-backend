@@ -889,9 +889,9 @@ func (usecases UsecasesWithCreds) NewScheduledScenarioWorker() *scheduled_execut
 	return scheduled_execution.NewScheduledScenarioWorker(&runScheduledExecution)
 }
 
-func (usecases UsecasesWithCreds) NewCsvIngestionWorker() *scheduled_execution.CsvIngestionWorker {
+func (usecases UsecasesWithCreds) NewCsvIngestionWorker() *CsvIngestionWorker {
 	ingestionUsecase := usecases.NewIngestionUseCase()
-	return scheduled_execution.NewCsvIngestionWorker(&ingestionUsecase)
+	return NewCsvIngestionWorker(&ingestionUsecase)
 }
 
 func (usecases UsecasesWithCreds) NewWebhookRetryWorker() *scheduled_execution.WebhookRetryWorker {

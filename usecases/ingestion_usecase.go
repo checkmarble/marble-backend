@@ -16,6 +16,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/riverqueue/river"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -867,4 +868,22 @@ func buildEnumValuesContainersFromTable(table models.Table) models.EnumValues {
 		}
 	}
 	return enumValues
+}
+
+// CsvIngestionWorker is a River worker that processes CSV ingestion jobs.
+type CsvIngestionWorker struct {
+	river.WorkerDefaults[models.CsvIngestionArgs]
+	ingestionUsecase *IngestionUseCase
+}
+
+func NewCsvIngestionWorker(ingestionUsecase *IngestionUseCase) *CsvIngestionWorker {
+	return &CsvIngestionWorker{ingestionUsecase: ingestionUsecase}
+}
+
+func (w *CsvIngestionWorker) Timeout(job *river.Job[models.CsvIngestionArgs]) time.Duration {
+	return utils.GetEnvDuration("CSV_INGESTION_TIMEOUT", 1*time.Hour)
+}
+
+func (w *CsvIngestionWorker) Work(ctx context.Context, job *river.Job[models.CsvIngestionArgs]) error {
+	return w.ingestionUsecase.IngestDataFromCsvByUploadLogId(ctx, job.Args.UploadLogId)
 }
