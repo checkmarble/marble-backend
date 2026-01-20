@@ -366,10 +366,11 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduled_executio
 
 func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
 	return ScheduledExecutionUsecase{
-		enforceSecurity:    usecases.NewEnforceDecisionSecurity(),
-		transactionFactory: usecases.NewTransactionFactory(),
-		executorFactory:    usecases.NewExecutorFactory(),
-		repository:         usecases.Repositories.MarbleDbRepository,
+		enforceSecurity:     usecases.NewEnforceDecisionSecurity(),
+		transactionFactory:  usecases.NewTransactionFactory(),
+		executorFactory:     usecases.NewExecutorFactory(),
+		repository:          usecases.Repositories.MarbleDbRepository,
+		taskQueueRepository: usecases.Repositories.TaskQueueRepository,
 	}
 }
 
@@ -887,6 +888,11 @@ func (usecases *UsecasesWithCreds) NewAuditUsecase() AuditUsecase {
 func (usecases UsecasesWithCreds) NewScheduledScenarioWorker() *scheduled_execution.ScheduledScenarioWorker {
 	runScheduledExecution := usecases.NewRunScheduledExecution()
 	return scheduled_execution.NewScheduledScenarioWorker(&runScheduledExecution)
+}
+
+func (usecases UsecasesWithCreds) NewScheduledExecutionWorker() *scheduled_execution.ScheduledExecutionWorker {
+	runScheduledExecution := usecases.NewRunScheduledExecution()
+	return scheduled_execution.NewScheduledExecutionWorker(&runScheduledExecution)
 }
 
 func (usecases UsecasesWithCreds) NewCsvIngestionWorker() *CsvIngestionWorker {

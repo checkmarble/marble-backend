@@ -157,12 +157,19 @@ func (ContinuousScreeningCreateFullDatasetArgs) Kind() string {
 	return "continuous_screening_create_full_dataset"
 }
 
-// Scheduled scenario execution job
+// Scheduled scenario periodic job - checks and schedules due scenarios for an org
 type ScheduledScenarioArgs struct {
 	OrgId uuid.UUID `json:"org_id"`
 }
 
 func (ScheduledScenarioArgs) Kind() string { return "scheduled_scenario" }
+
+// Scheduled execution job - executes a single scheduled execution
+type ScheduledExecutionArgs struct {
+	ScheduledExecutionId string `json:"scheduled_execution_id"`
+}
+
+func (ScheduledExecutionArgs) Kind() string { return "scheduled_execution" }
 
 // CSV ingestion job - processes a single upload log
 type CsvIngestionArgs struct {
