@@ -12,7 +12,7 @@ type EnforceSecurityDecision interface {
 	ReadDecision(decision models.Decision) error
 	ReadScheduledExecution(scheduledExecution models.ScheduledExecution) error
 	CreateDecision(organizationId uuid.UUID) error
-	CreateScheduledExecution(organizationId uuid.UUID) error
+	CreateScheduledExecution(scenario models.Scenario) error
 }
 
 type EnforceSecurityDecisionImpl struct {
@@ -41,9 +41,9 @@ func (e *EnforceSecurityDecisionImpl) ReadScheduledExecution(scheduledExecution 
 	)
 }
 
-func (e *EnforceSecurityDecisionImpl) CreateScheduledExecution(organizationId uuid.UUID) error {
+func (e *EnforceSecurityDecisionImpl) CreateScheduledExecution(scenario models.Scenario) error {
 	return errors.Join(
 		e.Permission(models.DECISION_CREATE),
-		e.ReadOrganization(organizationId),
+		e.ReadOrganization(scenario.OrganizationId),
 	)
 }

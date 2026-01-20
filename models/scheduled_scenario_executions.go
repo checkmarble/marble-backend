@@ -76,7 +76,6 @@ type UpdateScheduledExecutionStatusInput struct {
 	Status                     ScheduledExecutionStatus
 	NumberOfCreatedDecisions   *int
 	NumberOfEvaluatedDecisions *int
-	CurrentStatusCondition     ScheduledExecutionStatus // Used for optimistic locking
 }
 
 type UpdateScheduledExecutionInput struct {
@@ -94,8 +93,6 @@ type CreateScheduledExecutionInput struct {
 type ListScheduledExecutionsFilters struct {
 	OrganizationId uuid.UUID
 	ScenarioId     string
-	Status         []ScheduledExecutionStatus
-	ExcludeManual  bool
 }
 
 type Filter struct {

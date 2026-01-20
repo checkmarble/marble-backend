@@ -3,7 +3,6 @@ package scheduled_execution
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"math"
 	"math/rand/v2"
 	"slices"
@@ -65,7 +64,7 @@ type asyncDecisionWorkerRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		updateScheduledEx models.UpdateScheduledExecutionStatusInput,
-	) (executed bool, err error)
+	) (err error)
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
 	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[string]analytics.Settings, error)
 }
@@ -181,7 +180,8 @@ func (w *AsyncDecisionWorker) handleDecision(
 		return nil, nil, nil
 	}
 
-	decisionCreated, webhookEventIds, testRunCallback, err := w.createSingleDecisionForObjectId(ctx, args, tx)
+	decisionCreated, webhookEventIds, testRunCallback, err :=
+		w.createSingleDecisionForObjectId(ctx, args, tx)
 	if err != nil {
 		statusErr := w.repository.UpdateDecisionToCreateStatus(
 			ctx,
@@ -316,7 +316,8 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		}
 	}
 
-	triggerPassed, scenarioExecution, err := w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+	triggerPassed, scenarioExecution, err :=
+		w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, nil, nil, errors.Wrapf(err, "error evaluating scenario in AsyncDecisionWorker %s", scenario.Id)
 	}
@@ -406,8 +407,6 @@ func (w *AsyncDecisionWorker) possiblyUpdateScheduledExecNumbers(
 	tx repositories.Transaction,
 	args models.AsyncDecisionArgs,
 ) error {
-	logger := utils.LoggerFromContext(ctx)
-
 	if sample, err := w.sampleUpdateNumbers(ctx, args.ScheduledExecutionId); err != nil {
 		return err
 	} else if !sample {
@@ -419,7 +418,7 @@ func (w *AsyncDecisionWorker) possiblyUpdateScheduledExecNumbers(
 		return err
 	}
 
-	done, err := w.repository.UpdateScheduledExecutionStatus(
+	err = w.repository.UpdateScheduledExecutionStatus(
 		ctx,
 		tx,
 		models.UpdateScheduledExecutionStatusInput{
@@ -427,20 +426,9 @@ func (w *AsyncDecisionWorker) possiblyUpdateScheduledExecNumbers(
 			NumberOfCreatedDecisions:   &counts.Created,
 			NumberOfEvaluatedDecisions: &counts.SuccessfullyEvaluated,
 			Status:                     models.ScheduledExecutionProcessing,
-			CurrentStatusCondition:     models.ScheduledExecutionProcessing,
 		},
 	)
-	if err != nil {
-		return err
-	}
-	if !done {
-		logger.InfoContext(ctx,
-			"Scheduled execution is no longer in processing status, the numbers of decisions evaluated must have been updated by another task",
-			slog.String("scheduled_execution_id", args.ScheduledExecutionId),
-		)
-	}
-
-	return nil
+	return err
 }
 
 func (w *AsyncDecisionWorker) sampleUpdateNumbers(ctx context.Context, scheduledExecutionId string) (isSampled bool, err error) {

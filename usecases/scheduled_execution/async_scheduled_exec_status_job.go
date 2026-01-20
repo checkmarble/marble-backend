@@ -2,7 +2,6 @@ package scheduled_execution
 
 import (
 	"context"
-	"log/slog"
 	"slices"
 	"time"
 
@@ -54,7 +53,6 @@ func (w *AsyncScheduledExecWorker) handleScheduledExecStatusRefres(
 	tx repositories.Executor,
 	job *river.Job[models.ScheduledExecStatusSyncArgs],
 ) error {
-	logger := utils.LoggerFromContext(ctx)
 	scheduledExec, err := w.repository.GetScheduledExecution(ctx, tx, args.ScheduledExecutionId)
 	if err != nil {
 		return err
@@ -113,7 +111,7 @@ func (w *AsyncScheduledExecWorker) handleScheduledExecStatusRefres(
 		finalStatus = models.ScheduledExecutionFailure
 	}
 
-	done, err := w.repository.UpdateScheduledExecutionStatus(
+	err = w.repository.UpdateScheduledExecutionStatus(
 		ctx,
 		tx,
 		models.UpdateScheduledExecutionStatusInput{
@@ -121,18 +119,7 @@ func (w *AsyncScheduledExecWorker) handleScheduledExecStatusRefres(
 			NumberOfCreatedDecisions:   &counts.Created,
 			NumberOfEvaluatedDecisions: &counts.SuccessfullyEvaluated,
 			Status:                     finalStatus,
-			CurrentStatusCondition:     models.ScheduledExecutionProcessing,
 		},
 	)
-	if err != nil {
-		return err
-	}
-	if !done {
-		logger.InfoContext(ctx,
-			"Scheduled execution is no longer in processing status, stop the retries",
-			slog.String("scheduled_execution_id", args.ScheduledExecutionId),
-		)
-	}
-
-	return nil
+	return err
 }

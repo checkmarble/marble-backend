@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	SCHEDULED_SCENARIO_INTERVAL = 1 * time.Minute
-	SCHEDULED_SCENARIO_TIMEOUT  = 3 * time.Hour
+	SCHEDULED_SCENARIO_INTERVAL = 10 * time.Minute
+	SCHEDULED_SCENARIO_TIMEOUT  = 30 * time.Second
 )
 
 func NewScheduledScenarioPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {

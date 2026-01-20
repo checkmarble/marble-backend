@@ -37,9 +37,9 @@ func (s *ScheduledExecutionUsecaseRepository) UpdateScheduledExecutionStatus(
 	ctx context.Context,
 	exec repositories.Executor,
 	updateScheduledEx models.UpdateScheduledExecutionStatusInput,
-) (executed bool, err error) {
+) (err error) {
 	args := s.Called(ctx, exec, updateScheduledEx)
-	return true, args.Error(0)
+	return args.Error(0)
 }
 
 func (s *ScheduledExecutionUsecaseRepository) GetScenarioById(ctx context.Context,
