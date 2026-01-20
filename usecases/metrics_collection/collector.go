@@ -170,7 +170,7 @@ func (c Collectors) GetDeploymentID(ctx context.Context) (uuid.UUID, error) {
 func NewCollectorsV1(
 	executorFactory executor_factory.ExecutorFactory,
 	repository CollectorRepository,
-	ClientDbRepo CollectorClientRepository,
+	clientDbRepo CollectorClientRepository,
 	apiVersion string,
 	licenseConfig models.LicenseConfiguration,
 ) Collectors {
@@ -181,7 +181,7 @@ func NewCollectorsV1(
 			NewCaseCollector(repository, executorFactory),
 			NewScreeningCollector(repository, executorFactory),
 			NewAiCaseReviewCollector(repository, executorFactory),
-			NewContinuousScreeningCollector(repository, ClientDbRepo, executorFactory),
+			NewContinuousScreeningCollector(repository, clientDbRepo, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),
