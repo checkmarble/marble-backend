@@ -104,7 +104,7 @@ type TaskQueueRepository interface {
 	EnqueueContinuousScreeningMatchEnrichmentTask(
 		ctx context.Context,
 		tx Transaction,
-		organizationId uuid.UUID,
+		orgId uuid.UUID,
 		continuousScreeningId uuid.UUID,
 	) error
 }
