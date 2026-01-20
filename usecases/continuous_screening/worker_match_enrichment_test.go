@@ -16,18 +16,18 @@ import (
 
 type MatchEnrichmentWorkerTestSuite struct {
 	suite.Suite
-	repository              *mocks.ContinuousScreeningRepository
-	openSanctionsProvider   *mocks.OpenSanctionsProvider
-	usecase                 *mocks.ContinuousScreeningUsecase
-	executorFactory         executor_factory.ExecutorFactoryStub
-	ctx                     context.Context
-	continuousScreeningId   uuid.UUID
-	orgId                   uuid.UUID
+	repository            *mocks.ContinuousScreeningRepository
+	openSanctionsProvider *mocks.OpenSanctionsRepository
+	usecase               *mocks.ContinuousScreeningUsecase
+	executorFactory       executor_factory.ExecutorFactoryStub
+	ctx                   context.Context
+	continuousScreeningId uuid.UUID
+	orgId                 uuid.UUID
 }
 
 func (suite *MatchEnrichmentWorkerTestSuite) SetupTest() {
 	suite.repository = new(mocks.ContinuousScreeningRepository)
-	suite.openSanctionsProvider = new(mocks.OpenSanctionsProvider)
+	suite.openSanctionsProvider = new(mocks.OpenSanctionsRepository)
 	suite.usecase = new(mocks.ContinuousScreeningUsecase)
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 
@@ -61,7 +61,6 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_OpenSanctionsNotConfigured
 	worker := suite.makeWorker()
 	job := &river.Job[models.ContinuousScreeningMatchEnrichmentArgs]{
 		Args: models.ContinuousScreeningMatchEnrichmentArgs{
-			OrgId:                 suite.orgId,
 			ContinuousScreeningId: suite.continuousScreeningId,
 		},
 	}
@@ -81,7 +80,6 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_OpenSanctionsNotSelfHosted
 	worker := suite.makeWorker()
 	job := &river.Job[models.ContinuousScreeningMatchEnrichmentArgs]{
 		Args: models.ContinuousScreeningMatchEnrichmentArgs{
-			OrgId:                 suite.orgId,
 			ContinuousScreeningId: suite.continuousScreeningId,
 		},
 	}
@@ -102,7 +100,6 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_DatasetTriggered_EnrichesO
 	worker := suite.makeWorker()
 	job := &river.Job[models.ContinuousScreeningMatchEnrichmentArgs]{
 		Args: models.ContinuousScreeningMatchEnrichmentArgs{
-			OrgId:                 suite.orgId,
 			ContinuousScreeningId: suite.continuousScreeningId,
 		},
 	}
@@ -163,7 +160,6 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_ObjectTriggered_EnrichesOn
 	worker := suite.makeWorker()
 	job := &river.Job[models.ContinuousScreeningMatchEnrichmentArgs]{
 		Args: models.ContinuousScreeningMatchEnrichmentArgs{
-			OrgId:                 suite.orgId,
 			ContinuousScreeningId: suite.continuousScreeningId,
 		},
 	}

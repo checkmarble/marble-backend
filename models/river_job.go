@@ -61,8 +61,7 @@ type MatchEnrichmentArgs struct {
 func (MatchEnrichmentArgs) Kind() string { return "match_enrichment" }
 
 type ContinuousScreeningMatchEnrichmentArgs struct {
-	OrgId                   uuid.UUID `json:"org_id"`
-	ContinuousScreeningId   uuid.UUID `json:"continuous_screening_id"`
+	ContinuousScreeningId uuid.UUID `json:"continuous_screening_id"`
 }
 
 func (ContinuousScreeningMatchEnrichmentArgs) Kind() string {

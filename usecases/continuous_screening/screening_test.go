@@ -22,7 +22,7 @@ type ScreeningTestSuite struct {
 	organizationSchemaRepository *mocks.OrganizationSchemaRepository
 	ingestedDataReader           *mocks.ContinuousScreeningIngestedDataReader
 	ingestionUsecase             *mocks.ContinuousScreeningIngestionUsecase
-	screeningProvider            *mocks.ContinuousScreeningScreeningProvider
+	screeningProvider            *mocks.OpenSanctionsRepository
 	caseEditor                   *mocks.CaseEditor
 	executorFactory              executor_factory.ExecutorFactoryStub
 	transactionFactory           executor_factory.TransactionFactoryStub
@@ -43,7 +43,7 @@ func (suite *ScreeningTestSuite) SetupTest() {
 	suite.organizationSchemaRepository = new(mocks.OrganizationSchemaRepository)
 	suite.ingestedDataReader = new(mocks.ContinuousScreeningIngestedDataReader)
 	suite.ingestionUsecase = new(mocks.ContinuousScreeningIngestionUsecase)
-	suite.screeningProvider = new(mocks.ContinuousScreeningScreeningProvider)
+	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.caseEditor = new(mocks.CaseEditor)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()

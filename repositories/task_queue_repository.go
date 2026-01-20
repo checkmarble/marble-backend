@@ -473,7 +473,6 @@ func (r riverRepository) EnqueueContinuousScreeningMatchEnrichmentTask(
 		ctx,
 		tx.RawTx(),
 		models.ContinuousScreeningMatchEnrichmentArgs{
-			OrgId:                 organizationId,
 			ContinuousScreeningId: continuousScreeningId,
 		},
 		&river.InsertOpts{

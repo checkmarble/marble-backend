@@ -728,12 +728,12 @@ func (uc *ContinuousScreeningUsecase) EnrichContinuousScreeningEntityWithoutAuth
 	}
 
 	if screening.OpenSanctionEntityEnriched {
-		return errors.WithDetail(models.UnprocessableEntityError,
+		return errors.Wrap(models.UnprocessableEntityError,
 			"this continuous screening entity was already enriched")
 	}
 
 	if screening.OpenSanctionEntityId == nil {
-		return errors.WithDetail(models.BadParameterError,
+		return errors.Wrap(models.BadParameterError,
 			"this continuous screening has no OpenSanction entity to enrich")
 	}
 

@@ -14,18 +14,18 @@ import (
 
 type ScreeningEnrichmentTestSuite struct {
 	suite.Suite
-	repository         *mocks.ContinuousScreeningRepository
-	screeningProvider  *mocks.OpenSanctionsProvider
-	executorFactory    executor_factory.ExecutorFactoryStub
-	ctx                context.Context
-	screeningId        uuid.UUID
-	matchId            uuid.UUID
-	entityId           string
+	repository        *mocks.ContinuousScreeningRepository
+	screeningProvider *mocks.OpenSanctionsRepository
+	executorFactory   executor_factory.ExecutorFactoryStub
+	ctx               context.Context
+	screeningId       uuid.UUID
+	matchId           uuid.UUID
+	entityId          string
 }
 
 func (suite *ScreeningEnrichmentTestSuite) SetupTest() {
 	suite.repository = new(mocks.ContinuousScreeningRepository)
-	suite.screeningProvider = new(mocks.OpenSanctionsProvider)
+	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 
 	suite.ctx = context.Background()

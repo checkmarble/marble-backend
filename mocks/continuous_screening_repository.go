@@ -486,31 +486,3 @@ func (m *ContinuousScreeningClientDbRepository) ListMonitoredObjects(
 	args := m.Called(ctx, exec, filters, pagination)
 	return args.Get(0).([]models.ContinuousScreeningMonitoredObject), args.Error(1)
 }
-
-type ContinuousScreeningScreeningProvider struct {
-	mock.Mock
-}
-
-func (m *ContinuousScreeningScreeningProvider) Search(
-	ctx context.Context,
-	query models.OpenSanctionsQuery,
-) (models.ScreeningRawSearchResponseWithMatches, error) {
-	args := m.Called(ctx, query)
-	if args.Get(0) == nil {
-		return models.ScreeningRawSearchResponseWithMatches{}, args.Error(1)
-	}
-	return args.Get(0).(models.ScreeningRawSearchResponseWithMatches), args.Error(1)
-}
-
-func (m *ContinuousScreeningScreeningProvider) GetAlgorithms(ctx context.Context) (models.OpenSanctionAlgorithms, error) {
-	args := m.Called(ctx)
-	return args.Get(0).(models.OpenSanctionAlgorithms), args.Error(1)
-}
-
-func (m *ContinuousScreeningScreeningProvider) EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error) {
-	args := m.Called(ctx, match)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]byte), args.Error(1)
-}
