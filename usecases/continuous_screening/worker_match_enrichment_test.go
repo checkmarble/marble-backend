@@ -18,7 +18,6 @@ type MatchEnrichmentWorkerTestSuite struct {
 	suite.Suite
 	repository            *mocks.ContinuousScreeningRepository
 	openSanctionsProvider *mocks.OpenSanctionsRepository
-	usecase               *mocks.ContinuousScreeningUsecase
 	executorFactory       executor_factory.ExecutorFactoryStub
 	ctx                   context.Context
 	continuousScreeningId uuid.UUID
@@ -28,7 +27,6 @@ type MatchEnrichmentWorkerTestSuite struct {
 func (suite *MatchEnrichmentWorkerTestSuite) SetupTest() {
 	suite.repository = new(mocks.ContinuousScreeningRepository)
 	suite.openSanctionsProvider = new(mocks.OpenSanctionsRepository)
-	suite.usecase = new(mocks.ContinuousScreeningUsecase)
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 
 	suite.ctx = context.Background()
@@ -40,7 +38,6 @@ func (suite *MatchEnrichmentWorkerTestSuite) makeWorker() *ContinuousScreeningMa
 	return NewContinuousScreeningMatchEnrichmentWorker(
 		suite.executorFactory,
 		suite.openSanctionsProvider,
-		suite.usecase,
 		suite.repository,
 	)
 }
@@ -49,7 +46,6 @@ func (suite *MatchEnrichmentWorkerTestSuite) AssertExpectations() {
 	t := suite.T()
 	suite.repository.AssertExpectations(t)
 	suite.openSanctionsProvider.AssertExpectations(t)
-	suite.usecase.AssertExpectations(t)
 }
 
 func TestMatchEnrichmentWorker(t *testing.T) {
@@ -142,9 +138,15 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_DatasetTriggered_EnrichesO
 	).Return(continuousScreeningWithMatches, nil)
 
 	// Expect only entity enrichment (not matches, as they are organization's own data)
-	suite.usecase.On("EnrichContinuousScreeningEntityWithoutAuthorization",
+	enrichedPayload := []byte(`{"id":"entity-123","enriched":true}`)
+	suite.openSanctionsProvider.On("EnrichMatch", suite.ctx, models.ScreeningMatch{
+		EntityId: entityId,
+	}).Return(enrichedPayload, nil)
+	suite.repository.On("UpdateContinuousScreeningEntityEnrichedPayload",
 		suite.ctx,
+		mock.Anything,
 		suite.continuousScreeningId,
+		mock.Anything,
 	).Return(nil)
 
 	// Execute
@@ -191,9 +193,15 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_ObjectTriggered_EnrichesOn
 	).Return(continuousScreeningWithMatches, nil)
 
 	// Only expect match enrichment (no entity enrichment for ObjectTriggered)
-	suite.usecase.On("EnrichContinuousScreeningMatchWithoutAuthorization",
+	enrichedMatchPayload := []byte(`{"id":"match-1","enriched":true}`)
+	suite.openSanctionsProvider.On("EnrichMatch", suite.ctx, models.ScreeningMatch{
+		EntityId: "match-1",
+	}).Return(enrichedMatchPayload, nil)
+	suite.repository.On("UpdateContinuousScreeningMatchEnrichedPayload",
 		suite.ctx,
+		mock.Anything,
 		match1Id,
+		mock.Anything,
 	).Return(nil)
 
 	// Execute

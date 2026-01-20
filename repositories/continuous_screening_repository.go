@@ -623,7 +623,8 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningEntityEnrichedPayload(
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
 		Where(squirrel.Eq{"id": id}).
 		Set("opensanction_entity_payload", enrichedPayload).
-		Set("opensanction_entity_enriched", true)
+		Set("opensanction_entity_enriched", true).
+		Set("updated_at", squirrel.Expr("NOW()"))
 
 	return ExecBuilder(ctx, exec, query)
 }
@@ -642,7 +643,8 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchEnrichedPayload(
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
 		Where(squirrel.Eq{"id": id}).
 		Set("payload", enrichedPayload).
-		Set("enriched", true)
+		Set("enriched", true).
+		Set("updated_at", squirrel.Expr("NOW()"))
 
 	return ExecBuilder(ctx, exec, query)
 }
@@ -763,7 +765,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningUpdateJob(
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS).
 		Where(squirrel.Eq{"id": updateId}).
 		Set("status", status.String()).
-		Set("updated_at", "NOW()")
+		Set("updated_at", squirrel.Expr("NOW()"))
 
 	return ExecBuilder(ctx, exec, query)
 }

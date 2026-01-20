@@ -2,6 +2,8 @@ package continuous_screening
 
 import (
 	"context"
+	"encoding/json"
+	"maps"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -16,6 +18,7 @@ import (
 type matchEnrichmentWorkerOpenSanctionsProvider interface {
 	IsConfigured(context.Context) (bool, error)
 	IsSelfHosted(context.Context) bool
+	EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error)
 }
 
 type matchEnrichmentWorkerRepository interface {
@@ -24,6 +27,11 @@ type matchEnrichmentWorkerRepository interface {
 		exec repositories.Executor,
 		id uuid.UUID,
 	) (models.ContinuousScreeningWithMatches, error)
+	GetContinuousScreeningMatch(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+	) (models.ContinuousScreeningMatch, error)
 	UpdateContinuousScreeningEntityEnrichedPayload(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -38,36 +46,22 @@ type matchEnrichmentWorkerRepository interface {
 	) error
 }
 
-type matchEnrichmentWorkerUsecase interface {
-	EnrichContinuousScreeningEntityWithoutAuthorization(
-		ctx context.Context,
-		continuousScreeningId uuid.UUID,
-	) error
-	EnrichContinuousScreeningMatchWithoutAuthorization(
-		ctx context.Context,
-		matchId uuid.UUID,
-	) error
-}
-
 type ContinuousScreeningMatchEnrichmentWorker struct {
 	river.WorkerDefaults[models.ContinuousScreeningMatchEnrichmentArgs]
 
 	executorFactory     executor_factory.ExecutorFactory
 	openSanctionsConfig matchEnrichmentWorkerOpenSanctionsProvider
-	usecase             matchEnrichmentWorkerUsecase
 	repository          matchEnrichmentWorkerRepository
 }
 
 func NewContinuousScreeningMatchEnrichmentWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	openSanctionsProvider matchEnrichmentWorkerOpenSanctionsProvider,
-	usecase matchEnrichmentWorkerUsecase,
 	repository matchEnrichmentWorkerRepository,
 ) *ContinuousScreeningMatchEnrichmentWorker {
 	return &ContinuousScreeningMatchEnrichmentWorker{
 		executorFactory:     executorFactory,
 		openSanctionsConfig: openSanctionsProvider,
-		usecase:             usecase,
 		repository:          repository,
 	}
 }
@@ -110,10 +104,7 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) Work(
 	if continuousScreeningWithMatches.IsDatasetTriggered() {
 		if !continuousScreeningWithMatches.OpenSanctionEntityEnriched &&
 			continuousScreeningWithMatches.OpenSanctionEntityId != nil {
-			if err := w.usecase.EnrichContinuousScreeningEntityWithoutAuthorization(
-				ctx,
-				continuousScreeningWithMatches.Id,
-			); err != nil {
+			if err := w.enrichEntity(ctx, continuousScreeningWithMatches); err != nil {
 				errs = errors.Join(errs, err)
 			}
 		}
@@ -126,11 +117,106 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) Work(
 				continue
 			}
 
-			if err := w.usecase.EnrichContinuousScreeningMatchWithoutAuthorization(ctx, match.Id); err != nil {
+			if err := w.enrichMatch(ctx, match); err != nil {
 				errs = errors.Join(errs, err)
 			}
 		}
 	}
 
 	return errs
+}
+
+func (w *ContinuousScreeningMatchEnrichmentWorker) enrichEntity(
+	ctx context.Context,
+	screening models.ContinuousScreeningWithMatches,
+) error {
+	if screening.OpenSanctionEntityEnriched {
+		return errors.Wrap(models.UnprocessableEntityError,
+			"this continuous screening entity was already enriched")
+	}
+
+	if screening.OpenSanctionEntityId == nil {
+		return errors.Wrap(models.BadParameterError,
+			"this continuous screening has no OpenSanction entity to enrich")
+	}
+
+	// Create a fake match to use the EnrichMatch method from OpenSanctions repository
+	fakeMatch := models.ScreeningMatch{
+		EntityId: *screening.OpenSanctionEntityId,
+	}
+
+	newPayload, err := w.openSanctionsConfig.EnrichMatch(ctx, fakeMatch)
+	if err != nil {
+		return err
+	}
+
+	mergedPayload, err := mergePayloads(screening.OpenSanctionEntityPayload, newPayload)
+	if err != nil {
+		return errors.Wrap(err,
+			"could not merge payloads for continuous screening entity enrichment")
+	}
+
+	exec := w.executorFactory.NewExecutor()
+	if err := w.repository.UpdateContinuousScreeningEntityEnrichedPayload(
+		ctx, exec, screening.Id, mergedPayload,
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *ContinuousScreeningMatchEnrichmentWorker) enrichMatch(
+	ctx context.Context,
+	match models.ContinuousScreeningMatch,
+) error {
+	if match.Enriched {
+		return errors.WithDetail(models.UnprocessableEntityError,
+			"this continuous screening match was already enriched")
+	}
+
+	// Create a fake screening match to use the EnrichMatch method from OpenSanctions repository
+	fakeMatch := models.ScreeningMatch{
+		EntityId: match.OpenSanctionEntityId,
+	}
+
+	newPayload, err := w.openSanctionsConfig.EnrichMatch(ctx, fakeMatch)
+	if err != nil {
+		return err
+	}
+
+	mergedPayload, err := mergePayloads(match.Payload, newPayload)
+	if err != nil {
+		return errors.Wrap(err,
+			"could not merge payloads for continuous screening match enrichment")
+	}
+
+	exec := w.executorFactory.NewExecutor()
+	if err := w.repository.UpdateContinuousScreeningMatchEnrichedPayload(
+		ctx, exec, match.Id, mergedPayload,
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func mergePayloads(originalRaw, newRaw []byte) ([]byte, error) {
+	var original, new map[string]any
+
+	if err := json.Unmarshal(originalRaw, &original); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(newRaw, &new); err != nil {
+		return nil, err
+	}
+
+	maps.Copy(original, new)
+
+	out, err := json.Marshal(original)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }

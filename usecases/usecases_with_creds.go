@@ -884,7 +884,6 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningMatchEnrichmentWorker()
 	return continuous_screening.NewContinuousScreeningMatchEnrichmentWorker(
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.OpenSanctionsRepository,
-		usecases.NewContinuousScreeningUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 	)
 }

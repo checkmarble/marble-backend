@@ -244,6 +244,16 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				if err != nil {
 					return models.ContinuousScreeningWithMatches{}, err
 				}
+
+				if err := uc.taskQueueRepository.EnqueueContinuousScreeningMatchEnrichmentTask(
+					ctx,
+					tx,
+					config.OrgId,
+					continuousScreeningWithMatches.Id,
+				); err != nil {
+					return models.ContinuousScreeningWithMatches{}, err
+				}
+
 				if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
 					// Create and attach to a case
 					// Update the continuousScreeningWithMatches with the created case ID

@@ -62,19 +62,3 @@ func (m *ContinuousScreeningUsecase) CheckFeatureAccess(ctx context.Context, org
 	args := m.Called(ctx, orgId)
 	return args.Error(0)
 }
-
-func (m *ContinuousScreeningUsecase) EnrichContinuousScreeningEntityWithoutAuthorization(
-	ctx context.Context,
-	screeningId uuid.UUID,
-) error {
-	args := m.Called(ctx, screeningId)
-	return args.Error(0)
-}
-
-func (m *ContinuousScreeningUsecase) EnrichContinuousScreeningMatchWithoutAuthorization(
-	ctx context.Context,
-	matchId uuid.UUID,
-) error {
-	args := m.Called(ctx, matchId)
-	return args.Error(0)
-}

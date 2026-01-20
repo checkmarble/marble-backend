@@ -3,7 +3,6 @@ package continuous_screening
 import (
 	"context"
 	"encoding/json"
-	"maps"
 	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -714,113 +713,6 @@ func (uc *ContinuousScreeningUsecase) handleWhitelistCreation(
 	}
 
 	return nil
-}
-
-func (uc *ContinuousScreeningUsecase) EnrichContinuousScreeningEntityWithoutAuthorization(
-	ctx context.Context,
-	continuousScreeningId uuid.UUID,
-) error {
-	exec := uc.executorFactory.NewExecutor()
-
-	screening, err := uc.repository.GetContinuousScreeningWithMatchesById(ctx, exec, continuousScreeningId)
-	if err != nil {
-		return err
-	}
-
-	if screening.OpenSanctionEntityEnriched {
-		return errors.Wrap(models.UnprocessableEntityError,
-			"this continuous screening entity was already enriched")
-	}
-
-	if screening.OpenSanctionEntityId == nil {
-		return errors.Wrap(models.BadParameterError,
-			"this continuous screening has no OpenSanction entity to enrich")
-	}
-
-	// Create a fake match to use the EnrichMatch method from OpenSanctions repository
-	fakeMatch := models.ScreeningMatch{
-		EntityId: *screening.OpenSanctionEntityId,
-	}
-
-	newPayload, err := uc.screeningProvider.EnrichMatch(ctx, fakeMatch)
-	if err != nil {
-		return err
-	}
-
-	mergedPayload, err := mergePayloads(screening.OpenSanctionEntityPayload, newPayload)
-	if err != nil {
-		return errors.Wrap(err,
-			"could not merge payloads for continuous screening entity enrichment")
-	}
-
-	if err := uc.repository.UpdateContinuousScreeningEntityEnrichedPayload(
-		ctx, exec, continuousScreeningId, mergedPayload,
-	); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (uc *ContinuousScreeningUsecase) EnrichContinuousScreeningMatchWithoutAuthorization(
-	ctx context.Context,
-	matchId uuid.UUID,
-) error {
-	exec := uc.executorFactory.NewExecutor()
-
-	match, err := uc.repository.GetContinuousScreeningMatch(ctx, exec, matchId)
-	if err != nil {
-		return err
-	}
-
-	if match.Enriched {
-		return errors.WithDetail(models.UnprocessableEntityError,
-			"this continuous screening match was already enriched")
-	}
-
-	// Create a fake screening match to use the EnrichMatch method from OpenSanctions repository
-	fakeMatch := models.ScreeningMatch{
-		EntityId: match.OpenSanctionEntityId,
-	}
-
-	newPayload, err := uc.screeningProvider.EnrichMatch(ctx, fakeMatch)
-	if err != nil {
-		return err
-	}
-
-	mergedPayload, err := mergePayloads(match.Payload, newPayload)
-	if err != nil {
-		return errors.Wrap(err,
-			"could not merge payloads for continuous screening match enrichment")
-	}
-
-	if err := uc.repository.UpdateContinuousScreeningMatchEnrichedPayload(
-		ctx, exec, matchId, mergedPayload,
-	); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func mergePayloads(originalRaw, newRaw []byte) ([]byte, error) {
-	var original, new map[string]any
-
-	if err := json.Unmarshal(originalRaw, &original); err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(newRaw, &new); err != nil {
-		return nil, err
-	}
-
-	maps.Copy(original, new)
-
-	out, err := json.Marshal(original)
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
 }
 
 // loadMoreObjectTrigger handles load more for object trigger screenings (Marble to OpenSanction direction)
