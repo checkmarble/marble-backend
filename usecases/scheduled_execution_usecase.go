@@ -25,11 +25,21 @@ type ScheduledExecutionUsecaseRepository interface {
 		input models.CreateScheduledExecutionInput, id string) error
 }
 
+type scheduledExecutionTaskQueueRepository interface {
+	EnqueueScheduledExecutionTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId uuid.UUID,
+		scheduledExecutionId string,
+	) error
+}
+
 type ScheduledExecutionUsecase struct {
-	enforceSecurity    security.EnforceSecurityDecision
-	transactionFactory executor_factory.TransactionFactory
-	executorFactory    executor_factory.ExecutorFactory
-	repository         ScheduledExecutionUsecaseRepository
+	enforceSecurity     security.EnforceSecurityDecision
+	transactionFactory  executor_factory.TransactionFactory
+	executorFactory     executor_factory.ExecutorFactory
+	repository          ScheduledExecutionUsecaseRepository
+	taskQueueRepository scheduledExecutionTaskQueueRepository
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, id string) (models.ScheduledExecution, error) {
@@ -131,10 +141,15 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 	}
 
 	id := pure_utils.NewPrimaryKey(input.OrganizationId)
-	return usecase.repository.CreateScheduledExecution(ctx, exec, models.CreateScheduledExecutionInput{
-		OrganizationId:      input.OrganizationId,
-		ScenarioId:          scenario.Id,
-		ScenarioIterationId: input.ScenarioIterationId,
-		Manual:              true,
-	}, id)
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := usecase.repository.CreateScheduledExecution(ctx, tx, models.CreateScheduledExecutionInput{
+			OrganizationId:      input.OrganizationId,
+			ScenarioId:          scenario.Id,
+			ScenarioIterationId: input.ScenarioIterationId,
+			Manual:              true,
+		}, id); err != nil {
+			return err
+		}
+		return usecase.taskQueueRepository.EnqueueScheduledExecutionTask(ctx, tx, input.OrganizationId, id)
+	})
 }

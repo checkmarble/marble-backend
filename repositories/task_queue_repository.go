@@ -95,6 +95,12 @@ type TaskQueueRepository interface {
 		organizationId uuid.UUID,
 		uploadLogId string,
 	) error
+	EnqueueScheduledExecutionTask(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		scheduledExecutionId string,
+	) error
 }
 
 type riverRepository struct {
@@ -427,5 +433,26 @@ func (r riverRepository) EnqueueCsvIngestionTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued CSV ingestion task", "upload_log_id", uploadLogId, "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueScheduledExecutionTask(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	scheduledExecutionId string,
+) error {
+	res, err := r.client.InsertTx(ctx, tx.RawTx(), models.ScheduledExecutionArgs{
+		ScheduledExecutionId: scheduledExecutionId,
+	}, &river.InsertOpts{
+		Queue: organizationId.String(),
+	})
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued scheduled execution task",
+		"scheduled_execution_id", scheduledExecutionId, "job_id", res.Job.ID)
 	return nil
 }

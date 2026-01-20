@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
+	"github.com/riverqueue/river"
 )
 
 // postgres will only accept 65535 parameters in a query, so we need to batch the decisions_to_create creation
@@ -60,6 +61,12 @@ type taskQueueRepository interface {
 		organizationId uuid.UUID,
 		scheduledExecutionId string,
 	) error
+	EnqueueScheduledExecutionTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId uuid.UUID,
+		scheduledExecutionId string,
+	) error
 }
 
 type RunScheduledExecution struct {
@@ -89,51 +96,15 @@ func NewRunScheduledExecution(
 	}
 }
 
-func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.Context) error {
-	logger := utils.LoggerFromContext(ctx)
-
-	pendingScheduledExecutions, err := usecase.repository.ListScheduledExecutions(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		models.ListScheduledExecutionsFilters{
-			Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending},
-		},
-		nil,
-	)
+// ExecuteScheduledExecutionById executes a single scheduled execution by its ID.
+// This is the entry point for the ScheduledExecutionWorker.
+func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(ctx context.Context, scheduledExecutionId string) error {
+	exec := usecase.executorFactory.NewExecutor()
+	scheduledExecution, err := usecase.repository.GetScheduledExecution(ctx, exec, scheduledExecutionId)
 	if err != nil {
-		return fmt.Errorf("error while listing pending ScheduledExecutions: %w", err)
+		return fmt.Errorf("error getting scheduled execution %s: %w", scheduledExecutionId, err)
 	}
-
-	logger.InfoContext(ctx, fmt.Sprintf("Found %d pending scheduled executions", len(pendingScheduledExecutions)))
-
-	var waitGroup sync.WaitGroup
-	executionErrorChan := make(chan error, len(pendingScheduledExecutions))
-
-	startScheduledExecution := func(scheduledExecution models.ScheduledExecution) {
-		defer utils.RecoverAndReportSentryError(ctx, "ExecuteAllScheduledScenarios")
-
-		defer waitGroup.Done()
-		ctx = utils.StoreLoggerInContext(
-			ctx,
-			logger.
-				With("scheduled_execution_id", scheduledExecution.Id).
-				With("organization_id", scheduledExecution.OrganizationId),
-		)
-		if err := usecase.executeScheduledScenario(ctx, scheduledExecution); err != nil {
-			executionErrorChan <- err
-		}
-	}
-
-	for _, pendingExecution := range pendingScheduledExecutions {
-		waitGroup.Add(1)
-		go startScheduledExecution(pendingExecution)
-	}
-
-	waitGroup.Wait()
-	close(executionErrorChan)
-
-	executionErr := <-executionErrorChan
-	return executionErr
+	return usecase.executeScheduledScenario(ctx, scheduledExecution)
 }
 
 func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Context, scheduledExecution models.ScheduledExecution) error {
@@ -261,13 +232,12 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 	return nil
 }
 
-// ExecuteScheduledScenariosForOrg runs the scheduled scenario execution for a single organization.
-// It first schedules any due scenarios, then executes all pending scheduled executions for that org.
-func (usecase *RunScheduledExecution) ExecuteScheduledScenariosForOrg(ctx context.Context, orgId uuid.UUID) error {
+// ScheduleDueScenariosForOrg checks all live scenarios for an organization and schedules any that are due.
+// When a scenario is due, it creates a scheduled_execution row and enqueues a job to execute it.
+func (usecase *RunScheduledExecution) ScheduleDueScenariosForOrg(ctx context.Context, orgId uuid.UUID) error {
 	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
 
-	// First, schedule all due scenarios for this organization
 	scenarios, err := usecase.repository.ListAllScenarios(ctx, exec,
 		models.ListAllScenariosFilters{Live: true, OrganizationId: &orgId})
 	if err != nil {
@@ -284,49 +254,23 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenariosForOrg(ctx contex
 		}
 	}
 	logger.InfoContext(ctx, fmt.Sprintf("Done scheduling %d scenarios for org %s", len(scenarios), orgId))
+	return nil
+}
 
-	// Then, execute all pending scheduled executions for this organization
-	pendingScheduledExecutions, err := usecase.repository.ListScheduledExecutions(
-		ctx,
-		exec,
-		models.ListScheduledExecutionsFilters{
-			Status:         []models.ScheduledExecutionStatus{models.ScheduledExecutionPending},
-			OrganizationId: orgId,
-		},
-		nil,
-	)
-	if err != nil {
-		return fmt.Errorf("error while listing pending ScheduledExecutions for org %s: %w", orgId, err)
-	}
+// ScheduledExecutionWorker is a River worker that executes a single scheduled execution.
+type ScheduledExecutionWorker struct {
+	river.WorkerDefaults[models.ScheduledExecutionArgs]
+	runScheduledExecution *RunScheduledExecution
+}
 
-	logger.InfoContext(ctx, fmt.Sprintf("Found %d pending scheduled executions for org %s", len(pendingScheduledExecutions), orgId))
+func NewScheduledExecutionWorker(runScheduledExecution *RunScheduledExecution) *ScheduledExecutionWorker {
+	return &ScheduledExecutionWorker{runScheduledExecution: runScheduledExecution}
+}
 
-	var waitGroup sync.WaitGroup
-	executionErrorChan := make(chan error, len(pendingScheduledExecutions))
+func (w *ScheduledExecutionWorker) Timeout(job *river.Job[models.ScheduledExecutionArgs]) time.Duration {
+	return 3 * time.Hour
+}
 
-	startScheduledExecution := func(scheduledExecution models.ScheduledExecution) {
-		defer utils.RecoverAndReportSentryError(ctx, "ExecuteScheduledScenariosForOrg")
-
-		defer waitGroup.Done()
-		ctx = utils.StoreLoggerInContext(
-			ctx,
-			logger.
-				With("scheduled_execution_id", scheduledExecution.Id).
-				With("organization_id", scheduledExecution.OrganizationId),
-		)
-		if err := usecase.executeScheduledScenario(ctx, scheduledExecution); err != nil {
-			executionErrorChan <- err
-		}
-	}
-
-	for _, pendingExecution := range pendingScheduledExecutions {
-		waitGroup.Add(1)
-		go startScheduledExecution(pendingExecution)
-	}
-
-	waitGroup.Wait()
-	close(executionErrorChan)
-
-	executionErr := <-executionErrorChan
-	return executionErr
+func (w *ScheduledExecutionWorker) Work(ctx context.Context, job *river.Job[models.ScheduledExecutionArgs]) error {
+	return w.runScheduledExecution.ExecuteScheduledExecutionById(ctx, job.Args.ScheduledExecutionId)
 }

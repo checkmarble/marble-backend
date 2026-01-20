@@ -59,12 +59,18 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 
 	logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
 	scheduledExecutionId := pure_utils.NewPrimaryKey(organizationId)
-	return usecase.repository.CreateScheduledExecution(ctx, exec, models.CreateScheduledExecutionInput{
-		OrganizationId:      organizationId,
-		ScenarioId:          scenarioId,
-		ScenarioIterationId: publishedVersion.Id,
-		Manual:              false,
-	}, scheduledExecutionId)
+
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := usecase.repository.CreateScheduledExecution(ctx, tx, models.CreateScheduledExecutionInput{
+			OrganizationId:      organizationId,
+			ScenarioId:          scenarioId,
+			ScenarioIterationId: publishedVersion.Id,
+			Manual:              false,
+		}, scheduledExecutionId); err != nil {
+			return err
+		}
+		return usecase.taskQueueRepository.EnqueueScheduledExecutionTask(ctx, tx, organizationId, scheduledExecutionId)
+	})
 }
 
 func (usecase *RunScheduledExecution) scenarioIsDue(

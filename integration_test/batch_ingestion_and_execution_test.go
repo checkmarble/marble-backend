@@ -134,9 +134,9 @@ func createDecisionsBatch(
 	}
 
 	runScheduledExecUsecase := usecasesWithUserCreds.NewRunScheduledExecution()
-	err = runScheduledExecUsecase.ExecuteAllScheduledScenarios(ctx)
+	err = runScheduledExecUsecase.ExecuteScheduledExecutionById(ctx, ses.Executions[0].Id)
 	if err != nil {
-		assert.FailNow(t, "Failed to run scheduled executions", err)
+		assert.FailNow(t, "Failed to run scheduled execution", err)
 	}
 
 	start := time.Now()

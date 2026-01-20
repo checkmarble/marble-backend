@@ -359,6 +359,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	// Migrated from cron jobs
 	river.AddWorker(workers, adminUc.NewScheduledScenarioWorker())
+	river.AddWorker(workers, adminUc.NewScheduledExecutionWorker())
 	river.AddWorker(workers, adminUc.NewWebhookRetryWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
@@ -555,6 +556,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "scheduled_scenario":
 		return uc.NewScheduledScenarioWorker().Work(ctx,
 			singleJobCreate[models.ScheduledScenarioArgs](ctx, jobArgs))
+	case "scheduled_execution":
+		return uc.NewScheduledExecutionWorker().Work(ctx,
+			singleJobCreate[models.ScheduledExecutionArgs](ctx, jobArgs))
 	case "csv_ingestion":
 		return uc.NewCsvIngestionWorker().Work(ctx,
 			singleJobCreate[models.CsvIngestionArgs](ctx, jobArgs))

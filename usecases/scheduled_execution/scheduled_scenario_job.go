@@ -50,5 +50,5 @@ func (w *ScheduledScenarioWorker) Timeout(job *river.Job[models.ScheduledScenari
 }
 
 func (w *ScheduledScenarioWorker) Work(ctx context.Context, job *river.Job[models.ScheduledScenarioArgs]) error {
-	return w.runScheduledExecution.ExecuteScheduledScenariosForOrg(ctx, job.Args.OrgId)
+	return w.runScheduledExecution.ScheduleDueScenariosForOrg(ctx, job.Args.OrgId)
 }
