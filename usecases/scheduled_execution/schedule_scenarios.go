@@ -10,66 +10,67 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context, organizationId uuid.UUID, scenarioId string) error {
+func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context, scenario models.Scenario) (bool, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
-	scenario, err := usecase.repository.GetScenarioById(ctx, exec, scenarioId)
-	if err != nil {
-		return err
-	}
 
 	publishedVersion, err := usecase.getPublishedScenarioIteration(ctx, exec, scenario)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if publishedVersion == nil {
-		logger.DebugContext(ctx, fmt.Sprintf("scenario %s has no published version", scenarioId))
-		return nil
+		logger.DebugContext(ctx, fmt.Sprintf(`scenario "%s" has no published version`, scenario.Name))
+		return false, nil
 	}
 
 	previousExecutions, err := usecase.repository.ListScheduledExecutions(
 		ctx,
 		exec,
 		models.ListScheduledExecutionsFilters{
-			ScenarioId: scenarioId,
-			Status:     []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing},
+			OrganizationId: scenario.OrganizationId,
+			ScenarioId:     scenario.Id,
 		},
 		nil,
 	)
 	if err != nil {
-		return err
+		return false, err
 	}
-	if len(previousExecutions) > 0 {
-		logger.DebugContext(ctx, fmt.Sprintf("scenario %s already has a pending or processing scheduled execution", scenarioId))
-		return nil
+	for _, ex := range previousExecutions {
+		if ex.Status == models.ScheduledExecutionPending ||
+			ex.Status == models.ScheduledExecutionProcessing {
+			logger.DebugContext(ctx, fmt.Sprintf(`scenario "%s" already has a pending or processing scheduled execution`, scenario.Name))
+			return false, nil
+		}
 	}
 
-	isDue, err := usecase.scenarioIsDue(ctx, *publishedVersion, scenario)
+	isDue, err := usecase.scenarioIsDue(ctx, *publishedVersion, scenario, previousExecutions)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !isDue {
-		return nil
+		return false, nil
 	}
 
-	logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
-	scheduledExecutionId := pure_utils.NewPrimaryKey(organizationId)
+	logger.DebugContext(ctx,
+		fmt.Sprintf(`Version %d of scenario "%s" is due and will be scheduled`,
+			publishedVersion.Version, scenario.Name))
 
-	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+	scheduledExecutionId := uuid.Must(uuid.NewV7()).String()
+	return true, usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := usecase.repository.CreateScheduledExecution(ctx, tx, models.CreateScheduledExecutionInput{
-			OrganizationId:      organizationId,
-			ScenarioId:          scenarioId,
+			OrganizationId:      scenario.OrganizationId,
+			ScenarioId:          scenario.Id,
 			ScenarioIterationId: publishedVersion.Id,
 			Manual:              false,
 		}, scheduledExecutionId); err != nil {
 			return err
 		}
-		return usecase.taskQueueRepository.EnqueueScheduledExecutionTask(ctx, tx, organizationId, scheduledExecutionId)
+		return usecase.taskQueueRepository.EnqueueScheduledExecutionTask(ctx, tx,
+			scenario.OrganizationId, scheduledExecutionId)
 	})
 }
 
@@ -77,30 +78,18 @@ func (usecase *RunScheduledExecution) scenarioIsDue(
 	ctx context.Context,
 	publishedVersion models.PublishedScenarioIteration,
 	scenario models.Scenario,
+	previousExecutions []models.ScheduledExecution,
 ) (bool, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	if publishedVersion.Body.Schedule == "" {
-		logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s has no schedule", publishedVersion.Id))
+		logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %d has no schedule", publishedVersion.Version))
 		return false, nil
 	}
 	gron := gronx.New()
 	ok := gron.IsValid(publishedVersion.Body.Schedule)
 	if !ok {
-		return false, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
-	}
-
-	previousExecutions, err := usecase.repository.ListScheduledExecutions(
-		ctx,
-		exec,
-		models.ListScheduledExecutionsFilters{
-			ScenarioId:    scenario.Id,
-			ExcludeManual: true,
-		},
-		nil,
-	)
-	if err != nil {
-		return false, fmt.Errorf("error listing scheduled executions: %w", err)
+		return false, errors.Wrapf(models.BadParameterError, `Bad schedule format: "%s"`, publishedVersion.Body.Schedule)
 	}
 
 	publications, err := usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(
@@ -113,27 +102,22 @@ func (usecase *RunScheduledExecution) scenarioIsDue(
 	if err != nil {
 		return false, errors.Wrap(err, "error loading timezone")
 	}
-	return executionIsDueNow(publishedVersion.Body.Schedule, previousExecutions, publications, tz)
-}
-
-func executionIsDueNow(
-	schedule string,
-	previousExecutions []models.ScheduledExecution,
-	publications []models.ScenarioPublication,
-	tz *time.Location,
-) (bool, error) {
 	if tz == nil {
 		return false, errors.New("Nil timezone passed in executionIsDueNow")
 	}
+
+	nonManualExecutions := utils.Filter(previousExecutions,
+		func(e models.ScheduledExecution) bool { return !e.Manual })
+
 	var referenceTime time.Time
-	if len(previousExecutions) > 0 {
-		referenceTime = previousExecutions[0].StartedAt.In(tz)
+	if len(nonManualExecutions) > 0 {
+		referenceTime = nonManualExecutions[0].StartedAt.In(tz)
 	} else {
 		// if there is no previous execution, consider the last iteration publication time to be the last execution time
 		referenceTime = publications[0].CreatedAt.In(tz)
 	}
 
-	nextTick, err := gronx.NextTickAfter(schedule, referenceTime, false)
+	nextTick, err := gronx.NextTickAfter(publishedVersion.Body.Schedule, referenceTime, false)
 	if err != nil {
 		return true, err
 	}

@@ -58,8 +58,8 @@ func (e *EnforceSecurity) CreateDecision(organizationId uuid.UUID) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) CreateScheduledExecution(organizationId uuid.UUID) error {
-	args := e.Called(organizationId)
+func (e *EnforceSecurity) CreateScheduledExecution(scenario models.Scenario) error {
+	args := e.Called(scenario)
 	return args.Error(0)
 }
 

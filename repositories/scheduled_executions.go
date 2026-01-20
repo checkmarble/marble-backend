@@ -93,12 +93,6 @@ func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exe
 	if filters.ScenarioId != "" {
 		query = query.Where(squirrel.Eq{"se.scenario_id": filters.ScenarioId})
 	}
-	if filters.Status != nil {
-		query = query.Where(squirrel.Eq{"se.status": filters.Status})
-	}
-	if filters.ExcludeManual {
-		query = query.Where(squirrel.NotEq{"se.manual": true})
-	}
 
 	return SqlToListOfRow(
 		ctx,
@@ -143,15 +137,14 @@ func (repo *MarbleDbRepository) UpdateScheduledExecutionStatus(
 	ctx context.Context,
 	exec Executor,
 	updateScheduledEx models.UpdateScheduledExecutionStatusInput,
-) (executed bool, err error) {
+) error {
 	// uses optimistic locking based on the current status to avoid overwriting the status incorrectly
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return false, err
+		return err
 	}
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
-		Where("id = ?", updateScheduledEx.Id).
-		Where("status = ?", updateScheduledEx.CurrentStatusCondition.String())
+		Where("id = ?", updateScheduledEx.Id)
 
 	query = query.Set("status", updateScheduledEx.Status.String())
 	if updateScheduledEx.Status == models.ScheduledExecutionSuccess {
@@ -170,17 +163,17 @@ func (repo *MarbleDbRepository) UpdateScheduledExecutionStatus(
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	tag, err := exec.Exec(ctx, sql, args...)
 	if err != nil {
-		return false, err
+		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return false, nil
+		return nil
 	}
-	return true, nil
+	return nil
 }
 
 func (repo *MarbleDbRepository) UpdateScheduledExecution(

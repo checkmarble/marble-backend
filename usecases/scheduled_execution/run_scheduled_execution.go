@@ -14,9 +14,15 @@ import (
 	"github.com/riverqueue/river"
 )
 
-// postgres will only accept 65535 parameters in a query, so we need to batch the decisions_to_create creation
-// this is taking into account the fact that we have 2 parameters per decision_to_create
-const batchSize = 5000
+const (
+	// postgres will only accept 65535 parameters in a query, so we need to batch the decisions_to_create creation
+	// this is taking into account the fact that we have 2 parameters per decision_to_create
+	batchSize = 5000
+
+	// Max time (allowing for several retries) for a scheduled (batch) execution to start, before it is definitely marked as failed.
+	// Smaller than the typical min interval before a next scheduled iteration (daily as allowed by the UI).
+	scheduledExecMaxInitiationTime = time.Hour * 12
+)
 
 type RunScheduledExecutionRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
@@ -38,7 +44,7 @@ type RunScheduledExecutionRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		updateScheduledEx models.UpdateScheduledExecutionStatusInput,
-	) (executed bool, err error)
+	) (err error)
 	UpdateScheduledExecution(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -98,56 +104,33 @@ func NewRunScheduledExecution(
 
 // ExecuteScheduledExecutionById executes a single scheduled execution by its ID.
 // This is the entry point for the ScheduledExecutionWorker.
-func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(ctx context.Context, scheduledExecutionId string) error {
+func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
+	ctx context.Context,
+	scheduledExecutionId string,
+) error {
 	exec := usecase.executorFactory.NewExecutor()
+	logger := utils.LoggerFromContext(ctx).With("scheduled_execution_id", scheduledExecutionId)
+	ctx = utils.StoreLoggerInContext(ctx, logger)
+	logger.InfoContext(ctx, fmt.Sprintf("Start execution %s", scheduledExecutionId))
 	scheduledExecution, err := usecase.repository.GetScheduledExecution(ctx, exec, scheduledExecutionId)
 	if err != nil {
 		return fmt.Errorf("error getting scheduled execution %s: %w", scheduledExecutionId, err)
 	}
-	return usecase.executeScheduledScenario(ctx, scheduledExecution)
-}
 
-func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Context, scheduledExecution models.ScheduledExecution) error {
-	exec := usecase.executorFactory.NewExecutor()
-	logger := utils.LoggerFromContext(ctx)
-	logger.InfoContext(ctx, fmt.Sprintf("Start execution %s", scheduledExecution.Id))
-
-	if done, err := usecase.repository.UpdateScheduledExecutionStatus(
-		ctx,
-		exec,
-		models.UpdateScheduledExecutionStatusInput{
-			Id:                     scheduledExecution.Id,
-			Status:                 models.ScheduledExecutionProcessing,
-			CurrentStatusCondition: models.ScheduledExecutionPending,
-		},
-	); err != nil {
+	if time.Now().After(scheduledExecution.StartedAt.Add(scheduledExecMaxInitiationTime)) &&
+		scheduledExecution.Status == models.ScheduledExecutionPending {
+		logger.WarnContext(ctx, fmt.Sprintf("Scheduled execution %s failed to start for too long, and will now be marked as failed", scheduledExecutionId))
+		err := usecase.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{
+			Id:     scheduledExecution.Id,
+			Status: models.ScheduledExecutionFailure,
+		})
 		return err
-	} else if !done {
-		logger.InfoContext(ctx, fmt.Sprintf("Execution %s is already being processed", scheduledExecution.Id))
-		return nil
 	}
-	return usecase.insertAsyncDecisionTasks(
-		ctx,
-		scheduledExecution.Id,
-		scheduledExecution.Scenario,
-	)
-}
 
-func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
-	ctx context.Context,
-	scheduledExecutionId string,
-	scenario models.Scenario,
-) error {
-	logger := utils.LoggerFromContext(ctx)
-	exec := usecase.executorFactory.NewExecutor()
+	scenario := scheduledExecution.Scenario
 
 	// list objects to score
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, scenario.OrganizationId)
-	if err != nil {
-		return err
-	}
-
-	scheduledExecution, err := usecase.repository.GetScheduledExecution(ctx, exec, scheduledExecutionId)
 	if err != nil {
 		return err
 	}
@@ -174,6 +157,13 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 	err = usecase.repository.UpdateScheduledExecution(ctx, exec, models.UpdateScheduledExecutionInput{
 		Id:                       scheduledExecutionId,
 		NumberOfPlannedDecisions: &nbPlannedDecisions,
+	})
+	if err != nil {
+		return err
+	}
+	err = usecase.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{
+		Id:     scheduledExecutionId,
+		Status: models.ScheduledExecutionProcessing,
 	})
 	if err != nil {
 		return err
@@ -224,10 +214,7 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 		return err
 	}
 
-	logger.InfoContext(ctx, fmt.Sprintf("Inserted %d decisions to be executed", nbPlannedDecisions),
-		slog.String("scheduled_execution_id", scheduledExecution.Id),
-		slog.String("organization_id", scheduledExecution.OrganizationId.String()),
-	)
+	logger.InfoContext(ctx, fmt.Sprintf("Inserted %d decisions to be executed", nbPlannedDecisions))
 
 	return nil
 }
@@ -236,6 +223,7 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 // When a scenario is due, it creates a scheduled_execution row and enqueues a job to execute it.
 func (usecase *RunScheduledExecution) ScheduleDueScenariosForOrg(ctx context.Context, orgId uuid.UUID) error {
 	logger := utils.LoggerFromContext(ctx)
+	logger = logger.With(slog.String("organization_id", orgId.String()))
 	exec := usecase.executorFactory.NewExecutor()
 
 	scenarios, err := usecase.repository.ListAllScenarios(ctx, exec,
@@ -244,16 +232,19 @@ func (usecase *RunScheduledExecution) ScheduleDueScenariosForOrg(ctx context.Con
 		return fmt.Errorf("error listing live scenarios for org %s: %w", orgId, err)
 	}
 
+	count := 0
 	for _, scenario := range scenarios {
-		logger.DebugContext(ctx, "Checking scheduled scenario",
+		logger := logger.With(
 			slog.String("scenario_id", scenario.Id),
-			slog.String("organization_id", scenario.OrganizationId.String()),
-		)
-		if err := usecase.ScheduleScenarioIfDue(ctx, scenario.OrganizationId, scenario.Id); err != nil {
+			slog.String("scenario_name", scenario.Name))
+		ctx := utils.StoreLoggerInContext(ctx, logger)
+		if done, err := usecase.ScheduleScenarioIfDue(ctx, scenario); err != nil {
 			return err
+		} else if done {
+			count++
 		}
 	}
-	logger.InfoContext(ctx, fmt.Sprintf("Done scheduling %d scenarios for org %s", len(scenarios), orgId))
+	logger.InfoContext(ctx, fmt.Sprintf(`Done scheduling %d scenarios for org "%s"`, count, orgId))
 	return nil
 }
 
@@ -267,8 +258,9 @@ func NewScheduledExecutionWorker(runScheduledExecution *RunScheduledExecution) *
 	return &ScheduledExecutionWorker{runScheduledExecution: runScheduledExecution}
 }
 
+// One hour is the timeout to read candidates from ingested data and insert the decisions to create & the job tasks.
 func (w *ScheduledExecutionWorker) Timeout(job *river.Job[models.ScheduledExecutionArgs]) time.Duration {
-	return 3 * time.Hour
+	return 1 * time.Hour
 }
 
 func (w *ScheduledExecutionWorker) Work(ctx context.Context, job *river.Job[models.ScheduledExecutionArgs]) error {

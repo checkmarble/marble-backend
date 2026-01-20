@@ -107,9 +107,6 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(
 
 func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.Context, input models.CreateScheduledExecutionInput) error {
 	exec := usecase.executorFactory.NewExecutor()
-	if err := usecase.enforceSecurity.CreateScheduledExecution(input.OrganizationId); err != nil {
-		return err
-	}
 
 	scenarioIteration, err := usecase.repository.GetScenarioIteration(ctx, exec, input.ScenarioIterationId, false)
 	if err != nil {
@@ -119,25 +116,25 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 	if err != nil {
 		return err
 	}
+	if err := usecase.enforceSecurity.CreateScheduledExecution(scenario); err != nil {
+		return err
+	}
 
 	if *scenario.LiveVersionID != scenarioIteration.Id {
 		return fmt.Errorf("scenario iteration is not live %w", models.BadParameterError)
 	}
 
-	pendingExecutions, err := usecase.repository.ListScheduledExecutions(
-		ctx,
-		exec,
-		models.ListScheduledExecutionsFilters{
-			ScenarioId: scenario.Id,
-			Status:     []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing},
-		},
-		nil,
+	previousExecutions, err := usecase.repository.ListScheduledExecutions(
+		ctx, exec, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id}, nil,
 	)
 	if err != nil {
 		return err
 	}
-	if len(pendingExecutions) > 0 {
-		return fmt.Errorf("a pending execution already exists for this scenario %w", models.BadParameterError)
+	for _, ex := range previousExecutions {
+		if ex.Status == models.ScheduledExecutionPending ||
+			ex.Status == models.ScheduledExecutionProcessing {
+			return fmt.Errorf("a pending execution already exists for this scenario %w", models.BadParameterError)
+		}
 	}
 
 	id := pure_utils.NewPrimaryKey(input.OrganizationId)
