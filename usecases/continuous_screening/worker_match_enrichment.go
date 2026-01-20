@@ -171,8 +171,11 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) enrichMatch(
 	match models.ContinuousScreeningMatch,
 ) error {
 	if match.Enriched {
-		return errors.WithDetail(models.UnprocessableEntityError,
-			"this continuous screening match was already enriched")
+		utils.LoggerFromContext(ctx).DebugContext(ctx,
+			"continuous screening match already enriched, skipping",
+			"match_id", match.Id,
+		)
+		return nil
 	}
 
 	// Create a fake screening match to use the EnrichMatch method from OpenSanctions repository
