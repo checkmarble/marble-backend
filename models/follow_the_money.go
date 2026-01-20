@@ -89,6 +89,8 @@ func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
 		return FollowTheMoneyPropertyPassportNumber
 	case "socialSecurityNumber":
 		return FollowTheMoneyPropertySocialSecurityNumber
+	case "idNumber":
+		return FollowTheMoneyPropertyIdNumber
 	case "imoNumber":
 		return FollowTheMoneyPropertyImoNumber
 	case "registrationNumber":
@@ -103,12 +105,10 @@ func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
 		return FollowTheMoneyPropertyCountry
 	case "mainCountry":
 		return FollowTheMoneyPropertyMainCountry
-	case "idNumber":
-		return FollowTheMoneyPropertyIdNumber
-	case "notes":
-		return FollowTheMoneyPropertyNotes
 	case "flag":
 		return FollowTheMoneyPropertyFlag
+	case "notes":
+		return FollowTheMoneyPropertyNotes
 	default:
 		return FollowTheMoneyPropertyUnknown
 	}
