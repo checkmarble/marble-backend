@@ -995,3 +995,54 @@ func (repo *MarbleDbRepository) UpdateDeltaTracksDatasetFileId(
 
 	return ExecBuilder(ctx, exec, query)
 }
+
+func (repo *MarbleDbRepository) GetEnabledConfigStableIdsByOrg(
+	ctx context.Context,
+	exec Executor,
+	orgIds []string,
+) (map[string][]uuid.UUID, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id", "ARRAY_AGG(stable_id) AS stable_ids").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
+		Where(squirrel.Eq{"enabled": true}).
+		GroupBy("org_id")
+
+	if len(orgIds) > 0 {
+		query = query.Where(squirrel.Eq{"org_id": orgIds})
+	}
+
+	type configRow struct {
+		OrgId     string
+		StableIds []uuid.UUID
+	}
+
+	configs, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (configRow, error) {
+		var result configRow
+		err := row.Scan(&result.OrgId, &result.StableIds)
+		if err != nil {
+			return configRow{}, err
+		}
+		return result, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string][]uuid.UUID, len(orgIds))
+	for _, config := range configs {
+		result[config.OrgId] = config.StableIds
+	}
+
+	// Initialize empty slices for orgs with no enabled configs
+	for _, orgId := range orgIds {
+		if _, exists := result[orgId]; !exists {
+			result[orgId] = []uuid.UUID{}
+		}
+	}
+
+	return result, nil
+}

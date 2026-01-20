@@ -26,6 +26,10 @@ type CollectorRepository interface {
 	DecisionCollectorRepository
 	ScreeningCollectorRepository
 	AiCaseReviewCollectorRepository
+	ContinuousScreeningMarbleDbRepository
+}
+type CollectorClientRepository interface {
+	ContinuousScreeningClientDbRepository
 }
 
 // GlobalCollector is a collector that is not specific to an organization.
@@ -166,6 +170,7 @@ func (c Collectors) GetDeploymentID(ctx context.Context) (uuid.UUID, error) {
 func NewCollectorsV1(
 	executorFactory executor_factory.ExecutorFactory,
 	repository CollectorRepository,
+	ClientDbRepo CollectorClientRepository,
 	apiVersion string,
 	licenseConfig models.LicenseConfiguration,
 ) Collectors {
@@ -176,6 +181,7 @@ func NewCollectorsV1(
 			NewCaseCollector(repository, executorFactory),
 			NewScreeningCollector(repository, executorFactory),
 			NewAiCaseReviewCollector(repository, executorFactory),
+			NewContinuousScreeningCollector(repository, ClientDbRepo, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),

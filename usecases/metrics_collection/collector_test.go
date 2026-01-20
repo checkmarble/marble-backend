@@ -64,6 +64,24 @@ func (m *MockCollectorRepository) GetMetadata(ctx context.Context, exec reposito
 	return args.Get(0).(*models.Metadata), args.Error(1)
 }
 
+func (m *MockCollectorRepository) GetEnabledConfigStableIdsByOrg(ctx context.Context, exec repositories.Executor,
+	orgIds []string,
+) (map[string][]uuid.UUID, error) {
+	args := m.Called(ctx, exec, orgIds)
+	return args.Get(0).(map[string][]uuid.UUID), args.Error(1)
+}
+
+type MockCollectorClientRepository struct {
+	mock.Mock
+}
+
+func (m *MockCollectorClientRepository) CountMonitoredObjectsByConfigStableIds(ctx context.Context, exec repositories.Executor,
+	configStableIds []uuid.UUID,
+) (int, error) {
+	args := m.Called(ctx, exec, configStableIds)
+	return args.Get(0).(int), args.Error(1)
+}
+
 type MockGlobalCollector struct {
 	mock.Mock
 }
@@ -367,15 +385,22 @@ func TestNewCollectorsV1(t *testing.T) {
 
 	// Setup
 	mockRepository := new(MockCollectorRepository)
+	mockClientRepository := new(MockCollectorClientRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 
 	// Execute
-	collectors := NewCollectorsV1(mockExecutorFactory, mockRepository, "ApiVersionTest", models.LicenseConfiguration{})
+	collectors := NewCollectorsV1(
+		mockExecutorFactory,
+		mockRepository,
+		mockClientRepository,
+		"ApiVersionTest",
+		models.LicenseConfiguration{},
+	)
 
 	// Assert
 	assert.Equal(t, "v1", collectors.version)
 	assert.Len(t, collectors.globalCollectors, 1)
-	assert.Len(t, collectors.collectors, 4)
+	assert.Len(t, collectors.collectors, 5)
 	assert.Equal(t, mockRepository, collectors.repository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
 
@@ -394,4 +419,7 @@ func TestNewCollectorsV1(t *testing.T) {
 
 	_, isAiCaseReviewCollector := collectors.collectors[3].(AiCaseReviewCollector)
 	assert.True(t, isAiCaseReviewCollector, "Should contain AiCaseReviewCollector")
+
+	_, isContinuousScreeningCollector := collectors.collectors[4].(ContinuousScreeningCollector)
+	assert.True(t, isContinuousScreeningCollector, "Should contain ContinuousScreeningCollector")
 }
