@@ -263,13 +263,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		globalPeriodics...,
 	)
 
-	// Sentry Cron monitors for periodic jobs (global, not per-org)
-	// These slugs must match the existing monitors in Sentry
-	cronMonitorSlugs := map[string]string{
-		"scheduled_scenario": "scheduled-execution",
-		"webhook_retry":      "send-webhook-events",
-	}
-
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
 		FetchPollInterval: 100 * time.Millisecond,
 		Queues:            queues,
@@ -281,7 +274,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		WorkerMiddleware: []rivertype.WorkerMiddleware{
 			jobs.NewRecoveredMiddleware(),
 			jobs.NewSentryMiddleware(),
-			jobs.NewCronMonitorMiddleware(cronMonitorSlugs),
+			jobs.NewCronMonitorMiddleware(),
 			jobs.NewTracingMiddleware(telemetryRessources.Tracer),
 			jobs.NewLoggerMiddleware(logger),
 		},
