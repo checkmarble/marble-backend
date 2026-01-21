@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"maps"
@@ -72,6 +73,10 @@ type CaseUseCaseRepository interface {
 		orgId uuid.UUID, pivotValue string) ([]models.Case, error)
 	GetContinuousScreeningCasesWithObjectAttr(ctx context.Context, exec repositories.Executor,
 		orgId uuid.UUID, objectType, objectId string) ([]models.Case, error)
+	GetContinuousScreeningCasesWithOpenSanctionEntityIds(ctx context.Context, exec repositories.Executor,
+		orgId uuid.UUID, opensanctionEntityIds []string) ([]models.Case, error)
+	GetLatestContinuousScreeningByOpenSanctionEntityId(ctx context.Context, exec repositories.Executor,
+		orgId uuid.UUID, opensanctionEntityId string) (*models.ContinuousScreening, error)
 
 	GetNextCase(ctx context.Context, exec repositories.Executor, c models.Case) (string, error)
 
@@ -1836,6 +1841,54 @@ func (usecase *CaseUseCase) GetRelatedContinuousScreeningCasesByObjectAttr(
 	}
 
 	cases, err := usecase.repository.GetContinuousScreeningCasesWithObjectAttr(ctx, exec, orgId, objectType, objectId)
+	if err != nil {
+		return nil, err
+	}
+
+	allowedCases := make([]models.Case, 0, len(cases))
+
+	for _, c := range cases {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err == nil {
+			allowedCases = append(allowedCases, c)
+		}
+	}
+
+	return allowedCases, nil
+}
+
+func (usecase *CaseUseCase) GetRelatedContinuousScreeningCasesByOpenSanctionEntityId(
+	ctx context.Context, orgId uuid.UUID, opensanctionEntityId string,
+) ([]models.Case, error) {
+	exec := usecase.executorFactory.NewExecutor()
+
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build list of entity IDs to search: current ID + all referents
+	entityIds := []string{opensanctionEntityId}
+
+	// Fetch the latest continuous screening to get the entity payload with referents
+	latestScreening, err := usecase.repository.GetLatestContinuousScreeningByOpenSanctionEntityId(
+		ctx, exec, orgId, opensanctionEntityId,
+	)
+	if err == nil && latestScreening != nil && latestScreening.OpenSanctionEntityPayload != nil {
+		// Parse the entity payload to extract referents
+		var entity models.OpenSanctionsDeltaFileEntity
+		if err := json.Unmarshal(latestScreening.OpenSanctionEntityPayload, &entity); err == nil {
+			// Add all referent IDs to the search list
+			entityIds = append(entityIds, entity.Referents...)
+		}
+	}
+
+	// Fetch cases matching any of the entity IDs (current + referents)
+	cases, err := usecase.repository.GetContinuousScreeningCasesWithOpenSanctionEntityIds(
+		ctx,
+		exec,
+		orgId,
+		entityIds,
+	)
 	if err != nil {
 		return nil, err
 	}

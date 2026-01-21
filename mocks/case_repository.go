@@ -164,16 +164,33 @@ func (r *CaseRepository) EscalateCase(ctx context.Context, exec repositories.Exe
 	return args.Error(0)
 }
 
-func (r *CaseRepository) GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor, orgId, pivotValue string) ([]models.Case, error) {
+func (r *CaseRepository) GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, pivotValue string) ([]models.Case, error) {
 	args := r.Called(ctx, exec, orgId, pivotValue)
 	return args.Get(0).([]models.Case), args.Error(1)
 }
 
 func (r *CaseRepository) GetContinuousScreeningCasesWithObjectAttr(ctx context.Context,
-	exec repositories.Executor, orgId, objectType, objectId string,
+	exec repositories.Executor, orgId uuid.UUID, objectType, objectId string,
 ) ([]models.Case, error) {
 	args := r.Called(ctx, exec, orgId, objectType, objectId)
 	return args.Get(0).([]models.Case), args.Error(1)
+}
+
+func (r *CaseRepository) GetContinuousScreeningCasesWithOpenSanctionEntityIds(ctx context.Context,
+	exec repositories.Executor, orgId uuid.UUID, opensanctionEntityIds []string,
+) ([]models.Case, error) {
+	args := r.Called(ctx, exec, orgId, opensanctionEntityIds)
+	return args.Get(0).([]models.Case), args.Error(1)
+}
+
+func (r *CaseRepository) GetLatestContinuousScreeningByOpenSanctionEntityId(ctx context.Context,
+	exec repositories.Executor, orgId uuid.UUID, opensanctionEntityId string,
+) (*models.ContinuousScreening, error) {
+	args := r.Called(ctx, exec, orgId, opensanctionEntityId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.ContinuousScreening), args.Error(1)
 }
 
 func (r *CaseRepository) GetNextCase(ctx context.Context, exec repositories.Executor, c models.Case) (string, error) {

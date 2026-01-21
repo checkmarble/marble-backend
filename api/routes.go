@@ -301,6 +301,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/cases/related/pivot/:pivotValue", tom, handleGetRelatedCasesByPivotValue(uc))
 	router.GET("/cases/related/object_type/:objectType/object_id/:objectId", tom,
 		handleGetRelatedContinuousScreeningCasesByObjectAttr(uc))
+	router.GET("/cases/related/opensanction-entity/:id", tom,
+		handleGetRelatedContinuousScreeningCasesByOpenSanctionEntityId(uc))
 	router.GET("/cases/:case_id/sar", tom, handleListSuspiciousActivityReports(uc))
 	router.POST("/cases/:case_id/sar", tom, handleCreateSuspiciousActivityReport(uc))
 	router.PATCH("/cases/:case_id/sar/:reportId", tom, handleUpdateSuspiciousActivityReport(uc))

@@ -566,6 +566,31 @@ func (repo *MarbleDbRepository) GetContinuousScreeningCasesWithObjectAttr(
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptCase)
 }
 
+func (repo *MarbleDbRepository) GetContinuousScreeningCasesWithOpenSanctionEntityIds(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	opensanctionEntityIds []string,
+) ([]models.Case, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(columnsNames("c", dbmodels.SelectCaseColumn)...).
+		Distinct().
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS + " cs").
+		InnerJoin(dbmodels.TABLE_CASES + " c on c.id = cs.case_id").
+		Where(squirrel.Eq{
+			"cs.org_id":                 orgId,
+			"cs.opensanction_entity_id": opensanctionEntityIds,
+		}).
+		OrderBy("c.created_at DESC").
+		Limit(100)
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptCase)
+}
+
 func (repo *MarbleDbRepository) EscalateCase(ctx context.Context, exec Executor, id, inboxId string) error {
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_CASES).

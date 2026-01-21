@@ -491,6 +491,31 @@ func (repo *MarbleDbRepository) GetContinuousScreeningByObjectId(
 	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningWithMatches)
 }
 
+// Get the latest continuous screening for a given opensanction entity id
+// Used to extract the entity payload with referents
+func (repo *MarbleDbRepository) GetLatestContinuousScreeningByOpenSanctionEntityId(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	opensanctionEntityId string,
+) (*models.ContinuousScreening, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
+		Where(squirrel.Eq{
+			"org_id":                 orgId,
+			"opensanction_entity_id": opensanctionEntityId,
+		}).
+		OrderBy("created_at DESC").
+		Limit(1)
+
+	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreening)
+}
+
 func (repo *MarbleDbRepository) GetContinuousScreeningMatch(ctx context.Context, exec Executor, id uuid.UUID) (models.ContinuousScreeningMatch, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ContinuousScreeningMatch{}, err

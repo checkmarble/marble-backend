@@ -594,6 +594,32 @@ func handleGetRelatedContinuousScreeningCasesByObjectAttr(uc usecases.Usecases) 
 	}
 }
 
+func handleGetRelatedContinuousScreeningCasesByOpenSanctionEntityId(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, found := utils.CredentialsFromCtx(ctx)
+		if !found {
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			return
+		}
+
+		id := c.Param("id")
+		if id == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "opensanction entity id is required"))
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewCaseUseCase()
+		cases, err := uc.GetRelatedContinuousScreeningCasesByOpenSanctionEntityId(ctx,
+			creds.OrganizationId, id)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(cases, dto.AdaptCaseDto))
+	}
+}
+
 func handleReadCasePivotObjects(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
