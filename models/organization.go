@@ -32,6 +32,9 @@ type Organization struct {
 
 	// Flag to enable Sentry session replay capture for this organization (used for test orgs).
 	SentryReplayEnabled bool
+
+	// Flag to indicate this is a demo organization (used to skip Sentry cron monitoring for jobs).
+	DemoMode bool
 }
 
 // TODO: Add other organization-level configuration options
@@ -55,6 +58,7 @@ type UpdateOrganizationInput struct {
 	ScreeningConfig         OrganizationOpenSanctionsConfigUpdateInput
 	AutoAssignQueueLimit    *int
 	SentryReplayEnabled     *bool
+	DemoMode                *bool
 }
 
 type SeedOrgConfiguration struct {

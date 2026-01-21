@@ -21,6 +21,7 @@ type DBOrganizationResult struct {
 	ScreeningLimit          int         `db:"sanctions_limit"`
 	AutoAssignQueueLimit    int         `db:"auto_assign_queue_limit"`
 	SentryReplayEnabled     bool        `db:"sentry_replay_enabled"`
+	DemoMode                bool        `db:"demo_mode"`
 }
 
 const TABLE_ORGANIZATION = "organizations"
@@ -42,6 +43,7 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 		},
 		AutoAssignQueueLimit:    db.AutoAssignQueueLimit,
 		SentryReplayEnabled:     db.SentryReplayEnabled,
+		DemoMode:                db.DemoMode,
 	}, nil
 }
 

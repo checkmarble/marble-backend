@@ -19,6 +19,7 @@ type APIOrganization struct {
 	AutoAssignQueueLimit    int         `json:"auto_assign_queue_limit"`
 	AllowedNetworks         []SubnetDto `json:"allowed_networks"`
 	SentryReplayEnabled     bool        `json:"sentry_replay_enabled"`
+	DemoMode                bool        `json:"demo_mode"`
 }
 
 func AdaptOrganizationDto(org models.Organization) APIOrganization {
@@ -33,6 +34,7 @@ func AdaptOrganizationDto(org models.Organization) APIOrganization {
 			return SubnetDto{subnet}
 		}),
 		SentryReplayEnabled: org.SentryReplayEnabled,
+		DemoMode:            org.DemoMode,
 	}
 }
 
@@ -47,6 +49,7 @@ type UpdateOrganizationBodyDto struct {
 	SanctionsLimit          *int    `json:"sanctions_limit,omitempty"`
 	AutoAssignQueueLimit    *int    `json:"auto_assign_queue_limit,omitempty"`
 	SentryReplayEnabled     *bool   `json:"sentry_replay_enabled"`
+	DemoMode                *bool   `json:"demo_mode"`
 }
 
 type OrganizationSubnetsDto struct {
