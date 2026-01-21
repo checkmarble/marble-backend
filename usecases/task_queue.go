@@ -197,8 +197,8 @@ func listOrgPeriodics(
 			csCreateFullDatasetInterval,
 		),
 		// Migrated from cron jobs
-		worker_jobs.NewScheduledScenarioPeriodicJob(org),
-		worker_jobs.NewWebhookRetryPeriodicJob(org),
+		worker_jobs.NewScheduledScenarioPeriodicJob(org.Id),
+		worker_jobs.NewWebhookRetryPeriodicJob(org.Id),
 	}
 	if offloadingConfig.Enabled {
 		// Undocumented debug setting to only enable offloading for a specific organization

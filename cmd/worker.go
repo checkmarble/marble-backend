@@ -22,9 +22,11 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/cockroachdb/errors"
@@ -263,6 +265,24 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		globalPeriodics...,
 	)
 
+	// Create demo orgs fetcher for cron monitoring middleware
+	execFactory := executor_factory.NewDbExecutorFactory(appName, repositories.MarbleDbRepository, repositories.ExecutorGetter)
+	demoOrgsFetcher := func(ctx context.Context) (map[uuid.UUID]struct{}, error) {
+		orgs, err := repositories.MarbleDbRepository.AllOrganizations(ctx, execFactory.NewExecutor())
+		if err != nil {
+			return nil, err
+		}
+		demoOrgs := make(map[uuid.UUID]struct{})
+		for _, org := range orgs {
+			if org.DemoMode {
+				demoOrgs[org.Id] = struct{}{}
+			}
+		}
+		return demoOrgs, nil
+	}
+	cronMonitorMiddleware := jobs.NewCronMonitorMiddleware(demoOrgsFetcher)
+	cronMonitorMiddleware.StartDemoOrgsRefresh(ctx, 1*time.Minute)
+
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
 		FetchPollInterval: 100 * time.Millisecond,
 		Queues:            queues,
@@ -274,7 +294,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		WorkerMiddleware: []rivertype.WorkerMiddleware{
 			jobs.NewRecoveredMiddleware(),
 			jobs.NewSentryMiddleware(),
-			jobs.NewCronMonitorMiddleware(),
+			cronMonitorMiddleware,
 			jobs.NewTracingMiddleware(telemetryRessources.Tracer),
 			jobs.NewLoggerMiddleware(logger),
 		},

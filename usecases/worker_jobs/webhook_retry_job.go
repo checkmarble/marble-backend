@@ -14,13 +14,13 @@ const (
 	WEBHOOK_RETRY_TIMEOUT  = 5 * time.Minute
 )
 
-func NewWebhookRetryPeriodicJob(org models.Organization) *river.PeriodicJob {
+func NewWebhookRetryPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
 	return river.NewPeriodicJob(
 		river.PeriodicInterval(WEBHOOK_RETRY_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
-			return models.WebhookRetryArgs{OrgId: org.Id, DemoMode: org.DemoMode},
+			return models.WebhookRetryArgs{OrgId: orgId},
 				&river.InsertOpts{
-					Queue: org.Id.String(),
+					Queue: orgId.String(),
 					UniqueOpts: river.UniqueOpts{
 						ByQueue:  true,
 						ByPeriod: WEBHOOK_RETRY_INTERVAL,

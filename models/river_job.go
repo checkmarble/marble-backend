@@ -167,8 +167,7 @@ func (ContinuousScreeningCreateFullDatasetArgs) Kind() string {
 
 // Scheduled scenario periodic job - checks and schedules due scenarios for an org
 type ScheduledScenarioArgs struct {
-	OrgId    uuid.UUID `json:"org_id"`
-	DemoMode bool      `json:"demo_mode"`
+	OrgId uuid.UUID `json:"org_id"`
 }
 
 func (ScheduledScenarioArgs) Kind() string { return "scheduled_scenario" }
@@ -189,8 +188,7 @@ func (CsvIngestionArgs) Kind() string { return "csv_ingestion" }
 
 // Webhook retry job
 type WebhookRetryArgs struct {
-	OrgId    uuid.UUID `json:"org_id"`
-	DemoMode bool      `json:"demo_mode"`
+	OrgId uuid.UUID `json:"org_id"`
 }
 
 func (WebhookRetryArgs) Kind() string { return "webhook_retry" }

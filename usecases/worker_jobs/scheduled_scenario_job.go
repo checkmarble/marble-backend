@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
 
@@ -13,13 +14,13 @@ const (
 	SCHEDULED_SCENARIO_TIMEOUT  = 30 * time.Second
 )
 
-func NewScheduledScenarioPeriodicJob(org models.Organization) *river.PeriodicJob {
+func NewScheduledScenarioPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
 	return river.NewPeriodicJob(
 		river.PeriodicInterval(SCHEDULED_SCENARIO_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
-			return models.ScheduledScenarioArgs{OrgId: org.Id, DemoMode: org.DemoMode},
+			return models.ScheduledScenarioArgs{OrgId: orgId},
 				&river.InsertOpts{
-					Queue: org.Id.String(),
+					Queue: orgId.String(),
 					UniqueOpts: river.UniqueOpts{
 						ByQueue:  true,
 						ByPeriod: SCHEDULED_SCENARIO_INTERVAL,
