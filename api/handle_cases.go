@@ -605,7 +605,7 @@ func handleGetRelatedContinuousScreeningCasesByOpenSanctionEntityId(uc usecases.
 
 		id := c.Param("id")
 		if id == "" {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "opensanction entity id is required"))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "OpenSanction entity ID is required"))
 			return
 		}
 
