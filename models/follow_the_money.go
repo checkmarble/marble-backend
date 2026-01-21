@@ -56,6 +56,8 @@ const (
 	FollowTheMoneyPropertyIdNumber             FollowTheMoneyProperty = "idNumber"
 	FollowTheMoneyPropertyImoNumber            FollowTheMoneyProperty = "imoNumber"
 	FollowTheMoneyPropertyRegistrationNumber   FollowTheMoneyProperty = "registrationNumber"
+	FollowTheMoneyPropertyMmsi                 FollowTheMoneyProperty = "mmsi"
+	FollowTheMoneyPropertyCallSign             FollowTheMoneyProperty = "callSign"
 	FollowTheMoneyPropertyJurisdiction         FollowTheMoneyProperty = "jurisdiction"
 	FollowTheMoneyPropertyIsinCode             FollowTheMoneyProperty = "isinCode"
 	FollowTheMoneyPropertyWebsite              FollowTheMoneyProperty = "website"
@@ -95,6 +97,10 @@ func FollowTheMoneyPropertyFrom(s string) FollowTheMoneyProperty {
 		return FollowTheMoneyPropertyImoNumber
 	case "registrationNumber":
 		return FollowTheMoneyPropertyRegistrationNumber
+	case "mmsi":
+		return FollowTheMoneyPropertyMmsi
+	case "callSign":
+		return FollowTheMoneyPropertyCallSign
 	case "jurisdiction":
 		return FollowTheMoneyPropertyJurisdiction
 	case "isinCode":
@@ -159,6 +165,8 @@ var FollowTheMoneyEntityProperties = map[FollowTheMoneyEntity][]FollowTheMoneyPr
 		FollowTheMoneyPropertyName,
 		FollowTheMoneyPropertyImoNumber,
 		FollowTheMoneyPropertyRegistrationNumber,
+		FollowTheMoneyPropertyMmsi,
+		FollowTheMoneyPropertyCallSign,
 		FollowTheMoneyPropertyCountry,
 		FollowTheMoneyPropertyFlag,
 	},
