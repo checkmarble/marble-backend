@@ -32,7 +32,7 @@ func NewMetricsCollectionPeriodicJob(config infra.MetricCollectionConfig) *river
 				MaxAttempts: 1, // No retries
 			}
 		},
-		&river.PeriodicJobOpts{RunOnStart: false},
+		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 
