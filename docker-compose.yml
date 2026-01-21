@@ -71,7 +71,7 @@ services:
       - db
   motiva:
     container_name: motiva
-    image: ghcr.io/apognu/motiva:v0.4.2
+    image: ghcr.io/apognu/motiva:v0.5.2
     platform: linux/x86_64
     ports:
       - "8000:8000"
