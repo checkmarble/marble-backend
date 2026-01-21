@@ -12,6 +12,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/getsentry/sentry-go"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -188,29 +189,79 @@ func NewSentryMiddleware() SentryMiddleware {
 // This middleware reports job executions to Sentry Crons for monitoring scheduled tasks.
 // It creates per-org monitors with slugs like `{job-kind}-{org-id}` and skips demo orgs.
 
+// DemoOrgsFetcher is a function that returns the set of demo organization IDs
+type DemoOrgsFetcher func(ctx context.Context) (map[uuid.UUID]struct{}, error)
+
 type CronMonitorMiddleware struct {
-	monitoredJobs map[string]time.Duration // job kind -> interval
+	monitoredJobs   map[string]time.Duration // job kind -> interval
+	demoOrgsFetcher DemoOrgsFetcher
+	demoOrgs        map[uuid.UUID]struct{}
+	demoOrgsLock    sync.RWMutex
 }
 
-func (m CronMonitorMiddleware) IsMiddleware() bool { return true }
+func (m *CronMonitorMiddleware) IsMiddleware() bool { return true }
 
-func (m CronMonitorMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
+func (m *CronMonitorMiddleware) isDemoOrg(orgId uuid.UUID) bool {
+	m.demoOrgsLock.RLock()
+	defer m.demoOrgsLock.RUnlock()
+	_, isDemo := m.demoOrgs[orgId]
+	return isDemo
+}
+
+func (m *CronMonitorMiddleware) refreshDemoOrgs(ctx context.Context) {
+	if m.demoOrgsFetcher == nil {
+		return
+	}
+	demoOrgs, err := m.demoOrgsFetcher(ctx)
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return
+	}
+	m.demoOrgsLock.Lock()
+	m.demoOrgs = demoOrgs
+	m.demoOrgsLock.Unlock()
+}
+
+// StartDemoOrgsRefresh starts a background goroutine that periodically refreshes the demo orgs list
+func (m *CronMonitorMiddleware) StartDemoOrgsRefresh(ctx context.Context, interval time.Duration) {
+	// Initial fetch
+	m.refreshDemoOrgs(ctx)
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				m.refreshDemoOrgs(ctx)
+			}
+		}
+	}()
+}
+
+func (m *CronMonitorMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
 	interval, monitored := m.monitoredJobs[job.Kind]
 	if !monitored {
 		return doInner(ctx)
 	}
 
-	// Parse job args to check demo mode and get org ID
+	// Parse job args to get org ID
 	var args struct {
-		OrgId    string `json:"org_id"`
-		DemoMode bool   `json:"demo_mode"`
+		OrgId string `json:"org_id"`
 	}
 	if err := json.Unmarshal(job.EncodedArgs, &args); err != nil || args.OrgId == "" {
 		return doInner(ctx)
 	}
 
+	orgId, err := uuid.Parse(args.OrgId)
+	if err != nil {
+		return doInner(ctx)
+	}
+
 	// Skip monitoring for demo orgs
-	if args.DemoMode {
+	if m.isDemoOrg(orgId) {
 		return doInner(ctx)
 	}
 
@@ -227,7 +278,7 @@ func (m CronMonitorMiddleware) Work(ctx context.Context, job *rivertype.JobRow, 
 		Status:      sentry.CheckInStatusInProgress,
 	}, monitorConfig)
 
-	err := doInner(ctx)
+	err = doInner(ctx)
 
 	status := sentry.CheckInStatusOK
 	if err != nil {
@@ -243,11 +294,13 @@ func (m CronMonitorMiddleware) Work(ctx context.Context, job *rivertype.JobRow, 
 	return err
 }
 
-func NewCronMonitorMiddleware() CronMonitorMiddleware {
-	return CronMonitorMiddleware{
+func NewCronMonitorMiddleware(demoOrgsFetcher DemoOrgsFetcher) *CronMonitorMiddleware {
+	return &CronMonitorMiddleware{
 		monitoredJobs: map[string]time.Duration{
 			"scheduled_scenario": 10 * time.Minute,
 			"webhook_retry":      10 * time.Minute,
 		},
+		demoOrgsFetcher: demoOrgsFetcher,
+		demoOrgs:        make(map[uuid.UUID]struct{}),
 	}
 }
