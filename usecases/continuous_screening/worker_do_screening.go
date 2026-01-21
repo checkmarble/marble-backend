@@ -43,6 +43,15 @@ type doScreeningWorkerRepository interface {
 	) error
 }
 
+type doScreeningWorkerTaskQueueRepository interface {
+	EnqueueContinuousScreeningMatchEnrichmentTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId uuid.UUID,
+		continuousScreeningId uuid.UUID,
+	) error
+}
+
 type doScreeningWorkerClientDbRepository interface {
 	GetMonitoredObject(
 		ctx context.Context,
@@ -91,6 +100,7 @@ type DoScreeningWorker struct {
 	transactionFactory executor_factory.TransactionFactory
 
 	repo               doScreeningWorkerRepository
+	taskQueueRepo      doScreeningWorkerTaskQueueRepository
 	clientDbRepo       doScreeningWorkerClientDbRepository
 	ingestedDataReader doScreeningWorkerIngestedDataReader
 	usecase            doScreeningWorkerCSUsecase
@@ -100,6 +110,7 @@ func NewDoScreeningWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
 	repo doScreeningWorkerRepository,
+	taskQueueRepo doScreeningWorkerTaskQueueRepository,
 	clientDbRepo doScreeningWorkerClientDbRepository,
 	ingestedDataReader doScreeningWorkerIngestedDataReader,
 	uc doScreeningWorkerCSUsecase,
@@ -108,6 +119,7 @@ func NewDoScreeningWorker(
 		executorFactory:    executorFactory,
 		transactionFactory: transactionFactory,
 		repo:               repo,
+		taskQueueRepo:      taskQueueRepo,
 		clientDbRepo:       clientDbRepo,
 		ingestedDataReader: ingestedDataReader,
 		usecase:            uc,
@@ -330,8 +342,21 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 				monitoredObject.ObjectId,
 				continuousScreeningWithMatches,
 			)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Enqueue enrichment task for matches
+		if err := w.taskQueueRepo.EnqueueContinuousScreeningMatchEnrichmentTask(
+			ctx,
+			tx,
+			config.OrgId,
+			continuousScreeningWithMatches.Id,
+		); err != nil {
 			return err
 		}
+
 		return nil
 	})
 }

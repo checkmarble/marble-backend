@@ -24,6 +24,7 @@ type DBContinuousScreening struct {
 	ObjectInternalId                  *uuid.UUID      `db:"object_internal_id"`
 	OpenSanctionEntityId              *string         `db:"opensanction_entity_id"`
 	OpenSanctionEntityPayload         json.RawMessage `db:"opensanction_entity_payload"`
+	OpenSanctionEntityEnriched        bool            `db:"opensanction_entity_enriched"`
 	Status                            string          `db:"status"`
 	TriggerType                       string          `db:"trigger_type"`
 	SearchInput                       json.RawMessage `db:"search_input"`
@@ -45,6 +46,7 @@ func AdaptContinuousScreening(db DBContinuousScreening) (models.ContinuousScreen
 		ObjectInternalId:                  db.ObjectInternalId,
 		OpenSanctionEntityId:              db.OpenSanctionEntityId,
 		OpenSanctionEntityPayload:         db.OpenSanctionEntityPayload,
+		OpenSanctionEntityEnriched:        db.OpenSanctionEntityEnriched,
 		Status:                            models.ScreeningStatusFrom(db.Status),
 		TriggerType:                       models.ContinuousScreeningTriggerTypeFrom(db.TriggerType),
 		SearchInput:                       db.SearchInput,
@@ -65,6 +67,7 @@ type DBContinuousScreeningMatches struct {
 	OpenSanctionEntityId  string          `db:"opensanction_entity_id"`
 	Status                string          `db:"status"`
 	Payload               json.RawMessage `db:"payload"`
+	Enriched              bool            `db:"enriched"`
 	ReviewedBy            *uuid.UUID      `db:"reviewed_by"`
 	CreatedAt             time.Time       `db:"created_at"`
 	UpdatedAt             time.Time       `db:"updated_at"`
@@ -95,6 +98,7 @@ func AdaptContinuousScreeningMatch(dto DBContinuousScreeningMatches) (models.Con
 		OpenSanctionEntityId:  dto.OpenSanctionEntityId,
 		Status:                models.ScreeningMatchStatusFrom(dto.Status),
 		Payload:               dto.Payload,
+		Enriched:              dto.Enriched,
 		ReviewedBy:            dto.ReviewedBy,
 		Metadata:              metadata,
 		CreatedAt:             dto.CreatedAt,

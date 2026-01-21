@@ -342,6 +342,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewContinuousScreeningScanDatasetUpdatesWorker())
 	river.AddWorker(workers, adminUc.NewCsvIngestionWorker())
 	river.AddWorker(workers, adminUc.NewScheduledExecutionWorker())
+	river.AddWorker(workers, adminUc.NewContinuousScreeningMatchEnrichmentWorker())
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
@@ -548,6 +549,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "continuous_screening_apply_delta_file":
 		return uc.NewContinuousScreeningApplyDeltaFileWorker().Work(ctx,
 			singleJobCreate[models.ContinuousScreeningApplyDeltaFileArgs](ctx, jobArgs))
+	case "continuous_screening_match_enrichment":
+		return uc.NewContinuousScreeningMatchEnrichmentWorker().Work(ctx,
+			singleJobCreate[models.ContinuousScreeningMatchEnrichmentArgs](ctx, jobArgs))
 	case "continuous_screening_create_full_dataset":
 		return uc.NewContinuousScreeningCreateFullDatasetWorker().Work(ctx,
 			singleJobCreate[models.ContinuousScreeningCreateFullDatasetArgs](ctx, jobArgs))

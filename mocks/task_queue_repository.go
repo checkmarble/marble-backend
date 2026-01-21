@@ -16,63 +16,57 @@ type TaskQueueRepository struct {
 func (m *TaskQueueRepository) EnqueueDecisionTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	organizationId uuid.UUID,
+	orgId uuid.UUID,
 	decision models.DecisionToCreate,
 	scenarioIterationId string,
 ) error {
-	args := m.Called(ctx, tx, organizationId, decision, scenarioIterationId)
-	return args.Error(0)
+	return m.Called(ctx, tx, orgId, decision, scenarioIterationId).Error(0)
 }
 
 func (m *TaskQueueRepository) EnqueueDecisionTaskMany(
 	ctx context.Context,
 	tx repositories.Transaction,
-	organizationId uuid.UUID,
+	orgId uuid.UUID,
 	decisions []models.DecisionToCreate,
 	scenarioIterationId string,
 ) error {
-	args := m.Called(ctx, tx, organizationId, decisions, scenarioIterationId)
-	return args.Error(0)
+	return m.Called(ctx, tx, orgId, decisions, scenarioIterationId).Error(0)
 }
 
 func (m *TaskQueueRepository) EnqueueScheduledExecStatusTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	organizationId uuid.UUID,
+	orgId uuid.UUID,
 	scheduledExecutionId string,
 ) error {
-	args := m.Called(ctx, tx, organizationId, scheduledExecutionId)
-	return args.Error(0)
+	return m.Called(ctx, tx, orgId, scheduledExecutionId).Error(0)
 }
 
 func (m *TaskQueueRepository) EnqueueCreateIndexTask(
 	ctx context.Context,
-	organizationId uuid.UUID,
+	orgId uuid.UUID,
 	indices []models.ConcreteIndex,
 ) error {
-	args := m.Called(ctx, organizationId, indices)
-	return args.Error(0)
+	return m.Called(ctx, orgId, indices).Error(0)
 }
 
 func (m *TaskQueueRepository) EnqueueMatchEnrichmentTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	organizationId uuid.UUID,
+	orgId uuid.UUID,
 	screeningId string,
 ) error {
-	args := m.Called(ctx, tx, organizationId, screeningId)
-	return args.Error(0)
+	return m.Called(ctx, tx, orgId, screeningId).Error(0)
 }
 
 func (m *TaskQueueRepository) EnqueueCaseReviewTask(
 	ctx context.Context,
 	tx repositories.Transaction,
-	organizationId uuid.UUID,
+	orgId uuid.UUID,
 	caseId uuid.UUID,
 	aiCaseReviewId uuid.UUID,
 ) error {
-	args := m.Called(ctx, tx, organizationId, caseId, aiCaseReviewId)
-	return args.Error(0)
+	return m.Called(ctx, tx, orgId, caseId, aiCaseReviewId).Error(0)
 }
 
 func (m *TaskQueueRepository) EnqueueAutoAssignmentTask(
@@ -112,14 +106,22 @@ func (m *TaskQueueRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 	return args.Error(0)
 }
 
+func (m *TaskQueueRepository) EnqueueContinuousScreeningMatchEnrichmentTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	orgId uuid.UUID,
+	continuousScreeningId uuid.UUID,
+) error {
+	return m.Called(ctx, tx, orgId, continuousScreeningId).Error(0)
+}
+
 func (m *TaskQueueRepository) EnqueueContinuousScreeningApplyDeltaFileTask(
 	ctx context.Context,
 	tx repositories.Transaction,
 	orgId uuid.UUID,
-	updateId uuid.UUID,
+	updateJobId uuid.UUID,
 ) error {
-	args := m.Called(ctx, tx, orgId, updateId)
-	return args.Error(0)
+	return m.Called(ctx, tx, orgId, updateJobId).Error(0)
 }
 
 func (m *TaskQueueRepository) EnqueueCsvIngestionTask(

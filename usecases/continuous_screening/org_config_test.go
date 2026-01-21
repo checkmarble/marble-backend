@@ -19,7 +19,7 @@ type OrgConfigTestSuite struct {
 	repository                   *mocks.ContinuousScreeningRepository
 	clientDbRepository           *mocks.ContinuousScreeningClientDbRepository
 	organizationSchemaRepository *mocks.OrganizationSchemaRepository
-	screeningProvider            *mocks.ContinuousScreeningScreeningProvider
+	screeningProvider            *mocks.OpenSanctionsRepository
 	inboxReader                  *mocks.InboxReader
 	inboxEditor                  *mocks.InboxEditor
 	executorFactory              executor_factory.ExecutorFactoryStub
@@ -38,7 +38,7 @@ func (suite *OrgConfigTestSuite) SetupTest() {
 	suite.repository = new(mocks.ContinuousScreeningRepository)
 	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.organizationSchemaRepository = new(mocks.OrganizationSchemaRepository)
-	suite.screeningProvider = new(mocks.ContinuousScreeningScreeningProvider)
+	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.inboxReader = new(mocks.InboxReader)
 	suite.inboxEditor = new(mocks.InboxEditor)
 	suite.featureAccessReader = new(mocks.FeatureAccessReader)

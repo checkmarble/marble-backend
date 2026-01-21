@@ -490,6 +490,16 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			return err
 		}
 
+		// Enqueue enrichment task for newly loaded matches
+		if err := uc.taskQueueRepository.EnqueueContinuousScreeningMatchEnrichmentTask(
+			ctx,
+			tx,
+			continuousScreening.OrgId,
+			continuousScreeningId,
+		); err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if err != nil {

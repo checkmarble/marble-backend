@@ -389,6 +389,26 @@ func (m *ContinuousScreeningRepository) GetContinuousScreeningLatestDatasetFileB
 	return args.Get(0).(*models.ContinuousScreeningDatasetFile), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) UpdateContinuousScreeningEntityEnrichedPayload(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+	enrichedPayload []byte,
+) error {
+	args := m.Called(ctx, exec, id, enrichedPayload)
+	return args.Error(0)
+}
+
+func (m *ContinuousScreeningRepository) UpdateContinuousScreeningMatchEnrichedPayload(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+	enrichedPayload []byte,
+) error {
+	args := m.Called(ctx, exec, id, enrichedPayload)
+	return args.Error(0)
+}
+
 type ContinuousScreeningClientDbRepository struct {
 	mock.Mock
 }
@@ -465,24 +485,4 @@ func (m *ContinuousScreeningClientDbRepository) ListMonitoredObjects(
 ) ([]models.ContinuousScreeningMonitoredObject, error) {
 	args := m.Called(ctx, exec, filters, pagination)
 	return args.Get(0).([]models.ContinuousScreeningMonitoredObject), args.Error(1)
-}
-
-type ContinuousScreeningScreeningProvider struct {
-	mock.Mock
-}
-
-func (m *ContinuousScreeningScreeningProvider) Search(
-	ctx context.Context,
-	query models.OpenSanctionsQuery,
-) (models.ScreeningRawSearchResponseWithMatches, error) {
-	args := m.Called(ctx, query)
-	if args.Get(0) == nil {
-		return models.ScreeningRawSearchResponseWithMatches{}, args.Error(1)
-	}
-	return args.Get(0).(models.ScreeningRawSearchResponseWithMatches), args.Error(1)
-}
-
-func (m *ContinuousScreeningScreeningProvider) GetAlgorithms(ctx context.Context) (models.OpenSanctionAlgorithms, error) {
-	args := m.Called(ctx)
-	return args.Get(0).(models.OpenSanctionAlgorithms), args.Error(1)
 }
