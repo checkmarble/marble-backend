@@ -897,7 +897,6 @@ func normalizeCountryFTMPropertyValue(property models.FollowTheMoneyProperty, va
 // dateFTMProperties contains FTM properties that should be normalized to YYYY-MM-DD format
 var dateFTMProperties = map[models.FollowTheMoneyProperty]bool{
 	models.FollowTheMoneyPropertyBirthDate: true,
-	models.FollowTheMoneyPropertyDeathDate: true,
 }
 
 // Common date formats to try when parsing date strings
