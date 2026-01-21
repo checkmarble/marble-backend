@@ -186,35 +186,53 @@ func NewSentryMiddleware() SentryMiddleware {
 
 // Sentry Cron monitoring middleware
 // This middleware reports job executions to Sentry Crons for monitoring scheduled tasks.
-// It creates a single check-in per job type (not per org) to avoid monitor sprawl.
+// It creates per-org monitors with slugs like `{job-kind}-{org-id}` and skips demo orgs.
 
 type CronMonitorMiddleware struct {
-	monitorSlugs map[string]string // job kind -> sentry monitor slug
+	monitoredJobs map[string]time.Duration // job kind -> interval
 }
 
 func (m CronMonitorMiddleware) IsMiddleware() bool { return true }
 
 func (m CronMonitorMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
-	slug, ok := m.monitorSlugs[job.Kind]
-	if !ok {
-		// No monitor configured for this job type
+	interval, monitored := m.monitoredJobs[job.Kind]
+	if !monitored {
 		return doInner(ctx)
 	}
 
-	// Check-in as "in progress"
+	// Parse job args to check demo mode and get org ID
+	var args struct {
+		OrgId    string `json:"org_id"`
+		DemoMode bool   `json:"demo_mode"`
+	}
+	if err := json.Unmarshal(job.EncodedArgs, &args); err != nil || args.OrgId == "" {
+		return doInner(ctx)
+	}
+
+	// Skip monitoring for demo orgs
+	if args.DemoMode {
+		return doInner(ctx)
+	}
+
+	slug := fmt.Sprintf("%s-%s", job.Kind, args.OrgId)
+
+	monitorConfig := &sentry.MonitorConfig{
+		Schedule:      sentry.IntervalSchedule(int64(interval.Minutes()), sentry.MonitorScheduleUnitMinute),
+		CheckInMargin: 2,  // allow 2 min late
+		MaxRuntime:    60, // 1 hour max runtime
+	}
+
 	checkinId := sentry.CaptureCheckIn(&sentry.CheckIn{
 		MonitorSlug: slug,
 		Status:      sentry.CheckInStatusInProgress,
-	}, nil)
+	}, monitorConfig)
 
 	err := doInner(ctx)
 
-	// Check-in as "ok" or "error"
 	status := sentry.CheckInStatusOK
 	if err != nil {
 		status = sentry.CheckInStatusError
 	}
-
 	if checkinId != nil {
 		sentry.CaptureCheckIn(&sentry.CheckIn{
 			ID:          *checkinId,
@@ -222,10 +240,14 @@ func (m CronMonitorMiddleware) Work(ctx context.Context, job *rivertype.JobRow, 
 			Status:      status,
 		}, nil)
 	}
-
 	return err
 }
 
-func NewCronMonitorMiddleware(monitorSlugs map[string]string) CronMonitorMiddleware {
-	return CronMonitorMiddleware{monitorSlugs: monitorSlugs}
+func NewCronMonitorMiddleware() CronMonitorMiddleware {
+	return CronMonitorMiddleware{
+		monitoredJobs: map[string]time.Duration{
+			"scheduled_scenario": 10 * time.Minute,
+			"webhook_retry":      10 * time.Minute,
+		},
+	}
 }
