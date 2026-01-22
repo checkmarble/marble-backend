@@ -193,7 +193,7 @@ func NewSentryMiddleware() SentryMiddleware {
 type DemoOrgsFetcher func(ctx context.Context) (map[uuid.UUID]struct{}, error)
 
 type CronMonitorMiddleware struct {
-	monitoredJobs   map[string]time.Duration // job kind -> interval
+	monitorConfigs  map[string]*sentry.MonitorConfig
 	demoOrgsFetcher DemoOrgsFetcher
 	demoOrgs        map[uuid.UUID]struct{}
 	demoOrgsLock    sync.RWMutex
@@ -242,21 +242,15 @@ func (m *CronMonitorMiddleware) StartDemoOrgsRefresh(ctx context.Context, interv
 }
 
 func (m *CronMonitorMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
-	interval, monitored := m.monitoredJobs[job.Kind]
-	if !monitored {
+	monitorConfig := m.monitorConfigs[job.Kind]
+	if monitorConfig == nil {
 		return doInner(ctx)
 	}
 
-	// Parse job args to get org ID
-	var args struct {
-		OrgId string `json:"org_id"`
-	}
-	if err := json.Unmarshal(job.EncodedArgs, &args); err != nil || args.OrgId == "" {
-		return doInner(ctx)
-	}
-
-	orgId, err := uuid.Parse(args.OrgId)
+	orgId, err := uuid.Parse(job.Queue)
 	if err != nil {
+		logger := utils.LoggerFromContext(ctx)
+		logger.WarnContext(ctx, "CronMonitorMiddleware: unable to parse org ID from job queue. Processing to execute the task anyway.", "queue", job.Queue)
 		return doInner(ctx)
 	}
 
@@ -265,14 +259,7 @@ func (m *CronMonitorMiddleware) Work(ctx context.Context, job *rivertype.JobRow,
 		return doInner(ctx)
 	}
 
-	slug := fmt.Sprintf("%s-%s", job.Kind, args.OrgId)
-
-	monitorConfig := &sentry.MonitorConfig{
-		Schedule:      sentry.IntervalSchedule(int64(interval.Minutes()), sentry.MonitorScheduleUnitMinute),
-		CheckInMargin: 2,  // allow 2 min late
-		MaxRuntime:    60, // 1 hour max runtime
-	}
-
+	slug := fmt.Sprintf("%s-%s", job.Kind, orgId.String())
 	checkinId := sentry.CaptureCheckIn(&sentry.CheckIn{
 		MonitorSlug: slug,
 		Status:      sentry.CheckInStatusInProgress,
@@ -296,9 +283,17 @@ func (m *CronMonitorMiddleware) Work(ctx context.Context, job *rivertype.JobRow,
 
 func NewCronMonitorMiddleware(demoOrgsFetcher DemoOrgsFetcher) *CronMonitorMiddleware {
 	return &CronMonitorMiddleware{
-		monitoredJobs: map[string]time.Duration{
-			"scheduled_scenario": 10 * time.Minute,
-			"webhook_retry":      10 * time.Minute,
+		monitorConfigs: map[string]*sentry.MonitorConfig{
+			"scheduled_scenario": {
+				Schedule:      sentry.IntervalSchedule(10, sentry.MonitorScheduleUnitMinute),
+				CheckInMargin: 4, // allow 4 min late
+				MaxRuntime:    5, // 5 min max runtime
+			},
+			"webhook_retry": {
+				Schedule:      sentry.IntervalSchedule(10, sentry.MonitorScheduleUnitMinute),
+				CheckInMargin: 4, // allow 4 min late
+				MaxRuntime:    5, // 5 min max runtime
+			},
 		},
 		demoOrgsFetcher: demoOrgsFetcher,
 		demoOrgs:        make(map[uuid.UUID]struct{}),
