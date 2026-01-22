@@ -136,9 +136,9 @@ func (repo *MarbleDbRepository) UpdateOrganization(ctx context.Context, exec Exe
 			*updateOrganization.SentryReplayEnabled)
 		hasUpdates = true
 	}
-	if updateOrganization.DemoMode != nil {
-		updateRequest = updateRequest.Set("demo_mode",
-			*updateOrganization.DemoMode)
+	if updateOrganization.Environment != nil {
+		updateRequest = updateRequest.Set("environment",
+			*updateOrganization.Environment)
 		hasUpdates = true
 	}
 

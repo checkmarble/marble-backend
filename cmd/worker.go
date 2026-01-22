@@ -274,7 +274,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		}
 		demoOrgs := make(map[uuid.UUID]struct{})
 		for _, org := range orgs {
-			if org.DemoMode {
+			if org.Environment == models.OrganizationEnvironmentDemo {
 				demoOrgs[org.Id] = struct{}{}
 			}
 		}
