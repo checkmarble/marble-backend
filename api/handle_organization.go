@@ -90,6 +90,11 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 			c.Status(http.StatusBadRequest)
 			return
 		}
+		var environment *models.OrganizationEnvironment
+		if data.Environment != nil {
+			env := models.OrganizationEnvironment(*data.Environment)
+			environment = &env
+		}
 		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
 			Id:                      orgId,
 			DefaultScenarioTimezone: data.DefaultScenarioTimezone,
@@ -99,7 +104,7 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 			},
 			AutoAssignQueueLimit: data.AutoAssignQueueLimit,
 			SentryReplayEnabled:  data.SentryReplayEnabled,
-			DemoMode:             data.DemoMode,
+			Environment:          environment,
 		})
 
 		if presentError(ctx, c, err) {

@@ -6,6 +6,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type OrganizationEnvironment string
+
+const (
+	OrganizationEnvironmentProduction OrganizationEnvironment = "production"
+	OrganizationEnvironmentDemo       OrganizationEnvironment = "demo"
+)
+
 type Organization struct {
 	Id uuid.UUID
 
@@ -33,8 +40,8 @@ type Organization struct {
 	// Flag to enable Sentry session replay capture for this organization (used for test orgs).
 	SentryReplayEnabled bool
 
-	// Flag to indicate this is a demo organization (used to skip Sentry cron monitoring for jobs).
-	DemoMode bool
+	// Environment of the organization (production or demo). Used to skip Sentry cron monitoring for demo orgs.
+	Environment OrganizationEnvironment
 }
 
 // TODO: Add other organization-level configuration options
@@ -58,7 +65,7 @@ type UpdateOrganizationInput struct {
 	ScreeningConfig         OrganizationOpenSanctionsConfigUpdateInput
 	AutoAssignQueueLimit    *int
 	SentryReplayEnabled     *bool
-	DemoMode                *bool
+	Environment             *OrganizationEnvironment
 }
 
 type SeedOrgConfiguration struct {
