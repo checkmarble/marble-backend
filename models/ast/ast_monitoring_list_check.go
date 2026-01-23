@@ -1,4 +1,4 @@
-// Define the configuration object for Monitoring_list_check rule
+// Define the configuration object for MonitoringListCheck rule
 package ast
 
 type NavigationOption struct {
