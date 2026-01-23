@@ -16,8 +16,13 @@ type OrganizationRepository interface {
 	// organization
 	AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error)
 	GetOrganizationById(ctx context.Context, exec Executor, organizationId uuid.UUID) (models.Organization, error)
-	CreateOrganization(ctx context.Context, exec Executor, newOrganizationId uuid.UUID, name string) error
-	UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error
+	CreateOrganization(
+		ctx context.Context,
+		exec Executor,
+		newOrganizationId uuid.UUID,
+		input models.CreateOrganizationInput) error
+	UpdateOrganization(ctx context.Context, exec Executor, orgId uuid.UUID,
+		updateOrganization models.UpdateOrganizationInput) error
 	DeleteOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID) error
 	DeleteOrganizationDecisionRulesAsync(ctx context.Context, exec Executor, organizationId uuid.UUID)
 	GetOrganizationFeatureAccess(ctx context.Context, exec Executor, organizationId uuid.UUID) (
@@ -71,10 +76,16 @@ func (repo *MarbleDbRepository) CreateOrganization(
 	ctx context.Context,
 	exec Executor,
 	newOrganizationId uuid.UUID,
-	name string,
+	input models.CreateOrganizationInput,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
+	}
+	var environment models.OrganizationEnvironment
+	if input.Environment != nil {
+		environment = *input.Environment
+	} else {
+		environment = models.OrganizationEnvironmentProduction
 	}
 
 	err := ExecBuilder(
@@ -84,10 +95,12 @@ func (repo *MarbleDbRepository) CreateOrganization(
 			Columns(
 				"id",
 				"name",
+				"environment",
 			).
 			Values(
 				newOrganizationId,
-				name,
+				input.Name,
+				environment,
 			),
 	)
 	if err != nil {
@@ -102,7 +115,12 @@ func (repo *MarbleDbRepository) CreateOrganization(
 	return newErr
 }
 
-func (repo *MarbleDbRepository) UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error {
+func (repo *MarbleDbRepository) UpdateOrganization(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	updateOrganization models.UpdateOrganizationInput,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -145,7 +163,7 @@ func (repo *MarbleDbRepository) UpdateOrganization(ctx context.Context, exec Exe
 	if !hasUpdates {
 		return nil
 	}
-	updateRequest = updateRequest.Where("id = ?", updateOrganization.Id)
+	updateRequest = updateRequest.Where("id = ?", orgId)
 
 	err := ExecBuilder(ctx, exec, updateRequest)
 	return err

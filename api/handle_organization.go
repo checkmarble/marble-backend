@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/dto"
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -41,8 +40,12 @@ func handlePostOrganization(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
+		input, err := dto.AdaptCreateOrganizationInput(data)
+		if presentError(ctx, c, err) {
+			return
+		}
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		organization, err := usecase.CreateOrganization(ctx, data.Name)
+		organization, err := usecase.CreateOrganization(ctx, input)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -90,22 +93,12 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		var environment *models.OrganizationEnvironment
-		if data.Environment != nil {
-			env := models.OrganizationEnvironment(*data.Environment)
-			environment = &env
+
+		input, err := dto.AdaptUpdateOrganizationInput(data)
+		if presentError(ctx, c, err) {
+			return
 		}
-		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
-			Id:                      orgId,
-			DefaultScenarioTimezone: data.DefaultScenarioTimezone,
-			ScreeningConfig: models.OrganizationOpenSanctionsConfigUpdateInput{
-				MatchThreshold: data.SanctionsThreshold,
-				MatchLimit:     data.SanctionsLimit,
-			},
-			AutoAssignQueueLimit: data.AutoAssignQueueLimit,
-			SentryReplayEnabled:  data.SentryReplayEnabled,
-			Environment:          environment,
-		})
+		organization, err := usecase.UpdateOrganization(ctx, orgId, input)
 
 		if presentError(ctx, c, err) {
 			return

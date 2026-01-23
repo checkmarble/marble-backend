@@ -73,7 +73,9 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 	}
 
 	if targetOrg.Id == uuid.Nil {
-		targetOrg, err = usecase.organizationCreator.CreateOrganization(ctx, input.OrgName)
+		targetOrg, err = usecase.organizationCreator.CreateOrganization(ctx, models.CreateOrganizationInput{
+			Name: input.OrgName,
+		})
 		if err != nil && !repositories.IsUniqueViolationError(err) {
 			return err
 		}

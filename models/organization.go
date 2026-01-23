@@ -6,12 +6,35 @@ import (
 	"github.com/google/uuid"
 )
 
-type OrganizationEnvironment string
+type OrganizationEnvironment int
 
 const (
-	OrganizationEnvironmentProduction OrganizationEnvironment = "production"
-	OrganizationEnvironmentDemo       OrganizationEnvironment = "demo"
+	OrganizationEnvironmentUnknown OrganizationEnvironment = iota
+	OrganizationEnvironmentProduction
+	OrganizationEnvironmentDemo
 )
+
+func (e OrganizationEnvironment) String() string {
+	switch e {
+	case OrganizationEnvironmentProduction:
+		return "production"
+	case OrganizationEnvironmentDemo:
+		return "demo"
+	default:
+		return "unknown"
+	}
+}
+
+func ParseOrganizationEnvironment(s string) OrganizationEnvironment {
+	switch s {
+	case "production":
+		return OrganizationEnvironmentProduction
+	case "demo":
+		return OrganizationEnvironmentDemo
+	default:
+		return OrganizationEnvironmentUnknown
+	}
+}
 
 type Organization struct {
 	Id uuid.UUID
@@ -56,11 +79,11 @@ type OrganizationOpenSanctionsConfigUpdateInput struct {
 }
 
 type CreateOrganizationInput struct {
-	Name string
+	Name        string
+	Environment *OrganizationEnvironment
 }
 
 type UpdateOrganizationInput struct {
-	Id                      uuid.UUID
 	DefaultScenarioTimezone *string
 	ScreeningConfig         OrganizationOpenSanctionsConfigUpdateInput
 	AutoAssignQueueLimit    *int

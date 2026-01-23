@@ -105,7 +105,9 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases)
 	orgUsecase := testAdminUsecase.NewOrganizationUseCase()
 	userUsecase := testAdminUsecase.NewUserUseCase()
-	organization, err := orgUsecase.CreateOrganization(ctx, orgName)
+	organization, err := orgUsecase.CreateOrganization(ctx, models.CreateOrganizationInput{
+		Name: orgName,
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not create organization", err)
 	}

@@ -66,11 +66,14 @@ func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]mod
 	return usecase.organizationRepository.AllOrganizations(ctx, usecase.executorFactory.NewExecutor())
 }
 
-func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, name string) (models.Organization, error) {
+func (usecase *OrganizationUseCase) CreateOrganization(
+	ctx context.Context,
+	input models.CreateOrganizationInput,
+) (models.Organization, error) {
 	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
 		return models.Organization{}, err
 	}
-	return usecase.organizationCreator.CreateOrganization(ctx, name)
+	return usecase.organizationCreator.CreateOrganization(ctx, input)
 }
 
 func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationId uuid.UUID) (models.Organization, error) {
@@ -81,7 +84,9 @@ func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organiz
 		usecase.executorFactory.NewExecutor(), organizationId)
 }
 
-func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
+func (usecase *OrganizationUseCase) UpdateOrganization(
+	ctx context.Context,
+	orgId uuid.UUID,
 	organization models.UpdateOrganizationInput,
 ) (models.Organization, error) {
 	if organization.DefaultScenarioTimezone != nil {
@@ -103,7 +108,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.Organization, error) {
-		org, err := usecase.organizationRepository.GetOrganizationById(ctx, tx, organization.Id)
+		org, err := usecase.organizationRepository.GetOrganizationById(ctx, tx, orgId)
 		if err != nil {
 			return models.Organization{}, err
 		}
@@ -112,11 +117,11 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 			return models.Organization{}, err
 		}
 
-		err = usecase.organizationRepository.UpdateOrganization(ctx, tx, organization)
+		err = usecase.organizationRepository.UpdateOrganization(ctx, tx, orgId, organization)
 		if err != nil {
 			return models.Organization{}, err
 		}
-		return usecase.organizationRepository.GetOrganizationById(ctx, tx, organization.Id)
+		return usecase.organizationRepository.GetOrganizationById(ctx, tx, orgId)
 	})
 }
 
