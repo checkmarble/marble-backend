@@ -34,13 +34,30 @@ func AdaptOrganizationDto(org models.Organization) APIOrganization {
 			return SubnetDto{subnet}
 		}),
 		SentryReplayEnabled: org.SentryReplayEnabled,
-		Environment:         string(org.Environment),
+		Environment:         org.Environment.String(),
 	}
 }
 
 type CreateOrganizationBodyDto struct {
 	Name                    string  `json:"name"`
 	DefaultScenarioTimezone *string `json:"default_scenario_timezone"`
+	Environment             *string `json:"environment"`
+}
+
+func AdaptCreateOrganizationInput(dto CreateOrganizationBodyDto) (models.CreateOrganizationInput, error) {
+	var env *models.OrganizationEnvironment
+	if dto.Environment != nil {
+		parsedEnv := models.ParseOrganizationEnvironment(*dto.Environment)
+		if parsedEnv == models.OrganizationEnvironmentUnknown {
+			return models.CreateOrganizationInput{}, errors.Wrapf(models.BadParameterError,
+				"Invalid organization environment %s", *dto.Environment)
+		}
+		env = &parsedEnv
+	}
+	return models.CreateOrganizationInput{
+		Name:        dto.Name,
+		Environment: env,
+	}, nil
 }
 
 type UpdateOrganizationBodyDto struct {
@@ -50,6 +67,28 @@ type UpdateOrganizationBodyDto struct {
 	AutoAssignQueueLimit    *int    `json:"auto_assign_queue_limit,omitempty"`
 	SentryReplayEnabled     *bool   `json:"sentry_replay_enabled"`
 	Environment             *string `json:"environment"`
+}
+
+func AdaptUpdateOrganizationInput(dto UpdateOrganizationBodyDto) (models.UpdateOrganizationInput, error) {
+	out := models.UpdateOrganizationInput{
+		DefaultScenarioTimezone: dto.DefaultScenarioTimezone,
+		ScreeningConfig: models.OrganizationOpenSanctionsConfigUpdateInput{
+			MatchThreshold: dto.SanctionsThreshold,
+			MatchLimit:     dto.SanctionsLimit,
+		},
+		AutoAssignQueueLimit: dto.AutoAssignQueueLimit,
+		SentryReplayEnabled:  dto.SentryReplayEnabled,
+	}
+
+	if dto.Environment != nil {
+		parsedEnv := models.ParseOrganizationEnvironment(*dto.Environment)
+		if parsedEnv == models.OrganizationEnvironmentUnknown {
+			return models.UpdateOrganizationInput{}, errors.Wrapf(models.BadParameterError,
+				"Invalid organization environment %s", *dto.Environment)
+		}
+		out.Environment = &parsedEnv
+	}
+	return out, nil
 }
 
 type OrganizationSubnetsDto struct {

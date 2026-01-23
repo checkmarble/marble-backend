@@ -17,11 +17,17 @@ type OrganizationCreator struct {
 	OrganizationRepository repositories.OrganizationRepository
 }
 
-func (creator *OrganizationCreator) CreateOrganization(ctx context.Context, name string) (models.Organization, error) {
+func (creator *OrganizationCreator) CreateOrganization(ctx context.Context,
+	input models.CreateOrganizationInput,
+) (models.Organization, error) {
 	newOrganizationId := uuid.New()
 	organization, err := executor_factory.TransactionReturnValue(ctx,
 		creator.TransactionFactory, func(tx repositories.Transaction) (models.Organization, error) {
-			if err := creator.OrganizationRepository.CreateOrganization(ctx, tx, newOrganizationId, name); err != nil {
+			if err := creator.OrganizationRepository.CreateOrganization(
+				ctx,
+				tx,
+				newOrganizationId,
+				input); err != nil {
 				return models.Organization{}, err
 			}
 			return creator.OrganizationRepository.GetOrganizationById(ctx, tx, newOrganizationId)
