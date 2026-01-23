@@ -100,7 +100,7 @@ func (repo *MarbleDbRepository) CreateOrganization(
 			Values(
 				newOrganizationId,
 				input.Name,
-				environment,
+				environment.String(),
 			),
 	)
 	if err != nil {

@@ -120,7 +120,9 @@ func (uc *OrgImportUsecase) Import(ctx context.Context, spec dto.OrgImport, seed
 		return uuid.Nil, err
 	}
 
-	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (uuid.UUID, error) {
+	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
+		tx repositories.Transaction,
+	) (uuid.UUID, error) {
 		orgId, err := uc.createOrganization(ctx, tx, spec)
 		if err != nil {
 			return orgId, err
@@ -140,7 +142,9 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 	ids := make(map[string]string)
 	orgId, _ := uuid.NewV7()
 
-	if err := uc.orgRepository.CreateOrganization(ctx, tx, orgId, spec.Org.Name); err != nil {
+	if err := uc.orgRepository.CreateOrganization(ctx, tx, orgId, models.CreateOrganizationInput{
+		Name: spec.Org.Name,
+	}); err != nil {
 		return uuid.Nil, err
 	}
 
@@ -161,8 +165,7 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 
 	*uc = uc.transactionWrapper(tx, org, admin).NewOrgImportUsecase()
 
-	err = uc.orgRepository.UpdateOrganization(ctx, tx, models.UpdateOrganizationInput{
-		Id:                      orgId,
+	err = uc.orgRepository.UpdateOrganization(ctx, tx, orgId, models.UpdateOrganizationInput{
 		DefaultScenarioTimezone: spec.Org.UpdateOrganizationBodyDto.DefaultScenarioTimezone,
 		ScreeningConfig: models.OrganizationOpenSanctionsConfigUpdateInput{
 			MatchThreshold: spec.Org.SanctionsThreshold,
@@ -195,7 +198,9 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 	return orgId, nil
 }
 
-func (uc *OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, admins []dto.CreateUser) ([]string, error) {
+func (uc *OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Transaction,
+	orgId uuid.UUID, admins []dto.CreateUser,
+) ([]string, error) {
 	users := make([]string, len(admins))
 
 	for idx, admin := range admins {
@@ -211,7 +216,8 @@ func (uc *OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Tr
 		}
 
 		if uc.firebaseAdminer != nil {
-			if err := uc.firebaseAdminer.CreateUser(ctx, admin.Email, fmt.Sprintf("%s %s", admin.FirstName, admin.LastName)); err != nil {
+			if err := uc.firebaseAdminer.CreateUser(ctx, admin.Email,
+				fmt.Sprintf("%s %s", admin.FirstName, admin.LastName)); err != nil {
 				return nil, err
 			}
 		}
@@ -222,7 +228,9 @@ func (uc *OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Tr
 	return users, nil
 }
 
-func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, dataModel dto.ImportDataModel) error {
+func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.Transaction,
+	orgId uuid.UUID, ids map[string]string, dataModel dto.ImportDataModel,
+) error {
 	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
 	if err != nil {
 		return err
@@ -240,7 +248,8 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 			return err
 		}
 
-		if err := uc.dataModelRepository.CreateDataModelTable(ctx, tx, orgId, tableId.String(), table.Name, table.Description /* TODO */, nil); err != nil {
+		if err := uc.dataModelRepository.CreateDataModelTable(ctx, tx, orgId,
+			tableId.String(), table.Name, table.Description /* TODO */, nil); err != nil {
 			return err
 		}
 
@@ -328,7 +337,9 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 	return nil
 }
 
-func (uc *OrgImportUsecase) createTags(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, tags []dto.ImportTag) error {
+func (uc *OrgImportUsecase) createTags(ctx context.Context, tx repositories.Transaction,
+	orgId uuid.UUID, ids map[string]string, tags []dto.ImportTag,
+) error {
 	for _, tag := range tags {
 		tagId, _ := uuid.NewV7()
 		ids[tag.Id] = tagId.String()
@@ -347,7 +358,9 @@ func (uc *OrgImportUsecase) createTags(ctx context.Context, tx repositories.Tran
 	return nil
 }
 
-func (uc OrgImportUsecase) createCustomLists(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, lists []dto.ImportCustomList) error {
+func (uc OrgImportUsecase) createCustomLists(ctx context.Context, tx repositories.Transaction,
+	orgId uuid.UUID, ids map[string]string, lists []dto.ImportCustomList,
+) error {
 	for _, list := range lists {
 		listId, _ := uuid.NewV7()
 		ids[list.Id] = listId.String()
@@ -361,10 +374,11 @@ func (uc OrgImportUsecase) createCustomLists(ctx context.Context, tx repositorie
 			return err
 		}
 
-		err = uc.customListRepository.BatchInsertCustomListValues(ctx, tx, listId.String(), pure_utils.Map(list.Values, func(v string) models.BatchInsertCustomListValue {
-			valueId, _ := uuid.NewV7()
-			return models.BatchInsertCustomListValue{Id: valueId.String(), Value: v}
-		}), nil)
+		err = uc.customListRepository.BatchInsertCustomListValues(ctx, tx, listId.String(), pure_utils.Map(
+			list.Values, func(v string) models.BatchInsertCustomListValue {
+				valueId, _ := uuid.NewV7()
+				return models.BatchInsertCustomListValue{Id: valueId.String(), Value: v}
+			}), nil)
 		if err != nil {
 			return err
 		}
@@ -373,7 +387,9 @@ func (uc OrgImportUsecase) createCustomLists(ctx context.Context, tx repositorie
 	return nil
 }
 
-func (uc *OrgImportUsecase) createScenarios(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, scenarios []dto.ImportScenario) error {
+func (uc *OrgImportUsecase) createScenarios(ctx context.Context, tx repositories.Transaction,
+	orgId uuid.UUID, ids map[string]string, scenarios []dto.ImportScenario,
+) error {
 	for _, scenario := range scenarios {
 		scenarioId, _ := uuid.NewV7()
 		ids[scenario.Scenario.Id] = scenarioId.String()
@@ -435,17 +451,18 @@ func (uc *OrgImportUsecase) createScenarios(ctx context.Context, tx repositories
 			}
 		}
 
-		iteration, err := uc.iterationRepository.CreateScenarioIterationAndRules(ctx, tx, orgId, models.CreateScenarioIterationInput{
-			ScenarioId: scenarioId.String(),
-			Body: models.CreateScenarioIterationBody{
-				TriggerConditionAstExpression: triggerCondition,
-				ScoreReviewThreshold:          scenario.Iteration.ScoreReviewThreshold,
-				ScoreBlockAndReviewThreshold:  scenario.Iteration.ScoreBlockAndReviewThreshold,
-				ScoreDeclineThreshold:         scenario.Iteration.ScoreDeclineThreshold,
-				Schedule:                      scenario.Iteration.Schedule,
-				Rules:                         rules,
-			},
-		})
+		iteration, err := uc.iterationRepository.CreateScenarioIterationAndRules(ctx, tx,
+			orgId, models.CreateScenarioIterationInput{
+				ScenarioId: scenarioId.String(),
+				Body: models.CreateScenarioIterationBody{
+					TriggerConditionAstExpression: triggerCondition,
+					ScoreReviewThreshold:          scenario.Iteration.ScoreReviewThreshold,
+					ScoreBlockAndReviewThreshold:  scenario.Iteration.ScoreBlockAndReviewThreshold,
+					ScoreDeclineThreshold:         scenario.Iteration.ScoreDeclineThreshold,
+					Schedule:                      scenario.Iteration.Schedule,
+					Rules:                         rules,
+				},
+			})
 		if err != nil {
 			return err
 		}
@@ -546,7 +563,9 @@ func (uc *OrgImportUsecase) createScenarios(ctx context.Context, tx repositories
 	return nil
 }
 
-func (uc *OrgImportUsecase) createInboxes(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, inboxes []dto.InboxDto) error {
+func (uc *OrgImportUsecase) createInboxes(ctx context.Context, tx repositories.Transaction,
+	orgId uuid.UUID, ids map[string]string, inboxes []dto.InboxDto,
+) error {
 	for _, inbox := range inboxes {
 		inboxId, _ := uuid.NewV7()
 		ids[inbox.Id.String()] = inboxId.String()
@@ -563,9 +582,13 @@ func (uc *OrgImportUsecase) createInboxes(ctx context.Context, tx repositories.T
 	return nil
 }
 
-func (uc OrgImportUsecase) createWorkflows(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ids map[string]string, workflows []dto.ImportWorkflow) error {
+func (uc OrgImportUsecase) createWorkflows(ctx context.Context, tx repositories.Transaction,
+	orgId uuid.UUID, ids map[string]string, workflows []dto.ImportWorkflow,
+) error {
 	for _, workflow := range workflows {
-		rule, err := uc.workflowRepository.InsertWorkflowRule(ctx, tx, models.WorkflowRule{ScenarioId: uuid.MustParse(ids[workflow.ScenarioId.String()]), Name: workflow.Name})
+		rule, err := uc.workflowRepository.InsertWorkflowRule(ctx, tx, models.WorkflowRule{
+			ScenarioId: uuid.MustParse(ids[workflow.ScenarioId.String()]), Name: workflow.Name,
+		})
 		if err != nil {
 			return err
 		}
@@ -609,7 +632,9 @@ func (uc OrgImportUsecase) createWorkflows(ctx context.Context, tx repositories.
 				}
 			}
 
-			if _, err := uc.workflowRepository.InsertWorkflowCondition(ctx, tx, models.WorkflowCondition{RuleId: rule.Id, Function: cond.Function, Params: params}); err != nil {
+			if _, err := uc.workflowRepository.InsertWorkflowCondition(ctx, tx, models.WorkflowCondition{
+				RuleId: rule.Id, Function: cond.Function, Params: params,
+			}); err != nil {
 				return err
 			}
 		}
@@ -620,7 +645,9 @@ func (uc OrgImportUsecase) createWorkflows(ctx context.Context, tx repositories.
 
 			switch actionType {
 			case models.WorkflowCreateCase, models.WorkflowAddToCaseIfPossible:
-				spec, err := models.ParseWorkflowAction[dto.WorkflowActionCaseParams](models.WorkflowAction{Action: actionType, Params: action.Params})
+				spec, err := models.ParseWorkflowAction[dto.WorkflowActionCaseParams](models.WorkflowAction{
+					Action: actionType, Params: action.Params,
+				})
 				if err != nil {
 					return err
 				}
@@ -636,7 +663,9 @@ func (uc OrgImportUsecase) createWorkflows(ctx context.Context, tx repositories.
 				}
 			}
 
-			if _, err := uc.workflowRepository.InsertWorkflowAction(ctx, tx, models.WorkflowAction{RuleId: rule.Id, Action: models.WorkflowType(action.Action), Params: params}); err != nil {
+			if _, err := uc.workflowRepository.InsertWorkflowAction(ctx, tx, models.WorkflowAction{
+				RuleId: rule.Id, Action: models.WorkflowType(action.Action), Params: params,
+			}); err != nil {
 				return err
 			}
 		}
