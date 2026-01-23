@@ -376,6 +376,16 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 			usecases.Repositories.MarbleDbRepository,
 			params.OrganizationId))
 
+	environment.AddEvaluator(ast.FUNC_MONITORING_LIST_CHECK,
+		evaluate.MonitoringListCheck{
+			OrgId:              params.OrganizationId,
+			DataModel:          params.DataModel,
+			ClientObject:       params.ClientObject,
+			ExecutorFactory:    usecases.NewExecutorFactory(),
+			Repository:         usecases.Repositories.MarbleDbRepository,
+			IngestedDataReader: usecases.Repositories.IngestedDataReadRepository,
+		},
+	)
 	return environment
 }
 
