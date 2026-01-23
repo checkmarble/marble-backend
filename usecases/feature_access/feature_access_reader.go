@@ -32,7 +32,6 @@ func NewFeatureAccessReader(
 	repository FeatureAccessReaderRepository,
 	executorFactory executor_factory.ExecutorFactory,
 	license models.LicenseValidation,
-	hasConvoyServerSetup bool,
 	hasMetabaseSetup bool,
 	hasOpensanctionsSetup bool,
 	hasNameRecognitionSetup bool,
@@ -43,7 +42,7 @@ func NewFeatureAccessReader(
 		executorFactory: executorFactory,
 		license:         license,
 		featuresConfiguration: models.FeaturesConfiguration{
-			Webhooks:        hasConvoyServerSetup,
+			Webhooks:        true, // Webhooks are always available with the in-house implementation
 			Sanctions:       hasOpensanctionsSetup,
 			NameRecognition: hasNameRecognitionSetup,
 			Analytics:       hasMetabaseSetup,

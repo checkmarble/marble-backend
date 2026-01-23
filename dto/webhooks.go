@@ -29,27 +29,33 @@ type WebhookWithSecret struct {
 
 type Secret struct {
 	CreatedAt string `json:"created_at,omitempty"`
-	DeletedAt string `json:"deleted_at,omitempty"`
 	ExpiresAt string `json:"expires_at,omitempty"`
+	RevokedAt string `json:"revoked_at,omitempty"`
 	Id        string `json:"id,omitempty"`
-	UpdatedAt string `json:"updated_at,omitempty"`
 	Value     string `json:"value,omitempty"`
 }
 
 func AdaptSecret(secret models.Secret) Secret {
-	return Secret{
-		CreatedAt: secret.CreatedAt,
-		DeletedAt: secret.DeletedAt,
-		ExpiresAt: secret.ExpiresAt,
-		Id:        secret.Uid,
-		UpdatedAt: secret.UpdatedAt,
+	s := Secret{
+		CreatedAt: secret.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		Id:        secret.Id.String(),
 		Value:     secret.Value,
 	}
+
+	if secret.ExpiresAt != nil {
+		s.ExpiresAt = secret.ExpiresAt.Format("2006-01-02T15:04:05Z07:00")
+	}
+
+	if secret.RevokedAt != nil {
+		s.RevokedAt = secret.RevokedAt.Format("2006-01-02T15:04:05Z07:00")
+	}
+
+	return s
 }
 
 func AdaptWebhook(webhook models.Webhook) Webhook {
 	return Webhook{
-		Id:                webhook.Id,
+		Id:                webhook.Id.String(),
 		EventTypes:        webhook.EventTypes,
 		Url:               webhook.Url,
 		HttpTimeout:       webhook.HttpTimeout,

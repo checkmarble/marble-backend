@@ -62,12 +62,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		}
 	}
 
-	convoyConfiguration := infra.ConvoyConfiguration{
-		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
-		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
-		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
-		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
-	}
 	openSanctionsConfig := infra.InitializeOpenSanctions(
 		http.DefaultClient,
 		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
@@ -204,10 +198,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		pool,
 		infra.GcpConfig{},
 		repositories.WithRiverClient(riverClient),
-		repositories.WithConvoyClientProvider(
-			infra.InitializeConvoyRessources(convoyConfiguration),
-			convoyConfiguration.RateLimit,
-		),
 		repositories.WithClientDbConfig(clientDbConfig),
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 		repositories.WithOpenSanctions(openSanctionsConfig),
@@ -299,7 +289,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithOffloading(offloadingConfig),
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
-		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithApiVersion(apiVersion),
 		usecases.WithMetricsCollectionConfig(metricCollectionConfig),

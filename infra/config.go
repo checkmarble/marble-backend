@@ -182,13 +182,6 @@ func NewTelemetrySamplingMap(ctx context.Context, path string) TelemetrySampling
 	return m
 }
 
-type ConvoyConfiguration struct {
-	APIKey    string
-	APIUrl    string
-	ProjectID string
-	RateLimit int
-}
-
 type AIAgentProviderType string
 
 const (

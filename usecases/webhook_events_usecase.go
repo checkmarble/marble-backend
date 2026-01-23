@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -25,10 +24,6 @@ const (
 	ASYNC_WEBHOOKS_SEND_TIMEOUT       = 5 * time.Minute
 )
 
-type convoyWebhookEventRepository interface {
-	SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent, payload json.RawMessage) error
-}
-
 type webhookEventsRepository interface {
 	GetWebhookEvent(ctx context.Context, exec repositories.Executor, webhookEventId string) (models.WebhookEvent, error)
 	ListWebhookEvents(
@@ -48,6 +43,19 @@ type webhookEventsRepository interface {
 	) error
 }
 
+type webhookEventsWebhookRepository interface {
+	ListWebhooksByEventType(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, partnerId *uuid.UUID, eventType string) ([]models.Webhook, error)
+	GetWebhook(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.Webhook, error)
+	ListActiveSecrets(ctx context.Context, exec repositories.Executor, webhookId uuid.UUID) ([]models.Secret, error)
+	CreateWebhookDeliveries(ctx context.Context, exec repositories.Executor, eventId uuid.UUID, webhookIds []uuid.UUID) ([]models.WebhookDelivery, error)
+	ListWebhookDeliveriesForEvent(ctx context.Context, exec repositories.Executor, eventId uuid.UUID) ([]models.WebhookDelivery, error)
+	ListPendingWebhookDeliveries(ctx context.Context, exec repositories.Executor, limit int) ([]models.WebhookDelivery, error)
+	ListPendingWebhookDeliveriesForOrg(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, limit int) ([]models.WebhookDelivery, error)
+	GetWebhookDelivery(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WebhookDelivery, error)
+	MarkWebhookDeliverySuccess(ctx context.Context, exec repositories.Executor, id uuid.UUID, responseStatus int) error
+	MarkWebhookDeliveryFailed(ctx context.Context, exec repositories.Executor, id uuid.UUID, errMsg string, responseStatus *int, nextRetryAt *time.Time, attempts int) error
+}
+
 type enforceSecurityWebhookEvents interface {
 	SendWebhookEvent(ctx context.Context, organizationId uuid.UUID, partnerId null.String) error
 }
@@ -55,22 +63,22 @@ type enforceSecurityWebhookEvents interface {
 type WebhookEventsUsecase struct {
 	enforceSecurity             enforceSecurityWebhookEvents
 	executorFactory             executor_factory.ExecutorFactory
-	convoyRepository            convoyWebhookEventRepository
 	webhookEventsRepository     webhookEventsRepository
+	webhookRepository           webhookEventsWebhookRepository
+	deliveryService             *WebhookDeliveryService
 	failedWebhooksRetryPageSize int
 	hasLicense                  bool
-	hasConvoyServerSetup        bool
 	publicApiAdaptor            types.PublicApiDataAdapter
 }
 
 func NewWebhookEventsUsecase(
 	enforceSecurity enforceSecurityWebhookEvents,
 	executorFactory executor_factory.ExecutorFactory,
-	convoyRepository convoyWebhookEventRepository,
 	webhookEventsRepository webhookEventsRepository,
+	webhookRepository webhookEventsWebhookRepository,
+	deliveryService *WebhookDeliveryService,
 	failedWebhooksRetryPageSize int,
 	hasLicense bool,
-	hasConvoyServerSetup bool,
 	publicApiAdaptor types.PublicApiDataAdapter,
 ) WebhookEventsUsecase {
 	if failedWebhooksRetryPageSize == 0 {
@@ -80,11 +88,11 @@ func NewWebhookEventsUsecase(
 	return WebhookEventsUsecase{
 		enforceSecurity:             enforceSecurity,
 		executorFactory:             executorFactory,
-		convoyRepository:            convoyRepository,
 		webhookEventsRepository:     webhookEventsRepository,
+		webhookRepository:           webhookRepository,
+		deliveryService:             deliveryService,
 		failedWebhooksRetryPageSize: failedWebhooksRetryPageSize,
 		hasLicense:                  hasLicense,
-		hasConvoyServerSetup:        hasConvoyServerSetup,
 		publicApiAdaptor:            publicApiAdaptor,
 	}
 }
@@ -95,7 +103,7 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 	tx repositories.Transaction,
 	input models.WebhookEventCreate,
 ) error {
-	if !usecase.hasLicense || !usecase.hasConvoyServerSetup {
+	if !usecase.hasLicense {
 		return nil
 	}
 
@@ -104,10 +112,47 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 		return err
 	}
 
+	// Create the webhook event
 	err = usecase.webhookEventsRepository.CreateWebhookEvent(ctx, tx, input)
 	if err != nil {
 		return errors.Wrap(err, "error creating webhook event")
 	}
+
+	// Find matching webhooks for this org and event type
+	var partnerIdPtr *uuid.UUID
+	if input.PartnerId.Valid {
+		id, err := uuid.Parse(input.PartnerId.String)
+		if err == nil {
+			partnerIdPtr = &id
+		}
+	}
+
+	webhooks, err := usecase.webhookRepository.ListWebhooksByEventType(
+		ctx, tx, input.OrganizationId, partnerIdPtr, string(input.EventContent.Type))
+	if err != nil {
+		return errors.Wrap(err, "error listing matching webhooks")
+	}
+
+	if len(webhooks) == 0 {
+		return nil
+	}
+
+	// Create delivery records for each matching webhook
+	webhookIds := make([]uuid.UUID, len(webhooks))
+	for i, w := range webhooks {
+		webhookIds[i] = w.Id
+	}
+
+	eventId, err := uuid.Parse(input.Id)
+	if err != nil {
+		return errors.Wrap(err, "invalid webhook event id")
+	}
+
+	_, err = usecase.webhookRepository.CreateWebhookDeliveries(ctx, tx, eventId, webhookIds)
+	if err != nil {
+		return errors.Wrap(err, "error creating webhook deliveries")
+	}
+
 	return nil
 }
 
@@ -121,31 +166,84 @@ func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, w
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), ASYNC_WEBHOOKS_SEND_TIMEOUT)
 		defer cancel()
 
-		_, err := usecase._sendWebhookEvent(ctx, webhookEventId)
+		err := usecase._sendWebhookEventDeliveries(ctx, webhookEventId)
 		if err != nil {
 			logger.ErrorContext(ctx, fmt.Sprintf("Error sending webhook event %s: %s", webhookEventId, err.Error()))
 		}
 	}()
 }
 
+// _sendWebhookEventDeliveries delivers a webhook event to all its pending deliveries
+func (usecase WebhookEventsUsecase) _sendWebhookEventDeliveries(ctx context.Context, webhookEventId string) error {
+	logger := utils.LoggerFromContext(ctx)
+	exec := usecase.executorFactory.NewExecutor()
+
+	if !usecase.hasLicense {
+		logger.DebugContext(ctx, "Skipping webhook delivery - no license")
+		return nil
+	}
+
+	webhookEvent, err := usecase.webhookEventsRepository.GetWebhookEvent(ctx, exec, webhookEventId)
+	if err != nil {
+		return err
+	}
+
+	err = usecase.enforceSecurity.SendWebhookEvent(ctx, webhookEvent.OrganizationId, webhookEvent.PartnerId)
+	if err != nil {
+		return err
+	}
+
+	eventId, err := uuid.Parse(webhookEventId)
+	if err != nil {
+		return errors.Wrap(err, "invalid webhook event id")
+	}
+
+	deliveries, err := usecase.webhookRepository.ListWebhookDeliveriesForEvent(ctx, exec, eventId)
+	if err != nil {
+		return errors.Wrap(err, "error listing deliveries for event")
+	}
+
+	if len(deliveries) == 0 {
+		logger.DebugContext(ctx, "No pending deliveries for webhook event")
+		return nil
+	}
+
+	// Build payload
+	data, err := dto.AdaptWebhookEventData(ctx, exec, usecase.publicApiAdaptor, webhookEvent.EventContent.Data)
+	if err != nil {
+		return errors.Wrap(err, "error adapting webhook event data")
+	}
+
+	group, ctx := errgroup.WithContext(ctx)
+	group.SetLimit(MAX_CONCURRENT_WEBHOOKS_SENT)
+
+	for _, delivery := range deliveries {
+		if delivery.Status != models.DeliveryPending {
+			continue
+		}
+
+		delivery := delivery
+		group.Go(func() error {
+			return usecase.deliveryService.DeliverWebhook(ctx, delivery, webhookEvent, data)
+		})
+	}
+
+	return group.Wait()
+}
+
 // RetrySendWebhookEvents retries sending webhook events that have failed to be sent.
 // It handles them in limited batches.
-// TODO: refactor the whole usecase to use the the task queue tu send webhooks, removing the need for those methods (usecases should
-// just create a task transactionally)
 func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 	ctx context.Context,
 ) error {
 	exec := usecase.executorFactory.NewExecutor()
 
-	pendingWebhookEvents, err := usecase.webhookEventsRepository.ListWebhookEvents(ctx, exec, models.WebhookEventFilters{
-		DeliveryStatus: []models.WebhookEventDeliveryStatus{models.Scheduled, models.Retry},
-		Limit:          uint64(usecase.failedWebhooksRetryPageSize),
-	})
+	pendingDeliveries, err := usecase.webhookRepository.ListPendingWebhookDeliveries(ctx, exec, usecase.failedWebhooksRetryPageSize)
 	if err != nil {
-		return errors.Wrap(err, "error while listing pending webhook events")
+		return errors.Wrap(err, "error while listing pending webhook deliveries")
 	}
 
-	return usecase.sendPendingWebhookEvents(ctx, pendingWebhookEvents)
+	return usecase.sendPendingDeliveries(ctx, pendingDeliveries)
 }
 
 // RetrySendWebhookEventsForOrg retries sending webhook events for a specific organization.
@@ -155,119 +253,79 @@ func (usecase WebhookEventsUsecase) RetrySendWebhookEventsForOrg(
 ) error {
 	exec := usecase.executorFactory.NewExecutor()
 
-	pendingWebhookEvents, err := usecase.webhookEventsRepository.ListWebhookEvents(ctx, exec, models.WebhookEventFilters{
-		DeliveryStatus: []models.WebhookEventDeliveryStatus{models.Scheduled, models.Retry},
-		Limit:          uint64(usecase.failedWebhooksRetryPageSize),
-		OrganizationId: &orgId,
-	})
+	pendingDeliveries, err := usecase.webhookRepository.ListPendingWebhookDeliveriesForOrg(ctx, exec, orgId, usecase.failedWebhooksRetryPageSize)
 	if err != nil {
-		return errors.Wrap(err, "error while listing pending webhook events for org")
+		return errors.Wrap(err, "error while listing pending webhook deliveries for org")
 	}
 
-	return usecase.sendPendingWebhookEvents(ctx, pendingWebhookEvents)
+	return usecase.sendPendingDeliveries(ctx, pendingDeliveries)
 }
 
-func (usecase WebhookEventsUsecase) sendPendingWebhookEvents(
+func (usecase WebhookEventsUsecase) sendPendingDeliveries(
 	ctx context.Context,
-	pendingWebhookEvents []models.WebhookEvent,
+	pendingDeliveries []models.WebhookDelivery,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
-	logger.InfoContext(ctx, fmt.Sprintf("Found %d webhook events to retry", len(pendingWebhookEvents)))
-	if len(pendingWebhookEvents) == 0 {
+	logger.InfoContext(ctx, fmt.Sprintf("Found %d webhook deliveries to retry", len(pendingDeliveries)))
+	if len(pendingDeliveries) == 0 {
 		return nil
 	}
+
+	exec := usecase.executorFactory.NewExecutor()
 
 	group, ctx := errgroup.WithContext(ctx)
 	group.SetLimit(MAX_CONCURRENT_WEBHOOKS_SENT)
 
-	deliveryStatuses := make([]models.WebhookEventDeliveryStatus, len(pendingWebhookEvents))
+	successCount := 0
+	retryCount := 0
+	failedCount := 0
 
-	for i, webhookEvent := range pendingWebhookEvents {
+	for _, delivery := range pendingDeliveries {
+		delivery := delivery
 		group.Go(func() error {
 			ctx := utils.StoreLoggerInContext(
 				ctx,
-				logger.With("webhook_event_id", webhookEvent.Id))
+				logger.With("delivery_id", delivery.Id, "webhook_event_id", delivery.WebhookEventId))
 
 			select {
 			case <-ctx.Done():
-				return errors.Wrapf(ctx.Err(), "context cancelled before retrying webhook %s", webhookEvent.Id)
+				return errors.Wrapf(ctx.Err(), "context cancelled before retrying delivery %s", delivery.Id)
 			default:
 			}
 
-			deliveryStatus, err := usecase._sendWebhookEvent(ctx, webhookEvent.Id)
-			deliveryStatuses[i] = deliveryStatus
-			return err
+			// Get the webhook event
+			webhookEvent, err := usecase.webhookEventsRepository.GetWebhookEvent(ctx, exec, delivery.WebhookEventId.String())
+			if err != nil {
+				logger.ErrorContext(ctx, fmt.Sprintf("Failed to get webhook event for delivery %s: %s", delivery.Id, err.Error()))
+				return nil // Don't fail the entire batch
+			}
+
+			// Build payload
+			data, err := dto.AdaptWebhookEventData(ctx, exec, usecase.publicApiAdaptor, webhookEvent.EventContent.Data)
+			if err != nil {
+				logger.ErrorContext(ctx, fmt.Sprintf("Failed to adapt webhook data for delivery %s: %s", delivery.Id, err.Error()))
+				return nil
+			}
+
+			err = usecase.deliveryService.DeliverWebhook(ctx, delivery, webhookEvent, data)
+			if err != nil {
+				logger.WarnContext(ctx, fmt.Sprintf("Delivery %s failed: %s", delivery.Id, err.Error()))
+				retryCount++
+			} else {
+				successCount++
+			}
+
+			return nil
 		})
 	}
 
 	err := group.Wait()
 	if err != nil {
-		return errors.Wrap(err, "error while sending webhook events")
+		return errors.Wrap(err, "error while sending webhook deliveries")
 	}
 
-	successCount := 0
-	retryCount := 0
-	skipCount := 0
-	for _, status := range deliveryStatuses {
-		switch status {
-		case models.Success:
-			successCount++
-		case models.Retry:
-			retryCount++
-		case models.Skipped:
-			skipCount++
-		}
-	}
-	logger.InfoContext(ctx, fmt.Sprintf("Webhook events sent: %d success, %d retry, %d skipped out of %d events",
-		successCount, retryCount, skipCount, len(pendingWebhookEvents)))
+	logger.InfoContext(ctx, fmt.Sprintf("Webhook deliveries processed: %d success, %d retry, %d failed out of %d deliveries",
+		successCount, retryCount, failedCount, len(pendingDeliveries)))
 
 	return nil
-}
-
-// _sendWebhookEvent actually sends a webhook event using the repository, and updates its status in the database.
-// The webhook event is marked as "skipped" if the currently active license does not include webhooks, or if no Convoy instance has been configured.
-func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webhookEventId string) (models.WebhookEventDeliveryStatus, error) {
-	logger := utils.LoggerFromContext(ctx)
-	exec := usecase.executorFactory.NewExecutor()
-	if !usecase.hasLicense || !usecase.hasConvoyServerSetup {
-		return models.Skipped, usecase.webhookEventsRepository.MarkWebhookEventRetried(
-			ctx, exec, models.WebhookEventUpdate{Id: webhookEventId, DeliveryStatus: models.Skipped})
-	}
-
-	webhookEvent, err := usecase.webhookEventsRepository.GetWebhookEvent(ctx, exec, webhookEventId)
-	if err != nil {
-		return models.Scheduled, err
-	}
-	if webhookEvent.DeliveryStatus == models.Success {
-		return webhookEvent.DeliveryStatus, nil
-	}
-
-	err = usecase.enforceSecurity.SendWebhookEvent(ctx, webhookEvent.OrganizationId, webhookEvent.PartnerId)
-	if err != nil {
-		return models.Scheduled, err
-	}
-
-	logger.DebugContext(ctx, fmt.Sprintf("Start processing webhook event %s", webhookEvent.Id))
-
-	webhookEventUpdate := models.WebhookEventUpdate{Id: webhookEvent.Id}
-
-	data, err := dto.AdaptWebhookEventData(ctx, exec, usecase.publicApiAdaptor, webhookEvent.EventContent.Data)
-	if err != nil {
-		return models.Scheduled, err
-	}
-
-	err = usecase.convoyRepository.SendWebhookEvent(ctx, webhookEvent, data)
-	if err == nil {
-		webhookEventUpdate.DeliveryStatus = models.Success
-	} else {
-		logger.ErrorContext(ctx, fmt.Sprintf("Error sending webhook event %s: %s", webhookEvent.Id, err.Error()))
-		webhookEventUpdate.DeliveryStatus = models.Retry
-	}
-
-	err = usecase.webhookEventsRepository.MarkWebhookEventRetried(ctx, exec, webhookEventUpdate)
-	if err != nil {
-		return webhookEventUpdate.DeliveryStatus,
-			errors.Wrapf(err, "error while updating webhook event %s", webhookEvent.Id)
-	}
-	return webhookEventUpdate.DeliveryStatus, nil
 }

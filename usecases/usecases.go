@@ -34,7 +34,6 @@ type Usecases struct {
 	offloadingBucketUrl          string
 	offloadingConfig             infra.OffloadingConfig
 	failedWebhooksRetryPageSize  int
-	hasConvoyServerSetup         bool
 	hasMetabaseSetup             bool
 	hasOpensanctionsSetup        bool
 	hasNameRecognizerSetup       bool
@@ -101,14 +100,6 @@ func WithLicense(license models.LicenseValidation) Option {
 func WithBatchIngestionMaxSize(size int) Option {
 	return func(o *options) {
 		o.batchIngestionMaxSize = size
-	}
-}
-
-func WithConvoyServer(url string) Option {
-	return func(o *options) {
-		if url != "" {
-			o.hasConvoyServerSetup = true
-		}
 	}
 }
 
@@ -190,7 +181,6 @@ type options struct {
 	offloadingConfig             infra.OffloadingConfig
 	failedWebhooksRetryPageSize  int
 	license                      models.LicenseValidation
-	hasConvoyServerSetup         bool
 	hasMetabaseSetup             bool
 	hasOpensanctionsSetup        bool
 	hasNameRecognitionSetup      bool
@@ -218,7 +208,6 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		offloadingConfig:             o.offloadingConfig,
 		failedWebhooksRetryPageSize:  o.failedWebhooksRetryPageSize,
 		license:                      o.license,
-		hasConvoyServerSetup:         o.hasConvoyServerSetup,
 		hasMetabaseSetup:             o.hasMetabaseSetup,
 		hasOpensanctionsSetup:        o.hasOpensanctionsSetup,
 		hasNameRecognizerSetup:       o.hasNameRecognitionSetup,

@@ -155,13 +155,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}
 	}
 
-	convoyConfiguration := infra.ConvoyConfiguration{
-		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
-		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
-		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
-		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
-	}
-
 	openSanctionsConfig := infra.InitializeOpenSanctions(
 		&http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)},
 		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
@@ -327,10 +320,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		gcpConfig,
 		repositories.WithMetabase(infra.InitializeMetabase(apiConfig.MetabaseConfig)),
 		repositories.WithTransferCheckEnrichmentBucket(serverConfig.transferCheckEnrichmentBucketUrl),
-		repositories.WithConvoyClientProvider(
-			infra.InitializeConvoyRessources(convoyConfiguration),
-			convoyConfiguration.RateLimit,
-		),
 		repositories.WithOpenSanctions(openSanctionsConfig),
 		repositories.WithClientDbConfig(clientDbConfig),
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
@@ -365,7 +354,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithOffloadingBucketUrl(serverConfig.offloadingBucketUrl),
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
-		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 		usecases.WithMetabase(apiConfig.MetabaseConfig.SiteUrl),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),

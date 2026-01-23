@@ -542,15 +542,22 @@ func (usecases *UsecasesWithCreds) NewLicenseUsecase() ProtectedLicenseUseCase {
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewWebhookDeliveryService() *WebhookDeliveryService {
+	return NewWebhookDeliveryService(
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecase {
 	return NewWebhookEventsUsecase(
 		security.NewEnforceSecurity(usecases.Credentials),
 		usecases.NewExecutorFactory(),
-		usecases.Repositories.ConvoyRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewWebhookDeliveryService(),
 		usecases.Usecases.failedWebhooksRetryPageSize,
 		usecases.Usecases.license.Webhooks,
-		usecases.Usecases.hasConvoyServerSetup,
 		usecases.NewPublicApiAdapterUsecase(),
 	)
 }
@@ -560,7 +567,7 @@ func (usecases *UsecasesWithCreds) NewWebhooksUsecase() WebhooksUsecase {
 		security.NewEnforceSecurity(usecases.Credentials),
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
-		usecases.Repositories.ConvoyRepository,
+		usecases.Repositories.MarbleDbRepository,
 	)
 }
 
@@ -712,7 +719,6 @@ func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.Featur
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 		usecases.Usecases.license,
-		usecases.Usecases.hasConvoyServerSetup,
 		usecases.Usecases.hasMetabaseSetup,
 		usecases.Usecases.hasOpensanctionsSetup,
 		usecases.Usecases.hasNameRecognizerSetup,

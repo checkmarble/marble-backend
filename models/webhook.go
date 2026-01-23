@@ -1,6 +1,8 @@
 package models
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/url"
 	"slices"
 	"time"
@@ -200,24 +202,70 @@ func NewWebhookEventDecisionReviewed(c Case, decision Decision) WebhookEventCont
 }
 
 type Webhook struct {
-	Id                string
+	Id                uuid.UUID
 	OrganizationId    uuid.UUID
 	PartnerId         null.String
+	Name              *string
 	EventTypes        []string
 	Secrets           []Secret
 	Url               string
 	HttpTimeout       *int
 	RateLimit         *int
 	RateLimitDuration *int
+	Enabled           bool
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	DeletedAt         *time.Time
 }
 
 type Secret struct {
-	CreatedAt string
-	DeletedAt string
-	ExpiresAt string
-	Uid       string
-	UpdatedAt string
+	Id        uuid.UUID
+	WebhookId uuid.UUID
 	Value     string
+	CreatedAt time.Time
+	ExpiresAt *time.Time
+	RevokedAt *time.Time
+}
+
+// GenerateWebhookSecret generates a cryptographically secure random secret
+func GenerateWebhookSecret() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", errors.Wrap(err, "failed to generate webhook secret")
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+// WebhookDeliveryStatus represents the status of a webhook delivery
+type WebhookDeliveryStatus string
+
+const (
+	DeliveryPending WebhookDeliveryStatus = "pending"
+	DeliverySuccess WebhookDeliveryStatus = "success"
+	DeliveryFailed  WebhookDeliveryStatus = "failed"
+)
+
+// WebhookDelivery represents a delivery attempt for a webhook event to a specific endpoint
+type WebhookDelivery struct {
+	Id                 uuid.UUID
+	WebhookEventId     uuid.UUID
+	WebhookId          uuid.UUID
+	Status             WebhookDeliveryStatus
+	Attempts           int
+	NextRetryAt        *time.Time
+	LastError          *string
+	LastResponseStatus *int
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+// WebhookDeliveryUpdate contains the fields that can be updated on a webhook delivery
+type WebhookDeliveryUpdate struct {
+	Status             WebhookDeliveryStatus
+	Attempts           int
+	NextRetryAt        *time.Time
+	LastError          *string
+	LastResponseStatus *int
 }
 
 type WebhookUpdate struct {
@@ -260,11 +308,16 @@ func MergeWebhookWithUpdate(w Webhook, update WebhookUpdate) Webhook {
 		Id:                w.Id,
 		OrganizationId:    w.OrganizationId,
 		PartnerId:         w.PartnerId,
+		Name:              w.Name,
 		EventTypes:        w.EventTypes,
 		Url:               w.Url,
 		HttpTimeout:       w.HttpTimeout,
 		RateLimit:         w.RateLimit,
 		RateLimitDuration: w.RateLimitDuration,
+		Enabled:           w.Enabled,
+		CreatedAt:         w.CreatedAt,
+		UpdatedAt:         w.UpdatedAt,
+		DeletedAt:         w.DeletedAt,
 	}
 	if update.EventTypes != nil {
 		result.EventTypes = *update.EventTypes

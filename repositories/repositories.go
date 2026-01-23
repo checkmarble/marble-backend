@@ -17,8 +17,6 @@ type options struct {
 	metabase                      Metabase
 	transfercheckEnrichmentBucket string
 	clientDbConfig                map[string]infra.ClientDbConfig
-	convoyClientProvider          ConvoyClientProvider
-	convoyRateLimit               int
 	openSanctions                 infra.OpenSanctions
 	riverClient                   *river.Client[pgx.Tx]
 	tp                            trace.TracerProvider
@@ -47,13 +45,6 @@ func WithMetabase(metabase Metabase) Option {
 func WithTransferCheckEnrichmentBucket(bucket string) Option {
 	return func(o *options) {
 		o.transfercheckEnrichmentBucket = bucket
-	}
-}
-
-func WithConvoyClientProvider(convoyResources ConvoyClientProvider, convoyRateLimit int) Option {
-	return func(o *options) {
-		o.convoyClientProvider = convoyResources
-		o.convoyRateLimit = convoyRateLimit
 	}
 }
 
@@ -107,7 +98,6 @@ func WithLagoConfig(lagoConfig infra.LagoConfig) Option {
 
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
-	ConvoyRepository                  ConvoyRepository
 	IngestionRepository               IngestionRepository
 	IngestedDataReadRepository        IngestedDataReadRepository
 	MarbleDbRepository                *MarbleDbRepository
@@ -150,9 +140,8 @@ func NewRepositories(
 	blobRepository := NewBlobRepository(gcpConfig)
 
 	return Repositories{
-		ExecutorGetter:                executorGetter,
-		ConvoyRepository:              NewConvoyRepository(options.convoyClientProvider, options.convoyRateLimit),
-		IngestionRepository:           &IngestionRepositoryImpl{},
+		ExecutorGetter:             executorGetter,
+		IngestionRepository:        &IngestionRepositoryImpl{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
 		MarbleDbRepository:            NewMarbleDbRepository(options.withCache, options.similarityThreshold),
 		ClientDbRepository:            ClientDbRepository{},
