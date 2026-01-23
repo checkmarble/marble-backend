@@ -50,6 +50,7 @@ const (
 	FUNC_STRING_TEMPLATE
 	FUNC_STRING_CONCAT
 	FUNC_FUZZY_MATCH_FILTER_OPTIONS
+	FUNC_MONITORING_LIST_CHECK
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
@@ -265,6 +266,13 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 			"fieldName",
 			"operator",
 			"value",
+		},
+	},
+	FUNC_MONITORING_LIST_CHECK: {
+		DebugName: "FUNC_MONITORING_LIST_CHECK",
+		AstName:   "MonitoringListCheck",
+		NamedArguments: []string{
+			"config",
 		},
 	},
 }
