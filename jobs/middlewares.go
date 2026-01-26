@@ -286,13 +286,13 @@ func NewCronMonitorMiddleware(demoOrgsFetcher DemoOrgsFetcher) *CronMonitorMiddl
 		monitorConfigs: map[string]*sentry.MonitorConfig{
 			"scheduled_scenario": {
 				Schedule:      sentry.IntervalSchedule(10, sentry.MonitorScheduleUnitMinute),
-				CheckInMargin: 4, // allow 4 min late
-				MaxRuntime:    5, // 5 min max runtime
+				CheckInMargin: 20, // allow 10 min late
+				MaxRuntime:    5,  // 5 min max runtime
 			},
 			"webhook_retry": {
 				Schedule:      sentry.IntervalSchedule(10, sentry.MonitorScheduleUnitMinute),
-				CheckInMargin: 4, // allow 4 min late
-				MaxRuntime:    5, // 5 min max runtime
+				CheckInMargin: 20,
+				MaxRuntime:    5,
 			},
 		},
 		demoOrgsFetcher: demoOrgsFetcher,
