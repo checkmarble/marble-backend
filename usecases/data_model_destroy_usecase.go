@@ -418,6 +418,10 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 
 	// Check all scenario iterations for if the field we want to delete is used in a rule.
 	for _, it := range iterations {
+		if it.RuleId == uuid.Nil {
+			continue
+		}
+
 		found := false
 		scenario := scenarioMap[it.ScenarioId.String()]
 
@@ -652,6 +656,10 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 
 	// Check all scenario iterations for if the link we want to delete is used in a rule.
 	for _, it := range iterations {
+		if it.RuleId == uuid.Nil {
+			continue
+		}
+
 		found := false
 		scenario := scenarioMap[it.ScenarioId.String()]
 
