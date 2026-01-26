@@ -36,16 +36,21 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 	}
 
 	// Validate the config
-	if errs := validateMonitoringListCheckConfig(config); len(errs) > 0 {
+	if errs := mlc.validateMonitoringListCheckConfig(config); len(errs) > 0 {
 		return nil, errs
 	}
 
 	hasMatch := false
-
 	return hasMatch, nil
 }
 
-func validateMonitoringListCheckConfig(config ast.MonitoringListCheckConfig) []error {
+// validateMonitoringListCheckConfig validates the MonitoringListCheckConfig and returns a slice of errors.
+// It validates:
+//   - targetTableName is not empty
+//   - each linkedTableChecks entry has a non-empty tableName
+//   - each linkedTableChecks entry has exactly one of linkToSingleName or navigationOption
+//   - if navigationOption is present, targetTableName, targetFieldName, sourceTableName, and sourceFieldName are all non-empty
+func (mlc MonitoringListCheck) validateMonitoringListCheckConfig(config ast.MonitoringListCheckConfig) []error {
 	errs := make([]error, 0)
 
 	// Validate target table name
@@ -54,15 +59,6 @@ func validateMonitoringListCheckConfig(config ast.MonitoringListCheckConfig) []e
 			ast.ErrArgumentRequired,
 			ast.NewNamedArgumentError("targetTableName"),
 			errors.New("targetTableName is required"),
-		))
-	}
-
-	// Validate linked table checks
-	if len(config.LinkedTableChecks) == 0 {
-		errs = append(errs, errors.Join(
-			ast.ErrArgumentRequired,
-			ast.NewNamedArgumentError("linkedTableChecks"),
-			errors.New("at least one linkedTableCheck is required"),
 		))
 	}
 
