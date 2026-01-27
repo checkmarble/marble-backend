@@ -72,7 +72,7 @@ func getName(ownerId string, eventTypes []string) string {
 	return fmt.Sprintf("%s|%s", ownerId, eventLabel)
 }
 
-func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent, payload json.RawMessage) error {
+func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent, apiVersion string, payload json.RawMessage) error {
 	err := repo.limiter.Wait(ctx)
 	if err != nil {
 		// Happens if the context is canceled or the wait time is expected to be larger than the context deadline.
@@ -100,6 +100,7 @@ func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent 
 		EventType:      &eventType,
 		IdempotencyKey: &webhookEvent.Id,
 		Data:           &payload,
+		CustomHeaders:  utils.Ptr(map[string]string{"x-marble-api-version": apiVersion}),
 	})
 	if err != nil {
 		return errors.Wrap(err, "can't create convoy event: request error")

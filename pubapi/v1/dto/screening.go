@@ -22,6 +22,10 @@ type Screening struct {
 	UpdatedAt types.DateTime `json:"updated_at"`
 }
 
+func (Screening) ApiVersion() string {
+	return "v1"
+}
+
 type ScreeningMatch struct {
 	Id      string          `json:"id"`
 	Queries []string        `json:"queries"`

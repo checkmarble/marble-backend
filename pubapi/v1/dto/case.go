@@ -23,6 +23,10 @@ type Case struct {
 	CreatedAt    types.DateTime  `json:"created_at"`
 }
 
+func (Case) ApiVersion() string {
+	return "v1beta"
+}
+
 type CaseComment struct {
 	Id        string         `json:"id"`
 	User      Ref            `json:"user"`
