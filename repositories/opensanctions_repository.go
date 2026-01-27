@@ -457,7 +457,11 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg *models.ScreeningConfig
 		qs.Set("threshold", fmt.Sprintf("%.2f", float64(query.EffectiveThreshold)/100))
 		qs.Set("cutoff", fmt.Sprintf("%.2f", float64(query.OrgConfig.MatchThreshold)/100))
 
-		qs.Set("limit", fmt.Sprintf("%d", query.OrgConfig.MatchLimit+query.LimitIncrease))
+		if query.LimitOverride != nil {
+			qs.Set("limit", fmt.Sprintf("%d", *query.LimitOverride))
+		} else {
+			qs.Set("limit", fmt.Sprintf("%d", query.OrgConfig.MatchLimit+query.LimitIncrease))
+		}
 
 		// cf: `exclude_entity_ids` in the OpenSanctions query
 		// cf: https://api.opensanctions.org/#tag/Matching/operation/match_match__dataset__post

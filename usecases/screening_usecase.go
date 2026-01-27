@@ -367,9 +367,10 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	}
 
 	query := models.OpenSanctionsQuery{
-		IsRefinement: false,
-		Config:       scc,
-		Queries:      models.AdaptRefineRequestToMatchable(refine),
+		IsRefinement:  false,
+		Config:        scc,
+		Queries:       models.AdaptRefineRequestToMatchable(refine),
+		LimitOverride: refine.LimitOverride,
 	}
 
 	screening, err := uc.Execute(ctx, orgId, query)
