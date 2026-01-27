@@ -695,7 +695,7 @@ func (uc *ContinuousScreeningUsecase) handleWhitelistCreation(
 			return errors.New("object type or object id is missing for Marble initiated screening")
 		}
 
-		counterpartyId = marbleEntityIdBuilder(
+		counterpartyId = pure_utils.MarbleEntityIdBuilder(
 			*screening.ObjectType,
 			*screening.ObjectId,
 		)

@@ -66,12 +66,6 @@ func orgCustomDatasetName(orgId uuid.UUID) string {
 		strings.ReplaceAll(orgId.String(), "-", ""))
 }
 
-// marbleEntityIdBuilder builds an entity ID in the Marble/OpenSanctions format:
-// `marble_<object_type>_<object_id>`.
-func marbleEntityIdBuilder(objectType, objectId string) string {
-	return fmt.Sprintf("marble_%s_%s", objectType, objectId)
-}
-
 func datasetFileUrlBuilder(backendUrl string, orgId uuid.UUID) string {
 	return fmt.Sprintf("%s/%s/org/%s/full", backendUrl, models.ScreeningIndexerKey, orgId.String())
 }
