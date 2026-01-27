@@ -211,6 +211,7 @@ type ScreeningMatch struct {
 	Payload                      []byte
 	Enriched                     bool
 	ReviewedBy                   *string
+	Score                        float64
 	Comments                     []ScreeningMatchComment
 }
 
