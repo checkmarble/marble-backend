@@ -18,8 +18,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// var validationTranslator ut.Translator
-
 type baseResponse[T any] struct {
 	Data       *T                  `json:"data,omitempty"`
 	Metadata   map[string]any      `json:"metadata,omitempty"`

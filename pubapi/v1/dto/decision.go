@@ -25,6 +25,10 @@ type Decision struct {
 	Screenings       []Screening      `json:"screenings,omitzero"`
 }
 
+func (Decision) ApiVersion() string {
+	return "v1"
+}
+
 type DecisionScenario struct {
 	Id          string `json:"id"`
 	IterationId string `json:"iteration_id"`

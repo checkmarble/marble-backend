@@ -18,6 +18,14 @@ type WebhookEventPayload struct {
 	Timestamp time.Time        `json:"timestamp"`
 }
 
+func (p WebhookEventPayload) ApiVersion() string {
+	if p.Content.Case != nil {
+		return p.Content.Case.ApiVersion()
+	}
+
+	return "v1"
+}
+
 type WebhookEventData struct {
 	Decision *Decision    `json:"decision,omitzero"`
 	Case     *Case        `json:"case,omitzero"`
@@ -25,15 +33,15 @@ type WebhookEventData struct {
 	Comments *CaseComment `json:"comments,omitempty"`
 }
 
-func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adapter types.PublicApiDataAdapter, m models.WebhookEventPayload) (json.RawMessage, error) {
+func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adapter types.PublicApiDataAdapter, m models.WebhookEventPayload) (string, json.RawMessage, error) {
 	users, err := adapter.ListUsers(ctx, exec)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	tags, err := adapter.ListTags(ctx, exec)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	refs := make(map[string]models.CaseReferents)
@@ -41,7 +49,7 @@ func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adap
 	if m.Content.Case != nil && m.Content.Case.Id != "" {
 		re, err := adapter.GetCaseReferents(ctx, exec, []string{m.Content.Case.Id})
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		for _, r := range re {
 			refs[r.Id] = r
@@ -71,10 +79,10 @@ func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adap
 
 	out, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	return out, nil
+	return payload.ApiVersion(), out, nil
 }
 
 func applyWebhookEventData[I, O any](data *I, cb func(I) O) *O {

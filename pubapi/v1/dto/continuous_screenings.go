@@ -56,6 +56,10 @@ type ContinuousScreening struct {
 	UpdatedAt                         types.DateTime             `json:"updated_at"`
 }
 
+func (ContinuousScreening) ApiVersion() string {
+	return "v1beta"
+}
+
 func AdaptContinuousScreening(m models.ContinuousScreeningWithMatches) ContinuousScreening {
 	return ContinuousScreening{
 		Id:                                m.Id,

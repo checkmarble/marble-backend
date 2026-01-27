@@ -26,7 +26,7 @@ const (
 )
 
 type convoyWebhookEventRepository interface {
-	SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent, payload json.RawMessage) error
+	SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent, apiVersion string, payload json.RawMessage) error
 }
 
 type webhookEventsRepository interface {
@@ -251,12 +251,12 @@ func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webho
 
 	webhookEventUpdate := models.WebhookEventUpdate{Id: webhookEvent.Id}
 
-	data, err := dto.AdaptWebhookEventData(ctx, exec, usecase.publicApiAdaptor, webhookEvent.EventContent.Data)
+	apiVersion, data, err := dto.AdaptWebhookEventData(ctx, exec, usecase.publicApiAdaptor, webhookEvent.EventContent.Data)
 	if err != nil {
 		return models.Scheduled, err
 	}
 
-	err = usecase.convoyRepository.SendWebhookEvent(ctx, webhookEvent, data)
+	err = usecase.convoyRepository.SendWebhookEvent(ctx, webhookEvent, apiVersion, data)
 	if err == nil {
 		webhookEventUpdate.DeliveryStatus = models.Success
 	} else {

@@ -15,6 +15,10 @@ type ScheduledExecution struct {
 	FinishedAt       *types.DateTime  `json:"finished_at"`
 }
 
+func (ScheduledExecution) ApiVersion() string {
+	return "v1"
+}
+
 func AdaptScheduledExecution(model models.ScheduledExecution) ScheduledExecution {
 	return ScheduledExecution{
 		Id: model.Id,
