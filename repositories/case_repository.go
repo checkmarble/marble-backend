@@ -163,10 +163,10 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 }
 
 // buildQualificationFilter builds a SQL filter for case qualifications.
-// Qualification mapping:
-//   - red:    outcome = 'confirmed_risk' OR review_level = 'escalate'
-//   - yellow: outcome = 'valuable_alert' OR review_level = 'investigate'
-//   - green:  outcome = 'false_positive' OR review_level = 'probable_false_positive'
+// Qualification mapping is mapped to the way they are displayed in the UI:
+//   - red:    return outcome = 'confirmed_risk' OR (review_level = 'escalate' and outcome unset) (prioritizes the outcome if present)
+//   - yellow: outcome = 'valuable_alert' OR (review_level = 'investigate' and outcome unset)
+//   - green:  outcome = 'false_positive' OR (review_level = 'probable_false_positive' and outcome unset)
 func buildQualificationFilter(qualification []models.CaseQualification) squirrel.Or {
 	var conditions squirrel.Or
 	for _, q := range qualification {
@@ -174,17 +174,26 @@ func buildQualificationFilter(qualification []models.CaseQualification) squirrel
 		case models.CaseQualificationRed:
 			conditions = append(conditions, squirrel.Or{
 				squirrel.Eq{"c.outcome": models.CaseConfirmedRisk},
-				squirrel.Eq{"c.review_level": "escalate"},
+				squirrel.Eq{
+					"c.review_level": "escalate",
+					"c.outcome":      models.CaseOutcomeUnset,
+				},
 			})
 		case models.CaseQualificationYellow:
 			conditions = append(conditions, squirrel.Or{
 				squirrel.Eq{"c.outcome": models.CaseValuableAlert},
-				squirrel.Eq{"c.review_level": "investigate"},
+				squirrel.Eq{
+					"c.review_level": "investigate",
+					"c.outcome":      models.CaseOutcomeUnset,
+				},
 			})
 		case models.CaseQualificationGreen:
 			conditions = append(conditions, squirrel.Or{
 				squirrel.Eq{"c.outcome": models.CaseFalsePositive},
-				squirrel.Eq{"c.review_level": "probable_false_positive"},
+				squirrel.Eq{
+					"c.review_level": "probable_false_positive",
+					"c.outcome":      models.CaseOutcomeUnset,
+				},
 			})
 		}
 	}
