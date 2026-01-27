@@ -2,6 +2,7 @@ package httpmodels
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"maps"
 	"slices"
@@ -24,6 +25,7 @@ type HTTPOpenSanctionResultResult struct {
 	Match      bool     `json:"match"`
 	Schema     string   `json:"schema"`
 	Datasets   []string `json:"datasets"`
+	Score      float64  `json:"score"`
 	Properties struct {
 		Name []string `json:"name"`
 	} `json:"properties"`
@@ -56,6 +58,7 @@ func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsRes
 					Payload:   match,
 					EntityId:  parsed.Id,
 					Referents: parsed.Referents,
+					Score:     parsed.Score,
 				}
 
 				matches[parsed.Id] = entity
@@ -77,12 +80,19 @@ func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsRes
 		}
 	}
 
+	sortedMatches := slices.SortedFunc(maps.Values(matches), func(m1, m2 models.ScreeningMatch) int {
+		if n := cmp.Compare(m2.Score, m1.Score); n != 0 {
+			return n
+		}
+		return cmp.Compare(m1.EntityId, m2.EntityId)
+	})
+
 	output := models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       query,
 		Partial:           partial,
 		InitialHasMatches: len(matches) > 0,
 
-		Matches: slices.Collect(maps.Values(matches)),
+		Matches: sortedMatches,
 		Count:   len(matches),
 	}
 
