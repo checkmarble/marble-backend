@@ -33,6 +33,7 @@ func AdaptScenarioIterationMetadataDto(si models.ScenarioIterationMetadata) Scen
 		Version:    si.Version,
 		CreatedAt:  si.CreatedAt,
 		UpdatedAt:  si.UpdatedAt,
+		Archived:   si.Archived,
 	}
 }
 
