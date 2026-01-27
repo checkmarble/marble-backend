@@ -410,28 +410,31 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 	}
 
 	type scenarioConflict struct {
-		hasDraftOrLive        bool
-		hasSurvivingIteration bool
+		hasDraftOrLive bool
+
+		allIterations      *set.Set[string]
+		archivedIterations *set.Set[string]
 	}
 
 	scenarioConflicts := make(map[string]*scenarioConflict)
 
 	// Check all scenario iterations for if the field we want to delete is used in a rule.
 	for _, it := range iterations {
-		if it.RuleId == uuid.Nil {
-			continue
-		}
-
 		found := false
 		scenario := scenarioMap[it.ScenarioId.String()]
 
 		report.References[scenario.Id] = scenario.Name
-		report.References[it.ScenarioIterationId.String()] = fmt.Sprintf("%s (%d)", scenario.Name, utils.Or(it.Version, 0))
+		report.References[it.ScenarioIterationId.String()] = fmt.Sprintf("%s (v%d)", scenario.Name, utils.Or(it.Version, 0))
 		report.References[it.RuleId.String()] = it.Name
 
 		if _, ok := scenarioConflicts[scenario.Id]; !ok {
-			scenarioConflicts[scenario.Id] = &scenarioConflict{}
+			scenarioConflicts[scenario.Id] = &scenarioConflict{
+				allIterations:      set.New[string](0),
+				archivedIterations: set.New[string](0),
+			}
 		}
+
+		scenarioConflicts[scenario.Id].allIterations.Insert(it.ScenarioIterationId.String())
 
 		if it.Version == nil || (scenario.LiveVersionID != nil && it.ScenarioIterationId.String() == *scenario.LiveVersionID) {
 			scenarioConflicts[scenario.Id].hasDraftOrLive = true
@@ -494,14 +497,13 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 			}
 
 			// Otherwise, we can delete it but matching iterations will be marked as archived
+			scenarioConflicts[scenario.Id].archivedIterations.Insert(it.ScenarioIterationId.String())
 			report.ArchivedIterations.Insert(it.ScenarioIterationId.String())
-		} else {
-			scenarioConflicts[scenario.Id].hasSurvivingIteration = true
 		}
 	}
 
 	for scenarioId, sc := range scenarioConflicts {
-		if !sc.hasDraftOrLive && !sc.hasSurvivingIteration {
+		if !sc.hasDraftOrLive && scenarioConflicts[scenarioId].allIterations.Equal(scenarioConflicts[scenarioId].archivedIterations) {
 			canDelete = false
 			report.Conflicts.EmptyScenarios.Insert(scenarioId)
 		}
@@ -648,28 +650,31 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 	}
 
 	type scenarioConflict struct {
-		hasDraftOrLive        bool
-		hasSurvivingIteration bool
+		hasDraftOrLive bool
+
+		allIterations      *set.Set[string]
+		archivedIterations *set.Set[string]
 	}
 
 	scenarioConflicts := make(map[string]*scenarioConflict)
 
 	// Check all scenario iterations for if the link we want to delete is used in a rule.
 	for _, it := range iterations {
-		if it.RuleId == uuid.Nil {
-			continue
-		}
-
 		found := false
 		scenario := scenarioMap[it.ScenarioId.String()]
 
 		report.References[scenario.Id] = scenario.Name
-		report.References[it.ScenarioIterationId.String()] = fmt.Sprintf("%s (%d)", scenario.Name, utils.Or(it.Version, 0))
+		report.References[it.ScenarioIterationId.String()] = fmt.Sprintf("%s (v%d)", scenario.Name, utils.Or(it.Version, 0))
 		report.References[it.RuleId.String()] = it.Name
 
 		if _, ok := scenarioConflicts[scenario.Id]; !ok {
-			scenarioConflicts[scenario.Id] = &scenarioConflict{}
+			scenarioConflicts[scenario.Id] = &scenarioConflict{
+				allIterations:      set.New[string](0),
+				archivedIterations: set.New[string](0),
+			}
 		}
+
+		scenarioConflicts[scenario.Id].allIterations.Insert(it.ScenarioIterationId.String())
 
 		if it.Version == nil || (scenario.LiveVersionID != nil && it.ScenarioIterationId.String() == *scenario.LiveVersionID) {
 			scenarioConflicts[scenario.Id].hasDraftOrLive = true
@@ -732,14 +737,13 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 			}
 
 			// Otherwise, we can delete it but matching iterations will be marked as archived
+			scenarioConflicts[scenario.Id].archivedIterations.Insert(it.ScenarioIterationId.String())
 			report.ArchivedIterations.Insert(it.ScenarioIterationId.String())
-		} else {
-			scenarioConflicts[scenario.Id].hasSurvivingIteration = true
 		}
 	}
 
 	for scenarioId, sc := range scenarioConflicts {
-		if !sc.hasDraftOrLive && !sc.hasSurvivingIteration {
+		if !sc.hasDraftOrLive && scenarioConflicts[scenarioId].allIterations.Equal(scenarioConflicts[scenarioId].archivedIterations) {
 			report.Conflicts.EmptyScenarios.Insert(scenarioId)
 		}
 	}
