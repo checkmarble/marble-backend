@@ -224,9 +224,10 @@ type ScreeningMatchUpdate struct {
 }
 
 type ScreeningRefineRequest struct {
-	ScreeningId string
-	Type        string
-	Query       OpenSanctionsFilter
+	ScreeningId   string
+	Type          string
+	Query         OpenSanctionsFilter
+	LimitOverride *int
 }
 
 type ScreeningMatchComment struct {

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -275,6 +276,8 @@ func handleEnrichScreeningMatch(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+const SCREENING_FREEFORM_SEARCH_LIMIT_MAX = 50
+
 func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -289,9 +292,16 @@ func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
+		limitOverride := utils.Ptr(10)
+
+		if l, err := strconv.Atoi(c.Query("limit")); err == nil {
+			limitOverride = utils.Ptr(min(l, SCREENING_FREEFORM_SEARCH_LIMIT_MAX))
+		}
+
 		req := models.ScreeningRefineRequest{
-			Type:  payload.Query.Type(),
-			Query: dto.AdaptRefineQueryDto(payload.Query),
+			Type:          payload.Query.Type(),
+			Query:         dto.AdaptRefineQueryDto(payload.Query),
+			LimitOverride: limitOverride,
 		}
 
 		scc := models.ScreeningConfig{
