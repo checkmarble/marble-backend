@@ -1857,7 +1857,7 @@ func (usecase *CaseUseCase) GetRelatedContinuousScreeningCasesByObjectAttr(
 		return nil, err
 	}
 
-	// We should have different cases from the two queries, we can combined them safely
+	// We should have different cases from the two queries, we can combine them safely
 	// No collision is expected between cases from different continuous screening types (Object*Triggered/DatasetUpdateTriggered)
 	cases = append(cases, casesFromMatches...)
 
