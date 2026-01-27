@@ -1,5 +1,9 @@
 package models
 
+import (
+	"strconv"
+)
+
 type FeatureAccess int
 
 const (
@@ -44,4 +48,8 @@ func FeatureAccessFrom(s string) FeatureAccess {
 
 func (f FeatureAccess) IsAllowed() bool {
 	return f == Allowed || f == Test
+}
+
+func (f FeatureAccess) MarshalBinary() ([]byte, error) {
+	return []byte(strconv.Itoa(int(f))), nil
 }

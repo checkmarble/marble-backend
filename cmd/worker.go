@@ -266,7 +266,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	)
 
 	// Create demo orgs fetcher for cron monitoring middleware
-	execFactory := executor_factory.NewDbExecutorFactory(appName, repositories.MarbleDbRepository, repositories.ExecutorGetter)
+	execFactory := executor_factory.NewDbExecutorFactory(appName, repositories.MarbleDbRepository, repositories.ExecutorGetter, uuid.Nil)
 	demoOrgsFetcher := func(ctx context.Context) (map[uuid.UUID]struct{}, error) {
 		orgs, err := repositories.MarbleDbRepository.AllOrganizations(ctx, execFactory.NewExecutor())
 		if err != nil {
