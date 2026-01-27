@@ -266,7 +266,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	)
 
 	// Create demo orgs fetcher for cron monitoring middleware
-	execFactory := executor_factory.NewDbExecutorFactory(appName, repositories.MarbleDbRepository, repositories.ExecutorGetter)
+	execFactory := executor_factory.NewDbExecutorFactory(appName,
+		repositories.MarbleDbRepository, repositories.ExecutorGetter)
 	demoOrgsFetcher := func(ctx context.Context) (map[uuid.UUID]struct{}, error) {
 		orgs, err := repositories.MarbleDbRepository.AllOrganizations(ctx, execFactory.NewExecutor())
 		if err != nil {
@@ -284,8 +285,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	cronMonitorMiddleware.StartDemoOrgsRefresh(ctx, 1*time.Minute)
 
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
-		FetchPollInterval: 100 * time.Millisecond,
+		FetchPollInterval: utils.GetEnvDuration("RIVER_FETCH_POLL_INTERVAL", 1*time.Second),
 		Queues:            queues,
+		Logger:            logger,
 
 		// Must be larger than the time it takes to process a job, if the job does not implement Timeout().
 		// Jobs that do not implement this and run for longer than this value will be rescued by the worker, which we should
