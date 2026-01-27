@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -44,6 +45,7 @@ type ScreeningProvider interface {
 	GetLatestLocalDataset(context.Context) (models.OpenSanctionsDatasetFreshness, error)
 	Search(context.Context, models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error)
 	EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error)
+	IsConfigured(ctx context.Context) (bool, error)
 }
 
 type ScreeningInboxReader interface {
@@ -123,6 +125,7 @@ type ScreeningUsecase struct {
 	enforceSecurityDecision ScreeningEnforceSecurityDecision
 	enforceSecurityCase     ScreeningEnforceSecurityCase
 	enforceSecurity         ScreeningEnforceSecurity
+	featureAccessReader     feature_access.FeatureAccessReader
 
 	caseUsecase               ScreeningCaseUsecase
 	organizationRepository    ScreeningOrganizationRepository
@@ -362,6 +365,22 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	scc models.ScreeningConfig,
 	refine models.ScreeningRefineRequest,
 ) (models.ScreeningWithMatches, error) {
+	features, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
+	if !features.Sanctions.IsAllowed() && !features.ContinuousScreening.IsAllowed() {
+		return models.ScreeningWithMatches{}, models.ForbiddenError
+	}
+	if features.Sanctions == models.MissingConfiguration {
+		return models.ScreeningWithMatches{}, models.MissingRequirementError{
+			Requirement: models.REQUIREMENT_OPEN_SANCTIONS,
+			Reason:      models.REQUIREMENT_REASON_MISSING_CONFIGURATION,
+			Err:         errors.New("screening provider not configured"),
+		}
+	}
+
 	if err := uc.enforceSecurity.PerformFreeformSearch(ctx); err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
