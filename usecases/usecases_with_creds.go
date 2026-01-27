@@ -207,6 +207,7 @@ func (usecases *UsecasesWithCreds) NewScreeningUsecase() ScreeningUsecase {
 		enforceSecurityDecision:   usecases.NewEnforceDecisionSecurity(),
 		enforceSecurityCase:       usecases.NewEnforceCaseSecurity(),
 		enforceSecurity:           usecases.NewEnforceScreeningSecurity(),
+		featureAccessReader:       usecases.NewFeatureAccessReader(),
 		externalRepository:        usecases.Repositories.MarbleDbRepository,
 		caseUsecase:               usecases.NewCaseUseCase(),
 		organizationRepository:    usecases.Repositories.MarbleDbRepository,
