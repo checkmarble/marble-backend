@@ -76,20 +76,22 @@ func (mlc MonitoringListCheck) validateMonitoringListCheckConfig(config ast.Moni
 		hasLink := check.LinkToSingleName != nil
 		hasNav := check.NavigationOption != nil
 
-		if !hasLink && !hasNav {
-			errs = append(errs, errors.Join(
-				ast.ErrArgumentRequired,
-				ast.NewNamedArgumentError(fmt.Sprintf("linkedTableChecks[%d]", i)),
-				errors.Newf("linkedTableChecks[%d]: either linkToSingleName or navigationOption is required", i),
-			))
-		}
-
-		if hasLink && hasNav {
-			errs = append(errs, errors.Join(
-				ast.ErrArgumentInvalidType,
-				ast.NewNamedArgumentError(fmt.Sprintf("linkedTableChecks[%d]", i)),
-				errors.Newf("linkedTableChecks[%d]: cannot have both linkToSingleName and navigationOption", i),
-			))
+		if hasLink == hasNav {
+			var err error
+			if hasLink {
+				err = errors.Join(
+					ast.ErrArgumentInvalidType,
+					ast.NewNamedArgumentError(fmt.Sprintf("linkedTableChecks[%d]", i)),
+					errors.Newf("linkedTableChecks[%d]: cannot have both linkToSingleName and navigationOption", i),
+				)
+			} else {
+				err = errors.Join(
+					ast.ErrArgumentRequired,
+					ast.NewNamedArgumentError(fmt.Sprintf("linkedTableChecks[%d]", i)),
+					errors.Newf("linkedTableChecks[%d]: either linkToSingleName or navigationOption is required", i),
+				)
+			}
+			errs = append(errs, err)
 		}
 
 		// Validate NavigationOption if present
