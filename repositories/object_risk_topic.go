@@ -29,7 +29,7 @@ func (repo *MarbleDbRepository) GetObjectRiskTopicById(
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptObjectRiskTopic)
 }
 
-func (repo *MarbleDbRepository) ListObjectRiskTopic(
+func (repo *MarbleDbRepository) ListObjectRiskTopics(
 	ctx context.Context,
 	exec Executor,
 	filter models.ObjectRiskTopicFilter,
@@ -68,8 +68,19 @@ func (repo *MarbleDbRepository) ListObjectRiskTopic(
 	query := NewQueryBuilder().
 		Select(columnsNames("ort", dbmodels.SelectObjectRiskTopicColumn)...).
 		From(dbmodels.TABLE_OBJECT_RISK_TOPICS + " ort").
-		Where(squirrel.Eq{"ort.org_id": filter.OrgId}).
-		OrderBy(orderCond).
+		Where(squirrel.Eq{"ort.org_id": filter.OrgId})
+
+	if filter.ObjectType != nil {
+		query = query.Where(squirrel.Eq{"ort.object_type": *filter.ObjectType})
+	}
+	if filter.ObjectId != nil {
+		query = query.Where(squirrel.Eq{"ort.object_id": *filter.ObjectId})
+	}
+	if len(filter.Topics) > 0 {
+		query = query.Where(squirrel.Expr("ort.topics && ?", filter.Topics))
+	}
+
+	query = query.OrderBy(orderCond).
 		Limit(uint64(paginationAndSorting.Limit))
 
 	query, err := applyObjectRiskTopicPaginationFilters(query, paginationAndSorting, offset)
@@ -106,7 +117,8 @@ func (repo *MarbleDbRepository) UpsertObjectRiskTopic(
 		Suffix(`
 			ON CONFLICT (org_id, object_type, object_id)
 			DO UPDATE SET
-				topics = EXCLUDED.topics
+				topics = EXCLUDED.topics,
+				updated_at = NOW()
 			RETURNING *`,
 		)
 
@@ -120,6 +132,15 @@ func (repo *MarbleDbRepository) InsertObjectRiskTopicEvent(
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
+	}
+
+	var sourceDetailsJSON []byte
+	if event.SourceDetails != nil {
+		var err error
+		sourceDetailsJSON, err = event.SourceDetails.ToJSON()
+		if err != nil {
+			return errors.Wrap(err, "failed to serialize source details")
+		}
 	}
 
 	query := NewQueryBuilder().
@@ -139,8 +160,8 @@ func (repo *MarbleDbRepository) InsertObjectRiskTopicEvent(
 			event.OrgId,
 			event.ObjectRiskTopicsId,
 			event.Topics,
-			event.SourceType,
-			event.SourceDetails,
+			event.SourceType.String(),
+			sourceDetailsJSON,
 			event.UserId,
 			event.ApiKeyId,
 		)
@@ -152,6 +173,24 @@ func (repo *MarbleDbRepository) InsertObjectRiskTopicEvent(
 
 	_, err = exec.Exec(ctx, sql, args...)
 	return err
+}
+
+func (repo *MarbleDbRepository) ListObjectRiskTopicEvents(
+	ctx context.Context,
+	exec Executor,
+	objectRiskTopicsId uuid.UUID,
+) ([]models.ObjectRiskTopicEvent, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectObjectRiskTopicEventColumn...).
+		From(dbmodels.TABLE_OBJECT_RISK_TOPIC_EVENTS).
+		Where(squirrel.Eq{"object_risk_topics_id": objectRiskTopicsId}).
+		OrderBy("created_at DESC")
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptObjectRiskTopicEvent)
 }
 
 func applyObjectRiskTopicPaginationFilters(

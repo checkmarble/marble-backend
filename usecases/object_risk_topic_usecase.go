@@ -19,7 +19,12 @@ type objectRiskTopicRepository interface {
 		fetchEnumValues bool,
 		useCache bool,
 	) (models.DataModel, error)
-	ListObjectRiskTopic(
+	GetObjectRiskTopicById(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+	) (models.ObjectRiskTopic, error)
+	ListObjectRiskTopics(
 		ctx context.Context,
 		exec repositories.Executor,
 		filter models.ObjectRiskTopicFilter,
@@ -35,6 +40,11 @@ type objectRiskTopicRepository interface {
 		exec repositories.Executor,
 		event models.ObjectRiskTopicEventCreate,
 	) error
+	ListObjectRiskTopicEvents(
+		ctx context.Context,
+		exec repositories.Executor,
+		objectRiskTopicsId uuid.UUID,
+	) ([]models.ObjectRiskTopicEvent, error)
 }
 
 type ObjectRiskTopicUsecase struct {
@@ -62,14 +72,14 @@ func NewObjectRiskTopicUsecase(
 	}
 }
 
-func (usecase *ObjectRiskTopicUsecase) ListObjectRiskTopic(
+func (usecase *ObjectRiskTopicUsecase) ListObjectRiskTopics(
 	ctx context.Context,
 	filter models.ObjectRiskTopicFilter,
 	paginationAndSorting models.PaginationAndSorting,
 ) ([]models.ObjectRiskTopic, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	objectRisks, err := usecase.repository.ListObjectRiskTopic(ctx, exec, filter, paginationAndSorting)
+	objectRisks, err := usecase.repository.ListObjectRiskTopics(ctx, exec, filter, paginationAndSorting)
 	if err != nil {
 		return nil, err
 	}
@@ -83,10 +93,32 @@ func (usecase *ObjectRiskTopicUsecase) ListObjectRiskTopic(
 	return objectRisks, nil
 }
 
+func (usecase *ObjectRiskTopicUsecase) GetObjectRiskTopicById(
+	ctx context.Context,
+	id uuid.UUID,
+) (models.ObjectRiskTopic, error) {
+	exec := usecase.executorFactory.NewExecutor()
+
+	objectRiskTopic, err := usecase.repository.GetObjectRiskTopicById(ctx, exec, id)
+	if err != nil {
+		return models.ObjectRiskTopic{}, err
+	}
+
+	if err := usecase.enforceSecurity.ReadObjectRiskTopic(objectRiskTopic); err != nil {
+		return models.ObjectRiskTopic{}, err
+	}
+
+	return objectRiskTopic, nil
+}
+
 func (usecase *ObjectRiskTopicUsecase) UpsertObjectRiskTopic(
 	ctx context.Context,
 	input models.ObjectRiskTopicWithEventUpsert,
 ) error {
+	if err := usecase.enforceSecurity.WriteObjectRiskTopic(input.OrgId); err != nil {
+		return err
+	}
+
 	execDbClient, err := usecase.executorFactory.NewClientDbExecutor(ctx, input.OrgId)
 	if err != nil {
 		return err
@@ -99,11 +131,18 @@ func (usecase *ObjectRiskTopicUsecase) UpsertObjectRiskTopic(
 		return err
 	}
 
+	// Check if the object type exists in the data model
+	table, ok := dataModel.Tables[input.ObjectType]
+	if !ok {
+		return errors.Wrapf(models.BadParameterError,
+			"table %s not found in data model", input.ObjectType)
+	}
+
 	// Check if the object exists and valid
 	_, err = usecase.ingestedDataReader.QueryIngestedObject(
 		ctx,
 		execDbClient,
-		dataModel.Tables[input.ObjectType],
+		table,
 		input.ObjectId,
 	)
 	if err != nil {
@@ -134,7 +173,7 @@ func (usecase *ObjectRiskTopicUsecase) UpsertObjectRiskTopic(
 					OrgId:              input.OrgId,
 					ObjectRiskTopicsId: ort.Id,
 					Topics:             input.Topics,
-					SourceType:         input.SourceDetails.SourceDetailType(),
+					SourceType:         input.SourceType,
 					SourceDetails:      input.SourceDetails,
 					UserId:             &input.UserId,
 				},
@@ -147,4 +186,27 @@ func (usecase *ObjectRiskTopicUsecase) UpsertObjectRiskTopic(
 	)
 
 	return err
+}
+
+func (usecase *ObjectRiskTopicUsecase) ListObjectRiskTopicEvents(
+	ctx context.Context,
+	objectRiskTopicsId uuid.UUID,
+) ([]models.ObjectRiskTopicEvent, error) {
+	exec := usecase.executorFactory.NewExecutor()
+
+	// Check if the user can read the parent object risk topic
+	objectRiskTopic, err := usecase.repository.GetObjectRiskTopicById(ctx, exec, objectRiskTopicsId)
+	if err != nil {
+		return nil, err
+	}
+	if err := usecase.enforceSecurity.ReadObjectRiskTopic(objectRiskTopic); err != nil {
+		return nil, err
+	}
+
+	events, err := usecase.repository.ListObjectRiskTopicEvents(ctx, exec, objectRiskTopicsId)
+	if err != nil {
+		return nil, err
+	}
+
+	return events, nil
 }
