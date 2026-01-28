@@ -205,6 +205,14 @@ type featureAccessReader interface {
 	) (models.OrganizationFeatureAccess, error)
 }
 
+type objectRiskTopicWriter interface {
+	AppendObjectRiskTopics(
+		ctx context.Context,
+		exec repositories.Executor,
+		input models.ObjectRiskTopicWithEventUpsert,
+	) error
+}
+
 type caseEditor interface {
 	CreateCase(
 		ctx context.Context,
@@ -298,6 +306,7 @@ type ContinuousScreeningUsecase struct {
 	inboxReader                  inboxReader
 	inboxEditor                  inboxEditor
 	featureAccessReader          featureAccessReader
+	objectRiskTopicWriter        objectRiskTopicWriter
 }
 
 func NewContinuousScreeningUsecase(
@@ -317,6 +326,7 @@ func NewContinuousScreeningUsecase(
 	inboxReader inboxReader,
 	inboxEditor inboxEditor,
 	featureAccessReader featureAccessReader,
+	objectRiskTopicWriter objectRiskTopicWriter,
 ) *ContinuousScreeningUsecase {
 	return &ContinuousScreeningUsecase{
 		executorFactory:              executorFactory,
@@ -335,5 +345,6 @@ func NewContinuousScreeningUsecase(
 		inboxReader:                  inboxReader,
 		inboxEditor:                  inboxEditor,
 		featureAccessReader:          featureAccessReader,
+		objectRiskTopicWriter:        objectRiskTopicWriter,
 	}
 }

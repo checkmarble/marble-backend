@@ -7,34 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type RiskTopic string
-
-const (
-	RiskTopicUnknown      RiskTopic = "unknown"
-	RiskTopicSanction     RiskTopic = "sanction"
-	RiskTopicPEP          RiskTopic = "pep"
-	RiskTopicAdverseMedia RiskTopic = "adverse-media"
-	RiskTopicThirdParty   RiskTopic = "third-party"
-)
-
-func RiskTopicFrom(s string) RiskTopic {
-	switch s {
-	case "sanction":
-		return RiskTopicSanction
-	case "pep":
-		return RiskTopicPEP
-	case "adverse-media":
-		return RiskTopicAdverseMedia
-	case "third-party":
-		return RiskTopicThirdParty
-	}
-
-	return RiskTopicUnknown
-}
-
-func (rt RiskTopic) String() string {
-	return string(rt)
-}
+// RiskTopic type and constants are defined in risk_topic.go
 
 type RiskTopicSourceType int
 
@@ -224,4 +197,28 @@ func NewObjectRiskTopicWithEventFromContinuousScreeningReviewUpsert(
 			OpenSanctionsEntityId: sourceOpenSanctionsEntityId,
 		},
 	}
+}
+
+// ExtractRiskTopicsFromEntityPayload parses the entity payload and converts
+// Properties["topics"] to RiskTopic values using the shared OpenSanctionsTagMapping.
+func ExtractRiskTopicsFromEntityPayload(payload []byte) ([]RiskTopic, error) {
+	if len(payload) == 0 {
+		return nil, nil
+	}
+
+	var entity struct {
+		Properties struct {
+			Topics []string `json:"topics"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal(payload, &entity); err != nil {
+		return nil, err
+	}
+
+	entityTopics := entity.Properties.Topics
+	if len(entityTopics) == 0 {
+		return nil, nil
+	}
+
+	return MapOpenSanctionsTagsToRiskTopics(entityTopics), nil
 }

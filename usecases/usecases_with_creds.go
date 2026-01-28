@@ -873,6 +873,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		utils.Ptr(usecases.NewInboxReader()),
 		utils.Ptr(usecases.NewInboxUsecase()),
 		usecases.NewFeatureAccessReader(),
+		utils.Ptr(usecases.NewObjectRiskTopicUsecase()),
 	)
 }
 

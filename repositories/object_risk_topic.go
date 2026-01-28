@@ -29,6 +29,29 @@ func (repo *MarbleDbRepository) GetObjectRiskTopicById(
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptObjectRiskTopic)
 }
 
+func (repo *MarbleDbRepository) GetObjectRiskTopicByObjectId(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	objectType string,
+	objectId string,
+) (models.ObjectRiskTopic, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ObjectRiskTopic{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectObjectRiskTopicColumn...).
+		From(dbmodels.TABLE_OBJECT_RISK_TOPICS).
+		Where(squirrel.Eq{
+			"org_id":      orgId,
+			"object_type": objectType,
+			"object_id":   objectId,
+		})
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptObjectRiskTopic)
+}
+
 func (repo *MarbleDbRepository) ListObjectRiskTopics(
 	ctx context.Context,
 	exec Executor,

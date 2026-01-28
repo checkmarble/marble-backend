@@ -145,6 +145,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 				ctx,
 				tx,
 				continuousScreeningWithMatches,
+				updatedMatch,
 				pendingMatchesExcludingThis,
 				reviewerId,
 				reviewerUuid,
@@ -515,10 +516,16 @@ func (uc *ContinuousScreeningUsecase) handleConfirmedHit(
 	ctx context.Context,
 	tx repositories.Transaction,
 	screening models.ContinuousScreeningWithMatches,
+	confirmedMatch models.ContinuousScreeningMatch,
 	pendingMatches []models.ContinuousScreeningMatch,
 	reviewerId *models.UserId,
 	reviewerUuid *uuid.UUID,
 ) error {
+	// Add risk topics from the confirmed match to the Marble object
+	if err := uc.addRiskTopicsFromConfirmedMatch(ctx, tx, screening, confirmedMatch, reviewerUuid); err != nil {
+		return errors.Wrap(err, "failed to add risk topics from confirmed match")
+	}
+
 	if screening.IsObjectTriggered() {
 		// Object-triggered: immediately mark screening as confirmed_hit
 		if err := uc.updateScreeningStatusWithEvent(
@@ -717,6 +724,78 @@ func (uc *ContinuousScreeningUsecase) handleWhitelistCreation(
 	}
 
 	return nil
+}
+
+// addRiskTopicsFromConfirmedMatch extracts topics from the entity payload and stores them
+// on the Marble object when a screening match is confirmed as a hit.
+func (uc *ContinuousScreeningUsecase) addRiskTopicsFromConfirmedMatch(
+	ctx context.Context,
+	tx repositories.Transaction,
+	screening models.ContinuousScreeningWithMatches,
+	match models.ContinuousScreeningMatch,
+	reviewerUuid *uuid.UUID,
+) error {
+	// Determine object type, ID, and entity payload based on trigger type
+	var objectType, objectId string
+	var openSanctionsEntityId string
+	var entityPayload []byte
+
+	switch {
+	case screening.IsObjectTriggered():
+		// Marble entity → OpenSanctions match
+		// Topics come from the MATCH payload (the OpenSanctions entity that matched)
+		if screening.ObjectType == nil || screening.ObjectId == nil {
+			return errors.New("object type or id missing for object-triggered screening")
+		}
+		objectType = *screening.ObjectType
+		objectId = *screening.ObjectId
+		openSanctionsEntityId = match.OpenSanctionEntityId
+		entityPayload = match.Payload // Topics from match
+
+	case screening.IsDatasetTriggered():
+		// OpenSanctions update → Marble entity match
+		// Topics come from the SCREENING's entity payload (the updated OpenSanctions entity)
+		if match.Metadata == nil {
+			return errors.New("match metadata missing for dataset-triggered screening")
+		}
+		objectType = match.Metadata.ObjectType
+		objectId = match.Metadata.ObjectId
+		if screening.OpenSanctionEntityId != nil {
+			openSanctionsEntityId = *screening.OpenSanctionEntityId
+		}
+		entityPayload = screening.OpenSanctionEntityPayload // Topics from screening entity
+
+	default:
+		return errors.Errorf("unsupported trigger type: %s", screening.TriggerType)
+	}
+
+	// Extract and map topics from the entity payload
+	topics, err := models.ExtractRiskTopicsFromEntityPayload(entityPayload)
+	if err != nil {
+		return errors.Wrap(err, "failed to extract risk topics from entity payload")
+	}
+	if len(topics) == 0 {
+		// No relevant topics to add - this is OK, just skip
+		return nil
+	}
+
+	// reviewerUuid is required for creating the risk topic event
+	if reviewerUuid == nil {
+		return errors.New("reviewer id is required to add risk topics from confirmed match")
+	}
+
+	// Create the upsert input (will APPEND topics, not replace)
+	input := models.NewObjectRiskTopicWithEventFromContinuousScreeningReviewUpsert(
+		screening.OrgId,
+		objectType,
+		objectId,
+		topics,
+		screening.Id,
+		openSanctionsEntityId,
+		*reviewerUuid,
+	)
+
+	return uc.objectRiskTopicWriter.AppendObjectRiskTopics(ctx, tx, input)
 }
 
 // loadMoreObjectTrigger handles load more for object trigger screenings (Marble to OpenSanction direction)
