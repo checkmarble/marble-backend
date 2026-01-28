@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/go-viper/mapstructure/v2"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -166,4 +167,29 @@ func promoteArgumentToDataType(argument any, datatype models.DataType) (any, err
 	default:
 		return nil, errors.New(fmt.Sprintf("datatype %s not supported", datatype))
 	}
+}
+
+func adaptArgumentToJSONStruct[T any](argument any) (T, error) {
+	var result T
+
+	if err := argumentNotNil(argument); err != nil {
+		return result, err
+	}
+
+	config := &mapstructure.DecoderConfig{
+		Result:  &result,
+		TagName: "json",
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return result, errors.Wrap(ast.ErrArgumentInvalidType,
+			fmt.Sprintf("can't create decoder to convert argument %v to struct", argument))
+	}
+	if err := decoder.Decode(argument); err != nil {
+		return result, errors.Wrap(ast.ErrArgumentInvalidType,
+			fmt.Sprintf("can't decode argument %v to struct", argument))
+	}
+
+	return result, nil
 }
