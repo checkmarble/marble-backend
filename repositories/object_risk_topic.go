@@ -82,7 +82,7 @@ func (repo *MarbleDbRepository) ListObjectRiskTopics(
 		}
 		offset, err = repo.GetObjectRiskTopicById(ctx, exec, offsetId)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errors.Wrap(err, "No row found matching the provided offsetId")
+			return nil, errors.Wrap(models.NotFoundError, "No row found matching the provided offsetId")
 		} else if err != nil {
 			return nil, errors.Wrap(err, "failed to fetch object risk topic corresponding to the provided offsetId")
 		}
@@ -232,7 +232,7 @@ func applyObjectRiskTopicPaginationFilters(
 	case models.SortingFieldUpdatedAt:
 		offsetValue = offset.UpdatedAt
 	default:
-		// only ordering and pagination by created_at is allowed for now
+		// only ordering and pagination by created_at and updated_at is allowed for now
 		return query, fmt.Errorf("invalid sorting field: %w", models.BadParameterError)
 	}
 
