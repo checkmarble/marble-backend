@@ -30,8 +30,11 @@ type UsecaseTransactionWrapper func(tx repositories.Transaction, org models.Orga
 // Used to recreate the whole usecase hierarchy from a transaction for Marble
 // database and and organization for the ingested data database, impersonating
 // the provided user.
-func (usecases *UsecasesWithCreds) NewWithRootImpersonatedExecutor(tx repositories.Transaction, org models.Organization, user models.User) *UsecasesWithCreds {
-	executorFactory := executor_factory.NewIdentityExecutorFactory(tx, usecases.Repositories.ExecutorGetter, org)
+func (usecases *UsecasesWithCreds) NewWithRootImpersonatedExecutor(tx repositories.Transaction,
+	org models.Organization, user models.User,
+) *UsecasesWithCreds {
+	executorFactory := executor_factory.NewIdentityExecutorFactory(tx,
+		usecases.Repositories.ExecutorGetter, org)
 
 	return &UsecasesWithCreds{
 		Usecases: usecases.Usecases.WithRootExecutor(executorFactory),
@@ -142,6 +145,13 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurityContinuousScreening() secur
 
 func (usecases *UsecasesWithCreds) NewEnforceSecurityAudit() security.EnforceSecurityAudit {
 	return &security.EnforceSecurityAuditImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewEnforceObjectRiskTopic() security.EnforceSecurityObjectRiskTopic {
+	return &security.EnforceSecurityObjectRiskTopicImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
 	}
@@ -990,4 +1000,14 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 		usecases.NewIngestionUseCase(),
 		usecases.NewDecisionUsecase(),
 	)
+}
+
+func (usecases *UsecasesWithCreds) NewObjectRiskTopicUsecase() ObjectRiskTopicUsecase {
+	return ObjectRiskTopicUsecase{
+		executorFactory:    usecases.NewExecutorFactory(),
+		transactionFactory: usecases.NewTransactionFactory(),
+		enforceSecurity:    usecases.NewEnforceObjectRiskTopic(),
+		repository:         usecases.Repositories.MarbleDbRepository,
+		ingestedDataReader: usecases.Repositories.IngestedDataReadRepository,
+	}
 }
