@@ -73,6 +73,8 @@ type CaseUseCaseRepository interface {
 		orgId uuid.UUID, pivotValue string) ([]models.Case, error)
 	GetContinuousScreeningCasesWithObjectAttr(ctx context.Context, exec repositories.Executor,
 		orgId uuid.UUID, objectType, objectId string) ([]models.Case, error)
+	GetContinuousScreeningCasesByEntityIdInMatches(ctx context.Context, exec repositories.Executor,
+		orgId uuid.UUID, entityId string) ([]models.Case, error)
 
 	GetNextCase(ctx context.Context, exec repositories.Executor, c models.Case) (string, error)
 
@@ -1190,7 +1192,8 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		c.Decisions = decisions
 
 	case models.CaseTypeContinuousScreening:
-		continuousScreeningsWithMatches, err := usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
+		continuousScreeningsWithMatches, err :=
+			usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -1847,6 +1850,27 @@ func (usecase *CaseUseCase) GetRelatedContinuousScreeningCasesByObjectAttr(
 	if err != nil {
 		return nil, err
 	}
+
+	entityId := pure_utils.MarbleEntityIdBuilder(objectType, objectId)
+	casesFromMatches, err := usecase.repository.GetContinuousScreeningCasesByEntityIdInMatches(ctx, exec, orgId, entityId)
+	if err != nil {
+		return nil, err
+	}
+
+	// We should have different cases from the two queries, we can combine them safely
+	// No collision is expected between cases from different continuous screening types (Object*Triggered/DatasetUpdateTriggered)
+	cases = append(cases, casesFromMatches...)
+
+	// Sort by created_at descending
+	slices.SortFunc(cases, func(a, b models.Case) int {
+		if a.CreatedAt.After(b.CreatedAt) {
+			return -1
+		}
+		if a.CreatedAt.Before(b.CreatedAt) {
+			return 1
+		}
+		return 0
+	})
 
 	allowedCases := make([]models.Case, 0, len(cases))
 

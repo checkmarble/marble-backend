@@ -575,6 +575,37 @@ func (repo *MarbleDbRepository) GetContinuousScreeningCasesWithObjectAttr(
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptCase)
 }
 
+// Define idx_cs_matches_screening_entity index for better performance
+func (repo *MarbleDbRepository) GetContinuousScreeningCasesByEntityIdInMatches(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	entityId string,
+) ([]models.Case, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(columnsNames("c", dbmodels.SelectCaseColumn)...).
+		Distinct().
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS + " cs").
+		InnerJoin(dbmodels.TABLE_CASES + " c on c.id = cs.case_id").
+		InnerJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES +
+			" csm on csm.continuous_screening_id = cs.id").
+		Where(squirrel.Eq{
+			"cs.org_id":       orgId,
+			"cs.trigger_type": "dataset_updated",
+		}).
+		Where(squirrel.Eq{
+			"csm.opensanction_entity_id": entityId,
+		}).
+		OrderBy("c.created_at DESC").
+		Limit(100)
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptCase)
+}
+
 func (repo *MarbleDbRepository) EscalateCase(ctx context.Context, exec Executor, id, inboxId string) error {
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_CASES).
