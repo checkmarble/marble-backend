@@ -18,12 +18,14 @@ CREATE TABLE object_risk_topic_events (
     org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     object_risk_topics_id UUID NOT NULL REFERENCES object_risk_topics(id) ON DELETE CASCADE,
     topics TEXT[] NOT NULL,
-    source_type TEXT NOT NULL CONSTRAINT object_risk_topic_events_source_type_check CHECK (source_type IN ('screening_match_review', 'manual')),
+    source_type TEXT NOT NULL CONSTRAINT object_risk_topic_events_source_type_check CHECK (source_type IN ('continuous_screening_match_review', 'manual')),
     source_details JSONB,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     api_key_id UUID REFERENCES api_keys(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX idx_object_risk_topic_events_created_at ON object_risk_topic_events (object_risk_topics_id, created_at DESC);
 
 -- +goose StatementEnd
 

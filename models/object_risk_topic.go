@@ -75,7 +75,7 @@ type SourceDetails interface {
 // ContinuousScreeningSourceDetails for continuous_screening_match_review source type
 type ContinuousScreeningSourceDetails struct {
 	ContinuousScreeningId uuid.UUID `json:"continuous_screening_id"`
-	OpenSanctionsEntityId string    `json:"opensanctions_entity_id"`
+	OpenSanctionsEntityId string    `json:"opensanctions_entity_id"` //nolint: tagliatelle
 }
 
 func (s ContinuousScreeningSourceDetails) SourceDetailType() RiskTopicSourceType {
@@ -175,6 +175,7 @@ type ObjectRiskTopicWithEventUpsert struct {
 	ObjectType    string
 	ObjectId      string
 	Topics        []RiskTopic
+	SourceType    RiskTopicSourceType
 	SourceDetails SourceDetails
 	UserId        uuid.UUID
 }
@@ -194,6 +195,7 @@ func NewObjectRiskTopicWithEventFromManualUpsert(
 		ObjectId:   objectId,
 		Topics:     topics,
 		UserId:     userId,
+		SourceType: RiskTopicSourceTypeManual,
 		SourceDetails: ManualSourceDetails{
 			Reason: reason,
 			Url:    proofUrl,
@@ -216,6 +218,7 @@ func NewObjectRiskTopicWithEventFromContinuousScreeningReviewUpsert(
 		ObjectId:   objectId,
 		Topics:     topics,
 		UserId:     userId,
+		SourceType: RiskTopicSourceTypeContinuousScreeningMatchReview,
 		SourceDetails: ContinuousScreeningSourceDetails{
 			ContinuousScreeningId: sourceContinuousScreeningId,
 			OpenSanctionsEntityId: sourceOpenSanctionsEntityId,
