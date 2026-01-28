@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
@@ -228,11 +229,16 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 		t.Fatal(err)
 	}
 
+	mredis := miniredis.NewMiniRedis()
+	_ = mredis.Start()
+	redisClient, _ := repositories.NewRedisClient(infra.RedisConfig{Address: mredis.Addr()})
+
 	deps, _ := api.InitDependencies(ctx, cfg, pool, key, nil, nil, nil)
 	openSanctions := infra.InitializeOpenSanctions(http.DefaultClient, "http://screening", " ", " ")
 	repos := repositories.NewRepositories(pool, infra.GcpConfig{},
 		repositories.WithOpenSanctions(openSanctions),
-		repositories.WithRiverClient(riverClient))
+		repositories.WithRiverClient(riverClient),
+		repositories.WithRedisClient(redisClient))
 	uc := usecases.NewUsecases(repos, usecases.WithLicense(models.NewFullLicense()), usecases.WithOpensanctions(true))
 	router := api.InitRouterMiddlewares(ctx, cfg, true, nil, infra.TelemetryRessources{})
 

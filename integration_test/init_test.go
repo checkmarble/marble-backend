@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
@@ -148,6 +149,10 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not create river client: %s", err)
 	}
 
+	mredis := miniredis.NewMiniRedis()
+	_ = mredis.Start()
+	redisClient, _ := repositories.NewRedisClient(infra.RedisConfig{Address: mredis.Addr()})
+
 	// actually using the convoy repository to send webhooks will fail (because we don't have an instance set up),
 	// but it is not blocking (an error will be logged but the test will pass). We sill need to pass the provider
 	// or else the repository will panic.
@@ -156,6 +161,7 @@ func TestMain(m *testing.M) {
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(infra.ConvoyConfiguration{}), 0),
 		repositories.WithRiverClient(riverClient),
+		repositories.WithRedisClient(redisClient),
 	)
 
 	firebaseAdminClient := &mocks.FirebaseAdminClient{}
