@@ -397,11 +397,11 @@ func (repo *MarbleDbRepository) ListContinuousScreeningsForOrg(
 				"No row found matching the provided offsetId")
 		} else if err != nil {
 			return nil, errors.Wrap(err,
-				"failed to fetch decision corresponding to the provided offsetId")
+				"failed to fetch continuous screening corresponding to the provided offsetId")
 		}
 	}
 	var err error
-	query, err = applyPaginationFilters(query, paginationAndSorting, offset)
+	query, err = applyContinuousScreeningPaginationFilters(query, paginationAndSorting, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +420,7 @@ func selectContinuousScreeningWithMatches() squirrel.SelectBuilder {
 		GroupBy(columnsNames("cs", dbmodels.SelectContinuousScreeningColumn)...)
 }
 
-func applyPaginationFilters(query squirrel.SelectBuilder, p models.PaginationAndSorting,
+func applyContinuousScreeningPaginationFilters(query squirrel.SelectBuilder, p models.PaginationAndSorting,
 	offset models.ContinuousScreening,
 ) (squirrel.SelectBuilder, error) {
 	if p.OffsetId == "" {
