@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 )
 
@@ -23,6 +24,13 @@ type objectRiskTopicRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		id uuid.UUID,
+	) (models.ObjectRiskTopic, error)
+	GetObjectRiskTopicByObjectId(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		objectType string,
+		objectId string,
 	) (models.ObjectRiskTopic, error)
 	ListObjectRiskTopics(
 		ctx context.Context,
@@ -146,46 +154,88 @@ func (usecase *ObjectRiskTopicUsecase) UpsertObjectRiskTopic(
 		input.ObjectId,
 	)
 	if err != nil {
-		return errors.Wrap(err, "failed fetch ingested object")
+		return errors.Wrap(err, "failed to fetch ingested object, can not create risk topic for non-existent object")
 	}
 
-	err = usecase.transactionFactory.Transaction(
-		ctx,
-		func(tx repositories.Transaction) error {
-			ort, err := usecase.repository.UpsertObjectRiskTopic(
-				ctx,
-				tx,
-				models.ObjectRiskTopicCreate{
-					OrgId:      input.OrgId,
-					ObjectType: input.ObjectType,
-					ObjectId:   input.ObjectId,
-					Topics:     input.Topics,
-				},
-			)
-			if err != nil {
-				return err
-			}
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return usecase.appendObjectRiskTopicsInternal(ctx, tx, input)
+	})
+}
 
-			err = usecase.repository.InsertObjectRiskTopicEvent(
-				ctx,
-				tx,
-				models.ObjectRiskTopicEventCreate{
-					OrgId:              input.OrgId,
-					ObjectRiskTopicsId: ort.Id,
-					Topics:             input.Topics,
-					SourceType:         input.SourceType,
-					SourceDetails:      input.SourceDetails,
-					UserId:             &input.UserId,
-				},
-			)
-			if err != nil {
-				return err
-			}
-			return nil
+// AppendObjectRiskTopics adds new topics to an object within an existing transaction.
+// For internal use by other usecases. Skips ingested object validation.
+func (usecase *ObjectRiskTopicUsecase) AppendObjectRiskTopics(
+	ctx context.Context,
+	exec repositories.Executor,
+	input models.ObjectRiskTopicWithEventUpsert,
+) error {
+	return usecase.appendObjectRiskTopicsInternal(ctx, exec, input)
+}
+
+// appendObjectRiskTopicsInternal is the shared logic for appending topics.
+// It checks existing topics and only adds new ones.
+func (usecase *ObjectRiskTopicUsecase) appendObjectRiskTopicsInternal(
+	ctx context.Context,
+	exec repositories.Executor,
+	input models.ObjectRiskTopicWithEventUpsert,
+) error {
+	// Get existing topics (if any)
+	existing, err := usecase.repository.GetObjectRiskTopicByObjectId(
+		ctx, exec, input.OrgId, input.ObjectType, input.ObjectId)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+
+	// Merge topics: existing + new (deduplicated)
+	topicSet := make(map[models.RiskTopic]struct{})
+	for _, t := range existing.Topics {
+		topicSet[t] = struct{}{}
+	}
+
+	// Track which topics are actually new (for the event)
+	newTopics := make([]models.RiskTopic, 0)
+	for _, t := range input.Topics {
+		if _, exists := topicSet[t]; !exists {
+			topicSet[t] = struct{}{}
+			newTopics = append(newTopics, t)
+		}
+	}
+
+	// If no new topics to add, skip entirely
+	if len(newTopics) == 0 {
+		return nil
+	}
+
+	// Build merged topic list
+	mergedTopics := make([]models.RiskTopic, 0, len(topicSet))
+	for t := range topicSet {
+		mergedTopics = append(mergedTopics, t)
+	}
+
+	// Upsert with merged topics
+	ort, err := usecase.repository.UpsertObjectRiskTopic(ctx, exec,
+		models.ObjectRiskTopicCreate{
+			OrgId:      input.OrgId,
+			ObjectType: input.ObjectType,
+			ObjectId:   input.ObjectId,
+			Topics:     mergedTopics,
 		},
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	// Record event with only the NEW topics that were added
+	return usecase.repository.InsertObjectRiskTopicEvent(ctx, exec,
+		models.ObjectRiskTopicEventCreate{
+			OrgId:              input.OrgId,
+			ObjectRiskTopicsId: ort.Id,
+			Topics:             newTopics,
+			SourceType:         input.SourceType,
+			SourceDetails:      input.SourceDetails,
+			UserId:             &input.UserId,
+		},
+	)
 }
 
 func (usecase *ObjectRiskTopicUsecase) ListObjectRiskTopicEvents(
