@@ -357,3 +357,38 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_NoNewTo
 	// Assert
 	suite.NoError(err)
 }
+
+func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_ConfirmedHit_TopicAlreadyExists_SkipsUpsertAndEvent() {
+	// Setup - Object risk topic already exists with the match topic from a previous confirmed hit
+	objectRiskTopicId := uuid.New()
+	existingObjectRiskTopic := models.ObjectRiskTopic{
+		Id:         objectRiskTopicId,
+		OrgId:      suite.orgId,
+		ObjectType: "users",
+		ObjectId:   "user-123",
+		Topics:     []models.RiskTopic{models.RiskTopicSanctions}, // Already has Sanctions from previous confirmed hit
+	}
+
+	input := models.ObjectRiskTopicWithEventUpsert{
+		OrgId:      suite.orgId,
+		ObjectType: "users",
+		ObjectId:   "user-123",
+		// Trying to add Sanctions again from a new confirmed hit - should be a no-op
+		Topics:     []models.RiskTopic{models.RiskTopicSanctions},
+		SourceType: models.RiskTopicSourceTypeContinuousScreeningMatchReview,
+		UserId:     suite.userId,
+	}
+
+	// Mock expectations - GetObjectRiskTopicByObjectId returns existing record with matching topic
+	suite.repository.On("GetObjectRiskTopicByObjectId", suite.ctx, suite.transaction,
+		suite.orgId, "users", "user-123").Return(existingObjectRiskTopic, nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	err := uc.AppendObjectRiskTopics(suite.ctx, suite.transaction, input)
+
+	// Assert
+	suite.NoError(err)
+
+	// UpsertObjectRiskTopic and InsertObjectRiskTopicEvent should NOT be called
+}
