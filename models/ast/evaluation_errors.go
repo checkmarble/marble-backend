@@ -16,6 +16,7 @@ var (
 	ErrArgumentMustBeList                     = errors.New("arguments must be a list")
 	ErrArgumentCantBeConvertedToDuration      = errors.New("argument cant be converted to duration")
 	ErrArgumentMustBeTime                     = errors.New("argument must be a time")
+	ErrArgumentMustBeIpAddress                = errors.New("argument must be an IP address")
 	ErrArgumentRequired                       = errors.New("argument is required")
 	ErrArgumentInvalidType                    = errors.New("argument has an invalid type")
 	ErrListNotFound                           = errors.New("list not found")

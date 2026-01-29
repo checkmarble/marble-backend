@@ -44,6 +44,7 @@ const (
 	FUNC_IS_EMPTY
 	FUNC_IS_NOT_EMPTY
 	FUNC_TIMESTAMP_EXTRACT
+	FUNC_HAS_IP_FLAG
 	FUNC_STRING_STARTS_WITH
 	FUNC_STRING_ENDS_WITH
 	FUNC_IS_MULTIPLE_OF
@@ -244,6 +245,11 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName:      "FUNC_TIMESTAMP_EXTRACT",
 		AstName:        "TimestampExtract",
 		NamedArguments: []string{"timestamp", "part"},
+	},
+	FUNC_HAS_IP_FLAG: {
+		DebugName:      "FUNC_HAS_IP_FLAG",
+		AstName:        "HasIpFlag",
+		NamedArguments: []string{"ip", "flag"},
 	},
 	FUNC_IS_MULTIPLE_OF: {
 		DebugName:      "FUNC_IS_MULTIPLE_OF",
