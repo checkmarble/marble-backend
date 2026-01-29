@@ -3,6 +3,7 @@ package usecases
 import (
 	"time"
 
+	"github.com/authenticvision/rgeo"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -16,9 +17,11 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
 	"github.com/checkmarble/marble-backend/usecases/organization"
+	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
+	"github.com/oschwald/maxminddb-golang/v2"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
@@ -46,6 +49,9 @@ type Usecases struct {
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
+
+	coordsEnricher *rgeo.Rgeo
+	ipEnricher     *maxminddb.Reader
 
 	rootExecutorFactory *executor_factory.IdentityExecutorFactory
 }
@@ -182,6 +188,12 @@ func WithCsCreateFullDatasetInterval(interval time.Duration) Option {
 	}
 }
 
+func WithIpEnrichmentDatabase(db *maxminddb.Reader) Option {
+	return func(o *options) {
+		o.ipEnricher = db
+	}
+}
+
 type options struct {
 	appName                      string
 	apiVersion                   string
@@ -203,12 +215,19 @@ type options struct {
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
+	ipEnricher                   *maxminddb.Reader
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
 	if o.batchIngestionMaxSize == 0 {
 		o.batchIngestionMaxSize = DefaultApiBatchIngestionSize
 	}
+
+	coordsEnricher, err := rgeo.New(rgeo.Countries110)
+	if err == nil {
+		coordsEnricher.Build()
+	}
+
 	return Usecases{
 		Repositories:                 repositories,
 		appName:                      o.appName,
@@ -231,6 +250,9 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		continuousScreeningBucketUrl: o.continuousScreeningBucketUrl,
 		marbleApiInternalUrl:         o.marbleApiInternalUrl,
 		csCreateFullDatasetInterval:  o.csCreateFullDatasetInterval,
+
+		coordsEnricher: coordsEnricher,
+		ipEnricher:     o.ipEnricher,
 	}
 }
 
@@ -376,6 +398,10 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 			usecases.Repositories.MarbleDbRepository,
 			params.OrganizationId))
 
+	environment.AddEvaluator(ast.FUNC_HAS_IP_FLAG, evaluate.HasIpFlag{
+		PayloadEnricher: usecases.NewPayloadEnrichmentUsecase(),
+	})
+
 	return environment
 }
 
@@ -508,5 +534,12 @@ func (usecases *Usecases) NewContinuousScreeningCreateFullDatasetWorker() *conti
 		usecases.Repositories.BlobRepository,
 		usecases.continuousScreeningBucketUrl,
 		usecases.csCreateFullDatasetInterval,
+	)
+}
+
+func (usecases *Usecases) NewPayloadEnrichmentUsecase() payload_parser.PayloadEnrichementUsecase {
+	return payload_parser.NewPayloadEnrichmentUsecase(
+		usecases.coordsEnricher,
+		usecases.ipEnricher,
 	)
 }
