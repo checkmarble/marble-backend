@@ -117,7 +117,7 @@ type ObjectRiskTopicCreate struct {
 type ObjectRiskTopicFilter struct {
 	OrgId      uuid.UUID
 	ObjectType *string
-	ObjectId   *string
+	ObjectIds  []string
 	Topics     []RiskTopic
 }
 

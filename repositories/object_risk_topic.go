@@ -96,8 +96,8 @@ func (repo *MarbleDbRepository) ListObjectRiskTopics(
 	if filter.ObjectType != nil {
 		query = query.Where(squirrel.Eq{"ort.object_type": *filter.ObjectType})
 	}
-	if filter.ObjectId != nil {
-		query = query.Where(squirrel.Eq{"ort.object_id": *filter.ObjectId})
+	if len(filter.ObjectIds) > 0 {
+		query = query.Where(squirrel.Eq{"ort.object_id": filter.ObjectIds})
 	}
 	if len(filter.Topics) > 0 {
 		query = query.Where(squirrel.Expr("ort.topics && ?", filter.Topics))

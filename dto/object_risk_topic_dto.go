@@ -67,7 +67,7 @@ func (d ObjectRiskTopicUpsertInputDto) Adapt(
 
 type ObjectRiskTopicFilterDto struct {
 	ObjectType string   `form:"object_type"`
-	ObjectId   string   `form:"object_id"`
+	ObjectIds  []string `form:"object_ids"`
 	Topics     []string `form:"topics"`
 }
 
@@ -102,14 +102,12 @@ func AdaptObjectRiskTopicEventDto(m models.ObjectRiskTopicEvent) ObjectRiskTopic
 
 func (d ObjectRiskTopicFilterDto) Adapt(orgId uuid.UUID) (models.ObjectRiskTopicFilter, error) {
 	filter := models.ObjectRiskTopicFilter{
-		OrgId: orgId,
+		OrgId:     orgId,
+		ObjectIds: d.ObjectIds,
 	}
 
 	if d.ObjectType != "" {
 		filter.ObjectType = &d.ObjectType
-	}
-	if d.ObjectId != "" {
-		filter.ObjectId = &d.ObjectId
 	}
 	if len(d.Topics) > 0 {
 		topics := make([]models.RiskTopic, 0, len(d.Topics))
