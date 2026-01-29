@@ -40,6 +40,10 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 		return nil, errs
 	}
 
+	// Step 1: fetch the ingested data based on config, get the `object_id` and query in object_risk_topics table if the element has a risk topic assigned
+
+	// Step 2: if Step 1 found anything, then use the LinkedTableChecks checks
+
 	hasMatch := false
 	return hasMatch, nil
 }
