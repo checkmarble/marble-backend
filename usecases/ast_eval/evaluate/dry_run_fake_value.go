@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -60,6 +61,8 @@ func DryRunValue(prefix string, fieldName string, field models.Field) any {
 		return 1.0
 	case models.Timestamp:
 		return time.Now()
+	case models.IpAddress:
+		return net.ParseIP("1.2.3.4")
 	default:
 		return nil
 	}

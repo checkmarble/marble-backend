@@ -82,6 +82,10 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(
 	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s",
 		sanitizedTableName, field.Name, fieldType))
 
+	if field.DataType == models.IpAddress || field.DataType == models.Coords {
+		builder.WriteString(fmt.Sprintf(`, ADD COLUMN IF NOT EXISTS "%s.metadata" JSONB`, field.Name))
+	}
+
 	_, err := exec.Exec(ctx, builder.String())
 	return err
 }
@@ -196,6 +200,10 @@ func toPgType(dataType models.DataType) string {
 		return "FLOAT"
 	case models.Bool:
 		return "BOOLEAN"
+	case models.IpAddress:
+		return "INET"
+	case models.Coords:
+		return "GEOMETRY"
 	default:
 		panic(fmt.Errorf("unknown data type: %v", dataType))
 	}

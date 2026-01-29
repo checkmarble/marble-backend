@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
 )
@@ -304,7 +305,13 @@ func (repo *IngestionRepositoryImpl) batchInsertPayloads(ctx context.Context, ex
 	}
 
 	columnNames = append(columnNames, "id")
-	query = query.Columns(columnNames...)
+	escapedColumn := make([]string, len(columnNames))
+
+	for idx, c := range columnNames {
+		escapedColumn[idx] = pgx.Identifier.Sanitize([]string{c})
+	}
+
+	query = query.Columns(escapedColumn...)
 
 	err := ExecBuilder(ctx, exec, query)
 	if IsUniqueViolationError(err) {

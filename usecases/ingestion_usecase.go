@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/netip"
 	"slices"
 	"strconv"
 	"strings"
@@ -94,6 +95,7 @@ type IngestionUseCase struct {
 	blobRepository                      repositories.BlobRepository
 	dataModelRepository                 repositories.DataModelRepository
 	uploadLogRepository                 repositories.UploadLogRepository
+	payloadEnricher                     payload_parser.PayloadEnrichementUsecase
 	continuousScreeningRepository       continuousScreeningRepository
 	continuousScreeningClientRepository continuousScreeningClientDbRepository
 	ingestionBucketUrl                  string
@@ -152,7 +154,7 @@ func (usecase *IngestionUseCase) IngestObject(
 		}
 	}
 
-	parser := payload_parser.NewParser(parserOpts...)
+	parser := payload_parser.NewParser(append(parserOpts, payload_parser.WithEnricher(usecase.payloadEnricher))...)
 	payload, err := parser.ParsePayload(ctx, table, objectBody)
 	if err != nil {
 		return 0, errors.WithDetail(err, "error parsing payload in decision usecase validate payload")
@@ -247,7 +249,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	clientObjects := make([]models.ClientObject, 0, len(rawMessages))
 	objectIds := make(map[string]struct{}, len(rawMessages))
-	parser := payload_parser.NewParser(parserOpts...)
+	parser := payload_parser.NewParser(append(parserOpts, payload_parser.WithEnricher(usecase.payloadEnricher))...)
 	validationErrorsGroup := make(models.IngestionValidationErrors)
 	for _, rawMsg := range rawMessages {
 		payload, err := parser.ParsePayload(ctx, table, rawMsg)
@@ -812,6 +814,23 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 				return nil, fmt.Errorf("error parsing float %s for field %s: %w", value, fieldName, err)
 			}
 			result[fieldName] = val
+		case models.IpAddress:
+			val, err := netip.ParseAddr(value)
+			if err != nil {
+				return nil, fmt.Errorf("invalid IP address %s", value)
+			}
+			result[fieldName] = val
+		case models.Coords:
+			latS, lngS, ok := strings.Cut(value, ",")
+			if !ok {
+				return nil, fmt.Errorf("invalid coordinates (lat, lng)")
+			}
+			_, errLat := strconv.ParseFloat(latS, 64)
+			_, errLng := strconv.ParseFloat(lngS, 64)
+			if errLat != nil || errLng != nil {
+				return nil, fmt.Errorf("invalid coordinates (lat, lng)")
+			}
+			result[fieldName] = value
 		default:
 			return nil, fmt.Errorf("invalid data type %s for field %s", field.DataType, fieldName)
 		}

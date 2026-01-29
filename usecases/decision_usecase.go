@@ -98,6 +98,7 @@ type DecisionUsecase struct {
 	scenarioEvaluator         ScenarioEvaluator
 	openSanctionsRepository   repositories.OpenSanctionsRepository
 	taskQueueRepository       repositories.TaskQueueRepository
+	payloadEnricher           payload_parser.PayloadEnrichementUsecase
 }
 
 var (
@@ -781,10 +782,10 @@ func (usecase DecisionUsecase) validatePayload(
 		return
 	}
 
-	parser := payload_parser.NewParser()
+	parser := payload_parser.NewParser(payload_parser.WithEnricher(usecase.payloadEnricher))
 
 	if disallowUnknownFields {
-		parser = payload_parser.NewParser(payload_parser.DisallowUnknownFields())
+		parser = payload_parser.NewParser(payload_parser.DisallowUnknownFields(), payload_parser.WithEnricher(usecase.payloadEnricher))
 	}
 
 	payload, err = parser.ParsePayload(ctx, table, rawPayload)

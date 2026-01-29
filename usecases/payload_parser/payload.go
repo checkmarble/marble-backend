@@ -4,13 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/netip"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tidwall/gjson"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+
+	"github.com/twpayne/go-geos"
 )
 
 type fieldParser map[models.DataType]func(result gjson.Result) (any, error)
@@ -19,6 +24,7 @@ type Parser struct {
 	parsers               fieldParser
 	allowPatch            bool
 	disallowUnknownFields bool
+	enricher              PayloadEnrichementUsecase
 }
 
 var (
@@ -29,6 +35,8 @@ var (
 	errIsInvalidFloat     = fmt.Errorf("is not a valid float")
 	errIsInvalidBoolean   = fmt.Errorf("is not a valid boolean")
 	errIsInvalidString    = fmt.Errorf("is not a valid string")
+	errIsInvalidIpAddress = fmt.Errorf("is not a valid IP address")
+	errIsInvalidCoords    = fmt.Errorf("are not valid coordinates (lat,lng)")
 	errIsInvalidDataType  = fmt.Errorf("invalid type used in parser")
 	errUnknownField       = errors.New("field does not exist in data model")
 )
@@ -93,6 +101,33 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 			addError(allErrors, objectId, name, err)
 		} else {
 			out[name] = val
+
+			// Enrich ingested data for fields supporting it
+			switch field.DataType {
+			case models.IpAddress:
+				switch ipBytes, ok := val.(net.IP); ok {
+				case false:
+					addError(allErrors, objectId, name, fmt.Errorf("expected IP address"))
+				case true:
+					switch ip, ok := netip.AddrFromSlice(ipBytes); ok {
+					case false:
+						addError(allErrors, objectId, name, fmt.Errorf("expected IP address"))
+					case true:
+						if metadata := p.enricher.EnrichIp(ip.Unmap()); metadata != nil {
+							out[fmt.Sprintf("%s.metadata", field.Name)] = metadata
+						}
+					}
+				}
+
+			case models.Coords:
+				point := val.(models.Location)
+
+				if metadata := p.enricher.EnrichCoordinates(point.X(), point.Y()); metadata != nil {
+					out[fmt.Sprintf("%s.metadata", field.Name)] = map[string]string{
+						"country": metadata.CountryCode2,
+					}
+				}
+			}
 		}
 	}
 
@@ -128,6 +163,7 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 type parserOpts struct {
 	allowPatch            bool
 	disallowUnknownFields bool
+	enricher              PayloadEnrichementUsecase
 }
 
 type ParserOpt func(*parserOpts)
@@ -147,6 +183,12 @@ func WithAllowedPatch(allowed bool) ParserOpt {
 func DisallowUnknownFields() ParserOpt {
 	return func(o *parserOpts) {
 		o.disallowUnknownFields = true
+	}
+}
+
+func WithEnricher(uc PayloadEnrichementUsecase) ParserOpt {
+	return func(o *parserOpts) {
+		o.enricher = uc
 	}
 }
 
@@ -190,6 +232,31 @@ func NewParser(opts ...ParserOpt) *Parser {
 			}
 			return result.Bool(), nil
 		},
+		models.IpAddress: func(result gjson.Result) (any, error) {
+			if result.Type != gjson.String {
+				return nil, errIsInvalidString
+			}
+			ip := net.ParseIP(result.String())
+			if ip == nil {
+				return nil, fmt.Errorf("%w: cannot parse IP address", errIsInvalidIpAddress)
+			}
+			return ip, nil
+		},
+		models.Coords: func(result gjson.Result) (any, error) {
+			if result.Type != gjson.String {
+				return nil, errIsInvalidString
+			}
+			latS, lngS, ok := strings.Cut(result.String(), ",")
+			if !ok {
+				return nil, errIsInvalidCoords
+			}
+			lat, errLat := strconv.ParseFloat(latS, 64)
+			lng, errLng := strconv.ParseFloat(lngS, 64)
+			if errLat != nil || errLng != nil {
+				return nil, errIsInvalidCoords
+			}
+			return models.Location{Geom: geos.NewPoint([]float64{lng, lat}).SetSRID(4326)}, nil
+		},
 	}
 
 	options := parserOpts{}
@@ -201,5 +268,6 @@ func NewParser(opts ...ParserOpt) *Parser {
 		parsers:               parsers,
 		allowPatch:            options.allowPatch,
 		disallowUnknownFields: options.disallowUnknownFields,
+		enricher:              options.enricher,
 	}
 }

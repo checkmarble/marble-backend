@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -19,6 +20,8 @@ const (
 	Float
 	String
 	Timestamp
+	IpAddress
+	Coords
 )
 
 func (d DataType) String() string {
@@ -33,6 +36,10 @@ func (d DataType) String() string {
 		return "String"
 	case Timestamp:
 		return "Timestamp"
+	case IpAddress:
+		return "IpAddress"
+	case Coords:
+		return "Coords"
 	}
 	return "unknown"
 }
@@ -49,6 +56,10 @@ func DataTypeFrom(s string) DataType {
 		return String
 	case "Timestamp":
 		return Timestamp
+	case "IpAddress":
+		return IpAddress
+	case "Coords":
+		return Coords
 	}
 	return UnknownDataType
 }
@@ -207,11 +218,14 @@ type TableMetadata struct {
 }
 
 func ColumnNames(table Table) []string {
-	columnNames := make([]string, len(table.Fields))
-	i := 0
+	columnNames := make([]string, 0)
 	for fieldName := range table.Fields {
-		columnNames[i] = fieldName
-		i++
+		columnNames = append(columnNames, fieldName)
+
+		switch table.Fields[fieldName].DataType {
+		case IpAddress, Coords:
+			columnNames = append(columnNames, fmt.Sprintf("%s.metadata", fieldName))
+		}
 	}
 	slices.Sort(columnNames)
 	return columnNames

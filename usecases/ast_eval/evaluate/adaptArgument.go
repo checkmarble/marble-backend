@@ -2,6 +2,8 @@ package evaluate
 
 import (
 	"fmt"
+	"net"
+	"net/netip"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -77,6 +79,23 @@ func adaptArgumentToTime(argument any) (time.Time, error) {
 	}
 	return time.Time{}, errors.Wrap(ast.ErrArgumentMustBeTime,
 		fmt.Sprintf("can't promote argument %v to time", argument))
+}
+
+func adaptArgumentToIp(argument any) (netip.Addr, error) {
+	if err := argumentNotNil(argument); err != nil {
+		return netip.Addr{}, err
+	}
+
+	ipBytes, ok := argument.(net.IP)
+	if !ok {
+		return netip.Addr{}, fmt.Errorf("can't promote argument to IP address")
+	}
+	ip, ok := netip.AddrFromSlice(ipBytes)
+	if !ok {
+		return netip.Addr{}, fmt.Errorf("can't promote argument to IP address")
+	}
+
+	return ip.Unmap(), nil
 }
 
 func adaptArgumentToDuration(argument any) (time.Duration, error) {
