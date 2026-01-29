@@ -8,7 +8,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 )
 
@@ -122,27 +121,27 @@ func (usecase *ObjectRiskTopicUsecase) GetObjectRiskTopicById(
 func (usecase *ObjectRiskTopicUsecase) UpsertObjectRiskTopic(
 	ctx context.Context,
 	input models.ObjectRiskTopicWithEventUpsert,
-) error {
+) (models.ObjectRiskTopic, error) {
 	if err := usecase.enforceSecurity.WriteObjectRiskTopic(input.OrgId); err != nil {
-		return err
+		return models.ObjectRiskTopic{}, err
 	}
 
 	execDbClient, err := usecase.executorFactory.NewClientDbExecutor(ctx, input.OrgId)
 	if err != nil {
-		return err
+		return models.ObjectRiskTopic{}, err
 	}
 	exec := usecase.executorFactory.NewExecutor()
 
 	// Fetch datamodel for querying ingested object
 	dataModel, err := usecase.repository.GetDataModel(ctx, exec, input.OrgId, false, true)
 	if err != nil {
-		return err
+		return models.ObjectRiskTopic{}, err
 	}
 
 	// Check if the object type exists in the data model
 	table, ok := dataModel.Tables[input.ObjectType]
 	if !ok {
-		return errors.Wrapf(models.BadParameterError,
+		return models.ObjectRiskTopic{}, errors.Wrapf(models.BadParameterError,
 			"table %s not found in data model", input.ObjectType)
 	}
 
@@ -154,12 +153,42 @@ func (usecase *ObjectRiskTopicUsecase) UpsertObjectRiskTopic(
 		input.ObjectId,
 	)
 	if err != nil {
-		return errors.Wrap(err, "failed to fetch ingested object, can not create risk topic for non-existent object")
+		return models.ObjectRiskTopic{}, errors.Wrap(err,
+			"failed to fetch ingested object, can not create risk topic for non-existent object")
 	}
 
-	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return usecase.appendObjectRiskTopicsInternal(ctx, tx, input)
-	})
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
+		func(tx repositories.Transaction) (models.ObjectRiskTopic, error) {
+			// Manual upsert: override existing topics (not append)
+			ort, err := usecase.repository.UpsertObjectRiskTopic(ctx, tx,
+				models.ObjectRiskTopicCreate{
+					OrgId:      input.OrgId,
+					ObjectType: input.ObjectType,
+					ObjectId:   input.ObjectId,
+					Topics:     input.Topics,
+				},
+			)
+			if err != nil {
+				return models.ObjectRiskTopic{}, err
+			}
+
+			// Record event with the topics that were set
+			err = usecase.repository.InsertObjectRiskTopicEvent(ctx, tx,
+				models.ObjectRiskTopicEventCreate{
+					OrgId:              input.OrgId,
+					ObjectRiskTopicsId: ort.Id,
+					Topics:             input.Topics,
+					SourceType:         input.SourceType,
+					SourceDetails:      input.SourceDetails,
+					UserId:             &input.UserId,
+				},
+			)
+			if err != nil {
+				return models.ObjectRiskTopic{}, err
+			}
+
+			return ort, nil
+		})
 }
 
 // AppendObjectRiskTopics adds new topics to an object within an existing transaction.
@@ -169,20 +198,15 @@ func (usecase *ObjectRiskTopicUsecase) AppendObjectRiskTopics(
 	exec repositories.Executor,
 	input models.ObjectRiskTopicWithEventUpsert,
 ) error {
-	return usecase.appendObjectRiskTopicsInternal(ctx, exec, input)
-}
-
-// appendObjectRiskTopicsInternal is the shared logic for appending topics.
-// It checks existing topics and only adds new ones.
-func (usecase *ObjectRiskTopicUsecase) appendObjectRiskTopicsInternal(
-	ctx context.Context,
-	exec repositories.Executor,
-	input models.ObjectRiskTopicWithEventUpsert,
-) error {
 	// Get existing topics (if any)
 	existing, err := usecase.repository.GetObjectRiskTopicByObjectId(
-		ctx, exec, input.OrgId, input.ObjectType, input.ObjectId)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		ctx,
+		exec,
+		input.OrgId,
+		input.ObjectType,
+		input.ObjectId,
+	)
+	if err != nil && !errors.Is(err, models.NotFoundError) {
 		return err
 	}
 

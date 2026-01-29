@@ -113,12 +113,12 @@ func handleUpsertObjectRiskTopic(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewObjectRiskTopicUsecase()
-		err = usecase.UpsertObjectRiskTopic(ctx, upsertInput)
+		objectRiskTopic, err := usecase.UpsertObjectRiskTopic(ctx, upsertInput)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.Status(http.StatusNoContent)
+		c.JSON(http.StatusOK, dto.AdaptObjectRiskTopicDto(objectRiskTopic))
 	}
 }
 
