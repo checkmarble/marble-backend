@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -327,7 +328,7 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 			ObjectType:       job.Args.ObjectType,
 			ObjectId:         monitoredObject.ObjectId,
 			ObjectInternalId: &newObjectInternalId,
-			EntityId:         marbleEntityIdBuilder(job.Args.ObjectType, monitoredObject.ObjectId),
+			EntityId:         pure_utils.MarbleEntityIdBuilder(job.Args.ObjectType, monitoredObject.ObjectId),
 			Operation:        models.DeltaTrackOperationUpdate,
 		})
 		if err != nil {
