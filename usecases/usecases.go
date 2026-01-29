@@ -384,6 +384,7 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 			ExecutorFactory:    usecases.NewExecutorFactory(),
 			Repository:         usecases.Repositories.MarbleDbRepository,
 			IngestedDataReader: usecases.Repositories.IngestedDataReadRepository,
+			ReturnFakeValue:    params.DatabaseAccessReturnFakeValue,
 		},
 	)
 	return environment
