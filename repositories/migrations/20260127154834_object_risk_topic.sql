@@ -21,7 +21,6 @@ CREATE TABLE object_risk_topic_events (
     source_type TEXT NOT NULL CONSTRAINT object_risk_topic_events_source_type_check CHECK (source_type IN ('continuous_screening_match_review', 'manual')),
     source_details JSONB,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    api_key_id UUID REFERENCES api_keys(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 

@@ -78,14 +78,17 @@ type ObjectRiskTopicEventDto struct {
 	SourceType    string          `json:"source_type"`
 	SourceDetails json.RawMessage `json:"source_details,omitempty"`
 	UserId        *uuid.UUID      `json:"user_id,omitempty"`
-	ApiKeyId      *uuid.UUID      `json:"api_key_id,omitempty"`
 	CreatedAt     time.Time       `json:"created_at"`
 }
 
-func AdaptObjectRiskTopicEventDto(m models.ObjectRiskTopicEvent) ObjectRiskTopicEventDto {
+func AdaptObjectRiskTopicEventDto(m models.ObjectRiskTopicEvent) (ObjectRiskTopicEventDto, error) {
 	var sourceDetails json.RawMessage
 	if m.SourceDetails != nil {
-		sourceDetails, _ = m.SourceDetails.ToJSON()
+		var err error
+		sourceDetails, err = m.SourceDetails.ToJSON()
+		if err != nil {
+			return ObjectRiskTopicEventDto{}, errors.Wrap(err, "failed to serialize source details")
+		}
 	}
 
 	return ObjectRiskTopicEventDto{
@@ -95,9 +98,8 @@ func AdaptObjectRiskTopicEventDto(m models.ObjectRiskTopicEvent) ObjectRiskTopic
 		SourceType:    m.SourceType.String(),
 		SourceDetails: sourceDetails,
 		UserId:        m.UserId,
-		ApiKeyId:      m.ApiKeyId,
 		CreatedAt:     m.CreatedAt,
-	}
+	}, nil
 }
 
 func (d ObjectRiskTopicFilterDto) Adapt(orgId uuid.UUID) (models.ObjectRiskTopicFilter, error) {

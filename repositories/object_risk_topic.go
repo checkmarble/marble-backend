@@ -176,7 +176,6 @@ func (repo *MarbleDbRepository) InsertObjectRiskTopicEvent(
 			"source_type",
 			"source_details",
 			"user_id",
-			"api_key_id",
 		).
 		Values(
 			uuid.Must(uuid.NewV7()),
@@ -186,7 +185,6 @@ func (repo *MarbleDbRepository) InsertObjectRiskTopicEvent(
 			event.SourceType.String(),
 			sourceDetailsJSON,
 			event.UserId,
-			event.ApiKeyId,
 		)
 
 	sql, args, err := query.ToSql()

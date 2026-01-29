@@ -208,7 +208,7 @@ type featureAccessReader interface {
 type objectRiskTopicWriter interface {
 	AppendObjectRiskTopics(
 		ctx context.Context,
-		exec repositories.Executor,
+		tx repositories.Transaction,
 		input models.ObjectRiskTopicWithEventUpsert,
 	) error
 }

@@ -129,7 +129,6 @@ type ObjectRiskTopicEvent struct {
 	SourceType         RiskTopicSourceType
 	SourceDetails      SourceDetails
 	UserId             *uuid.UUID
-	ApiKeyId           *uuid.UUID
 	CreatedAt          time.Time
 }
 
@@ -140,7 +139,6 @@ type ObjectRiskTopicEventCreate struct {
 	SourceType         RiskTopicSourceType
 	SourceDetails      SourceDetails
 	UserId             *uuid.UUID
-	ApiKeyId           *uuid.UUID
 }
 
 type ObjectRiskTopicWithEventUpsert struct {

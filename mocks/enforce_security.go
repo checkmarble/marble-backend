@@ -269,3 +269,13 @@ func (e *EnforceSecurity) PerformFreeformSearch(ctx context.Context) error {
 	args := e.Called(ctx)
 	return args.Error(0)
 }
+
+func (e *EnforceSecurity) ReadObjectRiskTopic(objectRiskTopic models.ObjectRiskTopic) error {
+	args := e.Called(objectRiskTopic)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) WriteObjectRiskTopic(orgId uuid.UUID) error {
+	args := e.Called(orgId)
+	return args.Error(0)
+}

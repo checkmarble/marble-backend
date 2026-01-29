@@ -17,7 +17,6 @@ type DBObjectRiskTopicEvent struct {
 	SourceType         string          `db:"source_type"`
 	SourceDetails      json.RawMessage `db:"source_details"`
 	UserId             *uuid.UUID      `db:"user_id"`
-	ApiKeyId           *uuid.UUID      `db:"api_key_id"`
 	CreatedAt          time.Time       `db:"created_at"`
 }
 
@@ -45,7 +44,6 @@ func AdaptObjectRiskTopicEvent(db DBObjectRiskTopicEvent) (models.ObjectRiskTopi
 		SourceType:         sourceType,
 		SourceDetails:      sourceDetails,
 		UserId:             db.UserId,
-		ApiKeyId:           db.ApiKeyId,
 		CreatedAt:          db.CreatedAt,
 	}
 	return event, nil

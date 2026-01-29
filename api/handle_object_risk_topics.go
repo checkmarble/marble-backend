@@ -138,6 +138,15 @@ func handleListObjectRiskTopicEvents(uc usecases.Usecases) func(c *gin.Context) 
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(events, dto.AdaptObjectRiskTopicEventDto))
+		eventDtos := make([]dto.ObjectRiskTopicEventDto, 0, len(events))
+		for _, event := range events {
+			eventDto, err := dto.AdaptObjectRiskTopicEventDto(event)
+			if presentError(ctx, c, err) {
+				return
+			}
+			eventDtos = append(eventDtos, eventDto)
+		}
+
+		c.JSON(http.StatusOK, eventDtos)
 	}
 }

@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -157,6 +158,9 @@ func (usecase *ObjectRiskTopicUsecase) UpsertObjectRiskTopic(
 			"failed to fetch ingested object, can not create risk topic for non-existent object")
 	}
 
+	// Sort topics for deterministic ordering
+	slices.Sort(input.Topics)
+
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.ObjectRiskTopic, error) {
 			// Manual upsert: override existing topics (not append)
@@ -195,13 +199,13 @@ func (usecase *ObjectRiskTopicUsecase) UpsertObjectRiskTopic(
 // For internal use by other usecases. Skips ingested object validation.
 func (usecase *ObjectRiskTopicUsecase) AppendObjectRiskTopics(
 	ctx context.Context,
-	exec repositories.Executor,
+	tx repositories.Transaction,
 	input models.ObjectRiskTopicWithEventUpsert,
 ) error {
 	// Get existing topics (if any)
 	existing, err := usecase.repository.GetObjectRiskTopicByObjectId(
 		ctx,
-		exec,
+		tx,
 		input.OrgId,
 		input.ObjectType,
 		input.ObjectId,
@@ -230,14 +234,18 @@ func (usecase *ObjectRiskTopicUsecase) AppendObjectRiskTopics(
 		return nil
 	}
 
-	// Build merged topic list
+	// Build merged topic list and sort for deterministic ordering
 	mergedTopics := make([]models.RiskTopic, 0, len(topicSet))
 	for t := range topicSet {
 		mergedTopics = append(mergedTopics, t)
 	}
+	slices.Sort(mergedTopics)
+	slices.Sort(newTopics)
 
 	// Upsert with merged topics
-	ort, err := usecase.repository.UpsertObjectRiskTopic(ctx, exec,
+	ort, err := usecase.repository.UpsertObjectRiskTopic(
+		ctx,
+		tx,
 		models.ObjectRiskTopicCreate{
 			OrgId:      input.OrgId,
 			ObjectType: input.ObjectType,
@@ -250,7 +258,9 @@ func (usecase *ObjectRiskTopicUsecase) AppendObjectRiskTopics(
 	}
 
 	// Record event with only the NEW topics that were added
-	return usecase.repository.InsertObjectRiskTopicEvent(ctx, exec,
+	return usecase.repository.InsertObjectRiskTopicEvent(
+		ctx,
+		tx,
 		models.ObjectRiskTopicEventCreate{
 			OrgId:              input.OrgId,
 			ObjectRiskTopicsId: ort.Id,
