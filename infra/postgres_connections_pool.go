@@ -11,6 +11,8 @@ import (
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/twpayne/go-geos"
+	pgxgeos "github.com/twpayne/pgx-geos"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -59,6 +61,13 @@ func NewPostgresConnectionPool(
 
 	cfg.ConnConfig.RuntimeParams = map[string]string{
 		"application_name": appName,
+	}
+
+	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		if err := pgxgeos.Register(ctx, conn, geos.NewContext()); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)

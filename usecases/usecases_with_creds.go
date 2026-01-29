@@ -167,6 +167,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		openSanctionsRepository:   usecases.Repositories.OpenSanctionsRepository,
 		taskQueueRepository:       usecases.Repositories.TaskQueueRepository,
 		offloadedReader:           usecases.NewOffloadedReader(),
+		payloadEnricher:           usecases.NewPayloadEnrichmentUsecase(),
 	}
 }
 
@@ -375,6 +376,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		blobRepository:                      usecases.Repositories.BlobRepository,
 		dataModelRepository:                 usecases.Repositories.MarbleDbRepository,
 		uploadLogRepository:                 usecases.Repositories.UploadLogRepository,
+		payloadEnricher:                     usecases.Usecases.NewPayloadEnrichmentUsecase(),
 		ingestionBucketUrl:                  usecases.ingestionBucketUrl,
 		continuousScreeningRepository:       usecases.Repositories.MarbleDbRepository,
 		continuousScreeningClientRepository: &usecases.Repositories.ClientDbRepository,
