@@ -88,4 +88,16 @@ func TestParseCreateIndexStatement(t *testing.T) {
 			idx,
 		)
 	})
+
+	t.Run("Object search index", func(t *testing.T) {
+		asserts := assert.New(t)
+		idx := parseCreateIndexStatement(`CREATE INDEX obj_hello ON Transaction (name gin_trgm_ops)`)
+		fmt.Println(idx)
+		asserts.Equal(
+			models.ConcreteIndex{
+				Indexed: []string{"name"},
+			},
+			idx,
+		)
+	})
 }

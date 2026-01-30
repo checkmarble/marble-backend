@@ -17,3 +17,8 @@ func AdaptPaginationAndSorting(input PaginationAndSorting) models.PaginationAndS
 		Limit:    input.Limit,
 	}
 }
+
+type Paginated[T any] struct {
+	Items       []T  `json:"items"`
+	HasNextPage bool `json:"has_next_page"`
+}

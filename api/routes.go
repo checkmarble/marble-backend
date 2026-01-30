@@ -140,6 +140,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/client_data/:object_type/:object_id/annotations/file", tom, handleCreateEntityFileAnnotation(uc))
 	router.POST("/client_data/:object_type/list", tom, handleReadClientDataAsList(uc))
 
+	router.GET("/client360/tables", tom, handleClient360ListTables(uc))
+	router.POST("/client360/search", tom, handleClient360SearchObjects(uc))
+
 	router.GET("/annotations/file/:annotationId/:partId", tom, handleGetEntityFileAnnotation(uc))
 	router.DELETE("/annotations/:annotationId", tom, handleDeleteEntityAnnotation(uc))
 
