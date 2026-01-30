@@ -312,3 +312,10 @@ func ExtractRiskTopicsFromEntityPayload(payload []byte) ([]RiskTopic, error) {
 
 	return MapOpenSanctionsTagsToRiskTopics(entityTopics), nil
 }
+
+type ObjectRiskTopicsMetadataFilter struct {
+	OrgId      uuid.UUID
+	ObjectType string
+	ObjectIds  []string
+	Topics     []RiskTopic
+}

@@ -12,13 +12,30 @@ import (
 	"github.com/google/uuid"
 )
 
+const linkedTableCheckBatchSize = 1000
+
 type MonitoringListCheckRepository interface {
-	ListObjectRiskTopics(
+	FindObjectRiskTopicsMetadata(
 		ctx context.Context,
 		exec repositories.Executor,
-		filter models.ObjectRiskTopicFilter,
-		paginationAndSorting models.PaginationAndSorting,
-	) ([]models.ObjectRiskTopic, error)
+		filter models.ObjectRiskTopicsMetadataFilter,
+	) ([]models.ObjectMetadata, error)
+	ListPivots(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId uuid.UUID,
+		tableId *string,
+		useCache bool,
+	) ([]models.PivotMetadata, error)
+}
+
+// ClientDbRepository provides access to client database operations for building navigation options during dry run.
+type ClientDbRepository interface {
+	ListAllIndexes(
+		ctx context.Context,
+		exec repositories.Executor,
+		indexTypes ...models.IndexType,
+	) ([]models.ConcreteIndex, error)
 }
 
 type MonitoringListCheck struct {
@@ -29,6 +46,7 @@ type MonitoringListCheck struct {
 	DataModel          models.DataModel
 	Repository         MonitoringListCheckRepository
 	IngestedDataReader repositories.IngestedDataReadRepository
+	ClientDbRepository ClientDbRepository // For dry run navigation option validation
 	ReturnFakeValue    bool
 }
 
@@ -57,7 +75,36 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 		return true, nil
 	}
 
-	// Step 2: if Step 1 found anything, then use the LinkedTableChecks checks
+	// Step 2: check LinkedTableChecks for risk topics
+	// Process LinkToSingle checks first (simpler - single object lookup)
+	for _, linkedCheck := range config.LinkedTableChecks {
+		if linkedCheck.LinkToSingleName == nil {
+			continue
+		}
+		hasRiskTopic, err := mlc.checkLinkedTableViaLinkToSingle(ctx, config, linkedCheck)
+		if err != nil {
+			return MakeEvaluateError(errors.Wrapf(err,
+				"failed to check linked table %s", linkedCheck.TableName))
+		}
+		if hasRiskTopic {
+			return true, nil
+		}
+	}
+
+	// Then process NavigationOption checks (more complex - batch pagination)
+	for _, linkedCheck := range config.LinkedTableChecks {
+		if linkedCheck.NavigationOption == nil {
+			continue
+		}
+		hasRiskTopic, err := mlc.checkLinkedTableViaNavigation(ctx, config, linkedCheck)
+		if err != nil {
+			return MakeEvaluateError(errors.Wrapf(err,
+				"failed to check linked table %s", linkedCheck.TableName))
+		}
+		if hasRiskTopic {
+			return true, nil
+		}
+	}
 
 	return false, nil
 }
@@ -78,45 +125,12 @@ func (mlc MonitoringListCheck) checkTargetObjectHasRiskTopic(
 	}
 
 	// For dry run, return true to indicate a potential match exists
+	// Return false to not early return and check step 2
 	if mlc.ReturnFakeValue {
-		return true, nil
+		return false, nil
 	}
 
-	// Build the filter for querying object_risk_topics
-	filter := models.ObjectRiskTopicFilter{
-		OrgId:      mlc.OrgId,
-		ObjectType: &config.TargetTableName,
-		ObjectIds:  []string{objectId},
-	}
-
-	// If topic filters are provided, filter by those topics
-	// Otherwise, check for any topic (HasAnyTopic: true)
-	if len(config.TopicFilters) > 0 {
-		topics := make([]models.RiskTopic, 0, len(config.TopicFilters))
-		for _, t := range config.TopicFilters {
-			topic := models.RiskTopicFrom(t)
-			if topic != models.RiskTopicUnknown {
-				topics = append(topics, topic)
-			}
-		}
-		filter.Topics = topics
-	} else {
-		filter.HasAnyTopic = true
-	}
-
-	// Query the object_risk_topics table
-	exec := mlc.ExecutorFactory.NewExecutor()
-
-	results, err := mlc.Repository.ListObjectRiskTopics(ctx, exec, filter, models.PaginationAndSorting{
-		Limit:   1,
-		Sorting: models.SortingFieldCreatedAt,
-		Order:   models.SortingOrderDesc,
-	})
-	if err != nil {
-		return false, errors.Wrap(err, "failed to list object risk topics")
-	}
-
-	return len(results) > 0, nil
+	return mlc.checkObjectIdsHaveRiskTopics(ctx, config, config.TargetTableName, []string{objectId})
 }
 
 // getTargetObjectId retrieves the object_id from the target table by navigating through PathToTarget.
@@ -152,13 +166,17 @@ func (mlc MonitoringListCheck) getTargetObjectId(
 		return "", errors.Wrap(err, "failed to create client db executor")
 	}
 
-	fieldValue, err := mlc.IngestedDataReader.GetDbField(ctx, db, models.DbFieldReadParams{
-		TriggerTableName: mlc.ClientObject.TableName,
-		Path:             pathToTarget,
-		FieldName:        "object_id",
-		DataModel:        mlc.DataModel,
-		ClientObject:     mlc.ClientObject,
-	})
+	fieldValue, err := mlc.IngestedDataReader.GetDbField(
+		ctx,
+		db,
+		models.DbFieldReadParams{
+			TriggerTableName: mlc.ClientObject.TableName,
+			Path:             pathToTarget,
+			FieldName:        "object_id",
+			DataModel:        mlc.DataModel,
+			ClientObject:     mlc.ClientObject,
+		},
+	)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get object_id from target table")
 	}
@@ -259,8 +277,267 @@ func (mlc MonitoringListCheck) validateMonitoringListCheckConfig(config ast.Moni
 					errors.Newf("linkedTableChecks[%d].navigationOption.sourceFieldName is required", i),
 				))
 			}
+			if nav.OrderingFieldName == "" {
+				errs = append(errs, errors.Join(
+					ast.ErrArgumentRequired,
+					ast.NewNamedArgumentError(fmt.Sprintf(
+						"linkedTableChecks[%d].navigationOption.orderingFieldName", i)),
+					errors.Newf("linkedTableChecks[%d].navigationOption.orderingFieldName is required", i),
+				))
+			}
 		}
 	}
 
 	return errs
+}
+
+// checkLinkedTableViaLinkToSingle checks a linked table using LinkToSingle (single object).
+func (mlc MonitoringListCheck) checkLinkedTableViaLinkToSingle(
+	ctx context.Context,
+	config ast.MonitoringListCheckConfig,
+	linkedCheck ast.LinkedTableCheck,
+) (bool, error) {
+	// Build path: PathToTarget + LinkToSingleName
+	path := append(config.PathToTarget, *linkedCheck.LinkToSingleName)
+
+	// For dry run, validate the path exists
+	if mlc.ReturnFakeValue {
+		_, err := DryRunGetDbField(mlc.DataModel, mlc.ClientObject.TableName, path, "object_id")
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
+	// Get the object_id from the linked table
+	db, err := mlc.ExecutorFactory.NewClientDbExecutor(ctx, mlc.OrgId)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to create client db executor")
+	}
+
+	fieldValue, err := mlc.IngestedDataReader.GetDbField(ctx, db, models.DbFieldReadParams{
+		TriggerTableName: mlc.ClientObject.TableName,
+		Path:             path,
+		FieldName:        "object_id",
+		DataModel:        mlc.DataModel,
+		ClientObject:     mlc.ClientObject,
+	})
+	if err != nil {
+		return false, errors.Wrap(err, "failed to get object_id from linked table")
+	}
+	if fieldValue == nil {
+		return false, nil
+	}
+
+	objectId, ok := fieldValue.(string)
+	if !ok {
+		return false, errors.New("object_id is not a string")
+	}
+
+	// Check if this object has risk topics
+	return mlc.checkObjectIdsHaveRiskTopics(ctx, config, linkedCheck.TableName, []string{objectId})
+}
+
+// checkLinkedTableViaNavigation checks a linked table using NavigationOption (multiple objects).
+func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
+	ctx context.Context,
+	config ast.MonitoringListCheckConfig,
+	linkedCheck ast.LinkedTableCheck,
+) (bool, error) {
+	nav := linkedCheck.NavigationOption
+
+	// For dry run, build data model with navigation options and validate the navigation exists
+	if mlc.ReturnFakeValue {
+		dataModelWithNav, err := mlc.buildDataModelWithNavigationOptions(ctx)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to build data model with navigation options for dry run")
+		}
+		_, err = DryRunListIngestedObjects(dataModelWithNav, *nav, "object_id")
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
+	// Get the source field value to filter by
+	sourceFieldValue, err := mlc.getSourceFieldValue(ctx, config, *nav)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to get source field value")
+	}
+	if sourceFieldValue == nil {
+		return false, nil
+	}
+
+	sourceFieldValueStr, ok := sourceFieldValue.(string)
+	if !ok {
+		return false, errors.New("source field value is not a string")
+	}
+
+	// Get target table from data model
+	targetTable, ok := mlc.DataModel.Tables[nav.TargetTableName]
+	if !ok {
+		return false, errors.Newf("target table %s not found in data model", nav.TargetTableName)
+	}
+
+	// Create executor for client DB
+	db, err := mlc.ExecutorFactory.NewClientDbExecutor(ctx, mlc.OrgId)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to create client db executor")
+	}
+
+	// Fetch objects in batches using cursor pagination
+	var cursorId *string
+	for {
+		// Request limit+1 to detect if there are more results
+		objects, err := mlc.IngestedDataReader.ListIngestedObjects(
+			ctx,
+			db,
+			targetTable,
+			models.ExplorationOptions{
+				SourceTableName:   nav.SourceTableName,
+				FilterFieldName:   nav.TargetFieldName,
+				FilterFieldValue:  models.NewStringOrNumberFromString(sourceFieldValueStr),
+				OrderingFieldName: nav.OrderingFieldName,
+			},
+			cursorId,
+			linkedTableCheckBatchSize+1,
+			"object_id",
+		)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to list ingested objects")
+		}
+
+		if len(objects) == 0 {
+			break
+		}
+
+		// Check if there are more results beyond this batch
+		hasMore := len(objects) > linkedTableCheckBatchSize
+		if hasMore {
+			objects = objects[:linkedTableCheckBatchSize] // Trim to batch size
+		}
+
+		// Extract object_ids from the batch
+		objectIds := make([]string, 0, len(objects))
+		for _, obj := range objects {
+			if objId, ok := obj.Data["object_id"].(string); ok && objId != "" {
+				objectIds = append(objectIds, objId)
+			}
+		}
+
+		// Check if any of these objects have risk topics
+		if len(objectIds) > 0 {
+			hasRiskTopic, err := mlc.checkObjectIdsHaveRiskTopics(ctx, config, linkedCheck.TableName, objectIds)
+			if err != nil {
+				return false, err
+			}
+			if hasRiskTopic {
+				return true, nil
+			}
+		}
+
+		// If no more results, we're done
+		if !hasMore {
+			break
+		}
+
+		// Set cursor for next batch (use the last object's object_id)
+		lastObjId, ok := objects[len(objects)-1].Data["object_id"].(string)
+		if !ok {
+			break
+		}
+		cursorId = &lastObjId
+	}
+
+	return false, nil
+}
+
+// getSourceFieldValue gets the value of the source field to use for filtering.
+func (mlc MonitoringListCheck) getSourceFieldValue(
+	ctx context.Context,
+	config ast.MonitoringListCheckConfig,
+	nav ast.NavigationOption,
+) (any, error) {
+	// If PathToTarget is empty, source is the trigger table itself
+	if len(config.PathToTarget) == 0 {
+		return mlc.ClientObject.Data[nav.SourceFieldName], nil
+	}
+
+	// Navigate to the source table and get the field value
+	db, err := mlc.ExecutorFactory.NewClientDbExecutor(ctx, mlc.OrgId)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create client db executor")
+	}
+
+	return mlc.IngestedDataReader.GetDbField(ctx, db, models.DbFieldReadParams{
+		TriggerTableName: mlc.ClientObject.TableName,
+		Path:             config.PathToTarget,
+		FieldName:        nav.SourceFieldName,
+		DataModel:        mlc.DataModel,
+		ClientObject:     mlc.ClientObject,
+	})
+}
+
+// checkObjectIdsHaveRiskTopics checks if any of the given object_ids have matching risk topics.
+func (mlc MonitoringListCheck) checkObjectIdsHaveRiskTopics(
+	ctx context.Context,
+	config ast.MonitoringListCheckConfig,
+	objectType string,
+	objectIds []string,
+) (bool, error) {
+	filter := models.ObjectRiskTopicsMetadataFilter{
+		OrgId:      mlc.OrgId,
+		ObjectType: objectType,
+		ObjectIds:  objectIds,
+	}
+
+	topics := make([]models.RiskTopic, 0, len(config.TopicFilters))
+	for _, t := range config.TopicFilters {
+		topic := models.RiskTopicFrom(t)
+		if topic != models.RiskTopicUnknown {
+			topics = append(topics, topic)
+		}
+	}
+	filter.Topics = topics
+
+	exec := mlc.ExecutorFactory.NewExecutor()
+	results, err := mlc.Repository.FindObjectRiskTopicsMetadata(ctx, exec, filter)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to list object risk topics")
+	}
+
+	return len(results) > 0, nil
+}
+
+// buildDataModelWithNavigationOptions builds a data model with navigation options for dry run validation.
+// This fetches pivots and indexes to compute navigation options, similar to DataModelUsecase.GetDataModel
+// with IncludeNavigationOptions: true.
+func (mlc MonitoringListCheck) buildDataModelWithNavigationOptions(ctx context.Context) (models.DataModel, error) {
+	exec := mlc.ExecutorFactory.NewExecutor()
+
+	// Fetch pivots
+	pivotsMeta, err := mlc.Repository.ListPivots(ctx, exec, mlc.OrgId, nil, true)
+	if err != nil {
+		return models.DataModel{}, errors.Wrap(err, "failed to list pivots")
+	}
+
+	// Enrich pivots with data model
+	pivots := make([]models.Pivot, len(pivotsMeta))
+	for i, pivot := range pivotsMeta {
+		pivots[i] = pivot.Enrich(mlc.DataModel)
+	}
+
+	// Fetch indexes from client db
+	clientDb, err := mlc.ExecutorFactory.NewClientDbExecutor(ctx, mlc.OrgId)
+	if err != nil {
+		return models.DataModel{}, errors.Wrap(err, "failed to create client db executor")
+	}
+
+	indexes, err := mlc.ClientDbRepository.ListAllIndexes(ctx, clientDb, models.IndexTypeNavigation)
+	if err != nil {
+		return models.DataModel{}, errors.Wrap(err, "failed to list indexes")
+	}
+
+	// Add navigation options to data model
+	return mlc.DataModel.AddNavigationOptionsToDataModel(indexes, pivots), nil
 }

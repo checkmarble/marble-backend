@@ -37,10 +37,11 @@ func TestValidateMonitoringListCheckConfig(t *testing.T) {
 					{
 						TableName: "accounts",
 						NavigationOption: &ast.NavigationOption{
-							SourceTableName: "source",
-							SourceFieldName: "source_id",
-							TargetTableName: "target",
-							TargetFieldName: "target_id",
+							SourceTableName:   "source",
+							SourceFieldName:   "source_id",
+							TargetTableName:   "target",
+							TargetFieldName:   "target_id",
+							OrderingFieldName: "updated_at",
 						},
 					},
 				},
@@ -61,24 +62,26 @@ func TestValidateMonitoringListCheckConfig(t *testing.T) {
 						TableName:        "accounts",
 						LinkToSingleName: utils.Ptr("account_id"),
 						NavigationOption: &ast.NavigationOption{ // both present
-							SourceTableName: "source",
-							SourceFieldName: "source_id",
-							TargetTableName: "target",
-							TargetFieldName: "target_id",
+							SourceTableName:   "source",
+							SourceFieldName:   "source_id",
+							TargetTableName:   "target",
+							TargetFieldName:   "target_id",
+							OrderingFieldName: "updated_at",
 						},
 					},
 					{
 						TableName: "accounts",
 						NavigationOption: &ast.NavigationOption{ // missing all fields
-							SourceTableName: "",
-							SourceFieldName: "",
-							TargetTableName: "",
-							TargetFieldName: "",
+							SourceTableName:   "",
+							SourceFieldName:   "",
+							TargetTableName:   "",
+							TargetFieldName:   "",
+							OrderingFieldName: "",
 						},
 					},
 				},
 			},
-			expectedErrorLen: 8,
+			expectedErrorLen: 9,
 			expectedErrors: []error{
 				ast.ErrArgumentRequired,    // targetTableName
 				ast.ErrArgumentRequired,    // linkedTableChecks[0].tableName
@@ -88,6 +91,7 @@ func TestValidateMonitoringListCheckConfig(t *testing.T) {
 				ast.ErrArgumentRequired,    // linkedTableChecks[2].navigationOption.targetFieldName
 				ast.ErrArgumentRequired,    // linkedTableChecks[2].navigationOption.sourceTableName
 				ast.ErrArgumentRequired,    // linkedTableChecks[2].navigationOption.sourceFieldName
+				ast.ErrArgumentRequired,    // linkedTableChecks[2].navigationOption.orderingFieldName
 			},
 		},
 	}

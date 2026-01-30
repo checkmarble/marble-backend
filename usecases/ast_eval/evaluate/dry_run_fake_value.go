@@ -65,6 +65,64 @@ func DryRunValue(prefix string, fieldName string, field models.Field) any {
 	}
 }
 
+// DryRunListIngestedObjects validates that a NavigationOption configuration matches
+// an existing navigation option in the data model and returns fake DataModelObjects.
+// Returns the same type as ListIngestedObjects: ([]models.DataModelObject, error)
+func DryRunListIngestedObjects(dataModel models.DataModel, nav ast.NavigationOption, fieldsToRead ...string) ([]models.DataModelObject, error) {
+	// Get the source table (navigation options are stored on the source table)
+	sourceTable, ok := dataModel.Tables[nav.SourceTableName]
+	if !ok {
+		return nil, fmt.Errorf("source table %s not found in data model", nav.SourceTableName)
+	}
+
+	// Check if a matching navigation option exists in the source table
+	found := false
+	for _, existingNav := range sourceTable.NavigationOptions {
+		if existingNav.SourceTableName == nav.SourceTableName &&
+			existingNav.SourceFieldName == nav.SourceFieldName &&
+			existingNav.TargetTableName == nav.TargetTableName &&
+			existingNav.FilterFieldName == nav.TargetFieldName {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return nil, fmt.Errorf("navigation option from %s.%s to %s.%s not found in data model",
+			nav.SourceTableName, nav.SourceFieldName, nav.TargetTableName, nav.TargetFieldName)
+	}
+
+	// Get the target table to validate fields and generate fake values
+	targetTable, ok := dataModel.Tables[nav.TargetTableName]
+	if !ok {
+		return nil, fmt.Errorf("target table %s not found in data model", nav.TargetTableName)
+	}
+
+	// Build fake data for the requested fields
+	fakeData := make(map[string]any)
+	fakeData["object_id"] = "fake_object_id_for_dry_run" // object_id is always included
+
+	for _, fieldName := range fieldsToRead {
+		if fieldName == "object_id" {
+			continue // already added
+		}
+		field, ok := targetTable.Fields[fieldName]
+		if !ok {
+			return nil, fmt.Errorf("field %s not found in table %s", fieldName, nav.TargetTableName)
+		}
+		fullFieldName := fmt.Sprintf("%s.%s", nav.TargetTableName, fieldName)
+		fakeData[fieldName] = DryRunValue("ListIngestedObjects", fullFieldName, field)
+	}
+
+	// Return fake DataModelObjects to simulate navigation results
+	return []models.DataModelObject{
+		{
+			Data:     fakeData,
+			Metadata: map[string]any{},
+		},
+	}, nil
+}
+
 func DryRunQueryAggregatedValue(datamodel models.DataModel, tableName string, fieldName string, aggregator ast.Aggregator) (any, error) {
 	table, ok := datamodel.Tables[tableName]
 	if !ok {
