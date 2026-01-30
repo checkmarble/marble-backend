@@ -145,6 +145,9 @@ func (repo MarbleDbRepository) GetDataModel(
 				Fields:        map[string]models.Field{},
 				LinksToSingle: make(map[string]models.LinkToSingle),
 				FTMEntity:     ftmEntity,
+				Alias:         field.TableAlias,
+				SemanticType:  models.SemanticType(field.TableSemanticType),
+				CaptionField:  field.TableCaptionField,
 			}
 		}
 		dataModel.Tables[field.TableName].Fields[field.FieldName] = models.Field{
@@ -411,6 +414,9 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 			&dbModel.TableName,
 			&dbModel.TableDescription,
 			&dbModel.TableFTMEntity,
+			&dbModel.TableAlias,
+			&dbModel.TableSemanticType,
+			&dbModel.TableCaptionField,
 			&dbModel.FieldID,
 			&dbModel.FieldName,
 			&dbModel.FieldType,

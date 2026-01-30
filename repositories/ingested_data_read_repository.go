@@ -77,6 +77,16 @@ type IngestedDataReadRepository interface {
 		fieldsToRead ...string,
 	) ([]models.DataModelObject, error)
 	GatherFieldStatistics(ctx context.Context, exec Executor, table models.Table, orgId uuid.UUID) ([]models.FieldStatistics, error)
+
+	SearchObjects(
+		ctx context.Context,
+		exec Executor,
+		table models.Table,
+		field string,
+		terms string,
+		pageSize uint64,
+		offset uint64,
+	) ([]models.DataModelObject, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -862,4 +872,69 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 
 	NAVIGATION_FIELD_STATS_CACHE.Add(fieldStatsCacheKey, fieldStats)
 	return fieldStats, nil
+}
+
+func (repo *IngestedDataReadRepositoryImpl) SearchObjects(
+	ctx context.Context,
+	exec Executor,
+	table models.Table,
+	field string,
+	terms string,
+	pageSize uint64,
+	offset uint64,
+) ([]models.DataModelObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	tableName := pgIdentifierWithSchema(exec, table.Name)
+	columnNames := models.ColumnNames(table)
+
+	query := NewQueryBuilder().
+		Select(columnNames...).
+		From(tableName).
+		Where(squirrel.And{
+			squirrel.Eq{"valid_until": "infinity"},
+			squirrel.Or{
+				squirrel.Eq{"object_id": terms},
+				squirrel.Expr(fmt.Sprintf("%s %%> ?", field), terms),
+			},
+		}).
+		OrderByClause(squirrel.Expr(fmt.Sprintf("object_id = ? desc, %s <<-> ? asc", field), terms, terms)).
+		Limit(pageSize).
+		Offset(offset)
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	ingestedObjects := make([]models.DataModelObject, 0)
+
+	for rows.Next() {
+		values, err := rows.Values()
+		if err != nil {
+			return nil, fmt.Errorf("error while fetching rows: %w", err)
+		}
+
+		object := make(map[string]any)
+		for i, columnName := range columnNames {
+			object[columnName] = values[i]
+		}
+
+		ingestedObject := models.DataModelObject{Data: object, Metadata: map[string]any{}}
+		ingestedObjects = append(ingestedObjects, ingestedObject)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error while iterating over rows: %w", err)
+	}
+
+	return ingestedObjects, nil
 }
