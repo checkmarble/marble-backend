@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -52,6 +53,8 @@ type usecase struct {
 	organizationSchemaRepository  repositories.OrganizationSchemaRepository
 	transactionFactory            executor_factory.TransactionFactory
 	dataModelIngestedDataReadRepo dataModelUsecaseIngestedDataReadRepo
+	indexEditor                   indexes.ClientDbIndexEditor
+	taskQueueRepository           repositories.TaskQueueRepository
 }
 
 var (
@@ -188,6 +191,9 @@ func (usecase *usecase) UpdateDataModelTable(
 	tableID string,
 	description *string,
 	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
+	alias pure_utils.Null[string],
+	semanticType pure_utils.Null[models.SemanticType],
+	captionField pure_utils.Null[string],
 ) error {
 	exec := usecase.executorFactory.NewExecutor()
 
@@ -199,7 +205,39 @@ func (usecase *usecase) UpdateDataModelTable(
 		return err
 	}
 
-	return usecase.dataModelRepository.UpdateDataModelTable(ctx, exec, tableID, description, ftmEntity)
+	if captionField.Set && captionField.Valid {
+		dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, table.OrganizationID, false, false)
+		if err != nil {
+			return err
+		}
+
+		if _, ok := dataModel.Tables[table.Name].Fields[captionField.Value()]; !ok {
+			return errors.Wrapf(models.BadParameterError, "field %s not found on table %s", captionField.Value(), table.Name)
+		}
+		if dataModel.Tables[table.Name].Fields[captionField.Value()].DataType != models.String {
+			return errors.Wrap(models.BadParameterError, "a table caption field must be a string field")
+		}
+
+		indexExists, err := usecase.indexEditor.IngestedObjectsSearchIndexExists(ctx, usecase.enforceSecurity.OrgId(), table.Name, captionField.Value())
+		if err != nil {
+			return err
+		}
+		if indexExists {
+			return nil
+		}
+
+		index := models.ConcreteIndex{
+			Type:      models.IndexTypeIngestedObjectsSearch,
+			TableName: table.Name,
+			Indexed:   []string{captionField.Value()},
+		}
+
+		if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx, usecase.enforceSecurity.OrgId(), []models.ConcreteIndex{index}); err != nil {
+			return err
+		}
+	}
+
+	return usecase.dataModelRepository.UpdateDataModelTable(ctx, exec, tableID, description, ftmEntity, alias, semanticType, captionField)
 }
 
 func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {

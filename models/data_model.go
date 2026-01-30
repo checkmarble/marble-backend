@@ -53,6 +53,25 @@ func DataTypeFrom(s string) DataType {
 	return UnknownDataType
 }
 
+type SemanticType string
+
+const (
+	SemanticTypeUnknown SemanticType = "unknown"
+	SemanticPerson      SemanticType = "person"
+	SemanticCompany     SemanticType = "company"
+)
+
+func SemanticTypeFrom(s string) SemanticType {
+	switch s {
+	case "person":
+		return SemanticPerson
+	case "company":
+		return SemanticCompany
+	default:
+		return SemanticTypeUnknown
+	}
+}
+
 ///////////////////////////////
 // Data Model
 ///////////////////////////////
@@ -129,6 +148,9 @@ type Table struct {
 	LinksToSingle     map[string]LinkToSingle
 	NavigationOptions []NavigationOption
 	FTMEntity         *FollowTheMoneyEntity
+	Alias             string
+	SemanticType      SemanticType
+	CaptionField      string
 }
 
 func (t Table) FieldNames() []string {
@@ -179,6 +201,9 @@ type TableMetadata struct {
 	Name           string
 	OrganizationID uuid.UUID
 	FTMEntity      *FollowTheMoneyEntity
+	Alias          string
+	SemanticType   SemanticType
+	CaptionField   string
 }
 
 func ColumnNames(table Table) []string {
