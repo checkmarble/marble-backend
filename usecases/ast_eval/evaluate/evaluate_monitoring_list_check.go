@@ -53,11 +53,13 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err, "failed to check target object risk topics"))
 	}
+	if hasRiskTopic {
+		return true, nil
+	}
 
 	// Step 2: if Step 1 found anything, then use the LinkedTableChecks checks
 
-	hasMatch := hasRiskTopic
-	return hasMatch, nil
+	return false, nil
 }
 
 // checkTargetObjectHasRiskTopic checks if the target object has any matching risk topics.
