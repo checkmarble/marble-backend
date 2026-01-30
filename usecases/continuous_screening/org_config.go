@@ -370,6 +370,9 @@ func (uc *ContinuousScreeningUsecase) applyMappingConfiguration(
 				table.ID,
 				nil,
 				pure_utils.NullFrom(mapping.FtmEntity),
+				pure_utils.NullFromPtr[string](nil),
+				pure_utils.NullFromPtr[models.SemanticType](nil),
+				pure_utils.NullFromPtr[string](nil),
 			)
 			if err != nil {
 				return err

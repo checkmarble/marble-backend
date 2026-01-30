@@ -126,6 +126,9 @@ IndexDeletion:
 		if !strings.HasPrefix(index.Name(), "idx_") {
 			continue
 		}
+		if !strings.HasPrefix(index.Name(), "obj_") {
+			continue
+		}
 		if strings.HasSuffix(index.Name(), "_pkey") {
 			continue
 		}

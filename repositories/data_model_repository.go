@@ -33,6 +33,9 @@ type DataModelRepository interface {
 		tableID string,
 		description *string,
 		ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
+		alias pure_utils.Null[string],
+		semanticType pure_utils.Null[models.SemanticType],
+		captionField pure_utils.Null[string],
 	) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
 	CreateDataModelField(ctx context.Context, exec Executor, organizationId uuid.UUID, fieldId string, field models.CreateFieldInput) error
@@ -212,6 +215,9 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 	tableID string,
 	description *string,
 	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
+	alias pure_utils.Null[string],
+	semanticType pure_utils.Null[models.SemanticType],
+	captionField pure_utils.Null[string],
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -230,6 +236,18 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 	if ftmEntity.Set {
 		updated = true
 		query = query.Set("ftm_entity", ftmEntity.Ptr())
+	}
+	if alias.Set {
+		updated = true
+		query = query.Set("alias", alias.Value())
+	}
+	if semanticType.Set {
+		updated = true
+		query = query.Set("semantic_type", semanticType.Value())
+	}
+	if captionField.Set {
+		updated = true
+		query = query.Set("caption_field", captionField.Value())
 	}
 
 	if !updated {

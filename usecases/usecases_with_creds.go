@@ -357,6 +357,8 @@ func (usecases *UsecasesWithCreds) NewDataModelUseCase() usecase {
 		organizationSchemaRepository:  usecases.Repositories.OrganizationSchemaRepository,
 		transactionFactory:            usecases.NewTransactionFactory(),
 		dataModelIngestedDataReadRepo: usecases.Repositories.IngestedDataReadRepository,
+		indexEditor:                   usecases.NewClientDbIndexEditor(),
+		taskQueueRepository:           usecases.Repositories.TaskQueueRepository,
 	}
 }
 
