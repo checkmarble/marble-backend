@@ -12,6 +12,9 @@ type DbDataModelTable struct {
 	Name           string    `db:"name"`
 	Description    string    `db:"description"`
 	FTMEntity      *string   `db:"ftm_entity"`
+	Alias          string    `db:"alias"`
+	SemanticType   string    `db:"semantic_type"`
+	CaptionField   string    `db:"caption_field"`
 }
 
 const (
@@ -34,6 +37,9 @@ func AdaptTableMetadata(dbDataModelTable DbDataModelTable) (models.TableMetadata
 		Name:           dbDataModelTable.Name,
 		Description:    dbDataModelTable.Description,
 		FTMEntity:      fmtEntity,
+		Alias:          dbDataModelTable.Alias,
+		SemanticType:   models.SemanticType(dbDataModelTable.SemanticType),
+		CaptionField:   dbDataModelTable.CaptionField,
 	}, nil
 }
 

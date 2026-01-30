@@ -28,6 +28,8 @@ type Table struct {
 	Description   string                  `json:"description"`
 	Fields        map[string]Field        `json:"fields"`
 	LinksToSingle map[string]LinkToSingle `json:"links_to_single,omitempty"`
+	Alias         string                  `json:"alias"`
+	SemanticType  string                  `json:"semantic_type"`
 }
 
 type DataModel map[string]Table
@@ -38,6 +40,8 @@ func adaptTableDto(table models.Table) Table {
 		Fields:        pure_utils.MapValues(table.Fields, adaptDataModelField),
 		LinksToSingle: pure_utils.MapValues(table.LinksToSingle, adaptDataModelLink),
 		Description:   table.Description,
+		Alias:         table.Alias,
+		SemanticType:  string(table.SemanticType),
 	}
 }
 

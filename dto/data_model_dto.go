@@ -53,6 +53,9 @@ type Table struct {
 	LinksToSingle     map[string]LinkToSingle `json:"links_to_single,omitempty"`
 	NavigationOptions []NavigationOption      `json:"navigation_options,omitempty"`
 	FTMEntity         *string                 `json:"ftm_entity,omitempty"`
+	Alias             string                  `json:"alias"`
+	SemanticType      models.SemanticType     `json:"semantic_type"`
+	CaptionField      string                  `json:"caption_field"`
 }
 
 type DataModel struct {
@@ -72,6 +75,9 @@ func AdaptTableDto(table models.Table) Table {
 		NavigationOptions: pure_utils.Map(table.NavigationOptions, adaptDataModelNavigationOption),
 		Description:       table.Description,
 		FTMEntity:         ftmEntity,
+		Alias:             table.Alias,
+		SemanticType:      table.SemanticType,
+		CaptionField:      table.CaptionField,
 	}
 }
 
@@ -137,8 +143,11 @@ type CreateTableInput struct {
 }
 
 type UpdateTableInput struct {
-	Description *string                 `json:"description"`
-	FTMEntity   pure_utils.Null[string] `json:"ftm_entity"`
+	Description  *string                 `json:"description"`
+	FTMEntity    pure_utils.Null[string] `json:"ftm_entity"`
+	Alias        pure_utils.Null[string] `json:"alias"`
+	SemanticType pure_utils.Null[string] `json:"semantic_type"`
+	CaptionField pure_utils.Null[string] `json:"caption_field"`
 }
 
 type CreateLinkInput struct {

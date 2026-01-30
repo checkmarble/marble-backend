@@ -3,6 +3,8 @@ package indexes
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -342,4 +344,28 @@ func (editor ClientDbIndexEditor) DeleteUniqueIndex(
 		fmt.Sprintf("Unique index deletion: %+v", index),
 	)
 	return nil
+}
+
+func (editor ClientDbIndexEditor) IngestedObjectsSearchIndexExists(ctx context.Context, orgId uuid.UUID, tableName, fieldName string) (bool, error) {
+	exec, err := editor.executorFactory.NewClientDbExecutor(ctx, editor.enforceSecurity.OrgId())
+	if err != nil {
+		return false, err
+	}
+
+	existingIndexes, err := editor.ingestedDataIndexesRepository.ListAllValidIndexes(ctx, exec, models.IndexTypeIngestedObjectsSearch)
+	if err != nil {
+		return false, err
+	}
+
+	for _, existingIndex := range existingIndexes {
+		if !strings.HasPrefix(existingIndex.Name(), "obj_") {
+			continue
+		}
+
+		if existingIndex.TableName == tableName && slices.Contains(existingIndex.Indexed, fieldName) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
