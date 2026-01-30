@@ -1013,3 +1013,13 @@ func (usecases *UsecasesWithCreds) NewObjectMetadataUsecase() *ObjectMetadataUse
 		usecases.Repositories.IngestedDataReadRepository,
 	)
 }
+
+func (usecases *UsecasesWithCreds) NewClient360Usecase() Client360Usecase {
+	return NewClient360Usecase(
+		usecases.NewEnforceSecurity(),
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.NewClientDbIndexEditor(),
+	)
+}

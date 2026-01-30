@@ -78,3 +78,17 @@ func (m *IngestedDataReader) GatherFieldStatistics(ctx context.Context, exec rep
 	args := m.Called(ctx, exec, table, orgId)
 	return args.Get(0).([]models.FieldStatistics), args.Error(1)
 }
+
+func (m *IngestedDataReader) SearchObjects(
+	ctx context.Context,
+	exec repositories.Executor,
+	table models.Table,
+	field string,
+	terms string,
+	pageSize uint64,
+	offset uint64,
+) ([]models.DataModelObject, error) {
+	args := m.Called(ctx, exec, table, field, terms, pageSize, offset)
+
+	return args.Get(0).([]models.DataModelObject), args.Error(1)
+}

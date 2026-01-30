@@ -222,18 +222,16 @@ func (usecase *usecase) UpdateDataModelTable(
 		if err != nil {
 			return err
 		}
-		if indexExists {
-			return nil
-		}
+		if !indexExists {
+			index := models.ConcreteIndex{
+				Type:      models.IndexTypeIngestedObjectsSearch,
+				TableName: table.Name,
+				Indexed:   []string{captionField.Value()},
+			}
 
-		index := models.ConcreteIndex{
-			Type:      models.IndexTypeIngestedObjectsSearch,
-			TableName: table.Name,
-			Indexed:   []string{captionField.Value()},
-		}
-
-		if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx, usecase.enforceSecurity.OrgId(), []models.ConcreteIndex{index}); err != nil {
-			return err
+			if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx, usecase.enforceSecurity.OrgId(), []models.ConcreteIndex{index}); err != nil {
+				return err
+			}
 		}
 	}
 
