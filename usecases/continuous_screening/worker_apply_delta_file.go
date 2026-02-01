@@ -246,7 +246,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		iteration++
 
 		if !slices.Contains(AllowedRecordOperations, record.Op) {
-			logger.DebugContext(ctx, "Skipping record because op is not allowed", "op", record.Op)
+			logger.DebugContext(ctx, "Skipping record because op is not allowed", "op", record.Op.String())
 			continue
 		}
 		if !slices.Contains(AllowedSchemaTypes, record.Entity.Schema) {
@@ -287,6 +287,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		screening := screeningResponse.AdaptScreeningFromSearchResponse(query)
 
 		// No hit, skip the record
+		// TODO: pascal: is it really right to keep no clearer trace of this ? open question.
 		if screening.Status == models.ScreeningStatusNoHit {
 			continue
 		}

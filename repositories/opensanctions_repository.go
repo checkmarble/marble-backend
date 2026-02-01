@@ -299,7 +299,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 		return models.ScreeningRawSearchResponseWithMatches{}, err
 	}
 
-	utils.LoggerFromContext(ctx).InfoContext(ctx, "sending screening query")
+	utils.LoggerFromContext(ctx).DebugContext(ctx, "sending screening query")
 	startedAt := time.Now()
 
 	resp, err := repo.opensanctions.Client().Do(req)
@@ -331,7 +331,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 	}
 
 	utils.LoggerFromContext(ctx).
-		InfoContext(ctx, "got successful screening response",
+		DebugContext(ctx, "got successful screening response",
 			"duration", time.Since(startedAt).Milliseconds(),
 			"matches", len(screening.Matches),
 			"partial", screening.Partial)
