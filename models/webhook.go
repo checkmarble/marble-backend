@@ -228,6 +228,86 @@ type WebhookUpdate struct {
 	RateLimitDuration *int
 }
 
+// New webhook delivery system models
+
+type WebhookDeliveryStatus string
+
+const (
+	WebhookDeliveryStatusPending WebhookDeliveryStatus = "pending"
+	WebhookDeliveryStatusSuccess WebhookDeliveryStatus = "success"
+	WebhookDeliveryStatusFailed  WebhookDeliveryStatus = "failed"
+)
+
+// NewWebhook represents a webhook endpoint in the new delivery system
+type NewWebhook struct {
+	Id                      uuid.UUID
+	OrganizationId          uuid.UUID
+	Url                     string
+	EventTypes              []string
+	HttpTimeoutSeconds      int
+	RateLimit               *int
+	RateLimitDurationSeconds *int
+	Enabled                 bool
+	Secrets                 []NewWebhookSecret
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+	DeletedAt               *time.Time
+}
+
+// NewWebhookSecret represents a signing secret for webhook signatures
+type NewWebhookSecret struct {
+	Id        uuid.UUID
+	WebhookId uuid.UUID
+	Value     string
+	CreatedAt time.Time
+	ExpiresAt *time.Time
+	RevokedAt *time.Time
+}
+
+// WebhookQueueItem represents an event in the new webhook queue
+type WebhookQueueItem struct {
+	Id             uuid.UUID
+	OrganizationId uuid.UUID
+	EventType      string
+	EventData      []byte // Already serialized JSON payload
+	CreatedAt      time.Time
+}
+
+// WebhookDelivery represents a delivery attempt to a specific endpoint
+type WebhookDelivery struct {
+	Id                 uuid.UUID
+	WebhookEventId     uuid.UUID
+	WebhookId          uuid.UUID
+	Status             WebhookDeliveryStatus
+	Attempts           int
+	NextRetryAt        *time.Time
+	LastError          *string
+	LastResponseStatus *int
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+// NewWebhookCreate is the input for creating a new webhook
+type NewWebhookCreate struct {
+	OrganizationId           uuid.UUID
+	Url                      string
+	EventTypes               []string
+	Secret                   string
+	HttpTimeoutSeconds       *int
+	RateLimit                *int
+	RateLimitDurationSeconds *int
+}
+
+// NewWebhookUpdate is the input for updating a webhook
+type NewWebhookUpdate struct {
+	EventTypes               *[]string
+	Url                      *string
+	HttpTimeoutSeconds       *int
+	RateLimit                *int
+	RateLimitDurationSeconds *int
+	Enabled                  *bool
+}
+
 func (input WebhookUpdate) Validate() error {
 	if input.EventTypes != nil {
 		for _, eventType := range *input.EventTypes {
