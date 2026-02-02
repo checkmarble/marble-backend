@@ -1,14 +1,14 @@
 package models
 
 // RiskTopic represents Marble's risk topic categories.
-type RiskTopic string
+type RiskTopic int
 
 const (
-	RiskTopicUnknown      RiskTopic = "unknown"
-	RiskTopicSanctions    RiskTopic = "sanctions"
-	RiskTopicPEPs         RiskTopic = "peps"
-	RiskTopicAdverseMedia RiskTopic = "adverse-media"
-	RiskTopicThirdParties RiskTopic = "third-parties"
+	RiskTopicUnknown      RiskTopic = iota
+	RiskTopicSanctions    
+	RiskTopicPEPs         
+	RiskTopicAdverseMedia 
+	RiskTopicThirdParties 
 )
 
 // ValidRiskTopics returns all valid Marble risk topics (excluding unknown).
@@ -37,7 +37,18 @@ func RiskTopicFrom(s string) RiskTopic {
 }
 
 func (rt RiskTopic) String() string {
-	return string(rt)
+	switch rt {
+	case RiskTopicSanctions:
+		return "sanctions"
+	case RiskTopicPEPs:
+		return "peps"
+	case RiskTopicAdverseMedia:
+		return "adverse-media"
+	case RiskTopicThirdParties:
+		return "third-parties"
+	default:
+		return "unknown"
+	}
 }
 
 // IsValid returns true if the risk topic is a known valid topic (not unknown).

@@ -14,10 +14,10 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-type ObjectRiskTopicUsecaseTestSuite struct {
+type ObjectMetadataUsecaseTestSuite struct {
 	suite.Suite
 	enforceSecurity    *mocks.EnforceSecurity
-	repository         *mocks.ObjectRiskTopicRepository
+	repository         *mocks.ObjectMetadataRepository
 	ingestedDataReader *mocks.IngestedDataReader
 	exec               *mocks.Executor
 	transaction        *mocks.Transaction
@@ -29,9 +29,9 @@ type ObjectRiskTopicUsecaseTestSuite struct {
 	userId uuid.UUID
 }
 
-func (suite *ObjectRiskTopicUsecaseTestSuite) SetupTest() {
+func (suite *ObjectMetadataUsecaseTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
-	suite.repository = new(mocks.ObjectRiskTopicRepository)
+	suite.repository = new(mocks.ObjectMetadataRepository)
 	suite.ingestedDataReader = new(mocks.IngestedDataReader)
 	suite.exec = new(mocks.Executor)
 	suite.transaction = new(mocks.Transaction)
@@ -43,8 +43,8 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) SetupTest() {
 	suite.userId = uuid.MustParse("abcdefab-1234-1234-1234-123456789012")
 }
 
-func (suite *ObjectRiskTopicUsecaseTestSuite) makeUsecase() *ObjectRiskTopicUsecase {
-	return &ObjectRiskTopicUsecase{
+func (suite *ObjectMetadataUsecaseTestSuite) makeUsecase() *ObjectMetadataUsecase {
+	return &ObjectMetadataUsecase{
 		executorFactory:    suite.executorFactory,
 		transactionFactory: suite.transactionFactory,
 		enforceSecurity:    suite.enforceSecurity,
@@ -53,17 +53,17 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) makeUsecase() *ObjectRiskTopicUsec
 	}
 }
 
-func TestObjectRiskTopicUsecaseTestSuite(t *testing.T) {
-	suite.Run(t, new(ObjectRiskTopicUsecaseTestSuite))
+func TestObjectMetadataUsecaseTestSuite(t *testing.T) {
+	suite.Run(t, new(ObjectMetadataUsecaseTestSuite))
 }
 
 // =============================================================================
 // UpsertObjectRiskTopic Tests
 // =============================================================================
 
-func (suite *ObjectRiskTopicUsecaseTestSuite) TestUpsertObjectRiskTopic_TableNotFound() {
+func (suite *ObjectMetadataUsecaseTestSuite) TestUpsertObjectRiskTopic_TableNotFound() {
 	// Setup
-	input := models.ObjectRiskTopicWithEventUpsert{
+	input := models.ObjectRiskTopicUpsert{
 		OrgId:      suite.orgId,
 		ObjectType: "non_existent_table",
 		ObjectId:   "obj-123",
@@ -79,7 +79,7 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestUpsertObjectRiskTopic_TableNot
 	}
 
 	// Mock expectations
-	suite.enforceSecurity.On("WriteObjectRiskTopic", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("WriteObjectMetadata", suite.orgId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.orgId).Return(suite.exec, nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.repository.On("GetDataModel", suite.ctx, suite.exec, suite.orgId, false, true).Return(dataModel, nil)
@@ -94,9 +94,9 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestUpsertObjectRiskTopic_TableNot
 	suite.Contains(err.Error(), "table non_existent_table not found in data model")
 }
 
-func (suite *ObjectRiskTopicUsecaseTestSuite) TestUpsertObjectRiskTopic_IngestedObjectNotFound() {
+func (suite *ObjectMetadataUsecaseTestSuite) TestUpsertObjectRiskTopic_IngestedObjectNotFound() {
 	// Setup
-	input := models.ObjectRiskTopicWithEventUpsert{
+	input := models.ObjectRiskTopicUpsert{
 		OrgId:      suite.orgId,
 		ObjectType: "users",
 		ObjectId:   "non-existent-user",
@@ -112,7 +112,7 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestUpsertObjectRiskTopic_Ingested
 	}
 
 	// Mock expectations
-	suite.enforceSecurity.On("WriteObjectRiskTopic", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("WriteObjectMetadata", suite.orgId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.orgId).Return(suite.exec, nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.repository.On("GetDataModel", suite.ctx, suite.exec, suite.orgId, false, true).Return(dataModel, nil)
@@ -128,10 +128,10 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestUpsertObjectRiskTopic_Ingested
 	suite.Contains(err.Error(), "failed to fetch ingested object")
 }
 
-func (suite *ObjectRiskTopicUsecaseTestSuite) TestUpsertObjectRiskTopic_HappyPath() {
+func (suite *ObjectMetadataUsecaseTestSuite) TestUpsertObjectRiskTopic_HappyPath() {
 	// Setup
 	objectRiskTopicId := uuid.New()
-	input := models.ObjectRiskTopicWithEventUpsert{
+	input := models.ObjectRiskTopicUpsert{
 		OrgId:         suite.orgId,
 		ObjectType:    "users",
 		ObjectId:      "user-123",
@@ -149,44 +149,33 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestUpsertObjectRiskTopic_HappyPat
 	}
 
 	expectedObjectRiskTopic := models.ObjectRiskTopic{
-		Id:         objectRiskTopicId,
-		OrgId:      suite.orgId,
-		ObjectType: "users",
-		ObjectId:   "user-123",
-		Topics:     []models.RiskTopic{models.RiskTopicSanctions, models.RiskTopicPEPs},
+		ObjectMetadata: models.ObjectMetadata{
+			Id:         objectRiskTopicId,
+			OrgId:      suite.orgId,
+			ObjectType: "users",
+			ObjectId:   "user-123",
+		},
+		Topics: []models.RiskTopic{models.RiskTopicPEPs, models.RiskTopicSanctions},
 	}
 
 	// Mock expectations
-	suite.enforceSecurity.On("WriteObjectRiskTopic", suite.orgId).Return(nil)
+	suite.enforceSecurity.On("WriteObjectMetadata", suite.orgId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.orgId).Return(suite.exec, nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.repository.On("GetDataModel", suite.ctx, suite.exec, suite.orgId, false, true).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, suite.exec, table, "user-123",
 		mock.Anything).Return([]models.DataModelObject{{Data: map[string]any{"id": "user-123"}}}, nil)
-	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 
 	// Expect UpsertObjectRiskTopic to be called with correct data
-	suite.repository.On("UpsertObjectRiskTopic", suite.ctx, suite.transaction,
-		mock.MatchedBy(func(create models.ObjectRiskTopicCreate) bool {
-			return create.OrgId == suite.orgId &&
-				create.ObjectType == "users" &&
-				create.ObjectId == "user-123" &&
-				len(create.Topics) == 2 &&
-				slices.Contains(create.Topics, models.RiskTopicSanctions) &&
-				slices.Contains(create.Topics, models.RiskTopicPEPs)
+	suite.repository.On("UpsertObjectRiskTopic", suite.ctx, suite.exec,
+		mock.MatchedBy(func(upsert models.ObjectRiskTopicUpsert) bool {
+			return upsert.OrgId == suite.orgId &&
+				upsert.ObjectType == "users" &&
+				upsert.ObjectId == "user-123" &&
+				len(upsert.Topics) == 2 &&
+				slices.Contains(upsert.Topics, models.RiskTopicSanctions) &&
+				slices.Contains(upsert.Topics, models.RiskTopicPEPs)
 		})).Return(expectedObjectRiskTopic, nil)
-
-	// Expect InsertObjectRiskTopicEvent to be called with correct data
-	suite.repository.On("InsertObjectRiskTopicEvent", suite.ctx, suite.transaction,
-		mock.MatchedBy(func(event models.ObjectRiskTopicEventCreate) bool {
-			return event.OrgId == suite.orgId &&
-				event.ObjectRiskTopicsId == objectRiskTopicId &&
-				len(event.Topics) == 2 &&
-				slices.Contains(event.Topics, models.RiskTopicSanctions) &&
-				slices.Contains(event.Topics, models.RiskTopicPEPs) &&
-				event.SourceType == models.RiskTopicSourceTypeManual &&
-				event.UserId != nil && *event.UserId == suite.userId
-		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -201,10 +190,10 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestUpsertObjectRiskTopic_HappyPat
 // AppendObjectRiskTopics Tests
 // =============================================================================
 
-func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectNotExists_SavesNewTopics() {
+func (suite *ObjectMetadataUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectNotExists_SavesNewTopics() {
 	// Setup - Object risk topic doesn't exist yet
 	objectRiskTopicId := uuid.New()
-	input := models.ObjectRiskTopicWithEventUpsert{
+	input := models.ObjectRiskTopicUpsert{
 		OrgId:         suite.orgId,
 		ObjectType:    "users",
 		ObjectId:      "user-123",
@@ -215,11 +204,13 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectN
 	}
 
 	expectedObjectRiskTopic := models.ObjectRiskTopic{
-		Id:         objectRiskTopicId,
-		OrgId:      suite.orgId,
-		ObjectType: "users",
-		ObjectId:   "user-123",
-		Topics:     []models.RiskTopic{models.RiskTopicSanctions, models.RiskTopicPEPs},
+		ObjectMetadata: models.ObjectMetadata{
+			Id:         objectRiskTopicId,
+			OrgId:      suite.orgId,
+			ObjectType: "users",
+			ObjectId:   "user-123",
+		},
+		Topics: []models.RiskTopic{models.RiskTopicPEPs, models.RiskTopicSanctions},
 	}
 
 	// Mock expectations - GetObjectRiskTopicByObjectId returns NotFoundError
@@ -228,25 +219,14 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectN
 
 	// Expect UpsertObjectRiskTopic to be called with the new topics
 	suite.repository.On("UpsertObjectRiskTopic", suite.ctx, suite.transaction,
-		mock.MatchedBy(func(create models.ObjectRiskTopicCreate) bool {
-			return create.OrgId == suite.orgId &&
-				create.ObjectType == "users" &&
-				create.ObjectId == "user-123" &&
-				len(create.Topics) == 2 &&
-				slices.Contains(create.Topics, models.RiskTopicSanctions) &&
-				slices.Contains(create.Topics, models.RiskTopicPEPs)
+		mock.MatchedBy(func(upsert models.ObjectRiskTopicUpsert) bool {
+			return upsert.OrgId == suite.orgId &&
+				upsert.ObjectType == "users" &&
+				upsert.ObjectId == "user-123" &&
+				len(upsert.Topics) == 2 &&
+				slices.Contains(upsert.Topics, models.RiskTopicSanctions) &&
+				slices.Contains(upsert.Topics, models.RiskTopicPEPs)
 		})).Return(expectedObjectRiskTopic, nil)
-
-	// Expect InsertObjectRiskTopicEvent to be called with ALL topics as new
-	suite.repository.On("InsertObjectRiskTopicEvent", suite.ctx, suite.transaction,
-		mock.MatchedBy(func(event models.ObjectRiskTopicEventCreate) bool {
-			return event.OrgId == suite.orgId &&
-				event.ObjectRiskTopicsId == objectRiskTopicId &&
-				len(event.Topics) == 2 &&
-				slices.Contains(event.Topics, models.RiskTopicSanctions) &&
-				slices.Contains(event.Topics, models.RiskTopicPEPs) &&
-				event.SourceType == models.RiskTopicSourceTypeContinuousScreeningMatchReview
-		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -257,18 +237,20 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectN
 	suite.repository.AssertExpectations(suite.T())
 }
 
-func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectExists_MergesTopics() {
+func (suite *ObjectMetadataUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectExists_MergesTopics() {
 	// Setup - Object risk topic already exists with some topics
 	objectRiskTopicId := uuid.New()
 	existingObjectRiskTopic := models.ObjectRiskTopic{
-		Id:         objectRiskTopicId,
-		OrgId:      suite.orgId,
-		ObjectType: "users",
-		ObjectId:   "user-123",
-		Topics:     []models.RiskTopic{models.RiskTopicSanctions}, // Existing topic
+		ObjectMetadata: models.ObjectMetadata{
+			Id:         objectRiskTopicId,
+			OrgId:      suite.orgId,
+			ObjectType: "users",
+			ObjectId:   "user-123",
+		},
+		Topics: []models.RiskTopic{models.RiskTopicSanctions}, // Existing topic
 	}
 
-	input := models.ObjectRiskTopicWithEventUpsert{
+	input := models.ObjectRiskTopicUpsert{
 		OrgId:      suite.orgId,
 		ObjectType: "users",
 		ObjectId:   "user-123",
@@ -280,11 +262,13 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectE
 	}
 
 	updatedObjectRiskTopic := models.ObjectRiskTopic{
-		Id:         objectRiskTopicId,
-		OrgId:      suite.orgId,
-		ObjectType: "users",
-		ObjectId:   "user-123",
-		Topics:     []models.RiskTopic{models.RiskTopicSanctions, models.RiskTopicPEPs}, // Merged
+		ObjectMetadata: models.ObjectMetadata{
+			Id:         objectRiskTopicId,
+			OrgId:      suite.orgId,
+			ObjectType: "users",
+			ObjectId:   "user-123",
+		},
+		Topics: []models.RiskTopic{models.RiskTopicPEPs, models.RiskTopicSanctions}, // Merged
 	}
 
 	// Mock expectations - GetObjectRiskTopicByObjectId returns existing record
@@ -293,25 +277,14 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectE
 
 	// Expect UpsertObjectRiskTopic to be called with MERGED topics (Sanctions + PEPs)
 	suite.repository.On("UpsertObjectRiskTopic", suite.ctx, suite.transaction,
-		mock.MatchedBy(func(create models.ObjectRiskTopicCreate) bool {
-			return create.OrgId == suite.orgId &&
-				create.ObjectType == "users" &&
-				create.ObjectId == "user-123" &&
-				len(create.Topics) == 2 &&
-				slices.Contains(create.Topics, models.RiskTopicSanctions) &&
-				slices.Contains(create.Topics, models.RiskTopicPEPs)
+		mock.MatchedBy(func(upsert models.ObjectRiskTopicUpsert) bool {
+			return upsert.OrgId == suite.orgId &&
+				upsert.ObjectType == "users" &&
+				upsert.ObjectId == "user-123" &&
+				len(upsert.Topics) == 2 &&
+				slices.Contains(upsert.Topics, models.RiskTopicSanctions) &&
+				slices.Contains(upsert.Topics, models.RiskTopicPEPs)
 		})).Return(updatedObjectRiskTopic, nil)
-
-	// Expect InsertObjectRiskTopicEvent to be called with ONLY NEW topics (just PEPs)
-	suite.repository.On("InsertObjectRiskTopicEvent", suite.ctx, suite.transaction,
-		mock.MatchedBy(func(event models.ObjectRiskTopicEventCreate) bool {
-			return event.OrgId == suite.orgId &&
-				event.ObjectRiskTopicsId == objectRiskTopicId &&
-				len(event.Topics) == 1 &&
-				slices.Contains(event.Topics, models.RiskTopicPEPs) &&
-				!slices.Contains(event.Topics, models.RiskTopicSanctions) && // Sanctions should NOT be in event
-				event.SourceType == models.RiskTopicSourceTypeContinuousScreeningMatchReview
-		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -322,18 +295,20 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectE
 	suite.repository.AssertExpectations(suite.T())
 }
 
-func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_NoNewTopics_SkipsUpsert() {
+func (suite *ObjectMetadataUsecaseTestSuite) TestAppendObjectRiskTopics_NoNewTopics_SkipsUpsert() {
 	// Setup - Object risk topic already exists with the same topics
 	objectRiskTopicId := uuid.New()
 	existingObjectRiskTopic := models.ObjectRiskTopic{
-		Id:         objectRiskTopicId,
-		OrgId:      suite.orgId,
-		ObjectType: "users",
-		ObjectId:   "user-123",
-		Topics:     []models.RiskTopic{models.RiskTopicSanctions, models.RiskTopicPEPs},
+		ObjectMetadata: models.ObjectMetadata{
+			Id:         objectRiskTopicId,
+			OrgId:      suite.orgId,
+			ObjectType: "users",
+			ObjectId:   "user-123",
+		},
+		Topics: []models.RiskTopic{models.RiskTopicSanctions, models.RiskTopicPEPs},
 	}
 
-	input := models.ObjectRiskTopicWithEventUpsert{
+	input := models.ObjectRiskTopicUpsert{
 		OrgId:      suite.orgId,
 		ObjectType: "users",
 		ObjectId:   "user-123",
@@ -347,8 +322,7 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_NoNewTo
 	suite.repository.On("GetObjectRiskTopicByObjectId", suite.ctx, suite.transaction,
 		suite.orgId, "users", "user-123").Return(existingObjectRiskTopic, nil)
 
-	// UpsertObjectRiskTopic and InsertObjectRiskTopicEvent should NOT be called
-	// because there are no new topics to add
+	// UpsertObjectRiskTopic should NOT be called because there are no new topics to add
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -358,18 +332,20 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_NoNewTo
 	suite.NoError(err)
 }
 
-func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_ConfirmedHit_TopicAlreadyExists_SkipsUpsertAndEvent() {
+func (suite *ObjectMetadataUsecaseTestSuite) TestAppendObjectRiskTopics_ConfirmedHit_TopicAlreadyExists_SkipsUpsert() {
 	// Setup - Object risk topic already exists with the match topic from a previous confirmed hit
 	objectRiskTopicId := uuid.New()
 	existingObjectRiskTopic := models.ObjectRiskTopic{
-		Id:         objectRiskTopicId,
-		OrgId:      suite.orgId,
-		ObjectType: "users",
-		ObjectId:   "user-123",
-		Topics:     []models.RiskTopic{models.RiskTopicSanctions}, // Already has Sanctions from previous confirmed hit
+		ObjectMetadata: models.ObjectMetadata{
+			Id:         objectRiskTopicId,
+			OrgId:      suite.orgId,
+			ObjectType: "users",
+			ObjectId:   "user-123",
+		},
+		Topics: []models.RiskTopic{models.RiskTopicSanctions}, // Already has Sanctions from previous confirmed hit
 	}
 
-	input := models.ObjectRiskTopicWithEventUpsert{
+	input := models.ObjectRiskTopicUpsert{
 		OrgId:      suite.orgId,
 		ObjectType: "users",
 		ObjectId:   "user-123",
@@ -390,5 +366,5 @@ func (suite *ObjectRiskTopicUsecaseTestSuite) TestAppendObjectRiskTopics_Confirm
 	// Assert
 	suite.NoError(err)
 
-	// UpsertObjectRiskTopic and InsertObjectRiskTopicEvent should NOT be called
+	// UpsertObjectRiskTopic should NOT be called
 }

@@ -270,12 +270,12 @@ func (e *EnforceSecurity) PerformFreeformSearch(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) ReadObjectRiskTopic(objectRiskTopic models.ObjectRiskTopic) error {
-	args := e.Called(objectRiskTopic)
+func (e *EnforceSecurity) ReadObjectMetadata(metadata models.ObjectMetadata) error {
+	args := e.Called(metadata)
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) WriteObjectRiskTopic(orgId uuid.UUID) error {
+func (e *EnforceSecurity) WriteObjectMetadata(orgId uuid.UUID) error {
 	args := e.Called(orgId)
 	return args.Error(0)
 }

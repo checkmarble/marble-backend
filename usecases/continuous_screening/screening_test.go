@@ -24,7 +24,7 @@ type ScreeningTestSuite struct {
 	ingestionUsecase             *mocks.ContinuousScreeningIngestionUsecase
 	screeningProvider            *mocks.OpenSanctionsRepository
 	caseEditor                   *mocks.CaseEditor
-	objectRiskTopic              *mocks.ObjectRiskTopic
+	objectRiskTopic              *mocks.ObjectMetadata
 	executorFactory              executor_factory.ExecutorFactoryStub
 	transactionFactory           executor_factory.TransactionFactoryStub
 
@@ -46,7 +46,7 @@ func (suite *ScreeningTestSuite) SetupTest() {
 	suite.ingestionUsecase = new(mocks.ContinuousScreeningIngestionUsecase)
 	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.caseEditor = new(mocks.CaseEditor)
-	suite.objectRiskTopic = new(mocks.ObjectRiskTopic)
+	suite.objectRiskTopic = new(mocks.ObjectMetadata)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
@@ -440,7 +440,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 	// Expect AppendObjectRiskTopics to be called with the extracted topics
 	// "sanctions" -> RiskTopicSanctions, "pep" -> RiskTopicPEPs
 	suite.objectRiskTopic.On("AppendObjectRiskTopics", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.ObjectRiskTopicWithEventUpsert) bool {
+		mock.MatchedBy(func(input models.ObjectRiskTopicUpsert) bool {
 			if input.OrgId != suite.orgId ||
 				input.ObjectType != objectType ||
 				input.ObjectId != objectId ||
@@ -547,7 +547,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	// Expect AppendObjectRiskTopics to be called with topics from screening.OpenSanctionEntityPayload
 	// "pep" -> RiskTopicPEPs, "regulatory" -> RiskTopicAdverseMedia
 	suite.objectRiskTopic.On("AppendObjectRiskTopics", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.ObjectRiskTopicWithEventUpsert) bool {
+		mock.MatchedBy(func(input models.ObjectRiskTopicUpsert) bool {
 			if input.OrgId != suite.orgId ||
 				input.ObjectType != objectType ||
 				input.ObjectId != objectId ||

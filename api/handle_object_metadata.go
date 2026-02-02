@@ -5,7 +5,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -13,13 +12,13 @@ import (
 	"github.com/google/uuid"
 )
 
-var objectRiskTopicPaginationDefaults = models.PaginationDefaults{
+var objectMetadataPaginationDefaults = models.PaginationDefaults{
 	Limit:  25,
 	SortBy: models.SortingFieldCreatedAt,
 	Order:  models.SortingOrderDesc,
 }
 
-func handleListObjectRiskTopics(uc usecases.Usecases) func(c *gin.Context) {
+func handleListObjectMetadata(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -28,7 +27,7 @@ func handleListObjectRiskTopics(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		var filterDto dto.ObjectRiskTopicFilterDto
+		var filterDto dto.ObjectMetadataFilterDto
 		if err := c.ShouldBindQuery(&filterDto); err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
@@ -42,7 +41,7 @@ func handleListObjectRiskTopics(uc usecases.Usecases) func(c *gin.Context) {
 
 		paginationAndSorting := models.WithPaginationDefaults(
 			dto.AdaptPaginationAndSorting(paginationDto),
-			objectRiskTopicPaginationDefaults,
+			objectMetadataPaginationDefaults,
 		)
 
 		filter, err := filterDto.Adapt(organizationId)
@@ -50,37 +49,62 @@ func handleListObjectRiskTopics(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(ctx, uc).NewObjectRiskTopicUsecase()
-		objectRiskTopics, err := usecase.ListObjectRiskTopics(ctx, filter, paginationAndSorting)
+		usecase := usecasesWithCreds(ctx, uc).NewObjectMetadataUsecase()
+		objectMetadataList, err := usecase.ListObjectMetadata(ctx, filter, paginationAndSorting)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(objectRiskTopics, dto.AdaptObjectRiskTopicDto))
+		dtos := make([]dto.ObjectMetadataDto, 0, len(objectMetadataList))
+		for _, m := range objectMetadataList {
+			d, err := dto.AdaptObjectMetadataDto(m)
+			if presentError(ctx, c, err) {
+				return
+			}
+			dtos = append(dtos, d)
+		}
+
+		c.JSON(http.StatusOK, dtos)
 	}
 }
 
-func handleGetObjectRiskTopic(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetObjectRiskTopics(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		objectRiskTopicsId, err := uuid.Parse(c.Param("object_risk_topics_id"))
-		if err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid object_risk_topics_id"))
-			return
-		}
-
-		usecase := usecasesWithCreds(ctx, uc).NewObjectRiskTopicUsecase()
-		objectRiskTopic, err := usecase.GetObjectRiskTopicById(ctx, objectRiskTopicsId)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptObjectRiskTopicDto(objectRiskTopic))
+		objectType := c.Param("object-type")
+		if objectType == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object-type is required"))
+			return
+		}
+
+		objectId := c.Param("object-id")
+		if objectId == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object-id is required"))
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewObjectMetadataUsecase()
+		objectRiskTopic, err := usecase.GetObjectRiskTopicByObjectId(ctx, organizationId, objectType, objectId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		result, err := dto.AdaptObjectMetadataDto(objectRiskTopic.ObjectMetadata)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, result)
 	}
 }
 
-func handleUpsertObjectRiskTopic(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpsertObjectRiskTopics(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -101,52 +125,40 @@ func handleUpsertObjectRiskTopic(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
+		objectType := c.Param("object-type")
+		if objectType == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object-type is required"))
+			return
+		}
+
+		objectId := c.Param("object-id")
+		if objectId == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object-id is required"))
+			return
+		}
+
 		var input dto.ObjectRiskTopicUpsertInputDto
 		if err := c.ShouldBindJSON(&input); err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
-		upsertInput, err := input.Adapt(organizationId, userId)
+		upsertInput, err := input.Adapt(organizationId, userId, objectType, objectId)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(ctx, uc).NewObjectRiskTopicUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewObjectMetadataUsecase()
 		objectRiskTopic, err := usecase.UpsertObjectRiskTopic(ctx, upsertInput)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptObjectRiskTopicDto(objectRiskTopic))
-	}
-}
-
-func handleListObjectRiskTopicEvents(uc usecases.Usecases) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-
-		objectRiskTopicsId, err := uuid.Parse(c.Param("object_risk_topics_id"))
-		if err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid object_risk_topics_id"))
-			return
-		}
-
-		usecase := usecasesWithCreds(ctx, uc).NewObjectRiskTopicUsecase()
-		events, err := usecase.ListObjectRiskTopicEvents(ctx, objectRiskTopicsId)
+		result, err := dto.AdaptObjectMetadataDto(objectRiskTopic.ObjectMetadata)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		eventDtos := make([]dto.ObjectRiskTopicEventDto, 0, len(events))
-		for _, event := range events {
-			eventDto, err := dto.AdaptObjectRiskTopicEventDto(event)
-			if presentError(ctx, c, err) {
-				return
-			}
-			eventDtos = append(eventDtos, eventDto)
-		}
-
-		c.JSON(http.StatusOK, eventDtos)
+		c.JSON(http.StatusOK, result)
 	}
 }

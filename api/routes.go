@@ -215,10 +215,11 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/continuous-screenings/:id/load-more", tom,
 		handleLoadMoreContinuousScreeningMatches(uc))
 
-	router.GET("/object-risk-topics", tom, handleListObjectRiskTopics(uc))
-	router.PUT("/object-risk-topics", tom, handleUpsertObjectRiskTopic(uc))
-	router.GET("/object-risk-topics/:object_risk_topics_id", tom, handleGetObjectRiskTopic(uc))
-	router.GET("/object-risk-topics/:object_risk_topics_id/events", tom, handleListObjectRiskTopicEvents(uc))
+	router.GET("/object-metadata", tom, handleListObjectMetadata(uc))
+	router.GET("/object-metadata/object-type/:object-type/object-id/:object-id/risk-topics",
+		tom, handleGetObjectRiskTopics(uc))
+	router.PUT("/object-metadata/object-type/:object-type/object-id/:object-id/risk-topics",
+		tom, handleUpsertObjectRiskTopics(uc))
 
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))

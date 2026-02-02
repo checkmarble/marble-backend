@@ -150,8 +150,8 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurityAudit() security.EnforceSec
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewEnforceObjectRiskTopic() security.EnforceSecurityObjectRiskTopic {
-	return &security.EnforceSecurityObjectRiskTopicImpl{
+func (usecases *UsecasesWithCreds) NewEnforceObjectMetadata() security.EnforceSecurityObjectMetadata {
+	return &security.EnforceSecurityObjectMetadataImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
 	}
@@ -873,7 +873,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		utils.Ptr(usecases.NewInboxReader()),
 		utils.Ptr(usecases.NewInboxUsecase()),
 		usecases.NewFeatureAccessReader(),
-		utils.Ptr(usecases.NewObjectRiskTopicUsecase()),
+		utils.Ptr(usecases.NewObjectMetadataUsecase()),
 	)
 }
 
@@ -1003,11 +1003,11 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 	)
 }
 
-func (usecases *UsecasesWithCreds) NewObjectRiskTopicUsecase() ObjectRiskTopicUsecase {
-	return ObjectRiskTopicUsecase{
+func (usecases *UsecasesWithCreds) NewObjectMetadataUsecase() ObjectMetadataUsecase {
+	return ObjectMetadataUsecase{
 		executorFactory:    usecases.NewExecutorFactory(),
 		transactionFactory: usecases.NewTransactionFactory(),
-		enforceSecurity:    usecases.NewEnforceObjectRiskTopic(),
+		enforceSecurity:    usecases.NewEnforceObjectMetadata(),
 		repository:         usecases.Repositories.MarbleDbRepository,
 		ingestedDataReader: usecases.Repositories.IngestedDataReadRepository,
 	}

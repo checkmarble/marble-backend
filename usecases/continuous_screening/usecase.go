@@ -209,7 +209,7 @@ type objectRiskTopicWriter interface {
 	AppendObjectRiskTopics(
 		ctx context.Context,
 		tx repositories.Transaction,
-		input models.ObjectRiskTopicWithEventUpsert,
+		input models.ObjectRiskTopicUpsert,
 	) error
 }
 

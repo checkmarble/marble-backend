@@ -785,7 +785,7 @@ func (uc *ContinuousScreeningUsecase) addRiskTopicsFromConfirmedMatch(
 	}
 
 	// Create the upsert input (will APPEND topics, not replace)
-	input := models.NewObjectRiskTopicWithEventFromContinuousScreeningReviewUpsert(
+	input := models.NewObjectRiskTopicFromContinuousScreeningReviewUpsert(
 		screening.OrgId,
 		objectType,
 		objectId,
