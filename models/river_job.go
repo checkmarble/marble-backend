@@ -186,9 +186,25 @@ type CsvIngestionArgs struct {
 
 func (CsvIngestionArgs) Kind() string { return "csv_ingestion" }
 
-// Webhook retry job
+// Webhook retry job (legacy - Convoy)
 type WebhookRetryArgs struct {
 	OrgId uuid.UUID `json:"org_id"`
 }
 
 func (WebhookRetryArgs) Kind() string { return "webhook_retry" }
+
+// New webhook delivery system jobs
+
+// WebhookDispatchJobArgs - Stage 1: Fan-out to endpoints
+type WebhookDispatchJobArgs struct {
+	WebhookEventId uuid.UUID `json:"webhook_event_id"`
+}
+
+func (WebhookDispatchJobArgs) Kind() string { return "webhook_dispatch" }
+
+// WebhookDeliveryJobArgs - Stage 2: Per-endpoint delivery
+type WebhookDeliveryJobArgs struct {
+	DeliveryId uuid.UUID `json:"delivery_id"`
+}
+
+func (WebhookDeliveryJobArgs) Kind() string { return "webhook_delivery" }

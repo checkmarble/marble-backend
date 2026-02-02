@@ -46,6 +46,7 @@ type Usecases struct {
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
+	useNewWebhooks               bool // Feature flag for new webhook delivery system
 
 	rootExecutorFactory *executor_factory.IdentityExecutorFactory
 }
@@ -182,6 +183,12 @@ func WithCsCreateFullDatasetInterval(interval time.Duration) Option {
 	}
 }
 
+func WithNewWebhooks(enabled bool) Option {
+	return func(o *options) {
+		o.useNewWebhooks = enabled
+	}
+}
+
 type options struct {
 	appName                      string
 	apiVersion                   string
@@ -203,6 +210,7 @@ type options struct {
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
+	useNewWebhooks               bool
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -231,6 +239,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		continuousScreeningBucketUrl: o.continuousScreeningBucketUrl,
 		marbleApiInternalUrl:         o.marbleApiInternalUrl,
 		csCreateFullDatasetInterval:  o.csCreateFullDatasetInterval,
+		useNewWebhooks:               o.useNewWebhooks,
 	}
 }
 
