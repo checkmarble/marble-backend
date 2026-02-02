@@ -113,6 +113,26 @@ type TaskQueueRepository interface {
 		organizationId uuid.UUID,
 		bucket, key string,
 	) error
+	// New webhook delivery system
+	EnqueueWebhookDispatch(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		webhookEventId uuid.UUID,
+	) error
+	EnqueueWebhookDelivery(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		deliveryId uuid.UUID,
+	) error
+	EnqueueWebhookDeliveryAt(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		deliveryId uuid.UUID,
+		scheduledAt time.Time,
+	) error
 }
 
 type riverRepository struct {
@@ -518,6 +538,87 @@ func (r riverRepository) EnqueueGenerateThumbnailTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued thumbnail generation task", "job_id", res.Job.ID)
+	return nil
+}
 
+// New webhook delivery system
+
+func (r riverRepository) EnqueueWebhookDispatch(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	webhookEventId uuid.UUID,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.WebhookDispatchJobArgs{
+			WebhookEventId: webhookEventId,
+		},
+		&river.InsertOpts{
+			Queue: organizationId.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued webhook dispatch task", "webhook_event_id", webhookEventId, "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueWebhookDelivery(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	deliveryId uuid.UUID,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.WebhookDeliveryJobArgs{
+			DeliveryId: deliveryId,
+		},
+		&river.InsertOpts{
+			Queue: organizationId.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued webhook delivery task", "delivery_id", deliveryId, "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueWebhookDeliveryAt(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	deliveryId uuid.UUID,
+	scheduledAt time.Time,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.WebhookDeliveryJobArgs{
+			DeliveryId: deliveryId,
+		},
+		&river.InsertOpts{
+			Queue:       organizationId.String(),
+			ScheduledAt: scheduledAt,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued webhook delivery task with schedule",
+		"delivery_id", deliveryId,
+		"scheduled_at", scheduledAt,
+		"job_id", res.Job.ID)
 	return nil
 }

@@ -52,25 +52,43 @@ type enforceSecurityWebhookEvents interface {
 	SendWebhookEvent(ctx context.Context, organizationId uuid.UUID, partnerId null.String) error
 }
 
+// webhookQueueRepository is the interface for the new webhook queue system.
+type webhookQueueRepository interface {
+	CreateWebhookQueueItem(ctx context.Context, exec repositories.Executor, item models.WebhookQueueItem) error
+}
+
+// webhookTaskQueue is the interface for enqueueing webhook dispatch jobs.
+type webhookTaskQueue interface {
+	EnqueueWebhookDispatch(ctx context.Context, tx repositories.Transaction, organizationId uuid.UUID, webhookEventId uuid.UUID) error
+}
+
 type WebhookEventsUsecase struct {
 	enforceSecurity             enforceSecurityWebhookEvents
 	executorFactory             executor_factory.ExecutorFactory
+	transactionFactory          executor_factory.TransactionFactory
 	convoyRepository            convoyWebhookEventRepository
 	webhookEventsRepository     webhookEventsRepository
+	webhookQueueRepository      webhookQueueRepository
+	taskQueue                   webhookTaskQueue
 	failedWebhooksRetryPageSize int
 	hasLicense                  bool
 	hasConvoyServerSetup        bool
+	useNewWebhooks              bool
 	publicApiAdaptor            types.PublicApiDataAdapter
 }
 
 func NewWebhookEventsUsecase(
 	enforceSecurity enforceSecurityWebhookEvents,
 	executorFactory executor_factory.ExecutorFactory,
+	transactionFactory executor_factory.TransactionFactory,
 	convoyRepository convoyWebhookEventRepository,
 	webhookEventsRepository webhookEventsRepository,
+	webhookQueueRepository webhookQueueRepository,
+	taskQueue webhookTaskQueue,
 	failedWebhooksRetryPageSize int,
 	hasLicense bool,
 	hasConvoyServerSetup bool,
+	useNewWebhooks bool,
 	publicApiAdaptor types.PublicApiDataAdapter,
 ) WebhookEventsUsecase {
 	if failedWebhooksRetryPageSize == 0 {
@@ -80,22 +98,33 @@ func NewWebhookEventsUsecase(
 	return WebhookEventsUsecase{
 		enforceSecurity:             enforceSecurity,
 		executorFactory:             executorFactory,
+		transactionFactory:          transactionFactory,
 		convoyRepository:            convoyRepository,
 		webhookEventsRepository:     webhookEventsRepository,
+		webhookQueueRepository:      webhookQueueRepository,
+		taskQueue:                   taskQueue,
 		failedWebhooksRetryPageSize: failedWebhooksRetryPageSize,
 		hasLicense:                  hasLicense,
 		hasConvoyServerSetup:        hasConvoyServerSetup,
+		useNewWebhooks:              useNewWebhooks,
 		publicApiAdaptor:            publicApiAdaptor,
 	}
 }
 
-// Does nothing (returns nil) if the license is not active
+// Does nothing (returns nil) if the license is not active.
+// Routes to new webhook system if useNewWebhooks is enabled.
 func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 	ctx context.Context,
 	tx repositories.Transaction,
 	input models.WebhookEventCreate,
 ) error {
-	if !usecase.hasLicense || !usecase.hasConvoyServerSetup {
+	// Check license and setup
+	if !usecase.hasLicense {
+		return nil
+	}
+
+	// If new webhooks enabled, use new system; otherwise require Convoy setup
+	if !usecase.useNewWebhooks && !usecase.hasConvoyServerSetup {
 		return nil
 	}
 
@@ -104,10 +133,56 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 		return err
 	}
 
+	// Route to new or old system based on feature flag
+	if usecase.useNewWebhooks {
+		return usecase.createWebhookQueueItem(ctx, tx, input)
+	}
+
+	// Legacy Convoy path
 	err = usecase.webhookEventsRepository.CreateWebhookEvent(ctx, tx, input)
 	if err != nil {
 		return errors.Wrap(err, "error creating webhook event")
 	}
+	return nil
+}
+
+// createWebhookQueueItem creates an event in the new webhook queue and enqueues a dispatch job.
+func (usecase WebhookEventsUsecase) createWebhookQueueItem(
+	ctx context.Context,
+	tx repositories.Transaction,
+	input models.WebhookEventCreate,
+) error {
+	// Serialize event data to JSON
+	eventData, err := json.Marshal(input.EventContent.Data)
+	if err != nil {
+		return errors.Wrap(err, "error marshaling webhook event data")
+	}
+
+	// Generate UUID v7 for the event
+	eventId, err := uuid.NewV7()
+	if err != nil {
+		return errors.Wrap(err, "error generating webhook event ID")
+	}
+
+	// Create webhook queue item
+	queueItem := models.WebhookQueueItem{
+		Id:             eventId,
+		OrganizationId: input.OrganizationId,
+		EventType:      string(input.EventContent.Type),
+		EventData:      eventData,
+	}
+
+	err = usecase.webhookQueueRepository.CreateWebhookQueueItem(ctx, tx, queueItem)
+	if err != nil {
+		return errors.Wrap(err, "error creating webhook queue item")
+	}
+
+	// Enqueue dispatch job (fan-out happens asynchronously)
+	err = usecase.taskQueue.EnqueueWebhookDispatch(ctx, tx, input.OrganizationId, eventId)
+	if err != nil {
+		return errors.Wrap(err, "error enqueueing webhook dispatch job")
+	}
+
 	return nil
 }
 
