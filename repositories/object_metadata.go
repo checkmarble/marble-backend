@@ -137,7 +137,7 @@ func (repo *MarbleDbRepository) UpsertObjectRiskTopic(
 	var sourceDetailsJSON json.RawMessage
 	if input.SourceDetails != nil {
 		var err error
-		sourceDetailsJSON, err = input.SourceDetails.ToJSON()
+		sourceDetailsJSON, err = json.Marshal(input.SourceDetails)
 		if err != nil {
 			return models.ObjectRiskTopic{}, errors.Wrap(err, "failed to serialize source details")
 		}
@@ -145,7 +145,7 @@ func (repo *MarbleDbRepository) UpsertObjectRiskTopic(
 
 	topicStrings := make([]string, 0, len(input.Topics))
 	for _, t := range input.Topics {
-		topicStrings = append(topicStrings, t.String())
+		topicStrings = append(topicStrings, string(t))
 	}
 
 	metadata := dbmodels.DBRiskTopicsMetadata{

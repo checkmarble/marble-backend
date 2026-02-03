@@ -101,7 +101,7 @@ func (r RiskTopicsMetadata) ToJSON() (json.RawMessage, error) {
 
 	topics := make([]string, 0, len(r.Topics))
 	for _, t := range r.Topics {
-		topics = append(topics, t.String())
+		topics = append(topics, string(t))
 	}
 
 	output := riskTopicsMetadataJSON{
@@ -110,7 +110,7 @@ func (r RiskTopicsMetadata) ToJSON() (json.RawMessage, error) {
 	}
 
 	if r.SourceDetails != nil {
-		sourceDetailsJSON, err := r.SourceDetails.ToJSON()
+		sourceDetailsJSON, err := json.Marshal(r.SourceDetails)
 		if err != nil {
 			return nil, err
 		}
@@ -187,7 +187,6 @@ func (rtst RiskTopicSourceType) String() string {
 // SourceDetails is an interface for different source detail types
 type SourceDetails interface {
 	SourceDetailType() RiskTopicSourceType
-	ToJSON() (json.RawMessage, error)
 }
 
 // ContinuousScreeningSourceDetails for continuous_screening_match_review source type
@@ -200,10 +199,6 @@ func (s ContinuousScreeningSourceDetails) SourceDetailType() RiskTopicSourceType
 	return RiskTopicSourceTypeContinuousScreeningMatchReview
 }
 
-func (s ContinuousScreeningSourceDetails) ToJSON() (json.RawMessage, error) {
-	return json.Marshal(s)
-}
-
 // ManualSourceDetails for manual source type
 type ManualSourceDetails struct {
 	Reason string `json:"reason,omitempty"`
@@ -212,10 +207,6 @@ type ManualSourceDetails struct {
 
 func (m ManualSourceDetails) SourceDetailType() RiskTopicSourceType {
 	return RiskTopicSourceTypeManual
-}
-
-func (m ManualSourceDetails) ToJSON() (json.RawMessage, error) {
-	return json.Marshal(m)
 }
 
 // ParseSourceDetails parses JSON into the appropriate SourceDetails type

@@ -55,13 +55,13 @@ func handleListObjectMetadata(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		dtos := make([]dto.ObjectMetadataDto, 0, len(objectMetadataList))
-		for _, m := range objectMetadataList {
+		dtos := make([]dto.ObjectMetadataDto, len(objectMetadataList))
+		for i, m := range objectMetadataList {
 			d, err := dto.AdaptObjectMetadataDto(m)
 			if presentError(ctx, c, err) {
 				return
 			}
-			dtos = append(dtos, d)
+			dtos[i] = d
 		}
 
 		c.JSON(http.StatusOK, dtos)
