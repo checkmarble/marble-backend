@@ -14,5 +14,8 @@ updates:
       opentelemetry:
         patterns:
           - "go.opentelemetry.io/*"
+      sentry:
+        patterns:
+          - "github.com/getsentry/sentry-go*"
     cooldown:
       default-days: 14
