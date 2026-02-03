@@ -33,6 +33,7 @@ var AllowedSchemaTypes = []string{
 	"Company",
 	"Organization",
 	"Vessel",
+	"Airplane",
 }
 
 type applyDeltaFileWorkerRepository interface {
