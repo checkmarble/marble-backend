@@ -12,10 +12,11 @@ import (
 )
 
 const (
-	WEBHOOK_CLEANUP_INTERVAL  = 1 * time.Hour
-	WEBHOOK_CLEANUP_TIMEOUT   = 5 * time.Minute
-	WEBHOOK_RETENTION_PERIOD  = 30 * 24 * time.Hour // 30 days
-	WEBHOOK_CLEANUP_QUEUE     = "webhook_cleanup"
+	WEBHOOK_CLEANUP_INTERVAL = 1 * time.Hour
+	WEBHOOK_CLEANUP_TIMEOUT  = 5 * time.Minute
+	WEBHOOK_RETENTION_PERIOD = 30 * 24 * time.Hour // 30 days
+	WEBHOOK_CLEANUP_QUEUE    = "webhook_cleanup"
+	WEBHOOK_CLEANUP_BATCH    = 1000
 )
 
 func NewWebhookCleanupPeriodicJob() *river.PeriodicJob {
@@ -32,14 +33,15 @@ func NewWebhookCleanupPeriodicJob() *river.PeriodicJob {
 					},
 				}
 		},
-		&river.PeriodicJobOpts{RunOnStart: false},
+		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 
 // webhookCleanupRepository defines the interface for cleanup operations.
 type webhookCleanupRepository interface {
-	DeleteOldWebhookDeliveries(ctx context.Context, exec repositories.Executor, olderThan time.Time) (int64, error)
-	DeleteOrphanedWebhookEventsV2(ctx context.Context, exec repositories.Executor) (int64, error)
+	DeleteOldWebhookDeliveriesBatch(ctx context.Context, exec repositories.Executor,
+		olderThan time.Time, limit int) (int64, error)
+	DeleteOrphanedWebhookEventsV2Batch(ctx context.Context, exec repositories.Executor, limit int) (int64, error)
 }
 
 // WebhookCleanupWorker handles cleanup of old webhook deliveries and events.
@@ -49,6 +51,7 @@ type WebhookCleanupWorker struct {
 	webhookRepository webhookCleanupRepository
 	executorFactory   executor_factory.ExecutorFactory
 	retentionPeriod   time.Duration
+	batchSize         int
 }
 
 // NewWebhookCleanupWorker creates a new webhook cleanup worker.
@@ -60,6 +63,7 @@ func NewWebhookCleanupWorker(
 		webhookRepository: webhookRepository,
 		executorFactory:   executorFactory,
 		retentionPeriod:   WEBHOOK_RETENTION_PERIOD,
+		batchSize:         WEBHOOK_CLEANUP_BATCH,
 	}
 }
 
@@ -67,31 +71,45 @@ func (w *WebhookCleanupWorker) Timeout(job *river.Job[models.WebhookCleanupJobAr
 	return WEBHOOK_CLEANUP_TIMEOUT
 }
 
-// Work cleans up old webhook deliveries and orphaned events.
+// Work cleans up old webhook deliveries and orphaned events in batches.
 func (w *WebhookCleanupWorker) Work(ctx context.Context, job *river.Job[models.WebhookCleanupJobArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
 	exec := w.executorFactory.NewExecutor()
 
 	cutoff := time.Now().Add(-w.retentionPeriod)
 
-	// Delete old deliveries (success/failed older than retention period)
-	deletedDeliveries, err := w.webhookRepository.DeleteOldWebhookDeliveries(ctx, exec, cutoff)
-	if err != nil {
-		logger.ErrorContext(ctx, "Failed to delete old webhook deliveries", "error", err)
-		return err
+	// Delete old deliveries in batches
+	var totalDeliveries int64
+	for {
+		deleted, err := w.webhookRepository.DeleteOldWebhookDeliveriesBatch(ctx, exec, cutoff, w.batchSize)
+		if err != nil {
+			logger.ErrorContext(ctx, "Failed to delete old webhook deliveries", "error", err)
+			return err
+		}
+		totalDeliveries += deleted
+		if deleted < int64(w.batchSize) {
+			break
+		}
 	}
 
-	// Delete orphaned events (no associated deliveries)
-	deletedEvents, err := w.webhookRepository.DeleteOrphanedWebhookEventsV2(ctx, exec)
-	if err != nil {
-		logger.ErrorContext(ctx, "Failed to delete orphaned webhook events", "error", err)
-		return err
+	// Delete orphaned events in batches
+	var totalEvents int64
+	for {
+		deleted, err := w.webhookRepository.DeleteOrphanedWebhookEventsV2Batch(ctx, exec, w.batchSize)
+		if err != nil {
+			logger.ErrorContext(ctx, "Failed to delete orphaned webhook events", "error", err)
+			return err
+		}
+		totalEvents += deleted
+		if deleted < int64(w.batchSize) {
+			break
+		}
 	}
 
-	if deletedDeliveries > 0 || deletedEvents > 0 {
+	if totalDeliveries > 0 || totalEvents > 0 {
 		logger.InfoContext(ctx, "Webhook cleanup completed",
-			"deleted_deliveries", deletedDeliveries,
-			"deleted_events", deletedEvents,
+			"deleted_deliveries", totalDeliveries,
+			"deleted_events", totalEvents,
 			"retention_days", int(w.retentionPeriod.Hours()/24))
 	}
 
