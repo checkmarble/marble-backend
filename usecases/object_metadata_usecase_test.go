@@ -110,7 +110,7 @@ func (suite *ObjectMetadataUsecaseTestSuite) TestUpsertObjectRiskTopic_IngestedO
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.repository.On("GetDataModel", suite.ctx, suite.exec, suite.orgId, false, true).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", suite.ctx, suite.exec, table, "non-existent-user",
-		mock.Anything).Return([]models.DataModelObject{}, models.NotFoundError)
+		mock.Anything).Return([]models.DataModelObject{}, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -118,7 +118,7 @@ func (suite *ObjectMetadataUsecaseTestSuite) TestUpsertObjectRiskTopic_IngestedO
 
 	// Assert
 	suite.Error(err)
-	suite.Contains(err.Error(), "failed to fetch ingested object")
+	suite.Contains(err.Error(), "ingested object not found")
 }
 
 func (suite *ObjectMetadataUsecaseTestSuite) TestUpsertObjectRiskTopic_HappyPath() {
@@ -214,7 +214,7 @@ func (suite *ObjectMetadataUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectNo
 	// Mock expectations - GetObjectMetadata returns NotFoundError
 	suite.repository.On("GetObjectMetadata", suite.ctx, suite.transaction,
 		suite.orgId, "users", "user-123", models.MetadataTypeRiskTopics).
-		Return(models.ObjectMetadata{Metadata: &models.RiskTopicsMetadata{}}, models.NotFoundError)
+		Return(models.ObjectMetadata{Metadata: models.RiskTopicsMetadata{}}, models.NotFoundError)
 
 	// Expect UpsertObjectMetadata to be called with the new topics
 	suite.repository.On("UpsertObjectMetadata", suite.ctx, suite.transaction,
@@ -249,7 +249,7 @@ func (suite *ObjectMetadataUsecaseTestSuite) TestAppendObjectRiskTopics_ObjectEx
 		ObjectType:   "users",
 		ObjectId:     "user-123",
 		MetadataType: models.MetadataTypeRiskTopics,
-		Metadata: &models.RiskTopicsMetadata{
+		Metadata: models.RiskTopicsMetadata{
 			Topics: []models.RiskTopic{models.RiskTopicSanctions}, // Existing topic
 		},
 	}
@@ -313,7 +313,7 @@ func (suite *ObjectMetadataUsecaseTestSuite) TestAppendObjectRiskTopics_NoNewTop
 		ObjectType:   "users",
 		ObjectId:     "user-123",
 		MetadataType: models.MetadataTypeRiskTopics,
-		Metadata: &models.RiskTopicsMetadata{
+		Metadata: models.RiskTopicsMetadata{
 			Topics: []models.RiskTopic{models.RiskTopicSanctions, models.RiskTopicPEPs},
 		},
 	}
@@ -351,7 +351,7 @@ func (suite *ObjectMetadataUsecaseTestSuite) TestAppendObjectRiskTopics_Confirme
 		ObjectType:   "users",
 		ObjectId:     "user-123",
 		MetadataType: models.MetadataTypeRiskTopics,
-		Metadata: &models.RiskTopicsMetadata{
+		Metadata: models.RiskTopicsMetadata{
 			Topics: []models.RiskTopic{models.RiskTopicSanctions}, // Already has Sanctions from previous confirmed hit
 		},
 	}

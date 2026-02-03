@@ -873,7 +873,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		utils.Ptr(usecases.NewInboxReader()),
 		utils.Ptr(usecases.NewInboxUsecase()),
 		usecases.NewFeatureAccessReader(),
-		utils.Ptr(usecases.NewObjectMetadataUsecase()),
+		usecases.NewObjectMetadataUsecase(),
 	)
 }
 
@@ -1003,11 +1003,11 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 	)
 }
 
-func (usecases *UsecasesWithCreds) NewObjectMetadataUsecase() ObjectMetadataUsecase {
-	return ObjectMetadataUsecase{
-		executorFactory:    usecases.NewExecutorFactory(),
-		enforceSecurity:    usecases.NewEnforceObjectMetadata(),
-		repository:         usecases.Repositories.MarbleDbRepository,
-		ingestedDataReader: usecases.Repositories.IngestedDataReadRepository,
-	}
+func (usecases *UsecasesWithCreds) NewObjectMetadataUsecase() *ObjectMetadataUsecase {
+	return NewObjectMetadataUsecase(
+		usecases.NewExecutorFactory(),
+		usecases.NewEnforceObjectMetadata(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+	)
 }

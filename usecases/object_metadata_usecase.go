@@ -112,10 +112,13 @@ func (usecase *ObjectMetadataUsecase) validateIngestedObjectExists(
 			"table %s not found in data model", objectType)
 	}
 
-	_, err = usecase.ingestedDataReader.QueryIngestedObject(ctx, execDbClient, table, objectId)
+	objects, err := usecase.ingestedDataReader.QueryIngestedObject(ctx, execDbClient, table, objectId)
 	if err != nil {
 		return errors.Wrap(err,
 			"failed to fetch ingested object, can not create metadata for non-existent object")
+	}
+	if len(objects) == 0 {
+		return errors.Wrapf(models.NotFoundError, "ingested object not found")
 	}
 
 	return nil
@@ -172,7 +175,7 @@ func (usecase *ObjectMetadataUsecase) AppendObjectRiskTopics(
 	}
 	var existingTopics []models.RiskTopic
 	if existing.Metadata != nil {
-		metadataContent, ok := existing.Metadata.(*models.RiskTopicsMetadata)
+		metadataContent, ok := existing.Metadata.(models.RiskTopicsMetadata)
 		if !ok {
 			return errors.Errorf("invalid metadata content type for risk topics: %T", existing.Metadata)
 		}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -45,7 +46,7 @@ type MetadataContent interface {
 
 // ParseMetadataContent parses JSON into the appropriate MetadataContent type
 func ParseMetadataContent(metadataType MetadataType, data json.RawMessage) (MetadataContent, error) {
-	if data == nil {
+	if len(data) == 0 {
 		return nil, nil
 	}
 
@@ -53,7 +54,7 @@ func ParseMetadataContent(metadataType MetadataType, data json.RawMessage) (Meta
 	case MetadataTypeRiskTopics:
 		return ParseRiskTopicsMetadata(data)
 	default:
-		return nil, nil
+		return nil, errors.New("cannot parse metadata content: unhandled metadata type")
 	}
 }
 
@@ -128,14 +129,14 @@ func (r RiskTopicsMetadata) ToJSON() (json.RawMessage, error) {
 }
 
 // ParseRiskTopicsMetadata parses JSON into RiskTopicsMetadata
-func ParseRiskTopicsMetadata(data json.RawMessage) (*RiskTopicsMetadata, error) {
+func ParseRiskTopicsMetadata(data json.RawMessage) (RiskTopicsMetadata, error) {
 	if data == nil {
-		return nil, nil
+		return RiskTopicsMetadata{}, nil
 	}
 
 	var raw RiskTopicsMetadataJSON
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return nil, err
+		return RiskTopicsMetadata{}, err
 	}
 
 	topics := make([]RiskTopic, 0, len(raw.Topics))
@@ -146,10 +147,10 @@ func ParseRiskTopicsMetadata(data json.RawMessage) (*RiskTopicsMetadata, error) 
 	sourceType := RiskTopicSourceTypeFrom(raw.SourceType)
 	sourceDetails, err := ParseSourceDetails(sourceType, raw.SourceDetails)
 	if err != nil {
-		return nil, err
+		return RiskTopicsMetadata{}, err
 	}
 
-	return &RiskTopicsMetadata{
+	return RiskTopicsMetadata{
 		Topics:        topics,
 		SourceType:    sourceType,
 		SourceDetails: sourceDetails,
