@@ -326,39 +326,42 @@ func (repo *MarbleDbRepository) CountPendingWebhookDeliveries(ctx context.Contex
 
 // Cleanup methods
 
-// DeleteOldWebhookDeliveries deletes deliveries older than the specified retention period
-// that are in a terminal state (success or failed)
-func (repo *MarbleDbRepository) DeleteOldWebhookDeliveries(ctx context.Context, exec Executor, olderThan time.Time) (int64, error) {
-	query := NewQueryBuilder().
-		Delete(dbmodels.TABLE_WEBHOOK_DELIVERIES).
-		Where(squirrel.Lt{"updated_at": olderThan}).
-		Where(squirrel.Or{
-			squirrel.Eq{"status": models.WebhookDeliveryStatusSuccess},
-			squirrel.Eq{"status": models.WebhookDeliveryStatusFailed},
-		})
+// DeleteOldWebhookDeliveriesBatch deletes up to `limit` deliveries older than the specified retention period
+// that are in a terminal state (success or failed). Returns the number deleted.
+func (repo *MarbleDbRepository) DeleteOldWebhookDeliveriesBatch(ctx context.Context, exec Executor, olderThan time.Time, limit int) (int64, error) {
+	// Use a subquery to limit the number of rows deleted
+	sql := `
+		DELETE FROM webhook_deliveries
+		WHERE id IN (
+			SELECT id FROM webhook_deliveries
+			WHERE updated_at < $1
+			AND status IN ($2, $3)
+			LIMIT $4
+		)
+	`
 
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return 0, errors.Wrap(err, "error building query")
-	}
-
-	result, err := exec.Exec(ctx, sql, args...)
+	result, err := exec.Exec(ctx, sql, olderThan, models.WebhookDeliveryStatusSuccess, models.WebhookDeliveryStatusFailed, limit)
 	if err != nil {
 		return 0, errors.Wrap(err, "error deleting old deliveries")
 	}
 	return result.RowsAffected(), nil
 }
 
-// DeleteOrphanedWebhookEventsV2 deletes events that have no associated deliveries
-func (repo *MarbleDbRepository) DeleteOrphanedWebhookEventsV2(ctx context.Context, exec Executor) (int64, error) {
+// DeleteOrphanedWebhookEventsV2Batch deletes up to `limit` events that have no associated deliveries.
+// Returns the number deleted.
+func (repo *MarbleDbRepository) DeleteOrphanedWebhookEventsV2Batch(ctx context.Context, exec Executor, limit int) (int64, error) {
 	sql := `
-		DELETE FROM webhook_events_v2 e
-		WHERE NOT EXISTS (
-			SELECT 1 FROM webhook_deliveries d WHERE d.webhook_event_id = e.id
+		DELETE FROM webhook_events_v2
+		WHERE id IN (
+			SELECT e.id FROM webhook_events_v2 e
+			WHERE NOT EXISTS (
+				SELECT 1 FROM webhook_deliveries d WHERE d.webhook_event_id = e.id
+			)
+			LIMIT $1
 		)
 	`
 
-	result, err := exec.Exec(ctx, sql)
+	result, err := exec.Exec(ctx, sql, limit)
 	if err != nil {
 		return 0, errors.Wrap(err, "error deleting orphaned events")
 	}
