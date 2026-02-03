@@ -524,7 +524,8 @@ func (r riverRepository) EnqueueWebhookDispatch(
 			WebhookEventId: webhookEventId,
 		},
 		&river.InsertOpts{
-			Queue: organizationId.String(),
+			Queue:    organizationId.String(),
+			Priority: 4, // Low priority
 		},
 	)
 	if err != nil {
@@ -549,7 +550,8 @@ func (r riverRepository) EnqueueWebhookDelivery(
 			DeliveryId: deliveryId,
 		},
 		&river.InsertOpts{
-			Queue: organizationId.String(),
+			Queue:    organizationId.String(),
+			Priority: 4, // Low priority
 		},
 	)
 	if err != nil {
@@ -576,6 +578,7 @@ func (r riverRepository) EnqueueWebhookDeliveryAt(
 		},
 		&river.InsertOpts{
 			Queue:       organizationId.String(),
+			Priority:    4, // Low priority
 			ScheduledAt: scheduledAt,
 		},
 	)

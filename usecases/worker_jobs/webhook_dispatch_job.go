@@ -16,16 +16,17 @@ const (
 	WEBHOOK_DISPATCH_TIMEOUT = 2 * time.Minute
 )
 
-// webhookRepository defines the interface for webhook operations needed by dispatch worker.
-type webhookRepository interface {
-	GetWebhookQueueItem(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WebhookQueueItem, error)
+// webhookDispatchRepository defines the interface for webhook operations needed by dispatch worker.
+type webhookDispatchRepository interface {
+	GetWebhookEventV2(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WebhookEventV2, error)
 	ListWebhooksByEventType(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, eventType string) ([]models.NewWebhook, error)
-	DeliveryExists(ctx context.Context, exec repositories.Executor, webhookEventId, webhookId uuid.UUID) (bool, error)
-	CreateDelivery(ctx context.Context, exec repositories.Executor, delivery models.WebhookDelivery) error
+	WebhookDeliveryExists(ctx context.Context, exec repositories.Executor, webhookEventId, webhookId uuid.UUID) (bool, error)
+	CreateWebhookDelivery(ctx context.Context, exec repositories.Executor, delivery models.WebhookDelivery) error
+	DeleteWebhookEventV2(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
 }
 
-// webhookTaskQueue defines the interface for enqueueing webhook delivery jobs.
-type webhookTaskQueue interface {
+// webhookDispatchTaskQueue defines the interface for enqueueing webhook delivery jobs.
+type webhookDispatchTaskQueue interface {
 	EnqueueWebhookDelivery(ctx context.Context, tx repositories.Transaction, organizationId uuid.UUID, deliveryId uuid.UUID) error
 }
 
@@ -33,16 +34,16 @@ type webhookTaskQueue interface {
 type WebhookDispatchWorker struct {
 	river.WorkerDefaults[models.WebhookDispatchJobArgs]
 
-	webhookRepository  webhookRepository
-	taskQueue          webhookTaskQueue
+	webhookRepository  webhookDispatchRepository
+	taskQueue          webhookDispatchTaskQueue
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 }
 
 // NewWebhookDispatchWorker creates a new webhook dispatch worker.
 func NewWebhookDispatchWorker(
-	webhookRepository webhookRepository,
-	taskQueue webhookTaskQueue,
+	webhookRepository webhookDispatchRepository,
+	taskQueue webhookDispatchTaskQueue,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
 ) *WebhookDispatchWorker {
@@ -60,60 +61,51 @@ func (w *WebhookDispatchWorker) Timeout(job *river.Job[models.WebhookDispatchJob
 
 // Work processes a webhook dispatch job by finding matching webhooks and creating delivery records.
 func (w *WebhookDispatchWorker) Work(ctx context.Context, job *river.Job[models.WebhookDispatchJobArgs]) error {
-	logger := utils.LoggerFromContext(ctx).With(
-		"webhook_event_id", job.Args.WebhookEventId,
-	)
+	logger := utils.LoggerFromContext(ctx).With("webhook_event_id", job.Args.WebhookEventId)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
 	exec := w.executorFactory.NewExecutor()
 
-	// Get the event from the queue
-	event, err := w.webhookRepository.GetWebhookQueueItem(ctx, exec, job.Args.WebhookEventId)
+	event, err := w.webhookRepository.GetWebhookEventV2(ctx, exec, job.Args.WebhookEventId)
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to get webhook queue item", "error", err)
-		return err // Infrastructure error → River retries
+		logger.ErrorContext(ctx, "Failed to get webhook event", "error", err)
+		return err
 	}
 
-	logger = logger.With(
-		"organization_id", event.OrganizationId,
-		"event_type", event.EventType,
-	)
+	logger = logger.With("organization_id", event.OrganizationId, "event_type", event.EventType)
+	ctx = utils.StoreLoggerInContext(ctx, logger)
 
-	// Find matching webhooks for this organization and event type
 	webhooks, err := w.webhookRepository.ListWebhooksByEventType(ctx, exec, event.OrganizationId, event.EventType)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to list webhooks by event type", "error", err)
-		return err // Infrastructure error → River retries
+		return err
 	}
 
 	if len(webhooks) == 0 {
-		logger.DebugContext(ctx, "No webhooks found for event type")
-		return nil
+		logger.DebugContext(ctx, "No webhooks found for event type, deleting event")
+		return w.webhookRepository.DeleteWebhookEventV2(ctx, exec, event.Id)
 	}
 
 	logger.InfoContext(ctx, "Dispatching event to webhooks", "webhook_count", len(webhooks))
 
-	// Create delivery records and enqueue delivery jobs for each webhook
-	for _, webhook := range webhooks {
-		// Idempotent: skip if delivery already exists (handles job retries)
-		exists, err := w.webhookRepository.DeliveryExists(ctx, exec, event.Id, webhook.Id)
-		if err != nil {
-			logger.ErrorContext(ctx, "Failed to check delivery existence", "webhook_id", webhook.Id, "error", err)
-			return err // Infrastructure error → River retries
-		}
-		if exists {
-			logger.DebugContext(ctx, "Delivery already exists, skipping", "webhook_id", webhook.Id)
-			continue
-		}
+	// Single transaction for all deliveries (atomicity)
+	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		for _, webhook := range webhooks {
+			// Idempotent: skip if delivery already exists (handles job retries)
+			exists, err := w.webhookRepository.WebhookDeliveryExists(ctx, tx, event.Id, webhook.Id)
+			if err != nil {
+				return err
+			}
+			if exists {
+				logger.DebugContext(ctx, "Delivery already exists, skipping", "webhook_id", webhook.Id)
+				continue
+			}
 
-		// Create delivery record and enqueue job in a transaction
-		deliveryId, err := uuid.NewV7()
-		if err != nil {
-			logger.ErrorContext(ctx, "Failed to generate delivery ID", "error", err)
-			return err
-		}
+			deliveryId, err := uuid.NewV7()
+			if err != nil {
+				return err
+			}
 
-		err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 			delivery := models.WebhookDelivery{
 				Id:             deliveryId,
 				WebhookEventId: event.Id,
@@ -122,18 +114,21 @@ func (w *WebhookDispatchWorker) Work(ctx context.Context, job *river.Job[models.
 				Attempts:       0,
 			}
 
-			if err := w.webhookRepository.CreateDelivery(ctx, tx, delivery); err != nil {
+			if err := w.webhookRepository.CreateWebhookDelivery(ctx, tx, delivery); err != nil {
 				return err
 			}
 
-			return w.taskQueue.EnqueueWebhookDelivery(ctx, tx, event.OrganizationId, deliveryId)
-		})
-		if err != nil {
-			logger.ErrorContext(ctx, "Failed to create delivery", "webhook_id", webhook.Id, "error", err)
-			return err // Infrastructure error → River retries
-		}
+			if err := w.taskQueue.EnqueueWebhookDelivery(ctx, tx, event.OrganizationId, deliveryId); err != nil {
+				return err
+			}
 
-		logger.DebugContext(ctx, "Created delivery", "webhook_id", webhook.Id, "delivery_id", deliveryId)
+			logger.DebugContext(ctx, "Created delivery", "webhook_id", webhook.Id, "delivery_id", deliveryId)
+		}
+		return nil
+	})
+	if err != nil {
+		logger.ErrorContext(ctx, "Failed to create deliveries", "error", err)
+		return err
 	}
 
 	return nil

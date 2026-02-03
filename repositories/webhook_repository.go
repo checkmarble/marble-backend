@@ -12,36 +12,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type WebhookRepository interface {
-	// Webhook CRUD
-	CreateWebhook(ctx context.Context, exec Executor, webhook models.NewWebhook) error
-	GetWebhook(ctx context.Context, exec Executor, id uuid.UUID) (models.NewWebhook, error)
-	ListWebhooks(ctx context.Context, exec Executor, orgId uuid.UUID) ([]models.NewWebhook, error)
-	ListWebhooksByEventType(ctx context.Context, exec Executor, orgId uuid.UUID, eventType string) ([]models.NewWebhook, error)
-	UpdateWebhook(ctx context.Context, exec Executor, id uuid.UUID, update models.NewWebhookUpdate) error
-	DeleteWebhook(ctx context.Context, exec Executor, id uuid.UUID) error
+// Webhook CRUD
 
-	// Secret management
-	AddSecret(ctx context.Context, exec Executor, secret models.NewWebhookSecret) error
-	ListActiveSecrets(ctx context.Context, exec Executor, webhookId uuid.UUID) ([]models.NewWebhookSecret, error)
-	RevokeSecret(ctx context.Context, exec Executor, secretId uuid.UUID) error
-
-	// Queue management
-	CreateWebhookQueueItem(ctx context.Context, exec Executor, item models.WebhookQueueItem) error
-	GetWebhookQueueItem(ctx context.Context, exec Executor, id uuid.UUID) (models.WebhookQueueItem, error)
-
-	// Delivery tracking
-	CreateDelivery(ctx context.Context, exec Executor, delivery models.WebhookDelivery) error
-	GetDelivery(ctx context.Context, exec Executor, id uuid.UUID) (models.WebhookDelivery, error)
-	DeliveryExists(ctx context.Context, exec Executor, webhookEventId, webhookId uuid.UUID) (bool, error)
-	UpdateDeliverySuccess(ctx context.Context, exec Executor, id uuid.UUID, responseStatus int) error
-	UpdateDeliveryFailed(ctx context.Context, exec Executor, id uuid.UUID, errMsg string, responseStatus *int) error
-	UpdateDeliveryAttempt(ctx context.Context, exec Executor, id uuid.UUID, errMsg string, responseStatus *int, attempts int, nextRetryAt time.Time) error
-}
-
-type WebhookRepositoryPostgresql struct{}
-
-func (repo *WebhookRepositoryPostgresql) CreateWebhook(ctx context.Context, exec Executor, webhook models.NewWebhook) error {
+func (repo *MarbleDbRepository) CreateWebhook(ctx context.Context, exec Executor, webhook models.NewWebhook) error {
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_NEW_WEBHOOKS).
 		Columns(
@@ -68,7 +41,7 @@ func (repo *WebhookRepositoryPostgresql) CreateWebhook(ctx context.Context, exec
 	return ExecBuilder(ctx, exec, query)
 }
 
-func (repo *WebhookRepositoryPostgresql) GetWebhook(ctx context.Context, exec Executor, id uuid.UUID) (models.NewWebhook, error) {
+func (repo *MarbleDbRepository) GetWebhook(ctx context.Context, exec Executor, id uuid.UUID) (models.NewWebhook, error) {
 	query := NewQueryBuilder().
 		Select(dbmodels.NewWebhookFields...).
 		From(dbmodels.TABLE_NEW_WEBHOOKS).
@@ -78,7 +51,7 @@ func (repo *WebhookRepositoryPostgresql) GetWebhook(ctx context.Context, exec Ex
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptNewWebhook)
 }
 
-func (repo *WebhookRepositoryPostgresql) ListWebhooks(ctx context.Context, exec Executor, orgId uuid.UUID) ([]models.NewWebhook, error) {
+func (repo *MarbleDbRepository) ListWebhooks(ctx context.Context, exec Executor, orgId uuid.UUID) ([]models.NewWebhook, error) {
 	query := NewQueryBuilder().
 		Select(dbmodels.NewWebhookFields...).
 		From(dbmodels.TABLE_NEW_WEBHOOKS).
@@ -89,7 +62,7 @@ func (repo *WebhookRepositoryPostgresql) ListWebhooks(ctx context.Context, exec 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptNewWebhook)
 }
 
-func (repo *WebhookRepositoryPostgresql) ListWebhooksByEventType(ctx context.Context, exec Executor, orgId uuid.UUID, eventType string) ([]models.NewWebhook, error) {
+func (repo *MarbleDbRepository) ListWebhooksByEventType(ctx context.Context, exec Executor, orgId uuid.UUID, eventType string) ([]models.NewWebhook, error) {
 	// PostgreSQL array contains operator
 	query := NewQueryBuilder().
 		Select(dbmodels.NewWebhookFields...).
@@ -102,7 +75,13 @@ func (repo *WebhookRepositoryPostgresql) ListWebhooksByEventType(ctx context.Con
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptNewWebhook)
 }
 
-func (repo *WebhookRepositoryPostgresql) UpdateWebhook(ctx context.Context, exec Executor, id uuid.UUID, update models.NewWebhookUpdate) error {
+func (repo *MarbleDbRepository) UpdateWebhook(ctx context.Context, exec Executor, id uuid.UUID, update models.NewWebhookUpdate) error {
+	// Early exit if nothing to update
+	if update.EventTypes == nil && update.Url == nil && update.HttpTimeoutSeconds == nil &&
+		update.RateLimit == nil && update.RateLimitDurationSeconds == nil && update.Enabled == nil {
+		return nil
+	}
+
 	builder := NewQueryBuilder().
 		Update(dbmodels.TABLE_NEW_WEBHOOKS).
 		Set("updated_at", time.Now()).
@@ -131,7 +110,7 @@ func (repo *WebhookRepositoryPostgresql) UpdateWebhook(ctx context.Context, exec
 	return ExecBuilder(ctx, exec, builder)
 }
 
-func (repo *WebhookRepositoryPostgresql) DeleteWebhook(ctx context.Context, exec Executor, id uuid.UUID) error {
+func (repo *MarbleDbRepository) DeleteWebhook(ctx context.Context, exec Executor, id uuid.UUID) error {
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_NEW_WEBHOOKS).
 		Set("deleted_at", time.Now()).
@@ -144,7 +123,7 @@ func (repo *WebhookRepositoryPostgresql) DeleteWebhook(ctx context.Context, exec
 
 // Secret management
 
-func (repo *WebhookRepositoryPostgresql) AddSecret(ctx context.Context, exec Executor, secret models.NewWebhookSecret) error {
+func (repo *MarbleDbRepository) AddWebhookSecret(ctx context.Context, exec Executor, secret models.NewWebhookSecret) error {
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_WEBHOOK_SECRETS).
 		Columns(
@@ -163,7 +142,7 @@ func (repo *WebhookRepositoryPostgresql) AddSecret(ctx context.Context, exec Exe
 	return ExecBuilder(ctx, exec, query)
 }
 
-func (repo *WebhookRepositoryPostgresql) ListActiveSecrets(ctx context.Context, exec Executor, webhookId uuid.UUID) ([]models.NewWebhookSecret, error) {
+func (repo *MarbleDbRepository) ListActiveWebhookSecrets(ctx context.Context, exec Executor, webhookId uuid.UUID) ([]models.NewWebhookSecret, error) {
 	query := NewQueryBuilder().
 		Select(dbmodels.WebhookSecretFields...).
 		From(dbmodels.TABLE_WEBHOOK_SECRETS).
@@ -178,7 +157,7 @@ func (repo *WebhookRepositoryPostgresql) ListActiveSecrets(ctx context.Context, 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptNewWebhookSecret)
 }
 
-func (repo *WebhookRepositoryPostgresql) RevokeSecret(ctx context.Context, exec Executor, secretId uuid.UUID) error {
+func (repo *MarbleDbRepository) RevokeWebhookSecret(ctx context.Context, exec Executor, secretId uuid.UUID) error {
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_WEBHOOK_SECRETS).
 		Set("revoked_at", time.Now()).
@@ -188,11 +167,11 @@ func (repo *WebhookRepositoryPostgresql) RevokeSecret(ctx context.Context, exec 
 	return ExecBuilder(ctx, exec, query)
 }
 
-// Queue management
+// Webhook events (v2)
 
-func (repo *WebhookRepositoryPostgresql) CreateWebhookQueueItem(ctx context.Context, exec Executor, item models.WebhookQueueItem) error {
+func (repo *MarbleDbRepository) CreateWebhookEventV2(ctx context.Context, exec Executor, event models.WebhookEventV2) error {
 	query := NewQueryBuilder().
-		Insert(dbmodels.TABLE_WEBHOOK_QUEUE).
+		Insert(dbmodels.TABLE_WEBHOOK_EVENTS_V2).
 		Columns(
 			"id",
 			"organization_id",
@@ -200,27 +179,35 @@ func (repo *WebhookRepositoryPostgresql) CreateWebhookQueueItem(ctx context.Cont
 			"event_data",
 		).
 		Values(
-			item.Id,
-			item.OrganizationId,
-			item.EventType,
-			item.EventData,
+			event.Id,
+			event.OrganizationId,
+			event.EventType,
+			event.EventData,
 		)
 
 	return ExecBuilder(ctx, exec, query)
 }
 
-func (repo *WebhookRepositoryPostgresql) GetWebhookQueueItem(ctx context.Context, exec Executor, id uuid.UUID) (models.WebhookQueueItem, error) {
+func (repo *MarbleDbRepository) GetWebhookEventV2(ctx context.Context, exec Executor, id uuid.UUID) (models.WebhookEventV2, error) {
 	query := NewQueryBuilder().
-		Select(dbmodels.WebhookQueueItemFields...).
-		From(dbmodels.TABLE_WEBHOOK_QUEUE).
+		Select(dbmodels.WebhookEventV2Fields...).
+		From(dbmodels.TABLE_WEBHOOK_EVENTS_V2).
 		Where(squirrel.Eq{"id": id})
 
-	return SqlToModel(ctx, exec, query, dbmodels.AdaptWebhookQueueItem)
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptWebhookEventV2)
+}
+
+func (repo *MarbleDbRepository) DeleteWebhookEventV2(ctx context.Context, exec Executor, id uuid.UUID) error {
+	query := NewQueryBuilder().
+		Delete(dbmodels.TABLE_WEBHOOK_EVENTS_V2).
+		Where(squirrel.Eq{"id": id})
+
+	return ExecBuilder(ctx, exec, query)
 }
 
 // Delivery tracking
 
-func (repo *WebhookRepositoryPostgresql) CreateDelivery(ctx context.Context, exec Executor, delivery models.WebhookDelivery) error {
+func (repo *MarbleDbRepository) CreateWebhookDelivery(ctx context.Context, exec Executor, delivery models.WebhookDelivery) error {
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_WEBHOOK_DELIVERIES).
 		Columns(
@@ -241,7 +228,7 @@ func (repo *WebhookRepositoryPostgresql) CreateDelivery(ctx context.Context, exe
 	return ExecBuilder(ctx, exec, query)
 }
 
-func (repo *WebhookRepositoryPostgresql) GetDelivery(ctx context.Context, exec Executor, id uuid.UUID) (models.WebhookDelivery, error) {
+func (repo *MarbleDbRepository) GetWebhookDelivery(ctx context.Context, exec Executor, id uuid.UUID) (models.WebhookDelivery, error) {
 	query := NewQueryBuilder().
 		Select(dbmodels.WebhookDeliveryFields...).
 		From(dbmodels.TABLE_WEBHOOK_DELIVERIES).
@@ -250,7 +237,7 @@ func (repo *WebhookRepositoryPostgresql) GetDelivery(ctx context.Context, exec E
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptWebhookDelivery)
 }
 
-func (repo *WebhookRepositoryPostgresql) DeliveryExists(ctx context.Context, exec Executor, webhookEventId, webhookId uuid.UUID) (bool, error) {
+func (repo *MarbleDbRepository) WebhookDeliveryExists(ctx context.Context, exec Executor, webhookEventId, webhookId uuid.UUID) (bool, error) {
 	query := NewQueryBuilder().
 		Select("1").
 		From(dbmodels.TABLE_WEBHOOK_DELIVERIES).
@@ -274,7 +261,7 @@ func (repo *WebhookRepositoryPostgresql) DeliveryExists(ctx context.Context, exe
 	return true, nil
 }
 
-func (repo *WebhookRepositoryPostgresql) UpdateDeliverySuccess(ctx context.Context, exec Executor, id uuid.UUID, responseStatus int) error {
+func (repo *MarbleDbRepository) UpdateWebhookDeliverySuccess(ctx context.Context, exec Executor, id uuid.UUID, responseStatus int) error {
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_WEBHOOK_DELIVERIES).
 		Set("status", models.WebhookDeliveryStatusSuccess).
@@ -285,7 +272,7 @@ func (repo *WebhookRepositoryPostgresql) UpdateDeliverySuccess(ctx context.Conte
 	return ExecBuilder(ctx, exec, query)
 }
 
-func (repo *WebhookRepositoryPostgresql) UpdateDeliveryFailed(ctx context.Context, exec Executor, id uuid.UUID, errMsg string, responseStatus *int) error {
+func (repo *MarbleDbRepository) UpdateWebhookDeliveryFailed(ctx context.Context, exec Executor, id uuid.UUID, errMsg string, responseStatus *int) error {
 	builder := NewQueryBuilder().
 		Update(dbmodels.TABLE_WEBHOOK_DELIVERIES).
 		Set("status", models.WebhookDeliveryStatusFailed).
@@ -300,7 +287,7 @@ func (repo *WebhookRepositoryPostgresql) UpdateDeliveryFailed(ctx context.Contex
 	return ExecBuilder(ctx, exec, builder)
 }
 
-func (repo *WebhookRepositoryPostgresql) UpdateDeliveryAttempt(ctx context.Context, exec Executor, id uuid.UUID, errMsg string, responseStatus *int, attempts int, nextRetryAt time.Time) error {
+func (repo *MarbleDbRepository) UpdateWebhookDeliveryAttempt(ctx context.Context, exec Executor, id uuid.UUID, errMsg string, responseStatus *int, attempts int, nextRetryAt time.Time) error {
 	builder := NewQueryBuilder().
 		Update(dbmodels.TABLE_WEBHOOK_DELIVERIES).
 		Set("attempts", attempts).
@@ -314,4 +301,66 @@ func (repo *WebhookRepositoryPostgresql) UpdateDeliveryAttempt(ctx context.Conte
 	}
 
 	return ExecBuilder(ctx, exec, builder)
+}
+
+// CountPendingWebhookDeliveries returns the number of pending deliveries for an event
+func (repo *MarbleDbRepository) CountPendingWebhookDeliveries(ctx context.Context, exec Executor, webhookEventId uuid.UUID) (int, error) {
+	query := NewQueryBuilder().
+		Select("COUNT(*)").
+		From(dbmodels.TABLE_WEBHOOK_DELIVERIES).
+		Where(squirrel.Eq{"webhook_event_id": webhookEventId}).
+		Where(squirrel.Eq{"status": models.WebhookDeliveryStatusPending})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return 0, errors.Wrap(err, "error building query")
+	}
+
+	var count int
+	err = exec.QueryRow(ctx, sql, args...).Scan(&count)
+	if err != nil {
+		return 0, errors.Wrap(err, "error counting pending deliveries")
+	}
+	return count, nil
+}
+
+// Cleanup methods
+
+// DeleteOldWebhookDeliveries deletes deliveries older than the specified retention period
+// that are in a terminal state (success or failed)
+func (repo *MarbleDbRepository) DeleteOldWebhookDeliveries(ctx context.Context, exec Executor, olderThan time.Time) (int64, error) {
+	query := NewQueryBuilder().
+		Delete(dbmodels.TABLE_WEBHOOK_DELIVERIES).
+		Where(squirrel.Lt{"updated_at": olderThan}).
+		Where(squirrel.Or{
+			squirrel.Eq{"status": models.WebhookDeliveryStatusSuccess},
+			squirrel.Eq{"status": models.WebhookDeliveryStatusFailed},
+		})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return 0, errors.Wrap(err, "error building query")
+	}
+
+	result, err := exec.Exec(ctx, sql, args...)
+	if err != nil {
+		return 0, errors.Wrap(err, "error deleting old deliveries")
+	}
+	return result.RowsAffected(), nil
+}
+
+// DeleteOrphanedWebhookEventsV2 deletes events that have no associated deliveries
+func (repo *MarbleDbRepository) DeleteOrphanedWebhookEventsV2(ctx context.Context, exec Executor) (int64, error) {
+	sql := `
+		DELETE FROM webhook_events_v2 e
+		WHERE NOT EXISTS (
+			SELECT 1 FROM webhook_deliveries d WHERE d.webhook_event_id = e.id
+		)
+	`
+
+	result, err := exec.Exec(ctx, sql)
+	if err != nil {
+		return 0, errors.Wrap(err, "error deleting orphaned events")
+	}
+	return result.RowsAffected(), nil
 }
