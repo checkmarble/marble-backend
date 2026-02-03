@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -14,6 +15,7 @@ type DBCustomListResult struct {
 	OrgId       uuid.UUID  `db:"organization_id"`
 	Name        string     `db:"name"`
 	Description string     `db:"description"`
+	Kind        string     `db:"kind"`
 	CreatedAt   time.Time  `db:"created_at"`
 	UpdatedAt   time.Time  `db:"updated_at"`
 	DeletedAt   *time.Time `db:"deleted_at"`
@@ -31,8 +33,13 @@ func AdaptCustomList(db DBCustomListResult) (models.CustomList, error) {
 		Name:           db.Name,
 		Description:    db.Description,
 		CreatedAt:      db.CreatedAt,
+		Kind:           models.CustomListKindFromString(db.Kind),
 		UpdatedAt:      db.UpdatedAt,
 		DeletedAt:      db.DeletedAt,
+	}
+
+	if customList.Kind == models.CustomListUnknown {
+		return models.CustomList{}, errors.Newf("unknown custom list kind %s", db.Kind)
 	}
 
 	customList.ValuesCount = &models.ValuesInfo{

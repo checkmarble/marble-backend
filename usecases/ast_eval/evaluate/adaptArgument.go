@@ -158,6 +158,14 @@ func adaptArgumentToListOfStrings(argument any) ([]string, error) {
 	return pure_utils.Map(arr, pure_utils.Normalize), nil
 }
 
+func adaptArgumentToListOfCidrPrefixes(argument any) ([]netip.Prefix, error) {
+	arr, err := adaptArgumentToListOfThings[netip.Prefix](argument)
+	if err != nil {
+		return nil, err
+	}
+	return arr, nil
+}
+
 func adaptArgumentToBool(argument any) (bool, error) {
 	if err := argumentNotNil(argument); err != nil {
 		return false, err

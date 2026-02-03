@@ -28,6 +28,7 @@ type CustomListRepository interface {
 	AddCustomListValue(
 		ctx context.Context,
 		exec Executor,
+		kind models.CustomListKind,
 		addCustomListValue models.AddCustomListValueInput,
 		newCustomListId string,
 		userId *models.UserId,
@@ -35,6 +36,7 @@ type CustomListRepository interface {
 	BatchInsertCustomListValues(
 		ctx context.Context,
 		exec Executor,
+		kind models.CustomListKind,
 		customListId string,
 		customListValues []models.BatchInsertCustomListValue,
 		userId *models.UserId,
@@ -203,12 +205,14 @@ func (repo *CustomListRepositoryPostgresql) CreateCustomList(
 				"organization_id",
 				"name",
 				"description",
+				"kind",
 			).
 			Values(
 				newCustomListId,
 				createCustomList.OrganizationId,
 				createCustomList.Name,
 				createCustomList.Description,
+				createCustomList.Kind,
 			),
 	)
 	return err
@@ -251,6 +255,7 @@ func (repo *CustomListRepositoryPostgresql) SoftDeleteCustomList(ctx context.Con
 func (repo *CustomListRepositoryPostgresql) AddCustomListValue(
 	ctx context.Context,
 	exec Executor,
+	kind models.CustomListKind,
 	addCustomListValue models.AddCustomListValueInput,
 	newId string,
 	userId *models.UserId,
@@ -267,11 +272,23 @@ func (repo *CustomListRepositoryPostgresql) AddCustomListValue(
 				"id",
 				"custom_list_id",
 				"value",
+				"cidr",
 			).
 			Values(
 				newId,
 				addCustomListValue.CustomListId,
-				addCustomListValue.Value,
+				func() *string {
+					if kind == models.CustomListText {
+						return &addCustomListValue.Value
+					}
+					return nil
+				}(),
+				func() *string {
+					if kind == models.CustomListCidrs {
+						return &addCustomListValue.Value
+					}
+					return nil
+				}(),
 			),
 	)
 	return err
@@ -280,6 +297,7 @@ func (repo *CustomListRepositoryPostgresql) AddCustomListValue(
 func (repo *CustomListRepositoryPostgresql) BatchInsertCustomListValues(
 	ctx context.Context,
 	exec Executor,
+	kind models.CustomListKind,
 	customListId string,
 	customListValues []models.BatchInsertCustomListValue,
 	userId *models.UserId,
@@ -296,13 +314,25 @@ func (repo *CustomListRepositoryPostgresql) BatchInsertCustomListValues(
 			"id",
 			"custom_list_id",
 			"value",
+			"cidr",
 		)
 
 	for _, addCustomListValue := range customListValues {
 		query = query.Values(
 			addCustomListValue.Id,
 			customListId,
-			addCustomListValue.Value,
+			func() *string {
+				if kind == models.CustomListText {
+					return &addCustomListValue.Value
+				}
+				return nil
+			}(),
+			func() *string {
+				if kind == models.CustomListCidrs {
+					return &addCustomListValue.Value
+				}
+				return nil
+			}(),
 		)
 	}
 

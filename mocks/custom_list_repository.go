@@ -60,6 +60,7 @@ func (cl *CustomListRepository) SoftDeleteCustomList(ctx context.Context, exec r
 func (cl *CustomListRepository) AddCustomListValue(
 	ctx context.Context,
 	exec repositories.Executor,
+	kind models.CustomListKind,
 	addCustomListValue models.AddCustomListValueInput,
 	newCustomListId string,
 	userId *models.UserId,
@@ -71,6 +72,7 @@ func (cl *CustomListRepository) AddCustomListValue(
 func (cl *CustomListRepository) BatchInsertCustomListValues(
 	ctx context.Context,
 	exec repositories.Executor,
+	kind models.CustomListKind,
 	customListId string,
 	customListValues []models.BatchInsertCustomListValue,
 	userId *models.UserId,

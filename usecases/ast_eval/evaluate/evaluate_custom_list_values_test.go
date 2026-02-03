@@ -23,6 +23,7 @@ var testListOrgId = utils.TextToUUID("test-org")
 var testList = models.CustomList{
 	Id:             testListId,
 	OrganizationId: testListOrgId,
+	Kind:           models.CustomListText,
 }
 
 var testCustomListNamedArgs = map[string]any{
@@ -47,7 +48,7 @@ func TestCustomListValues(t *testing.T) {
 
 	customListEval := evaluate.NewCustomListValuesAccess(clr, er, execFactory)
 
-	testCustomListValues := []models.CustomListValue{{Value: "test"}, {Value: "test2"}}
+	testCustomListValues := []models.CustomListValue{{Value: utils.Ptr("test")}, {Value: utils.Ptr("test2")}}
 
 	execFactory.On("NewExecutor").Return(exec)
 	clr.On("GetCustomListById", exec, testListId, true).Return(testList, nil)
@@ -59,8 +60,8 @@ func TestCustomListValues(t *testing.T) {
 	})
 	assert.Len(t, errs, 0)
 	if assert.Len(t, result, 2) {
-		assert.Equal(t, result.([]string)[0], testCustomListValues[0].Value)
-		assert.Equal(t, result.([]string)[1], testCustomListValues[1].Value)
+		assert.Equal(t, result.([]any)[0], *testCustomListValues[0].Value)
+		assert.Equal(t, result.([]any)[1], *testCustomListValues[1].Value)
 	}
 
 	clr.AssertExpectations(t)
