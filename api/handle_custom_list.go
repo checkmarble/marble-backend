@@ -50,10 +50,17 @@ func handlePostCustomList(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
+		kind := models.CustomListKindFromString(data.Kind)
+		if kind == models.CustomListUnknown {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
 		customList, err := usecase.CreateCustomList(ctx, models.CreateCustomListInput{
 			Name:           data.Name,
 			Description:    data.Description,
+			Kind:           kind,
 			OrganizationId: organizationId,
 		})
 		if presentError(ctx, c, err) {

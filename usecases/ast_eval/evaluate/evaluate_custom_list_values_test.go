@@ -47,7 +47,7 @@ func TestCustomListValues(t *testing.T) {
 
 	customListEval := evaluate.NewCustomListValuesAccess(clr, er, execFactory)
 
-	testCustomListValues := []models.CustomListValue{{Value: "test"}, {Value: "test2"}}
+	testCustomListValues := []models.CustomListValue{{Value: utils.Ptr("test")}, {Value: utils.Ptr("test2")}}
 
 	execFactory.On("NewExecutor").Return(exec)
 	clr.On("GetCustomListById", exec, testListId, true).Return(testList, nil)
