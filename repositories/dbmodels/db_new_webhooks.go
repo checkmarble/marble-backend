@@ -88,7 +88,7 @@ func AdaptNewWebhookSecret(db DBNewWebhookSecret) (models.NewWebhookSecret, erro
 	return secret, nil
 }
 
-type DBWebhookQueueItem struct {
+type DBWebhookEventV2 struct {
 	Id             uuid.UUID `db:"id"`
 	OrganizationId uuid.UUID `db:"organization_id"`
 	EventType      string    `db:"event_type"`
@@ -96,12 +96,12 @@ type DBWebhookQueueItem struct {
 	CreatedAt      time.Time `db:"created_at"`
 }
 
-const TABLE_WEBHOOK_QUEUE = "webhook_queue"
+const TABLE_WEBHOOK_EVENTS_V2 = "webhook_events_v2"
 
-var WebhookQueueItemFields = utils.ColumnList[DBWebhookQueueItem]()
+var WebhookEventV2Fields = utils.ColumnList[DBWebhookEventV2]()
 
-func AdaptWebhookQueueItem(db DBWebhookQueueItem) (models.WebhookQueueItem, error) {
-	return models.WebhookQueueItem{
+func AdaptWebhookEventV2(db DBWebhookEventV2) (models.WebhookEventV2, error) {
+	return models.WebhookEventV2{
 		Id:             db.Id,
 		OrganizationId: db.OrganizationId,
 		EventType:      db.EventType,

@@ -579,7 +579,7 @@ func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecas
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.ConvoyRepository,
 		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.WebhookRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.TaskQueueRepository,
 		usecases.Usecases.failedWebhooksRetryPageSize,
 		usecases.Usecases.license.Webhooks,
@@ -963,7 +963,7 @@ func (usecases UsecasesWithCreds) NewWebhookRetryWorker() *worker_jobs.WebhookRe
 
 func (usecases UsecasesWithCreds) NewWebhookDispatchWorker() *worker_jobs.WebhookDispatchWorker {
 	return worker_jobs.NewWebhookDispatchWorker(
-		usecases.Repositories.WebhookRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
@@ -974,7 +974,7 @@ func (usecases UsecasesWithCreds) NewWebhookDeliveryWorker() *worker_jobs.Webhoo
 	deliveryService := NewWebhookDeliveryService(usecases.apiVersion)
 
 	// Create a wrapper function to adapt the return type
-	deliveryFunc := func(ctx context.Context, webhook models.NewWebhook, secrets []models.NewWebhookSecret, event models.WebhookQueueItem) worker_jobs.WebhookSendResult {
+	deliveryFunc := func(ctx context.Context, webhook models.NewWebhook, secrets []models.NewWebhookSecret, event models.WebhookEventV2) worker_jobs.WebhookSendResult {
 		result := deliveryService.Send(ctx, webhook, secrets, event)
 		return worker_jobs.WebhookSendResult{
 			StatusCode: result.StatusCode,
@@ -983,12 +983,19 @@ func (usecases UsecasesWithCreds) NewWebhookDeliveryWorker() *worker_jobs.Webhoo
 	}
 
 	return worker_jobs.NewWebhookDeliveryWorker(
-		usecases.Repositories.WebhookRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.TaskQueueRepository,
 		deliveryFunc,
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+	)
+}
+
+func (usecases UsecasesWithCreds) NewWebhookCleanupWorker() *worker_jobs.WebhookCleanupWorker {
+	return worker_jobs.NewWebhookCleanupWorker(
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
 	)
 }
 

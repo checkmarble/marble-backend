@@ -17,6 +17,9 @@ const (
 	// Default timeout for webhook HTTP requests
 	DefaultWebhookTimeout = 30 * time.Second
 
+	// MaxWebhookTimeout is the maximum allowed timeout (cannot be exceeded by customer config)
+	MaxWebhookTimeout = 30 * time.Second
+
 	// Timeout for endpoint validation pings
 	ValidationPingTimeout = 10 * time.Second
 
@@ -50,8 +53,6 @@ func NewWebhookDeliveryService(apiVersion string) *WebhookDeliveryService {
 }
 
 // WebhookSendResult contains the result of a webhook delivery attempt.
-// This is defined here and in worker_jobs to avoid import cycles.
-// The interface in worker_jobs uses its own copy.
 type WebhookSendResult struct {
 	StatusCode int
 	Error      error
@@ -63,27 +64,26 @@ func (r WebhookSendResult) IsSuccess() bool {
 }
 
 // Send delivers a webhook payload to the specified endpoint.
-// Returns the HTTP status code and any error encountered.
-// Note: Returns worker_jobs.WebhookSendResult to match the interface.
 func (s *WebhookDeliveryService) Send(
 	ctx context.Context,
 	webhook models.NewWebhook,
 	secrets []models.NewWebhookSecret,
-	event models.WebhookQueueItem,
+	event models.WebhookEventV2,
 ) WebhookSendResult {
 	logger := utils.LoggerFromContext(ctx)
 
-	// Set timeout based on webhook configuration
+	// Set timeout based on webhook configuration, capped at MaxWebhookTimeout
 	timeout := DefaultWebhookTimeout
 	if webhook.HttpTimeoutSeconds > 0 {
-		timeout = time.Duration(webhook.HttpTimeoutSeconds) * time.Second
+		configuredTimeout := time.Duration(webhook.HttpTimeoutSeconds) * time.Second
+		if configuredTimeout <= MaxWebhookTimeout {
+			timeout = configuredTimeout
+		}
 	}
 
-	// Create context with timeout
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// Create request
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhook.Url, bytes.NewReader(event.EventData))
 	if err != nil {
 		return WebhookSendResult{Error: errors.Wrap(err, "failed to create request")}
@@ -106,10 +106,9 @@ func (s *WebhookDeliveryService) Send(
 		"event_type", event.EventType,
 		"event_id", event.Id)
 
-	// Send request
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return WebhookSendResult{Error: errors.Wrap(err, "failed to send request")}
+		return WebhookSendResult{Error: errors.Wrap(err, "request failed")}
 	}
 	defer resp.Body.Close()
 
@@ -141,7 +140,6 @@ func (s *WebhookDeliveryService) ValidateEndpoint(ctx context.Context, url strin
 	return errors.Wrap(lastErr, "endpoint validation failed: no 2xx response")
 }
 
-// ping sends a test request to the endpoint.
 func (s *WebhookDeliveryService) ping(ctx context.Context, client *http.Client, url string, method string) error {
 	var body io.Reader
 	if method == http.MethodPost {
@@ -164,7 +162,6 @@ func (s *WebhookDeliveryService) ping(ctx context.Context, client *http.Client, 
 	}
 	defer resp.Body.Close()
 
-	// Drain body
 	_, _ = io.Copy(io.Discard, resp.Body)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

@@ -215,3 +215,8 @@ type WebhookDeliveryJobArgs struct {
 }
 
 func (WebhookDeliveryJobArgs) Kind() string { return "webhook_delivery" }
+
+// WebhookCleanupJobArgs - Cleanup old webhook deliveries and orphaned events
+type WebhookCleanupJobArgs struct{}
+
+func (WebhookCleanupJobArgs) Kind() string { return "webhook_cleanup" }

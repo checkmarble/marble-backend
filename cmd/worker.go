@@ -242,6 +242,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		continuous_screening.NewContinuousScreeningUpdateDatasetJob(
 			workerConfig.ScanDatasetUpdatesInterval),
 	)
+	// Webhook cleanup (30 day retention)
+	maps.Copy(nonOrgQueues, usecases.QueueWebhookCleanup())
+	globalPeriodics = append(globalPeriodics, worker_jobs.NewWebhookCleanupPeriodicJob())
 	if !metricCollectionConfig.Disabled {
 		maps.Copy(nonOrgQueues, usecases.QueueMetrics())
 		globalPeriodics = append(globalPeriodics,
@@ -380,6 +383,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	// New webhook delivery system
 	river.AddWorker(workers, adminUc.NewWebhookDispatchWorker())
 	river.AddWorker(workers, adminUc.NewWebhookDeliveryWorker())
+	river.AddWorker(workers, adminUc.NewWebhookCleanupWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -593,6 +597,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "webhook_delivery":
 		return uc.NewWebhookDeliveryWorker().Work(ctx,
 			singleJobCreate[models.WebhookDeliveryJobArgs](ctx, jobArgs))
+	case "webhook_cleanup":
+		return uc.NewWebhookCleanupWorker().Work(ctx,
+			singleJobCreate[models.WebhookCleanupJobArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

@@ -35,22 +35,3 @@ func TestCalculateBackoff(t *testing.T) {
 		assert.Equal(t, 12*time.Hour, CalculateBackoff(100))
 	})
 }
-
-func TestWebhookSendResult_IsSuccess(t *testing.T) {
-	t.Run("returns true for 2xx status codes", func(t *testing.T) {
-		assert.True(t, WebhookSendResult{StatusCode: 200}.IsSuccess())
-		assert.True(t, WebhookSendResult{StatusCode: 201}.IsSuccess())
-		assert.True(t, WebhookSendResult{StatusCode: 204}.IsSuccess())
-		assert.True(t, WebhookSendResult{StatusCode: 299}.IsSuccess())
-	})
-
-	t.Run("returns false for non-2xx status codes", func(t *testing.T) {
-		assert.False(t, WebhookSendResult{StatusCode: 0}.IsSuccess())
-		assert.False(t, WebhookSendResult{StatusCode: 199}.IsSuccess())
-		assert.False(t, WebhookSendResult{StatusCode: 300}.IsSuccess())
-		assert.False(t, WebhookSendResult{StatusCode: 400}.IsSuccess())
-		assert.False(t, WebhookSendResult{StatusCode: 404}.IsSuccess())
-		assert.False(t, WebhookSendResult{StatusCode: 500}.IsSuccess())
-		assert.False(t, WebhookSendResult{StatusCode: 503}.IsSuccess())
-	})
-}

@@ -124,7 +124,6 @@ type Repositories struct {
 	TaskQueueRepository               TaskQueueRepository
 	MetricsIngestionRepository        MetricsIngestionRepository
 	LagoRepository                    lago_repository.LagoRepository
-	WebhookRepository                 WebhookRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -179,6 +178,5 @@ func NewRepositories(
 		TaskQueueRepository:        NewTaskQueueRepository(options.riverClient),
 		MetricsIngestionRepository: NewMetricsIngestionRepository(options.bigQueryInfra),
 		LagoRepository:             lago_repository.NewLagoRepository(http.DefaultClient, options.lagoConfig),
-		WebhookRepository:          &WebhookRepositoryPostgresql{},
 	}
 }

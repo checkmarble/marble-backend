@@ -264,8 +264,8 @@ type NewWebhookSecret struct {
 	RevokedAt *time.Time
 }
 
-// WebhookQueueItem represents an event in the new webhook queue
-type WebhookQueueItem struct {
+// WebhookEventV2 represents an event in the new webhook delivery system
+type WebhookEventV2 struct {
 	Id             uuid.UUID
 	OrganizationId uuid.UUID
 	EventType      string

@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	WEBHOOK_DELIVERY_TIMEOUT = 5 * time.Minute
+	// Job timeout should be slightly larger than max HTTP timeout (30s) + overhead
+	WEBHOOK_DELIVERY_TIMEOUT = 35 * time.Second
 
 	// DefaultMaxAttempts is the maximum number of delivery attempts before giving up.
 	DefaultMaxAttempts = 24
@@ -22,12 +23,12 @@ const (
 
 // DefaultRetryDelays for webhook delivery failures (exponential backoff).
 var DefaultRetryDelays = []time.Duration{
-	30 * time.Second,  // Fast first retry for transient issues
-	2 * time.Minute,   // Attempt 3
-	10 * time.Minute,  // Attempt 4
-	1 * time.Hour,     // Attempt 5
-	4 * time.Hour,     // Attempt 6
-	12 * time.Hour,    // Attempt 7+
+	30 * time.Second, // Fast first retry for transient issues
+	2 * time.Minute,
+	10 * time.Minute,
+	1 * time.Hour,
+	4 * time.Hour,
+	12 * time.Hour,
 }
 
 // CalculateBackoff returns the delay for the next retry attempt.
@@ -56,13 +57,13 @@ func (r WebhookSendResult) IsSuccess() bool {
 
 // webhookDeliveryRepository defines the interface for webhook delivery operations.
 type webhookDeliveryRepository interface {
-	GetDelivery(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WebhookDelivery, error)
+	GetWebhookDelivery(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WebhookDelivery, error)
 	GetWebhook(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.NewWebhook, error)
-	GetWebhookQueueItem(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WebhookQueueItem, error)
-	ListActiveSecrets(ctx context.Context, exec repositories.Executor, webhookId uuid.UUID) ([]models.NewWebhookSecret, error)
-	UpdateDeliverySuccess(ctx context.Context, exec repositories.Executor, id uuid.UUID, responseStatus int) error
-	UpdateDeliveryFailed(ctx context.Context, exec repositories.Executor, id uuid.UUID, errMsg string, responseStatus *int) error
-	UpdateDeliveryAttempt(ctx context.Context, exec repositories.Executor, id uuid.UUID, errMsg string, responseStatus *int, attempts int, nextRetryAt time.Time) error
+	GetWebhookEventV2(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WebhookEventV2, error)
+	ListActiveWebhookSecrets(ctx context.Context, exec repositories.Executor, webhookId uuid.UUID) ([]models.NewWebhookSecret, error)
+	UpdateWebhookDeliverySuccess(ctx context.Context, exec repositories.Executor, id uuid.UUID, responseStatus int) error
+	UpdateWebhookDeliveryFailed(ctx context.Context, exec repositories.Executor, id uuid.UUID, errMsg string, responseStatus *int) error
+	UpdateWebhookDeliveryAttempt(ctx context.Context, exec repositories.Executor, id uuid.UUID, errMsg string, responseStatus *int, attempts int, nextRetryAt time.Time) error
 }
 
 // webhookDeliveryTaskQueue defines the interface for scheduling retry jobs.
@@ -76,7 +77,7 @@ type webhookOrganizationRepository interface {
 }
 
 // WebhookDeliveryServiceFunc is a function type for webhook delivery to avoid import cycles.
-type WebhookDeliveryServiceFunc func(ctx context.Context, webhook models.NewWebhook, secrets []models.NewWebhookSecret, event models.WebhookQueueItem) WebhookSendResult
+type WebhookDeliveryServiceFunc func(ctx context.Context, webhook models.NewWebhook, secrets []models.NewWebhookSecret, event models.WebhookEventV2) WebhookSendResult
 
 // WebhookDeliveryWorker is the Stage 2 worker that delivers webhooks to individual endpoints.
 type WebhookDeliveryWorker struct {
@@ -117,18 +118,15 @@ func (w *WebhookDeliveryWorker) Timeout(job *river.Job[models.WebhookDeliveryJob
 
 // Work processes a webhook delivery job by sending the webhook to the endpoint.
 func (w *WebhookDeliveryWorker) Work(ctx context.Context, job *river.Job[models.WebhookDeliveryJobArgs]) error {
-	logger := utils.LoggerFromContext(ctx).With(
-		"delivery_id", job.Args.DeliveryId,
-	)
+	logger := utils.LoggerFromContext(ctx).With("delivery_id", job.Args.DeliveryId)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
 	exec := w.executorFactory.NewExecutor()
 
-	// Get the delivery record
-	delivery, err := w.webhookRepository.GetDelivery(ctx, exec, job.Args.DeliveryId)
+	delivery, err := w.webhookRepository.GetWebhookDelivery(ctx, exec, job.Args.DeliveryId)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to get delivery", "error", err)
-		return err // Infrastructure error → River retries
+		return err
 	}
 
 	logger = logger.With(
@@ -136,6 +134,7 @@ func (w *WebhookDeliveryWorker) Work(ctx context.Context, job *river.Job[models.
 		"webhook_event_id", delivery.WebhookEventId,
 		"attempt", delivery.Attempts+1,
 	)
+	ctx = utils.StoreLoggerInContext(ctx, logger)
 
 	// Already completed (idempotency check)
 	if delivery.Status != models.WebhookDeliveryStatusPending {
@@ -143,44 +142,35 @@ func (w *WebhookDeliveryWorker) Work(ctx context.Context, job *river.Job[models.
 		return nil
 	}
 
-	// Get the webhook configuration
 	webhook, err := w.webhookRepository.GetWebhook(ctx, exec, delivery.WebhookId)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to get webhook", "error", err)
-		return err // Infrastructure error → River retries
+		return err
 	}
 
-	// Get the event data
-	event, err := w.webhookRepository.GetWebhookQueueItem(ctx, exec, delivery.WebhookEventId)
+	event, err := w.webhookRepository.GetWebhookEventV2(ctx, exec, delivery.WebhookEventId)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to get webhook event", "error", err)
-		return err // Infrastructure error → River retries
+		return err
 	}
 
-	// Get active secrets for signing
-	secrets, err := w.webhookRepository.ListActiveSecrets(ctx, exec, webhook.Id)
+	secrets, err := w.webhookRepository.ListActiveWebhookSecrets(ctx, exec, webhook.Id)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to get webhook secrets", "error", err)
-		return err // Infrastructure error → River retries
+		return err
 	}
 
-	logger.InfoContext(ctx, "Delivering webhook",
-		"url", webhook.Url,
-		"event_type", event.EventType)
+	logger.InfoContext(ctx, "Delivering webhook", "url", webhook.Url, "event_type", event.EventType)
 
-	// Attempt HTTP delivery
 	result := w.deliveryFunc(ctx, webhook, secrets, event)
-
-	// Increment attempt count
 	newAttempts := delivery.Attempts + 1
 
 	if result.IsSuccess() {
-		// Success - mark delivery as complete
 		logger.InfoContext(ctx, "Webhook delivered successfully", "status_code", result.StatusCode)
-		return w.webhookRepository.UpdateDeliverySuccess(ctx, exec, delivery.Id, result.StatusCode)
+		return w.webhookRepository.UpdateWebhookDeliverySuccess(ctx, exec, delivery.Id, result.StatusCode)
 	}
 
-	// HTTP failure - format error message
+	// Delivery failed
 	errMsg := w.formatError(result)
 	var statusCode *int
 	if result.StatusCode > 0 {
@@ -193,51 +183,41 @@ func (w *WebhookDeliveryWorker) Work(ctx context.Context, job *river.Job[models.
 		"attempts", newAttempts,
 		"max_attempts", w.maxAttempts)
 
-	// Check if we've exhausted retries
 	if newAttempts >= w.maxAttempts {
-		logger.ErrorContext(ctx, "Webhook delivery exhausted all retries",
-			"attempts", newAttempts)
-		return w.webhookRepository.UpdateDeliveryFailed(ctx, exec, delivery.Id, errMsg, statusCode)
+		logger.ErrorContext(ctx, "Webhook delivery exhausted all retries", "attempts", newAttempts)
+		return w.webhookRepository.UpdateWebhookDeliveryFailed(ctx, exec, delivery.Id, errMsg, statusCode)
 	}
 
 	// Schedule retry with backoff
 	nextRetryAt := time.Now().Add(CalculateBackoff(newAttempts))
 
-	// Update delivery record with attempt info
-	err = w.webhookRepository.UpdateDeliveryAttempt(ctx, exec, delivery.Id, errMsg, statusCode, newAttempts, nextRetryAt)
+	err = w.webhookRepository.UpdateWebhookDeliveryAttempt(ctx, exec, delivery.Id, errMsg, statusCode, newAttempts, nextRetryAt)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to update delivery attempt", "error", err)
 		return err
 	}
 
-	// Get organization for queue routing
 	org, err := w.orgRepository.GetOrganizationById(ctx, exec, event.OrganizationId)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to get organization", "error", err)
 		return err
 	}
 
-	// Enqueue new job scheduled for later
 	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		return w.taskQueue.EnqueueWebhookDeliveryAt(ctx, tx, org.Id, delivery.Id, nextRetryAt)
 	})
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to enqueue retry job", "error", err)
-		return err // If enqueue fails, River retries this job
+		return err
 	}
 
-	logger.InfoContext(ctx, "Scheduled webhook retry",
-		"next_retry_at", nextRetryAt,
-		"attempts", newAttempts)
-
-	// Return nil because we manage retries ourselves, not River
+	logger.InfoContext(ctx, "Scheduled webhook retry", "next_retry_at", nextRetryAt, "attempts", newAttempts)
 	return nil
 }
 
-// formatError creates a human-readable error message from the delivery result.
 func (w *WebhookDeliveryWorker) formatError(result WebhookSendResult) string {
 	if result.Error != nil {
-		return fmt.Sprintf("HTTP error: %s", result.Error.Error())
+		return result.Error.Error()
 	}
-	return fmt.Sprintf("HTTP status: %d", result.StatusCode)
+	return fmt.Sprintf("HTTP %d", result.StatusCode)
 }
