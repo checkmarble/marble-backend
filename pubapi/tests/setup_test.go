@@ -65,10 +65,11 @@ func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContaine
 
 	pg, err := postgres.Run(
 		ctx,
-		"postgres:17",
+		"postgis/postgis:17-3.6-alpine",
 		postgres.WithDatabase("marble_test"),
 		postgres.WithUsername("postgres"),
 		postgres.WithPassword("marble"),
+		testcontainers.WithImagePlatform("linux/amd64"),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
@@ -177,7 +178,7 @@ func setupClientDbSchema(t *testing.T, ctx context.Context, conn *sql.DB) {
 
 	// Create unique index for _monitored_objects
 	_, err = conn.ExecContext(ctx, fmt.Sprintf(`
-		CREATE UNIQUE INDEX IF NOT EXISTS uniq_idx_config_object_type_id_monitored_objects 
+		CREATE UNIQUE INDEX IF NOT EXISTS uniq_idx_config_object_type_id_monitored_objects
 		ON %s._monitored_objects (config_stable_id, object_type, object_id)
 	`, schemaName))
 	if err != nil {

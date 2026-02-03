@@ -20,6 +20,10 @@ type HasIpFlag struct {
 }
 
 func (f HasIpFlag) Evaluate(ctx context.Context, args ast.Arguments) (any, []error) {
+	if args.NamedArgs["ip"] == nil {
+		return nil, nil
+	}
+
 	var errs []error
 
 	ip, ipErr := AdaptNamedArgument(args.NamedArgs, "ip", adaptArgumentToIp)

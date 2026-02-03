@@ -51,6 +51,7 @@ func (creator *OrganizationCreator) seedDefaultList(ctx context.Context, organiz
 	err := creator.CustomListRepository.CreateCustomList(ctx, exec, models.CreateCustomListInput{
 		Name:           "Welcome to Marble",
 		Description:    "Need a whitelist or blacklist ? The list is your friend :)",
+		Kind:           models.CustomListText,
 		OrganizationId: organizationId,
 	}, newCustomListId)
 	if err != nil {
@@ -61,11 +62,11 @@ func (creator *OrganizationCreator) seedDefaultList(ctx context.Context, organiz
 		CustomListId: newCustomListId,
 		Value:        "Welcome",
 	}
-	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString(), nil)
+	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, models.CustomListText, addCustomListValueInput, uuid.NewString(), nil)
 	addCustomListValueInput.Value = "to"
-	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString(), nil)
+	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, models.CustomListText, addCustomListValueInput, uuid.NewString(), nil)
 	addCustomListValueInput.Value = "marble"
-	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString(), nil)
+	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, models.CustomListText, addCustomListValueInput, uuid.NewString(), nil)
 
 	logger.InfoContext(ctx, "Finish to create the default custom list for the organization")
 	return nil

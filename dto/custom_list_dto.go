@@ -16,6 +16,7 @@ type CustomList struct {
 	Id          string     `json:"id"`
 	Name        string     `json:"name"`
 	Description string     `json:"description"`
+	Kind        string     `json:"kind"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	ValuesCount ValuesInfo `json:"values_count"`
@@ -26,6 +27,7 @@ func AdaptCustomListDto(list models.CustomList) CustomList {
 		Id:          list.Id,
 		Name:        list.Name,
 		Description: list.Description,
+		Kind:        list.Kind.String(),
 		CreatedAt:   list.CreatedAt,
 		UpdatedAt:   list.UpdatedAt,
 		ValuesCount: ValuesInfo{
@@ -53,15 +55,25 @@ func AdaptCustomListWithValuesDto(list models.CustomList, values []models.Custom
 }
 
 func AdaptCustomListValueDto(listValue models.CustomListValue) CustomListValue {
+	value := ""
+
+	switch {
+	case listValue.Value != nil:
+		value = *listValue.Value
+	case listValue.CidrValue != nil:
+		value = listValue.CidrValue.String()
+	}
+
 	return CustomListValue{
 		Id:    listValue.Id,
-		Value: listValue.Value,
+		Value: value,
 	}
 }
 
 type CreateCustomListBodyDto struct {
 	Name        string `in:"path=name"`
 	Description string `in:"path=description"`
+	Kind        string `in:"path=kind"`
 }
 
 type CreateCustomListInputDto struct {
