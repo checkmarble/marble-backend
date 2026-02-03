@@ -490,7 +490,7 @@ func (uc *OrgImportUsecase) createCustomLists(ctx context.Context, tx repositori
 			return err
 		}
 
-		err = uc.customListRepository.BatchInsertCustomListValues(ctx, tx, listId.String(), pure_utils.Map(
+		err = uc.customListRepository.BatchInsertCustomListValues(ctx, tx, models.CustomListText, listId.String(), pure_utils.Map(
 			list.Values, func(v string) models.BatchInsertCustomListValue {
 				valueId, _ := uuid.NewV7()
 				return models.BatchInsertCustomListValue{Id: valueId.String(), Value: v}

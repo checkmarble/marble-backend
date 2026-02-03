@@ -60,8 +60,17 @@ func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.A
 			fmt.Sprintf("Error reading values for list %s", list.Id)))
 	}
 
+	var valueFromListFn func(v models.CustomListValue) any
+
+	switch list.Kind {
+	case models.CustomListText:
+		valueFromListFn = func(v models.CustomListValue) any { return pure_utils.Normalize(*v.Value) }
+	case models.CustomListCidrs:
+		valueFromListFn = func(v models.CustomListValue) any { return *v.CidrValue }
+	}
+
 	return pure_utils.Map(
 		listValues,
-		func(v models.CustomListValue) string { return pure_utils.Normalize(v.Value) },
+		valueFromListFn,
 	), nil
 }

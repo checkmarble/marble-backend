@@ -1,10 +1,41 @@
 package models
 
 import (
+	"net/netip"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type CustomListKind int
+
+const (
+	CustomListUnknown CustomListKind = iota
+	CustomListText
+	CustomListCidrs
+)
+
+func CustomListKindFromString(s string) CustomListKind {
+	switch s {
+	case "text":
+		return CustomListText
+	case "cidrs":
+		return CustomListCidrs
+	default:
+		return CustomListUnknown
+	}
+}
+
+func (k CustomListKind) String() string {
+	switch k {
+	case CustomListText:
+		return "text"
+	case CustomListCidrs:
+		return "cidrs"
+	default:
+		return "unknown"
+	}
+}
 
 const VALUES_COUNT_LIMIT = 100 // Maximum count number of values to be returned when showing customs list information
 
@@ -18,6 +49,7 @@ type CustomList struct {
 	OrganizationId uuid.UUID
 	Name           string
 	Description    string
+	Kind           CustomListKind
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time
@@ -27,7 +59,8 @@ type CustomList struct {
 type CustomListValue struct {
 	Id           string
 	CustomListId string
-	Value        string
+	Value        *string
+	CidrValue    *netip.Prefix
 	CreatedAt    time.Time
 	DeletedAt    *time.Time
 }
@@ -35,6 +68,7 @@ type CustomListValue struct {
 type CreateCustomListInput struct {
 	Name           string
 	Description    string
+	Kind           CustomListKind
 	OrganizationId uuid.UUID
 }
 
