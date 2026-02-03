@@ -42,39 +42,6 @@ func AdaptObjectMetadataDto(m models.ObjectMetadata) (ObjectMetadataDto, error) 
 	}, nil
 }
 
-type ObjectMetadataFilterDto struct {
-	ObjectType    string   `form:"object_type"`
-	ObjectId      string   `form:"object_id"`
-	MetadataTypes []string `form:"metadata_types"`
-}
-
-func (d ObjectMetadataFilterDto) Adapt(orgId uuid.UUID) (models.ObjectMetadataFilter, error) {
-	filter := models.ObjectMetadataFilter{
-		OrgId: orgId,
-	}
-
-	if d.ObjectType != "" {
-		filter.ObjectType = &d.ObjectType
-	}
-	if d.ObjectId != "" {
-		filter.ObjectIds = []string{d.ObjectId}
-	}
-	if len(d.MetadataTypes) > 0 {
-		metadataTypes := make([]models.MetadataType, 0, len(d.MetadataTypes))
-		for _, mt := range d.MetadataTypes {
-			metadataType := models.MetadataTypeFrom(mt)
-			if metadataType == models.MetadataTypeUnknown {
-				return models.ObjectMetadataFilter{},
-					errors.Wrap(models.BadParameterError, "invalid metadata_type: "+mt)
-			}
-			metadataTypes = append(metadataTypes, metadataType)
-		}
-		filter.MetadataTypes = metadataTypes
-	}
-
-	return filter, nil
-}
-
 type ObjectRiskTopicUpsertInputDto struct {
 	Topics []string `json:"topics" binding:"required"`
 	Reason string   `json:"reason"`
@@ -83,7 +50,6 @@ type ObjectRiskTopicUpsertInputDto struct {
 
 func (d ObjectRiskTopicUpsertInputDto) Adapt(
 	orgId uuid.UUID,
-	userId uuid.UUID,
 	objectType string,
 	objectId string,
 ) (models.ObjectRiskTopicUpsert, error) {
@@ -102,7 +68,6 @@ func (d ObjectRiskTopicUpsertInputDto) Adapt(
 		objectType,
 		objectId,
 		topics,
-		userId,
 		d.Reason,
 		d.Url,
 	), nil

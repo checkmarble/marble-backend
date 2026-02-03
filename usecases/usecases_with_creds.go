@@ -1006,7 +1006,6 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 func (usecases *UsecasesWithCreds) NewObjectMetadataUsecase() ObjectMetadataUsecase {
 	return ObjectMetadataUsecase{
 		executorFactory:    usecases.NewExecutorFactory(),
-		transactionFactory: usecases.NewTransactionFactory(),
 		enforceSecurity:    usecases.NewEnforceObjectMetadata(),
 		repository:         usecases.Repositories.MarbleDbRepository,
 		ingestedDataReader: usecases.Repositories.IngestedDataReadRepository,

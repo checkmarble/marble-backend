@@ -16,9 +16,9 @@ type ObjectMetadata struct {
 func (m *ObjectMetadata) UpsertObjectRiskTopic(
 	ctx context.Context,
 	input models.ObjectRiskTopicUpsert,
-) (models.ObjectRiskTopic, error) {
+) (models.ObjectMetadata, error) {
 	args := m.Called(ctx, input)
-	return args.Get(0).(models.ObjectRiskTopic), args.Error(1)
+	return args.Get(0).(models.ObjectMetadata), args.Error(1)
 }
 
 func (m *ObjectMetadata) AppendObjectRiskTopics(

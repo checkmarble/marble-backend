@@ -25,32 +25,23 @@ func (m *ObjectMetadataRepository) GetDataModel(
 	return args.Get(0).(models.DataModel), args.Error(1)
 }
 
-func (m *ObjectMetadataRepository) ListObjectMetadata(
-	ctx context.Context,
-	exec repositories.Executor,
-	filter models.ObjectMetadataFilter,
-	paginationAndSorting models.PaginationAndSorting,
-) ([]models.ObjectMetadata, error) {
-	args := m.Called(ctx, exec, filter, paginationAndSorting)
-	return args.Get(0).([]models.ObjectMetadata), args.Error(1)
-}
-
-func (m *ObjectMetadataRepository) GetObjectRiskTopicByObjectId(
+func (m *ObjectMetadataRepository) GetObjectMetadata(
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
 	objectType string,
 	objectId string,
-) (models.ObjectRiskTopic, error) {
-	args := m.Called(ctx, exec, orgId, objectType, objectId)
-	return args.Get(0).(models.ObjectRiskTopic), args.Error(1)
+	metadataType models.MetadataType,
+) (models.ObjectMetadata, error) {
+	args := m.Called(ctx, exec, orgId, objectType, objectId, metadataType)
+	return args.Get(0).(models.ObjectMetadata), args.Error(1)
 }
 
-func (m *ObjectMetadataRepository) UpsertObjectRiskTopic(
+func (m *ObjectMetadataRepository) UpsertObjectMetadata(
 	ctx context.Context,
 	exec repositories.Executor,
-	input models.ObjectRiskTopicUpsert,
-) (models.ObjectRiskTopic, error) {
+	input models.ObjectMetadataUpsert,
+) (models.ObjectMetadata, error) {
 	args := m.Called(ctx, exec, input)
-	return args.Get(0).(models.ObjectRiskTopic), args.Error(1)
+	return args.Get(0).(models.ObjectMetadata), args.Error(1)
 }

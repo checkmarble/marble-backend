@@ -20,29 +20,23 @@ type objectMetadataRepository interface {
 		fetchEnumValues bool,
 		useCache bool,
 	) (models.DataModel, error)
-	ListObjectMetadata(
-		ctx context.Context,
-		exec repositories.Executor,
-		filter models.ObjectMetadataFilter,
-		paginationAndSorting models.PaginationAndSorting,
-	) ([]models.ObjectMetadata, error)
-	GetObjectRiskTopicByObjectId(
+	GetObjectMetadata(
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId uuid.UUID,
 		objectType string,
 		objectId string,
-	) (models.ObjectRiskTopic, error)
-	UpsertObjectRiskTopic(
+		metadataType models.MetadataType,
+	) (models.ObjectMetadata, error)
+	UpsertObjectMetadata(
 		ctx context.Context,
 		exec repositories.Executor,
-		input models.ObjectRiskTopicUpsert,
-	) (models.ObjectRiskTopic, error)
+		input models.ObjectMetadataUpsert,
+	) (models.ObjectMetadata, error)
 }
 
 type ObjectMetadataUsecase struct {
-	executorFactory    executor_factory.ExecutorFactory
-	transactionFactory executor_factory.TransactionFactory
+	executorFactory executor_factory.ExecutorFactory
 
 	enforceSecurity    security.EnforceSecurityObjectMetadata
 	repository         objectMetadataRepository
@@ -51,62 +45,44 @@ type ObjectMetadataUsecase struct {
 
 func NewObjectMetadataUsecase(
 	executorFactory executor_factory.ExecutorFactory,
-	transactionFactory executor_factory.TransactionFactory,
 	enforceSecurity security.EnforceSecurityObjectMetadata,
 	repo objectMetadataRepository,
 	ingestedDataReader repositories.IngestedDataReadRepository,
 ) *ObjectMetadataUsecase {
 	return &ObjectMetadataUsecase{
 		executorFactory:    executorFactory,
-		transactionFactory: transactionFactory,
 		enforceSecurity:    enforceSecurity,
 		repository:         repo,
 		ingestedDataReader: ingestedDataReader,
 	}
 }
 
-func (usecase *ObjectMetadataUsecase) ListObjectMetadata(
-	ctx context.Context,
-	filter models.ObjectMetadataFilter,
-	paginationAndSorting models.PaginationAndSorting,
-) ([]models.ObjectMetadata, error) {
-	exec := usecase.executorFactory.NewExecutor()
-
-	metadata, err := usecase.repository.ListObjectMetadata(ctx, exec, filter, paginationAndSorting)
-	if err != nil {
-		return nil, err
-	}
-
-	// Enforce security for each metadata item
-	result := make([]models.ObjectMetadata, 0, len(metadata))
-	for _, m := range metadata {
-		if err := usecase.enforceSecurity.ReadObjectMetadata(m); err != nil {
-			continue // Skip unauthorized items
-		}
-		result = append(result, m)
-	}
-
-	return result, nil
-}
-
-func (usecase *ObjectMetadataUsecase) GetObjectRiskTopicByObjectId(
+func (usecase *ObjectMetadataUsecase) GetObjectMetadata(
 	ctx context.Context,
 	orgId uuid.UUID,
 	objectType string,
 	objectId string,
-) (models.ObjectRiskTopic, error) {
+	metadataType models.MetadataType,
+) (models.ObjectMetadata, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	objectRiskTopic, err := usecase.repository.GetObjectRiskTopicByObjectId(ctx, exec, orgId, objectType, objectId)
+	objectMetadata, err := usecase.repository.GetObjectMetadata(
+		ctx,
+		exec,
+		orgId,
+		objectType,
+		objectId,
+		metadataType,
+	)
 	if err != nil {
-		return models.ObjectRiskTopic{}, err
+		return models.ObjectMetadata{}, err
 	}
 
-	if err := usecase.enforceSecurity.ReadObjectMetadata(objectRiskTopic.ObjectMetadata); err != nil {
-		return models.ObjectRiskTopic{}, err
+	if err := usecase.enforceSecurity.ReadObjectMetadata(objectMetadata); err != nil {
+		return models.ObjectMetadata{}, err
 	}
 
-	return objectRiskTopic, nil
+	return objectMetadata, nil
 }
 
 // validateIngestedObjectExists checks that the object type exists in the data model
@@ -148,20 +124,31 @@ func (usecase *ObjectMetadataUsecase) validateIngestedObjectExists(
 func (usecase *ObjectMetadataUsecase) UpsertObjectRiskTopic(
 	ctx context.Context,
 	input models.ObjectRiskTopicUpsert,
-) (models.ObjectRiskTopic, error) {
+) (models.ObjectMetadata, error) {
 	if err := usecase.enforceSecurity.WriteObjectMetadata(input.OrgId); err != nil {
-		return models.ObjectRiskTopic{}, err
+		return models.ObjectMetadata{}, err
 	}
 
 	if err := usecase.validateIngestedObjectExists(ctx, input.OrgId, input.ObjectType, input.ObjectId); err != nil {
-		return models.ObjectRiskTopic{}, err
+		return models.ObjectMetadata{}, err
 	}
 
 	// Sort topics for deterministic ordering
 	slices.Sort(input.Topics)
 
-	exec := usecase.executorFactory.NewExecutor()
-	return usecase.repository.UpsertObjectRiskTopic(ctx, exec, input)
+	upsertInput := models.ObjectMetadataUpsert{
+		OrgId:        input.OrgId,
+		ObjectType:   input.ObjectType,
+		ObjectId:     input.ObjectId,
+		MetadataType: models.MetadataTypeRiskTopics,
+		Metadata: models.RiskTopicsMetadata{
+			Topics:        input.Topics,
+			SourceType:    input.SourceType,
+			SourceDetails: input.SourceDetails,
+		},
+	}
+
+	return usecase.repository.UpsertObjectMetadata(ctx, usecase.executorFactory.NewExecutor(), upsertInput)
 }
 
 // AppendObjectRiskTopics adds new topics to an object within an existing transaction.
@@ -172,20 +159,29 @@ func (usecase *ObjectMetadataUsecase) AppendObjectRiskTopics(
 	input models.ObjectRiskTopicUpsert,
 ) error {
 	// Get existing topics (if any)
-	existing, err := usecase.repository.GetObjectRiskTopicByObjectId(
+	existing, err := usecase.repository.GetObjectMetadata(
 		ctx,
 		tx,
 		input.OrgId,
 		input.ObjectType,
 		input.ObjectId,
+		models.MetadataTypeRiskTopics,
 	)
 	if err != nil && !errors.Is(err, models.NotFoundError) {
 		return err
 	}
+	var existingTopics []models.RiskTopic
+	if existing.Metadata != nil {
+		metadataContent, ok := existing.Metadata.(*models.RiskTopicsMetadata)
+		if !ok {
+			return errors.Errorf("invalid metadata content type for risk topics: %T", existing.Metadata)
+		}
+		existingTopics = metadataContent.Topics
+	}
 
 	// Merge topics: existing + new (deduplicated)
 	topicSet := make(map[models.RiskTopic]struct{})
-	for _, t := range existing.Topics {
+	for _, t := range existingTopics {
 		topicSet[t] = struct{}{}
 	}
 
@@ -212,17 +208,19 @@ func (usecase *ObjectMetadataUsecase) AppendObjectRiskTopics(
 
 	// Upsert with merged topics
 	// Audit trail captures the change automatically
-	_, err = usecase.repository.UpsertObjectRiskTopic(
+	_, err = usecase.repository.UpsertObjectMetadata(
 		ctx,
 		tx,
-		models.ObjectRiskTopicUpsert{
-			OrgId:         input.OrgId,
-			ObjectType:    input.ObjectType,
-			ObjectId:      input.ObjectId,
-			Topics:        mergedTopics,
-			SourceType:    input.SourceType,
-			SourceDetails: input.SourceDetails,
-			UserId:        input.UserId,
+		models.ObjectMetadataUpsert{
+			OrgId:        input.OrgId,
+			ObjectType:   input.ObjectType,
+			ObjectId:     input.ObjectId,
+			MetadataType: models.MetadataTypeRiskTopics,
+			Metadata: models.RiskTopicsMetadata{
+				Topics:        mergedTopics,
+				SourceType:    input.SourceType,
+				SourceDetails: input.SourceDetails,
+			},
 		},
 	)
 	return err

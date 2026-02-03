@@ -9,66 +9,9 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
-var objectMetadataPaginationDefaults = models.PaginationDefaults{
-	Limit:  25,
-	SortBy: models.SortingFieldCreatedAt,
-	Order:  models.SortingOrderDesc,
-}
-
-func handleListObjectMetadata(uc usecases.Usecases) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-
-		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		var filterDto dto.ObjectMetadataFilterDto
-		if err := c.ShouldBindQuery(&filterDto); err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
-			return
-		}
-
-		var paginationDto dto.PaginationAndSorting
-		if err := c.ShouldBindQuery(&paginationDto); err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
-			return
-		}
-
-		paginationAndSorting := models.WithPaginationDefaults(
-			dto.AdaptPaginationAndSorting(paginationDto),
-			objectMetadataPaginationDefaults,
-		)
-
-		filter, err := filterDto.Adapt(organizationId)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		usecase := usecasesWithCreds(ctx, uc).NewObjectMetadataUsecase()
-		objectMetadataList, err := usecase.ListObjectMetadata(ctx, filter, paginationAndSorting)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		dtos := make([]dto.ObjectMetadataDto, len(objectMetadataList))
-		for i, m := range objectMetadataList {
-			d, err := dto.AdaptObjectMetadataDto(m)
-			if presentError(ctx, c, err) {
-				return
-			}
-			dtos[i] = d
-		}
-
-		c.JSON(http.StatusOK, dtos)
-	}
-}
-
-func handleGetObjectRiskTopics(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetObjectMetadata(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -89,13 +32,25 @@ func handleGetObjectRiskTopics(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
+		metadataTypeStr := c.Param("type")
+		if metadataTypeStr == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "metadata-type is required"))
+			return
+		}
+
+		metadataType := models.MetadataTypeFrom(metadataTypeStr)
+		if metadataType == models.MetadataTypeUnknown {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid metadata-type"))
+			return
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewObjectMetadataUsecase()
-		objectRiskTopic, err := usecase.GetObjectRiskTopicByObjectId(ctx, organizationId, objectType, objectId)
+		objectMetadata, err := usecase.GetObjectMetadata(ctx, organizationId, objectType, objectId, metadataType)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		result, err := dto.AdaptObjectMetadataDto(objectRiskTopic.ObjectMetadata)
+		result, err := dto.AdaptObjectMetadataDto(objectMetadata)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -104,24 +59,12 @@ func handleGetObjectRiskTopics(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpsertObjectRiskTopics(uc usecases.Usecases) func(c *gin.Context) {
+func handleUpsertObjectMetadata(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(ctx, c, err) {
-			return
-		}
-
-		creds, found := utils.CredentialsFromCtx(ctx)
-		if !found {
-			presentError(ctx, c, errors.Wrap(models.ForbiddenError, "credentials not found"))
-			return
-		}
-
-		userId, err := uuid.Parse(string(creds.ActorIdentity.UserId))
-		if err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid user id"))
 			return
 		}
 
@@ -137,28 +80,41 @@ func handleUpsertObjectRiskTopics(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		var input dto.ObjectRiskTopicUpsertInputDto
-		if err := c.ShouldBindJSON(&input); err != nil {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
-			return
-		}
-
-		upsertInput, err := input.Adapt(organizationId, userId, objectType, objectId)
-		if presentError(ctx, c, err) {
+		metadataTypeStr := c.Param("type")
+		if metadataTypeStr == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "metadata-type is required"))
 			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewObjectMetadataUsecase()
-		objectRiskTopic, err := usecase.UpsertObjectRiskTopic(ctx, upsertInput)
-		if presentError(ctx, c, err) {
+		var newObjectMetadata models.ObjectMetadata
+
+		metadataType := models.MetadataTypeFrom(metadataTypeStr)
+		switch metadataType {
+		case models.MetadataTypeRiskTopics:
+			var input dto.ObjectRiskTopicUpsertInputDto
+			if err := c.ShouldBindJSON(&input); err != nil {
+				presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+				return
+			}
+			upsertInput, err := input.Adapt(organizationId, objectType, objectId)
+			if presentError(ctx, c, err) {
+				return
+			}
+			newObjectMetadata, err = usecase.UpsertObjectRiskTopic(ctx, upsertInput)
+			if presentError(ctx, c, err) {
+				return
+			}
+		default:
+			presentError(ctx, c, errors.Wrap(models.BadParameterError,
+				"upsert not supported for metadata-type: "+metadataTypeStr))
 			return
 		}
 
-		result, err := dto.AdaptObjectMetadataDto(objectRiskTopic.ObjectMetadata)
+		result, err := dto.AdaptObjectMetadataDto(newObjectMetadata)
 		if presentError(ctx, c, err) {
 			return
 		}
-
 		c.JSON(http.StatusOK, result)
 	}
 }

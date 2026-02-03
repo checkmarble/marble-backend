@@ -779,11 +779,6 @@ func (uc *ContinuousScreeningUsecase) addRiskTopicsFromConfirmedMatch(
 		return nil
 	}
 
-	// reviewerUuid is required for creating the risk topic event
-	if reviewerUuid == nil {
-		return errors.New("reviewer id is required to add risk topics from confirmed match")
-	}
-
 	// Create the upsert input (will APPEND topics, not replace)
 	input := models.NewObjectRiskTopicFromContinuousScreeningReviewUpsert(
 		screening.OrgId,
@@ -792,7 +787,6 @@ func (uc *ContinuousScreeningUsecase) addRiskTopicsFromConfirmedMatch(
 		topics,
 		screening.Id,
 		openSanctionsEntityId,
-		*reviewerUuid,
 	)
 
 	return uc.objectRiskTopicWriter.AppendObjectRiskTopics(ctx, tx, input)

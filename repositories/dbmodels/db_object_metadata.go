@@ -43,33 +43,3 @@ func AdaptObjectMetadata(db DBObjectMetadata) (models.ObjectMetadata, error) {
 	}, nil
 }
 
-// AdaptObjectRiskTopic converts DBObjectMetadata to ObjectRiskTopic when type is risk_topics
-func AdaptObjectRiskTopic(db DBObjectMetadata) (models.ObjectRiskTopic, error) {
-	riskTopicsMetadata, err := models.ParseRiskTopicsMetadata(db.Metadata)
-	if err != nil {
-		return models.ObjectRiskTopic{}, err
-	}
-
-	return models.ObjectRiskTopic{
-		ObjectMetadata: models.ObjectMetadata{
-			Id:           db.Id,
-			OrgId:        db.OrgId,
-			ObjectType:   db.ObjectType,
-			ObjectId:     db.ObjectId,
-			MetadataType: models.MetadataTypeRiskTopics,
-			Metadata:     riskTopicsMetadata,
-			CreatedAt:    db.CreatedAt,
-			UpdatedAt:    db.UpdatedAt,
-		},
-		Topics:        riskTopicsMetadata.Topics,
-		SourceType:    riskTopicsMetadata.SourceType,
-		SourceDetails: riskTopicsMetadata.SourceDetails,
-	}, nil
-}
-
-// DBRiskTopicsMetadata is the JSON structure for risk_topics metadata type stored in DB
-type DBRiskTopicsMetadata struct {
-	Topics        []string        `json:"topics"`
-	SourceType    string          `json:"source_type"`
-	SourceDetails json.RawMessage `json:"source_details,omitempty"`
-}

@@ -69,23 +69,36 @@ type ObjectMetadata struct {
 	UpdatedAt    time.Time
 }
 
-// ObjectMetadataFilter is for filtering metadata queries
+type ObjectMetadataUpsert struct {
+	OrgId        uuid.UUID
+	ObjectType   string
+	ObjectId     string
+	MetadataType MetadataType
+	Metadata     MetadataContent
+}
+
 type ObjectMetadataFilter struct {
-	OrgId         uuid.UUID
-	MetadataTypes []MetadataType
-	ObjectType    *string
-	ObjectIds     []string
+	OrgId        uuid.UUID
+	MetadataType MetadataType
+	ObjectType   string
+	ObjectId     string
 }
 
 // =============================================================================
 // Risk Topics specific types (convenience wrappers)
 // =============================================================================
 
+type RiskTopicsMetadataJSON struct {
+	Topics        []string        `json:"topics"`
+	SourceType    string          `json:"source_type"`
+	SourceDetails json.RawMessage `json:"source_details"`
+}
+
 // RiskTopicsMetadata implements MetadataContent for risk_topics metadata type
 type RiskTopicsMetadata struct {
-	Topics        []RiskTopic         `json:"topics"`
-	SourceType    RiskTopicSourceType `json:"-"`
-	SourceDetails SourceDetails       `json:"-"`
+	Topics        []RiskTopic
+	SourceType    RiskTopicSourceType
+	SourceDetails SourceDetails
 }
 
 func (r RiskTopicsMetadata) MetadataContentType() MetadataType {
@@ -93,18 +106,12 @@ func (r RiskTopicsMetadata) MetadataContentType() MetadataType {
 }
 
 func (r RiskTopicsMetadata) ToJSON() (json.RawMessage, error) {
-	type riskTopicsMetadataJSON struct {
-		Topics        []string        `json:"topics"`
-		SourceType    string          `json:"source_type"`
-		SourceDetails json.RawMessage `json:"source_details,omitempty"`
-	}
-
 	topics := make([]string, 0, len(r.Topics))
 	for _, t := range r.Topics {
 		topics = append(topics, string(t))
 	}
 
-	output := riskTopicsMetadataJSON{
+	output := RiskTopicsMetadataJSON{
 		Topics:     topics,
 		SourceType: r.SourceType.String(),
 	}
@@ -126,11 +133,7 @@ func ParseRiskTopicsMetadata(data json.RawMessage) (*RiskTopicsMetadata, error) 
 		return nil, nil
 	}
 
-	var raw struct {
-		Topics        []string        `json:"topics"`
-		SourceType    string          `json:"source_type"`
-		SourceDetails json.RawMessage `json:"source_details"`
-	}
+	var raw RiskTopicsMetadataJSON
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, err
 	}
@@ -233,22 +236,6 @@ func ParseSourceDetails(sourceType RiskTopicSourceType, data json.RawMessage) (S
 	}
 }
 
-// ObjectRiskTopic is a convenience wrapper for risk_topics metadata
-type ObjectRiskTopic struct {
-	ObjectMetadata
-	Topics        []RiskTopic
-	SourceType    RiskTopicSourceType
-	SourceDetails SourceDetails
-}
-
-// TODO: Will be used in next PRs to filter metadata with risk topics
-type ObjectRiskTopicFilter struct {
-	OrgId      uuid.UUID
-	ObjectType *string
-	ObjectIds  []string
-	Topics     []RiskTopic
-}
-
 // ObjectRiskTopicUpsert contains all data needed for upsert operation
 type ObjectRiskTopicUpsert struct {
 	OrgId         uuid.UUID
@@ -257,7 +244,6 @@ type ObjectRiskTopicUpsert struct {
 	Topics        []RiskTopic
 	SourceType    RiskTopicSourceType
 	SourceDetails SourceDetails
-	UserId        uuid.UUID
 }
 
 func NewObjectRiskTopicFromManualUpsert(
@@ -265,7 +251,6 @@ func NewObjectRiskTopicFromManualUpsert(
 	objectType string,
 	objectId string,
 	topics []RiskTopic,
-	userId uuid.UUID,
 	reason string,
 	proofUrl string,
 ) ObjectRiskTopicUpsert {
@@ -274,7 +259,6 @@ func NewObjectRiskTopicFromManualUpsert(
 		ObjectType: objectType,
 		ObjectId:   objectId,
 		Topics:     topics,
-		UserId:     userId,
 		SourceType: RiskTopicSourceTypeManual,
 		SourceDetails: ManualSourceDetails{
 			Reason: reason,
@@ -290,14 +274,12 @@ func NewObjectRiskTopicFromContinuousScreeningReviewUpsert(
 	topics []RiskTopic,
 	sourceContinuousScreeningId uuid.UUID,
 	sourceOpenSanctionsEntityId string,
-	userId uuid.UUID,
 ) ObjectRiskTopicUpsert {
 	return ObjectRiskTopicUpsert{
 		OrgId:      orgId,
 		ObjectType: objectType,
 		ObjectId:   objectId,
 		Topics:     topics,
-		UserId:     userId,
 		SourceType: RiskTopicSourceTypeContinuousScreeningMatchReview,
 		SourceDetails: ContinuousScreeningSourceDetails{
 			ContinuousScreeningId: sourceContinuousScreeningId,
