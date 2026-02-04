@@ -111,6 +111,7 @@ func (repo *MarbleDbRepository) FindObjectRiskTopicsMetadata(
 	} else {
 		query = query.Where("metadata->'topics' ??| ?", filter.Topics)
 	}
+	query = query.Limit(1)
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptObjectMetadata)
 }
