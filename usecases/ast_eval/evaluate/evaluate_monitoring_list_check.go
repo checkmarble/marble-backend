@@ -417,11 +417,9 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 		}
 
 		// Extract object_ids from the batch
-		objectIds := make([]string, 0, len(objects))
-		for _, obj := range objects {
-			if objId, ok := obj.Data["object_id"].(string); ok && objId != "" {
-				objectIds = append(objectIds, objId)
-			}
+		objectIds := make([]string, len(objects))
+		for i, obj := range objects {
+			objectIds[i] = obj.Data["object_id"].(string)
 		}
 
 		// Check if any of these objects have risk topics

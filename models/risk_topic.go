@@ -11,14 +11,6 @@ const (
 	RiskTopicThirdParties RiskTopic = "third-parties"
 )
 
-// ValidRiskTopics returns all valid Marble risk topics (excluding unknown).
-var ValidRiskTopics = []RiskTopic{
-	RiskTopicSanctions,
-	RiskTopicPEPs,
-	RiskTopicAdverseMedia,
-	RiskTopicThirdParties,
-}
-
 // RiskTopicFrom converts a string to a RiskTopic.
 // Returns RiskTopicUnknown if the string doesn't match any known topic.
 func RiskTopicFrom(s string) RiskTopic {
