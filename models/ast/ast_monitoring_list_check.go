@@ -3,10 +3,11 @@
 package ast
 
 type NavigationOption struct {
-	SourceTableName string `mapstructure:"sourceTableName"`
-	SourceFieldName string `mapstructure:"sourceFieldName"`
-	TargetTableName string `mapstructure:"targetTableName"`
-	TargetFieldName string `mapstructure:"targetFieldName"`
+	SourceTableName   string `mapstructure:"sourceTableName"`
+	SourceFieldName   string `mapstructure:"sourceFieldName"`
+	TargetTableName   string `mapstructure:"targetTableName"`
+	TargetFieldName   string `mapstructure:"targetFieldName"`
+	OrderingFieldName string `mapstructure:"orderingFieldName"`
 }
 
 type LinkedTableCheck struct {
