@@ -199,6 +199,7 @@ func TestMonitoringListCheck_Evaluate_Step1_ReturnsTrue(t *testing.T) {
 
 	// Mock executor factory
 	execFactory.On("NewExecutor").Return(mockExec)
+	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Mock repository returns risk topic found
 	repo.On("FindObjectRiskTopicsMetadata", ctx, mockExec, mock.MatchedBy(func(

@@ -66,8 +66,15 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 		return nil, errs
 	}
 
+	// Create executors once for all operations
+	exec := mlc.ExecutorFactory.NewExecutor()
+	execDbClient, err := mlc.ExecutorFactory.NewClientDbExecutor(ctx, mlc.OrgId)
+	if err != nil {
+		return MakeEvaluateError(errors.Wrap(err, "failed to create client db executor"))
+	}
+
 	// Step 1: fetch the ingested data based on config, get the `object_id` and query in object_risk_topics table if the element has a risk topic assigned
-	hasRiskTopic, err := mlc.checkTargetObjectHasRiskTopic(ctx, config)
+	hasRiskTopic, err := mlc.checkTargetObjectHasRiskTopic(ctx, exec, execDbClient, config)
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err, "failed to check target object risk topics"))
 	}
@@ -81,7 +88,7 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 		if linkedCheck.LinkToSingleName == nil {
 			continue
 		}
-		hasRiskTopic, err := mlc.checkLinkedTableViaLinkToSingle(ctx, config, linkedCheck)
+		hasRiskTopic, err := mlc.checkLinkedTableViaLinkToSingle(ctx, exec, execDbClient, config, linkedCheck)
 		if err != nil {
 			return MakeEvaluateError(errors.Wrapf(err,
 				"failed to check linked table %s", linkedCheck.TableName))
@@ -96,7 +103,7 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 		if linkedCheck.NavigationOption == nil {
 			continue
 		}
-		hasRiskTopic, err := mlc.checkLinkedTableViaNavigation(ctx, config, linkedCheck)
+		hasRiskTopic, err := mlc.checkLinkedTableViaNavigation(ctx, exec, execDbClient, config, linkedCheck)
 		if err != nil {
 			return MakeEvaluateError(errors.Wrapf(err,
 				"failed to check linked table %s", linkedCheck.TableName))
@@ -113,10 +120,12 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 // It fetches the object_id from the target table using PathToTarget, then queries object_risk_topics.
 func (mlc MonitoringListCheck) checkTargetObjectHasRiskTopic(
 	ctx context.Context,
+	exec repositories.Executor,
+	execDbClient repositories.Executor,
 	config ast.MonitoringListCheckConfig,
 ) (bool, error) {
 	// Get the object_id from the target table
-	objectId, err := mlc.getTargetObjectId(ctx, config.PathToTarget)
+	objectId, err := mlc.getTargetObjectId(ctx, execDbClient, config.PathToTarget)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get target object_id")
 	}
@@ -129,12 +138,13 @@ func (mlc MonitoringListCheck) checkTargetObjectHasRiskTopic(
 		return false, nil
 	}
 
-	return mlc.checkObjectIdsHaveRiskTopics(ctx, config, config.TargetTableName, []string{objectId})
+	return mlc.checkObjectIdsHaveRiskTopics(ctx, exec, config, config.TargetTableName, []string{objectId})
 }
 
 // getTargetObjectId retrieves the object_id from the target table by navigating through PathToTarget.
 func (mlc MonitoringListCheck) getTargetObjectId(
 	ctx context.Context,
+	execDbClient repositories.Executor,
 	pathToTarget []string,
 ) (string, error) {
 	// If path is empty, the target is the trigger table itself
@@ -160,14 +170,9 @@ func (mlc MonitoringListCheck) getTargetObjectId(
 	}
 
 	// Use the IngestedDataReader to navigate to the target table and get the object_id
-	db, err := mlc.ExecutorFactory.NewClientDbExecutor(ctx, mlc.OrgId)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to create client db executor")
-	}
-
 	fieldValue, err := mlc.IngestedDataReader.GetDbField(
 		ctx,
-		db,
+		execDbClient,
 		models.DbFieldReadParams{
 			TriggerTableName: mlc.ClientObject.TableName,
 			Path:             pathToTarget,
@@ -293,6 +298,8 @@ func (mlc MonitoringListCheck) validateMonitoringListCheckConfig(config ast.Moni
 // checkLinkedTableViaLinkToSingle checks a linked table using LinkToSingle (single object).
 func (mlc MonitoringListCheck) checkLinkedTableViaLinkToSingle(
 	ctx context.Context,
+	exec repositories.Executor,
+	execDbClient repositories.Executor,
 	config ast.MonitoringListCheckConfig,
 	linkedCheck ast.LinkedTableCheck,
 ) (bool, error) {
@@ -309,12 +316,7 @@ func (mlc MonitoringListCheck) checkLinkedTableViaLinkToSingle(
 	}
 
 	// Get the object_id from the linked table
-	db, err := mlc.ExecutorFactory.NewClientDbExecutor(ctx, mlc.OrgId)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to create client db executor")
-	}
-
-	fieldValue, err := mlc.IngestedDataReader.GetDbField(ctx, db, models.DbFieldReadParams{
+	fieldValue, err := mlc.IngestedDataReader.GetDbField(ctx, execDbClient, models.DbFieldReadParams{
 		TriggerTableName: mlc.ClientObject.TableName,
 		Path:             path,
 		FieldName:        "object_id",
@@ -334,12 +336,14 @@ func (mlc MonitoringListCheck) checkLinkedTableViaLinkToSingle(
 	}
 
 	// Check if this object has risk topics
-	return mlc.checkObjectIdsHaveRiskTopics(ctx, config, linkedCheck.TableName, []string{objectId})
+	return mlc.checkObjectIdsHaveRiskTopics(ctx, exec, config, linkedCheck.TableName, []string{objectId})
 }
 
 // checkLinkedTableViaNavigation checks a linked table using NavigationOption (multiple objects).
 func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 	ctx context.Context,
+	exec repositories.Executor,
+	execDbClient repositories.Executor,
 	config ast.MonitoringListCheckConfig,
 	linkedCheck ast.LinkedTableCheck,
 ) (bool, error) {
@@ -347,7 +351,7 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 
 	// For dry run, build data model with navigation options and validate the navigation exists
 	if mlc.ReturnFakeValue {
-		dataModelWithNav, err := mlc.buildDataModelWithNavigationOptions(ctx)
+		dataModelWithNav, err := mlc.buildDataModelWithNavigationOptions(ctx, exec, execDbClient)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to build data model with navigation options for dry run")
 		}
@@ -359,7 +363,7 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 	}
 
 	// Get the source field value to filter by
-	sourceFieldValue, err := mlc.getSourceFieldValue(ctx, config, *nav)
+	sourceFieldValue, err := mlc.getSourceFieldValue(ctx, execDbClient, config, *nav)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get source field value")
 	}
@@ -378,19 +382,13 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 		return false, errors.Newf("target table %s not found in data model", nav.TargetTableName)
 	}
 
-	// Create executor for client DB
-	db, err := mlc.ExecutorFactory.NewClientDbExecutor(ctx, mlc.OrgId)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to create client db executor")
-	}
-
 	// Fetch objects in batches using cursor pagination
 	var cursorId *string
 	for {
 		// Request limit+1 to detect if there are more results
 		objects, err := mlc.IngestedDataReader.ListIngestedObjects(
 			ctx,
-			db,
+			execDbClient,
 			targetTable,
 			models.ExplorationOptions{
 				SourceTableName:   nav.SourceTableName,
@@ -424,7 +422,7 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 
 		// Check if any of these objects have risk topics
 		if len(objectIds) > 0 {
-			hasRiskTopic, err := mlc.checkObjectIdsHaveRiskTopics(ctx, config, linkedCheck.TableName, objectIds)
+			hasRiskTopic, err := mlc.checkObjectIdsHaveRiskTopics(ctx, exec, config, linkedCheck.TableName, objectIds)
 			if err != nil {
 				return false, err
 			}
@@ -452,6 +450,7 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 // getSourceFieldValue gets the value of the source field to use for filtering.
 func (mlc MonitoringListCheck) getSourceFieldValue(
 	ctx context.Context,
+	execDbClient repositories.Executor,
 	config ast.MonitoringListCheckConfig,
 	nav ast.NavigationOption,
 ) (any, error) {
@@ -461,12 +460,7 @@ func (mlc MonitoringListCheck) getSourceFieldValue(
 	}
 
 	// Navigate to the source table and get the field value
-	db, err := mlc.ExecutorFactory.NewClientDbExecutor(ctx, mlc.OrgId)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create client db executor")
-	}
-
-	return mlc.IngestedDataReader.GetDbField(ctx, db, models.DbFieldReadParams{
+	return mlc.IngestedDataReader.GetDbField(ctx, execDbClient, models.DbFieldReadParams{
 		TriggerTableName: mlc.ClientObject.TableName,
 		Path:             config.PathToTarget,
 		FieldName:        nav.SourceFieldName,
@@ -478,6 +472,7 @@ func (mlc MonitoringListCheck) getSourceFieldValue(
 // checkObjectIdsHaveRiskTopics checks if any of the given object_ids have matching risk topics.
 func (mlc MonitoringListCheck) checkObjectIdsHaveRiskTopics(
 	ctx context.Context,
+	exec repositories.Executor,
 	config ast.MonitoringListCheckConfig,
 	objectType string,
 	objectIds []string,
@@ -497,7 +492,6 @@ func (mlc MonitoringListCheck) checkObjectIdsHaveRiskTopics(
 	}
 	filter.Topics = topics
 
-	exec := mlc.ExecutorFactory.NewExecutor()
 	results, err := mlc.Repository.FindObjectRiskTopicsMetadata(ctx, exec, filter)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to list object risk topics")
@@ -509,9 +503,11 @@ func (mlc MonitoringListCheck) checkObjectIdsHaveRiskTopics(
 // buildDataModelWithNavigationOptions builds a data model with navigation options for dry run validation.
 // This fetches pivots and indexes to compute navigation options, similar to DataModelUsecase.GetDataModel
 // with IncludeNavigationOptions: true.
-func (mlc MonitoringListCheck) buildDataModelWithNavigationOptions(ctx context.Context) (models.DataModel, error) {
-	exec := mlc.ExecutorFactory.NewExecutor()
-
+func (mlc MonitoringListCheck) buildDataModelWithNavigationOptions(
+	ctx context.Context,
+	exec repositories.Executor,
+	execDbClient repositories.Executor,
+) (models.DataModel, error) {
 	// Fetch pivots
 	pivotsMeta, err := mlc.Repository.ListPivots(ctx, exec, mlc.OrgId, nil, true)
 	if err != nil {
@@ -525,12 +521,7 @@ func (mlc MonitoringListCheck) buildDataModelWithNavigationOptions(ctx context.C
 	}
 
 	// Fetch indexes from client db
-	clientDb, err := mlc.ExecutorFactory.NewClientDbExecutor(ctx, mlc.OrgId)
-	if err != nil {
-		return models.DataModel{}, errors.Wrap(err, "failed to create client db executor")
-	}
-
-	indexes, err := mlc.ClientDbRepository.ListAllIndexes(ctx, clientDb, models.IndexTypeNavigation)
+	indexes, err := mlc.ClientDbRepository.ListAllIndexes(ctx, execDbClient, models.IndexTypeNavigation)
 	if err != nil {
 		return models.DataModel{}, errors.Wrap(err, "failed to list indexes")
 	}
