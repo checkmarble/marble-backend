@@ -124,8 +124,7 @@ func (mlc MonitoringListCheck) checkTargetObjectHasRiskTopic(
 		return false, nil
 	}
 
-	// For dry run, return true to indicate a potential match exists
-	// Return false to not early return and check step 2
+	// Return false to not early return and run step 2
 	if mlc.ReturnFakeValue {
 		return false, nil
 	}
@@ -306,7 +305,7 @@ func (mlc MonitoringListCheck) checkLinkedTableViaLinkToSingle(
 		if err != nil {
 			return false, err
 		}
-		return true, nil
+		return false, nil
 	}
 
 	// Get the object_id from the linked table
@@ -356,7 +355,7 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 		if err != nil {
 			return false, err
 		}
-		return true, nil
+		return false, nil
 	}
 
 	// Get the source field value to filter by
