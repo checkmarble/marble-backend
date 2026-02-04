@@ -12,7 +12,10 @@ import (
 	"github.com/google/uuid"
 )
 
-const linkedTableCheckBatchSize = 1000
+const (
+	linkedTableCheckBatchSize      = 1000
+	maxConcurrentLinkedTableChecks = 10
+)
 
 type MonitoringListCheckRepository interface {
 	FindObjectRiskTopicsMetadata(
@@ -82,34 +85,73 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 		return true, nil
 	}
 
-	// Step 2: check LinkedTableChecks for risk topics
-	// Process LinkToSingle checks first (simpler - single object lookup)
-	for _, linkedCheck := range config.LinkedTableChecks {
-		if linkedCheck.LinkToSingleName == nil {
-			continue
-		}
-		hasRiskTopic, err := mlc.checkLinkedTableViaLinkToSingle(ctx, exec, execDbClient, config, linkedCheck)
-		if err != nil {
-			return MakeEvaluateError(errors.Wrapf(err,
-				"failed to check linked table %s", linkedCheck.TableName))
-		}
-		if hasRiskTopic {
-			return true, nil
-		}
+	// Step 2: check LinkedTableChecks for risk topics in parallel
+	if len(config.LinkedTableChecks) == 0 {
+		return false, nil
 	}
 
-	// Then process NavigationOption checks (more complex - batch pagination)
+	// Create cancellable context and channels for early exit
+	checkCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	type checkResult struct {
+		hasRiskTopic bool
+		err          error
+	}
+	results := make(chan checkResult, len(config.LinkedTableChecks))
+
+	// Limit concurrent goroutines to avoid overwhelming connection pool
+	sem := make(chan struct{}, maxConcurrentLinkedTableChecks)
+
+	// Launch goroutines
 	for _, linkedCheck := range config.LinkedTableChecks {
-		if linkedCheck.NavigationOption == nil {
-			continue
-		}
-		hasRiskTopic, err := mlc.checkLinkedTableViaNavigation(ctx, exec, execDbClient, config, linkedCheck)
-		if err != nil {
-			return MakeEvaluateError(errors.Wrapf(err,
-				"failed to check linked table %s", linkedCheck.TableName))
-		}
-		if hasRiskTopic {
-			return true, nil
+		go func(linkedCheck ast.LinkedTableCheck) {
+			// Acquire semaphore
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }() // Release semaphore
+			case <-checkCtx.Done():
+				results <- checkResult{err: checkCtx.Err()}
+				return
+			}
+
+			var hasRisk bool
+			var err error
+
+			if linkedCheck.LinkToSingleName != nil {
+				hasRisk, err = mlc.checkLinkedTableViaLinkToSingle(checkCtx, exec, execDbClient, config, linkedCheck)
+			} else if linkedCheck.NavigationOption != nil {
+				hasRisk, err = mlc.checkLinkedTableViaNavigation(checkCtx, exec, execDbClient, config, linkedCheck)
+			}
+
+			if err != nil {
+				err = errors.Wrapf(err, "failed to check linked table %s", linkedCheck.TableName)
+			}
+
+			results <- checkResult{hasRiskTopic: hasRisk, err: err}
+		}(linkedCheck)
+	}
+
+	// Collect results - return immediately on first match
+	completed := 0
+	for completed < len(config.LinkedTableChecks) {
+		select {
+		case result := <-results:
+			completed++
+
+			if result.err != nil && !errors.Is(result.err, context.Canceled) {
+				cancel() // Cancel remaining goroutines
+				return MakeEvaluateError(result.err)
+			}
+
+			if result.hasRiskTopic {
+				cancel()         // Cancel remaining goroutines
+				return true, nil // Return immediately without waiting
+			}
+
+		case <-ctx.Done():
+			cancel()
+			return false, nil
 		}
 	}
 
@@ -385,6 +427,13 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 	// Fetch objects in batches using cursor pagination
 	var cursorId *string
 	for {
+		// Check if context was cancelled by another goroutine
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		default:
+		}
+
 		// Request limit+1 to detect if there are more results
 		objects, err := mlc.IngestedDataReader.ListIngestedObjects(
 			ctx,
