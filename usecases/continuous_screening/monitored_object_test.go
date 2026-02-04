@@ -27,7 +27,7 @@ type ContinuousScreeningUsecaseTestSuite struct {
 	repository                   *mocks.ContinuousScreeningRepository
 	clientDbRepository           *mocks.ContinuousScreeningClientDbRepository
 	organizationSchemaRepository *mocks.OrganizationSchemaRepository
-	ingestedDataReader           *mocks.ContinuousScreeningIngestedDataReader
+	ingestedDataReader           *mocks.IngestedDataReader
 	ingestionUsecase             *mocks.ContinuousScreeningIngestionUsecase
 	screeningProvider            *mocks.OpenSanctionsRepository
 	caseEditor                   *mocks.CaseEditor
@@ -50,7 +50,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) SetupTest() {
 	suite.repository = new(mocks.ContinuousScreeningRepository)
 	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.organizationSchemaRepository = new(mocks.OrganizationSchemaRepository)
-	suite.ingestedDataReader = new(mocks.ContinuousScreeningIngestedDataReader)
+	suite.ingestedDataReader = new(mocks.IngestedDataReader)
 	suite.ingestionUsecase = new(mocks.ContinuousScreeningIngestionUsecase)
 	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.caseEditor = new(mocks.CaseEditor)

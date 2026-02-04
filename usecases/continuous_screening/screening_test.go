@@ -20,10 +20,11 @@ type ScreeningTestSuite struct {
 	taskQueueRepository          *mocks.TaskQueueRepository
 	clientDbRepository           *mocks.ContinuousScreeningClientDbRepository
 	organizationSchemaRepository *mocks.OrganizationSchemaRepository
-	ingestedDataReader           *mocks.ContinuousScreeningIngestedDataReader
+	ingestedDataReader           *mocks.IngestedDataReader
 	ingestionUsecase             *mocks.ContinuousScreeningIngestionUsecase
 	screeningProvider            *mocks.OpenSanctionsRepository
 	caseEditor                   *mocks.CaseEditor
+	objectRiskTopic              *mocks.ObjectMetadata
 	executorFactory              executor_factory.ExecutorFactoryStub
 	transactionFactory           executor_factory.TransactionFactoryStub
 
@@ -41,10 +42,11 @@ func (suite *ScreeningTestSuite) SetupTest() {
 	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
 	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.organizationSchemaRepository = new(mocks.OrganizationSchemaRepository)
-	suite.ingestedDataReader = new(mocks.ContinuousScreeningIngestedDataReader)
+	suite.ingestedDataReader = new(mocks.IngestedDataReader)
 	suite.ingestionUsecase = new(mocks.ContinuousScreeningIngestionUsecase)
 	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.caseEditor = new(mocks.CaseEditor)
+	suite.objectRiskTopic = new(mocks.ObjectMetadata)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
@@ -73,6 +75,7 @@ func (suite *ScreeningTestSuite) makeUsecase() *ContinuousScreeningUsecase {
 		screeningProvider:            suite.screeningProvider,
 		caseEditor:                   suite.caseEditor,
 		inboxReader:                  suite.repository,
+		objectRiskTopicWriter:        suite.objectRiskTopic,
 	}
 }
 
@@ -86,6 +89,7 @@ func (suite *ScreeningTestSuite) AssertExpectations() {
 	suite.ingestionUsecase.AssertExpectations(t)
 	suite.screeningProvider.AssertExpectations(t)
 	suite.caseEditor.AssertExpectations(t)
+	suite.objectRiskTopic.AssertExpectations(t)
 }
 
 func TestScreeningTestSuite(t *testing.T) {
@@ -161,6 +165,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 		OpenSanctionEntityId:  "test-entity-id-3",
 	}
 
+	objectType := "test-object-type"
+	objectId := "test-object-id"
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:          suite.screeningId,
@@ -169,6 +175,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 			CaseId:      &suite.caseId,
 			IsPartial:   false,
 			TriggerType: models.ContinuousScreeningTriggerTypeObjectAdded,
+			ObjectType:  &objectType,
+			ObjectId:    &objectId,
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			continuousScreeningMatch1,
@@ -285,6 +293,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 		OpenSanctionEntityId:  "test-entity-id",
 	}
 
+	objectType := "test-object-type"
+	objectId := "test-object-id"
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
 			Id:          suite.screeningId,
@@ -292,6 +302,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 			Status:      models.ScreeningStatusInReview,
 			CaseId:      &suite.caseId,
 			TriggerType: models.ContinuousScreeningTriggerTypeObjectAdded,
+			ObjectType:  &objectType,
+			ObjectId:    &objectId,
 		},
 		Matches: []models.ContinuousScreeningMatch{continuousScreeningMatch},
 	}
@@ -347,6 +359,214 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
 	})).Return(models.CaseEvent{}, nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
+
+	// Assert
+	suite.NoError(err)
+	suite.Equal(updatedMatch, result)
+	suite.AssertExpectations()
+}
+
+func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_ConfirmedHit_WithRiskTopics() {
+	// Setup - This test verifies that when a match is confirmed as a hit and contains
+	// risk topics in its payload, the topics are extracted and written via objectRiskTopic
+	input := models.ScreeningMatchUpdate{
+		MatchId:    suite.matchId.String(),
+		Status:     models.ScreeningMatchStatusConfirmedHit,
+		ReviewerId: &suite.userId,
+	}
+
+	// Payload with OpenSanctions topics that map to Marble risk topics
+	matchPayload := []byte(`{"properties": {"topics": ["sanctions", "pep"]}}`)
+
+	objectType := "test-object-type"
+	objectId := "test-object-id"
+	continuousScreeningMatch := models.ContinuousScreeningMatch{
+		Id:                    suite.matchId,
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusPending,
+		OpenSanctionEntityId:  "test-entity-id",
+		Payload:               matchPayload,
+	}
+
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:          suite.screeningId,
+			OrgId:       suite.orgId,
+			Status:      models.ScreeningStatusInReview,
+			CaseId:      &suite.caseId,
+			TriggerType: models.ContinuousScreeningTriggerTypeObjectAdded,
+			ObjectType:  &objectType,
+			ObjectId:    &objectId,
+		},
+		Matches: []models.ContinuousScreeningMatch{continuousScreeningMatch},
+	}
+
+	caseData := models.Case{
+		Id: suite.caseId.String(),
+	}
+
+	updatedMatch := continuousScreeningMatch
+	updatedMatch.Status = models.ScreeningMatchStatusConfirmedHit
+
+	// Mock expectations
+	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
+		suite.matchId).Return(continuousScreeningMatch, nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("GetCaseById", mock.Anything, mock.Anything, suite.caseId.String()).Return(caseData, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(nil)
+	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId, false).Return([]models.Inbox{}, nil)
+	suite.enforceSecurity.On("ReadOrUpdateCase", mock.Anything, mock.Anything).Return(nil)
+	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
+		suite.matchId, models.ScreeningMatchStatusConfirmedHit, mock.Anything).Return(updatedMatch, nil)
+	suite.caseEditor.On("PerformCaseActionSideEffects", mock.Anything, mock.Anything, caseData).Return(nil)
+	suite.repository.On("UpdateContinuousScreeningStatus", mock.Anything, mock.Anything,
+		suite.screeningId, models.ScreeningStatusConfirmedHit).Return(models.ContinuousScreening{}, nil)
+	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
+		attrs models.CreateCaseEventAttributes,
+	) bool {
+		return attrs.EventType == models.ScreeningMatchReviewed
+	})).Return(models.CaseEvent{}, nil)
+	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
+		attrs models.CreateCaseEventAttributes,
+	) bool {
+		return attrs.EventType == models.ScreeningReviewed
+	})).Return(models.CaseEvent{}, nil)
+
+	// Expect AppendObjectRiskTopics to be called with the extracted topics
+	// "sanctions" -> RiskTopicSanctions, "pep" -> RiskTopicPEPs
+	suite.objectRiskTopic.On("AppendObjectRiskTopics", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.ObjectRiskTopicUpsert) bool {
+			if input.OrgId != suite.orgId ||
+				input.ObjectType != objectType ||
+				input.ObjectId != objectId ||
+				len(input.Topics) != 2 {
+				return false
+			}
+			// Check that both expected topics are present
+			hasSanctions := false
+			hasPEPs := false
+			for _, topic := range input.Topics {
+				if topic == models.RiskTopicSanctions {
+					hasSanctions = true
+				}
+				if topic == models.RiskTopicPEPs {
+					hasPEPs = true
+				}
+			}
+			return hasSanctions && hasPEPs
+		})).Return(nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
+
+	// Assert
+	suite.NoError(err)
+	suite.Equal(updatedMatch, result)
+	suite.AssertExpectations()
+}
+
+func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_DatasetUpdated_ConfirmedHit_WithRiskTopics() {
+	// Setup - This test verifies that when a dataset-triggered match is confirmed as a hit,
+	// the topics are extracted from the SCREENING's entity payload (not the match payload)
+	// and the object type/id come from the MATCH's metadata
+	input := models.ScreeningMatchUpdate{
+		MatchId:    suite.matchId.String(),
+		Status:     models.ScreeningMatchStatusConfirmedHit,
+		ReviewerId: &suite.userId,
+	}
+
+	// For dataset-triggered: topics come from screening.OpenSanctionEntityPayload
+	screeningEntityPayload := []byte(`{"properties": {"topics": ["pep", "regulatory"]}}`)
+
+	// For dataset-triggered: object type/id come from match.Metadata
+	objectType := "test-object-type"
+	objectId := "test-object-id"
+	continuousScreeningMatch := models.ContinuousScreeningMatch{
+		Id:                    suite.matchId,
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusPending,
+		OpenSanctionEntityId:  "marble-entity-123",
+		Metadata: &models.EntityNoteMetadata{
+			ObjectType: objectType,
+			ObjectId:   objectId,
+		},
+	}
+
+	openSanctionEntityId := "open-sanction-entity-abc"
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:                        suite.screeningId,
+			OrgId:                     suite.orgId,
+			Status:                    models.ScreeningStatusInReview,
+			CaseId:                    &suite.caseId,
+			TriggerType:               models.ContinuousScreeningTriggerTypeDatasetUpdated,
+			OpenSanctionEntityId:      &openSanctionEntityId,
+			OpenSanctionEntityPayload: screeningEntityPayload,
+		},
+		Matches: []models.ContinuousScreeningMatch{continuousScreeningMatch},
+	}
+
+	caseData := models.Case{
+		Id: suite.caseId.String(),
+	}
+
+	updatedMatch := continuousScreeningMatch
+	updatedMatch.Status = models.ScreeningMatchStatusConfirmedHit
+
+	// Mock expectations
+	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
+		suite.matchId).Return(continuousScreeningMatch, nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("GetCaseById", mock.Anything, mock.Anything, suite.caseId.String()).Return(caseData, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(nil)
+	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId, false).Return([]models.Inbox{}, nil)
+	suite.enforceSecurity.On("ReadOrUpdateCase", mock.Anything, mock.Anything).Return(nil)
+	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
+		suite.matchId, models.ScreeningMatchStatusConfirmedHit, mock.Anything).Return(updatedMatch, nil)
+	suite.caseEditor.On("PerformCaseActionSideEffects", mock.Anything, mock.Anything, caseData).Return(nil)
+	suite.repository.On("UpdateContinuousScreeningStatus", mock.Anything, mock.Anything,
+		suite.screeningId, models.ScreeningStatusConfirmedHit).Return(models.ContinuousScreening{}, nil)
+	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
+		attrs models.CreateCaseEventAttributes,
+	) bool {
+		return attrs.EventType == models.ScreeningMatchReviewed
+	})).Return(models.CaseEvent{}, nil)
+	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
+		attrs models.CreateCaseEventAttributes,
+	) bool {
+		return attrs.EventType == models.ScreeningReviewed
+	})).Return(models.CaseEvent{}, nil)
+
+	// Expect AppendObjectRiskTopics to be called with topics from screening.OpenSanctionEntityPayload
+	// "pep" -> RiskTopicPEPs, "regulatory" -> RiskTopicAdverseMedia
+	suite.objectRiskTopic.On("AppendObjectRiskTopics", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.ObjectRiskTopicUpsert) bool {
+			if input.OrgId != suite.orgId ||
+				input.ObjectType != objectType ||
+				input.ObjectId != objectId ||
+				len(input.Topics) != 2 {
+				return false
+			}
+			// Check that both expected topics are present
+			hasPEPs := false
+			hasAdverseMedia := false
+			for _, topic := range input.Topics {
+				if topic == models.RiskTopicPEPs {
+					hasPEPs = true
+				}
+				if topic == models.RiskTopicAdverseMedia {
+					hasAdverseMedia = true
+				}
+			}
+			return hasPEPs && hasAdverseMedia
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -1306,6 +1526,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "marble-entity-123",
+		Metadata: &models.EntityNoteMetadata{
+			ObjectType: "test-object-type",
+			ObjectId:   "test-object-id",
+		},
 	}
 	continuousScreeningMatch2 := models.ContinuousScreeningMatch{
 		Id:                    uuid.New(),
@@ -1386,6 +1610,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "marble-entity-123",
+		Metadata: &models.EntityNoteMetadata{
+			ObjectType: "test-object-type",
+			ObjectId:   "test-object-id",
+		},
 	}
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
@@ -1749,6 +1977,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "marble-entity-123",
+		Metadata: &models.EntityNoteMetadata{
+			ObjectType: "test-object-type",
+			ObjectId:   "test-object-id",
+		},
 	}
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{

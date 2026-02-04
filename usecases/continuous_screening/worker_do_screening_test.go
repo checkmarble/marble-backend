@@ -20,7 +20,7 @@ type DoScreeningWorkerTestSuite struct {
 	repository         *mocks.ContinuousScreeningRepository
 	taskQueueRepo      *mocks.TaskQueueRepository
 	clientDbRepository *mocks.ContinuousScreeningClientDbRepository
-	ingestedDataReader *mocks.ContinuousScreeningIngestedDataReader
+	ingestedDataReader *mocks.IngestedDataReader
 	usecase            *mocks.ContinuousScreeningUsecase
 	executorFactory    executor_factory.ExecutorFactoryStub
 	transactionFactory executor_factory.TransactionFactoryStub
@@ -38,7 +38,7 @@ func (suite *DoScreeningWorkerTestSuite) SetupTest() {
 	suite.repository = new(mocks.ContinuousScreeningRepository)
 	suite.taskQueueRepo = new(mocks.TaskQueueRepository)
 	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
-	suite.ingestedDataReader = new(mocks.ContinuousScreeningIngestedDataReader)
+	suite.ingestedDataReader = new(mocks.IngestedDataReader)
 	suite.usecase = new(mocks.ContinuousScreeningUsecase)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()

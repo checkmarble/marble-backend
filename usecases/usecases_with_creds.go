@@ -30,8 +30,11 @@ type UsecaseTransactionWrapper func(tx repositories.Transaction, org models.Orga
 // Used to recreate the whole usecase hierarchy from a transaction for Marble
 // database and and organization for the ingested data database, impersonating
 // the provided user.
-func (usecases *UsecasesWithCreds) NewWithRootImpersonatedExecutor(tx repositories.Transaction, org models.Organization, user models.User) *UsecasesWithCreds {
-	executorFactory := executor_factory.NewIdentityExecutorFactory(tx, usecases.Repositories.ExecutorGetter, org)
+func (usecases *UsecasesWithCreds) NewWithRootImpersonatedExecutor(tx repositories.Transaction,
+	org models.Organization, user models.User,
+) *UsecasesWithCreds {
+	executorFactory := executor_factory.NewIdentityExecutorFactory(tx,
+		usecases.Repositories.ExecutorGetter, org)
 
 	return &UsecasesWithCreds{
 		Usecases: usecases.Usecases.WithRootExecutor(executorFactory),
@@ -142,6 +145,13 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurityContinuousScreening() secur
 
 func (usecases *UsecasesWithCreds) NewEnforceSecurityAudit() security.EnforceSecurityAudit {
 	return &security.EnforceSecurityAuditImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewEnforceObjectMetadata() security.EnforceSecurityObjectMetadata {
+	return &security.EnforceSecurityObjectMetadataImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
 	}
@@ -863,6 +873,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		utils.Ptr(usecases.NewInboxReader()),
 		utils.Ptr(usecases.NewInboxUsecase()),
 		usecases.NewFeatureAccessReader(),
+		usecases.NewObjectMetadataUsecase(),
 	)
 }
 
@@ -989,5 +1000,14 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewIngestionUseCase(),
 		usecases.NewDecisionUsecase(),
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewObjectMetadataUsecase() *ObjectMetadataUsecase {
+	return NewObjectMetadataUsecase(
+		usecases.NewExecutorFactory(),
+		usecases.NewEnforceObjectMetadata(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
 	)
 }

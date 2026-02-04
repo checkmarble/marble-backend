@@ -215,6 +215,11 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/continuous-screenings/:id/load-more", tom,
 		handleLoadMoreContinuousScreeningMatches(uc))
 
+	router.GET("/object-metadata/object-type/:object-type/object-id/:object-id/type/:type",
+		tom, handleGetObjectMetadata(uc))
+	router.PUT("/object-metadata/object-type/:object-type/object-id/:object-id/type/:type",
+		tom, handleUpsertObjectMetadata(uc))
+
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))
 	router.GET("/scenario-publications/preparation", tom,

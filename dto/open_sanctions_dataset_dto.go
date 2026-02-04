@@ -23,25 +23,6 @@ type OpenSanctionsCatalogDataset struct {
 	Tag   string `json:"tag"`
 }
 
-var datasetTagMapping = map[string]string{
-	"regulatory":       "adverse-media",
-	"debarment":        "adverse-media",
-	"special_interest": "adverse-media",
-	"enrichers":        "third-parties",
-	"crime":            "adverse-media",
-	"peps":             "peps",
-	"sanctions":        "sanctions",
-
-	// Upstream tags
-	"list.sanction":         "sanctions",
-	"list.sanction.counter": "sanctions",
-	"list.sanction.eu":      "sanctions",
-	"list.pep":              "peps",
-	"list.regulatory":       "adverse-media",
-	"list.risk":             "adverse-media",
-	"list.wanted":           "adverse-media",
-}
-
 func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsCatalog {
 	catalog := OpenSanctionsCatalog{
 		Sections: make([]OpenSanctionsCatalogSection, len(model.Sections)),
@@ -58,16 +39,16 @@ func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsC
 			var tag string
 
 			for _, upstreamTag := range d.Tags {
-				if t, ok := datasetTagMapping[upstreamTag]; ok {
-					tag = t
+				if t, ok := models.OpenSanctionsTagMapping[upstreamTag]; ok {
+					tag = string(t)
 				}
 			}
 
 			if tag == "" {
 				if tags, ok := model.Tags.Get(d.Name); ok {
 					for _, upstreamTag := range tags {
-						if t, ok := datasetTagMapping[upstreamTag]; ok {
-							tag = t
+						if t, ok := models.OpenSanctionsTagMapping[upstreamTag]; ok {
+							tag = string(t)
 						}
 					}
 				}
@@ -75,8 +56,8 @@ func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsC
 
 			if tag == "" {
 				for _, ds := range d.Path.Slice() {
-					if t, ok := datasetTagMapping[ds]; ok {
-						tag = t
+					if t, ok := models.OpenSanctionsTagMapping[ds]; ok {
+						tag = string(t)
 						break
 					}
 
