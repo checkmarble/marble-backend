@@ -11,6 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type objectMetadataQueryParams struct {
+	ObjectType   string `uri:"object-type" binding:"required"`
+	ObjectID     string `uri:"object-id" binding:"required"`
+	MetadataType string `uri:"type" binding:"required"`
+}
+
 func handleGetObjectMetadata(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -20,32 +26,27 @@ func handleGetObjectMetadata(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		objectType := c.Param("object-type")
-		if objectType == "" {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object-type is required"))
+		var params objectMetadataQueryParams
+		err = c.ShouldBindUri(&params)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
-		objectId := c.Param("object-id")
-		if objectId == "" {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object-id is required"))
-			return
-		}
-
-		metadataTypeStr := c.Param("type")
-		if metadataTypeStr == "" {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "metadata-type is required"))
-			return
-		}
-
-		metadataType := models.MetadataTypeFrom(metadataTypeStr)
+		metadataType := models.MetadataTypeFrom(params.MetadataType)
 		if metadataType == models.MetadataTypeUnknown {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid metadata-type"))
 			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewObjectMetadataUsecase()
-		objectMetadata, err := usecase.GetObjectMetadata(ctx, organizationId, objectType, objectId, metadataType)
+		objectMetadata, err := usecase.GetObjectMetadata(
+			ctx,
+			organizationId,
+			params.ObjectType,
+			params.ObjectID,
+			metadataType,
+		)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -68,28 +69,15 @@ func handleUpsertObjectMetadata(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		objectType := c.Param("object-type")
-		if objectType == "" {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object-type is required"))
+		var params objectMetadataQueryParams
+		err = c.ShouldBindUri(&params)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
-
-		objectId := c.Param("object-id")
-		if objectId == "" {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object-id is required"))
-			return
-		}
-
-		metadataTypeStr := c.Param("type")
-		if metadataTypeStr == "" {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "metadata-type is required"))
-			return
-		}
-
 		usecase := usecasesWithCreds(ctx, uc).NewObjectMetadataUsecase()
 		var newObjectMetadata models.ObjectMetadata
-
-		metadataType := models.MetadataTypeFrom(metadataTypeStr)
+		metadataType := models.MetadataTypeFrom(params.MetadataType)
 		switch metadataType {
 		case models.MetadataTypeRiskTopics:
 			var input dto.ObjectRiskTopicUpsertInputDto
@@ -97,7 +85,7 @@ func handleUpsertObjectMetadata(uc usecases.Usecases) func(c *gin.Context) {
 				presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 				return
 			}
-			upsertInput, err := input.Adapt(organizationId, objectType, objectId)
+			upsertInput, err := input.Adapt(organizationId, params.ObjectType, params.ObjectID)
 			if presentError(ctx, c, err) {
 				return
 			}
@@ -106,8 +94,11 @@ func handleUpsertObjectMetadata(uc usecases.Usecases) func(c *gin.Context) {
 				return
 			}
 		default:
-			presentError(ctx, c, errors.Wrap(models.BadParameterError,
-				"upsert not supported for metadata-type: "+metadataTypeStr))
+			presentError(
+				ctx,
+				c,
+				errors.Wrap(models.BadParameterError, "invalid metadata-type"),
+			)
 			return
 		}
 
