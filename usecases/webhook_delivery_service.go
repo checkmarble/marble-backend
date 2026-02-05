@@ -6,12 +6,23 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
+
+// apiVersionFromEventType returns the API version based on the event type.
+// This matches the behavior of pubapi/v1/dto where case.* events use "v1beta"
+// and decision.* events use "v1".
+func apiVersionFromEventType(eventType string) string {
+	if strings.HasPrefix(eventType, "case.") {
+		return "v1beta"
+	}
+	return "v1"
+}
 
 const (
 	// Default timeout for webhook HTTP requests
@@ -38,17 +49,15 @@ const (
 type WebhookDeliveryService struct {
 	httpClient       *http.Client
 	signatureService *WebhookSignatureService
-	apiVersion       string
 }
 
 // NewWebhookDeliveryService creates a new webhook delivery service.
-func NewWebhookDeliveryService(apiVersion string) *WebhookDeliveryService {
+func NewWebhookDeliveryService() *WebhookDeliveryService {
 	return &WebhookDeliveryService{
 		httpClient: &http.Client{
 			Timeout: DefaultWebhookTimeout,
 		},
 		signatureService: &WebhookSignatureService{},
-		apiVersion:       apiVersion,
 	}
 }
 
@@ -96,7 +105,7 @@ func (s *WebhookDeliveryService) Send(
 	// Set headers
 	req.Header.Set(HeaderContentType, "application/json")
 	req.Header.Set(HeaderConvoySignature, signature)
-	req.Header.Set(HeaderMarbleApiVersion, s.apiVersion)
+	req.Header.Set(HeaderMarbleApiVersion, apiVersionFromEventType(event.EventType))
 	req.Header.Set(HeaderWebhookEventId, event.Id.String())
 	req.Header.Set(HeaderWebhookEventType, event.EventType)
 	req.Header.Set("User-Agent", WebhookUserAgent)

@@ -595,6 +595,8 @@ func (usecases *UsecasesWithCreds) NewWebhooksUsecase() WebhooksUsecase {
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.ConvoyRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Usecases.useNewWebhooks,
 	)
 }
 
@@ -971,7 +973,7 @@ func (usecases UsecasesWithCreds) NewWebhookDispatchWorker() *worker_jobs.Webhoo
 }
 
 func (usecases UsecasesWithCreds) NewWebhookDeliveryWorker() *worker_jobs.WebhookDeliveryWorker {
-	deliveryService := NewWebhookDeliveryService(usecases.apiVersion)
+	deliveryService := NewWebhookDeliveryService()
 
 	// Create a wrapper function to adapt the return type
 	deliveryFunc := func(ctx context.Context, webhook models.NewWebhook, secrets []models.NewWebhookSecret, event models.WebhookEventV2) worker_jobs.WebhookSendResult {
