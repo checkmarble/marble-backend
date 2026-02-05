@@ -277,7 +277,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
 		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
 	suite.ingestionUsecase.On("IngestObject", mock.Anything, suite.orgId,
-		suite.objectType, payload, false).Return(1, nil)
+		suite.objectType, payload, models.IngestionOptions{}).Return(1, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
@@ -495,7 +495,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestionUsecase.On("IngestObject", mock.Anything, suite.orgId,
-		suite.objectType, payload, false).Return(0, nil)
+		suite.objectType, payload, models.IngestionOptions{}).Return(0, nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -577,7 +577,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
 		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
 	suite.ingestionUsecase.On("IngestObject", mock.Anything, suite.orgId,
-		suite.objectType, payload, false).Return(1, nil)
+		suite.objectType, payload, models.IngestionOptions{}).Return(1, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {

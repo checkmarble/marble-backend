@@ -73,13 +73,13 @@ func ingestAccountsBatch(
 a8ca9ad7-1581-44f8-89d0-1f00500f2d02,2024-08-11T22:47:00Z,7b7ffdbc-cf98-48cb-a468-7695122d74d6,france,germany,"some tx description",validated,"some tx title",4200
 `
 	reader := csv.NewReader(strings.NewReader(fileContent))
-	log, err := ingestionUsecase.ValidateAndUploadIngestionCsv(ctx, organizationId, userId, "transactions", reader)
+	log, err := ingestionUsecase.ValidateAndUploadIngestionCsv(ctx, organizationId, userId, "transactions", reader, models.IngestionOptions{})
 	if err != nil {
 		assert.FailNow(t, "failed to validate and upload ingestion csv", err)
 	}
 	fmt.Printf("Created upload log %s in pending state", log.Id)
 
-	err = ingestionUsecase.IngestDataFromCsvByUploadLogId(ctx, log.Id)
+	err = ingestionUsecase.IngestDataFromCsvByUploadLogId(ctx, log.Id, models.IngestionOptions{})
 	if err != nil {
 		assert.FailNow(t, "Failed to ingest data from csv file", err)
 	}

@@ -170,10 +170,10 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 		logger.WarnContext(ctx, "Continuous Screening - could not parse new internal id, skipping screening", "error", err)
 		return nil
 	}
-	previousObjectInternalId, err := uuid.Parse(job.Args.PreviousInternalId)
-	if err != nil {
-		logger.WarnContext(ctx, "Continuous Screening - could not parse previous internal id, skipping screening", "error", err)
-		return nil
+
+	previousObjectInternalId := uuid.Nil
+	if id, err := uuid.Parse(job.Args.PreviousInternalId); err == nil {
+		previousObjectInternalId = id
 	}
 
 	// Fetch the monitored object from client DB
@@ -215,24 +215,26 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 
 	}
 
-	// Get list of fields configured for continuous screening
-	previousObjectData, err := w.ingestedDataReader.QueryIngestedObjectByInternalId(
-		ctx, clientDbExec, table, previousObjectInternalId)
-	if err != nil {
-		if errors.Is(err, models.NotFoundError) {
-			logger.WarnContext(ctx, "Continuous Screening - previous object data not found, skipping screening",
-				"previous_internal_id", previousObjectInternalId)
+	if previousObjectInternalId != uuid.Nil {
+		// Get list of fields configured for continuous screening
+		previousObjectData, err := w.ingestedDataReader.QueryIngestedObjectByInternalId(
+			ctx, clientDbExec, table, previousObjectInternalId)
+		if err != nil {
+			if errors.Is(err, models.NotFoundError) {
+				logger.WarnContext(ctx, "Continuous Screening - previous object data not found, skipping screening",
+					"previous_internal_id", previousObjectInternalId)
+				return nil
+			}
+			return err
+		}
+
+		// Check if the previous object data is the same as the new object data, if yes, skip screening
+		if areObjectsEqual(previousObjectData, newObjectData, configuredFields) {
+			logger.InfoContext(ctx, "Continuous Screening - previous object data is the same as the new object data, skipping screening",
+				"previous_internal_id", previousObjectInternalId,
+				"new_internal_id", newObjectInternalId)
 			return nil
 		}
-		return err
-	}
-
-	// Check if the previous object data is the same as the new object data, if yes, skip screening
-	if areObjectsEqual(previousObjectData, newObjectData, configuredFields) {
-		logger.InfoContext(ctx, "Continuous Screening - previous object data is the same as the new object data, skipping screening",
-			"previous_internal_id", previousObjectInternalId,
-			"new_internal_id", newObjectInternalId)
-		return nil
 	}
 
 	// Fetch the latest screening result for the object
