@@ -85,7 +85,14 @@
         "continuous_screening_do_screening",
         "continuous_screening_scan_dataset_updates",
         "continuous_screening_apply_delta_file",
-        "continuous_screening_create_full_dataset"
+        "continuous_screening_create_full_dataset",
+        "scheduled_scenario",
+        "scheduled_execution",
+        "csv_ingestion",
+        "webhook_retry",
+        "webhook_dispatch",
+        "webhook_delivery",
+        "webhook_cleanup"
       ]
     },
     {

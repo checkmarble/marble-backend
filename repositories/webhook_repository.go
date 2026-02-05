@@ -63,14 +63,19 @@ func (repo *MarbleDbRepository) ListWebhooks(ctx context.Context, exec Executor,
 }
 
 func (repo *MarbleDbRepository) ListWebhooksByEventType(ctx context.Context, exec Executor, orgId uuid.UUID, eventType string) ([]models.NewWebhook, error) {
-	// PostgreSQL array contains operator
+	// Match webhooks where:
+	// - event_types is empty (subscribe to all events), OR
+	// - event_types contains the specific event type
 	query := NewQueryBuilder().
 		Select(dbmodels.NewWebhookFields...).
 		From(dbmodels.TABLE_NEW_WEBHOOKS).
 		Where(squirrel.Eq{"organization_id": orgId}).
 		Where(squirrel.Eq{"enabled": true}).
 		Where(squirrel.Eq{"deleted_at": nil}).
-		Where("? = ANY(event_types)", eventType)
+		Where(squirrel.Or{
+			squirrel.Expr("event_types = '{}'"),
+			squirrel.Expr("? = ANY(event_types)", eventType),
+		})
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptNewWebhook)
 }
