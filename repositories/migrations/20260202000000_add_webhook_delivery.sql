@@ -35,6 +35,7 @@ CREATE TABLE webhook_events_v2 (
     id UUID PRIMARY KEY,
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     event_type VARCHAR NOT NULL,
+    api_version VARCHAR NOT NULL DEFAULT 'v1',
     event_data JSONB NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );

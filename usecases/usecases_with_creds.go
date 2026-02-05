@@ -596,6 +596,7 @@ func (usecases *UsecasesWithCreds) NewWebhooksUsecase() WebhooksUsecase {
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.ConvoyRepository,
 		usecases.Repositories.MarbleDbRepository,
+		NewWebhookDeliveryService(),
 		usecases.Usecases.useNewWebhooks,
 	)
 }
