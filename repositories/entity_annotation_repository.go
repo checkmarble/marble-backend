@@ -2,10 +2,13 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 func (repo *MarbleDbRepository) GetEntityAnnotationById(
@@ -214,4 +217,70 @@ func (repo *MarbleDbRepository) DeleteEntityAnnotation(ctx context.Context, exec
 		Where(filters)
 
 	return ExecBuilder(ctx, exec, sql)
+}
+
+// UpdateEntityAnnotationPayload updates the payload of an existing annotation by ID
+func (repo *MarbleDbRepository) UpdateEntityAnnotationPayload(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	annotationId string,
+	payload json.RawMessage,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_ENTITY_ANNOTATIONS).
+		Set("payload", payload).
+		Set("updated_at", squirrel.Expr("now()")).
+		Where(squirrel.Eq{
+			"id":         annotationId,
+			"org_id":     orgId,
+			"deleted_at": nil,
+		})
+
+	return ExecBuilder(ctx, exec, sql)
+}
+
+// FindEntityAnnotationsWithRiskTopics finds risk topic annotations matching the filter.
+// Uses GIN index on payload->'topics' for efficient array containment queries.
+// This is used by MonitoringListCheck rule evaluation.
+func (repo *MarbleDbRepository) FindEntityAnnotationsWithRiskTopics(
+	ctx context.Context,
+	exec Executor,
+	filter models.EntityAnnotationRiskTopicsFilter,
+) ([]models.EntityAnnotation, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	if len(filter.ObjectIds) == 0 {
+		return nil, errors.Wrap(models.BadParameterError, "object IDs filter cannot be empty")
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.EntityAnnotationColumns...).
+		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
+		Where(squirrel.Eq{
+			"org_id":          filter.OrgId,
+			"object_type":     filter.ObjectType,
+			"annotation_type": models.EntityAnnotationRiskTopic.String(),
+			"deleted_at":      nil,
+		}).
+		Where("object_id = ANY(?)", filter.ObjectIds)
+
+	// Filter by topics using GIN index
+	if len(filter.Topics) == 0 {
+		// Any topics - use array length index
+		query = query.Where("jsonb_array_length(payload->'topics') > 0")
+	} else {
+		// Specific topics - use GIN index with ?| operator
+		query = query.Where("payload->'topics' ??| ?", filter.Topics)
+	}
+
+	query = query.Limit(1)
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptEntityAnnotation)
 }

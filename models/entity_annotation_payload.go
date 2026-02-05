@@ -35,6 +35,22 @@ package models
 // 	  }
 // 	]
 // }
+//
+// Risk Topic
+// Stores risk topics associated with an object, along with the source of the annotation.
+//
+// {
+//   "topics": ["sanctions", "peps", "adverse-media"],
+//   "source_type": "continuous_screening_match_review" | "manual",
+//   "source_details": {
+//     // For continuous_screening_match_review:
+//     "continuous_screening_id": "<uuid>",
+//     "opensanctions_entity_id": "<string>"
+//     // For manual:
+//     "reason": "<string>",
+//     "url": "<string>"
+//   }
+// }
 
 type EntityAnnotationPayload interface {
 	entityAnnotationPayload()
@@ -65,3 +81,11 @@ type EntityAnnotationTagPayload struct {
 }
 
 func (EntityAnnotationTagPayload) entityAnnotationPayload() {}
+
+type EntityAnnotationRiskTopicPayload struct {
+	Topics        []RiskTopic         `json:"topics"`
+	SourceType    RiskTopicSourceType `json:"source_type"`
+	SourceDetails SourceDetails       `json:"source_details"`
+}
+
+func (EntityAnnotationRiskTopicPayload) entityAnnotationPayload() {}

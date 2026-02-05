@@ -72,3 +72,23 @@ func (d ObjectRiskTopicUpsertInputDto) Adapt(
 		d.Url,
 	), nil
 }
+
+// AdaptRiskTopicAnnotationToObjectMetadataDto adapts an EntityAnnotation (risk_topic type)
+// to ObjectMetadataDto for backwards compatibility with the object-metadata API
+func AdaptRiskTopicAnnotationToObjectMetadataDto(a models.EntityAnnotation) (ObjectMetadataDto, error) {
+	annotationId, err := uuid.Parse(a.Id)
+	if err != nil {
+		return ObjectMetadataDto{}, errors.Wrap(err, "failed to parse annotation ID")
+	}
+
+	return ObjectMetadataDto{
+		Id:           annotationId,
+		OrgId:        a.OrgId,
+		ObjectType:   a.ObjectType,
+		ObjectId:     a.ObjectId,
+		MetadataType: models.MetadataTypeRiskTopics.String(),
+		Metadata:     a.Payload,
+		CreatedAt:    a.CreatedAt,
+		UpdatedAt:    a.UpdatedAt,
+	}, nil
+}

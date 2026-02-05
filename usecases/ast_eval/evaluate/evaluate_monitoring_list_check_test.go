@@ -20,16 +20,16 @@ type mockMonitoringListCheckRepository struct {
 	mock.Mock
 }
 
-func (m *mockMonitoringListCheckRepository) FindObjectRiskTopicsMetadata(
+func (m *mockMonitoringListCheckRepository) FindEntityAnnotationsWithRiskTopics(
 	ctx context.Context,
 	exec repositories.Executor,
-	filter models.ObjectRiskTopicsMetadataFilter,
-) ([]models.ObjectMetadata, error) {
+	filter models.EntityAnnotationRiskTopicsFilter,
+) ([]models.EntityAnnotation, error) {
 	args := m.Called(ctx, exec, filter)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]models.ObjectMetadata), args.Error(1)
+	return args.Get(0).([]models.EntityAnnotation), args.Error(1)
 }
 
 func (m *mockMonitoringListCheckRepository) ListPivots(
@@ -202,13 +202,13 @@ func TestMonitoringListCheck_Evaluate_Step1_ReturnsTrue(t *testing.T) {
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Mock repository returns risk topic found
-	repo.On("FindObjectRiskTopicsMetadata", ctx, mockExec, mock.MatchedBy(func(
-		filter models.ObjectRiskTopicsMetadataFilter,
+	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTopicsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst && len(filter.ObjectIds) == 1 &&
 			filter.ObjectIds[0] == "target_object_123"
-	})).Return([]models.ObjectMetadata{
-		{Id: uuid.New(), ObjectId: "target_object_123"},
+	})).Return([]models.EntityAnnotation{
+		{Id: uuid.NewString(), ObjectId: "target_object_123"},
 	}, nil)
 
 	mlc := MonitoringListCheck{
@@ -250,11 +250,11 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingle_ReturnsTrue(t *testing.
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
-		filter models.ObjectRiskTopicsMetadataFilter,
+	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTopicsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
-	})).Return([]models.ObjectMetadata{}, nil).Once()
+	})).Return([]models.EntityAnnotation{}, nil).Once()
 
 	// Step 2: LinkToSingle - get object_id from linked table
 	ingestedDataReader.On("GetDbField", mock.Anything, mockExec, mock.MatchedBy(func(params models.DbFieldReadParams) bool {
@@ -263,13 +263,13 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingle_ReturnsTrue(t *testing.
 	})).Return("linked_object_456", nil)
 
 	// Step 2: linked object has risk topic
-	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
-		filter models.ObjectRiskTopicsMetadataFilter,
+	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTopicsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameSecond &&
 			len(filter.ObjectIds) == 1 && filter.ObjectIds[0] == "linked_object_456"
-	})).Return([]models.ObjectMetadata{
-		{Id: uuid.New(), ObjectId: "linked_object_456"},
+	})).Return([]models.EntityAnnotation{
+		{Id: uuid.NewString(), ObjectId: "linked_object_456"},
 	}, nil)
 
 	mlc := MonitoringListCheck{
@@ -318,11 +318,11 @@ func TestMonitoringListCheck_Evaluate_Step2_NavigationNotValid(t *testing.T) {
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
-		filter models.ObjectRiskTopicsMetadataFilter,
+	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTopicsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
-	})).Return([]models.ObjectMetadata{}, nil).Once()
+	})).Return([]models.EntityAnnotation{}, nil).Once()
 
 	// Data model - using a target table name that doesn't exist
 	dataModel := utils.GetDummyDataModel()
@@ -379,11 +379,11 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
-		filter models.ObjectRiskTopicsMetadataFilter,
+	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTopicsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
-	})).Return([]models.ObjectMetadata{}, nil).Once()
+	})).Return([]models.EntityAnnotation{}, nil).Once()
 
 	// Step 2 LinkToSingle: get object_id from linked table
 	ingestedDataReader.On("GetDbField", mock.Anything, mockExec, mock.MatchedBy(func(params models.DbFieldReadParams) bool {
@@ -392,12 +392,12 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation
 	})).Return("linked_object_456", nil)
 
 	// Step 2 LinkToSingle: linked object has no risk topic
-	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
-		filter models.ObjectRiskTopicsMetadataFilter,
+	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTopicsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameSecond &&
 			len(filter.ObjectIds) == 1 && filter.ObjectIds[0] == "linked_object_456"
-	})).Return([]models.ObjectMetadata{}, nil)
+	})).Return([]models.EntityAnnotation{}, nil)
 
 	// Step 2 Navigation: list ingested objects returns empty
 	ingestedDataReader.On("ListIngestedObjects", mock.Anything, mockExec, mock.Anything, mock.Anything,
@@ -478,11 +478,11 @@ func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
-		filter models.ObjectRiskTopicsMetadataFilter,
+	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTopicsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
-	})).Return([]models.ObjectMetadata{}, nil).Once()
+	})).Return([]models.EntityAnnotation{}, nil).Once()
 
 	// Step 2 Navigation: list ingested objects returns multiple items
 	ingestedDataReader.On("ListIngestedObjects", mock.Anything, mockExec, mock.Anything, mock.Anything,
@@ -494,16 +494,16 @@ func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic
 		}, nil)
 
 	// Step 2 Navigation: one of the objects has a risk topic
-	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
-		filter models.ObjectRiskTopicsMetadataFilter,
+	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTopicsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameThird &&
 			len(filter.ObjectIds) == 3 &&
 			filter.ObjectIds[0] == "nav_object_001" &&
 			filter.ObjectIds[1] == "nav_object_002" &&
 			filter.ObjectIds[2] == "nav_object_003"
-	})).Return([]models.ObjectMetadata{
-		{Id: uuid.New(), ObjectId: "nav_object_002"}, // Second object has a topic
+	})).Return([]models.EntityAnnotation{
+		{Id: uuid.NewString(), ObjectId: "nav_object_002"}, // Second object has a topic
 	}, nil)
 
 	// Build data model with navigation option for the test
