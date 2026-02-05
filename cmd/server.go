@@ -366,6 +366,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
+		usecases.WithNewWebhooks(utils.GetEnv("USE_NEW_WEBHOOKS", false)),
 		usecases.WithMetabase(apiConfig.MetabaseConfig.SiteUrl),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
