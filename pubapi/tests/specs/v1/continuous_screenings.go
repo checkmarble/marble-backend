@@ -1,12 +1,10 @@
 package v1
 
 import (
-	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/pubapi/v1/params"
-	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/google/uuid"
 	"github.com/h2non/gock"
@@ -40,22 +38,6 @@ func testContinuousScreeningValidation(t *testing.T, e *httpexpect.Expect) {
 		Status(http.StatusBadRequest).
 		JSON().Path("$.error").Object().
 		HasValue("code", "invalid_payload")
-
-	// Test both object_id and object_payload provided
-	objectId := "account-001"
-	payload := json.RawMessage(`{"object_id": "account-001", "name": "John Doe"}`)
-
-	e.POST("/continuous-screenings/objects").
-		WithJSON(map[string]any{
-			"object_type":      "account",
-			"config_stable_id": configStableId.String(),
-			"object_id":        objectId,
-			"object_payload":   payload,
-		}).
-		Expect().
-		Status(http.StatusBadRequest).
-		JSON().Path("$.error").Object().
-		HasValue("code", "invalid_payload")
 }
 
 func testContinuousScreeningNotFound(t *testing.T, e *httpexpect.Expect) {
@@ -66,7 +48,7 @@ func testContinuousScreeningNotFound(t *testing.T, e *httpexpect.Expect) {
 		WithJSON(params.CreateContinuousScreeningObjectParams{
 			ObjectType:     "account",
 			ConfigStableId: nonExistentConfigId,
-			ObjectId:       utils.Ptr("account-001"),
+			ObjectId:       "account-001",
 			SkipScreen:     false,
 		}).
 		Expect().
@@ -94,7 +76,7 @@ func testContinuousScreeningNotFound(t *testing.T, e *httpexpect.Expect) {
 		WithJSON(params.CreateContinuousScreeningObjectParams{
 			ObjectType:     "invalid_object_type",
 			ConfigStableId: configStableId,
-			ObjectId:       utils.Ptr("account-001"),
+			ObjectId:       "account-001",
 			SkipScreen:     false,
 		}).
 		Expect().
@@ -107,7 +89,7 @@ func testContinuousScreeningNotFound(t *testing.T, e *httpexpect.Expect) {
 		WithJSON(params.CreateContinuousScreeningObjectParams{
 			ObjectType:     "account",
 			ConfigStableId: configStableId,
-			ObjectId:       utils.Ptr("non-existent-object"),
+			ObjectId:       "non-existent-object",
 			SkipScreen:     false,
 		}).
 		Expect().
@@ -150,7 +132,7 @@ func testContinuousScreeningAddAndDelete(t *testing.T, e *httpexpect.Expect) {
 		WithJSON(params.CreateContinuousScreeningObjectParams{
 			ObjectType:     "account",
 			ConfigStableId: configStableId,
-			ObjectId:       &objectId,
+			ObjectId:       objectId,
 			SkipScreen:     false,
 		}).
 		Expect().
@@ -186,43 +168,6 @@ func testContinuousScreeningAddAndDelete(t *testing.T, e *httpexpect.Expect) {
 		}).
 		Expect().
 		Status(http.StatusNotFound)
-
-	// Test adding object via payload instead of object_id
-	// This will update the ingested object and trigger screening (uses the same gock mock response)
-	objectPayload := json.RawMessage(`{
-		"object_id": "account-001",
-		"updated_at": "2025-01-02T00:00:00Z",
-		"name": "John Doe",
-		"country": "US"
-	}`)
-
-	respPayload := e.POST("/continuous-screenings/objects").
-		WithJSON(map[string]any{
-			"object_type":      "account",
-			"config_stable_id": configStableId.String(),
-			"object_payload":   objectPayload,
-			"should_screen":    true,
-		}).
-		Expect().
-		Status(http.StatusCreated).
-		JSON().Path("$.data").Object()
-
-	respPayload.Value("object_id").IsEqual(objectId)
-	respPayload.Value("object_type").IsEqual("account")
-
-	matchesPayload := respPayload.Value("matches").Array()
-	matchesPayload.Length().IsEqual(1)
-	matchesPayload.Value(0).Object().Value("opensanction_entity_id").IsEqual("sanctioned-entity-001")
-
-	// Cleanup
-	e.DELETE("/continuous-screenings/objects").
-		WithJSON(params.DeleteContinuousScreeningObjectParams{
-			ObjectType:     "account",
-			ObjectId:       objectId,
-			ConfigStableId: configStableId,
-		}).
-		Expect().
-		Status(http.StatusNoContent)
 }
 
 func testContinuousScreeningSkipScreenTrue(t *testing.T, e *httpexpect.Expect) {
@@ -233,7 +178,7 @@ func testContinuousScreeningSkipScreenTrue(t *testing.T, e *httpexpect.Expect) {
 		WithJSON(params.CreateContinuousScreeningObjectParams{
 			ObjectType:     "account",
 			ConfigStableId: configStableId,
-			ObjectId:       &objectId,
+			ObjectId:       objectId,
 			SkipScreen:     true,
 		}).
 		Expect().
