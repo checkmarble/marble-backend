@@ -94,29 +94,11 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
-	var objectId string
+	objectId := input.ObjectId
 	// Ignore the unique violation error in case of ingestion.
 	// The payload can be an updated object and we will force the screening again on the updated object.
 	// Without recording the object ID in the continuous screening table.
 	ignoreUniqueViolationError := false
-
-	// Ingest the object if provided
-	if input.ObjectPayload != nil {
-		objectId, err = uc.ingestObject(ctx, config.OrgId, input)
-		if err != nil {
-			return models.ContinuousScreeningWithMatches{}, err
-		}
-		ignoreUniqueViolationError = true
-	} else if input.ObjectId != nil {
-		objectId = *input.ObjectId
-	} else {
-		// Should never happen if the input is validated
-		return models.ContinuousScreeningWithMatches{},
-			errors.WithDetail(
-				models.BadParameterError,
-				"object_id or object_payload is required",
-			)
-	}
 
 	ingestedObject, ingestedObjectInternalId, err := uc.GetIngestedObject(
 		ctx,
@@ -296,24 +278,6 @@ func extractObjectIDFromPayload(payload json.RawMessage) (string, error) {
 		return "", err
 	}
 	return objectID.ObjectID, nil
-}
-
-// Ingest the object from payload and return the object ID from payload
-func (uc *ContinuousScreeningUsecase) ingestObject(
-	ctx context.Context,
-	orgId uuid.UUID,
-	input models.CreateContinuousScreeningObject,
-) (string, error) {
-	// Ingestion doesn't return the object after operation.
-	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId, input.ObjectType, *input.ObjectPayload, models.IngestionOptions{})
-	if err != nil {
-		return "", err
-	}
-	if nb == 0 {
-		// Can happen if the payload defines a previous version of the ingested object based on updated_at
-		return "", errors.Wrap(models.ConflictError, "no object ingested")
-	}
-	return extractObjectIDFromPayload(*input.ObjectPayload)
 }
 
 // Based on data model field mapping, prepare the OpenSanctions Filters

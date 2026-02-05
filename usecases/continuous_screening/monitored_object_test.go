@@ -204,124 +204,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
-		ObjectId:       &suite.objectId,
-		SkipScreen:     false,
-	}
-
-	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
-
-	// Assert
-	suite.NoError(err)
-	suite.NotNil(result)
-	suite.AssertExpectations()
-}
-
-func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_WithObjectPayload() {
-	payload := json.RawMessage(`{"object_id": "test-object-id", "amount": 100}`)
-
-	// Setup test data
-	config := models.ContinuousScreeningConfig{
-		Id:          suite.configId,
-		StableId:    suite.configStableId,
-		OrgId:       suite.orgId,
-		ObjectTypes: []string{suite.objectType},
-	}
-
-	ftmEntityValue := models.FollowTheMoneyEntityPerson
-	ftmPropertyValue := models.FollowTheMoneyPropertyName
-	table := models.Table{
-		Name:      suite.objectType,
-		FTMEntity: &ftmEntityValue,
-		Fields: map[string]models.Field{
-			"object_id": {
-				Name:        "object_id",
-				FTMProperty: &ftmPropertyValue,
-			},
-			"amount": {
-				Name:     "amount",
-				DataType: models.Float,
-			},
-		},
-	}
-
-	dataModel := models.DataModel{
-		Tables: map[string]models.Table{
-			suite.objectType: table,
-		},
-	}
-
-	objectInternalId := uuid.New()
-	ingestedObjects := []models.DataModelObject{
-		{
-			Data: map[string]any{
-				"object_id": suite.objectId,
-			},
-			Metadata: map[string]any{
-				"id": [16]byte(objectInternalId),
-			},
-		},
-	}
-
-	// Setup expectations
-	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
-		ContinuousScreening: models.Allowed,
-	}, nil)
-	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
-		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
-	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.enforceSecurity.On("UserId").Return((*string)(nil))
-	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
-	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
-	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
-		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
-	suite.ingestionUsecase.On("IngestObject", mock.Anything, suite.orgId,
-		suite.objectType, payload, models.IngestionOptions{}).Return(1, nil)
-	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
-		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
-		return len(query.Queries) > 0
-	})).Return(models.ScreeningRawSearchResponseWithMatches{
-		SearchInput:       []byte("{}"),
-		InitialHasMatches: false,
-		Matches:           []models.ScreeningMatch{},
-	}, nil)
-	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
-	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
-		mock.Anything).Return(nil)
-	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{},
-	}, nil)
-
-	continuousScreeningId := uuid.New()
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
-		mock.Anything).Return(models.ContinuousScreeningWithMatches{
-		ContinuousScreening: models.ContinuousScreening{
-			Id:                                continuousScreeningId,
-			OrgId:                             suite.orgId,
-			ContinuousScreeningConfigId:       suite.configId,
-			ContinuousScreeningConfigStableId: suite.configStableId,
-			ObjectType:                        utils.Ptr(suite.objectType),
-			ObjectId:                          utils.Ptr(suite.objectId),
-		},
-		Matches: []models.ContinuousScreeningMatch{},
-	}, nil)
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningMatchEnrichmentTask", mock.Anything, mock.Anything,
-		suite.orgId, continuousScreeningId).Return(nil)
-	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
-			return input.Operation == models.DeltaTrackOperationAdd
-		})).Return(nil)
-
-	// Execute
-	uc := suite.makeUsecase()
-	input := models.CreateContinuousScreeningObject{
-		ObjectType:     suite.objectType,
-		ConfigStableId: suite.configStableId,
-		ObjectPayload:  &payload,
+		ObjectId:       suite.objectId,
 		SkipScreen:     false,
 	}
 
@@ -376,7 +259,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
-		ObjectId:       &suite.objectId,
+		ObjectId:       suite.objectId,
 		SkipScreen:     false,
 	}
 
@@ -436,7 +319,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
-		ObjectId:       &suite.objectId,
+		ObjectId:       suite.objectId,
 		SkipScreen:     false,
 	}
 
@@ -445,191 +328,6 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Assert
 	suite.Error(err)
 	suite.Contains(err.Error(), "object test-object-id not found in ingested data")
-	suite.AssertExpectations()
-}
-
-func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_ObjectPayloadNotIngested() {
-	// Setup test data - payload with object_id
-	payload := json.RawMessage(`{"object_id": "test-object-id", "amount": 100}`)
-
-	config := models.ContinuousScreeningConfig{
-		Id:          suite.configId,
-		StableId:    suite.configStableId,
-		OrgId:       suite.orgId,
-		ObjectTypes: []string{suite.objectType},
-	}
-
-	ftmEntityValue := models.FollowTheMoneyEntityPerson
-	ftmPropertyValue := models.FollowTheMoneyPropertyName
-	table := models.Table{
-		Name:      suite.objectType,
-		FTMEntity: &ftmEntityValue,
-		Fields: map[string]models.Field{
-			"object_id": {
-				Name:        "object_id",
-				FTMProperty: &ftmPropertyValue,
-			},
-			"amount": {
-				Name:     "amount",
-				DataType: models.Float,
-			},
-		},
-	}
-
-	dataModel := models.DataModel{
-		Tables: map[string]models.Table{
-			suite.objectType: table,
-		},
-	}
-
-	// Setup expectations - IngestObject returns 0 (no objects ingested)
-	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
-		ContinuousScreening: models.Allowed,
-	}, nil)
-	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
-		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
-	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.enforceSecurity.On("UserId").Return((*string)(nil))
-	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
-	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
-	suite.ingestionUsecase.On("IngestObject", mock.Anything, suite.orgId,
-		suite.objectType, payload, models.IngestionOptions{}).Return(0, nil)
-
-	// Execute
-	uc := suite.makeUsecase()
-	input := models.CreateContinuousScreeningObject{
-		ObjectType:     suite.objectType,
-		ConfigStableId: suite.configStableId,
-		ObjectPayload:  &payload,
-		SkipScreen:     false,
-	}
-
-	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
-
-	// Assert
-	suite.Error(err)
-	suite.Contains(err.Error(), "no object ingested")
-	suite.AssertExpectations()
-}
-
-func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_UniqueViolationWithIgnoreConflictError() {
-	// Setup test data - object payload, which will set ignoreUniqueViolationError to true
-	// This tests the case where an object is already in monitoring list and user wants to update data
-	// In this case, we don't add it to list, we do a new screening on the new data and save result with trigger type "updated"
-	payload := json.RawMessage(`{"object_id": "test-object-id", "amount": 100}`)
-
-	config := models.ContinuousScreeningConfig{
-		Id:          suite.configId,
-		StableId:    suite.configStableId,
-		OrgId:       suite.orgId,
-		ObjectTypes: []string{suite.objectType},
-	}
-
-	ftmEntityValue := models.FollowTheMoneyEntityPerson
-	ftmPropertyValue := models.FollowTheMoneyPropertyName
-	table := models.Table{
-		Name:      suite.objectType,
-		FTMEntity: &ftmEntityValue,
-		Fields: map[string]models.Field{
-			"object_id": {
-				Name:        "object_id",
-				FTMProperty: &ftmPropertyValue,
-			},
-			"amount": {
-				Name:     "amount",
-				DataType: models.Float,
-			},
-		},
-	}
-
-	dataModel := models.DataModel{
-		Tables: map[string]models.Table{
-			suite.objectType: table,
-		},
-	}
-
-	objectInternalId := uuid.New()
-	ingestedObjects := []models.DataModelObject{
-		{
-			Data: map[string]any{
-				"object_id": suite.objectId,
-			},
-			Metadata: map[string]any{
-				"id": [16]byte(objectInternalId),
-			},
-		},
-	}
-
-	// Setup expectations
-	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
-		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
-		ContinuousScreening: models.Allowed,
-	}, nil)
-	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
-		suite.configStableId).Return(config, nil)
-	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
-	suite.enforceSecurity.On("WriteContinuousScreeningObject", suite.orgId).Return(nil)
-	suite.enforceSecurity.On("UserId").Return((*string)(nil))
-	suite.enforceSecurity.On("ApiKeyId").Return((*string)(nil))
-	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
-	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
-		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
-	suite.ingestionUsecase.On("IngestObject", mock.Anything, suite.orgId,
-		suite.objectType, payload, models.IngestionOptions{}).Return(1, nil)
-	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
-		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
-		return len(query.Queries) > 0
-	})).Return(models.ScreeningRawSearchResponseWithMatches{
-		SearchInput:       []byte("{}"),
-		InitialHasMatches: false,
-		Matches:           []models.ScreeningMatch{},
-	}, nil)
-	// Return a unique violation error
-	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId).Return(&pgconn.PgError{
-		Code: pgerrcode.UniqueViolation,
-	})
-
-	continuousScreeningId := uuid.New()
-	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything, mock.MatchedBy(func(
-		input models.CreateContinuousScreening,
-	) bool {
-		return input.TriggerType == models.ContinuousScreeningTriggerTypeObjectUpdated
-	})).Return(models.ContinuousScreeningWithMatches{
-		ContinuousScreening: models.ContinuousScreening{
-			Id:                                continuousScreeningId,
-			OrgId:                             suite.orgId,
-			ContinuousScreeningConfigId:       suite.configId,
-			ContinuousScreeningConfigStableId: suite.configStableId,
-			ObjectType:                        utils.Ptr(suite.objectType),
-			ObjectId:                          utils.Ptr(suite.objectId),
-		},
-		Matches: []models.ContinuousScreeningMatch{},
-	}, nil)
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningMatchEnrichmentTask", mock.Anything, mock.Anything,
-		suite.orgId, continuousScreeningId).Return(nil)
-	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
-			return input.Operation == models.DeltaTrackOperationUpdate
-		})).Return(nil)
-
-	// Execute
-	uc := suite.makeUsecase()
-	input := models.CreateContinuousScreeningObject{
-		ObjectType:     suite.objectType,
-		ConfigStableId: suite.configStableId,
-		ObjectPayload:  &payload,
-		SkipScreen:     false,
-	}
-
-	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
-
-	// Assert - should not error when ignoreConflictError is true and unique violation occurs
-	suite.NoError(err)
-	suite.NotNil(result)
 	suite.AssertExpectations()
 }
 
@@ -697,7 +395,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
-		ObjectId:       &suite.objectId,
+		ObjectId:       suite.objectId,
 		SkipScreen:     false,
 	}
 
@@ -735,7 +433,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType, // "transactions" which is not in ObjectTypes
 		ConfigStableId: suite.configStableId,
-		ObjectId:       &suite.objectId,
+		ObjectId:       suite.objectId,
 	}
 
 	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
@@ -874,7 +572,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
-		ObjectId:       &suite.objectId,
+		ObjectId:       suite.objectId,
 		SkipScreen:     false,
 	}
 
@@ -1009,7 +707,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
-		ObjectId:       &suite.objectId,
+		ObjectId:       suite.objectId,
 		SkipScreen:     false,
 	}
 
@@ -1572,7 +1270,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
-		ObjectId:       &suite.objectId,
+		ObjectId:       suite.objectId,
 		SkipScreen:     false,
 	}
 
@@ -1803,7 +1501,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
-		ObjectId:       &suite.objectId,
+		ObjectId:       suite.objectId,
 		SkipScreen:     false,
 	}
 
@@ -1891,7 +1589,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	input := models.CreateContinuousScreeningObject{
 		ObjectType:     suite.objectType,
 		ConfigStableId: suite.configStableId,
-		ObjectId:       &suite.objectId,
+		ObjectId:       suite.objectId,
 		SkipScreen:     true,
 	}
 
