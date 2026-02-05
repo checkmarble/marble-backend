@@ -34,19 +34,30 @@ const (
 	HeaderContentType      = "Content-Type"
 )
 
+// noRedirectPolicy prevents the HTTP client from following redirects.
+// This is a security measure: redirects could bypass URL validation
+// (e.g., redirect from https://legit.com to http://169.254.169.254).
+func noRedirectPolicy(req *http.Request, via []*http.Request) error {
+	return http.ErrUseLastResponse
+}
+
 // WebhookDeliveryService handles HTTP delivery of webhooks.
 type WebhookDeliveryService struct {
 	httpClient       *http.Client
 	signatureService *WebhookSignatureService
+	urlValidator     *WebhookURLValidator
 }
 
 // NewWebhookDeliveryService creates a new webhook delivery service.
-func NewWebhookDeliveryService() *WebhookDeliveryService {
+// Set allowInsecureURLs=true only for local development (allows HTTP).
+func NewWebhookDeliveryService(allowInsecureURLs bool) *WebhookDeliveryService {
 	return &WebhookDeliveryService{
 		httpClient: &http.Client{
-			Timeout: DefaultWebhookTimeout,
+			Timeout:       DefaultWebhookTimeout,
+			CheckRedirect: noRedirectPolicy,
 		},
 		signatureService: &WebhookSignatureService{},
+		urlValidator:     NewWebhookURLValidator(allowInsecureURLs),
 	}
 }
 
@@ -120,10 +131,20 @@ func (s *WebhookDeliveryService) Send(
 	return WebhookSendResult{StatusCode: resp.StatusCode}
 }
 
-// ValidateEndpoint validates a webhook endpoint by sending test requests.
-// Tries HEAD → GET → POST until one returns 2xx.
+// ValidateEndpoint validates a webhook endpoint for security and reachability.
+// Security checks: scheme, credentials, reserved IPs.
+// Reachability: tries HEAD → GET → POST until one returns 2xx.
 func (s *WebhookDeliveryService) ValidateEndpoint(ctx context.Context, url string) error {
-	client := &http.Client{Timeout: ValidationPingTimeout}
+	// Security validation first
+	if err := s.urlValidator.Validate(ctx, url); err != nil {
+		return err
+	}
+
+	// Reachability check
+	client := &http.Client{
+		Timeout:       ValidationPingTimeout,
+		CheckRedirect: noRedirectPolicy,
+	}
 	methods := []string{http.MethodHead, http.MethodGet, http.MethodPost}
 
 	var lastErr error

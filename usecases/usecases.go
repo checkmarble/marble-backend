@@ -47,6 +47,7 @@ type Usecases struct {
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
 	useNewWebhooks               bool // Feature flag for new webhook delivery system
+	allowInsecureWebhookURLs     bool // Allow HTTP webhook URLs (dev only)
 
 	rootExecutorFactory *executor_factory.IdentityExecutorFactory
 }
@@ -189,6 +190,14 @@ func WithNewWebhooks(enabled bool) Option {
 	}
 }
 
+// WithAllowInsecureWebhookURLs allows HTTP webhook URLs (for development only).
+// In production, only HTTPS is allowed.
+func WithAllowInsecureWebhookURLs(allow bool) Option {
+	return func(o *options) {
+		o.allowInsecureWebhookURLs = allow
+	}
+}
+
 type options struct {
 	appName                      string
 	apiVersion                   string
@@ -209,8 +218,9 @@ type options struct {
 	analyticsConfig              infra.AnalyticsConfig
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
-	csCreateFullDatasetInterval  time.Duration
-	useNewWebhooks               bool
+	csCreateFullDatasetInterval   time.Duration
+	useNewWebhooks                bool
+	allowInsecureWebhookURLs      bool
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -240,6 +250,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		marbleApiInternalUrl:         o.marbleApiInternalUrl,
 		csCreateFullDatasetInterval:  o.csCreateFullDatasetInterval,
 		useNewWebhooks:               o.useNewWebhooks,
+		allowInsecureWebhookURLs:     o.allowInsecureWebhookURLs,
 	}
 }
 

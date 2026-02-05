@@ -326,6 +326,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 		usecases.WithNewWebhooks(utils.GetEnv("USE_NEW_WEBHOOKS", false)),
+		usecases.WithAllowInsecureWebhookURLs(utils.GetEnv("ENV", "production") == "development"),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithApiVersion(apiVersion),
 		usecases.WithMetricsCollectionConfig(metricCollectionConfig),
