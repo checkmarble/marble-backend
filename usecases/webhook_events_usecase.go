@@ -189,7 +189,13 @@ func (usecase WebhookEventsUsecase) createWebhookQueueItem(
 
 // SendWebhookEventAsync sends a webhook event asynchronously, with a new context and timeout. This is the public method that should be
 // used from other usecases.
+// When useNewWebhooks is enabled, this is a no-op since delivery is handled by River jobs.
 func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, webhookEventId string) {
+	// New webhook system uses River jobs for delivery, enqueued in CreateWebhookEvent
+	if usecase.useNewWebhooks {
+		return
+	}
+
 	logger := utils.LoggerFromContext(ctx).With("webhook_event_id", webhookEventId)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
@@ -206,11 +212,15 @@ func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, w
 
 // RetrySendWebhookEvents retries sending webhook events that have failed to be sent.
 // It handles them in limited batches.
-// TODO: refactor the whole usecase to use the the task queue tu send webhooks, removing the need for those methods (usecases should
-// just create a task transactionally)
+// When useNewWebhooks is enabled, this is a no-op since River handles retries.
 func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 	ctx context.Context,
 ) error {
+	// New webhook system uses River jobs for retries
+	if usecase.useNewWebhooks {
+		return nil
+	}
+
 	exec := usecase.executorFactory.NewExecutor()
 
 	pendingWebhookEvents, err := usecase.webhookEventsRepository.ListWebhookEvents(ctx, exec, models.WebhookEventFilters{
@@ -225,10 +235,16 @@ func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 }
 
 // RetrySendWebhookEventsForOrg retries sending webhook events for a specific organization.
+// When useNewWebhooks is enabled, this is a no-op since River handles retries.
 func (usecase WebhookEventsUsecase) RetrySendWebhookEventsForOrg(
 	ctx context.Context,
 	orgId uuid.UUID,
 ) error {
+	// New webhook system uses River jobs for retries
+	if usecase.useNewWebhooks {
+		return nil
+	}
+
 	exec := usecase.executorFactory.NewExecutor()
 
 	pendingWebhookEvents, err := usecase.webhookEventsRepository.ListWebhookEvents(ctx, exec, models.WebhookEventFilters{

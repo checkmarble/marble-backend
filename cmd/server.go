@@ -368,6 +368,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 		usecases.WithAnalyticsEnabled(analyticsConfig.Enabled),
 		usecases.WithNewWebhooks(utils.GetEnv("USE_NEW_WEBHOOKS", false)),
+		usecases.WithAllowInsecureWebhookURLs(utils.GetEnv("ENV", "production") == "development"),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
 		usecases.WithFirebaseAdmin(apiConfig.TokenProvider, deps.FirebaseAdmin),
