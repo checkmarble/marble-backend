@@ -46,7 +46,7 @@ func handleListEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		out, err := pure_utils.MapErr(annotations, dto.AdaptEntityAnnotation)
+		out, err := dto.AdaptGroupedEntityAnnotations(models.GroupAnnotationsByType(annotations))
 		if err != nil {
 			presentError(ctx, c, err)
 			return
