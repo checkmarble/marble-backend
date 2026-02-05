@@ -152,10 +152,10 @@ func (usecase WebhookEventsUsecase) createWebhookQueueItem(
 	tx repositories.Transaction,
 	input models.WebhookEventCreate,
 ) error {
-	// Serialize event data to JSON
-	eventData, err := json.Marshal(input.EventContent.Data)
+	// Serialize event data using the public API DTOs (same as Convoy path)
+	_, eventData, err := dto.AdaptWebhookEventData(ctx, tx, usecase.publicApiAdaptor, input.EventContent.Data)
 	if err != nil {
-		return errors.Wrap(err, "error marshaling webhook event data")
+		return errors.Wrap(err, "error adapting webhook event data")
 	}
 
 	// Generate UUID v7 for the event

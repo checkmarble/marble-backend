@@ -325,6 +325,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
+		usecases.WithNewWebhooks(utils.GetEnv("USE_NEW_WEBHOOKS", false)),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithApiVersion(apiVersion),
 		usecases.WithMetricsCollectionConfig(metricCollectionConfig),
