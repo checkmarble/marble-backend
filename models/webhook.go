@@ -269,6 +269,7 @@ type WebhookEventV2 struct {
 	Id             uuid.UUID
 	OrganizationId uuid.UUID
 	EventType      string
+	ApiVersion     string // API version for the payload format (e.g., "v1", "v1beta")
 	EventData      []byte // Already serialized JSON payload
 	CreatedAt      time.Time
 }

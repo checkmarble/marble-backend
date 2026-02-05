@@ -176,12 +176,14 @@ func (repo *MarbleDbRepository) CreateWebhookEventV2(ctx context.Context, exec E
 			"id",
 			"organization_id",
 			"event_type",
+			"api_version",
 			"event_data",
 		).
 		Values(
 			event.Id,
 			event.OrganizationId,
 			event.EventType,
+			event.ApiVersion,
 			event.EventData,
 		)
 

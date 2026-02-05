@@ -40,13 +40,18 @@ type enforceSecurityWebhook interface {
 	CanModifyWebhook(ctx context.Context, webhook models.Webhook) error
 }
 
+type webhookEndpointValidator interface {
+	ValidateEndpoint(ctx context.Context, url string) error
+}
+
 type WebhooksUsecase struct {
-	enforceSecurity    enforceSecurityWebhook
-	executorFactory    executor_factory.ExecutorFactory
-	transactionFactory executor_factory.TransactionFactory
-	convoyRepository   convoyWebhooksRepository
-	webhookRepository  webhooksRepository
-	useNewWebhooks     bool
+	enforceSecurity     enforceSecurityWebhook
+	executorFactory     executor_factory.ExecutorFactory
+	transactionFactory  executor_factory.TransactionFactory
+	convoyRepository    convoyWebhooksRepository
+	webhookRepository   webhooksRepository
+	endpointValidator   webhookEndpointValidator
+	useNewWebhooks      bool
 }
 
 func NewWebhooksUsecase(
@@ -55,15 +60,17 @@ func NewWebhooksUsecase(
 	transactionFactory executor_factory.TransactionFactory,
 	convoyRepository convoyWebhooksRepository,
 	webhookRepository webhooksRepository,
+	endpointValidator webhookEndpointValidator,
 	useNewWebhooks bool,
 ) WebhooksUsecase {
 	return WebhooksUsecase{
-		enforceSecurity:    enforceSecurity,
-		executorFactory:    executorFactory,
-		transactionFactory: transactionFactory,
-		convoyRepository:   convoyRepository,
-		webhookRepository:  webhookRepository,
-		useNewWebhooks:     useNewWebhooks,
+		enforceSecurity:     enforceSecurity,
+		executorFactory:     executorFactory,
+		transactionFactory:  transactionFactory,
+		convoyRepository:    convoyRepository,
+		webhookRepository:   webhookRepository,
+		endpointValidator:   endpointValidator,
+		useNewWebhooks:      useNewWebhooks,
 	}
 }
 
@@ -189,12 +196,21 @@ func (usecase WebhooksUsecase) registerWebhookNew(
 	organizationId uuid.UUID,
 	input models.WebhookRegister,
 ) (models.Webhook, error) {
-	exec := usecase.executorFactory.NewExecutor()
+	// Validate endpoint reachability before creating
+	if err := usecase.endpointValidator.ValidateEndpoint(ctx, input.Url); err != nil {
+		return models.Webhook{}, errors.Wrap(err, "webhook endpoint unreachable")
+	}
 
 	webhookId := uuid.Must(uuid.NewV7())
 	httpTimeout := 30 // default
 	if input.HttpTimeout != nil {
 		httpTimeout = *input.HttpTimeout
+	}
+
+	// Generate secret before transaction
+	secretValue, err := generateSecretValue()
+	if err != nil {
+		return models.Webhook{}, err
 	}
 
 	newWebhook := models.NewWebhook{
@@ -210,16 +226,6 @@ func (usecase WebhooksUsecase) registerWebhookNew(
 		UpdatedAt:                time.Now(),
 	}
 
-	if err := usecase.webhookRepository.CreateWebhook(ctx, exec, newWebhook); err != nil {
-		return models.Webhook{}, errors.Wrap(err, "error creating webhook")
-	}
-
-	// Generate and store a secret
-	secretValue, err := generateSecretValue()
-	if err != nil {
-		return models.Webhook{}, err
-	}
-
 	secret := models.NewWebhookSecret{
 		Id:        uuid.Must(uuid.NewV7()),
 		WebhookId: webhookId,
@@ -227,8 +233,18 @@ func (usecase WebhooksUsecase) registerWebhookNew(
 		CreatedAt: time.Now(),
 	}
 
-	if err := usecase.webhookRepository.AddWebhookSecret(ctx, exec, secret); err != nil {
-		return models.Webhook{}, errors.Wrap(err, "error adding webhook secret")
+	// Create webhook and secret in a single transaction
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := usecase.webhookRepository.CreateWebhook(ctx, tx, newWebhook); err != nil {
+			return errors.Wrap(err, "error creating webhook")
+		}
+		if err := usecase.webhookRepository.AddWebhookSecret(ctx, tx, secret); err != nil {
+			return errors.Wrap(err, "error adding webhook secret")
+		}
+		return nil
+	})
+	if err != nil {
+		return models.Webhook{}, err
 	}
 
 	newWebhook.Secrets = []models.NewWebhookSecret{secret}

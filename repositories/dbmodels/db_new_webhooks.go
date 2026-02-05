@@ -92,6 +92,7 @@ type DBWebhookEventV2 struct {
 	Id             uuid.UUID `db:"id"`
 	OrganizationId uuid.UUID `db:"organization_id"`
 	EventType      string    `db:"event_type"`
+	ApiVersion     string    `db:"api_version"`
 	EventData      []byte    `db:"event_data"`
 	CreatedAt      time.Time `db:"created_at"`
 }
@@ -105,6 +106,7 @@ func AdaptWebhookEventV2(db DBWebhookEventV2) (models.WebhookEventV2, error) {
 		Id:             db.Id,
 		OrganizationId: db.OrganizationId,
 		EventType:      db.EventType,
+		ApiVersion:     db.ApiVersion,
 		EventData:      db.EventData,
 		CreatedAt:      db.CreatedAt,
 	}, nil
