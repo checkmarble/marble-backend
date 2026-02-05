@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 )
 
@@ -19,9 +20,9 @@ func (m *ContinuousScreeningIngestionUsecase) IngestObject(
 	organizationId uuid.UUID,
 	objectType string,
 	objectBody json.RawMessage,
-	shouldScreen bool,
+	ingestionOptions models.IngestionOptions,
 	parserOpts ...payload_parser.ParserOpt,
 ) (int, error) {
-	args := m.Called(ctx, organizationId, objectType, objectBody, shouldScreen)
+	args := m.Called(ctx, organizationId, objectType, objectBody, ingestionOptions)
 	return args.Int(0), args.Error(1)
 }
