@@ -583,7 +583,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 				"data_model_summary": caseReviewContext.DataModelSummary,
 				"rules_summary":      caseReviewContext.RulesDefinitionsReview,
 				"rule_thresholds":    caseReviewContext.RuleThresholds,
-				"pivot_enrichment":   caseReviewContext.PivotEnrichments,
+				"pivot_enrichments":  caseReviewContext.PivotEnrichments,
 			},
 		)
 		if err != nil {
