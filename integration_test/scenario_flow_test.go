@@ -470,15 +470,15 @@ func ingestAccounts(
 		"updated_at": "2020-01-01T00:00:00Z"
 	}`)
 
-	_, err := ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson1, true)
+	_, err := ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson1, models.IngestionOptions{ShouldScreen: true})
 	if err != nil {
 		assert.FailNow(t, "Could not ingest data", err)
 	}
-	_, err = ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson2, true)
+	_, err = ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson2, models.IngestionOptions{ShouldScreen: true})
 	if err != nil {
 		assert.FailNow(t, "Could not ingest data", err)
 	}
-	_, err = ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson3, true)
+	_, err = ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson3, models.IngestionOptions{ShouldScreen: true})
 	if err != nil {
 		assert.FailNow(t, "Could not ingest data", err)
 	}

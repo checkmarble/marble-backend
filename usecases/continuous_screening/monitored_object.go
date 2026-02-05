@@ -305,7 +305,7 @@ func (uc *ContinuousScreeningUsecase) ingestObject(
 	input models.CreateContinuousScreeningObject,
 ) (string, error) {
 	// Ingestion doesn't return the object after operation.
-	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId, input.ObjectType, *input.ObjectPayload, false)
+	nb, err := uc.ingestionUsecase.IngestObject(ctx, orgId, input.ObjectType, *input.ObjectPayload, models.IngestionOptions{})
 	if err != nil {
 		return "", err
 	}

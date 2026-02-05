@@ -5,6 +5,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/types"
+	"github.com/checkmarble/marble-backend/pubapi/v1/v1beta"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/gin-gonic/gin"
 )
@@ -51,6 +52,11 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 
 	{
 		root := authed.Group("/", pubapi.TimeoutMiddleware(conf.DefaultTimeout))
+
+		root.POST("/ingest/:objectType", v1beta.HandleIngestObject(uc, false))
+		root.PATCH("/ingest/:objectType", v1beta.HandleIngestObject(uc, false))
+		root.POST("/ingest/:objectType/batch", v1beta.HandleIngestObject(uc, true))
+		root.PATCH("/ingest/:objectType/batch", v1beta.HandleIngestObject(uc, true))
 
 		root.POST("/decisions/:decisionId/case", HandleAddDecisionToCase(uc))
 

@@ -215,8 +215,8 @@ func (repo *ClientDbRepository) InsertContinuousScreeningAudit(
 	}
 
 	sql := fmt.Sprintf(`
-		INSERT INTO %s 
-		(id, object_type, object_id, config_stable_id, action, user_id, api_key_id, extra) 
+		INSERT INTO %s
+		(id, object_type, object_id, config_stable_id, action, user_id, api_key_id, extra)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`, sanitizedTableName(exec, dbmodels.TABLE_CONTINUOUS_SCREENING_AUDIT))
 
