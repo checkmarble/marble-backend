@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
@@ -36,6 +38,10 @@ type EntityAnnotationRepository interface {
 		req models.AnnotationByIdRequest) error
 	IsObjectTagSet(ctx context.Context, exec repositories.Executor,
 		req models.CreateEntityAnnotationRequest, tagId string) (bool, error)
+	UpdateEntityAnnotationPayload(ctx context.Context, exec repositories.Executor,
+		orgId uuid.UUID, annotationId string, payload json.RawMessage) error
+	FindEntityAnnotationsWithRiskTopics(ctx context.Context, exec repositories.Executor,
+		filter models.EntityAnnotationRiskTopicsFilter) ([]models.EntityAnnotation, error)
 }
 
 type EntityAnnotationCaseUsecase interface {
@@ -329,4 +335,187 @@ func (uc EntityAnnotationUsecase) writeFileAnnotationToBlobStorage(ctx context.C
 	}
 
 	return nil
+}
+
+// validateIngestedObjectExists checks that the object exists in the ingested data.
+// Used to validate risk topics can only be attached to existing ingested objects.
+func (uc EntityAnnotationUsecase) validateIngestedObjectExists(
+	ctx context.Context,
+	orgId uuid.UUID,
+	objectType string,
+	objectId string,
+) error {
+	exec := uc.executorFactory.NewExecutor()
+
+	execDbClient, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
+	if err != nil {
+		return err
+	}
+
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, orgId, false, true)
+	if err != nil {
+		return err
+	}
+
+	table, ok := dataModel.Tables[objectType]
+	if !ok {
+		return errors.Wrapf(models.BadParameterError,
+			"table %s not found in data model", objectType)
+	}
+
+	objects, err := uc.ingestedDataReadRepository.QueryIngestedObject(ctx, execDbClient, table, objectId)
+	if err != nil {
+		return errors.Wrap(err,
+			"failed to fetch ingested object, can not create risk topic for non-existent object")
+	}
+	if len(objects) == 0 {
+		return errors.Wrapf(models.NotFoundError, "ingested object not found")
+	}
+
+	return nil
+}
+
+// UpsertRiskTopicAnnotation creates or updates a risk topic annotation for an object.
+// There is one risk topic annotation per object - topics are merged.
+func (uc EntityAnnotationUsecase) UpsertRiskTopicAnnotation(
+	ctx context.Context,
+	input models.ObjectRiskTopicUpsert,
+) (models.EntityAnnotation, error) {
+	if err := uc.validateIngestedObjectExists(ctx, input.OrgId, input.ObjectType, input.ObjectId); err != nil {
+		return models.EntityAnnotation{}, err
+	}
+
+	// Sort topics for deterministic ordering
+	slices.Sort(input.Topics)
+
+	// Build payload
+	payload := models.EntityAnnotationRiskTopicPayload{
+		Topics:        input.Topics,
+		SourceType:    input.SourceType,
+		SourceDetails: input.SourceDetails,
+	}
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return models.EntityAnnotation{}, err
+	}
+
+	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
+		tx repositories.Transaction,
+	) (models.EntityAnnotation, error) {
+		// Try to find existing risk topic annotation for this object
+		existing, err := uc.repository.GetEntityAnnotations(ctx, tx, models.EntityAnnotationRequest{
+			OrgId:          input.OrgId,
+			ObjectType:     input.ObjectType,
+			ObjectId:       input.ObjectId,
+			AnnotationType: utils.Ptr(models.EntityAnnotationRiskTopic),
+		})
+		if err != nil {
+			return models.EntityAnnotation{}, err
+		}
+
+		if len(existing) > 0 {
+			// Update existing annotation, should only be one
+			if err := uc.repository.UpdateEntityAnnotationPayload(ctx, tx,
+				input.OrgId, existing[0].Id, payloadJSON); err != nil {
+				return models.EntityAnnotation{}, err
+			}
+			existing[0].Payload = payloadJSON
+			return existing[0], nil
+		}
+
+		// Create new annotation
+		return uc.repository.CreateEntityAnnotation(ctx, tx, models.CreateEntityAnnotationRequest{
+			OrgId:          input.OrgId,
+			ObjectType:     input.ObjectType,
+			ObjectId:       input.ObjectId,
+			AnnotationType: models.EntityAnnotationRiskTopic,
+			Payload:        payload,
+		})
+	})
+}
+
+// AppendObjectRiskTopics adds new topics to an object's risk topic annotation.
+// If no annotation exists, creates one. Topics are merged and deduplicated.
+// For internal use by continuous screening. Skips ingested object validation.
+func (uc EntityAnnotationUsecase) AppendObjectRiskTopics(
+	ctx context.Context,
+	tx repositories.Transaction,
+	input models.ObjectRiskTopicUpsert,
+) error {
+	// Get existing annotation (if any)
+	riskTopicType := models.EntityAnnotationRiskTopic
+	existing, err := uc.repository.GetEntityAnnotations(ctx, tx, models.EntityAnnotationRequest{
+		OrgId:          input.OrgId,
+		ObjectType:     input.ObjectType,
+		ObjectId:       input.ObjectId,
+		AnnotationType: &riskTopicType,
+	})
+	if err != nil {
+		return err
+	}
+
+	var existingTopics []models.RiskTopic
+	var existingAnnotationId string
+
+	if len(existing) > 0 {
+		existingAnnotationId = existing[0].Id
+		// Parse existing payload
+		var existingPayload models.EntityAnnotationRiskTopicPayload
+		if err := json.Unmarshal(existing[0].Payload, &existingPayload); err != nil {
+			return errors.Wrap(err, "failed to parse existing risk topic payload")
+		}
+		existingTopics = existingPayload.Topics
+	}
+
+	// Merge topics: existing + new (deduplicated)
+	topicSet := make(map[models.RiskTopic]struct{})
+	for _, t := range existingTopics {
+		topicSet[t] = struct{}{}
+	}
+
+	hasNewTopics := false
+	for _, t := range input.Topics {
+		if _, exists := topicSet[t]; !exists {
+			topicSet[t] = struct{}{}
+			hasNewTopics = true
+		}
+	}
+
+	// If no new topics to add, skip entirely
+	if !hasNewTopics {
+		return nil
+	}
+
+	// Build merged topic list and sort for deterministic ordering
+	mergedTopics := make([]models.RiskTopic, 0, len(topicSet))
+	for t := range topicSet {
+		mergedTopics = append(mergedTopics, t)
+	}
+	slices.Sort(mergedTopics)
+
+	// Build payload
+	payload := models.EntityAnnotationRiskTopicPayload{
+		Topics:        mergedTopics,
+		SourceType:    input.SourceType,
+		SourceDetails: input.SourceDetails,
+	}
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	if existingAnnotationId != "" {
+		// Update existing annotation
+		return uc.repository.UpdateEntityAnnotationPayload(ctx, tx, input.OrgId, existingAnnotationId, payloadJSON)
+	}
+
+	// Create new annotation
+	_, err = uc.repository.CreateEntityAnnotation(ctx, tx, models.CreateEntityAnnotationRequest{
+		OrgId:          input.OrgId,
+		ObjectType:     input.ObjectType,
+		ObjectId:       input.ObjectId,
+		AnnotationType: models.EntityAnnotationRiskTopic,
+		Payload:        payload,
+	})
+	return err
 }

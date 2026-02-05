@@ -19,6 +19,7 @@ type DBEntityAnnotation struct {
 	Payload        json.RawMessage `db:"payload"`
 	AnnotatedBy    *string         `db:"annotated_by"`
 	CreatedAt      time.Time       `db:"created_at"`
+	UpdatedAt      time.Time       `db:"updated_at"`
 	DeletedAt      *time.Time      `db:"deleted_at"`
 }
 
@@ -42,6 +43,7 @@ func AdaptEntityAnnotation(db DBEntityAnnotation) (models.EntityAnnotation, erro
 		Payload:        db.Payload,
 		AnnotatedBy:    userId,
 		CreatedAt:      db.CreatedAt,
+		UpdatedAt:      db.UpdatedAt,
 		DeletedAt:      db.DeletedAt,
 	}, nil
 }

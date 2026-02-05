@@ -2,7 +2,7 @@
     "catalogs": [
         {
             "url": "https://data.opensanctions.org/datasets/latest/index.json",
-            "scope": "us_sanctions",
+            "scope": "default",
             "resource_name": "entities.ftm.json"
         },
         {

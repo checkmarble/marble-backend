@@ -878,7 +878,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		utils.Ptr(usecases.NewInboxReader()),
 		utils.Ptr(usecases.NewInboxUsecase()),
 		usecases.NewFeatureAccessReader(),
-		usecases.NewObjectMetadataUsecase(),
+		usecases.NewEntityAnnotationUsecase(),
 	)
 }
 
@@ -1011,15 +1011,6 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewIngestionUseCase(),
 		usecases.NewDecisionUsecase(),
-	)
-}
-
-func (usecases *UsecasesWithCreds) NewObjectMetadataUsecase() *ObjectMetadataUsecase {
-	return NewObjectMetadataUsecase(
-		usecases.NewExecutorFactory(),
-		usecases.NewEnforceObjectMetadata(),
-		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.IngestedDataReadRepository,
 	)
 }
 

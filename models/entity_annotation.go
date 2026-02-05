@@ -14,6 +14,7 @@ const (
 	EntityAnnotationComment
 	EntityAnnotationFile
 	EntityAnnotationTag
+	EntityAnnotationRiskTopic
 )
 
 func EntityAnnotationFrom(kind string) EntityAnnotationType {
@@ -24,6 +25,8 @@ func EntityAnnotationFrom(kind string) EntityAnnotationType {
 		return EntityAnnotationFile
 	case "tag":
 		return EntityAnnotationTag
+	case "risk_topic":
+		return EntityAnnotationRiskTopic
 	default:
 		return EntityAnnotationUnknown
 	}
@@ -37,6 +40,8 @@ func (t EntityAnnotationType) String() string {
 		return "file"
 	case EntityAnnotationTag:
 		return "tag"
+	case EntityAnnotationRiskTopic:
+		return "risk_topic"
 	default:
 		return "unknown"
 	}
@@ -53,6 +58,7 @@ type EntityAnnotation struct {
 	Payload     json.RawMessage
 	AnnotatedBy *UserId
 	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	DeletedAt   *time.Time
 
 	FileThumbnails   []string
@@ -96,6 +102,15 @@ type AnnotationByIdRequest struct {
 	AnnotationId   string
 	AnnotationType *EntityAnnotationType
 	IncludeDeleted bool
+}
+
+// EntityAnnotationRiskTopicsFilter is used to query risk topic annotations
+// for MonitoringListCheck rule evaluation
+type EntityAnnotationRiskTopicsFilter struct {
+	OrgId      uuid.UUID
+	ObjectType string
+	ObjectIds  []string
+	Topics     []RiskTopic // Optional: filter by specific topics, empty means any topics
 }
 
 type GroupedEntityAnnotations struct {
