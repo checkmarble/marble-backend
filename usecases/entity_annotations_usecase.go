@@ -38,7 +38,8 @@ type EntityAnnotationRepository interface {
 	IsObjectTagSet(ctx context.Context, exec repositories.Executor,
 		req models.CreateEntityAnnotationRequest, tagId string) (bool, error)
 	UpdateEntityAnnotationPayload(ctx context.Context, exec repositories.Executor,
-		orgId uuid.UUID, annotationId string, payload models.EntityAnnotationPayload) (models.EntityAnnotation, error)
+		orgId uuid.UUID, annotationId string, payload models.EntityAnnotationPayload,
+		annotatedBy *models.UserId) (models.EntityAnnotation, error)
 	FindEntityAnnotationsWithRiskTopics(ctx context.Context, exec repositories.Executor,
 		filter models.EntityAnnotationRiskTopicsFilter) ([]models.EntityAnnotation, error)
 }
@@ -378,7 +379,7 @@ func (uc EntityAnnotationUsecase) UpsertRiskTopicAnnotation(
 		if len(existing) > 0 {
 			// Update existing annotation, should only be one
 			return uc.repository.UpdateEntityAnnotationPayload(ctx, tx,
-				input.OrgId, existing[0].Id, payload)
+				input.OrgId, existing[0].Id, payload, input.AnnotatedBy)
 		}
 
 		// Create new annotation
@@ -388,6 +389,7 @@ func (uc EntityAnnotationUsecase) UpsertRiskTopicAnnotation(
 			ObjectId:       input.ObjectId,
 			AnnotationType: models.EntityAnnotationRiskTopic,
 			Payload:        payload,
+			AnnotatedBy:    input.AnnotatedBy,
 		})
 	})
 }
@@ -460,7 +462,7 @@ func (uc EntityAnnotationUsecase) AppendObjectRiskTopics(
 
 	if existingAnnotationId != "" {
 		// Update existing annotation
-		_, err = uc.repository.UpdateEntityAnnotationPayload(ctx, tx, input.OrgId, existingAnnotationId, payload)
+		_, err = uc.repository.UpdateEntityAnnotationPayload(ctx, tx, input.OrgId, existingAnnotationId, payload, input.AnnotatedBy)
 		return err
 	}
 

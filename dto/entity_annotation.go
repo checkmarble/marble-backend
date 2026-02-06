@@ -100,6 +100,7 @@ func (d RiskTopicAnnotationInputDto) Adapt(
 	orgId uuid.UUID,
 	objectType string,
 	objectId string,
+	annotatedBy *models.UserId,
 ) (models.ObjectRiskTopicUpsert, error) {
 	topics := make([]models.RiskTopic, 0, len(d.Topics))
 	for _, t := range d.Topics {
@@ -118,6 +119,7 @@ func (d RiskTopicAnnotationInputDto) Adapt(
 		topics,
 		d.Reason,
 		d.Url,
+		annotatedBy,
 	), nil
 }
 
