@@ -154,6 +154,7 @@ type ObjectRiskTopicUpsert struct {
 	Topics        []RiskTopic
 	SourceType    RiskTopicSourceType
 	SourceDetails SourceDetails
+	AnnotatedBy   *UserId
 }
 
 func NewObjectRiskTopicFromManualUpsert(
@@ -163,6 +164,7 @@ func NewObjectRiskTopicFromManualUpsert(
 	topics []RiskTopic,
 	reason string,
 	proofUrl string,
+	annotatedBy *UserId,
 ) ObjectRiskTopicUpsert {
 	return ObjectRiskTopicUpsert{
 		OrgId:      orgId,
@@ -174,6 +176,7 @@ func NewObjectRiskTopicFromManualUpsert(
 			Reason: reason,
 			Url:    proofUrl,
 		},
+		AnnotatedBy: annotatedBy,
 	}
 }
 

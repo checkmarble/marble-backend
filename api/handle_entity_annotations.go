@@ -210,7 +210,7 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 				return
 			}
 
-			upsertInput, err := riskTopicInput.Adapt(creds.OrganizationId, objectType, objectId)
+			upsertInput, err := riskTopicInput.Adapt(creds.OrganizationId, objectType, objectId, &creds.ActorIdentity.UserId)
 			if err != nil {
 				presentError(ctx, c, err)
 				return

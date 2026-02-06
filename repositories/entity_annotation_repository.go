@@ -225,6 +225,7 @@ func (repo *MarbleDbRepository) UpdateEntityAnnotationPayload(
 	orgId uuid.UUID,
 	annotationId string,
 	payload models.EntityAnnotationPayload,
+	annotatedBy *models.UserId,
 ) (models.EntityAnnotation, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.EntityAnnotation{}, err
@@ -234,6 +235,7 @@ func (repo *MarbleDbRepository) UpdateEntityAnnotationPayload(
 		Update(dbmodels.TABLE_ENTITY_ANNOTATIONS).
 		Set("payload", payload).
 		Set("updated_at", squirrel.Expr("now()")).
+		Set("annotated_by", annotatedBy).
 		Where(squirrel.Eq{
 			"id":         annotationId,
 			"org_id":     orgId,
