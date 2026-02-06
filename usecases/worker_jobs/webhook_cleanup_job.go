@@ -41,9 +41,8 @@ func NewWebhookCleanupPeriodicJob() *river.PeriodicJob {
 
 // webhookCleanupRepository defines the interface for cleanup operations.
 type webhookCleanupRepository interface {
-	DeleteOldWebhookDeliveriesBatch(ctx context.Context, exec repositories.Executor,
+	DeleteOldWebhookEventsV2Batch(ctx context.Context, exec repositories.Executor,
 		olderThan time.Time, limit int) (int64, error)
-	DeleteOrphanedWebhookEventsV2Batch(ctx context.Context, exec repositories.Executor, limit int) (int64, error)
 }
 
 // WebhookCleanupWorker handles cleanup of old webhook deliveries and events.
@@ -73,32 +72,19 @@ func (w *WebhookCleanupWorker) Timeout(job *river.Job[models.WebhookCleanupJobAr
 	return WEBHOOK_CLEANUP_TIMEOUT
 }
 
-// Work cleans up old webhook deliveries and orphaned events in batches.
+// Work cleans up old webhook events in batches.
+// Deliveries are cascade-deleted via FK constraint.
 func (w *WebhookCleanupWorker) Work(ctx context.Context, job *river.Job[models.WebhookCleanupJobArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
 	exec := w.executorFactory.NewExecutor()
 
 	cutoff := time.Now().Add(-w.retentionPeriod)
 
-	// Delete old deliveries in batches
-	var totalDeliveries int64
-	for {
-		deleted, err := w.webhookRepository.DeleteOldWebhookDeliveriesBatch(ctx, exec, cutoff, w.batchSize)
-		if err != nil {
-			return errors.Wrap(err, "failed to delete old webhook deliveries")
-		}
-		totalDeliveries += deleted
-		if deleted < int64(w.batchSize) {
-			break
-		}
-	}
-
-	// Delete orphaned events in batches
 	var totalEvents int64
 	for {
-		deleted, err := w.webhookRepository.DeleteOrphanedWebhookEventsV2Batch(ctx, exec, w.batchSize)
+		deleted, err := w.webhookRepository.DeleteOldWebhookEventsV2Batch(ctx, exec, cutoff, w.batchSize)
 		if err != nil {
-			return errors.Wrap(err, "failed to delete orphaned webhook events")
+			return errors.Wrap(err, "failed to delete old webhook events")
 		}
 		totalEvents += deleted
 		if deleted < int64(w.batchSize) {
@@ -106,9 +92,8 @@ func (w *WebhookCleanupWorker) Work(ctx context.Context, job *river.Job[models.W
 		}
 	}
 
-	if totalDeliveries > 0 || totalEvents > 0 {
+	if totalEvents > 0 {
 		logger.InfoContext(ctx, "Webhook cleanup completed",
-			"deleted_deliveries", totalDeliveries,
 			"deleted_events", totalEvents,
 			"retention_days", int(w.retentionPeriod.Hours()/24))
 	}
