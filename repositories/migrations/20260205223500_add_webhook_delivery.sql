@@ -61,8 +61,6 @@ CREATE INDEX idx_webhook_deliveries_event ON webhook_deliveries(webhook_event_id
 CREATE INDEX idx_webhook_deliveries_webhook ON webhook_deliveries(webhook_id);
 CREATE INDEX idx_webhook_deliveries_pending ON webhook_deliveries(status, next_retry_at)
     WHERE status = 'pending';
-CREATE INDEX idx_webhook_deliveries_cleanup ON webhook_deliveries(status, updated_at)
-    WHERE status IN ('success', 'failed');
 
 -- Unique constraint to ensure idempotent delivery creation
 CREATE UNIQUE INDEX idx_webhook_deliveries_unique ON webhook_deliveries(webhook_event_id, webhook_id);
