@@ -107,6 +107,12 @@ type TaskQueueRepository interface {
 		orgId uuid.UUID,
 		continuousScreeningId uuid.UUID,
 	) error
+	EnqueueGenerateThumbnailTask(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		bucket, key string,
+	) error
 }
 
 type riverRepository struct {
@@ -485,6 +491,33 @@ func (r riverRepository) EnqueueContinuousScreeningMatchEnrichmentTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued continuous screening match enrichment task", "job_id", res.Job.ID)
+
+	return nil
+}
+
+func (r riverRepository) EnqueueGenerateThumbnailTask(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	bucket, key string,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.GenerateThumbnailArgs{
+			Bucket: bucket,
+			Key:    key,
+		},
+		&river.InsertOpts{
+			Queue: organizationId.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued thumbnail generation task", "job_id", res.Job.ID)
 
 	return nil
 }
