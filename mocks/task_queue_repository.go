@@ -143,3 +143,13 @@ func (m *TaskQueueRepository) EnqueueScheduledExecutionTask(
 	args := m.Called(ctx, tx, organizationId, scheduledExecutionId)
 	return args.Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueGenerateThumbnailTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId uuid.UUID,
+	bucket, key string,
+) error {
+	args := m.Called(ctx, tx, organizationId, bucket, key)
+	return args.Error(0)
+}

@@ -248,6 +248,16 @@ func (usecases Usecases) WithRootExecutor(exec executor_factory.IdentityExecutor
 	return usecases
 }
 
+func (usecases Usecases) GetBlobHosts() []string {
+	hosts := make([]string, 0)
+
+	if h := usecases.Repositories.BlobRepository.ExtractHost(usecases.caseManagerBucketUrl); h != nil {
+		hosts = append(hosts, h...)
+	}
+
+	return hosts
+}
+
 func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory {
 	if usecases.rootExecutorFactory != nil {
 		return usecases.rootExecutorFactory

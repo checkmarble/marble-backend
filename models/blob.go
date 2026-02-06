@@ -6,5 +6,5 @@ import (
 
 type Blob struct {
 	FileName   string
-	ReadCloser io.ReadCloser
+	ReadCloser io.ReadSeekCloser
 }
