@@ -1041,6 +1041,213 @@ func (repo *MarbleDbRepository) UpdateDeltaTracksDatasetFileId(
 	return ExecBuilder(ctx, exec, query)
 }
 
+func (repo *MarbleDbRepository) ListContinuousScreeningUpdateJobsByOrgId(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	paginationAndSorting models.PaginationAndSorting,
+) ([]models.ContinuousScreeningUpdateJobWithProgress, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	if paginationAndSorting.Sorting != models.SortingFieldCreatedAt {
+		return nil, errors.Wrapf(models.BadParameterError, "invalid sorting field: %s", paginationAndSorting.Sorting)
+	}
+
+	orderCond := fmt.Sprintf("uj.%s %s, uj.id %s", paginationAndSorting.Sorting,
+		paginationAndSorting.Order, paginationAndSorting.Order)
+
+	query := NewQueryBuilder().
+		Select(
+			columnsNames("uj", dbmodels.SelectContinuousScreeningUpdateJobColumn)...,
+		).
+		Column("du.dataset_name").
+		Column("du.version AS dataset_version").
+		Column("du.total_items").
+		Column("CASE WHEN uj.status = 'completed' THEN du.total_items ELSE COALESCE(jo.items_processed, 0) END AS items_processed").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS + " AS uj").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES +
+			" AS du ON uj.continuous_screening_dataset_update_id = du.id").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS +
+			" AS jo ON uj.id = jo.continuous_screening_update_job_id").
+		Where(squirrel.Eq{"uj.org_id": orgId}).
+		OrderBy(orderCond).
+		Limit(uint64(paginationAndSorting.Limit))
+
+	if paginationAndSorting.OffsetId != "" {
+		offsetQuery := NewQueryBuilder().
+			Select("created_at", "id").
+			From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS).
+			Where(squirrel.Eq{"id": paginationAndSorting.OffsetId})
+
+		type offsetRow struct {
+			CreatedAt time.Time
+			Id        uuid.UUID
+		}
+		offset, err := SqlToRow(ctx, exec, offsetQuery, func(row pgx.CollectableRow) (offsetRow, error) {
+			var r offsetRow
+			err := row.Scan(&r.CreatedAt, &r.Id)
+			return r, err
+		})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, errors.Wrap(models.NotFoundError,
+					"No row found matching the provided offsetId")
+			}
+			return nil, err
+		}
+
+		args := []any{offset.CreatedAt, offset.Id}
+		if paginationAndSorting.Order == models.SortingOrderDesc {
+			query = query.Where(fmt.Sprintf("(uj.%s, uj.id) < (?, ?)", paginationAndSorting.Sorting), args...)
+		} else {
+			query = query.Where(fmt.Sprintf("(uj.%s, uj.id) > (?, ?)", paginationAndSorting.Sorting), args...)
+		}
+	}
+
+	return SqlToListOfRow(ctx, exec, query,
+		func(row pgx.CollectableRow) (models.ContinuousScreeningUpdateJobWithProgress, error) {
+			var dbJob dbmodels.DBContinuousScreeningUpdateJob
+			var datasetName string
+			var datasetVersion string
+			var totalItems int
+			var itemsProcessed int
+			err := row.Scan(
+				&dbJob.Id, &dbJob.ContinuousScreeningDatasetUpdateId,
+				&dbJob.ContinuousScreeningConfigId, &dbJob.OrgId,
+				&dbJob.Status, &dbJob.CreatedAt, &dbJob.UpdatedAt,
+				&datasetName, &datasetVersion, &totalItems, &itemsProcessed,
+			)
+			if err != nil {
+				return models.ContinuousScreeningUpdateJobWithProgress{}, err
+			}
+			job, err := dbmodels.AdaptContinuousScreeningUpdateJob(dbJob)
+			if err != nil {
+				return models.ContinuousScreeningUpdateJobWithProgress{}, err
+			}
+			return models.ContinuousScreeningUpdateJobWithProgress{
+				ContinuousScreeningUpdateJob: job,
+				DatasetName:                  datasetName,
+				DatasetVersion:               datasetVersion,
+				TotalItems:                   totalItems,
+				ItemsProcessed:               itemsProcessed,
+			}, nil
+		})
+}
+
+func (repo *MarbleDbRepository) ListContinuousScreeningDeltaTracksByOrgId(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	paginationAndSorting models.PaginationAndSorting,
+) ([]models.ContinuousScreeningDeltaTrackWithFile, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	if paginationAndSorting.Sorting != models.SortingFieldCreatedAt {
+		return nil, errors.Wrapf(models.BadParameterError, "invalid sorting field: %s", paginationAndSorting.Sorting)
+	}
+
+	orderCond := fmt.Sprintf("dt.%s %s, dt.id %s", paginationAndSorting.Sorting,
+		paginationAndSorting.Order, paginationAndSorting.Order)
+
+	query := NewQueryBuilder().
+		Select(
+			columnsNames("dt", dbmodels.SelectContinuousScreeningDeltaTrackColumn)...,
+		).
+		Column("df.id AS df_id").
+		Column("df.org_id AS df_org_id").
+		Column("df.file_type AS df_file_type").
+		Column("df.version AS df_version").
+		Column("df.file_path AS df_file_path").
+		Column("df.created_at AS df_created_at").
+		Column("df.updated_at AS df_updated_at").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS + " AS dt").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES +
+			" AS df ON dt.dataset_file_id = df.id").
+		Where(squirrel.Eq{"dt.org_id": orgId}).
+		OrderBy(orderCond).
+		Limit(uint64(paginationAndSorting.Limit))
+
+	if paginationAndSorting.OffsetId != "" {
+		offsetQuery := NewQueryBuilder().
+			Select("created_at", "id").
+			From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS).
+			Where(squirrel.Eq{"id": paginationAndSorting.OffsetId})
+
+		type offsetRow struct {
+			CreatedAt time.Time
+			Id        uuid.UUID
+		}
+		offset, err := SqlToRow(ctx, exec, offsetQuery, func(row pgx.CollectableRow) (offsetRow, error) {
+			var r offsetRow
+			err := row.Scan(&r.CreatedAt, &r.Id)
+			return r, err
+		})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, errors.Wrap(models.NotFoundError,
+					"No row found matching the provided offsetId")
+			}
+			return nil, err
+		}
+
+		args := []any{offset.CreatedAt, offset.Id}
+		if paginationAndSorting.Order == models.SortingOrderDesc {
+			query = query.Where(fmt.Sprintf("(dt.%s, dt.id) < (?, ?)", paginationAndSorting.Sorting), args...)
+		} else {
+			query = query.Where(fmt.Sprintf("(dt.%s, dt.id) > (?, ?)", paginationAndSorting.Sorting), args...)
+		}
+	}
+
+	return SqlToListOfRow(ctx, exec, query,
+		func(row pgx.CollectableRow) (models.ContinuousScreeningDeltaTrackWithFile, error) {
+			var dbTrack dbmodels.DBContinuousScreeningDeltaTrack
+			var dfId *uuid.UUID
+			var dfOrgId *uuid.UUID
+			var dfFileType *string
+			var dfVersion *string
+			var dfFilePath *string
+			var dfCreatedAt *time.Time
+			var dfUpdatedAt *time.Time
+
+			err := row.Scan(
+				&dbTrack.Id, &dbTrack.OrgId, &dbTrack.ObjectType, &dbTrack.ObjectId,
+				&dbTrack.ObjectInternalId, &dbTrack.EntityId, &dbTrack.Operation,
+				&dbTrack.DatasetFileId, &dbTrack.CreatedAt, &dbTrack.UpdatedAt,
+				&dfId, &dfOrgId, &dfFileType, &dfVersion, &dfFilePath, &dfCreatedAt, &dfUpdatedAt,
+			)
+			if err != nil {
+				return models.ContinuousScreeningDeltaTrackWithFile{}, err
+			}
+
+			track, err := dbmodels.AdaptContinuousScreeningDeltaTrack(dbTrack)
+			if err != nil {
+				return models.ContinuousScreeningDeltaTrackWithFile{}, err
+			}
+
+			result := models.ContinuousScreeningDeltaTrackWithFile{
+				ContinuousScreeningDeltaTrack: track,
+			}
+
+			if dfId != nil {
+				result.DatasetFile = &models.ContinuousScreeningDatasetFile{
+					Id:        *dfId,
+					OrgId:     *dfOrgId,
+					FileType:  models.ContinuousScreeningDatasetFileTypeFrom(*dfFileType),
+					Version:   *dfVersion,
+					FilePath:  *dfFilePath,
+					CreatedAt: *dfCreatedAt,
+					UpdatedAt: *dfUpdatedAt,
+				}
+			}
+
+			return result, nil
+		})
+}
+
 func (repo *MarbleDbRepository) GetEnabledConfigStableIdsByOrg(
 	ctx context.Context,
 	exec Executor,
