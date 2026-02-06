@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/riverqueue/river"
 )
 
@@ -84,8 +85,7 @@ func (w *WebhookCleanupWorker) Work(ctx context.Context, job *river.Job[models.W
 	for {
 		deleted, err := w.webhookRepository.DeleteOldWebhookDeliveriesBatch(ctx, exec, cutoff, w.batchSize)
 		if err != nil {
-			logger.ErrorContext(ctx, "Failed to delete old webhook deliveries", "error", err)
-			return err
+			return errors.Wrap(err, "failed to delete old webhook deliveries")
 		}
 		totalDeliveries += deleted
 		if deleted < int64(w.batchSize) {
@@ -98,8 +98,7 @@ func (w *WebhookCleanupWorker) Work(ctx context.Context, job *river.Job[models.W
 	for {
 		deleted, err := w.webhookRepository.DeleteOrphanedWebhookEventsV2Batch(ctx, exec, w.batchSize)
 		if err != nil {
-			logger.ErrorContext(ctx, "Failed to delete orphaned webhook events", "error", err)
-			return err
+			return errors.Wrap(err, "failed to delete orphaned webhook events")
 		}
 		totalEvents += deleted
 		if deleted < int64(w.batchSize) {
