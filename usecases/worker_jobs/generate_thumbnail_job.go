@@ -1,7 +1,6 @@
 package worker_jobs
 
 import (
-	"bytes"
 	"context"
 	"image"
 	"io"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/disintegration/imaging"
 	"github.com/gabriel-vasile/mimetype"
@@ -52,9 +52,9 @@ func (w GenerateThumbnailWorker) Work(ctx context.Context, job *river.Job[models
 
 	switch {
 	case mime.Is("application/pdf"):
-		img, err = w.createPdfThumbnail(b.ReadCloser)
+		img, err = w.createPdfThumbnail(ctx, b.ReadCloser)
 	case strings.HasPrefix(mime.String(), "image/"):
-		img, err = w.createImageThumbnail(b.ReadCloser)
+		img, err = w.createImageThumbnail(ctx, b.ReadCloser)
 	default:
 		return nil
 	}
@@ -72,7 +72,7 @@ func (w GenerateThumbnailWorker) Work(ctx context.Context, job *river.Job[models
 	return imaging.Encode(wr, img, imaging.JPEG)
 }
 
-func (w GenerateThumbnailWorker) createPdfThumbnail(r io.Reader) (*image.NRGBA, error) {
+func (w GenerateThumbnailWorker) createPdfThumbnail(ctx context.Context, r io.Reader) (*image.NRGBA, error) {
 	doc, err := fitz.NewFromReader(r)
 	if err != nil {
 		return nil, err
@@ -88,16 +88,23 @@ func (w GenerateThumbnailWorker) createPdfThumbnail(r io.Reader) (*image.NRGBA, 
 		return nil, err
 	}
 
-	var buf bytes.Buffer
+	pr, pw := io.Pipe()
 
-	if err := imaging.Encode(&buf, img, imaging.JPEG); err != nil {
-		return nil, err
-	}
+	go func() {
+		if err := imaging.Encode(pw, img, imaging.JPEG); err != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "could not write thumbnail", "error", err)
+		}
+	}()
 
-	return w.createImageThumbnail(&buf)
+	go func() {
+		<-ctx.Done()
+		pr.CloseWithError(ctx.Err())
+	}()
+
+	return w.createImageThumbnail(ctx, pr)
 }
 
-func (w GenerateThumbnailWorker) createImageThumbnail(r io.Reader) (*image.NRGBA, error) {
+func (w GenerateThumbnailWorker) createImageThumbnail(_ context.Context, r io.Reader) (*image.NRGBA, error) {
 	src, err := imaging.Decode(r)
 	if err != nil {
 		return nil, err
