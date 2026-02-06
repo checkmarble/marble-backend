@@ -24,7 +24,7 @@ type ScreeningTestSuite struct {
 	ingestionUsecase             *mocks.ContinuousScreeningIngestionUsecase
 	screeningProvider            *mocks.OpenSanctionsRepository
 	caseEditor                   *mocks.CaseEditor
-	objectRiskTopic              *mocks.ObjectMetadata
+	objectRiskTopic              *mocks.ObjectRiskTopicWriter
 	executorFactory              executor_factory.ExecutorFactoryStub
 	transactionFactory           executor_factory.TransactionFactoryStub
 
@@ -46,7 +46,7 @@ func (suite *ScreeningTestSuite) SetupTest() {
 	suite.ingestionUsecase = new(mocks.ContinuousScreeningIngestionUsecase)
 	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.caseEditor = new(mocks.CaseEditor)
-	suite.objectRiskTopic = new(mocks.ObjectMetadata)
+	suite.objectRiskTopic = new(mocks.ObjectRiskTopicWriter)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)

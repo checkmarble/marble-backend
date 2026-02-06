@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin/binding"
+	"github.com/google/uuid"
 )
 
 type EntityAnnotationDto struct {
@@ -81,6 +82,43 @@ type EntityAnnotationFileDto struct {
 	} `json:"files"`
 }
 
+type EntityAnnotationRiskTopicDto struct {
+	Topics        []string        `json:"topics"`
+	SourceType    string          `json:"source_type"`
+	SourceDetails json.RawMessage `json:"source_details"`
+}
+
+type RiskTopicAnnotationInputDto struct {
+	Topics []string `json:"topics" binding:"required"`
+	Reason string   `json:"reason"`
+	Url    string   `json:"url"`
+}
+
+func (d RiskTopicAnnotationInputDto) Adapt(
+	orgId uuid.UUID,
+	objectType string,
+	objectId string,
+) (models.ObjectRiskTopicUpsert, error) {
+	topics := make([]models.RiskTopic, 0, len(d.Topics))
+	for _, t := range d.Topics {
+		topic := models.RiskTopicFrom(t)
+		if topic == models.RiskTopicUnknown {
+			return models.ObjectRiskTopicUpsert{},
+				errors.Wrap(models.BadParameterError, "invalid topic in upsert input")
+		}
+		topics = append(topics, topic)
+	}
+
+	return models.NewObjectRiskTopicFromManualUpsert(
+		orgId,
+		objectType,
+		objectId,
+		topics,
+		d.Reason,
+		d.Url,
+	), nil
+}
+
 func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err error) {
 	switch model.AnnotationType {
 	case models.EntityAnnotationComment:
@@ -97,6 +135,12 @@ func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err e
 
 	case models.EntityAnnotationFile:
 		var o EntityAnnotationFileDto
+
+		err = json.Unmarshal(model.Payload, &o)
+		out = o
+
+	case models.EntityAnnotationRiskTopic:
+		var o EntityAnnotationRiskTopicDto
 
 		err = json.Unmarshal(model.Payload, &o)
 		out = o
