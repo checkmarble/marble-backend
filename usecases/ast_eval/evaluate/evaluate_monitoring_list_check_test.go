@@ -250,20 +250,20 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingle_ReturnsTrue(t *testing.
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindObjectRiskTopicsMetadata", ctx, mockExec, mock.MatchedBy(func(
+	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
 		filter models.ObjectRiskTopicsMetadataFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
 	})).Return([]models.ObjectMetadata{}, nil).Once()
 
 	// Step 2: LinkToSingle - get object_id from linked table
-	ingestedDataReader.On("GetDbField", ctx, mockExec, mock.MatchedBy(func(params models.DbFieldReadParams) bool {
+	ingestedDataReader.On("GetDbField", mock.Anything, mockExec, mock.MatchedBy(func(params models.DbFieldReadParams) bool {
 		return params.FieldName == "object_id" && len(params.Path) == 1 &&
 			params.Path[0] == utils.DummyTableNameSecond
 	})).Return("linked_object_456", nil)
 
 	// Step 2: linked object has risk topic
-	repo.On("FindObjectRiskTopicsMetadata", ctx, mockExec, mock.MatchedBy(func(
+	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
 		filter models.ObjectRiskTopicsMetadataFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameSecond &&
@@ -318,7 +318,7 @@ func TestMonitoringListCheck_Evaluate_Step2_NavigationNotValid(t *testing.T) {
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindObjectRiskTopicsMetadata", ctx, mockExec, mock.MatchedBy(func(
+	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
 		filter models.ObjectRiskTopicsMetadataFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
@@ -379,20 +379,20 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindObjectRiskTopicsMetadata", ctx, mockExec, mock.MatchedBy(func(
+	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
 		filter models.ObjectRiskTopicsMetadataFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
 	})).Return([]models.ObjectMetadata{}, nil).Once()
 
 	// Step 2 LinkToSingle: get object_id from linked table
-	ingestedDataReader.On("GetDbField", ctx, mockExec, mock.MatchedBy(func(params models.DbFieldReadParams) bool {
+	ingestedDataReader.On("GetDbField", mock.Anything, mockExec, mock.MatchedBy(func(params models.DbFieldReadParams) bool {
 		return params.FieldName == "object_id" && len(params.Path) == 1 &&
 			params.Path[0] == utils.DummyTableNameSecond
 	})).Return("linked_object_456", nil)
 
 	// Step 2 LinkToSingle: linked object has no risk topic
-	repo.On("FindObjectRiskTopicsMetadata", ctx, mockExec, mock.MatchedBy(func(
+	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
 		filter models.ObjectRiskTopicsMetadataFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameSecond &&
@@ -400,7 +400,7 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation
 	})).Return([]models.ObjectMetadata{}, nil)
 
 	// Step 2 Navigation: list ingested objects returns empty
-	ingestedDataReader.On("ListIngestedObjects", ctx, mockExec, mock.Anything, mock.Anything,
+	ingestedDataReader.On("ListIngestedObjects", mock.Anything, mockExec, mock.Anything, mock.Anything,
 		(*string)(nil), linkedTableCheckBatchSize+1, []string{"object_id"}).
 		Return([]models.DataModelObject{}, nil)
 
@@ -478,14 +478,14 @@ func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindObjectRiskTopicsMetadata", ctx, mockExec, mock.MatchedBy(func(
+	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
 		filter models.ObjectRiskTopicsMetadataFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
 	})).Return([]models.ObjectMetadata{}, nil).Once()
 
 	// Step 2 Navigation: list ingested objects returns multiple items
-	ingestedDataReader.On("ListIngestedObjects", ctx, mockExec, mock.Anything, mock.Anything,
+	ingestedDataReader.On("ListIngestedObjects", mock.Anything, mockExec, mock.Anything, mock.Anything,
 		(*string)(nil), linkedTableCheckBatchSize+1, []string{"object_id"}).
 		Return([]models.DataModelObject{
 			{Data: map[string]any{"object_id": "nav_object_001"}},
@@ -494,7 +494,7 @@ func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic
 		}, nil)
 
 	// Step 2 Navigation: one of the objects has a risk topic
-	repo.On("FindObjectRiskTopicsMetadata", ctx, mockExec, mock.MatchedBy(func(
+	repo.On("FindObjectRiskTopicsMetadata", mock.Anything, mockExec, mock.MatchedBy(func(
 		filter models.ObjectRiskTopicsMetadataFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameThird &&
