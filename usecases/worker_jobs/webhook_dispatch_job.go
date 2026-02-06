@@ -8,19 +8,22 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
 
 const (
-	WEBHOOK_DISPATCH_TIMEOUT = 2 * time.Minute
+	WEBHOOK_DISPATCH_TIMEOUT = 10 * time.Second
 )
 
 // webhookDispatchRepository defines the interface for webhook operations needed by dispatch worker.
 type webhookDispatchRepository interface {
 	GetWebhookEventV2(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WebhookEventV2, error)
-	ListWebhooksByEventType(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, eventType string) ([]models.NewWebhook, error)
-	WebhookDeliveryExists(ctx context.Context, exec repositories.Executor, webhookEventId, webhookId uuid.UUID) (bool, error)
+	ListWebhooksByEventType(ctx context.Context, exec repositories.Executor, orgId uuid.UUID,
+		eventType string) ([]models.NewWebhook, error)
+	WebhookDeliveryExists(ctx context.Context, exec repositories.Executor,
+		webhookEventId, webhookId uuid.UUID) (bool, error)
 	CreateWebhookDelivery(ctx context.Context, exec repositories.Executor, delivery models.WebhookDelivery) error
 	DeleteWebhookEventV2(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
 }
@@ -68,8 +71,7 @@ func (w *WebhookDispatchWorker) Work(ctx context.Context, job *river.Job[models.
 
 	event, err := w.webhookRepository.GetWebhookEventV2(ctx, exec, job.Args.WebhookEventId)
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to get webhook event", "error", err)
-		return err
+		return errors.Wrap(err, "failed to get webhook event")
 	}
 
 	logger = logger.With("organization_id", event.OrganizationId, "event_type", event.EventType)
@@ -77,8 +79,7 @@ func (w *WebhookDispatchWorker) Work(ctx context.Context, job *river.Job[models.
 
 	webhooks, err := w.webhookRepository.ListWebhooksByEventType(ctx, exec, event.OrganizationId, event.EventType)
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to list webhooks by event type", "error", err)
-		return err
+		return errors.Wrap(err, "failed to list webhooks for event type")
 	}
 
 	if len(webhooks) == 0 {
@@ -86,7 +87,7 @@ func (w *WebhookDispatchWorker) Work(ctx context.Context, job *river.Job[models.
 		return w.webhookRepository.DeleteWebhookEventV2(ctx, exec, event.Id)
 	}
 
-	logger.InfoContext(ctx, "Dispatching event to webhooks", "webhook_count", len(webhooks))
+	logger.DebugContext(ctx, "Dispatching event to webhooks", "webhook_count", len(webhooks))
 
 	// Single transaction for all deliveries (atomicity)
 	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
@@ -127,8 +128,7 @@ func (w *WebhookDispatchWorker) Work(ctx context.Context, job *river.Job[models.
 		return nil
 	})
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to create deliveries", "error", err)
-		return err
+		return errors.Wrap(err, "failed to create deliveries")
 	}
 
 	return nil
