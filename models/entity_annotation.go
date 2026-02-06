@@ -55,7 +55,8 @@ type EntityAnnotation struct {
 	CreatedAt   time.Time
 	DeletedAt   *time.Time
 
-	FileThumbnails []string
+	FileThumbnails   []string
+	FileContentTypes []string
 }
 
 type EntityAnnotationRequest struct {

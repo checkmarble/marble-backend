@@ -52,6 +52,11 @@ func (r *MockBlobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, k
 	return args.String(0), args.Error(1)
 }
 
+func (r *MockBlobRepository) GetContentType(ctx context.Context, bucketUrl, key string) string {
+	args := r.Called(ctx, bucketUrl, key)
+	return args.String(0)
+}
+
 func (r *MockBlobRepository) ExtractHost(bucketUrl string) []string {
 	args := r.Called(bucketUrl)
 	return args.Get(0).([]string)

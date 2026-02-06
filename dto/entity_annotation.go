@@ -78,6 +78,7 @@ type EntityAnnotationFileDto struct {
 	Files   []struct {
 		Id           string `json:"id"`
 		Filename     string `json:"filename"`
+		ContentType  string `json:"content_type"`
 		ThumbnailUrl string `json:"thumbnail_url"`
 	} `json:"files"`
 }
@@ -104,6 +105,9 @@ func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err e
 
 		for idx, thumbnailUrl := range model.FileThumbnails {
 			o.Files[idx].ThumbnailUrl = thumbnailUrl
+		}
+		for idx, contentType := range model.FileContentTypes {
+			o.Files[idx].ContentType = contentType
 		}
 
 	default:

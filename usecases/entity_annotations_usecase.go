@@ -82,10 +82,14 @@ func (uc EntityAnnotationUsecase) List(ctx context.Context, req models.EntityAnn
 				files := gjson.GetBytes(ann.Payload, "files").Array()
 
 				annotations[annIdx].FileThumbnails = make([]string, len(files))
+				annotations[annIdx].FileContentTypes = make([]string, len(files))
 
 				for fileIdx, file := range files {
-					key := models.ThumbnailFileName(file.Get("key").String())
-					thumbnailUrl, err := uc.blobRepository.GenerateSignedUrl(ctx, uc.bucketUrl, key)
+					key := file.Get("key").String()
+					thumbKey := models.ThumbnailFileName(key)
+					thumbnailUrl, err := uc.blobRepository.GenerateSignedUrl(ctx, uc.bucketUrl, thumbKey)
+
+					annotations[annIdx].FileContentTypes[fileIdx] = uc.blobRepository.GetContentType(ctx, uc.bucketUrl, key)
 
 					if err == nil {
 						annotations[annIdx].FileThumbnails[fileIdx] = thumbnailUrl
