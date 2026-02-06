@@ -150,13 +150,6 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurityAudit() security.EnforceSec
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewEnforceObjectMetadata() security.EnforceSecurityObjectMetadata {
-	return &security.EnforceSecurityObjectMetadataImpl{
-		EnforceSecurity: usecases.NewEnforceSecurity(),
-		Credentials:     usecases.Credentials,
-	}
-}
-
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		enforceSecurity:           usecases.NewEnforceDecisionSecurity(),
@@ -873,7 +866,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		utils.Ptr(usecases.NewInboxReader()),
 		utils.Ptr(usecases.NewInboxUsecase()),
 		usecases.NewFeatureAccessReader(),
-		usecases.NewObjectMetadataUsecase(),
+		usecases.NewEntityAnnotationUsecase(),
 	)
 }
 
@@ -1003,11 +996,3 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 	)
 }
 
-func (usecases *UsecasesWithCreds) NewObjectMetadataUsecase() *ObjectMetadataUsecase {
-	return NewObjectMetadataUsecase(
-		usecases.NewExecutorFactory(),
-		usecases.NewEnforceObjectMetadata(),
-		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.IngestedDataReadRepository,
-	)
-}

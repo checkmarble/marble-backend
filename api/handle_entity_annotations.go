@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -46,7 +47,8 @@ func handleListEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		out, err := dto.AdaptGroupedEntityAnnotations(models.GroupAnnotationsByType(annotations))
+		out, err := dto.AdaptGroupedEntityAnnotations(
+			models.GroupAnnotationsByType(annotations))
 		if err != nil {
 			presentError(ctx, c, err)
 			return
@@ -182,40 +184,64 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		uc := usecasesWithCreds(ctx, uc)
-		annotationsUsecase := uc.NewEntityAnnotationUsecase()
-
-		parsedPayload, err := dto.DecodeEntityAnnotationPayload(
-			models.EntityAnnotationFrom(payload.Type), payload.Payload)
-		if err != nil {
-			presentError(ctx, c, err)
-			return
-		}
-
-		req := models.CreateEntityAnnotationRequest{
-			OrgId:          creds.OrganizationId,
-			ObjectType:     objectType,
-			ObjectId:       objectId,
-			CaseId:         payload.CaseId,
-			AnnotationType: models.EntityAnnotationFrom(payload.Type),
-			Payload:        parsedPayload,
-			AnnotatedBy:    &creds.ActorIdentity.UserId,
-		}
-
-		if req.AnnotationType == models.EntityAnnotationUnknown {
+		annotationType := models.EntityAnnotationFrom(payload.Type)
+		if annotationType == models.EntityAnnotationUnknown {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid annotation type"))
 			return
 		}
-		if req.AnnotationType == models.EntityAnnotationFile {
+		if annotationType == models.EntityAnnotationFile {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError,
 				"cannot use generic annotation endpoint to add file annotation"))
 			return
 		}
 
-		annotation, err := annotationsUsecase.Attach(ctx, req)
-		if err != nil {
-			presentError(ctx, c, err)
-			return
+		uc := usecasesWithCreds(ctx, uc)
+		annotationsUsecase := uc.NewEntityAnnotationUsecase()
+
+		var annotation models.EntityAnnotation
+
+		switch annotationType {
+		case models.EntityAnnotationRiskTopic:
+			// Risk topic annotations have special upsert semantics (one per object, merge topics)
+			var riskTopicInput dto.RiskTopicAnnotationInputDto
+			if err := json.Unmarshal(payload.Payload, &riskTopicInput); err != nil {
+				presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+				return
+			}
+
+			upsertInput, err := riskTopicInput.Adapt(creds.OrganizationId, objectType, objectId, &creds.ActorIdentity.UserId)
+			if err != nil {
+				presentError(ctx, c, err)
+				return
+			}
+
+			annotation, err = annotationsUsecase.UpsertRiskTopicAnnotation(ctx, upsertInput)
+			if err != nil {
+				presentError(ctx, c, err)
+				return
+			}
+		default:
+			parsedPayload, err := dto.DecodeEntityAnnotationPayload(annotationType, payload.Payload)
+			if err != nil {
+				presentError(ctx, c, err)
+				return
+			}
+
+			req := models.CreateEntityAnnotationRequest{
+				OrgId:          creds.OrganizationId,
+				ObjectType:     objectType,
+				ObjectId:       objectId,
+				CaseId:         payload.CaseId,
+				AnnotationType: annotationType,
+				Payload:        parsedPayload,
+				AnnotatedBy:    &creds.ActorIdentity.UserId,
+			}
+
+			annotation, err = annotationsUsecase.Attach(ctx, req)
+			if err != nil {
+				presentError(ctx, c, err)
+				return
+			}
 		}
 
 		out, err := dto.AdaptEntityAnnotation(annotation)

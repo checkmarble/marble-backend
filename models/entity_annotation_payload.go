@@ -1,5 +1,7 @@
 package models
 
+import "encoding/json"
+
 // The payload of entity annotations is a polymorphic schema depending on the type of the annotation.
 // The EntityAnnotationPayload is a marker interface used to limit what types can be used there.
 //
@@ -35,6 +37,22 @@ package models
 // 	  }
 // 	]
 // }
+//
+// Risk Topic
+// Stores risk topics associated with an object, along with the source of the annotation.
+//
+// {
+//   "topics": ["sanctions", "peps", "adverse-media"],
+//   "source_type": "continuous_screening_match_review" | "manual",
+//   "source_details": {
+//     // For continuous_screening_match_review:
+//     "continuous_screening_id": "<uuid>",
+//     "opensanctions_entity_id": "<string>"
+//     // For manual:
+//     "reason": "<string>",
+//     "url": "<string>"
+//   }
+// }
 
 type EntityAnnotationPayload interface {
 	entityAnnotationPayload()
@@ -65,3 +83,33 @@ type EntityAnnotationTagPayload struct {
 }
 
 func (EntityAnnotationTagPayload) entityAnnotationPayload() {}
+
+type EntityAnnotationRiskTopicPayload struct {
+	Topics        []RiskTopic         `json:"topics"`
+	SourceType    RiskTopicSourceType `json:"source_type"`
+	SourceDetails SourceDetails       `json:"source_details"`
+}
+
+func (p *EntityAnnotationRiskTopicPayload) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Topics        []RiskTopic         `json:"topics"`
+		SourceType    RiskTopicSourceType `json:"source_type"`
+		SourceDetails json.RawMessage     `json:"source_details"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	p.Topics = raw.Topics
+	p.SourceType = raw.SourceType
+
+	details, err := ParseSourceDetails(raw.SourceType, raw.SourceDetails)
+	if err != nil {
+		return err
+	}
+	p.SourceDetails = details
+
+	return nil
+}
+
+func (EntityAnnotationRiskTopicPayload) entityAnnotationPayload() {}
