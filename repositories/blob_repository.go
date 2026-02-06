@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/gabriel-vasile/mimetype"
 	"golang.org/x/oauth2/google"
 
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
@@ -43,6 +44,9 @@ type BlobRepository interface {
 	RawBucket(ctx context.Context, bucketUrl string) (*blob.Bucket, error)
 	DeleteFile(ctx context.Context, bucketUrl, key string) error
 	GenerateSignedUrl(ctx context.Context, bucketUrl, key string) (string, error)
+	GetContentType(ctx context.Context, bucketUrl, key string) string
+
+	ExtractHost(bucketUrl string) []string
 }
 
 type blobRepository struct {
@@ -281,4 +285,44 @@ func (repository *blobRepository) GenerateSignedUrl(ctx context.Context, bucketU
 			Method: http.MethodGet,
 			Expiry: signedUrlExpiry,
 		})
+}
+
+func (repository *blobRepository) GetContentType(ctx context.Context, bucketUrl, key string) string {
+	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
+	if err != nil {
+		return ""
+	}
+
+	attrs, err := bucket.Attributes(ctx, key)
+	if err != nil {
+		return ""
+	}
+
+	mime := mimetype.Lookup(attrs.ContentType)
+
+	return mime.String()
+}
+
+func (repository *blobRepository) ExtractHost(bucketUrl string) []string {
+	u, err := url.Parse(bucketUrl)
+	if err != nil {
+		return nil
+	}
+
+	switch u.Scheme {
+	case "gs", "gcs":
+		return []string{"https://*.storage.googleapis.com"}
+	case "azblob":
+		return []string{"https://*.blob.core.windows.net"}
+	case "s3":
+		if ep := u.Query().Get("endpoint"); ep != "" {
+			return []string{ep}
+		}
+		if region := u.Query().Get("region"); region != "" {
+			return []string{"https://s3.amazonaws.com", fmt.Sprintf("https://s3.%s.amazonaws.com", region)}
+		}
+		return []string{"https://s3.amazonaws.com"}
+	}
+
+	return nil
 }

@@ -54,6 +54,9 @@ type EntityAnnotation struct {
 	AnnotatedBy *UserId
 	CreatedAt   time.Time
 	DeletedAt   *time.Time
+
+	FileThumbnails   []string
+	FileContentTypes []string
 }
 
 type EntityAnnotationRequest struct {
@@ -61,6 +64,7 @@ type EntityAnnotationRequest struct {
 	ObjectType     string
 	ObjectId       string
 	AnnotationType *EntityAnnotationType
+	LoadThumbnails bool
 }
 
 type CaseEntityAnnotationRequest struct {
@@ -115,4 +119,8 @@ func GroupAnnotationsByType(annotations []EntityAnnotation) GroupedEntityAnnotat
 	}
 
 	return grouped
+}
+
+func ThumbnailFileName(key string) string {
+	return key + "_thumb"
 }
