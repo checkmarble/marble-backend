@@ -5,6 +5,7 @@ import (
 )
 
 type EnforceSecurityAnnotation interface {
+	EnforceSecurity
 	DeleteAnnotation() error
 }
 

@@ -62,6 +62,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 				Marble:    dto.NewNullString(cfg.MarbleAppUrl),
 				MarbleApi: dto.NewNullString(cfg.MarbleApiUrl),
 				Metabase:  dto.NewNullString(cfg.MetabaseConfig.SiteUrl),
+				Blobs:     uc.GetBlobHosts(),
 			},
 			Auth: dto.ConfigAuthDto{
 				Provider: cfg.TokenProvider.String(),

@@ -777,6 +777,7 @@ func (usecases *UsecasesWithCreds) NewEntityAnnotationUsecase() EntityAnnotation
 		tagRepository:              usecases.Repositories.MarbleDbRepository,
 		blobRepository:             usecases.Repositories.BlobRepository,
 		bucketUrl:                  usecases.caseManagerBucketUrl,
+		taskQueueRepository:        usecases.Repositories.TaskQueueRepository,
 		executorFactory:            usecases.NewExecutorFactory(),
 		transactionFactory:         usecases.NewTransactionFactory(),
 	}
@@ -922,6 +923,12 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningMatchEnrichmentWorker()
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewGenerateThumbnailWorker() *worker_jobs.GenerateThumbnailWorker {
+	return worker_jobs.NewGenerateThumbnailWorker(
+		usecases.Repositories.BlobRepository,
 	)
 }
 

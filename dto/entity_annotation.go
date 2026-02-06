@@ -76,8 +76,9 @@ type EntityAnnotationTagDto struct {
 type EntityAnnotationFileDto struct {
 	Caption string `json:"caption"`
 	Files   []struct {
-		Id       string `json:"id"`
-		Filename string `json:"filename"`
+		Id           string `json:"id"`
+		Filename     string `json:"filename"`
+		ThumbnailUrl string `json:"thumbnail_url"`
 	} `json:"files"`
 }
 
@@ -100,6 +101,10 @@ func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err e
 
 		err = json.Unmarshal(model.Payload, &o)
 		out = o
+
+		for idx, thumbnailUrl := range model.FileThumbnails {
+			o.Files[idx].ThumbnailUrl = thumbnailUrl
+		}
 
 	default:
 		return nil, errors.New("could not adapt annotation type")

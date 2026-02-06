@@ -24,9 +24,10 @@ func handleListEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
 		req := models.EntityAnnotationRequest{
-			OrgId:      creds.OrganizationId,
-			ObjectType: objectType,
-			ObjectId:   objectId,
+			OrgId:          creds.OrganizationId,
+			ObjectType:     objectType,
+			ObjectId:       objectId,
+			LoadThumbnails: c.Query("load_thumbnails") == "true",
 		}
 
 		if t := c.Query("type"); t != "" {

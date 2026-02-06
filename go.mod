@@ -20,9 +20,12 @@ require (
 	github.com/checkmarble/llmberjack v0.0.0-20250918140151-35a7e6d6fe5a
 	github.com/cockroachdb/errors v1.12.0
 	github.com/coreos/go-oidc/v3 v3.17.0
+	github.com/disintegration/imaging v1.6.2
 	github.com/duckdb/duckdb-go/v2 v2.5.4
 	github.com/exaring/otelpgx v0.9.4
+	github.com/gabriel-vasile/mimetype v1.4.12
 	github.com/gavv/httpexpect/v2 v2.17.0
+	github.com/gen2brain/go-fitz v1.24.15
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/getsentry/sentry-go v0.41.0
 	github.com/getsentry/sentry-go/gin v0.41.0
@@ -172,7 +175,6 @@ require (
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -206,6 +208,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/jupiterrider/ffi v0.5.0 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
@@ -297,6 +300,7 @@ require (
 	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9 // indirect
+	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/telemetry v0.0.0-20251208220230-2638a1023523 // indirect

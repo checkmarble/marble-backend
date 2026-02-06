@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/tidwall/gjson"
 )
 
 type EntityAnnotationRepository interface {
@@ -57,8 +58,9 @@ type EntityAnnotationUsecase struct {
 	caseUsecase                EntityAnnotationCaseUsecase
 	tagRepository              TagRepository
 
-	blobRepository repositories.BlobRepository
-	bucketUrl      string
+	blobRepository      repositories.BlobRepository
+	bucketUrl           string
+	taskQueueRepository repositories.TaskQueueRepository
 
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
@@ -69,7 +71,31 @@ func (uc EntityAnnotationUsecase) List(ctx context.Context, req models.EntityAnn
 		return nil, errors.Wrap(models.NotFoundError, err.Error())
 	}
 
-	return uc.repository.GetEntityAnnotations(ctx, uc.executorFactory.NewExecutor(), req)
+	annotations, err := uc.repository.GetEntityAnnotations(ctx, uc.executorFactory.NewExecutor(), req)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.LoadThumbnails {
+		for annIdx, ann := range annotations {
+			if ann.AnnotationType == models.EntityAnnotationFile {
+				files := gjson.GetBytes(ann.Payload, "files").Array()
+
+				annotations[annIdx].FileThumbnails = make([]string, len(files))
+
+				for fileIdx, file := range files {
+					key := models.ThumbnailFileName(file.Get("key").String())
+					thumbnailUrl, err := uc.blobRepository.GenerateSignedUrl(ctx, uc.bucketUrl, key)
+
+					if err == nil {
+						annotations[annIdx].FileThumbnails[fileIdx] = thumbnailUrl
+					}
+				}
+			}
+		}
+	}
+
+	return annotations, nil
 }
 
 func (uc EntityAnnotationUsecase) Get(ctx context.Context, orgId uuid.UUID, id string) (models.EntityAnnotation, error) {
@@ -170,6 +196,10 @@ func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
 
 		for idx, file := range metadata {
 			fileReq := req
+
+			if err := uc.taskQueueRepository.EnqueueGenerateThumbnailTask(ctx, tx, uc.enforceSecurityAnnotation.OrgId(), uc.bucketUrl, file.Key); err != nil {
+				return nil, err
+			}
 
 			fileReq.Payload = models.EntityAnnotationFilePayload{
 				Caption: fp.Caption,
