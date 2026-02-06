@@ -228,6 +228,19 @@ type EnrichedContinuousScreeningUpdateJob struct {
 	DatasetUpdate ContinuousScreeningDatasetUpdate
 }
 
+type ContinuousScreeningUpdateJobWithProgress struct {
+	ContinuousScreeningUpdateJob
+	DatasetName    string
+	DatasetVersion string
+	TotalItems     int
+	ItemsProcessed int
+}
+
+type ContinuousScreeningDeltaTrackWithFile struct {
+	ContinuousScreeningDeltaTrack
+	DatasetFile *ContinuousScreeningDatasetFile
+}
+
 // ContinuousScreeningJobOffset tracks the progress of processing a dataset update
 type ContinuousScreeningJobOffset struct {
 	Id             uuid.UUID
