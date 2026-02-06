@@ -39,7 +39,7 @@ type EntityAnnotationRepository interface {
 	IsObjectTagSet(ctx context.Context, exec repositories.Executor,
 		req models.CreateEntityAnnotationRequest, tagId string) (bool, error)
 	UpdateEntityAnnotationPayload(ctx context.Context, exec repositories.Executor,
-		orgId uuid.UUID, annotationId string, payload json.RawMessage) error
+		orgId uuid.UUID, annotationId string, payload models.EntityAnnotationPayload) (models.EntityAnnotation, error)
 	FindEntityAnnotationsWithRiskTopics(ctx context.Context, exec repositories.Executor,
 		filter models.EntityAnnotationRiskTopicsFilter) ([]models.EntityAnnotation, error)
 }
@@ -394,10 +394,6 @@ func (uc EntityAnnotationUsecase) UpsertRiskTopicAnnotation(
 		SourceType:    input.SourceType,
 		SourceDetails: input.SourceDetails,
 	}
-	payloadJSON, err := json.Marshal(payload)
-	if err != nil {
-		return models.EntityAnnotation{}, err
-	}
 
 	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
@@ -415,12 +411,8 @@ func (uc EntityAnnotationUsecase) UpsertRiskTopicAnnotation(
 
 		if len(existing) > 0 {
 			// Update existing annotation, should only be one
-			if err := uc.repository.UpdateEntityAnnotationPayload(ctx, tx,
-				input.OrgId, existing[0].Id, payloadJSON); err != nil {
-				return models.EntityAnnotation{}, err
-			}
-			existing[0].Payload = payloadJSON
-			return existing[0], nil
+			return uc.repository.UpdateEntityAnnotationPayload(ctx, tx,
+				input.OrgId, existing[0].Id, payload)
 		}
 
 		// Create new annotation
@@ -499,14 +491,11 @@ func (uc EntityAnnotationUsecase) AppendObjectRiskTopics(
 		SourceType:    input.SourceType,
 		SourceDetails: input.SourceDetails,
 	}
-	payloadJSON, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
 
 	if existingAnnotationId != "" {
 		// Update existing annotation
-		return uc.repository.UpdateEntityAnnotationPayload(ctx, tx, input.OrgId, existingAnnotationId, payloadJSON)
+		_, err = uc.repository.UpdateEntityAnnotationPayload(ctx, tx, input.OrgId, existingAnnotationId, payload)
+		return err
 	}
 
 	// Create new annotation

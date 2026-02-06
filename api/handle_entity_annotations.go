@@ -48,7 +48,8 @@ func handleListEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		out, err := dto.AdaptGroupedEntityAnnotations(models.GroupAnnotationsByType(annotations))
+		out, err := dto.AdaptGroupedEntityAnnotations(
+			models.GroupAnnotationsByType(annotations))
 		if err != nil {
 			presentError(ctx, c, err)
 			return
@@ -198,8 +199,11 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
-		// Risk topic annotations have special upsert semantics (one per object, merge topics)
-		if annotationType == models.EntityAnnotationRiskTopic {
+		var annotation models.EntityAnnotation
+
+		switch annotationType {
+		case models.EntityAnnotationRiskTopic:
+			// Risk topic annotations have special upsert semantics (one per object, merge topics)
 			var riskTopicInput dto.RiskTopicAnnotationInputDto
 			if err := json.Unmarshal(payload.Payload, &riskTopicInput); err != nil {
 				presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
@@ -212,42 +216,33 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 				return
 			}
 
-			annotation, err := annotationsUsecase.UpsertRiskTopicAnnotation(ctx, upsertInput)
+			annotation, err = annotationsUsecase.UpsertRiskTopicAnnotation(ctx, upsertInput)
+			if err != nil {
+				presentError(ctx, c, err)
+				return
+			}
+		default:
+			parsedPayload, err := dto.DecodeEntityAnnotationPayload(annotationType, payload.Payload)
 			if err != nil {
 				presentError(ctx, c, err)
 				return
 			}
 
-			out, err := dto.AdaptEntityAnnotation(annotation)
+			req := models.CreateEntityAnnotationRequest{
+				OrgId:          creds.OrganizationId,
+				ObjectType:     objectType,
+				ObjectId:       objectId,
+				CaseId:         payload.CaseId,
+				AnnotationType: annotationType,
+				Payload:        parsedPayload,
+				AnnotatedBy:    &creds.ActorIdentity.UserId,
+			}
+
+			annotation, err = annotationsUsecase.Attach(ctx, req)
 			if err != nil {
 				presentError(ctx, c, err)
 				return
 			}
-
-			c.JSON(http.StatusOK, out)
-			return
-		}
-
-		parsedPayload, err := dto.DecodeEntityAnnotationPayload(annotationType, payload.Payload)
-		if err != nil {
-			presentError(ctx, c, err)
-			return
-		}
-
-		req := models.CreateEntityAnnotationRequest{
-			OrgId:          creds.OrganizationId,
-			ObjectType:     objectType,
-			ObjectId:       objectId,
-			CaseId:         payload.CaseId,
-			AnnotationType: annotationType,
-			Payload:        parsedPayload,
-			AnnotatedBy:    &creds.ActorIdentity.UserId,
-		}
-
-		annotation, err := annotationsUsecase.Attach(ctx, req)
-		if err != nil {
-			presentError(ctx, c, err)
-			return
 		}
 
 		out, err := dto.AdaptEntityAnnotation(annotation)

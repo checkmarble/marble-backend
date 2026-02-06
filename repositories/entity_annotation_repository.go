@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -225,10 +224,10 @@ func (repo *MarbleDbRepository) UpdateEntityAnnotationPayload(
 	exec Executor,
 	orgId uuid.UUID,
 	annotationId string,
-	payload json.RawMessage,
-) error {
+	payload models.EntityAnnotationPayload,
+) (models.EntityAnnotation, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
+		return models.EntityAnnotation{}, err
 	}
 
 	sql := NewQueryBuilder().
@@ -239,9 +238,10 @@ func (repo *MarbleDbRepository) UpdateEntityAnnotationPayload(
 			"id":         annotationId,
 			"org_id":     orgId,
 			"deleted_at": nil,
-		})
+		}).
+		Suffix("returning *")
 
-	return ExecBuilder(ctx, exec, sql)
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptEntityAnnotation)
 }
 
 // FindEntityAnnotationsWithRiskTopics finds risk topic annotations matching the filter.

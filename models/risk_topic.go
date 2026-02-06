@@ -89,35 +89,13 @@ func MapOpenSanctionsTagsToRiskTopics(tags []string) []RiskTopic {
 }
 
 // RiskTopicSourceType enum
-type RiskTopicSourceType int
+type RiskTopicSourceType string
 
 const (
-	RiskTopicSourceTypeUnknown RiskTopicSourceType = iota
-	RiskTopicSourceTypeContinuousScreeningMatchReview
-	RiskTopicSourceTypeManual
+	RiskTopicSourceTypeUnknown                        RiskTopicSourceType = "unknown"
+	RiskTopicSourceTypeContinuousScreeningMatchReview RiskTopicSourceType = "continuous_screening_match_review"
+	RiskTopicSourceTypeManual                         RiskTopicSourceType = "manual"
 )
-
-func RiskTopicSourceTypeFrom(s string) RiskTopicSourceType {
-	switch s {
-	case "continuous_screening_match_review":
-		return RiskTopicSourceTypeContinuousScreeningMatchReview
-	case "manual":
-		return RiskTopicSourceTypeManual
-	}
-
-	return RiskTopicSourceTypeUnknown
-}
-
-func (rtst RiskTopicSourceType) String() string {
-	switch rtst {
-	case RiskTopicSourceTypeContinuousScreeningMatchReview:
-		return "continuous_screening_match_review"
-	case RiskTopicSourceTypeManual:
-		return "manual"
-	}
-
-	return "unknown"
-}
 
 // SourceDetails is an interface for different source detail types
 type SourceDetails interface {

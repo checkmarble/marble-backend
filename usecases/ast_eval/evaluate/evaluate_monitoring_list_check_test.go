@@ -263,7 +263,8 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingle_ReturnsTrue(t *testing.
 	})).Return("linked_object_456", nil)
 
 	// Step 2: linked object has risk topic
-	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
+	// Note: use mock.Anything for context because Step 2 runs in a goroutine with a derived context.WithCancel
+	repo.On("FindEntityAnnotationsWithRiskTopics", mock.Anything, mockExec, mock.MatchedBy(func(
 		filter models.EntityAnnotationRiskTopicsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameSecond &&
@@ -392,7 +393,8 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation
 	})).Return("linked_object_456", nil)
 
 	// Step 2 LinkToSingle: linked object has no risk topic
-	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
+	// Note: use mock.Anything for context because Step 2 runs in a goroutine with a derived context.WithCancel
+	repo.On("FindEntityAnnotationsWithRiskTopics", mock.Anything, mockExec, mock.MatchedBy(func(
 		filter models.EntityAnnotationRiskTopicsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameSecond &&
@@ -494,7 +496,8 @@ func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic
 		}, nil)
 
 	// Step 2 Navigation: one of the objects has a risk topic
-	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
+	// Note: use mock.Anything for context because Step 2 runs in a goroutine with a derived context.WithCancel
+	repo.On("FindEntityAnnotationsWithRiskTopics", mock.Anything, mockExec, mock.MatchedBy(func(
 		filter models.EntityAnnotationRiskTopicsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameThird &&
