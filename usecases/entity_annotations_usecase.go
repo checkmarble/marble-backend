@@ -382,6 +382,10 @@ func (uc EntityAnnotationUsecase) UpsertRiskTopicAnnotation(
 	ctx context.Context,
 	input models.ObjectRiskTopicUpsert,
 ) (models.EntityAnnotation, error) {
+	if err := uc.enforceSecurityAnnotation.WriteAnnotation(input.OrgId); err != nil {
+		return models.EntityAnnotation{}, errors.Wrap(models.ForbiddenError, err.Error())
+	}
+
 	if err := uc.validateIngestedObjectExists(ctx, input.OrgId, input.ObjectType, input.ObjectId); err != nil {
 		return models.EntityAnnotation{}, err
 	}
@@ -430,7 +434,7 @@ func (uc EntityAnnotationUsecase) UpsertRiskTopicAnnotation(
 
 // AppendObjectRiskTopics adds new topics to an object's risk topic annotation.
 // If no annotation exists, creates one. Topics are merged and deduplicated.
-// For internal use by continuous screening. Skips ingested object validation.
+// For internal use by continuous screening. Skips ingested object validation and security checks
 func (uc EntityAnnotationUsecase) AppendObjectRiskTopics(
 	ctx context.Context,
 	tx repositories.Transaction,
@@ -496,7 +500,8 @@ func (uc EntityAnnotationUsecase) AppendObjectRiskTopics(
 
 	if existingAnnotationId != "" {
 		// Update existing annotation
-		_, err = uc.repository.UpdateEntityAnnotationPayload(ctx, tx, input.OrgId, existingAnnotationId, payload, input.AnnotatedBy)
+		_, err = uc.repository.UpdateEntityAnnotationPayload(ctx, tx, input.OrgId,
+			existingAnnotationId, payload, input.AnnotatedBy)
 		return err
 	}
 
@@ -507,6 +512,7 @@ func (uc EntityAnnotationUsecase) AppendObjectRiskTopics(
 		ObjectId:       input.ObjectId,
 		AnnotationType: models.EntityAnnotationRiskTopic,
 		Payload:        payload,
+		AnnotatedBy:    input.AnnotatedBy,
 	})
 	return err
 }

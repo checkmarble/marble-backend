@@ -1,5 +1,7 @@
 package models
 
+import "encoding/json"
+
 // The payload of entity annotations is a polymorphic schema depending on the type of the annotation.
 // The EntityAnnotationPayload is a marker interface used to limit what types can be used there.
 //
@@ -86,6 +88,28 @@ type EntityAnnotationRiskTopicPayload struct {
 	Topics        []RiskTopic         `json:"topics"`
 	SourceType    RiskTopicSourceType `json:"source_type"`
 	SourceDetails SourceDetails       `json:"source_details"`
+}
+
+func (p *EntityAnnotationRiskTopicPayload) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Topics        []RiskTopic         `json:"topics"`
+		SourceType    RiskTopicSourceType `json:"source_type"`
+		SourceDetails json.RawMessage     `json:"source_details"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	p.Topics = raw.Topics
+	p.SourceType = raw.SourceType
+
+	details, err := ParseSourceDetails(raw.SourceType, raw.SourceDetails)
+	if err != nil {
+		return err
+	}
+	p.SourceDetails = details
+
+	return nil
 }
 
 func (EntityAnnotationRiskTopicPayload) entityAnnotationPayload() {}
