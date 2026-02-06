@@ -42,6 +42,7 @@ type ConfigUrlsDto struct {
 	Marble    NullString `json:"marble"`
 	MarbleApi NullString `json:"api"` //nolint:tagliatelle
 	Metabase  NullString `json:"metabase"`
+	Blobs     []string   `json:"blobs"`
 }
 
 type ConfigAuthDto struct {

@@ -192,3 +192,10 @@ type WebhookRetryArgs struct {
 }
 
 func (WebhookRetryArgs) Kind() string { return "webhook_retry" }
+
+type GenerateThumbnailArgs struct {
+	Bucket string `json:"bucket"`
+	Key    string `json:"key"`
+}
+
+func (GenerateThumbnailArgs) Kind() string { return "generate_thumbnail" }
