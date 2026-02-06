@@ -9,19 +9,11 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 )
 
-type ObjectMetadata struct {
+type ObjectRiskTopicWriter struct {
 	mock.Mock
 }
 
-func (m *ObjectMetadata) UpsertObjectRiskTopic(
-	ctx context.Context,
-	input models.ObjectRiskTopicUpsert,
-) (models.ObjectMetadata, error) {
-	args := m.Called(ctx, input)
-	return args.Get(0).(models.ObjectMetadata), args.Error(1)
-}
-
-func (m *ObjectMetadata) AppendObjectRiskTopics(
+func (m *ObjectRiskTopicWriter) AppendObjectRiskTopics(
 	ctx context.Context,
 	tx repositories.Transaction,
 	input models.ObjectRiskTopicUpsert,

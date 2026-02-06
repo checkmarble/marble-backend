@@ -150,13 +150,6 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurityAudit() security.EnforceSec
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewEnforceObjectMetadata() security.EnforceSecurityObjectMetadata {
-	return &security.EnforceSecurityObjectMetadataImpl{
-		EnforceSecurity: usecases.NewEnforceSecurity(),
-		Credentials:     usecases.Credentials,
-	}
-}
-
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		enforceSecurity:           usecases.NewEnforceDecisionSecurity(),
