@@ -99,6 +99,8 @@ func (i *ConcreteIndex) setName() {
 		prefix = "nav"
 	case IndexTypeAggregation:
 		prefix = "idx"
+	case IndexTypeIngestedObjectsSearch:
+		prefix = "obj"
 	default:
 		prefix = "idx"
 	}
@@ -269,4 +271,5 @@ const (
 	IndexTypeUnknown IndexType = iota
 	IndexTypeNavigation
 	IndexTypeAggregation
+	IndexTypeIngestedObjectsSearch
 )

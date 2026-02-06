@@ -34,6 +34,7 @@ func parseCreateIndexStatement(sql string) models.ConcreteIndex {
 	indexedColumnNames := pure_utils.Map(indexedColumnsRaw, func(s string) string {
 		// We discard the order of the index (ASC/DESC) because this is not relevant or modelized (yet) for our purposes
 		colName, _, _ := strings.Cut(s, " DESC")
+		colName, _, _ = strings.Cut(colName, " gin_trgm_ops")
 		// the first part of the string must be the column name
 		return strings.Trim(colName, " \"")
 	})
@@ -66,6 +67,8 @@ func (pgIndex PGIndex) AdaptConcreteIndex() models.ConcreteIndex {
 		idx.Type = models.IndexTypeNavigation
 	case "idx":
 		idx.Type = models.IndexTypeAggregation
+	case "obj":
+		idx.Type = models.IndexTypeIngestedObjectsSearch
 	default:
 	}
 

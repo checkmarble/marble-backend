@@ -159,6 +159,9 @@ type ContinuousScreeningUsecaseRepository interface {
 		tableID string,
 		description *string,
 		ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
+		alias pure_utils.Null[string],
+		semanticType pure_utils.Null[models.SemanticType],
+		captionField pure_utils.Null[string],
 	) error
 	UpdateDataModelField(
 		ctx context.Context,

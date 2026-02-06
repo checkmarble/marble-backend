@@ -357,6 +357,8 @@ func (usecases *UsecasesWithCreds) NewDataModelUseCase() usecase {
 		organizationSchemaRepository:  usecases.Repositories.OrganizationSchemaRepository,
 		transactionFactory:            usecases.NewTransactionFactory(),
 		dataModelIngestedDataReadRepo: usecases.Repositories.IngestedDataReadRepository,
+		indexEditor:                   usecases.NewClientDbIndexEditor(),
+		taskQueueRepository:           usecases.Repositories.TaskQueueRepository,
 	}
 }
 
@@ -1009,5 +1011,15 @@ func (usecases *UsecasesWithCreds) NewObjectMetadataUsecase() *ObjectMetadataUse
 		usecases.NewEnforceObjectMetadata(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewClient360Usecase() Client360Usecase {
+	return NewClient360Usecase(
+		usecases.NewEnforceSecurity(),
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.NewClientDbIndexEditor(),
 	)
 }

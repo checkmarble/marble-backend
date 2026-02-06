@@ -280,12 +280,29 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 		concurrently = ""
 	}
 
+	indexType := "btree"
+	if index.Type == models.IndexTypeIngestedObjectsSearch {
+		indexType = "gin"
+	}
+
+	cols := make([]string, len(indexedColumns))
+
+	for idx, col := range indexedColumns {
+		switch index.Type {
+		case models.IndexTypeIngestedObjectsSearch:
+			cols[idx] = withTrgmOpsClass(col)
+		default:
+			cols[idx] = withDesc(col)
+		}
+	}
+
 	sql := fmt.Sprintf(
-		"CREATE INDEX %s IF NOT EXISTS %s ON %s USING btree (%s)",
+		"CREATE INDEX %s IF NOT EXISTS %s ON %s USING %s (%s)",
 		concurrently,
 		pgx.Identifier.Sanitize([]string{index.Name()}),
 		qualifiedTableName,
-		strings.Join(pure_utils.Map(indexedColumns, withDesc), ","),
+		indexType,
+		strings.Join(cols, ","),
 	)
 	if len(includedColumns) > 0 {
 		sql += fmt.Sprintf(
@@ -316,6 +333,10 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 
 func withDesc(s string) string {
 	return fmt.Sprintf("%s DESC", s)
+}
+
+func withTrgmOpsClass(s string) string {
+	return fmt.Sprintf("%s gin_trgm_ops", s)
 }
 
 func toUniqIndexName(fields []string, table string) string {

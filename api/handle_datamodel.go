@@ -85,6 +85,8 @@ func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 		tableID := c.Param("tableID")
 
 		var ftmEntity pure_utils.Null[models.FollowTheMoneyEntity]
+		var semanticType pure_utils.Null[models.SemanticType]
+
 		if input.FTMEntity.Set {
 			if input.FTMEntity.Valid {
 				entity := models.FollowTheMoneyEntityFrom(input.FTMEntity.Value())
@@ -97,9 +99,22 @@ func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 				ftmEntity = pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil)
 			}
 		}
+		if input.SemanticType.Set {
+			switch {
+			case input.SemanticType.Valid:
+				t := models.SemanticTypeFrom(input.SemanticType.Value())
+				if t == models.SemanticTypeUnknown {
+					presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid table semantic type"))
+					return
+				}
+				semanticType = pure_utils.NullFrom(t)
+			default:
+				semanticType = pure_utils.NullFromPtr[models.SemanticType](nil)
+			}
+		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		err := usecase.UpdateDataModelTable(ctx, tableID, input.Description, ftmEntity)
+		err := usecase.UpdateDataModelTable(ctx, tableID, input.Description, ftmEntity, input.Alias, semanticType, input.CaptionField)
 		if presentError(ctx, c, err) {
 			return
 		}

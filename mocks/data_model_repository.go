@@ -48,8 +48,11 @@ func (d *DataModelRepository) UpdateDataModelTable(
 	tableID string,
 	description *string,
 	ftmEntity pure_utils.Null[models.FollowTheMoneyEntity],
+	alias pure_utils.Null[string],
+	semanticType pure_utils.Null[models.SemanticType],
+	captionField pure_utils.Null[string],
 ) error {
-	args := d.Called(ctx, exec, tableID, description, ftmEntity)
+	args := d.Called(ctx, exec, tableID, description, ftmEntity, alias, semanticType, captionField)
 	return args.Error(0)
 }
 
