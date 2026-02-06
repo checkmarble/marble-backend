@@ -275,3 +275,11 @@ func QueueContinuousScreeningDatasetUpdate() map[string]river.QueueConfig {
 	}
 	return queues
 }
+
+func QueueWebhookCleanup() map[string]river.QueueConfig {
+	queues := make(map[string]river.QueueConfig, 1)
+	queues[worker_jobs.WEBHOOK_CLEANUP_QUEUE] = river.QueueConfig{
+		MaxWorkers: 1,
+	}
+	return queues
+}

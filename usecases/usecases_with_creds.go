@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -578,11 +579,15 @@ func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecas
 	return NewWebhookEventsUsecase(
 		security.NewEnforceSecurity(usecases.Credentials),
 		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
 		usecases.Repositories.ConvoyRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
 		usecases.Usecases.failedWebhooksRetryPageSize,
 		usecases.Usecases.license.Webhooks,
 		usecases.Usecases.hasConvoyServerSetup,
+		usecases.Usecases.useNewWebhooks,
 		usecases.NewPublicApiAdapterUsecase(),
 	)
 }
@@ -593,6 +598,9 @@ func (usecases *UsecasesWithCreds) NewWebhooksUsecase() WebhooksUsecase {
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.ConvoyRepository,
+		usecases.Repositories.MarbleDbRepository,
+		NewWebhookDeliveryService(usecases.Usecases.allowInsecureWebhookURLs),
+		usecases.Usecases.useNewWebhooks,
 	)
 }
 
@@ -950,6 +958,44 @@ func (usecases UsecasesWithCreds) NewCsvIngestionWorker() *CsvIngestionWorker {
 func (usecases UsecasesWithCreds) NewWebhookRetryWorker() *worker_jobs.WebhookRetryWorker {
 	webhookEventsUsecase := usecases.NewWebhookEventsUsecase()
 	return worker_jobs.NewWebhookRetryWorker(&webhookEventsUsecase)
+}
+
+func (usecases UsecasesWithCreds) NewWebhookDispatchWorker() *worker_jobs.WebhookDispatchWorker {
+	return worker_jobs.NewWebhookDispatchWorker(
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+	)
+}
+
+func (usecases UsecasesWithCreds) NewWebhookDeliveryWorker() *worker_jobs.WebhookDeliveryWorker {
+	deliveryService := NewWebhookDeliveryService(usecases.Usecases.allowInsecureWebhookURLs)
+
+	// Create a wrapper function to adapt the return type
+	deliveryFunc := func(ctx context.Context, webhook models.NewWebhook, secrets []models.NewWebhookSecret, event models.WebhookEventV2) worker_jobs.WebhookSendResult {
+		result := deliveryService.Send(ctx, webhook, secrets, event)
+		return worker_jobs.WebhookSendResult{
+			StatusCode: result.StatusCode,
+			Error:      result.Error,
+		}
+	}
+
+	return worker_jobs.NewWebhookDeliveryWorker(
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
+		deliveryFunc,
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+	)
+}
+
+func (usecases UsecasesWithCreds) NewWebhookCleanupWorker() *worker_jobs.WebhookCleanupWorker {
+	return worker_jobs.NewWebhookCleanupWorker(
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+	)
 }
 
 func (usecases *UsecasesWithCreds) NewDataModelDestroyUsecase() DataModelDestroyUsecase {
