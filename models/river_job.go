@@ -181,7 +181,8 @@ func (ScheduledExecutionArgs) Kind() string { return "scheduled_execution" }
 
 // CSV ingestion job - processes a single upload log
 type CsvIngestionArgs struct {
-	UploadLogId string `json:"upload_log_id"`
+	UploadLogId      string           `json:"upload_log_id"`
+	IngestionOptions IngestionOptions `json:"ingestion_options"`
 }
 
 func (CsvIngestionArgs) Kind() string { return "csv_ingestion" }
