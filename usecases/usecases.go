@@ -46,7 +46,7 @@ type Usecases struct {
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
-	useNewWebhooks               bool // Feature flag for new webhook delivery system
+	webhookSystemMigrated        bool // True when migrated to new internal webhook system
 	allowInsecureWebhookURLs     bool // Allow HTTP webhook URLs (dev only)
 
 	rootExecutorFactory *executor_factory.IdentityExecutorFactory
@@ -182,9 +182,12 @@ func WithCsCreateFullDatasetInterval(interval time.Duration) Option {
 	}
 }
 
-func WithNewWebhooks(enabled bool) Option {
+// WithWebhookSystemMigrated sets whether the webhook system has been migrated
+// to the new internal system. When true, new webhooks use the internal River-based
+// delivery system instead of Convoy.
+func WithWebhookSystemMigrated(migrated bool) Option {
 	return func(o *options) {
-		o.useNewWebhooks = enabled
+		o.webhookSystemMigrated = migrated
 	}
 }
 
@@ -217,7 +220,7 @@ type options struct {
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval   time.Duration
-	useNewWebhooks                bool
+	webhookSystemMigrated         bool
 	allowInsecureWebhookURLs      bool
 }
 
@@ -247,7 +250,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		continuousScreeningBucketUrl: o.continuousScreeningBucketUrl,
 		marbleApiInternalUrl:         o.marbleApiInternalUrl,
 		csCreateFullDatasetInterval:  o.csCreateFullDatasetInterval,
-		useNewWebhooks:               o.useNewWebhooks,
+		webhookSystemMigrated:        o.webhookSystemMigrated,
 		allowInsecureWebhookURLs:     o.allowInsecureWebhookURLs,
 	}
 }

@@ -357,6 +357,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		return errors.New("cannot use OpenID Connect configuration without the appropriate license entitlement")
 	}
 
+	webhookSystemMigrated := IsWebhookSystemMigrated(ctx, repositories)
+
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),
 		usecases.WithApiVersion(config.Version),
@@ -367,7 +369,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 		usecases.WithAnalyticsEnabled(analyticsConfig.Enabled),
-		usecases.WithNewWebhooks(utils.GetEnv("USE_NEW_WEBHOOKS", false)),
+		usecases.WithWebhookSystemMigrated(webhookSystemMigrated),
 		usecases.WithAllowInsecureWebhookURLs(utils.GetEnv("ENV", "production") == "development"),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),

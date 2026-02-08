@@ -45,13 +45,13 @@ type webhookEndpointValidator interface {
 }
 
 type WebhooksUsecase struct {
-	enforceSecurity     enforceSecurityWebhook
-	executorFactory     executor_factory.ExecutorFactory
-	transactionFactory  executor_factory.TransactionFactory
-	convoyRepository    convoyWebhooksRepository
-	webhookRepository   webhooksRepository
-	endpointValidator   webhookEndpointValidator
-	useNewWebhooks      bool
+	enforceSecurity       enforceSecurityWebhook
+	executorFactory       executor_factory.ExecutorFactory
+	transactionFactory    executor_factory.TransactionFactory
+	convoyRepository      convoyWebhooksRepository
+	webhookRepository     webhooksRepository
+	endpointValidator     webhookEndpointValidator
+	webhookSystemMigrated bool
 }
 
 func NewWebhooksUsecase(
@@ -61,16 +61,16 @@ func NewWebhooksUsecase(
 	convoyRepository convoyWebhooksRepository,
 	webhookRepository webhooksRepository,
 	endpointValidator webhookEndpointValidator,
-	useNewWebhooks bool,
+	webhookSystemMigrated bool,
 ) WebhooksUsecase {
 	return WebhooksUsecase{
-		enforceSecurity:     enforceSecurity,
-		executorFactory:     executorFactory,
-		transactionFactory:  transactionFactory,
-		convoyRepository:    convoyRepository,
-		webhookRepository:   webhookRepository,
-		endpointValidator:   endpointValidator,
-		useNewWebhooks:      useNewWebhooks,
+		enforceSecurity:       enforceSecurity,
+		executorFactory:       executorFactory,
+		transactionFactory:    transactionFactory,
+		convoyRepository:      convoyRepository,
+		webhookRepository:     webhookRepository,
+		endpointValidator:     endpointValidator,
+		webhookSystemMigrated: webhookSystemMigrated,
 	}
 }
 
@@ -121,7 +121,7 @@ func generateSecretValue() (string, error) {
 }
 
 func (usecase WebhooksUsecase) ListWebhooks(ctx context.Context, organizationId uuid.UUID, partnerId null.String) ([]models.Webhook, error) {
-	if usecase.useNewWebhooks {
+	if usecase.webhookSystemMigrated {
 		return usecase.listWebhooksNew(ctx, organizationId)
 	}
 	return usecase.listWebhooksConvoy(ctx, organizationId, partnerId)
@@ -183,7 +183,7 @@ func (usecase WebhooksUsecase) RegisterWebhook(
 		return models.Webhook{}, err
 	}
 
-	if usecase.useNewWebhooks {
+	if usecase.webhookSystemMigrated {
 		return usecase.registerWebhookNew(ctx, organizationId, input)
 	}
 
@@ -254,7 +254,7 @@ func (usecase WebhooksUsecase) registerWebhookNew(
 func (usecase WebhooksUsecase) GetWebhook(
 	ctx context.Context, organizationId uuid.UUID, partnerId null.String, webhookId string,
 ) (models.Webhook, error) {
-	if usecase.useNewWebhooks {
+	if usecase.webhookSystemMigrated {
 		return usecase.getWebhookNew(ctx, webhookId)
 	}
 
@@ -297,7 +297,7 @@ func (usecase WebhooksUsecase) getWebhookNew(ctx context.Context, webhookId stri
 func (usecase WebhooksUsecase) DeleteWebhook(
 	ctx context.Context, organizationId uuid.UUID, partnerId null.String, webhookId string,
 ) error {
-	if usecase.useNewWebhooks {
+	if usecase.webhookSystemMigrated {
 		return usecase.deleteWebhookNew(ctx, webhookId)
 	}
 
@@ -342,7 +342,7 @@ func (usecase WebhooksUsecase) UpdateWebhook(
 		return models.Webhook{}, err
 	}
 
-	if usecase.useNewWebhooks {
+	if usecase.webhookSystemMigrated {
 		return usecase.updateWebhookNew(ctx, webhookId, input)
 	}
 
