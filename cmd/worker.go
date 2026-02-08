@@ -318,6 +318,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		return err
 	}
 
+	webhookSystemMigrated := IsWebhookSystemMigrated(ctx, repositories)
+
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
@@ -325,7 +327,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
-		usecases.WithNewWebhooks(utils.GetEnv("USE_NEW_WEBHOOKS", false)),
+		usecases.WithWebhookSystemMigrated(webhookSystemMigrated),
 		usecases.WithAllowInsecureWebhookURLs(utils.GetEnv("ENV", "production") == "development"),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithApiVersion(apiVersion),

@@ -587,7 +587,7 @@ func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecas
 		usecases.Usecases.failedWebhooksRetryPageSize,
 		usecases.Usecases.license.Webhooks,
 		usecases.Usecases.hasConvoyServerSetup,
-		usecases.Usecases.useNewWebhooks,
+		usecases.Usecases.webhookSystemMigrated,
 		usecases.NewPublicApiAdapterUsecase(),
 	)
 }
@@ -600,7 +600,7 @@ func (usecases *UsecasesWithCreds) NewWebhooksUsecase() WebhooksUsecase {
 		usecases.Repositories.ConvoyRepository,
 		usecases.Repositories.MarbleDbRepository,
 		NewWebhookDeliveryService(usecases.Usecases.allowInsecureWebhookURLs),
-		usecases.Usecases.useNewWebhooks,
+		usecases.Usecases.webhookSystemMigrated,
 	)
 }
 

@@ -73,7 +73,7 @@ type WebhookEventsUsecase struct {
 	failedWebhooksRetryPageSize int
 	hasLicense                  bool
 	hasConvoyServerSetup        bool
-	useNewWebhooks              bool
+	webhookSystemMigrated       bool
 	publicApiAdaptor            types.PublicApiDataAdapter
 }
 
@@ -88,7 +88,7 @@ func NewWebhookEventsUsecase(
 	failedWebhooksRetryPageSize int,
 	hasLicense bool,
 	hasConvoyServerSetup bool,
-	useNewWebhooks bool,
+	webhookSystemMigrated bool,
 	publicApiAdaptor types.PublicApiDataAdapter,
 ) WebhookEventsUsecase {
 	if failedWebhooksRetryPageSize == 0 {
@@ -106,25 +106,25 @@ func NewWebhookEventsUsecase(
 		failedWebhooksRetryPageSize: failedWebhooksRetryPageSize,
 		hasLicense:                  hasLicense,
 		hasConvoyServerSetup:        hasConvoyServerSetup,
-		useNewWebhooks:              useNewWebhooks,
+		webhookSystemMigrated:       webhookSystemMigrated,
 		publicApiAdaptor:            publicApiAdaptor,
 	}
 }
 
 // Does nothing (returns nil) if the license is not active.
-// Routes to new webhook system if useNewWebhooks is enabled.
+// Routes to new webhook system if migration is complete, otherwise uses Convoy.
 func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 	ctx context.Context,
 	tx repositories.Transaction,
 	input models.WebhookEventCreate,
 ) error {
-	// Check license and setup
+	// Check license
 	if !usecase.hasLicense {
 		return nil
 	}
 
-	// If new webhooks enabled, use new system; otherwise require Convoy setup
-	if !usecase.useNewWebhooks && !usecase.hasConvoyServerSetup {
+	// If not migrated, require Convoy setup
+	if !usecase.webhookSystemMigrated && !usecase.hasConvoyServerSetup {
 		return nil
 	}
 
@@ -133,8 +133,8 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 		return err
 	}
 
-	// Route to new or old system based on feature flag
-	if usecase.useNewWebhooks {
+	// Route to new or old system based on migration status
+	if usecase.webhookSystemMigrated {
 		return usecase.createWebhookQueueItem(ctx, tx, input)
 	}
 
@@ -189,10 +189,10 @@ func (usecase WebhookEventsUsecase) createWebhookQueueItem(
 
 // SendWebhookEventAsync sends a webhook event asynchronously, with a new context and timeout. This is the public method that should be
 // used from other usecases.
-// When useNewWebhooks is enabled, this is a no-op since delivery is handled by River jobs.
+// When webhook system is migrated, this is a no-op since delivery is handled by River jobs.
 func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, webhookEventId string) {
 	// New webhook system uses River jobs for delivery, enqueued in CreateWebhookEvent
-	if usecase.useNewWebhooks {
+	if usecase.webhookSystemMigrated {
 		return
 	}
 
@@ -212,15 +212,10 @@ func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, w
 
 // RetrySendWebhookEvents retries sending webhook events that have failed to be sent.
 // It handles them in limited batches.
-// When useNewWebhooks is enabled, this is a no-op since River handles retries.
+// This always runs regardless of migration status to drain any remaining Convoy events.
 func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 	ctx context.Context,
 ) error {
-	// New webhook system uses River jobs for retries
-	if usecase.useNewWebhooks {
-		return nil
-	}
-
 	exec := usecase.executorFactory.NewExecutor()
 
 	pendingWebhookEvents, err := usecase.webhookEventsRepository.ListWebhookEvents(ctx, exec, models.WebhookEventFilters{
@@ -235,16 +230,11 @@ func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 }
 
 // RetrySendWebhookEventsForOrg retries sending webhook events for a specific organization.
-// When useNewWebhooks is enabled, this is a no-op since River handles retries.
+// This always runs regardless of migration status to drain any remaining Convoy events.
 func (usecase WebhookEventsUsecase) RetrySendWebhookEventsForOrg(
 	ctx context.Context,
 	orgId uuid.UUID,
 ) error {
-	// New webhook system uses River jobs for retries
-	if usecase.useNewWebhooks {
-		return nil
-	}
-
 	exec := usecase.executorFactory.NewExecutor()
 
 	pendingWebhookEvents, err := usecase.webhookEventsRepository.ListWebhookEvents(ctx, exec, models.WebhookEventFilters{
