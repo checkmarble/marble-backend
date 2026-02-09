@@ -382,7 +382,7 @@ func (uc EntityAnnotationUsecase) UpsertRiskTopicAnnotation(
 	ctx context.Context,
 	input models.ObjectRiskTopicUpsert,
 ) (models.EntityAnnotation, error) {
-	if err := uc.enforceSecurityAnnotation.WriteAnnotation(input.OrgId); err != nil {
+	if err := uc.enforceSecurityAnnotation.WriteAnnotation(input.OrgId, models.EntityAnnotationRiskTopic); err != nil {
 		return models.EntityAnnotation{}, errors.Wrap(models.ForbiddenError, err.Error())
 	}
 

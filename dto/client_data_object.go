@@ -209,14 +209,15 @@ func AdaptPivotObjectDto(p models.PivotObject) (PivotObject, error) {
 }
 
 type GroupedEntityAnnotations struct {
-	Comments []EntityAnnotationDto `json:"comments,omitzero"`
-	Tags     []EntityAnnotationDto `json:"tags,omitzero"`
-	Files    []EntityAnnotationDto `json:"files,omitzero"`
+	Comments   []EntityAnnotationDto `json:"comments,omitzero"`
+	Tags       []EntityAnnotationDto `json:"tags,omitzero"`
+	Files      []EntityAnnotationDto `json:"files,omitzero"`
+	RiskTopics *EntityAnnotationDto  `json:"risk_topics,omitempty"`
 }
 
 // Implements IsZero so that omitzero can be used when marshalling ClientObjectDetail
 func (g GroupedEntityAnnotations) IsZero() bool {
-	return len(g.Comments) == 0 && len(g.Tags) == 0 && len(g.Files) == 0
+	return len(g.Comments) == 0 && len(g.Tags) == 0 && len(g.Files) == 0 && g.RiskTopics == nil
 }
 
 func AdaptGroupedEntityAnnotations(a models.GroupedEntityAnnotations) (GroupedEntityAnnotations, error) {
@@ -246,6 +247,13 @@ func AdaptGroupedEntityAnnotations(a models.GroupedEntityAnnotations) (GroupedEn
 			return GroupedEntityAnnotations{}, err
 		}
 		out.Files[i] = dto
+	}
+	if a.RiskTopics != nil {
+		dto, err := AdaptEntityAnnotation(*a.RiskTopics)
+		if err != nil {
+			return GroupedEntityAnnotations{}, err
+		}
+		out.RiskTopics = &dto
 	}
 
 	return out, nil

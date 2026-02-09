@@ -114,9 +114,10 @@ type EntityAnnotationRiskTopicsFilter struct {
 }
 
 type GroupedEntityAnnotations struct {
-	Comments []EntityAnnotation
-	Tags     []EntityAnnotation
-	Files    []EntityAnnotation
+	Comments   []EntityAnnotation
+	Tags       []EntityAnnotation
+	Files      []EntityAnnotation
+	RiskTopics *EntityAnnotation
 }
 
 func GroupAnnotationsByType(annotations []EntityAnnotation) GroupedEntityAnnotations {
@@ -130,6 +131,8 @@ func GroupAnnotationsByType(annotations []EntityAnnotation) GroupedEntityAnnotat
 			grouped.Tags = append(grouped.Tags, annotation)
 		case EntityAnnotationFile:
 			grouped.Files = append(grouped.Files, annotation)
+		case EntityAnnotationRiskTopic:
+			grouped.RiskTopics = &annotation
 		}
 	}
 

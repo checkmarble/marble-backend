@@ -9,7 +9,7 @@ import (
 type EnforceSecurityAnnotation interface {
 	EnforceSecurity
 	DeleteAnnotation() error
-	WriteAnnotation(orgId uuid.UUID) error
+	WriteAnnotation(orgId uuid.UUID, kind models.EntityAnnotationType) error
 }
 
 type EnforceSecurityAnnotationImpl struct {
@@ -21,7 +21,13 @@ func (e *EnforceSecurityAnnotationImpl) DeleteAnnotation() error {
 	return e.Permission(models.ANNOTATION_DELETE)
 }
 
-func (e *EnforceSecurityAnnotationImpl) WriteAnnotation(orgId uuid.UUID) error {
-	return errors.Join(e.Permission(models.ANNOTATION_WRITE),
-		e.ReadOrganization(orgId))
+func (e *EnforceSecurityAnnotationImpl) WriteAnnotation(orgId uuid.UUID, kind models.EntityAnnotationType) error {
+	switch kind {
+	case models.EntityAnnotationRiskTopic:
+		return errors.Join(e.Permission(models.ANNOTATION_RISK_TOPICS_WRITE),
+			e.ReadOrganization(orgId))
+
+	default:
+		return e.ReadOrganization(orgId)
+	}
 }

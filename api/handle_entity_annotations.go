@@ -201,6 +201,11 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 
 		var annotation models.EntityAnnotation
 
+		var userId *models.UserId
+		if creds.ActorIdentity.UserId != "" {
+			userId = &creds.ActorIdentity.UserId
+		}
+
 		switch annotationType {
 		case models.EntityAnnotationRiskTopic:
 			// Risk topic annotations have special upsert semantics (one per object, merge topics)
@@ -210,7 +215,7 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 				return
 			}
 
-			upsertInput, err := riskTopicInput.Adapt(creds.OrganizationId, objectType, objectId, &creds.ActorIdentity.UserId)
+			upsertInput, err := riskTopicInput.Adapt(creds.OrganizationId, objectType, objectId, userId)
 			if err != nil {
 				presentError(ctx, c, err)
 				return
@@ -235,7 +240,7 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 				CaseId:         payload.CaseId,
 				AnnotationType: annotationType,
 				Payload:        parsedPayload,
-				AnnotatedBy:    &creds.ActorIdentity.UserId,
+				AnnotatedBy:    userId,
 			}
 
 			annotation, err = annotationsUsecase.Attach(ctx, req)
