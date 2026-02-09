@@ -552,7 +552,7 @@ paths:
       responses:
         "302":
           $ref: "#/components/responses/302"
-  
+
   /continuous-screenings/objects:
     post:
       summary: Add an object under continuous screening with given configuration
@@ -591,14 +591,14 @@ paths:
                 - required:
                     - object_payload
       responses:
-        '201':
+        "201":
           description: Monitored object created or updated. Returns screening result if screening was performed, or empty response if screening was skipped.
-        '400':
-          $ref: '#/components/responses/400'
-        '403':
-          $ref: '#/components/responses/403'
-        '409':
-          $ref: '#/components/responses/409'
+        "400":
+          $ref: "#/components/responses/400"
+        "403":
+          $ref: "#/components/responses/403"
+        "409":
+          $ref: "#/components/responses/409"
 
     delete:
       summary: Remove an object from continuous screening
@@ -613,28 +613,28 @@ paths:
         content:
           application/json:
             schema:
-                type: object
-                required:
-                  - object_type
-                  - object_id
-                  - config_stable_id
-                properties:
-                  object_type:
-                    type: string
-                  object_id:
-                    type: string
-                  config_stable_id:
-                    type: string
-                    format: uuid
+              type: object
+              required:
+                - object_type
+                - object_id
+                - config_stable_id
+              properties:
+                object_type:
+                  type: string
+                object_id:
+                  type: string
+                config_stable_id:
+                  type: string
+                  format: uuid
       responses:
-        '204':
+        "204":
           description: Monitored object deleted
-        '400':
-          $ref: '#/components/responses/400'
-        '403':
-          $ref: '#/components/responses/403'
-        '404':
-          $ref: '#/components/responses/404'
+        "400":
+          $ref: "#/components/responses/400"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
 
 components:
   securitySchemes:
@@ -651,7 +651,7 @@ components:
       description: Resource can be downloaded elsewhere
       headers:
         location:
-          schema: 
+          schema:
             type: string
             format: url
             description: The download URL of the file. If your HTTP client follows redirects, it will be downloaded directly.
@@ -805,6 +805,7 @@ components:
       type: object
       required:
         - id
+        - type
         - inbox
         - name
         - status
@@ -816,6 +817,9 @@ components:
         id:
           type: string
           format: uuid
+        type:
+          type: string
+          enum: [decision continuous_screening]
         inbox:
           $ref: "#/components/schemas/Ref"
         name:
@@ -882,35 +886,35 @@ components:
       type: string
       enum:
         [
-          'Thing',
-          'Address',
-          'Airplane',
-          'Asset',
-          'Associate',
-          'Company',
-          'CryptoWallet',
-          'Debt',
-          'Directorship',
-          'Employment',
-          'Family',
-          'Identification',
-          'LegalEntity',
-          'Membership',
-          'Occupancy',
-          'Organization',
-          'Ownership',
-          'Passport',
-          'Payment',
-          'Person',
-          'Position',
-          'PublicBody',
-          'Representation',
-          'Sanction',
-          'Security',
-          'Succession',
-          'UnknownLink',
-          'Vessel',
-          'Vehicle',
+          "Thing",
+          "Address",
+          "Airplane",
+          "Asset",
+          "Associate",
+          "Company",
+          "CryptoWallet",
+          "Debt",
+          "Directorship",
+          "Employment",
+          "Family",
+          "Identification",
+          "LegalEntity",
+          "Membership",
+          "Occupancy",
+          "Organization",
+          "Ownership",
+          "Passport",
+          "Payment",
+          "Person",
+          "Position",
+          "PublicBody",
+          "Representation",
+          "Sanction",
+          "Security",
+          "Succession",
+          "UnknownLink",
+          "Vessel",
+          "Vehicle",
         ]
     ScreeningQuery:
       type: object
@@ -919,7 +923,7 @@ components:
         - properties
       properties:
         schema:
-          $ref: '#/components/schemas/ScreeningEntity'
+          $ref: "#/components/schemas/ScreeningEntity"
         properties:
           type: object
           additionalProperties:
@@ -939,7 +943,7 @@ components:
             queries:
               type: object
               additionalProperties:
-                $ref: '#/components/schemas/ScreeningQuery'
+                $ref: "#/components/schemas/ScreeningQuery"
 
     ContinuousScreeningMatch:
       type: object
@@ -1034,7 +1038,7 @@ components:
             - object_updated
             - dataset_updated
         request:
-          $ref: '#/components/schemas/ScreeningRequest'
+          $ref: "#/components/schemas/ScreeningRequest"
         partial:
           type: boolean
         number_of_matches:
@@ -1042,7 +1046,7 @@ components:
         matches:
           type: array
           items:
-            $ref: '#/components/schemas/ContinuousScreeningMatch'
+            $ref: "#/components/schemas/ContinuousScreeningMatch"
         created_at:
           type: string
           format: date-time

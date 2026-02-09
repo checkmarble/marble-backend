@@ -12,6 +12,7 @@ import (
 
 type Case struct {
 	Id           string          `json:"id"`
+	Type         string          `json:"type"`
 	Inbox        Ref             `json:"inbox"`
 	Name         string          `json:"name"`
 	Assignee     *Ref            `json:"assignee"`
@@ -47,6 +48,7 @@ func AdaptCase(users []models.User, tags []models.Tag, referents map[string]mode
 	return func(c models.Case) Case {
 		out := Case{
 			Id:           c.Id,
+			Type:         c.Type.String(),
 			Name:         c.Name,
 			Status:       string(c.Status),
 			Outcome:      string(c.Outcome),
