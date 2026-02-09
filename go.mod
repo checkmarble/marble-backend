@@ -7,7 +7,7 @@ require (
 	cloud.google.com/go/iam v1.5.3
 	cloud.google.com/go/profiler v0.4.3
 	cloud.google.com/go/storage v1.59.1
-	firebase.google.com/go/v4 v4.18.0
+	firebase.google.com/go/v4 v4.19.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.54.0
 	github.com/Masterminds/semver v1.5.0
