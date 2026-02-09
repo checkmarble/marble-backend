@@ -1,7 +1,9 @@
 package api
 
 import (
+	"cmp"
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -22,6 +24,19 @@ func handleClient360ListTables(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
+
+		slices.SortFunc(tables, func(lhs, rhs models.Client360Table) int {
+			lalias, ralias := lhs.Alias, rhs.Alias
+
+			if lalias == "" {
+				lalias = lhs.Name
+			}
+			if ralias == "" {
+				ralias = rhs.Name
+			}
+
+			return cmp.Compare(lalias, ralias)
+		})
 
 		c.JSON(http.StatusOK, pure_utils.Map(tables, dto.AdaptClient360Table))
 	}

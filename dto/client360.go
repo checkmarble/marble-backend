@@ -3,20 +3,22 @@ package dto
 import "github.com/checkmarble/marble-backend/models"
 
 type Client360Table struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Alias       string `json:"alias"`
-	Description string `json:"description"`
-	Ready       bool   `json:"ready"`
+	Id           string `json:"id"`
+	Name         string `json:"name"`
+	Alias        string `json:"alias"`
+	CaptionField string `json:"caption_field"`
+	Description  string `json:"description"`
+	Ready        bool   `json:"ready"`
 }
 
 func AdaptClient360Table(table models.Client360Table) Client360Table {
 	return Client360Table{
-		Id:          table.ID,
-		Name:        table.Name,
-		Alias:       table.Alias,
-		Description: table.Description,
-		Ready:       table.IndexReady,
+		Id:           table.ID,
+		Name:         table.Name,
+		Alias:        table.Alias,
+		CaptionField: table.CaptionField,
+		Description:  table.Description,
+		Ready:        table.IndexReady,
 	}
 }
 
