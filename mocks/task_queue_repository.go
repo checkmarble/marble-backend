@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -141,5 +142,36 @@ func (m *TaskQueueRepository) EnqueueScheduledExecutionTask(
 	scheduledExecutionId string,
 ) error {
 	args := m.Called(ctx, tx, organizationId, scheduledExecutionId)
+	return args.Error(0)
+}
+
+func (m *TaskQueueRepository) EnqueueWebhookDispatch(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId uuid.UUID,
+	webhookEventId uuid.UUID,
+) error {
+	args := m.Called(ctx, tx, organizationId, webhookEventId)
+	return args.Error(0)
+}
+
+func (m *TaskQueueRepository) EnqueueWebhookDelivery(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId uuid.UUID,
+	deliveryId uuid.UUID,
+) error {
+	args := m.Called(ctx, tx, organizationId, deliveryId)
+	return args.Error(0)
+}
+
+func (m *TaskQueueRepository) EnqueueWebhookDeliveryAt(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId uuid.UUID,
+	deliveryId uuid.UUID,
+	scheduledAt time.Time,
+) error {
+	args := m.Called(ctx, tx, organizationId, deliveryId, scheduledAt)
 	return args.Error(0)
 }
