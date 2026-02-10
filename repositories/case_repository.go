@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
@@ -658,6 +659,56 @@ func (repo *MarbleDbRepository) GetNextCase(ctx context.Context, exec Executor, 
 	}
 
 	return nextCaseId, nil
+}
+
+func (repo *MarbleDbRepository) GetCasesRelatedToObject(ctx context.Context, exec Executor, orgId uuid.UUID, objectType, objectId string) ([]models.Case, error) {
+	sql := fmt.Sprintf(`
+		with
+			link_ids as (
+				select id
+				from data_model_links
+				where parent_table_id = (
+					select id
+					from data_model_tables
+					where organization_id = $1 and name = $2
+				)
+			),
+			pivot_ids as (
+				select p.id
+				from data_model_pivots p
+				inner join link_ids l on path_link_ids[cardinality(path_link_ids)] = l.id
+				where organization_id = $1
+			),
+			decisions as (
+				select distinct case_id
+				from decisions d
+				inner join pivot_ids as p on d.pivot_id = p.id and d.pivot_value = $3
+				where org_id = $1
+			)
+		select %s
+		from cases c
+		inner join decisions on c.id = decisions.case_id
+		order by c.created_at desc
+		limit %d
+	`, strings.Join(dbmodels.SelectCaseColumn, ","), 200)
+
+	rows, err := exec.Query(
+		ctx,
+		sql,
+		orgId,
+		objectType,
+		objectId,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	cases, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DBCase])
+	if err != nil {
+		return nil, err
+	}
+
+	return pure_utils.MapErr(cases, dbmodels.AdaptCase)
 }
 
 // Count the number of cases for each organization in the given time range, return a map of orgId to count

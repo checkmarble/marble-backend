@@ -71,3 +71,20 @@ func handleClient360SearchObjects(uc usecases.Usecases) func(c *gin.Context) {
 		})
 	}
 }
+
+func handleEntityRelatedCases(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		uc := usecasesWithCreds(ctx, uc)
+		caseUsecase := uc.NewCaseUseCase()
+
+		objectType, objectId := c.Param("object_type"), c.Param("object_id")
+
+		cases, err := caseUsecase.GetEntityRelatedCases(ctx, objectType, objectId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(cases, dto.AdaptCaseDto))
+	}
+}

@@ -103,6 +103,8 @@ type CaseUseCaseRepository interface {
 
 	// inboxes
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
+
+	GetCasesRelatedToObject(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, objectType, objectId string) ([]models.Case, error)
 }
 
 type CaseUsecaseScreeningRepository interface {
@@ -338,6 +340,31 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 	}
 
 	return c, nil
+}
+
+func (usecase *CaseUseCase) GetEntityRelatedCases(ctx context.Context, objectType, objectId string) ([]models.Case, error) {
+	orgId := usecase.enforceSecurity.OrgId()
+	exec := usecase.executorFactory.NewExecutor()
+
+	cases, err := usecase.repository.GetCasesRelatedToObject(ctx, exec, orgId, objectType, objectId)
+	if err != nil {
+		return nil, err
+	}
+
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	allowedCases := make([]models.Case, 0, len(cases))
+
+	for _, c := range cases {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err == nil {
+			allowedCases = append(allowedCases, c)
+		}
+	}
+
+	return allowedCases, nil
 }
 
 func (usecase *CaseUseCase) ListCaseDecisions(ctx context.Context, req models.CaseDecisionsRequest) ([]models.DecisionWithRulesAndScreeningsBaseInfo, bool, error) {
@@ -1192,8 +1219,7 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		c.Decisions = decisions
 
 	case models.CaseTypeContinuousScreening:
-		continuousScreeningsWithMatches, err :=
-			usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
+		continuousScreeningsWithMatches, err := usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
 		if err != nil {
 			return models.Case{}, err
 		}
