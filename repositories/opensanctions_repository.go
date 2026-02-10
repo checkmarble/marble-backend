@@ -455,7 +455,7 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg *models.ScreeningConfig
 		// Unless determined otherwise, we do not need those results that are *not*
 		// matches. They could still be filtered further down the chain, but we do not need them returned.
 		qs.Set("threshold", fmt.Sprintf("%.2f", float64(query.EffectiveThreshold)/100))
-		qs.Set("cutoff", fmt.Sprintf("%.2f", float64(query.OrgConfig.MatchThreshold)/100))
+		qs.Set("cutoff", fmt.Sprintf("%.2f", float64(query.EffectiveThreshold)/100))
 
 		if query.LimitOverride != nil {
 			qs.Set("limit", fmt.Sprintf("%d", *query.LimitOverride))
