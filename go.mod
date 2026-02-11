@@ -22,7 +22,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/disintegration/imaging v1.6.2
 	github.com/duckdb/duckdb-go/v2 v2.5.4
-	github.com/exaring/otelpgx v0.9.4
+	github.com/exaring/otelpgx v0.10.0
 	github.com/gabriel-vasile/mimetype v1.4.12
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/gen2brain/go-fitz v1.24.15
