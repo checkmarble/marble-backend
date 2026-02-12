@@ -8,9 +8,11 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pubapi/v1/params"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
@@ -33,7 +35,7 @@ func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody, true)
+		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody, models.IngestionOptions{ShouldScreen: true})
 		var validationError models.IngestionValidationErrors
 		if errors.As(err, &validationError) {
 			_, objectErr := validationError.GetSomeItem()
@@ -84,7 +86,7 @@ func handleIngestionPartialUpsert(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody, true, payload_parser.WithAllowPatch())
+		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody, models.IngestionOptions{ShouldScreen: true}, payload_parser.WithAllowPatch())
 		if presentIngestionValidationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
@@ -125,7 +127,7 @@ func handleIngestionMultiple(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody, true)
+		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody, models.IngestionOptions{ShouldScreen: true})
 		if presentIngestionValidationErrorMultiple(c, err) || presentError(ctx, c, err) {
 			return
 		}
@@ -153,7 +155,7 @@ func handleIngestionMultiplePartialUpsert(uc usecases.Usecases) func(c *gin.Cont
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody, true, payload_parser.WithAllowPatch())
+		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody, models.IngestionOptions{ShouldScreen: true}, payload_parser.WithAllowPatch())
 		if presentIngestionValidationErrorMultiple(c, err) || presentError(ctx, c, err) {
 			return
 		}
@@ -179,6 +181,12 @@ func handlePostCsvIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		}
 		userId := string(creds.ActorIdentity.UserId)
 
+		var p params.IngestionParams
+
+		if err := c.ShouldBindQuery(&p); presentError(ctx, c, err) {
+			return
+		}
+
 		file, _, err := c.Request.FormFile("file")
 		if err != nil {
 			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
@@ -189,9 +197,18 @@ func handlePostCsvIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		fileReader := csv.NewReader(pure_utils.NewReaderWithoutBom(file))
 		objectType := c.Param("object_type")
 
+		ingestionOptions := models.IngestionOptions{
+			ShouldMonitor: p.MonitorObjects,
+			ShouldScreen:  !p.SkipInitialScreening,
+		}
+
+		if p.MonitorObjects {
+			ingestionOptions.ContinuousScreeningId = uuid.MustParse(p.ContinuousConfigId)
+		}
+
 		ingestionUseCase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		uploadLog, err := ingestionUseCase.ValidateAndUploadIngestionCsv(ctx,
-			organizationId, userId, objectType, fileReader)
+			organizationId, userId, objectType, fileReader, ingestionOptions)
 
 		if presentError(ctx, c, err) {
 			return

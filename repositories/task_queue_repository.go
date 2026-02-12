@@ -94,6 +94,7 @@ type TaskQueueRepository interface {
 		tx Transaction,
 		organizationId uuid.UUID,
 		uploadLogId string,
+		ingestionOptions models.IngestionOptions,
 	) error
 	EnqueueScheduledExecutionTask(
 		ctx context.Context,
@@ -433,9 +434,11 @@ func (r riverRepository) EnqueueCsvIngestionTask(
 	tx Transaction,
 	organizationId uuid.UUID,
 	uploadLogId string,
+	ingestionOptions models.IngestionOptions,
 ) error {
 	res, err := r.client.InsertTx(ctx, tx.RawTx(), models.CsvIngestionArgs{
-		UploadLogId: uploadLogId,
+		UploadLogId:      uploadLogId,
+		IngestionOptions: ingestionOptions,
 	}, &river.InsertOpts{
 		Queue: organizationId.String(),
 	})

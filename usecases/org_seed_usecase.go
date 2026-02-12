@@ -68,7 +68,7 @@ func (uc OrgImportUsecase) Seed(ctx context.Context, spec dto.OrgImport, orgId u
 				return err
 			}
 
-			if _, err := uc.ingestionUsecase.IngestObject(ctx, orgId, table, object, false); err != nil {
+			if _, err := uc.ingestionUsecase.IngestObject(ctx, orgId, table, object, models.IngestionOptions{}); err != nil {
 				return err
 			}
 		}
@@ -100,7 +100,7 @@ func (uc OrgImportUsecase) Seed(ctx context.Context, spec dto.OrgImport, orgId u
 				return err
 			}
 
-			if _, err := uc.ingestionUsecase.IngestObject(ctx, orgId, table, object, false); err != nil {
+			if _, err := uc.ingestionUsecase.IngestObject(ctx, orgId, table, object, models.IngestionOptions{}); err != nil {
 				return err
 			}
 		}

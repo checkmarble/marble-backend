@@ -277,7 +277,7 @@ type ContinuousScreeningIngestionUsecase interface {
 		organizationId uuid.UUID,
 		objectType string,
 		objectBody json.RawMessage,
-		shouldScreen bool,
+		ingestionOptions models.IngestionOptions,
 		parserOpts ...payload_parser.ParserOpt,
 	) (int, error)
 }

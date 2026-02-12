@@ -52,6 +52,13 @@ type continuousScreeningClientDbRepository interface {
 		objectType string,
 		objectIds []string,
 	) ([]models.ContinuousScreeningMonitoredObject, error)
+	InsertContinuousScreeningObject(
+		ctx context.Context,
+		exec repositories.Executor,
+		objectType string,
+		objectId string,
+		configStableId uuid.UUID,
+	) error
 }
 
 type taskEnqueuer interface {
@@ -68,6 +75,7 @@ type taskEnqueuer interface {
 		tx repositories.Transaction,
 		organizationId uuid.UUID,
 		uploadLogId string,
+		ingestionOptions models.IngestionOptions,
 	) error
 }
 
@@ -91,7 +99,7 @@ func (usecase *IngestionUseCase) IngestObject(
 	organizationId uuid.UUID,
 	objectType string,
 	objectBody json.RawMessage,
-	shouldScreen bool,
+	ingestionOptions models.IngestionOptions,
 	parserOpts ...payload_parser.ParserOpt,
 ) (int, error) {
 	logger := utils.LoggerFromContext(ctx)
@@ -131,7 +139,7 @@ func (usecase *IngestionUseCase) IngestObject(
 	var ingestionResults models.IngestionResults
 	err = retryIngestion(ctx, func() error {
 		ingestionResults, err = usecase.insertEnumValuesAndIngest(ctx,
-			organizationId, []models.ClientObject{payload}, table)
+			organizationId, []models.ClientObject{payload}, table, ingestionOptions)
 		return err
 	})
 	if err != nil {
@@ -146,7 +154,7 @@ func (usecase *IngestionUseCase) IngestObject(
 		return 0, err
 	}
 	nbInsertedObjects := len(ingestionResults)
-	if shouldScreen {
+	if ingestionOptions.ShouldScreen {
 		configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, organizationId, objectType)
 		if err != nil {
 			return 0, err
@@ -172,7 +180,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 	organizationId uuid.UUID,
 	objectType string,
 	objectBody json.RawMessage,
-	shouldScreen bool,
+	ingestionOptions models.IngestionOptions,
 	parserOpts ...payload_parser.ParserOpt,
 ) (int, error) {
 	logger := utils.LoggerFromContext(ctx)
@@ -242,7 +250,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	var ingestionResults models.IngestionResults
 	err = retryIngestion(ctx, func() error {
-		ingestionResults, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+		ingestionResults, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table, ingestionOptions)
 		return err
 	})
 	if err != nil {
@@ -250,7 +258,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 	}
 	nbInsertedObjects := len(ingestionResults)
 
-	if shouldScreen {
+	if ingestionOptions.ShouldScreen {
 		configs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByObjectType(ctx, exec, organizationId, objectType)
 		if err != nil {
 			return 0, err
@@ -284,6 +292,7 @@ func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context,
 
 func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context,
 	organizationId uuid.UUID, userId, objectType string, fileReader *csv.Reader,
+	ingestionOptions models.IngestionOptions,
 ) (models.UploadLog, error) {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return models.UploadLog{}, err
@@ -402,7 +411,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			if err := usecase.uploadLogRepository.CreateUploadLog(ctx, tx, newUploadLoad); err != nil {
 				return models.UploadLog{}, err
 			}
-			if err := usecase.taskEnqueuer.EnqueueCsvIngestionTask(ctx, tx, organizationId, newUploadListId); err != nil {
+			if err := usecase.taskEnqueuer.EnqueueCsvIngestionTask(ctx, tx, organizationId, newUploadListId, ingestionOptions); err != nil {
 				return models.UploadLog{}, err
 			}
 			return usecase.uploadLogRepository.UploadLogById(ctx, tx, newUploadListId)
@@ -411,7 +420,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 // IngestDataFromCsvByUploadLogId processes a single upload log by its ID.
 // This is the main entry point for the CSV ingestion worker.
-func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(ctx context.Context, uploadLogId string) error {
+func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(ctx context.Context, uploadLogId string, ingestionOptions models.IngestionOptions) error {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start ingesting data from upload log %s", uploadLogId))
 
@@ -421,10 +430,10 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(ctx context.Cont
 		return err
 	}
 
-	return usecase.processUploadLog(ctx, uploadLog)
+	return usecase.processUploadLog(ctx, uploadLog, ingestionOptions)
 }
 
-func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog) error {
+func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog, ingestionOptions models.IngestionOptions) error {
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start processing UploadLog %s", uploadLog.Id))
@@ -475,7 +484,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		return err
 	}
 
-	out := usecase.readFileIngestObjects(ctx, exec, file.FileName, file.ReadCloser)
+	out := usecase.readFileIngestObjects(ctx, exec, file.FileName, file.ReadCloser, ingestionOptions)
 	if out.err != nil {
 		setToFailed(out.numRowsIngested, out.err)
 		return out.err
@@ -504,6 +513,7 @@ type ingestionResult struct {
 // an error occurred.
 func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
 	exec repositories.Executor, fileName string, fileReader io.Reader,
+	ingestionOptions models.IngestionOptions,
 ) ingestionResult {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fileName))
@@ -543,7 +553,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
 		}
 	}
 
-	return usecase.ingestObjectsFromCSV(ctx, organizationId, fileReader, table)
+	return usecase.ingestObjectsFromCSV(ctx, organizationId, fileReader, table, ingestionOptions)
 }
 
 func (usecase *IngestionUseCase) ingestObjectsFromCSV(
@@ -551,6 +561,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 	organizationId uuid.UUID,
 	fileReader io.Reader,
 	table models.Table,
+	ingestionOptions models.IngestionOptions,
 ) ingestionResult {
 	exec := usecase.executorFactory.NewExecutor()
 
@@ -631,7 +642,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 
 		var ingestionResults models.IngestionResults
 		if err := retryIngestion(iterationCtx, func() error {
-			ingestionResults, err = usecase.insertEnumValuesAndIngest(iterationCtx, organizationId, clientObjects, table)
+			ingestionResults, err = usecase.insertEnumValuesAndIngest(iterationCtx, organizationId, clientObjects, table, ingestionOptions)
 			return err
 		}); err != nil {
 			return ingestionResult{
@@ -815,6 +826,7 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	organizationId uuid.UUID,
 	payloads []models.ClientObject,
 	table models.Table,
+	ingestionOptions models.IngestionOptions,
 ) (models.IngestionResults, error) {
 	start := time.Now()
 
@@ -822,7 +834,24 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	var err error
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
 		ingestionResults, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
-		return err
+		if err != nil {
+			return err
+		}
+
+		for _, object := range payloads {
+			if ingestionOptions.ShouldMonitor {
+				if err := usecase.continuousScreeningClientRepository.InsertContinuousScreeningObject(ctx, tx,
+					table.Name,
+					object.Data["object_id"].(string),
+					ingestionOptions.ContinuousScreeningId); err != nil {
+					if !repositories.IsUniqueViolationError(err) {
+						return err
+					}
+				}
+			}
+		}
+
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -885,5 +914,5 @@ func (w *CsvIngestionWorker) Timeout(job *river.Job[models.CsvIngestionArgs]) ti
 }
 
 func (w *CsvIngestionWorker) Work(ctx context.Context, job *river.Job[models.CsvIngestionArgs]) error {
-	return w.ingestionUsecase.IngestDataFromCsvByUploadLogId(ctx, job.Args.UploadLogId)
+	return w.ingestionUsecase.IngestDataFromCsvByUploadLogId(ctx, job.Args.UploadLogId, job.Args.IngestionOptions)
 }

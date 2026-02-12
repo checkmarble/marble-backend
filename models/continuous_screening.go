@@ -45,8 +45,7 @@ func (stt ContinuousScreeningTriggerType) String() string {
 type CreateContinuousScreeningObject struct {
 	ObjectType     string
 	ConfigStableId uuid.UUID
-	ObjectId       *string
-	ObjectPayload  *json.RawMessage
+	ObjectId       string
 	SkipScreen     bool
 }
 
