@@ -218,6 +218,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleDismissContinuousScreening(uc))
 	router.POST("/continuous-screenings/:id/load-more", tom,
 		handleLoadMoreContinuousScreeningMatches(uc))
+	router.GET("/continuous-screenings/debug/update-jobs", tom,
+		handleListContinuousScreeningUpdateJobs(uc))
+	router.GET("/continuous-screenings/debug/delta-tracks", tom,
+		handleListContinuousScreeningDeltaTracks(uc))
 
 	router.GET("/object-metadata/object-type/:object-type/object-id/:object-id/type/:type",
 		tom, handleGetObjectMetadata(uc))
