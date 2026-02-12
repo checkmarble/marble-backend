@@ -3,6 +3,7 @@ package evaluate
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"slices"
 
 	"github.com/cockroachdb/errors"
@@ -29,25 +30,66 @@ func (f StringInList) Evaluate(ctx context.Context, arguments ast.Arguments) (an
 		return nil, nil
 	}
 
-	left, errLeft := adaptArgumentToString(leftAny)
-	right, errRight := adaptArgumentToListOfStrings(rightAny)
-
-	errs := MakeAdaptedArgsErrors([]error{errLeft, errRight})
-	if len(errs) > 0 {
-		return nil, errs
+	anyList, errList := adaptArgumentToListOfThings[any](rightAny)
+	if errList != nil {
+		return MakeEvaluateError(errors.Wrap(errList, "right argument is not a list"))
+	}
+	if len(anyList) == 0 {
+		return false, nil
 	}
 
-	switch f.Function {
-	case ast.FUNC_IS_IN_LIST:
-		return stringInList(left, right), nil
-	case ast.FUNC_IS_NOT_IN_LIST:
-		return !stringInList(left, right), nil
-	default:
-		return MakeEvaluateError(errors.New(fmt.Sprintf(
-			"StringInList does not support %s function", f.Function.DebugString())))
+	switch anyList[0].(type) {
+	case string:
+		left, errLeft := adaptArgumentToString(leftAny)
+		right, errRight := adaptArgumentToListOfStrings(rightAny)
+
+		errs := MakeAdaptedArgsErrors([]error{errLeft, errRight})
+		if len(errs) > 0 {
+			return nil, errs
+		}
+
+		switch f.Function {
+		case ast.FUNC_IS_IN_LIST:
+			return stringInList(left, right), nil
+		case ast.FUNC_IS_NOT_IN_LIST:
+			return !stringInList(left, right), nil
+		default:
+			return MakeEvaluateError(errors.New(fmt.Sprintf(
+				"StringInList does not support %s function", f.Function.DebugString())))
+		}
+
+	case netip.Prefix:
+		left, errLeft := adaptArgumentToIp(leftAny)
+		right, errRight := adaptArgumentToListOfCidrPrefixes(rightAny)
+
+		errs := MakeAdaptedArgsErrors([]error{errLeft, errRight})
+		if len(errs) > 0 {
+			return nil, errs
+		}
+
+		switch f.Function {
+		case ast.FUNC_IS_IN_LIST:
+			return isIpInCidr(left, right), nil
+		case ast.FUNC_IS_NOT_IN_LIST:
+			return !isIpInCidr(left, right), nil
+		default:
+			return MakeEvaluateError(errors.New(fmt.Sprintf(
+				"StringInList does not support %s function", f.Function.DebugString())))
+		}
 	}
+
+	return nil, nil
 }
 
 func stringInList(str string, list []string) bool {
 	return slices.Contains(list, str)
+}
+
+func isIpInCidr(ip netip.Addr, cidrs []netip.Prefix) bool {
+	for _, cidr := range cidrs {
+		if cidr.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }

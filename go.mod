@@ -15,6 +15,7 @@ require (
 	github.com/TwiN/deepmerge v0.2.2
 	github.com/adhocore/gronx v1.19.6
 	github.com/adrg/strutil v0.3.1
+	github.com/authenticvision/rgeo v1.4.0
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/biter777/countries v1.7.5
 	github.com/checkmarble/llmberjack v0.0.0-20250918140151-35a7e6d6fe5a
@@ -52,6 +53,7 @@ require (
 	github.com/oapi-codegen/oapi-codegen/v2 v2.5.1
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/ory/dockertest/v3 v3.12.0
+	github.com/oschwald/maxminddb-golang/v2 v2.1.1
 	github.com/pashagolub/pgxmock/v4 v4.9.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.26.0
@@ -64,6 +66,9 @@ require (
 	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.40.0
 	github.com/tidwall/gjson v1.18.0
+	github.com/twpayne/go-geom v1.6.0
+	github.com/twpayne/go-geos v0.20.2
+	github.com/twpayne/pgx-geos v1.0.1
 	github.com/vearne/gin-timeout v0.2.3
 	go.opentelemetry.io/contrib/detectors/gcp v1.39.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.64.0
@@ -188,6 +193,7 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang/geo v0.0.0-20230421003525-6adc56603217 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/flatbuffers v25.9.23+incompatible // indirect
 	github.com/google/go-cmp v0.7.0 // indirect

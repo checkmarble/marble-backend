@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"net/netip"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -171,7 +172,17 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 		}
 		newCustomListValueId := uuid.NewString()
 
-		err = usecase.CustomListRepository.AddCustomListValue(ctx, tx, addCustomListValue, newCustomListValueId, userId)
+		switch customList.Kind {
+		case models.CustomListText:
+		case models.CustomListCidrs:
+			if _, err := netip.ParsePrefix(addCustomListValue.Value); err != nil {
+				return models.CustomListValue{}, errors.Wrap(models.BadParameterError, "could not parse value to IP address")
+			}
+		default:
+			return models.CustomListValue{}, errors.Wrap(models.BadParameterError, "unknown custom list kind")
+		}
+
+		err = usecase.CustomListRepository.AddCustomListValue(ctx, tx, customList.Kind, addCustomListValue, newCustomListValueId, userId)
 		if err != nil {
 			return models.CustomListValue{}, err
 		}
@@ -207,7 +218,17 @@ func (usecase *CustomListUseCase) ReadCustomListValuesToCSV(ctx context.Context,
 
 	csvWriter := csv.NewWriter(w)
 	for _, customListValue := range customListValues {
-		if err := csvWriter.Write([]string{customListValue.Value}); err != nil {
+		if err := csvWriter.Write([]string{
+			func() string {
+				switch {
+				case customListValue.Value != nil:
+					return *customListValue.Value
+				case customListValue.CidrValue != nil:
+					return customListValue.CidrValue.String()
+				}
+				return ""
+			}(),
+		}); err != nil {
 			return "", err
 		}
 	}
@@ -263,8 +284,10 @@ func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Con
 			return err
 		}
 
-		newCustomListValuesToAdd, currentCustomListValueIdsToDelete :=
-			computeCustomListValueUpdates(customListValuesFromCSV, currentCustomListValues)
+		newCustomListValuesToAdd, currentCustomListValueIdsToDelete := computeCustomListValueUpdates(
+			customList.Kind,
+			customListValuesFromCSV,
+			currentCustomListValues)
 
 		newCustomListValuesInput := make([]models.BatchInsertCustomListValue, len(newCustomListValuesToAdd))
 		for i, customListValue := range newCustomListValuesToAdd {
@@ -275,6 +298,7 @@ func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Con
 		}
 
 		err = usecase.CustomListRepository.BatchInsertCustomListValues(ctx, tx,
+			customList.Kind,
 			customListID, newCustomListValuesInput, userId)
 		if err != nil {
 			return err
@@ -301,7 +325,9 @@ func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Con
 	return results, nil
 }
 
-func computeCustomListValueUpdates(customListValuesFromCSV []string,
+func computeCustomListValueUpdates(
+	kind models.CustomListKind,
+	customListValuesFromCSV []string,
 	currentCustomListValues []models.CustomListValue,
 ) ([]string, []string) {
 	newCustomListValuesMap := make(map[string]bool)
@@ -311,9 +337,18 @@ func computeCustomListValueUpdates(customListValuesFromCSV []string,
 
 	currentCustomListValueIdsToDelete := make([]string, 0)
 	for _, customListValue := range currentCustomListValues {
-		_, ok := newCustomListValuesMap[customListValue.Value]
+		key := ""
+
+		switch kind {
+		case models.CustomListText:
+			key = *customListValue.Value
+		case models.CustomListCidrs:
+			key = customListValue.CidrValue.String()
+		}
+
+		_, ok := newCustomListValuesMap[key]
 		if ok {
-			newCustomListValuesMap[customListValue.Value] = false
+			newCustomListValuesMap[key] = false
 		} else {
 			currentCustomListValueIdsToDelete = append(
 				currentCustomListValueIdsToDelete, customListValue.Id)
