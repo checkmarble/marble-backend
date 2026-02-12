@@ -6,6 +6,8 @@ import (
 
 type Role int
 
+// Do not remove or reorder entries here, even if a role if deleted, since the
+// value is used for identity.
 const (
 	NO_ROLE Role = iota
 	VIEWER
@@ -16,6 +18,7 @@ const (
 	MARBLE_ADMIN
 	TRANSFER_CHECK_API_CLIENT
 	TRANSFER_CHECK_USER
+	ANALYST
 )
 
 func GetValidUserRoles() []Role {
@@ -26,6 +29,7 @@ func GetValidUserRoles() []Role {
 		ADMIN,
 		MARBLE_ADMIN,
 		TRANSFER_CHECK_USER,
+		ANALYST,
 	}
 }
 
@@ -41,6 +45,8 @@ func (r Role) String() string {
 		return "NO_ROLE"
 	case VIEWER:
 		return "VIEWER"
+	case ANALYST:
+		return "ANALYST"
 	case BUILDER:
 		return "BUILDER"
 	case PUBLISHER:
@@ -61,7 +67,7 @@ func (r Role) String() string {
 }
 
 func (r Role) Permissions() []Permission {
-	permissions := ROLES_PERMISSIOMS[r]
+	permissions := ROLES_PERMISSIONS[r]
 	if permissions == nil {
 		return []Permission{}
 	}
@@ -76,6 +82,8 @@ func RoleFromString(s string) Role {
 	switch s {
 	case "VIEWER":
 		return VIEWER
+	case "ANALYST":
+		return ANALYST
 	case "BUILDER":
 		return BUILDER
 	case "PUBLISHER":
