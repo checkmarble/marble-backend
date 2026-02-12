@@ -19,6 +19,9 @@ jobs:
         with:
           go-version-file: ./go.mod
 
+      - name: Install native dependencies
+        run: sudo apt update && sudo apt install -y libgeos-dev
+
       - name: Build
         run: go build -v ./...
 
@@ -47,6 +50,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: ./go.mod
+
+      - name: Install native dependencies
+        run: sudo apt update && sudo apt install -y libgeos-dev
 
       - name: Build
         run: go build -v ./...
