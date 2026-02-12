@@ -5,6 +5,8 @@ ARG SEGMENT_WRITE_KEY=
 
 WORKDIR /go/src/app
 
+RUN apt update && apt install -y libgeos-dev libgeos3.11.1
+
 COPY go.mod go.sum /go/src/app/
 RUN go mod download -x
 
@@ -16,9 +18,11 @@ FROM gcr.io/distroless/cc:latest
 
 COPY --from=build /go/bin/app /
 COPY --from=build /usr/local/go/lib/time/zoneinfo.zip /
-ENV ZONEINFO=/zoneinfo.zip
+COPY --from=build /usr/lib/x86_64-linux-gnu/libgeos* /usr/lib/x86_64-linux-gnu/
 
+ENV ZONEINFO=/zoneinfo.zip
 ENV PORT=${PORT:-8080}
+
 EXPOSE $PORT
 
 ENTRYPOINT ["/app"]
