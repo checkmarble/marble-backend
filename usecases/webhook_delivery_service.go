@@ -23,11 +23,9 @@ const (
 	// Timeout for endpoint validation pings
 	ValidationPingTimeout = 10 * time.Second
 
-	// User agent for webhook requests
-	WebhookUserAgent = "Marble/1.0"
-
 	// Header names
 	HeaderConvoySignature  = "X-Convoy-Signature"
+	HeaderWebhookSignature = "Webhook-Signature" // Standard header, will become default
 	HeaderMarbleApiVersion = "X-Marble-Api-Version"
 	HeaderWebhookEventId   = "X-Webhook-Event-Id"
 	HeaderWebhookEventType = "X-Webhook-Event-Type"
@@ -46,11 +44,12 @@ type WebhookDeliveryService struct {
 	httpClient       *http.Client
 	signatureService *WebhookSignatureService
 	urlValidator     *WebhookURLValidator
+	marbleVersion    string
 }
 
 // NewWebhookDeliveryService creates a new webhook delivery service.
 // Set allowInsecureURLs=true only for local development (allows HTTP).
-func NewWebhookDeliveryService(allowInsecureURLs bool) *WebhookDeliveryService {
+func NewWebhookDeliveryService(allowInsecureURLs bool, marbleVersion string) *WebhookDeliveryService {
 	return &WebhookDeliveryService{
 		httpClient: &http.Client{
 			Timeout:       DefaultWebhookTimeout,
@@ -58,7 +57,16 @@ func NewWebhookDeliveryService(allowInsecureURLs bool) *WebhookDeliveryService {
 		},
 		signatureService: &WebhookSignatureService{},
 		urlValidator:     NewWebhookURLValidator(allowInsecureURLs),
+		marbleVersion:    marbleVersion,
 	}
+}
+
+// userAgent returns the User-Agent header value.
+func (s *WebhookDeliveryService) userAgent() string {
+	if s.marbleVersion == "" {
+		return "Marble"
+	}
+	return fmt.Sprintf("Marble/%s", s.marbleVersion)
 }
 
 // WebhookSendResult contains the result of a webhook delivery attempt.
@@ -105,10 +113,11 @@ func (s *WebhookDeliveryService) Send(
 	// Set headers
 	req.Header.Set(HeaderContentType, "application/json")
 	req.Header.Set(HeaderConvoySignature, signature)
+	req.Header.Set(HeaderWebhookSignature, signature) // Standard header for forward compatibility
 	req.Header.Set(HeaderMarbleApiVersion, event.ApiVersion)
 	req.Header.Set(HeaderWebhookEventId, event.Id.String())
 	req.Header.Set(HeaderWebhookEventType, event.EventType)
-	req.Header.Set("User-Agent", WebhookUserAgent)
+	req.Header.Set("User-Agent", s.userAgent())
 
 	logger.DebugContext(ctx, "Sending webhook",
 		"url", webhook.Url,
@@ -173,7 +182,7 @@ func (s *WebhookDeliveryService) ping(ctx context.Context, client *http.Client, 
 	if method == http.MethodPost {
 		req.Header.Set(HeaderContentType, "application/json")
 	}
-	req.Header.Set("User-Agent", WebhookUserAgent)
+	req.Header.Set("User-Agent", s.userAgent())
 
 	resp, err := client.Do(req)
 	if err != nil {

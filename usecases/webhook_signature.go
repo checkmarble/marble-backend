@@ -16,10 +16,10 @@ type WebhookSignatureService struct{}
 
 // Sign generates a Convoy-compatible signature header value.
 // Always uses advanced mode with timestamp for replay protection.
-// Format: t=<unix_timestamp>,v1=<sig1>,v1=<sig2>,...
+// Format: t=<unix_timestamp>,v1=<sig1>,v2=<sig2>,...
 //
 // The signature is computed over: "<timestamp>,<payload>"
-// Each active secret generates a separate v1= entry.
+// Each active secret generates a separate vi= entry (v1, v2, v3, etc.).
 func (s *WebhookSignatureService) Sign(payload []byte, secrets []models.NewWebhookSecret, timestamp int64) string {
 	if len(secrets) == 0 {
 		return ""
@@ -29,9 +29,9 @@ func (s *WebhookSignatureService) Sign(payload []byte, secrets []models.NewWebho
 	signedPayload := fmt.Sprintf("%d,%s", timestamp, string(payload))
 
 	var sigs []string
-	for _, secret := range secrets {
+	for i, secret := range secrets {
 		sig := s.computeHMAC([]byte(signedPayload), secret.Value)
-		sigs = append(sigs, fmt.Sprintf("v1=%s", sig))
+		sigs = append(sigs, fmt.Sprintf("v%d=%s", i+1, sig))
 	}
 
 	return fmt.Sprintf("t=%d,%s", timestamp, strings.Join(sigs, ","))
