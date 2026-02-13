@@ -478,19 +478,21 @@ func (usecase *usecase) CreateDataModelLink(ctx context.Context, link models.Dat
 	exec := usecase.executorFactory.NewExecutor()
 
 	// check existence of tables
-	if _, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, link.ChildTableID); err != nil {
+	childTableMeta, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, link.ChildTableID)
+	if err != nil {
 		return "", err
 	}
-	table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, link.ParentTableID)
+	parentTableMeta, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, link.ParentTableID)
 	if err != nil {
 		return "", err
 	}
 
 	// check existence of fields
-	if _, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, link.ChildFieldID); err != nil {
+	childFieldMeta, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, link.ChildFieldID)
+	if err != nil {
 		return "", err
 	}
-	field, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, link.ParentFieldID)
+	parentFieldMeta, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, link.ParentFieldID)
 	if err != nil {
 		return "", err
 	}
@@ -502,11 +504,23 @@ func (usecase *usecase) CreateDataModelLink(ctx context.Context, link models.Dat
 	if err != nil {
 		return "", err
 	}
-	parentTable := dataModel.Tables[table.Name]
-	parentField := parentTable.Fields[field.Name]
+	parentTable := dataModel.Tables[parentTableMeta.Name]
+	childTable := dataModel.Tables[childTableMeta.Name]
+	parentField := parentTable.Fields[parentFieldMeta.Name]
+	childField := childTable.Fields[childFieldMeta.Name]
+
+	if parentField.DataType != models.String {
+		return "", errors.Wrap(models.BadParameterError,
+			fmt.Sprintf("parent field must be a string, field %s is %s", parentFieldMeta.Name, parentFieldMeta.DataType.String()))
+	}
 	if parentField.UnicityConstraint != models.ActiveUniqueConstraint {
 		return "", errors.Wrap(models.BadParameterError,
-			fmt.Sprintf("parent field must be unique: field %s is not", field.Name))
+			fmt.Sprintf("parent field must be unique: field %s is not", parentFieldMeta.Name))
+	}
+
+	if childField.DataType != models.String {
+		return "", errors.Wrap(models.BadParameterError,
+			fmt.Sprintf("child field must be a string, field %s is %s", childFieldMeta.Name, childFieldMeta.DataType.String()))
 	}
 
 	linkId := uuid.NewString()
