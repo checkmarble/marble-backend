@@ -52,16 +52,9 @@ func TestWebhookSignatureService_Sign(t *testing.T) {
 		signature := service.Sign(payload, secrets, timestamp)
 
 		assert.NotEmpty(t, signature)
-		// Should have two v1= entries
+		// Should have v1= and v2= entries (incrementing version numbers)
 		assert.Contains(t, signature, "t=1706745600,v1=")
-		// Count v1= occurrences
-		count := 0
-		for i := 0; i < len(signature); i++ {
-			if i+3 <= len(signature) && signature[i:i+3] == "v1=" {
-				count++
-			}
-		}
-		assert.Equal(t, 2, count, "should have two v1= signatures")
+		assert.Contains(t, signature, ",v2=")
 	})
 
 	t.Run("returns empty string for no secrets", func(t *testing.T) {
