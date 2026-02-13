@@ -103,17 +103,24 @@ func (repo *ClientDbRepository) InsertContinuousScreeningObject(
 	objectType string,
 	objectId string,
 	configStableId uuid.UUID,
+	ignoreConflicts bool,
 ) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}
 
-	sql := fmt.Sprintf(
-		"INSERT INTO %s (id, object_type, object_id, config_stable_id) VALUES ($1, $2, $3, $4)",
+	sql := "INSERT INTO %s (id, object_type, object_id, config_stable_id) VALUES ($1, $2, $3, $4)"
+
+	if ignoreConflicts {
+		sql += " ON CONFLICT DO NOTHING"
+	}
+
+	query := fmt.Sprintf(
+		sql,
 		sanitizedTableName(exec, dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS),
 	)
 
-	_, err := exec.Exec(ctx, sql, uuid.Must(uuid.NewV7()), objectType, objectId, configStableId)
+	_, err := exec.Exec(ctx, query, uuid.Must(uuid.NewV7()), objectType, objectId, configStableId)
 	return err
 }
 

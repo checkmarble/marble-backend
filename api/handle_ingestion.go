@@ -198,12 +198,15 @@ func handlePostCsvIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		objectType := c.Param("object_type")
 
 		ingestionOptions := models.IngestionOptions{
-			ShouldMonitor: p.MonitorObjects,
-			ShouldScreen:  !p.SkipInitialScreening,
+			ShouldMonitor:          p.MonitorObjects,
+			ShouldScreen:           p.MonitorObjects && !p.SkipInitialScreening,
+			ContinuousScreeningIds: make([]uuid.UUID, len(p.ContinuousConfigIds)),
 		}
 
 		if p.MonitorObjects {
-			ingestionOptions.ContinuousScreeningId = uuid.MustParse(p.ContinuousConfigId)
+			for idx, configId := range p.ContinuousConfigIds {
+				ingestionOptions.ContinuousScreeningIds[idx] = uuid.MustParse(configId)
+			}
 		}
 
 		ingestionUseCase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
