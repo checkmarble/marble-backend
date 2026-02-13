@@ -236,7 +236,7 @@ func (repository *blobRepository) OpenStream(ctx context.Context, bucketUrl, key
 	}
 
 	return bucket.NewWriter(ctx, key, &blob.WriterOptions{
-		ContentDisposition: fmt.Sprintf("attachment; filename=\"%s\"", fileName),
+		ContentDisposition: fmt.Sprintf("inline; filename=\"%s\"", fileName),
 	})
 }
 
