@@ -50,12 +50,15 @@ func HandleIngestObject(uc usecases.Usecases, batch bool) gin.HandlerFunc {
 		}
 
 		ingestionOptions := models.IngestionOptions{
-			ShouldMonitor: p.MonitorObjects,
-			ShouldScreen:  !p.SkipInitialScreening,
+			ShouldMonitor:          p.MonitorObjects,
+			ShouldScreen:           p.MonitorObjects && !p.SkipInitialScreening,
+			ContinuousScreeningIds: make([]uuid.UUID, len(p.ContinuousConfigIds)),
 		}
 
 		if p.MonitorObjects {
-			ingestionOptions.ContinuousScreeningId = uuid.MustParse(p.ContinuousConfigId)
+			for idx, configId := range p.ContinuousConfigIds {
+				ingestionOptions.ContinuousScreeningIds[idx] = uuid.MustParse(configId)
+			}
 		}
 
 		partial := c.Request.Method == http.MethodPatch

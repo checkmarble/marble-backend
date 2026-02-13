@@ -87,6 +87,16 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningConfigByObjectTyp
 	return args.Get(0).([]models.ContinuousScreeningConfig), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) ListContinuousScreeningConfigByStableIds(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	stableIds []uuid.UUID,
+) ([]models.ContinuousScreeningConfig, error) {
+	args := m.Called(ctx, exec, orgId, stableIds)
+	return args.Get(0).([]models.ContinuousScreeningConfig), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) CreateContinuousScreeningConfig(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -438,8 +448,9 @@ func (m *ContinuousScreeningClientDbRepository) InsertContinuousScreeningObject(
 	tableName string,
 	objectId string,
 	configStableId uuid.UUID,
+	ignoreConflicts bool,
 ) error {
-	args := m.Called(ctx, exec, tableName, objectId, configStableId)
+	args := m.Called(ctx, exec, tableName, objectId, configStableId, ignoreConflicts)
 	return args.Error(0)
 }
 

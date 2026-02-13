@@ -3,9 +3,9 @@ package models
 import "github.com/google/uuid"
 
 type IngestionOptions struct {
-	ShouldMonitor         bool
-	ShouldScreen          bool
-	ContinuousScreeningId uuid.UUID
+	ShouldMonitor          bool
+	ShouldScreen           bool
+	ContinuousScreeningIds []uuid.UUID
 }
 
 type IngestionResult struct {

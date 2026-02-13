@@ -66,6 +66,26 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigByObjectType(
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
 }
 
+func (repo *MarbleDbRepository) ListContinuousScreeningConfigByStableIds(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	stableIds []uuid.UUID,
+) ([]models.ContinuousScreeningConfig, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningConfigColumnList...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Expr("stable_id = ANY(?)", stableIds)).
+		Where(squirrel.Eq{"enabled": true})
+
+	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
+}
+
 func (repo *MarbleDbRepository) GetContinuousScreeningConfigsByOrgId(
 	ctx context.Context,
 	exec Executor,

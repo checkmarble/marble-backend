@@ -118,6 +118,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 			table.Name,
 			objectId,
 			input.ConfigStableId,
+			false,
 		); err != nil {
 			return err
 		}

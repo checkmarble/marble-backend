@@ -171,7 +171,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
@@ -386,7 +386,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId).Return(&pgconn.PgError{
+		suite.objectType, suite.objectId, suite.configStableId, false).Return(&pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
 	})
 
@@ -516,7 +516,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 	}, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
@@ -656,7 +656,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 	}, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
@@ -1237,7 +1237,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}, nil)
 
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
@@ -1472,7 +1472,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
@@ -1571,7 +1571,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Note: screeningProvider.Search and repository.InsertContinuousScreening should NOT be called since SkipScreen is true
 
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,

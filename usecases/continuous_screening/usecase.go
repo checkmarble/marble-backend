@@ -236,6 +236,7 @@ type ContinuousScreeningClientDbRepository interface {
 		objectType string,
 		objectId string,
 		configStableId uuid.UUID,
+		ignoreConflicts bool,
 	) error
 	InsertContinuousScreeningAudit(
 		ctx context.Context,
