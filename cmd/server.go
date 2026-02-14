@@ -402,6 +402,15 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}
 	}
 
+	////////////////////////////////////////////////////////////
+	// Migrate Convoy webhooks to internal system (one-time)
+	////////////////////////////////////////////////////////////
+	if err := MigrateConvoyWebhooks(ctx, repositories, convoyConfiguration.APIUrl != ""); err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		// Don't fail startup, just log the error - migration can be retried
+		logger.ErrorContext(ctx, "Webhook migration failed", "error", err.Error())
+	}
+
 	router := api.InitRouterMiddlewares(ctx, apiConfig, apiConfig.DisableSegment,
 		deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, uc, deps.Authentication, deps.TokenHandler, logger)

@@ -35,3 +35,16 @@ func (repo *MarbleDbRepository) GetMetadata(ctx context.Context, exec Executor, 
 		dbmodels.AdaptMetadata,
 	)
 }
+
+func (repo *MarbleDbRepository) CreateMetadata(ctx context.Context, exec Executor, metadata models.Metadata) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Insert(dbmodels.TABLE_METADATA).
+		Columns("id", "org_id", "key", "value").
+		Values(metadata.ID, metadata.OrgID, string(metadata.Key), metadata.Value)
+
+	return ExecBuilder(ctx, exec, query)
+}
