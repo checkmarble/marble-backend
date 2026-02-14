@@ -47,17 +47,25 @@ type WebhookDeliveryService struct {
 	marbleVersion    string
 }
 
+// WebhookDeliveryConfig holds configuration for the webhook delivery service.
+type WebhookDeliveryConfig struct {
+	AllowInsecureURLs bool   // Allow HTTP URLs (development only)
+	MarbleVersion     string // Version string for User-Agent header
+	IPWhitelist       string // Comma-separated CIDR ranges to whitelist
+}
+
 // NewWebhookDeliveryService creates a new webhook delivery service.
-// Set allowInsecureURLs=true only for local development (allows HTTP).
-func NewWebhookDeliveryService(allowInsecureURLs bool, marbleVersion string) *WebhookDeliveryService {
+func NewWebhookDeliveryService(config WebhookDeliveryConfig) *WebhookDeliveryService {
+	whitelist := ParseCIDRList(config.IPWhitelist)
+
 	return &WebhookDeliveryService{
 		httpClient: &http.Client{
 			Timeout:       DefaultWebhookTimeout,
 			CheckRedirect: noRedirectPolicy,
 		},
 		signatureService: &WebhookSignatureService{},
-		urlValidator:     NewWebhookURLValidator(allowInsecureURLs),
-		marbleVersion:    marbleVersion,
+		urlValidator:     NewWebhookURLValidator(config.AllowInsecureURLs, whitelist),
+		marbleVersion:    config.MarbleVersion,
 	}
 }
 

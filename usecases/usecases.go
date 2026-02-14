@@ -46,8 +46,9 @@ type Usecases struct {
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
-	webhookSystemMigrated        bool // True when migrated to new internal webhook system
-	allowInsecureWebhookURLs     bool // Allow HTTP webhook URLs (dev only)
+	webhookSystemMigrated        bool   // True when migrated to new internal webhook system
+	allowInsecureWebhookURLs     bool   // Allow HTTP webhook URLs (dev only)
+	webhookIPWhitelist           string // Comma-separated CIDR ranges to whitelist for webhooks
 
 	rootExecutorFactory *executor_factory.IdentityExecutorFactory
 }
@@ -199,6 +200,15 @@ func WithAllowInsecureWebhookURLs(allow bool) Option {
 	}
 }
 
+// WithWebhookIPWhitelist sets a comma-separated list of CIDR ranges that are
+// allowed as webhook targets even if they would normally be blocked (e.g., private IPs).
+// This is useful for self-hosted deployments where webhooks need to reach internal services.
+func WithWebhookIPWhitelist(whitelist string) Option {
+	return func(o *options) {
+		o.webhookIPWhitelist = whitelist
+	}
+}
+
 type options struct {
 	appName                      string
 	apiVersion                   string
@@ -222,6 +232,7 @@ type options struct {
 	csCreateFullDatasetInterval   time.Duration
 	webhookSystemMigrated         bool
 	allowInsecureWebhookURLs      bool
+	webhookIPWhitelist            string
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -252,6 +263,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		csCreateFullDatasetInterval:  o.csCreateFullDatasetInterval,
 		webhookSystemMigrated:        o.webhookSystemMigrated,
 		allowInsecureWebhookURLs:     o.allowInsecureWebhookURLs,
+		webhookIPWhitelist:           o.webhookIPWhitelist,
 	}
 }
 
