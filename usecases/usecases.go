@@ -291,6 +291,10 @@ func (usecases Usecases) GetBlobHosts() []string {
 	return hosts
 }
 
+func (usecases Usecases) IsWebhookSystemMigrated() bool {
+	return usecases.webhookSystemMigrated
+}
+
 func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory {
 	if usecases.rootExecutorFactory != nil {
 		return usecases.rootExecutorFactory
