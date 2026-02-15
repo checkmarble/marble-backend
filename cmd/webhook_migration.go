@@ -14,7 +14,8 @@ import (
 )
 
 // MigrateConvoyWebhooks migrates webhooks from Convoy to the internal webhook system.
-// This is a one-time migration that should run at server startup.
+// This is a one-time migration that runs at worker startup (not server).
+// Running on worker ensures job handlers are ready before the system is marked as migrated.
 // It will be removed after a few releases.
 //
 // The migration:

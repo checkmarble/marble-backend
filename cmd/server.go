@@ -357,16 +357,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		return errors.New("cannot use OpenID Connect configuration without the appropriate license entitlement")
 	}
 
-	////////////////////////////////////////////////////////////
-	// Migrate Convoy webhooks to internal system (one-time)
-	// Must run BEFORE reading webhookSystemMigrated so usecases get the correct value
-	////////////////////////////////////////////////////////////
-	if err := MigrateConvoyWebhooks(ctx, repositories, convoyConfiguration.APIUrl != ""); err != nil {
-		utils.LogAndReportSentryError(ctx, err)
-		// Don't fail startup, just log the error - migration can be retried
-		logger.ErrorContext(ctx, "Webhook migration failed", "error", err.Error())
-	}
-
 	webhookSystemMigrated := IsWebhookSystemMigrated(ctx, repositories)
 
 	uc := usecases.NewUsecases(repositories,

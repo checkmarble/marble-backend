@@ -318,6 +318,17 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		return err
 	}
 
+	////////////////////////////////////////////////////////////
+	// Migrate Convoy webhooks to internal system (one-time)
+	// Must run on worker (not server) to ensure new job handlers are ready
+	// before the system is marked as migrated.
+	////////////////////////////////////////////////////////////
+	if err := MigrateConvoyWebhooks(ctx, repositories, convoyConfiguration.APIUrl != ""); err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		// Don't fail startup, just log the error - migration can be retried
+		logger.ErrorContext(ctx, "Webhook migration failed", "error", err.Error())
+	}
+
 	webhookSystemMigrated := IsWebhookSystemMigrated(ctx, repositories)
 
 	uc := usecases.NewUsecases(repositories,
