@@ -122,11 +122,17 @@ func migrateWebhook(
 		httpTimeout = *webhook.HttpTimeout
 	}
 
+	// Ensure event_types is never nil (empty means subscribe to all)
+	eventTypes := webhook.EventTypes
+	if eventTypes == nil {
+		eventTypes = []string{}
+	}
+
 	newWebhook := models.NewWebhook{
 		Id:                       webhookId,
 		OrganizationId:           webhook.OrganizationId,
 		Url:                      webhook.Url,
-		EventTypes:               webhook.EventTypes,
+		EventTypes:               eventTypes,
 		HttpTimeoutSeconds:       httpTimeout,
 		RateLimit:                webhook.RateLimit,
 		RateLimitDurationSeconds: webhook.RateLimitDuration,
