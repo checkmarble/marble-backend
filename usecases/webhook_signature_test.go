@@ -1,6 +1,9 @@
 package usecases
 
 import (
+	"encoding/base64"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -117,6 +120,68 @@ func TestWebhookSignatureService_Sign(t *testing.T) {
 		sig2 := service.Sign(payload, secrets, int64(1706745601))
 
 		assert.NotEqual(t, sig1, sig2)
+	})
+}
+
+func TestWebhookSignatureService_SignatureFormat(t *testing.T) {
+	service := &WebhookSignatureService{}
+
+	t.Run("signatures are valid base64 encoded", func(t *testing.T) {
+		payload := []byte(`{"event": "test"}`)
+		secrets := []models.NewWebhookSecret{
+			{
+				Id:        uuid.New(),
+				WebhookId: uuid.New(),
+				Value:     "test-secret-key",
+				CreatedAt: time.Now(),
+			},
+		}
+		timestamp := int64(1706745600)
+
+		signature := service.Sign(payload, secrets, timestamp)
+
+		// Extract the signature value after v1=
+		re := regexp.MustCompile(`v1=([A-Za-z0-9+/=]+)`)
+		matches := re.FindStringSubmatch(signature)
+		assert.Len(t, matches, 2, "should find v1= signature")
+
+		// Verify it's valid base64
+		sigValue := matches[1]
+		decoded, err := base64.StdEncoding.DecodeString(sigValue)
+		assert.NoError(t, err, "signature should be valid base64")
+		assert.Len(t, decoded, 32, "decoded SHA256 should be 32 bytes")
+	})
+
+	t.Run("signature format matches Convoy advanced mode", func(t *testing.T) {
+		payload := []byte(`{"event": "test"}`)
+		secrets := []models.NewWebhookSecret{
+			{
+				Id:        uuid.New(),
+				WebhookId: uuid.New(),
+				Value:     "secret1",
+				CreatedAt: time.Now(),
+			},
+			{
+				Id:        uuid.New(),
+				WebhookId: uuid.New(),
+				Value:     "secret2",
+				CreatedAt: time.Now().Add(-time.Hour),
+			},
+		}
+		timestamp := int64(1706745600)
+
+		signature := service.Sign(payload, secrets, timestamp)
+
+		// Format should be: t=<timestamp>,v1=<sig1>,v2=<sig2>
+		assert.True(t, strings.HasPrefix(signature, "t=1706745600,"), "should start with timestamp")
+
+		// Should have incrementing version numbers
+		parts := strings.Split(signature, ",")
+		assert.GreaterOrEqual(t, len(parts), 3, "should have timestamp and two signatures")
+
+		// Verify version numbering
+		assert.True(t, strings.HasPrefix(parts[1], "v1="), "first signature should be v1")
+		assert.True(t, strings.HasPrefix(parts[2], "v2="), "second signature should be v2")
 	})
 }
 

@@ -38,7 +38,8 @@ func init() {
 		// IPv6 reserved ranges
 		"::/128",       // Unspecified address
 		"::1/128",      // Loopback
-		"::ffff:0:0/96", // IPv4-mapped addresses
+		// Note: ::ffff:0:0/96 (IPv4-mapped) is NOT blocked because Go internally
+		// represents IPv4 as IPv4-mapped IPv6 and we already check IPv4 ranges above.
 		"64:ff9b::/96", // IPv4/IPv6 translation (RFC 6052)
 		"100::/64",     // Discard prefix (RFC 6666)
 		"2001::/32",    // Teredo tunneling
