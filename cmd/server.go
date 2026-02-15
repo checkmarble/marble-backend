@@ -357,6 +357,16 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		return errors.New("cannot use OpenID Connect configuration without the appropriate license entitlement")
 	}
 
+	////////////////////////////////////////////////////////////
+	// Migrate Convoy webhooks to internal system (one-time)
+	// Must run BEFORE reading webhookSystemMigrated so usecases get the correct value
+	////////////////////////////////////////////////////////////
+	if err := MigrateConvoyWebhooks(ctx, repositories, convoyConfiguration.APIUrl != ""); err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		// Don't fail startup, just log the error - migration can be retried
+		logger.ErrorContext(ctx, "Webhook migration failed", "error", err.Error())
+	}
+
 	webhookSystemMigrated := IsWebhookSystemMigrated(ctx, repositories)
 
 	uc := usecases.NewUsecases(repositories,
@@ -399,19 +409,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}); err != nil {
 			utils.LogAndReportSentryError(ctx, err)
 			return err
-		}
-	}
-
-	////////////////////////////////////////////////////////////
-	// Migrate Convoy webhooks to internal system (one-time)
-	// Temporary: requires ENABLE_WEBHOOK_MIGRATION=true to run
-	// This will become automatic after workers are deployed with new job handlers
-	////////////////////////////////////////////////////////////
-	if os.Getenv("ENABLE_WEBHOOK_MIGRATION") == "true" {
-		if err := MigrateConvoyWebhooks(ctx, repositories, convoyConfiguration.APIUrl != ""); err != nil {
-			utils.LogAndReportSentryError(ctx, err)
-			// Don't fail startup, just log the error - migration can be retried
-			logger.ErrorContext(ctx, "Webhook migration failed", "error", err.Error())
 		}
 	}
 

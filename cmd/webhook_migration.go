@@ -40,6 +40,10 @@ func MigrateConvoyWebhooks(ctx context.Context, repos repositories.Repositories,
 
 	logger.InfoContext(ctx, "Starting webhook migration from Convoy to internal system")
 
+	// Add timeout for Convoy API calls to prevent hanging on unreachable Convoy
+	convoyCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	exec, err := repos.ExecutorGetter.GetExecutor(ctx, models.DATABASE_SCHEMA_TYPE_MARBLE, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to get executor")
@@ -60,7 +64,7 @@ func MigrateConvoyWebhooks(ctx context.Context, repos repositories.Repositories,
 	var totalSkipped int
 
 	for _, org := range orgs {
-		convoyWebhooks, err := repos.ConvoyRepository.ListWebhooks(ctx, org.Id, null.String{})
+		convoyWebhooks, err := repos.ConvoyRepository.ListWebhooks(convoyCtx, org.Id, null.String{})
 		if err != nil {
 			logger.WarnContext(ctx, "Failed to fetch Convoy webhooks for organization",
 				"organization_id", org.Id,
