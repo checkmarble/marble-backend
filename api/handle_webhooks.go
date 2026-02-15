@@ -183,7 +183,7 @@ func handleCreateWebhookSecret(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"secret": secret})
+		c.JSON(http.StatusCreated, gin.H{"secret": dto.AdaptSecret(secret)})
 	}
 }
 
