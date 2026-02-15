@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -37,11 +38,11 @@ func (s *WebhookSignatureService) Sign(payload []byte, secrets []models.NewWebho
 	return fmt.Sprintf("t=%d,%s", timestamp, strings.Join(sigs, ","))
 }
 
-// computeHMAC computes HMAC-SHA256 and returns hex-encoded result.
+// computeHMAC computes HMAC-SHA256 and returns base64-encoded result.
 func (s *WebhookSignatureService) computeHMAC(payload []byte, secret string) string {
 	h := hmac.New(sha256.New, []byte(secret))
 	h.Write(payload)
-	return hex.EncodeToString(h.Sum(nil))
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
 // GenerateSecret generates a cryptographically secure random secret for webhook signing.
