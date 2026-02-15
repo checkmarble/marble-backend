@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 
 	"github.com/gin-gonic/gin"
@@ -162,7 +163,12 @@ func handleUpdateWebhook(uc usecases.Usecases) func(c *gin.Context) {
 func handleCreateWebhookSecret(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		webhookId := c.Param("webhook_id")
+
+		webhookId, err := uuid.Parse(c.Param("webhook_id"))
+		if err != nil {
+			presentError(ctx, c, models.NotFoundError)
+			return
+		}
 
 		var data dto.CreateWebhookSecretBody
 		if err := c.ShouldBindJSON(&data); err != nil && err.Error() != "EOF" {
@@ -184,12 +190,22 @@ func handleCreateWebhookSecret(uc usecases.Usecases) func(c *gin.Context) {
 func handleRevokeWebhookSecret(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		webhookId := c.Param("webhook_id")
-		secretId := c.Param("secret_id")
+
+		webhookId, err := uuid.Parse(c.Param("webhook_id"))
+		if err != nil {
+			presentError(ctx, c, models.NotFoundError)
+			return
+		}
+
+		secretId, err := uuid.Parse(c.Param("secret_id"))
+		if err != nil {
+			presentError(ctx, c, models.NotFoundError)
+			return
+		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
-		err := usecase.RevokeWebhookSecret(ctx, webhookId, secretId)
+		err = usecase.RevokeWebhookSecret(ctx, webhookId, secretId)
 		if presentError(ctx, c, err) {
 			return
 		}

@@ -422,22 +422,17 @@ func (usecase WebhooksUsecase) updateWebhookNew(
 // Only works for migrated webhooks.
 func (usecase WebhooksUsecase) CreateWebhookSecret(
 	ctx context.Context,
-	webhookId string,
+	webhookId uuid.UUID,
 	expireExistingInDays *int,
 ) (models.Secret, error) {
 	if !usecase.webhookSystemMigrated {
 		return models.Secret{}, errors.Wrap(models.BadParameterError, "secret rotation only available for migrated webhooks")
 	}
 
-	id, err := uuid.Parse(webhookId)
-	if err != nil {
-		return models.Secret{}, models.NotFoundError
-	}
-
 	exec := usecase.executorFactory.NewExecutor()
 
 	// Get webhook to check permissions
-	newWebhook, err := usecase.webhookRepository.GetWebhook(ctx, exec, id)
+	newWebhook, err := usecase.webhookRepository.GetWebhook(ctx, exec, webhookId)
 	if err != nil {
 		return models.Secret{}, models.NotFoundError
 	}
@@ -455,7 +450,7 @@ func (usecase WebhooksUsecase) CreateWebhookSecret(
 
 	newSecret := models.NewWebhookSecret{
 		Id:        uuid.Must(uuid.NewV7()),
-		WebhookId: id,
+		WebhookId: webhookId,
 		Value:     secretValue,
 		CreatedAt: time.Now(),
 	}
@@ -465,7 +460,7 @@ func (usecase WebhooksUsecase) CreateWebhookSecret(
 		// Expire existing secrets if requested
 		if expireExistingInDays != nil {
 			expiresAt := time.Now().AddDate(0, 0, *expireExistingInDays)
-			if err := usecase.webhookRepository.ExpireWebhookSecrets(ctx, tx, id, expiresAt); err != nil {
+			if err := usecase.webhookRepository.ExpireWebhookSecrets(ctx, tx, webhookId, expiresAt); err != nil {
 				return errors.Wrap(err, "error expiring existing secrets")
 			}
 		}
@@ -487,27 +482,17 @@ func (usecase WebhooksUsecase) CreateWebhookSecret(
 // Only works for migrated webhooks.
 func (usecase WebhooksUsecase) RevokeWebhookSecret(
 	ctx context.Context,
-	webhookId string,
-	secretId string,
+	webhookId uuid.UUID,
+	secretId uuid.UUID,
 ) error {
 	if !usecase.webhookSystemMigrated {
 		return errors.Wrap(models.BadParameterError, "secret revocation only available for migrated webhooks")
 	}
 
-	wId, err := uuid.Parse(webhookId)
-	if err != nil {
-		return models.NotFoundError
-	}
-
-	sId, err := uuid.Parse(secretId)
-	if err != nil {
-		return models.NotFoundError
-	}
-
 	exec := usecase.executorFactory.NewExecutor()
 
 	// Get webhook to check permissions
-	newWebhook, err := usecase.webhookRepository.GetWebhook(ctx, exec, wId)
+	newWebhook, err := usecase.webhookRepository.GetWebhook(ctx, exec, webhookId)
 	if err != nil {
 		return models.NotFoundError
 	}
@@ -518,12 +503,12 @@ func (usecase WebhooksUsecase) RevokeWebhookSecret(
 	}
 
 	// Get the secret to verify it belongs to this webhook and check if it's permanent
-	secret, err := usecase.webhookRepository.GetWebhookSecret(ctx, exec, sId)
+	secret, err := usecase.webhookRepository.GetWebhookSecret(ctx, exec, secretId)
 	if err != nil {
 		return models.NotFoundError
 	}
 
-	if secret.WebhookId != wId {
+	if secret.WebhookId != webhookId {
 		return models.NotFoundError
 	}
 
@@ -532,7 +517,7 @@ func (usecase WebhooksUsecase) RevokeWebhookSecret(
 	}
 
 	// Ensure at least one permanent secret remains after revocation
-	permanentCount, err := usecase.webhookRepository.CountPermanentWebhookSecrets(ctx, exec, wId)
+	permanentCount, err := usecase.webhookRepository.CountPermanentWebhookSecrets(ctx, exec, webhookId)
 	if err != nil {
 		return errors.Wrap(err, "error counting permanent secrets")
 	}
@@ -548,7 +533,7 @@ func (usecase WebhooksUsecase) RevokeWebhookSecret(
 			"cannot revoke: webhook must retain at least one permanent (non-expiring) secret")
 	}
 
-	if err := usecase.webhookRepository.RevokeWebhookSecret(ctx, exec, sId); err != nil {
+	if err := usecase.webhookRepository.RevokeWebhookSecret(ctx, exec, secretId); err != nil {
 		return errors.Wrap(err, "error revoking secret")
 	}
 

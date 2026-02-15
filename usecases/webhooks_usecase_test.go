@@ -104,7 +104,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_nominal() {
 	suite.webhookRepository.On("AddWebhookSecret", suite.ctx, suite.transaction,
 		mock.AnythingOfType("models.NewWebhookSecret")).Return(nil)
 
-	secret, err := suite.makeUsecase().CreateWebhookSecret(suite.ctx, suite.webhookId.String(), nil)
+	secret, err := suite.makeUsecase().CreateWebhookSecret(suite.ctx, suite.webhookId, nil)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -131,7 +131,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_with_expiration(
 		mock.AnythingOfType("models.NewWebhookSecret")).Return(nil)
 
 	expireDays := 7
-	secret, err := suite.makeUsecase().CreateWebhookSecret(suite.ctx, suite.webhookId.String(), &expireDays)
+	secret, err := suite.makeUsecase().CreateWebhookSecret(suite.ctx, suite.webhookId, &expireDays)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -143,20 +143,11 @@ func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_with_expiration(
 func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_not_migrated() {
 	usecase := WebhooksUsecase{webhookSystemMigrated: false}
 
-	_, err := usecase.CreateWebhookSecret(suite.ctx, suite.webhookId.String(), nil)
+	_, err := usecase.CreateWebhookSecret(suite.ctx, suite.webhookId, nil)
 
 	t := suite.T()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "only available for migrated webhooks")
-}
-
-func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_invalid_uuid() {
-	usecase := suite.makeUsecase()
-
-	_, err := usecase.CreateWebhookSecret(suite.ctx, "not-a-uuid", nil)
-
-	t := suite.T()
-	assert.ErrorIs(t, err, models.NotFoundError)
 }
 
 func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_webhook_not_found() {
@@ -164,7 +155,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_webhook_not_foun
 	suite.webhookRepository.On("GetWebhook", suite.ctx, suite.exec, suite.webhookId).
 		Return(models.NewWebhook{}, models.NotFoundError)
 
-	_, err := suite.makeUsecase().CreateWebhookSecret(suite.ctx, suite.webhookId.String(), nil)
+	_, err := suite.makeUsecase().CreateWebhookSecret(suite.ctx, suite.webhookId, nil)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, models.NotFoundError)
@@ -184,7 +175,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_security_error()
 	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).
 		Return(models.ForbiddenError)
 
-	_, err := suite.makeUsecase().CreateWebhookSecret(suite.ctx, suite.webhookId.String(), nil)
+	_, err := suite.makeUsecase().CreateWebhookSecret(suite.ctx, suite.webhookId, nil)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, models.ForbiddenError)
@@ -214,7 +205,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_nominal() {
 	suite.webhookRepository.On("CountPermanentWebhookSecrets", suite.ctx, suite.exec, suite.webhookId).Return(2, nil)
 	suite.webhookRepository.On("RevokeWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(nil)
 
-	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId.String(), suite.secretId.String())
+	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId, suite.secretId)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -243,7 +234,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_expiring_with_on
 	suite.webhookRepository.On("CountPermanentWebhookSecrets", suite.ctx, suite.exec, suite.webhookId).Return(1, nil)
 	suite.webhookRepository.On("RevokeWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(nil)
 
-	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId.String(), suite.secretId.String())
+	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId, suite.secretId)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -270,7 +261,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_fails_last_perma
 	suite.webhookRepository.On("GetWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(secret, nil)
 	suite.webhookRepository.On("CountPermanentWebhookSecrets", suite.ctx, suite.exec, suite.webhookId).Return(1, nil)
 
-	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId.String(), suite.secretId.String())
+	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId, suite.secretId)
 
 	t := suite.T()
 	assert.Error(t, err)
@@ -299,7 +290,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_fails_expiring_w
 	suite.webhookRepository.On("GetWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(secret, nil)
 	suite.webhookRepository.On("CountPermanentWebhookSecrets", suite.ctx, suite.exec, suite.webhookId).Return(0, nil)
 
-	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId.String(), suite.secretId.String())
+	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId, suite.secretId)
 
 	t := suite.T()
 	assert.Error(t, err)
@@ -311,29 +302,11 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_fails_expiring_w
 func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_not_migrated() {
 	usecase := WebhooksUsecase{webhookSystemMigrated: false}
 
-	err := usecase.RevokeWebhookSecret(suite.ctx, suite.webhookId.String(), suite.secretId.String())
+	err := usecase.RevokeWebhookSecret(suite.ctx, suite.webhookId, suite.secretId)
 
 	t := suite.T()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "only available for migrated webhooks")
-}
-
-func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_invalid_webhook_uuid() {
-	usecase := suite.makeUsecase()
-
-	err := usecase.RevokeWebhookSecret(suite.ctx, "not-a-uuid", suite.secretId.String())
-
-	t := suite.T()
-	assert.ErrorIs(t, err, models.NotFoundError)
-}
-
-func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_invalid_secret_uuid() {
-	usecase := suite.makeUsecase()
-
-	err := usecase.RevokeWebhookSecret(suite.ctx, suite.webhookId.String(), "not-a-uuid")
-
-	t := suite.T()
-	assert.ErrorIs(t, err, models.NotFoundError)
 }
 
 func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_secret_wrong_webhook() {
@@ -354,7 +327,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_secret_wrong_web
 	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).Return(nil)
 	suite.webhookRepository.On("GetWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(secret, nil)
 
-	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId.String(), suite.secretId.String())
+	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId, suite.secretId)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, models.NotFoundError)
@@ -381,7 +354,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_already_revoked(
 	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).Return(nil)
 	suite.webhookRepository.On("GetWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(secret, nil)
 
-	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId.String(), suite.secretId.String())
+	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId, suite.secretId)
 
 	t := suite.T()
 	assert.Error(t, err)
@@ -402,7 +375,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_security_error()
 	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).
 		Return(models.ForbiddenError)
 
-	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId.String(), suite.secretId.String())
+	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId, suite.secretId)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, models.ForbiddenError)
