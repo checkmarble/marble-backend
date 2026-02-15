@@ -66,6 +66,7 @@ CREATE INDEX idx_webhook_deliveries_pending ON webhook_deliveries(status, next_r
 CREATE UNIQUE INDEX idx_webhook_deliveries_unique ON webhook_deliveries(webhook_event_id, webhook_id);
 
 -- +goose Down
+DELETE FROM metadata WHERE key = 'webhook_system_migrated';
 DROP TABLE IF EXISTS webhook_deliveries;
 DROP TABLE IF EXISTS webhook_events_v2;
 DROP TABLE IF EXISTS webhook_secrets;
