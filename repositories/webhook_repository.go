@@ -315,16 +315,22 @@ func (repo *MarbleDbRepository) UpdateWebhookDeliveryAttempt(ctx context.Context
 // DeleteOldWebhookEventsV2Batch deletes up to `limit` events older than the specified time.
 // Deliveries are cascade-deleted via FK constraint.
 func (repo *MarbleDbRepository) DeleteOldWebhookEventsV2Batch(ctx context.Context, exec Executor, olderThan time.Time, limit int) (int64, error) {
-	sql := `
-		DELETE FROM webhook_events_v2
-		WHERE id IN (
-			SELECT id FROM webhook_events_v2
-			WHERE created_at < $1
-			LIMIT $2
-		)
-	`
+	subquery := NewQueryBuilder().
+		Select("id").
+		From(dbmodels.TABLE_WEBHOOK_EVENTS_V2).
+		Where(squirrel.Lt{"created_at": olderThan}).
+		Limit(uint64(limit))
 
-	result, err := exec.Exec(ctx, sql, olderThan, limit)
+	query := NewQueryBuilder().
+		Delete(dbmodels.TABLE_WEBHOOK_EVENTS_V2).
+		Where(squirrel.Expr("id IN (?)", subquery))
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return 0, errors.Wrap(err, "error building query")
+	}
+
+	result, err := exec.Exec(ctx, sql, args...)
 	if err != nil {
 		return 0, errors.Wrap(err, "error deleting old events")
 	}
