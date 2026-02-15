@@ -172,6 +172,47 @@ func (repo *MarbleDbRepository) RevokeWebhookSecret(ctx context.Context, exec Ex
 	return ExecBuilder(ctx, exec, query)
 }
 
+func (repo *MarbleDbRepository) GetWebhookSecret(ctx context.Context, exec Executor, secretId uuid.UUID) (models.NewWebhookSecret, error) {
+	query := NewQueryBuilder().
+		Select(dbmodels.WebhookSecretFields...).
+		From(dbmodels.TABLE_WEBHOOK_SECRETS).
+		Where(squirrel.Eq{"id": secretId})
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptNewWebhookSecret)
+}
+
+func (repo *MarbleDbRepository) ExpireWebhookSecrets(ctx context.Context, exec Executor, webhookId uuid.UUID, expiresAt time.Time) error {
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_WEBHOOK_SECRETS).
+		Set("expires_at", expiresAt).
+		Where(squirrel.Eq{"webhook_id": webhookId}).
+		Where(squirrel.Eq{"revoked_at": nil}).
+		Where(squirrel.Eq{"expires_at": nil})
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo *MarbleDbRepository) CountPermanentWebhookSecrets(ctx context.Context, exec Executor, webhookId uuid.UUID) (int, error) {
+	query := NewQueryBuilder().
+		Select("COUNT(*)").
+		From(dbmodels.TABLE_WEBHOOK_SECRETS).
+		Where(squirrel.Eq{"webhook_id": webhookId}).
+		Where(squirrel.Eq{"revoked_at": nil}).
+		Where(squirrel.Eq{"expires_at": nil})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return 0, errors.Wrap(err, "error building query")
+	}
+
+	var count int
+	err = exec.QueryRow(ctx, sql, args...).Scan(&count)
+	if err != nil {
+		return 0, errors.Wrap(err, "error counting permanent secrets")
+	}
+	return count, nil
+}
+
 // Webhook events (v2)
 
 func (repo *MarbleDbRepository) CreateWebhookEventV2(ctx context.Context, exec Executor, event models.WebhookEventV2) error {

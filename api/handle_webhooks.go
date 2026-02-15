@@ -158,3 +158,42 @@ func handleUpdateWebhook(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"webhook": dto.AdaptWebhook(webhook)})
 	}
 }
+
+func handleCreateWebhookSecret(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		webhookId := c.Param("webhook_id")
+
+		var data dto.CreateWebhookSecretBody
+		if err := c.ShouldBindJSON(&data); err != nil && err.Error() != "EOF" {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
+
+		secret, err := usecase.CreateWebhookSecret(ctx, webhookId, data.ExpireExistingInDays)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{"secret": secret})
+	}
+}
+
+func handleRevokeWebhookSecret(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		webhookId := c.Param("webhook_id")
+		secretId := c.Param("secret_id")
+
+		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
+
+		err := usecase.RevokeWebhookSecret(ctx, webhookId, secretId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}

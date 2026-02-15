@@ -32,6 +32,10 @@ type webhooksRepository interface {
 	DeleteWebhook(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
 	AddWebhookSecret(ctx context.Context, exec repositories.Executor, secret models.NewWebhookSecret) error
 	ListActiveWebhookSecrets(ctx context.Context, exec repositories.Executor, webhookId uuid.UUID) ([]models.NewWebhookSecret, error)
+	GetWebhookSecret(ctx context.Context, exec repositories.Executor, secretId uuid.UUID) (models.NewWebhookSecret, error)
+	RevokeWebhookSecret(ctx context.Context, exec repositories.Executor, secretId uuid.UUID) error
+	ExpireWebhookSecrets(ctx context.Context, exec repositories.Executor, webhookId uuid.UUID, expiresAt time.Time) error
+	CountPermanentWebhookSecrets(ctx context.Context, exec repositories.Executor, webhookId uuid.UUID) (int, error)
 }
 
 type enforceSecurityWebhook interface {
@@ -411,4 +415,142 @@ func (usecase WebhooksUsecase) updateWebhookNew(
 	updatedWebhook.Secrets = secrets
 
 	return adaptNewWebhookToLegacy(updatedWebhook), nil
+}
+
+// CreateWebhookSecret generates a new secret for a webhook.
+// If expireExistingInDays is provided, sets expiration on all existing non-revoked secrets without expiration.
+// Only works for migrated webhooks.
+func (usecase WebhooksUsecase) CreateWebhookSecret(
+	ctx context.Context,
+	webhookId string,
+	expireExistingInDays *int,
+) (models.Secret, error) {
+	if !usecase.webhookSystemMigrated {
+		return models.Secret{}, errors.Wrap(models.BadParameterError, "secret rotation only available for migrated webhooks")
+	}
+
+	id, err := uuid.Parse(webhookId)
+	if err != nil {
+		return models.Secret{}, models.NotFoundError
+	}
+
+	exec := usecase.executorFactory.NewExecutor()
+
+	// Get webhook to check permissions
+	newWebhook, err := usecase.webhookRepository.GetWebhook(ctx, exec, id)
+	if err != nil {
+		return models.Secret{}, models.NotFoundError
+	}
+
+	webhook := adaptNewWebhookToLegacy(newWebhook)
+	if err = usecase.enforceSecurity.CanModifyWebhook(ctx, webhook); err != nil {
+		return models.Secret{}, err
+	}
+
+	// Generate new secret
+	secretValue, err := generateSecretValue()
+	if err != nil {
+		return models.Secret{}, err
+	}
+
+	newSecret := models.NewWebhookSecret{
+		Id:        uuid.Must(uuid.NewV7()),
+		WebhookId: id,
+		Value:     secretValue,
+		CreatedAt: time.Now(),
+	}
+
+	// Create secret and optionally expire existing ones in a transaction
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// Expire existing secrets if requested
+		if expireExistingInDays != nil {
+			expiresAt := time.Now().AddDate(0, 0, *expireExistingInDays)
+			if err := usecase.webhookRepository.ExpireWebhookSecrets(ctx, tx, id, expiresAt); err != nil {
+				return errors.Wrap(err, "error expiring existing secrets")
+			}
+		}
+
+		if err := usecase.webhookRepository.AddWebhookSecret(ctx, tx, newSecret); err != nil {
+			return errors.Wrap(err, "error adding webhook secret")
+		}
+		return nil
+	})
+	if err != nil {
+		return models.Secret{}, err
+	}
+
+	return adaptNewSecretToLegacy(newSecret), nil
+}
+
+// RevokeWebhookSecret revokes a webhook secret.
+// Fails if this would leave the webhook without any permanent (non-expiring) secrets.
+// Only works for migrated webhooks.
+func (usecase WebhooksUsecase) RevokeWebhookSecret(
+	ctx context.Context,
+	webhookId string,
+	secretId string,
+) error {
+	if !usecase.webhookSystemMigrated {
+		return errors.Wrap(models.BadParameterError, "secret revocation only available for migrated webhooks")
+	}
+
+	wId, err := uuid.Parse(webhookId)
+	if err != nil {
+		return models.NotFoundError
+	}
+
+	sId, err := uuid.Parse(secretId)
+	if err != nil {
+		return models.NotFoundError
+	}
+
+	exec := usecase.executorFactory.NewExecutor()
+
+	// Get webhook to check permissions
+	newWebhook, err := usecase.webhookRepository.GetWebhook(ctx, exec, wId)
+	if err != nil {
+		return models.NotFoundError
+	}
+
+	webhook := adaptNewWebhookToLegacy(newWebhook)
+	if err = usecase.enforceSecurity.CanModifyWebhook(ctx, webhook); err != nil {
+		return err
+	}
+
+	// Get the secret to verify it belongs to this webhook and check if it's permanent
+	secret, err := usecase.webhookRepository.GetWebhookSecret(ctx, exec, sId)
+	if err != nil {
+		return models.NotFoundError
+	}
+
+	if secret.WebhookId != wId {
+		return models.NotFoundError
+	}
+
+	if secret.RevokedAt != nil {
+		return errors.Wrap(models.BadParameterError, "secret is already revoked")
+	}
+
+	// Ensure at least one permanent secret remains after revocation
+	permanentCount, err := usecase.webhookRepository.CountPermanentWebhookSecrets(ctx, exec, wId)
+	if err != nil {
+		return errors.Wrap(err, "error counting permanent secrets")
+	}
+
+	// If revoking a permanent secret, we'll have one less
+	remainingPermanent := permanentCount
+	if secret.ExpiresAt == nil {
+		remainingPermanent--
+	}
+
+	if remainingPermanent < 1 {
+		return errors.Wrap(models.BadParameterError,
+			"cannot revoke: webhook must retain at least one permanent (non-expiring) secret")
+	}
+
+	if err := usecase.webhookRepository.RevokeWebhookSecret(ctx, exec, sId); err != nil {
+		return errors.Wrap(err, "error revoking secret")
+	}
+
+	return nil
 }
