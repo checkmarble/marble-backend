@@ -162,6 +162,18 @@ func (repo *MarbleDbRepository) ListActiveWebhookSecrets(ctx context.Context, ex
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptNewWebhookSecret)
 }
 
+// ListAllWebhookSecrets returns all secrets for a webhook, including revoked ones.
+// Used by internal API to show secret history to users.
+func (repo *MarbleDbRepository) ListAllWebhookSecrets(ctx context.Context, exec Executor, webhookId uuid.UUID) ([]models.NewWebhookSecret, error) {
+	query := NewQueryBuilder().
+		Select(dbmodels.WebhookSecretFields...).
+		From(dbmodels.TABLE_WEBHOOK_SECRETS).
+		Where(squirrel.Eq{"webhook_id": webhookId}).
+		OrderBy("created_at DESC")
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptNewWebhookSecret)
+}
+
 func (repo *MarbleDbRepository) RevokeWebhookSecret(ctx context.Context, exec Executor, secretId uuid.UUID) error {
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_WEBHOOK_SECRETS).

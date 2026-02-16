@@ -49,6 +49,11 @@ func (m *WebhooksRepository) ListActiveWebhookSecrets(ctx context.Context, exec 
 	return args.Get(0).([]models.NewWebhookSecret), args.Error(1)
 }
 
+func (m *WebhooksRepository) ListAllWebhookSecrets(ctx context.Context, exec repositories.Executor, webhookId uuid.UUID) ([]models.NewWebhookSecret, error) {
+	args := m.Called(ctx, exec, webhookId)
+	return args.Get(0).([]models.NewWebhookSecret), args.Error(1)
+}
+
 func (m *WebhooksRepository) GetWebhookSecret(ctx context.Context, exec repositories.Executor, secretId uuid.UUID) (models.NewWebhookSecret, error) {
 	args := m.Called(ctx, exec, secretId)
 	return args.Get(0).(models.NewWebhookSecret), args.Error(1)

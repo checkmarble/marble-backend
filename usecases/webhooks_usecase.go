@@ -32,6 +32,7 @@ type webhooksRepository interface {
 	DeleteWebhook(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
 	AddWebhookSecret(ctx context.Context, exec repositories.Executor, secret models.NewWebhookSecret) error
 	ListActiveWebhookSecrets(ctx context.Context, exec repositories.Executor, webhookId uuid.UUID) ([]models.NewWebhookSecret, error)
+	ListAllWebhookSecrets(ctx context.Context, exec repositories.Executor, webhookId uuid.UUID) ([]models.NewWebhookSecret, error)
 	GetWebhookSecret(ctx context.Context, exec repositories.Executor, secretId uuid.UUID) (models.NewWebhookSecret, error)
 	RevokeWebhookSecret(ctx context.Context, exec repositories.Executor, secretId uuid.UUID) error
 	ExpireWebhookSecrets(ctx context.Context, exec repositories.Executor, webhookId uuid.UUID, expiresAt time.Time) error
@@ -155,8 +156,8 @@ func (usecase WebhooksUsecase) listWebhooksNew(ctx context.Context, organization
 
 	webhooks := make([]models.Webhook, 0, len(newWebhooks))
 	for _, nw := range newWebhooks {
-		// Fetch secrets for each webhook
-		secrets, err := usecase.webhookRepository.ListActiveWebhookSecrets(ctx, exec, nw.Id)
+		// Fetch all secrets (including revoked) for internal API
+		secrets, err := usecase.webhookRepository.ListAllWebhookSecrets(ctx, exec, nw.Id)
 		if err != nil {
 			return nil, errors.Wrap(err, "error listing webhook secrets")
 		}
@@ -285,7 +286,8 @@ func (usecase WebhooksUsecase) getWebhookNew(ctx context.Context, webhookId stri
 		return models.Webhook{}, models.NotFoundError
 	}
 
-	secrets, err := usecase.webhookRepository.ListActiveWebhookSecrets(ctx, exec, id)
+	// Return all secrets (including revoked) for the internal API
+	secrets, err := usecase.webhookRepository.ListAllWebhookSecrets(ctx, exec, id)
 	if err != nil {
 		return models.Webhook{}, errors.Wrap(err, "error listing webhook secrets")
 	}
@@ -366,6 +368,13 @@ func (usecase WebhooksUsecase) UpdateWebhook(
 func (usecase WebhooksUsecase) updateWebhookNew(
 	ctx context.Context, webhookId string, input models.WebhookUpdate,
 ) (models.Webhook, error) {
+	// Validate new URL if being changed
+	if input.Url != nil {
+		if err := usecase.endpointValidator.ValidateEndpoint(ctx, *input.Url); err != nil {
+			return models.Webhook{}, errors.Wrap(err, "webhook endpoint validation failed")
+		}
+	}
+
 	exec := usecase.executorFactory.NewExecutor()
 
 	id, err := uuid.Parse(webhookId)
@@ -402,13 +411,13 @@ func (usecase WebhooksUsecase) updateWebhookNew(
 		return models.Webhook{}, errors.Wrap(err, "error updating webhook")
 	}
 
-	// Fetch updated webhook with secrets
+	// Fetch updated webhook with secrets (including revoked for internal API)
 	updatedWebhook, err := usecase.webhookRepository.GetWebhook(ctx, exec, id)
 	if err != nil {
 		return models.Webhook{}, errors.Wrap(err, "error fetching updated webhook")
 	}
 
-	secrets, err := usecase.webhookRepository.ListActiveWebhookSecrets(ctx, exec, id)
+	secrets, err := usecase.webhookRepository.ListAllWebhookSecrets(ctx, exec, id)
 	if err != nil {
 		return models.Webhook{}, errors.Wrap(err, "error listing webhook secrets")
 	}
