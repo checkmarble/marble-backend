@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	linkedTableCheckBatchSize      = 1000
+	linkedTableCheckBatchSize      = 100
 	maxConcurrentLinkedTableChecks = 10
 )
 
@@ -424,73 +424,45 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 		return false, errors.Newf("target table %s not found in data model", nav.TargetTableName)
 	}
 
-	// Fetch objects in batches using cursor pagination
-	var cursorId *string
-	for {
-		// Check if context was cancelled by another goroutine
-		select {
-		case <-ctx.Done():
-			return false, ctx.Err()
-		default:
-		}
+	// Only fetch at most linkedCheckBatchSize objects, in case of more objects we can miss the risk topic
+	// but we want to avoid fetching too many objects for performance reasons.
+	objects, err := mlc.IngestedDataReader.ListIngestedObjects(
+		ctx,
+		execDbClient,
+		targetTable,
+		models.ExplorationOptions{
+			SourceTableName:   nav.SourceTableName,
+			FilterFieldName:   nav.TargetFieldName,
+			FilterFieldValue:  models.NewStringOrNumberFromString(sourceFieldValueStr),
+			OrderingFieldName: nav.OrderingFieldName,
+		},
+		nil,
+		linkedTableCheckBatchSize,
+		"object_id",
+	)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to list ingested objects")
+	}
 
-		// Request limit+1 to detect if there are more results
-		objects, err := mlc.IngestedDataReader.ListIngestedObjects(
-			ctx,
-			execDbClient,
-			targetTable,
-			models.ExplorationOptions{
-				SourceTableName:   nav.SourceTableName,
-				FilterFieldName:   nav.TargetFieldName,
-				FilterFieldValue:  models.NewStringOrNumberFromString(sourceFieldValueStr),
-				OrderingFieldName: nav.OrderingFieldName,
-			},
-			cursorId,
-			linkedTableCheckBatchSize+1,
-			"object_id",
-		)
+	if len(objects) == 0 {
+		return false, nil
+	}
+
+	// Extract object_ids from the batch
+	objectIds := make([]string, len(objects))
+	for i, obj := range objects {
+		objectIds[i] = obj.Data["object_id"].(string)
+	}
+
+	// Check if any of these objects have risk topics
+	if len(objectIds) > 0 {
+		hasRiskTopic, err := mlc.checkObjectIdsHaveRiskTopics(ctx, exec, config, linkedCheck.TableName, objectIds)
 		if err != nil {
-			return false, errors.Wrap(err, "failed to list ingested objects")
+			return false, err
 		}
-
-		if len(objects) == 0 {
-			break
+		if hasRiskTopic {
+			return true, nil
 		}
-
-		// Check if there are more results beyond this batch
-		hasMore := len(objects) > linkedTableCheckBatchSize
-		if hasMore {
-			objects = objects[:linkedTableCheckBatchSize] // Trim to batch size
-		}
-
-		// Extract object_ids from the batch
-		objectIds := make([]string, len(objects))
-		for i, obj := range objects {
-			objectIds[i] = obj.Data["object_id"].(string)
-		}
-
-		// Check if any of these objects have risk topics
-		if len(objectIds) > 0 {
-			hasRiskTopic, err := mlc.checkObjectIdsHaveRiskTopics(ctx, exec, config, linkedCheck.TableName, objectIds)
-			if err != nil {
-				return false, err
-			}
-			if hasRiskTopic {
-				return true, nil
-			}
-		}
-
-		// If no more results, we're done
-		if !hasMore {
-			break
-		}
-
-		// Set cursor for next batch (use the last object's object_id)
-		lastObjId, ok := objects[len(objects)-1].Data["object_id"].(string)
-		if !ok {
-			break
-		}
-		cursorId = &lastObjId
 	}
 
 	return false, nil

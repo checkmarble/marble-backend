@@ -401,7 +401,7 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation
 
 	// Step 2 Navigation: list ingested objects returns empty
 	ingestedDataReader.On("ListIngestedObjects", mock.Anything, mockExec, mock.Anything, mock.Anything,
-		(*string)(nil), linkedTableCheckBatchSize+1, []string{"object_id"}).
+		(*string)(nil), linkedTableCheckBatchSize, []string{"object_id"}).
 		Return([]models.DataModelObject{}, nil)
 
 	// Build data model with navigation option for the test
@@ -486,7 +486,7 @@ func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic
 
 	// Step 2 Navigation: list ingested objects returns multiple items
 	ingestedDataReader.On("ListIngestedObjects", mock.Anything, mockExec, mock.Anything, mock.Anything,
-		(*string)(nil), linkedTableCheckBatchSize+1, []string{"object_id"}).
+		(*string)(nil), linkedTableCheckBatchSize, []string{"object_id"}).
 		Return([]models.DataModelObject{
 			{Data: map[string]any{"object_id": "nav_object_001"}},
 			{Data: map[string]any{"object_id": "nav_object_002"}},
