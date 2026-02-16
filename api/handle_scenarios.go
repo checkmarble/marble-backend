@@ -181,8 +181,8 @@ func copyScenario(uc usecases.Usecases) func(c *gin.Context) {
 		scenarioId := c.Param("scenario_id")
 
 		var input dto.CopyScenarioBody
-		// Body is optional, so ignore EOF error
-		if err := c.ShouldBindJSON(&input); err != nil && err != io.EOF {
+		// Body is optional, so ignore EOF error (empty body)
+		if err := c.ShouldBindJSON(&input); err != nil && !errors.Is(err, io.EOF) {
 			c.Status(http.StatusBadRequest)
 			return
 		}
