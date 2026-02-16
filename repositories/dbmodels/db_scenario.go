@@ -19,6 +19,7 @@ type DBScenario struct {
 	Name              string      `db:"name"`
 	OrganizationId    uuid.UUID   `db:"org_id"`
 	TriggerObjectType string      `db:"trigger_object_type"`
+	Archived          bool        `db:"archived"`
 }
 
 const TABLE_SCENARIOS = "scenarios"
@@ -33,6 +34,7 @@ func AdaptScenario(dto DBScenario) (models.Scenario, error) {
 		Name:              dto.Name,
 		OrganizationId:    dto.OrganizationId,
 		TriggerObjectType: dto.TriggerObjectType,
+		Archived:          dto.Archived,
 	}
 
 	if dto.LiveVersionID.Valid {

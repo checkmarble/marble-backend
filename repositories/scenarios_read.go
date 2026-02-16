@@ -60,7 +60,7 @@ func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context,
 	return SqlToListOfModels(
 		ctx,
 		exec,
-		selectScenarios().Where(squirrel.Eq{"org_id": organizationId}).OrderBy("created_at DESC"),
+		selectScenarios().Where(squirrel.Eq{"org_id": organizationId}).OrderBy("archived ASC", "created_at DESC"),
 		dbmodels.AdaptScenario,
 	)
 }

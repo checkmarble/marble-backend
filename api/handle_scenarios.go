@@ -174,3 +174,30 @@ func listLatestScenarioRules(uc usecases.Usecases) gin.HandlerFunc {
 		c.JSON(http.StatusOK, pure_utils.Map(rules, dto.AdaptScenarioRuleLatestVersion))
 	}
 }
+
+func copyScenario(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		scenarioId := c.Param("scenario_id")
+
+		var input dto.CopyScenarioBody
+		// Body is optional, so ignore EOF error
+		if err := c.ShouldBindJSON(&input); err != nil && err != io.EOF {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioUsecase()
+		scenario, err := usecase.CopyScenario(ctx, scenarioId, input.Name)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		scenarioDto, err := dto.AdaptScenarioDto(scenario)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, scenarioDto)
+	}
+}

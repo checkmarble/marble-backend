@@ -151,6 +151,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/scenarios", tom, createScenario(uc))
 	router.GET("/scenarios/:scenario_id", tom, getScenario(uc))
 	router.PATCH("/scenarios/:scenario_id", tom, updateScenario(uc))
+	router.POST("/scenarios/:scenario_id/copy", tom, copyScenario(uc))
 	router.POST("/scenarios/:scenario_id/validate-ast", tom, validateScenarioAst(uc))
 	router.POST("/scenarios/:scenario_id/ast-ai-description", timeoutMiddleware(conf.BatchTimeout),
 		handleAiDescriptionAST(uc),

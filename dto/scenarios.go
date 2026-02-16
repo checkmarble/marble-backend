@@ -16,6 +16,7 @@ type ScenarioDto struct {
 	Name              string    `json:"name"`
 	OrganizationId    uuid.UUID `json:"organization_id"`
 	TriggerObjectType string    `json:"trigger_object_type"`
+	Archived          bool      `json:"archived"`
 }
 
 func AdaptScenarioDto(scenario models.Scenario) (ScenarioDto, error) {
@@ -27,6 +28,7 @@ func AdaptScenarioDto(scenario models.Scenario) (ScenarioDto, error) {
 		Name:              scenario.Name,
 		OrganizationId:    scenario.OrganizationId,
 		TriggerObjectType: scenario.TriggerObjectType,
+		Archived:          scenario.Archived,
 	}
 
 	return scenarioDto, nil
@@ -54,6 +56,7 @@ func AdaptCreateScenarioInput(input CreateScenarioBody, organizationId uuid.UUID
 type UpdateScenarioBody struct {
 	Description *string `json:"description"`
 	Name        *string `json:"name"`
+	Archived    *bool   `json:"archived"`
 }
 
 func AdaptUpdateScenarioInput(scenarioId string, input UpdateScenarioBody) models.UpdateScenarioInput {
@@ -61,9 +64,15 @@ func AdaptUpdateScenarioInput(scenarioId string, input UpdateScenarioBody) model
 		Id:          scenarioId,
 		Description: input.Description,
 		Name:        input.Name,
+		Archived:    input.Archived,
 	}
 
 	return parsedInput
+}
+
+// Copy scenario DTO
+type CopyScenarioBody struct {
+	Name *string `json:"name"`
 }
 
 type ScenarioRuleLatestVersion struct {
