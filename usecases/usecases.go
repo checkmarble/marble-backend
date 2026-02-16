@@ -229,10 +229,10 @@ type options struct {
 	analyticsConfig              infra.AnalyticsConfig
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
-	csCreateFullDatasetInterval   time.Duration
-	webhookSystemMigrated         bool
-	allowInsecureWebhookURLs      bool
-	webhookIPWhitelist            string
+	csCreateFullDatasetInterval  time.Duration
+	webhookSystemMigrated        bool
+	allowInsecureWebhookURLs     bool
+	webhookIPWhitelist           string
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {

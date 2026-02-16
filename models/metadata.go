@@ -10,8 +10,8 @@ import (
 type MetadataKey string
 
 const (
-	MetadataKeyDeploymentID              MetadataKey = "deployment_id"
-	MetadataKeyWebhookSystemMigrated     MetadataKey = "webhook_system_migrated"
+	MetadataKeyDeploymentID          MetadataKey = "deployment_id"
+	MetadataKeyWebhookSystemMigrated MetadataKey = "webhook_system_migrated"
 )
 
 type Metadata struct {

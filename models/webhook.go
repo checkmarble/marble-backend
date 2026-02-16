@@ -240,18 +240,18 @@ const (
 
 // NewWebhook represents a webhook endpoint in the new delivery system
 type NewWebhook struct {
-	Id                      uuid.UUID
-	OrganizationId          uuid.UUID
-	Url                     string
-	EventTypes              []string
-	HttpTimeoutSeconds      int
-	RateLimit               *int
+	Id                       uuid.UUID
+	OrganizationId           uuid.UUID
+	Url                      string
+	EventTypes               []string
+	HttpTimeoutSeconds       int
+	RateLimit                *int
 	RateLimitDurationSeconds *int
-	Enabled                 bool
-	Secrets                 []NewWebhookSecret
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
-	DeletedAt               *time.Time
+	Enabled                  bool
+	Secrets                  []NewWebhookSecret
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
+	DeletedAt                *time.Time
 }
 
 // NewWebhookSecret represents a signing secret for webhook signatures

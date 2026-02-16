@@ -979,10 +979,10 @@ func (usecases UsecasesWithCreds) NewWebhookDispatchWorker() *worker_jobs.Webhoo
 
 func (usecases UsecasesWithCreds) NewWebhookDeliveryWorker() *worker_jobs.WebhookDeliveryWorker {
 	deliveryService := NewWebhookDeliveryService(WebhookDeliveryConfig{
-			AllowInsecureURLs: usecases.Usecases.allowInsecureWebhookURLs,
-			MarbleVersion:     usecases.Usecases.apiVersion,
-			IPWhitelist:       usecases.Usecases.webhookIPWhitelist,
-		})
+		AllowInsecureURLs: usecases.Usecases.allowInsecureWebhookURLs,
+		MarbleVersion:     usecases.Usecases.apiVersion,
+		IPWhitelist:       usecases.Usecases.webhookIPWhitelist,
+	})
 
 	// Create a wrapper function to adapt the return type
 	deliveryFunc := func(ctx context.Context, webhook models.NewWebhook, secrets []models.NewWebhookSecret, event models.WebhookEventV2) worker_jobs.WebhookSendResult {

@@ -19,35 +19,35 @@ func init() {
 	// References: RFC 5735, RFC 6890, IANA Special-Purpose Address Registries
 	reserved := []string{
 		// IPv4 reserved ranges
-		"0.0.0.0/8",          // "This network" - includes 0.0.0.0 which routes to localhost
-		"10.0.0.0/8",         // Private (RFC1918)
-		"100.64.0.0/10",      // CGNAT - Carrier-grade NAT (RFC 6598)
-		"127.0.0.0/8",        // Loopback
-		"169.254.0.0/16",     // Link-local (includes cloud metadata 169.254.169.254)
-		"172.16.0.0/12",      // Private (RFC1918)
-		"192.0.0.0/24",       // IETF Protocol Assignments
-		"192.0.2.0/24",       // TEST-NET-1 - Documentation (RFC 5737)
-		"192.88.99.0/24",     // 6to4 Relay Anycast (deprecated)
-		"192.168.0.0/16",     // Private (RFC1918)
-		"198.18.0.0/15",      // Benchmark testing (RFC 2544)
-		"198.51.100.0/24",    // TEST-NET-2 - Documentation (RFC 5737)
-		"203.0.113.0/24",     // TEST-NET-3 - Documentation (RFC 5737)
-		"224.0.0.0/4",        // Multicast
-		"240.0.0.0/4",        // Reserved for future use (includes broadcast)
+		"0.0.0.0/8",       // "This network" - includes 0.0.0.0 which routes to localhost
+		"10.0.0.0/8",      // Private (RFC1918)
+		"100.64.0.0/10",   // CGNAT - Carrier-grade NAT (RFC 6598)
+		"127.0.0.0/8",     // Loopback
+		"169.254.0.0/16",  // Link-local (includes cloud metadata 169.254.169.254)
+		"172.16.0.0/12",   // Private (RFC1918)
+		"192.0.0.0/24",    // IETF Protocol Assignments
+		"192.0.2.0/24",    // TEST-NET-1 - Documentation (RFC 5737)
+		"192.88.99.0/24",  // 6to4 Relay Anycast (deprecated)
+		"192.168.0.0/16",  // Private (RFC1918)
+		"198.18.0.0/15",   // Benchmark testing (RFC 2544)
+		"198.51.100.0/24", // TEST-NET-2 - Documentation (RFC 5737)
+		"203.0.113.0/24",  // TEST-NET-3 - Documentation (RFC 5737)
+		"224.0.0.0/4",     // Multicast
+		"240.0.0.0/4",     // Reserved for future use (includes broadcast)
 
 		// IPv6 reserved ranges
-		"::/128",       // Unspecified address
-		"::1/128",      // Loopback
+		"::/128",  // Unspecified address
+		"::1/128", // Loopback
 		// Note: ::ffff:0:0/96 (IPv4-mapped) is NOT blocked because Go internally
 		// represents IPv4 as IPv4-mapped IPv6 and we already check IPv4 ranges above.
-		"64:ff9b::/96", // IPv4/IPv6 translation (RFC 6052)
-		"100::/64",     // Discard prefix (RFC 6666)
-		"2001::/32",    // Teredo tunneling
+		"64:ff9b::/96",  // IPv4/IPv6 translation (RFC 6052)
+		"100::/64",      // Discard prefix (RFC 6666)
+		"2001::/32",     // Teredo tunneling
 		"2001:db8::/32", // Documentation (RFC 3849)
-		"2002::/16",    // 6to4 (deprecated)
-		"fc00::/7",     // Unique local addresses
-		"fe80::/10",    // Link-local
-		"ff00::/8",     // Multicast
+		"2002::/16",     // 6to4 (deprecated)
+		"fc00::/7",      // Unique local addresses
+		"fe80::/10",     // Link-local
+		"ff00::/8",      // Multicast
 	}
 
 	for _, cidr := range reserved {
@@ -104,8 +104,8 @@ func isReservedIP(ip net.IP, whitelist []*net.IPNet) bool {
 
 // WebhookURLValidator validates webhook URLs for security concerns.
 type WebhookURLValidator struct {
-	allowInsecure bool          // Allow HTTP (only for development)
-	ipWhitelist   []*net.IPNet  // IP ranges to allow even if normally reserved
+	allowInsecure bool         // Allow HTTP (only for development)
+	ipWhitelist   []*net.IPNet // IP ranges to allow even if normally reserved
 }
 
 // NewWebhookURLValidator creates a validator.

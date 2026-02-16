@@ -12,16 +12,16 @@ import (
 // DB models for new webhook delivery system
 
 type DBNewWebhook struct {
-	Id                       uuid.UUID    `db:"id"`
-	OrganizationId           uuid.UUID    `db:"organization_id"`
-	Url                      string       `db:"url"`
-	EventTypes               []string     `db:"event_types"`
-	HttpTimeoutSeconds       pgtype.Int4  `db:"http_timeout_seconds"`
-	RateLimit                pgtype.Int4  `db:"rate_limit"`
-	RateLimitDurationSeconds pgtype.Int4  `db:"rate_limit_duration_seconds"`
-	Enabled                  bool         `db:"enabled"`
-	CreatedAt                time.Time    `db:"created_at"`
-	UpdatedAt                time.Time    `db:"updated_at"`
+	Id                       uuid.UUID          `db:"id"`
+	OrganizationId           uuid.UUID          `db:"organization_id"`
+	Url                      string             `db:"url"`
+	EventTypes               []string           `db:"event_types"`
+	HttpTimeoutSeconds       pgtype.Int4        `db:"http_timeout_seconds"`
+	RateLimit                pgtype.Int4        `db:"rate_limit"`
+	RateLimitDurationSeconds pgtype.Int4        `db:"rate_limit_duration_seconds"`
+	Enabled                  bool               `db:"enabled"`
+	CreatedAt                time.Time          `db:"created_at"`
+	UpdatedAt                time.Time          `db:"updated_at"`
 	DeletedAt                pgtype.Timestamptz `db:"deleted_at"`
 }
 
