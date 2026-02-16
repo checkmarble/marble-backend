@@ -80,11 +80,6 @@ type webhookDeliveryTaskQueue interface {
 		organizationId uuid.UUID, deliveryId uuid.UUID, scheduledAt time.Time) error
 }
 
-// webhookOrganizationRepository defines the interface for getting organization data.
-type webhookOrganizationRepository interface {
-	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
-}
-
 // WebhookDeliveryServiceFunc is a function type for webhook delivery to avoid import cycles.
 type WebhookDeliveryServiceFunc func(ctx context.Context, webhook models.NewWebhook,
 	secrets []models.NewWebhookSecret, event models.WebhookEventV2) WebhookSendResult
@@ -94,7 +89,6 @@ type WebhookDeliveryWorker struct {
 	river.WorkerDefaults[models.WebhookDeliveryJobArgs]
 
 	webhookRepository  webhookDeliveryRepository
-	orgRepository      webhookOrganizationRepository
 	taskQueue          webhookDeliveryTaskQueue
 	deliveryFunc       WebhookDeliveryServiceFunc
 	executorFactory    executor_factory.ExecutorFactory
@@ -105,7 +99,6 @@ type WebhookDeliveryWorker struct {
 // NewWebhookDeliveryWorker creates a new webhook delivery worker.
 func NewWebhookDeliveryWorker(
 	webhookRepository webhookDeliveryRepository,
-	orgRepository webhookOrganizationRepository,
 	taskQueue webhookDeliveryTaskQueue,
 	deliveryFunc WebhookDeliveryServiceFunc,
 	executorFactory executor_factory.ExecutorFactory,
@@ -113,7 +106,6 @@ func NewWebhookDeliveryWorker(
 ) *WebhookDeliveryWorker {
 	return &WebhookDeliveryWorker{
 		webhookRepository:  webhookRepository,
-		orgRepository:      orgRepository,
 		taskQueue:          taskQueue,
 		deliveryFunc:       deliveryFunc,
 		executorFactory:    executorFactory,
