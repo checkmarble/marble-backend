@@ -44,7 +44,7 @@ func (f HasIpFlag) Evaluate(ctx context.Context, args ast.Arguments) (any, []err
 	metadata := f.PayloadEnricher.EnrichIp(ip)
 
 	if metadata == nil {
-		return nil, errs
+		return false, nil
 	}
 
 	switch flag {
