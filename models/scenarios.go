@@ -39,6 +39,7 @@ type Scenario struct {
 	Name              string
 	OrganizationId    uuid.UUID
 	TriggerObjectType string
+	Archived          bool
 }
 
 type CreateScenarioInput struct {
@@ -52,6 +53,7 @@ type UpdateScenarioInput struct {
 	Id          string
 	Description *string
 	Name        *string
+	Archived    *bool
 }
 
 type ListAllScenariosFilters struct {

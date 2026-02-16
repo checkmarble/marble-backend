@@ -60,6 +60,10 @@ func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, exec Executo
 		sql = sql.Set("name", scenario.Name)
 		countApply++
 	}
+	if scenario.Archived != nil {
+		sql = sql.Set("archived", *scenario.Archived)
+		countApply++
+	}
 
 	if countApply == 0 {
 		return nil
