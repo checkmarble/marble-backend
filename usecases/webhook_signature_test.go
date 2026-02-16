@@ -60,14 +60,14 @@ func TestWebhookSignatureService_Sign(t *testing.T) {
 		assert.Contains(t, signature, ",v2=")
 	})
 
-	t.Run("returns empty string for no secrets", func(t *testing.T) {
+	t.Run("returns clearly invalid signature for no secrets", func(t *testing.T) {
 		payload := []byte(`{"event": "test"}`)
 		secrets := []models.NewWebhookSecret{}
 		timestamp := int64(1706745600)
 
 		signature := service.Sign(payload, secrets, timestamp)
 
-		assert.Empty(t, signature)
+		assert.Contains(t, signature, "v1=missing-secret")
 	})
 
 	t.Run("produces consistent signatures", func(t *testing.T) {
