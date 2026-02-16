@@ -15,8 +15,7 @@ import (
 const (
 	WEBHOOK_CLEANUP_INTERVAL = 1 * time.Hour
 	WEBHOOK_CLEANUP_TIMEOUT  = 5 * time.Minute
-	// WEBHOOK_RETENTION_PERIOD = 30 * 24 * time.Hour // 30 days
-	WEBHOOK_RETENTION_PERIOD = 5 * time.Second // 30 days
+	WEBHOOK_RETENTION_PERIOD = 30 * 24 * time.Hour // 30 days
 	WEBHOOK_CLEANUP_QUEUE    = "webhook_cleanup"
 	WEBHOOK_CLEANUP_BATCH    = 1000
 )

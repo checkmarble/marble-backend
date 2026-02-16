@@ -26,10 +26,9 @@ type APIOrganizationFeatureAccess struct {
 
 func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOrganizationFeatureAccess {
 	return APIOrganizationFeatureAccess{
-		TestRun:   f.TestRun.String(),
-		Workflows: f.Workflows.String(),
-		// Webhooks:            f.Webhooks.String(),
-		Webhooks:            "allowed",
+		TestRun:             f.TestRun.String(),
+		Workflows:           f.Workflows.String(),
+		Webhooks:            f.Webhooks.String(),
 		RuleSnoozes:         f.RuleSnoozes.String(),
 		Roles:               f.Roles.String(),
 		Analytics:           f.Analytics.String(),

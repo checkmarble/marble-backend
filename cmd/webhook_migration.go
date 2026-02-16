@@ -27,6 +27,11 @@ import (
 func MigrateConvoyWebhooks(ctx context.Context, repos repositories.Repositories, hasConvoyServerSetup bool) error {
 	logger := utils.LoggerFromContext(ctx)
 
+	// Check if migration is enabled via env var
+	if !utils.GetEnv("ENABLE_WEBHOOK_MIGRATION", false) {
+		return nil
+	}
+
 	// Check if already migrated
 	if IsWebhookSystemMigrated(ctx, repos) {
 		logger.InfoContext(ctx, "Webhook system already migrated, skipping migration")
@@ -67,10 +72,7 @@ func MigrateConvoyWebhooks(ctx context.Context, repos repositories.Repositories,
 	for _, org := range orgs {
 		convoyWebhooks, err := repos.ConvoyRepository.ListWebhooks(convoyCtx, org.Id, null.String{})
 		if err != nil {
-			logger.WarnContext(ctx, "Failed to fetch Convoy webhooks for organization",
-				"organization_id", org.Id,
-				"error", err.Error())
-			continue
+			return errors.Wrapf(err, "failed to fetch Convoy webhooks for organization %s", org.Id)
 		}
 
 		for _, webhook := range convoyWebhooks {

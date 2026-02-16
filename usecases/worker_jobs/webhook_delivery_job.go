@@ -197,12 +197,13 @@ func (w *WebhookDeliveryWorker) Work(ctx context.Context, job *river.Job[models.
 	// Schedule retry with backoff
 	nextRetryAt := time.Now().Add(CalculateBackoff(newAttempts))
 
-	err = w.webhookRepository.UpdateWebhookDeliveryAttempt(ctx, exec, delivery.Id, errMsg, statusCode, newAttempts, nextRetryAt)
-	if err != nil {
-		return errors.Wrap(err, "failed to update delivery attempt")
-	}
-
 	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		err = w.webhookRepository.UpdateWebhookDeliveryAttempt(ctx, tx, delivery.Id,
+			errMsg, statusCode, newAttempts, nextRetryAt)
+		if err != nil {
+			return errors.Wrap(err, "failed to update delivery attempt")
+		}
+
 		return w.taskQueue.EnqueueWebhookDeliveryAt(ctx, tx, event.OrganizationId, delivery.Id, nextRetryAt)
 	})
 	if err != nil {
