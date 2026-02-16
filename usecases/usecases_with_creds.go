@@ -747,7 +747,7 @@ func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.Featur
 		usecases.NewExecutorFactory(),
 		usecases.Usecases.license,
 		usecases.Usecases.hasConvoyServerSetup,
-		usecases.Usecases.hasMetabaseSetup,
+		usecases.Usecases.hasAnalyticsSetup,
 		usecases.Usecases.hasOpensanctionsSetup,
 		usecases.Usecases.hasNameRecognizerSetup,
 	)
