@@ -294,6 +294,55 @@ func (usecase *ScenarioUsecase) CopyScenario(
 				}
 			}
 
+			// Copy workflow rules with their conditions and actions
+			workflows, err := usecase.workflowRepository.ListWorkflowsForScenario(ctx, tx, scenarioIdUUID)
+			if err != nil {
+				return models.Scenario{}, errors.Wrap(err, "failed to list workflows")
+			}
+
+			newScenarioIdUUID, err := uuid.Parse(newScenarioId)
+			if err != nil {
+				return models.Scenario{}, errors.Wrap(err, "invalid new scenario id")
+			}
+
+			for _, workflow := range workflows {
+				// Create new workflow rule
+				newWorkflowRule := models.WorkflowRule{
+					ScenarioId:  newScenarioIdUUID,
+					Name:        workflow.WorkflowRule.Name,
+					Priority:    workflow.WorkflowRule.Priority,
+					Fallthrough: workflow.WorkflowRule.Fallthrough,
+				}
+				createdRule, err := usecase.workflowRepository.InsertWorkflowRule(ctx, tx, newWorkflowRule)
+				if err != nil {
+					return models.Scenario{}, errors.Wrap(err, "failed to copy workflow rule")
+				}
+
+				// Copy conditions
+				for _, cond := range workflow.Conditions {
+					newCondition := models.WorkflowCondition{
+						RuleId:   createdRule.Id,
+						Function: cond.Function,
+						Params:   cond.Params,
+					}
+					if _, err := usecase.workflowRepository.InsertWorkflowCondition(ctx, tx, newCondition); err != nil {
+						return models.Scenario{}, errors.Wrap(err, "failed to copy workflow condition")
+					}
+				}
+
+				// Copy actions
+				for _, action := range workflow.Actions {
+					newAction := models.WorkflowAction{
+						RuleId: createdRule.Id,
+						Action: action.Action,
+						Params: action.Params,
+					}
+					if _, err := usecase.workflowRepository.InsertWorkflowAction(ctx, tx, newAction); err != nil {
+						return models.Scenario{}, errors.Wrap(err, "failed to copy workflow action")
+					}
+				}
+			}
+
 			// Return the newly created scenario
 			newScenario, err := usecase.repository.GetScenarioById(ctx, tx, newScenarioId)
 			if err != nil {
