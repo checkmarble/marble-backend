@@ -12,6 +12,7 @@ RUN go mod download -x
 
 COPY . .
 
+RUN curl https://cdn.staging.checkmarble.com/ip-database/marble.mmdb.gz | gzip -d > infra/default-ipdb.mmdb
 RUN CGO_ENABLED=1 go build -o /go/bin/app -trimpath -ldflags="-extldflags=-s -w -X main.apiVersion=${MARBLE_VERSION} -X main.segmentWriteKey=${SEGMENT_WRITE_KEY}"
 
 FROM gcr.io/distroless/cc:latest

@@ -19,7 +19,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
-	"github.com/oschwald/maxminddb-golang/v2"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -360,14 +359,9 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 
 	webhookSystemMigrated := IsWebhookSystemMigrated(ctx, repositories)
 
-	var ipEnrichmentDatabase *maxminddb.Reader
-
-	if dbPath := utils.GetEnv("IP_ENRICHMENT_DATABASE", ""); dbPath != "" {
-		r, err := maxminddb.Open(dbPath)
-		if err != nil {
-			return errors.Wrap(err, "failed to open IP enrichment database")
-		}
-		ipEnrichmentDatabase = r
+	ipEnrichmentDatabase, err := infra.InitIpEnrichmentDatabase(ctx, license)
+	if err != nil {
+		return errors.Wrap(err, "failed to open ip enrichment database")
 	}
 
 	uc := usecases.NewUsecases(repositories,
