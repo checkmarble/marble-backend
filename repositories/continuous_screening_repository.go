@@ -454,7 +454,8 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningsCaseId(ctx context.Con
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
 		Where(squirrel.Eq{"id": ids}).
-		Set("case_id", caseId)
+		Set("case_id", caseId).
+		Set("updated_at", squirrel.Expr("NOW()"))
 
 	return ExecBuilder(ctx, exec, query)
 }
@@ -520,6 +521,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchStatus(
 		Where(squirrel.Eq{"id": id}).
 		Set("status", newStatus).
 		Set("reviewed_by", reviewedBy).
+		Set("updated_at", squirrel.Expr("NOW()")).
 		Suffix("RETURNING *")
 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMatch)
@@ -545,6 +547,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchStatusByBatch(
 		Where(squirrel.Eq{"id": ids}).
 		Set("status", newStatus).
 		Set("reviewed_by", reviewedBy).
+		Set("updated_at", squirrel.Expr("NOW()")).
 		Suffix("RETURNING *")
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMatch)
@@ -564,6 +567,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningStatus(
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
 		Where(squirrel.Eq{"id": id}).
 		Set("status", newStatus).
+		Set("updated_at", squirrel.Expr("NOW()")).
 		Suffix("RETURNING *")
 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreening)
@@ -583,6 +587,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreening(
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
 		Where(squirrel.Eq{"id": id}).
+		Set("updated_at", squirrel.Expr("NOW()")).
 		Suffix("RETURNING *")
 
 	if input.Status != nil {
