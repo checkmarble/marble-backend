@@ -366,7 +366,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
-		usecases.WithMetabase(apiConfig.MetabaseConfig.SiteUrl),
+		usecases.WithAnalyticsEnabled(analyticsConfig.Enabled),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
 		usecases.WithFirebaseAdmin(apiConfig.TokenProvider, deps.FirebaseAdmin),

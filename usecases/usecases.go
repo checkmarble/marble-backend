@@ -35,7 +35,7 @@ type Usecases struct {
 	offloadingConfig             infra.OffloadingConfig
 	failedWebhooksRetryPageSize  int
 	hasConvoyServerSetup         bool
-	hasMetabaseSetup             bool
+	hasAnalyticsSetup            bool
 	hasOpensanctionsSetup        bool
 	hasNameRecognizerSetup       bool
 	license                      models.LicenseValidation
@@ -114,11 +114,9 @@ func WithConvoyServer(url string) Option {
 	}
 }
 
-func WithMetabase(url string) Option {
+func WithAnalyticsEnabled(enabled bool) Option {
 	return func(o *options) {
-		if url != "" {
-			o.hasMetabaseSetup = true
-		}
+		o.hasAnalyticsSetup = enabled
 	}
 }
 
@@ -193,7 +191,7 @@ type options struct {
 	failedWebhooksRetryPageSize  int
 	license                      models.LicenseValidation
 	hasConvoyServerSetup         bool
-	hasMetabaseSetup             bool
+	hasAnalyticsSetup            bool
 	hasOpensanctionsSetup        bool
 	hasNameRecognitionSetup      bool
 	metricsCollectionConfig      infra.MetricCollectionConfig
@@ -221,7 +219,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		failedWebhooksRetryPageSize:  o.failedWebhooksRetryPageSize,
 		license:                      o.license,
 		hasConvoyServerSetup:         o.hasConvoyServerSetup,
-		hasMetabaseSetup:             o.hasMetabaseSetup,
+		hasAnalyticsSetup:            o.hasAnalyticsSetup,
 		hasOpensanctionsSetup:        o.hasOpensanctionsSetup,
 		hasNameRecognizerSetup:       o.hasNameRecognitionSetup,
 		metricsCollectionConfig:      o.metricsCollectionConfig,
