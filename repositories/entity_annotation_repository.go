@@ -7,7 +7,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/cockroachdb/errors"
-	"github.com/google/uuid"
 )
 
 func (repo *MarbleDbRepository) GetEntityAnnotationById(
@@ -197,6 +196,43 @@ func (repo *MarbleDbRepository) IsObjectTagSet(ctx context.Context, exec Executo
 	return hasTag, nil
 }
 
+func (repo *MarbleDbRepository) IsObjectRiskTopicSet(ctx context.Context, exec Executor,
+	req models.CreateEntityAnnotationRequest, topic string,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	filters := squirrel.Eq{
+		"org_id":            req.OrgId,
+		"object_type":       req.ObjectType,
+		"object_id":         req.ObjectId,
+		"annotation_type":   models.EntityAnnotationRiskTopic,
+		"deleted_at":        nil,
+		"payload->>'topic'": topic,
+	}
+
+	query := NewQueryBuilder().
+		Select("1").
+		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
+		Where(filters).
+		Limit(1).
+		Prefix("select exists (").Suffix(")")
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return false, err
+	}
+
+	var exists bool
+
+	if err := exec.QueryRow(ctx, sql, args...).Scan(&exists); err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
 func (repo *MarbleDbRepository) DeleteEntityAnnotation(ctx context.Context, exec Executor,
 	req models.AnnotationByIdRequest,
 ) error {
@@ -218,36 +254,7 @@ func (repo *MarbleDbRepository) DeleteEntityAnnotation(ctx context.Context, exec
 	return ExecBuilder(ctx, exec, sql)
 }
 
-// UpdateEntityAnnotationPayload updates the payload of an existing annotation by ID
-func (repo *MarbleDbRepository) UpdateEntityAnnotationPayload(
-	ctx context.Context,
-	exec Executor,
-	orgId uuid.UUID,
-	annotationId string,
-	payload models.EntityAnnotationPayload,
-	annotatedBy *models.UserId,
-) (models.EntityAnnotation, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.EntityAnnotation{}, err
-	}
-
-	sql := NewQueryBuilder().
-		Update(dbmodels.TABLE_ENTITY_ANNOTATIONS).
-		Set("payload", payload).
-		Set("updated_at", squirrel.Expr("now()")).
-		Set("annotated_by", annotatedBy).
-		Where(squirrel.Eq{
-			"id":         annotationId,
-			"org_id":     orgId,
-			"deleted_at": nil,
-		}).
-		Suffix("returning *")
-
-	return SqlToModel(ctx, exec, sql, dbmodels.AdaptEntityAnnotation)
-}
-
 // FindEntityAnnotationsWithRiskTopics finds risk topic annotations matching the filter.
-// Uses GIN index on payload->'topics' for efficient array containment queries.
 // This is used by MonitoringListCheck rule evaluation.
 func (repo *MarbleDbRepository) FindEntityAnnotationsWithRiskTopics(
 	ctx context.Context,
@@ -273,13 +280,12 @@ func (repo *MarbleDbRepository) FindEntityAnnotationsWithRiskTopics(
 		}).
 		Where("object_id = ANY(?)", filter.ObjectIds)
 
-	// Filter by topics using GIN index
-	if len(filter.Topics) == 0 {
-		// Any topics - use array length index
-		query = query.Where("jsonb_array_length(payload->'topics') > 0")
-	} else {
-		// Specific topics - use GIN index with ?| operator
-		query = query.Where("payload->'topics' ??| ?", filter.Topics)
+	if len(filter.Topics) > 0 {
+		topicStrings := make([]string, len(filter.Topics))
+		for i, t := range filter.Topics {
+			topicStrings[i] = string(t)
+		}
+		query = query.Where("payload->>'topic' = ANY(?)", topicStrings)
 	}
 
 	query = query.Limit(1)

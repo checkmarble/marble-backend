@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -17,24 +18,20 @@ const (
 	RiskTopicThirdParties RiskTopic = "third-parties"
 )
 
+var ValidRiskTopics = []RiskTopic{
+	RiskTopicSanctions,
+	RiskTopicPEPs,
+	RiskTopicAdverseMedia,
+	RiskTopicThirdParties,
+}
+
 // RiskTopicFrom converts a string to a RiskTopic.
 // Returns RiskTopicUnknown if the string doesn't match any known topic.
 func RiskTopicFrom(s string) RiskTopic {
-	switch RiskTopic(s) {
-	case RiskTopicSanctions, RiskTopicPEPs, RiskTopicAdverseMedia, RiskTopicThirdParties:
+	if slices.Contains(ValidRiskTopics, RiskTopic(s)) {
 		return RiskTopic(s)
-	default:
-		return RiskTopicUnknown
 	}
-}
-
-// IsValid returns true if the risk topic is a known valid topic (not unknown).
-func (rt RiskTopic) IsValid() bool {
-	switch rt {
-	case RiskTopicSanctions, RiskTopicPEPs, RiskTopicAdverseMedia, RiskTopicThirdParties:
-		return true
-	}
-	return false
+	return RiskTopicUnknown
 }
 
 // OpenSanctionsTagMapping maps OpenSanctions tags/dataset identifiers to Marble RiskTopics.
@@ -88,116 +85,35 @@ func MapOpenSanctionsTagsToRiskTopics(tags []string) []RiskTopic {
 	return topics
 }
 
-// RiskTopicSourceType enum
-type RiskTopicSourceType string
-
-const (
-	RiskTopicSourceTypeUnknown                        RiskTopicSourceType = "unknown"
-	RiskTopicSourceTypeContinuousScreeningMatchReview RiskTopicSourceType = "continuous_screening_match_review"
-	RiskTopicSourceTypeManual                         RiskTopicSourceType = "manual"
-)
-
-// SourceDetails is an interface for different source detail types
-type SourceDetails interface {
-	SourceDetailType() RiskTopicSourceType
+// ObjectRiskTopicCreate contains all data needed to create risk topic annotations.
+// Each topic becomes its own entity_annotation row.
+type ObjectRiskTopicCreate struct {
+	OrgId                 uuid.UUID
+	ObjectType            string
+	ObjectId              string
+	Topics                []RiskTopic
+	Reason                string
+	Url                   string
+	ContinuousScreeningId string
+	OpenSanctionsEntityId string
+	AnnotatedBy           *UserId
 }
 
-// ContinuousScreeningSourceDetails for continuous_screening_match_review source type
-type ContinuousScreeningSourceDetails struct {
-	ContinuousScreeningId uuid.UUID `json:"continuous_screening_id"`
-	OpenSanctionsEntityId string    `json:"opensanctions_entity_id"` //nolint: tagliatelle
-}
-
-func (s ContinuousScreeningSourceDetails) SourceDetailType() RiskTopicSourceType {
-	return RiskTopicSourceTypeContinuousScreeningMatchReview
-}
-
-// ManualSourceDetails for manual source type
-type ManualSourceDetails struct {
-	Reason string `json:"reason,omitempty"`
-	Url    string `json:"url,omitempty"`
-}
-
-func (m ManualSourceDetails) SourceDetailType() RiskTopicSourceType {
-	return RiskTopicSourceTypeManual
-}
-
-// ParseSourceDetails parses JSON into the appropriate SourceDetails type
-func ParseSourceDetails(sourceType RiskTopicSourceType, data json.RawMessage) (SourceDetails, error) {
-	if data == nil {
-		return nil, nil
-	}
-
-	switch sourceType {
-	case RiskTopicSourceTypeContinuousScreeningMatchReview:
-		var details ContinuousScreeningSourceDetails
-		if err := json.Unmarshal(data, &details); err != nil {
-			return nil, err
-		}
-		return details, nil
-	case RiskTopicSourceTypeManual:
-		var details ManualSourceDetails
-		if err := json.Unmarshal(data, &details); err != nil {
-			return nil, err
-		}
-		return details, nil
-	default:
-		return nil, nil
-	}
-}
-
-// ObjectRiskTopicUpsert contains all data needed for upsert operation
-type ObjectRiskTopicUpsert struct {
-	OrgId         uuid.UUID
-	ObjectType    string
-	ObjectId      string
-	Topics        []RiskTopic
-	SourceType    RiskTopicSourceType
-	SourceDetails SourceDetails
-	AnnotatedBy   *UserId
-}
-
-func NewObjectRiskTopicFromManualUpsert(
-	orgId uuid.UUID,
-	objectType string,
-	objectId string,
-	topics []RiskTopic,
-	reason string,
-	proofUrl string,
-	annotatedBy *UserId,
-) ObjectRiskTopicUpsert {
-	return ObjectRiskTopicUpsert{
-		OrgId:      orgId,
-		ObjectType: objectType,
-		ObjectId:   objectId,
-		Topics:     topics,
-		SourceType: RiskTopicSourceTypeManual,
-		SourceDetails: ManualSourceDetails{
-			Reason: reason,
-			Url:    proofUrl,
-		},
-		AnnotatedBy: annotatedBy,
-	}
-}
-
-func NewObjectRiskTopicFromContinuousScreeningReviewUpsert(
+func NewObjectRiskTopicFromContinuousScreeningReview(
 	orgId uuid.UUID,
 	objectType string,
 	objectId string,
 	topics []RiskTopic,
 	sourceContinuousScreeningId uuid.UUID,
 	sourceOpenSanctionsEntityId string,
-) ObjectRiskTopicUpsert {
-	return ObjectRiskTopicUpsert{
-		OrgId:      orgId,
-		ObjectType: objectType,
-		ObjectId:   objectId,
-		Topics:     topics,
-		SourceType: RiskTopicSourceTypeContinuousScreeningMatchReview,
-		SourceDetails: ContinuousScreeningSourceDetails{
-			ContinuousScreeningId: sourceContinuousScreeningId,
-			OpenSanctionsEntityId: sourceOpenSanctionsEntityId,
-		},
+) ObjectRiskTopicCreate {
+	return ObjectRiskTopicCreate{
+		OrgId:                 orgId,
+		ObjectType:            objectType,
+		ObjectId:              objectId,
+		Topics:                topics,
+		ContinuousScreeningId: sourceContinuousScreeningId.String(),
+		OpenSanctionsEntityId: sourceOpenSanctionsEntityId,
 	}
 }
 

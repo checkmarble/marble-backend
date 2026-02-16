@@ -13,10 +13,10 @@ type ObjectRiskTopicWriter struct {
 	mock.Mock
 }
 
-func (m *ObjectRiskTopicWriter) AppendObjectRiskTopics(
+func (m *ObjectRiskTopicWriter) AttachObjectRiskTopics(
 	ctx context.Context,
 	tx repositories.Transaction,
-	input models.ObjectRiskTopicUpsert,
+	input models.ObjectRiskTopicCreate,
 ) error {
 	args := m.Called(ctx, tx, input)
 	return args.Error(0)

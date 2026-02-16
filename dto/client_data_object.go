@@ -212,19 +212,20 @@ type GroupedEntityAnnotations struct {
 	Comments   []EntityAnnotationDto `json:"comments,omitzero"`
 	Tags       []EntityAnnotationDto `json:"tags,omitzero"`
 	Files      []EntityAnnotationDto `json:"files,omitzero"`
-	RiskTopics *EntityAnnotationDto  `json:"risk_topics,omitempty"`
+	RiskTopics []EntityAnnotationDto `json:"risk_topics,omitzero"`
 }
 
 // Implements IsZero so that omitzero can be used when marshalling ClientObjectDetail
 func (g GroupedEntityAnnotations) IsZero() bool {
-	return len(g.Comments) == 0 && len(g.Tags) == 0 && len(g.Files) == 0 && g.RiskTopics == nil
+	return len(g.Comments) == 0 && len(g.Tags) == 0 && len(g.Files) == 0 && len(g.RiskTopics) == 0
 }
 
 func AdaptGroupedEntityAnnotations(a models.GroupedEntityAnnotations) (GroupedEntityAnnotations, error) {
 	out := GroupedEntityAnnotations{
-		Comments: make([]EntityAnnotationDto, len(a.Comments)),
-		Tags:     make([]EntityAnnotationDto, len(a.Tags)),
-		Files:    make([]EntityAnnotationDto, len(a.Files)),
+		Comments:   make([]EntityAnnotationDto, len(a.Comments)),
+		Tags:       make([]EntityAnnotationDto, len(a.Tags)),
+		Files:      make([]EntityAnnotationDto, len(a.Files)),
+		RiskTopics: make([]EntityAnnotationDto, len(a.RiskTopics)),
 	}
 
 	for i, comment := range a.Comments {
@@ -248,12 +249,12 @@ func AdaptGroupedEntityAnnotations(a models.GroupedEntityAnnotations) (GroupedEn
 		}
 		out.Files[i] = dto
 	}
-	if a.RiskTopics != nil {
-		dto, err := AdaptEntityAnnotation(*a.RiskTopics)
+	for i, rt := range a.RiskTopics {
+		dto, err := AdaptEntityAnnotation(rt)
 		if err != nil {
 			return GroupedEntityAnnotations{}, err
 		}
-		out.RiskTopics = &dto
+		out.RiskTopics[i] = dto
 	}
 
 	return out, nil

@@ -8,9 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin/binding"
-	"github.com/google/uuid"
 )
 
 type EntityAnnotationDto struct {
@@ -21,7 +19,6 @@ type EntityAnnotationDto struct {
 	Payload     any       `json:"payload"`
 	AnnotatedBy *string   `json:"annotated_by,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
 	ObjectType  string    `json:"object_type"`
 	ObjectId    string    `json:"object_id"`
 }
@@ -62,7 +59,6 @@ func AdaptEntityAnnotation(model models.EntityAnnotation) (EntityAnnotationDto, 
 		Payload:     payload,
 		AnnotatedBy: userId,
 		CreatedAt:   model.CreatedAt,
-		UpdatedAt:   model.UpdatedAt,
 		ObjectType:  model.ObjectType,
 		ObjectId:    model.ObjectId,
 	}, nil
@@ -87,42 +83,11 @@ type EntityAnnotationFileDto struct {
 }
 
 type EntityAnnotationRiskTopicDto struct {
-	Topics        []string        `json:"topics"`
-	SourceType    string          `json:"source_type"`
-	SourceDetails json.RawMessage `json:"source_details"`
-}
-
-type RiskTopicAnnotationInputDto struct {
-	Topics []string `json:"topics" binding:"required"`
-	Reason string   `json:"reason"`
-	Url    string   `json:"url"`
-}
-
-func (d RiskTopicAnnotationInputDto) Adapt(
-	orgId uuid.UUID,
-	objectType string,
-	objectId string,
-	annotatedBy *models.UserId,
-) (models.ObjectRiskTopicUpsert, error) {
-	topics := make([]models.RiskTopic, 0, len(d.Topics))
-	for _, t := range d.Topics {
-		topic := models.RiskTopicFrom(t)
-		if topic == models.RiskTopicUnknown {
-			return models.ObjectRiskTopicUpsert{},
-				errors.Wrap(models.BadParameterError, "invalid topic in upsert input")
-		}
-		topics = append(topics, topic)
-	}
-
-	return models.NewObjectRiskTopicFromManualUpsert(
-		orgId,
-		objectType,
-		objectId,
-		topics,
-		d.Reason,
-		d.Url,
-		annotatedBy,
-	), nil
+	Topic                 string `json:"topic"`
+	Reason                string `json:"reason,omitempty"`
+	Url                   string `json:"url,omitempty"`
+	ContinuousScreeningId string `json:"continuous_screening_id,omitempty"`
+	OpenSanctionsEntityId string `json:"opensanctions_entity_id,omitempty"` //nolint: tagliatelle
 }
 
 func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err error) {
@@ -159,7 +124,7 @@ func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err e
 		out = o
 
 	default:
-		return nil, errors.New("could not adapt annotation type")
+		return nil, fmt.Errorf("could not adapt annotation type")
 	}
 
 	return
@@ -177,6 +142,12 @@ func DecodeEntityAnnotationPayload(kind models.EntityAnnotationType, payload jso
 
 	case models.EntityAnnotationTag:
 		var o models.EntityAnnotationTagPayload
+
+		err = json.Unmarshal(payload, &o)
+		out = o
+
+	case models.EntityAnnotationRiskTopic:
+		var o models.EntityAnnotationRiskTopicPayload
 
 		err = json.Unmarshal(payload, &o)
 		out = o

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -199,55 +198,26 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
-		var annotation models.EntityAnnotation
-
-		var userId *models.UserId
-		if creds.ActorIdentity.UserId != "" {
-			userId = &creds.ActorIdentity.UserId
+		parsedPayload, err := dto.DecodeEntityAnnotationPayload(annotationType, payload.Payload)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
 		}
 
-		switch annotationType {
-		case models.EntityAnnotationRiskTopic:
-			// Risk topic annotations have special upsert semantics (one per object, merge topics)
-			var riskTopicInput dto.RiskTopicAnnotationInputDto
-			if err := json.Unmarshal(payload.Payload, &riskTopicInput); err != nil {
-				presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
-				return
-			}
+		req := models.CreateEntityAnnotationRequest{
+			OrgId:          creds.OrganizationId,
+			ObjectType:     objectType,
+			ObjectId:       objectId,
+			CaseId:         payload.CaseId,
+			AnnotationType: annotationType,
+			Payload:        parsedPayload,
+			AnnotatedBy:    &creds.ActorIdentity.UserId,
+		}
 
-			upsertInput, err := riskTopicInput.Adapt(creds.OrganizationId, objectType, objectId, userId)
-			if err != nil {
-				presentError(ctx, c, err)
-				return
-			}
-
-			annotation, err = annotationsUsecase.UpsertRiskTopicAnnotation(ctx, upsertInput)
-			if err != nil {
-				presentError(ctx, c, err)
-				return
-			}
-		default:
-			parsedPayload, err := dto.DecodeEntityAnnotationPayload(annotationType, payload.Payload)
-			if err != nil {
-				presentError(ctx, c, err)
-				return
-			}
-
-			req := models.CreateEntityAnnotationRequest{
-				OrgId:          creds.OrganizationId,
-				ObjectType:     objectType,
-				ObjectId:       objectId,
-				CaseId:         payload.CaseId,
-				AnnotationType: annotationType,
-				Payload:        parsedPayload,
-				AnnotatedBy:    userId,
-			}
-
-			annotation, err = annotationsUsecase.Attach(ctx, req)
-			if err != nil {
-				presentError(ctx, c, err)
-				return
-			}
+		annotation, err := annotationsUsecase.Attach(ctx, req)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
 		}
 
 		out, err := dto.AdaptEntityAnnotation(annotation)

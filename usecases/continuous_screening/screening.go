@@ -780,7 +780,7 @@ func (uc *ContinuousScreeningUsecase) addRiskTopicsFromConfirmedMatch(
 	}
 
 	// Create the upsert input (will APPEND topics, not replace)
-	input := models.NewObjectRiskTopicFromContinuousScreeningReviewUpsert(
+	input := models.NewObjectRiskTopicFromContinuousScreeningReview(
 		screening.OrgId,
 		objectType,
 		objectId,
@@ -790,7 +790,7 @@ func (uc *ContinuousScreeningUsecase) addRiskTopicsFromConfirmedMatch(
 	)
 	input.AnnotatedBy = reviewerId
 
-	return uc.objectRiskTopicWriter.AppendObjectRiskTopics(ctx, tx, input)
+	return uc.objectRiskTopicWriter.AttachObjectRiskTopics(ctx, tx, input)
 }
 
 // loadMoreObjectTrigger handles load more for object trigger screenings (Marble to OpenSanction direction)

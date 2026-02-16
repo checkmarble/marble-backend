@@ -58,7 +58,6 @@ type EntityAnnotation struct {
 	Payload     json.RawMessage
 	AnnotatedBy *UserId
 	CreatedAt   time.Time
-	UpdatedAt   time.Time
 	DeletedAt   *time.Time
 
 	FileThumbnails   []string
@@ -117,7 +116,7 @@ type GroupedEntityAnnotations struct {
 	Comments   []EntityAnnotation
 	Tags       []EntityAnnotation
 	Files      []EntityAnnotation
-	RiskTopics *EntityAnnotation
+	RiskTopics []EntityAnnotation
 }
 
 func GroupAnnotationsByType(annotations []EntityAnnotation) GroupedEntityAnnotations {
@@ -132,7 +131,7 @@ func GroupAnnotationsByType(annotations []EntityAnnotation) GroupedEntityAnnotat
 		case EntityAnnotationFile:
 			grouped.Files = append(grouped.Files, annotation)
 		case EntityAnnotationRiskTopic:
-			grouped.RiskTopics = &annotation
+			grouped.RiskTopics = append(grouped.RiskTopics, annotation)
 		}
 	}
 

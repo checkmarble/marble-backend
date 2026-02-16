@@ -437,10 +437,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 		return attrs.EventType == models.ScreeningReviewed
 	})).Return(models.CaseEvent{}, nil)
 
-	// Expect AppendObjectRiskTopics to be called with the extracted topics
+	// Expect AttachObjectRiskTopics to be called with the extracted topics
 	// "sanctions" -> RiskTopicSanctions, "pep" -> RiskTopicPEPs
-	suite.objectRiskTopic.On("AppendObjectRiskTopics", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.ObjectRiskTopicUpsert) bool {
+	suite.objectRiskTopic.On("AttachObjectRiskTopics", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.ObjectRiskTopicCreate) bool {
 			if input.OrgId != suite.orgId ||
 				input.ObjectType != objectType ||
 				input.ObjectId != objectId ||
@@ -544,10 +544,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		return attrs.EventType == models.ScreeningReviewed
 	})).Return(models.CaseEvent{}, nil)
 
-	// Expect AppendObjectRiskTopics to be called with topics from screening.OpenSanctionEntityPayload
+	// Expect AttachObjectRiskTopics to be called with topics from screening.OpenSanctionEntityPayload
 	// "pep" -> RiskTopicPEPs, "regulatory" -> RiskTopicAdverseMedia
-	suite.objectRiskTopic.On("AppendObjectRiskTopics", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.ObjectRiskTopicUpsert) bool {
+	suite.objectRiskTopic.On("AttachObjectRiskTopics", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.ObjectRiskTopicCreate) bool {
 			if input.OrgId != suite.orgId ||
 				input.ObjectType != objectType ||
 				input.ObjectId != objectId ||
