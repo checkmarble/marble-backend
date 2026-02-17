@@ -7,7 +7,6 @@ import (
 	"io"
 	"maps"
 	"mime/multipart"
-	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -94,10 +93,6 @@ type ScreeningRepository interface {
 		orgId uuid.UUID, counterpartyId *string, entityId string, reviewerId *models.UserId) error
 	SearchScreeningMatchWhitelist(ctx context.Context, exec repositories.Executor,
 		orgId uuid.UUID, counterpartyId, entityId *string) ([]models.ScreeningWhitelist, error)
-	IsScreeningMatchWhitelisted(ctx context.Context, exec repositories.Executor,
-		orgId uuid.UUID, counterpartyId string, entityId []string) ([]models.ScreeningWhitelist, error)
-	CountWhitelistsForCounterpartyId(ctx context.Context, exec repositories.Executor,
-		orgId uuid.UUID, counterpartyId string) (int, error)
 	UpdateScreeningMatchPayload(ctx context.Context, exec repositories.Executor,
 		match models.ScreeningMatch, newPayload []byte) (models.ScreeningMatch, error)
 }
@@ -230,7 +225,8 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 
 	for _, comment := range comments {
 		if _, ok := matchIdToMatch[comment.MatchId]; ok {
-			matchIdToMatch[comment.MatchId].Comments = append(matchIdToMatch[comment.MatchId].Comments, comment)
+			matchIdToMatch[comment.MatchId].Comments =
+				append(matchIdToMatch[comment.MatchId].Comments, comment)
 		}
 	}
 
@@ -398,66 +394,6 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	}
 
 	return screening, nil
-}
-
-func (uc ScreeningUsecase) FilterOutWhitelistedMatches(
-	ctx context.Context,
-	orgId uuid.UUID,
-	screening models.ScreeningWithMatches,
-	counterpartyId string,
-) (models.ScreeningWithMatches, error) {
-	matchesSet := set.From(pure_utils.FlatMap(screening.Matches, func(m models.ScreeningMatch) []string {
-		return append(m.Referents, m.EntityId)
-	}))
-
-	whitelists, err := uc.repository.IsScreeningMatchWhitelisted(ctx,
-		uc.executorFactory.NewExecutor(), orgId, counterpartyId, matchesSet.Slice())
-	if err != nil {
-		return screening, err
-	}
-
-	matchesAfterWhitelisting := make([]models.ScreeningMatch, 0, len(screening.Matches))
-
-	for _, match := range screening.Matches {
-		isWhitelisted := slices.ContainsFunc(whitelists, func(w models.ScreeningWhitelist) bool {
-			if match.EntityId == w.EntityId {
-				return true
-			}
-
-			return slices.Contains(match.Referents, w.EntityId)
-		})
-
-		if isWhitelisted {
-			continue
-		}
-
-		matchesAfterWhitelisting = append(matchesAfterWhitelisting, match)
-	}
-
-	if len(whitelists) > 0 {
-		utils.LoggerFromContext(ctx).InfoContext(ctx,
-			"filtered out screening matches that were whitelisted", "before",
-			len(screening.Matches), "whitelisted", len(whitelists), "after", len(matchesAfterWhitelisting))
-
-		whitelisted := pure_utils.Map(whitelists, func(w models.ScreeningWhitelist) string {
-			return w.EntityId
-		})
-
-		screening.WhitelistedEntities = whitelisted
-	}
-
-	screening.Matches = matchesAfterWhitelisting
-	screening.NumberOfMatches = len(screening.Matches)
-
-	if screening.NumberOfMatches == 0 {
-		screening.Status = models.ScreeningStatusNoHit
-	}
-
-	return screening, nil
-}
-
-func (uc ScreeningUsecase) CountWhitelistsForCounterpartyId(ctx context.Context, orgId uuid.UUID, counterpartyId string) (int, error) {
-	return uc.repository.CountWhitelistsForCounterpartyId(ctx, uc.executorFactory.NewExecutor(), orgId, counterpartyId)
 }
 
 func (uc ScreeningUsecase) UpdateMatchStatus(

@@ -51,9 +51,13 @@ type ScenarioEvaluationParameters struct {
 
 type EvalScreeningUsecase interface {
 	Execute(ctx context.Context, orgId uuid.UUID, query models.OpenSanctionsQuery) (models.ScreeningWithMatches, error)
-	FilterOutWhitelistedMatches(ctx context.Context, orgId uuid.UUID, screening models.ScreeningWithMatches,
-		counterpartyId string) (models.ScreeningWithMatches, error)
-	CountWhitelistsForCounterpartyId(ctx context.Context, orgId uuid.UUID, counterpartyId string) (int, error)
+	SearchWhitelist(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		counterpartyId, entityId *string,
+		reviewerId *models.UserId,
+	) ([]models.ScreeningWhitelist, error)
 }
 
 type EvalNameRecognitionRepository interface {

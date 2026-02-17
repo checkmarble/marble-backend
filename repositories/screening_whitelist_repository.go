@@ -106,24 +106,3 @@ func (repo *MarbleDbRepository) SearchScreeningMatchWhitelistByIds(
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreeningWhitelist)
 }
-
-func (repo *MarbleDbRepository) IsScreeningMatchWhitelisted(ctx context.Context, exec Executor,
-	orgId uuid.UUID, counterpartyId string, entityIds []string,
-) ([]models.ScreeningWhitelist, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
-	}
-
-	sql := NewQueryBuilder().
-		Select(dbmodels.ScreeningWhitelistColumnList...).
-		From(dbmodels.TABLE_SCREENING_WHITELISTS).
-		Where(squirrel.And{
-			squirrel.Eq{
-				"org_id":          orgId,
-				"counterparty_id": counterpartyId,
-			},
-			squirrel.Expr("entity_id = ANY(?)", entityIds),
-		})
-
-	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptScreeningWhitelist)
-}

@@ -337,6 +337,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 			"partial", screening.Partial)
 
 	screening.EffectiveThreshold = query.EffectiveThreshold
+	screening.WhitelistedEntities = query.WhitelistedEntityIds
 
 	return screening, err
 }
@@ -460,7 +461,7 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg *models.ScreeningConfig
 		if query.LimitOverride != nil {
 			qs.Set("limit", fmt.Sprintf("%d", *query.LimitOverride))
 		} else {
-			qs.Set("limit", fmt.Sprintf("%d", query.OrgConfig.MatchLimit+query.LimitIncrease))
+			qs.Set("limit", fmt.Sprintf("%d", query.OrgConfig.MatchLimit))
 		}
 
 		// cf: `exclude_entity_ids` in the OpenSanctions query
