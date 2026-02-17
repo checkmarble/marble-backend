@@ -72,3 +72,7 @@ type WebhookUpdateBody struct {
 	RateLimit         *int      `json:"rate_limit,omitempty"`
 	RateLimitDuration *int      `json:"rate_limit_duration,omitempty"`
 }
+
+type CreateWebhookSecretBody struct {
+	ExpireExistingInDays *int `json:"expire_existing_in_days,omitempty"`
+}

@@ -33,3 +33,23 @@ func GetDeploymentMetadata(ctx context.Context, repositories repositories.Reposi
 
 	return *deploymentMetadata, nil
 }
+
+// IsWebhookSystemMigrated checks if the webhook system has been migrated to the new internal system.
+// Returns false if the metadata key is not found (pre-migration state).
+func IsWebhookSystemMigrated(ctx context.Context, repositories repositories.Repositories) bool {
+	executor, err := repositories.ExecutorGetter.GetExecutor(
+		ctx,
+		models.DATABASE_SCHEMA_TYPE_MARBLE,
+		nil,
+	)
+	if err != nil {
+		return false
+	}
+
+	metadata, err := repositories.MarbleDbRepository.GetMetadata(ctx, executor, nil, models.MetadataKeyWebhookSystemMigrated)
+	if err != nil || metadata == nil {
+		return false
+	}
+
+	return metadata.Value == "true"
+}

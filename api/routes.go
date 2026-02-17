@@ -390,6 +390,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/webhooks/:webhook_id", tom, handleGetWebhook(uc))
 	router.PATCH("/webhooks/:webhook_id", tom, handleUpdateWebhook(uc))
 	router.DELETE("/webhooks/:webhook_id", tom, handleDeleteWebhook(uc))
+	router.POST("/webhooks/:webhook_id/secrets", tom, handleCreateWebhookSecret(uc))
+	router.DELETE("/webhooks/:webhook_id/secrets/:secret_id", tom, handleRevokeWebhookSecret(uc))
 
 	router.GET("/rule-snoozes/:rule_snooze_id", tom, handleGetSnoozesById(uc))
 

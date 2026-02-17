@@ -46,6 +46,9 @@ type Usecases struct {
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
+	webhookSystemMigrated        bool   // True when migrated to new internal webhook system
+	allowInsecureWebhookURLs     bool   // Allow HTTP webhook URLs (dev only)
+	webhookIPWhitelist           string // Comma-separated CIDR ranges to whitelist for webhooks
 
 	rootExecutorFactory *executor_factory.IdentityExecutorFactory
 }
@@ -180,6 +183,32 @@ func WithCsCreateFullDatasetInterval(interval time.Duration) Option {
 	}
 }
 
+// WithWebhookSystemMigrated sets whether the webhook system has been migrated
+// to the new internal system. When true, new webhooks use the internal River-based
+// delivery system instead of Convoy.
+func WithWebhookSystemMigrated(migrated bool) Option {
+	return func(o *options) {
+		o.webhookSystemMigrated = migrated
+	}
+}
+
+// WithAllowInsecureWebhookURLs allows HTTP webhook URLs (for development only).
+// In production, only HTTPS is allowed.
+func WithAllowInsecureWebhookURLs(allow bool) Option {
+	return func(o *options) {
+		o.allowInsecureWebhookURLs = allow
+	}
+}
+
+// WithWebhookIPWhitelist sets a comma-separated list of CIDR ranges that are
+// allowed as webhook targets even if they would normally be blocked (e.g., private IPs).
+// This is useful for self-hosted deployments where webhooks need to reach internal services.
+func WithWebhookIPWhitelist(whitelist string) Option {
+	return func(o *options) {
+		o.webhookIPWhitelist = whitelist
+	}
+}
+
 type options struct {
 	appName                      string
 	apiVersion                   string
@@ -201,6 +230,9 @@ type options struct {
 	continuousScreeningBucketUrl string
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
+	webhookSystemMigrated        bool
+	allowInsecureWebhookURLs     bool
+	webhookIPWhitelist           string
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -229,6 +261,9 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		continuousScreeningBucketUrl: o.continuousScreeningBucketUrl,
 		marbleApiInternalUrl:         o.marbleApiInternalUrl,
 		csCreateFullDatasetInterval:  o.csCreateFullDatasetInterval,
+		webhookSystemMigrated:        o.webhookSystemMigrated,
+		allowInsecureWebhookURLs:     o.allowInsecureWebhookURLs,
+		webhookIPWhitelist:           o.webhookIPWhitelist,
 	}
 }
 
@@ -254,6 +289,10 @@ func (usecases Usecases) GetBlobHosts() []string {
 	}
 
 	return hosts
+}
+
+func (usecases Usecases) IsWebhookSystemMigrated() bool {
+	return usecases.webhookSystemMigrated
 }
 
 func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory {

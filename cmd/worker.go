@@ -242,6 +242,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		continuous_screening.NewContinuousScreeningUpdateDatasetJob(
 			workerConfig.ScanDatasetUpdatesInterval),
 	)
+	// Webhook cleanup (30 day retention)
+	maps.Copy(nonOrgQueues, usecases.QueueWebhookCleanup())
+	globalPeriodics = append(globalPeriodics, worker_jobs.NewWebhookCleanupPeriodicJob())
 	if !metricCollectionConfig.Disabled {
 		maps.Copy(nonOrgQueues, usecases.QueueMetrics())
 		globalPeriodics = append(globalPeriodics,
@@ -315,6 +318,19 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		return err
 	}
 
+	////////////////////////////////////////////////////////////
+	// Migrate Convoy webhooks to internal system (one-time)
+	// Must run on worker (not server) to ensure new job handlers are ready
+	// before the system is marked as migrated.
+	////////////////////////////////////////////////////////////
+	if err := MigrateConvoyWebhooks(ctx, repositories, convoyConfiguration.APIUrl != ""); err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		// Don't fail startup, just log the error - migration can be retried
+		logger.ErrorContext(ctx, "Webhook migration failed", "error", err.Error())
+	}
+
+	webhookSystemMigrated := IsWebhookSystemMigrated(ctx, repositories)
+
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
@@ -322,6 +338,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
+		usecases.WithWebhookSystemMigrated(webhookSystemMigrated),
+		usecases.WithAllowInsecureWebhookURLs(utils.GetEnv("ENV", "production") == "development"),
+		usecases.WithWebhookIPWhitelist(os.Getenv("WEBHOOK_IP_WHITELIST")),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithApiVersion(apiVersion),
 		usecases.WithMetricsCollectionConfig(metricCollectionConfig),
@@ -376,6 +395,11 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, uc.NewContinuousScreeningCreateFullDatasetWorker())
 	river.AddWorker(workers, adminUc.NewScheduledScenarioWorker())
 	river.AddWorker(workers, adminUc.NewWebhookRetryWorker())
+
+	// New webhook delivery system
+	river.AddWorker(workers, adminUc.NewWebhookDispatchWorker())
+	river.AddWorker(workers, adminUc.NewWebhookDeliveryWorker())
+	river.AddWorker(workers, adminUc.NewWebhookCleanupWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -583,6 +607,15 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "webhook_retry":
 		return uc.NewWebhookRetryWorker().Work(ctx,
 			singleJobCreate[models.WebhookRetryArgs](ctx, jobArgs))
+	case "webhook_dispatch":
+		return uc.NewWebhookDispatchWorker().Work(ctx,
+			singleJobCreate[models.WebhookDispatchJobArgs](ctx, jobArgs))
+	case "webhook_delivery":
+		return uc.NewWebhookDeliveryWorker().Work(ctx,
+			singleJobCreate[models.WebhookDeliveryJobArgs](ctx, jobArgs))
+	case "webhook_cleanup":
+		return uc.NewWebhookCleanupWorker().Work(ctx,
+			singleJobCreate[models.WebhookCleanupJobArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

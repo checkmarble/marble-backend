@@ -575,11 +575,15 @@ func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecas
 	return NewWebhookEventsUsecase(
 		security.NewEnforceSecurity(usecases.Credentials),
 		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
 		usecases.Repositories.ConvoyRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
 		usecases.Usecases.failedWebhooksRetryPageSize,
 		usecases.Usecases.license.Webhooks,
 		usecases.Usecases.hasConvoyServerSetup,
+		usecases.Usecases.webhookSystemMigrated,
 		usecases.NewPublicApiAdapterUsecase(),
 	)
 }
@@ -590,6 +594,13 @@ func (usecases *UsecasesWithCreds) NewWebhooksUsecase() WebhooksUsecase {
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.ConvoyRepository,
+		usecases.Repositories.MarbleDbRepository,
+		NewWebhookDeliveryService(WebhookDeliveryConfig{
+			AllowInsecureURLs: usecases.Usecases.allowInsecureWebhookURLs,
+			MarbleVersion:     usecases.Usecases.apiVersion,
+			IPWhitelist:       usecases.Usecases.webhookIPWhitelist,
+		}),
+		usecases.Usecases.webhookSystemMigrated,
 	)
 }
 
@@ -743,6 +754,7 @@ func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.Featur
 		usecases.Usecases.license,
 		usecases.Usecases.hasConvoyServerSetup,
 		usecases.Usecases.hasAnalyticsSetup,
+		usecases.Usecases.webhookSystemMigrated,
 		usecases.Usecases.hasOpensanctionsSetup,
 		usecases.Usecases.hasNameRecognizerSetup,
 	)
@@ -954,6 +966,38 @@ func (usecases UsecasesWithCreds) NewCsvIngestionWorker() *CsvIngestionWorker {
 func (usecases UsecasesWithCreds) NewWebhookRetryWorker() *worker_jobs.WebhookRetryWorker {
 	webhookEventsUsecase := usecases.NewWebhookEventsUsecase()
 	return worker_jobs.NewWebhookRetryWorker(&webhookEventsUsecase)
+}
+
+func (usecases UsecasesWithCreds) NewWebhookDispatchWorker() *worker_jobs.WebhookDispatchWorker {
+	return worker_jobs.NewWebhookDispatchWorker(
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+	)
+}
+
+func (usecases UsecasesWithCreds) NewWebhookDeliveryWorker() *worker_jobs.WebhookDeliveryWorker {
+	deliveryService := NewWebhookDeliveryService(WebhookDeliveryConfig{
+		AllowInsecureURLs: usecases.Usecases.allowInsecureWebhookURLs,
+		MarbleVersion:     usecases.Usecases.apiVersion,
+		IPWhitelist:       usecases.Usecases.webhookIPWhitelist,
+	})
+
+	return worker_jobs.NewWebhookDeliveryWorker(
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
+		deliveryService,
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+	)
+}
+
+func (usecases UsecasesWithCreds) NewWebhookCleanupWorker() *worker_jobs.WebhookCleanupWorker {
+	return worker_jobs.NewWebhookCleanupWorker(
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+	)
 }
 
 func (usecases *UsecasesWithCreds) NewDataModelDestroyUsecase() DataModelDestroyUsecase {

@@ -184,11 +184,15 @@ func NewWebhookEventCaseTagsUpdated(c Case) WebhookEventContent {
 }
 
 func NewWebhookEventCaseCommentCreated(c Case, comments CaseEvent) WebhookEventContent {
-	return newWebhookContent(WebhookEventType_CaseCommentCreated, WebhookEventData{Case: &c, Comments: &comments})
+	return newWebhookContent(WebhookEventType_CaseCommentCreated, WebhookEventData{
+		Case: &c, Comments: &comments,
+	})
 }
 
 func NewWebhookEventCaseFileCreated(c Case, files []CaseFile) WebhookEventContent {
-	return newWebhookContent(WebhookEventType_CaseFileCreated, WebhookEventData{Case: &c, Files: &files})
+	return newWebhookContent(WebhookEventType_CaseFileCreated, WebhookEventData{
+		Case: &c, Files: &files,
+	})
 }
 
 func NewWebhookEventRuleSnoozeCreated(c Case, ruleSnooze RuleSnooze) WebhookEventContent {
@@ -196,7 +200,9 @@ func NewWebhookEventRuleSnoozeCreated(c Case, ruleSnooze RuleSnooze) WebhookEven
 }
 
 func NewWebhookEventDecisionReviewed(c Case, decision Decision) WebhookEventContent {
-	return newWebhookContent(WebhookEventType_CaseDecisionReviewed, WebhookEventData{Case: &c, Decision: &DecisionWithRuleExecutions{Decision: decision}})
+	return newWebhookContent(WebhookEventType_CaseDecisionReviewed, WebhookEventData{
+		Case: &c, Decision: &DecisionWithRuleExecutions{Decision: decision},
+	})
 }
 
 type Webhook struct {
@@ -226,6 +232,87 @@ type WebhookUpdate struct {
 	HttpTimeout       *int
 	RateLimit         *int
 	RateLimitDuration *int
+}
+
+// New webhook delivery system models
+
+type WebhookDeliveryStatus string
+
+const (
+	WebhookDeliveryStatusPending WebhookDeliveryStatus = "pending"
+	WebhookDeliveryStatusSuccess WebhookDeliveryStatus = "success"
+	WebhookDeliveryStatusFailed  WebhookDeliveryStatus = "failed"
+)
+
+// NewWebhook represents a webhook endpoint in the new delivery system
+type NewWebhook struct {
+	Id                       uuid.UUID
+	OrganizationId           uuid.UUID
+	Url                      string
+	EventTypes               []string
+	HttpTimeoutSeconds       int
+	RateLimit                *int
+	RateLimitDurationSeconds *int
+	Enabled                  bool
+	Secrets                  []NewWebhookSecret
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
+	DeletedAt                *time.Time
+}
+
+// NewWebhookSecret represents a signing secret for webhook signatures
+type NewWebhookSecret struct {
+	Id        uuid.UUID
+	WebhookId uuid.UUID
+	Value     string
+	CreatedAt time.Time
+	ExpiresAt *time.Time
+	RevokedAt *time.Time
+}
+
+// WebhookEventV2 represents an event in the new webhook delivery system
+type WebhookEventV2 struct {
+	Id             uuid.UUID
+	OrganizationId uuid.UUID
+	EventType      string
+	ApiVersion     string // API version for the payload format (e.g., "v1", "v1beta")
+	EventData      []byte // Already serialized JSON payload
+	CreatedAt      time.Time
+}
+
+// WebhookDelivery represents a delivery attempt to a specific endpoint
+type WebhookDelivery struct {
+	Id                 uuid.UUID
+	WebhookEventId     uuid.UUID
+	WebhookId          uuid.UUID
+	Status             WebhookDeliveryStatus
+	Attempts           int
+	NextRetryAt        *time.Time
+	LastError          *string
+	LastResponseStatus *int
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+// NewWebhookCreate is the input for creating a new webhook
+type NewWebhookCreate struct {
+	OrganizationId           uuid.UUID
+	Url                      string
+	EventTypes               []string
+	Secret                   string
+	HttpTimeoutSeconds       *int
+	RateLimit                *int
+	RateLimitDurationSeconds *int
+}
+
+// NewWebhookUpdate is the input for updating a webhook
+type NewWebhookUpdate struct {
+	EventTypes               *[]string
+	Url                      *string
+	HttpTimeoutSeconds       *int
+	RateLimit                *int
+	RateLimitDurationSeconds *int
+	Enabled                  *bool
 }
 
 func (input WebhookUpdate) Validate() error {
@@ -282,4 +369,14 @@ func MergeWebhookWithUpdate(w Webhook, update WebhookUpdate) Webhook {
 		result.RateLimitDuration = update.RateLimitDuration
 	}
 	return result
+}
+
+// WebhookSendResult contains the result of a webhook delivery attempt.
+type WebhookSendResult struct {
+	StatusCode int
+	Error      error
+}
+
+func (r WebhookSendResult) IsSuccess() bool {
+	return r.StatusCode >= 200 && r.StatusCode < 300 && r.Error == nil
 }

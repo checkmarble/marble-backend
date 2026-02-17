@@ -68,6 +68,7 @@ type ConfigAuthOidcDto struct {
 }
 
 type ConfigFeaturesDto struct {
-	Sso     bool `json:"sso"`
-	Segment bool `json:"segment"`
+	Sso                   bool `json:"sso"`
+	Segment               bool `json:"segment"`
+	WebhookSecretRotation bool `json:"webhook_secret_rotation"`
 }

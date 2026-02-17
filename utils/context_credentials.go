@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/google/uuid"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 func CredentialsFromCtx(ctx context.Context) (models.Credentials, bool) {

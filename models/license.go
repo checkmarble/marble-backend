@@ -51,17 +51,17 @@ func LicenseValidationCodeFromString(s string) LicenseValidationCode {
 }
 
 type LicenseEntitlements struct {
-	Sso            bool
-	Workflows      bool
-	Analytics      bool
-	DataEnrichment bool
-	UserRoles      bool
-	Webhooks       bool
-	RuleSnoozes    bool
-	TestRun        bool
-	Sanctions      bool
-	CaseAutoAssign bool
-	CaseAiAssist   bool
+	Sso                 bool
+	Workflows           bool
+	Analytics           bool
+	DataEnrichment      bool
+	UserRoles           bool
+	Webhooks            bool
+	RuleSnoozes         bool
+	TestRun             bool
+	Sanctions           bool
+	CaseAutoAssign      bool
+	CaseAiAssist        bool
 	ContinuousScreening bool
 }
 
@@ -75,17 +75,17 @@ func NewFullLicense() LicenseValidation {
 	return LicenseValidation{
 		LicenseValidationCode: VALID,
 		LicenseEntitlements: LicenseEntitlements{
-			Sso:            true,
-			Workflows:      true,
-			Analytics:      true,
-			DataEnrichment: true,
-			UserRoles:      true,
-			Webhooks:       true,
-			RuleSnoozes:    true,
-			TestRun:        true,
-			Sanctions:      true,
-			CaseAutoAssign: true,
-			CaseAiAssist:   true,
+			Sso:                 true,
+			Workflows:           true,
+			Analytics:           true,
+			DataEnrichment:      true,
+			UserRoles:           true,
+			Webhooks:            true,
+			RuleSnoozes:         true,
+			TestRun:             true,
+			Sanctions:           true,
+			CaseAutoAssign:      true,
+			CaseAiAssist:        true,
 			ContinuousScreening: true,
 		},
 	}

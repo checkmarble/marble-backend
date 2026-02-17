@@ -10,7 +10,8 @@ import (
 type MetadataKey string
 
 const (
-	MetadataKeyDeploymentID MetadataKey = "deployment_id"
+	MetadataKeyDeploymentID          MetadataKey = "deployment_id"
+	MetadataKeyWebhookSystemMigrated MetadataKey = "webhook_system_migrated"
 )
 
 type Metadata struct {
@@ -25,6 +26,8 @@ func MetadataKeyFromString(key string) (MetadataKey, error) {
 	switch key {
 	case "deployment_id":
 		return MetadataKeyDeploymentID, nil
+	case "webhook_system_migrated":
+		return MetadataKeyWebhookSystemMigrated, nil
 	default:
 		return "", errors.Newf("invalid metadata key: %s", key)
 	}
