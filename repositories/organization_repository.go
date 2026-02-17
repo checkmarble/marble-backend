@@ -236,6 +236,18 @@ func (repo *MarbleDbRepository) UpdateOrganizationFeatureAccess(
 		query = query.Set("sanctions", *updateFeatureAccess.Sanctions)
 		nbUpdated++
 	}
+	if updateFeatureAccess.CaseAutoAssign != nil {
+		query = query.Set("case_auto_assign", *updateFeatureAccess.CaseAutoAssign)
+		nbUpdated++
+	}
+	if updateFeatureAccess.CaseAiAssist != nil {
+		query = query.Set("case_ai_assist", *updateFeatureAccess.CaseAiAssist)
+		nbUpdated++
+	}
+	if updateFeatureAccess.ContinuousScreening != nil {
+		query = query.Set("continuous_screening", *updateFeatureAccess.ContinuousScreening)
+		nbUpdated++
+	}
 
 	if nbUpdated == 0 {
 		return nil

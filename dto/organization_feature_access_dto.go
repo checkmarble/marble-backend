@@ -42,23 +42,38 @@ func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOr
 }
 
 type UpdateOrganizationFeatureAccessBodyDto struct {
-	TestRun   *string `json:"test_run"`
-	Sanctions *string `json:"sanctions"`
+	TestRun             *string `json:"test_run"`
+	Sanctions           *string `json:"sanctions"`
+	CaseAutoAssign      *string `json:"case_auto_assign"`
+	CaseAiAssist        *string `json:"case_ai_assist"`
+	ContinuousScreening *string `json:"continuous_screening"`
 }
 
 func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccessBodyDto,
 	orgId uuid.UUID,
 ) models.UpdateOrganizationFeatureAccessInput {
-	var testRun, sanctions *models.FeatureAccess
+	var testRun, sanctions, caseAutoAssign, caseAiAssist, continuousScreening *models.FeatureAccess
 	if f.TestRun != nil {
 		testRun = utils.Ptr(models.FeatureAccessFrom(*f.TestRun))
 	}
 	if f.Sanctions != nil {
 		sanctions = utils.Ptr(models.FeatureAccessFrom(*f.Sanctions))
 	}
+	if f.CaseAutoAssign != nil {
+		caseAutoAssign = utils.Ptr(models.FeatureAccessFrom(*f.CaseAutoAssign))
+	}
+	if f.CaseAiAssist != nil {
+		caseAiAssist = utils.Ptr(models.FeatureAccessFrom(*f.CaseAiAssist))
+	}
+	if f.ContinuousScreening != nil {
+		continuousScreening = utils.Ptr(models.FeatureAccessFrom(*f.ContinuousScreening))
+	}
 	return models.UpdateOrganizationFeatureAccessInput{
-		OrganizationId: orgId,
-		TestRun:        testRun,
-		Sanctions:      sanctions,
+		OrganizationId:      orgId,
+		TestRun:             testRun,
+		Sanctions:           sanctions,
+		CaseAutoAssign:      caseAutoAssign,
+		CaseAiAssist:        caseAiAssist,
+		ContinuousScreening: continuousScreening,
 	}
 }
