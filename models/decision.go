@@ -144,11 +144,11 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 		},
 		RuleExecutions: scenarioExecution.RuleExecutions,
 		ScreeningExecutions: pure_utils.Map(scenarioExecution.ScreeningExecutions,
-			MergeScreeningExecWithDefaults(decisionId, scenarioExecution.OrganizationId)),
+			MergeScreeningExecWithDefaults(decisionId, scenarioExecution.OrganizationId, nil)),
 	}
 }
 
-func MergeScreeningExecWithDefaults(decisionId, orgId uuid.UUID) func(se ScreeningWithMatches) ScreeningWithMatches {
+func MergeScreeningExecWithDefaults(decisionId, orgId uuid.UUID, counterpartyIdentifier *string) func(se ScreeningWithMatches) ScreeningWithMatches {
 	return func(se ScreeningWithMatches) ScreeningWithMatches {
 		if se.Id == "" {
 			se.Id = uuid.Must(uuid.NewV7()).String()
@@ -157,6 +157,12 @@ func MergeScreeningExecWithDefaults(decisionId, orgId uuid.UUID) func(se Screeni
 		se.OrgId = orgId
 		se.CreatedAt = time.Now()
 		se.UpdatedAt = time.Now()
+		// Override the counterparty for all matches if provided
+		if counterpartyIdentifier != nil {
+			for i := range se.Matches {
+				se.Matches[i].UniqueCounterpartyIdentifier = counterpartyIdentifier
+			}
+		}
 		return se
 	}
 }

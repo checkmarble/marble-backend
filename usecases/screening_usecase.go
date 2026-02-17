@@ -269,18 +269,25 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 		return models.ScreeningWithMatches{}, err
 	}
 
+	counterpartyIdentifier := getScreeningCounterpartyIdentifier(sc)
+	whitelist, err := uc.getWhitelistFromScreening(ctx, uc.executorFactory.NewExecutor(), decision.OrganizationId, counterpartyIdentifier)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
 	query := models.OpenSanctionsQuery{
-		IsRefinement: true,
-		OrgConfig:    sc.OrgConfig,
-		Config:       scc,
-		Queries:      models.AdaptRefineRequestToMatchable(refine),
+		IsRefinement:         true,
+		OrgConfig:            sc.OrgConfig,
+		Config:               scc,
+		Queries:              models.AdaptRefineRequestToMatchable(refine),
+		WhitelistedEntityIds: whitelist,
 	}
 
 	screening, err := uc.Execute(ctx, decision.OrganizationId, query)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
-	screening = models.MergeScreeningExecWithDefaults(decision.DecisionId, decision.OrganizationId)(screening)
+	screening = models.MergeScreeningExecWithDefaults(decision.DecisionId, decision.OrganizationId, counterpartyIdentifier)(screening)
 
 	var requester *string
 
@@ -290,6 +297,7 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 
 	screening.IsManual = true
 	screening.RequestedBy = requester
+	screening.WhitelistedEntities = whitelist
 
 	screening, err = executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
@@ -341,11 +349,17 @@ func (uc ScreeningUsecase) Search(ctx context.Context, refine models.ScreeningRe
 		return models.ScreeningWithMatches{}, err
 	}
 
+	whitelist, err := uc.getWhitelistFromScreening(ctx, uc.executorFactory.NewExecutor(), decision.OrganizationId, getScreeningCounterpartyIdentifier(sc))
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
 	query := models.OpenSanctionsQuery{
-		IsRefinement: true,
-		OrgConfig:    sc.OrgConfig,
-		Config:       scc,
-		Queries:      models.AdaptRefineRequestToMatchable(refine),
+		IsRefinement:         true,
+		OrgConfig:            sc.OrgConfig,
+		Config:               scc,
+		Queries:              models.AdaptRefineRequestToMatchable(refine),
+		WhitelistedEntityIds: whitelist,
 	}
 
 	screening, err := uc.Execute(ctx, decision.OrganizationId, query)
@@ -903,6 +917,34 @@ func (uc ScreeningUsecase) enforceCanReadOrUpdateScreeningMatch(
 	}, nil
 }
 
+func (uc ScreeningUsecase) getWhitelistFromScreening(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	counterpartyIdentifier *string,
+) ([]string, error) {
+	if counterpartyIdentifier == nil {
+		return nil, nil
+	}
+
+	whitelistEntries, err := uc.repository.SearchScreeningMatchWhitelist(
+		ctx,
+		exec,
+		orgId,
+		counterpartyIdentifier,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	whitelist := pure_utils.Map(whitelistEntries, func(entry models.ScreeningWhitelist) string {
+		return entry.EntityId
+	})
+
+	return whitelist, nil
+}
+
 func mergePayloads(originalRaw, newRaw []byte) ([]byte, error) {
 	var original, new map[string]any
 
@@ -921,4 +963,12 @@ func mergePayloads(originalRaw, newRaw []byte) ([]byte, error) {
 	}
 
 	return out, nil
+}
+
+func getScreeningCounterpartyIdentifier(screening models.ScreeningWithMatches) *string {
+	if len(screening.Matches) == 0 {
+		return nil
+	}
+	// Suppose all matches of a screening have the same counterparty
+	return screening.Matches[0].UniqueCounterpartyIdentifier
 }
