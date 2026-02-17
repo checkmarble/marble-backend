@@ -189,9 +189,13 @@ func (usecase *ScenarioUsecase) CopyScenario(
 			}
 
 			// Find the latest iteration: prefer the highest version, or draft if no published
+			// Exclude archived iterations
 			var sourceIteration *models.ScenarioIteration
 			var highestVersion int
 			for i := range iterations {
+				if iterations[i].Archived {
+					continue
+				}
 				if iterations[i].Version != nil {
 					if *iterations[i].Version > highestVersion {
 						highestVersion = *iterations[i].Version
@@ -199,9 +203,12 @@ func (usecase *ScenarioUsecase) CopyScenario(
 					}
 				}
 			}
-			// If no published version found, use draft
+			// If no published version found, use draft (non-archived)
 			if sourceIteration == nil {
 				for i := range iterations {
+					if iterations[i].Archived {
+						continue
+					}
 					if iterations[i].Version == nil {
 						sourceIteration = &iterations[i]
 						break
