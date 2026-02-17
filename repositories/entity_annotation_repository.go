@@ -6,6 +6,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
 )
 
 func (repo *MarbleDbRepository) GetEntityAnnotationById(
@@ -195,6 +196,43 @@ func (repo *MarbleDbRepository) IsObjectTagSet(ctx context.Context, exec Executo
 	return hasTag, nil
 }
 
+func (repo *MarbleDbRepository) IsObjectRiskTopicSet(ctx context.Context, exec Executor,
+	req models.CreateEntityAnnotationRequest, topic string,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	filters := squirrel.Eq{
+		"org_id":            req.OrgId,
+		"object_type":       req.ObjectType,
+		"object_id":         req.ObjectId,
+		"annotation_type":   models.EntityAnnotationRiskTopic,
+		"deleted_at":        nil,
+		"payload->>'topic'": topic,
+	}
+
+	query := NewQueryBuilder().
+		Select("1").
+		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
+		Where(filters).
+		Limit(1).
+		Prefix("select exists (").Suffix(")")
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return false, err
+	}
+
+	var exists bool
+
+	if err := exec.QueryRow(ctx, sql, args...).Scan(&exists); err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
 func (repo *MarbleDbRepository) DeleteEntityAnnotation(ctx context.Context, exec Executor,
 	req models.AnnotationByIdRequest,
 ) error {
@@ -214,4 +252,43 @@ func (repo *MarbleDbRepository) DeleteEntityAnnotation(ctx context.Context, exec
 		Where(filters)
 
 	return ExecBuilder(ctx, exec, sql)
+}
+
+// FindEntityAnnotationsWithRiskTopics finds risk topic annotations matching the filter.
+// This is used by MonitoringListCheck rule evaluation.
+func (repo *MarbleDbRepository) FindEntityAnnotationsWithRiskTopics(
+	ctx context.Context,
+	exec Executor,
+	filter models.EntityAnnotationRiskTopicsFilter,
+) ([]models.EntityAnnotation, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	if len(filter.ObjectIds) == 0 {
+		return nil, errors.Wrap(models.BadParameterError, "object IDs filter cannot be empty")
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.EntityAnnotationColumns...).
+		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
+		Where(squirrel.Eq{
+			"org_id":          filter.OrgId,
+			"object_type":     filter.ObjectType,
+			"annotation_type": models.EntityAnnotationRiskTopic.String(),
+			"deleted_at":      nil,
+		}).
+		Where("object_id = ANY(?)", filter.ObjectIds)
+
+	if len(filter.Topics) > 0 {
+		topicStrings := make([]string, len(filter.Topics))
+		for i, t := range filter.Topics {
+			topicStrings[i] = string(t)
+		}
+		query = query.Where("payload->>'topic' = ANY(?)", topicStrings)
+	}
+
+	query = query.Limit(1)
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptEntityAnnotation)
 }

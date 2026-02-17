@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -36,6 +37,10 @@ type EntityAnnotationRepository interface {
 		req models.AnnotationByIdRequest) error
 	IsObjectTagSet(ctx context.Context, exec repositories.Executor,
 		req models.CreateEntityAnnotationRequest, tagId string) (bool, error)
+	IsObjectRiskTopicSet(ctx context.Context, exec repositories.Executor,
+		req models.CreateEntityAnnotationRequest, topic string) (bool, error)
+	FindEntityAnnotationsWithRiskTopics(ctx context.Context, exec repositories.Executor,
+		filter models.EntityAnnotationRiskTopicsFilter) ([]models.EntityAnnotation, error)
 }
 
 type EntityAnnotationCaseUsecase interface {
@@ -89,7 +94,8 @@ func (uc EntityAnnotationUsecase) List(ctx context.Context, req models.EntityAnn
 					thumbKey := models.ThumbnailFileName(key)
 					thumbnailUrl, err := uc.blobRepository.GenerateSignedUrl(ctx, uc.bucketUrl, thumbKey)
 
-					annotations[annIdx].FileContentTypes[fileIdx] = uc.blobRepository.GetContentType(ctx, uc.bucketUrl, key)
+					annotations[annIdx].FileContentTypes[fileIdx] =
+						uc.blobRepository.GetContentType(ctx, uc.bucketUrl, key)
 
 					if err == nil {
 						annotations[annIdx].FileThumbnails[fileIdx] = thumbnailUrl
@@ -201,7 +207,8 @@ func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
 		for idx, file := range metadata {
 			fileReq := req
 
-			if err := uc.taskQueueRepository.EnqueueGenerateThumbnailTask(ctx, tx, uc.enforceSecurityAnnotation.OrgId(), uc.bucketUrl, file.Key); err != nil {
+			if err := uc.taskQueueRepository.EnqueueGenerateThumbnailTask(ctx, tx,
+				uc.enforceSecurityAnnotation.OrgId(), uc.bucketUrl, file.Key); err != nil {
 				return nil, err
 			}
 
@@ -282,7 +289,8 @@ func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId uuid.UU
 }
 
 func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req models.CreateEntityAnnotationRequest) error {
-	if req.AnnotationType == models.EntityAnnotationTag {
+	switch req.AnnotationType {
+	case models.EntityAnnotationTag:
 		payload, ok := req.Payload.(models.EntityAnnotationTagPayload)
 		if !ok {
 			return errors.New("invalid payload for annotation type")
@@ -302,6 +310,24 @@ func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req mo
 		if exists {
 			return errors.Wrap(models.ConflictError,
 				"tag is already annotated on this object")
+		}
+
+	case models.EntityAnnotationRiskTopic:
+		payload, ok := req.Payload.(models.EntityAnnotationRiskTopicPayload)
+		if !ok {
+			return errors.New("invalid payload for annotation type")
+		}
+		if !slices.Contains(models.ValidRiskTopics, payload.Topic) {
+			return errors.Wrap(models.BadParameterError, "invalid risk topic")
+		}
+		exists, err := uc.repository.IsObjectRiskTopicSet(ctx,
+			uc.executorFactory.NewExecutor(), req, string(payload.Topic))
+		if err != nil {
+			return err
+		}
+		if exists {
+			return errors.Wrap(models.ConflictError,
+				"risk topic is already annotated on this object")
 		}
 	}
 
@@ -326,6 +352,47 @@ func (uc EntityAnnotationUsecase) writeFileAnnotationToBlobStorage(ctx context.C
 	}
 	if err := writer.Close(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// AttachObjectRiskTopics adds new risk topic annotations for an object.
+// Duplicate topics (already existing on the object) are skipped. Existing topics are never deleted.
+// For internal use by continuous screening. Skips ingested object validation and security checks.
+func (uc EntityAnnotationUsecase) AttachObjectRiskTopics(
+	ctx context.Context,
+	tx repositories.Transaction,
+	input models.ObjectRiskTopicCreate,
+) error {
+	req := models.CreateEntityAnnotationRequest{
+		OrgId:          input.OrgId,
+		ObjectType:     input.ObjectType,
+		ObjectId:       input.ObjectId,
+		AnnotationType: models.EntityAnnotationRiskTopic,
+		AnnotatedBy:    input.AnnotatedBy,
+	}
+
+	for _, topic := range input.Topics {
+		exists, err := uc.repository.IsObjectRiskTopicSet(ctx, tx, req, string(topic))
+		if err != nil {
+			return err
+		}
+		if exists {
+			continue
+		}
+
+		req.Payload = models.EntityAnnotationRiskTopicPayload{
+			Topic:                 topic,
+			Reason:                input.Reason,
+			Url:                   input.Url,
+			ContinuousScreeningId: input.ContinuousScreeningId,
+			OpenSanctionsEntityId: input.OpenSanctionsEntityId,
+		}
+
+		if _, err := uc.repository.CreateEntityAnnotation(ctx, tx, req); err != nil {
+			return err
+		}
 	}
 
 	return nil

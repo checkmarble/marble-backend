@@ -18,11 +18,11 @@ const (
 )
 
 type MonitoringListCheckRepository interface {
-	FindObjectRiskTopicsMetadata(
+	FindEntityAnnotationsWithRiskTopics(
 		ctx context.Context,
 		exec repositories.Executor,
-		filter models.ObjectRiskTopicsMetadataFilter,
-	) ([]models.ObjectMetadata, error)
+		filter models.EntityAnnotationRiskTopicsFilter,
+	) ([]models.EntityAnnotation, error)
 	ListPivots(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -498,7 +498,7 @@ func (mlc MonitoringListCheck) checkObjectIdsHaveRiskTopics(
 	objectType string,
 	objectIds []string,
 ) (bool, error) {
-	filter := models.ObjectRiskTopicsMetadataFilter{
+	filter := models.EntityAnnotationRiskTopicsFilter{
 		OrgId:      mlc.OrgId,
 		ObjectType: objectType,
 		ObjectIds:  objectIds,
@@ -513,9 +513,9 @@ func (mlc MonitoringListCheck) checkObjectIdsHaveRiskTopics(
 	}
 	filter.Topics = topics
 
-	results, err := mlc.Repository.FindObjectRiskTopicsMetadata(ctx, exec, filter)
+	results, err := mlc.Repository.FindEntityAnnotationsWithRiskTopics(ctx, exec, filter)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to list object risk topics")
+		return false, errors.Wrap(err, "failed to find risk topic annotations")
 	}
 
 	return len(results) > 0, nil

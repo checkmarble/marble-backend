@@ -47,7 +47,8 @@ func handleListEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		out, err := dto.AdaptGroupedEntityAnnotations(models.GroupAnnotationsByType(annotations))
+		out, err := dto.AdaptGroupedEntityAnnotations(
+			models.GroupAnnotationsByType(annotations))
 		if err != nil {
 			presentError(ctx, c, err)
 			return
@@ -183,11 +184,21 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
+		annotationType := models.EntityAnnotationFrom(payload.Type)
+		if annotationType == models.EntityAnnotationUnknown {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid annotation type"))
+			return
+		}
+		if annotationType == models.EntityAnnotationFile {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError,
+				"cannot use generic annotation endpoint to add file annotation"))
+			return
+		}
+
 		uc := usecasesWithCreds(ctx, uc)
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
 
-		parsedPayload, err := dto.DecodeEntityAnnotationPayload(
-			models.EntityAnnotationFrom(payload.Type), payload.Payload)
+		parsedPayload, err := dto.DecodeEntityAnnotationPayload(annotationType, payload.Payload)
 		if err != nil {
 			presentError(ctx, c, err)
 			return
@@ -198,19 +209,9 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			ObjectType:     objectType,
 			ObjectId:       objectId,
 			CaseId:         payload.CaseId,
-			AnnotationType: models.EntityAnnotationFrom(payload.Type),
+			AnnotationType: annotationType,
 			Payload:        parsedPayload,
 			AnnotatedBy:    &creds.ActorIdentity.UserId,
-		}
-
-		if req.AnnotationType == models.EntityAnnotationUnknown {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid annotation type"))
-			return
-		}
-		if req.AnnotationType == models.EntityAnnotationFile {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError,
-				"cannot use generic annotation endpoint to add file annotation"))
-			return
 		}
 
 		annotation, err := annotationsUsecase.Attach(ctx, req)

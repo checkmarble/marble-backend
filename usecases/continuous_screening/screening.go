@@ -522,7 +522,7 @@ func (uc *ContinuousScreeningUsecase) handleConfirmedHit(
 	reviewerUuid *uuid.UUID,
 ) error {
 	// Add risk topics from the confirmed match to the Marble object
-	if err := uc.addRiskTopicsFromConfirmedMatch(ctx, tx, screening, confirmedMatch, reviewerUuid); err != nil {
+	if err := uc.addRiskTopicsFromConfirmedMatch(ctx, tx, screening, confirmedMatch, reviewerId); err != nil {
 		return errors.Wrap(err, "failed to add risk topics from confirmed match")
 	}
 
@@ -733,7 +733,7 @@ func (uc *ContinuousScreeningUsecase) addRiskTopicsFromConfirmedMatch(
 	tx repositories.Transaction,
 	screening models.ContinuousScreeningWithMatches,
 	match models.ContinuousScreeningMatch,
-	reviewerUuid *uuid.UUID,
+	reviewerId *models.UserId,
 ) error {
 	// Determine object type, ID, and entity payload based on trigger type
 	var objectType, objectId string
@@ -780,7 +780,7 @@ func (uc *ContinuousScreeningUsecase) addRiskTopicsFromConfirmedMatch(
 	}
 
 	// Create the upsert input (will APPEND topics, not replace)
-	input := models.NewObjectRiskTopicFromContinuousScreeningReviewUpsert(
+	input := models.NewObjectRiskTopicFromContinuousScreeningReview(
 		screening.OrgId,
 		objectType,
 		objectId,
@@ -788,8 +788,9 @@ func (uc *ContinuousScreeningUsecase) addRiskTopicsFromConfirmedMatch(
 		screening.Id,
 		openSanctionsEntityId,
 	)
+	input.AnnotatedBy = reviewerId
 
-	return uc.objectRiskTopicWriter.AppendObjectRiskTopics(ctx, tx, input)
+	return uc.objectRiskTopicWriter.AttachObjectRiskTopics(ctx, tx, input)
 }
 
 // loadMoreObjectTrigger handles load more for object trigger screenings (Marble to OpenSanction direction)

@@ -8,7 +8,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin/binding"
 )
 
@@ -20,7 +19,7 @@ type EntityAnnotationDto struct {
 	Payload     any       `json:"payload"`
 	AnnotatedBy *string   `json:"annotated_by,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
-	ObjectType  string    `json:"object_type,"`
+	ObjectType  string    `json:"object_type"`
 	ObjectId    string    `json:"object_id"`
 }
 
@@ -83,6 +82,14 @@ type EntityAnnotationFileDto struct {
 	} `json:"files"`
 }
 
+type EntityAnnotationRiskTopicDto struct {
+	Topic                 string `json:"topic"`
+	Reason                string `json:"reason,omitempty"`
+	Url                   string `json:"url,omitempty"`
+	ContinuousScreeningId string `json:"continuous_screening_id,omitempty"`
+	OpenSanctionsEntityId string `json:"opensanctions_entity_id,omitempty"` //nolint: tagliatelle
+}
+
 func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err error) {
 	switch model.AnnotationType {
 	case models.EntityAnnotationComment:
@@ -110,8 +117,14 @@ func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err e
 			o.Files[idx].ContentType = contentType
 		}
 
+	case models.EntityAnnotationRiskTopic:
+		var o EntityAnnotationRiskTopicDto
+
+		err = json.Unmarshal(model.Payload, &o)
+		out = o
+
 	default:
-		return nil, errors.New("could not adapt annotation type")
+		return nil, fmt.Errorf("could not adapt annotation type")
 	}
 
 	return
@@ -129,6 +142,12 @@ func DecodeEntityAnnotationPayload(kind models.EntityAnnotationType, payload jso
 
 	case models.EntityAnnotationTag:
 		var o models.EntityAnnotationTagPayload
+
+		err = json.Unmarshal(payload, &o)
+		out = o
+
+	case models.EntityAnnotationRiskTopic:
+		var o models.EntityAnnotationRiskTopicPayload
 
 		err = json.Unmarshal(payload, &o)
 		out = o

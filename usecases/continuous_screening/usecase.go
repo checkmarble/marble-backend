@@ -209,10 +209,10 @@ type featureAccessReader interface {
 }
 
 type objectRiskTopicWriter interface {
-	AppendObjectRiskTopics(
+	AttachObjectRiskTopics(
 		ctx context.Context,
 		tx repositories.Transaction,
-		input models.ObjectRiskTopicUpsert,
+		input models.ObjectRiskTopicCreate,
 	) error
 }
 

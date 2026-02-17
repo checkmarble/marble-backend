@@ -24,7 +24,7 @@ type ScreeningTestSuite struct {
 	ingestionUsecase             *mocks.ContinuousScreeningIngestionUsecase
 	screeningProvider            *mocks.OpenSanctionsRepository
 	caseEditor                   *mocks.CaseEditor
-	objectRiskTopic              *mocks.ObjectMetadata
+	objectRiskTopic              *mocks.ObjectRiskTopicWriter
 	executorFactory              executor_factory.ExecutorFactoryStub
 	transactionFactory           executor_factory.TransactionFactoryStub
 
@@ -46,7 +46,7 @@ func (suite *ScreeningTestSuite) SetupTest() {
 	suite.ingestionUsecase = new(mocks.ContinuousScreeningIngestionUsecase)
 	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.caseEditor = new(mocks.CaseEditor)
-	suite.objectRiskTopic = new(mocks.ObjectMetadata)
+	suite.objectRiskTopic = new(mocks.ObjectRiskTopicWriter)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
@@ -437,10 +437,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 		return attrs.EventType == models.ScreeningReviewed
 	})).Return(models.CaseEvent{}, nil)
 
-	// Expect AppendObjectRiskTopics to be called with the extracted topics
+	// Expect AttachObjectRiskTopics to be called with the extracted topics
 	// "sanctions" -> RiskTopicSanctions, "pep" -> RiskTopicPEPs
-	suite.objectRiskTopic.On("AppendObjectRiskTopics", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.ObjectRiskTopicUpsert) bool {
+	suite.objectRiskTopic.On("AttachObjectRiskTopics", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.ObjectRiskTopicCreate) bool {
 			if input.OrgId != suite.orgId ||
 				input.ObjectType != objectType ||
 				input.ObjectId != objectId ||
@@ -544,10 +544,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		return attrs.EventType == models.ScreeningReviewed
 	})).Return(models.CaseEvent{}, nil)
 
-	// Expect AppendObjectRiskTopics to be called with topics from screening.OpenSanctionEntityPayload
+	// Expect AttachObjectRiskTopics to be called with topics from screening.OpenSanctionEntityPayload
 	// "pep" -> RiskTopicPEPs, "regulatory" -> RiskTopicAdverseMedia
-	suite.objectRiskTopic.On("AppendObjectRiskTopics", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.ObjectRiskTopicUpsert) bool {
+	suite.objectRiskTopic.On("AttachObjectRiskTopics", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.ObjectRiskTopicCreate) bool {
 			if input.OrgId != suite.orgId ||
 				input.ObjectType != objectType ||
 				input.ObjectId != objectId ||

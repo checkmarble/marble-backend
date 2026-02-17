@@ -67,8 +67,7 @@ const (
 	CONTINUOUS_SCREENING_OBJECT_READ
 	CONTINUOUS_SCREENING_OBJECT_WRITE
 	ANNOTATION_DELETE
-	OBJECT_METADATA_READ
-	OBJECT_METADATA_WRITE
+	ANNOTATION_RISK_TOPICS_WRITE
 )
 
 func (r Permission) String() (string, error) {
@@ -133,8 +132,7 @@ func (r Permission) String() (string, error) {
 		"CONTINUOUS_SCREENING_OBJECT_READ",
 		"CONTINUOUS_SCREENING_OBJECT_WRITE",
 		"ANNOTATION_DELETE",
-		"OBJECT_METADATA_READ",
-		"OBJECT_METADATA_WRITE",
+		"ANNOTATION_RISK_TOPICS_WRITE",
 	}
 	if int(r) > len(permissions)-1 {
 		return "", errors.New("Invalid permission: no string representation has been set")
