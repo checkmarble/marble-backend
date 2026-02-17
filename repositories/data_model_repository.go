@@ -749,7 +749,9 @@ func (repo MarbleDbRepository) DeleteDataModelTable(ctx context.Context, exec Ex
 	return ExecBuilder(ctx, exec, query)
 }
 
-func (repo MarbleDbRepository) ArchiveDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error {
+func (repo MarbleDbRepository) ArchiveDataModelField(ctx context.Context, exec Executor,
+	table models.TableMetadata, field models.FieldMetadata,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -762,7 +764,9 @@ func (repo MarbleDbRepository) ArchiveDataModelField(ctx context.Context, exec E
 	return ExecBuilder(ctx, exec, query)
 }
 
-func (repo MarbleDbRepository) DeleteDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error {
+func (repo MarbleDbRepository) DeleteDataModelField(ctx context.Context, exec Executor,
+	table models.TableMetadata, field models.FieldMetadata,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

@@ -9,7 +9,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/google/uuid"
 )
 
 func (*MarbleDbRepository) GetActiveScreeningForDecision(
@@ -408,39 +407,6 @@ func (repo *MarbleDbRepository) CopyScreeningFiles(ctx context.Context, exec Exe
 	}
 
 	return nil
-}
-
-func (repo *MarbleDbRepository) CountWhitelistsForCounterpartyId(ctx context.Context, exec Executor,
-	orgId uuid.UUID, counterpartyId string,
-) (int, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return 0, err
-	}
-
-	query := NewQueryBuilder().
-		Select("COUNT(*)").
-		From(dbmodels.TABLE_SCREENING_WHITELISTS).
-		Where(squirrel.And{
-			squirrel.Eq{
-				"org_id":          orgId,
-				"counterparty_id": counterpartyId,
-			},
-		})
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return 0, err
-	}
-
-	row := exec.QueryRow(ctx, sql, args...)
-
-	var count int
-
-	if err := row.Scan(&count); err != nil {
-		return 0, err
-	}
-
-	return count, nil
 }
 
 func (repo *MarbleDbRepository) CountScreeningsByOrg(ctx context.Context, exec Executor,

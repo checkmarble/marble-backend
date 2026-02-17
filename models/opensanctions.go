@@ -52,7 +52,6 @@ type OpenSanctionsQuery struct {
 	IsRefinement       bool
 	EffectiveThreshold int
 	LimitOverride      *int
-	LimitIncrease      int
 	Queries            []OpenSanctionsCheckQuery
 	InitialQuery       []OpenSanctionsCheckQuery
 	Config             ScreeningConfig

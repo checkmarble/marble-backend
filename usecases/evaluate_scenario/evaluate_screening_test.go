@@ -6,8 +6,10 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -36,31 +38,15 @@ func (m mockScreeningExecutor) Execute(
 	return models.ScreeningWithMatches{}, nil
 }
 
-func (m mockScreeningExecutor) FilterOutWhitelistedMatches(
+func (m mockScreeningExecutor) SearchWhitelist(
 	ctx context.Context,
+	exec repositories.Executor,
 	orgId uuid.UUID,
-	screening models.ScreeningWithMatches,
-	counterpartyId string,
-) (models.ScreeningWithMatches, error) {
-	// We are not mocking returned data here, only that the function was called
-	// with the appropriate arguments, so we always expect this to be called.
-	m.On("FilterOutWhitelistedMatches", context.TODO(), orgId, screening, counterpartyId)
-	m.Called(ctx, orgId, screening, counterpartyId)
-
-	return screening, nil
-}
-
-func (m mockScreeningExecutor) CountWhitelistsForCounterpartyId(
-	ctx context.Context,
-	orgId uuid.UUID,
-	counterpartyId string,
-) (int, error) {
-	// We are not mocking returned data here, only that the function was called
-	// with the appropriate arguments, so we always expect this to be called.
-	m.On("CountWhistelistsForCounterparty", context.TODO(), orgId, counterpartyId)
-	m.Called(ctx, orgId, counterpartyId)
-
-	return 0, nil
+	counterparty, entityId *string,
+	reviewId *models.UserId,
+) ([]models.ScreeningWhitelist, error) {
+	args := m.Called(ctx, exec, orgId, counterparty, entityId, reviewId)
+	return args.Get(0).([]models.ScreeningWhitelist), args.Error(1)
 }
 
 func (m mockScreeningExecutor) PerformNameRecognition(ctx context.Context, label string) ([]httpmodels.HTTPNameRecognitionMatch, error) {
@@ -94,6 +80,7 @@ func getScreeningEvaluator() (ScenarioEvaluator, mockScreeningExecutor) {
 		evaluateAstExpression: evaluator,
 		evalScreeningUsecase:  exec,
 		nameRecognizer:        exec,
+		executorFactory:       executor_factory.NewExecutorFactoryStub(),
 	}, exec
 }
 
@@ -631,6 +618,55 @@ func TestScreeningWithAllPreprocessing(t *testing.T) {
 
 	exec.Mock.AssertCalled(t, "Execute", context.TODO(),
 		uuid.MustParse("11111111-1111-1111-1111-111111111111"), expectedQuery)
+
+	assert.NoError(t, err)
+}
+
+func TestScreeningWithCounterpartyWhitelist(t *testing.T) {
+	orgId := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	counterpartyId := "counterparty-123"
+
+	eval, exec := getScreeningEvaluator()
+
+	whitelistItems := []models.ScreeningWhitelist{
+		{Id: "whitelist-entity-1", OrgId: orgId, CounterpartyId: counterpartyId, EntityId: "entity-1"},
+		{Id: "whitelist-entity-2", OrgId: orgId, CounterpartyId: counterpartyId, EntityId: "entity-2"},
+	}
+
+	exec.Mock.
+		On("SearchWhitelist", mock.Anything, mock.Anything, orgId, &counterpartyId, (*string)(nil), (*models.UserId)(nil)).
+		Return(whitelistItems, nil)
+
+	iteration := models.ScenarioIteration{
+		OrganizationId: orgId,
+		ScreeningConfigs: []models.ScreeningConfig{{
+			TriggerRule:              &ast.Node{Constant: true},
+			EntityType:               "Person",
+			Query:                    map[string]ast.Node{"name": {Constant: "John Doe"}},
+			CounterpartyIdExpression: &ast.Node{Constant: counterpartyId},
+		}},
+	}
+
+	expectedQuery := models.OpenSanctionsQuery{
+		Config: iteration.ScreeningConfigs[0],
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Person",
+				Filters: models.OpenSanctionsFilter{
+					"name": []string{"John Doe"},
+				},
+			},
+		},
+		WhitelistedEntityIds: []string{"entity-1", "entity-2"},
+	}
+
+	_, err := eval.evaluateScreening(context.TODO(), iteration,
+		ScenarioEvaluationParameters{Scenario: models.Scenario{
+			OrganizationId: orgId,
+		}}, DataAccessor{})
+
+	exec.Mock.AssertCalled(t, "Execute", context.TODO(), orgId, expectedQuery)
+	exec.Mock.AssertCalled(t, "SearchWhitelist", mock.Anything, mock.Anything, orgId, &counterpartyId, (*string)(nil), (*models.UserId)(nil))
 
 	assert.NoError(t, err)
 }

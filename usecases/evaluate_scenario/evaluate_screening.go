@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -192,16 +193,31 @@ func (e ScenarioEvaluator) evaluateScreening(
 				}
 
 				if trimmed := strings.TrimSpace(counterpartyId); trimmed != "" {
-					uniqueCounterpartyIdentifier = &counterpartyId
+					uniqueCounterpartyIdentifier = &trimmed
 
-					whitelistCount, err := e.evalScreeningUsecase.CountWhitelistsForCounterpartyId(
-						ctx, iteration.OrganizationId, *uniqueCounterpartyIdentifier)
+					whitelistRecords, err := e.evalScreeningUsecase.SearchWhitelist(
+						ctx,
+						e.executorFactory.NewExecutor(),
+						iteration.OrganizationId,
+						uniqueCounterpartyIdentifier,
+						nil,
+						nil,
+					)
 					if err != nil {
-						addScreeningError(scc, errors.Wrap(err, "could not retrieve whitelist count"))
+						addScreeningError(
+							scc,
+							errors.Wrap(err, "could not retrieve whitelist records"),
+						)
 						return
 					}
+					whitelistIds := pure_utils.Map(
+						whitelistRecords,
+						func(item models.ScreeningWhitelist) string {
+							return item.EntityId
+						},
+					)
 
-					query.LimitIncrease = whitelistCount
+					query.WhitelistedEntityIds = whitelistIds
 				}
 			}
 
@@ -214,12 +230,6 @@ func (e ScenarioEvaluator) evaluateScreening(
 			if uniqueCounterpartyIdentifier != nil {
 				for idx := range result.Matches {
 					result.Matches[idx].UniqueCounterpartyIdentifier = uniqueCounterpartyIdentifier
-				}
-
-				result, err = e.evalScreeningUsecase.FilterOutWhitelistedMatches(ctx,
-					params.Scenario.OrganizationId, result, *uniqueCounterpartyIdentifier)
-				if err != nil {
-					return
 				}
 			}
 
