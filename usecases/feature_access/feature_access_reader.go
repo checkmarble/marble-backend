@@ -34,6 +34,7 @@ func NewFeatureAccessReader(
 	license models.LicenseValidation,
 	hasConvoyServerSetup bool,
 	hasAnalyticsSetup bool,
+	webhookSystemMigrated bool,
 	hasOpensanctionsSetup bool,
 	hasNameRecognitionSetup bool,
 ) FeatureAccessReader {
@@ -43,7 +44,7 @@ func NewFeatureAccessReader(
 		executorFactory: executorFactory,
 		license:         license,
 		featuresConfiguration: models.FeaturesConfiguration{
-			Webhooks:        hasConvoyServerSetup,
+			Webhooks:        webhookSystemMigrated || hasConvoyServerSetup,
 			Sanctions:       hasOpensanctionsSetup,
 			NameRecognition: hasNameRecognitionSetup,
 			Analytics:       hasAnalyticsSetup,
@@ -60,7 +61,8 @@ func (f FeatureAccessReader) GetOrganizationFeatureAccess(
 		return models.OrganizationFeatureAccess{}, err
 	}
 
-	dbStoredFeatureAccess, err := f.repository.GetOrganizationFeatureAccess(ctx, f.executorFactory.NewExecutor(), organizationId)
+	dbStoredFeatureAccess, err := f.repository.GetOrganizationFeatureAccess(ctx,
+		f.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return models.OrganizationFeatureAccess{}, err
 	}

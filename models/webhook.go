@@ -184,11 +184,15 @@ func NewWebhookEventCaseTagsUpdated(c Case) WebhookEventContent {
 }
 
 func NewWebhookEventCaseCommentCreated(c Case, comments CaseEvent) WebhookEventContent {
-	return newWebhookContent(WebhookEventType_CaseCommentCreated, WebhookEventData{Case: &c, Comments: &comments})
+	return newWebhookContent(WebhookEventType_CaseCommentCreated, WebhookEventData{
+		Case: &c, Comments: &comments,
+	})
 }
 
 func NewWebhookEventCaseFileCreated(c Case, files []CaseFile) WebhookEventContent {
-	return newWebhookContent(WebhookEventType_CaseFileCreated, WebhookEventData{Case: &c, Files: &files})
+	return newWebhookContent(WebhookEventType_CaseFileCreated, WebhookEventData{
+		Case: &c, Files: &files,
+	})
 }
 
 func NewWebhookEventRuleSnoozeCreated(c Case, ruleSnooze RuleSnooze) WebhookEventContent {
@@ -196,7 +200,9 @@ func NewWebhookEventRuleSnoozeCreated(c Case, ruleSnooze RuleSnooze) WebhookEven
 }
 
 func NewWebhookEventDecisionReviewed(c Case, decision Decision) WebhookEventContent {
-	return newWebhookContent(WebhookEventType_CaseDecisionReviewed, WebhookEventData{Case: &c, Decision: &DecisionWithRuleExecutions{Decision: decision}})
+	return newWebhookContent(WebhookEventType_CaseDecisionReviewed, WebhookEventData{
+		Case: &c, Decision: &DecisionWithRuleExecutions{Decision: decision},
+	})
 }
 
 type Webhook struct {
@@ -363,4 +369,14 @@ func MergeWebhookWithUpdate(w Webhook, update WebhookUpdate) Webhook {
 		result.RateLimitDuration = update.RateLimitDuration
 	}
 	return result
+}
+
+// WebhookSendResult contains the result of a webhook delivery attempt.
+type WebhookSendResult struct {
+	StatusCode int
+	Error      error
+}
+
+func (r WebhookSendResult) IsSuccess() bool {
+	return r.StatusCode >= 200 && r.StatusCode < 300 && r.Error == nil
 }

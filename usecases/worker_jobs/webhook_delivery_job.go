@@ -50,15 +50,10 @@ func CalculateBackoff(attempt int) time.Duration {
 	return DefaultRetryDelays[idx]
 }
 
-// WebhookSendResult contains the result of a webhook delivery attempt.
-type WebhookSendResult struct {
-	StatusCode int
-	Error      error
-}
-
-// IsSuccess returns true if the status code indicates success (2xx).
-func (r WebhookSendResult) IsSuccess() bool {
-	return r.StatusCode >= 200 && r.StatusCode < 300
+// WebhookDeliveryService defines the interface for sending webhooks.
+type WebhookDeliveryService interface {
+	SendWebhook(ctx context.Context, webhook models.NewWebhook,
+		secrets []models.NewWebhookSecret, event models.WebhookEventV2) models.WebhookSendResult
 }
 
 // webhookDeliveryRepository defines the interface for webhook delivery operations.
@@ -80,17 +75,13 @@ type webhookDeliveryTaskQueue interface {
 		organizationId uuid.UUID, deliveryId uuid.UUID, scheduledAt time.Time) error
 }
 
-// WebhookDeliveryServiceFunc is a function type for webhook delivery to avoid import cycles.
-type WebhookDeliveryServiceFunc func(ctx context.Context, webhook models.NewWebhook,
-	secrets []models.NewWebhookSecret, event models.WebhookEventV2) WebhookSendResult
-
 // WebhookDeliveryWorker is the Stage 2 worker that delivers webhooks to individual endpoints.
 type WebhookDeliveryWorker struct {
 	river.WorkerDefaults[models.WebhookDeliveryJobArgs]
 
 	webhookRepository  webhookDeliveryRepository
 	taskQueue          webhookDeliveryTaskQueue
-	deliveryFunc       WebhookDeliveryServiceFunc
+	deliveryService    WebhookDeliveryService
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 	maxAttempts        int
@@ -100,14 +91,14 @@ type WebhookDeliveryWorker struct {
 func NewWebhookDeliveryWorker(
 	webhookRepository webhookDeliveryRepository,
 	taskQueue webhookDeliveryTaskQueue,
-	deliveryFunc WebhookDeliveryServiceFunc,
+	deliveryService WebhookDeliveryService,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
 ) *WebhookDeliveryWorker {
 	return &WebhookDeliveryWorker{
 		webhookRepository:  webhookRepository,
 		taskQueue:          taskQueue,
-		deliveryFunc:       deliveryFunc,
+		deliveryService:    deliveryService,
 		executorFactory:    executorFactory,
 		transactionFactory: transactionFactory,
 		maxAttempts:        DefaultMaxAttempts,
@@ -160,7 +151,7 @@ func (w *WebhookDeliveryWorker) Work(ctx context.Context, job *river.Job[models.
 
 	logger.DebugContext(ctx, "Delivering webhook", "url", webhook.Url, "event_type", event.EventType)
 
-	result := w.deliveryFunc(ctx, webhook, secrets, event)
+	result := w.deliveryService.SendWebhook(ctx, webhook, secrets, event)
 	newAttempts := delivery.Attempts + 1
 
 	if result.IsSuccess() {
@@ -206,7 +197,7 @@ func (w *WebhookDeliveryWorker) Work(ctx context.Context, job *river.Job[models.
 	return nil
 }
 
-func (w *WebhookDeliveryWorker) formatError(result WebhookSendResult) string {
+func (w *WebhookDeliveryWorker) formatError(result models.WebhookSendResult) string {
 	if result.Error == nil {
 		return fmt.Sprintf("HTTP %d", result.StatusCode)
 	}

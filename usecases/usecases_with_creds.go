@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"context"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -755,6 +754,7 @@ func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.Featur
 		usecases.Usecases.license,
 		usecases.Usecases.hasConvoyServerSetup,
 		usecases.Usecases.hasAnalyticsSetup,
+		usecases.Usecases.webhookSystemMigrated,
 		usecases.Usecases.hasOpensanctionsSetup,
 		usecases.Usecases.hasNameRecognizerSetup,
 	)
@@ -984,21 +984,10 @@ func (usecases UsecasesWithCreds) NewWebhookDeliveryWorker() *worker_jobs.Webhoo
 		IPWhitelist:       usecases.Usecases.webhookIPWhitelist,
 	})
 
-	// Create a wrapper function to adapt the return type
-	deliveryFunc := func(ctx context.Context, webhook models.NewWebhook,
-		secrets []models.NewWebhookSecret, event models.WebhookEventV2,
-	) worker_jobs.WebhookSendResult {
-		result := deliveryService.Send(ctx, webhook, secrets, event)
-		return worker_jobs.WebhookSendResult{
-			StatusCode: result.StatusCode,
-			Error:      result.Error,
-		}
-	}
-
 	return worker_jobs.NewWebhookDeliveryWorker(
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.TaskQueueRepository,
-		deliveryFunc,
+		deliveryService,
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 	)

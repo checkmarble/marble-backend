@@ -20,6 +20,8 @@ import (
 //
 // The migration:
 // - Checks if already migrated (via metadata flag)
+// - If convoy is NOT configured, marks as migrated immediately (no feature flag needed)
+// - If Convoy IS configured, waits for feature flag before migrating
 // - Fetches all webhooks from Convoy for all organizations
 // - Creates them in the internal system with their secrets (in a transaction)
 // - Skips non-HTTPS endpoints (logs a warning)
@@ -27,21 +29,21 @@ import (
 func MigrateConvoyWebhooks(ctx context.Context, repos repositories.Repositories, hasConvoyServerSetup bool) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	// Check if migration is enabled via env var
-	if !utils.GetEnv("ENABLE_WEBHOOK_MIGRATION", false) {
-		return nil
-	}
-
 	// Check if already migrated
 	if IsWebhookSystemMigrated(ctx, repos) {
 		logger.InfoContext(ctx, "Webhook system already migrated, skipping migration")
 		return nil
 	}
 
-	// Check if Convoy is configured
+	// If Convoy is NOT configured, mark as migrated immediately (no feature flag needed)
 	if !hasConvoyServerSetup {
 		logger.InfoContext(ctx, "Convoy not configured, marking webhook system as migrated")
 		return markWebhookSystemMigratedWithTx(ctx, repos)
+	}
+
+	// Convoy IS configured: wait for feature flag before migrating
+	if !utils.GetEnv("ENABLE_WEBHOOK_MIGRATION", false) {
+		return nil
 	}
 
 	logger.InfoContext(ctx, "Starting webhook migration from Convoy to internal system")
@@ -85,7 +87,9 @@ func MigrateConvoyWebhooks(ctx context.Context, repos repositories.Repositories,
 				totalSkipped++
 				continue
 			}
-			webhooksToMigrate = append(webhooksToMigrate, webhookToMigrate{orgId: org.Id, webhook: webhook})
+			webhooksToMigrate = append(webhooksToMigrate, webhookToMigrate{
+				orgId: org.Id, webhook: webhook,
+			})
 		}
 	}
 

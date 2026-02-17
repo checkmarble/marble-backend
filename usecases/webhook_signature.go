@@ -23,9 +23,9 @@ type WebhookSignatureService struct{}
 // Each active secret generates a separate vi= entry (v1, v2, v3, etc.).
 func (s *WebhookSignatureService) Sign(payload []byte, secrets []models.NewWebhookSecret, timestamp int64) string {
 	if len(secrets) == 0 {
-		// No active secrets: return a clearly invalid, non-empty signature header
-		// so that authentication will always fail rather than sending an unsigned request.
-		return fmt.Sprintf("t=%d,v1=missing-secret", timestamp)
+		// No active secrets: return empty signature (respects API contract: it's valid base64 encoded bytes).
+		// Authentication will fail on the receiving end.
+		return fmt.Sprintf("t=%d,v1=", timestamp)
 	}
 
 	// Signature is computed over: "<timestamp>,<payload>"

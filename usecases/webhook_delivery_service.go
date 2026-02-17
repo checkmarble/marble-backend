@@ -77,15 +77,13 @@ func (s *WebhookDeliveryService) userAgent() string {
 	return fmt.Sprintf("Marble/%s", s.marbleVersion)
 }
 
-// WebhookSendResult contains the result of a webhook delivery attempt.
-type WebhookSendResult struct {
-	StatusCode int
-	Error      error
-}
-
-// IsSuccess returns true if the status code indicates success (2xx).
-func (r WebhookSendResult) IsSuccess() bool {
-	return r.StatusCode >= 200 && r.StatusCode < 300
+func (s *WebhookDeliveryService) SendWebhook(
+	ctx context.Context,
+	webhook models.NewWebhook,
+	secrets []models.NewWebhookSecret,
+	event models.WebhookEventV2,
+) models.WebhookSendResult {
+	return s.Send(ctx, webhook, secrets, event)
 }
 
 // Send delivers a webhook payload to the specified endpoint.
@@ -94,7 +92,7 @@ func (s *WebhookDeliveryService) Send(
 	webhook models.NewWebhook,
 	secrets []models.NewWebhookSecret,
 	event models.WebhookEventV2,
-) WebhookSendResult {
+) models.WebhookSendResult {
 	logger := utils.LoggerFromContext(ctx)
 
 	// Set timeout based on webhook configuration, capped at MaxWebhookTimeout
@@ -111,7 +109,7 @@ func (s *WebhookDeliveryService) Send(
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhook.Url, bytes.NewReader(event.EventData))
 	if err != nil {
-		return WebhookSendResult{Error: errors.Wrap(err, "failed to create request")}
+		return models.WebhookSendResult{Error: errors.Wrap(err, "failed to create request")}
 	}
 
 	// Generate signature
@@ -134,7 +132,7 @@ func (s *WebhookDeliveryService) Send(
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return WebhookSendResult{Error: errors.Wrap(err, "request failed")}
+		return models.WebhookSendResult{Error: errors.Wrap(err, "request failed")}
 	}
 	defer resp.Body.Close()
 
@@ -145,7 +143,7 @@ func (s *WebhookDeliveryService) Send(
 		"url", webhook.Url,
 		"status_code", resp.StatusCode)
 
-	return WebhookSendResult{StatusCode: resp.StatusCode}
+	return models.WebhookSendResult{StatusCode: resp.StatusCode}
 }
 
 // ValidateEndpoint validates a webhook endpoint for security and reachability.
