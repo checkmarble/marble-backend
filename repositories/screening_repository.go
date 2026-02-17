@@ -120,6 +120,7 @@ func (*MarbleDbRepository) ArchiveScreening(ctx context.Context, exec Executor, 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCREENINGS).
 		Set("is_archived", true).
+		Set("updated_at", "NOW()").
 		Where(
 			squirrel.Eq{"id": id, "is_archived": false},
 		)
