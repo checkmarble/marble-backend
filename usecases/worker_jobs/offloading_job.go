@@ -39,7 +39,7 @@ type offloadingRepository interface {
 }
 
 func NewOffloadingPeriodicJob(orgId uuid.UUID, interval time.Duration) *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return NewPeriodicJob(
 		river.PeriodicInterval(interval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.OffloadingArgs{
@@ -52,7 +52,6 @@ func NewOffloadingPeriodicJob(orgId uuid.UUID, interval time.Duration) *river.Pe
 					},
 				}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 

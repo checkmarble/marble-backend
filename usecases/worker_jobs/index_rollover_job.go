@@ -24,7 +24,7 @@ const (
 )
 
 func NewIndexDeletionPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return NewPeriodicJob(
 		river.PeriodicInterval(INDEX_DELETION_WORKER_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.IndexDeletionArgs{
@@ -37,7 +37,6 @@ func NewIndexDeletionPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
 					},
 				}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 

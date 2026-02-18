@@ -20,7 +20,7 @@ import (
 )
 
 func NewMetricsCollectionPeriodicJob(config infra.MetricCollectionConfig) *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return NewPeriodicJob(
 		river.PeriodicInterval(config.JobInterval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.MetricsCollectionArgs{}, &river.InsertOpts{
@@ -32,7 +32,6 @@ func NewMetricsCollectionPeriodicJob(config infra.MetricCollectionConfig) *river
 				MaxAttempts: 1, // No retries
 			}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 

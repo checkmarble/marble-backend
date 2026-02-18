@@ -21,7 +21,7 @@ const (
 )
 
 func NewWebhookCleanupPeriodicJob() *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return NewPeriodicJob(
 		river.PeriodicInterval(WEBHOOK_CLEANUP_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.WebhookCleanupJobArgs{},
@@ -34,7 +34,6 @@ func NewWebhookCleanupPeriodicJob() *river.PeriodicJob {
 					},
 				}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 

@@ -68,7 +68,7 @@ type RulesRepository interface {
 }
 
 func NewTestRunSummaryPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return NewPeriodicJob(
 		river.PeriodicInterval(TEST_RUN_SUMMARY_WORKER_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.TestRunSummaryArgs{
@@ -81,7 +81,6 @@ func NewTestRunSummaryPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
 					},
 				}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 

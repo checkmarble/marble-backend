@@ -15,7 +15,7 @@ const (
 )
 
 func NewWebhookRetryPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return NewPeriodicJob(
 		river.PeriodicInterval(WEBHOOK_RETRY_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.WebhookRetryArgs{OrgId: orgId},
@@ -27,7 +27,6 @@ func NewWebhookRetryPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
 					},
 				}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 

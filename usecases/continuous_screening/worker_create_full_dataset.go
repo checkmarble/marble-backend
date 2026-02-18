@@ -32,7 +32,7 @@ const (
 
 // Periodic job
 func NewContinuousScreeningCreateFullDatasetPeriodicJob(orgId uuid.UUID, interval time.Duration) *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return worker_jobs.NewPeriodicJob(
 		river.PeriodicInterval(interval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.ContinuousScreeningCreateFullDatasetArgs{
@@ -45,7 +45,6 @@ func NewContinuousScreeningCreateFullDatasetPeriodicJob(orgId uuid.UUID, interva
 					},
 				}
 		},
-		nil,
 	)
 }
 

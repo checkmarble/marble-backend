@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -67,7 +68,7 @@ type ScanDatasetUpdatesWorkerFeatureAccessReader interface {
 
 // Periodic job
 func NewContinuousScreeningUpdateDatasetJob(interval time.Duration) *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return worker_jobs.NewPeriodicJob(
 		river.PeriodicInterval(interval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.ContinuousScreeningScanDatasetUpdatesArgs{}, &river.InsertOpts{
@@ -78,7 +79,6 @@ func NewContinuousScreeningUpdateDatasetJob(interval time.Duration) *river.Perio
 				},
 			}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 

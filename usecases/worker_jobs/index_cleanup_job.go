@@ -16,7 +16,7 @@ import (
 const INDEX_CLEANUP_WORKER_INTERVAL = time.Hour
 
 func NewIndexCleanupPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return NewPeriodicJob(
 		river.PeriodicInterval(INDEX_CLEANUP_WORKER_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.IndexCleanupArgs{
@@ -29,7 +29,6 @@ func NewIndexCleanupPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
 					},
 				}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 

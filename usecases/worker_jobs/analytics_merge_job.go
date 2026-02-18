@@ -19,7 +19,7 @@ import (
 )
 
 func NewAnalyticsMergeJob() *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return NewPeriodicJob(
 		river.PeriodicInterval(time.Hour),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.AnalyticsMergeArgs{}, &river.InsertOpts{
@@ -30,7 +30,6 @@ func NewAnalyticsMergeJob() *river.PeriodicJob {
 				},
 			}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 
