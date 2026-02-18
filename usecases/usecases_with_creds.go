@@ -1049,6 +1049,8 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewIngestionUseCase(),
 		usecases.NewDecisionUsecase(),
+		usecases.orgImportBucketUrl,
+		usecases.Repositories.BlobRepository,
 	)
 }
 
