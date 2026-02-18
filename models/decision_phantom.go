@@ -39,6 +39,6 @@ func AdaptScenarExecToPhantomDecision(scenarioExecution ScenarioExecution) Phant
 		Score:               scenarioExecution.Score,
 		RuleExecutions:      scenarioExecution.RuleExecutions,
 		ScreeningExecutions: pure_utils.Map(scenarioExecution.ScreeningExecutions,
-			MergeScreeningExecWithDefaults(decisionId, scenarioExecution.OrganizationId)),
+			MergeScreeningExecWithDefaults(decisionId, scenarioExecution.OrganizationId, nil)),
 	}
 }
