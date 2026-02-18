@@ -47,3 +47,10 @@ jobs:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
           rdme: openapi upload --version=v1.0.0 --slug=marble-api /tmp/openapis/marble-api-v1.yml
+
+      - name: Publish Marble API OpenAPI beta endpoints
+        uses: readmeio/rdme@v10
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        with:
+          rdme: openapi upload --version=v1.0.0 --slug=marble-api-beta /tmp/openapis/marble-api-v1beta.yml
