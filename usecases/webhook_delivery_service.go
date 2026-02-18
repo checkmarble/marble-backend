@@ -24,11 +24,11 @@ const (
 	ValidationPingTimeout = 10 * time.Second
 
 	// Header names
-	HeaderConvoySignature  = "X-Convoy-Signature"
-	HeaderWebhookSignature = "Webhook-Signature" // Standard header, will become default
-	HeaderMarbleApiVersion = "X-Marble-Api-Version"
-	HeaderWebhookEventId   = "X-Webhook-Event-Id"
-	HeaderWebhookEventType = "X-Webhook-Event-Type"
+	HeaderConvoySignature  = "X-Convoy-Signature" // To be deprecated
+	HeaderWebhookSignature = "Webhook-Signature"  // Standard header, will become default
+	HeaderIdempotencyKey   = "Webhook-Idempotency-Key"
+	HeaderMarbleApiVersion = "Marble-Api-Version"
+	HeaderWebhookEventType = "Webhook-Event-Type"
 	HeaderContentType      = "Content-Type"
 )
 
@@ -82,16 +82,7 @@ func (s *WebhookDeliveryService) SendWebhook(
 	webhook models.NewWebhook,
 	secrets []models.NewWebhookSecret,
 	event models.WebhookEventV2,
-) models.WebhookSendResult {
-	return s.Send(ctx, webhook, secrets, event)
-}
-
-// Send delivers a webhook payload to the specified endpoint.
-func (s *WebhookDeliveryService) Send(
-	ctx context.Context,
-	webhook models.NewWebhook,
-	secrets []models.NewWebhookSecret,
-	event models.WebhookEventV2,
+	delivery models.WebhookDelivery,
 ) models.WebhookSendResult {
 	logger := utils.LoggerFromContext(ctx)
 
@@ -121,14 +112,17 @@ func (s *WebhookDeliveryService) Send(
 	req.Header.Set(HeaderConvoySignature, signature)
 	req.Header.Set(HeaderWebhookSignature, signature) // Standard header for forward compatibility
 	req.Header.Set(HeaderMarbleApiVersion, event.ApiVersion)
-	req.Header.Set(HeaderWebhookEventId, event.Id.String())
+	req.Header.Set(HeaderIdempotencyKey, delivery.Id.String())
 	req.Header.Set(HeaderWebhookEventType, event.EventType)
 	req.Header.Set("User-Agent", s.userAgent())
 
 	logger.DebugContext(ctx, "Sending webhook",
 		"url", webhook.Url,
 		"event_type", event.EventType,
-		"event_id", event.Id)
+		"event_id", event.Id,
+		"delivery_id", delivery.Id,
+		"attempts", delivery.Attempts+1,
+	)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
