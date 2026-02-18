@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -110,6 +111,10 @@ func NewOrgImportUsecase(
 var ARCHETYPES embed.FS
 
 func (uc OrgImportUsecase) ListArchetypes(ctx context.Context) ([]models.ArchetypeInfo, error) {
+	if err := uc.security.ListOrgArchetypes(); err != nil {
+		return nil, err
+	}
+
 	archetypes, err := uc.getArchetypeFromEmbed()
 	if err != nil {
 		return nil, err
@@ -127,6 +132,10 @@ func (uc OrgImportUsecase) ListArchetypes(ctx context.Context) ([]models.Archety
 			archetypes = append(archetypes, bucketArchetypes...)
 		}
 	}
+
+	slices.SortFunc(archetypes, func(a, b models.ArchetypeInfo) int {
+		return strings.Compare(a.Name, b.Name)
+	})
 
 	return archetypes, nil
 }
@@ -155,6 +164,7 @@ func (uc *OrgImportUsecase) getArchetypeFromEmbed() ([]models.ArchetypeInfo, err
 			Name:        filename[:len(filename)-len(".json")],
 			Label:       spec.Label,
 			Description: spec.Description,
+			Source:      models.ArchetypeSourceEmbed,
 		}
 	}
 	return archetypes, nil
@@ -182,28 +192,28 @@ func (uc *OrgImportUsecase) getArchetypeFromBucket(ctx context.Context) ([]model
 		}
 		filename := obj.Key[strings.LastIndex(obj.Key, "/")+1:]
 
-		data, err := func() ([]byte, error) {
+		metadata, err := func() (dto.OrgImportMetadata, error) {
 			archetypeBlob, err := uc.blobRepository.GetBlob(ctx, uc.orgImportBucketUrl, obj.Key)
 			if err != nil {
-				return nil, err
+				return dto.OrgImportMetadata{}, err
 			}
 			defer archetypeBlob.ReadCloser.Close()
 
-			return io.ReadAll(archetypeBlob.ReadCloser)
+			var m dto.OrgImportMetadata
+			if err := json.NewDecoder(archetypeBlob.ReadCloser).Decode(&m); err != nil {
+				return dto.OrgImportMetadata{}, err
+			}
+			return m, nil
 		}()
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to read archetype file %s", obj.Key)
-		}
-
-		var metadata dto.OrgImportMetadata
-		if err := json.Unmarshal(data, &metadata); err != nil {
-			return nil, errors.Wrapf(err, "failed to parse archetype file %s", obj.Key)
+			return nil, errors.Wrapf(err, "failed to read archetype metadata from %s", obj.Key)
 		}
 
 		archetypes = append(archetypes, models.ArchetypeInfo{
 			Name:        filename[:len(filename)-len(".json")],
 			Label:       metadata.Label,
 			Description: metadata.Description,
+			Source:      models.ArchetypeSourceBucket,
 		})
 	}
 

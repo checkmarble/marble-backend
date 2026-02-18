@@ -46,6 +46,8 @@ var (
 		ANNOTATION_DELETE,
 		ANNOTATION_RISK_TOPICS_WRITE,
 		CONTINUOUS_SCREENING_HIT_DISMISS, // Only admin can dismiss all hits for a continuous screening
+		ORG_IMPORT_READ,                  // Only org admin can list organization archetypes
+		ORG_IMPORT_SEED,                  // Only org admin can seed an organization via import
 	)
 )
 

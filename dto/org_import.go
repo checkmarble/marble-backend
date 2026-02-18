@@ -7,9 +7,10 @@ import (
 )
 
 type ArchetypeDto struct {
-	Name        string `json:"name"`
-	Label       string `json:"label,omitempty"`
-	Description string `json:"description,omitempty"`
+	Name        string                 `json:"name"`
+	Label       string                 `json:"label,omitempty"`
+	Description string                 `json:"description,omitempty"`
+	Source      models.ArchetypeSource `json:"source"`
 }
 
 type ArchetypesDto struct {
@@ -21,6 +22,7 @@ func AdaptArchetypeDto(a models.ArchetypeInfo) ArchetypeDto {
 		Name:        a.Name,
 		Label:       a.Label,
 		Description: a.Description,
+		Source:      a.Source,
 	}
 }
 
