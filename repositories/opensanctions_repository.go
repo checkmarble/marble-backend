@@ -299,7 +299,6 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 		return models.ScreeningRawSearchResponseWithMatches{}, err
 	}
 
-	utils.LoggerFromContext(ctx).DebugContext(ctx, "sending screening query")
 	startedAt := time.Now()
 
 	resp, err := repo.opensanctions.Client().Do(req)

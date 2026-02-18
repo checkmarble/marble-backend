@@ -15,7 +15,7 @@ const (
 )
 
 func NewScheduledScenarioPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return NewPeriodicJob(
 		river.PeriodicInterval(SCHEDULED_SCENARIO_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.ScheduledScenarioArgs{OrgId: orgId},
@@ -27,7 +27,6 @@ func NewScheduledScenarioPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
 					},
 				}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 

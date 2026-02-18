@@ -140,13 +140,15 @@ func (usecase *IngestionUseCase) IngestObject(
 	var continuousScreeningConfigs []models.ContinuousScreeningConfig
 
 	if ingestionOptions.ShouldMonitor {
-		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(ctx, exec, organizationId, ingestionOptions.ContinuousScreeningIds)
+		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(
+			ctx, exec, organizationId, ingestionOptions.ContinuousScreeningIds)
 		if err != nil {
 			return 0, err
 		}
 
 		if len(continuousScreeningConfigs) != len(ingestionOptions.ContinuousScreeningIds) {
-			return 0, errors.WithDetail(models.BadParameterError, "not all provided continuous screening IDs exist")
+			return 0, errors.WithDetail(models.BadParameterError,
+				"not all provided continuous screening IDs exist")
 		}
 	}
 
@@ -231,13 +233,15 @@ func (usecase *IngestionUseCase) IngestObjects(
 	var continuousScreeningConfigs []models.ContinuousScreeningConfig
 
 	if ingestionOptions.ShouldMonitor {
-		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(ctx, exec, organizationId, ingestionOptions.ContinuousScreeningIds)
+		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(
+			ctx, exec, organizationId, ingestionOptions.ContinuousScreeningIds)
 		if err != nil {
 			return 0, err
 		}
 
 		if len(continuousScreeningConfigs) != len(ingestionOptions.ContinuousScreeningIds) {
-			return 0, errors.WithDetail(models.BadParameterError, "not all provided continuous screening IDs exist")
+			return 0, errors.WithDetail(models.BadParameterError,
+				"not all provided continuous screening IDs exist")
 		}
 	}
 
@@ -272,7 +276,8 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	var ingestionResults models.IngestionResults
 	err = retryIngestion(ctx, func() error {
-		ingestionResults, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table, ingestionOptions, continuousScreeningConfigs)
+		ingestionResults, err = usecase.insertEnumValuesAndIngest(ctx, organizationId,
+			clientObjects, table, ingestionOptions, continuousScreeningConfigs)
 		return err
 	})
 	if err != nil {
@@ -421,7 +426,8 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			if err := usecase.uploadLogRepository.CreateUploadLog(ctx, tx, newUploadLoad); err != nil {
 				return models.UploadLog{}, err
 			}
-			if err := usecase.taskEnqueuer.EnqueueCsvIngestionTask(ctx, tx, organizationId, newUploadListId, ingestionOptions); err != nil {
+			if err := usecase.taskEnqueuer.EnqueueCsvIngestionTask(ctx, tx, organizationId,
+				newUploadListId, ingestionOptions); err != nil {
 				return models.UploadLog{}, err
 			}
 			return usecase.uploadLogRepository.UploadLogById(ctx, tx, newUploadListId)
@@ -430,7 +436,9 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 // IngestDataFromCsvByUploadLogId processes a single upload log by its ID.
 // This is the main entry point for the CSV ingestion worker.
-func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(ctx context.Context, uploadLogId string, ingestionOptions models.IngestionOptions) error {
+func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(ctx context.Context,
+	uploadLogId string, ingestionOptions models.IngestionOptions,
+) error {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start ingesting data from upload log %s", uploadLogId))
 
@@ -612,7 +620,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 	var continuousScreeningConfigs []models.ContinuousScreeningConfig
 
 	if ingestionOptions.ShouldMonitor {
-		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(ctx, exec, organizationId, ingestionOptions.ContinuousScreeningIds)
+		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(
+			ctx, exec, organizationId, ingestionOptions.ContinuousScreeningIds)
 		if err != nil {
 			return ingestionResult{
 				err: err,
@@ -621,7 +630,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 
 		if len(continuousScreeningConfigs) != len(ingestionOptions.ContinuousScreeningIds) {
 			return ingestionResult{
-				err: errors.WithDetail(models.BadParameterError, "not all provided continuous screening IDs exist"),
+				err: errors.WithDetail(models.BadParameterError,
+					"not all provided continuous screening IDs exist"),
 			}
 		}
 	}
@@ -662,7 +672,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 
 		var ingestionResults models.IngestionResults
 		if err := retryIngestion(iterationCtx, func() error {
-			ingestionResults, err = usecase.insertEnumValuesAndIngest(iterationCtx, organizationId, clientObjects, table, ingestionOptions, continuousScreeningConfigs)
+			ingestionResults, err = usecase.insertEnumValuesAndIngest(iterationCtx,
+				organizationId, clientObjects, table, ingestionOptions, continuousScreeningConfigs)
 			return err
 		}); err != nil {
 			return ingestionResult{
@@ -869,9 +880,11 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	}
 
 	if ingestionOptions.ShouldScreen {
-		err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, continuousScreeningConfigs, organizationId, table, ingestionResults)
+		err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx,
+			continuousScreeningConfigs, organizationId, table, ingestionResults)
 		if err != nil {
-			utils.LoggerFromContext(ctx).WarnContext(ctx, "could not enqueue continuous monitoring initial screening",
+			utils.LoggerFromContext(ctx).WarnContext(ctx,
+				"could not enqueue continuous monitoring initial screening",
 				"error", err.Error())
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -33,7 +34,7 @@ type analyticsExportRepository interface {
 }
 
 func NewAnalyticsExportJob(orgId uuid.UUID, interval time.Duration) *river.PeriodicJob {
-	return river.NewPeriodicJob(
+	return NewPeriodicJob(
 		river.PeriodicInterval(interval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.AnalyticsExportArgs{
@@ -46,7 +47,6 @@ func NewAnalyticsExportJob(orgId uuid.UUID, interval time.Duration) *river.Perio
 					},
 				}
 		},
-		&river.PeriodicJobOpts{RunOnStart: true},
 	)
 }
 

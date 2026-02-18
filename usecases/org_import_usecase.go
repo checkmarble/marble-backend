@@ -616,8 +616,11 @@ func (uc *OrgImportUsecase) createInboxes(ctx context.Context, tx repositories.T
 	return nil
 }
 
-func (uc OrgImportUsecase) createWorkflows(ctx context.Context, tx repositories.Transaction,
-	ids map[string]string, workflows []dto.ImportWorkflow,
+func (uc OrgImportUsecase) createWorkflows(
+	ctx context.Context,
+	tx repositories.Transaction,
+	ids map[string]string,
+	workflows []dto.ImportWorkflow,
 ) error {
 	for _, workflow := range workflows {
 		rule, err := uc.workflowRepository.InsertWorkflowRule(ctx, tx, models.WorkflowRule{

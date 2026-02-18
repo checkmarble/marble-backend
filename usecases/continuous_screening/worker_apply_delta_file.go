@@ -243,14 +243,19 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		}
 
 		record := httpmodels.AdaptOpenSanctionDeltaFileRecordToModel(recordHttp)
+		logger = logger.With("name", record.Entity.Caption,
+			"record_id", record.Entity.Id,
+			"record_op", record.Op.String(),
+			"record_schema", record.Entity.Schema)
+		ctx = utils.StoreLoggerInContext(ctx, logger)
 		iteration++
 
 		if !slices.Contains(AllowedRecordOperations, record.Op) {
-			logger.DebugContext(ctx, "Skipping record because op is not allowed", "op", record.Op.String())
+			logger.DebugContext(ctx, "Skipping record because op is not allowed")
 			continue
 		}
 		if !slices.Contains(AllowedSchemaTypes, record.Entity.Schema) {
-			logger.DebugContext(ctx, "Skipping record because schema is not allowed", "schema", record.Entity.Schema)
+			logger.DebugContext(ctx, "Skipping record because schema is not allowed")
 			continue
 		}
 		// The new record should be in a dataset that is monitored
@@ -259,16 +264,12 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			continue
 		}
 
-		query, err := w.buildOpenSanctionQuery(
-			ctx,
-			exec,
-			updateJob,
-			record,
-		)
+		query, err := w.buildOpenSanctionQuery(ctx, exec, updateJob, record)
 		if err != nil {
 			return err
 		}
 		var screeningResponse models.ScreeningRawSearchResponseWithMatches
+		logger.DebugContext(ctx, "Performing screening for record")
 		err = retry.Do(
 			func() error {
 				screeningResponse, err = w.screeningProvider.Search(ctx, query)
@@ -285,9 +286,10 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		}
 
 		screening := screeningResponse.AdaptScreeningFromSearchResponse(query)
+		logger.DebugContext(ctx, "Screening result", "matches", len(screening.Matches))
 
 		// No hit, skip the record
-		// TODO: pascal: is it really right to keep no clearer trace of this ? open question.
+		// Note: I'm not entirely sure that we SHOULD keep no written trace of the request that was made here, keeping this question open for now.
 		if screening.Status == models.ScreeningStatusNoHit {
 			continue
 		}
