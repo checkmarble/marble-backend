@@ -24,12 +24,14 @@ const (
 	ValidationPingTimeout = 10 * time.Second
 
 	// Header names
-	HeaderConvoySignature  = "X-Convoy-Signature" // To be deprecated
-	HeaderWebhookSignature = "Webhook-Signature"  // Standard header, will become default
-	HeaderIdempotencyKey   = "Webhook-Idempotency-Key"
-	HeaderMarbleApiVersion = "Marble-Api-Version"
-	HeaderWebhookEventType = "Webhook-Event-Type"
-	HeaderContentType      = "Content-Type"
+	Deprec_HeaderConvoySignature = "X-Convoy-Signature" // To be deprecated
+	HeaderWebhookSignature_typo  = "Webhooks-Signature" // To be deprecated
+	HeaderWebhookSignature       = "Webhook-Signature"
+	HeaderIdempotencyKey         = "Webhook-Idempotency-Key"
+	Deprec_HeaderIdempotencyKey  = "x-convoy-idempotency-key" // To be deprecated
+	HeaderMarbleApiVersion       = "Marble-Api-Version"
+	HeaderWebhookEventType       = "Webhook-Event-Type"
+	HeaderContentType            = "Content-Type"
 )
 
 // noRedirectPolicy prevents the HTTP client from following redirects.
@@ -109,10 +111,12 @@ func (s *WebhookDeliveryService) SendWebhook(
 
 	// Set headers
 	req.Header.Set(HeaderContentType, "application/json")
-	req.Header.Set(HeaderConvoySignature, signature)
+	req.Header.Set(Deprec_HeaderConvoySignature, signature)
+	req.Header.Set(HeaderWebhookSignature_typo, signature)
 	req.Header.Set(HeaderWebhookSignature, signature) // Standard header for forward compatibility
 	req.Header.Set(HeaderMarbleApiVersion, event.ApiVersion)
 	req.Header.Set(HeaderIdempotencyKey, delivery.Id.String())
+	req.Header.Set(Deprec_HeaderIdempotencyKey, delivery.Id.String())
 	req.Header.Set(HeaderWebhookEventType, event.EventType)
 	req.Header.Set("User-Agent", s.userAgent())
 
