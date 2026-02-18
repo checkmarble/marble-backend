@@ -1,4 +1,4 @@
-package usecases
+package webhooks
 
 import (
 	"encoding/base64"

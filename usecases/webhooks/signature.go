@@ -1,4 +1,4 @@
-package usecases
+package webhooks
 
 import (
 	"crypto/hmac"
@@ -47,7 +47,7 @@ func (s *WebhookSignatureService) computeHMAC(payload []byte, secret string) str
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
-// GenerateSecret generates a cryptographically secure random secret for webhook signing.
+// GenerateWebhookSecret generates a cryptographically secure random secret for webhook signing.
 // Returns a 32-byte hex-encoded string (64 characters).
 func GenerateWebhookSecret() (string, error) {
 	bytes := make([]byte, 32)
