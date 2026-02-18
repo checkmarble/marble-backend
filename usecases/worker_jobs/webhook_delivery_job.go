@@ -24,7 +24,7 @@ const (
 	WEBHOOK_DELIVERY_TIMEOUT = 35 * time.Second
 
 	// DefaultMaxAttempts is the maximum number of delivery attempts before giving up.
-	DefaultMaxAttempts = 24
+	DefaultMaxAttempts = 12
 )
 
 // DefaultRetryDelays for webhook delivery failures (exponential backoff).
@@ -52,8 +52,13 @@ func CalculateBackoff(attempt int) time.Duration {
 
 // WebhookDeliveryService defines the interface for sending webhooks.
 type WebhookDeliveryService interface {
-	SendWebhook(ctx context.Context, webhook models.NewWebhook,
-		secrets []models.NewWebhookSecret, event models.WebhookEventV2) models.WebhookSendResult
+	SendWebhook(
+		ctx context.Context,
+		webhook models.NewWebhook,
+		secrets []models.NewWebhookSecret,
+		event models.WebhookEventV2,
+		delivery models.WebhookDelivery,
+	) models.WebhookSendResult
 }
 
 // webhookDeliveryRepository defines the interface for webhook delivery operations.
@@ -151,7 +156,7 @@ func (w *WebhookDeliveryWorker) Work(ctx context.Context, job *river.Job[models.
 
 	logger.DebugContext(ctx, "Delivering webhook", "url", webhook.Url, "event_type", event.EventType)
 
-	result := w.deliveryService.SendWebhook(ctx, webhook, secrets, event)
+	result := w.deliveryService.SendWebhook(ctx, webhook, secrets, event, delivery)
 	newAttempts := delivery.Attempts + 1
 
 	if result.IsSuccess() {
