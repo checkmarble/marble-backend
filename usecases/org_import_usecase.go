@@ -5,6 +5,8 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -18,7 +20,10 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"gocloud.dev/blob"
 )
+
+const archetypesFolder = "org-archetypes/"
 
 type OrgImportUsecase struct {
 	transactionWrapper UsecaseTransactionWrapper
@@ -44,6 +49,9 @@ type OrgImportUsecase struct {
 
 	ingestionUsecase IngestionUseCase
 	decisionUsecase  DecisionUsecase
+
+	orgImportBucketUrl string
+	blobRepository     repositories.BlobRepository
 }
 
 func NewOrgImportUsecase(
@@ -68,6 +76,8 @@ func NewOrgImportUsecase(
 	workflowRepository workflowRepository,
 	ingestionUsecase IngestionUseCase,
 	decisionUsecase DecisionUsecase,
+	orgImportBucketUrl string,
+	blobRepository repositories.BlobRepository,
 ) OrgImportUsecase {
 	return OrgImportUsecase{
 		transactionWrapper:   wrapper,
@@ -91,11 +101,114 @@ func NewOrgImportUsecase(
 		workflowRepository:   workflowRepository,
 		ingestionUsecase:     ingestionUsecase,
 		decisionUsecase:      decisionUsecase,
+		orgImportBucketUrl:   orgImportBucketUrl,
+		blobRepository:       blobRepository,
 	}
 }
 
 //go:embed archetypes/*.json
 var ARCHETYPES embed.FS
+
+func (uc OrgImportUsecase) ListArchetypes(ctx context.Context) ([]models.ArchetypeInfo, error) {
+	archetypes, err := uc.getArchetypeFromEmbed()
+	if err != nil {
+		return nil, err
+	}
+
+	if uc.orgImportBucketUrl != "" {
+		bucketArchetypes, err := uc.getArchetypeFromBucket(ctx)
+		if err != nil {
+			logger := utils.LoggerFromContext(ctx)
+			logger.WarnContext(ctx, "failed to list archetypes from bucket, skipping",
+				"bucket", uc.orgImportBucketUrl,
+				"error", err,
+			)
+		} else {
+			archetypes = append(archetypes, bucketArchetypes...)
+		}
+	}
+
+	return archetypes, nil
+}
+
+func (uc *OrgImportUsecase) getArchetypeFromEmbed() ([]models.ArchetypeInfo, error) {
+	entries, err := ARCHETYPES.ReadDir("archetypes")
+	if err != nil {
+		return nil, err
+	}
+
+	archetypes := make([]models.ArchetypeInfo, len(entries))
+	for i, entry := range entries {
+		filename := entry.Name()
+
+		d, err := ARCHETYPES.ReadFile(fmt.Sprintf("archetypes/%s", filename))
+		if err != nil {
+			return nil, err
+		}
+
+		var spec dto.OrgImportMetadata
+		if err := json.Unmarshal(d, &spec); err != nil {
+			return nil, err
+		}
+
+		archetypes[i] = models.ArchetypeInfo{
+			Name:        filename[:len(filename)-len(".json")],
+			Label:       spec.Label,
+			Description: spec.Description,
+		}
+	}
+	return archetypes, nil
+}
+
+func (uc *OrgImportUsecase) getArchetypeFromBucket(ctx context.Context) ([]models.ArchetypeInfo, error) {
+	bucket, err := uc.blobRepository.RawBucket(ctx, uc.orgImportBucketUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	archetypesObjects := bucket.List(&blob.ListOptions{Prefix: archetypesFolder, Delimiter: "/"})
+	var archetypes []models.ArchetypeInfo
+	for {
+		obj, err := archetypesObjects.Next(ctx)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if !strings.HasSuffix(obj.Key, ".json") {
+			continue
+		}
+		filename := obj.Key[strings.LastIndex(obj.Key, "/")+1:]
+
+		data, err := func() ([]byte, error) {
+			archetypeBlob, err := uc.blobRepository.GetBlob(ctx, uc.orgImportBucketUrl, obj.Key)
+			if err != nil {
+				return nil, err
+			}
+			defer archetypeBlob.ReadCloser.Close()
+
+			return io.ReadAll(archetypeBlob.ReadCloser)
+		}()
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to read archetype file %s", obj.Key)
+		}
+
+		var metadata dto.OrgImportMetadata
+		if err := json.Unmarshal(data, &metadata); err != nil {
+			return nil, errors.Wrapf(err, "failed to parse archetype file %s", obj.Key)
+		}
+
+		archetypes = append(archetypes, models.ArchetypeInfo{
+			Name:        filename[:len(filename)-len(".json")],
+			Label:       metadata.Label,
+			Description: metadata.Description,
+		})
+	}
+
+	return archetypes, nil
+}
 
 func (uc *OrgImportUsecase) ImportFromArchetype(ctx context.Context, archetype string, spec dto.OrgImport, seed bool) (uuid.UUID, error) {
 	d, err := ARCHETYPES.ReadFile(fmt.Sprintf("archetypes/%s.json", archetype))
@@ -191,7 +304,7 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 	if err := uc.createInboxes(ctx, tx, orgId, ids, spec.Inboxes); err != nil {
 		return uuid.Nil, err
 	}
-	if err := uc.createWorkflows(ctx, tx, orgId, ids, spec.Workflows); err != nil {
+	if err := uc.createWorkflows(ctx, tx, ids, spec.Workflows); err != nil {
 		return uuid.Nil, err
 	}
 
@@ -583,7 +696,7 @@ func (uc *OrgImportUsecase) createInboxes(ctx context.Context, tx repositories.T
 }
 
 func (uc OrgImportUsecase) createWorkflows(ctx context.Context, tx repositories.Transaction,
-	orgId uuid.UUID, ids map[string]string, workflows []dto.ImportWorkflow,
+	ids map[string]string, workflows []dto.ImportWorkflow,
 ) error {
 	for _, workflow := range workflows {
 		rule, err := uc.workflowRepository.InsertWorkflowRule(ctx, tx, models.WorkflowRule{

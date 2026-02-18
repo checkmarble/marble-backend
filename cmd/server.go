@@ -225,6 +225,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		similarityThreshold:              utils.GetEnv("SIMILARITY_THRESHOLD", models.DEFAULT_SIMILARITY_THRESHOLD),
 		enableTracing:                    utils.GetEnv("ENABLE_TRACING", false),
 		continuousScreeningBucketUrl:     utils.GetEnv("CONTINUOUS_SCREENING_BUCKET_URL", ""),
+		orgImportBucketUrl:               utils.GetEnv("ORG_IMPORT_BUCKET_URL", ""),
 	}
 	if err := serverConfig.Validate(); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -379,6 +380,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithAnalyticsConfig(analyticsConfig),
 		usecases.WithContinuousScreeningBucketUrl(serverConfig.continuousScreeningBucketUrl),
 		usecases.WithMarbleApiInternalUrl(apiConfig.MarbleApiInternalUrl),
+		usecases.WithOrgImportBucketUrl(serverConfig.orgImportBucketUrl),
 	)
 
 	////////////////////////////////////////////////////////////

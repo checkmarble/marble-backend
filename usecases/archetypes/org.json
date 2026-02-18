@@ -1,4 +1,6 @@
 {
+  "label": "Demo Financial",
+  "description": "Archetypes for a financial institution with data model, scenarios and rules examples ...",
   "org": {
     "name": "New org",
     "default_scenario_timezone": "Europe/Paris",

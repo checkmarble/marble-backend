@@ -1,6 +1,39 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
+)
+
+type ArchetypeDto struct {
+	Name        string `json:"name"`
+	Label       string `json:"label,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+type ArchetypesDto struct {
+	Archetypes []ArchetypeDto `json:"archetypes"`
+}
+
+func AdaptArchetypeDto(a models.ArchetypeInfo) ArchetypeDto {
+	return ArchetypeDto{
+		Name:        a.Name,
+		Label:       a.Label,
+		Description: a.Description,
+	}
+}
+
+func AdaptArchetypesDto(archetypes []models.ArchetypeInfo) ArchetypesDto {
+	return ArchetypesDto{
+		Archetypes: pure_utils.Map(archetypes, AdaptArchetypeDto),
+	}
+}
+
+type OrgImportMetadata struct {
+	Label       string `json:"label"`
+	Description string `json:"description"`
+}
 
 type OrgImport struct {
 	Org         ImportOrg          `json:"org" binding:"required"`
