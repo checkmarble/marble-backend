@@ -134,6 +134,7 @@ func (uc OrgImportUsecase) ListArchetypes(ctx context.Context) ([]models.Archety
 			Name:        filename[:len(filename)-len(".json")],
 			Label:       spec.Label,
 			Description: spec.Description,
+			Source:      models.ArchetypeSourceEmbed,
 		}
 	}
 
