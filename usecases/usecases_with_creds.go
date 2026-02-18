@@ -16,6 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transfers_data_read"
+	"github.com/checkmarble/marble-backend/usecases/webhooks"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -571,8 +572,8 @@ func (usecases *UsecasesWithCreds) NewLicenseUsecase() ProtectedLicenseUseCase {
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecase {
-	return NewWebhookEventsUsecase(
+func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() webhooks.WebhookEventsUsecase {
+	return webhooks.NewWebhookEventsUsecase(
 		security.NewEnforceSecurity(usecases.Credentials),
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
@@ -588,14 +589,14 @@ func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecas
 	)
 }
 
-func (usecases *UsecasesWithCreds) NewWebhooksUsecase() WebhooksUsecase {
-	return NewWebhooksUsecase(
+func (usecases *UsecasesWithCreds) NewWebhooksUsecase() webhooks.WebhooksUsecase {
+	return webhooks.NewWebhooksUsecase(
 		security.NewEnforceSecurity(usecases.Credentials),
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.ConvoyRepository,
 		usecases.Repositories.MarbleDbRepository,
-		NewWebhookDeliveryService(WebhookDeliveryConfig{
+		webhooks.NewWebhookDeliveryService(webhooks.WebhookDeliveryConfig{
 			AllowInsecureURLs: usecases.Usecases.allowInsecureWebhookURLs,
 			MarbleVersion:     usecases.Usecases.apiVersion,
 			IPWhitelist:       usecases.Usecases.webhookIPWhitelist,
@@ -978,7 +979,7 @@ func (usecases UsecasesWithCreds) NewWebhookDispatchWorker() *worker_jobs.Webhoo
 }
 
 func (usecases UsecasesWithCreds) NewWebhookDeliveryWorker() *worker_jobs.WebhookDeliveryWorker {
-	deliveryService := NewWebhookDeliveryService(WebhookDeliveryConfig{
+	deliveryService := webhooks.NewWebhookDeliveryService(webhooks.WebhookDeliveryConfig{
 		AllowInsecureURLs: usecases.Usecases.allowInsecureWebhookURLs,
 		MarbleVersion:     usecases.Usecases.apiVersion,
 		IPWhitelist:       usecases.Usecases.webhookIPWhitelist,
