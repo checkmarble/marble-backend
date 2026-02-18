@@ -26,7 +26,9 @@ jobs:
         run: go test ./...
 
       - name: Generate Marble API OpenAPI as temporary file
-        run: go run pubapi/openapi/generate.go v1 > /tmp/marble-api-v1.yml
+        run: |
+          go run pubapi/openapi/generate.go v1 > /tmp/marble-api-v1.yml
+          cp pubapi/openapi/v1beta.yml /tmp/marble-api-v1beta.yml
 
       - name: Upload OpenAPI specifications as artifacts, to be downloaded and used in the production deployment workflow
         uses: actions/upload-artifact@v4

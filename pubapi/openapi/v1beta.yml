@@ -20,6 +20,65 @@ tags:
   - name: Continuous Screenings
     description: Routes for continuous screenings
 paths:
+  /ingest/{objectType}:
+    post:
+      operationId: ingestObject
+      tags:
+        - Ingestion
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Ingest a new object from the data model
+      description: |
+        Note that unknown fields (not part of the data model) are forbidden and will be rejected.
+      parameters:
+        - name: objectType
+          in: path
+          description: Name of the object type used for ingestion
+          required: true
+          schema:
+            type: string
+        - name: monitor
+          in: query
+          description: Whether to put the ingested object under continuous monitoring
+          schema:
+            type: boolean
+        - name: monitoring_config_id
+          in: query
+          description: If monitoring the object, which configuration to use. Can be repeated multiple times.
+          schema:
+            type: string
+            format: uuid
+        - name: skip_screening
+          in: query
+          description: If monitoring, whether to skip the initial screening of the ingested object.
+          schema:
+            type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required:
+                - object_id
+                - updated_at
+              properties:
+                object_id:
+                  description: Client side ID of the object to ingest
+                  type: string
+                updated_at:
+                  description: Date the object was last updated
+                  type: string
+                  format: date-time
+      responses:
+        "200":
+          description: No new object was ingested
+        "201":
+          description: The object was successfully ingested
+        "400":
+          $ref: "#/components/responses/400"
+
   /cases:
     get:
       operationId: listCases
@@ -552,7 +611,7 @@ paths:
       responses:
         "302":
           $ref: "#/components/responses/302"
-  
+
   /continuous-screenings/objects:
     post:
       summary: Add an object under continuous screening with given configuration
@@ -570,6 +629,7 @@ paths:
               type: object
               required:
                 - object_type
+                - object_id
                 - config_stable_id
               properties:
                 object_type:
@@ -579,26 +639,19 @@ paths:
                   format: uuid
                 object_id:
                   type: string
-                object_payload:
-                  type: object
                 skip_screen:
                   type: boolean
                   default: false
                   description: Whether to skip screening the object immediately. If true, the API returns 201 Created without data.
-              oneOf:
-                - required:
-                    - object_id
-                - required:
-                    - object_payload
       responses:
-        '201':
+        "201":
           description: Monitored object created or updated. Returns screening result if screening was performed, or empty response if screening was skipped.
-        '400':
-          $ref: '#/components/responses/400'
-        '403':
-          $ref: '#/components/responses/403'
-        '409':
-          $ref: '#/components/responses/409'
+        "400":
+          $ref: "#/components/responses/400"
+        "403":
+          $ref: "#/components/responses/403"
+        "409":
+          $ref: "#/components/responses/409"
 
     delete:
       summary: Remove an object from continuous screening
@@ -613,28 +666,28 @@ paths:
         content:
           application/json:
             schema:
-                type: object
-                required:
-                  - object_type
-                  - object_id
-                  - config_stable_id
-                properties:
-                  object_type:
-                    type: string
-                  object_id:
-                    type: string
-                  config_stable_id:
-                    type: string
-                    format: uuid
+              type: object
+              required:
+                - object_type
+                - object_id
+                - config_stable_id
+              properties:
+                object_type:
+                  type: string
+                object_id:
+                  type: string
+                config_stable_id:
+                  type: string
+                  format: uuid
       responses:
-        '204':
+        "204":
           description: Monitored object deleted
-        '400':
-          $ref: '#/components/responses/400'
-        '403':
-          $ref: '#/components/responses/403'
-        '404':
-          $ref: '#/components/responses/404'
+        "400":
+          $ref: "#/components/responses/400"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
 
 components:
   securitySchemes:
@@ -651,7 +704,7 @@ components:
       description: Resource can be downloaded elsewhere
       headers:
         location:
-          schema: 
+          schema:
             type: string
             format: url
             description: The download URL of the file. If your HTTP client follows redirects, it will be downloaded directly.
@@ -882,35 +935,35 @@ components:
       type: string
       enum:
         [
-          'Thing',
-          'Address',
-          'Airplane',
-          'Asset',
-          'Associate',
-          'Company',
-          'CryptoWallet',
-          'Debt',
-          'Directorship',
-          'Employment',
-          'Family',
-          'Identification',
-          'LegalEntity',
-          'Membership',
-          'Occupancy',
-          'Organization',
-          'Ownership',
-          'Passport',
-          'Payment',
-          'Person',
-          'Position',
-          'PublicBody',
-          'Representation',
-          'Sanction',
-          'Security',
-          'Succession',
-          'UnknownLink',
-          'Vessel',
-          'Vehicle',
+          "Thing",
+          "Address",
+          "Airplane",
+          "Asset",
+          "Associate",
+          "Company",
+          "CryptoWallet",
+          "Debt",
+          "Directorship",
+          "Employment",
+          "Family",
+          "Identification",
+          "LegalEntity",
+          "Membership",
+          "Occupancy",
+          "Organization",
+          "Ownership",
+          "Passport",
+          "Payment",
+          "Person",
+          "Position",
+          "PublicBody",
+          "Representation",
+          "Sanction",
+          "Security",
+          "Succession",
+          "UnknownLink",
+          "Vessel",
+          "Vehicle",
         ]
     ScreeningQuery:
       type: object
@@ -919,7 +972,7 @@ components:
         - properties
       properties:
         schema:
-          $ref: '#/components/schemas/ScreeningEntity'
+          $ref: "#/components/schemas/ScreeningEntity"
         properties:
           type: object
           additionalProperties:
@@ -939,7 +992,7 @@ components:
             queries:
               type: object
               additionalProperties:
-                $ref: '#/components/schemas/ScreeningQuery'
+                $ref: "#/components/schemas/ScreeningQuery"
 
     ContinuousScreeningMatch:
       type: object
@@ -1034,7 +1087,7 @@ components:
             - object_updated
             - dataset_updated
         request:
-          $ref: '#/components/schemas/ScreeningRequest'
+          $ref: "#/components/schemas/ScreeningRequest"
         partial:
           type: boolean
         number_of_matches:
@@ -1042,7 +1095,7 @@ components:
         matches:
           type: array
           items:
-            $ref: '#/components/schemas/ContinuousScreeningMatch'
+            $ref: "#/components/schemas/ContinuousScreeningMatch"
         created_at:
           type: string
           format: date-time
