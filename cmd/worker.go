@@ -331,6 +331,11 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	webhookSystemMigrated := IsWebhookSystemMigrated(ctx, repositories)
 
+	ipEnrichmentDatabase, err := infra.InitIpEnrichmentDatabase(ctx, license)
+	if err != nil {
+		return errors.Wrap(err, "failed to open ip enrichment database")
+	}
+
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
@@ -349,6 +354,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithAnalyticsConfig(analyticsConfig),
 		usecases.WithContinuousScreeningBucketUrl(workerConfig.continuousScreeningBucketUrl),
 		usecases.WithCsCreateFullDatasetInterval(workerConfig.CreateFullDatasetInterval),
+		usecases.WithIpEnrichmentDatabase(ipEnrichmentDatabase),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 

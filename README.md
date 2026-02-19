@@ -61,6 +61,14 @@ firebase --project [GOOGLE_CLOUD_PROJECT] emulators:start --import=./firebase-lo
 
 ### Launch the project
 
+#### Share library dependencies
+
+Marble depends on the following shared libraries to be compiled and run. It is required for you to install the follow libraries and their development headers for the project to work properly:
+
+ * [`libgeos`](https://github.com/libgeos/geos)
+
+#### Build from source
+
  Export your `.env` file (e.g [mise](https://mise.jdx.dev/)) and run the root of the project:
 
 The backend project is made of five discrete components:
@@ -75,6 +83,7 @@ Depending on which feature you need while developing, you should run one or more
 
 The `docker compose` of this repository only contains the _dependencies_ required to run the backend service, but does not start the services themselves. It is assumed the developer will run them themselves.
 
+ 
 ```sh
 mise exec -- go run . --migrations --server
 mise exec -- go run . --worker
