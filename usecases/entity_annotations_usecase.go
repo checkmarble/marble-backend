@@ -37,10 +37,10 @@ type EntityAnnotationRepository interface {
 		req models.AnnotationByIdRequest) error
 	IsObjectTagSet(ctx context.Context, exec repositories.Executor,
 		req models.CreateEntityAnnotationRequest, tagId string) (bool, error)
-	IsObjectRiskTopicSet(ctx context.Context, exec repositories.Executor,
-		req models.CreateEntityAnnotationRequest, topic string) (bool, error)
-	FindEntityAnnotationsWithRiskTopics(ctx context.Context, exec repositories.Executor,
-		filter models.EntityAnnotationRiskTopicsFilter) ([]models.EntityAnnotation, error)
+	IsObjectRiskTagSet(ctx context.Context, exec repositories.Executor,
+		req models.CreateEntityAnnotationRequest, tag string) (bool, error)
+	FindEntityAnnotationsWithRiskTags(ctx context.Context, exec repositories.Executor,
+		filter models.EntityAnnotationRiskTagsFilter) ([]models.EntityAnnotation, error)
 }
 
 type EntityAnnotationCaseUsecase interface {
@@ -312,22 +312,22 @@ func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req mo
 				"tag is already annotated on this object")
 		}
 
-	case models.EntityAnnotationRiskTopic:
-		payload, ok := req.Payload.(models.EntityAnnotationRiskTopicPayload)
+	case models.EntityAnnotationRiskTag:
+		payload, ok := req.Payload.(models.EntityAnnotationRiskTagPayload)
 		if !ok {
 			return errors.New("invalid payload for annotation type")
 		}
-		if !slices.Contains(models.ValidRiskTopics, payload.Topic) {
-			return errors.Wrap(models.BadParameterError, "invalid risk topic")
+		if !slices.Contains(models.ValidRiskTags, payload.Tag) {
+			return errors.Wrap(models.BadParameterError, "invalid risk tag")
 		}
-		exists, err := uc.repository.IsObjectRiskTopicSet(ctx,
-			uc.executorFactory.NewExecutor(), req, string(payload.Topic))
+		exists, err := uc.repository.IsObjectRiskTagSet(ctx,
+			uc.executorFactory.NewExecutor(), req, string(payload.Tag))
 		if err != nil {
 			return err
 		}
 		if exists {
 			return errors.Wrap(models.ConflictError,
-				"risk topic is already annotated on this object")
+				"risk tag is already annotated on this object")
 		}
 	}
 
@@ -357,24 +357,24 @@ func (uc EntityAnnotationUsecase) writeFileAnnotationToBlobStorage(ctx context.C
 	return nil
 }
 
-// AttachObjectRiskTopics adds new risk topic annotations for an object.
-// Duplicate topics (already existing on the object) are skipped. Existing topics are never deleted.
+// AttachObjectRiskTags adds new risk tag annotations for an object.
+// Duplicate tags (already existing on the object) are skipped. Existing tags are never deleted.
 // For internal use by continuous screening. Skips ingested object validation and security checks.
-func (uc EntityAnnotationUsecase) AttachObjectRiskTopics(
+func (uc EntityAnnotationUsecase) AttachObjectRiskTags(
 	ctx context.Context,
 	tx repositories.Transaction,
-	input models.ObjectRiskTopicCreate,
+	input models.ObjectRiskTagCreate,
 ) error {
 	req := models.CreateEntityAnnotationRequest{
 		OrgId:          input.OrgId,
 		ObjectType:     input.ObjectType,
 		ObjectId:       input.ObjectId,
-		AnnotationType: models.EntityAnnotationRiskTopic,
+		AnnotationType: models.EntityAnnotationRiskTag,
 		AnnotatedBy:    input.AnnotatedBy,
 	}
 
-	for _, topic := range input.Topics {
-		exists, err := uc.repository.IsObjectRiskTopicSet(ctx, tx, req, string(topic))
+	for _, tag := range input.Tags {
+		exists, err := uc.repository.IsObjectRiskTagSet(ctx, tx, req, string(tag))
 		if err != nil {
 			return err
 		}
@@ -382,8 +382,8 @@ func (uc EntityAnnotationUsecase) AttachObjectRiskTopics(
 			continue
 		}
 
-		req.Payload = models.EntityAnnotationRiskTopicPayload{
-			Topic:                 topic,
+		req.Payload = models.EntityAnnotationRiskTagPayload{
+			Tag:                   tag,
 			Reason:                input.Reason,
 			Url:                   input.Url,
 			ContinuousScreeningId: input.ContinuousScreeningId,

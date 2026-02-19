@@ -23,8 +23,8 @@ func (e *EnforceSecurityAnnotationImpl) DeleteAnnotation() error {
 
 func (e *EnforceSecurityAnnotationImpl) WriteAnnotation(orgId uuid.UUID, kind models.EntityAnnotationType) error {
 	switch kind {
-	case models.EntityAnnotationRiskTopic:
-		return errors.Join(e.Permission(models.ANNOTATION_RISK_TOPICS_WRITE),
+	case models.EntityAnnotationRiskTag:
+		return errors.Join(e.Permission(models.ANNOTATION_RISK_TAG_WRITE),
 			e.ReadOrganization(orgId))
 
 	default:

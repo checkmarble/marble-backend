@@ -196,20 +196,20 @@ func (repo *MarbleDbRepository) IsObjectTagSet(ctx context.Context, exec Executo
 	return hasTag, nil
 }
 
-func (repo *MarbleDbRepository) IsObjectRiskTopicSet(ctx context.Context, exec Executor,
-	req models.CreateEntityAnnotationRequest, topic string,
+func (repo *MarbleDbRepository) IsObjectRiskTagSet(ctx context.Context, exec Executor,
+	req models.CreateEntityAnnotationRequest, tag string,
 ) (bool, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return false, err
 	}
 
 	filters := squirrel.Eq{
-		"org_id":            req.OrgId,
-		"object_type":       req.ObjectType,
-		"object_id":         req.ObjectId,
-		"annotation_type":   models.EntityAnnotationRiskTopic,
-		"deleted_at":        nil,
-		"payload->>'topic'": topic,
+		"org_id":          req.OrgId,
+		"object_type":     req.ObjectType,
+		"object_id":       req.ObjectId,
+		"annotation_type": models.EntityAnnotationRiskTag,
+		"deleted_at":      nil,
+		"payload->>'tag'": tag,
 	}
 
 	query := NewQueryBuilder().
@@ -254,12 +254,12 @@ func (repo *MarbleDbRepository) DeleteEntityAnnotation(ctx context.Context, exec
 	return ExecBuilder(ctx, exec, sql)
 }
 
-// FindEntityAnnotationsWithRiskTopics finds risk topic annotations matching the filter.
+// FindEntityAnnotationsWithRiskTags finds risk tag annotations matching the filter.
 // This is used by MonitoringListCheck rule evaluation.
-func (repo *MarbleDbRepository) FindEntityAnnotationsWithRiskTopics(
+func (repo *MarbleDbRepository) FindEntityAnnotationsWithRiskTags(
 	ctx context.Context,
 	exec Executor,
-	filter models.EntityAnnotationRiskTopicsFilter,
+	filter models.EntityAnnotationRiskTagsFilter,
 ) ([]models.EntityAnnotation, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -275,17 +275,17 @@ func (repo *MarbleDbRepository) FindEntityAnnotationsWithRiskTopics(
 		Where(squirrel.Eq{
 			"org_id":          filter.OrgId,
 			"object_type":     filter.ObjectType,
-			"annotation_type": models.EntityAnnotationRiskTopic.String(),
+			"annotation_type": models.EntityAnnotationRiskTag.String(),
 			"deleted_at":      nil,
 		}).
 		Where("object_id = ANY(?)", filter.ObjectIds)
 
-	if len(filter.Topics) > 0 {
-		topicStrings := make([]string, len(filter.Topics))
-		for i, t := range filter.Topics {
-			topicStrings[i] = string(t)
+	if len(filter.Tags) > 0 {
+		tagStrings := make([]string, len(filter.Tags))
+		for i, t := range filter.Tags {
+			tagStrings[i] = string(t)
 		}
-		query = query.Where("payload->>'topic' = ANY(?)", topicStrings)
+		query = query.Where("payload->>'tag' = ANY(?)", tagStrings)
 	}
 
 	query = query.Limit(1)

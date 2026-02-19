@@ -82,8 +82,8 @@ type EntityAnnotationFileDto struct {
 	} `json:"files"`
 }
 
-type EntityAnnotationRiskTopicDto struct {
-	Topic                 string `json:"topic"`
+type EntityAnnotationRiskTagDto struct {
+	Tag                   string `json:"tag"`
 	Reason                string `json:"reason,omitempty"`
 	Url                   string `json:"url,omitempty"`
 	ContinuousScreeningId string `json:"continuous_screening_id,omitempty"`
@@ -117,8 +117,8 @@ func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err e
 			o.Files[idx].ContentType = contentType
 		}
 
-	case models.EntityAnnotationRiskTopic:
-		var o EntityAnnotationRiskTopicDto
+	case models.EntityAnnotationRiskTag:
+		var o EntityAnnotationRiskTagDto
 
 		err = json.Unmarshal(model.Payload, &o)
 		out = o
@@ -146,8 +146,8 @@ func DecodeEntityAnnotationPayload(kind models.EntityAnnotationType, payload jso
 		err = json.Unmarshal(payload, &o)
 		out = o
 
-	case models.EntityAnnotationRiskTopic:
-		var o models.EntityAnnotationRiskTopicPayload
+	case models.EntityAnnotationRiskTag:
+		var o models.EntityAnnotationRiskTagPayload
 
 		err = json.Unmarshal(payload, &o)
 		out = o

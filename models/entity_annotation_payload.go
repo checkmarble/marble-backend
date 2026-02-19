@@ -36,10 +36,10 @@ package models
 // 	]
 // }
 //
-// Risk Topic (one row per topic)
+// Risk Tag (one row per tag)
 //
 // {
-//   "topic": "sanctions",
+//   "tag": "sanctions",
 //   "reason": "optional reason",
 //   "url": "optional proof URL",
 //   "continuous_screening_id": "optional uuid",
@@ -76,12 +76,12 @@ type EntityAnnotationTagPayload struct {
 
 func (EntityAnnotationTagPayload) entityAnnotationPayload() {}
 
-type EntityAnnotationRiskTopicPayload struct {
-	Topic                 RiskTopic `json:"topic"`
-	Reason                string    `json:"reason,omitempty"`
-	Url                   string    `json:"url,omitempty"`
-	ContinuousScreeningId string    `json:"continuous_screening_id,omitempty"`
-	OpenSanctionsEntityId string    `json:"opensanctions_entity_id,omitempty"` //nolint: tagliatelle
+type EntityAnnotationRiskTagPayload struct {
+	Tag                   RiskTag `json:"tag"`
+	Reason                string  `json:"reason,omitempty"`
+	Url                   string  `json:"url,omitempty"`
+	ContinuousScreeningId string  `json:"continuous_screening_id,omitempty"`
+	OpenSanctionsEntityId string  `json:"opensanctions_entity_id,omitempty"` //nolint: tagliatelle
 }
 
-func (EntityAnnotationRiskTopicPayload) entityAnnotationPayload() {}
+func (EntityAnnotationRiskTagPayload) entityAnnotationPayload() {}

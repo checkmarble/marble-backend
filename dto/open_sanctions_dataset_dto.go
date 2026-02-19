@@ -39,7 +39,7 @@ func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsC
 			var tag string
 
 			for _, upstreamTag := range d.Tags {
-				if t, ok := models.OpenSanctionsTagMapping[upstreamTag]; ok {
+				if t, ok := models.OpenSanctionsTopicMapping[upstreamTag]; ok {
 					tag = string(t)
 				}
 			}
@@ -47,7 +47,7 @@ func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsC
 			if tag == "" {
 				if tags, ok := model.Tags.Get(d.Name); ok {
 					for _, upstreamTag := range tags {
-						if t, ok := models.OpenSanctionsTagMapping[upstreamTag]; ok {
+						if t, ok := models.OpenSanctionsTopicMapping[upstreamTag]; ok {
 							tag = string(t)
 						}
 					}
@@ -56,7 +56,7 @@ func AdaptOpenSanctionsCatalog(model models.OpenSanctionsCatalog) OpenSanctionsC
 
 			if tag == "" {
 				for _, ds := range d.Path.Slice() {
-					if t, ok := models.OpenSanctionsTagMapping[ds]; ok {
+					if t, ok := models.OpenSanctionsTopicMapping[ds]; ok {
 						tag = string(t)
 						break
 					}
