@@ -234,7 +234,7 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 	redisClient, _ := repositories.NewRedisClient(infra.RedisConfig{Address: mredis.Addr()})
 
 	deps, _ := api.InitDependencies(ctx, cfg, pool, key, nil, nil, nil)
-	openSanctions := infra.InitializeOpenSanctions(http.DefaultClient, "http://screening", " ", " ")
+	openSanctions := infra.InitializeOpenSanctions(ctx, http.DefaultClient, "http://screening", " ", " ")
 	repos := repositories.NewRepositories(pool, infra.GcpConfig{},
 		repositories.WithOpenSanctions(openSanctions),
 		repositories.WithRiverClient(riverClient),
