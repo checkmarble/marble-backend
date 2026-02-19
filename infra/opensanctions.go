@@ -1,8 +1,15 @@
 package infra
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"sync/atomic"
+	"time"
+
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
+	"golang.org/x/sync/singleflight"
 )
 
 const (
@@ -25,6 +32,9 @@ type OpenSanctions struct {
 	algorithm   string
 	scope       string
 
+	isMotivaSemaphore *singleflight.Group
+	isMotiva          *atomic.Pointer[bool]
+
 	nameRecognition *NameRecognitionProvider
 }
 
@@ -33,14 +43,18 @@ type NameRecognitionProvider struct {
 	ApiKey string
 }
 
-func InitializeOpenSanctions(client *http.Client, host, authMethod, creds string) OpenSanctions {
+func InitializeOpenSanctions(ctx context.Context, client *http.Client, host, authMethod, creds string) OpenSanctions {
 	os := OpenSanctions{
-		client:      client,
-		host:        host,
-		credentials: creds,
-		algorithm:   "logic-v1",
-		scope:       "default",
+		client:            client,
+		host:              host,
+		credentials:       creds,
+		algorithm:         "logic-v1",
+		scope:             "default",
+		isMotiva:          &atomic.Pointer[bool]{},
+		isMotivaSemaphore: &singleflight.Group{},
 	}
+
+	os.IsMotiva(ctx)
 
 	if os.IsSelfHosted() {
 		switch authMethod {
@@ -124,4 +138,43 @@ func (os OpenSanctions) Algorithm() string {
 
 func (os OpenSanctions) IsNameRecognitionSet() bool {
 	return os.nameRecognition != nil && os.nameRecognition.ApiUrl != ""
+}
+
+func (os *OpenSanctions) IsMotiva(ctx context.Context) bool {
+	logger := utils.LoggerFromContext(ctx)
+
+	if isMotiva := os.isMotiva.Load(); isMotiva != nil {
+		return *isMotiva
+	}
+
+	// If the initial fingerprint fails, we will need to do it during querying,
+	// that could potentially be a lot of requests, so we singleflight them.
+	isMotiva, err, _ := os.isMotivaSemaphore.Do("motiva", func() (any, error) {
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodHead, fmt.Sprintf("%s/-/version", os.Host()), nil)
+		if err != nil {
+			return false, err
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+
+		if err == nil {
+			isMotiva := resp.StatusCode == http.StatusOK
+
+			os.isMotiva.Store(&isMotiva)
+
+			return isMotiva, nil
+		}
+
+		return false, errors.Wrapf(err, "could not determine whether motiva is used")
+	})
+	if err != nil {
+		logger.Warn(err.Error())
+
+		return false
+	}
+
+	return isMotiva.(bool)
 }
