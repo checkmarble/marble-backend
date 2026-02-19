@@ -18,3 +18,7 @@ func (e *EnforceSecurityOrgImportImpl) ImportOrg() error {
 
 	return nil
 }
+
+func (e *EnforceSecurityOrgImportImpl) ListOrgArchetypes() error {
+	return e.Permission(models.ORG_IMPORT_READ)
+}

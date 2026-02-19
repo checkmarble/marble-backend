@@ -97,6 +97,40 @@ func NewOrgImportUsecase(
 //go:embed archetypes/*.json
 var ARCHETYPES embed.FS
 
+func (uc OrgImportUsecase) ListArchetypes(ctx context.Context) ([]models.ArchetypeInfo, error) {
+	if err := uc.security.ListOrgArchetypes(); err != nil {
+		return nil, err
+	}
+
+	entries, err := ARCHETYPES.ReadDir("archetypes")
+	if err != nil {
+		return nil, err
+	}
+
+	archetypes := make([]models.ArchetypeInfo, len(entries))
+	for i, entry := range entries {
+		filename := entry.Name()
+
+		d, err := ARCHETYPES.ReadFile(fmt.Sprintf("archetypes/%s", filename))
+		if err != nil {
+			return nil, err
+		}
+
+		var spec dto.OrgImportMetadata
+		if err := json.Unmarshal(d, &spec); err != nil {
+			return nil, err
+		}
+
+		archetypes[i] = models.ArchetypeInfo{
+			Name:        filename[:len(filename)-len(".json")],
+			Label:       spec.Label,
+			Description: spec.Description,
+		}
+	}
+
+	return archetypes, nil
+}
+
 func (uc *OrgImportUsecase) ImportFromArchetype(ctx context.Context, archetype string, spec dto.OrgImport, seed bool) (uuid.UUID, error) {
 	d, err := ARCHETYPES.ReadFile(fmt.Sprintf("archetypes/%s.json", archetype))
 	if err != nil {
@@ -191,7 +225,7 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 	if err := uc.createInboxes(ctx, tx, orgId, ids, spec.Inboxes); err != nil {
 		return uuid.Nil, err
 	}
-	if err := uc.createWorkflows(ctx, tx, orgId, ids, spec.Workflows); err != nil {
+	if err := uc.createWorkflows(ctx, tx, ids, spec.Workflows); err != nil {
 		return uuid.Nil, err
 	}
 
@@ -583,7 +617,7 @@ func (uc *OrgImportUsecase) createInboxes(ctx context.Context, tx repositories.T
 }
 
 func (uc OrgImportUsecase) createWorkflows(ctx context.Context, tx repositories.Transaction,
-	orgId uuid.UUID, ids map[string]string, workflows []dto.ImportWorkflow,
+	ids map[string]string, workflows []dto.ImportWorkflow,
 ) error {
 	for _, workflow := range workflows {
 		rule, err := uc.workflowRepository.InsertWorkflowRule(ctx, tx, models.WorkflowRule{

@@ -68,6 +68,8 @@ const (
 	CONTINUOUS_SCREENING_OBJECT_WRITE
 	ANNOTATION_DELETE
 	ANNOTATION_RISK_TOPICS_WRITE
+	ORG_IMPORT_READ
+	ORG_IMPORT_SEED
 )
 
 func (r Permission) String() (string, error) {
@@ -133,6 +135,8 @@ func (r Permission) String() (string, error) {
 		"CONTINUOUS_SCREENING_OBJECT_WRITE",
 		"ANNOTATION_DELETE",
 		"ANNOTATION_RISK_TOPICS_WRITE",
+		"ORG_IMPORT_READ",
+		"ORG_IMPORT_SEED",
 	}
 	if int(r) > len(permissions)-1 {
 		return "", errors.New("Invalid permission: no string representation has been set")
