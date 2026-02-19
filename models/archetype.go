@@ -3,8 +3,8 @@ package models
 type ArchetypeSource string
 
 const (
-	ArchetypeSourceEmbed  ArchetypeSource = "embed"
-	ArchetypeSourceBucket ArchetypeSource = "bucket"
+	ArchetypeSourceEmbed    ArchetypeSource = "embed"
+	ArchetypeSourceExternal ArchetypeSource = "external"
 )
 
 type ArchetypeInfo struct {

@@ -32,6 +32,13 @@ func AdaptArchetypesDto(archetypes []models.ArchetypeInfo) ArchetypesDto {
 	}
 }
 
+type ArchetypeApplyDto struct {
+	Name    string                 `json:"name" binding:"required"`
+	Source  models.ArchetypeSource `json:"source" binding:"required,oneof=embed external"`
+	OrgName string                 `json:"org_name" binding:"required_with=Admins"`
+	Admins  []CreateUser           `json:"admins" binding:"required_with=OrgName,omitempty,min=1"`
+}
+
 type OrgImportMetadata struct {
 	Label       string `json:"label"`
 	Description string `json:"description"`

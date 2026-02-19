@@ -4,16 +4,20 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func handleListArchetypes(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		uc := usecasesWithCreds(ctx, uc)
-		archetypes, err := uc.NewOrgImportUsecase().ListArchetypes(ctx)
+		uc := usecasesWithCreds(ctx, uc).NewOrgImportUsecase()
+		archetypes, err := uc.ListArchetypes(ctx)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -28,14 +32,21 @@ func handleOrgImport(uc usecases.Usecases) gin.HandlerFunc {
 
 		var spec dto.OrgImport
 
-		if err := c.ShouldBindJSON(&spec); presentError(ctx, c, err) {
+		err := c.ShouldBindJSON(&spec)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
+		}
+
+		var existingOrgId *uuid.UUID
+		if creds, found := utils.CredentialsFromCtx(ctx); found && creds.OrganizationId != uuid.Nil {
+			existingOrgId = &creds.OrganizationId
 		}
 
 		uc := usecasesWithCreds(ctx, uc)
 		orgImportUsecse := uc.NewOrgImportUsecase()
 
-		orgId, err := orgImportUsecse.Import(ctx, spec, c.Query("seed") == "true")
+		orgId, err := orgImportUsecse.Import(ctx, existingOrgId, spec, c.Query("seed") == "true")
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -50,17 +61,23 @@ func handleOrgImportFromArchetype(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		var spec dto.OrgImport
+		var apply dto.ArchetypeApplyDto
 
-		if err := c.ShouldBindJSON(&spec); presentError(ctx, c, err) {
+		err := c.ShouldBindJSON(&apply)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
-		archetype := c.Param("archetype")
-		uc := usecasesWithCreds(ctx, uc)
-		orgImportUsecse := uc.NewOrgImportUsecase()
+		var existingOrgId *uuid.UUID
+		if creds, found := utils.CredentialsFromCtx(ctx); found && creds.OrganizationId != uuid.Nil {
+			existingOrgId = &creds.OrganizationId
+		}
 
-		orgId, err := orgImportUsecse.ImportFromArchetype(ctx, archetype, spec, c.Query("seed") == "true")
+		uc := usecasesWithCreds(ctx, uc)
+		orgImportUsecase := uc.NewOrgImportUsecase()
+
+		orgId, err := orgImportUsecase.ImportFromArchetype(ctx, existingOrgId, apply, c.Query("seed") == "true")
 		if presentError(ctx, c, err) {
 			return
 		}
