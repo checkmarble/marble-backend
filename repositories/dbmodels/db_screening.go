@@ -26,7 +26,7 @@ type DBScreening struct {
 	Status              string                           `db:"status"`
 	SearchInput         json.RawMessage                  `db:"search_input"`
 	InitialQuery        []models.OpenSanctionsCheckQuery `db:"initial_query"`
-	SearchDatasets      []string                         `db:"search_datasets"`
+	CounterpartyId      *string                          `db:"counterparty_id"`
 	MatchThreshold      int                              `db:"match_threshold"`
 	MatchLimit          int                              `db:"match_limit"`
 	IsManual            bool                             `db:"is_manual"`
@@ -34,7 +34,6 @@ type DBScreening struct {
 	IsPartial           bool                             `db:"is_partial"`
 	IsArchived          bool                             `db:"is_archived"`
 	InitialHasMatches   bool                             `db:"initial_has_matches"`
-	WhitelistedEntities []string                         `db:"whitelisted_entities"`
 	ErrorCodes          []string                         `db:"error_codes"`
 	NumberOfMatches     *int                             `db:"number_of_matches"`
 	CreatedAt           time.Time                        `db:"created_at"`
@@ -66,25 +65,24 @@ func adaptScreeningWithoutConfig(dto DBScreening) (models.Screening, error) {
 	}
 
 	return models.Screening{
-		Id:                  dto.Id,
-		DecisionId:          dto.DecisionId,
-		OrgId:               dto.OrgId,
-		ScreeningConfigId:   dto.ScreeningConfigId,
-		Datasets:            dto.SearchDatasets,
-		SearchInput:         dto.SearchInput,
-		InitialQuery:        dto.InitialQuery,
-		OrgConfig:           cfg,
-		Partial:             dto.IsPartial,
-		Status:              models.ScreeningStatusFrom(dto.Status),
-		IsManual:            dto.IsManual,
-		IsArchived:          dto.IsArchived,
-		InitialHasMatches:   dto.InitialHasMatches,
-		WhitelistedEntities: dto.WhitelistedEntities,
-		RequestedBy:         dto.RequestedBy,
-		ErrorCodes:          dto.ErrorCodes,
-		NumberOfMatches:     numberOfMatches,
-		CreatedAt:           dto.CreatedAt,
-		UpdatedAt:           dto.UpdatedAt,
+		Id:                           dto.Id,
+		DecisionId:                   dto.DecisionId,
+		OrgId:                        dto.OrgId,
+		ScreeningConfigId:            dto.ScreeningConfigId,
+		UniqueCounterpartyIdentifier: dto.CounterpartyId,
+		SearchInput:                  dto.SearchInput,
+		InitialQuery:                 dto.InitialQuery,
+		OrgConfig:                    cfg,
+		Partial:                      dto.IsPartial,
+		Status:                       models.ScreeningStatusFrom(dto.Status),
+		IsManual:                     dto.IsManual,
+		IsArchived:                   dto.IsArchived,
+		InitialHasMatches:            dto.InitialHasMatches,
+		RequestedBy:                  dto.RequestedBy,
+		ErrorCodes:                   dto.ErrorCodes,
+		NumberOfMatches:              numberOfMatches,
+		CreatedAt:                    dto.CreatedAt,
+		UpdatedAt:                    dto.UpdatedAt,
 	}, nil
 }
 

@@ -16,17 +16,18 @@ var (
 )
 
 type ScreeningDto struct {
-	Id           string                           `json:"id"`
-	Config       ScreeningConfigRefDto            `json:"config"`
-	Status       string                           `json:"status"`
-	Request      *ScreeningRequestDto             `json:"request"`
-	InitialQuery []models.OpenSanctionsCheckQuery `json:"initial_query"`
-	Partial      bool                             `json:"partial"`
-	Count        int                              `json:"count"`
-	IsManual     bool                             `json:"is_manual"`
-	RequestedBy  *string                          `json:"requested_by,omitempty"`
-	Matches      []ScreeningMatchDto              `json:"matches"`
-	ErrorCodes   []string                         `json:"error_codes,omitempty"`
+	Id                           string                           `json:"id"`
+	Config                       ScreeningConfigRefDto            `json:"config"`
+	Status                       string                           `json:"status"`
+	UniqueCounterpartyIdentifier *string                          `json:"unique_counterparty_identifier,omitempty"`
+	Request                      *ScreeningRequestDto             `json:"request"`
+	InitialQuery                 []models.OpenSanctionsCheckQuery `json:"initial_query"`
+	Partial                      bool                             `json:"partial"`
+	Count                        int                              `json:"count"`
+	IsManual                     bool                             `json:"is_manual"`
+	RequestedBy                  *string                          `json:"requested_by,omitempty"`
+	Matches                      []ScreeningMatchDto              `json:"matches"`
+	ErrorCodes                   []string                         `json:"error_codes,omitempty"`
 }
 
 type ScreeningConfigRefDto struct {
@@ -34,7 +35,6 @@ type ScreeningConfigRefDto struct {
 }
 
 type ScreeningRequestDto struct {
-	Datasets    []string        `json:"datasets,omitempty"`
 	Limit       int             `json:"limit,omitempty"`
 	Threshold   int             `json:"threshold,omitempty"`
 	SearchInput json.RawMessage `json:"search_input"`
@@ -46,17 +46,17 @@ func AdaptScreeningDto(m models.ScreeningWithMatches) ScreeningDto {
 		Config: ScreeningConfigRefDto{
 			Name: m.Config.Name,
 		},
-		Status:      m.Status.String(),
-		Partial:     m.Partial,
-		Count:       m.NumberOfMatches,
-		IsManual:    m.IsManual,
-		RequestedBy: m.RequestedBy,
-		Matches:     pure_utils.Map(m.Matches, AdaptScreeningMatchDto),
-		ErrorCodes:  m.ErrorCodes,
+		Status:                       m.Status.String(),
+		UniqueCounterpartyIdentifier: m.UniqueCounterpartyIdentifier,
+		Partial:                      m.Partial,
+		Count:                        m.NumberOfMatches,
+		IsManual:                     m.IsManual,
+		RequestedBy:                  m.RequestedBy,
+		Matches:                      pure_utils.Map(m.Matches, AdaptScreeningMatchDto),
+		ErrorCodes:                   m.ErrorCodes,
 	}
 	if m.SearchInput != nil {
 		screening.Request = &ScreeningRequestDto{
-			Datasets:    m.Datasets,
 			Limit:       m.OrgConfig.MatchLimit,
 			Threshold:   m.OrgConfig.MatchThreshold,
 			SearchInput: m.SearchInput,

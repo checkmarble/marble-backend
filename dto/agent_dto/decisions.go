@@ -52,7 +52,6 @@ type DecisionScenario struct {
 
 type Screening struct {
 	Status         string          `json:"status"`
-	Datasets       []string        `json:"datasets"`
 	SearchInput    json.RawMessage `json:"search_input"`
 	IsManual       bool            `json:"is_manual_refined_search"` //nolint:tagliatelle
 	PartialResults bool            `json:"partial_results"`
@@ -82,7 +81,6 @@ func AdaptScreeningMatch(match models.ScreeningMatch) ScreeningMatch {
 func AdaptScreening(screening models.Screening) Screening {
 	return Screening{
 		Status:         screening.Status.String(),
-		Datasets:       screening.Datasets,
 		SearchInput:    screening.SearchInput,
 		IsManual:       screening.IsManual,
 		PartialResults: screening.Partial,

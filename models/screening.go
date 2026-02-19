@@ -96,24 +96,23 @@ func (scs ScreeningMatchStatus) String() string {
 }
 
 type Screening struct {
-	Id                  string
-	DecisionId          string
-	OrgId               uuid.UUID
-	ScreeningConfigId   string
-	Status              ScreeningStatus
-	Config              ScreeningConfigRef
-	Datasets            []string
-	SearchInput         json.RawMessage
-	InitialQuery        []OpenSanctionsCheckQuery
-	OrgConfig           OrganizationOpenSanctionsConfig
-	IsManual            bool
-	IsArchived          bool
-	InitialHasMatches   bool
-	RequestedBy         *string
-	Partial             bool
-	WhitelistedEntities []string
-	ErrorCodes          []string
-	ErrorDetail         error
+	Id                           string
+	DecisionId                   string
+	OrgId                        uuid.UUID
+	ScreeningConfigId            string
+	Status                       ScreeningStatus
+	Config                       ScreeningConfigRef
+	UniqueCounterpartyIdentifier *string
+	SearchInput                  json.RawMessage
+	InitialQuery                 []OpenSanctionsCheckQuery
+	OrgConfig                    OrganizationOpenSanctionsConfig
+	IsManual                     bool
+	IsArchived                   bool
+	InitialHasMatches            bool
+	RequestedBy                  *string
+	Partial                      bool
+	ErrorCodes                   []string
+	ErrorDetail                  error
 
 	// This field is newly stored in DB, but is not filled for all old screenings.
 	// The "GetDecisionById" and "ListScreeningsByDecision" endpoints override it with the actual number of matches if it is 0 in DB,
@@ -152,12 +151,11 @@ type ScreeningWithMatches struct {
 }
 
 type ScreeningRawSearchResponseWithMatches struct {
-	SearchInput         json.RawMessage
-	InitialHasMatches   bool
-	WhitelistedEntities []string
-	Partial             bool
-	ErrorCodes          []string
-	EffectiveThreshold  int
+	SearchInput        json.RawMessage
+	InitialHasMatches  bool
+	Partial            bool
+	ErrorCodes         []string
+	EffectiveThreshold int
 
 	Matches []ScreeningMatch
 	Count   int
@@ -172,17 +170,15 @@ func (s ScreeningRawSearchResponseWithMatches) AdaptScreeningFromSearchResponse(
 				StableId: query.Config.StableId,
 				Name:     query.Config.Name,
 			},
-			Datasets:            query.Config.Datasets,
-			OrgConfig:           query.OrgConfig,
-			SearchInput:         s.SearchInput,
-			InitialQuery:        query.InitialQuery,
-			Partial:             s.Partial,
-			InitialHasMatches:   s.InitialHasMatches,
-			WhitelistedEntities: s.WhitelistedEntities,
-			ErrorCodes:          s.ErrorCodes,
-			CreatedAt:           time.Now(),
-			UpdatedAt:           time.Now(),
-			NumberOfMatches:     s.Count,
+			OrgConfig:         query.OrgConfig,
+			SearchInput:       s.SearchInput,
+			InitialQuery:      query.InitialQuery,
+			Partial:           s.Partial,
+			InitialHasMatches: s.InitialHasMatches,
+			ErrorCodes:        s.ErrorCodes,
+			CreatedAt:         time.Now(),
+			UpdatedAt:         time.Now(),
+			NumberOfMatches:   s.Count,
 		},
 		Matches:            s.Matches,
 		EffectiveThreshold: s.EffectiveThreshold,

@@ -227,12 +227,6 @@ func (*MarbleDbRepository) InsertScreening(
 		return err
 	}
 
-	whitelistedEntities := make([]string, 0)
-
-	if screening.WhitelistedEntities != nil {
-		whitelistedEntities = screening.WhitelistedEntities
-	}
-
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SCREENINGS).
 		Columns(
@@ -242,13 +236,12 @@ func (*MarbleDbRepository) InsertScreening(
 			"screening_config_id",
 			"search_input",
 			"initial_query",
-			"search_datasets",
+			"counterparty_id",
 			"match_threshold",
 			"match_limit",
 			"is_partial",
 			"is_manual",
 			"initial_has_matches",
-			"whitelisted_entities",
 			"requested_by",
 			"status",
 			"error_codes",
@@ -261,13 +254,12 @@ func (*MarbleDbRepository) InsertScreening(
 			screening.ScreeningConfigId,
 			screening.SearchInput,
 			screening.InitialQuery,
-			screening.Datasets,
+			screening.UniqueCounterpartyIdentifier,
 			screening.EffectiveThreshold,
 			screening.OrgConfig.MatchLimit,
 			screening.Partial,
 			screening.IsManual,
 			screening.InitialHasMatches,
-			whitelistedEntities,
 			screening.RequestedBy,
 			screening.Status.String(),
 			screening.ErrorCodes,
