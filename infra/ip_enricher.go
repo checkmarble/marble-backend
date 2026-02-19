@@ -67,6 +67,7 @@ func InitIpEnrichmentDatabase(ctx context.Context, license models.LicenseValidat
 		if err != nil {
 			return getDefaultIpDatabase(ctx, err)
 		}
+		defer w.Close()
 
 		if _, err := io.Copy(w, r); err != nil {
 			return getDefaultIpDatabase(ctx, err)
@@ -97,6 +98,7 @@ func getDefaultIpDatabase(ctx context.Context, err error) (*maxminddb.Reader, er
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
 	var buf bytes.Buffer
 

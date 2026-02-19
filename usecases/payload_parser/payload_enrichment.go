@@ -56,7 +56,7 @@ func (uc *PayloadEnrichementUsecase) EnrichIp(ip netip.Addr) *models.IpMetadata 
 		return nil
 	}
 
-	var m *ipMetadata
+	var m ipMetadata
 
 	if err := result.Decode(&m); err != nil {
 		return nil

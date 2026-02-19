@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/riverqueue/river"
+	"github.com/twpayne/go-geos"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -825,12 +826,12 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 			if !ok {
 				return nil, fmt.Errorf("invalid coordinates (lat, lng)")
 			}
-			_, errLat := strconv.ParseFloat(latS, 64)
-			_, errLng := strconv.ParseFloat(lngS, 64)
+			lat, errLat := strconv.ParseFloat(latS, 64)
+			lng, errLng := strconv.ParseFloat(lngS, 64)
 			if errLat != nil || errLng != nil {
 				return nil, fmt.Errorf("invalid coordinates (lat, lng)")
 			}
-			result[fieldName] = value
+			result[fieldName] = models.Location{Geom: geos.NewPoint([]float64{lng, lat}).SetSRID(4326)}
 		default:
 			return nil, fmt.Errorf("invalid data type %s for field %s", field.DataType, fieldName)
 		}
