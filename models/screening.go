@@ -139,6 +139,7 @@ type ScreeningConfigRef struct {
 	Id       string
 	StableId string
 	Name     string
+	Datasets []string
 }
 
 type ScreeningWithMatches struct {
@@ -169,6 +170,7 @@ func (s ScreeningRawSearchResponseWithMatches) AdaptScreeningFromSearchResponse(
 				Id:       query.Config.Id,
 				StableId: query.Config.StableId,
 				Name:     query.Config.Name,
+				Datasets: query.Config.Datasets,
 			},
 			OrgConfig:         query.OrgConfig,
 			SearchInput:       s.SearchInput,

@@ -35,6 +35,7 @@ type ScreeningConfigRefDto struct {
 }
 
 type ScreeningRequestDto struct {
+	Datasets    []string        `json:"datasets,omitempty"`
 	Limit       int             `json:"limit,omitempty"`
 	Threshold   int             `json:"threshold,omitempty"`
 	SearchInput json.RawMessage `json:"search_input"`
@@ -57,6 +58,7 @@ func AdaptScreeningDto(m models.ScreeningWithMatches) ScreeningDto {
 	}
 	if m.SearchInput != nil {
 		screening.Request = &ScreeningRequestDto{
+			Datasets:    m.Config.Datasets,
 			Limit:       m.OrgConfig.MatchLimit,
 			Threshold:   m.OrgConfig.MatchThreshold,
 			SearchInput: m.SearchInput,

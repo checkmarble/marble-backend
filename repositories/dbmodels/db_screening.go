@@ -44,9 +44,10 @@ type DBScreeningAndConfig struct {
 	DBScreening
 
 	// Fields from config (joined via screening_config_id)
-	ConfigId string `db:"config_id"`
-	StableId string `db:"stable_id"`
-	Name     string `db:"name"`
+	ConfigId string   `db:"config_id"`
+	StableId string   `db:"stable_id"`
+	Name     string   `db:"name"`
+	Datasets []string `db:"datasets"`
 }
 
 type DBScreeningWithMatches struct {
@@ -92,6 +93,7 @@ func AdaptScreening(dto DBScreeningAndConfig) (models.Screening, error) {
 		Id:       dto.ConfigId,
 		StableId: dto.StableId,
 		Name:     dto.Name,
+		Datasets: dto.Datasets,
 	}
 	return sc, nil
 }
