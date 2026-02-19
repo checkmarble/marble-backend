@@ -5,7 +5,6 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -20,8 +19,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
-
-const archetypesFolder = "org-archetypes/"
 
 type OrgImportUsecase struct {
 	transactionWrapper UsecaseTransactionWrapper
@@ -135,88 +132,63 @@ func (uc *OrgImportUsecase) ListArchetypes(ctx context.Context) ([]models.Archet
 			Name:        filename[:len(filename)-len(".json")],
 			Label:       spec.Label,
 			Description: spec.Description,
-			Source:      models.ArchetypeSourceEmbed,
 		}
 	}
 
 	return archetypes, nil
 }
 
+// existingOrgId can be uuid.Nil when called by a marble admin to create a new organization.
+// When existingOrgId is set, an org admin is importing data into their existing organization.
 func (uc *OrgImportUsecase) ImportFromArchetype(
 	ctx context.Context,
-	existingOrgId *uuid.UUID,
+	existingOrgId uuid.UUID,
 	apply dto.ArchetypeApplyDto,
 	seed bool,
 ) (uuid.UUID, error) {
-	var d []byte
-	var err error
-	var pattern dto.OrgImport
-
-	switch apply.Source {
-	case models.ArchetypeSourceEmbed:
-		d, err = ARCHETYPES.ReadFile(fmt.Sprintf("archetypes/%s.json", apply.Name))
-		if err != nil {
-			return uuid.Nil, err
-		}
-	case models.ArchetypeSourceExternal:
-		bucket, err := uc.blobRepository.GetBlob(ctx, uc.orgImportBucketUrl,
-			fmt.Sprintf("%s%s.json", archetypesFolder, apply.Name))
-		if err != nil {
-			return uuid.Nil, err
-		}
-		defer bucket.ReadCloser.Close()
-		d, err = io.ReadAll(bucket.ReadCloser)
-		if err != nil {
-			return uuid.Nil, err
-		}
-	default:
-		return uuid.Nil, errors.Wrap(models.BadParameterError, "unknown archetype source")
+	d, err := ARCHETYPES.ReadFile(fmt.Sprintf("archetypes/%s.json", apply.Name))
+	if err != nil {
+		return uuid.Nil, err
 	}
 
+	var pattern dto.OrgImport
 	if err := json.Unmarshal(d, &pattern); err != nil {
 		return uuid.Nil, err
 	}
 
-	pattern.Org.Name = apply.Name
-	pattern.Admins = apply.Admins
+	if existingOrgId == uuid.Nil {
+		if apply.OrgName == "" || len(apply.Admins) == 0 {
+			return uuid.Nil, errors.New("org name and admins are required to create a new organization from archetype")
+		}
+		pattern.Org.Name = apply.OrgName
+		pattern.Admins = apply.Admins
+	}
 
 	return uc.Import(ctx, existingOrgId, pattern, seed)
 }
 
 // Deal with both case where we want to create a new organization with data and case where we want to import data into an existing organization.
 // The first case requires to be Marble Admin
-func (uc *OrgImportUsecase) Import(ctx context.Context, existingOrgId *uuid.UUID, spec dto.OrgImport, seed bool) (uuid.UUID, error) {
+func (uc *OrgImportUsecase) Import(ctx context.Context, existingOrgId uuid.UUID, spec dto.OrgImport, seed bool) (uuid.UUID, error) {
 	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
 	) (uuid.UUID, error) {
 		var orgId uuid.UUID
-		if existingOrgId != nil {
-			// Case where we import data into an existing organization
-			if err := uc.security.ImportIntoOrg(*existingOrgId); err != nil {
+		var err error
+
+		if existingOrgId != uuid.Nil {
+			if err := uc.security.ImportIntoOrg(existingOrgId); err != nil {
 				return uuid.Nil, err
 			}
-			emptyOrg, err := uc.isOrganizationEmpty(ctx, tx, *existingOrgId)
-			if err != nil {
-				return uuid.Nil, err
-			}
-			if !emptyOrg {
-				return uuid.Nil, errors.Wrap(models.ConflictError, "organization is not empty")
-			}
-			err = uc.createOrganizationResources(ctx, tx, *existingOrgId, spec)
-			if err != nil {
-				return uuid.Nil, err
-			}
-			orgId = *existingOrgId
+			orgId, err = uc.importIntoExistingOrganization(ctx, tx, existingOrgId, spec)
 		} else {
-			// Case where we create a new organization from spec and fill it with data
 			if err := uc.security.ImportOrg(); err != nil {
 				return uuid.Nil, err
 			}
-			var err error
 			orgId, err = uc.createOrganization(ctx, tx, spec)
-			if err != nil {
-				return uuid.Nil, err
-			}
+		}
+		if err != nil {
+			return uuid.Nil, err
 		}
 
 		if seed {
@@ -227,6 +199,42 @@ func (uc *OrgImportUsecase) Import(ctx context.Context, existingOrgId *uuid.UUID
 
 		return orgId, nil
 	})
+}
+
+func (uc *OrgImportUsecase) importIntoExistingOrganization(ctx context.Context,
+	tx repositories.Transaction, existingOrgId uuid.UUID, spec dto.OrgImport,
+) (uuid.UUID, error) {
+	emptyOrg, err := uc.isOrganizationEmpty(ctx, tx, existingOrgId)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if !emptyOrg {
+		return uuid.Nil, errors.Wrap(models.ConflictError, "organization is not empty")
+	}
+
+	org, err := uc.orgRepository.GetOrganizationById(ctx, tx, existingOrgId)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if uc.security.UserId() == nil {
+		return uuid.Nil, errors.New("user id is required to import into an existing organization")
+	}
+	user, err := uc.userRepository.UserById(ctx, tx, *uc.security.UserId())
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	// Need this to stay in the same transaction when calling method which create it own executor
+	// Without this, some fetch will not see the changes made by previous method in the same transaction
+	// e.g. Creating datamodel -> Creating Navigation options
+	*uc = uc.transactionWrapper(tx, org, user).NewOrgImportUsecase()
+
+	if err := uc.createOrganizationResources(ctx, tx, existingOrgId, spec); err != nil {
+		return uuid.Nil, err
+	}
+
+	return existingOrgId, nil
 }
 
 // We consider an empty organization as an org without any table in the data model.
@@ -419,7 +427,7 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 			field = utils.Ptr(ids[pivot.FieldId])
 		}
 
-		err := uc.dataModelRepository.CreatePivot(ctx, tx, pivot.Id.String(), models.CreatePivotInput{
+		err := uc.dataModelRepository.CreatePivot(ctx, tx, pivotId.String(), models.CreatePivotInput{
 			OrganizationId: orgId,
 			BaseTableId:    ids[pivot.BaseTableId],
 			FieldId:        field,

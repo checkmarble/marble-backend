@@ -7,10 +7,9 @@ import (
 )
 
 type ArchetypeDto struct {
-	Name        string                 `json:"name"`
-	Label       string                 `json:"label,omitempty"`
-	Description string                 `json:"description,omitempty"`
-	Source      models.ArchetypeSource `json:"source"`
+	Name        string `json:"name"`
+	Label       string `json:"label,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 type ArchetypesDto struct {
@@ -22,7 +21,6 @@ func AdaptArchetypeDto(a models.ArchetypeInfo) ArchetypeDto {
 		Name:        a.Name,
 		Label:       a.Label,
 		Description: a.Description,
-		Source:      a.Source,
 	}
 }
 
@@ -33,10 +31,9 @@ func AdaptArchetypesDto(archetypes []models.ArchetypeInfo) ArchetypesDto {
 }
 
 type ArchetypeApplyDto struct {
-	Name    string                 `json:"name" binding:"required"`
-	Source  models.ArchetypeSource `json:"source" binding:"required,oneof=embed external"`
-	OrgName string                 `json:"org_name" binding:"required_with=Admins"`
-	Admins  []CreateUser           `json:"admins" binding:"required_with=OrgName,omitempty,min=1"`
+	Name    string       `json:"name" binding:"required"`
+	OrgName string       `json:"org_name" binding:"required_with=Admins"`
+	Admins  []CreateUser `json:"admins" binding:"required_with=OrgName,omitempty,min=1"`
 }
 
 type OrgImportMetadata struct {

@@ -6,10 +6,8 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func handleListArchetypes(uc usecases.Usecases) gin.HandlerFunc {
@@ -38,15 +36,10 @@ func handleOrgImport(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		var existingOrgId *uuid.UUID
-		if creds, found := utils.CredentialsFromCtx(ctx); found && creds.OrganizationId != uuid.Nil {
-			existingOrgId = &creds.OrganizationId
-		}
-
 		uc := usecasesWithCreds(ctx, uc)
-		orgImportUsecse := uc.NewOrgImportUsecase()
+		orgImportUsecase := uc.NewOrgImportUsecase()
 
-		orgId, err := orgImportUsecse.Import(ctx, existingOrgId, spec, c.Query("seed") == "true")
+		orgId, err := orgImportUsecase.Import(ctx, uc.Credentials.OrganizationId, spec, c.Query("seed") == "true")
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -69,15 +62,17 @@ func handleOrgImportFromArchetype(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		var existingOrgId *uuid.UUID
-		if creds, found := utils.CredentialsFromCtx(ctx); found && creds.OrganizationId != uuid.Nil {
-			existingOrgId = &creds.OrganizationId
-		}
-
 		uc := usecasesWithCreds(ctx, uc)
 		orgImportUsecase := uc.NewOrgImportUsecase()
 
-		orgId, err := orgImportUsecase.ImportFromArchetype(ctx, existingOrgId, apply, c.Query("seed") == "true")
+		// If this endpoint is called by marble admin, the organizationId is Nil
+		// Otherwise the organizationId is equal to the organization admin is currently in.
+		orgId, err := orgImportUsecase.ImportFromArchetype(
+			ctx,
+			uc.Credentials.OrganizationId,
+			apply,
+			c.Query("seed") == "true",
+		)
 		if presentError(ctx, c, err) {
 			return
 		}
