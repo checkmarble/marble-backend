@@ -243,50 +243,51 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		}
 
 		record := httpmodels.AdaptOpenSanctionDeltaFileRecordToModel(recordHttp)
-		logger = logger.With("name", record.Entity.Caption,
+		// create a logger for the iteration, because structured log fields accumulate (they don't replace the existing)
+		iterLogger := logger.With("name", record.Entity.Caption,
 			"record_id", record.Entity.Id,
 			"record_op", record.Op.String(),
 			"record_schema", record.Entity.Schema)
-		ctx = utils.StoreLoggerInContext(ctx, logger)
+		iterCtx := utils.StoreLoggerInContext(ctx, iterLogger)
 		iteration++
 
 		if !slices.Contains(AllowedRecordOperations, record.Op) {
-			logger.DebugContext(ctx, "Skipping record because op is not allowed")
+			iterLogger.DebugContext(iterCtx, "Skipping record because op is not allowed")
 			continue
 		}
 		if !slices.Contains(AllowedSchemaTypes, record.Entity.Schema) {
-			logger.DebugContext(ctx, "Skipping record because schema is not allowed")
+			iterLogger.DebugContext(iterCtx, "Skipping record because schema is not allowed")
 			continue
 		}
 		// The new record should be in a dataset that is monitored
 		if !AtLeastOneDatasetsAreMonitored(record.Entity.Datasets, updateJob.Config.Datasets) {
-			logger.DebugContext(ctx, "Skipping record because none of its datasets are monitored", "datasets", record.Entity.Datasets)
+			iterLogger.DebugContext(iterCtx, "Skipping record because none of its datasets are monitored", "datasets", record.Entity.Datasets)
 			continue
 		}
 
-		query, err := w.buildOpenSanctionQuery(ctx, exec, updateJob, record)
+		query, err := w.buildOpenSanctionQuery(iterCtx, exec, updateJob, record)
 		if err != nil {
 			return err
 		}
 		var screeningResponse models.ScreeningRawSearchResponseWithMatches
-		logger.DebugContext(ctx, "Performing screening for record")
+		iterLogger.DebugContext(iterCtx, "Performing screening for record")
 		err = retry.Do(
 			func() error {
-				screeningResponse, err = w.screeningProvider.Search(ctx, query)
+				screeningResponse, err = w.screeningProvider.Search(iterCtx, query)
 				return err
 			},
 			retry.Attempts(3),
 			retry.LastErrorOnly(true),
 			retry.Delay(100*time.Millisecond),
 			retry.DelayType(retry.BackOffDelay),
-			retry.Context(ctx),
+			retry.Context(iterCtx),
 		)
 		if err != nil {
 			return err
 		}
 
 		screening := screeningResponse.AdaptScreeningFromSearchResponse(query)
-		logger.DebugContext(ctx, "Screening result", "matches", len(screening.Matches))
+		iterLogger.DebugContext(iterCtx, "Screening result", "matches", len(screening.Matches))
 
 		// No hit, skip the record
 		// Note: I'm not entirely sure that we SHOULD keep no written trace of the request that was made here, keeping this question open for now.
@@ -294,13 +295,13 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			continue
 		}
 
-		err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		err = w.transactionFactory.Transaction(iterCtx, func(tx repositories.Transaction) error {
 			entityPayload, err := json.Marshal(record.Entity)
 			if err != nil {
 				return err
 			}
 			continuousScreeningWithMatches, err := w.repository.InsertContinuousScreening(
-				ctx,
+				iterCtx,
 				tx,
 				models.CreateContinuousScreening{
 					Screening:                 screening,
@@ -315,7 +316,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			}
 
 			_, err = w.usecase.HandleCaseCreation(
-				ctx,
+				iterCtx,
 				tx,
 				updateJob.Config,
 				record.Entity.Caption, // The case title will be the entity caption
@@ -327,7 +328,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 
 			// Enqueue enrichment task for entity payload and matches
 			if err := w.taskQueueRepo.EnqueueContinuousScreeningMatchEnrichmentTask(
-				ctx,
+				iterCtx,
 				tx,
 				updateJob.Config.OrgId,
 				continuousScreeningWithMatches.Id,
