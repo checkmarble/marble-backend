@@ -848,14 +848,15 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 		if ingestionOptions.ShouldMonitor {
 			for _, object := range payloads {
 				for _, configId := range ingestionOptions.ContinuousScreeningIds {
-					if err := usecase.continuousScreeningClientRepository.InsertContinuousScreeningObject(ctx, tx,
+					if err := usecase.continuousScreeningClientRepository.InsertContinuousScreeningObject(
+						ctx,
+						tx,
 						table.Name,
 						object.Data["object_id"].(string),
 						configId,
-						true); err != nil {
-						if err != nil {
-							return err
-						}
+						true,
+					); err != nil {
+						return err
 					}
 				}
 			}
