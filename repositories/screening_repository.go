@@ -91,7 +91,7 @@ func (*MarbleDbRepository) GetScreeningWithoutMatches(ctx context.Context, exec 
 func selectScreenings() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(columnsNames("sc", dbmodels.SelectScreeningColumn)...).
-		Columns("scc.id AS config_id", "stable_id", "name").
+		Columns("scc.id AS config_id", "stable_id", "name", "scc.datasets").
 		From(dbmodels.TABLE_SCREENINGS + " AS sc").
 		InnerJoin(dbmodels.TABLE_SCREENING_CONFIGS + " AS scc ON sc.screening_config_id=scc.id")
 }
@@ -99,7 +99,7 @@ func selectScreenings() squirrel.SelectBuilder {
 func selectScreeningsWithMatches() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(columnsNames("sc", dbmodels.SelectScreeningColumn)...).
-		Columns("scc.id AS config_id", "stable_id", "scc.name").
+		Columns("scc.id AS config_id", "stable_id", "scc.name", "scc.datasets").
 		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s) ORDER BY array_position(array['confirmed_hit', 'pending', 'no_hit', 'skipped'], scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL) AS matches",
 			strings.Join(columnsNames("scm", dbmodels.SelectScreeningMatchesColumn), ","))).
 		From(dbmodels.TABLE_SCREENINGS + " AS sc").
@@ -107,7 +107,7 @@ func selectScreeningsWithMatches() squirrel.SelectBuilder {
 		LeftJoin(dbmodels.TABLE_SCREENING_MATCHES + " AS scm ON (sc.id = scm.screening_id)").
 		// TODO: revert to "group by id" once the view/table renaming has been done - currently the "screenings" table is a view on the actual table called "sanction_checks" which is not compatible with the "group by id" syntax
 		// GroupBy("sc.id").
-		GroupBy(append(columnsNames("sc", dbmodels.SelectScreeningColumn), "config_id", "stable_id", "name")...).
+		GroupBy(append(columnsNames("sc", dbmodels.SelectScreeningColumn), "config_id", "stable_id", "name", "scc.datasets")...).
 		OrderBy("sc.created_at")
 }
 
