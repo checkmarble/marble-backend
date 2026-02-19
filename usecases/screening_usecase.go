@@ -297,7 +297,6 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 
 	screening.IsManual = true
 	screening.RequestedBy = requester
-	screening.WhitelistedEntities = whitelist
 
 	screening, err = executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
@@ -966,9 +965,12 @@ func mergePayloads(originalRaw, newRaw []byte) ([]byte, error) {
 }
 
 func getScreeningCounterpartyIdentifier(screening models.ScreeningWithMatches) *string {
+	// New rows have it on the screening; old rows (pre-backfill) fall back to first match
+	if screening.UniqueCounterpartyIdentifier != nil {
+		return screening.UniqueCounterpartyIdentifier
+	}
 	if len(screening.Matches) == 0 {
 		return nil
 	}
-	// Suppose all matches of a screening have the same counterparty
 	return screening.Matches[0].UniqueCounterpartyIdentifier
 }

@@ -157,8 +157,9 @@ func MergeScreeningExecWithDefaults(decisionId, orgId uuid.UUID, counterpartyIde
 		se.OrgId = orgId
 		se.CreatedAt = time.Now()
 		se.UpdatedAt = time.Now()
-		// Override the counterparty for all matches if provided
+		// Set counterparty on screening and on all matches (dual-write)
 		if counterpartyIdentifier != nil {
+			se.UniqueCounterpartyIdentifier = counterpartyIdentifier
 			for i := range se.Matches {
 				se.Matches[i].UniqueCounterpartyIdentifier = counterpartyIdentifier
 			}

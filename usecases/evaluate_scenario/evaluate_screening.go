@@ -228,6 +228,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 			}
 
 			if uniqueCounterpartyIdentifier != nil {
+				result.UniqueCounterpartyIdentifier = uniqueCounterpartyIdentifier
 				for idx := range result.Matches {
 					result.Matches[idx].UniqueCounterpartyIdentifier = uniqueCounterpartyIdentifier
 				}

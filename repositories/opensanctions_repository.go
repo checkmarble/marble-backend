@@ -337,7 +337,6 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 			"partial", screening.Partial)
 
 	screening.EffectiveThreshold = query.EffectiveThreshold
-	screening.WhitelistedEntities = query.WhitelistedEntityIds
 
 	return screening, err
 }
