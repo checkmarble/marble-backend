@@ -177,7 +177,7 @@ func setupClientDbSchema(t *testing.T, ctx context.Context, conn *sql.DB) {
 
 	// Create unique index for _monitored_objects
 	_, err = conn.ExecContext(ctx, fmt.Sprintf(`
-		CREATE UNIQUE INDEX IF NOT EXISTS uniq_idx_config_object_type_id_monitored_objects 
+		CREATE UNIQUE INDEX IF NOT EXISTS uniq_idx_config_object_type_id_monitored_objects
 		ON %s._monitored_objects (config_stable_id, object_type, object_id)
 	`, schemaName))
 	if err != nil {
@@ -228,7 +228,7 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 	}
 
 	deps, _ := api.InitDependencies(ctx, cfg, pool, key, nil, nil, nil)
-	openSanctions := infra.InitializeOpenSanctions(http.DefaultClient, "http://screening", " ", " ")
+	openSanctions := infra.InitializeOpenSanctions(ctx, http.DefaultClient, "http://screening", " ", " ")
 	repos := repositories.NewRepositories(pool, infra.GcpConfig{},
 		repositories.WithOpenSanctions(openSanctions),
 		repositories.WithRiverClient(riverClient))
