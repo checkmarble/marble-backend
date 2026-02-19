@@ -5,9 +5,6 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"io"
-	"slices"
-	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -21,10 +18,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"gocloud.dev/blob"
 )
-
-const archetypesFolder = "org-archetypes/"
 
 type OrgImportUsecase struct {
 	transactionWrapper UsecaseTransactionWrapper
@@ -50,9 +44,6 @@ type OrgImportUsecase struct {
 
 	ingestionUsecase IngestionUseCase
 	decisionUsecase  DecisionUsecase
-
-	orgImportBucketUrl string
-	blobRepository     repositories.BlobRepository
 }
 
 func NewOrgImportUsecase(
@@ -77,8 +68,6 @@ func NewOrgImportUsecase(
 	workflowRepository workflowRepository,
 	ingestionUsecase IngestionUseCase,
 	decisionUsecase DecisionUsecase,
-	orgImportBucketUrl string,
-	blobRepository repositories.BlobRepository,
 ) OrgImportUsecase {
 	return OrgImportUsecase{
 		transactionWrapper:   wrapper,
@@ -102,8 +91,6 @@ func NewOrgImportUsecase(
 		workflowRepository:   workflowRepository,
 		ingestionUsecase:     ingestionUsecase,
 		decisionUsecase:      decisionUsecase,
-		orgImportBucketUrl:   orgImportBucketUrl,
-		blobRepository:       blobRepository,
 	}
 }
 
@@ -115,32 +102,6 @@ func (uc OrgImportUsecase) ListArchetypes(ctx context.Context) ([]models.Archety
 		return nil, err
 	}
 
-	archetypes, err := uc.getArchetypeFromEmbed()
-	if err != nil {
-		return nil, err
-	}
-
-	if uc.orgImportBucketUrl != "" {
-		bucketArchetypes, err := uc.getArchetypeFromBucket(ctx)
-		if err != nil {
-			logger := utils.LoggerFromContext(ctx)
-			logger.WarnContext(ctx, "failed to list archetypes from bucket, skipping",
-				"bucket", uc.orgImportBucketUrl,
-				"error", err,
-			)
-		} else {
-			archetypes = append(archetypes, bucketArchetypes...)
-		}
-	}
-
-	slices.SortFunc(archetypes, func(a, b models.ArchetypeInfo) int {
-		return strings.Compare(a.Name, b.Name)
-	})
-
-	return archetypes, nil
-}
-
-func (uc *OrgImportUsecase) getArchetypeFromEmbed() ([]models.ArchetypeInfo, error) {
 	entries, err := ARCHETYPES.ReadDir("archetypes")
 	if err != nil {
 		return nil, err
@@ -164,57 +125,7 @@ func (uc *OrgImportUsecase) getArchetypeFromEmbed() ([]models.ArchetypeInfo, err
 			Name:        filename[:len(filename)-len(".json")],
 			Label:       spec.Label,
 			Description: spec.Description,
-			Source:      models.ArchetypeSourceEmbed,
 		}
-	}
-	return archetypes, nil
-}
-
-func (uc *OrgImportUsecase) getArchetypeFromBucket(ctx context.Context) ([]models.ArchetypeInfo, error) {
-	bucket, err := uc.blobRepository.RawBucket(ctx, uc.orgImportBucketUrl)
-	if err != nil {
-		return nil, err
-	}
-
-	archetypesObjects := bucket.List(&blob.ListOptions{Prefix: archetypesFolder, Delimiter: "/"})
-	var archetypes []models.ArchetypeInfo
-	for {
-		obj, err := archetypesObjects.Next(ctx)
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		if !strings.HasSuffix(obj.Key, ".json") {
-			continue
-		}
-		filename := obj.Key[strings.LastIndex(obj.Key, "/")+1:]
-
-		metadata, err := func() (dto.OrgImportMetadata, error) {
-			archetypeBlob, err := uc.blobRepository.GetBlob(ctx, uc.orgImportBucketUrl, obj.Key)
-			if err != nil {
-				return dto.OrgImportMetadata{}, err
-			}
-			defer archetypeBlob.ReadCloser.Close()
-
-			var m dto.OrgImportMetadata
-			if err := json.NewDecoder(archetypeBlob.ReadCloser).Decode(&m); err != nil {
-				return dto.OrgImportMetadata{}, err
-			}
-			return m, nil
-		}()
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to read archetype metadata from %s", obj.Key)
-		}
-
-		archetypes = append(archetypes, models.ArchetypeInfo{
-			Name:        filename[:len(filename)-len(".json")],
-			Label:       metadata.Label,
-			Description: metadata.Description,
-			Source:      models.ArchetypeSourceBucket,
-		})
 	}
 
 	return archetypes, nil

@@ -25,7 +25,6 @@ type ServerConfig struct {
 	similarityThreshold              float64
 	enableTracing                    bool
 	continuousScreeningBucketUrl     string
-	orgImportBucketUrl               string
 }
 
 func (config ServerConfig) Validate() error {
