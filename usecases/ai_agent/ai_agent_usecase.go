@@ -20,6 +20,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 
@@ -35,6 +36,7 @@ type AiAgentUsecaseRepository interface {
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
+	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
 	ListUsers(ctx context.Context, exec repositories.Executor, organizationIDFilter *uuid.UUID) ([]models.User, error)
 	DecisionsByCaseIdFromCursor(
 		ctx context.Context,
@@ -181,6 +183,7 @@ type AiAgentUsecase struct {
 	caseReviewFileRepository           caseReviewWorkerRepository
 	blobRepository                     repositories.BlobRepository
 	caseReviewTaskEnqueuer             caseReviewTaskEnqueuer
+	scenarioFetcher                    scenarios.ScenarioFetcher
 	screeningHitSuggestionTaskEnqueuer screeningHitSuggestionTaskEnqueuer
 	screeningUsecase                   AiAgentScreeningUsecase
 	featureAccessReader                featureAccessReader
@@ -209,6 +212,7 @@ func NewAiAgentUsecase(
 	blobRepository repositories.BlobRepository,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
 	transactionFactory executor_factory.TransactionFactory,
+	scenarioFetcher scenarios.ScenarioFetcher,
 	featureAccessReader featureAccessReader,
 	screeningHitSuggestionTaskEnqueuer screeningHitSuggestionTaskEnqueuer,
 	screeningUsecase AiAgentScreeningUsecase,
@@ -231,9 +235,10 @@ func NewAiAgentUsecase(
 		caseReviewFileRepository:           caseReviewFileRepository,
 		blobRepository:                     blobRepository,
 		caseReviewTaskEnqueuer:             caseReviewTaskEnqueuer,
+		transactionFactory:                 transactionFactory,
+		scenarioFetcher:                    scenarioFetcher,
 		screeningHitSuggestionTaskEnqueuer: screeningHitSuggestionTaskEnqueuer,
 		screeningUsecase:                   screeningUsecase,
-		transactionFactory:                 transactionFactory,
 		featureAccessReader:                featureAccessReader,
 		config:                             config,
 		caseManagerBucketUrl:               caseManagerBucketUrl,
