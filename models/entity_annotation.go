@@ -14,7 +14,7 @@ const (
 	EntityAnnotationComment
 	EntityAnnotationFile
 	EntityAnnotationTag
-	EntityAnnotationRiskTopic
+	EntityAnnotationRiskTag
 )
 
 func EntityAnnotationFrom(kind string) EntityAnnotationType {
@@ -25,8 +25,8 @@ func EntityAnnotationFrom(kind string) EntityAnnotationType {
 		return EntityAnnotationFile
 	case "tag":
 		return EntityAnnotationTag
-	case "risk_topic":
-		return EntityAnnotationRiskTopic
+	case "risk_tag":
+		return EntityAnnotationRiskTag
 	default:
 		return EntityAnnotationUnknown
 	}
@@ -40,8 +40,8 @@ func (t EntityAnnotationType) String() string {
 		return "file"
 	case EntityAnnotationTag:
 		return "tag"
-	case EntityAnnotationRiskTopic:
-		return "risk_topic"
+	case EntityAnnotationRiskTag:
+		return "risk_tag"
 	default:
 		return "unknown"
 	}
@@ -103,20 +103,20 @@ type AnnotationByIdRequest struct {
 	IncludeDeleted bool
 }
 
-// EntityAnnotationRiskTopicsFilter is used to query risk topic annotations
+// EntityAnnotationRiskTagsFilter is used to query risk tag annotations
 // for MonitoringListCheck rule evaluation
-type EntityAnnotationRiskTopicsFilter struct {
+type EntityAnnotationRiskTagsFilter struct {
 	OrgId      uuid.UUID
 	ObjectType string
 	ObjectIds  []string
-	Topics     []RiskTopic // Optional: filter by specific topics, empty means any topics
+	Tags       []RiskTag // Optional: filter by specific tags, empty means any tags
 }
 
 type GroupedEntityAnnotations struct {
-	Comments   []EntityAnnotation
-	Tags       []EntityAnnotation
-	Files      []EntityAnnotation
-	RiskTopics []EntityAnnotation
+	Comments []EntityAnnotation
+	Tags     []EntityAnnotation
+	Files    []EntityAnnotation
+	RiskTags []EntityAnnotation
 }
 
 func GroupAnnotationsByType(annotations []EntityAnnotation) GroupedEntityAnnotations {
@@ -130,8 +130,8 @@ func GroupAnnotationsByType(annotations []EntityAnnotation) GroupedEntityAnnotat
 			grouped.Tags = append(grouped.Tags, annotation)
 		case EntityAnnotationFile:
 			grouped.Files = append(grouped.Files, annotation)
-		case EntityAnnotationRiskTopic:
-			grouped.RiskTopics = append(grouped.RiskTopics, annotation)
+		case EntityAnnotationRiskTag:
+			grouped.RiskTags = append(grouped.RiskTags, annotation)
 		}
 	}
 

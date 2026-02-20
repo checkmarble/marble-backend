@@ -24,7 +24,7 @@ type ScreeningTestSuite struct {
 	ingestionUsecase             *mocks.ContinuousScreeningIngestionUsecase
 	screeningProvider            *mocks.OpenSanctionsRepository
 	caseEditor                   *mocks.CaseEditor
-	objectRiskTopic              *mocks.ObjectRiskTopicWriter
+	objectRiskTag                *mocks.ObjectRiskTagWriter
 	executorFactory              executor_factory.ExecutorFactoryStub
 	transactionFactory           executor_factory.TransactionFactoryStub
 
@@ -46,7 +46,7 @@ func (suite *ScreeningTestSuite) SetupTest() {
 	suite.ingestionUsecase = new(mocks.ContinuousScreeningIngestionUsecase)
 	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.caseEditor = new(mocks.CaseEditor)
-	suite.objectRiskTopic = new(mocks.ObjectRiskTopicWriter)
+	suite.objectRiskTag = new(mocks.ObjectRiskTagWriter)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
@@ -75,7 +75,7 @@ func (suite *ScreeningTestSuite) makeUsecase() *ContinuousScreeningUsecase {
 		screeningProvider:            suite.screeningProvider,
 		caseEditor:                   suite.caseEditor,
 		inboxReader:                  suite.repository,
-		objectRiskTopicWriter:        suite.objectRiskTopic,
+		objectRiskTagWriter:        suite.objectRiskTag,
 	}
 }
 
@@ -89,7 +89,7 @@ func (suite *ScreeningTestSuite) AssertExpectations() {
 	suite.ingestionUsecase.AssertExpectations(t)
 	suite.screeningProvider.AssertExpectations(t)
 	suite.caseEditor.AssertExpectations(t)
-	suite.objectRiskTopic.AssertExpectations(t)
+	suite.objectRiskTag.AssertExpectations(t)
 }
 
 func TestScreeningTestSuite(t *testing.T) {
@@ -370,9 +370,9 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 	suite.AssertExpectations()
 }
 
-func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_ConfirmedHit_WithRiskTopics() {
+func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_ConfirmedHit_WithRiskTags() {
 	// Setup - This test verifies that when a match is confirmed as a hit and contains
-	// risk topics in its payload, the topics are extracted and written via objectRiskTopic
+	// risk tags in its payload, the tags are extracted and written via objectRiskTag
 	input := models.ScreeningMatchUpdate{
 		MatchId:    suite.matchId.String(),
 		Status:     models.ScreeningMatchStatusConfirmedHit,
@@ -437,24 +437,24 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 		return attrs.EventType == models.ScreeningReviewed
 	})).Return(models.CaseEvent{}, nil)
 
-	// Expect AttachObjectRiskTopics to be called with the extracted topics
-	// "sanctions" -> RiskTopicSanctions, "pep" -> RiskTopicPEPs
-	suite.objectRiskTopic.On("AttachObjectRiskTopics", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.ObjectRiskTopicCreate) bool {
+	// Expect AttachObjectRiskTags to be called with the extracted tags
+	// "sanctions" -> RiskTagSanctions, "pep" -> RiskTagPEPs
+	suite.objectRiskTag.On("AttachObjectRiskTags", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.ObjectRiskTagCreate) bool {
 			if input.OrgId != suite.orgId ||
 				input.ObjectType != objectType ||
 				input.ObjectId != objectId ||
-				len(input.Topics) != 2 {
+				len(input.Tags) != 2 {
 				return false
 			}
-			// Check that both expected topics are present
+			// Check that both expected tags are present
 			hasSanctions := false
 			hasPEPs := false
-			for _, topic := range input.Topics {
-				if topic == models.RiskTopicSanctions {
+			for _, tag := range input.Tags {
+				if tag == models.RiskTagSanctions {
 					hasSanctions = true
 				}
-				if topic == models.RiskTopicPEPs {
+				if tag == models.RiskTagPEPs {
 					hasPEPs = true
 				}
 			}
@@ -471,9 +471,9 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 	suite.AssertExpectations()
 }
 
-func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_DatasetUpdated_ConfirmedHit_WithRiskTopics() {
+func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_DatasetUpdated_ConfirmedHit_WithRiskTags() {
 	// Setup - This test verifies that when a dataset-triggered match is confirmed as a hit,
-	// the topics are extracted from the SCREENING's entity payload (not the match payload)
+	// the tags are extracted from the SCREENING's entity payload (not the match payload)
 	// and the object type/id come from the MATCH's metadata
 	input := models.ScreeningMatchUpdate{
 		MatchId:    suite.matchId.String(),
@@ -481,7 +481,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		ReviewerId: &suite.userId,
 	}
 
-	// For dataset-triggered: topics come from screening.OpenSanctionEntityPayload
+	// For dataset-triggered: tags come from screening.OpenSanctionEntityPayload
 	screeningEntityPayload := []byte(`{"properties": {"topics": ["pep", "regulatory"]}}`)
 
 	// For dataset-triggered: object type/id come from match.Metadata
@@ -544,24 +544,24 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		return attrs.EventType == models.ScreeningReviewed
 	})).Return(models.CaseEvent{}, nil)
 
-	// Expect AttachObjectRiskTopics to be called with topics from screening.OpenSanctionEntityPayload
-	// "pep" -> RiskTopicPEPs, "regulatory" -> RiskTopicAdverseMedia
-	suite.objectRiskTopic.On("AttachObjectRiskTopics", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.ObjectRiskTopicCreate) bool {
+	// Expect AttachObjectRiskTags to be called with tags from screening.OpenSanctionEntityPayload
+	// "pep" -> RiskTagPEPs, "regulatory" -> RiskTagAdverseMedia
+	suite.objectRiskTag.On("AttachObjectRiskTags", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(input models.ObjectRiskTagCreate) bool {
 			if input.OrgId != suite.orgId ||
 				input.ObjectType != objectType ||
 				input.ObjectId != objectId ||
-				len(input.Topics) != 2 {
+				len(input.Tags) != 2 {
 				return false
 			}
-			// Check that both expected topics are present
+			// Check that both expected tags are present
 			hasPEPs := false
 			hasAdverseMedia := false
-			for _, topic := range input.Topics {
-				if topic == models.RiskTopicPEPs {
+			for _, tag := range input.Tags {
+				if tag == models.RiskTagPEPs {
 					hasPEPs = true
 				}
-				if topic == models.RiskTopicAdverseMedia {
+				if tag == models.RiskTagAdverseMedia {
 					hasAdverseMedia = true
 				}
 			}

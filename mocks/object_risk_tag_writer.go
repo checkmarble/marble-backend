@@ -9,14 +9,14 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 )
 
-type ObjectRiskTopicWriter struct {
+type ObjectRiskTagWriter struct {
 	mock.Mock
 }
 
-func (m *ObjectRiskTopicWriter) AttachObjectRiskTopics(
+func (m *ObjectRiskTagWriter) AttachObjectRiskTags(
 	ctx context.Context,
 	tx repositories.Transaction,
-	input models.ObjectRiskTopicCreate,
+	input models.ObjectRiskTagCreate,
 ) error {
 	args := m.Called(ctx, tx, input)
 	return args.Error(0)

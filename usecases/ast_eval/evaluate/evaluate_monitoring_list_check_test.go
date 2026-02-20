@@ -20,10 +20,10 @@ type mockMonitoringListCheckRepository struct {
 	mock.Mock
 }
 
-func (m *mockMonitoringListCheckRepository) FindEntityAnnotationsWithRiskTopics(
+func (m *mockMonitoringListCheckRepository) FindEntityAnnotationsWithRiskTags(
 	ctx context.Context,
 	exec repositories.Executor,
-	filter models.EntityAnnotationRiskTopicsFilter,
+	filter models.EntityAnnotationRiskTagsFilter,
 ) ([]models.EntityAnnotation, error) {
 	args := m.Called(ctx, exec, filter)
 	if args.Get(0) == nil {
@@ -202,8 +202,8 @@ func TestMonitoringListCheck_Evaluate_Step1_ReturnsTrue(t *testing.T) {
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Mock repository returns risk topic found
-	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
-		filter models.EntityAnnotationRiskTopicsFilter,
+	repo.On("FindEntityAnnotationsWithRiskTags", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTagsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst && len(filter.ObjectIds) == 1 &&
 			filter.ObjectIds[0] == "target_object_123"
@@ -250,8 +250,8 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingle_ReturnsTrue(t *testing.
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
-		filter models.EntityAnnotationRiskTopicsFilter,
+	repo.On("FindEntityAnnotationsWithRiskTags", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTagsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
 	})).Return([]models.EntityAnnotation{}, nil).Once()
@@ -264,8 +264,8 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingle_ReturnsTrue(t *testing.
 
 	// Step 2: linked object has risk topic
 	// Note: use mock.Anything for context because Step 2 runs in a goroutine with a derived context.WithCancel
-	repo.On("FindEntityAnnotationsWithRiskTopics", mock.Anything, mockExec, mock.MatchedBy(func(
-		filter models.EntityAnnotationRiskTopicsFilter,
+	repo.On("FindEntityAnnotationsWithRiskTags", mock.Anything, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTagsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameSecond &&
 			len(filter.ObjectIds) == 1 && filter.ObjectIds[0] == "linked_object_456"
@@ -319,8 +319,8 @@ func TestMonitoringListCheck_Evaluate_Step2_NavigationNotValid(t *testing.T) {
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
-		filter models.EntityAnnotationRiskTopicsFilter,
+	repo.On("FindEntityAnnotationsWithRiskTags", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTagsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
 	})).Return([]models.EntityAnnotation{}, nil).Once()
@@ -380,8 +380,8 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
-		filter models.EntityAnnotationRiskTopicsFilter,
+	repo.On("FindEntityAnnotationsWithRiskTags", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTagsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
 	})).Return([]models.EntityAnnotation{}, nil).Once()
@@ -394,8 +394,8 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation
 
 	// Step 2 LinkToSingle: linked object has no risk topic
 	// Note: use mock.Anything for context because Step 2 runs in a goroutine with a derived context.WithCancel
-	repo.On("FindEntityAnnotationsWithRiskTopics", mock.Anything, mockExec, mock.MatchedBy(func(
-		filter models.EntityAnnotationRiskTopicsFilter,
+	repo.On("FindEntityAnnotationsWithRiskTags", mock.Anything, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTagsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameSecond &&
 			len(filter.ObjectIds) == 1 && filter.ObjectIds[0] == "linked_object_456"
@@ -480,8 +480,8 @@ func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic
 	execFactory.On("NewClientDbExecutor", ctx, orgId).Return(mockExec, nil)
 
 	// Step 1: target object has no risk topic
-	repo.On("FindEntityAnnotationsWithRiskTopics", ctx, mockExec, mock.MatchedBy(func(
-		filter models.EntityAnnotationRiskTopicsFilter,
+	repo.On("FindEntityAnnotationsWithRiskTags", ctx, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTagsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameFirst
 	})).Return([]models.EntityAnnotation{}, nil).Once()
@@ -497,8 +497,8 @@ func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic
 
 	// Step 2 Navigation: one of the objects has a risk topic
 	// Note: use mock.Anything for context because Step 2 runs in a goroutine with a derived context.WithCancel
-	repo.On("FindEntityAnnotationsWithRiskTopics", mock.Anything, mockExec, mock.MatchedBy(func(
-		filter models.EntityAnnotationRiskTopicsFilter,
+	repo.On("FindEntityAnnotationsWithRiskTags", mock.Anything, mockExec, mock.MatchedBy(func(
+		filter models.EntityAnnotationRiskTagsFilter,
 	) bool {
 		return filter.ObjectType == utils.DummyTableNameThird &&
 			len(filter.ObjectIds) == 3 &&

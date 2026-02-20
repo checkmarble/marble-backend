@@ -18,10 +18,10 @@ const (
 )
 
 type MonitoringListCheckRepository interface {
-	FindEntityAnnotationsWithRiskTopics(
+	FindEntityAnnotationsWithRiskTags(
 		ctx context.Context,
 		exec repositories.Executor,
-		filter models.EntityAnnotationRiskTopicsFilter,
+		filter models.EntityAnnotationRiskTagsFilter,
 	) ([]models.EntityAnnotation, error)
 	ListPivots(
 		ctx context.Context,
@@ -76,12 +76,12 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 		return MakeEvaluateError(errors.Wrap(err, "failed to create client db executor"))
 	}
 
-	// Step 1: fetch the ingested data based on config, get the `object_id` and query in object_risk_topics table if the element has a risk topic assigned
-	hasRiskTopic, err := mlc.checkTargetObjectHasRiskTopic(ctx, exec, execDbClient, config)
+	// Step 1: fetch the ingested data based on config, get the `object_id` and query in entity_annotations table if the element has a risk tag assigned
+	hasRiskTag, err := mlc.checkTargetObjectHasRiskTag(ctx, exec, execDbClient, config)
 	if err != nil {
-		return MakeEvaluateError(errors.Wrap(err, "failed to check target object risk topics"))
+		return MakeEvaluateError(errors.Wrap(err, "failed to check target object risk tags"))
 	}
-	if hasRiskTopic {
+	if hasRiskTag {
 		return true, nil
 	}
 
@@ -95,8 +95,8 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 	defer cancel()
 
 	type checkResult struct {
-		hasRiskTopic bool
-		err          error
+		hasRiskTag bool
+		err        error
 	}
 	results := make(chan checkResult, len(config.LinkedTableChecks))
 
@@ -128,7 +128,7 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 				err = errors.Wrapf(err, "failed to check linked table %s", linkedCheck.TableName)
 			}
 
-			results <- checkResult{hasRiskTopic: hasRisk, err: err}
+			results <- checkResult{hasRiskTag: hasRisk, err: err}
 		}(linkedCheck)
 	}
 
@@ -144,7 +144,7 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 				return MakeEvaluateError(result.err)
 			}
 
-			if result.hasRiskTopic {
+			if result.hasRiskTag {
 				cancel()         // Cancel remaining goroutines
 				return true, nil // Return immediately without waiting
 			}
@@ -158,9 +158,9 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 	return false, nil
 }
 
-// checkTargetObjectHasRiskTopic checks if the target object has any matching risk topics.
-// It fetches the object_id from the target table using PathToTarget, then queries object_risk_topics.
-func (mlc MonitoringListCheck) checkTargetObjectHasRiskTopic(
+// checkTargetObjectHasRiskTag checks if the target object has any matching risk tags.
+// It fetches the object_id from the target table using PathToTarget, then queries entity_annotations.
+func (mlc MonitoringListCheck) checkTargetObjectHasRiskTag(
 	ctx context.Context,
 	exec repositories.Executor,
 	execDbClient repositories.Executor,
@@ -180,7 +180,7 @@ func (mlc MonitoringListCheck) checkTargetObjectHasRiskTopic(
 		return false, nil
 	}
 
-	return mlc.checkObjectIdsHaveRiskTopics(ctx, exec, config, config.TargetTableName, []string{objectId})
+	return mlc.checkObjectIdsHaveRiskTags(ctx, exec, config, config.TargetTableName, []string{objectId})
 }
 
 // getTargetObjectId retrieves the object_id from the target table by navigating through PathToTarget.
@@ -377,8 +377,8 @@ func (mlc MonitoringListCheck) checkLinkedTableViaLinkToSingle(
 		return false, errors.New("object_id is not a string")
 	}
 
-	// Check if this object has risk topics
-	return mlc.checkObjectIdsHaveRiskTopics(ctx, exec, config, linkedCheck.TableName, []string{objectId})
+	// Check if this object has risk tags
+	return mlc.checkObjectIdsHaveRiskTags(ctx, exec, config, linkedCheck.TableName, []string{objectId})
 }
 
 // checkLinkedTableViaNavigation checks a linked table using NavigationOption (multiple objects).
@@ -454,13 +454,13 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 		objectIds[i] = obj.Data["object_id"].(string)
 	}
 
-	// Check if any of these objects have risk topics
+	// Check if any of these objects have risk tags
 	if len(objectIds) > 0 {
-		hasRiskTopic, err := mlc.checkObjectIdsHaveRiskTopics(ctx, exec, config, linkedCheck.TableName, objectIds)
+		hasRiskTag, err := mlc.checkObjectIdsHaveRiskTags(ctx, exec, config, linkedCheck.TableName, objectIds)
 		if err != nil {
 			return false, err
 		}
-		if hasRiskTopic {
+		if hasRiskTag {
 			return true, nil
 		}
 	}
@@ -490,32 +490,32 @@ func (mlc MonitoringListCheck) getSourceFieldValue(
 	})
 }
 
-// checkObjectIdsHaveRiskTopics checks if any of the given object_ids have matching risk topics.
-func (mlc MonitoringListCheck) checkObjectIdsHaveRiskTopics(
+// checkObjectIdsHaveRiskTags checks if any of the given object_ids have matching risk tags.
+func (mlc MonitoringListCheck) checkObjectIdsHaveRiskTags(
 	ctx context.Context,
 	exec repositories.Executor,
 	config ast.MonitoringListCheckConfig,
 	objectType string,
 	objectIds []string,
 ) (bool, error) {
-	filter := models.EntityAnnotationRiskTopicsFilter{
+	filter := models.EntityAnnotationRiskTagsFilter{
 		OrgId:      mlc.OrgId,
 		ObjectType: objectType,
 		ObjectIds:  objectIds,
 	}
 
-	topics := make([]models.RiskTopic, 0, len(config.TopicFilters))
+	tags := make([]models.RiskTag, 0, len(config.TopicFilters))
 	for _, t := range config.TopicFilters {
-		topic := models.RiskTopicFrom(t)
-		if topic != models.RiskTopicUnknown {
-			topics = append(topics, topic)
+		tag := models.RiskTagFrom(t)
+		if tag != models.RiskTagUnknown {
+			tags = append(tags, tag)
 		}
 	}
-	filter.Topics = topics
+	filter.Tags = tags
 
-	results, err := mlc.Repository.FindEntityAnnotationsWithRiskTopics(ctx, exec, filter)
+	results, err := mlc.Repository.FindEntityAnnotationsWithRiskTags(ctx, exec, filter)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to find risk topic annotations")
+		return false, errors.Wrap(err, "failed to find risk tag annotations")
 	}
 
 	return len(results) > 0, nil

@@ -521,9 +521,9 @@ func (uc *ContinuousScreeningUsecase) handleConfirmedHit(
 	reviewerId *models.UserId,
 	reviewerUuid *uuid.UUID,
 ) error {
-	// Add risk topics from the confirmed match to the Marble object
-	if err := uc.addRiskTopicsFromConfirmedMatch(ctx, tx, screening, confirmedMatch, reviewerId); err != nil {
-		return errors.Wrap(err, "failed to add risk topics from confirmed match")
+	// Add risk tags from the confirmed match to the Marble object
+	if err := uc.addRiskTagsFromConfirmedMatch(ctx, tx, screening, confirmedMatch, reviewerId); err != nil {
+		return errors.Wrap(err, "failed to add risk tags from confirmed match")
 	}
 
 	if screening.IsObjectTriggered() {
@@ -726,9 +726,9 @@ func (uc *ContinuousScreeningUsecase) handleWhitelistCreation(
 	return nil
 }
 
-// addRiskTopicsFromConfirmedMatch extracts topics from the entity payload and stores them
+// addRiskTagsFromConfirmedMatch extracts tags from the entity payload and stores them
 // on the Marble object when a screening match is confirmed as a hit.
-func (uc *ContinuousScreeningUsecase) addRiskTopicsFromConfirmedMatch(
+func (uc *ContinuousScreeningUsecase) addRiskTagsFromConfirmedMatch(
 	ctx context.Context,
 	tx repositories.Transaction,
 	screening models.ContinuousScreeningWithMatches,
@@ -769,28 +769,28 @@ func (uc *ContinuousScreeningUsecase) addRiskTopicsFromConfirmedMatch(
 		return errors.Errorf("unsupported trigger type: %s", screening.TriggerType)
 	}
 
-	// Extract and map topics from the entity payload
-	topics, err := models.ExtractRiskTopicsFromEntityPayload(entityPayload)
+	// Extract and map tags from the entity payload
+	tags, err := models.ExtractRiskTagsFromEntityPayload(entityPayload)
 	if err != nil {
-		return errors.Wrap(err, "failed to extract risk topics from entity payload")
+		return errors.Wrap(err, "failed to extract risk tags from entity payload")
 	}
-	if len(topics) == 0 {
-		// No relevant topics to add - this is OK, just skip
+	if len(tags) == 0 {
+		// No relevant tags to add - this is OK, just skip
 		return nil
 	}
 
-	// Create the upsert input (will APPEND topics, not replace)
-	input := models.NewObjectRiskTopicFromContinuousScreeningReview(
+	// Create the upsert input (will APPEND tags, not replace)
+	input := models.NewObjectRiskTagFromContinuousScreeningReview(
 		screening.OrgId,
 		objectType,
 		objectId,
-		topics,
+		tags,
 		screening.Id,
 		openSanctionsEntityId,
 	)
 	input.AnnotatedBy = reviewerId
 
-	return uc.objectRiskTopicWriter.AttachObjectRiskTopics(ctx, tx, input)
+	return uc.objectRiskTagWriter.AttachObjectRiskTags(ctx, tx, input)
 }
 
 // loadMoreObjectTrigger handles load more for object trigger screenings (Marble to OpenSanction direction)
