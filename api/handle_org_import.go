@@ -4,7 +4,9 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,8 +14,8 @@ func handleListArchetypes(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		uc := usecasesWithCreds(ctx, uc)
-		archetypes, err := uc.NewOrgImportUsecase().ListArchetypes(ctx)
+		uc := usecasesWithCreds(ctx, uc).NewOrgImportUsecase()
+		archetypes, err := uc.ListArchetypes(ctx)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -28,14 +30,16 @@ func handleOrgImport(uc usecases.Usecases) gin.HandlerFunc {
 
 		var spec dto.OrgImport
 
-		if err := c.ShouldBindJSON(&spec); presentError(ctx, c, err) {
+		err := c.ShouldBindJSON(&spec)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
 		uc := usecasesWithCreds(ctx, uc)
-		orgImportUsecse := uc.NewOrgImportUsecase()
+		orgImportUsecase := uc.NewOrgImportUsecase()
 
-		orgId, err := orgImportUsecse.Import(ctx, spec, c.Query("seed") == "true")
+		orgId, err := orgImportUsecase.Import(ctx, uc.Credentials.OrganizationId, spec, c.Query("seed") == "true")
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -50,17 +54,25 @@ func handleOrgImportFromArchetype(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		var spec dto.OrgImport
+		var apply dto.ArchetypeApplyDto
 
-		if err := c.ShouldBindJSON(&spec); presentError(ctx, c, err) {
+		err := c.ShouldBindJSON(&apply)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
-		archetype := c.Param("archetype")
 		uc := usecasesWithCreds(ctx, uc)
-		orgImportUsecse := uc.NewOrgImportUsecase()
+		orgImportUsecase := uc.NewOrgImportUsecase()
 
-		orgId, err := orgImportUsecse.ImportFromArchetype(ctx, archetype, spec, c.Query("seed") == "true")
+		// If this endpoint is called by marble admin, the organizationId is Nil
+		// Otherwise the organizationId is equal to the organization admin is currently in.
+		orgId, err := orgImportUsecase.ImportFromArchetype(
+			ctx,
+			uc.Credentials.OrganizationId,
+			apply,
+			c.Query("seed") == "true",
+		)
 		if presentError(ctx, c, err) {
 			return
 		}
