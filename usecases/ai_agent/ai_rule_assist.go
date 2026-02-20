@@ -21,6 +21,176 @@ const (
 	RULE_GENERATION_PROMPT_PATH  = "prompts/rule/rule_generation.md"
 )
 
+// GenerateRule generates a rule AST from a natural language instruction
+// Returns AST + validation without persisting to database (frontend controls save)
+func (uc *AiAgentUsecase) GenerateRule(
+	ctx context.Context,
+	orgId uuid.UUID,
+	ruleId string,
+	instruction string,
+) (dto.GenerateRuleResponse, error) {
+	logger := utils.LoggerFromContext(ctx)
+	exec := uc.executorFactory.NewExecutor()
+
+	rule, err := uc.ruleUsecase.GetRule(ctx, ruleId)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+
+	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, rule.ScenarioIterationId)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+
+	customLists, err := uc.customListUsecase.GetCustomLists(ctx, orgId)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+	customListsDto := pure_utils.Map(customLists, agent_dto.AdaptCustomListDto)
+
+	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, orgId, models.DataModelReadOptions{
+		IncludeEnums: true, IncludeNavigationOptions: true,
+	}, true)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+	dataModelDto := agent_dto.AdaptDataModelDto(dataModel)
+
+	client, err := uc.GetClient(ctx)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+
+	databaseAccessors, err := getLinkedDatabaseIdentifiers(scenarioAndIteration.Scenario, dataModel)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+	databaseNodes, err := pure_utils.MapErr(databaseAccessors, dto.AdaptNodeDto)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+
+	payloadAccessors, err := getPayloadIdentifiers(scenarioAndIteration.Scenario, dataModel)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+	payloadNodes, err := pure_utils.MapErr(payloadAccessors, dto.AdaptNodeDto)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+
+	model, ruleGenerationPrompt, err := uc.preparePromptWithModel(RULE_GENERATION_PROMPT_PATH, map[string]any{
+		"data_model":         dataModelDto,
+		"custom_list":        customListsDto,
+		"instruction":        instruction,
+		"trigger_type":       scenarioAndIteration.Scenario.TriggerObjectType,
+		"database_accessors": databaseNodes,
+		"payload_accessors":  payloadNodes,
+	})
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+
+	logger.DebugContext(ctx, "Rule generation", "model", model)
+
+	properties := jsonschema.NewProperties()
+	properties.Set("name", &jsonschema.Schema{
+		Type: "string",
+	})
+	properties.Set("constant", &jsonschema.Schema{
+		Type: "string",
+	})
+	properties.Set("children", &jsonschema.Schema{
+		Type: "array",
+		Items: &jsonschema.Schema{
+			Ref: "#/definitions/NodeDto",
+		},
+	})
+	properties.Set("named_children", &jsonschema.Schema{
+		Type: "object",
+		PatternProperties: map[string]*jsonschema.Schema{
+			"^.*$": {
+				Ref: "#/definitions/NodeDto",
+			},
+		},
+		AdditionalProperties: jsonschema.FalseSchema,
+	})
+
+	schema := jsonschema.Schema{
+		Type:       "object",
+		Properties: properties,
+		Definitions: jsonschema.Definitions{
+			"NodeDto": {
+				Type:                 "object",
+				Properties:           properties,
+				AdditionalProperties: jsonschema.FalseSchema,
+				Required:             []string{"name", "constant", "children"},
+			},
+		},
+		AdditionalProperties: jsonschema.FalseSchema,
+		Required:             []string{"name", "constant", "children"},
+	}
+
+	req, err := llmberjack.NewRequest[dto.NodeDto]().
+		WithModel(model).
+		WithSchemaDescription("NodeDto", "The AST node of the rule").
+		OverrideResponseSchema(schema).
+		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
+		WithThinking(true).
+		Do(ctx, client)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to generate rule from LLM: %w", err)
+	}
+
+	ruleAstDto, err := req.Get(0)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to parse LLM response: %w", err)
+	}
+
+	ruleAst, err := dto.AdaptASTNode(ruleAstDto)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to adapt AST node: %w", err)
+	}
+
+	astValidation, err := uc.scenarioUsecase.ValidateScenarioAst(ctx,
+		scenarioAndIteration.Scenario.Id, &ruleAst)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to validate generated AST: %w", err)
+	}
+
+	// Build response with validation details
+	var validationErrors []string
+
+	// Convert ScenarioValidationError to strings
+	for _, validErr := range astValidation.Errors {
+		validationErrors = append(validationErrors, validErr.Error.Error())
+	}
+
+	// Convert evaluation errors to strings
+	evaluationErrors := astValidation.Evaluation.FlattenErrors()
+	for _, err := range evaluationErrors {
+		validationErrors = append(validationErrors, err.Error())
+	}
+
+	isValid := len(validationErrors) == 0
+
+	logger.DebugContext(ctx, "AST validation result",
+		"is_valid", isValid,
+		"errors_count", len(validationErrors),
+	)
+
+	response := dto.GenerateRuleResponse{
+		RuleAST: &ruleAstDto,
+		Validation: dto.ASTValidationDetail{
+			IsValid:  isValid,
+			Errors:   validationErrors,
+			Warnings: []string{},
+		},
+	}
+
+	return response, nil
+}
+
 type aiRuleDescriptionOutput struct {
 	Description string `json:"description" jsonschema_description:"The description of the rule"`
 }
