@@ -45,8 +45,7 @@ type OrgImportUsecase struct {
 	ingestionUsecase IngestionUseCase
 	decisionUsecase  DecisionUsecase
 
-	orgImportBucketUrl string
-	blobRepository     repositories.BlobRepository
+	blobRepository repositories.BlobRepository
 }
 
 func NewOrgImportUsecase(
@@ -71,7 +70,6 @@ func NewOrgImportUsecase(
 	workflowRepository workflowRepository,
 	ingestionUsecase IngestionUseCase,
 	decisionUsecase DecisionUsecase,
-	orgImportBucketUrl string,
 	blobRepository repositories.BlobRepository,
 ) OrgImportUsecase {
 	return OrgImportUsecase{
@@ -96,7 +94,6 @@ func NewOrgImportUsecase(
 		workflowRepository:   workflowRepository,
 		ingestionUsecase:     ingestionUsecase,
 		decisionUsecase:      decisionUsecase,
-		orgImportBucketUrl:   orgImportBucketUrl,
 		blobRepository:       blobRepository,
 	}
 }

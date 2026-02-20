@@ -49,7 +49,6 @@ type Usecases struct {
 	webhookSystemMigrated        bool   // True when migrated to new internal webhook system
 	allowInsecureWebhookURLs     bool   // Allow HTTP webhook URLs (dev only)
 	webhookIPWhitelist           string // Comma-separated CIDR ranges to whitelist for webhooks
-	orgImportBucketUrl           string
 
 	rootExecutorFactory *executor_factory.IdentityExecutorFactory
 }
@@ -210,12 +209,6 @@ func WithWebhookIPWhitelist(whitelist string) Option {
 	}
 }
 
-func WithOrgImportBucketUrl(bucket string) Option {
-	return func(o *options) {
-		o.orgImportBucketUrl = bucket
-	}
-}
-
 type options struct {
 	appName                      string
 	apiVersion                   string
@@ -240,7 +233,6 @@ type options struct {
 	webhookSystemMigrated        bool
 	allowInsecureWebhookURLs     bool
 	webhookIPWhitelist           string
-	orgImportBucketUrl           string
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -272,7 +264,6 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		webhookSystemMigrated:        o.webhookSystemMigrated,
 		allowInsecureWebhookURLs:     o.allowInsecureWebhookURLs,
 		webhookIPWhitelist:           o.webhookIPWhitelist,
-		orgImportBucketUrl:           o.orgImportBucketUrl,
 	}
 }
 
