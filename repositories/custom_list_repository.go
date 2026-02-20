@@ -22,6 +22,7 @@ type CustomListRepository interface {
 		forUpdate ...bool,
 	) ([]models.CustomListValue, error)
 	GetCustomListValueById(ctx context.Context, exec Executor, id string) (models.CustomListValue, error)
+	GetCustomListByName(ctx context.Context, exec Executor, organizationId uuid.UUID, name string) (models.CustomList, error)
 	CreateCustomList(ctx context.Context, exec Executor, createCustomList models.CreateCustomListInput, newCustomListId string) error
 	UpdateCustomList(ctx context.Context, exec Executor, updateCustomList models.UpdateCustomListInput) error
 	SoftDeleteCustomList(ctx context.Context, exec Executor, listId string) error
@@ -383,4 +384,49 @@ func (repo *CustomListRepositoryPostgresql) BatchDeleteCustomListValues(
 
 	err := ExecBuilder(ctx, exec, deleteRequest)
 	return err
+}
+
+func (repo *CustomListRepositoryPostgresql) GetCustomListByName(ctx context.Context, exec Executor, organizationId uuid.UUID, name string) (models.CustomList, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.CustomList{}, err
+	}
+
+	query := `
+			SELECT
+				cl.*,
+				(
+					SELECT count(*)
+					FROM (
+						SELECT *
+						FROM custom_list_values AS clv
+						WHERE clv.custom_list_id=cl.id
+						AND clv.deleted_at IS NULL
+						LIMIT $3
+						) as sub
+					) as nb_items
+			FROM custom_lists AS cl
+			WHERE cl.name = $1
+			AND cl.organization_id = $2
+			AND cl.deleted_at IS NULL
+	`
+
+	rows, err := exec.Query(ctx, query, name, organizationId, models.VALUES_COUNT_LIMIT+1)
+	if err != nil {
+		return models.CustomList{}, err
+	}
+	defer rows.Close()
+	customsList, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.CustomList, error) {
+		customList, err := adaptModelUsingRowToStruct(row, dbmodels.AdaptCustomList)
+		if err != nil {
+			return models.CustomList{}, err
+		}
+		return customList, nil
+	})
+	if err != nil {
+		return models.CustomList{}, err
+	}
+	if len(customsList) == 0 {
+		return models.CustomList{}, errors.Wrap(models.NotFoundError, "custom list not found")
+	}
+	return customsList[0], nil
 }

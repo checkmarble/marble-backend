@@ -101,3 +101,8 @@ func (cl *CustomListRepository) BatchDeleteCustomListValues(
 	args := cl.Called(ctx, exec, customListId, deleteCustomListValueIds, userId)
 	return args.Error(0)
 }
+
+func (cl *CustomListRepository) GetCustomListByName(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID, name string) (models.CustomList, error) {
+	args := cl.Called(ctx, exec, organizationId, name)
+	return args.Get(0).(models.CustomList), args.Error(1)
+}
