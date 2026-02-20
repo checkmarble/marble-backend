@@ -180,6 +180,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/scenario-iteration-rules/:rule_id/ai-description", timeoutMiddleware(conf.BatchTimeout),
 		handleAiDescriptionScenarioIteration(uc),
 	)
+	router.POST("/scenario-iteration-rules/:rule_id/generate-ast",
+		timeoutMiddleware(conf.BatchTimeout), handleGenerateAstRule(uc))
 
 	router.GET("/screenings/freshness", tom, handleScreeningDatasetFreshness(uc))
 	router.GET("/screenings/datasets", tom, handleScreeningDatasetCatalog(uc))
