@@ -270,7 +270,8 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 	}
 
 	counterpartyIdentifier := getScreeningCounterpartyIdentifier(sc)
-	whitelist, err := uc.getWhitelistFromScreening(ctx, uc.executorFactory.NewExecutor(), decision.OrganizationId, counterpartyIdentifier)
+	whitelist, err := uc.getWhitelistFromScreening(ctx, uc.executorFactory.NewExecutor(),
+		decision.OrganizationId, counterpartyIdentifier)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -287,7 +288,8 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
-	screening = models.MergeScreeningExecWithDefaults(decision.DecisionId, decision.OrganizationId, counterpartyIdentifier)(screening)
+	screening = models.MergeScreeningExecWithDefaults(decision.DecisionId,
+		decision.OrganizationId, counterpartyIdentifier)(screening)
 
 	var requester *string
 
@@ -348,7 +350,8 @@ func (uc ScreeningUsecase) Search(ctx context.Context, refine models.ScreeningRe
 		return models.ScreeningWithMatches{}, err
 	}
 
-	whitelist, err := uc.getWhitelistFromScreening(ctx, uc.executorFactory.NewExecutor(), decision.OrganizationId, getScreeningCounterpartyIdentifier(sc))
+	whitelist, err := uc.getWhitelistFromScreening(ctx, uc.executorFactory.NewExecutor(),
+		decision.OrganizationId, getScreeningCounterpartyIdentifier(sc))
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -965,6 +968,7 @@ func mergePayloads(originalRaw, newRaw []byte) ([]byte, error) {
 }
 
 func getScreeningCounterpartyIdentifier(screening models.ScreeningWithMatches) *string {
+	// TODO: finish this migration by migrating values from Matches to the new column UniqueCounterpartyIdentifier, then remove the fallback to Matches
 	// New rows have it on the screening; old rows (pre-backfill) fall back to first match
 	if screening.UniqueCounterpartyIdentifier != nil {
 		return screening.UniqueCounterpartyIdentifier
