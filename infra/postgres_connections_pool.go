@@ -52,21 +52,21 @@ func NewPostgresConnectionPool(
 	cfg.MaxConnIdleTime = MAX_CONNECTION_IDLE_TIME
 	cfg.MaxConnLifetimeJitter = 5 * time.Minute
 
-	if impersonateRole != "" {
-		cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-			_, err := conn.Exec(ctx, "SET ROLE "+impersonateRole)
-			return err
-		}
-	}
-
 	cfg.ConnConfig.RuntimeParams = map[string]string{
 		"application_name": appName,
 	}
 
 	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		if impersonateRole != "" {
+			if _, err := conn.Exec(ctx, "SET ROLE "+impersonateRole); err != nil {
+				return err
+			}
+		}
+
 		if err := pgxgeos.Register(ctx, conn, geos.NewContext()); err != nil {
 			return err
 		}
+
 		return nil
 	}
 
