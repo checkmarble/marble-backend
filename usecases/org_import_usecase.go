@@ -44,8 +44,6 @@ type OrgImportUsecase struct {
 
 	ingestionUsecase IngestionUseCase
 	decisionUsecase  DecisionUsecase
-
-	blobRepository repositories.BlobRepository
 }
 
 func NewOrgImportUsecase(
@@ -70,7 +68,6 @@ func NewOrgImportUsecase(
 	workflowRepository workflowRepository,
 	ingestionUsecase IngestionUseCase,
 	decisionUsecase DecisionUsecase,
-	blobRepository repositories.BlobRepository,
 ) OrgImportUsecase {
 	return OrgImportUsecase{
 		transactionWrapper:   wrapper,
@@ -94,7 +91,6 @@ func NewOrgImportUsecase(
 		workflowRepository:   workflowRepository,
 		ingestionUsecase:     ingestionUsecase,
 		decisionUsecase:      decisionUsecase,
-		blobRepository:       blobRepository,
 	}
 }
 
@@ -155,7 +151,7 @@ func (uc *OrgImportUsecase) ImportFromArchetype(
 
 	if existingOrgId == uuid.Nil {
 		if apply.OrgName == "" || len(apply.Admins) == 0 {
-			return uuid.Nil, errors.New("org name and admins are required to create a new organization from archetype")
+			return uuid.Nil, errors.Wrap(models.BadParameterError, "org name and admins are required to create a new organization from archetype")
 		}
 		pattern.Org.Name = apply.OrgName
 		pattern.Admins = apply.Admins
@@ -190,7 +186,7 @@ func (uc *OrgImportUsecase) Import(ctx context.Context, existingOrgId uuid.UUID,
 
 		if seed {
 			if err := uc.Seed(ctx, spec, orgId); err != nil {
-				return uuid.Nil, nil
+				return orgId, nil
 			}
 		}
 
@@ -215,7 +211,7 @@ func (uc *OrgImportUsecase) importIntoExistingOrganization(ctx context.Context,
 	}
 
 	if uc.security.UserId() == nil {
-		return uuid.Nil, errors.New("user id is required to import into an existing organization")
+		return uuid.Nil, errors.Wrap(models.ForbiddenError, "user id is required to import into an existing organization")
 	}
 	user, err := uc.userRepository.UserById(ctx, tx, *uc.security.UserId())
 	if err != nil {
@@ -478,7 +474,7 @@ func (uc *OrgImportUsecase) createTags(ctx context.Context, tx repositories.Tran
 	return nil
 }
 
-func (uc OrgImportUsecase) createCustomLists(ctx context.Context, tx repositories.Transaction,
+func (uc *OrgImportUsecase) createCustomLists(ctx context.Context, tx repositories.Transaction,
 	orgId uuid.UUID, ids map[string]string, lists []dto.ImportCustomList,
 ) error {
 	for _, list := range lists {
