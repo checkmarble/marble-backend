@@ -163,6 +163,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 
 	openSanctionsConfig := infra.InitializeOpenSanctions(
+		ctx,
 		&http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)},
 		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
 		utils.GetEnv("OPENSANCTIONS_AUTH_METHOD", ""),
