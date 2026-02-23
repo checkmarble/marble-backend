@@ -1,7 +1,7 @@
 services:
   db:
     container_name: postgres
-    image: postgres:17
+    image: postgis/postgis:17-3.6-alpine
     shm_size: 1g
     restart: always
     environment:
