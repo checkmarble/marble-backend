@@ -460,14 +460,33 @@ func (uc *OrgImportUsecase) createTags(ctx context.Context, tx repositories.Tran
 		tagId, _ := uuid.NewV7()
 		ids[tag.Id] = tagId.String()
 
-		err := uc.tagRepository.CreateTag(ctx, tx, models.CreateTagAttributes{
+		// Use a subtransaction (savepoint) so that a unique violation doesn't abort the outer transaction
+		subTx, err := tx.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		err = uc.tagRepository.CreateTag(ctx, subTx, models.CreateTagAttributes{
 			OrganizationId: orgId,
 			Name:           tag.Name,
 			Color:          tag.Color,
 			Target:         models.TagTarget(tag.Target),
 		}, tagId.String())
-		if err != nil {
+		if err != nil && !repositories.IsUniqueViolationError(err) {
+			_ = subTx.Rollback(ctx)
 			return err
+		}
+		if repositories.IsUniqueViolationError(err) {
+			_ = subTx.Rollback(ctx)
+			// Need to fetch the tag ID and replace it in `ids`. We can use these IDs in other resources
+			existingTag, err := uc.tagRepository.GetTagByName(ctx, tx, orgId, tag.Name)
+			if err != nil {
+				return err
+			}
+			ids[tag.Id] = existingTag.Id
+		} else {
+			if err := subTx.Commit(ctx); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -481,15 +500,36 @@ func (uc *OrgImportUsecase) createCustomLists(ctx context.Context, tx repositori
 		listId, _ := uuid.NewV7()
 		ids[list.Id] = listId.String()
 
-		err := uc.customListRepository.CreateCustomList(ctx, tx, models.CreateCustomListInput{
+		// Use a subtransaction (savepoint) so that a unique violation doesn't abort the outer transaction
+		subTx, err := tx.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		err = uc.customListRepository.CreateCustomList(ctx, subTx, models.CreateCustomListInput{
 			OrganizationId: orgId,
 			Name:           list.Name,
 			Description:    list.Description,
 		}, listId.String())
-		if err != nil {
+		if err != nil && !repositories.IsUniqueViolationError(err) {
+			_ = subTx.Rollback(ctx)
 			return err
 		}
+		if repositories.IsUniqueViolationError(err) {
+			_ = subTx.Rollback(ctx)
+			// Need to fetch the list ID and replace it in `ids`. We can use these IDs in other resources
+			existingList, err := uc.customListRepository.GetCustomListByName(ctx, tx, orgId, list.Name)
+			if err != nil {
+				return err
+			}
+			ids[list.Id] = existingList.Id
+			listId = uuid.MustParse(existingList.Id)
+		} else {
+			if err := subTx.Commit(ctx); err != nil {
+				return err
+			}
+		}
 
+		// We can have a duplication of Value, but it is not a problem for the use of custom list.
 		err = uc.customListRepository.BatchInsertCustomListValues(ctx, tx, models.CustomListText, listId.String(), pure_utils.Map(
 			list.Values, func(v string) models.BatchInsertCustomListValue {
 				valueId, _ := uuid.NewV7()

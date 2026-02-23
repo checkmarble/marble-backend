@@ -108,3 +108,17 @@ func (repo *MarbleDbRepository) SoftDeleteTag(ctx context.Context, exec Executor
 	err := ExecBuilder(ctx, exec, query)
 	return err
 }
+
+func (repo *MarbleDbRepository) GetTagByName(ctx context.Context, exec Executor, organizationId uuid.UUID, name string) (models.Tag, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.Tag{}, err
+	}
+
+	query := NewQueryBuilder().Select(dbmodels.SelectTagColumn...).
+		From(dbmodels.TABLE_TAGS).
+		Where(squirrel.Eq{"org_id": organizationId}).
+		Where(squirrel.Eq{"name": name}).
+		Where(squirrel.Eq{"deleted_at": nil})
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptTag)
+}

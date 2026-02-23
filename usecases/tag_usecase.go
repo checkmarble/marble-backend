@@ -21,6 +21,7 @@ type TagUseCaseRepository interface {
 	GetTagById(ctx context.Context, exec repositories.Executor, tagId string) (models.Tag, error)
 	SoftDeleteTag(ctx context.Context, exec repositories.Executor, tagId string) error
 	ListCaseTagsByTagId(ctx context.Context, exec repositories.Executor, tagId string) ([]models.CaseTag, error)
+	GetTagByName(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID, name string) (models.Tag, error)
 }
 
 type TagUseCase struct {
