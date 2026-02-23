@@ -144,6 +144,10 @@ func (uc EntityAnnotationUsecase) ListForCase(ctx context.Context,
 func (uc EntityAnnotationUsecase) Attach(ctx context.Context,
 	req models.CreateEntityAnnotationRequest,
 ) (models.EntityAnnotation, error) {
+	if err := uc.enforceSecurityAnnotation.WriteAnnotation(req.OrgId, req.AnnotationType); err != nil {
+		return models.EntityAnnotation{}, errors.Wrap(models.ForbiddenError, err.Error())
+	}
+
 	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType); err != nil {
 		return models.EntityAnnotation{}, errors.Wrap(models.NotFoundError, err.Error())
 	}
