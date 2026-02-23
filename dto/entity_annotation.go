@@ -154,10 +154,7 @@ func DecodeEntityAnnotationPayload(kind models.EntityAnnotationType, payload jso
 		out = o
 
 	default: // Unknown types or "file"
-		return nil, errors.WithDetail(
-			errors.Wrap(models.BadParameterError, "invalid annotation type"),
-			"invalid annotation type",
-		)
+		return nil, errors.Wrap(models.BadParameterError, "invalid annotation type")
 	}
 
 	if err := binding.Validator.ValidateStruct(out); err != nil {
