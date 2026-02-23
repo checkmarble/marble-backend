@@ -415,6 +415,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/org-import/archetypes", tom, handleListArchetypes(uc))
 	router.POST("/org-import/archetypes/apply", timeoutMiddleware(conf.BatchTimeout), handleOrgImportFromArchetype(uc))
 
+	router.POST("/scoring/test/score/:entityType/:entityId", tom, handleScoringTestScore(uc))
+	router.GET("/scoring/ruleset/:entityType", tom, handleScoringGetRuleset(uc))
+	router.POST("/scoring/ruleset/:entityType", tom, handleScoringCreateRulesetVersion(uc))
 	router.GET("/scoring/score/:entityType/:entityId", tom, handleScoringGetActiveScore(uc))
 	router.GET("/scoring/score/:entityType/:entityId/history", tom, handleScoringGetScoreHistory(uc))
 	router.POST("/scoring/score/:entityType/:entityId", tom, handleOverrideEntityScore(uc))

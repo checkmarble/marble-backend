@@ -1080,5 +1080,6 @@ func (usecases *UsecasesWithCreds) NewScoringUsecase() scoring.ScoringUsecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
+		usecases.NewEvaluateAstExpression(),
 	)
 }
