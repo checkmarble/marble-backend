@@ -49,6 +49,7 @@ var (
 		ORG_IMPORT_ARCHETYPE_READ,        // Only org admin can list organization archetypes
 		ORG_IMPORT_INTO_EXISTING,         // Only org admin can seed an organization via import
 		ORG_EXPORT,
+		SCORING_OVERRIDE_SCORE,
 	)
 )
 
@@ -85,6 +86,7 @@ var ROLES_PERMISSIONS = map[Role][]Permission{
 		CONTINUOUS_SCREENING_OBJECT_WRITE,
 		ANNOTATION_RISK_TAG_WRITE,
 		ANNOTATION_DELETE,
+		SCORING_OVERRIDE_SCORE,
 	},
 	TRANSFER_CHECK_API_CLIENT: {
 		TRANSFER_READ,
