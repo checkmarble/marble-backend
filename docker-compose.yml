@@ -38,10 +38,8 @@ services:
       - es:/usr/share/elasticsearch/data
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1",
-        ]
+        - "CMD-SHELL"
+        - "curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1"
       interval: 5s
       timeout: 5s
       retries: 5
