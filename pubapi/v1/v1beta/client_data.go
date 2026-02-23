@@ -3,7 +3,6 @@ package v1beta
 import (
 	"net/http"
 
-	gdto "github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/types"
@@ -43,7 +42,13 @@ func HandleGetClientDataAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		types.NewResponse(pure_utils.Map(annotations, dto.AdaptClientDataAnnotationDto)).Serve(c, http.StatusOK)
+		response, err := pure_utils.MapErr(annotations, dto.AdaptClientDataAnnotationDto)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		types.NewResponse(response).Serve(c, http.StatusOK)
 	}
 }
 
@@ -81,7 +86,7 @@ func HandleAttachClientDataAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		parsedPayload, err := gdto.DecodeEntityAnnotationPayload(annotationType, payload.Payload)
+		parsedPayload, err := params.DecodeAnnotationPayload(annotationType, payload.Payload)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -101,7 +106,13 @@ func HandleAttachClientDataAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		types.NewResponse(dto.AdaptClientDataAnnotationDto(annotation)).Serve(c, http.StatusCreated)
+		response, err := dto.AdaptClientDataAnnotationDto(annotation)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		types.NewResponse(response).Serve(c, http.StatusCreated)
 	}
 }
 
@@ -152,7 +163,13 @@ func HandleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		types.NewResponse(pure_utils.Map(annotations, dto.AdaptClientDataAnnotationDto)).Serve(c, http.StatusCreated)
+		response, err := pure_utils.MapErr(annotations, dto.AdaptClientDataAnnotationDto)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		types.NewResponse(response).Serve(c, http.StatusCreated)
 	}
 }
 
