@@ -1,8 +1,10 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/google/uuid"
 )
 
@@ -70,4 +72,49 @@ func (r InsertScoreRequest) ToEntityRef() ScoringEntityRef {
 		EntityType: r.EntityType,
 		EntityId:   r.EntityId,
 	}
+}
+
+type ScoringRuleset struct {
+	Id              uuid.UUID
+	OrgId           uuid.UUID
+	Version         int
+	Name            string
+	Description     string
+	EntityType      string
+	Thresholds      []int
+	CooldownSeconds int
+
+	Rules []ScoringRule
+}
+
+type ScoringRule struct {
+	Id          uuid.UUID
+	RulesetId   uuid.UUID
+	StableId    uuid.UUID
+	Name        string
+	Description string
+	Ast         ast.Node
+}
+
+type CreateScoringRulesetRequest struct {
+	Version         int
+	Name            string
+	Description     string
+	EntityType      string
+	Thresholds      []int
+	CooldownSeconds int
+}
+
+type CreateScoringRuleRequest struct {
+	StableId    uuid.UUID
+	Name        string
+	Description string
+	Ast         json.RawMessage
+}
+
+type ScoringEvaluation struct {
+	Modifier   int
+	Floor      int
+	Score      int
+	Evaluation []ast.NodeEvaluation
 }

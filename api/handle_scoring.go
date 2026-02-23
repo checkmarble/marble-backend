@@ -10,6 +10,69 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func handleScoringTestScore(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringUsecase()
+		eval, err := scoringUsecase.TestScore(ctx, c.Param("entityType"), c.Param("entityId"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, scoring.AdaptScoringEvaluation(eval))
+	}
+}
+
+func handleScoringGetRuleset(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringUsecase()
+
+		ruleset, err := scoringUsecase.GetRuleset(ctx, c.Param("entityType"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		out, err := scoring.AdaptScoringRuleset(ruleset)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, out)
+	}
+}
+
+func handleScoringCreateRulesetVersion(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var payload scoring.CreateRulesetRequest
+
+		if err := c.ShouldBindBodyWithJSON(&payload); presentError(ctx, c, err) {
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringUsecase()
+
+		ruleset, err := scoringUsecase.CreateRulesetVersion(ctx, c.Param("entityType"), payload)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		out, err := scoring.AdaptScoringRuleset(ruleset)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, out)
+	}
+}
+
 func handleScoringGetScoreHistory(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
