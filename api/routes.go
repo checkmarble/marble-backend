@@ -415,6 +415,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/org-import/archetypes", tom, handleListArchetypes(uc))
 	router.POST("/org-import/archetypes/apply", timeoutMiddleware(conf.BatchTimeout), handleOrgImportFromArchetype(uc))
 
+	router.GET("/scoring/score/:entityType/:entityId", tom, handleScoringGetActiveScore(uc))
+	router.GET("/scoring/score/:entityType/:entityId/history", tom, handleScoringGetScoreHistory(uc))
+	router.POST("/scoring/score/:entityType/:entityId", tom, handleOverrideEntityScore(uc))
+
 	if conf.AnalyticsProxyApiUrl == "" {
 		addAnalyticsRoutes(router, conf, uc)
 	} else {

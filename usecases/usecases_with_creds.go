@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
+	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transfers_data_read"
 	"github.com/checkmarble/marble-backend/usecases/webhooks"
@@ -146,6 +147,13 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurityContinuousScreening() secur
 
 func (usecases *UsecasesWithCreds) NewEnforceSecurityAudit() security.EnforceSecurityAudit {
 	return &security.EnforceSecurityAuditImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewEnforceSecurityScoring() security.EnforceSecurityScoring {
+	return &security.EnforceSecurityScoringImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
 	}
@@ -1061,5 +1069,16 @@ func (usecases *UsecasesWithCreds) NewClient360Usecase() Client360Usecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.NewClientDbIndexEditor(),
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewScoringUsecase() scoring.ScoringUsecase {
+	return scoring.NewScoringUsecase(
+		usecases.NewEnforceSecurityScoring(),
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
 	)
 }
