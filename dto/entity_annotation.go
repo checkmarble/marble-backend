@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin/binding"
 )
 
@@ -153,7 +154,10 @@ func DecodeEntityAnnotationPayload(kind models.EntityAnnotationType, payload jso
 		out = o
 
 	default: // Unknown types or "file"
-		return nil, fmt.Errorf("invalid annotation type")
+		return nil, errors.WithDetail(
+			errors.Wrap(models.BadParameterError, "invalid annotation type"),
+			"invalid annotation type",
+		)
 	}
 
 	if err := binding.Validator.ValidateStruct(out); err != nil {

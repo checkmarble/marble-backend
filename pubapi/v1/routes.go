@@ -77,6 +77,13 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 			HandleCreateContinuousScreeningObject(uc))
 		root.DELETE("/continuous-screenings/objects",
 			HandleDeleteContinuousScreeningObject(uc))
+
+		root.GET("/client-data/object-type/:objectType/object-id/:objectId/annotations",
+			v1beta.HandleGetClientDataAnnotations(uc))
+		root.POST("/client-data/object-type/:objectType/object-id/:objectId/annotations",
+			v1beta.HandleAttachClientDataAnnotation(uc))
+		root.DELETE("/client-data/annotations/:id",
+			v1beta.HandleDeleteClientDataAnnotation(uc))
 	}
 }
 

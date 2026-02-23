@@ -12,8 +12,8 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
 )
 
@@ -297,19 +297,27 @@ func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req mo
 		}
 		tag, err := uc.tagRepository.GetTagById(ctx, uc.executorFactory.NewExecutor(), payload.TagId)
 		if err != nil {
-			return errors.Wrap(models.NotFoundError, "unknown tag")
+			return errors.WithDetail(
+				errors.Wrap(models.NotFoundError, "unknown tag"),
+				"unknown tag",
+			)
 		}
 		if tag.Target != models.TagTargetObject {
-			return errors.Wrap(models.UnprocessableEntityError,
-				"provided tag is not targeting ingested objects")
+			return errors.WithDetail(
+				errors.Wrap(models.UnprocessableEntityError,
+					"provided tag is not targeting ingested objects"),
+				"provided tag is not targeting ingested objects",
+			)
 		}
 		exists, err := uc.repository.IsObjectTagSet(ctx, uc.executorFactory.NewExecutor(), req, payload.TagId)
 		if err != nil {
 			return err
 		}
 		if exists {
-			return errors.Wrap(models.ConflictError,
-				"tag is already annotated on this object")
+			return errors.WithDetail(
+				errors.Wrap(models.ConflictError, "tag is already annotated on this object"),
+				"tag is already annotated on this object",
+			)
 		}
 
 	case models.EntityAnnotationRiskTag:
@@ -318,7 +326,10 @@ func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req mo
 			return errors.New("invalid payload for annotation type")
 		}
 		if !slices.Contains(models.ValidRiskTags, payload.Tag) {
-			return errors.Wrap(models.BadParameterError, "invalid risk tag")
+			return errors.WithDetail(
+				errors.Wrap(models.BadParameterError, "invalid risk tag"),
+				"invalid risk tag",
+			)
 		}
 		exists, err := uc.repository.IsObjectRiskTagSet(ctx,
 			uc.executorFactory.NewExecutor(), req, string(payload.Tag))
@@ -326,8 +337,10 @@ func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req mo
 			return err
 		}
 		if exists {
-			return errors.Wrap(models.ConflictError,
-				"risk tag is already annotated on this object")
+			return errors.WithDetail(
+				errors.Wrap(models.ConflictError, "risk tag is already annotated on this object"),
+				"risk tag is already annotated on this object",
+			)
 		}
 	}
 
