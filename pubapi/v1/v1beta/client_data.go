@@ -70,12 +70,12 @@ func HandleAttachClientDataAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		annotationType := models.EntityAnnotationFrom(payload.Type)
 		if annotationType == models.EntityAnnotationUnknown {
 			types.NewErrorResponse().WithError(errors.WithDetail(
-				models.BadParameterError, "invalid annotation type")).Serve(c)
+				types.ErrInvalidPayload, "invalid annotation type")).Serve(c)
 			return
 		}
 		if annotationType == models.EntityAnnotationFile {
 			types.NewErrorResponse().WithError(
-				errors.WithDetail(models.BadParameterError,
+				errors.WithDetail(types.ErrInvalidPayload,
 					"cannot use generic annotation endpoint to add file annotation"),
 			).Serve(c)
 			return
@@ -89,21 +89,112 @@ func HandleAttachClientDataAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc).NewEntityAnnotationUsecase()
 
-		req := models.CreateEntityAnnotationRequest{
+		annotation, err := uc.Attach(ctx, models.CreateEntityAnnotationRequest{
 			OrgId:          orgId,
 			ObjectType:     objectType,
 			ObjectId:       objectId,
 			AnnotationType: annotationType,
 			Payload:        parsedPayload,
-		}
-
-		annotation, err := uc.Attach(ctx, req)
+		})
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
 		types.NewResponse(dto.AdaptClientDataAnnotationDto(annotation)).Serve(c, http.StatusCreated)
+	}
+}
+
+func HandleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		objectType := c.Param("objectType")
+		objectId := c.Param("objectId")
+
+		var payload params.AttachClientDataFileAnnotationParams
+
+		if err := c.ShouldBind(&payload); err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+		if len(payload.Files) == 0 {
+			types.NewErrorResponse().WithError(
+				errors.WithDetail(types.ErrInvalidPayload,
+					"at least one file should be provided"),
+			).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc).NewEntityAnnotationUsecase()
+
+		annotations, err := uc.AttachFile(
+			ctx,
+			models.CreateEntityAnnotationRequest{
+				OrgId:          orgId,
+				ObjectType:     objectType,
+				ObjectId:       objectId,
+				AnnotationType: models.EntityAnnotationFile,
+				Payload: models.EntityAnnotationFilePayload{
+					Caption: payload.Caption,
+				},
+			},
+			payload.Files,
+		)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		types.NewResponse(pure_utils.Map(annotations, dto.AdaptClientDataAnnotationDto)).Serve(c, http.StatusCreated)
+	}
+}
+
+func HandleGetEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		annotationId, err := types.UuidParam(c, "id")
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		partId := c.Param("partId")
+		if partId == "" {
+			types.NewErrorResponse().WithError(errors.WithDetail(
+				types.ErrInvalidPayload, "partId is required",
+			)).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc).NewEntityAnnotationUsecase()
+
+		downloadUrl, err := uc.GetFileDownloadUrl(
+			ctx,
+			models.AnnotationByIdRequest{
+				OrgId:        orgId,
+				AnnotationId: annotationId.String(),
+			}, partId,
+		)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		types.NewResponse(dto.ClientDataFileUrl{Url: downloadUrl}).Serve(c)
 	}
 }
 
