@@ -71,6 +71,7 @@ const (
 	ORG_IMPORT_ARCHETYPE_READ
 	ORG_IMPORT_INTO_EXISTING
 	ORG_EXPORT
+	SCORING_OVERRIDE_SCORE
 )
 
 func (r Permission) String() (string, error) {
@@ -139,6 +140,7 @@ func (r Permission) String() (string, error) {
 		"ORG_IMPORT_ARCHETYPE_READ",
 		"ORG_IMPORT_INTO_EXISTING",
 		"ORG_EXPORT",
+		"SCORING_OVERRIDE_SCORE",
 	}
 	if int(r) > len(permissions)-1 {
 		return "", errors.New("Invalid permission: no string representation has been set")
