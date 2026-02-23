@@ -26,3 +26,7 @@ func AdaptClientDataAnnotationDto(m models.EntityAnnotation) ClientDataAnnotatio
 		CreatedAt:      types.DateTime(m.CreatedAt),
 	}
 }
+
+type ClientDataFileUrl struct {
+	Url string `json:"url"`
+}

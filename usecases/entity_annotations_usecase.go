@@ -155,7 +155,7 @@ func (uc EntityAnnotationUsecase) Attach(ctx context.Context,
 	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.EntityAnnotation, error) {
-		annotation, err := uc.repository.CreateEntityAnnotation(ctx, uc.executorFactory.NewExecutor(), req)
+		annotation, err := uc.repository.CreateEntityAnnotation(ctx, tx, req)
 		if err != nil {
 			return models.EntityAnnotation{}, err
 		}
@@ -170,7 +170,8 @@ func (uc EntityAnnotationUsecase) Attach(ctx context.Context,
 	})
 }
 
-func (uc EntityAnnotationUsecase) AttachFile(ctx context.Context,
+func (uc EntityAnnotationUsecase) AttachFile(
+	ctx context.Context,
 	req models.CreateEntityAnnotationRequest,
 	files []multipart.FileHeader,
 ) ([]models.EntityAnnotation, error) {
