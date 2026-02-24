@@ -70,6 +70,7 @@ const (
 	ANNOTATION_RISK_TAG_WRITE
 	ORG_IMPORT_ARCHETYPE_READ
 	ORG_IMPORT_INTO_EXISTING
+	ORG_EXPORT
 )
 
 func (r Permission) String() (string, error) {
@@ -137,6 +138,7 @@ func (r Permission) String() (string, error) {
 		"ANNOTATION_RISK_TAG_WRITE",
 		"ORG_IMPORT_ARCHETYPE_READ",
 		"ORG_IMPORT_INTO_EXISTING",
+		"ORG_EXPORT",
 	}
 	if int(r) > len(permissions)-1 {
 		return "", errors.New("Invalid permission: no string representation has been set")

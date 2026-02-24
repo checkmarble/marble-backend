@@ -6,6 +6,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
@@ -80,5 +81,26 @@ func handleOrgImportFromArchetype(uc usecases.Usecases) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"org_id": orgId,
 		})
+	}
+}
+
+func handleOrgExport(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		creds, found := utils.CredentialsFromCtx(ctx)
+		if !found {
+			presentError(ctx, c, errors.Wrap(models.UnAuthorizedError, "credentials not found in context"))
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewOrgExportUsecase()
+
+		result, err := usecase.Export(ctx, creds.OrganizationId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, result)
 	}
 }
