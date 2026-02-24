@@ -60,10 +60,10 @@ type ImportOrg struct {
 }
 
 type ImportDataModel struct {
-	Tables            []Table                                `json:"tables"`
-	Links             []LinkToSingle                         `json:"links"`
-	Pivots            []Pivot                                `json:"pivots"`
-	NavigationOptions map[string]CreateNavigationOptionInput `json:"navigation_options"`
+	Tables            []Table                                  `json:"tables"`
+	Links             []LinkToSingle                           `json:"links"`
+	Pivots            []PivotMetadata                          `json:"pivots"`
+	NavigationOptions map[string][]CreateNavigationOptionInput `json:"navigation_options"`
 }
 
 type ImportTag struct {
