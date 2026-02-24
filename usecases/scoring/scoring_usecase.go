@@ -17,6 +17,7 @@ import (
 )
 
 type scoringRepository interface {
+	ListScoringRulesets(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ScoringRuleset, error)
 	GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, entityType string) (models.ScoringRuleset, error)
 	InsertScoringRulesetVersion(ctx context.Context, exec repositories.Transaction,
 		orgId uuid.UUID,
@@ -67,7 +68,7 @@ func NewScoringUsecase(
 	}
 }
 
-func (uc ScoringUsecase) TestScore(ctx context.Context, entityType, entityId string) (models.ScoringEvaluation, error) {
+func (uc ScoringUsecase) ComputeScore(ctx context.Context, entityType, entityId string) (models.ScoringEvaluation, error) {
 	ruleset, err := uc.repository.GetScoringRuleset(
 		ctx,
 		uc.executorFactory.NewExecutor(),
@@ -104,6 +105,15 @@ func (uc ScoringUsecase) TestScore(ctx context.Context, entityType, entityId str
 	eval.Score = uc.internalScoreToScore(ruleset, eval)
 
 	return eval, nil
+}
+
+func (uc ScoringUsecase) ListRulesets(ctx context.Context) ([]models.ScoringRuleset, error) {
+	rulesets, err := uc.repository.ListScoringRulesets(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
+	if err != nil {
+		return nil, err
+	}
+
+	return rulesets, err
 }
 
 func (uc ScoringUsecase) GetRuleset(ctx context.Context, entityType string) (models.ScoringRuleset, error) {
@@ -235,10 +245,6 @@ func (uc ScoringUsecase) OverrideScore(ctx context.Context, req models.InsertSco
 	})
 
 	return score, err
-}
-
-func (uc ScoringUsecase) ComputeScore(ctx context.Context, req models.InsertScoreRequest) (models.ScoringScore, error) {
-	return models.ScoringScore{}, errors.New("not yet implemented")
 }
 
 func (uc ScoringUsecase) getPayloadObject(ctx context.Context, orgId uuid.UUID, dataModel models.DataModel, entityType, entityId string) (models.ClientObject, error) {

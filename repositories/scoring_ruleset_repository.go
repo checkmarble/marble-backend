@@ -9,6 +9,30 @@ import (
 	"github.com/google/uuid"
 )
 
+func (repo *MarbleDbRepository) ListScoringRulesets(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+) ([]models.ScoringRuleset, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectScoringRulesetsColumns...).
+		Options("distinct on (entity_type)").
+		From(dbmodels.TABLE_SCORING_RULESETS).
+		Where("org_id = ?", orgId).
+		OrderBy("entity_type", "version desc")
+
+	rulesets, err := SqlToListOfModels(ctx, exec, query, dbmodels.AdaptScoringRuleset)
+	if err != nil {
+		return nil, err
+	}
+
+	return rulesets, nil
+}
+
 func (repo *MarbleDbRepository) GetScoringRuleset(
 	ctx context.Context,
 	exec Executor,
@@ -100,6 +124,7 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 		Columns(
 			"id",
 			"ruleset_id",
+			"stable_id",
 			"name",
 			"description",
 			"ast",
@@ -107,6 +132,7 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 		Values(
 			uuid.Must(uuid.NewV7()),
 			ruleset.Id,
+			rule.StableId,
 			rule.Name,
 			rule.Description,
 			rule.Ast,

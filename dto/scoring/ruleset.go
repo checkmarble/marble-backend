@@ -16,7 +16,7 @@ type ScoringRuleset struct {
 	Thresholds      []int     `json:"thresholds"`
 	CooldownSeconds int       `json:"cooldown_seconds"`
 
-	Rules []ScoringRule `json:"rules"`
+	Rules []ScoringRule `json:"rules,omitempty"`
 }
 
 type CreateRulesetRequest struct {
