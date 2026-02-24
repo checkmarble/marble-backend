@@ -71,9 +71,9 @@ func AdaptCustomListValueDto(listValue models.CustomListValue) CustomListValue {
 }
 
 type CreateCustomListBodyDto struct {
-	Name        string `in:"path=name"`
-	Description string `in:"path=description"`
-	Kind        string `in:"path=kind"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Kind        string `json:"kind"`
 }
 
 type CreateCustomListInputDto struct {
