@@ -10,18 +10,39 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleScoringTestScore(uc usecases.Usecases) gin.HandlerFunc {
+func handleScoringComputeScore(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringUsecase()
-		eval, err := scoringUsecase.TestScore(ctx, c.Param("entityType"), c.Param("entityId"))
+		eval, err := scoringUsecase.ComputeScore(ctx, c.Param("entityType"), c.Param("entityId"))
 		if presentError(ctx, c, err) {
 			return
 		}
 
 		c.JSON(http.StatusOK, scoring.AdaptScoringEvaluation(eval))
+	}
+}
+
+func handleScoringListRulesets(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringUsecase()
+
+		rulesets, err := scoringUsecase.ListRulesets(ctx)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		out, err := pure_utils.MapErr(rulesets, scoring.AdaptScoringRuleset)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, out)
 	}
 }
 
